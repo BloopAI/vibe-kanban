@@ -23,7 +23,7 @@ use crate::routes::task_attempts::CreateTaskAttemptBody;
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct CreateTaskRequest {
     #[schemars(description = "The ID of the project to create the task in. This is required!")]
-    pub project_id: String,
+    pub project_id: Uuid,
     #[schemars(description = "The title of the task")]
     pub title: String,
     #[schemars(description = "Optional description of the task")]
@@ -80,7 +80,7 @@ pub struct ListProjectsResponse {
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct ListTasksRequest {
     #[schemars(description = "The ID of the project to list tasks from")]
-    pub project_id: String,
+    pub project_id: Uuid,
     #[schemars(
         description = "Optional status filter: 'todo', 'inprogress', 'inreview', 'done', 'cancelled'"
     )]
@@ -157,10 +157,8 @@ pub struct ListTasksFilters {
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct UpdateTaskRequest {
-    #[schemars(description = "The ID of the project containing the task")]
-    pub project_id: String,
     #[schemars(description = "The ID of the task to update")]
-    pub task_id: String,
+    pub task_id: Uuid,
     #[schemars(description = "New title for the task")]
     pub title: Option<String>,
     #[schemars(description = "New description for the task")]
@@ -177,16 +175,14 @@ pub struct UpdateTaskResponse {
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct DeleteTaskRequest {
-    #[schemars(description = "The ID of the project containing the task")]
-    pub project_id: String,
     #[schemars(description = "The ID of the task to delete")]
-    pub task_id: String,
+    pub task_id: Uuid,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct StartTaskAttemptRequest {
     #[schemars(description = "The ID of the task to start")]
-    pub task_id: String,
+    pub task_id: Uuid,
     #[schemars(
         description = "The coding agent executor to run ('CLAUDE_CODE', 'CODEX', 'GEMINI', 'CURSOR', 'OPENCODE')"
     )]
@@ -212,10 +208,8 @@ pub struct DeleteTaskResponse {
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct GetTaskRequest {
-    #[schemars(description = "The ID of the project containing the task")]
-    pub project_id: String,
     #[schemars(description = "The ID of the task to retrieve")]
-    pub task_id: String,
+    pub task_id: Uuid,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -232,7 +226,6 @@ pub struct TaskServer {
 }
 
 impl TaskServer {
-    #[allow(dead_code)]
     pub fn new(base_url: &str) -> Self {
         Self {
             client: reqwest::Client::new(),
@@ -324,23 +317,13 @@ impl TaskServer {
             description,
         }): Parameters<CreateTaskRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        let project_uuid = match Uuid::parse_str(&project_id) {
-            Ok(uuid) => uuid,
-            Err(_) => {
-                return Self::err(
-                    "Invalid project ID format. Must be a valid UUID.",
-                    Some(&project_id),
-                );
-            }
-        };
-
         let url = self.url("/api/tasks");
         let task: Task = match self
             .send_json(
                 self.client
                     .post(&url)
                     .json(&CreateTask::from_title_description(
-                        project_uuid,
+                        project_id,
                         title,
                         description,
                     )),
@@ -353,7 +336,7 @@ impl TaskServer {
 
         TaskServer::success(&CreateTaskResponse {
             task_id: task.id.to_string(),
-            message: "Task created successdully".to_string(),
+            message: "Task created successfully".to_string(),
         })
     }
 
@@ -389,16 +372,6 @@ impl TaskServer {
             limit,
         }): Parameters<ListTasksRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        let project_uuid = match Uuid::parse_str(&project_id) {
-            Ok(uuid) => uuid,
-            Err(_) => {
-                return Self::err(
-                    "Invalid project ID format. Must be a valid UUID.",
-                    Some(&project_id),
-                );
-            }
-        };
-
         let status_filter = if let Some(ref status_str) = status {
             match TaskStatus::from_str(status_str) {
                 Ok(s) => Some(s),
@@ -413,7 +386,7 @@ impl TaskServer {
             None
         };
 
-        let url = self.url(&format!("/api/tasks?project_id={}", project_uuid));
+        let url = self.url(&format!("/api/tasks?project_id={}", project_id));
         let all_tasks: Vec<TaskWithAttemptStatus> =
             match self.send_json(self.client.get(&url)).await {
                 Ok(t) => t,
@@ -438,7 +411,7 @@ impl TaskServer {
         let response = ListTasksResponse {
             count: task_summaries.len(),
             tasks: task_summaries,
-            project_id: project_id.clone(),
+            project_id: project_id.to_string(),
             applied_filters: ListTasksFilters {
                 status: status.clone(),
                 limit: task_limit as i32,
@@ -458,16 +431,6 @@ impl TaskServer {
             base_branch,
         }): Parameters<StartTaskAttemptRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        let task_uuid = match Uuid::parse_str(&task_id) {
-            Ok(uuid) => uuid,
-            Err(_) => {
-                return Self::err(
-                    "Invalid task ID format. Must be a valid UUID.".to_string(),
-                    Some(task_id),
-                );
-            }
-        };
-
         let base_branch = base_branch.trim().to_string();
         if base_branch.is_empty() {
             return Self::err("Base branch must not be empty.".to_string(), None::<String>);
@@ -504,7 +467,7 @@ impl TaskServer {
         };
 
         let payload = CreateTaskAttemptBody {
-            task_id: task_uuid,
+            task_id,
             executor_profile_id,
             base_branch,
         };
@@ -531,27 +494,12 @@ impl TaskServer {
     async fn update_task(
         &self,
         Parameters(UpdateTaskRequest {
-            project_id,
             task_id,
             title,
             description,
             status,
         }): Parameters<UpdateTaskRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        if Uuid::parse_str(&project_id).is_err() {
-            return Self::err(
-                "Invalid project ID format. Must be a valid UUID.",
-                Some(&project_id),
-            );
-        };
-
-        if Uuid::parse_str(&task_id).is_err() {
-            return Self::err(
-                "Invalid task ID format. Must be a valid UUID.",
-                Some(&task_id),
-            );
-        };
-
         let status = if let Some(ref status_str) = status {
             match TaskStatus::from_str(status_str) {
                 Ok(s) => Some(s),
@@ -593,25 +541,8 @@ impl TaskServer {
     )]
     async fn delete_task(
         &self,
-        Parameters(DeleteTaskRequest {
-            project_id,
-            task_id,
-        }): Parameters<DeleteTaskRequest>,
+        Parameters(DeleteTaskRequest { task_id }): Parameters<DeleteTaskRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        if Uuid::parse_str(&project_id).is_err() {
-            return Self::err(
-                "Invalid project ID format. Must be a valid UUID.",
-                Some(&project_id),
-            );
-        };
-
-        if Uuid::parse_str(&task_id).is_err() {
-            return Self::err(
-                "Invalid task ID format. Must be a valid UUID.",
-                Some(&task_id),
-            );
-        };
-
         let url = self.url(&format!("/api/tasks/{}", task_id));
         if let Err(e) = self
             .send_json::<serde_json::Value>(self.client.delete(&url))
@@ -622,7 +553,7 @@ impl TaskServer {
 
         let repsonse = DeleteTaskResponse {
             message: "Task deleted successfully".to_string(),
-            deleted_task_id: Some(task_id.clone()),
+            deleted_task_id: Some(task_id.to_string()),
         };
 
         TaskServer::success(&repsonse)
@@ -633,25 +564,8 @@ impl TaskServer {
     )]
     async fn get_task(
         &self,
-        Parameters(GetTaskRequest {
-            project_id,
-            task_id,
-        }): Parameters<GetTaskRequest>,
+        Parameters(GetTaskRequest { task_id }): Parameters<GetTaskRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        if Uuid::parse_str(&project_id).is_err() {
-            return Self::err(
-                "Invalid project ID format. Must be a valid UUID.",
-                Some(&project_id),
-            );
-        };
-
-        if Uuid::parse_str(&task_id).is_err() {
-            return Self::err(
-                "Invalid task ID format. Must be a valid UUID.",
-                Some(&task_id),
-            );
-        };
-
         let url = self.url(&format!("/api/tasks/{}", task_id));
         let task: Task = match self.send_json(self.client.get(&url)).await {
             Ok(t) => t,
