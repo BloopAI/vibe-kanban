@@ -32,6 +32,7 @@ export function FileSearchTextarea({
   disabled = false,
   className,
   projectId,
+  onKeyDown,
   maxRows = 10,
   onPasteFiles,
   onFocus,
@@ -270,6 +271,9 @@ export function FileSearchTextarea({
           break;
       }
     }
+
+    // Propagate event to parent component for additional handling
+    onKeyDown?.(e);
   };
 
   return (

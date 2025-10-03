@@ -125,3 +125,30 @@ export const useKeyCycleVariant = createSemanticHook(Action.CYCLE_VARIANT);
  * useKeySubmitFollowUp(() => handleSubmit(), { scope: Scope.FOLLOW_UP_READY });
  */
 export const useKeySubmitFollowUp = createSemanticHook(Action.SUBMIT_FOLLOW_UP);
+
+/**
+ * Submit task action - typically Cmd+Enter
+ * Primary submit action in task dialog (Create & Start or Update)
+ *
+ * @example
+ * useKeySubmitTask(() => handleSubmit(), { scope: Scope.DIALOG, when: canSubmit });
+ */
+export const useKeySubmitTask = createSemanticHook(Action.SUBMIT_TASK);
+
+/**
+ * Alternative task submit action - typically Cmd+Shift+Enter
+ * Secondary submit action in task dialog (Create Task without starting)
+ *
+ * @example
+ * useKeySubmitTaskAlt(() => handleCreateOnly(), { scope: Scope.DIALOG, when: canSubmit });
+ */
+export const useKeySubmitTaskAlt = createSemanticHook(Action.SUBMIT_TASK_ALT);
+
+/**
+ * Submit comment action - typically Cmd+Enter
+ * Submit review comment in diff view
+ *
+ * @example
+ * useKeySubmitComment(() => handleSave(), { scope: Scope.EDIT_COMMENT, when: hasContent });
+ */
+export const useKeySubmitComment = createSemanticHook(Action.SUBMIT_COMMENT);

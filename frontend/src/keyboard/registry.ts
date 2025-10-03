@@ -26,6 +26,9 @@ export enum Action {
   DENY_APPROVAL = 'deny_approval',
   CYCLE_VARIANT = 'cycle_variant',
   SUBMIT_FOLLOW_UP = 'submit_follow_up',
+  SUBMIT_TASK = 'submit_task',
+  SUBMIT_TASK_ALT = 'submit_task_alt',
+  SUBMIT_COMMENT = 'submit_comment',
 }
 
 export interface KeyBinding {
@@ -186,6 +189,27 @@ export const keyBindings: KeyBinding[] = [
     scopes: [Scope.FOLLOW_UP_READY],
     description: 'Send or queue follow-up (depending on state)',
     group: 'Follow-up',
+  },
+  {
+    action: Action.SUBMIT_TASK,
+    keys: ['meta+enter', 'ctrl+enter'],
+    scopes: [Scope.DIALOG],
+    description: 'Submit task form (Create & Start or Update)',
+    group: 'Dialog',
+  },
+  {
+    action: Action.SUBMIT_TASK_ALT,
+    keys: ['meta+shift+enter', 'ctrl+shift+enter'],
+    scopes: [Scope.DIALOG],
+    description: 'Submit task form (Create Task)',
+    group: 'Dialog',
+  },
+  {
+    action: Action.SUBMIT_COMMENT,
+    keys: ['meta+enter', 'ctrl+enter'],
+    scopes: [Scope.EDIT_COMMENT],
+    description: 'Submit review comment',
+    group: 'Comments',
   },
 ];
 
