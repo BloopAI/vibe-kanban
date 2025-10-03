@@ -116,7 +116,7 @@ export function Navbar() {
     <div className="border-b bg-background">
       <div className="w-full px-3">
         <div className="flex items-center h-12 py-2">
-          <div className="flex-1">
+          <div className="flex-1 flex items-center">
             <Link to="/projects">
               <Logo />
             </Link>
