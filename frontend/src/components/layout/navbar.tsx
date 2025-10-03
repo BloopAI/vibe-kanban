@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useCallback, useEffect, useState } from 'react';
+import { siDiscord } from 'simple-icons';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -127,8 +128,15 @@ export function Navbar() {
               aria-label="Join our Discord"
               className="hidden sm:inline-flex items-center ml-3 text-xs font-medium rounded-md overflow-hidden"
             >
-              <span className="bg-background text-foreground px-2 py-1 border-r border-muted">
-                discord
+              <span className="bg-background text-foreground px-2 py-1 border-r border-muted flex items-center">
+                <svg 
+                  className="h-4 w-4" 
+                  viewBox="0 0 24 24" 
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path d={siDiscord.path} />
+                </svg>
               </span>
               <span
                 className="bg-success text-success-foreground px-2 py-1"
