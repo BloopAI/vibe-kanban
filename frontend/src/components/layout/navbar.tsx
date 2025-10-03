@@ -88,6 +88,20 @@ export function Navbar() {
             <Link to="/projects">
               <Logo />
             </Link>
+            <a
+              href="https://discord.gg/AC4nwVtJM3"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Join our Discord"
+              className="hidden sm:inline-flex items-center ml-3 text-xs font-medium rounded-md overflow-hidden"
+            >
+              <span className="bg-background text-foreground px-2 py-1 border-r border-muted">
+                discord
+              </span>
+              <span className="bg-success text-success-foreground px-2 py-1">
+                online
+              </span>
+            </a>
           </div>
 
           <SearchBar
@@ -129,19 +143,6 @@ export function Navbar() {
                 </Button>
               </>
             )}
-            <a
-              href="https://discord.gg/AC4nwVtJM3"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Join our Discord"
-              className="hidden sm:flex items-center ml-2 mr-1"
-            >
-              <img
-                src="https://img.shields.io/discord/1423630976524877857?style=flat-square&logo=discord&logoColor=FFF"
-                alt="Join us on Discord"
-                className="h-5 dark:brightness-90 dark:contrast-125"
-              />
-            </a>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
