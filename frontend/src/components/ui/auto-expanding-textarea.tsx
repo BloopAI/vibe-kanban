@@ -58,10 +58,16 @@ const AutoExpandingTextarea = React.forwardRef<
     // Handle keyboard shortcuts
     const handleKeyDown = React.useCallback(
       (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        // Handle Shift+Tab for variant cycling
-        if (e.key === 'Tab' && e.shiftKey && !e.metaKey && !e.ctrlKey) {
+        // Handle Shift+Tab for variant cycling (only if handler provided)
+        if (
+          e.key === 'Tab' &&
+          e.shiftKey &&
+          !e.metaKey &&
+          !e.ctrlKey &&
+          onShiftTab
+        ) {
           e.preventDefault();
-          onShiftTab?.();
+          onShiftTab();
           return;
         }
 
