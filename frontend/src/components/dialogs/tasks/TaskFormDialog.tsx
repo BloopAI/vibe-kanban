@@ -34,11 +34,7 @@ import type {
   ExecutorProfileId,
 } from 'shared/types';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
-import {
-  useKeySubmitTask,
-  useKeySubmitTaskAlt,
-  Scope,
-} from '@/keyboard';
+import { useKeySubmitTask, useKeySubmitTaskAlt, Scope } from '@/keyboard';
 
 interface Task {
   id: string;
@@ -468,7 +464,8 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
     );
 
     // Register keyboard shortcuts
-    const canSubmit = title.trim() !== '' && !isSubmitting && !isSubmittingAndStart;
+    const canSubmit =
+      title.trim() !== '' && !isSubmitting && !isSubmittingAndStart;
 
     useKeySubmitTask(handlePrimarySubmit, {
       scope: Scope.DIALOG,
