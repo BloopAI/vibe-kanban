@@ -58,9 +58,22 @@ export function useTaskMutations(projectId?: string) {
     },
   });
 
+  const deleteTask = useMutation({
+    mutationFn: (taskId: string) => tasksApi.delete(taskId),
+    onSuccess: (_: unknown, taskId: string) => {
+      invalidateQueries(taskId);
+      // Remove single-task cache entry to avoid stale data flashes
+      queryClient.removeQueries({ queryKey: ['task', taskId], exact: true });
+    },
+    onError: (err) => {
+      console.error('Failed to delete task:', err);
+    },
+  });
+
   return {
     createTask,
     createAndStart,
     updateTask,
+    deleteTask,
   };
 }
