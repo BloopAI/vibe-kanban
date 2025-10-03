@@ -1,45 +1,39 @@
-// Editor.tsx
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
-import { $convertToMarkdownString, TRANSFORMERS } from '@lexical/markdown';
+import {
+  $convertToMarkdownString,
+  $convertFromMarkdownString,
+  TRANSFORMERS,
+} from '@lexical/markdown';
 import { ImageChipNode, InsertImageChipPlugin } from './wysiwyg/ImageChipNode';
-import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'; // <-- default import
+import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { ListNode, ListItemNode } from '@lexical/list';
 import { CodeNode } from '@lexical/code';
 import { LinkNode } from '@lexical/link';
 import { EditorState } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { IMAGE_CHIP_EXPORT } from './wysiwyg/imageChipMarkdown';
+import { IMAGE_CHIP_EXPORT, IMAGE_CHIP_IMPORT } from './wysiwyg/imageChipMarkdown';
 
-function MarkdownViewer({ onChange }: { onChange: (md: string) => void }) {
-  const [editor] = useLexicalComposerContext();
-  useEffect(() => {
-    return editor.registerUpdateListener(({ editorState }) => {
-      editorState.read(() => {
-        const md = $convertToMarkdownString([
-          ...TRANSFORMERS,
-          IMAGE_CHIP_EXPORT,
-        ]);
-        onChange(md);
-      });
-    });
-  }, [editor, onChange]);
-  return null;
-}
+type WysiwygProps = {
+  placeholder: string;
+  value?: string; // controlled markdown
+  onChange?: (md: string) => void;
+  defaultValue?: string; // uncontrolled initial markdown
+  onEditorStateChange?: (s: EditorState) => void;
+};
 
 export default function WYSIWYGEditor({
   placeholder,
-}: {
-  placeholder: string;
-}) {
-  const [markdown, setMarkdown] = useState('');
-  const [editorState, setEditorState] = useState<EditorState | undefined>();
-
+  value,
+  onChange,
+  defaultValue,
+  onEditorStateChange,
+}: WysiwygProps) {
   const initialConfig = useMemo(
     () => ({
       namespace: 'md-wysiwyg',
@@ -58,6 +52,18 @@ export default function WYSIWYGEditor({
         ImageChipNode,
       ],
     }),
+    []
+  );
+
+  // Shared ref to avoid update loops and redundant imports
+  const lastMdRef = useRef<string>('');
+
+  const exportTransformers = useMemo(
+    () => [...TRANSFORMERS, IMAGE_CHIP_EXPORT],
+    []
+  );
+  const importTransformers = useMemo(
+    () => [...TRANSFORMERS, IMAGE_CHIP_IMPORT],
     []
   );
 
@@ -80,34 +86,108 @@ export default function WYSIWYGEditor({
             ErrorBoundary={LexicalErrorBoundary}
           />
         </div>
+
         <HistoryPlugin />
         <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
         <InsertImageChipPlugin />
-        {/* capture both JSON (if you still want it) and Markdown */}
-        <MarkdownViewer onChange={setMarkdown} />
-        {/* keep your existing state tap if useful */}
-        <MyOnChangePlugin onChange={setEditorState} />
-      </LexicalComposer>
 
-      {/* Markdown preview */}
-      {/* <div className="border rounded-xl p-3 mt-3 whitespace-pre-wrap font-mono text-sm">
-                {markdown || "_(Markdown will appear here as you type)_"}
-            </div> */}
+        {/* Emit markdown on change */}
+        <MarkdownOnChangePlugin
+          onMarkdownChange={onChange}
+          onEditorStateChange={onEditorStateChange}
+          exportTransformers={exportTransformers}
+          lastMdRef={lastMdRef}
+        />
+
+        {/* Apply external controlled value (markdown) */}
+        <MarkdownValuePlugin
+          value={value}
+          importTransformers={importTransformers}
+          lastMdRef={lastMdRef}
+        />
+
+        {/* Apply defaultValue once in uncontrolled mode */}
+        {value === undefined && defaultValue ? (
+          <MarkdownDefaultValuePlugin
+            defaultValue={defaultValue}
+            importTransformers={importTransformers}
+            lastMdRef={lastMdRef}
+          />
+        ) : null}
+      </LexicalComposer>
     </div>
   );
 }
 
-// unchanged
-function MyOnChangePlugin({
-  onChange,
+function MarkdownOnChangePlugin({
+  onMarkdownChange,
+  onEditorStateChange,
+  exportTransformers,
+  lastMdRef,
 }: {
-  onChange: (s: EditorState) => void;
+  onMarkdownChange?: (md: string) => void;
+  onEditorStateChange?: (s: EditorState) => void;
+  exportTransformers: any[];
+  lastMdRef: React.MutableRefObject<string>;
 }) {
   const [editor] = useLexicalComposerContext();
-  useEffect(
-    () =>
-      editor.registerUpdateListener(({ editorState }) => onChange(editorState)),
-    [editor, onChange]
-  );
+  useEffect(() => {
+    return editor.registerUpdateListener(({ editorState }) => {
+      // Tap editor state if requested
+      if (onEditorStateChange) {
+        onEditorStateChange(editorState);
+      }
+      // Emit markdown
+      editorState.read(() => {
+        const md = $convertToMarkdownString(exportTransformers);
+        lastMdRef.current = md;
+        if (onMarkdownChange) onMarkdownChange(md);
+      });
+    });
+  }, [editor, onMarkdownChange, onEditorStateChange, exportTransformers, lastMdRef]);
+  return null;
+}
+
+function MarkdownValuePlugin({
+  value,
+  importTransformers,
+  lastMdRef,
+}: {
+  value?: string;
+  importTransformers: any[];
+  lastMdRef: React.MutableRefObject<string>;
+}) {
+  const [editor] = useLexicalComposerContext();
+  useEffect(() => {
+    if (value === undefined) return; // uncontrolled mode
+    if (value === lastMdRef.current) return; // avoid redundant imports
+
+    editor.update(() => {
+      // Replace content with external value
+      $convertFromMarkdownString(value || '', importTransformers);
+    });
+    lastMdRef.current = value || '';
+  }, [editor, value, importTransformers, lastMdRef]);
+  return null;
+}
+
+function MarkdownDefaultValuePlugin({
+  defaultValue,
+  importTransformers,
+  lastMdRef,
+}: {
+  defaultValue: string;
+  importTransformers: any[];
+  lastMdRef: React.MutableRefObject<string>;
+}) {
+  const [editor] = useLexicalComposerContext();
+  useEffect(() => {
+    // Apply once on mount
+    editor.update(() => {
+      $convertFromMarkdownString(defaultValue || '', importTransformers);
+    });
+    lastMdRef.current = defaultValue || '';
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor]); // do not depend on defaultValue to ensure it's one-time
   return null;
 }
