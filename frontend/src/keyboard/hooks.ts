@@ -108,3 +108,11 @@ export const useKeyApproveRequest = createSemanticHook(Action.APPROVE_REQUEST);
  * useKeyDenyApproval(() => denyPendingRequest(), { scope: Scope.GLOBAL });
  */
 export const useKeyDenyApproval = createSemanticHook(Action.DENY_APPROVAL);
+
+/**
+ * Cycle variant action - typically Shift+Tab
+ *
+ * @example
+ * useKeyCycleVariant(() => cycleToNextVariant(), { scope: Scope.FOLLOW_UP });
+ */
+export const useKeyCycleVariant = createSemanticHook(Action.CYCLE_VARIANT);

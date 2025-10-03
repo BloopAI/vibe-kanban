@@ -5,6 +5,7 @@ export enum Scope {
   PROJECTS = 'projects',
   EDIT_COMMENT = 'edit-comment',
   APPROVALS = 'approvals',
+  FOLLOW_UP = 'follow-up',
 }
 
 export enum Action {
@@ -22,6 +23,7 @@ export enum Action {
   DELETE_TASK = 'delete_task',
   APPROVE_REQUEST = 'approve_request',
   DENY_APPROVAL = 'deny_approval',
+  CYCLE_VARIANT = 'cycle_variant',
 }
 
 export interface KeyBinding {
@@ -166,6 +168,15 @@ export const keyBindings: KeyBinding[] = [
     scopes: [Scope.APPROVALS],
     description: 'Deny pending approval request',
     group: 'Approvals',
+  },
+
+  // Follow-up actions
+  {
+    action: Action.CYCLE_VARIANT,
+    keys: 'shift+tab',
+    scopes: [Scope.FOLLOW_UP],
+    description: 'Cycle between agent configurations',
+    group: 'Follow-up',
   },
 ];
 

@@ -23,6 +23,8 @@ import { cn } from '@/lib/utils';
 import { useReview } from '@/contexts/ReviewProvider';
 import { useClickedElements } from '@/contexts/ClickedElementsProvider';
 import { useEntries } from '@/contexts/EntriesContext';
+import { useKeyCycleVariant, Scope } from '@/keyboard';
+import { useHotkeysContext } from 'react-hotkeys-hook';
 //
 import { VariantSelector } from '@/components/tasks/VariantSelector';
 import { FollowUpStatusRow } from '@/components/tasks/FollowUpStatusRow';
@@ -63,6 +65,7 @@ export function TaskFollowUpSection({
     generateMarkdown: generateClickedMarkdown,
     clearElements: clearClickedElements,
   } = useClickedElements();
+  const { enableScope, disableScope } = useHotkeysContext();
 
   const reviewMarkdown = useMemo(
     () => generateReviewMarkdown(),
@@ -117,6 +120,9 @@ export function TaskFollowUpSection({
     setShowImageUpload(true);
     void imageUploadRef.current?.addFiles(files);
   }, []);
+
+  // Track whether the follow-up textarea is focused
+  const [isTextareaFocused, setIsTextareaFocused] = useState(false);
 
   // Variant selection (with keyboard cycling)
   const { selectedVariant, setSelectedVariant, currentProfile } =
@@ -267,6 +273,25 @@ export function TaskFollowUpSection({
   const isEditable =
     isDraftLoaded && !isDraftLocked && !isRetryActive && !hasPendingApproval;
 
+  // Register keyboard shortcut for cycling variants
+  useKeyCycleVariant(cycleVariant, {
+    scope: Scope.FOLLOW_UP,
+    enableOnFormTags: ['textarea', 'TEXTAREA'],
+    preventDefault: true,
+  });
+
+  // Enable FOLLOW_UP scope only when textarea is focused AND editable
+  useEffect(() => {
+    if (isEditable && isTextareaFocused) {
+      enableScope(Scope.FOLLOW_UP);
+    } else {
+      disableScope(Scope.FOLLOW_UP);
+    }
+    return () => {
+      disableScope(Scope.FOLLOW_UP);
+    };
+  }, [isEditable, isTextareaFocused, enableScope, disableScope]);
+
   // When a process completes (e.g., agent resolved conflicts), refresh branch status promptly
   const prevRunningRef = useRef<boolean>(isAttemptRunning);
   useEffect(() => {
@@ -401,7 +426,7 @@ export function TaskFollowUpSection({
                 onCommandEnter={onSendFollowUp}
                 onCommandShiftEnter={onSendFollowUp}
                 onPasteFiles={handlePasteImages}
-                onShiftTab={cycleVariant}
+                onFocusChange={setIsTextareaFocused}
               />
               <FollowUpStatusRow
                 status={{
