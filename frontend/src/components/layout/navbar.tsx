@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -24,6 +24,8 @@ import { openTaskForm } from '@/lib/openTaskForm';
 import { useProject } from '@/contexts/project-context';
 import { showProjectForm } from '@/lib/modals';
 import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
+
+const DISCORD_GUILD_ID = '1423630976524877857';
 
 const INTERNAL_NAV = [
   { label: 'Projects', icon: FolderOpen, to: '/projects' },
@@ -53,6 +55,36 @@ export function Navbar() {
   const { projectId, project } = useProject();
   const { query, setQuery, active, clear, registerInputRef } = useSearch();
   const handleOpenInEditor = useOpenProjectInEditor(project || null);
+  const [onlineCount, setOnlineCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchCount = async () => {
+      try {
+        const res = await fetch(
+          `https://discord.com/api/guilds/${DISCORD_GUILD_ID}/widget.json`,
+          { cache: 'no-store' }
+        );
+        if (!res.ok) return; // Widget disabled or temporary error; keep previous value
+        const data = await res.json();
+        if (!cancelled && typeof data?.presence_count === 'number') {
+          setOnlineCount(data.presence_count);
+        }
+      } catch {
+        // Network error; ignore and keep previous value
+      }
+    };
+
+    // Initial fetch + refresh every 60s
+    fetchCount();
+    const interval = setInterval(fetchCount, 60_000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   const setSearchBarRef = useCallback(
     (node: HTMLInputElement | null) => {
@@ -98,8 +130,8 @@ export function Navbar() {
               <span className="bg-background text-foreground px-2 py-1 border-r border-muted">
                 discord
               </span>
-              <span className="bg-success text-success-foreground px-2 py-1">
-                online
+              <span className="bg-success text-success-foreground px-2 py-1" aria-live="polite">
+                {onlineCount !== null ? `${onlineCount.toLocaleString()} online` : 'online'}
               </span>
             </a>
           </div>
