@@ -432,11 +432,20 @@ impl LocalContainerService {
                     tracing::warn!("Failed to update executor session summary: {}", e);
                 }
 
-                if matches!(
+                let success = matches!(
                     ctx.execution_process.status,
                     ExecutionProcessStatus::Completed
-                ) && exit_code == Some(0)
-                {
+                ) && exit_code == Some(0);
+
+                let cleanup_done = matches!(
+                    ctx.execution_process.run_reason,
+                    ExecutionProcessRunReason::CleanupScript
+                ) && !matches!(
+                    ctx.execution_process.status,
+                    ExecutionProcessStatus::Running
+                );
+
+                if success || cleanup_done {
                     // Commit changes (if any) and get feedback about whether changes were made
                     let changes_committed = match container.try_commit_changes(&ctx).await {
                         Ok(committed) => committed,
