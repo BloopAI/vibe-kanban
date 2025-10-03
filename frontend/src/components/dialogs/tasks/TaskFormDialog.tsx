@@ -39,7 +39,6 @@ import {
   useKeySubmitTaskAlt,
   Scope,
 } from '@/keyboard';
-import { useHotkeysContext } from 'react-hotkeys-hook';
 
 interface Task {
   id: string;
@@ -93,7 +92,6 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       useState<boolean>(false);
     const imageUploadRef = useRef<ImageUploadSectionHandle>(null);
     const [isTextareaFocused, setIsTextareaFocused] = useState(false);
-    const { enableScope, disableScope } = useHotkeysContext();
 
     const isEditMode = Boolean(task);
 
@@ -485,18 +483,6 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       when: canSubmit && isTextareaFocused,
       preventDefault: true,
     });
-
-    // Enable DIALOG scope when textarea is focused and form is ready
-    useEffect(() => {
-      if (isTextareaFocused && modal.visible) {
-        enableScope(Scope.DIALOG);
-      } else {
-        disableScope(Scope.DIALOG);
-      }
-      return () => {
-        disableScope(Scope.DIALOG);
-      };
-    }, [isTextareaFocused, modal.visible, enableScope, disableScope]);
 
     // Handle dialog close attempt
     const handleDialogOpenChange = (open: boolean) => {
