@@ -17,7 +17,7 @@ use futures::{StreamExt, TryStreamExt};
 use git2::Error as Git2Error;
 use serde_json::Value;
 use services::services::{
-    analytics::AnalyticsService,
+    analytics::{AnalyticsContext, AnalyticsService},
     approvals::Approvals,
     auth::{AuthError, AuthService},
     config::{Config, ConfigError},
@@ -122,7 +122,14 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     async fn spawn_pr_monitor_service(&self) -> tokio::task::JoinHandle<()> {
         let db = self.db().clone();
         let config = self.config().clone();
-        PrMonitorService::spawn(db, config).await
+        let analytics = self
+            .analytics()
+            .as_ref()
+            .map(|analytics_service| AnalyticsContext {
+                user_id: self.user_id().to_string(),
+                analytics_service: analytics_service.clone(),
+            });
+        PrMonitorService::spawn(db, config, analytics).await
     }
 
     async fn track_if_analytics_allowed(&self, event_name: &str, properties: Value) {
