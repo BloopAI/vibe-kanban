@@ -122,10 +122,13 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     async fn spawn_pr_monitor_service(&self) -> tokio::task::JoinHandle<()> {
         let db = self.db().clone();
         let config = self.config().clone();
-        let analytics = self.analytics().as_ref().map(|analytics_service| AnalyticsContext {
-            user_id: self.user_id().to_string(),
-            analytics_service: analytics_service.clone(),
-        });
+        let analytics = self
+            .analytics()
+            .as_ref()
+            .map(|analytics_service| AnalyticsContext {
+                user_id: self.user_id().to_string(),
+                analytics_service: analytics_service.clone(),
+            });
         PrMonitorService::spawn(db, config, analytics).await
     }
 
