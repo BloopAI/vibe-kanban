@@ -29,22 +29,20 @@ type Props = {
 
 type RowProps = {
   branch: GitBranch;
-  idx: number;
   isSelected: boolean;
   isHighlighted: boolean;
   isDisabled: boolean;
-  onMouseEnter: (e: React.MouseEvent<HTMLElement>) => void;
-  onClick: (e: React.MouseEvent<HTMLElement>) => void;
+  onHover: () => void;
+  onSelect: () => void;
 };
 
 const BranchRow = memo(function BranchRow({
   branch,
-  idx,
   isSelected,
   isHighlighted,
   isDisabled,
-  onMouseEnter,
-  onClick,
+  onHover,
+  onSelect,
 }: RowProps) {
   const classes =
     (isSelected ? 'bg-accent text-accent-foreground ' : '') +
@@ -56,10 +54,8 @@ const BranchRow = memo(function BranchRow({
 
   const item = (
     <DropdownMenuItem
-      data-index={idx}
-      data-name={branch.name}
-      onMouseEnter={onMouseEnter}
-      onClick={onClick}
+      onMouseEnter={onHover}
+      onSelect={onSelect}
       disabled={isDisabled}
       className={classes.trim()}
     >
@@ -84,7 +80,9 @@ const BranchRow = memo(function BranchRow({
   if (isDisabled) {
     return (
       <Tooltip>
-        <TooltipTrigger asChild>{item}</TooltipTrigger>
+        <TooltipTrigger asChild>
+          <span className="block">{item}</span>
+        </TooltipTrigger>
         <TooltipContent>
           <p>Cannot rebase a branch onto itself</p>
         </TooltipContent>
@@ -104,7 +102,7 @@ function BranchSelector({
   excludeCurrentBranch = false,
 }: Props) {
   const [branchSearchTerm, setBranchSearchTerm] = useState('');
-  const [highlighted, setHighlighted] = useState<number | null>(null);
+  const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const virtuosoRef = useRef<VirtuosoHandle>(null);
@@ -123,39 +121,39 @@ function BranchSelector({
     (branchName: string) => {
       onBranchSelect(branchName);
       setBranchSearchTerm('');
-      setHighlighted(null);
+      setHighlightedIndex(null);
       setOpen(false);
     },
     [onBranchSelect]
   );
 
-  useEffect(() => {
-    if (highlighted !== null && highlighted >= filteredBranches.length) {
-      setHighlighted(null);
-    }
-  }, [filteredBranches, highlighted]);
-
-  useEffect(() => {
-    setHighlighted(null);
-  }, [branchSearchTerm]);
-
-  const isDisabledIdx = useCallback(
-    (i: number) => excludeCurrentBranch && filteredBranches[i]?.is_current,
-    [excludeCurrentBranch, filteredBranches]
+  const isBranchDisabled = useCallback(
+    (branch: GitBranch) => excludeCurrentBranch && branch.is_current,
+    [excludeCurrentBranch]
   );
+
+  useEffect(() => {
+    if (highlightedIndex !== null && highlightedIndex >= filteredBranches.length) {
+      setHighlightedIndex(null);
+    }
+  }, [filteredBranches, highlightedIndex]);
+
+  useEffect(() => {
+    setHighlightedIndex(null);
+  }, [branchSearchTerm]);
 
   const moveHighlight = useCallback(
     (delta: 1 | -1) => {
       if (filteredBranches.length === 0) return;
 
-      const start = highlighted ?? -1;
+      const start = highlightedIndex ?? -1;
       let next = start;
 
       for (let attempts = 0; attempts < filteredBranches.length; attempts++) {
         next =
           (next + delta + filteredBranches.length) % filteredBranches.length;
-        if (!isDisabledIdx(next)) {
-          setHighlighted(next);
+        if (!isBranchDisabled(filteredBranches[next])) {
+          setHighlightedIndex(next);
           virtuosoRef.current?.scrollIntoView({
             index: next,
             behavior: 'auto',
@@ -163,40 +161,30 @@ function BranchSelector({
           return;
         }
       }
-      setHighlighted(null);
+      setHighlightedIndex(null);
     },
-    [filteredBranches, highlighted, isDisabledIdx]
+    [filteredBranches, highlightedIndex, isBranchDisabled]
   );
 
   const attemptSelect = useCallback(() => {
-    if (highlighted == null) return;
-    const branch = filteredBranches[highlighted];
+    if (highlightedIndex == null) return;
+    const branch = filteredBranches[highlightedIndex];
     if (!branch) return;
-    if (excludeCurrentBranch && branch.is_current) return;
+    if (isBranchDisabled(branch)) return;
     handleBranchSelect(branch.name);
-  }, [highlighted, filteredBranches, excludeCurrentBranch, handleBranchSelect]);
-
-  const handleRowMouseEnter = useCallback(
-    (e: React.MouseEvent<HTMLElement>) => {
-      const i = Number((e.currentTarget as HTMLElement).dataset.index);
-      if (!Number.isNaN(i)) setHighlighted(i);
-    },
-    []
-  );
-
-  const handleRowClick = useCallback(
-    (e: React.MouseEvent<HTMLElement>) => {
-      const el = e.currentTarget as HTMLElement;
-      const name = el.dataset.name;
-      const idx = Number(el.dataset.index);
-      if (excludeCurrentBranch && filteredBranches[idx]?.is_current) return;
-      if (name) handleBranchSelect(name);
-    },
-    [excludeCurrentBranch, filteredBranches, handleBranchSelect]
-  );
+  }, [highlightedIndex, filteredBranches, isBranchDisabled, handleBranchSelect]);
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) {
+          setBranchSearchTerm('');
+          setHighlightedIndex(null);
+        }
+      }}
+    >
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
@@ -256,7 +244,6 @@ function BranchSelector({
                   }
                 }}
                 className="pl-8"
-                autoFocus
               />
             </div>
           </div>
@@ -270,22 +257,21 @@ function BranchSelector({
               ref={virtuosoRef}
               style={{ height: '16rem' }}
               totalCount={filteredBranches.length}
+              computeItemKey={(idx) => filteredBranches[idx]?.name ?? idx}
               itemContent={(idx) => {
                 const branch = filteredBranches[idx];
-                const isDisabled = excludeCurrentBranch && !!branch.is_current;
-                const isHighlighted = idx === highlighted;
+                const isDisabled = isBranchDisabled(branch);
+                const isHighlighted = idx === highlightedIndex;
                 const isSelected = selectedBranch === branch.name;
 
                 return (
                   <BranchRow
-                    key={branch.name}
                     branch={branch}
-                    idx={idx}
                     isSelected={isSelected}
                     isDisabled={isDisabled}
                     isHighlighted={isHighlighted}
-                    onMouseEnter={handleRowMouseEnter}
-                    onClick={handleRowClick}
+                    onHover={() => setHighlightedIndex(idx)}
+                    onSelect={() => handleBranchSelect(branch.name)}
                   />
                 );
               }}
