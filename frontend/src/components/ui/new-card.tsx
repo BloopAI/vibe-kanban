@@ -34,7 +34,7 @@ const NewCardContent = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn('flex-1 bg-muted text-foreground gap-2 p-3', className)}
+    className={cn('flex-1 bg-muted text-foreground gap-2', className)}
     {...props}
   />
 ));
