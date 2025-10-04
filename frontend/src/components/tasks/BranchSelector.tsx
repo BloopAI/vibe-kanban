@@ -133,7 +133,10 @@ function BranchSelector({
   );
 
   useEffect(() => {
-    if (highlightedIndex !== null && highlightedIndex >= filteredBranches.length) {
+    if (
+      highlightedIndex !== null &&
+      highlightedIndex >= filteredBranches.length
+    ) {
       setHighlightedIndex(null);
     }
   }, [filteredBranches, highlightedIndex]);
@@ -172,7 +175,12 @@ function BranchSelector({
     if (!branch) return;
     if (isBranchDisabled(branch)) return;
     handleBranchSelect(branch.name);
-  }, [highlightedIndex, filteredBranches, isBranchDisabled, handleBranchSelect]);
+  }, [
+    highlightedIndex,
+    filteredBranches,
+    isBranchDisabled,
+    handleBranchSelect,
+  ]);
 
   return (
     <DropdownMenu
