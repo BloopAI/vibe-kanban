@@ -114,8 +114,7 @@ function BranchSelector({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const virtuosoRef = useRef<VirtuosoHandle>(null);
 
-  const effectivePlaceholder =
-    placeholder ?? t('branchSelector.placeholder');
+  const effectivePlaceholder = placeholder ?? t('branchSelector.placeholder');
   const defaultDisabledTooltip = t('branchSelector.currentDisabled');
 
   const filteredBranches = useMemo(() => {
@@ -212,7 +211,9 @@ function BranchSelector({
         >
           <div className="flex items-center gap-1.5 w-full">
             <GitBranchIcon className="h-3 w-3" />
-            <span className="truncate">{selectedBranch || effectivePlaceholder}</span>
+            <span className="truncate">
+              {selectedBranch || effectivePlaceholder}
+            </span>
           </div>
           <ArrowDown className="h-3 w-3" />
         </Button>
@@ -293,7 +294,7 @@ function BranchSelector({
                     onSelect={() => handleBranchSelect(branch.name)}
                     disabledTooltip={
                       isDisabled
-                        ? disabledTooltip ?? defaultDisabledTooltip
+                        ? (disabledTooltip ?? defaultDisabledTooltip)
                         : undefined
                     }
                   />
