@@ -184,6 +184,19 @@
   .logo {
     @apply fill-foreground;
   }
+
+  a {
+    text-decoration: none;
+    /* remove default underline */
+    border-bottom: 1px dashed color-mix(in srgb, currentColor 30%, transparent);
+    margin-bottom: -1px;
+    /* dashed line under text */
+  }
+
+  a:hover {
+    border-bottom-style: solid;
+    /* optional hover effect */
+  }
 }
 
 /* ANSI color classes for fancy-ansi */
