@@ -50,7 +50,7 @@ const BranchRow = memo(function BranchRow({
     (isSelected ? 'bg-accent text-accent-foreground ' : '') +
     (isDisabled ? 'opacity-50 cursor-not-allowed ' : '') +
     (!isSelected && isHighlighted
-      ? 'bg-accent/40 ring-1 ring-accent/60 '
+      ? 'bg-accent/70 ring-2 ring-accent '
       : '') +
     'transition-none';
 
