@@ -156,7 +156,10 @@ function BranchSelector({
           (next + delta + filteredBranches.length) % filteredBranches.length;
         if (!isDisabledIdx(next)) {
           setHighlighted(next);
-          virtuosoRef.current?.scrollIntoView({ index: next, behavior: 'auto' });
+          virtuosoRef.current?.scrollIntoView({
+            index: next,
+            behavior: 'auto',
+          });
           return;
         }
       }
