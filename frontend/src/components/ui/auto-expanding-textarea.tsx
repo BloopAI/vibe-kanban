@@ -50,7 +50,7 @@ const AutoExpandingTextarea = React.forwardRef<
     // Handle keyboard shortcuts
     const handleKeyDown = React.useCallback(
       (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
           if (e.metaKey && e.shiftKey) {
             onCommandShiftEnter?.(e);
           } else if (e.metaKey) {
