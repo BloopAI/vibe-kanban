@@ -17,14 +17,6 @@ import {
 import { Input } from '@/components/ui/input.tsx';
 import type { GitBranch } from 'shared/types';
 
-const MENU_KEYS_TO_BUBBLE = new Set([
-  'ArrowUp',
-  'ArrowDown',
-  'Enter',
-  'Escape',
-  'Tab',
-]);
-
 type Props = {
   branches: GitBranch[];
   selectedBranch: string | null;
@@ -81,6 +73,40 @@ function BranchSelector({
     setHighlighted(null);
   }, [branchSearchTerm]);
 
+  // Scroll highlighted item into view
+  useEffect(() => {
+    if (highlighted !== null) {
+      itemRefs.current[highlighted]?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [highlighted]);
+
+  const isDisabledIdx = (i: number) =>
+    excludeCurrentBranch && filteredBranches[i]?.is_current;
+
+  const moveHighlight = (delta: 1 | -1) => {
+    if (filteredBranches.length === 0) return;
+
+    let start = highlighted ?? -1;
+    let next = start;
+
+    for (let attempts = 0; attempts < filteredBranches.length; attempts++) {
+      next = (next + delta + filteredBranches.length) % filteredBranches.length;
+      if (!isDisabledIdx(next)) {
+        setHighlighted(next);
+        return;
+      }
+    }
+    setHighlighted(null);
+  };
+
+  const attemptSelect = () => {
+    if (highlighted == null) return;
+    const branch = filteredBranches[highlighted];
+    if (!branch) return;
+    if (excludeCurrentBranch && branch.is_current) return;
+    handleBranchSelect(branch.name);
+  };
+
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
@@ -112,8 +138,31 @@ function BranchSelector({
               value={branchSearchTerm}
               onChange={(e) => setBranchSearchTerm(e.target.value)}
               onKeyDown={(e) => {
-                if (!MENU_KEYS_TO_BUBBLE.has(e.key)) {
-                  e.stopPropagation();
+                switch (e.key) {
+                  case 'ArrowDown':
+                    e.preventDefault();
+                    e.stopPropagation();
+                    moveHighlight(1);
+                    return;
+                  case 'ArrowUp':
+                    e.preventDefault();
+                    e.stopPropagation();
+                    moveHighlight(-1);
+                    return;
+                  case 'Enter':
+                    e.preventDefault();
+                    e.stopPropagation();
+                    attemptSelect();
+                    return;
+                  case 'Escape':
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setOpen(false);
+                    return;
+                  case 'Tab':
+                    return;
+                  default:
+                    e.stopPropagation();
                 }
               }}
               className="pl-8"
