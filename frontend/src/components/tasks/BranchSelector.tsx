@@ -220,13 +220,7 @@ function BranchSelector({
       </DropdownMenuTrigger>
 
       <TooltipProvider>
-        <DropdownMenuContent
-          className="w-80"
-          onOpenAutoFocus={(e) => {
-            e.preventDefault();
-            searchInputRef.current?.focus();
-          }}
-        >
+        <DropdownMenuContent className="w-80">
           <div className="p-2">
             <div className="relative">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
