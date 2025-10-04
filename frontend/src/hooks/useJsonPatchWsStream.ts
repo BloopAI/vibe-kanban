@@ -89,7 +89,7 @@ export const useJsonPatchWsStream = <T>(
     if (!wsRef.current) {
       // Reset finished flag for new connection
       finishedRef.current = false;
-      
+
       // Convert HTTP endpoint to WebSocket endpoint
       const wsEndpoint = endpoint.replace(/^http/, 'ws');
       const ws = new WebSocket(wsEndpoint);
@@ -149,12 +149,12 @@ export const useJsonPatchWsStream = <T>(
       ws.onclose = (evt) => {
         setIsConnected(false);
         wsRef.current = null;
-        
+
         // Do not reconnect if we received a finished message or clean close
         if (finishedRef.current || (evt?.code === 1000 && evt?.wasClean)) {
           return;
         }
-        
+
         // Otherwise, reconnect on unexpected/error closures
         retryAttemptsRef.current += 1;
         scheduleReconnect();
