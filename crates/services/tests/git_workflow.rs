@@ -328,6 +328,35 @@ fn get_all_branches_lists_current_and_others() {
 }
 
 #[test]
+fn get_github_repo_info_parses_origin() {
+    let td = TempDir::new().unwrap();
+    let repo_path = init_repo_main(&td);
+    let s = GitService::new();
+    s.set_remote(&repo_path, "origin", "https://github.com/foo/bar.git")
+        .unwrap();
+    let info = s.get_github_repo_info(&repo_path, None).unwrap();
+    assert_eq!(info.owner, "foo");
+    assert_eq!(info.repo_name, "bar");
+}
+
+#[test]
+fn get_github_repo_info_prefers_supplied_remote() {
+    let td = TempDir::new().unwrap();
+    let repo_path = init_repo_main(&td);
+    let s = GitService::new();
+    s.set_remote(&repo_path, "origin", "https://github.com/foo/bar.git")
+        .unwrap();
+    s.set_remote(&repo_path, "upstream", "https://github.com/baz/qux.git")
+        .unwrap();
+
+    let info = s
+        .get_github_repo_info(&repo_path, Some("upstream"))
+        .unwrap();
+    assert_eq!(info.owner, "baz");
+    assert_eq!(info.repo_name, "qux");
+}
+
+#[test]
 fn get_branch_diffs_between_branches() {
     let td = TempDir::new().unwrap();
     let repo_path = init_repo_main(&td);

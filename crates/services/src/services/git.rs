@@ -1599,12 +1599,27 @@ impl GitService {
     pub fn get_github_repo_info(
         &self,
         repo_path: &Path,
+        preferred_remote: Option<&str>,
     ) -> Result<GitHubRepoInfo, GitServiceError> {
         let repo = self.open_repo(repo_path)?;
-        let remote_name = self.default_remote_name(&repo);
-        let remote = repo.find_remote(&remote_name).map_err(|_| {
-            GitServiceError::InvalidRepository(format!("No '{remote_name}' remote found"))
-        })?;
+        let default_remote_name = self.default_remote_name(&repo);
+
+        let remote = if let Some(preferred) = preferred_remote {
+            match repo.find_remote(preferred) {
+                Ok(remote) => remote,
+                Err(_) => repo.find_remote(&default_remote_name).map_err(|_| {
+                    GitServiceError::InvalidRepository(format!(
+                        "No '{preferred}' remote found and default remote '{default_remote_name}' missing"
+                    ))
+                })?,
+            }
+        } else {
+            repo.find_remote(&default_remote_name).map_err(|_| {
+                GitServiceError::InvalidRepository(format!(
+                    "No '{default_remote_name}' remote found"
+                ))
+            })?
+        };
 
         let url = remote
             .url()
@@ -1660,9 +1675,20 @@ impl GitService {
         let repo = Repository::open(worktree_path)?;
         self.check_worktree_clean(&repo)?;
 
-        // Get the remote
-        let remote_name = self.default_remote_name(&repo);
-        let remote = repo.find_remote(&remote_name)?;
+        let default_remote_name = self.default_remote_name(&repo);
+        let branch = Self::find_branch(&repo, branch_name)?;
+        let branch_ref = branch.get();
+
+        let remote = self
+            .get_remote_from_branch_ref(&repo, branch_ref)
+            .or_else(|_| {
+                repo.find_remote(&default_remote_name).map_err(|_| {
+                    GitServiceError::InvalidRepository(format!(
+                        "Remote '{default_remote_name}' not found for branch '{branch_name}'"
+                    ))
+                })
+            })?;
+        let remote_name = remote.name().unwrap_or(&default_remote_name).to_string();
 
         let remote_url = remote
             .url()
@@ -1673,7 +1699,7 @@ impl GitService {
             return Err(e.into());
         }
 
-        let mut branch = Self::find_branch(&repo, branch_name)?;
+        let mut branch = branch;
         if !branch.get().is_remote() {
             if let Some(branch_target) = branch.get().target() {
                 let remote_ref = format!("refs/remotes/{remote_name}/{branch_name}");
