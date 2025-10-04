@@ -47,9 +47,9 @@ const BranchRow = memo(function BranchRow({
   onClick,
 }: RowProps) {
   const classes =
-    (isSelected ? 'bg-accent ' : '') +
+    (isSelected ? 'bg-accent text-accent-foreground ' : '') +
     (isDisabled ? 'opacity-50 cursor-not-allowed ' : '') +
-    (isHighlighted ? 'bg-muted ' : '') +
+    (!isSelected && isHighlighted ? 'bg-accent/40 ring-1 ring-accent/60 ' : '') +
     'transition-none';
 
   const nameClass = branch.is_current ? 'font-medium' : '';
@@ -139,15 +139,6 @@ function BranchSelector({
     setHighlighted(null);
   }, [branchSearchTerm]);
 
-  useEffect(() => {
-    if (highlighted != null) {
-      virtuosoRef.current?.scrollToIndex({
-        index: highlighted,
-        align: 'auto',
-      });
-    }
-  }, [highlighted]);
-
   const isDisabledIdx = useCallback(
     (i: number) => excludeCurrentBranch && filteredBranches[i]?.is_current,
     [excludeCurrentBranch, filteredBranches]
@@ -165,6 +156,7 @@ function BranchSelector({
           (next + delta + filteredBranches.length) % filteredBranches.length;
         if (!isDisabledIdx(next)) {
           setHighlighted(next);
+          virtuosoRef.current?.scrollToIndex({ index: next, align: 'auto' });
           return;
         }
       }
