@@ -50,7 +50,8 @@ const BranchRow = memo(function BranchRow({
   const classes =
     (isSelected ? 'bg-accent ' : '') +
     (isDisabled ? 'opacity-50 cursor-not-allowed ' : '') +
-    (isHighlighted ? 'bg-muted ' : '');
+    (isHighlighted ? 'bg-muted ' : '') +
+    'transition-none';
 
   const nameClass = branch.is_current ? 'font-medium' : '';
 
