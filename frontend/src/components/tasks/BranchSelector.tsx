@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback, memo } from 'react';
 import { Button } from '@/components/ui/button.tsx';
 import { ArrowDown, GitBranch as GitBranchIcon, Search } from 'lucide-react';
 import {
@@ -26,6 +26,76 @@ type Props = {
   excludeCurrentBranch?: boolean;
 };
 
+type RowProps = {
+  branch: GitBranch;
+  idx: number;
+  isSelected: boolean;
+  isHighlighted: boolean;
+  isDisabled: boolean;
+  onMouseEnter: (e: React.MouseEvent<HTMLElement>) => void;
+  onClick: (e: React.MouseEvent<HTMLElement>) => void;
+  setItemRef: (el: HTMLDivElement | null) => void;
+};
+
+const BranchRow = memo(function BranchRow({
+  branch,
+  idx,
+  isSelected,
+  isHighlighted,
+  isDisabled,
+  onMouseEnter,
+  onClick,
+  setItemRef,
+}: RowProps) {
+  const classes =
+    (isSelected ? 'bg-accent ' : '') +
+    (isDisabled ? 'opacity-50 cursor-not-allowed ' : '') +
+    (isHighlighted ? 'bg-muted ' : '');
+
+  const nameClass = branch.is_current ? 'font-medium' : '';
+
+  const item = (
+    <DropdownMenuItem
+      ref={setItemRef}
+      data-index={idx}
+      data-name={branch.name}
+      onMouseEnter={onMouseEnter}
+      onClick={onClick}
+      disabled={isDisabled}
+      className={classes.trim()}
+    >
+      <div className="flex items-center justify-between w-full">
+        <span className={nameClass}>{branch.name}</span>
+        <div className="flex gap-1">
+          {branch.is_current && (
+            <span className="text-xs bg-green-100 text-green-800 px-1 rounded">
+              current
+            </span>
+          )}
+          {branch.is_remote && (
+            <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">
+              remote
+            </span>
+          )}
+        </div>
+      </div>
+    </DropdownMenuItem>
+  );
+
+  if (isDisabled) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{item}</TooltipTrigger>
+        <TooltipContent>
+          <p>Cannot rebase a branch onto itself</p>
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return item;
+});
+
 function BranchSelector({
   branches,
   selectedBranch,
@@ -39,73 +109,119 @@ function BranchSelector({
   const [open, setOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const listRef = useRef<HTMLDivElement>(null);
 
-  // Filter branches based on search term and options
   const filteredBranches = useMemo(() => {
     let filtered = branches;
 
-    // Don't filter out current branch, we'll handle it in the UI
     if (branchSearchTerm.trim()) {
-      filtered = filtered.filter((branch) =>
-        branch.name.toLowerCase().includes(branchSearchTerm.toLowerCase())
-      );
+      const q = branchSearchTerm.toLowerCase();
+      filtered = filtered.filter((b) => b.name.toLowerCase().includes(q));
     }
-
     return filtered;
   }, [branches, branchSearchTerm]);
 
-  const handleBranchSelect = (branchName: string) => {
-    onBranchSelect(branchName);
-    setBranchSearchTerm('');
-    setHighlighted(null);
-    setOpen(false);
-  };
+  const handleBranchSelect = useCallback(
+    (branchName: string) => {
+      onBranchSelect(branchName);
+      setBranchSearchTerm('');
+      setHighlighted(null);
+      setOpen(false);
+    },
+    [onBranchSelect]
+  );
 
-  // Reset highlight when filtered branches change
   useEffect(() => {
     if (highlighted !== null && highlighted >= filteredBranches.length) {
       setHighlighted(null);
     }
   }, [filteredBranches, highlighted]);
 
-  // Reset highlight when search changes
   useEffect(() => {
     setHighlighted(null);
   }, [branchSearchTerm]);
 
-  // Scroll highlighted item into view
   useEffect(() => {
-    if (highlighted !== null) {
-      itemRefs.current[highlighted]?.scrollIntoView({ block: 'nearest' });
-    }
+    if (highlighted == null) return;
+    const container = listRef.current;
+    const el = itemRefs.current[highlighted];
+    if (!container || !el) return;
+
+    const raf = requestAnimationFrame(() => {
+      const cTop = container.scrollTop;
+      const cBottom = cTop + container.clientHeight;
+      const eTop = el.offsetTop;
+      const eBottom = eTop + el.offsetHeight;
+
+      if (eTop < cTop) {
+        container.scrollTop = eTop;
+      } else if (eBottom > cBottom) {
+        container.scrollTop = eBottom - container.clientHeight;
+      }
+    });
+
+    return () => cancelAnimationFrame(raf);
   }, [highlighted]);
 
-  const isDisabledIdx = (i: number) =>
-    excludeCurrentBranch && filteredBranches[i]?.is_current;
+  const isDisabledIdx = useCallback(
+    (i: number) => excludeCurrentBranch && filteredBranches[i]?.is_current,
+    [excludeCurrentBranch, filteredBranches]
+  );
 
-  const moveHighlight = (delta: 1 | -1) => {
-    if (filteredBranches.length === 0) return;
+  const moveHighlight = useCallback(
+    (delta: 1 | -1) => {
+      if (filteredBranches.length === 0) return;
 
-    const start = highlighted ?? -1;
-    let next = start;
+      const start = highlighted ?? -1;
+      let next = start;
 
-    for (let attempts = 0; attempts < filteredBranches.length; attempts++) {
-      next = (next + delta + filteredBranches.length) % filteredBranches.length;
-      if (!isDisabledIdx(next)) {
-        setHighlighted(next);
-        return;
+      for (let attempts = 0; attempts < filteredBranches.length; attempts++) {
+        next =
+          (next + delta + filteredBranches.length) % filteredBranches.length;
+        if (!isDisabledIdx(next)) {
+          setHighlighted(next);
+          return;
+        }
       }
-    }
-    setHighlighted(null);
-  };
+      setHighlighted(null);
+    },
+    [filteredBranches, highlighted, isDisabledIdx]
+  );
 
-  const attemptSelect = () => {
+  const attemptSelect = useCallback(() => {
     if (highlighted == null) return;
     const branch = filteredBranches[highlighted];
     if (!branch) return;
     if (excludeCurrentBranch && branch.is_current) return;
     handleBranchSelect(branch.name);
-  };
+  }, [highlighted, filteredBranches, excludeCurrentBranch, handleBranchSelect]);
+
+  const handleRowMouseEnter = useCallback(
+    (e: React.MouseEvent<HTMLElement>) => {
+      const i = Number((e.currentTarget as HTMLElement).dataset.index);
+      if (!Number.isNaN(i)) setHighlighted(i);
+    },
+    []
+  );
+
+  const handleRowClick = useCallback(
+    (e: React.MouseEvent<HTMLElement>) => {
+      const el = e.currentTarget as HTMLElement;
+      const name = el.dataset.name;
+      const idx = Number(el.dataset.index);
+      if (excludeCurrentBranch && filteredBranches[idx]?.is_current) return;
+      if (name) handleBranchSelect(name);
+    },
+    [excludeCurrentBranch, filteredBranches, handleBranchSelect]
+  );
+
+  const setItemRef = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return;
+    const i = Number(el.dataset.index);
+    if (!Number.isNaN(i)) {
+      itemRefs.current[i] = el;
+    }
+  }, []);
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -122,119 +238,86 @@ function BranchSelector({
           <ArrowDown className="h-3 w-3" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        className="w-80"
-        onOpenAutoFocus={(e) => {
-          e.preventDefault();
-          searchInputRef.current?.focus();
-        }}
-      >
-        <div className="p-2">
-          <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              ref={searchInputRef}
-              placeholder="Search branches..."
-              value={branchSearchTerm}
-              onChange={(e) => setBranchSearchTerm(e.target.value)}
-              onKeyDown={(e) => {
-                switch (e.key) {
-                  case 'ArrowDown':
-                    e.preventDefault();
-                    e.stopPropagation();
-                    moveHighlight(1);
-                    return;
-                  case 'ArrowUp':
-                    e.preventDefault();
-                    e.stopPropagation();
-                    moveHighlight(-1);
-                    return;
-                  case 'Enter':
-                    e.preventDefault();
-                    e.stopPropagation();
-                    attemptSelect();
-                    return;
-                  case 'Escape':
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setOpen(false);
-                    return;
-                  case 'Tab':
-                    return;
-                  default:
-                    e.stopPropagation();
-                }
-              }}
-              className="pl-8"
-              autoFocus
-            />
-          </div>
-        </div>
-        <DropdownMenuSeparator />
-        <div className="max-h-64 overflow-y-auto">
-          {filteredBranches.length === 0 ? (
-            <div className="p-2 text-sm text-muted-foreground text-center">
-              No branches found
+
+      <TooltipProvider>
+        <DropdownMenuContent
+          className="w-80"
+          onOpenAutoFocus={(e) => {
+            e.preventDefault();
+            searchInputRef.current?.focus();
+          }}
+        >
+          <div className="p-2">
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                ref={searchInputRef}
+                placeholder="Search branches..."
+                value={branchSearchTerm}
+                onChange={(e) => setBranchSearchTerm(e.target.value)}
+                onKeyDown={(e) => {
+                  switch (e.key) {
+                    case 'ArrowDown':
+                      e.preventDefault();
+                      e.stopPropagation();
+                      moveHighlight(1);
+                      return;
+                    case 'ArrowUp':
+                      e.preventDefault();
+                      e.stopPropagation();
+                      moveHighlight(-1);
+                      return;
+                    case 'Enter':
+                      e.preventDefault();
+                      e.stopPropagation();
+                      attemptSelect();
+                      return;
+                    case 'Escape':
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setOpen(false);
+                      return;
+                    case 'Tab':
+                      return;
+                    default:
+                      e.stopPropagation();
+                  }
+                }}
+                className="pl-8"
+                autoFocus
+              />
             </div>
-          ) : (
-            filteredBranches.map((branch, idx) => {
-              const isCurrentAndExcluded =
-                excludeCurrentBranch && branch.is_current;
-              const isHighlighted = idx === highlighted;
+          </div>
+          <DropdownMenuSeparator />
+          <div ref={listRef} className="max-h-64 overflow-y-auto">
+            {filteredBranches.length === 0 ? (
+              <div className="p-2 text-sm text-muted-foreground text-center">
+                No branches found
+              </div>
+            ) : (
+              filteredBranches.map((branch, idx) => {
+                const isDisabled = excludeCurrentBranch && !!branch.is_current;
+                const isHighlighted = idx === highlighted;
+                const isSelected = selectedBranch === branch.name;
 
-              const menuItem = (
-                <DropdownMenuItem
-                  key={branch.name}
-                  ref={(el) => (itemRefs.current[idx] = el)}
-                  onClick={() => {
-                    if (!isCurrentAndExcluded) {
-                      handleBranchSelect(branch.name);
-                    }
-                  }}
-                  onMouseEnter={() => setHighlighted(idx)}
-                  disabled={isCurrentAndExcluded}
-                  className={`${selectedBranch === branch.name ? 'bg-accent' : ''} ${
-                    isCurrentAndExcluded ? 'opacity-50 cursor-not-allowed' : ''
-                  } ${isHighlighted ? 'bg-muted' : ''}`}
-                >
-                  <div className="flex items-center justify-between w-full">
-                    <span className={branch.is_current ? 'font-medium' : ''}>
-                      {branch.name}
-                    </span>
-                    <div className="flex gap-1">
-                      {branch.is_current && (
-                        <span className="text-xs bg-green-100 text-green-800 px-1 rounded">
-                          current
-                        </span>
-                      )}
-                      {branch.is_remote && (
-                        <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">
-                          remote
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </DropdownMenuItem>
-              );
-
-              if (isCurrentAndExcluded) {
                 return (
-                  <TooltipProvider key={branch.name}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>{menuItem}</TooltipTrigger>
-                      <TooltipContent>
-                        <p>Cannot rebase a branch onto itself</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  <BranchRow
+                    key={branch.name}
+                    branch={branch}
+                    idx={idx}
+                    isSelected={isSelected}
+                    isDisabled={isDisabled}
+                    isHighlighted={isHighlighted}
+                    onMouseEnter={handleRowMouseEnter}
+                    onClick={handleRowClick}
+                    setItemRef={setItemRef}
+                  />
                 );
-              }
-
-              return menuItem;
-            })
-          )}
-        </div>
-      </DropdownMenuContent>
+              })
+            )}
+          </div>
+        </DropdownMenuContent>
+      </TooltipProvider>
     </DropdownMenu>
   );
 }
