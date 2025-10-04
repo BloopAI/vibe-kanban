@@ -72,7 +72,7 @@ const KanbanSidebar = ({ selectedTask }: KanbanSidebarProps) => {
           </Breadcrumb>
         </NewCardHeader>
         {showAttempt ? (
-          <TaskAttemptPanel attemptId={attemptId!} />
+          <TaskAttemptPanel attempt={attempt} task={selectedTask} />
         ) : (
           <TaskPanel task={selectedTask} />
         )}
