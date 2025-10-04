@@ -6,6 +6,8 @@ import { useTaskAttempts } from '@/hooks/useTaskAttempts';
 import { useTaskViewManager } from '@/hooks/useTaskViewManager';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { NewCardContent } from '../ui/new-card';
+import { Button } from '../ui/button';
+import { PlusIcon } from 'lucide-react';
 
 interface TaskPanelProps {
   task: TaskWithAttemptStatus | null;
@@ -115,12 +117,21 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
               {displayedAttempts.length === 0 ? (
                 <div className="text-muted-foreground">No attempts yet</div>
               ) : (
-                <table className="w-full">
+                <table className="w-full text-sm">
                   <thead className="uppercase text-muted-foreground">
                     <tr>
-                      <th className="text-left py-2 pr-4">Created</th>
-                      <th className="text-left py-2 pr-4">Executor</th>
-                      <th className="text-left py-2 pr-0">Branch</th>
+                      <th colSpan={3}>
+                        <div className="w-full flex text-left">
+                          <span className="flex-1">
+                            Attempts ({displayedAttempts.length})
+                          </span>
+                          <span>
+                            <Button variant="icon">
+                              <PlusIcon size={16} />
+                            </Button>
+                          </span>
+                        </div>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -139,12 +150,12 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
                         }}
                       >
                         <td className="py-2 pr-4">
-                          {formatTimeAgo(attempt.created_at)}
-                        </td>
-                        <td className="py-2 pr-4">
                           {attempt.executor || 'Base Agent'}
                         </td>
-                        <td className="py-2 pr-0">{attempt.branch || '—'}</td>
+                        <td className="py-2 pr-4">{attempt.branch || '—'}</td>
+                        <td className="py-2 pr-0 text-right">
+                          {formatTimeAgo(attempt.created_at)}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
