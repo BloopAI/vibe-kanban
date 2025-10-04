@@ -3,6 +3,7 @@ import TitleDescriptionEditor from '../ui/TitleDescriptionEditor';
 import { useTaskMutations } from '@/hooks/useTaskMutations';
 import { useProject } from '@/contexts/project-context';
 import { useTaskAttempts } from '@/hooks/useTaskAttempts';
+import { useTaskViewManager } from '@/hooks/useTaskViewManager';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { NewCardContent } from '../ui/new-card';
 
@@ -13,10 +14,10 @@ interface TaskPanelProps {
 const TaskPanel = ({ task }: TaskPanelProps) => {
   const { projectId } = useProject();
   const { updateTask } = useTaskMutations(projectId);
+  const { navigateToAttempt } = useTaskViewManager();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState<string>('');
-  const [isSaving, setIsSaving] = useState(false);
 
   const {
     data: attempts = [],
@@ -73,23 +74,17 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
 
     if (!changed) return;
 
-    setIsSaving(true);
     const handle = setTimeout(() => {
-      updateTask.mutate(
-        {
-          taskId: task.id,
-          data: {
-            title,
-            description,
-            status: task.status,
-            parent_task_attempt: task.parent_task_attempt,
-            image_ids: null,
-          },
+      updateTask.mutate({
+        taskId: task.id,
+        data: {
+          title,
+          description,
+          status: task.status,
+          parent_task_attempt: task.parent_task_attempt,
+          image_ids: null,
         },
-        {
-          onSettled: () => setIsSaving(false),
-        }
-      );
+      });
     }, 500);
 
     return () => clearTimeout(handle);
@@ -130,7 +125,19 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
                   </thead>
                   <tbody>
                     {displayedAttempts.map((attempt) => (
-                      <tr key={attempt.id} className="border-t">
+                      <tr
+                        key={attempt.id}
+                        className="border-t cursor-pointer hover:bg-muted"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => {
+                          if (projectId && task.id && attempt.id) {
+                            navigateToAttempt(projectId, task.id, attempt.id, {
+                              replace: false,
+                            });
+                          }
+                        }}
+                      >
                         <td className="py-2 pr-4">
                           {formatTimeAgo(attempt.created_at)}
                         </td>

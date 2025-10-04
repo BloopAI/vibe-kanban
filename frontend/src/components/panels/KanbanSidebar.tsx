@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import TaskAttemptPanel from './TaskAttemptPanel';
 import TaskPanel from './TaskPanel';
 import { NewCard, NewCardHeader } from '../ui/new-card';
@@ -7,19 +6,40 @@ import {
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbList,
+  BreadcrumbPage,
   BreadcrumbSeparator,
 } from '../ui/breadcrumb';
 import ResponsiveSidebar from './ResponsiveSidebar';
 import type { TaskWithAttemptStatus } from 'shared/types';
-
-type Panels = 'task' | 'task-attempt';
+import { useParams, Link } from 'react-router-dom';
+import { useTaskAttempt } from '@/hooks/useTaskAttempt';
 
 interface KanbanSidebarProps {
   selectedTask: TaskWithAttemptStatus | null;
 }
 
 const KanbanSidebar = ({ selectedTask }: KanbanSidebarProps) => {
-  const [panel, setPanel] = useState<Panels>('task');
+  const { projectId, attemptId } = useParams<{
+    projectId: string;
+    attemptId?: string;
+  }>();
+
+  const { data: attempt } = useTaskAttempt(attemptId);
+
+  const showAttempt = Boolean(attemptId);
+  const taskUrl = `/projects/${projectId}/tasks/${selectedTask?.id}`;
+
+  const truncateTitle = (title: string | undefined, maxLength = 20) => {
+    if (!title) return 'Task';
+    if (title.length <= maxLength) return title;
+
+    const truncated = title.substring(0, maxLength);
+    const lastSpace = truncated.lastIndexOf(' ');
+
+    return lastSpace > 0
+      ? `${truncated.substring(0, lastSpace)}...`
+      : `${truncated}...`;
+  };
 
   return (
     <ResponsiveSidebar>
@@ -28,19 +48,33 @@ const KanbanSidebar = ({ selectedTask }: KanbanSidebarProps) => {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
-                <BreadcrumbLink href="/">Task</BreadcrumbLink>
+                {showAttempt ? (
+                  <BreadcrumbLink asChild>
+                    <Link to={taskUrl}>
+                      {truncateTitle(selectedTask?.title)}
+                    </Link>
+                  </BreadcrumbLink>
+                ) : (
+                  truncateTitle(selectedTask?.title)
+                )}
               </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbLink href="/components">Task Attempt</BreadcrumbLink>
-              </BreadcrumbItem>
+              {showAttempt && (
+                <>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>
+                      {attempt?.branch || 'Task Attempt'}
+                    </BreadcrumbPage>
+                  </BreadcrumbItem>
+                </>
+              )}
             </BreadcrumbList>
           </Breadcrumb>
         </NewCardHeader>
-        {panel === 'task' ? (
-          <TaskPanel task={selectedTask} />
+        {showAttempt ? (
+          <TaskAttemptPanel attemptId={attemptId!} />
         ) : (
-          <TaskAttemptPanel />
+          <TaskPanel task={selectedTask} />
         )}
       </NewCard>
     </ResponsiveSidebar>
