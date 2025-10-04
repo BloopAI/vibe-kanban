@@ -66,6 +66,12 @@ pub struct GitBranch {
     pub last_commit_date: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone, Serialize, TS)]
+pub struct GitRemote {
+    pub name: String,
+    pub url: Option<String>,
+}
+
 #[derive(Debug, Clone)]
 pub struct HeadInfo {
     pub branch: String,
@@ -1627,6 +1633,22 @@ impl GitService {
         GitHubRepoInfo::from_remote_url(url).map_err(|e| {
             GitServiceError::InvalidRepository(format!("Failed to parse remote URL: {e}"))
         })
+    }
+
+    pub fn get_all_remotes(&self, repo_path: &Path) -> Result<Vec<GitRemote>, GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
+        let remote_names = repo.remotes()?;
+        let mut remotes = Vec::new();
+
+        for remote_name in remote_names.iter().flatten() {
+            let remote = repo.find_remote(remote_name)?;
+            remotes.push(GitRemote {
+                name: remote_name.to_string(),
+                url: remote.url().map(|u| u.to_string()),
+            });
+        }
+
+        Ok(remotes)
     }
 
     pub fn get_remote_name_from_branch_name(

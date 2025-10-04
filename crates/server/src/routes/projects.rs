@@ -21,7 +21,9 @@ use deployment::Deployment;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use serde::Deserialize;
 use services::services::{
-    file_search_cache::SearchQuery, project::ProjectServiceError,
+    file_search_cache::SearchQuery,
+    git::GitRemote,
+    project::ProjectServiceError,
     remote_client::CreateRemoteProjectPayload,
 };
 use ts_rs::TS;
@@ -213,6 +215,14 @@ async fn apply_remote_project_link(
         .await;
 
     Ok(updated_project)
+}
+
+pub async fn get_project_remotes(
+    Extension(project): Extension<Project>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<GitRemote>>>, ApiError> {
+    let remotes = deployment.git().get_all_remotes(&project.git_repo_path)?;
+    Ok(ResponseJson(ApiResponse::success(remotes)))
 }
 
 pub async fn create_project(
@@ -621,6 +631,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             get(get_project).put(update_project).delete(delete_project),
         )
         .route("/remote/members", get(get_project_remote_members))
+        .route("/remotes", get(get_project_remotes))
         .route("/search", get(search_project_files))
         .route("/open-editor", post(open_project_in_editor))
         .route("/open-terminal", post(open_project_in_terminal))

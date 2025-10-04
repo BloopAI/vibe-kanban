@@ -357,6 +357,22 @@ fn get_github_repo_info_prefers_supplied_remote() {
 }
 
 #[test]
+fn get_all_remotes_returns_all_configured_remotes() {
+    let td = TempDir::new().unwrap();
+    let repo_path = init_repo_main(&td);
+    let s = GitService::new();
+    s.set_remote(&repo_path, "origin", "https://github.com/foo/bar.git")
+        .unwrap();
+    s.set_remote(&repo_path, "fork", "https://github.com/me/bar.git")
+        .unwrap();
+
+    let remotes = s.get_all_remotes(&repo_path).unwrap();
+    let names: Vec<_> = remotes.iter().map(|remote| remote.name.as_str()).collect();
+    assert!(names.contains(&"origin"));
+    assert!(names.contains(&"fork"));
+}
+
+#[test]
 fn get_branch_diffs_between_branches() {
     let td = TempDir::new().unwrap();
     let repo_path = init_repo_main(&td);
