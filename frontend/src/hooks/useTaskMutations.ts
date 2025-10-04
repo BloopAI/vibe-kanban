@@ -11,7 +11,7 @@ import type {
 
 export function useTaskMutations(projectId?: string) {
   const queryClient = useQueryClient();
-  const { navigateToTask } = useTaskViewManager();
+  const { navigateToLatestAttempt } = useTaskViewManager();
 
   const invalidateQueries = (taskId?: string) => {
     queryClient.invalidateQueries({ queryKey: ['tasks', projectId] });
@@ -25,7 +25,7 @@ export function useTaskMutations(projectId?: string) {
     onSuccess: (createdTask: Task) => {
       invalidateQueries();
       if (projectId) {
-        navigateToTask(projectId, createdTask.id);
+        navigateToLatestAttempt(projectId, createdTask.id, { replace: false });
       }
     },
     onError: (err) => {
@@ -39,7 +39,7 @@ export function useTaskMutations(projectId?: string) {
     onSuccess: (createdTask: TaskWithAttemptStatus) => {
       invalidateQueries();
       if (projectId) {
-        navigateToTask(projectId, createdTask.id);
+        navigateToLatestAttempt(projectId, createdTask.id, { replace: false });
       }
     },
     onError: (err) => {
