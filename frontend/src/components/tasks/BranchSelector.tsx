@@ -17,6 +17,8 @@ import {
 import { Input } from '@/components/ui/input.tsx';
 import type { GitBranch } from 'shared/types';
 
+const MENU_KEYS_TO_BUBBLE = new Set(['ArrowUp', 'ArrowDown', 'Enter', 'Escape', 'Tab']);
+
 type Props = {
   branches: GitBranch[];
   selectedBranch: string | null;
@@ -103,7 +105,11 @@ function BranchSelector({
               placeholder="Search branches..."
               value={branchSearchTerm}
               onChange={(e) => setBranchSearchTerm(e.target.value)}
-              onKeyDown={(e) => e.stopPropagation()}
+              onKeyDown={(e) => {
+                if (!MENU_KEYS_TO_BUBBLE.has(e.key)) {
+                  e.stopPropagation();
+                }
+              }}
               className="pl-8"
               autoFocus
             />
