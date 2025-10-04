@@ -13,11 +13,15 @@ import { ImageChipNode, InsertImageChipPlugin } from './wysiwyg/ImageChipNode';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { ListNode, ListItemNode } from '@lexical/list';
+import { ListPlugin } from '@lexical/react/LexicalListPlugin';
 import { CodeNode } from '@lexical/code';
 import { LinkNode } from '@lexical/link';
 import { EditorState } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { IMAGE_CHIP_EXPORT, IMAGE_CHIP_IMPORT } from './wysiwyg/imageChipMarkdown';
+import {
+  IMAGE_CHIP_EXPORT,
+  IMAGE_CHIP_IMPORT,
+} from './wysiwyg/imageChipMarkdown';
 
 type WysiwygProps = {
   placeholder: string;
@@ -87,6 +91,7 @@ export default function WYSIWYGEditor({
           />
         </div>
 
+        <ListPlugin />
         <HistoryPlugin />
         <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
         <InsertImageChipPlugin />
@@ -144,7 +149,13 @@ function MarkdownOnChangePlugin({
         if (onMarkdownChange) onMarkdownChange(md);
       });
     });
-  }, [editor, onMarkdownChange, onEditorStateChange, exportTransformers, lastMdRef]);
+  }, [
+    editor,
+    onMarkdownChange,
+    onEditorStateChange,
+    exportTransformers,
+    lastMdRef,
+  ]);
   return null;
 }
 
