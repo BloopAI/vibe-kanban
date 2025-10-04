@@ -17,7 +17,13 @@ import {
 import { Input } from '@/components/ui/input.tsx';
 import type { GitBranch } from 'shared/types';
 
-const MENU_KEYS_TO_BUBBLE = new Set(['ArrowUp', 'ArrowDown', 'Enter', 'Escape', 'Tab']);
+const MENU_KEYS_TO_BUBBLE = new Set([
+  'ArrowUp',
+  'ArrowDown',
+  'Enter',
+  'Escape',
+  'Tab',
+]);
 
 type Props = {
   branches: GitBranch[];
