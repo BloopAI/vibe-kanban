@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,6 @@ import { openTaskForm } from '@/lib/openTaskForm';
 import { useSearch } from '@/contexts/search-context';
 import { useProject } from '@/contexts/project-context';
 import { useTaskViewManager } from '@/hooks/useTaskViewManager';
-import { useTaskAttempts } from '@/hooks/useTaskAttempts';
 import {
   useKeyCreate,
   useKeyExit,
@@ -32,7 +31,7 @@ import {
 } from '@/lib/responsive-config';
 
 import TaskKanbanBoard from '@/components/tasks/TaskKanbanBoard';
-import type { TaskWithAttemptStatus, TaskAttempt } from 'shared/types';
+import type { TaskWithAttemptStatus } from 'shared/types';
 import type { DragEndEvent } from '@/components/ui/shadcn-io/kanban';
 import { useProjectTasks } from '@/hooks/useProjectTasks';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -44,17 +43,15 @@ type Task = TaskWithAttemptStatus;
 
 export function ProjectTasks() {
   const { t } = useTranslation(['tasks', 'common']);
-  const { taskId, attemptId } = useParams<{
+  const { taskId } = useParams<{
     projectId: string;
     taskId?: string;
-    attemptId?: string;
   }>();
   const navigate = useNavigate();
   const { enableScope, disableScope } = useHotkeysContext();
 
   // Use project context for project data
   const {
-    project,
     projectId,
     isLoading: projectLoading,
     error: projectError,
@@ -88,40 +85,9 @@ export function ProjectTasks() {
   };
   const { query: searchQuery, focusInput } = useSearch();
 
-  // Panel state
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [isPanelOpen, setIsPanelOpen] = useState(false);
-
   // Fullscreen state using custom hook
   const { isFullscreen, navigateToTask, navigateToAttempt, toggleFullscreen } =
     useTaskViewManager();
-
-  // Attempts fetching (only when task is selected)
-  const { data: attempts = [] } = useTaskAttempts(selectedTask?.id);
-
-  // Selected attempt logic
-  const selectedAttempt = useMemo(() => {
-    if (!attempts.length) return null;
-    if (attemptId) {
-      const found = attempts.find((a) => a.id === attemptId);
-      if (found) return found;
-    }
-    return attempts[0] || null; // Most recent fallback
-  }, [attempts, attemptId]);
-
-  // Navigation callback for attempt selection
-  const setSelectedAttempt = useCallback(
-    (attempt: TaskAttempt | null) => {
-      if (!selectedTask) return;
-
-      if (attempt) {
-        navigateToAttempt(projectId!, selectedTask.id, attempt.id);
-      } else {
-        navigateToTask(projectId!, selectedTask.id);
-      }
-    },
-    [navigateToTask, navigateToAttempt, projectId, selectedTask]
-  );
 
   // Stream tasks for this project
   const {
@@ -131,19 +97,12 @@ export function ProjectTasks() {
     error: streamError,
   } = useProjectTasks(projectId || '');
 
-  // Sync selectedTask with URL params and live task updates
-  useEffect(() => {
-    if (taskId) {
-      const t = taskId ? tasksById[taskId] : undefined;
-      if (t) {
-        setSelectedTask(t);
-        setIsPanelOpen(true);
-      }
-    } else {
-      setSelectedTask(null);
-      setIsPanelOpen(false);
-    }
-  }, [taskId, tasksById]);
+  // Derive panel state from URL
+  const isPanelOpen = Boolean(taskId);
+  const selectedTask = useMemo(
+    () => (taskId ? (tasksById[taskId] ?? null) : null),
+    [taskId, tasksById]
+  );
 
   // Define task creation handler
   const handleCreateNewTask = useCallback(() => {
@@ -282,10 +241,9 @@ export function ProjectTasks() {
   );
 
   const handleClosePanel = useCallback(() => {
-    // setIsPanelOpen(false);
-    // setSelectedTask(null);
-    // Remove task ID from URL when closing panel
-    navigate(`/projects/${projectId}/tasks`, { replace: true });
+    if (projectId) {
+      navigate(`/projects/${projectId}/tasks`, { replace: true });
+    }
   }, [projectId, navigate]);
 
   const handleDeleteTask = useCallback(
