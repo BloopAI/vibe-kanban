@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { projectsApi } from '@/lib/api';
 import type { CreateProject, UpdateProject, Project } from 'shared/types';
+import { createDefaultTasks } from '@/utils/default-tasks';
 
 interface UseProjectMutationsOptions {
   onCreateSuccess?: (project: Project) => void;
@@ -14,7 +15,12 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
 
   const createProject = useMutation({
     mutationKey: ['createProject'],
-    mutationFn: (data: CreateProject) => projectsApi.create(data),
+    mutationFn: async (data: CreateProject) => {
+      const project = await projectsApi.create(data);
+      // Create default tasks for the new project
+      await createDefaultTasks(project.id);
+      return project;
+    },
     onSuccess: (project: Project) => {
       queryClient.setQueryData(['project', project.id], project);
       options?.onCreateSuccess?.(project);
