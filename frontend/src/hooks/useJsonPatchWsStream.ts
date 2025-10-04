@@ -40,6 +40,7 @@ export const useJsonPatchWsStream = <T>(
   const retryTimerRef = useRef<number | null>(null);
   const retryAttemptsRef = useRef<number>(0);
   const [retryNonce, setRetryNonce] = useState(0);
+  const finishedRef = useRef<boolean>(false);
 
   function scheduleReconnect() {
     if (retryTimerRef.current) return; // already scheduled
@@ -64,6 +65,7 @@ export const useJsonPatchWsStream = <T>(
         retryTimerRef.current = null;
       }
       retryAttemptsRef.current = 0;
+      finishedRef.current = false;
       setData(undefined);
       setIsConnected(false);
       setError(null);
@@ -85,6 +87,9 @@ export const useJsonPatchWsStream = <T>(
 
     // Create WebSocket if it doesn't exist
     if (!wsRef.current) {
+      // Reset finished flag for new connection
+      finishedRef.current = false;
+      
       // Convert HTTP endpoint to WebSocket endpoint
       const wsEndpoint = endpoint.replace(/^http/, 'ws');
       const ws = new WebSocket(wsEndpoint);
@@ -124,13 +129,12 @@ export const useJsonPatchWsStream = <T>(
           }
 
           // Handle finished messages ({finished: true})
+          // Treat finished as terminal - do NOT reconnect
           if ('finished' in msg) {
-            ws.close();
+            finishedRef.current = true;
+            ws.close(1000, 'finished');
             wsRef.current = null;
             setIsConnected(false);
-            // Treat finished as terminal and schedule reconnect; servers may rotate
-            retryAttemptsRef.current += 1;
-            scheduleReconnect();
           }
         } catch (err) {
           console.error('Failed to process WebSocket message:', err);
@@ -142,9 +146,16 @@ export const useJsonPatchWsStream = <T>(
         setError('Connection failed');
       };
 
-      ws.onclose = () => {
+      ws.onclose = (evt) => {
         setIsConnected(false);
         wsRef.current = null;
+        
+        // Do not reconnect if we received a finished message or clean close
+        if (finishedRef.current || (evt?.code === 1000 && evt?.wasClean)) {
+          return;
+        }
+        
+        // Otherwise, reconnect on unexpected/error closures
         retryAttemptsRef.current += 1;
         scheduleReconnect();
       };
@@ -170,6 +181,7 @@ export const useJsonPatchWsStream = <T>(
         window.clearTimeout(retryTimerRef.current);
         retryTimerRef.current = null;
       }
+      finishedRef.current = false;
       dataRef.current = undefined;
       setData(undefined);
     };
