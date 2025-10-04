@@ -86,7 +86,7 @@ function BranchSelector({
   const moveHighlight = (delta: 1 | -1) => {
     if (filteredBranches.length === 0) return;
 
-    let start = highlighted ?? -1;
+    const start = highlighted ?? -1;
     let next = start;
 
     for (let attempts = 0; attempts < filteredBranches.length; attempts++) {
