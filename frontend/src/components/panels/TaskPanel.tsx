@@ -3,6 +3,7 @@ import TitleDescriptionEditor from '../ui/TitleDescriptionEditor';
 import { useTaskMutations } from '@/hooks/useTaskMutations';
 import { useProject } from '@/contexts/project-context';
 import type { TaskWithAttemptStatus } from 'shared/types';
+import { NewCardContent, NewCardHeader } from '../ui/new-card';
 
 interface TaskPanelProps {
   task: TaskWithAttemptStatus | null;
@@ -55,19 +56,25 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
   }, [title, description, task, updateTask]);
 
   if (!task) {
-    return <div className="text-sm text-muted-foreground">No task selected</div>;
+    return (
+      <div className="text-sm text-muted-foreground">No task selected</div>
+    );
   }
 
   return (
-    <div className="space-y-2">
-      <TitleDescriptionEditor
-        title={title}
-        description={description}
-        onTitleChange={setTitle}
-        onDescriptionChange={setDescription}
-      />
-      {isSaving && <div className="text-xs text-muted-foreground">Saving…</div>}
-    </div>
+    <>
+      <NewCardContent>
+        <div className="p-6">
+          <TitleDescriptionEditor
+            title={title}
+            description={description}
+            onTitleChange={setTitle}
+            onDescriptionChange={setDescription}
+          />
+        </div>
+      </NewCardContent>
+      <NewCardHeader>Attempts</NewCardHeader>
+    </>
   );
 };
 

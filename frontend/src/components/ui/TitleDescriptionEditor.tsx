@@ -15,7 +15,7 @@ const TitleDescriptionEditor = ({
   onDescriptionChange,
 }: Props) => {
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 flex-1">
       <Input
         className="text-2xl h-auto border-0 p-0"
         placeholder="Title*"
