@@ -5,13 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertTriangle, Plus } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
-import { tasksApi, attemptsApi } from '@/lib/api';
+import { tasksApi } from '@/lib/api';
 import { openTaskForm } from '@/lib/openTaskForm';
 
 import { useSearch } from '@/contexts/search-context';
 import { useProject } from '@/contexts/project-context';
-import { useQuery } from '@tanstack/react-query';
 import { useTaskViewManager } from '@/hooks/useTaskViewManager';
+import { useTaskAttempts } from '@/hooks/useTaskAttempts';
 import {
   useKeyCreate,
   useKeyExit,
@@ -97,12 +97,7 @@ export function ProjectTasks() {
     useTaskViewManager();
 
   // Attempts fetching (only when task is selected)
-  const { data: attempts = [] } = useQuery({
-    queryKey: ['taskAttempts', selectedTask?.id],
-    queryFn: () => attemptsApi.getAll(selectedTask!.id),
-    enabled: !!selectedTask?.id,
-    refetchInterval: 5000,
-  });
+  const { data: attempts = [] } = useTaskAttempts(selectedTask?.id);
 
   // Selected attempt logic
   const selectedAttempt = useMemo(() => {
