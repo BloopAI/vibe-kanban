@@ -79,11 +79,37 @@ export function useTaskViewManager() {
     [navigateToTask]
   );
 
+  const navigateToLatestAttempt = useCallback(
+    (
+      projectId: string,
+      taskId: string,
+      options?: Omit<NavigateOptions, 'attemptId'>
+    ) => {
+      navigateToAttempt(projectId, taskId, 'latest', options);
+    },
+    [navigateToAttempt]
+  );
+
+  const navigateToTasksList = useCallback(
+    (
+      projectId: string,
+      options?: Pick<NavigateOptions, 'replace' | 'state'>
+    ) => {
+      navigate(`/projects/${projectId}/tasks`, {
+        replace: options?.replace ?? false,
+        state: options?.state,
+      });
+    },
+    [navigate]
+  );
+
   return {
     isFullscreen,
     toggleFullscreen,
     buildTaskUrl,
     navigateToTask,
     navigateToAttempt,
+    navigateToLatestAttempt,
+    navigateToTasksList,
   };
 }
