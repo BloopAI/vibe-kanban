@@ -1,5 +1,5 @@
 // hooks/useProcessRetry.ts
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
 import { attemptsApi, executionProcessesApi } from '@/lib/api';
@@ -17,16 +17,10 @@ export function useProcessRetry(attempt: TaskAttempt | undefined) {
   const attemptId = attempt?.id;
 
   // Fetch attempt + branch state the same way your component did
-  const { attemptData } = useAttemptExecution(attemptId);
+  const { attemptData, isAttemptRunning } = useAttemptExecution(attemptId);
   useBranchStatus(attemptId);
 
   const [busy, setBusy] = useState(false);
-
-  // Any process running at all?
-  const anyRunning = useMemo(
-    () => (attemptData.processes || []).some((p) => p.status === 'running'),
-    [attemptData.processes?.map((p) => p.status).join(',')]
-  );
 
   // Convenience lookups
   const getProcessById = useCallback(
@@ -43,14 +37,14 @@ export function useProcessRetry(attempt: TaskAttempt | undefined) {
     (pid: string) => {
       const proc = getProcessById(pid);
       const isRunningProc = proc?.status === 'running';
-      const disabled = busy || anyRunning || isRunningProc;
+      const disabled = busy || isAttemptRunning || isRunningProc;
       let reason: string | undefined;
       if (isRunningProc) reason = 'Finish or stop this run to retry.';
-      else if (anyRunning) reason = 'Cannot retry while a process is running.';
+      else if (isAttemptRunning) reason = 'Cannot retry while an execution is running.';
       else if (busy) reason = 'Retry in progress.';
       return { disabled, reason };
     },
-    [busy, anyRunning, getProcessById]
+    [busy, isAttemptRunning, getProcessById]
   );
 
   /**
