@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,6 +11,7 @@ import { openTaskForm } from '@/lib/openTaskForm';
 import { useSearch } from '@/contexts/search-context';
 import { useProject } from '@/contexts/project-context';
 import { useTaskViewManager } from '@/hooks/useTaskViewManager';
+import { useTaskAttempts } from '@/hooks/useTaskAttempts';
 import {
   useKeyCreate,
   useKeyExit,
@@ -43,9 +44,10 @@ type Task = TaskWithAttemptStatus;
 
 export function ProjectTasks() {
   const { t } = useTranslation(['tasks', 'common']);
-  const { taskId } = useParams<{
+  const { taskId, attemptId } = useParams<{
     projectId: string;
     taskId?: string;
+    attemptId?: string;
   }>();
   const navigate = useNavigate();
   const { enableScope, disableScope } = useHotkeysContext();
@@ -84,10 +86,16 @@ export function ProjectTasks() {
     }
   };
   const { query: searchQuery, focusInput } = useSearch();
+  const location = useLocation();
 
   // Fullscreen state using custom hook
-  const { isFullscreen, navigateToTask, navigateToAttempt, toggleFullscreen } =
-    useTaskViewManager();
+  const {
+    isFullscreen,
+    navigateToTask,
+    navigateToAttempt,
+    navigateToLatestAttempt,
+    toggleFullscreen,
+  } = useTaskViewManager();
 
   // Stream tasks for this project
   const {
@@ -103,6 +111,54 @@ export function ProjectTasks() {
     () => (taskId ? (tasksById[taskId] ?? null) : null),
     [taskId, tasksById]
   );
+
+  // Handle "latest" attemptId - resolve to actual attempt ID
+  const isLatest = attemptId === 'latest';
+  const { data: attempts = [], isLoading: isAttemptsLoading } = useTaskAttempts(
+    taskId,
+    {
+      enabled: !!taskId && isLatest,
+    }
+  );
+
+  const latestAttemptId = useMemo(() => {
+    if (!attempts?.length) return undefined;
+    return [...attempts].sort((a, b) => {
+      const diff =
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      if (diff !== 0) return diff;
+      return a.id.localeCompare(b.id);
+    })[0].id;
+  }, [attempts]);
+
+  useEffect(() => {
+    if (!projectId || !taskId) return;
+    if (!isLatest) return; // only handle 'latest' here
+    if (isAttemptsLoading) return;
+
+    const isFull = location.pathname.endsWith('/full');
+
+    if (!latestAttemptId) {
+      // No attempts: go to task view
+      navigateToTask(projectId, taskId, { replace: true, fullscreen: isFull });
+      return;
+    }
+
+    // Navigate to latest attempt, preserving /full
+    navigateToAttempt(projectId, taskId, latestAttemptId, {
+      replace: true,
+      fullscreen: isFull,
+    });
+  }, [
+    projectId,
+    taskId,
+    isLatest,
+    isAttemptsLoading,
+    latestAttemptId,
+    location.pathname,
+    navigateToTask,
+    navigateToAttempt,
+  ]);
 
   // Define task creation handler
   const handleCreateNewTask = useCallback(() => {
@@ -285,12 +341,18 @@ export function ProjectTasks() {
   const handleViewTaskDetails = useCallback(
     (task: Task, attemptIdToShow?: string, fullscreen?: boolean) => {
       if (attemptIdToShow) {
-        navigateToAttempt(projectId!, task.id, attemptIdToShow, { fullscreen });
+        navigateToAttempt(projectId!, task.id, attemptIdToShow, {
+          fullscreen,
+          replace: false,
+        });
       } else {
-        navigateToTask(projectId!, task.id, { fullscreen });
+        navigateToLatestAttempt(projectId!, task.id, {
+          fullscreen,
+          replace: false,
+        });
       }
     },
-    [projectId, navigateToTask, navigateToAttempt]
+    [projectId, navigateToAttempt, navigateToLatestAttempt]
   );
 
   // Navigation functions that use filtered/grouped tasks

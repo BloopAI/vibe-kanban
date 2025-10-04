@@ -18,6 +18,7 @@ const buttonVariants = cva(
         secondary: 'text-secondary-foreground hover:bg-secondary/80 border',
         ghost: 'hover:text-primary-foreground/50',
         link: 'hover:underline',
+        icon: 'bg-transparent rounded text-muted-foreground hover:text-foreground',
       },
       size: {
         default: 'h-10 px-4 py-2',
@@ -27,6 +28,7 @@ const buttonVariants = cva(
         icon: 'h-10 w-10',
       },
     },
+    compoundVariants: [{ variant: 'icon', class: 'p-0 h-4' }],
     defaultVariants: {
       variant: 'default',
       size: 'default',

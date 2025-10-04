@@ -13,10 +13,38 @@ import ResponsiveSidebar from './ResponsiveSidebar';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { useParams, Link } from 'react-router-dom';
 import { useTaskAttempt } from '@/hooks/useTaskAttempt';
+import { useTaskViewManager } from '@/hooks/useTaskViewManager';
+import { X, Maximize2, Minimize2 } from 'lucide-react';
+import { Button } from '../ui/button';
 
 interface KanbanSidebarProps {
   selectedTask: TaskWithAttemptStatus | null;
 }
+
+const HeaderActions = ({ projectId }: { projectId: string }) => {
+  const { isFullscreen, toggleFullscreen, navigateToTasksList } =
+    useTaskViewManager();
+
+  return (
+    <>
+      <Button
+        variant="icon"
+        aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+        aria-pressed={isFullscreen}
+        onClick={() => toggleFullscreen(!isFullscreen)}
+      >
+        {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+      </Button>
+      <Button
+        variant="icon"
+        aria-label="Close"
+        onClick={() => navigateToTasksList(projectId)}
+      >
+        <X size={16} />
+      </Button>
+    </>
+  );
+};
 
 const KanbanSidebar = ({ selectedTask }: KanbanSidebarProps) => {
   const { projectId, attemptId } = useParams<{
@@ -24,10 +52,14 @@ const KanbanSidebar = ({ selectedTask }: KanbanSidebarProps) => {
     attemptId?: string;
   }>();
 
-  const { data: attempt } = useTaskAttempt(attemptId);
+  // Don't fetch attempt when attemptId is 'latest' (will be resolved in parent)
+  const effectiveAttemptId = attemptId === 'latest' ? undefined : attemptId;
+  const { data: attempt } = useTaskAttempt(effectiveAttemptId);
 
-  const showAttempt = Boolean(attemptId);
-  const taskUrl = `/projects/${projectId}/tasks/${selectedTask?.id}`;
+  const showAttempt = Boolean(attemptId && attemptId !== 'latest');
+  const taskUrl = selectedTask
+    ? `/projects/${projectId}/tasks/${selectedTask.id}`
+    : undefined;
 
   const truncateTitle = (title: string | undefined, maxLength = 20) => {
     if (!title) return 'Task';
@@ -44,11 +76,11 @@ const KanbanSidebar = ({ selectedTask }: KanbanSidebarProps) => {
   return (
     <ResponsiveSidebar>
       <NewCard className="bg-background h-full">
-        <NewCardHeader>
+        <NewCardHeader actions={<HeaderActions projectId={projectId!} />}>
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
-                {showAttempt ? (
+                {showAttempt && taskUrl ? (
                   <BreadcrumbLink asChild>
                     <Link to={taskUrl}>
                       {truncateTitle(selectedTask?.title)}
