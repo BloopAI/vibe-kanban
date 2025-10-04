@@ -88,7 +88,13 @@ function BranchSelector({
           <ArrowDown className="h-3 w-3" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-80">
+      <DropdownMenuContent
+        className="w-80"
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          searchInputRef.current?.focus();
+        }}
+      >
         <div className="p-2">
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -97,6 +103,7 @@ function BranchSelector({
               placeholder="Search branches..."
               value={branchSearchTerm}
               onChange={(e) => setBranchSearchTerm(e.target.value)}
+              onKeyDown={(e) => e.stopPropagation()}
               className="pl-8"
               autoFocus
             />
