@@ -244,7 +244,6 @@ function MarkdownRenderer({
         </div>
       )}
       <div className={className}>
-        {/* Disable raw HTML parsing to prevent invalid ref attributes from being passed to DOM elements */}
         <Markdown options={{ overrides, disableParsingRawHTML: true }}>
           {content}
         </Markdown>
