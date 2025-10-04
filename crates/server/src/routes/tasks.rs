@@ -215,25 +215,26 @@ pub async fn update_task(
     Json(payload): Json<UpdateTask>,
 ) -> Result<ResponseJson<ApiResponse<Task>>, ApiError> {
     // Use existing values if not provided in update
-    let title = payload.title.unwrap_or(existing_task.title);
-    let description = match payload.description {
-        Some(s) if s.trim().is_empty() => None, // Empty string = clear description
-        Some(s) => Some(s),                     // Non-empty string = update description
-        None => existing_task.description,      // Field omitted = keep existing
+    let update_data = UpdateTask {
+        title: Some(payload.title.unwrap_or(existing_task.title)),
+        description: match payload.description {
+            Some(s) if s.trim().is_empty() => None, // Empty string = clear description
+            Some(s) => Some(s),                     // Non-empty string = update description
+            None => existing_task.description,      // Field omitted = keep existing
+        },
+        status: Some(payload.status.unwrap_or(existing_task.status)),
+        parent_task_attempt: payload
+            .parent_task_attempt
+            .or(existing_task.parent_task_attempt),
+        parent_task_id: payload.parent_task_id.or(existing_task.parent_task_id),
+        image_ids: payload.image_ids.clone(),
     };
-    let status = payload.status.unwrap_or(existing_task.status);
-    let parent_task_attempt = payload
-        .parent_task_attempt
-        .or(existing_task.parent_task_attempt);
 
     let task = Task::update(
         &deployment.db().pool,
         existing_task.id,
         existing_task.project_id,
-        title,
-        description,
-        status,
-        parent_task_attempt,
+        update_data,
     )
     .await?;
 
