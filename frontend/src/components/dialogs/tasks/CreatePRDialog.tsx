@@ -11,13 +11,22 @@ import { Textarea } from '@/components/ui/textarea.tsx';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert } from '@/components/ui/alert';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import BranchSelector from '@/components/tasks/BranchSelector';
 import { useCallback, useEffect, useState } from 'react';
 import { attemptsApi } from '@/lib/api.ts';
+import { useTranslation } from 'react-i18next';
 
 import {
   GitBranch,
   GitHubServiceError,
+  GitRemote,
   TaskAttempt,
   TaskWithAttemptStatus,
 } from 'shared/types';
@@ -36,19 +45,40 @@ const CreatePrDialog = NiceModal.create(() => {
   const [error, setError] = useState<string | null>(null);
   const [branches, setBranches] = useState<GitBranch[]>([]);
   const [branchesLoading, setBranchesLoading] = useState(false);
+  const [remotes, setRemotes] = useState<GitRemote[]>([]);
+  const [remotesLoading, setRemotesLoading] = useState(false);
+  const [selectedRemote, setSelectedRemote] = useState<string | null>(null);
+  const [selectedHeadRemote, setSelectedHeadRemote] = useState<string | null>(
+    null
+  );
+  const { t } = useTranslation(['tasks']);
+
+  const getRemoteFromBranchName = useCallback((branchName?: string | null) => {
+    if (!branchName) return null;
+    const separatorIndex = branchName.indexOf('/');
+    if (separatorIndex <= 0) return null;
+    return branchName.slice(0, separatorIndex);
+  }, []);
 
   useEffect(() => {
     if (modal.visible && data) {
       setPrTitle(`${data.task.title} (vibe-kanban)`);
       setPrBody(data.task.description || '');
+      setSelectedRemote(null);
+      setSelectedHeadRemote(null);
+      setRemotes([]);
 
       // Always fetch branches for dropdown population
       if (data.projectId) {
         setBranchesLoading(true);
-        projectsApi
-          .getBranches(data.projectId)
-          .then((projectBranches) => {
+        setRemotesLoading(true);
+        Promise.all([
+          projectsApi.getBranches(data.projectId),
+          projectsApi.getRemotes(data.projectId),
+        ])
+          .then(([projectBranches, projectRemotes]) => {
             setBranches(projectBranches);
+            setRemotes(projectRemotes);
 
             // Set smart default: task target branch OR current branch
             if (data.attempt.target_branch) {
@@ -59,14 +89,86 @@ const CreatePrDialog = NiceModal.create(() => {
                 setPrBaseBranch(currentBranch.name);
               }
             }
+
+            if (!projectBranches.length && !data.attempt.target_branch) {
+              setPrBaseBranch('');
+            }
+
+            const remoteFromTarget = getRemoteFromBranchName(
+              data.attempt.target_branch
+            );
+            const originRemote = projectRemotes.find(
+              (remote) => remote.name === 'origin'
+            )?.name;
+
+            const candidateOrder: (string | null | undefined)[] = [
+              originRemote,
+              remoteFromTarget,
+              projectRemotes[0]?.name,
+            ];
+
+            const resolvedRemote = candidateOrder.find((candidate) => {
+              if (!candidate) return false;
+              return projectRemotes.some((remote) => remote.name === candidate);
+            });
+
+            setSelectedRemote(resolvedRemote ?? null);
+
+            const remoteFromBranch = getRemoteFromBranchName(
+              data.attempt.branch
+            );
+            const forkRemote = projectRemotes.find(
+              (remote) => remote.name === 'fork'
+            )?.name;
+            const alternateRemote = projectRemotes.find(
+              (remote) => remote.name !== (resolvedRemote ?? undefined)
+            )?.name;
+
+            const headCandidates: (string | null | undefined)[] = [
+              remoteFromBranch,
+              forkRemote,
+              alternateRemote,
+              resolvedRemote,
+            ];
+
+            const resolvedHeadRemote = headCandidates.find((candidate) => {
+              if (!candidate) return false;
+              return projectRemotes.some((remote) => remote.name === candidate);
+            });
+
+            setSelectedHeadRemote(resolvedHeadRemote ?? null);
           })
           .catch(console.error)
-          .finally(() => setBranchesLoading(false));
+          .finally(() => {
+            setBranchesLoading(false);
+            setRemotesLoading(false);
+          });
       }
 
       setError(null); // Reset error when opening
     }
-  }, [modal.visible, data]);
+  }, [modal.visible, data, getRemoteFromBranchName]);
+
+  useEffect(() => {
+    if (!modal.visible) return;
+    if (selectedRemote && selectedHeadRemote) return;
+    const remoteFromBranch = getRemoteFromBranchName(prBaseBranch);
+    if (!remoteFromBranch) return;
+    if (!remotes.some((remote) => remote.name === remoteFromBranch)) return;
+    if (!selectedRemote) {
+      setSelectedRemote(remoteFromBranch);
+    }
+    if (!selectedHeadRemote) {
+      setSelectedHeadRemote(remoteFromBranch);
+    }
+  }, [
+    modal.visible,
+    prBaseBranch,
+    remotes,
+    selectedRemote,
+    selectedHeadRemote,
+    getRemoteFromBranchName,
+  ]);
 
   const handleConfirmCreatePR = useCallback(async () => {
     if (!data?.projectId || !data?.attempt.id) return;
@@ -78,6 +180,8 @@ const CreatePrDialog = NiceModal.create(() => {
       title: prTitle,
       body: prBody || null,
       target_branch: prBaseBranch || null,
+      remote_name: selectedRemote || null,
+      head_remote_name: selectedHeadRemote || null,
     });
 
     if (result.success) {
@@ -86,6 +190,9 @@ const CreatePrDialog = NiceModal.create(() => {
       setPrTitle('');
       setPrBody('');
       setPrBaseBranch('');
+      setSelectedRemote(null);
+      setSelectedHeadRemote(null);
+      setRemotes([]);
       modal.hide();
     } else {
       if (result.error) {
@@ -111,7 +218,15 @@ const CreatePrDialog = NiceModal.create(() => {
       }
     }
     setCreatingPR(false);
-  }, [data, prBaseBranch, prBody, prTitle, modal]);
+  }, [
+    data,
+    prBaseBranch,
+    prBody,
+    prTitle,
+    selectedRemote,
+    selectedHeadRemote,
+    modal,
+  ]);
 
   const handleCancelCreatePR = useCallback(() => {
     modal.hide();
@@ -119,6 +234,9 @@ const CreatePrDialog = NiceModal.create(() => {
     setPrTitle('');
     setPrBody('');
     setPrBaseBranch('');
+    setSelectedRemote(null);
+    setSelectedHeadRemote(null);
+    setRemotes([]);
   }, [modal]);
 
   // Don't render if no data
@@ -136,32 +254,114 @@ const CreatePrDialog = NiceModal.create(() => {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="pr-title">Title</Label>
+              <Label htmlFor="pr-title">
+                {t('tasks:git.createPr.labels.title')}
+              </Label>
               <Input
                 id="pr-title"
                 value={prTitle}
                 onChange={(e) => setPrTitle(e.target.value)}
-                placeholder="Enter PR title"
+                placeholder={t('tasks:git.createPr.placeholders.title')}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="pr-body">Description (optional)</Label>
+              <Label htmlFor="pr-body">
+                {t('tasks:git.createPr.labels.descriptionOptional')}
+              </Label>
               <Textarea
                 id="pr-body"
                 value={prBody}
                 onChange={(e) => setPrBody(e.target.value)}
-                placeholder="Enter PR description"
+                placeholder={t('tasks:git.createPr.placeholders.description')}
                 rows={4}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="pr-base">Base Branch</Label>
+              <Label htmlFor="pr-remote">
+                {t('tasks:git.createPr.labels.remote')}
+              </Label>
+              <Select
+                value={selectedRemote ?? undefined}
+                onValueChange={(value) => setSelectedRemote(value)}
+                disabled={remotesLoading || remotes.length === 0}
+              >
+                <SelectTrigger
+                  id="pr-remote"
+                  className={
+                    remotesLoading ? 'opacity-50 cursor-not-allowed' : ''
+                  }
+                >
+                  <SelectValue
+                    placeholder={
+                      remotesLoading
+                        ? t('tasks:git.createPr.placeholders.remote.loading')
+                        : remotes.length === 0
+                          ? t('tasks:git.createPr.placeholders.remote.empty')
+                          : t('tasks:git.createPr.placeholders.remote.default')
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {remotes.map((remote) => (
+                    <SelectItem key={remote.name} value={remote.name}>
+                      {remote.url
+                        ? `${remote.name} (${remote.url})`
+                        : remote.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pr-head-remote">
+                {t('tasks:git.createPr.labels.sourceRemote')}
+              </Label>
+              <Select
+                value={selectedHeadRemote ?? undefined}
+                onValueChange={(value) => setSelectedHeadRemote(value)}
+                disabled={remotesLoading || remotes.length === 0}
+              >
+                <SelectTrigger
+                  id="pr-head-remote"
+                  className={
+                    remotesLoading ? 'opacity-50 cursor-not-allowed' : ''
+                  }
+                >
+                  <SelectValue
+                    placeholder={
+                      remotesLoading
+                        ? t('tasks:git.createPr.placeholders.remote.loading')
+                        : remotes.length === 0
+                          ? t('tasks:git.createPr.placeholders.remote.empty')
+                          : t(
+                              'tasks:git.createPr.placeholders.sourceRemote.default'
+                            )
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {remotes.map((remote) => (
+                    <SelectItem key={remote.name} value={remote.name}>
+                      {remote.url
+                        ? `${remote.name} (${remote.url})`
+                        : remote.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pr-base">
+                {t('tasks:git.createPr.labels.baseBranch')}
+              </Label>
               <BranchSelector
                 branches={branches}
                 selectedBranch={prBaseBranch}
                 onBranchSelect={setPrBaseBranch}
                 placeholder={
-                  branchesLoading ? 'Loading branches...' : 'Select base branch'
+                  branchesLoading
+                    ? t('tasks:git.createPr.placeholders.baseBranch.loading')
+                    : t('tasks:git.createPr.placeholders.baseBranch.default')
                 }
                 className={
                   branchesLoading ? 'opacity-50 cursor-not-allowed' : ''

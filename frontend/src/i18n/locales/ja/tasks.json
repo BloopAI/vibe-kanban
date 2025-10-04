@@ -81,6 +81,31 @@
       "creating": "作成中...",
       "createPr": "PRを作成"
     },
+    "createPr": {
+      "labels": {
+        "title": "タイトル",
+        "descriptionOptional": "説明（任意）",
+        "remote": "リモート",
+        "sourceRemote": "ソースリモート",
+        "baseBranch": "ベースブランチ"
+      },
+      "placeholders": {
+        "title": "PRのタイトルを入力",
+        "description": "PRの説明を入力",
+        "remote": {
+          "default": "リモートを選択",
+          "loading": "リモートを読み込み中...",
+          "empty": "利用可能なリモートがありません"
+        },
+        "sourceRemote": {
+          "default": "ソースリモートを選択"
+        },
+        "baseBranch": {
+          "default": "ベースブランチを選択",
+          "loading": "ブランチを読み込み中..."
+        }
+      }
+    },
     "errors": {
       "changeTargetBranch": "ターゲットブランチの変更に失敗しました",
       "pushChanges": "変更のプッシュに失敗しました",

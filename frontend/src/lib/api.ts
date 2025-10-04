@@ -46,6 +46,7 @@ import {
   RebaseTaskAttemptRequest,
   ChangeTargetBranchRequest,
   ChangeTargetBranchResponse,
+  GitRemote,
 } from 'shared/types';
 
 // Re-export types for convenience
@@ -247,6 +248,11 @@ export const projectsApi = {
   getBranches: async (id: string): Promise<GitBranch[]> => {
     const response = await makeRequest(`/api/projects/${id}/branches`);
     return handleApiResponse<GitBranch[]>(response);
+  },
+
+  getRemotes: async (id: string): Promise<GitRemote[]> => {
+    const response = await makeRequest(`/api/projects/${id}/remotes`);
+    return handleApiResponse<GitRemote[]>(response);
   },
 
   searchFiles: async (

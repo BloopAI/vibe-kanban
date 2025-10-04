@@ -16,7 +16,7 @@ use ignore::WalkBuilder;
 use services::services::{
     file_ranker::FileRanker,
     file_search_cache::{CacheError, SearchMode, SearchQuery},
-    git::GitBranch,
+    git::{GitBranch, GitRemote},
 };
 use utils::{path::expand_tilde, response::ApiResponse};
 use uuid::Uuid;
@@ -42,6 +42,14 @@ pub async fn get_project_branches(
 ) -> Result<ResponseJson<ApiResponse<Vec<GitBranch>>>, ApiError> {
     let branches = deployment.git().get_all_branches(&project.git_repo_path)?;
     Ok(ResponseJson(ApiResponse::success(branches)))
+}
+
+pub async fn get_project_remotes(
+    Extension(project): Extension<Project>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<GitRemote>>>, ApiError> {
+    let remotes = deployment.git().get_all_remotes(&project.git_repo_path)?;
+    Ok(ResponseJson(ApiResponse::success(remotes)))
 }
 
 pub async fn create_project(
@@ -478,6 +486,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             get(get_project).put(update_project).delete(delete_project),
         )
         .route("/branches", get(get_project_branches))
+        .route("/remotes", get(get_project_remotes))
         .route("/search", get(search_project_files))
         .route("/open-editor", post(open_project_in_editor))
         .layer(from_fn_with_state(

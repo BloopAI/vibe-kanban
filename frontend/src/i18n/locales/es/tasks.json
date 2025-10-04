@@ -81,6 +81,31 @@
       "creating": "Creando...",
       "createPr": "Crear PR"
     },
+    "createPr": {
+      "labels": {
+        "title": "Título",
+        "descriptionOptional": "Descripción (opcional)",
+        "remote": "Remoto",
+        "sourceRemote": "Remoto de origen",
+        "baseBranch": "Rama base"
+      },
+      "placeholders": {
+        "title": "Ingresa el título del PR",
+        "description": "Ingresa la descripción del PR",
+        "remote": {
+          "default": "Selecciona un remoto",
+          "loading": "Cargando remotos...",
+          "empty": "No hay remotos"
+        },
+        "sourceRemote": {
+          "default": "Selecciona un remoto de origen"
+        },
+        "baseBranch": {
+          "default": "Selecciona una rama base",
+          "loading": "Cargando ramas..."
+        }
+      }
+    },
     "errors": {
       "changeTargetBranch": "Error al cambiar rama de destino",
       "pushChanges": "Error al enviar cambios",
