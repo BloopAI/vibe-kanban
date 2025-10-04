@@ -49,7 +49,9 @@ const BranchRow = memo(function BranchRow({
   const classes =
     (isSelected ? 'bg-accent text-accent-foreground ' : '') +
     (isDisabled ? 'opacity-50 cursor-not-allowed ' : '') +
-    (!isSelected && isHighlighted ? 'bg-accent/40 ring-1 ring-accent/60 ' : '') +
+    (!isSelected && isHighlighted
+      ? 'bg-accent/40 ring-1 ring-accent/60 '
+      : '') +
     'transition-none';
 
   const nameClass = branch.is_current ? 'font-medium' : '';
