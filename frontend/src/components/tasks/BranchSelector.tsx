@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback, memo } from 'react';
+import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import { Button } from '@/components/ui/button.tsx';
 import { ArrowDown, GitBranch as GitBranchIcon, Search } from 'lucide-react';
 import {
@@ -34,7 +35,6 @@ type RowProps = {
   isDisabled: boolean;
   onMouseEnter: (e: React.MouseEvent<HTMLElement>) => void;
   onClick: (e: React.MouseEvent<HTMLElement>) => void;
-  setItemRef: (el: HTMLDivElement | null) => void;
 };
 
 const BranchRow = memo(function BranchRow({
@@ -45,7 +45,6 @@ const BranchRow = memo(function BranchRow({
   isDisabled,
   onMouseEnter,
   onClick,
-  setItemRef,
 }: RowProps) {
   const classes =
     (isSelected ? 'bg-accent ' : '') +
@@ -57,7 +56,6 @@ const BranchRow = memo(function BranchRow({
 
   const item = (
     <DropdownMenuItem
-      ref={setItemRef}
       data-index={idx}
       data-name={branch.name}
       onMouseEnter={onMouseEnter}
@@ -109,8 +107,7 @@ function BranchSelector({
   const [highlighted, setHighlighted] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const listRef = useRef<HTMLDivElement>(null);
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
 
   const filteredBranches = useMemo(() => {
     let filtered = branches;
@@ -143,25 +140,12 @@ function BranchSelector({
   }, [branchSearchTerm]);
 
   useEffect(() => {
-    if (highlighted == null) return;
-    const container = listRef.current;
-    const el = itemRefs.current[highlighted];
-    if (!container || !el) return;
-
-    const raf = requestAnimationFrame(() => {
-      const cTop = container.scrollTop;
-      const cBottom = cTop + container.clientHeight;
-      const eTop = el.offsetTop;
-      const eBottom = eTop + el.offsetHeight;
-
-      if (eTop < cTop) {
-        container.scrollTop = eTop;
-      } else if (eBottom > cBottom) {
-        container.scrollTop = eBottom - container.clientHeight;
-      }
-    });
-
-    return () => cancelAnimationFrame(raf);
+    if (highlighted != null) {
+      virtuosoRef.current?.scrollToIndex({
+        index: highlighted,
+        align: 'auto',
+      });
+    }
   }, [highlighted]);
 
   const isDisabledIdx = useCallback(
@@ -215,14 +199,6 @@ function BranchSelector({
     },
     [excludeCurrentBranch, filteredBranches, handleBranchSelect]
   );
-
-  const setItemRef = useCallback((el: HTMLDivElement | null) => {
-    if (!el) return;
-    const i = Number(el.dataset.index);
-    if (!Number.isNaN(i)) {
-      itemRefs.current[i] = el;
-    }
-  }, []);
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -290,13 +266,17 @@ function BranchSelector({
             </div>
           </div>
           <DropdownMenuSeparator />
-          <div ref={listRef} className="max-h-64 overflow-y-auto">
-            {filteredBranches.length === 0 ? (
-              <div className="p-2 text-sm text-muted-foreground text-center">
-                No branches found
-              </div>
-            ) : (
-              filteredBranches.map((branch, idx) => {
+          {filteredBranches.length === 0 ? (
+            <div className="p-2 text-sm text-muted-foreground text-center">
+              No branches found
+            </div>
+          ) : (
+            <Virtuoso
+              ref={virtuosoRef}
+              style={{ height: '16rem' }}
+              totalCount={filteredBranches.length}
+              itemContent={(idx) => {
+                const branch = filteredBranches[idx];
                 const isDisabled = excludeCurrentBranch && !!branch.is_current;
                 const isHighlighted = idx === highlighted;
                 const isSelected = selectedBranch === branch.name;
@@ -311,12 +291,11 @@ function BranchSelector({
                     isHighlighted={isHighlighted}
                     onMouseEnter={handleRowMouseEnter}
                     onClick={handleRowClick}
-                    setItemRef={setItemRef}
                   />
                 );
-              })
-            )}
-          </div>
+              }}
+            />
+          )}
         </DropdownMenuContent>
       </TooltipProvider>
     </DropdownMenu>
