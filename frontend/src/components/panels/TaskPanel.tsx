@@ -8,6 +8,7 @@ import type { TaskWithAttemptStatus } from 'shared/types';
 import { NewCardContent } from '../ui/new-card';
 import { Button } from '../ui/button';
 import { PlusIcon } from 'lucide-react';
+import { CreateAttemptDialog } from '../dialogs/tasks/CreateAttemptDialog';
 
 interface TaskPanelProps {
   task: TaskWithAttemptStatus | null;
@@ -20,6 +21,7 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState<string>('');
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   const {
     data: attempts = [],
@@ -59,6 +61,8 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
     (a, b) =>
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
+
+  const latestAttempt = displayedAttempts[0] ?? null;
 
   // Reset editor state when task changes
   useEffect(() => {
@@ -113,58 +117,72 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
             <div className="text-destructive">Failed to load attempts</div>
           )}
           {!isAttemptsLoading && !isAttemptsError && (
-            <>
-              {displayedAttempts.length === 0 ? (
-                <div className="text-muted-foreground">No attempts yet</div>
-              ) : (
-                <table className="w-full text-sm">
-                  <thead className="uppercase text-muted-foreground">
-                    <tr>
-                      <th colSpan={3}>
-                        <div className="w-full flex text-left">
-                          <span className="flex-1">
-                            Attempts ({displayedAttempts.length})
-                          </span>
-                          <span>
-                            <Button variant="icon">
-                              <PlusIcon size={16} />
-                            </Button>
-                          </span>
-                        </div>
-                      </th>
+            <table className="w-full text-sm">
+              <thead className="uppercase text-muted-foreground">
+                <tr>
+                  <th colSpan={3}>
+                    <div className="w-full flex text-left">
+                      <span className="flex-1">
+                        Attempts ({displayedAttempts.length})
+                      </span>
+                      <span>
+                        <Button
+                          variant="icon"
+                          onClick={() => setIsCreateDialogOpen(true)}
+                        >
+                          <PlusIcon size={16} />
+                        </Button>
+                      </span>
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayedAttempts.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={3}
+                      className="py-2 text-muted-foreground border-t"
+                    >
+                      No attempts yet
+                    </td>
+                  </tr>
+                ) : (
+                  displayedAttempts.map((attempt) => (
+                    <tr
+                      key={attempt.id}
+                      className="border-t cursor-pointer hover:bg-muted"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => {
+                        if (projectId && task.id && attempt.id) {
+                          navigateToAttempt(projectId, task.id, attempt.id, {
+                            replace: false,
+                          });
+                        }
+                      }}
+                    >
+                      <td className="py-2 pr-4">
+                        {attempt.executor || 'Base Agent'}
+                      </td>
+                      <td className="py-2 pr-4">{attempt.branch || '—'}</td>
+                      <td className="py-2 pr-0 text-right">
+                        {formatTimeAgo(attempt.created_at)}
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {displayedAttempts.map((attempt) => (
-                      <tr
-                        key={attempt.id}
-                        className="border-t cursor-pointer hover:bg-muted"
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => {
-                          if (projectId && task.id && attempt.id) {
-                            navigateToAttempt(projectId, task.id, attempt.id, {
-                              replace: false,
-                            });
-                          }
-                        }}
-                      >
-                        <td className="py-2 pr-4">
-                          {attempt.executor || 'Base Agent'}
-                        </td>
-                        <td className="py-2 pr-4">{attempt.branch || '—'}</td>
-                        <td className="py-2 pr-0 text-right">
-                          {formatTimeAgo(attempt.created_at)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </>
+                  ))
+                )}
+              </tbody>
+            </table>
           )}
         </div>
       </NewCardContent>
+      <CreateAttemptDialog
+        taskId={task.id}
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        latestAttempt={latestAttempt}
+      />
     </>
   );
 };
