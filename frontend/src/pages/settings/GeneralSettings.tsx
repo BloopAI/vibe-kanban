@@ -548,7 +548,8 @@ export function GeneralSettings() {
             <p className="text-sm text-muted-foreground">
               Prefix for auto-generated branch names. Leave empty for no prefix.
               <br />
-              Allowed: letters, numbers, dots, underscores, hyphens. No slashes or special characters.
+              Allowed: letters, numbers, dots, underscores, hyphens. No slashes
+              or special characters.
               <br />
               {draft?.git_branch_prefix ? (
                 <>
