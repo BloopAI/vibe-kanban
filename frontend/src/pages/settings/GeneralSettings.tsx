@@ -454,9 +454,7 @@ export function GeneralSettings() {
           <div className="space-y-4">
             <h3 className="text-sm font-medium">Branch Naming</h3>
             <div className="space-y-2">
-              <Label htmlFor="git-branch-prefix">
-                Git Branch Prefix
-              </Label>
+              <Label htmlFor="git-branch-prefix">Git Branch Prefix</Label>
               <Input
                 id="git-branch-prefix"
                 type="text"
@@ -468,14 +466,26 @@ export function GeneralSettings() {
                 }}
               />
               <p className="text-sm text-muted-foreground">
-                Prefix for auto-generated branch names. Leave empty for no prefix.
+                Prefix for auto-generated branch names. Leave empty for no
+                prefix.
                 <br />
-                Allowed: letters, numbers, dots, underscores, hyphens. No slashes or special characters.
+                Allowed: letters, numbers, dots, underscores, hyphens. No
+                slashes or special characters.
                 <br />
                 {draft?.git_branch_prefix ? (
-                  <>Preview: <code className="text-xs bg-muted px-1 py-0.5 rounded">{draft.git_branch_prefix}/1a2b-task-name</code></>
+                  <>
+                    Preview:{' '}
+                    <code className="text-xs bg-muted px-1 py-0.5 rounded">
+                      {draft.git_branch_prefix}/1a2b-task-name
+                    </code>
+                  </>
                 ) : (
-                  <>Preview: <code className="text-xs bg-muted px-1 py-0.5 rounded">1a2b-task-name</code></>
+                  <>
+                    Preview:{' '}
+                    <code className="text-xs bg-muted px-1 py-0.5 rounded">
+                      1a2b-task-name
+                    </code>
+                  </>
                 )}
               </p>
             </div>
