@@ -10,7 +10,6 @@ use std::{
 };
 
 use anyhow::anyhow;
-use async_stream::try_stream;
 use async_trait::async_trait;
 use command_group::AsyncGroupChild;
 use db::{
@@ -40,8 +39,7 @@ use executors::{
     },
 };
 use futures::{FutureExt, StreamExt, TryStreamExt, stream::select};
-use notify::RecommendedWatcher;
-use notify_debouncer_full::{DebouncedEvent, Debouncer, RecommendedCache};
+use notify_debouncer_full::DebouncedEvent;
 use serde_json::json;
 use services::services::{
     analytics::AnalyticsContext,
@@ -53,7 +51,11 @@ use services::services::{
     notification::NotificationService,
     worktree_manager::WorktreeManager,
 };
-use tokio::{sync::RwLock, task::JoinHandle};
+use tokio::{
+    sync::{RwLock, mpsc},
+    task::JoinHandle,
+};
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_util::io::ReaderStream;
 use utils::{
     log_msg::LogMsg,
@@ -68,7 +70,7 @@ use crate::command;
 /// When this stream is dropped, the watcher is automatically cleaned up
 struct DiffStreamWithWatcher {
     stream: futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>,
-    _watcher: Option<Debouncer<RecommendedWatcher, RecommendedCache>>,
+    _watcher_task: Option<JoinHandle<()>>,
 }
 
 impl futures::Stream for DiffStreamWithWatcher {
@@ -80,6 +82,14 @@ impl futures::Stream for DiffStreamWithWatcher {
     ) -> std::task::Poll<Option<Self::Item>> {
         // Delegate to inner stream
         std::pin::Pin::new(&mut self.stream).poll_next(cx)
+    }
+}
+
+impl Drop for DiffStreamWithWatcher {
+    fn drop(&mut self) {
+        if let Some(handle) = self._watcher_task.take() {
+            handle.abort();
+        }
     }
 }
 
@@ -681,7 +691,7 @@ impl LocalContainerService {
 
         Ok(DiffStreamWithWatcher {
             stream,
-            _watcher: None, // Merged diffs are static, no watcher needed
+            _watcher_task: None, // Merged diffs are static, no watcher needed
         })
     }
 
@@ -724,72 +734,108 @@ impl LocalContainerService {
             }
         }
 
-        let initial_stream = futures::stream::iter(initial_diffs.into_iter().map(|diff| {
+        let (tx, rx) = mpsc::unbounded_channel::<Result<LogMsg, std::io::Error>>();
+        for diff in initial_diffs {
             let entry_index = GitService::diff_path(&diff);
             let patch =
                 ConversationPatch::add_diff(escape_json_pointer_segment(&entry_index), diff);
-            Ok::<_, std::io::Error>(LogMsg::JsonPatch(patch))
-        }))
-        .boxed();
+            if tx.send(Ok(LogMsg::JsonPatch(patch))).is_err() {
+                break;
+            }
+        }
 
-        // Create live update stream
-        let worktree_path = worktree_path.to_path_buf();
-        let base_commit = base_commit.clone();
-        let worktree_path_for_spawn = worktree_path.clone();
-        let watcher_result = tokio::task::spawn_blocking(move || {
-            filesystem_watcher::async_watcher(worktree_path_for_spawn)
-        })
-        .await
-        .map_err(|e| io::Error::other(format!("Failed to spawn watcher setup: {e}")))?;
-        let (debouncer, mut rx, canonical_worktree_path) =
-            watcher_result.map_err(|e| io::Error::other(e.to_string()))?;
+        let rx_stream = UnboundedReceiverStream::new(rx).boxed();
 
-        let live_stream = {
+        let worktree_path_buf = worktree_path.to_path_buf();
+
+        let watcher_task = {
             let git_service = git_service.clone();
             let cumulative = Arc::clone(&cumulative);
             let full_sent = Arc::clone(&full_sent);
+            let stats_only = stats_only;
+            let tx_sender = tx.clone();
+            let worktree_path = worktree_path_buf;
+            let base_commit = base_commit.clone();
 
-            try_stream! {
-                while let Some(result) = rx.next().await {
-                    match result {
-                        Ok(events) => {
-                            let changed_paths = Self::extract_changed_paths(&events, &canonical_worktree_path, &worktree_path);
+            tokio::spawn(async move {
+                let worktree_path_for_spawn = worktree_path.clone();
+                let watcher_result = tokio::task::spawn_blocking(move || {
+                    filesystem_watcher::async_watcher(worktree_path_for_spawn)
+                })
+                .await;
 
-                            if !changed_paths.is_empty() {
-                                for msg in Self::process_file_changes(
-                                    &git_service,
-                                    &worktree_path,
-                                    &base_commit,
-                                    &changed_paths,
-                                    &cumulative,
-                                    &full_sent,
-                                    stats_only,
-                                ).map_err(|e| {
-                                    tracing::error!("Error processing file changes: {}", e);
-                                    io::Error::other(e.to_string())
-                                })? {
-                                    yield msg;
+                match watcher_result {
+                    Ok(Ok((debouncer, mut watcher_rx, canonical_worktree_path))) => {
+                        let _debouncer_guard = debouncer;
+                        while let Some(result) = watcher_rx.next().await {
+                            match result {
+                                Ok(events) => {
+                                    let changed_paths = Self::extract_changed_paths(
+                                        &events,
+                                        &canonical_worktree_path,
+                                        &worktree_path,
+                                    );
+
+                                    if !changed_paths.is_empty() {
+                                        match Self::process_file_changes(
+                                            &git_service,
+                                            &worktree_path,
+                                            &base_commit,
+                                            &changed_paths,
+                                            &cumulative,
+                                            &full_sent,
+                                            stats_only,
+                                        ) {
+                                            Ok(messages) => {
+                                                for msg in messages {
+                                                    if tx_sender.send(Ok(msg)).is_err() {
+                                                        return;
+                                                    }
+                                                }
+                                            }
+                                            Err(e) => {
+                                                tracing::error!(
+                                                    "Error processing file changes: {}",
+                                                    e
+                                                );
+                                                let _ = tx_sender
+                                                    .send(Err(io::Error::other(e.to_string())));
+                                                return;
+                                            }
+                                        }
+                                    }
+                                }
+                                Err(errors) => {
+                                    let error_msg = errors
+                                        .iter()
+                                        .map(|e| e.to_string())
+                                        .collect::<Vec<_>>()
+                                        .join("; ");
+                                    tracing::error!("Filesystem watcher error: {}", error_msg);
+                                    let _ = tx_sender.send(Err(io::Error::other(error_msg)));
+                                    return;
                                 }
                             }
                         }
-                        Err(errors) => {
-                            let error_msg = errors.iter()
-                                .map(|e| e.to_string())
-                                .collect::<Vec<_>>()
-                                .join("; ");
-                            tracing::error!("Filesystem watcher error: {}", error_msg);
-                            Err(io::Error::other(error_msg))?;
-                        }
+                    }
+                    Ok(Err(e)) => {
+                        tracing::error!("Failed to start filesystem watcher: {}", e);
+                        let _ = tx_sender.send(Err(io::Error::other(e.to_string())));
+                    }
+                    Err(join_err) => {
+                        let err_msg = format!("Failed to spawn watcher setup: {join_err}");
+                        tracing::error!("{}", err_msg);
+                        let _ = tx_sender.send(Err(io::Error::other(err_msg)));
                     }
                 }
-            }
-        }.boxed();
+            })
+        };
 
-        let combined_stream = initial_stream.chain(live_stream).boxed();
+        drop(tx);
 
         Ok(DiffStreamWithWatcher {
-            stream: combined_stream,
-            _watcher: Some(debouncer),
+            stream: rx_stream,
+            _watcher_task: Some(watcher_task),
         })
     }
 
