@@ -63,6 +63,12 @@ export function useKeyboardShortcut(
   useHotkeys(
     keys,
     (event) => {
+      // Skip if IME composition is in progress (e.g., Japanese, Chinese, Korean input)
+      // This prevents shortcuts from firing when user is converting text with Enter
+      if (event.isComposing) {
+        return;
+      }
+
       const w = whenRef.current;
       const enabled = typeof w === 'function' ? !!w() : !!w;
       if (enabled) callbackRef.current?.(event as KeyboardEvent);
