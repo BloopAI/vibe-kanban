@@ -334,16 +334,10 @@ fn extract_denial_reason(content: &serde_json::Value) -> Option<String> {
         content.to_string()
     };
 
-    // Look for our natural language marker and extract everything after it
-    if let Some(pos) = content_str.find(USER_FEEDBACK_MARKER) {
-        let after_marker = &content_str[pos + USER_FEEDBACK_MARKER.len()..];
-        let feedback = after_marker.trim();
-        if !feedback.is_empty() {
-            return Some(feedback.to_string());
-        }
-    }
-
-    None
+    content_str
+        .split_once(USER_FEEDBACK_MARKER)
+        .map(|(_, rest)| rest.trim().to_string())
+        .filter(|s| !s.is_empty())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
