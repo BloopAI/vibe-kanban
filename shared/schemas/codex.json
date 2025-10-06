@@ -76,6 +76,30 @@
         null
       ]
     },
+    "profile": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "base_instructions": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "include_plan_tool": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "include_apply_patch_tool": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
     "base_command_override": {
       "title": "Base Command Override",
       "description": "Override the base command with a custom command",

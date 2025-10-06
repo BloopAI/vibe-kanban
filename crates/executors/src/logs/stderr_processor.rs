@@ -42,7 +42,7 @@ pub fn normalize_stderr_logs(msg_store: Arc<MsgStore>, entry_index_provider: Ent
             .normalized_entry_producer(Box::new(|content: String| NormalizedEntry {
                 timestamp: None,
                 entry_type: NormalizedEntryType::ErrorMessage,
-                content,
+                content: strip_ansi_escapes::strip_str(&content),
                 metadata: None,
             }))
             .time_gap(Duration::from_secs(2)) // Break messages if they are 2 seconds apart

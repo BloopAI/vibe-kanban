@@ -98,10 +98,11 @@ impl NormalizedEntry {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, Default)]
 #[ts(export)]
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum ToolStatus {
+    #[default]
     Created,
     Success,
     Failed,

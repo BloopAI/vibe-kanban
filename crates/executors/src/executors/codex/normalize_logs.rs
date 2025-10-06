@@ -1,0 +1,800 @@
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
+
+use codex_app_server_protocol::{
+    JSONRPCNotification, JSONRPCResponse, NewConversationResponse, ServerNotification,
+};
+use codex_mcp_types::ContentBlock;
+use codex_protocol::{
+    config_types::ReasoningEffort,
+    plan_tool::{StepStatus, UpdatePlanArgs},
+    protocol::{
+        AgentMessageDeltaEvent, AgentReasoningDeltaEvent, AgentReasoningSectionBreakEvent,
+        BackgroundEventEvent, ErrorEvent, EventMsg, ExecCommandBeginEvent, ExecCommandEndEvent,
+        ExecCommandOutputDeltaEvent, ExecOutputStream, FileChange as CodexProtoFileChange,
+        McpInvocation, McpToolCallBeginEvent, McpToolCallEndEvent, PatchApplyBeginEvent,
+        PatchApplyEndEvent, StreamErrorEvent, TokenUsageInfo, ViewImageToolCallEvent,
+        WebSearchBeginEvent, WebSearchEndEvent,
+    },
+};
+use futures::StreamExt;
+use lazy_static::lazy_static;
+use regex::Regex;
+use serde::Deserialize;
+use serde_json::Value;
+use workspace_utils::{
+    diff::{concatenate_diff_hunks, extract_unified_diff_hunks},
+    msg_store::MsgStore,
+    path::make_path_relative,
+};
+
+use crate::{
+    executors::codex::session::SessionHandler,
+    logs::{
+        ActionType, CommandExitStatus, CommandRunResult, FileChange, NormalizedEntry,
+        NormalizedEntryType, TodoItem, ToolResult, ToolResultValueType, ToolStatus,
+        stderr_processor::normalize_stderr_logs,
+        utils::{ConversationPatch, EntryIndexProvider},
+    },
+};
+
+trait ToNormalizedEntry {
+    fn to_normalized_entry(&self) -> NormalizedEntry;
+}
+
+#[derive(Debug, Deserialize)]
+struct CodexNotificationParams {
+    #[serde(rename = "msg")]
+    msg: EventMsg,
+}
+
+#[derive(Default)]
+struct StreamingText {
+    index: usize,
+    content: String,
+}
+
+#[derive(Default)]
+struct CommandState {
+    index: Option<usize>,
+    command: String,
+    stdout: String,
+    stderr: String,
+    formatted_output: Option<String>,
+    status: ToolStatus,
+    exit_code: Option<i32>,
+}
+
+impl ToNormalizedEntry for CommandState {
+    fn to_normalized_entry(&self) -> NormalizedEntry {
+        NormalizedEntry {
+            timestamp: None,
+            entry_type: NormalizedEntryType::ToolUse {
+                tool_name: "bash".to_string(),
+                action_type: ActionType::CommandRun {
+                    command: self.command.clone(),
+                    result: Some(CommandRunResult {
+                        exit_status: self
+                            .exit_code
+                            .map(|code| CommandExitStatus::ExitCode { code }),
+                        output: if self.formatted_output.is_some() {
+                            self.formatted_output.clone()
+                        } else {
+                            build_command_output(Some(&self.stdout), Some(&self.stderr))
+                        },
+                    }),
+                },
+                status: self.status.clone(),
+            },
+            content: format!("`{}`", self.command),
+            metadata: None,
+        }
+    }
+}
+
+struct McpToolState {
+    index: Option<usize>,
+    invocation: McpInvocation,
+    result: Option<ToolResult>,
+    status: ToolStatus,
+}
+
+impl ToNormalizedEntry for McpToolState {
+    fn to_normalized_entry(&self) -> NormalizedEntry {
+        let tool_name = format!("mcp:{}:{}", self.invocation.server, self.invocation.tool);
+        NormalizedEntry {
+            timestamp: None,
+            entry_type: NormalizedEntryType::ToolUse {
+                tool_name: tool_name.clone(),
+                action_type: ActionType::Tool {
+                    tool_name,
+                    arguments: self.invocation.arguments.clone(),
+                    result: self.result.clone(),
+                },
+                status: self.status.clone(),
+            },
+            content: self.invocation.tool.clone(),
+            metadata: None,
+        }
+    }
+}
+
+#[derive(Default)]
+struct WebSearchState {
+    index: Option<usize>,
+    query: Option<String>,
+    status: ToolStatus,
+}
+
+impl WebSearchState {
+    fn new() -> Self {
+        Default::default()
+    }
+}
+
+impl ToNormalizedEntry for WebSearchState {
+    fn to_normalized_entry(&self) -> NormalizedEntry {
+        NormalizedEntry {
+            timestamp: None,
+            entry_type: NormalizedEntryType::ToolUse {
+                tool_name: "web_search".to_string(),
+                action_type: ActionType::WebFetch {
+                    url: self.query.clone().unwrap_or_else(|| "...".to_string()),
+                },
+                status: self.status.clone(),
+            },
+            content: self
+                .query
+                .clone()
+                .unwrap_or_else(|| "Web search".to_string()),
+            metadata: None,
+        }
+    }
+}
+
+#[derive(Default)]
+struct PatchState {
+    entries: Vec<PatchEntry>,
+}
+
+struct PatchEntry {
+    index: Option<usize>,
+    path: String,
+    changes: Vec<FileChange>,
+    status: ToolStatus,
+}
+
+impl ToNormalizedEntry for PatchEntry {
+    fn to_normalized_entry(&self) -> NormalizedEntry {
+        NormalizedEntry {
+            timestamp: None,
+            entry_type: NormalizedEntryType::ToolUse {
+                tool_name: "edit".to_string(),
+                action_type: ActionType::FileEdit {
+                    path: self.path.clone(),
+                    changes: self.changes.clone(),
+                },
+                status: self.status.clone(),
+            },
+            content: self.path.clone(),
+            metadata: None,
+        }
+    }
+}
+
+struct LogState {
+    entry_index: EntryIndexProvider,
+    assistant: Option<StreamingText>,
+    thinking: Option<StreamingText>,
+    commands: HashMap<String, CommandState>,
+    mcp_tools: HashMap<String, McpToolState>,
+    patches: HashMap<String, PatchState>,
+    web_searches: HashMap<String, WebSearchState>,
+    token_usage_info: Option<TokenUsageInfo>,
+}
+
+enum StreamingTextKind {
+    Assistant,
+    Thinking,
+}
+
+impl LogState {
+    fn new(entry_index: EntryIndexProvider) -> Self {
+        Self {
+            entry_index,
+            assistant: None,
+            thinking: None,
+            commands: HashMap::new(),
+            mcp_tools: HashMap::new(),
+            patches: HashMap::new(),
+            web_searches: HashMap::new(),
+            token_usage_info: None,
+        }
+    }
+
+    fn streaming_text_update(
+        &mut self,
+        content: String,
+        type_: StreamingTextKind,
+    ) -> (NormalizedEntry, usize, bool) {
+        let index_provider = &self.entry_index;
+        let entry = match type_ {
+            StreamingTextKind::Assistant => &mut self.assistant,
+            StreamingTextKind::Thinking => &mut self.thinking,
+        };
+        let is_new = entry.is_none();
+        let (content, index) = if entry.is_none() {
+            let index = index_provider.next();
+            *entry = Some(StreamingText { index, content });
+            (&entry.as_ref().unwrap().content, index)
+        } else {
+            let streaming_state = entry.as_mut().unwrap();
+            streaming_state.content.push_str(&content);
+            (&streaming_state.content, streaming_state.index)
+        };
+        let normalized_entry = NormalizedEntry {
+            timestamp: None,
+            entry_type: match type_ {
+                StreamingTextKind::Assistant => NormalizedEntryType::AssistantMessage,
+                StreamingTextKind::Thinking => NormalizedEntryType::Thinking,
+            },
+            content: content.clone(),
+            metadata: None,
+        };
+        (normalized_entry, index, is_new)
+    }
+
+    fn assistant_message_update(&mut self, content: String) -> (NormalizedEntry, usize, bool) {
+        self.streaming_text_update(content, StreamingTextKind::Assistant)
+    }
+
+    fn thinking_update(&mut self, content: String) -> (NormalizedEntry, usize, bool) {
+        self.streaming_text_update(content, StreamingTextKind::Thinking)
+    }
+}
+
+fn upsert_normalized_entry(
+    msg_store: &Arc<MsgStore>,
+    index: usize,
+    normalized_entry: NormalizedEntry,
+    is_new: bool,
+) {
+    if is_new {
+        msg_store.push_patch(ConversationPatch::add_normalized_entry(
+            index,
+            normalized_entry,
+        ));
+    } else {
+        msg_store.push_patch(ConversationPatch::replace(index, normalized_entry));
+    }
+}
+
+fn add_normalized_entry(
+    msg_store: &Arc<MsgStore>,
+    index_provider: &EntryIndexProvider,
+    normalized_entry: NormalizedEntry,
+) -> usize {
+    let index = index_provider.next();
+    upsert_normalized_entry(msg_store, index, normalized_entry, true);
+    index
+}
+
+fn replace_normalized_entry(
+    msg_store: &Arc<MsgStore>,
+    index: usize,
+    normalized_entry: NormalizedEntry,
+) {
+    upsert_normalized_entry(msg_store, index, normalized_entry, false);
+}
+
+fn normalize_file_changes(
+    worktree_path: &str,
+    changes: &HashMap<PathBuf, CodexProtoFileChange>,
+) -> Vec<(String, Vec<FileChange>)> {
+    changes
+        .iter()
+        .map(|(path, change)| {
+            let path_str = path.to_string_lossy();
+            let relative = make_path_relative(path_str.as_ref(), worktree_path);
+            let file_changes = match change {
+                CodexProtoFileChange::Add { content } => vec![FileChange::Write {
+                    content: content.clone(),
+                }],
+                CodexProtoFileChange::Delete { .. } => vec![FileChange::Delete],
+                CodexProtoFileChange::Update {
+                    unified_diff,
+                    move_path,
+                } => {
+                    let mut edits = Vec::new();
+                    if let Some(dest) = move_path {
+                        let dest_rel =
+                            make_path_relative(dest.to_string_lossy().as_ref(), worktree_path);
+                        edits.push(FileChange::Rename { new_path: dest_rel });
+                    }
+                    let hunks = extract_unified_diff_hunks(unified_diff);
+                    let diff = concatenate_diff_hunks(&relative, &hunks);
+                    edits.push(FileChange::Edit {
+                        unified_diff: diff,
+                        has_line_numbers: true,
+                    });
+                    edits
+                }
+            };
+            (relative, file_changes)
+        })
+        .collect()
+}
+
+fn format_todo_status(status: &StepStatus) -> String {
+    match status {
+        StepStatus::Pending => "pending",
+        StepStatus::InProgress => "in_progress",
+        StepStatus::Completed => "completed",
+    }
+    .to_string()
+}
+
+pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
+    let entry_index = EntryIndexProvider::start_from(&msg_store);
+    normalize_stderr_logs(msg_store.clone(), entry_index.clone());
+
+    let worktree_path_str = worktree_path.to_string_lossy().to_string();
+    tokio::spawn(async move {
+        let mut state = LogState::new(entry_index.clone());
+        let mut stdout_lines = msg_store.stdout_lines_stream();
+
+        while let Some(Ok(line)) = stdout_lines.next().await {
+            if let Ok(response) = serde_json::from_str::<JSONRPCResponse>(&line) {
+                handle_jsonrpc_response(response, &msg_store, &entry_index);
+                continue;
+            }
+
+            if let Ok(server_notification) = serde_json::from_str::<ServerNotification>(&line) {
+                if let ServerNotification::SessionConfigured(session_configured) =
+                    server_notification
+                {
+                    msg_store.push_session_id(session_configured.session_id.to_string());
+                    handle_model_params(
+                        session_configured.model,
+                        session_configured.reasoning_effort,
+                        &msg_store,
+                        &entry_index,
+                    );
+                };
+                continue;
+            } else if let Some(session_id) = line
+                .strip_prefix(r#"{"method":"sessionConfigured","params":{"sessionId":""#)
+                .and_then(|suffix| SESSION_ID.captures(suffix).and_then(|caps| caps.get(1)))
+            {
+                // Best-effort extraction of session ID from logs in case the JSON parsing fails.
+                // This could happen if the line is truncated due to size limits because it includes the full session history.
+                msg_store.push_session_id(session_id.as_str().to_string());
+                continue;
+            }
+
+            let notification: JSONRPCNotification = match serde_json::from_str(&line) {
+                Ok(value) => value,
+                Err(_) => continue,
+            };
+
+            if !notification.method.starts_with("codex/event") {
+                continue;
+            }
+
+            let Some(params) = notification
+                .params
+                .and_then(|p| serde_json::from_value::<CodexNotificationParams>(p).ok())
+            else {
+                continue;
+            };
+
+            let event = params.msg;
+            match event {
+                EventMsg::SessionConfigured(payload) => {
+                    msg_store.push_session_id(payload.session_id.to_string());
+                    handle_model_params(payload.model, payload.reasoning_effort, &msg_store, &entry_index);
+                }
+                EventMsg::AgentMessageDelta(AgentMessageDeltaEvent { delta }) => {
+                    state.thinking = None;
+                    let (entry, index, is_new) = state.assistant_message_update(delta);
+                    upsert_normalized_entry(&msg_store, index, entry, is_new);
+                }
+                EventMsg::AgentReasoningDelta(AgentReasoningDeltaEvent { delta }) => {
+                    state.assistant = None;
+                    let (entry, index, is_new) = state.thinking_update(delta);
+                    upsert_normalized_entry(&msg_store, index, entry, is_new);
+                }
+                EventMsg::AgentReasoningSectionBreak(AgentReasoningSectionBreakEvent {}) => {
+                    state.assistant = None;
+                    state.thinking = None;
+                }
+                EventMsg::ExecCommandBegin(ExecCommandBeginEvent {
+                    call_id, command, ..
+                }) => {
+                    state.assistant = None;
+                    state.thinking = None;
+                    let command_text = command.join(" ");
+                    if command_text.is_empty() {
+                        continue;
+                    }
+                    state.commands.insert(
+                        call_id.clone(),
+                        CommandState {
+                            index: None,
+                            command: command_text,
+                            stdout: String::new(),
+                            stderr: String::new(),
+                            formatted_output: None,
+                            status: ToolStatus::Created,
+                            exit_code: None,
+                        },
+                    );
+                    let command_state = state.commands.get_mut(&call_id).unwrap();
+                    let index = add_normalized_entry(&msg_store, &entry_index, command_state.to_normalized_entry());
+                    command_state.index = Some(index)
+                }
+                EventMsg::ExecCommandOutputDelta(ExecCommandOutputDeltaEvent {
+                    call_id,
+                    stream,
+                    chunk,
+                }) => {
+                    if let Some(command_state) = state.commands.get_mut(&call_id) {
+                        let chunk = String::from_utf8_lossy(&chunk);
+                        if chunk.is_empty() {
+                            continue;
+                        }
+                        match stream {
+                            ExecOutputStream::Stdout => command_state.stdout.push_str(&chunk),
+                            ExecOutputStream::Stderr => command_state.stderr.push_str(&chunk),
+                        }
+                        let Some(index) = command_state.index else {
+                            tracing::error!("missing entry index for existing command state");
+                            continue;
+                        };
+                        replace_normalized_entry(&msg_store, index, command_state.to_normalized_entry());
+                    }
+                }
+                EventMsg::ExecCommandEnd(ExecCommandEndEvent {
+                    call_id,
+                    stdout: _,
+                    stderr: _,
+                    aggregated_output: _,
+                    exit_code,
+                    duration: _,
+                    formatted_output,
+                }) => {
+                    if let Some(mut command_state) = state.commands.remove(&call_id) {
+                        command_state.formatted_output = Some(formatted_output);
+                        command_state.exit_code = Some(exit_code);
+                        command_state.status = if exit_code == 0 {
+                            ToolStatus::Success
+                        } else {
+                            ToolStatus::Failed
+                        };
+                        let Some(index) = command_state.index else {
+                            tracing::error!("missing entry index for existing command state");
+                            continue;
+                        };
+                        replace_normalized_entry(&msg_store, index, command_state.to_normalized_entry());
+                    }
+                }
+                EventMsg::BackgroundEvent(BackgroundEventEvent { message }) => {
+                    add_normalized_entry(&msg_store, &entry_index, NormalizedEntry {
+                        timestamp: None,
+                        entry_type: NormalizedEntryType::SystemMessage,
+                        content: format!("Background event: {message}"),
+                        metadata: None,
+                    });
+                }
+                EventMsg::StreamError(StreamErrorEvent { message }) => {
+                    add_normalized_entry(&msg_store, &entry_index, NormalizedEntry {
+                        timestamp: None,
+                        entry_type: NormalizedEntryType::ErrorMessage,
+                        content: format!("Stream error: {message}"),
+                        metadata: None,
+                    });
+                }
+                EventMsg::McpToolCallBegin(McpToolCallBeginEvent {
+                    call_id,
+                    invocation,
+                }) => {
+                    state.assistant = None;
+                    state.thinking = None;
+                    state.mcp_tools.insert(
+                        call_id.clone(),
+                        McpToolState {
+                            index: None,
+                            invocation,
+                            result: None,
+                            status: ToolStatus::Created,
+                        },
+                    );
+                    let mcp_tool_state = state.mcp_tools.get_mut(&call_id).unwrap();
+                    let index = add_normalized_entry(&msg_store, &entry_index, mcp_tool_state.to_normalized_entry());
+                    mcp_tool_state.index = Some(index);
+                }
+                EventMsg::McpToolCallEnd(McpToolCallEndEvent {
+                    call_id, result, ..
+                }) => {
+                    if let Some(mut mcp_tool_state) = state.mcp_tools.remove(&call_id) {
+                        match result {
+                            Ok(value) => {
+                                mcp_tool_state.status =
+                                if value.is_error.unwrap_or(false) {
+                                    ToolStatus::Failed
+                                } else {
+                                    ToolStatus::Success
+                                };
+                                if value.content.iter().all(|block| matches!(block, ContentBlock::TextContent(_))) {
+                                    mcp_tool_state.result = Some(ToolResult {
+                                        r#type: ToolResultValueType::Markdown,
+                                        value: Value::String(value.content.iter().map(|block| {
+                                            if let ContentBlock::TextContent(content) = block {
+                                                content.text.clone()
+                                            } else {
+                                                unreachable!()
+                                            }
+                                        }).collect::<Vec<String>>().join("\n"))
+                                    });
+                                } else {
+                                    mcp_tool_state.result = Some(ToolResult { r#type: ToolResultValueType::Json, value: value.structured_content.unwrap_or_else(|| serde_json::to_value(value.content).unwrap_or_default()) });
+                                }
+                            }
+                            Err(err) => {
+                                mcp_tool_state.status = ToolStatus::Failed;
+                                mcp_tool_state.result = Some(ToolResult {
+                                    r#type: ToolResultValueType::Markdown,
+                                    value: Value::String(err),
+                                });
+                            }
+                        };
+                        let Some(index) = mcp_tool_state.index else {
+                            tracing::error!("missing entry index for existing mcp tool state");
+                            continue;
+                        };
+                        replace_normalized_entry(&msg_store, index, mcp_tool_state.to_normalized_entry());
+                    }
+                }
+                EventMsg::PatchApplyBegin(PatchApplyBeginEvent {
+                    call_id, changes, ..
+                }) => {
+                    state.assistant = None;
+                    state.thinking = None;
+                    let normalized = normalize_file_changes(&worktree_path_str, &changes);
+                    let mut patch_state = PatchState::default();
+                    for (path, file_changes) in normalized {
+                        patch_state.entries.push(PatchEntry {
+                            index: None,
+                            path,
+                            changes: file_changes,
+                            status: ToolStatus::Created,
+                        });
+                        let patch_entry = patch_state.entries.last_mut().unwrap();
+                        let index = add_normalized_entry(&msg_store, &entry_index, patch_entry.to_normalized_entry());
+                        patch_entry.index = Some(index);
+                    }
+                    state.patches.insert(call_id, patch_state);
+                }
+                EventMsg::PatchApplyEnd(PatchApplyEndEvent {
+                    call_id,
+                    stdout: _,
+                    stderr: _,
+                    success,
+                    ..
+                }) => {
+                    if let Some(patch_state) = state.patches.remove(&call_id) {
+                        let status = if success {
+                            ToolStatus::Success
+                        } else {
+                            ToolStatus::Failed
+                        };
+                        for mut entry in patch_state.entries {
+                            entry.status = status.clone();
+                            let Some(index) = entry.index else {
+                                tracing::error!("missing entry index for existing patch entry");
+                                continue;
+                            };
+                            replace_normalized_entry(&msg_store, index, entry.to_normalized_entry());
+                        }
+                    }
+                }
+                EventMsg::WebSearchBegin(WebSearchBeginEvent { call_id }) => {
+                    state.assistant = None;
+                    state.thinking = None;
+                    state
+                        .web_searches
+                        .insert(call_id.clone(), WebSearchState::new());
+                    let web_search_state = state.web_searches.get_mut(&call_id).unwrap();
+                    let normalized_entry = web_search_state.to_normalized_entry();
+                    let index = add_normalized_entry(&msg_store, &entry_index, normalized_entry);
+                    web_search_state.index = Some(index);
+                }
+                EventMsg::WebSearchEnd(WebSearchEndEvent { call_id, query }) => {
+                    state.assistant = None;
+                    state.thinking = None;
+                    if let Some(mut entry) = state.web_searches.remove(&call_id) {
+                        entry.status = ToolStatus::Success;
+                        entry.query = Some(query.clone());
+                        let normalized_entry = entry.to_normalized_entry();
+                        let Some(index) = entry.index else {
+                            tracing::error!("missing entry index for existing websearch entry");
+                            continue;
+                        };
+                        replace_normalized_entry(&msg_store, index, normalized_entry);
+                    }
+                }
+                EventMsg::ViewImageToolCall(ViewImageToolCallEvent { call_id: _, path }) => {
+                    state.assistant = None;
+                    state.thinking = None;
+                    let path_str = path.to_string_lossy().to_string();
+                    let relative_path = make_path_relative(&path_str, &worktree_path_str);
+                    add_normalized_entry(
+                        &msg_store,
+                        &entry_index,
+                        NormalizedEntry {
+                            timestamp: None,
+                            entry_type: NormalizedEntryType::ToolUse {
+                                tool_name: "view_image".to_string(),
+                                action_type: ActionType::FileRead { path: relative_path.clone() },
+                                status: ToolStatus::Success,
+                            },
+                            content: format!("`{relative_path}`"),
+                            metadata: None,
+                        },
+                    );
+                }
+                EventMsg::PlanUpdate(UpdatePlanArgs { plan, explanation }) => {
+                    let todos: Vec<TodoItem> = plan
+                        .iter()
+                        .map(|item| TodoItem {
+                            content: item.step.clone(),
+                            status: format_todo_status(&item.status),
+                            priority: None,
+                        })
+                        .collect();
+                    let explanation = explanation
+                        .as_ref()
+                        .map(|text| text.trim())
+                        .filter(|text| !text.is_empty())
+                        .map(|text| text.to_string());
+                    let content = explanation.clone().unwrap_or_else(|| {
+                        if todos.is_empty() {
+                            "Plan updated".to_string()
+                        } else {
+                            format!("Plan updated ({} steps)", todos.len())
+                        }
+                    });
+
+                    add_normalized_entry(
+                        &msg_store,
+                        &entry_index,
+                        NormalizedEntry {
+                            timestamp: None,
+                            entry_type: NormalizedEntryType::ToolUse {
+                                tool_name: "plan".to_string(),
+                                action_type: ActionType::TodoManagement {
+                                    todos,
+                                    operation: "update".to_string(),
+                                },
+                                status: ToolStatus::Success,
+                            },
+                            content,
+                            metadata: None,
+                        },
+                    );
+                }
+                EventMsg::Error(ErrorEvent { message }) => {
+                    add_normalized_entry(&msg_store, &entry_index, NormalizedEntry {
+                        timestamp: None,
+                        entry_type: NormalizedEntryType::ErrorMessage,
+                        content: message,
+                        metadata: None,
+                    });
+                }
+                EventMsg::TokenCount(payload) => {
+                    if let Some(info) = payload.info {
+                        state.token_usage_info = Some(info);
+                    }
+                }
+                EventMsg::AgentReasoning(..) // content duplicated with delta events
+                | EventMsg::AgentMessage(..) // ditto
+                | EventMsg::AgentReasoningRawContent(..)
+                | EventMsg::AgentReasoningRawContentDelta(..)
+                | EventMsg::TaskStarted(..)
+                | EventMsg::UserMessage(..)
+                | EventMsg::TurnDiff(..)
+                | EventMsg::GetHistoryEntryResponse(..)
+                | EventMsg::McpListToolsResponse(..)
+                | EventMsg::ListCustomPromptsResponse(..)
+                | EventMsg::TurnAborted(..)
+                | EventMsg::ShutdownComplete
+                | EventMsg::ConversationPath(..)
+                | EventMsg::EnteredReviewMode(..)
+                | EventMsg::ExitedReviewMode(..)
+                | EventMsg::TaskComplete(..)
+                |EventMsg::ExecApprovalRequest(..)
+                |EventMsg::ApplyPatchApprovalRequest(..)
+                => {}
+            }
+        }
+    });
+}
+
+fn handle_jsonrpc_response(
+    response: JSONRPCResponse,
+    msg_store: &Arc<MsgStore>,
+    entry_index: &EntryIndexProvider,
+) {
+    let Ok(response) = serde_json::from_value::<NewConversationResponse>(response.result.clone())
+    else {
+        return;
+    };
+
+    match SessionHandler::extract_session_id_from_rollout_path(response.rollout_path) {
+        Ok(session_id) => msg_store.push_session_id(session_id),
+        Err(err) => tracing::error!("failed to extract session id: {err}"),
+    }
+
+    handle_model_params(
+        response.model,
+        response.reasoning_effort,
+        msg_store,
+        entry_index,
+    );
+}
+
+fn handle_model_params(
+    model: String,
+    reasoning_effort: Option<ReasoningEffort>,
+    msg_store: &Arc<MsgStore>,
+    entry_index: &EntryIndexProvider,
+) {
+    let mut params = vec![];
+    params.push(format!("model: {model}"));
+    if let Some(reasoning_effort) = reasoning_effort {
+        params.push(format!("reasoning effort: {reasoning_effort}"));
+    }
+
+    add_normalized_entry(
+        msg_store,
+        entry_index,
+        NormalizedEntry {
+            timestamp: None,
+            entry_type: NormalizedEntryType::SystemMessage,
+            content: params.join("  ").to_string(),
+            metadata: None,
+        },
+    );
+}
+
+fn build_command_output(stdout: Option<&str>, stderr: Option<&str>) -> Option<String> {
+    let mut sections = Vec::new();
+    if let Some(out) = stdout {
+        let cleaned = out.trim();
+        if !cleaned.is_empty() {
+            sections.push(format!("stdout:\n{cleaned}"));
+        }
+    }
+    if let Some(err) = stderr {
+        let cleaned = err.trim();
+        if !cleaned.is_empty() {
+            sections.push(format!("stderr:\n{cleaned}"));
+        }
+    }
+
+    if sections.is_empty() {
+        None
+    } else {
+        Some(sections.join("\n\n"))
+    }
+}
+
+lazy_static! {
+    static ref SESSION_ID: Regex = Regex::new(
+        r#"^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"#
+    )
+    .expect("valid regex");
+}
