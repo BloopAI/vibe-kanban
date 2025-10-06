@@ -5,6 +5,8 @@ export enum Scope {
   PROJECTS = 'projects',
   EDIT_COMMENT = 'edit-comment',
   APPROVALS = 'approvals',
+  FOLLOW_UP = 'follow-up',
+  FOLLOW_UP_READY = 'follow-up-ready',
 }
 
 export enum Action {
@@ -22,6 +24,11 @@ export enum Action {
   DELETE_TASK = 'delete_task',
   APPROVE_REQUEST = 'approve_request',
   DENY_APPROVAL = 'deny_approval',
+  CYCLE_VARIANT = 'cycle_variant',
+  SUBMIT_FOLLOW_UP = 'submit_follow_up',
+  SUBMIT_TASK = 'submit_task',
+  SUBMIT_TASK_ALT = 'submit_task_alt',
+  SUBMIT_COMMENT = 'submit_comment',
 }
 
 export interface KeyBinding {
@@ -166,6 +173,43 @@ export const keyBindings: KeyBinding[] = [
     scopes: [Scope.APPROVALS],
     description: 'Deny pending approval request',
     group: 'Approvals',
+  },
+
+  // Follow-up actions
+  {
+    action: Action.CYCLE_VARIANT,
+    keys: 'shift+tab',
+    scopes: [Scope.FOLLOW_UP],
+    description: 'Cycle between agent configurations',
+    group: 'Follow-up',
+  },
+  {
+    action: Action.SUBMIT_FOLLOW_UP,
+    keys: 'meta+enter',
+    scopes: [Scope.FOLLOW_UP_READY],
+    description: 'Send or queue follow-up (depending on state)',
+    group: 'Follow-up',
+  },
+  {
+    action: Action.SUBMIT_TASK,
+    keys: ['meta+enter', 'ctrl+enter'],
+    scopes: [Scope.DIALOG],
+    description: 'Submit task form (Create & Start or Update)',
+    group: 'Dialog',
+  },
+  {
+    action: Action.SUBMIT_TASK_ALT,
+    keys: ['meta+shift+enter', 'ctrl+shift+enter'],
+    scopes: [Scope.DIALOG],
+    description: 'Submit task form (Create Task)',
+    group: 'Dialog',
+  },
+  {
+    action: Action.SUBMIT_COMMENT,
+    keys: ['meta+enter', 'ctrl+enter'],
+    scopes: [Scope.EDIT_COMMENT],
+    description: 'Submit review comment',
+    group: 'Comments',
   },
 ];
 

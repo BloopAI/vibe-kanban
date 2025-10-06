@@ -34,6 +34,7 @@ import type {
   ExecutorProfileId,
 } from 'shared/types';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { useKeySubmitTask, useKeySubmitTaskAlt, Scope } from '@/keyboard';
 
 interface Task {
   id: string;
@@ -86,6 +87,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
     const [quickstartExpanded, setQuickstartExpanded] =
       useState<boolean>(false);
     const imageUploadRef = useRef<ImageUploadSectionHandle>(null);
+    const [isTextareaFocused, setIsTextareaFocused] = useState(false);
 
     const isEditMode = Boolean(task);
 
@@ -440,7 +442,44 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       modal.hide();
     }, [modal]);
 
-    // Handle keyboard shortcuts
+    // Keyboard shortcut handlers
+    const handlePrimarySubmit = useCallback(
+      (e?: KeyboardEvent) => {
+        e?.preventDefault();
+        if (isEditMode) {
+          handleSubmit();
+        } else {
+          handleCreateAndStart();
+        }
+      },
+      [isEditMode, handleSubmit, handleCreateAndStart]
+    );
+
+    const handleAlternativeSubmit = useCallback(
+      (e?: KeyboardEvent) => {
+        e?.preventDefault();
+        handleSubmit();
+      },
+      [handleSubmit]
+    );
+
+    // Register keyboard shortcuts
+    const canSubmit =
+      title.trim() !== '' && !isSubmitting && !isSubmittingAndStart;
+
+    useKeySubmitTask(handlePrimarySubmit, {
+      scope: Scope.DIALOG,
+      enableOnFormTags: ['textarea', 'TEXTAREA'],
+      when: canSubmit && isTextareaFocused,
+      preventDefault: true,
+    });
+
+    useKeySubmitTaskAlt(handleAlternativeSubmit, {
+      scope: Scope.DIALOG,
+      enableOnFormTags: ['textarea', 'TEXTAREA'],
+      when: canSubmit && isTextareaFocused,
+      preventDefault: true,
+    });
 
     // Handle dialog close attempt
     const handleDialogOpenChange = (open: boolean) => {
@@ -497,11 +536,9 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                   className="mt-1.5"
                   disabled={isSubmitting || isSubmittingAndStart}
                   projectId={projectId}
-                  onCommandEnter={
-                    isEditMode ? handleSubmit : handleCreateAndStart
-                  }
-                  onCommandShiftEnter={handleSubmit}
                   onPasteFiles={handlePasteImages}
+                  onFocus={() => setIsTextareaFocused(true)}
+                  onBlur={() => setIsTextareaFocused(false)}
                 />
               </div>
 

@@ -19,9 +19,9 @@ interface FileSearchTextareaProps {
   projectId?: string;
   onKeyDown?: (e: React.KeyboardEvent) => void;
   maxRows?: number;
-  onCommandEnter?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
-  onCommandShiftEnter?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   onPasteFiles?: (files: File[]) => void;
+  onFocus?: (e: React.FocusEvent<HTMLTextAreaElement>) => void;
+  onBlur?: (e: React.FocusEvent<HTMLTextAreaElement>) => void;
 }
 
 export function FileSearchTextarea({
@@ -32,10 +32,11 @@ export function FileSearchTextarea({
   disabled = false,
   className,
   projectId,
-  onCommandEnter,
-  onCommandShiftEnter,
+  onKeyDown,
   maxRows = 10,
   onPasteFiles,
+  onFocus,
+  onBlur,
 }: FileSearchTextareaProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<FileSearchResult[]>([]);
@@ -270,6 +271,9 @@ export function FileSearchTextarea({
           break;
       }
     }
+
+    // Propagate event to parent component for additional handling
+    onKeyDown?.(e);
   };
 
   return (
@@ -286,9 +290,9 @@ export function FileSearchTextarea({
         className={className}
         maxRows={maxRows}
         onKeyDown={handleKeyDown}
-        onCommandEnter={onCommandEnter}
-        onCommandShiftEnter={onCommandShiftEnter}
         onPaste={handlePaste}
+        onFocus={onFocus}
+        onBlur={onBlur}
       />
 
       {showDropdown &&
