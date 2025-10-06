@@ -302,7 +302,14 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
     }, []);
 
     const handleSubmit = useCallback(async () => {
-      if (!title.trim() || !projectId) return;
+      if (
+        !title.trim() ||
+        !projectId ||
+        isSubmitting ||
+        isSubmittingAndStart
+      ) {
+        return;
+      }
 
       setIsSubmitting(true);
       try {
@@ -321,7 +328,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
         }
 
         if (isEditMode && task) {
-          updateTask.mutate(
+          await updateTask.mutateAsync(
             {
               taskId: task.id,
               data: {
@@ -339,7 +346,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
             }
           );
         } else {
-          createTask.mutate(
+          await createTask.mutateAsync(
             {
               project_id: projectId,
               title,
@@ -354,6 +361,8 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
             }
           );
         }
+      } catch (error) {
+        // Error already handled by mutation onError
       } finally {
         setIsSubmitting(false);
       }
@@ -369,48 +378,61 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       images,
       createTask,
       updateTask,
+      isSubmitting,
+      isSubmittingAndStart,
+      parentTaskAttemptId,
     ]);
 
     const handleCreateAndStart = useCallback(async () => {
-      if (!title.trim() || !projectId) return;
+      if (
+        !title.trim() ||
+        !projectId ||
+        isEditMode ||
+        isSubmitting ||
+        isSubmittingAndStart
+      ) {
+        return;
+      }
 
       setIsSubmittingAndStart(true);
       try {
-        if (!isEditMode) {
-          const imageIds =
-            newlyUploadedImageIds.length > 0
-              ? newlyUploadedImageIds
-              : undefined;
+        const imageIds =
+          newlyUploadedImageIds.length > 0
+            ? newlyUploadedImageIds
+            : undefined;
 
-          // Use selected executor profile or fallback to config default
-          const finalExecutorProfile =
-            selectedExecutorProfile || system.config?.executor_profile;
-          if (!finalExecutorProfile || !selectedBranch) {
-            console.warn(
-              `Missing ${!finalExecutorProfile ? 'executor profile' : 'branch'} for Create & Start`
-            );
-            return;
-          }
-
-          createAndStart.mutate(
-            {
-              task: {
-                project_id: projectId,
-                title,
-                description: description,
-                parent_task_attempt: parentTaskAttemptId || null,
-                image_ids: imageIds || null,
-              },
-              executor_profile_id: finalExecutorProfile,
-              base_branch: selectedBranch,
-            },
-            {
-              onSuccess: () => {
-                modal.hide();
-              },
-            }
+        // Use selected executor profile or fallback to config default
+        const finalExecutorProfile =
+          selectedExecutorProfile || system.config?.executor_profile;
+        if (!finalExecutorProfile || !selectedBranch) {
+          console.warn(
+            `Missing ${
+              !finalExecutorProfile ? 'executor profile' : 'branch'
+            } for Create & Start`
           );
+          return;
         }
+
+        await createAndStart.mutateAsync(
+          {
+            task: {
+              project_id: projectId,
+              title,
+              description: description,
+              parent_task_attempt: parentTaskAttemptId || null,
+              image_ids: imageIds || null,
+            },
+            executor_profile_id: finalExecutorProfile,
+            base_branch: selectedBranch,
+          },
+          {
+            onSuccess: () => {
+              modal.hide();
+            },
+          }
+        );
+      } catch (error) {
+        // Error already handled by mutation onError
       } finally {
         setIsSubmittingAndStart(false);
       }
@@ -425,6 +447,9 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       selectedExecutorProfile,
       selectedBranch,
       system.config?.executor_profile,
+      isSubmitting,
+      isSubmittingAndStart,
+      parentTaskAttemptId,
     ]);
 
     const handleCancel = useCallback(() => {
