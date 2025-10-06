@@ -229,14 +229,14 @@ pub trait ContainerService {
     async fn git_branch_prefix(&self) -> String;
 
     async fn git_branch_from_task_attempt(&self, attempt_id: &Uuid, task_title: &str) -> String {
-    let task_title_id = git_branch_id(task_title);
-    let prefix = self.git_branch_prefix().await;
-    
-    if prefix.is_empty() {
-    format!("{}-{}", short_uuid(attempt_id), task_title_id)
-    } else {
-    format!("{}/{}-{}", prefix, short_uuid(attempt_id), task_title_id)
-    }
+        let task_title_id = git_branch_id(task_title);
+        let prefix = self.git_branch_prefix().await;
+
+        if prefix.is_empty() {
+            format!("{}-{}", short_uuid(attempt_id), task_title_id)
+        } else {
+            format!("{}/{}-{}", prefix, short_uuid(attempt_id), task_title_id)
+        }
     }
 
     async fn stream_raw_logs(
