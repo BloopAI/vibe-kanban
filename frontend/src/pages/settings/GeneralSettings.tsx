@@ -450,7 +450,45 @@ export function GeneralSettings() {
             {t('settings.general.github.title')}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium">Branch Naming</h3>
+            <div className="space-y-2">
+              <Label htmlFor="git-branch-prefix">
+                Git Branch Prefix
+              </Label>
+              <Input
+                id="git-branch-prefix"
+                type="text"
+                placeholder="vk"
+                value={draft?.git_branch_prefix ?? ''}
+                onChange={(e) => {
+                  const value = e.target.value.trim();
+                  updateDraft({ git_branch_prefix: value });
+                }}
+              />
+              <p className="text-sm text-muted-foreground">
+                Prefix for auto-generated branch names. Leave empty for no prefix.
+                <br />
+                Allowed: letters, numbers, dots, underscores, hyphens. No slashes or special characters.
+                <br />
+                {draft?.git_branch_prefix ? (
+                  <>Preview: <code className="text-xs bg-muted px-1 py-0.5 rounded">{draft.git_branch_prefix}/1a2b-task-name</code></>
+                ) : (
+                  <>Preview: <code className="text-xs bg-muted px-1 py-0.5 rounded">1a2b-task-name</code></>
+                )}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 my-6">
+            <div className="flex-1 border-t border-border"></div>
+            <span className="text-sm text-muted-foreground font-medium">
+              GitHub Integration
+            </span>
+            <div className="flex-1 border-t border-border"></div>
+          </div>
+
           {isAuthenticated ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between p-4 border rounded-lg">
@@ -491,14 +529,6 @@ export function GeneralSettings() {
               </Button>
             </div>
           )}
-
-          <div className="flex items-center gap-4 my-6">
-            <div className="flex-1 border-t border-border"></div>
-            <span className="text-sm text-muted-foreground font-medium">
-              {t('settings.general.github.or')}
-            </span>
-            <div className="flex-1 border-t border-border"></div>
-          </div>
 
           <div className="space-y-2">
             <Label htmlFor="github-token">

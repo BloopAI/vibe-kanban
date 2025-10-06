@@ -7,6 +7,10 @@ pub use v6::{EditorConfig, EditorType, GitHubConfig, NotificationConfig, SoundFi
 
 use crate::services::config::versions::v6;
 
+fn default_git_branch_prefix() -> String {
+    "vk".to_string()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS, EnumString)]
 #[ts(use_ts_enum)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -35,6 +39,8 @@ pub struct Config {
     pub show_release_notes: bool,
     #[serde(default)]
     pub language: UiLanguage,
+    #[serde(default = "default_git_branch_prefix")]
+    pub git_branch_prefix: String,
 }
 
 impl Config {
@@ -83,6 +89,7 @@ impl Config {
             last_app_version: old_config.last_app_version,
             show_release_notes: old_config.show_release_notes,
             language: old_config.language,
+            git_branch_prefix: default_git_branch_prefix(),
         })
     }
 }
@@ -126,6 +133,7 @@ impl Default for Config {
             last_app_version: None,
             show_release_notes: false,
             language: UiLanguage::default(),
+            git_branch_prefix: default_git_branch_prefix(),
         }
     }
 }
