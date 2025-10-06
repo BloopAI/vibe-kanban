@@ -166,7 +166,8 @@ pub async fn create_task_and_start(
     let attempt_id = Uuid::new_v4();
     let git_branch_name = deployment
         .container()
-        .git_branch_from_task_attempt(&attempt_id, &task.title);
+        .git_branch_from_task_attempt(&attempt_id, &task.title)
+        .await;
 
     let task_attempt = TaskAttempt::create(
         &deployment.db().pool,

@@ -895,9 +895,8 @@ impl ContainerService for LocalContainerService {
         &self.git
     }
 
-    fn git_branch_prefix(&self) -> String {
-        let config = self.config.blocking_read();
-        config.git_branch_prefix.clone()
+    async fn git_branch_prefix(&self) -> String {
+        self.config.read().await.git_branch_prefix.clone()
     }
 
     fn task_attempt_to_current_dir(&self, task_attempt: &TaskAttempt) -> PathBuf {
