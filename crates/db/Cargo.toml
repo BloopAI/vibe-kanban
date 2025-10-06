@@ -18,7 +18,7 @@ sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "sqlite", "sqlit
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
 ts-rs = { workspace = true }
-async-trait = "0.1"
+async-trait ={ workspace = true } 
 regex = "1.11.1"
 sentry-tracing = { version = "0.41.0", features = ["backtrace"] }
 futures-util = "0.3"

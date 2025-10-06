@@ -6,6 +6,7 @@ import { ClickToComponent } from 'click-to-react-component';
 import { VibeKanbanWebCompanion } from 'vibe-kanban-web-companion';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as Sentry from '@sentry/react';
+import { ClerkProvider } from '@clerk/clerk-react';
 import NiceModal from '@ebay/nice-modal-react';
 import i18n from './i18n';
 import posthog from 'posthog-js';
@@ -36,6 +37,7 @@ import {
   RestoreLogsDialog,
   ViewProcessesDialog,
   GitActionsDialog,
+  ShareDialog,
 } from './components/dialogs';
 import { CreateAttemptDialog } from './components/dialogs/tasks/CreateAttemptDialog';
 
@@ -63,6 +65,7 @@ NiceModal.register('restore-logs', RestoreLogsDialog);
 NiceModal.register('view-processes', ViewProcessesDialog);
 NiceModal.register('create-attempt', CreateAttemptDialog);
 NiceModal.register('git-actions', GitActionsDialog);
+NiceModal.register('share-task', ShareDialog);
 
 import {
   useLocation,
@@ -114,19 +117,26 @@ const queryClient = new QueryClient({
   },
 });
 
+const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+if (!CLERK_PUBLISHABLE_KEY) {
+  console.warn('CLERK_PUBLISHABLE_KEY is not set. Authentication is disabled.');
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <PostHogProvider client={posthog}>
-        <Sentry.ErrorBoundary
-          fallback={<p>{i18n.t('common:states.error')}</p>}
-          showDialog
-        >
-          <ClickToComponent />
-          <VibeKanbanWebCompanion />
-          <App />
-          {/* <ReactQueryDevtools initialIsOpen={false} /> */}
-        </Sentry.ErrorBoundary>
+        <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
+          <Sentry.ErrorBoundary
+            fallback={<p>{i18n.t('common:states.error')}</p>}
+            showDialog
+          >
+            <ClickToComponent />
+            <VibeKanbanWebCompanion />
+            <App />
+            {/* <ReactQueryDevtools initialIsOpen={false} /> */}
+          </Sentry.ErrorBoundary>
+        </ClerkProvider>
       </PostHogProvider>
     </QueryClientProvider>
   </React.StrictMode>

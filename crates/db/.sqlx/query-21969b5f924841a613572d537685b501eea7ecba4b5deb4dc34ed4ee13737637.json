@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE projects\n               SET has_remote = $2,\n                   github_repo_owner = $3,\n                   github_repo_name = $4,\n                   github_repo_id = $5\n               WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "21969b5f924841a613572d537685b501eea7ecba4b5deb4dc34ed4ee13737637"
+}

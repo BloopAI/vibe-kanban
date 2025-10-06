@@ -37,6 +37,7 @@ use services::services::{
     container::ContainerService,
     git::{ConflictOp, WorktreeResetOptions},
     github_service::{CreatePrRequest, GitHubService, GitHubServiceError},
+    share::ShareTaskPublisher,
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
@@ -689,6 +690,15 @@ pub async fn merge_task_attempt(
     )
     .await?;
     Task::update_status(pool, ctx.task.id, TaskStatus::Done).await?;
+    if let Ok(publisher) = ShareTaskPublisher::new(deployment.db().clone()) {
+        if let Err(err) = publisher.update_shared_task_by_id(ctx.task.id).await {
+            tracing::warn!(
+                ?err,
+                "Failed to propagate shared task update for {}",
+                ctx.task.id
+            );
+        }
+    }
 
     deployment
         .track_if_analytics_allowed(
@@ -1493,6 +1503,15 @@ pub async fn attach_existing_pr(
         // If PR is merged, mark task as done
         if matches!(pr_info.status, MergeStatus::Merged) {
             Task::update_status(pool, task.id, TaskStatus::Done).await?;
+            if let Ok(publisher) = ShareTaskPublisher::new(deployment.db().clone()) {
+                if let Err(err) = publisher.update_shared_task_by_id(task.id).await {
+                    tracing::warn!(
+                        ?err,
+                        "Failed to propagate shared task update for {}",
+                        task.id
+                    );
+                }
+            }
         }
 
         Ok(ResponseJson(ApiResponse::success(AttachPrResponse {

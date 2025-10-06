@@ -18,6 +18,7 @@ use crate::services::{
     analytics::AnalyticsContext,
     config::Config,
     github_service::{GitHubRepoInfo, GitHubService, GitHubServiceError},
+    share::ShareTaskPublisher,
 };
 
 #[derive(Debug, Error)]
@@ -155,6 +156,19 @@ impl PrMonitorService {
                             "project_id": task.project_id.to_string(),
                         })),
                     );
+                }
+
+                if let Ok(publisher) = ShareTaskPublisher::new(self.db.clone()) {
+                    if let Err(err) = publisher
+                        .update_shared_task_by_id(task_attempt.task_id)
+                        .await
+                    {
+                        tracing::warn!(
+                            ?err,
+                            "Failed to propagate shared task update for {}",
+                            task_attempt.task_id
+                        );
+                    }
                 }
             }
         }

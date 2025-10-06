@@ -205,6 +205,15 @@ impl GitHubService {
             .await
     }
 
+    pub async fn fetch_repository_id(
+        &self,
+        owner: &str,
+        repo: &str,
+    ) -> Result<i64, GitHubServiceError> {
+        let repository = self.client.repos(owner, repo).get().await?;
+        Ok(repository.id.0 as i64)
+    }
+
     async fn create_pr_internal(
         &self,
         repo_info: &GitHubRepoInfo,

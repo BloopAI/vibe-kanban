@@ -24,6 +24,7 @@ import {
   CreateProject,
   RepositoryInfo,
   SearchResult,
+  ShareTaskResponse,
   Task,
   TaskAttempt,
   TaskRelationships,
@@ -317,6 +318,13 @@ export const tasksApi = {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
+  },
+
+  share: async (taskId: string): Promise<ShareTaskResponse> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/share`, {
+      method: 'POST',
+    });
+    return handleApiResponse<ShareTaskResponse>(response);
   },
 };
 

@@ -15,12 +15,12 @@ use crate::{
     app_state::AppState,
     models::{
         ApiResponse,
-        project::{CreateProject, Project},
+        project::{CreateProject, Project, ProjectRemoteMetadata},
     },
     services::{
         GitHubServiceError,
         git_service::GitService,
-        github_service::{GitHubService, RepositoryInfo},
+        github_service::{GitHubRepoInfo, GitHubService, RepositoryInfo},
     },
 };
 
@@ -169,8 +169,36 @@ pub async fn create_project_from_github(
         cleanup_script: payload.cleanup_script,
     };
 
+    let mut remote_metadata = ProjectRemoteMetadata {
+        has_remote: true,
+        github_repo_owner: None,
+        github_repo_name: None,
+        github_repo_id: Some(payload.repository_id),
+    };
+
+    match GitHubRepoInfo::from_remote_url(&payload.clone_url) {
+        Ok(info) => {
+            remote_metadata.github_repo_owner = Some(info.owner);
+            remote_metadata.github_repo_name = Some(info.repo_name);
+        }
+        Err(err) => {
+            tracing::warn!(
+                "Failed to derive repo owner/name from clone url '{}': {}",
+                payload.clone_url,
+                err
+            );
+        }
+    }
+
     let project_id = Uuid::new_v4();
-    match Project::create(&app_state.db_pool, &project_data, project_id).await {
+    match Project::create(
+        &app_state.db_pool,
+        &project_data,
+        project_id,
+        Some(&remote_metadata),
+    )
+    .await
+    {
         Ok(project) => {
             // Track project creation event
             app_state

@@ -6,6 +6,7 @@
     "attempt": "Attempt",
     "createNewAttempt": "Create new attempt",
     "createSubtask": "Create subtask",
+    "share": "작업 공유",
     "duplicate": "Duplicate",
     "gitActions": "Git 작업",
     "openInIde": "Open attempt in IDE",
@@ -48,6 +49,29 @@
     "runSetup": "설정 실행",
     "setupHelpText": "{{agent}}이(가) 올바르게 설정되지 않았습니다. '설정 실행'을 클릭하여 설치하고 로그인하세요.",
     "devScriptMissingTooltip": "To start the dev server, add a dev script to this project"
+  },
+  "shareDialog": {
+    "title": "작업 공유",
+    "description": "\"{{title}}\" 작업을 조직과 공유하시겠습니까?",
+    "success": "작업이 성공적으로 공유되었습니다.",
+    "genericError": "작업을 공유하지 못했습니다. 다시 시도해 주세요.",
+    "loadingSystem": "계정 상태를 불러오는 중…",
+    "loginRequired": {
+      "title": "계속하려면 로그인하세요",
+      "description": "작업을 공유하려면 로그인해야 합니다. 로그인 페이지로 이동합니다.",
+      "action": "로그인으로 이동"
+    },
+    "githubRequired": {
+      "title": "GitHub 연결",
+      "description": "공유 작업을 게시하려면 GitHub 계정을 연결하세요.",
+      "action": "GitHub 연결"
+    },
+    "confirmationTitle": "공유 확인",
+    "confirmationBody": "작업을 공유하면 공유 작업 공간에 게시됩니다.",
+    "cancel": "취소",
+    "confirm": "작업 공유",
+    "inProgress": "공유 중…",
+    "closeButton": "닫기"
   },
   "attemptHeaderActions": {
     "diffs": "Diffs",

@@ -21,8 +21,9 @@ use deployment::Deployment;
 use executors::profile::ExecutorProfileId;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use serde::{Deserialize, Serialize};
-use services::services::container::{
-    ContainerService, WorktreeCleanupData, cleanup_worktrees_direct,
+use services::services::{
+    container::{ContainerService, WorktreeCleanupData, cleanup_worktrees_direct},
+    share::{ShareError, ShareTaskPublisher},
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
@@ -245,6 +246,15 @@ pub async fn update_task(
         TaskImage::associate_many_dedup(&deployment.db().pool, task.id, image_ids).await?;
     }
 
+    if task.shared_task_id.is_some() {
+        let publisher =
+            ShareTaskPublisher::new(deployment.db().clone()).map_err(map_share_error)?;
+        publisher
+            .update_shared_task(&task)
+            .await
+            .map_err(map_share_error)?;
+    }
+
     Ok(ResponseJson(ApiResponse::success(task)))
 }
 
@@ -356,9 +366,73 @@ pub async fn delete_task(
     Ok((StatusCode::ACCEPTED, ResponseJson(ApiResponse::success(()))))
 }
 
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct ShareTaskResponse {
+    pub shared_task_id: Uuid,
+}
+
+pub async fn share_task(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<ShareTaskResponse>>, ApiError> {
+    let publisher = ShareTaskPublisher::new_with_metadata(
+        deployment.db().clone(),
+        deployment.git().clone(),
+        deployment.config().clone(),
+    )
+    .map_err(map_share_error)?;
+
+    let shared_task_id = publisher
+        .share_task(task.id)
+        .await
+        .map_err(map_share_error)?;
+
+    Ok(ResponseJson(ApiResponse::success(ShareTaskResponse {
+        shared_task_id,
+    })))
+}
+
+fn map_share_error(err: ShareError) -> ApiError {
+    match err {
+        ShareError::Database(db_err) => ApiError::Database(db_err),
+        ShareError::TaskNotFound(task_id) => {
+            ApiError::Conflict(format!("Task {task_id} not found for sharing"))
+        }
+        ShareError::ProjectNotFound(project_id) => {
+            ApiError::Conflict(format!("Project {project_id} not found for sharing"))
+        }
+        ShareError::MissingProjectMetadata(project_id) => ApiError::Conflict(format!(
+            "Project {project_id} is missing GitHub metadata required for sharing"
+        )),
+        ShareError::MissingConfig(reason) => {
+            ApiError::Conflict(format!("Share service not configured: {reason}"))
+        }
+        ShareError::Transport(err) => {
+            tracing::error!(?err, "share task transport error");
+            ApiError::Conflict("Failed to share task with remote service".to_string())
+        }
+        ShareError::Serialization(err) => {
+            tracing::error!(?err, "share task serialization error");
+            ApiError::Conflict("Failed to parse remote share response".to_string())
+        }
+        ShareError::Url(err) => {
+            tracing::error!(?err, "share task URL error");
+            ApiError::Conflict("Share service URL is invalid".to_string())
+        }
+        ShareError::WebSocket(err) => {
+            tracing::error!(?err, "share task websocket error");
+            ApiError::Conflict("Unexpected websocket error during sharing".to_string())
+        }
+        ShareError::InvalidResponse => {
+            ApiError::Conflict("Remote share service returned an unexpected response".to_string())
+        }
+    }
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_id_router = Router::new()
         .route("/", get(get_task).put(update_task).delete(delete_task))
+        .route("/share", post(share_task))
         .layer(from_fn_with_state(deployment.clone(), load_task_middleware));
 
     let inner = Router::new()

@@ -16,6 +16,7 @@ use services::services::{
     filesystem::FilesystemService,
     git::GitService,
     image::ImageService,
+    share::{RemoteSync, RemoteSyncHandle},
 };
 use tokio::sync::RwLock;
 use utils::{assets::config_path, msg_store::MsgStore};
@@ -41,6 +42,7 @@ pub struct LocalDeployment {
     file_search_cache: Arc<FileSearchCache>,
     approvals: Approvals,
     drafts: DraftsService,
+    _remote_sync: Option<RemoteSyncHandle>,
 }
 
 #[async_trait]
@@ -123,6 +125,10 @@ impl Deployment for LocalDeployment {
         container.spawn_worktree_cleanup().await;
 
         let events = EventService::new(db.clone(), events_msg_store, events_entry_count);
+
+        // start remote server communication
+        let remote_sync = RemoteSync::spawn_if_configured(db.clone());
+
         let drafts = DraftsService::new(db.clone(), image.clone());
         let file_search_cache = Arc::new(FileSearchCache::new());
 
@@ -141,6 +147,7 @@ impl Deployment for LocalDeployment {
             file_search_cache,
             approvals,
             drafts,
+            _remote_sync: remote_sync,
         })
     }
 
