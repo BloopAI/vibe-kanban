@@ -8,13 +8,18 @@ import urllib.request
 from typing import Optional
 
 
-def json_error(reason: Optional[str]) -> None:
+def json_error(reason: Optional[str], feedback_marker: Optional[str] = None) -> None:
     """Emit a deny PreToolUse JSON to stdout and exit(0)."""
+    # Prefix user feedback with marker for extraction if provided
+    formatted_reason = reason
+    if reason and feedback_marker:
+        formatted_reason = f"{feedback_marker}{reason}"
+
     payload = {
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",
             "permissionDecision": "deny",
-            "permissionDecisionReason": reason,
+            "permissionDecisionReason": formatted_reason,
         }
     }
     print(json.dumps(payload, ensure_ascii=False))
@@ -93,6 +98,13 @@ def parse_args() -> argparse.Namespace:
         required=True,
         help="Port of the approval backend running on 127.0.0.1.",
     )
+    parser.add_argument(
+        "-m",
+        "--feedback-marker",
+        type=str,
+        required=True,
+        help="Marker prefix for user feedback messages.",
+    )
     args = parser.parse_args()
 
     if args.timeout_seconds <= 0:
@@ -147,10 +159,7 @@ def main():
             json_success()
         elif status == "denied":
             reason = result.get("reason")
-            # Prefix user feedback with marker for extraction by Rust code
-            USER_FEEDBACK_MARKER = "{{USER_FEEDBACK_MARKER}}"
-            formatted_reason = f"{USER_FEEDBACK_MARKER}{reason}" if reason else None
-            json_error(formatted_reason)
+            json_error(reason, args.feedback_marker)
         elif status == "timed_out":
             # concat to avoid triggering the watchkill script
             json_error(

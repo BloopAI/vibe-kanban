@@ -233,12 +233,8 @@ async fn write_python_hook(current_dir: &Path) -> Result<(), ExecutorError> {
     tokio::fs::create_dir_all(&hooks_dir).await?;
     let hook_path = hooks_dir.join("confirm.py");
 
-    // Replace placeholder with actual marker value (single source of truth)
-    let script_content =
-        CONFIRM_HOOK_SCRIPT.replace("{{USER_FEEDBACK_MARKER}}", USER_FEEDBACK_MARKER);
-
     let mut file = tokio::fs::File::create(&hook_path).await?;
-    file.write_all(script_content.as_bytes()).await?;
+    file.write_all(CONFIRM_HOOK_SCRIPT.as_bytes()).await?;
     file.flush().await?;
 
     // TODO: Handle Windows permissioning
@@ -280,7 +276,7 @@ async fn settings_json(plan: bool) -> Result<String, std::io::Error> {
                     "hooks": [
                         {
                             "type": "command",
-                            "command": format!("$CLAUDE_PROJECT_DIR/.claude/hooks/confirm.py --timeout-seconds {backend_timeout} --poll-interval 5 --backend-port {backend_port}"),
+                            "command": format!("$CLAUDE_PROJECT_DIR/.claude/hooks/confirm.py --timeout-seconds {backend_timeout} --poll-interval 5 --backend-port {backend_port} --feedback-marker '{USER_FEEDBACK_MARKER}'"),
                             "timeout": backend_timeout + 10
                        }
                     ]
