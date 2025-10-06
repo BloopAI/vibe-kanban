@@ -6,6 +6,7 @@ import {
   Settings,
   AlertTriangle,
   CheckCircle,
+  ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button.tsx';
 import { Card } from '@/components/ui/card';
@@ -398,6 +399,7 @@ function GitOperations({
                       <span className="text-xs font-medium">
                         PR #{Number(prMerge.pr_info.number)}
                       </span>
+                      <ExternalLink className="h-3 w-3" />
                     </button>
                   );
                 }
