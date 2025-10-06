@@ -91,6 +91,12 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
     });
   };
 
+  const handleShare = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!task) return;
+    NiceModal.show('share-task', { task });
+  };
+
   return (
     <>
       <DropdownMenu>
@@ -141,6 +147,9 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
           {hasTaskActions && (
             <>
               <DropdownMenuLabel>{t('actionsMenu.task')}</DropdownMenuLabel>
+              <DropdownMenuItem disabled={!task} onClick={handleShare}>
+                {t('actionsMenu.share')}
+              </DropdownMenuItem>
               <DropdownMenuItem disabled={!projectId} onClick={handleEdit}>
                 {t('common:buttons.edit')}
               </DropdownMenuItem>

@@ -5,6 +5,7 @@ use db::{
     models::{
         draft::{Draft, DraftType},
         execution_process::ExecutionProcess,
+        shared_task::SharedTask as SharedDbTask,
         task::Task,
         task_attempt::TaskAttempt,
     },
@@ -22,7 +23,9 @@ mod streams;
 #[path = "events/types.rs"]
 pub mod types;
 
-pub use patches::{draft_patch, execution_process_patch, task_attempt_patch, task_patch};
+pub use patches::{
+    draft_patch, execution_process_patch, shared_task_patch, task_attempt_patch, task_patch,
+};
 pub use types::{EventError, EventPatch, EventPatchInner, HookTables, RecordTypes};
 
 #[derive(Clone)]
@@ -125,6 +128,14 @@ impl EventService {
                                     msg_store_for_preupdate.push_patch(patch);
                                 }
                             }
+                            "shared_tasks" => {
+                                if let Ok(value) = preupdate.get_old_column_value(0)
+                                    && let Ok(task_id) = <Uuid as Decode<Sqlite>>::decode(value)
+                                {
+                                    let patch = shared_task_patch::remove(task_id);
+                                    msg_store_for_preupdate.push_patch(patch);
+                                }
+                            }
                             "drafts" => {
                                 let draft_type = preupdate
                                     .get_old_column_value(2)
@@ -168,9 +179,26 @@ impl EventService {
                                 (HookTables::Tasks, SqliteOperation::Delete)
                                 | (HookTables::TaskAttempts, SqliteOperation::Delete)
                                 | (HookTables::ExecutionProcesses, SqliteOperation::Delete)
-                                | (HookTables::Drafts, SqliteOperation::Delete) => {
+                                | (HookTables::Drafts, SqliteOperation::Delete)
+                                | (HookTables::SharedTasks, SqliteOperation::Delete) => {
                                     // Deletions handled in preupdate hook for reliable data capture
                                     return;
+                                }
+                                (HookTables::SharedTasks, _) => {
+                                    match SharedDbTask::find_by_rowid(&db.pool, rowid).await {
+                                        Ok(Some(task)) => RecordTypes::SharedTask(task),
+                                        Ok(None) => RecordTypes::DeletedSharedTask {
+                                            rowid,
+                                            task_id: None,
+                                        },
+                                        Err(e) => {
+                                            tracing::error!(
+                                                "Failed to fetch shared_task: {:?}",
+                                                e
+                                            );
+                                            return;
+                                        }
+                                    }
                                 }
                                 (HookTables::Tasks, _) => {
                                     match Task::find_by_rowid(&db.pool, rowid).await {
@@ -282,6 +310,15 @@ impl EventService {
                                     msg_store_for_hook.push_patch(patch);
                                     return;
                                 }
+                                RecordTypes::SharedTask(task) => {
+                                    let patch = match hook.operation {
+                                        SqliteOperation::Insert => shared_task_patch::add(task),
+                                        SqliteOperation::Update => shared_task_patch::replace(task),
+                                        _ => shared_task_patch::replace(task),
+                                    };
+                                    msg_store_for_hook.push_patch(patch);
+                                    return;
+                                }
                                 RecordTypes::DeletedDraft { draft_type, task_attempt_id: Some(id), .. } => {
                                     let patch = match draft_type {
                                         DraftType::FollowUp => draft_patch::follow_up_clear(*id),
@@ -295,6 +332,14 @@ impl EventService {
                                     ..
                                 } => {
                                     let patch = task_patch::remove(*task_id);
+                                    msg_store_for_hook.push_patch(patch);
+                                    return;
+                                }
+                                RecordTypes::DeletedSharedTask {
+                                    task_id: Some(task_id),
+                                    ..
+                                } => {
+                                    let patch = shared_task_patch::remove(*task_id);
                                     msg_store_for_hook.push_patch(patch);
                                     return;
                                 }

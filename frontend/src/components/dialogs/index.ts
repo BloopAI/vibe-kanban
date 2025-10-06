@@ -37,6 +37,7 @@ export {
   DeleteTaskConfirmationDialog,
   type DeleteTaskConfirmationDialogProps,
 } from './tasks/DeleteTaskConfirmationDialog';
+export { ShareDialog, type ShareDialogProps } from './tasks/ShareDialog';
 export {
   TagEditDialog,
   type TagEditDialogProps,

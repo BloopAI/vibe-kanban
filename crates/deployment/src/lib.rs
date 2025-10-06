@@ -7,7 +7,7 @@ use db::{
     DBService,
     models::{
         execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
-        project::{CreateProject, Project},
+        project::{CreateProject, Project, ProjectRemoteMetadata},
         task::{Task, TaskStatus},
         task_attempt::{TaskAttempt, TaskAttemptError},
     },
@@ -30,6 +30,7 @@ use services::services::{
     git::{GitService, GitServiceError},
     image::{ImageError, ImageService},
     pr_monitor::PrMonitorService,
+    share::ShareTaskPublisher,
     worktree_manager::WorktreeError,
 };
 use sqlx::{Error as SqlxError, types::Uuid};
@@ -187,16 +188,33 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                 ExecutionProcessRunReason::CodingAgent
                     | ExecutionProcessRunReason::SetupScript
                     | ExecutionProcessRunReason::CleanupScript
-            ) && let Ok(Some(task_attempt)) =
-                TaskAttempt::find_by_id(&self.db().pool, process.task_attempt_id).await
-                && let Ok(Some(task)) = task_attempt.parent_task(&self.db().pool).await
-                && let Err(e) =
-                    Task::update_status(&self.db().pool, task.id, TaskStatus::InReview).await
-            {
-                tracing::error!(
-                    "Failed to update task status to InReview for orphaned attempt: {}",
-                    e
-                );
+            ) {
+                if let Ok(Some(task_attempt)) =
+                    TaskAttempt::find_by_id(&self.db().pool, process.task_attempt_id).await
+                    && let Ok(Some(task)) = task_attempt.parent_task(&self.db().pool).await
+                {
+                    match Task::update_status(&self.db().pool, task.id, TaskStatus::InReview).await
+                    {
+                        Ok(_) => {
+                            if let Ok(publisher) = ShareTaskPublisher::new(self.db().clone()) {
+                                if let Err(err) = publisher.update_shared_task_by_id(task.id).await
+                                {
+                                    tracing::warn!(
+                                        ?err,
+                                        "Failed to propagate shared task update for {}",
+                                        task.id
+                                    );
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            tracing::error!(
+                                "Failed to update task status to InReview for orphaned attempt: {}",
+                                e
+                            );
+                        }
+                    }
+                }
             }
         }
         Ok(())
@@ -288,7 +306,26 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
                     // Create project (ignore individual failures)
                     let project_id = Uuid::new_v4();
-                    match Project::create(&self.db().pool, &create_data, project_id).await {
+                    let remote_metadata = self
+                        .git()
+                        .get_remote_metadata(&repo.path)
+                        .unwrap_or_else(|error| {
+                            tracing::warn!(
+                                "Failed to read git remotes for auto-created project '{}': {}",
+                                create_data.git_repo_path,
+                                error
+                            );
+                            ProjectRemoteMetadata::default()
+                        });
+
+                    match Project::create(
+                        &self.db().pool,
+                        &create_data,
+                        project_id,
+                        Some(&remote_metadata),
+                    )
+                    .await
+                    {
                         Ok(project) => {
                             tracing::info!(
                                 "Auto-created project '{}' from {}",

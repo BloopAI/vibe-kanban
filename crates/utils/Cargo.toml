@@ -28,8 +28,11 @@ base64 = "0.22"
 tokio = { workspace = true }
 futures = "0.3.31"
 tokio-stream = { version = "0.1.17", features = ["sync"] }
+tokio-tungstenite = "0.28"
 async-stream = "0.3"
 shellexpand = "3.1.1"
 which = "8.0.0"
 similar = "2"
 git2 = "0.18"
+async-trait = { workspace = true }
+thiserror = { workspace = true }

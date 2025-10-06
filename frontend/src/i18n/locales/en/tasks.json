@@ -250,7 +250,31 @@
     "createSubtask": "Create subtask",
     "gitActions": "Git actions",
     "task": "Task",
+    "share": "Share task",
     "duplicate": "Duplicate"
+  },
+  "shareDialog": {
+    "title": "Share Task",
+    "description": "Share \"{{title}}\" with your organization?",
+    "success": "Task shared successfully.",
+    "genericError": "Failed to share task. Please try again.",
+    "loadingSystem": "Loading account status…",
+    "loginRequired": {
+      "title": "Sign in to continue",
+      "description": "You need to sign in before you can share tasks. We will redirect you to the sign-in page.",
+      "action": "Go to sign in"
+    },
+    "githubRequired": {
+      "title": "Connect GitHub",
+      "description": "Connect your GitHub account so we can publish shared tasks for you.",
+      "action": "Connect GitHub"
+    },
+    "confirmationTitle": "Confirm sharing",
+    "confirmationBody": "Sharing will publish this task to your shared workspace.",
+    "cancel": "Cancel",
+    "confirm": "Share task",
+    "inProgress": "Sharing…",
+    "closeButton": "Close"
   },
   "showcases": {
     "taskPanel": {
