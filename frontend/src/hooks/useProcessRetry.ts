@@ -41,7 +41,7 @@ export function useProcessRetry(attempt: TaskAttempt | undefined) {
       let reason: string | undefined;
       if (isRunningProc) reason = 'Finish or stop this run to retry.';
       else if (isAttemptRunning)
-        reason = 'Cannot retry while an execution is running.';
+        reason = 'Cannot retry while an agent is running.';
       else if (busy) reason = 'Retry in progress.';
       return { disabled, reason };
     },
