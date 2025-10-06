@@ -24,6 +24,7 @@ use crate::{
     logs::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryType, TodoItem, ToolStatus,
         plain_text_processor::PlainTextLogProcessor,
+        stderr_processor::normalize_stderr_logs,
         utils::{ConversationPatch, EntryIndexProvider},
     },
 };
@@ -122,6 +123,8 @@ impl StandardCodingAgentExecutor for Cursor {
 
     fn normalize_logs(&self, msg_store: Arc<MsgStore>, worktree_path: &Path) {
         let entry_index_provider = EntryIndexProvider::start_from(&msg_store);
+
+        normalize_stderr_logs(msg_store.clone(), entry_index_provider.clone());
 
         // Process Cursor stdout JSONL with typed serde models
         let current_dir = worktree_path.to_path_buf();
