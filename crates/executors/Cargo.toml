@@ -19,7 +19,7 @@ ts-rs = { workspace = true }
 schemars = { workspace = true }
 dirs = "5.0"
 xdg = "3.0"
-async-trait = "0.1"
+async-trait = { workspace = true } 
 rust-embed = "8.2"
 directories = "6.0.0"
 command-group = { version = "5.0", features = ["with-tokio"] }

@@ -5,6 +5,7 @@ import type {
   DeleteTaskConfirmationDialogProps,
   TaskFormDialogProps,
   EditorSelectionDialogProps,
+  ShareDialogProps,
 } from '@/components/dialogs';
 
 // Type definitions for nice-modal-react modal arguments
@@ -32,6 +33,7 @@ declare module '@ebay/nice-modal-react' {
     'task-form': TaskFormDialogProps;
     'delete-task-confirmation': DeleteTaskConfirmationDialogProps;
     'editor-selection': EditorSelectionDialogProps;
+    'share-task': ShareDialogProps;
   }
 }
 

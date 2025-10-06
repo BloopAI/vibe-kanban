@@ -6,6 +6,7 @@
     "attempt": "Attempt",
     "createNewAttempt": "Create new attempt",
     "createSubtask": "Create subtask",
+    "share": "Compartir tarea",
     "duplicate": "Duplicate",
     "editBranchName": "Editar nombre de rama",
     "gitActions": "Acciones de Git",
@@ -59,6 +60,29 @@
     "runSetup": "Ejecutar Configuración",
     "setupHelpText": "{{agent}} no está configurado correctamente. Haz clic en 'Ejecutar Configuración' para instalarlo e iniciar sesión.",
     "devScriptMissingTooltip": "To start the dev server, add a dev script to this project"
+  },
+  "shareDialog": {
+    "title": "Compartir tarea",
+    "description": "¿Compartir \"{{title}}\" con tu organización?",
+    "success": "Tarea compartida correctamente.",
+    "genericError": "No se pudo compartir la tarea. Inténtalo de nuevo.",
+    "loadingSystem": "Cargando estado de cuenta…",
+    "loginRequired": {
+      "title": "Inicia sesión para continuar",
+      "description": "Debes iniciar sesión antes de poder compartir tareas. Te redirigiremos a la página de inicio de sesión.",
+      "action": "Ir a iniciar sesión"
+    },
+    "githubRequired": {
+      "title": "Conecta GitHub",
+      "description": "Conecta tu cuenta de GitHub para que podamos publicar tareas compartidas por ti.",
+      "action": "Conectar GitHub"
+    },
+    "confirmationTitle": "Confirma el uso compartido",
+    "confirmationBody": "Compartir publicará esta tarea en tu espacio de trabajo compartido.",
+    "cancel": "Cancelar",
+    "confirm": "Compartir tarea",
+    "inProgress": "Compartiendo…",
+    "closeButton": "Cerrar"
   },
   "attemptHeaderActions": {
     "diffs": "Diffs",

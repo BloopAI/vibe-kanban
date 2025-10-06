@@ -8,7 +8,7 @@ db = { path = "../db" }
 utils = { path = "../utils" }
 services = { path = "../services" }
 executors = { path = "../executors" }
-async-trait = "0.1"
+async-trait = { workspace = true } 
 thiserror = { workspace = true } 
 anyhow = { workspace = true }
 tokio = { workspace = true }

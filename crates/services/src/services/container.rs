@@ -44,6 +44,7 @@ use uuid::Uuid;
 use crate::services::{
     git::{GitService, GitServiceError},
     image::ImageService,
+    share::ShareTaskPublisher,
     worktree_manager::{WorktreeError, WorktreeManager},
 };
 pub type ContainerRef = String;
@@ -588,6 +589,15 @@ pub trait ContainerService {
             && run_reason != &ExecutionProcessRunReason::DevServer
         {
             Task::update_status(&self.db().pool, task.id, TaskStatus::InProgress).await?;
+            if let Ok(publisher) = ShareTaskPublisher::new(self.db().clone()) {
+                if let Err(err) = publisher.update_shared_task_by_id(task.id).await {
+                    tracing::warn!(
+                        ?err,
+                        "Failed to propagate shared task update for {}",
+                        task.id
+                    );
+                }
+            }
         }
         // Create new execution process record
         // Capture current HEAD as the "before" commit for this execution

@@ -8,7 +8,7 @@ export type DirectoryEntry = { name: string, path: string, is_directory: boolean
 
 export type DirectoryListResponse = { entries: Array<DirectoryEntry>, current_path: string, };
 
-export type Project = { id: string, name: string, git_repo_path: string, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, copy_files: string | null, created_at: Date, updated_at: Date, };
+export type Project = { id: string, name: string, git_repo_path: string, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, copy_files: string | null, has_remote: boolean, github_repo_owner: string | null, github_repo_name: string | null, github_repo_id: bigint | null, created_at: Date, updated_at: Date, };
 
 export type CreateProject = { name: string, git_repo_path: string, use_existing_repo: boolean, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, copy_files: string | null, };
 
@@ -44,9 +44,9 @@ export type TagSearchParams = { search: string | null, };
 
 export type TaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelled";
 
-export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_task_attempt: string | null, created_at: string, updated_at: string, };
+export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_task_attempt: string | null, shared_task_id: string | null, created_at: string, updated_at: string, };
 
-export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, has_merged_attempt: boolean, last_attempt_failed: boolean, executor: string, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_task_attempt: string | null, created_at: string, updated_at: string, };
+export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, has_merged_attempt: boolean, last_attempt_failed: boolean, executor: string, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_task_attempt: string | null, shared_task_id: string | null, created_at: string, updated_at: string, };
 
 export type TaskRelationships = { parent_task: Task | null, current_attempt: TaskAttempt, children: Array<Task>, };
 

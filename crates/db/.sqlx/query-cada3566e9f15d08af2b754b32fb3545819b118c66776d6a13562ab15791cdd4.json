@@ -1,0 +1,92 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE projects\n               SET name = $2,\n                   git_repo_path = $3,\n                   setup_script = $4,\n                   dev_script = $5,\n                   cleanup_script = $6,\n                   copy_files = $7,\n                   has_remote = $8,\n                   github_repo_owner = $9,\n                   github_repo_name = $10,\n                   github_repo_id = $11\n               WHERE id = $1\n               RETURNING id as \"id!: Uuid\",\n                         name,\n                         git_repo_path,\n                         setup_script,\n                         dev_script,\n                         cleanup_script,\n                         copy_files,\n                         has_remote as \"has_remote!: bool\",\n                         github_repo_owner,\n                         github_repo_name,\n                         github_repo_id,\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "git_repo_path",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "setup_script",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "dev_script",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "cleanup_script",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "copy_files",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "has_remote!: bool",
+        "ordinal": 7,
+        "type_info": "Integer"
+      },
+      {
+        "name": "github_repo_owner",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "github_repo_name",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "github_repo_id",
+        "ordinal": 10,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 11,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 12,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 11
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "cada3566e9f15d08af2b754b32fb3545819b118c66776d6a13562ab15791cdd4"
+}

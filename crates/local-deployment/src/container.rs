@@ -48,6 +48,7 @@ use services::services::{
     git::{Commit, DiffTarget, GitService},
     image::ImageService,
     notification::NotificationService,
+    share::ShareTaskPublisher,
     worktree_manager::WorktreeManager,
 };
 use tokio::{sync::RwLock, task::JoinHandle};
@@ -129,8 +130,21 @@ impl LocalContainerService {
 
     /// Finalize task execution by updating status to InReview and sending notifications
     async fn finalize_task(db: &DBService, config: &Arc<RwLock<Config>>, ctx: &ExecutionContext) {
-        if let Err(e) = Task::update_status(&db.pool, ctx.task.id, TaskStatus::InReview).await {
-            tracing::error!("Failed to update task status to InReview: {e}");
+        match Task::update_status(&db.pool, ctx.task.id, TaskStatus::InReview).await {
+            Ok(_) => {
+                if let Ok(publisher) = ShareTaskPublisher::new(db.clone()) {
+                    if let Err(err) = publisher.update_shared_task_by_id(ctx.task.id).await {
+                        tracing::warn!(
+                            ?err,
+                            "Failed to propagate shared task update for {}",
+                            ctx.task.id
+                        );
+                    }
+                }
+            }
+            Err(e) => {
+                tracing::error!("Failed to update task status to InReview: {e}");
+            }
         }
         let notify_cfg = config.read().await.notifications.clone();
         NotificationService::notify_execution_halted(notify_cfg, ctx).await;
@@ -881,10 +895,23 @@ impl ContainerService for LocalContainerService {
                 ctx.execution_process.run_reason,
                 ExecutionProcessRunReason::DevServer
             )
-            && let Err(e) =
-                Task::update_status(&self.db.pool, ctx.task.id, TaskStatus::InReview).await
         {
-            tracing::error!("Failed to update task status to InReview: {e}");
+            match Task::update_status(&self.db.pool, ctx.task.id, TaskStatus::InReview).await {
+                Ok(_) => {
+                    if let Ok(publisher) = ShareTaskPublisher::new(self.db.clone()) {
+                        if let Err(err) = publisher.update_shared_task_by_id(ctx.task.id).await {
+                            tracing::warn!(
+                                ?err,
+                                "Failed to propagate shared task update for {}",
+                                ctx.task.id
+                            );
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::error!("Failed to update task status to InReview: {e}");
+                }
+            }
         }
 
         tracing::debug!(

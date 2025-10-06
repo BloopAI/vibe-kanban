@@ -1,6 +1,7 @@
 use db::models::{
     draft::{Draft, DraftType},
     execution_process::ExecutionProcess,
+    shared_task::SharedTask as DbSharedTask,
     task::TaskWithAttemptStatus,
     task_attempt::TaskAttempt,
 };
@@ -46,6 +47,44 @@ pub mod task_patch {
             path: task_path(task_id)
                 .try_into()
                 .expect("Task path should be valid"),
+        })])
+    }
+}
+
+/// Helper functions for creating shared task-specific patches
+pub mod shared_task_patch {
+    use super::*;
+
+    fn shared_task_path(task_id: Uuid) -> String {
+        format!(
+            "/shared_tasks/{}",
+            escape_pointer_segment(&task_id.to_string())
+        )
+    }
+
+    pub fn add(task: &DbSharedTask) -> Patch {
+        Patch(vec![PatchOperation::Add(AddOperation {
+            path: shared_task_path(task.id)
+                .try_into()
+                .expect("Shared task path should be valid"),
+            value: serde_json::to_value(task).expect("Shared task serialization should not fail"),
+        })])
+    }
+
+    pub fn replace(task: &DbSharedTask) -> Patch {
+        Patch(vec![PatchOperation::Replace(ReplaceOperation {
+            path: shared_task_path(task.id)
+                .try_into()
+                .expect("Shared task path should be valid"),
+            value: serde_json::to_value(task).expect("Shared task serialization should not fail"),
+        })])
+    }
+
+    pub fn remove(task_id: Uuid) -> Patch {
+        Patch(vec![PatchOperation::Remove(RemoveOperation {
+            path: shared_task_path(task_id)
+                .try_into()
+                .expect("Shared task path should be valid"),
         })])
     }
 }
