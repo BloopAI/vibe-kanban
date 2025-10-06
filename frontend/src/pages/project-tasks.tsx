@@ -26,11 +26,6 @@ import {
   useKeyDeleteTask,
 } from '@/keyboard';
 
-import {
-  getKanbanSectionClasses,
-  getMainContainerClasses,
-} from '@/lib/responsive-config';
-
 import TaskKanbanBoard from '@/components/tasks/TaskKanbanBoard';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import type { DragEndEvent } from '@/components/ui/shadcn-io/kanban';
@@ -39,6 +34,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import NiceModal from '@ebay/nice-modal-react';
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import KanbanSidebar from '@/components/panels/KanbanSidebar';
+import SidebarPanel from '@/components/panels/SidebarPanel';
+import ResponsiveTwoPane from '@/components/layout/ResponsiveTwoPane';
 
 type Task = TaskWithAttemptStatus;
 
@@ -497,10 +494,51 @@ export function ProjectTasks() {
     return <Loader message={t('loading')} size={32} className="py-8" />;
   }
 
+  const leftPane = isFullscreen ? (
+    <div className="h-full w-full" />
+  ) : tasks.length === 0 ? (
+    <div className="max-w-7xl mx-auto mt-8">
+      <Card>
+        <CardContent className="text-center py-8">
+          <p className="text-muted-foreground">{t('empty.noTasks')}</p>
+          <Button className="mt-4" onClick={handleCreateNewTask}>
+            <Plus className="h-4 w-4 mr-2" />
+            {t('empty.createFirst')}
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  ) : filteredTasks.length === 0 ? (
+    <div className="max-w-7xl mx-auto mt-8">
+      <Card>
+        <CardContent className="text-center py-8">
+          <p className="text-muted-foreground">{t('empty.noSearchResults')}</p>
+        </CardContent>
+      </Card>
+    </div>
+  ) : (
+    <div className="w-full h-full overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-y">
+      <TaskKanbanBoard
+        groupedTasks={groupedFilteredTasks}
+        onDragEnd={handleDragEnd}
+        onEditTask={handleEditTaskCallback}
+        onDeleteTask={handleDeleteTask}
+        onDuplicateTask={handleDuplicateTaskCallback}
+        onViewTaskDetails={handleViewTaskDetails}
+        selectedTask={selectedTask || undefined}
+        onCreateTask={handleCreateNewTask}
+      />
+    </div>
+  );
+
+  const rightPane = (
+    <SidebarPanel>
+      <KanbanSidebar selectedTask={selectedTask} />
+    </SidebarPanel>
+  );
+
   return (
-    <div
-      className={`min-h-full ${getMainContainerClasses(isPanelOpen, isFullscreen)}`}
-    >
+    <div className="min-h-full h-full flex flex-col">
       {streamError && (
         <Alert className="w-full z-30 xl:sticky xl:top-0">
           <AlertTitle className="flex items-center gap-2">
@@ -511,50 +549,12 @@ export function ProjectTasks() {
         </Alert>
       )}
 
-      {/* Kanban + Panel Container - uses side-by-side layout on xl+ */}
-      <div className="flex-1 min-h-0 xl:flex">
-        {/* Left Column - Kanban Section */}
-        <div className={getKanbanSectionClasses(isPanelOpen, isFullscreen)}>
-          {tasks.length === 0 ? (
-            <div className="max-w-7xl mx-auto mt-8">
-              <Card>
-                <CardContent className="text-center py-8">
-                  <p className="text-muted-foreground">{t('empty.noTasks')}</p>
-                  <Button className="mt-4" onClick={handleCreateNewTask}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    {t('empty.createFirst')}
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          ) : filteredTasks.length === 0 ? (
-            <div className="max-w-7xl mx-auto mt-8">
-              <Card>
-                <CardContent className="text-center py-8">
-                  <p className="text-muted-foreground">
-                    {t('empty.noSearchResults')}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-          ) : (
-            <div className="w-full h-full">
-              <TaskKanbanBoard
-                groupedTasks={groupedFilteredTasks}
-                onDragEnd={handleDragEnd}
-                onEditTask={handleEditTaskCallback}
-                onDeleteTask={handleDeleteTask}
-                onDuplicateTask={handleDuplicateTaskCallback}
-                onViewTaskDetails={handleViewTaskDetails}
-                selectedTask={selectedTask || undefined}
-                onCreateTask={handleCreateNewTask}
-              />
-            </div>
-          )}
-        </div>
-        {isPanelOpen && !projectLoading && (
-          <KanbanSidebar selectedTask={selectedTask} />
-        )}
+      <div className="flex-1 min-h-0">
+        <ResponsiveTwoPane
+          left={leftPane}
+          right={rightPane}
+          isRightOpen={isPanelOpen && !projectLoading}
+        />
       </div>
     </div>
   );
