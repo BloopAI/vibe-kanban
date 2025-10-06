@@ -9,7 +9,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '../ui/breadcrumb';
-import ResponsiveSidebar from './ResponsiveSidebar';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { useParams, Link } from 'react-router-dom';
 import { useTaskAttempt } from '@/hooks/useTaskAttempt';
@@ -74,42 +73,38 @@ const KanbanSidebar = ({ selectedTask }: KanbanSidebarProps) => {
   };
 
   return (
-    <ResponsiveSidebar>
-      <NewCard className="bg-background h-full">
-        <NewCardHeader actions={<HeaderActions projectId={projectId!} />}>
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                {showAttempt && taskUrl ? (
-                  <BreadcrumbLink asChild>
-                    <Link to={taskUrl}>
-                      {truncateTitle(selectedTask?.title)}
-                    </Link>
-                  </BreadcrumbLink>
-                ) : (
-                  truncateTitle(selectedTask?.title)
-                )}
-              </BreadcrumbItem>
-              {showAttempt && (
-                <>
-                  <BreadcrumbSeparator />
-                  <BreadcrumbItem>
-                    <BreadcrumbPage>
-                      {attempt?.branch || 'Task Attempt'}
-                    </BreadcrumbPage>
-                  </BreadcrumbItem>
-                </>
+    <NewCard className="bg-background h-full">
+      <NewCardHeader actions={<HeaderActions projectId={projectId!} />}>
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              {showAttempt && taskUrl ? (
+                <BreadcrumbLink asChild>
+                  <Link to={taskUrl}>{truncateTitle(selectedTask?.title)}</Link>
+                </BreadcrumbLink>
+              ) : (
+                truncateTitle(selectedTask?.title)
               )}
-            </BreadcrumbList>
-          </Breadcrumb>
-        </NewCardHeader>
-        {showAttempt ? (
-          <TaskAttemptPanel attempt={attempt} task={selectedTask} />
-        ) : (
-          <TaskPanel task={selectedTask} />
-        )}
-      </NewCard>
-    </ResponsiveSidebar>
+            </BreadcrumbItem>
+            {showAttempt && (
+              <>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage>
+                    {attempt?.branch || 'Task Attempt'}
+                  </BreadcrumbPage>
+                </BreadcrumbItem>
+              </>
+            )}
+          </BreadcrumbList>
+        </Breadcrumb>
+      </NewCardHeader>
+      {showAttempt ? (
+        <TaskAttemptPanel attempt={attempt} task={selectedTask} />
+      ) : (
+        <TaskPanel task={selectedTask} />
+      )}
+    </NewCard>
   );
 };
 
