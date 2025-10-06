@@ -70,6 +70,19 @@
           "createTokenLink": "Create token here"
         }
       },
+      "git": {
+        "title": "Git",
+        "description": "Configure git branch naming preferences",
+        "branchPrefix": {
+          "label": "Branch Prefix",
+          "placeholder": "vk",
+          "helper": "Prefix for auto-generated branch names. Leave empty for no prefix.",
+          "rules": "Allowed: letters, numbers, dots, underscores, hyphens. No slashes or special characters.",
+          "preview": "Preview:",
+          "previewWithPrefix": "{{prefix}}/1a2b-task-name",
+          "previewNoPrefix": "1a2b-task-name"
+        }
+      },
       "notifications": {
         "title": "Notifications",
         "description": "Control when and how you receive notifications.",

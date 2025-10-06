@@ -70,6 +70,19 @@
           "createTokenLink": "Crear token aquí"
         }
       },
+      "git": {
+        "title": "Git",
+        "description": "Configurar preferencias de nombres de ramas git",
+        "branchPrefix": {
+          "label": "Prefijo de Rama",
+          "placeholder": "vk",
+          "helper": "Prefijo para nombres de ramas generadas automáticamente. Dejar vacío para no usar prefijo.",
+          "rules": "Permitido: letras, números, puntos, guiones bajos, guiones. Sin barras ni caracteres especiales.",
+          "preview": "Vista previa:",
+          "previewWithPrefix": "{{prefix}}/1a2b-nombre-tarea",
+          "previewNoPrefix": "1a2b-nombre-tarea"
+        }
+      },
       "notifications": {
         "title": "Notificaciones",
         "description": "Controla cuándo y cómo recibes notificaciones.",

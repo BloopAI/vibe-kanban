@@ -527,18 +527,20 @@ export function GeneralSettings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Git</CardTitle>
+          <CardTitle>{t('settings.general.git.title')}</CardTitle>
           <CardDescription>
-            Configure git branch naming preferences
+            {t('settings.general.git.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="git-branch-prefix">Branch Prefix</Label>
+            <Label htmlFor="git-branch-prefix">
+              {t('settings.general.git.branchPrefix.label')}
+            </Label>
             <Input
               id="git-branch-prefix"
               type="text"
-              placeholder="vk"
+              placeholder={t('settings.general.git.branchPrefix.placeholder')}
               value={draft?.git_branch_prefix ?? ''}
               onChange={(e) => {
                 const value = e.target.value.trim();
@@ -546,23 +548,24 @@ export function GeneralSettings() {
               }}
             />
             <p className="text-sm text-muted-foreground">
-              Prefix for auto-generated branch names. Leave empty for no prefix.
+              {t('settings.general.git.branchPrefix.helper')}
               <br />
-              Allowed: letters, numbers, dots, underscores, hyphens. No slashes
-              or special characters.
+              {t('settings.general.git.branchPrefix.rules')}
               <br />
               {draft?.git_branch_prefix ? (
                 <>
-                  Preview:{' '}
+                  {t('settings.general.git.branchPrefix.preview')}{' '}
                   <code className="text-xs bg-muted px-1 py-0.5 rounded">
-                    {draft.git_branch_prefix}/1a2b-task-name
+                    {t('settings.general.git.branchPrefix.previewWithPrefix', {
+                      prefix: draft.git_branch_prefix,
+                    })}
                   </code>
                 </>
               ) : (
                 <>
-                  Preview:{' '}
+                  {t('settings.general.git.branchPrefix.preview')}{' '}
                   <code className="text-xs bg-muted px-1 py-0.5 rounded">
-                    1a2b-task-name
+                    {t('settings.general.git.branchPrefix.previewNoPrefix')}
                   </code>
                 </>
               )}

@@ -70,6 +70,19 @@
           "createTokenLink": "ここでトークンを作成"
         }
       },
+      "git": {
+        "title": "Git",
+        "description": "Gitブランチ名の設定",
+        "branchPrefix": {
+          "label": "ブランチプレフィックス",
+          "placeholder": "vk",
+          "helper": "自動生成されるブランチ名のプレフィックス。空欄にするとプレフィックスなしになります。",
+          "rules": "使用可能な文字：英字、数字、ドット、アンダースコア、ハイフン。スラッシュや特殊文字は使用できません。",
+          "preview": "プレビュー：",
+          "previewWithPrefix": "{{prefix}}/1a2b-タスク名",
+          "previewNoPrefix": "1a2b-タスク名"
+        }
+      },
       "notifications": {
         "title": "通知",
         "description": "通知を受け取るタイミングと方法を制御します。",
