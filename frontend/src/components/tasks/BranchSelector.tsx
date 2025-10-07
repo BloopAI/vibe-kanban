@@ -68,12 +68,12 @@ const BranchRow = memo(function BranchRow({
         <span className={nameClass}>{branch.name}</span>
         <div className="flex gap-1">
           {branch.is_current && (
-            <span className="text-xs bg-green-100 text-green-800 px-1 rounded">
+            <span className="text-xs bg-background px-1 rounded">
               {t('branchSelector.badges.current')}
             </span>
           )}
           {branch.is_remote && (
-            <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">
+            <span className="text-xs bg-background px-1 rounded">
               {t('branchSelector.badges.remote')}
             </span>
           )}
