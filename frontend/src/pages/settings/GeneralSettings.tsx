@@ -82,7 +82,7 @@ export function GeneralSettings() {
         return t('settings.general.git.branchPrefix.errors.endsWithDot');
       if (prefix.includes('..') || prefix.includes('@{'))
         return t('settings.general.git.branchPrefix.errors.invalidSequence');
-      if (/[ \t~^:?*\[\\]/.test(prefix))
+      if (/[ \t~^:?*[\\]/.test(prefix))
         return t('settings.general.git.branchPrefix.errors.invalidChars');
       // Control chars check
       for (let i = 0; i < prefix.length; i++) {
