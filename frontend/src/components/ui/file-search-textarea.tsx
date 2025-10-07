@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, forwardRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { projectsApi } from '@/lib/api';
@@ -24,7 +24,7 @@ interface FileSearchTextareaProps {
   onBlur?: (e: React.FocusEvent<HTMLTextAreaElement>) => void;
 }
 
-export function FileSearchTextarea({
+export const FileSearchTextarea = forwardRef<HTMLTextAreaElement, FileSearchTextareaProps>(function FileSearchTextarea({
   value,
   onChange,
   placeholder,
@@ -37,7 +37,7 @@ export function FileSearchTextarea({
   onPasteFiles,
   onFocus,
   onBlur,
-}: FileSearchTextareaProps) {
+}, ref) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<FileSearchResult[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -46,7 +46,8 @@ export function FileSearchTextarea({
   const [atSymbolPosition, setAtSymbolPosition] = useState(-1);
   const [isLoading, setIsLoading] = useState(false);
 
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const internalRef = useRef<HTMLTextAreaElement>(null);
+  const textareaRef = (ref as React.RefObject<HTMLTextAreaElement>) || internalRef;
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Search for files when query changes
@@ -348,4 +349,4 @@ export function FileSearchTextarea({
         )}
     </div>
   );
-}
+});
