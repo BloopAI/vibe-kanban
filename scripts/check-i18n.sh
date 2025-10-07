@@ -4,7 +4,6 @@
 # Initial implementation: This script will show high violation counts until enforcement is enabled
 set -eo pipefail
 
-WORKTREE_BASE="$(mktemp -d)"
 RULE="i18next/no-literal-string"
 
 # Function that outputs violation count to stdout
@@ -138,25 +137,18 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PR_COUNT=$(lint_count "$REPO_ROOT")
 
 BASE_REF="${GITHUB_BASE_REF:-main}"
-echo "▶️  Checking out $BASE_REF for baseline..."
-git fetch --depth=1 origin "$BASE_REF" 2>/dev/null || git fetch --depth=1 origin "$BASE_REF"
-git worktree add "$WORKTREE_BASE" "origin/$BASE_REF" 2>/dev/null || {
-  echo "Could not create worktree, falling back to direct checkout"
-  TEMP_BRANCH="temp-i18n-check-$$"
-  git checkout -b "$TEMP_BRANCH" "origin/$BASE_REF" 2>/dev/null || git checkout "origin/$BASE_REF"
-  BASE_COUNT=$(lint_count "$REPO_ROOT")
-  git checkout - 2>/dev/null || true
-  git branch -D "$TEMP_BRANCH" 2>/dev/null || true
-}
+echo "▶️  Fetching $BASE_REF for baseline (shallow clone)..."
+REMOTE_URL=$(git -C "$REPO_ROOT" remote get-url origin)
+BASE_DIR="$(mktemp -d)"
+cleanup_base() { rm -rf "$BASE_DIR"; }
+trap cleanup_base EXIT
 
-# Get base count from worktree if it was created successfully
-if [ -d "$WORKTREE_BASE" ]; then
-  BASE_COUNT=$(lint_count "$WORKTREE_BASE")
-  git worktree remove "$WORKTREE_BASE" 2>/dev/null || rm -rf "$WORKTREE_BASE"
+if git clone --depth=1 --branch "$BASE_REF" --single-branch "$REMOTE_URL" "$BASE_DIR" >/dev/null 2>&1; then
+  BASE_COUNT=$(lint_count "$BASE_DIR")
+else
+  echo "⚠️  Could not clone $BASE_REF; defaulting baseline to 0."
+  BASE_COUNT=0
 fi
-
-# Ensure BASE_COUNT has a value
-BASE_COUNT="${BASE_COUNT:-0}"
 
 echo ""
 echo "📊 I18n Violation Summary:"
