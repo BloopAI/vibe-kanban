@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { Edit, Trash2, X, Maximize2, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,7 +12,6 @@ import type { TaskWithAttemptStatus } from 'shared/types';
 import { TaskTitleDescription } from './TaskDetails/TaskTitleDescription';
 import { Card } from '../ui/card';
 import { statusBoardColors, statusLabels } from '@/utils/status-labels';
-import { useTaskViewManager } from '@/hooks/useTaskViewManager';
 
 interface TaskDetailsHeaderProps {
   task: TaskWithAttemptStatus;
@@ -32,7 +32,9 @@ function TaskDetailsHeader({
   hideCloseButton = false,
   isFullScreen,
 }: TaskDetailsHeaderProps) {
-  const { toggleFullscreen } = useTaskViewManager();
+  const location = useLocation();
+  const isFullscreen = location.pathname.includes('/full');
+
   return (
     <div>
       <Card
@@ -55,23 +57,25 @@ function TaskDetailsHeader({
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => toggleFullscreen(!isFullScreen)}
                   aria-label={
-                    isFullScreen
+                    isFullscreen
                       ? 'Collapse to sidebar'
                       : 'Expand to fullscreen'
                   }
+                  asChild
                 >
-                  {isFullScreen ? (
-                    <Minimize2 className="h-4 w-4" />
-                  ) : (
-                    <Maximize2 className="h-4 w-4" />
-                  )}
+                  <Link to={isFullscreen ? '..' : 'full'}>
+                    {isFullscreen ? (
+                      <Minimize2 className="h-4 w-4" />
+                    ) : (
+                      <Maximize2 className="h-4 w-4" />
+                    )}
+                  </Link>
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
                 <p>
-                  {isFullScreen
+                  {isFullscreen
                     ? 'Collapse to sidebar'
                     : 'Expand to fullscreen'}
                 </p>
