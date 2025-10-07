@@ -33,6 +33,106 @@ lint_count() {
      || echo "0"
 }
 
+get_json_keys() {
+  local file=$1
+  if [ ! -f "$file" ]; then
+    return 2
+  fi
+  jq -r '
+    paths(scalars) as $p
+    | select(getpath($p) | type == "string")
+    | $p | join(".")
+  ' "$file" 2>/dev/null | LC_ALL=C sort -u
+}
+
+check_key_consistency() {
+  local locales_dir="$REPO_ROOT/frontend/src/i18n/locales"
+  local exit_code=0
+  local fail_on_extra="${I18N_FAIL_ON_EXTRA:-0}"
+  local verbose="${I18N_VERBOSE:-0}"
+
+  if [ ! -d "$locales_dir/en" ]; then
+    echo "❌ Missing source locale directory: $locales_dir/en"
+    return 1
+  fi
+
+  # Compute namespaces from en
+  local namespaces=()
+  while IFS= read -r ns; do
+    namespaces+=("$ns")
+  done < <(find "$locales_dir/en" -maxdepth 1 -type f -name "*.json" -exec basename {} .json \; 2>/dev/null | LC_ALL=C sort)
+  
+  # Compute languages from locales
+  local languages=()
+  while IFS= read -r lang; do
+    languages+=("$lang")
+  done < <(find "$locales_dir" -maxdepth 1 -mindepth 1 -type d -exec basename {} \; 2>/dev/null | LC_ALL=C sort)
+
+  # Ensure en exists
+  if ! printf '%s\n' "${languages[@]}" | grep -qx "en"; then
+    echo "❌ Source language 'en' not found in $locales_dir"
+    return 1
+  fi
+
+  for ns in "${namespaces[@]}"; do
+    local ref_file="$locales_dir/en/$ns.json"
+    if ! ref_keys=$(get_json_keys "$ref_file"); then
+      echo "❌ Invalid or unreadable JSON: $ref_file"
+      exit_code=1
+      continue
+    fi
+
+    for lang in "${languages[@]}"; do
+      [ "$lang" = "en" ] && continue
+      local tgt_file="$locales_dir/$lang/$ns.json"
+
+      local tgt_keys
+      local missing
+      local extra
+      
+      if ! tgt_keys=$(get_json_keys "$tgt_file"); then
+        echo "❌ [$lang/$ns] Missing or invalid JSON: $tgt_file"
+        echo "   All keys from en/$ns are considered missing."
+        missing="$ref_keys"
+        extra=""
+        exit_code=1
+      else
+        # Compute set differences
+        missing=$(comm -23 <(printf "%s\n" "$ref_keys") <(printf "%s\n" "$tgt_keys"))
+        extra=$(comm -13 <(printf "%s\n" "$ref_keys") <(printf "%s\n" "$tgt_keys"))
+      fi
+
+      if [ -n "$missing" ]; then
+        echo "❌ [$lang/$ns] Missing keys:"
+        if [ "$verbose" = "1" ]; then
+          printf '   - %s\n' $missing
+        else
+          printf '   - %s\n' $(echo "$missing" | head -n 50)
+          local total_missing
+          total_missing=$(printf "%s\n" "$missing" | wc -l | tr -d ' ')
+          if [ "$total_missing" -gt 50 ]; then
+            echo "   ... and $((total_missing - 50)) more. Set I18N_VERBOSE=1 to print all."
+          fi
+        fi
+        exit_code=1
+      fi
+
+      if [ -n "$extra" ]; then
+        if [ "$fail_on_extra" = "1" ]; then
+          echo "❌ [$lang/$ns] Extra keys (not in en):"
+          [ "$verbose" = "1" ] && printf '   - %s\n' $extra || printf '   - %s\n' $(echo "$extra" | head -n 50)
+          exit_code=1
+        else
+          echo "⚠️  [$lang/$ns] Extra keys (not in en):"
+          [ "$verbose" = "1" ] && printf '   - %s\n' $extra || printf '   - %s\n' $(echo "$extra" | head -n 50)
+        fi
+      fi
+    done
+  done
+
+  return "$exit_code"
+}
+
 echo "▶️  Counting literal strings in PR branch..."
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PR_COUNT=$(lint_count "$REPO_ROOT")
@@ -64,6 +164,8 @@ echo "   Base branch ($BASE_REF): $BASE_COUNT violations"
 echo "   PR branch: $PR_COUNT violations"
 echo ""
 
+EXIT_STATUS=0
+
 if (( PR_COUNT > BASE_COUNT )); then
   echo "❌ PR introduces $((PR_COUNT - BASE_COUNT)) new hard-coded strings."
   echo ""
@@ -73,10 +175,20 @@ if (( PR_COUNT > BASE_COUNT )); then
   echo ""
   echo "Files with new violations:"
   (cd "$REPO_ROOT/frontend" && LINT_I18N=true npx eslint . --ext ts,tsx --rule "$RULE:error" -f codeframe 2>/dev/null || true)
-  exit 1
+  EXIT_STATUS=1
 elif (( PR_COUNT < BASE_COUNT )); then
   echo "🎉 Great job! PR removes $((BASE_COUNT - PR_COUNT)) hard-coded strings."
   echo "   This helps improve i18n coverage!"
 else
   echo "✅ No new literal strings introduced."
 fi
+
+echo ""
+echo "▶️  Checking translation key consistency..."
+if ! check_key_consistency; then
+  EXIT_STATUS=1
+else
+  echo "✅ Translation keys are consistent across locales."
+fi
+
+exit "$EXIT_STATUS"
