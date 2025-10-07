@@ -302,12 +302,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
     }, []);
 
     const handleSubmit = useCallback(async () => {
-      if (
-        !title.trim() ||
-        !projectId ||
-        isSubmitting ||
-        isSubmittingAndStart
-      ) {
+      if (!title.trim() || !projectId || isSubmitting || isSubmittingAndStart) {
         return;
       }
 
@@ -397,9 +392,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       setIsSubmittingAndStart(true);
       try {
         const imageIds =
-          newlyUploadedImageIds.length > 0
-            ? newlyUploadedImageIds
-            : undefined;
+          newlyUploadedImageIds.length > 0 ? newlyUploadedImageIds : undefined;
 
         // Use selected executor profile or fallback to config default
         const finalExecutorProfile =
