@@ -17,6 +17,7 @@ import {
 } from '@/hooks/useConversationHistory';
 import { Loader2 } from 'lucide-react';
 import { TaskAttempt } from 'shared/types';
+import { ApprovalFormProvider } from '@/contexts/ApprovalFormContext';
 
 interface VirtualizedListProps {
   attempt: TaskAttempt;
@@ -107,7 +108,7 @@ const VirtualizedList = ({ attempt }: VirtualizedListProps) => {
   const messageListContext = useMemo(() => ({ attempt }), [attempt]);
 
   return (
-    <>
+    <ApprovalFormProvider>
       <VirtuosoMessageListLicense
         licenseKey={import.meta.env.VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY}
       >
@@ -129,7 +130,7 @@ const VirtualizedList = ({ attempt }: VirtualizedListProps) => {
           <p>Loading History</p>
         </div>
       )}
-    </>
+    </ApprovalFormProvider>
   );
 };
 
