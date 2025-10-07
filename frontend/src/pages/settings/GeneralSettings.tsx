@@ -582,9 +582,7 @@ export function GeneralSettings() {
             )}
             <p className="text-sm text-muted-foreground">
               {t('settings.general.git.branchPrefix.helper')}
-              <br />
-              {t('settings.general.git.branchPrefix.rules')}
-              <br />
+              {' '}
               {draft?.git_branch_prefix ? (
                 <>
                   {t('settings.general.git.branchPrefix.preview')}{' '}

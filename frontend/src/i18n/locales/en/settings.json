@@ -77,17 +77,16 @@
           "label": "Branch Prefix",
           "placeholder": "vk",
           "helper": "Prefix for auto-generated branch names. Leave empty for no prefix.",
-          "rules": "Allowed: letters, numbers, dots, underscores, hyphens. No slashes or special characters.",
           "preview": "Preview:",
           "previewWithPrefix": "{{prefix}}/1a2b-task-name",
           "previewNoPrefix": "1a2b-task-name",
           "errors": {
-            "slash": "Prefix must be a single path segment (no '/').",
+            "slash": "Prefix cannot contain '/'.",
             "startsWithDot": "Prefix cannot start with '.'.",
             "endsWithDot": "Prefix cannot end with '.' or '.lock'.",
-            "invalidSequence": "Prefix contains invalid sequence (.., @{, or @).",
-            "invalidChars": "Prefix contains invalid characters.",
-            "controlChars": "Prefix contains control characters."
+            "invalidSequence": "Contains invalid sequence (.., @{).",
+            "invalidChars": "Contains invalid characters.",
+            "controlChars": "Contains control characters."
           }
         }
       },
