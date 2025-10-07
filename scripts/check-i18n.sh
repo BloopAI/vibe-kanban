@@ -16,9 +16,9 @@ lint_count() {
   
   (
     set -eo pipefail
-    cd "$REPO_ROOT/frontend"
-    # Use ESLint from main workspace but lint files in the target directory
-    LINT_I18N=true npx eslint "$dir/frontend" \
+    cd "$dir/frontend"
+    # Lint current directory using ESLint from PR workspace
+    LINT_I18N=true npx --prefix "$REPO_ROOT/frontend" eslint . \
       --ext ts,tsx \
       --format json \
       --output-file "$tmp" \
@@ -29,7 +29,7 @@ lint_count() {
   # Parse the clean JSON file
   jq --arg RULE "$RULE" \
      '[.[].messages[] | select(.ruleId == $RULE)] | length' "$tmp" \
-     || echo "0"
+     2>/dev/null || echo "0"
 }
 
 get_json_keys() {
