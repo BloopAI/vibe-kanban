@@ -108,7 +108,6 @@ impl DiffWatcherContext {
         ) {
             Ok(messages) => send_messages(&self.tx, messages),
             Err(err) => {
-                tracing::error!("Error processing file changes: {}", err);
                 send_error(&self.tx, err.to_string());
                 false
             }
@@ -116,7 +115,7 @@ impl DiffWatcherContext {
     }
 }
 
-pub async fn create(
+pub fn create(
     git_service: GitService,
     worktree_path: PathBuf,
     base_commit: Commit,
@@ -166,18 +165,28 @@ pub async fn create(
         tx: tx_clone,
     };
 
-    // Start the watcher setup - fail fast if this fails
-    let worktree_path_for_spawn = worktree_path.clone();
-    let watcher_result = tokio::task::spawn_blocking(move || {
-        filesystem_watcher::async_watcher(worktree_path_for_spawn)
-    })
-    .await
-    .map_err(DiffStreamError::TaskJoin)?
-    .map_err(DiffStreamError::FilesystemWatcher)?;
-
-    let (debouncer, mut watcher_rx, canonical_worktree_path) = watcher_result;
-
     let watcher_task = tokio::spawn(async move {
+        let worktree_path_for_spawn = worktree_path;
+        let watcher_result = tokio::task::spawn_blocking(move || {
+            filesystem_watcher::async_watcher(worktree_path_for_spawn)
+        })
+        .await;
+
+        let (debouncer, mut watcher_rx, canonical_worktree_path) = match watcher_result {
+            Ok(Ok(parts)) => parts,
+            Ok(Err(e)) => {
+                send_error(&ctx.tx, e.to_string());
+                return;
+            }
+            Err(join_err) => {
+                send_error(
+                    &ctx.tx,
+                    format!("Failed to spawn watcher setup: {join_err}"),
+                );
+                return;
+            }
+        };
+
         let _debouncer_guard = debouncer;
 
         while let Some(result) = watcher_rx.next().await {
@@ -193,7 +202,6 @@ pub async fn create(
                         .map(|e| e.to_string())
                         .collect::<Vec<_>>()
                         .join("; ");
-                    tracing::error!("Filesystem watcher error: {}", message);
                     send_error(&ctx.tx, message);
                     return;
                 }
