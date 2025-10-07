@@ -126,9 +126,9 @@ export const keyBindings: KeyBinding[] = [
   },
   {
     action: Action.OPEN_DETAILS,
-    keys: 'enter',
+    keys: ['meta+enter', 'ctrl+enter'],
     scopes: [Scope.KANBAN],
-    description: 'Open selected task details',
+    description: 'Open selected task in fullscreen',
     group: 'Kanban',
   },
 

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { tasksApi } from '@/lib/api';
-import { useTaskViewManager } from '@/hooks/useTaskViewManager';
+import { paths } from '@/lib/paths';
 import type {
   CreateTask,
   CreateAndStartTaskRequest,
@@ -11,7 +12,7 @@ import type {
 
 export function useTaskMutations(projectId?: string) {
   const queryClient = useQueryClient();
-  const { navigateToLatestAttempt } = useTaskViewManager();
+  const navigate = useNavigate();
 
   const invalidateQueries = (taskId?: string) => {
     queryClient.invalidateQueries({ queryKey: ['tasks', projectId] });
@@ -25,7 +26,7 @@ export function useTaskMutations(projectId?: string) {
     onSuccess: (createdTask: Task) => {
       invalidateQueries();
       if (projectId) {
-        navigateToLatestAttempt(projectId, createdTask.id, { replace: false });
+        navigate(`${paths.task(projectId, createdTask.id)}/attempts/latest`);
       }
     },
     onError: (err) => {
@@ -39,7 +40,7 @@ export function useTaskMutations(projectId?: string) {
     onSuccess: (createdTask: TaskWithAttemptStatus) => {
       invalidateQueries();
       if (projectId) {
-        navigateToLatestAttempt(projectId, createdTask.id, { replace: false });
+        navigate(`${paths.task(projectId, createdTask.id)}/attempts/latest`);
       }
     },
     onError: (err) => {

@@ -2,11 +2,12 @@ import { useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { I18nextProvider } from 'react-i18next';
 import i18n from '@/i18n';
-import { Navbar } from '@/components/layout/navbar';
 import { Projects } from '@/pages/projects';
 import { ProjectTasks } from '@/pages/project-tasks';
-import { useTaskViewManager } from '@/hooks/useTaskViewManager';
-import { usePreviousPath } from '@/hooks/usePreviousPath';
+import { FullscreenTaskView } from '@/pages/fullscreen-task-view';
+import { FullscreenAttemptView } from '@/pages/fullscreen-attempt-view';
+import { NormalLayout } from '@/components/layout/NormalLayout';
+import { FullscreenLayout } from '@/components/layout/FullscreenLayout';
 
 import {
   AgentSettings,
@@ -32,7 +33,6 @@ import { Loader } from '@/components/ui/loader';
 
 import { AppWithStyleOverride } from '@/utils/style-override';
 import { WebviewContextMenu } from '@/vscode/ContextMenu';
-import { DevBanner } from '@/components/DevBanner';
 import NiceModal from '@ebay/nice-modal-react';
 import { OnboardingResult } from './components/dialogs/global/OnboardingDialog';
 import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
@@ -41,12 +41,6 @@ const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
 function AppContent() {
   const { config, updateAndSaveConfig, loading } = useUserSystem();
-  const { isFullscreen } = useTaskViewManager();
-
-  // Track previous path for back navigation
-  usePreviousPath();
-
-  const showNavbar = !isFullscreen;
 
   useEffect(() => {
     let cancelled = false;
@@ -150,13 +144,10 @@ function AppContent() {
         <AppWithStyleOverride>
           <SearchProvider>
             <div className="h-screen flex flex-col bg-background">
-              {/* Custom context menu and VS Code-friendly interactions when embedded in iframe */}
               <WebviewContextMenu />
 
-              {showNavbar && <DevBanner />}
-              {showNavbar && <Navbar />}
-              <div className="flex-1 h-full overflow-y-scroll">
-                <SentryRoutes>
+              <SentryRoutes>
+                <Route element={<NormalLayout />}>
                   <Route path="/" element={<Projects />} />
                   <Route path="/projects" element={<Projects />} />
                   <Route path="/projects/:projectId" element={<Projects />} />
@@ -169,14 +160,6 @@ function AppContent() {
                     element={<ProjectTasks />}
                   />
                   <Route
-                    path="/projects/:projectId/tasks/:taskId/attempts/:attemptId/full"
-                    element={<ProjectTasks />}
-                  />
-                  <Route
-                    path="/projects/:projectId/tasks/:taskId/full"
-                    element={<ProjectTasks />}
-                  />
-                  <Route
                     path="/projects/:projectId/tasks/:taskId"
                     element={<ProjectTasks />}
                   />
@@ -186,13 +169,31 @@ function AppContent() {
                     <Route path="agents" element={<AgentSettings />} />
                     <Route path="mcp" element={<McpSettings />} />
                   </Route>
-                  {/* Redirect old MCP route */}
                   <Route
                     path="/mcp-servers"
                     element={<Navigate to="/settings/mcp" replace />}
                   />
-                </SentryRoutes>
-              </div>
+                </Route>
+
+                <Route element={<FullscreenLayout />}>
+                  <Route
+                    path="/projects/:projectId/tasks/:taskId/full"
+                    element={<FullscreenTaskView />}
+                  />
+                  <Route
+                    path="/projects/:projectId/tasks/:taskId/attempts/:attemptId/full"
+                    element={<Navigate to="preview" replace />}
+                  />
+                  <Route
+                    path="/projects/:projectId/tasks/:taskId/attempts/:attemptId/full/preview"
+                    element={<FullscreenAttemptView mode="preview" />}
+                  />
+                  <Route
+                    path="/projects/:projectId/tasks/:taskId/attempts/:attemptId/full/diffs"
+                    element={<FullscreenAttemptView mode="diffs" />}
+                  />
+                </Route>
+              </SentryRoutes>
             </div>
             <ShortcutsHelp />
           </SearchProvider>

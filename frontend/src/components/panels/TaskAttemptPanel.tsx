@@ -5,14 +5,19 @@ import { EntriesProvider } from '@/contexts/EntriesContext';
 import { ReviewProvider } from '@/contexts/ReviewProvider';
 import { ClickedElementsProvider } from '@/contexts/ClickedElementsProvider';
 import { RetryUiProvider } from '@/contexts/RetryUiContext';
-import { NewCardContent } from '../ui/new-card';
+import type { ReactNode } from 'react';
 
 interface TaskAttemptPanelProps {
   attempt: TaskAttempt | undefined;
   task: TaskWithAttemptStatus | null;
+  children: (sections: { logs: ReactNode; followUp: ReactNode }) => ReactNode;
 }
 
-const TaskAttemptPanel = ({ attempt, task }: TaskAttemptPanelProps) => {
+const TaskAttemptPanel = ({
+  attempt,
+  task,
+  children,
+}: TaskAttemptPanelProps) => {
   if (!attempt) {
     return <div className="p-6 text-muted-foreground">Loading attempt...</div>;
   }
@@ -22,22 +27,24 @@ const TaskAttemptPanel = ({ attempt, task }: TaskAttemptPanelProps) => {
   }
 
   return (
-    <NewCardContent className="flex-1 min-h-0 min-w-0 flex flex-col">
-      <ReviewProvider>
-        <ClickedElementsProvider attempt={attempt}>
-          <EntriesProvider key={attempt.id}>
-            <RetryUiProvider attemptId={attempt.id}>
-              <VirtualizedList key={attempt.id} attempt={attempt} />
-              <TaskFollowUpSection
-                task={task}
-                selectedAttemptId={attempt.id}
-                jumpToLogsTab={() => {}}
-              />
-            </RetryUiProvider>
-          </EntriesProvider>
-        </ClickedElementsProvider>
-      </ReviewProvider>
-    </NewCardContent>
+    <ReviewProvider>
+      <ClickedElementsProvider attempt={attempt}>
+        <EntriesProvider key={attempt.id}>
+          <RetryUiProvider attemptId={attempt.id}>
+            {children({
+              logs: <VirtualizedList key={attempt.id} attempt={attempt} />,
+              followUp: (
+                <TaskFollowUpSection
+                  task={task}
+                  selectedAttemptId={attempt.id}
+                  jumpToLogsTab={() => {}}
+                />
+              ),
+            })}
+          </RetryUiProvider>
+        </EntriesProvider>
+      </ClickedElementsProvider>
+    </ReviewProvider>
   );
 };
 
