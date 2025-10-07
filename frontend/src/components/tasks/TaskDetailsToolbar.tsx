@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Play } from 'lucide-react';
+import { Play, GitFork } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from 'react-i18next';
 import { projectsApi, attemptsApi } from '@/lib/api';
+import { openTaskForm } from '@/lib/openTaskForm';
 import type {
   GitBranch,
   TaskAttempt,
@@ -37,6 +39,7 @@ function TaskDetailsToolbar({
   selectedAttempt: TaskAttempt | null;
   setSelectedAttempt: (attempt: TaskAttempt | null) => void;
 }) {
+  const { t } = useTranslation('tasks');
   // Use props instead of context
   const taskAttempts = attempts;
   // const { setLoading } = useTaskLoading(task.id);
@@ -216,6 +219,20 @@ function TaskDetailsToolbar({
                   >
                     <Play className="h-4 w-4" />
                     Start Attempt
+                  </Button>
+                  <Button
+                    onClick={() =>
+                      openTaskForm({
+                        projectId,
+                        parentTaskId: task.id,
+                      })
+                    }
+                    size="sm"
+                    variant="outline"
+                    className="w-full gap-2"
+                  >
+                    <GitFork className="h-4 w-4" />
+                    {t('actions.createSubtask')}
                   </Button>
                 </div>
               )}

@@ -52,7 +52,8 @@ export interface TaskFormDialogProps {
   initialTemplate?: TaskTemplate | null; // For pre-filling from template
   initialTask?: Task | null; // For duplicating an existing task
   initialBaseBranch?: string; // For pre-selecting base branch in spinoff
-  parentTaskAttemptId?: string; // For linking to parent task attempt
+  parentTaskAttemptId?: string; // For linking to parent task attempt (legacy)
+  parentTaskId?: string; // For linking to parent task
 }
 
 export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
@@ -63,6 +64,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
     initialTask,
     initialBaseBranch,
     parentTaskAttemptId,
+    parentTaskId,
   }) => {
     const modal = useModal();
     const { createTask, createAndStart, updateTask } =
@@ -329,6 +331,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                 description: description,
                 status,
                 parent_task_attempt: parentTaskAttemptId || null,
+                parent_task_id: parentTaskId || null,
                 image_ids: imageIds || null,
               },
             },
@@ -345,6 +348,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
               title,
               description: description,
               parent_task_attempt: parentTaskAttemptId || null,
+              parent_task_id: parentTaskId || null,
               image_ids: imageIds || null,
             },
             {
@@ -399,6 +403,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                 title,
                 description: description,
                 parent_task_attempt: parentTaskAttemptId || null,
+                parent_task_id: parentTaskId || null,
                 image_ids: imageIds || null,
               },
               executor_profile_id: finalExecutorProfile,

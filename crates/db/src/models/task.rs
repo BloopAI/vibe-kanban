@@ -26,7 +26,8 @@ pub struct Task {
     pub title: String,
     pub description: Option<String>,
     pub status: TaskStatus,
-    pub parent_task_attempt: Option<Uuid>, // Foreign key to parent TaskAttempt
+    pub parent_task_attempt: Option<Uuid>, // Foreign key to parent TaskAttempt (legacy)
+    pub parent_task_id: Option<Uuid>,      // Foreign key to parent Task
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -59,7 +60,8 @@ impl std::ops::DerefMut for TaskWithAttemptStatus {
 pub struct TaskRelationships {
     pub parent_task: Option<Task>,    // The task that owns this attempt
     pub current_attempt: TaskAttempt, // The attempt we're viewing
-    pub children: Vec<Task>,          // Tasks created by this attempt
+    pub children: Vec<Task>,          // Tasks created by this attempt (legacy)
+    pub subtasks: Vec<Task>,          // Direct child tasks by parent_task_id
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -68,6 +70,7 @@ pub struct CreateTask {
     pub title: String,
     pub description: Option<String>,
     pub parent_task_attempt: Option<Uuid>,
+    pub parent_task_id: Option<Uuid>,
     pub image_ids: Option<Vec<Uuid>>,
 }
 
@@ -82,6 +85,7 @@ impl CreateTask {
             title,
             description,
             parent_task_attempt: None,
+            parent_task_id: None,
             image_ids: None,
         }
     }
@@ -93,6 +97,7 @@ pub struct UpdateTask {
     pub description: Option<String>,
     pub status: Option<TaskStatus>,
     pub parent_task_attempt: Option<Uuid>,
+    pub parent_task_id: Option<Uuid>,
     pub image_ids: Option<Vec<Uuid>>,
 }
 
@@ -121,6 +126,7 @@ impl Task {
   t.description,
   t.status                        AS "status!: TaskStatus",
   t.parent_task_attempt           AS "parent_task_attempt: Uuid",
+  t.parent_task_id                AS "parent_task_id: Uuid",
   t.created_at                    AS "created_at!: DateTime<Utc>",
   t.updated_at                    AS "updated_at!: DateTime<Utc>",
 
@@ -172,6 +178,7 @@ ORDER BY t.created_at DESC"#,
                     description: rec.description,
                     status: rec.status,
                     parent_task_attempt: rec.parent_task_attempt,
+                    parent_task_id: rec.parent_task_id,
                     created_at: rec.created_at,
                     updated_at: rec.updated_at,
                 },
@@ -188,8 +195,8 @@ ORDER BY t.created_at DESC"#,
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
-               FROM tasks 
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", parent_task_id as "parent_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+               FROM tasks
                WHERE id = $1"#,
             id
         )
@@ -200,8 +207,8 @@ ORDER BY t.created_at DESC"#,
     pub async fn find_by_rowid(pool: &SqlitePool, rowid: i64) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
-               FROM tasks 
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", parent_task_id as "parent_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+               FROM tasks
                WHERE rowid = $1"#,
             rowid
         )
@@ -216,8 +223,8 @@ ORDER BY t.created_at DESC"#,
     ) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
-               FROM tasks 
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", parent_task_id as "parent_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+               FROM tasks
                WHERE id = $1 AND project_id = $2"#,
             id,
             project_id
@@ -233,15 +240,16 @@ ORDER BY t.created_at DESC"#,
     ) -> Result<Self, sqlx::Error> {
         sqlx::query_as!(
             Task,
-            r#"INSERT INTO tasks (id, project_id, title, description, status, parent_task_attempt) 
-               VALUES ($1, $2, $3, $4, $5, $6) 
-               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            r#"INSERT INTO tasks (id, project_id, title, description, status, parent_task_attempt, parent_task_id)
+               VALUES ($1, $2, $3, $4, $5, $6, $7)
+               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", parent_task_id as "parent_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             task_id,
             data.project_id,
             data.title,
             data.description,
             TaskStatus::Todo as TaskStatus,
-            data.parent_task_attempt
+            data.parent_task_attempt,
+            data.parent_task_id
         )
         .fetch_one(pool)
         .await
@@ -251,23 +259,27 @@ ORDER BY t.created_at DESC"#,
         pool: &SqlitePool,
         id: Uuid,
         project_id: Uuid,
-        title: String,
-        description: Option<String>,
-        status: TaskStatus,
-        parent_task_attempt: Option<Uuid>,
+        data: UpdateTask,
     ) -> Result<Self, sqlx::Error> {
+        let title = data.title;
+        let description = data.description;
+        let status = data.status;
+        let parent_task_attempt = data.parent_task_attempt;
+        let parent_task_id = data.parent_task_id;
+
         sqlx::query_as!(
             Task,
-            r#"UPDATE tasks 
-               SET title = $3, description = $4, status = $5, parent_task_attempt = $6 
-               WHERE id = $1 AND project_id = $2 
-               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            r#"UPDATE tasks
+               SET title = $3, description = $4, status = $5, parent_task_attempt = $6, parent_task_id = $7
+               WHERE id = $1 AND project_id = $2
+               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", parent_task_id as "parent_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             project_id,
             title,
             description,
             status,
-            parent_task_attempt
+            parent_task_attempt,
+            parent_task_id
         )
         .fetch_one(pool)
         .await
@@ -317,11 +329,28 @@ ORDER BY t.created_at DESC"#,
         // Find only child tasks that have this attempt as their parent
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
-               FROM tasks 
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", parent_task_id as "parent_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+               FROM tasks
                WHERE parent_task_attempt = $1
                ORDER BY created_at DESC"#,
             attempt_id,
+        )
+        .fetch_all(pool)
+        .await
+    }
+
+    pub async fn find_children_by_task_id(
+        pool: &SqlitePool,
+        task_id: Uuid,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        // Find child tasks that have this task as their parent
+        sqlx::query_as!(
+            Task,
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", parent_task_id as "parent_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+               FROM tasks
+               WHERE parent_task_id = $1
+               ORDER BY created_at DESC"#,
+            task_id,
         )
         .fetch_all(pool)
         .await
@@ -336,9 +365,12 @@ ORDER BY t.created_at DESC"#,
             .await?
             .ok_or(sqlx::Error::RowNotFound)?;
 
-        // 2. Get parent task (if current task was created by another task's attempt)
-        let parent_task = if let Some(parent_attempt_id) = current_task.parent_task_attempt {
-            // Find the attempt that created the current task
+        // 2. Get parent task (if current task was created by another task's attempt OR has parent_task_id)
+        let parent_task = if let Some(parent_task_id) = current_task.parent_task_id {
+            // Prefer parent_task_id if available (new way)
+            Self::find_by_id(pool, parent_task_id).await?
+        } else if let Some(parent_attempt_id) = current_task.parent_task_attempt {
+            // Fall back to parent_task_attempt (legacy)
             if let Ok(Some(parent_attempt)) = TaskAttempt::find_by_id(pool, parent_attempt_id).await
             {
                 // Find the task that owns that parent attempt - THAT's the real parent
@@ -350,13 +382,17 @@ ORDER BY t.created_at DESC"#,
             None
         };
 
-        // 3. Get children tasks (created by this attempt)
+        // 3. Get children tasks (created by this attempt - legacy)
         let children = Self::find_children_by_attempt_id(pool, task_attempt.id).await?;
+
+        // 4. Get subtasks (direct children via parent_task_id)
+        let subtasks = Self::find_children_by_task_id(pool, current_task.id).await?;
 
         Ok(TaskRelationships {
             parent_task,
             current_attempt: task_attempt.clone(),
             children,
+            subtasks,
         })
     }
 }

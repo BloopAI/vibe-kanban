@@ -109,7 +109,7 @@ function CurrentAttempt({
       projectId,
       initialBaseBranch:
         selectedAttempt.branch || selectedAttempt.target_branch,
-      parentTaskAttemptId: selectedAttempt.id,
+      parentTaskId: task.id, // Use task ID for hierarchy
     });
   };
 
