@@ -10,7 +10,7 @@ import {
   BreadcrumbSeparator,
 } from '../ui/breadcrumb';
 import type { TaskWithAttemptStatus } from 'shared/types';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useTaskAttempt } from '@/hooks/useTaskAttempt';
 import { useTaskViewManager } from '@/hooks/useTaskViewManager';
 import { X, Maximize2, Minimize2 } from 'lucide-react';
@@ -20,10 +20,22 @@ interface KanbanSidebarProps {
   selectedTask: TaskWithAttemptStatus | null;
 }
 
-const HeaderActions = ({ projectId }: { projectId: string }) => {
-  const { isFullscreen, toggleFullscreen, navigateToTasksList } =
-    useTaskViewManager();
+type TaskViewManager = ReturnType<typeof useTaskViewManager>;
 
+interface HeaderActionsProps
+  extends Pick<
+    TaskViewManager,
+    'isFullscreen' | 'toggleFullscreen' | 'navigateToTasksList'
+  > {
+  projectId: string;
+}
+
+const HeaderActions = ({
+  projectId,
+  isFullscreen,
+  toggleFullscreen,
+  navigateToTasksList,
+}: HeaderActionsProps) => {
   return (
     <>
       <Button
@@ -46,6 +58,12 @@ const HeaderActions = ({ projectId }: { projectId: string }) => {
 };
 
 const KanbanSidebar = ({ selectedTask }: KanbanSidebarProps) => {
+  const {
+    isFullscreen,
+    toggleFullscreen,
+    navigateToTasksList,
+    navigateToTask,
+  } = useTaskViewManager();
   const { projectId, attemptId } = useParams<{
     projectId: string;
     attemptId?: string;
@@ -56,9 +74,13 @@ const KanbanSidebar = ({ selectedTask }: KanbanSidebarProps) => {
   const { data: attempt } = useTaskAttempt(effectiveAttemptId);
 
   const showAttempt = Boolean(attemptId && attemptId !== 'latest');
-  const taskUrl = selectedTask
-    ? `/projects/${projectId}/tasks/${selectedTask.id}`
-    : undefined;
+  const handleBreadcrumbClick = () => {
+    if (!projectId || !selectedTask) return;
+    navigateToTask(projectId, selectedTask.id, {
+      fullscreen: isFullscreen,
+      replace: false,
+    });
+  };
 
   const truncateTitle = (title: string | undefined, maxLength = 20) => {
     if (!title) return 'Task';
@@ -74,13 +96,28 @@ const KanbanSidebar = ({ selectedTask }: KanbanSidebarProps) => {
 
   return (
     <NewCard className="bg-background h-full">
-      <NewCardHeader actions={<HeaderActions projectId={projectId!} />}>
+      <NewCardHeader
+        actions={
+          <HeaderActions
+            projectId={projectId!}
+            isFullscreen={isFullscreen}
+            toggleFullscreen={toggleFullscreen}
+            navigateToTasksList={navigateToTasksList}
+          />
+        }
+      >
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
-              {showAttempt && taskUrl ? (
+              {showAttempt && selectedTask ? (
                 <BreadcrumbLink asChild>
-                  <Link to={taskUrl}>{truncateTitle(selectedTask?.title)}</Link>
+                  <button
+                    type="button"
+                    className="hover:text-foreground transition-colors"
+                    onClick={handleBreadcrumbClick}
+                  >
+                    {truncateTitle(selectedTask.title)}
+                  </button>
                 </BreadcrumbLink>
               ) : (
                 truncateTitle(selectedTask?.title)

@@ -54,14 +54,19 @@ export function useTaskViewManager() {
 
   const navigateToTask = useCallback(
     (projectId: string, taskId: string, options?: NavigateOptions) => {
-      const targetUrl = buildTaskUrl(projectId, taskId, options);
+      const normalizedOptions: NavigateOptions = {
+        ...options,
+        fullscreen: options?.fullscreen ?? isFullscreen,
+      };
+
+      const targetUrl = buildTaskUrl(projectId, taskId, normalizedOptions);
 
       navigate(targetUrl, {
-        replace: options?.replace ?? true,
-        state: options?.state,
+        replace: normalizedOptions.replace ?? true,
+        state: normalizedOptions.state,
       });
     },
-    [buildTaskUrl, navigate]
+    [buildTaskUrl, navigate, isFullscreen]
   );
 
   const navigateToAttempt = useCallback(
