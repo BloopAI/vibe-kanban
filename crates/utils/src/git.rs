@@ -7,10 +7,7 @@ pub fn is_valid_branch_prefix(prefix: &str) -> bool {
         return false;
     }
 
-    match git2::Branch::name_is_valid(&format!("{}/x", prefix)) {
-        Ok(valid) => valid,
-        Err(_) => false,
-    }
+    git2::Branch::name_is_valid(&format!("{prefix}/x")).unwrap_or_default()
 }
 
 #[cfg(test)]
