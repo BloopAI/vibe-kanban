@@ -4,10 +4,7 @@ import { I18nextProvider } from 'react-i18next';
 import i18n from '@/i18n';
 import { Projects } from '@/pages/projects';
 import { ProjectTasks } from '@/pages/project-tasks';
-import { FullscreenTaskView } from '@/pages/fullscreen-task-view';
-import { FullscreenAttemptView } from '@/pages/fullscreen-attempt-view';
 import { NormalLayout } from '@/components/layout/NormalLayout';
-import { FullscreenLayout } from '@/components/layout/FullscreenLayout';
 
 import {
   AgentSettings,
@@ -172,25 +169,6 @@ function AppContent() {
                   <Route
                     path="/mcp-servers"
                     element={<Navigate to="/settings/mcp" replace />}
-                  />
-                </Route>
-
-                <Route element={<FullscreenLayout />}>
-                  <Route
-                    path="/projects/:projectId/tasks/:taskId/full"
-                    element={<FullscreenTaskView />}
-                  />
-                  <Route
-                    path="/projects/:projectId/tasks/:taskId/attempts/:attemptId/full"
-                    element={<Navigate to="preview" replace />}
-                  />
-                  <Route
-                    path="/projects/:projectId/tasks/:taskId/attempts/:attemptId/full/preview"
-                    element={<FullscreenAttemptView mode="preview" />}
-                  />
-                  <Route
-                    path="/projects/:projectId/tasks/:taskId/attempts/:attemptId/full/diffs"
-                    element={<FullscreenAttemptView mode="diffs" />}
                   />
                 </Route>
               </SentryRoutes>

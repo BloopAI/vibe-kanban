@@ -21,7 +21,6 @@ export enum Action {
   NAV_RIGHT = 'nav_right',
   OPEN_DETAILS = 'open_details',
   SHOW_HELP = 'show_help',
-  TOGGLE_FULLSCREEN = 'toggle_fullscreen',
   DELETE_TASK = 'delete_task',
   APPROVE_REQUEST = 'approve_request',
   DENY_APPROVAL = 'deny_approval',
@@ -136,7 +135,7 @@ export const keyBindings: KeyBinding[] = [
     action: Action.OPEN_DETAILS,
     keys: ['meta+enter', 'ctrl+enter'],
     scopes: [Scope.KANBAN],
-    description: 'Open selected task in fullscreen',
+    description: 'Open selected task details',
     group: 'Kanban',
   },
 
@@ -147,15 +146,6 @@ export const keyBindings: KeyBinding[] = [
     scopes: [Scope.GLOBAL],
     description: 'Show keyboard shortcuts help',
     group: 'Global',
-  },
-
-  // Task panel actions
-  {
-    action: Action.TOGGLE_FULLSCREEN,
-    keys: ['meta+enter', 'ctrl+enter'],
-    scopes: [Scope.KANBAN],
-    description: 'Toggle fullscreen view',
-    group: 'Task Details',
   },
 
   // Task actions
