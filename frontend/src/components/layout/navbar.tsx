@@ -25,6 +25,7 @@ import { openTaskForm } from '@/lib/openTaskForm';
 import { useProject } from '@/contexts/project-context';
 import { showProjectForm } from '@/lib/modals';
 import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
+import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
 
 const DISCORD_GUILD_ID = '1423630976524877857';
 
@@ -162,14 +163,7 @@ export function Navbar() {
           <div className="flex-1 flex justify-end">
             {projectId && (
               <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleOpenInIDE}
-                  aria-label="Open project in IDE"
-                >
-                  <FolderOpen className="h-4 w-4" />
-                </Button>
+                <OpenInIdeButton onClick={handleOpenInIDE} />
                 <Button
                   variant="ghost"
                   size="icon"
