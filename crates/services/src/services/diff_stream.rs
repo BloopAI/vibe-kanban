@@ -108,6 +108,7 @@ impl DiffWatcherContext {
         ) {
             Ok(messages) => send_messages(&self.tx, messages),
             Err(err) => {
+                tracing::error!("Error processing file changes: {err}");
                 send_error(&self.tx, err.to_string());
                 false
             }
@@ -175,10 +176,12 @@ pub fn create(
         let (debouncer, mut watcher_rx, canonical_worktree_path) = match watcher_result {
             Ok(Ok(parts)) => parts,
             Ok(Err(e)) => {
+                tracing::error!("Failed to set up filesystem watcher: {e}");
                 send_error(&ctx.tx, e.to_string());
                 return;
             }
             Err(join_err) => {
+                tracing::error!("Failed to spawn watcher setup: {join_err}");
                 send_error(
                     &ctx.tx,
                     format!("Failed to spawn watcher setup: {join_err}"),
@@ -202,6 +205,7 @@ pub fn create(
                         .map(|e| e.to_string())
                         .collect::<Vec<_>>()
                         .join("; ");
+                    tracing::error!("Filesystem watcher error: {message}");
                     send_error(&ctx.tx, message);
                     return;
                 }
