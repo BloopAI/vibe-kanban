@@ -22,8 +22,6 @@ use tokio::{
 use super::jsonrpc::{JsonRpcCallbacks, JsonRpcPeer};
 use crate::executors::ExecutorError;
 
-pub type LogWriter = Arc<Mutex<BufWriter<Box<dyn AsyncWrite + Send + Unpin>>>>;
-
 pub struct AppServerClient {
     rpc: OnceLock<JsonRpcPeer>,
     log_writer: LogWriter,
@@ -132,17 +130,6 @@ impl AppServerClient {
     fn next_request_id(&self) -> RequestId {
         self.rpc().next_request_id()
     }
-
-    async fn log_raw(&self, raw: &str) -> Result<(), ExecutorError> {
-        let mut guard = self.log_writer.lock().await;
-        guard
-            .write_all(raw.as_bytes())
-            .await
-            .map_err(ExecutorError::Io)?;
-        guard.write_all(b"\n").await.map_err(ExecutorError::Io)?;
-        guard.flush().await.map_err(ExecutorError::Io)?;
-        Ok(())
-    }
 }
 
 #[async_trait]
@@ -153,7 +140,7 @@ impl JsonRpcCallbacks for AppServerClient {
         raw: &str,
         request: JSONRPCRequest,
     ) -> Result<(), ExecutorError> {
-        self.log_raw(raw).await?;
+        self.log_writer.log_raw(raw).await?;
         match ServerRequest::try_from(request.clone()) {
             Ok(server_request) => handle_server_request(peer, server_request).await,
             Err(err) => {
@@ -173,7 +160,7 @@ impl JsonRpcCallbacks for AppServerClient {
         raw: &str,
         _response: &JSONRPCResponse,
     ) -> Result<(), ExecutorError> {
-        self.log_raw(raw).await
+        self.log_writer.log_raw(raw).await
     }
 
     async fn on_error(
@@ -182,7 +169,7 @@ impl JsonRpcCallbacks for AppServerClient {
         raw: &str,
         _error: &JSONRPCError,
     ) -> Result<(), ExecutorError> {
-        self.log_raw(raw).await
+        self.log_writer.log_raw(raw).await
     }
 
     async fn on_notification(
@@ -191,7 +178,7 @@ impl JsonRpcCallbacks for AppServerClient {
         raw: &str,
         notification: JSONRPCNotification,
     ) -> Result<bool, ExecutorError> {
-        self.log_raw(raw).await?;
+        self.log_writer.log_raw(raw).await?;
         let method = notification.method.as_str();
         if !method.starts_with("codex/event") {
             return Ok(false);
@@ -205,7 +192,7 @@ impl JsonRpcCallbacks for AppServerClient {
     }
 
     async fn on_non_json(&self, raw: &str) -> Result<(), ExecutorError> {
-        self.log_raw(raw).await?;
+        self.log_writer.log_raw(raw).await?;
         Ok(())
     }
 }
@@ -256,5 +243,29 @@ fn request_id(request: &ClientRequest) -> RequestId {
         | ClientRequest::AddConversationListener { request_id, .. }
         | ClientRequest::SendUserMessage { request_id, .. } => request_id.clone(),
         _ => unreachable!("request_id called for unsupported request variant"),
+    }
+}
+
+#[derive(Clone)]
+pub struct LogWriter {
+    writer: Arc<Mutex<BufWriter<Box<dyn AsyncWrite + Send + Unpin>>>>,
+}
+
+impl LogWriter {
+    pub fn new(writer: impl AsyncWrite + Send + Unpin + 'static) -> Self {
+        Self {
+            writer: Arc::new(Mutex::new(BufWriter::new(Box::new(writer)))),
+        }
+    }
+
+    pub async fn log_raw(&self, raw: &str) -> Result<(), ExecutorError> {
+        let mut guard = self.writer.lock().await;
+        guard
+            .write_all(raw.as_bytes())
+            .await
+            .map_err(ExecutorError::Io)?;
+        guard.write_all(b"\n").await.map_err(ExecutorError::Io)?;
+        guard.flush().await.map_err(ExecutorError::Io)?;
+        Ok(())
     }
 }

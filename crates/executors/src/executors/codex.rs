@@ -17,7 +17,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use strum_macros::AsRefStr;
-use tokio::{io::BufWriter, process::Command, sync::Mutex};
+use tokio::process::Command;
 use ts_rs::TS;
 use workspace_utils::{msg_store::MsgStore, shell::get_shell_command};
 
@@ -29,7 +29,10 @@ use self::{
 };
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
-    executors::{AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
+    executors::{
+        AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
+        codex::{jsonrpc::ExitSignalSender, normalize_logs::Error},
+    },
     stdout_dup::create_stdout_pipe_writer,
 };
 
@@ -232,14 +235,16 @@ impl Codex {
         let params = self.build_new_conversation_params(current_dir);
         let resume_session = resume_session.map(|s| s.to_string());
         tokio::spawn(async move {
+            let exit_signal_tx = ExitSignalSender::new(exit_signal_tx);
+            let log_writer = LogWriter::new(new_stdout);
             if let Err(err) = Self::launch_codex_app_server(
                 params,
                 resume_session,
                 combined_prompt,
                 child_stdout,
                 child_stdin,
-                new_stdout,
-                exit_signal_tx,
+                log_writer.clone(),
+                exit_signal_tx.clone(),
             )
             .await
             {
@@ -249,6 +254,11 @@ impl Codex {
                     return;
                 }
                 tracing::error!("Codex spawn error: {}", err);
+                log_writer
+                    .log_raw(&Error::launch_error(err.to_string()).raw())
+                    .await
+                    .ok();
+                exit_signal_tx.send_exit_signal().await;
             }
         });
 
@@ -264,10 +274,9 @@ impl Codex {
         combined_prompt: String,
         child_stdout: tokio::process::ChildStdout,
         child_stdin: tokio::process::ChildStdin,
-        new_stdout: impl tokio::io::AsyncWrite + Unpin + Send + 'static,
-        exit_signal_tx: tokio::sync::oneshot::Sender<()>,
+        log_writer: LogWriter,
+        exit_signal_tx: ExitSignalSender,
     ) -> Result<(), ExecutorError> {
-        let log_writer: LogWriter = Arc::new(Mutex::new(BufWriter::new(Box::new(new_stdout))));
         let client = AppServerClient::new(log_writer);
         let rpc_peer =
             JsonRpcPeer::spawn(child_stdin, child_stdout, client.clone(), exit_signal_tx);
@@ -287,7 +296,7 @@ impl Codex {
             Some(session_id) => {
                 let (rollout_path, _forked_session_id) =
                     SessionHandler::fork_rollout_file(&session_id)
-                        .map_err(ExecutorError::FollowUpNotSupported)?;
+                        .map_err(|e| ExecutorError::FollowUpNotSupported(e.to_string()))?;
                 let overrides = conversation_params;
                 let response = client
                     .resume_conversation(rollout_path.clone(), overrides)

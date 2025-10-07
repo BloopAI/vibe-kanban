@@ -23,7 +23,7 @@ use codex_protocol::{
 use futures::StreamExt;
 use lazy_static::lazy_static;
 use regex::Regex;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use workspace_utils::{
     diff::{concatenate_diff_hunks, extract_unified_diff_hunks},
@@ -347,6 +347,11 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
         let mut stdout_lines = msg_store.stdout_lines_stream();
 
         while let Some(Ok(line)) = stdout_lines.next().await {
+            if let Ok(error) = serde_json::from_str::<Error>(&line) {
+                add_normalized_entry(&msg_store, &entry_index, error.to_normalized_entry());
+                continue;
+            }
+
             if let Ok(response) = serde_json::from_str::<JSONRPCResponse>(&line) {
                 handle_jsonrpc_response(response, &msg_store, &entry_index);
                 continue;
@@ -797,4 +802,32 @@ lazy_static! {
         r#"^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"#
     )
     .expect("valid regex");
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum Error {
+    LaunchError { error: String },
+}
+
+impl Error {
+    pub fn launch_error(error: String) -> Self {
+        Self::LaunchError { error }
+    }
+
+    pub fn raw(&self) -> String {
+        serde_json::to_string(self).unwrap_or_default()
+    }
+}
+
+impl ToNormalizedEntry for Error {
+    fn to_normalized_entry(&self) -> NormalizedEntry {
+        NormalizedEntry {
+            timestamp: None,
+            entry_type: NormalizedEntryType::ErrorMessage,
+            content: match self {
+                Error::LaunchError { error } => error.clone(),
+            },
+            metadata: None,
+        }
+    }
 }

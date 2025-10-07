@@ -37,6 +37,24 @@ pub enum PendingResponse {
 }
 
 #[derive(Clone)]
+pub struct ExitSignalSender {
+    inner: Arc<Mutex<Option<oneshot::Sender<()>>>>,
+}
+
+impl ExitSignalSender {
+    pub fn new(sender: oneshot::Sender<()>) -> Self {
+        Self {
+            inner: Arc::new(Mutex::new(Some(sender))),
+        }
+    }
+    pub async fn send_exit_signal(&self) {
+        if let Some(sender) = self.inner.lock().await.take() {
+            let _ = sender.send(());
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct JsonRpcPeer {
     stdin: Arc<Mutex<ChildStdin>>,
     pending: Arc<Mutex<HashMap<RequestId, oneshot::Sender<PendingResponse>>>>,
@@ -48,7 +66,7 @@ impl JsonRpcPeer {
         stdin: ChildStdin,
         stdout: ChildStdout,
         callbacks: Arc<dyn JsonRpcCallbacks>,
-        exit_tx: oneshot::Sender<()>,
+        exit_tx: ExitSignalSender,
     ) -> Self {
         let peer = Self {
             stdin: Arc::new(Mutex::new(stdin)),
@@ -137,7 +155,7 @@ impl JsonRpcPeer {
                 }
             }
 
-            let _ = exit_tx.send(());
+            exit_tx.send_exit_signal().await;
             let _ = reader_peer.shutdown().await;
         });
 
