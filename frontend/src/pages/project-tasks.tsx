@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,6 +11,8 @@ import { openTaskForm } from '@/lib/openTaskForm';
 import { useSearch } from '@/contexts/search-context';
 import { useProject } from '@/contexts/project-context';
 import { useTaskAttempts } from '@/hooks/useTaskAttempts';
+import { useTaskAttempt } from '@/hooks/useTaskAttempt';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { paths } from '@/lib/paths';
 import {
   useKeyCreate,
@@ -23,6 +25,7 @@ import {
   useKeyOpenDetails,
   Scope,
   useKeyDeleteTask,
+  useKeyboardShortcut,
 } from '@/keyboard';
 
 import TaskKanbanBoard from '@/components/tasks/TaskKanbanBoard';
@@ -32,8 +35,19 @@ import { useProjectTasks } from '@/hooks/useProjectTasks';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import NiceModal from '@ebay/nice-modal-react';
 import { useHotkeysContext } from 'react-hotkeys-hook';
-import KanbanSidebar from '@/components/panels/KanbanSidebar';
-import ResponsiveTwoPane from '@/components/layout/ResponsiveTwoPane';
+import { TasksLayout, type LayoutMode } from '@/components/layout/TasksLayout';
+import { PreviewPanel } from '@/components/panels/PreviewPanel';
+import { DiffsPanel } from '@/components/panels/DiffsPanel';
+import TaskAttemptPanel from '@/components/panels/TaskAttemptPanel';
+import { NewCard, NewCardHeader } from '@/components/ui/new-card';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb';
+import { AttemptHeaderActions } from '@/components/panels/AttemptHeaderActions';
 
 type Task = TaskWithAttemptStatus;
 
@@ -54,8 +68,10 @@ export function ProjectTasks() {
   }>();
   const navigate = useNavigate();
   const { enableScope, disableScope } = useHotkeysContext();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const isXL = useMediaQuery('(min-width: 1280px)');
+  const isMobile = !isXL;
 
-  // Use project context for project data
   const {
     projectId,
     isLoading: projectLoading,
@@ -70,7 +86,6 @@ export function ProjectTasks() {
     };
   }, [enableScope, disableScope]);
 
-  // Helper functions to open task forms
   const handleCreateTask = useCallback(() => {
     if (projectId) {
       openTaskForm({ projectId });
@@ -96,7 +111,6 @@ export function ProjectTasks() {
   );
   const { query: searchQuery, focusInput } = useSearch();
 
-  // Stream tasks for this project
   const {
     tasks,
     tasksById,
@@ -104,14 +118,12 @@ export function ProjectTasks() {
     error: streamError,
   } = useProjectTasks(projectId || '');
 
-  // Derive panel state from URL
   const isPanelOpen = Boolean(taskId);
   const selectedTask = useMemo(
     () => (taskId ? (tasksById[taskId] ?? null) : null),
     [taskId, tasksById]
   );
 
-  // Handle "latest" attemptId - resolve to actual attempt ID
   const isLatest = attemptId === 'latest';
   const { data: attempts = [], isLoading: isAttemptsLoading } = useTaskAttempts(
     taskId,
@@ -152,13 +164,42 @@ export function ProjectTasks() {
     navigate,
   ]);
 
-  // Define task creation handler
+  const effectiveAttemptId = attemptId === 'latest' ? undefined : attemptId;
+  const { data: attempt } = useTaskAttempt(effectiveAttemptId);
+  const hasAttempt = Boolean(attemptId);
+
+  const rawMode = searchParams.get('view') as LayoutMode;
+  const mode: LayoutMode =
+    rawMode === 'expand' || rawMode === 'preview' || rawMode === 'diffs'
+      ? rawMode
+      : null;
+
+  useEffect(() => {
+    const view = searchParams.get('view');
+    if (view === 'logs') {
+      const params = new URLSearchParams(searchParams);
+      params.set('view', 'diffs');
+      setSearchParams(params, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  const setMode = useCallback(
+    (newMode: LayoutMode) => {
+      const params = new URLSearchParams(searchParams);
+      if (newMode === null) {
+        params.delete('view');
+      } else {
+        params.set('view', newMode);
+      }
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
+
   const handleCreateNewTask = useCallback(() => {
     handleCreateTask();
   }, [handleCreateTask]);
 
-  // Semantic keyboard shortcuts for kanban page
-  // Prevent default is needed to stop the input having the value 'c'
   useKeyCreate(handleCreateNewTask, {
     scope: Scope.KANBAN,
     preventDefault: true,
@@ -170,7 +211,7 @@ export function ProjectTasks() {
     },
     {
       scope: Scope.KANBAN,
-      preventDefault: true, // Prevent Firefox quick find
+      preventDefault: true,
     }
   );
 
@@ -185,7 +226,6 @@ export function ProjectTasks() {
     { scope: Scope.KANBAN }
   );
 
-  // Memoize filtered tasks based on search query
   const filteredTasks = useMemo(() => {
     if (!searchQuery.trim()) {
       return tasks;
@@ -198,7 +238,6 @@ export function ProjectTasks() {
     );
   }, [tasks, searchQuery]);
 
-  // Memoize grouped filtered tasks
   const groupedFilteredTasks = useMemo(() => {
     const groups: Record<string, Task[]> = {};
     TASK_STATUSES.forEach((status) => {
@@ -241,7 +280,7 @@ export function ProjectTasks() {
     },
     {
       scope: Scope.KANBAN,
-      preventDefault: true, // Prevent page scroll
+      preventDefault: true,
     }
   );
 
@@ -251,7 +290,7 @@ export function ProjectTasks() {
     },
     {
       scope: Scope.KANBAN,
-      preventDefault: true, // Prevent page scroll
+      preventDefault: true,
     }
   );
 
@@ -264,7 +303,6 @@ export function ProjectTasks() {
     { scope: Scope.KANBAN }
   );
 
-  // Delete task shortcut
   useKeyDeleteTask(
     () => {
       if (selectedTask) {
@@ -275,6 +313,48 @@ export function ProjectTasks() {
       scope: Scope.KANBAN,
       preventDefault: true,
     }
+  );
+
+  useKeyboardShortcut(
+    {
+      keys: 'w',
+      callback: () => {
+        if (hasAttempt) {
+          setMode(mode === 'expand' ? null : 'expand');
+        }
+      },
+      description: 'Toggle expand mode',
+      scope: Scope.KANBAN,
+    },
+    { preventDefault: true }
+  );
+
+  useKeyboardShortcut(
+    {
+      keys: 'p',
+      callback: () => {
+        if (hasAttempt) {
+          setMode(mode === 'preview' ? null : 'preview');
+        }
+      },
+      description: 'Toggle preview mode',
+      scope: Scope.KANBAN,
+    },
+    { preventDefault: true }
+  );
+
+  useKeyboardShortcut(
+    {
+      keys: 'l',
+      callback: () => {
+        if (hasAttempt) {
+          setMode(mode === 'diffs' ? null : 'diffs');
+        }
+      },
+      description: 'Toggle diffs mode',
+      scope: Scope.KANBAN,
+    },
+    { preventDefault: true }
   );
 
   const handleClosePanel = useCallback(() => {
@@ -292,14 +372,11 @@ export function ProjectTasks() {
           projectId: projectId!,
         })
           .then(() => {
-            // Task was deleted, close panel if this task was selected
             if (selectedTask?.id === taskId) {
               handleClosePanel();
             }
           })
-          .catch(() => {
-            // Modal was cancelled - do nothing
-          });
+          .catch(() => {});
       }
     },
     [tasksById, projectId, selectedTask, handleClosePanel]
@@ -330,7 +407,6 @@ export function ProjectTasks() {
     [projectId, navigate]
   );
 
-  // Navigation functions that use filtered/grouped tasks
   const selectNextTask = useCallback(() => {
     if (selectedTask) {
       const tasksInStatus = groupedFilteredTasks[selectedTask.status] || [];
@@ -341,7 +417,6 @@ export function ProjectTasks() {
         handleViewTaskDetails(tasksInStatus[currentIndex + 1]);
       }
     } else {
-      // Find first non-empty column
       for (const status of TASK_STATUSES) {
         const tasks = groupedFilteredTasks[status];
         if (tasks && tasks.length > 0) {
@@ -362,7 +437,6 @@ export function ProjectTasks() {
         handleViewTaskDetails(tasksInStatus[currentIndex - 1]);
       }
     } else {
-      // Find first non-empty column
       for (const status of TASK_STATUSES) {
         const tasks = groupedFilteredTasks[status];
         if (tasks && tasks.length > 0) {
@@ -378,7 +452,6 @@ export function ProjectTasks() {
       const currentIndex = TASK_STATUSES.findIndex(
         (status) => status === selectedTask.status
       );
-      // Find next non-empty column
       for (let i = currentIndex + 1; i < TASK_STATUSES.length; i++) {
         const tasks = groupedFilteredTasks[TASK_STATUSES[i]];
         if (tasks && tasks.length > 0) {
@@ -387,7 +460,6 @@ export function ProjectTasks() {
         }
       }
     } else {
-      // Find first non-empty column
       for (const status of TASK_STATUSES) {
         const tasks = groupedFilteredTasks[status];
         if (tasks && tasks.length > 0) {
@@ -403,7 +475,6 @@ export function ProjectTasks() {
       const currentIndex = TASK_STATUSES.findIndex(
         (status) => status === selectedTask.status
       );
-      // Find previous non-empty column
       for (let i = currentIndex - 1; i >= 0; i--) {
         const tasks = groupedFilteredTasks[TASK_STATUSES[i]];
         if (tasks && tasks.length > 0) {
@@ -412,7 +483,6 @@ export function ProjectTasks() {
         }
       }
     } else {
-      // Find first non-empty column
       for (const status of TASK_STATUSES) {
         const tasks = groupedFilteredTasks[status];
         if (tasks && tasks.length > 0) {
@@ -441,7 +511,6 @@ export function ProjectTasks() {
           parent_task_attempt: task.parent_task_attempt,
           image_ids: null,
         });
-        // UI will update via WebSocket stream
       } catch (err) {
         console.error('Failed to update task status:', err);
       }
@@ -449,7 +518,6 @@ export function ProjectTasks() {
     [tasksById]
   );
 
-  // Combine loading states for initial load
   const isInitialTasksLoad = isLoading && tasks.length === 0;
 
   if (projectError) {
@@ -472,7 +540,19 @@ export function ProjectTasks() {
     return <Loader message={t('loading')} size={32} className="py-8" />;
   }
 
-  const leftPane =
+  const truncateTitle = (title: string | undefined, maxLength = 20) => {
+    if (!title) return 'Task';
+    if (title.length <= maxLength) return title;
+
+    const truncated = title.substring(0, maxLength);
+    const lastSpace = truncated.lastIndexOf(' ');
+
+    return lastSpace > 0
+      ? `${truncated.substring(0, lastSpace)}...`
+      : `${truncated}...`;
+  };
+
+  const kanbanContent =
     tasks.length === 0 ? (
       <div className="max-w-7xl mx-auto mt-8">
         <Card>
@@ -510,7 +590,65 @@ export function ProjectTasks() {
       </div>
     );
 
-  const rightPane = <KanbanSidebar selectedTask={selectedTask} />;
+  const attemptContent = (
+    <NewCard className="h-full min-h-0 flex flex-col bg-diagonal-lines bg-background border-0">
+      <NewCardHeader
+        className="shrink-0"
+        actions={
+          <AttemptHeaderActions
+            mode={mode}
+            onModeChange={setMode}
+            onClose={() =>
+              navigate(`/projects/${projectId}/tasks`, { replace: true })
+            }
+          />
+        }
+      >
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbPage>
+                {truncateTitle(selectedTask?.title)}
+              </BreadcrumbPage>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>
+                {attempt?.branch || 'Task Attempt'}
+              </BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+      </NewCardHeader>
+      <TaskAttemptPanel attempt={attempt} task={selectedTask}>
+        {({ logs, followUp }) => (
+          <>
+            <div className="flex-1 min-h-0 flex flex-col">{logs}</div>
+            <div className="shrink-0">{followUp}</div>
+          </>
+        )}
+      </TaskAttemptPanel>
+    </NewCard>
+  );
+
+  const auxContent = (
+    <div className="relative h-full w-full">
+      <div
+        aria-hidden={mode !== 'preview'}
+        style={{ display: mode === 'preview' ? 'block' : 'none' }}
+        className="h-full"
+      >
+        <PreviewPanel />
+      </div>
+      <div
+        aria-hidden={mode !== 'diffs'}
+        style={{ display: mode === 'diffs' ? 'block' : 'none' }}
+        className="h-full"
+      >
+        <DiffsPanel />
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-full h-full flex flex-col">
@@ -525,10 +663,13 @@ export function ProjectTasks() {
       )}
 
       <div className="flex-1 min-h-0">
-        <ResponsiveTwoPane
-          left={leftPane}
-          right={rightPane}
-          isRightOpen={isPanelOpen && !projectLoading}
+        <TasksLayout
+          kanban={kanbanContent}
+          attempt={attemptContent}
+          aux={auxContent}
+          hasAttempt={hasAttempt}
+          mode={mode}
+          isMobile={isMobile}
         />
       </div>
     </div>
