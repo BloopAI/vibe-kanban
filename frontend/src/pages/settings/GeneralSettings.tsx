@@ -581,8 +581,7 @@ export function GeneralSettings() {
               <p className="text-sm text-destructive">{branchPrefixError}</p>
             )}
             <p className="text-sm text-muted-foreground">
-              {t('settings.general.git.branchPrefix.helper')}
-              {' '}
+              {t('settings.general.git.branchPrefix.helper')}{' '}
               {draft?.git_branch_prefix ? (
                 <>
                   {t('settings.general.git.branchPrefix.preview')}{' '}
