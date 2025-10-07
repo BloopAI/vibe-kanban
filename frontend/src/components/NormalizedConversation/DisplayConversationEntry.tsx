@@ -594,6 +594,14 @@ const getToolStatusAppearance = (status: ToolStatus): ToolStatusAppearance => {
  * Main component  *
  *******************/
 
+export const DisplayConversationEntryMaxWidth = (props: Props) => {
+  return (
+    <div className="mx-auto w-full max-w-[50rem]">
+      <DisplayConversationEntry {...props} />
+    </div>
+  );
+};
+
 function DisplayConversationEntry({
   entry,
   expansionKey,
@@ -794,4 +802,4 @@ function DisplayConversationEntry({
   );
 }
 
-export default DisplayConversationEntry;
+export default DisplayConversationEntryMaxWidth;
