@@ -142,8 +142,6 @@ function DenyReasonForm({
 }) {
   return (
     <div className="mt-3 bg-background px-3 py-3 text-sm">
-      {/* FileSearchTextarea uses AutoExpandingTextarea which has p-0 by default,
-          so we need to explicitly add padding, border, and other Textarea styles */}
       <FileSearchTextarea
         ref={inputRef}
         value={value}
