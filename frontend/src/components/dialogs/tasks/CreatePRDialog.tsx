@@ -81,7 +81,8 @@ const CreatePrDialog = NiceModal.create(() => {
     });
 
     if (result.success) {
-      setError(null);
+      setError(null); // Clear any previous errors on success
+      // Reset form and close dialog
       setPrTitle('');
       setPrBody('');
       setPrBaseBranch('');
@@ -90,9 +91,9 @@ const CreatePrDialog = NiceModal.create(() => {
     } else {
       setCreatingPR(false);
       if (result.error) {
+        modal.hide();
         switch (result.error) {
           case GitHubServiceError.TOKEN_INVALID: {
-            modal.hide();
             const authSuccess = await NiceModal.show('github-login');
             if (authSuccess) {
               modal.show();
@@ -101,7 +102,6 @@ const CreatePrDialog = NiceModal.create(() => {
             return;
           }
           case GitHubServiceError.INSUFFICIENT_PERMISSIONS: {
-            modal.hide();
             const patProvided = await NiceModal.show('provide-pat');
             if (patProvided) {
               modal.show();
@@ -110,7 +110,6 @@ const CreatePrDialog = NiceModal.create(() => {
             return;
           }
           case GitHubServiceError.REPO_NOT_FOUND_OR_NO_ACCESS: {
-            modal.hide();
             const patProvided = await NiceModal.show('provide-pat', {
               errorMessage:
                 'Your token does not have access to this repository, or the repository does not exist. Please check the repository URL and/or provide a Personal Access Token with access.',
