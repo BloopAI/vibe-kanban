@@ -31,9 +31,9 @@ export function TasksLayout({
       case 'expand':
         return ['1fr', '2fr', '0fr'];
       case 'preview':
-        return ['0fr', '1fr', '1fr'];
+        return ['0fr', '1fr', '2fr'];
       case 'diffs':
-        return ['0fr', '1fr', '1fr'];
+        return ['0fr', '1fr', '2fr'];
       case null:
       default:
         return ['2fr', '1fr', '0fr'];

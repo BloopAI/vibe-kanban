@@ -591,7 +591,7 @@ export function ProjectTasks() {
     );
 
   const attemptContent = (
-    <NewCard className="h-full min-h-0 flex flex-col bg-diagonal-lines bg-background border-0">
+    <NewCard className="h-full min-h-0 flex flex-col bg-diagonal-lines bg-muted border-0">
       <NewCardHeader
         className="shrink-0"
         actions={
@@ -604,27 +604,33 @@ export function ProjectTasks() {
           />
         }
       >
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbPage>
-                {truncateTitle(selectedTask?.title)}
-              </BreadcrumbPage>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>
-                {attempt?.branch || 'Task Attempt'}
-              </BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
+        <div className="mx-auto w-full">
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbPage>
+                  {truncateTitle(selectedTask?.title)}
+                </BreadcrumbPage>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>
+                  {attempt?.branch || 'Task Attempt'}
+                </BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
       </NewCardHeader>
       <TaskAttemptPanel attempt={attempt} task={selectedTask}>
         {({ logs, followUp }) => (
           <>
-            <div className="flex-1 min-h-0 flex flex-col">{logs}</div>
-            <div className="shrink-0">{followUp}</div>
+            <div className="flex-1 min-h-0 overflow-auto">
+              <div className="mx-auto w-full max-w-[60rem]">{logs}</div>
+            </div>
+            <div className="shrink-0 border-t">
+              <div className="mx-auto w-full max-w-[60rem]">{followUp}</div>
+            </div>
           </>
         )}
       </TaskAttemptPanel>
