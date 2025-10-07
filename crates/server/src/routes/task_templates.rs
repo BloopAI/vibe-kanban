@@ -76,7 +76,8 @@ pub async fn update_template(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<UpdateTaskTemplate>,
 ) -> Result<ResponseJson<ApiResponse<TaskTemplate>>, ApiError> {
-    let updated_template = TaskTemplate::update(&deployment.db().pool, template.id, &payload).await?;
+    let updated_template =
+        TaskTemplate::update(&deployment.db().pool, template.id, &payload).await?;
 
     deployment
         .track_if_analytics_allowed(
