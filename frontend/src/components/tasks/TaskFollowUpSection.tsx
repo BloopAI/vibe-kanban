@@ -410,7 +410,7 @@ export function TaskFollowUpSection({
     selectedAttemptId && (
       <div
         className={cn(
-          'border-t p-4 focus-within:ring ring-inset',
+          'p-4 focus-within:ring ring-inset',
           isRetryActive && 'opacity-50'
         )}
       >
