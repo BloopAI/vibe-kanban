@@ -152,7 +152,7 @@ export function ProjectTasks() {
       return;
     }
 
-    navigate(paths.attempt(projectId, taskId, latestAttemptId), {
+    navigateWithSearch(paths.attempt(projectId, taskId, latestAttemptId), {
       replace: true,
     });
   }, [
@@ -194,6 +194,14 @@ export function ProjectTasks() {
       setSearchParams(params, { replace: true });
     },
     [searchParams, setSearchParams]
+  );
+
+  const navigateWithSearch = useCallback(
+    (pathname: string, options?: { replace?: boolean }) => {
+      const search = searchParams.toString();
+      navigate({ pathname, search: search ? `?${search}` : '' }, options);
+    },
+    [navigate, searchParams]
   );
 
   const handleCreateNewTask = useCallback(() => {
@@ -399,12 +407,14 @@ export function ProjectTasks() {
   const handleViewTaskDetails = useCallback(
     (task: Task, attemptIdToShow?: string) => {
       if (attemptIdToShow) {
-        navigate(paths.attempt(projectId!, task.id, attemptIdToShow));
+        navigateWithSearch(paths.attempt(projectId!, task.id, attemptIdToShow));
       } else {
-        navigate(`${paths.task(projectId!, task.id)}/attempts/latest`);
+        navigateWithSearch(
+          `${paths.task(projectId!, task.id)}/attempts/latest`
+        );
       }
     },
-    [projectId, navigate]
+    [projectId, navigateWithSearch]
   );
 
   const selectNextTask = useCallback(() => {
@@ -625,11 +635,10 @@ export function ProjectTasks() {
       <TaskAttemptPanel attempt={attempt} task={selectedTask}>
         {({ logs, followUp }) => (
           <>
-            <div className="flex-1 min-h-0 overflow-auto">
-              <div className="mx-auto w-full max-w-[60rem]">{logs}</div>
-            </div>
+            <div className="flex-1 min-h-0 flex flex-col">{logs}</div>
+
             <div className="shrink-0 border-t">
-              <div className="mx-auto w-full max-w-[60rem]">{followUp}</div>
+              <div className="mx-auto w-full max-w-[50rem]">{followUp}</div>
             </div>
           </>
         )}

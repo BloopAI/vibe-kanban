@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 const ToggleGroup = ToggleGroupPrimitive.Root;
 
 const toggleGroupItemVariants = cva(
-  'inline-flex h-4 w-4 items-center justify-center rounded-sm text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex h-4 w-4 items-center justify-center rounded-sm text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       active: {
