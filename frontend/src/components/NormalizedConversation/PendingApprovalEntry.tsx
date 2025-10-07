@@ -150,7 +150,6 @@ function DenyReasonForm({
         disabled={isResponding}
         className="w-full bg-transparent border px-3 py-2 text-sm resize-none min-h-[80px] focus-visible:outline-none"
         projectId={projectId}
-        maxRows={10}
       />
       <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
         <Button

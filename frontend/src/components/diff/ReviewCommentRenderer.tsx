@@ -53,7 +53,6 @@ export function ReviewCommentRenderer({
           value={editText}
           onChange={setEditText}
           placeholder="Edit comment... (type @ to search files)"
-          maxRows={10}
           className="w-full bg-background text-foreground text-sm font-mono resize-none min-h-[60px] focus:outline-none"
           projectId={projectId}
         />

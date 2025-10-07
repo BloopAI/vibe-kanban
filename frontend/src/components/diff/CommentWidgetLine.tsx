@@ -86,7 +86,6 @@ export function CommentWidgetLine({
         value={value}
         onChange={setValue}
         placeholder="Add a comment... (type @ to search files)"
-        maxRows={10}
         className="w-full bg-primary text-primary-foreground text-sm font-mono resize-none min-h-[60px] focus:outline-none focus:ring-1 focus:ring-primary"
         projectId={projectId}
       />
