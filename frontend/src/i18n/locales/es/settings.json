@@ -80,7 +80,15 @@
           "rules": "Permitido: letras, números, puntos, guiones bajos, guiones. Sin barras ni caracteres especiales.",
           "preview": "Vista previa:",
           "previewWithPrefix": "{{prefix}}/1a2b-nombre-tarea",
-          "previewNoPrefix": "1a2b-nombre-tarea"
+          "previewNoPrefix": "1a2b-nombre-tarea",
+          "errors": {
+            "slash": "El prefijo debe ser un solo segmento de ruta (sin '/').",
+            "startsWithDot": "El prefijo no puede comenzar con '.'.",
+            "endsWithDot": "El prefijo no puede terminar con '.' o '.lock'.",
+            "invalidSequence": "El prefijo contiene una secuencia no válida (.., @{ o @).",
+            "invalidChars": "El prefijo contiene caracteres no válidos.",
+            "controlChars": "El prefijo contiene caracteres de control."
+          }
         }
       },
       "notifications": {

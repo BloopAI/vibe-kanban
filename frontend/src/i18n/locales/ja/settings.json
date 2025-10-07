@@ -80,7 +80,15 @@
           "rules": "使用可能な文字：英字、数字、ドット、アンダースコア、ハイフン。スラッシュや特殊文字は使用できません。",
           "preview": "プレビュー：",
           "previewWithPrefix": "{{prefix}}/1a2b-タスク名",
-          "previewNoPrefix": "1a2b-タスク名"
+          "previewNoPrefix": "1a2b-タスク名",
+          "errors": {
+            "slash": "プレフィックスは単一のパスセグメントである必要があります（'/'を含めない）。",
+            "startsWithDot": "プレフィックスは'.'で始めることができません。",
+            "endsWithDot": "プレフィックスは'.'または'.lock'で終わることができません。",
+            "invalidSequence": "プレフィックスに無効なシーケンス（..、@{、または@）が含まれています。",
+            "invalidChars": "プレフィックスに無効な文字が含まれています。",
+            "controlChars": "プレフィックスに制御文字が含まれています。"
+          }
         }
       },
       "notifications": {
