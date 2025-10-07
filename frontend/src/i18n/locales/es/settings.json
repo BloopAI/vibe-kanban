@@ -44,7 +44,8 @@
           "placeholder": "Seleccionar perfil",
           "helper": "Define la configuración predeterminada del agente que se usará al iniciar una tarea."
         },
-        "variant": "PREDETERMINADO"
+        "variant": "PREDETERMINADO",
+        "defaultLabel": "Predeterminado"
       },
       "editor": {
         "title": "Editor",
@@ -61,7 +62,13 @@
         "connectButton": "Conectar Cuenta de GitHub",
         "manage": "Gestionar",
         "disconnect": "Desconectar",
-        "helper": "Conecta tu cuenta de GitHub para acceder a repositorios privados y habilitar acciones avanzadas de Git."
+        "helper": "Conecta tu cuenta de GitHub para acceder a repositorios privados y habilitar acciones avanzadas de Git.",
+        "or": "O",
+        "pat": {
+          "label": "Token de Acceso Personal",
+          "helper": "Token de Acceso Personal de GitHub con permisos 'repo'. Úsalo si los permisos OAuth son insuficientes para repositorios privados y repositorios de organizaciones.",
+          "createTokenLink": "Crear token aquí"
+        }
       },
       "notifications": {
         "title": "Notificaciones",

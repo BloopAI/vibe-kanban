@@ -23,6 +23,18 @@
     "browserDefault": "Predeterminado del navegador"
   },
   "conversation": {
+    "plan": "Plan",
+    "planToggle": {
+      "show": "Mostrar plan",
+      "hide": "Ocultar plan"
+    },
+    "toolDetailsToggle": {
+      "show": "Mostrar detalles",
+      "hide": "Ocultar detalles"
+    },
+    "args": "Argumentos",
+    "output": "Salida",
+    "result": "Resultado",
     "deniedByUser": "{{toolName}} denegado por el usuario"
   }
 }
