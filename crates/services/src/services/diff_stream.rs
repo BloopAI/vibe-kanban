@@ -38,19 +38,14 @@ pub enum DiffStreamError {
     TaskJoin(#[from] tokio::task::JoinError),
 }
 
-pub struct DiffStreamHandle {
-    pub stream: futures::stream::BoxStream<'static, Result<LogMsg, io::Error>>,
-    pub watcher_task: Option<JoinHandle<()>>,
-}
-
-/// Stream wrapper that owns the filesystem watcher task
+/// Diff stream that owns the filesystem watcher task
 /// When this stream is dropped, the watcher is automatically cleaned up
-pub struct DiffStreamWithWatcher {
+pub struct DiffStreamHandle {
     stream: futures::stream::BoxStream<'static, Result<LogMsg, io::Error>>,
     _watcher_task: Option<JoinHandle<()>>,
 }
 
-impl futures::Stream for DiffStreamWithWatcher {
+impl futures::Stream for DiffStreamHandle {
     type Item = Result<LogMsg, io::Error>;
 
     fn poll_next(
@@ -62,7 +57,7 @@ impl futures::Stream for DiffStreamWithWatcher {
     }
 }
 
-impl Drop for DiffStreamWithWatcher {
+impl Drop for DiffStreamHandle {
     fn drop(&mut self) {
         if let Some(handle) = self._watcher_task.take() {
             handle.abort();
@@ -70,22 +65,15 @@ impl Drop for DiffStreamWithWatcher {
     }
 }
 
-impl DiffStreamWithWatcher {
-    /// Create a new DiffStreamWithWatcher from a DiffStreamHandle
-    pub fn new(handle: DiffStreamHandle) -> Self {
-        Self {
-            stream: handle.stream,
-            _watcher_task: handle.watcher_task,
-        }
-    }
-
-    /// Create a new DiffStreamWithWatcher from a static stream (no watcher)
-    pub fn from_stream(
+impl DiffStreamHandle {
+    /// Create a new DiffStreamHandle from a boxed stream and optional watcher task
+    pub fn new(
         stream: futures::stream::BoxStream<'static, Result<LogMsg, io::Error>>,
+        watcher_task: Option<JoinHandle<()>>,
     ) -> Self {
         Self {
             stream,
-            _watcher_task: None,
+            _watcher_task: watcher_task,
         }
     }
 }
@@ -161,10 +149,10 @@ pub async fn create(
 
     let (tx, rx) = mpsc::unbounded_channel::<Result<LogMsg, io::Error>>();
     if !send_initial_diffs(&tx, initial_diffs) {
-        return Ok(DiffStreamHandle {
-            stream: UnboundedReceiverStream::new(rx).boxed(),
-            watcher_task: None,
-        });
+        return Ok(DiffStreamHandle::new(
+            UnboundedReceiverStream::new(rx).boxed(),
+            None,
+        ));
     }
 
     let tx_clone = tx.clone();
@@ -215,10 +203,10 @@ pub async fn create(
 
     drop(tx);
 
-    Ok(DiffStreamHandle {
-        stream: UnboundedReceiverStream::new(rx).boxed(),
-        watcher_task: Some(watcher_task),
-    })
+    Ok(DiffStreamHandle::new(
+        UnboundedReceiverStream::new(rx).boxed(),
+        Some(watcher_task),
+    ))
 }
 
 fn send_initial_diffs(

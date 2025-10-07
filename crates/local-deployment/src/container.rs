@@ -41,7 +41,7 @@ use services::services::{
     analytics::AnalyticsContext,
     config::Config,
     container::{ContainerError, ContainerRef, ContainerService},
-    diff_stream::{self, DiffStreamWithWatcher},
+    diff_stream::{self, DiffStreamHandle},
     git::{Commit, DiffTarget, GitService},
     image::ImageService,
     notification::NotificationService,
@@ -572,7 +572,7 @@ impl LocalContainerService {
         project_repo_path: &Path,
         merge_commit_id: &str,
         stats_only: bool,
-    ) -> Result<DiffStreamWithWatcher, ContainerError> {
+    ) -> Result<DiffStreamHandle, ContainerError> {
         let diffs = self.git().get_diffs(
             DiffTarget::Commit {
                 repo_path: project_repo_path,
@@ -601,7 +601,7 @@ impl LocalContainerService {
         }))
         .boxed();
 
-        Ok(DiffStreamWithWatcher::from_stream(stream))
+        Ok(diff_stream::DiffStreamHandle::new(stream, None))
     }
 
     /// Create a live diff log stream for ongoing attempts for WebSocket
@@ -611,17 +611,15 @@ impl LocalContainerService {
         worktree_path: &Path,
         base_commit: &Commit,
         stats_only: bool,
-    ) -> Result<DiffStreamWithWatcher, ContainerError> {
-        let handle = diff_stream::create(
+    ) -> Result<DiffStreamHandle, ContainerError> {
+        diff_stream::create(
             self.git().clone(),
             worktree_path.to_path_buf(),
             base_commit.clone(),
             stats_only,
         )
         .await
-        .map_err(|e| ContainerError::Other(anyhow!("{}", e)))?;
-
-        Ok(DiffStreamWithWatcher::new(handle))
+        .map_err(|e| ContainerError::Other(anyhow!("{e}")))
     }
 }
 
