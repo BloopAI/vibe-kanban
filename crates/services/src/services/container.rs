@@ -625,9 +625,45 @@ pub trait ContainerService {
             .await?;
         }
 
-        let _ = self
+        if let Err(start_error) = self
             .start_execution_inner(task_attempt, &execution_process, executor_action)
-            .await?;
+            .await
+        {
+            // Mark process as failed
+            if let Err(update_error) = ExecutionProcess::update_completion(
+                &self.db().pool,
+                execution_process.id,
+                ExecutionProcessStatus::Failed,
+                None,
+            )
+            .await
+            {
+                tracing::error!(
+                    "Failed to mark execution process {} as failed after start error: {}",
+                    execution_process.id,
+                    update_error
+                );
+            }
+
+            // Persist the error to process stderr logs
+            let log_message = LogMsg::Stderr(format!("Failed to start execution: {start_error}"));
+            if let Ok(json_line) = serde_json::to_string(&log_message)
+                && let Err(err) = ExecutionProcessLogs::append_log_line(
+                    &self.db().pool,
+                    execution_process.id,
+                    &format!("{json_line}\n"),
+                )
+                .await
+            {
+                tracing::error!(
+                    "Failed to write to process log table {}: {}",
+                    execution_process.id,
+                    err
+                );
+            }
+
+            return Err(start_error);
+        }
 
         // Start processing normalised logs for executor requests and follow ups
         match executor_action.typ() {
