@@ -645,7 +645,7 @@ export function ProjectTasks() {
         style={{ display: mode === 'diffs' ? 'block' : 'none' }}
         className="h-full"
       >
-        <DiffsPanel />
+        <DiffsPanel selectedAttempt={attempt ?? null} />
       </div>
     </div>
   );
