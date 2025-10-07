@@ -36,5 +36,15 @@
     "output": "出力",
     "result": "結果",
     "deniedByUser": "{{toolName}} がユーザーによって拒否されました"
+  },
+  "branchSelector": {
+    "placeholder": "ブランチを選択",
+    "searchPlaceholder": "ブランチを検索...",
+    "empty": "ブランチが見つかりません",
+    "badges": {
+      "current": "現在",
+      "remote": "リモート"
+    },
+    "currentDisabled": "現在のブランチは選択できません"
   }
 }

@@ -36,5 +36,15 @@
     "output": "Output",
     "result": "Result",
     "deniedByUser": "{{toolName}} denied by user"
+  },
+  "branchSelector": {
+    "placeholder": "Select a branch",
+    "searchPlaceholder": "Search branches...",
+    "empty": "No branches found",
+    "badges": {
+      "current": "current",
+      "remote": "remote"
+    },
+    "currentDisabled": "Cannot select the current branch"
   }
 }

@@ -24,5 +24,15 @@
   },
   "conversation": {
     "deniedByUser": "{{toolName}} denegado por el usuario"
+  },
+  "branchSelector": {
+    "placeholder": "Seleccionar una rama",
+    "searchPlaceholder": "Buscar ramas...",
+    "empty": "No se encontraron ramas",
+    "badges": {
+      "current": "actual",
+      "remote": "remota"
+    },
+    "currentDisabled": "No se puede seleccionar la rama actual"
   }
 }

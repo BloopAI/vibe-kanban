@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect, useCallback, memo } from 'react';
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button.tsx';
 import { ArrowDown, GitBranch as GitBranchIcon, Search } from 'lucide-react';
 import {
@@ -25,6 +26,7 @@ type Props = {
   placeholder?: string;
   className?: string;
   excludeCurrentBranch?: boolean;
+  disabledTooltip?: string;
 };
 
 type RowProps = {
@@ -34,6 +36,7 @@ type RowProps = {
   isDisabled: boolean;
   onHover: () => void;
   onSelect: () => void;
+  disabledTooltip?: string;
 };
 
 const BranchRow = memo(function BranchRow({
@@ -43,7 +46,9 @@ const BranchRow = memo(function BranchRow({
   isDisabled,
   onHover,
   onSelect,
+  disabledTooltip,
 }: RowProps) {
+  const { t } = useTranslation(['common']);
   const classes =
     (isSelected ? 'bg-accent text-accent-foreground ' : '') +
     (isDisabled ? 'opacity-50 cursor-not-allowed ' : '') +
@@ -64,12 +69,12 @@ const BranchRow = memo(function BranchRow({
         <div className="flex gap-1">
           {branch.is_current && (
             <span className="text-xs bg-green-100 text-green-800 px-1 rounded">
-              current
+              {t('branchSelector.badges.current')}
             </span>
           )}
           {branch.is_remote && (
             <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">
-              remote
+              {t('branchSelector.badges.remote')}
             </span>
           )}
         </div>
@@ -77,14 +82,14 @@ const BranchRow = memo(function BranchRow({
     </DropdownMenuItem>
   );
 
-  if (isDisabled) {
+  if (isDisabled && disabledTooltip) {
     return (
       <Tooltip>
         <TooltipTrigger asChild>
           <span className="block">{item}</span>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Cannot rebase a branch onto itself</p>
+          <p>{disabledTooltip}</p>
         </TooltipContent>
       </Tooltip>
     );
@@ -97,15 +102,21 @@ function BranchSelector({
   branches,
   selectedBranch,
   onBranchSelect,
-  placeholder = 'Select a branch',
+  placeholder,
   className = '',
   excludeCurrentBranch = false,
+  disabledTooltip,
 }: Props) {
+  const { t } = useTranslation(['common']);
   const [branchSearchTerm, setBranchSearchTerm] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const virtuosoRef = useRef<VirtuosoHandle>(null);
+
+  const effectivePlaceholder =
+    placeholder ?? t('branchSelector.placeholder');
+  const defaultDisabledTooltip = t('branchSelector.currentDisabled');
 
   const filteredBranches = useMemo(() => {
     let filtered = branches;
@@ -201,7 +212,7 @@ function BranchSelector({
         >
           <div className="flex items-center gap-1.5 w-full">
             <GitBranchIcon className="h-3 w-3" />
-            <span className="truncate">{selectedBranch || placeholder}</span>
+            <span className="truncate">{selectedBranch || effectivePlaceholder}</span>
           </div>
           <ArrowDown className="h-3 w-3" />
         </Button>
@@ -220,7 +231,7 @@ function BranchSelector({
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 ref={searchInputRef}
-                placeholder="Search branches..."
+                placeholder={t('branchSelector.searchPlaceholder')}
                 value={branchSearchTerm}
                 onChange={(e) => setBranchSearchTerm(e.target.value)}
                 onKeyDown={(e) => {
@@ -258,7 +269,7 @@ function BranchSelector({
           <DropdownMenuSeparator />
           {filteredBranches.length === 0 ? (
             <div className="p-2 text-sm text-muted-foreground text-center">
-              No branches found
+              {t('branchSelector.empty')}
             </div>
           ) : (
             <Virtuoso
@@ -280,6 +291,11 @@ function BranchSelector({
                     isHighlighted={isHighlighted}
                     onHover={() => setHighlightedIndex(idx)}
                     onSelect={() => handleBranchSelect(branch.name)}
+                    disabledTooltip={
+                      isDisabled
+                        ? disabledTooltip ?? defaultDisabledTooltip
+                        : undefined
+                    }
                   />
                 );
               }}
