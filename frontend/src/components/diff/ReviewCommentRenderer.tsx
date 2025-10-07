@@ -49,10 +49,10 @@ export function ReviewCommentRenderer({
     return (
       <div className="border-y bg-background p-4">
         <FileSearchTextarea
+          ref={textareaRef}
           value={editText}
           onChange={setEditText}
           placeholder="Edit comment... (type @ to search files)"
-          rows={3}
           maxRows={10}
           className="w-full bg-background text-foreground text-sm font-mono resize-none min-h-[60px] focus:outline-none"
           projectId={projectId}
