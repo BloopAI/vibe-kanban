@@ -263,6 +263,16 @@
   .ansi-underline {
     @apply underline;
   }
+
+  /* Hide scrollbar while maintaining scrollability */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* BASIC STYLES (mainly for rendering markdown) */

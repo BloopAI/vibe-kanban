@@ -1,5 +1,12 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Settings2, ChevronRight } from 'lucide-react';
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useLayoutEffect,
+} from 'react';
+import type { ReactNode } from 'react';
+import { Settings2, ArrowDown, Plus, Play, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   ImageUploadSection,
@@ -21,19 +28,86 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { imagesApi, projectsApi, attemptsApi } from '@/lib/api';
 import { useTaskMutations } from '@/hooks/useTaskMutations';
 import { useUserSystem } from '@/components/config-provider';
-import { ExecutorProfileSelector } from '@/components/settings';
 import BranchSelector from '@/components/tasks/BranchSelector';
 import type {
   TaskStatus,
   ImageResponse,
   GitBranch,
   ExecutorProfileId,
+  BaseCodingAgent,
 } from 'shared/types';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useKeySubmitTask, useKeySubmitTaskAlt, Scope } from '@/keyboard';
+
+// Fixed Collapse component that doesn't remount and animates properly in both directions
+function Collapse({
+  open,
+  children,
+  className = '',
+}: {
+  open: boolean;
+  children: ReactNode;
+  className?: string;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const mounted = useRef(false);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const onEnd = (e: TransitionEvent) => {
+      if (e.propertyName !== 'height') return;
+      if (open) {
+        // Allow natural growth after expand completes
+        el.style.height = 'auto';
+      }
+      el.removeEventListener('transitionend', onEnd);
+    };
+
+    // First render: set height without animating to avoid flashes
+    if (!mounted.current) {
+      el.style.height = open ? 'auto' : '0px';
+      mounted.current = true;
+      return;
+    }
+
+    // For expand: from 0 → scrollHeight; then set to 'auto' on end
+    // For collapse: from current scrollHeight → 0
+    const start = open ? 0 : el.scrollHeight;
+    const end = open ? el.scrollHeight : 0;
+
+    // Set starting height
+    el.style.height = `${start}px`;
+    // Force reflow so the browser picks up the starting value
+    el.getBoundingClientRect();
+    // Animate to target height
+    el.style.height = `${end}px`;
+    el.addEventListener('transitionend', onEnd);
+
+    return () => el.removeEventListener('transitionend', onEnd);
+  }, [open]);
+
+  return (
+    <div
+      ref={ref}
+      className={`overflow-hidden transition-[height,opacity] duration-300 ease-out ${
+        open ? 'opacity-100' : 'opacity-0'
+      } ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
 
 interface Task {
   id: string;
@@ -79,10 +153,11 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
     const [selectedBranch, setSelectedBranch] = useState<string>('');
     const [selectedExecutorProfile, setSelectedExecutorProfile] =
       useState<ExecutorProfileId | null>(null);
-    const [quickstartExpanded, setQuickstartExpanded] =
-      useState<boolean>(false);
+    const [showImageUpload, setShowImageUpload] = useState(false);
+    const [shouldStart, setShouldStart] = useState(true);
     const imageUploadRef = useRef<ImageUploadSectionHandle>(null);
     const [isTextareaFocused, setIsTextareaFocused] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const isEditMode = Boolean(task);
 
@@ -155,7 +230,6 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
         setNewlyUploadedImageIds([]);
         setSelectedBranch('');
         setSelectedExecutorProfile(system.config?.executor_profile || null);
-        setQuickstartExpanded(false);
       }
     }, [task, initialTask, modal.visible, system.config?.executor_profile]);
 
@@ -216,19 +290,104 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       branches,
     ]);
 
-    // Set default executor from config (following TaskDetailsToolbar pattern)
+    // Set default executor from config and ensure it matches available options
     useEffect(() => {
-      if (system.config?.executor_profile) {
-        setSelectedExecutorProfile(system.config.executor_profile);
-      }
-    }, [system.config?.executor_profile]);
+      if (system.config?.executor_profile && profiles) {
+        const configProfile = system.config.executor_profile;
 
-    // Set default executor from config (following TaskDetailsToolbar pattern)
-    useEffect(() => {
-      if (system.config?.executor_profile) {
-        setSelectedExecutorProfile(system.config.executor_profile);
+        // Generate options to find matching one
+        const options: Array<{
+          id: string;
+          executorProfile: ExecutorProfileId;
+        }> = [];
+
+        Object.entries(profiles).forEach(([agentKey, configs]) => {
+          const agent = agentKey as BaseCodingAgent;
+
+          if (Object.keys(configs).length === 0) {
+            options.push({
+              id: `${agent}:default`,
+              executorProfile: { executor: agent, variant: null },
+            });
+          } else {
+            Object.keys(configs).forEach((variant) => {
+              options.push({
+                id: `${agent}:${variant}`,
+                executorProfile: { executor: agent, variant },
+              });
+            });
+          }
+        });
+
+        // Find matching option using normalized variant key
+        const expectedId = `${configProfile.executor}:${getVariantKeyForId(configProfile)}`;
+        const matchingOption = options.find((opt) => opt.id === expectedId);
+
+        if (matchingOption) {
+          setSelectedExecutorProfile(matchingOption.executorProfile);
+        } else {
+          // Fallback: set the config profile anyway
+          setSelectedExecutorProfile(configProfile);
+        }
       }
-    }, [system.config?.executor_profile]);
+    }, [system.config?.executor_profile, profiles]);
+
+    // Helper to normalize variant keys for consistent ID generation
+    const getVariantKeyForId = (profile: ExecutorProfileId): string => {
+      const agent = profile.executor;
+      const configs = profiles?.[agent];
+      // No variants → use our sentinel 'default'
+      if (!configs || Object.keys(configs).length === 0) return 'default';
+      // Explicit variant provided → use it as-is
+      if (profile.variant) return profile.variant;
+      // No explicit variant, but variants exist → prefer 'DEFAULT' if present, else first key
+      const keys = Object.keys(configs);
+      const defaultKey = keys.find((k) => k.toUpperCase() === 'DEFAULT');
+      return defaultKey ?? keys[0];
+    };
+
+    // Create combined agent+config options for the flattened selector
+    const getAgentConfigOptions = () => {
+      if (!profiles) return [];
+
+      const options: Array<{
+        id: string;
+        label: string;
+        executorProfile: ExecutorProfileId;
+      }> = [];
+
+      Object.entries(profiles).forEach(([agentKey, configs]) => {
+        const agent = agentKey as BaseCodingAgent;
+
+        if (Object.keys(configs).length === 0) {
+          // Agent with no variants - just default
+          options.push({
+            id: `${agent}:default`,
+            label: agent,
+            executorProfile: { executor: agent, variant: null },
+          });
+        } else {
+          // Agent with variants
+          Object.keys(configs).forEach((variant) => {
+            options.push({
+              id: `${agent}:${variant}`,
+              label: `${agent} (${variant})`,
+              executorProfile: { executor: agent, variant },
+            });
+          });
+        }
+      });
+
+      return options.sort((a, b) => a.label.localeCompare(b.label));
+    };
+
+    // Get the current agent config option ID for the Select value
+    const getCurrentAgentConfigId = () => {
+      if (!selectedExecutorProfile) return '';
+      // Use normalized variant key for consistent matching
+      const variantKey = getVariantKeyForId(selectedExecutorProfile);
+      return `${selectedExecutorProfile.executor}:${variantKey}`;
+    };
 
     // Handle image upload success by inserting markdown into description
     const handleImageUploaded = useCallback((image: ImageResponse) => {
@@ -256,8 +415,28 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
 
     const handlePasteImages = useCallback((files: File[]) => {
       if (files.length === 0) return;
+      // Show image upload section when images are pasted
+      setShowImageUpload(true);
       void imageUploadRef.current?.addFiles(files);
     }, []);
+
+    // Handle direct file selection from paperclip button
+    const handleFileSelect = useCallback(() => {
+      fileInputRef.current?.click();
+    }, []);
+
+    const handleFileInputChange = useCallback(
+      (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length > 0) {
+          setShowImageUpload(true);
+          void imageUploadRef.current?.addFiles(files);
+        }
+        // Reset input value so same file can be selected again
+        e.target.value = '';
+      },
+      []
+    );
 
     const handleSubmit = useCallback(async () => {
       if (!title.trim() || !projectId || isSubmitting || isSubmittingAndStart) {
@@ -407,57 +586,53 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       parentTaskAttemptId,
     ]);
 
-    const handleCancel = useCallback(() => {
-      // Check for unsaved changes before closing
-      if (hasUnsavedChanges()) {
-        setShowDiscardWarning(true);
-      } else {
-        modal.hide();
-      }
-    }, [modal, hasUnsavedChanges]);
-
     const handleDiscardChanges = useCallback(() => {
       // Close both dialogs
       setShowDiscardWarning(false);
       modal.hide();
     }, [modal]);
 
-    // Keyboard shortcut handlers
-    const handlePrimarySubmit = useCallback(
-      (e?: KeyboardEvent) => {
-        e?.preventDefault();
-        if (isEditMode) {
-          handleSubmit();
-        } else {
-          handleCreateAndStart();
-        }
-      },
-      [isEditMode, handleSubmit, handleCreateAndStart]
-    );
+    // Handle keyboard shortcuts
+    const primaryAction = useCallback(() => {
+      if (isSubmitting || isSubmittingAndStart || !title.trim()) return;
+      if (isEditMode) {
+        void handleSubmit();
+        return;
+      }
+      if (shouldStart) {
+        void handleCreateAndStart();
+      } else {
+        void handleSubmit();
+      }
+    }, [isSubmitting, isSubmittingAndStart, title, isEditMode, shouldStart, handleSubmit, handleCreateAndStart]);
 
-    const handleAlternativeSubmit = useCallback(
-      (e?: KeyboardEvent) => {
-        e?.preventDefault();
-        handleSubmit();
-      },
-      [handleSubmit]
-    );
+    const alternateAction = useCallback(() => {
+      if (isSubmitting || isSubmittingAndStart || !title.trim()) return;
+      if (isEditMode) {
+        void handleSubmit();
+        return;
+      }
+      // Alternate = opposite of primary in create mode
+      if (shouldStart) {
+        void handleSubmit(); // create only
+      } else {
+        void handleCreateAndStart(); // create and start
+      }
+    }, [isSubmitting, isSubmittingAndStart, title, isEditMode, shouldStart, handleSubmit, handleCreateAndStart]);
 
-    // Register keyboard shortcuts
-    const canSubmit =
-      title.trim() !== '' && !isSubmitting && !isSubmittingAndStart;
+    const shortcutsEnabled =
+      modal.visible && !isSubmitting && !isSubmittingAndStart && !!title.trim() && isTextareaFocused;
 
-    useKeySubmitTask(handlePrimarySubmit, {
+    useKeySubmitTask(primaryAction, { 
+      enabled: shortcutsEnabled, 
       scope: Scope.DIALOG,
       enableOnFormTags: ['textarea', 'TEXTAREA'],
-      when: canSubmit && isTextareaFocused,
       preventDefault: true,
     });
-
-    useKeySubmitTaskAlt(handleAlternativeSubmit, {
+    useKeySubmitTaskAlt(alternateAction, { 
+      enabled: shortcutsEnabled, 
       scope: Scope.DIALOG,
       enableOnFormTags: ['textarea', 'TEXTAREA'],
-      when: canSubmit && isTextareaFocused,
       preventDefault: true,
     });
 
@@ -471,49 +646,161 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       }
     };
 
+    // Agent selector component similar to BranchSelector
+    const AgentSelector = ({ className = '' }: { className?: string }) => {
+      const agentOptions = getAgentConfigOptions();
+      const currentId = getCurrentAgentConfigId();
+      const selectedOption = agentOptions.find((opt) => opt.id === currentId);
+
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className={`w-full justify-between text-xs ${className}`}
+              disabled={isSubmitting || isSubmittingAndStart}
+            >
+              <div className="flex items-center gap-1.5 w-full">
+                <Settings2 className="h-3 w-3" />
+                <span className="truncate">
+                  {selectedOption?.label || 'Agent'}
+                </span>
+              </div>
+              <ArrowDown className="h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-60">
+            {agentOptions.length === 0 ? (
+              <div className="p-2 text-sm text-muted-foreground text-center">
+                No agents available
+              </div>
+            ) : (
+              agentOptions.map((option) => (
+                <DropdownMenuItem
+                  key={option.id}
+                  onClick={() =>
+                    setSelectedExecutorProfile(option.executorProfile)
+                  }
+                  className={
+                    selectedOption?.id === option.id ? 'bg-accent' : ''
+                  }
+                >
+                  {option.label}
+                </DropdownMenuItem>
+              ))
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    };
+
+    // Single action button with segmented control
+    const CreateActionButton = () => {
+      const mode = shouldStart ? 'start' : 'create';
+      const isLoading = shouldStart ? isSubmittingAndStart : isSubmitting;
+      const isDisabled = isSubmitting || isSubmittingAndStart || !title.trim();
+
+      const handleSegmentClick = (newMode: 'create' | 'start') => {
+        if (isDisabled) return;
+
+        if (newMode === mode) {
+          // Second click on same mode - execute action
+          if (newMode === 'start') {
+            handleCreateAndStart();
+          } else {
+            handleSubmit();
+          }
+        } else {
+          // First click - just change mode
+          setShouldStart(newMode === 'start');
+        }
+      };
+
+      return (
+        <div className="flex flex-col gap-3">
+          {/* Segmented Control Button */}
+          <div className="relative border border-input bg-background p-1 flex min-w-[180px]">
+            {/* Sliding Background/Highlight */}
+            <div
+              className={`absolute top-1 bottom-1 w-[calc(50%-2px)] bg-primary border border-primary  transition-all duration-200 ease-out ${
+                shouldStart ? 'right-1' : 'left-1'
+              }`}
+            />
+
+            {/* Create Segment */}
+            <button
+              type="button"
+              onClick={() => handleSegmentClick('create')}
+              disabled={isDisabled}
+              className={`relative z-20 flex-1 py-2 px-4 text-sm font-medium transition-colors duration-200 rounded-sm ${
+                isDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+              } ${
+                !shouldStart
+                  ? 'text-primary-foreground'
+                  : 'text-foreground hover:text-primary'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-1.5">
+                <Plus className="h-3 w-3" />
+                {!shouldStart && isLoading ? 'Creating...' : 'Create'}
+              </div>
+            </button>
+
+            {/* Start Segment */}
+            <button
+              type="button"
+              onClick={() => handleSegmentClick('start')}
+              disabled={isDisabled}
+              className={`relative z-20 flex-1 py-2 px-4 text-sm font-medium transition-colors duration-200 rounded-sm ${
+                isDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+              } ${
+                shouldStart
+                  ? 'text-primary-foreground'
+                  : 'text-foreground hover:text-primary'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-1.5">
+                <Play className="h-3 w-3 fill-current" />
+                {shouldStart && isLoading ? 'Starting...' : 'Start'}
+              </div>
+            </button>
+          </div>
+        </div>
+      );
+    };
+
     return (
       <>
-        <Dialog open={modal.visible} onOpenChange={handleDialogOpenChange}>
-          <DialogContent className="sm:max-w-[550px]">
-            <DialogHeader>
-              <DialogTitle>
-                {isEditMode ? 'Edit Task' : 'Create New Task'}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
+        <Dialog
+          open={modal.visible}
+          onOpenChange={handleDialogOpenChange}
+          className="w-full max-w-[min(90vw,40rem)] max-h-[min(95vh,50rem)]"
+        >
+          <DialogContent className="h-full overflow-hidden flex flex-col gap-0 p-4 pb-0">
+            <div className="flex-1 overflow-y-auto space-y-4 px-0">
+              {/* Title Input */}
               <div>
-                <Label htmlFor="task-title" className="text-sm font-medium">
-                  Title
-                </Label>
                 <Input
                   id="task-title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="What needs to be done?"
-                  className="mt-1.5"
+                  placeholder="Task title"
+                  className="text-lg font-medium border-none shadow-none px-0 placeholder:text-muted-foreground/60 focus-visible:ring-0"
                   disabled={isSubmitting || isSubmittingAndStart}
                   autoFocus
-                  onCommandEnter={
-                    isEditMode ? handleSubmit : handleCreateAndStart
-                  }
-                  onCommandShiftEnter={handleSubmit}
                 />
               </div>
 
+              {/* Description Input */}
               <div>
-                <Label
-                  htmlFor="task-description"
-                  className="text-sm font-medium"
-                >
-                  Description
-                </Label>
                 <FileSearchTextarea
                   value={description}
                   onChange={setDescription}
-                  rows={3}
-                  maxRows={8}
-                  placeholder="Add more details (optional). Type @ to insert tags or search files."
-                  className="mt-1.5"
+                  rows={4}
+                  maxRows={30}
+                  placeholder="Add more details (optional). Type @ to search files."
+                  className="border-none shadow-none px-0 resize-none placeholder:text-muted-foreground/60 focus-visible:ring-0"
                   disabled={isSubmitting || isSubmittingAndStart}
                   projectId={projectId}
                   onPasteFiles={handlePasteImages}
@@ -522,21 +809,26 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                 />
               </div>
 
-              <ImageUploadSection
-                ref={imageUploadRef}
-                images={images}
-                onImagesChange={handleImagesChange}
-                onUpload={imagesApi.upload}
-                onDelete={imagesApi.delete}
-                onImageUploaded={handleImageUploaded}
-                disabled={isSubmitting || isSubmittingAndStart}
-                readOnly={isEditMode}
-                collapsible={true}
-                defaultExpanded={false}
-              />
+              {/* Image Upload Section */}
+              <Collapse open={showImageUpload}>
+                <ImageUploadSection
+                  ref={imageUploadRef}
+                  images={images}
+                  onImagesChange={handleImagesChange}
+                  onUpload={imagesApi.upload}
+                  onDelete={imagesApi.delete}
+                  onImageUploaded={handleImageUploaded}
+                  disabled={isSubmitting || isSubmittingAndStart}
+                  readOnly={isEditMode}
+                  collapsible={false}
+                  defaultExpanded={true}
+                  hideDropZone={true}
+                />
+              </Collapse>
 
+              {/* Status Selector (Edit Mode Only) */}
               {isEditMode && (
-                <div className="pt-2">
+                <div className="space-y-2">
                   <Label htmlFor="task-status" className="text-sm font-medium">
                     Status
                   </Label>
@@ -545,7 +837,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                     onValueChange={(value) => setStatus(value as TaskStatus)}
                     disabled={isSubmitting || isSubmittingAndStart}
                   >
-                    <SelectTrigger className="mt-1.5">
+                    <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -558,79 +850,64 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                   </Select>
                 </div>
               )}
+            </div>
 
-              {!isEditMode &&
-                (() => {
-                  const quickstartSection = (
-                    <div className="pt-2">
-                      <details
-                        className="group"
-                        open={quickstartExpanded}
-                        onToggle={(e) =>
-                          setQuickstartExpanded(
-                            (e.target as HTMLDetailsElement).open
-                          )
-                        }
-                      >
-                        <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors list-none flex items-center gap-2">
-                          <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
-                          <Settings2 className="h-3 w-3" />
-                          Quickstart
-                        </summary>
-                        <div className="mt-3 space-y-3">
-                          <p className="text-xs text-muted-foreground">
-                            Configuration for "Create & Start" workflow
-                          </p>
-
-                          {/* Executor Profile Selector */}
-                          {profiles && selectedExecutorProfile && (
-                            <ExecutorProfileSelector
-                              profiles={profiles}
-                              selectedProfile={selectedExecutorProfile}
-                              onProfileSelect={setSelectedExecutorProfile}
-                              disabled={isSubmitting || isSubmittingAndStart}
-                            />
-                          )}
-
-                          {/* Branch Selector */}
-                          {branches.length > 0 && (
-                            <div>
-                              <Label
-                                htmlFor="base-branch"
-                                className="text-sm font-medium"
-                              >
-                                Branch
-                              </Label>
-                              <div className="mt-1.5">
-                                <BranchSelector
-                                  branches={branches}
-                                  selectedBranch={selectedBranch}
-                                  onBranchSelect={setSelectedBranch}
-                                  placeholder="Select branch"
-                                  className={
-                                    isSubmitting || isSubmittingAndStart
-                                      ? 'opacity-50 cursor-not-allowed'
-                                      : ''
-                                  }
-                                />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </details>
-                    </div>
-                  );
-                  return quickstartSection;
-                })()}
-
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+            {/* Bottom Action Bar */}
+            <div className="border-t pt-4 px-0 flex items-center justify-between gap-3">
+              {/* Left Side - Paperclip, Agent & Branch Selectors */}
+              <div className="flex items-center gap-2">
+                {/* Image Attach Button */}
                 <Button
                   variant="outline"
-                  onClick={handleCancel}
-                  disabled={isSubmitting || isSubmittingAndStart}
+                  size="sm"
+                  onClick={handleFileSelect}
+                  className="h-9 w-9 p-0 rounded-none"
                 >
-                  Cancel
+                  <Image className="h-4 w-4" />
                 </Button>
+
+                {/* Hidden file input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleFileInputChange}
+                  className="hidden"
+                />
+
+                {/* Agent & Branch Selectors with Fade Transition */}
+                <div
+                  className={`transition-all duration-300 ease-out ${
+                    !isEditMode && shouldStart
+                      ? 'opacity-100 max-w-80 overflow-visible'
+                      : 'opacity-0 max-w-0 overflow-hidden'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    {/* Combined Agent Selector */}
+                    {profiles && <AgentSelector className="h-9 w-32" />}
+
+                    {/* Branch Selector */}
+                    {branches.length > 0 && (
+                      <BranchSelector
+                        branches={branches}
+                        selectedBranch={selectedBranch}
+                        onBranchSelect={setSelectedBranch}
+                        placeholder="Branch"
+                        className={`h-9 w-32 text-xs ${
+                          isSubmitting || isSubmittingAndStart
+                            ? 'opacity-50 cursor-not-allowed'
+                            : ''
+                        }`}
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Side - Action Buttons */}
+              <div className="flex items-center gap-2">
                 {isEditMode ? (
                   <Button
                     onClick={handleSubmit}
@@ -639,28 +916,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                     {isSubmitting ? 'Updating...' : 'Update Task'}
                   </Button>
                 ) : (
-                  <>
-                    <Button
-                      variant="outline"
-                      onClick={handleSubmit}
-                      disabled={
-                        isSubmitting || isSubmittingAndStart || !title.trim()
-                      }
-                    >
-                      {isSubmitting ? 'Creating...' : 'Create Task'}
-                    </Button>
-                    <Button
-                      onClick={handleCreateAndStart}
-                      disabled={
-                        isSubmitting || isSubmittingAndStart || !title.trim()
-                      }
-                      className={'font-medium'}
-                    >
-                      {isSubmittingAndStart
-                        ? 'Creating & Starting...'
-                        : 'Create & Start'}
-                    </Button>
-                  </>
+                  <CreateActionButton />
                 )}
               </div>
             </div>
