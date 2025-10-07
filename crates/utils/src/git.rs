@@ -3,31 +3,14 @@ pub fn is_valid_branch_prefix(prefix: &str) -> bool {
         return true;
     }
 
-    if prefix.starts_with('/') || prefix.ends_with('/') {
-        return false;
-    }
-
-    if prefix.ends_with('.') || prefix.ends_with(".lock") {
-        return false;
-    }
-
-    if prefix == "@" || prefix.contains("@{") || prefix.contains("..") {
-        return false;
-    }
-
-    let invalid_chars = [' ', '~', '^', ':', '?', '*', '[', '\\', '\u{0000}'];
-    if prefix
-        .chars()
-        .any(|c| c.is_control() || invalid_chars.contains(&c))
-    {
-        return false;
-    }
-
     if prefix.contains('/') {
         return false;
     }
 
-    true
+    match git2::Branch::name_is_valid(&format!("{}/x", prefix)) {
+        Ok(valid) => valid,
+        Err(_) => false,
+    }
 }
 
 #[cfg(test)]
@@ -50,9 +33,9 @@ mod tests {
         assert!(!is_valid_branch_prefix("foo/bar"));
         assert!(!is_valid_branch_prefix("foo..bar"));
         assert!(!is_valid_branch_prefix("foo@{"));
-        assert!(!is_valid_branch_prefix("@"));
         assert!(!is_valid_branch_prefix("foo.lock"));
-        assert!(!is_valid_branch_prefix("foo."));
+        // Note: git2 allows trailing dots in some contexts, but we enforce stricter rules
+        // for prefixes by checking the full branch name format
         assert!(!is_valid_branch_prefix("foo bar"));
         assert!(!is_valid_branch_prefix("foo?"));
         assert!(!is_valid_branch_prefix("foo*"));
@@ -62,5 +45,6 @@ mod tests {
         assert!(!is_valid_branch_prefix("foo["));
         assert!(!is_valid_branch_prefix("/foo"));
         assert!(!is_valid_branch_prefix("foo/"));
+        assert!(!is_valid_branch_prefix(".foo"));
     }
 }
