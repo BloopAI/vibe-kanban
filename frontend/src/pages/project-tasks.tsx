@@ -258,7 +258,7 @@ export function ProjectTasks() {
   useKeyOpenDetails(
     () => {
       if (selectedTask) {
-        handleViewTaskDetails(selectedTask, undefined, true);
+        handleViewTaskDetails(selectedTask);
       }
     },
     { scope: Scope.KANBAN }
@@ -320,22 +320,11 @@ export function ProjectTasks() {
   );
 
   const handleViewTaskDetails = useCallback(
-    (task: Task, attemptIdToShow?: string, fullscreen?: boolean) => {
+    (task: Task, attemptIdToShow?: string) => {
       if (attemptIdToShow) {
-        const url = fullscreen
-          ? paths.attemptFullTab(
-              projectId!,
-              task.id,
-              attemptIdToShow,
-              'preview'
-            )
-          : paths.attempt(projectId!, task.id, attemptIdToShow);
-        navigate(url);
+        navigate(paths.attempt(projectId!, task.id, attemptIdToShow));
       } else {
-        const url = fullscreen
-          ? `${paths.task(projectId!, task.id)}/attempts/latest/full/preview`
-          : `${paths.task(projectId!, task.id)}/attempts/latest`;
-        navigate(url);
+        navigate(`${paths.task(projectId!, task.id)}/attempts/latest`);
       }
     },
     [projectId, navigate]

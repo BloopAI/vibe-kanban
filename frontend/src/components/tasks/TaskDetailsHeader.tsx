@@ -1,6 +1,5 @@
 import { memo } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Edit, Trash2, X, Maximize2, Minimize2 } from 'lucide-react';
+import { Edit, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -32,9 +31,6 @@ function TaskDetailsHeader({
   hideCloseButton = false,
   isFullScreen,
 }: TaskDetailsHeaderProps) {
-  const location = useLocation();
-  const isFullscreen = location.pathname.includes('/full');
-
   return (
     <div>
       <Card
@@ -51,37 +47,6 @@ function TaskDetailsHeader({
           <p className="ml-2 text-sm">{statusLabels[task.status]}</p>
         </div>
         <div className="mr-3">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={
-                    isFullscreen
-                      ? 'Collapse to sidebar'
-                      : 'Expand to fullscreen'
-                  }
-                  asChild
-                >
-                  <Link to={isFullscreen ? '..' : 'full'}>
-                    {isFullscreen ? (
-                      <Minimize2 className="h-4 w-4" />
-                    ) : (
-                      <Maximize2 className="h-4 w-4" />
-                    )}
-                  </Link>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>
-                  {isFullscreen
-                    ? 'Collapse to sidebar'
-                    : 'Expand to fullscreen'}
-                </p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
           {onEditTask && (
             <TooltipProvider>
               <Tooltip>
