@@ -24,20 +24,26 @@ interface FileSearchTextareaProps {
   onBlur?: (e: React.FocusEvent<HTMLTextAreaElement>) => void;
 }
 
-export const FileSearchTextarea = forwardRef<HTMLTextAreaElement, FileSearchTextareaProps>(function FileSearchTextarea({
-  value,
-  onChange,
-  placeholder,
-  rows = 3,
-  disabled = false,
-  className,
-  projectId,
-  onKeyDown,
-  maxRows = 10,
-  onPasteFiles,
-  onFocus,
-  onBlur,
-}, ref) {
+export const FileSearchTextarea = forwardRef<
+  HTMLTextAreaElement,
+  FileSearchTextareaProps
+>(function FileSearchTextarea(
+  {
+    value,
+    onChange,
+    placeholder,
+    rows = 3,
+    disabled = false,
+    className,
+    projectId,
+    onKeyDown,
+    maxRows = 10,
+    onPasteFiles,
+    onFocus,
+    onBlur,
+  },
+  ref
+) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<FileSearchResult[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -47,7 +53,8 @@ export const FileSearchTextarea = forwardRef<HTMLTextAreaElement, FileSearchText
   const [isLoading, setIsLoading] = useState(false);
 
   const internalRef = useRef<HTMLTextAreaElement>(null);
-  const textareaRef = (ref as React.RefObject<HTMLTextAreaElement>) || internalRef;
+  const textareaRef =
+    (ref as React.RefObject<HTMLTextAreaElement>) || internalRef;
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Search for files when query changes
