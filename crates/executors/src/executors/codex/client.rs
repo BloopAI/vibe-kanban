@@ -123,7 +123,7 @@ impl AppServerClient {
 
     async fn send_request<R>(&self, request: ClientRequest, label: &str) -> Result<R, ExecutorError>
     where
-        R: DeserializeOwned,
+        R: DeserializeOwned + std::fmt::Debug,
     {
         let request_id = request_id(&request);
         self.rpc().request(request_id, &request, label).await

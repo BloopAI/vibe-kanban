@@ -7,6 +7,7 @@
 
 use std::{
     collections::HashMap,
+    fmt::Debug,
     io,
     sync::{
         Arc,
@@ -28,12 +29,11 @@ use tokio::{
 
 use crate::executors::ExecutorError;
 
-pub type ExitSignal = oneshot::Receiver<()>;
-
 #[derive(Debug)]
 pub enum PendingResponse {
     Result(Value),
     Error(JSONRPCError),
+    Shutdown,
 }
 
 #[derive(Clone)]
@@ -48,7 +48,8 @@ impl JsonRpcPeer {
         stdin: ChildStdin,
         stdout: ChildStdout,
         callbacks: Arc<dyn JsonRpcCallbacks>,
-    ) -> (Self, ExitSignal) {
+        exit_tx: oneshot::Sender<()>,
+    ) -> Self {
         let peer = Self {
             stdin: Arc::new(Mutex::new(stdin)),
             pending: Arc::new(Mutex::new(HashMap::new())),
@@ -57,7 +58,6 @@ impl JsonRpcPeer {
 
         let reader_peer = peer.clone();
         let callbacks = callbacks.clone();
-        let (exit_tx, exit_rx) = oneshot::channel();
 
         tokio::spawn(async move {
             let mut reader = BufReader::new(stdout);
@@ -138,9 +138,10 @@ impl JsonRpcPeer {
             }
 
             let _ = exit_tx.send(());
+            let _ = reader_peer.shutdown().await;
         });
 
-        (peer, exit_rx)
+        peer
     }
 
     pub fn next_request_id(&self) -> RequestId {
@@ -159,6 +160,14 @@ impl JsonRpcPeer {
         }
     }
 
+    pub async fn shutdown(&self) -> Result<(), ExecutorError> {
+        let mut pending = self.pending.lock().await;
+        for (_, sender) in pending.drain() {
+            let _ = sender.send(PendingResponse::Shutdown);
+        }
+        Ok(())
+    }
+
     pub async fn send<T>(&self, message: &T) -> Result<(), ExecutorError>
     where
         T: Serialize + Sync,
@@ -175,7 +184,7 @@ impl JsonRpcPeer {
         label: &str,
     ) -> Result<R, ExecutorError>
     where
-        R: DeserializeOwned,
+        R: DeserializeOwned + Debug,
         T: Serialize + Sync,
     {
         let receiver = self.register(request_id).await;
@@ -199,7 +208,7 @@ pub type PendingReceiver = oneshot::Receiver<PendingResponse>;
 
 pub async fn await_response<R>(receiver: PendingReceiver, label: &str) -> Result<R, ExecutorError>
 where
-    R: DeserializeOwned,
+    R: DeserializeOwned + Debug,
 {
     match receiver.await {
         Ok(PendingResponse::Result(value)) => serde_json::from_value(value).map_err(|err| {
@@ -210,6 +219,9 @@ where
         Ok(PendingResponse::Error(error)) => Err(ExecutorError::Io(io::Error::other(format!(
             "{label} request failed: {}",
             error.error.message
+        )))),
+        Ok(PendingResponse::Shutdown) => Err(ExecutorError::Io(io::Error::other(format!(
+            "server was shutdown while waiting for {label} response",
         )))),
         Err(_) => Err(ExecutorError::Io(io::Error::other(format!(
             "{label} request was dropped",

@@ -227,16 +227,55 @@ impl Codex {
         })?;
 
         let new_stdout = create_stdout_pipe_writer(&mut child)?;
+        let (exit_signal_tx, exit_signal_rx) = tokio::sync::oneshot::channel();
+
+        let params = self.build_new_conversation_params(current_dir);
+        let resume_session = resume_session.map(|s| s.to_string());
+        tokio::spawn(async move {
+            if let Err(err) = Self::launch_codex_app_server(
+                params,
+                resume_session,
+                combined_prompt,
+                child_stdout,
+                child_stdin,
+                new_stdout,
+                exit_signal_tx,
+            )
+            .await
+            {
+                if matches!(&err, ExecutorError::Io(io_err) if io_err.kind() == std::io::ErrorKind::BrokenPipe)
+                {
+                    // Broken pipe likely means the parent process exited, so we can ignore it
+                    return;
+                }
+                tracing::error!("Codex spawn error: {}", err);
+            }
+        });
+
+        Ok(SpawnedChild {
+            child,
+            exit_signal: Some(exit_signal_rx),
+        })
+    }
+
+    async fn launch_codex_app_server(
+        conversation_params: NewConversationParams,
+        resume_session: Option<String>,
+        combined_prompt: String,
+        child_stdout: tokio::process::ChildStdout,
+        child_stdin: tokio::process::ChildStdin,
+        new_stdout: impl tokio::io::AsyncWrite + Unpin + Send + 'static,
+        exit_signal_tx: tokio::sync::oneshot::Sender<()>,
+    ) -> Result<(), ExecutorError> {
         let log_writer: LogWriter = Arc::new(Mutex::new(BufWriter::new(Box::new(new_stdout))));
         let client = AppServerClient::new(log_writer);
-        let (rpc_peer, exit_signal) = JsonRpcPeer::spawn(child_stdin, child_stdout, client.clone());
+        let rpc_peer =
+            JsonRpcPeer::spawn(child_stdin, child_stdout, client.clone(), exit_signal_tx);
         client.connect(rpc_peer);
         client.initialize().await?;
-
-        let cwd = current_dir.to_path_buf();
         match resume_session {
             None => {
-                let params = self.build_new_conversation_params(&cwd);
+                let params = conversation_params;
                 let response = client.new_conversation(params).await?;
                 client
                     .add_conversation_listener(response.conversation_id)
@@ -247,9 +286,9 @@ impl Codex {
             }
             Some(session_id) => {
                 let (rollout_path, _forked_session_id) =
-                    SessionHandler::fork_rollout_file(session_id)
+                    SessionHandler::fork_rollout_file(&session_id)
                         .map_err(ExecutorError::FollowUpNotSupported)?;
-                let overrides = self.build_new_conversation_params(&cwd);
+                let overrides = conversation_params;
                 let response = client
                     .resume_conversation(rollout_path.clone(), overrides)
                     .await?;
@@ -266,10 +305,6 @@ impl Codex {
                     .await?;
             }
         }
-
-        Ok(SpawnedChild {
-            child,
-            exit_signal: Some(exit_signal),
-        })
+        Ok(())
     }
 }
