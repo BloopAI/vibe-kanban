@@ -240,6 +240,15 @@ pub async fn delete_project(
             if rows_affected == 0 {
                 Err(StatusCode::NOT_FOUND)
             } else {
+                deployment
+                    .track_if_analytics_allowed(
+                        "project_deleted",
+                        serde_json::json!({
+                            "project_id": project.id.to_string(),
+                        }),
+                    )
+                    .await;
+
                 Ok(ResponseJson(ApiResponse::success(())))
             }
         }
@@ -271,6 +280,17 @@ pub async fn open_project_in_editor(
     match editor_config.open_file(&path) {
         Ok(_) => {
             tracing::info!("Opened editor for project {} at path: {}", project.id, path);
+
+            deployment
+                .track_if_analytics_allowed(
+                    "project_editor_opened",
+                    serde_json::json!({
+                        "project_id": project.id.to_string(),
+                        "editor_type": payload.as_ref().and_then(|req| req.editor_type.as_ref()),
+                    }),
+                )
+                .await;
+
             Ok(ResponseJson(ApiResponse::success(())))
         }
         Err(e) => {

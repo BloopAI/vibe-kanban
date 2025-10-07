@@ -55,9 +55,20 @@ pub async fn create_template(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateTaskTemplate>,
 ) -> Result<ResponseJson<ApiResponse<TaskTemplate>>, ApiError> {
-    Ok(ResponseJson(ApiResponse::success(
-        TaskTemplate::create(&deployment.db().pool, &payload).await?,
-    )))
+    let template = TaskTemplate::create(&deployment.db().pool, &payload).await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "task_template_created",
+            serde_json::json!({
+                "template_id": template.id.to_string(),
+                "project_id": template.project_id.map(|id| id.to_string()),
+                "is_global": template.project_id.is_none(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(template)))
 }
 
 pub async fn update_template(
@@ -65,9 +76,20 @@ pub async fn update_template(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<UpdateTaskTemplate>,
 ) -> Result<ResponseJson<ApiResponse<TaskTemplate>>, ApiError> {
-    Ok(ResponseJson(ApiResponse::success(
-        TaskTemplate::update(&deployment.db().pool, template.id, &payload).await?,
-    )))
+    let updated_template = TaskTemplate::update(&deployment.db().pool, template.id, &payload).await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "task_template_updated",
+            serde_json::json!({
+                "template_id": template.id.to_string(),
+                "project_id": template.project_id.map(|id| id.to_string()),
+                "is_global": template.project_id.is_none(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(updated_template)))
 }
 
 pub async fn delete_template(

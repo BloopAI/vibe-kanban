@@ -293,6 +293,18 @@ pub async fn delete_task(
         return Err(ApiError::Database(SqlxError::RowNotFound));
     }
 
+    deployment
+        .track_if_analytics_allowed(
+            "task_deleted",
+            serde_json::json!({
+                "task_id": task.id.to_string(),
+                "project_id": task.project_id.to_string(),
+                "had_attempts": !attempts.is_empty(),
+                "attempt_count": attempts.len(),
+            }),
+        )
+        .await;
+
     // Spawn background worktree cleanup task
     let task_id = task.id;
     tokio::spawn(async move {
