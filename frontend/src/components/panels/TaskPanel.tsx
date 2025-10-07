@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import TitleDescriptionEditor from '../ui/TitleDescriptionEditor';
 import { useTaskMutations } from '@/hooks/useTaskMutations';
 import { useProject } from '@/contexts/project-context';
 import { useTaskAttempts } from '@/hooks/useTaskAttempts';
-import { useTaskViewManager } from '@/hooks/useTaskViewManager';
+import { paths } from '@/lib/paths';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { NewCardContent } from '../ui/new-card';
 import { Button } from '../ui/button';
@@ -15,9 +16,9 @@ interface TaskPanelProps {
 }
 
 const TaskPanel = ({ task }: TaskPanelProps) => {
+  const navigate = useNavigate();
   const { projectId } = useProject();
   const { updateTask } = useTaskMutations(projectId);
-  const { navigateToAttempt } = useTaskViewManager();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState<string>('');
@@ -156,9 +157,9 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
                       tabIndex={0}
                       onClick={() => {
                         if (projectId && task.id && attempt.id) {
-                          navigateToAttempt(projectId, task.id, attempt.id, {
-                            replace: false,
-                          });
+                          navigate(
+                            paths.attempt(projectId, task.id, attempt.id)
+                          );
                         }
                       }}
                     >

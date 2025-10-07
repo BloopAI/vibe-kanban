@@ -1,9 +1,8 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Settings, Cpu, Server, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { usePreviousPath } from '@/hooks/usePreviousPath';
 import { useEffect } from 'react';
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { useKeyExit } from '@/keyboard/hooks';
@@ -26,7 +25,6 @@ const settingsNavigation = [
 
 export function SettingsLayout() {
   const { t } = useTranslation('settings');
-  const goToPreviousPath = usePreviousPath();
   const { enableScope, disableScope } = useHotkeysContext();
 
   // Enable SETTINGS scope when component mounts
@@ -37,8 +35,18 @@ export function SettingsLayout() {
     };
   }, [enableScope, disableScope]);
 
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleBack = () => {
+    if (location.state?.from) {
+      navigate(-1);
+    } else {
+      navigate('/projects');
+    }
+  };
   // Register ESC keyboard shortcut
-  useKeyExit(goToPreviousPath, { scope: Scope.SETTINGS });
+  useKeyExit(handleBack, { scope: Scope.SETTINGS });
 
   return (
     <div className="container mx-auto">
@@ -49,7 +57,7 @@ export function SettingsLayout() {
         </h1>
         <Button
           variant="ghost"
-          onClick={goToPreviousPath}
+          onClick={handleBack}
           className="h-8 px-2 rounded-none border border-foreground/20 hover:border-foreground/30 transition-all hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 flex items-center gap-1.5"
         >
           <X className="h-4 w-4" />
@@ -89,14 +97,14 @@ export function SettingsLayout() {
                 );
               })}
             </nav>
-          </div>
-        </aside>
+          </div >
+        </aside >
 
         {/* Main Content */}
-        <main className="flex-1 min-w-0">
+        < main className="flex-1 min-w-0" >
           <Outlet />
-        </main>
-      </div>
-    </div>
+        </main >
+      </div >
+    </div >
   );
 }
