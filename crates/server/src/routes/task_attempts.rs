@@ -1076,8 +1076,6 @@ pub async fn change_target_branch(
             "task_attempt_target_branch_changed",
             serde_json::json!({
                 "attempt_id": task_attempt.id.to_string(),
-                "old_target_branch": task_attempt.target_branch,
-                "new_target_branch": &new_target_branch,
             }),
         )
         .await;
@@ -1174,8 +1172,6 @@ pub async fn rebase_task_attempt(
                 "task_id": task.id.to_string(),
                 "project_id": ctx.project.id.to_string(),
                 "attempt_id": task_attempt.id.to_string(),
-                "old_base_branch": old_base_branch,
-                "new_base_branch": new_base_branch,
             }),
         )
         .await;
@@ -1333,6 +1329,7 @@ pub async fn get_task_attempt_children(
                     serde_json::json!({
                         "attempt_id": task_attempt.id.to_string(),
                         "children_count": relationships.children.len(),
+                        "parent_count": if relationships.parent_task.is_some() { 1 } else { 0 },
                     }),
                 )
                 .await;

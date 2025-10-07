@@ -299,7 +299,6 @@ pub async fn delete_task(
             serde_json::json!({
                 "task_id": task.id.to_string(),
                 "project_id": task.project_id.to_string(),
-                "had_attempts": !attempts.is_empty(),
                 "attempt_count": attempts.len(),
             }),
         )
