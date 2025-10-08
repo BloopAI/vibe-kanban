@@ -2,7 +2,11 @@ use std::{collections::HashMap, sync::Arc, time::Duration as StdDuration};
 
 use chrono::{DateTime, Utc};
 use dashmap::DashMap;
-use db::models::executor_session::ExecutorSession;
+use db::models::{
+    execution_process::ExecutionProcess,
+    executor_session::ExecutorSession,
+    task::{Task, TaskStatus},
+};
 use executors::logs::{
     NormalizedEntry, NormalizedEntryType, ToolStatus,
     utils::patch::{ConversationPatch, extract_normalized_entry_from_patch},
@@ -124,6 +128,17 @@ impl Approvals {
                     return Err(ApprovalError::NoExecutorSession(session_id));
                 }
             };
+
+        // Move the task to InReview if it's still InProgress
+        if let Ok(ctx) = ExecutionProcess::load_context(pool, execution_process_id).await
+            && ctx.task.status == TaskStatus::InProgress
+            && let Err(e) = Task::update_status(pool, ctx.task.id, TaskStatus::InReview).await
+        {
+            tracing::warn!(
+                "Failed to update task status to InReview for approval request: {}",
+                e
+            );
+        }
 
         let request = ApprovalRequest::from_create(payload, execution_process_id);
         self.create(request).await

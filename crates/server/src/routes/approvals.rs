@@ -4,7 +4,10 @@ use axum::{
     http::StatusCode,
     routing::{get, post},
 };
-use db::models::execution_process::ExecutionProcess;
+use db::models::{
+    execution_process::ExecutionProcess,
+    task::{Task, TaskStatus},
+};
 use deployment::Deployment;
 use services::services::container::ContainerService;
 use utils::approvals::{
@@ -77,21 +80,36 @@ pub async fn respond_to_approval(
                 )
                 .await;
 
+            if matches!(
+                status,
+                ApprovalStatus::Approved | ApprovalStatus::Denied { .. }
+            ) && let Ok(ctx) =
+                ExecutionProcess::load_context(&deployment.db().pool, context.execution_process_id)
+                    .await
+                && ctx.task.status == TaskStatus::InReview
+                && let Err(e) =
+                    Task::update_status(&deployment.db().pool, ctx.task.id, TaskStatus::InProgress)
+                        .await
+            {
+                tracing::warn!(
+                    "Failed to update task status to InProgress after approval response: {}",
+                    e
+                );
+            }
+
             if matches!(status, ApprovalStatus::Approved)
                 && context.tool_name == EXIT_PLAN_MODE_TOOL_NAME
-            {
                 // If exiting plan mode, automatically start a new execution process with different
                 // permissions
-                if let Ok(ctx) = ExecutionProcess::load_context(
+                && let Ok(ctx) = ExecutionProcess::load_context(
                     &deployment.db().pool,
                     context.execution_process_id,
                 )
                 .await
-                    && let Err(e) = deployment.container().exit_plan_mode_tool(ctx).await
-                {
-                    tracing::error!("failed to exit plan mode: {:?}", e);
-                    return Err(StatusCode::INTERNAL_SERVER_ERROR);
-                }
+                && let Err(e) = deployment.container().exit_plan_mode_tool(ctx).await
+            {
+                tracing::error!("failed to exit plan mode: {:?}", e);
+                return Err(StatusCode::INTERNAL_SERVER_ERROR);
             }
 
             Ok(Json(status))
