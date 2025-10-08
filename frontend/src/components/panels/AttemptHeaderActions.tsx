@@ -24,6 +24,7 @@ interface AttemptHeaderActionsProps {
   onModeChange?: (mode: LayoutMode) => void;
   taskId: string;
   latestAttempt?: TaskAttempt | null;
+  onCreateSubtask?: () => void;
 }
 
 export const AttemptHeaderActions = ({
@@ -32,6 +33,7 @@ export const AttemptHeaderActions = ({
   onModeChange,
   taskId,
   latestAttempt,
+  onCreateSubtask,
 }: AttemptHeaderActionsProps) => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
@@ -111,8 +113,9 @@ export const AttemptHeaderActions = ({
           <DropdownMenuItem
             onClick={(e) => {
               e.stopPropagation();
-              console.log('Create subtask');
+              onCreateSubtask?.();
             }}
+            disabled={!onCreateSubtask}
           >
             Create subtask
           </DropdownMenuItem>
