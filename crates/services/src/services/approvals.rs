@@ -297,8 +297,8 @@ fn find_matching_tool_use(
 
     let history = store.get_history();
 
-    // Parse the incoming tool_input into ClaudeToolData for proper comparison
-    // This handles all the serde aliases and field variations
+    // Parse the incoming tool_input into ClaudeToolData
+    // This handles all the serde aliases and field variations for known tools
     let approval_tool_data: ClaudeToolData = match serde_json::from_value(serde_json::json!({
         "name": tool_name,
         "input": tool_input
@@ -313,6 +313,9 @@ fn find_matching_tool_use(
             return None;
         }
     };
+
+    // Check if this is an Unknown tool (MCP tools, future tools, etc.)
+    let is_unknown_tool = matches!(approval_tool_data, ClaudeToolData::Unknown { .. });
 
     // Search backward through history for a matching tool use
     for msg in history.iter().rev() {
@@ -335,18 +338,31 @@ fn find_matching_tool_use(
                     continue;
                 }
 
-                // Extract and deserialize the tool data from metadata
+                // Extract and compare the tool data from metadata
                 if let Some(metadata) = &entry.metadata {
-                    // Deserialize the stored tool data
-                    if let Ok(entry_tool_data) =
-                        serde_json::from_value::<ClaudeToolData>(metadata.clone())
-                    {
-                        // Compare the deserialized tool data structures
-                        if entry_tool_data == approval_tool_data {
-                            tracing::debug!(
-                                "Matched tool use entry at index {idx} for tool '{tool_name}' by deserialized tool data"
-                            );
-                            return Some((idx, entry));
+                    if is_unknown_tool {
+                        // For Unknown tools, use raw JSON comparison since they don't have
+                        // structured fields or aliases to worry about
+                        if let Some(entry_input) = metadata.get("input") {
+                            if entry_input == tool_input {
+                                tracing::debug!(
+                                    "Matched tool use entry at index {idx} for unknown tool '{tool_name}' by raw input comparison"
+                                );
+                                return Some((idx, entry));
+                            }
+                        }
+                    } else {
+                        // For known tools, deserialize and compare using the structured type
+                        // This properly handles all serde aliases and field variations
+                        if let Ok(entry_tool_data) =
+                            serde_json::from_value::<ClaudeToolData>(metadata.clone())
+                        {
+                            if entry_tool_data == approval_tool_data {
+                                tracing::debug!(
+                                    "Matched tool use entry at index {idx} for tool '{tool_name}' by deserialized tool data"
+                                );
+                                return Some((idx, entry));
+                            }
                         }
                     }
                 }
