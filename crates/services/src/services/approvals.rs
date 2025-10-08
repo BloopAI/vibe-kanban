@@ -338,7 +338,9 @@ fn find_matching_tool_use(
                 // Extract and deserialize the tool data from metadata
                 if let Some(metadata) = &entry.metadata {
                     // Deserialize the stored tool data
-                    if let Ok(entry_tool_data) = serde_json::from_value::<ClaudeToolData>(metadata.clone()) {
+                    if let Ok(entry_tool_data) =
+                        serde_json::from_value::<ClaudeToolData>(metadata.clone())
+                    {
                         // Compare the deserialized tool data structures
                         if entry_tool_data == approval_tool_data {
                             tracing::debug!(
