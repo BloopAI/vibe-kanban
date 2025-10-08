@@ -9,7 +9,6 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button.tsx';
-import { Card } from '@/components/ui/card';
 import {
   Tooltip,
   TooltipContent,
@@ -43,6 +42,8 @@ interface GitOperationsProps {
   setError: (error: string | null) => void;
   selectedBranch: string | null;
 }
+
+export type GitOperationsInputs = Omit<GitOperationsProps, 'selectedAttempt'>;
 
 function GitOperations({
   selectedAttempt,
@@ -257,190 +258,157 @@ function GitOperations({
   }
 
   return (
-    <div>
-      <Card className="bg-background p-3 border border-dashed text-sm">
-        Git
-      </Card>
-      <div className="p-3 space-y-3">
-        {/* Branch Flow with Status Below */}
-        <div className="space-y-1 py-2">
-          {/* Labels Row */}
-          <div className="flex gap-4">
-            {/* Task Branch Label - Left Column */}
-            <div className="flex flex-1 justify-start">
-              <span className="text-xs text-muted-foreground">
+    <div className="w-full border-b py-2">
+      <div className="flex items-center gap-3 flex-wrap">
+        {/* Left: Branch flow */}
+        <div className="flex items-center gap-2 min-w-0">
+          {/* Task branch chip */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex items-center gap-1.5 max-w-[280px] px-2 py-0.5 rounded-full bg-muted text-xs font-medium min-w-0">
+                  <GitBranchIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="truncate">{selectedAttempt.branch}</span>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
                 {t('git.labels.taskBranch')}
-              </span>
-            </div>
-            {/* Center Column - Empty */}
-            {/* Target Branch Label - Right Column */}
-            <div className="flex flex-1 justify-end">
-              <span className="text-xs text-muted-foreground">
-                {t('rebase.dialog.targetLabel')}
-              </span>
-            </div>
-          </div>
-          {/* Branches Row */}
-          <div className="flex flex-1 gap-4 items-center">
-            {/* Task Branch - Left Column */}
-            <div className="flex flex-1 items-center justify-start gap-1.5 min-w-0">
-              <GitBranchIcon className="h-3 w-3 text-muted-foreground" />
-              <span className="text-sm font-medium truncate">
-                {selectedAttempt.branch}
-              </span>
-            </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
-            {/* Arrow - Center Column */}
-            <div className="flex justify-center">
-              <ArrowRight className="h-4 w-4 text-muted-foreground" />
-            </div>
+          <ArrowRight className="h-4 w-4 text-muted-foreground" />
 
-            {/* Target Branch - Right Column */}
-            <div className="flex flex-1 items-center justify-end gap-1.5 min-w-0">
-              <GitBranchIcon className="h-3 w-3 text-muted-foreground" />
-              <span className="text-sm font-medium truncate">
-                {branchStatus?.target_branch_name ||
-                  selectedAttempt.target_branch ||
-                  selectedBranch ||
-                  t('git.branch.current')}
-              </span>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      onClick={handleChangeTargetBranchDialogOpen}
-                      disabled={isAttemptRunning || hasConflictsCalculated}
-                      className="h-4 w-4 p-0 hover:bg-muted ml-1"
-                    >
-                      <Settings className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{t('branches.changeTarget.dialog.title')}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          </div>
-
-          {/* Bottom Row: Status Information */}
-          <div className="flex gap-4">
-            <div className="flex-1 flex justify-start">
-              {(() => {
-                const commitsAhead = branchStatus?.commits_ahead ?? 0;
-                const showAhead = commitsAhead > 0;
-
-                if (showAhead) {
-                  return (
-                    <span className="text-xs font-medium text-success">
-                      {commitsAhead}{' '}
-                      {t('git.status.commits', { count: commitsAhead })}{' '}
-                      {t('git.status.ahead')}
+          {/* Target branch chip + change button */}
+          <div className="flex items-center gap-1 min-w-0">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex items-center gap-1.5 max-w-[280px] px-2 py-0.5 rounded-full bg-muted text-xs font-medium min-w-0">
+                    <GitBranchIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="truncate">
+                      {branchStatus?.target_branch_name ||
+                        selectedAttempt.target_branch ||
+                        selectedBranch ||
+                        t('git.branch.current')}
                     </span>
-                  );
-                }
-                return null;
-              })()}
-            </div>
-
-            <div className="flex justify-center">
-              {(() => {
-                const commitsAhead = branchStatus?.commits_ahead ?? 0;
-                const commitsBehind = branchStatus?.commits_behind ?? 0;
-                const showAhead = commitsAhead > 0;
-                const showBehind = commitsBehind > 0;
-
-                // Handle special states (PR, conflicts, etc.) - center under arrow
-                if (hasConflictsCalculated) {
-                  return (
-                    <div className="flex items-center gap-1 text-warning">
-                      <AlertTriangle className="h-3 w-3" />
-                      <span className="text-xs font-medium">
-                        {t('git.status.conflicts')}
-                      </span>
-                    </div>
-                  );
-                }
-
-                if (branchStatus?.is_rebase_in_progress) {
-                  return (
-                    <div className="flex items-center gap-1 text-warning">
-                      <RefreshCw className="h-3 w-3 animate-spin" />
-                      <span className="text-xs font-medium">
-                        {t('git.states.rebasing')}
-                      </span>
-                    </div>
-                  );
-                }
-
-                // Check for merged PR
-                if (mergeInfo.hasMergedPR) {
-                  return (
-                    <div className="flex items-center gap-1 text-success">
-                      <CheckCircle className="h-3 w-3" />
-                      <span className="text-xs font-medium">
-                        {t('git.states.merged')}
-                      </span>
-                    </div>
-                  );
-                }
-
-                // Check for open PR - center under arrow
-                if (mergeInfo.hasOpenPR && mergeInfo.openPR?.type === 'pr') {
-                  const prMerge = mergeInfo.openPR;
-                  return (
-                    <button
-                      onClick={() => window.open(prMerge.pr_info.url, '_blank')}
-                      className="flex items-center gap-1 text-info hover:text-info hover:underline"
-                    >
-                      <GitPullRequest className="h-3 w-3" />
-                      <span className="text-xs font-medium">
-                        PR #{Number(prMerge.pr_info.number)}
-                      </span>
-                      <ExternalLink className="h-3 w-3" />
-                    </button>
-                  );
-                }
-
-                // If showing ahead/behind, don't show anything in center
-                if (showAhead || showBehind) {
-                  return null;
-                }
-
-                // Default: up to date - center under arrow
-                return (
-                  <span className="text-xs text-muted-foreground">
-                    {t('git.status.upToDate')}
                   </span>
-                );
-              })()}
-            </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {t('rebase.dialog.targetLabel')}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
 
-            <div className="flex-1 flex justify-end">
-              {(() => {
-                const commitsBehind = branchStatus?.commits_behind ?? 0;
-                const showBehind = commitsBehind > 0;
-
-                if (showBehind) {
-                  return (
-                    <span className="text-xs font-medium text-warning">
-                      {commitsBehind}{' '}
-                      {t('git.status.commits', { count: commitsBehind })}{' '}
-                      {t('git.status.behind')}
-                    </span>
-                  );
-                }
-                return null;
-              })()}
-            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    onClick={handleChangeTargetBranchDialogOpen}
+                    disabled={isAttemptRunning || hasConflictsCalculated}
+                    className="h-5 w-5 p-0 hover:bg-muted"
+                    aria-label={t('branches.changeTarget.dialog.title')}
+                  >
+                    <Settings className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {t('branches.changeTarget.dialog.title')}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
 
-        {/* Git Operations - only show when branchStatus is available */}
+        {/* Center: Status chips */}
+        <div className="flex items-center gap-2 text-xs flex-1 min-w-[240px]">
+          {(() => {
+            const commitsAhead = branchStatus?.commits_ahead ?? 0;
+            const commitsBehind = branchStatus?.commits_behind ?? 0;
+
+            if (hasConflictsCalculated) {
+              return (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100/60 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  {t('git.status.conflicts')}
+                </span>
+              );
+            }
+
+            if (branchStatus?.is_rebase_in_progress) {
+              return (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100/60 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                  {t('git.states.rebasing')}
+                </span>
+              );
+            }
+
+            if (mergeInfo.hasMergedPR) {
+              return (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100/70 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
+                  <CheckCircle className="h-3.5 w-3.5" />
+                  {t('git.states.merged')}
+                </span>
+              );
+            }
+
+            if (mergeInfo.hasOpenPR && mergeInfo.openPR?.type === 'pr') {
+              const prMerge = mergeInfo.openPR;
+              return (
+                <button
+                  onClick={() => window.open(prMerge.pr_info.url, '_blank')}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100/60 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 hover:underline"
+                  aria-label={`Open PR #${Number(prMerge.pr_info.number)}`}
+                >
+                  <GitPullRequest className="h-3.5 w-3.5" />
+                  PR #{Number(prMerge.pr_info.number)}
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </button>
+              );
+            }
+
+            const chips: React.ReactNode[] = [];
+            if (commitsAhead > 0) {
+              chips.push(
+                <span
+                  key="ahead"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100/70 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
+                >
+                  +{commitsAhead}{' '}
+                  {t('git.status.commits', { count: commitsAhead })}{' '}
+                  {t('git.status.ahead')}
+                </span>
+              );
+            }
+            if (commitsBehind > 0) {
+              chips.push(
+                <span
+                  key="behind"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100/60 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+                >
+                  {commitsBehind}{' '}
+                  {t('git.status.commits', { count: commitsBehind })}{' '}
+                  {t('git.status.behind')}
+                </span>
+              );
+            }
+            if (chips.length > 0)
+              return <div className="flex items-center gap-2">{chips}</div>;
+
+            return (
+              <span className="text-muted-foreground">
+                {t('git.status.upToDate')}
+              </span>
+            );
+          })()}
+        </div>
+
+        {/* Right: Actions (compact, right-aligned) */}
         {branchStatus && (
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2 ml-auto">
             <Button
               onClick={handleMergeClick}
               disabled={
@@ -455,11 +423,12 @@ function GitOperations({
               }
               variant="outline"
               size="xs"
-              className="border-success text-success hover:bg-success gap-1 flex-1"
+              className="border-success text-success hover:bg-success gap-1"
             >
-              <GitBranchIcon className="h-3 w-3" />
+              <GitBranchIcon className="h-3.5 w-3.5" />
               {mergeButtonLabel}
             </Button>
+
             <Button
               onClick={handlePRButtonClick}
               disabled={
@@ -476,9 +445,9 @@ function GitOperations({
               }
               variant="outline"
               size="xs"
-              className="border-info text-info hover:bg-info gap-1 flex-1"
+              className="border-info text-info hover:bg-info gap-1"
             >
-              <GitPullRequest className="h-3 w-3" />
+              <GitPullRequest className="h-3.5 w-3.5" />
               {mergeInfo.hasOpenPR
                 ? pushSuccess
                   ? t('git.states.pushed')
@@ -487,6 +456,7 @@ function GitOperations({
                     : t('git.states.push')
                 : t('git.states.createPr')}
             </Button>
+
             <Button
               onClick={handleRebaseDialogOpen}
               disabled={
@@ -497,10 +467,10 @@ function GitOperations({
               }
               variant="outline"
               size="xs"
-              className="border-warning text-warning hover:bg-warning gap-1 flex-1"
+              className="border-warning text-warning hover:bg-warning gap-1"
             >
               <RefreshCw
-                className={`h-3 w-3 ${rebasing ? 'animate-spin' : ''}`}
+                className={`h-3.5 w-3.5 ${rebasing ? 'animate-spin' : ''}`}
               />
               {rebaseButtonLabel}
             </Button>
