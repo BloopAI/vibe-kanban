@@ -293,7 +293,26 @@ fn find_matching_tool_use(
     tool_name: &str,
     tool_input: &serde_json::Value,
 ) -> Option<(usize, NormalizedEntry)> {
+    use executors::executors::claude::ClaudeToolData;
+
     let history = store.get_history();
+
+    // Parse the incoming tool_input into ClaudeToolData for proper comparison
+    // This handles all the serde aliases and field variations
+    let approval_tool_data: ClaudeToolData = match serde_json::from_value(serde_json::json!({
+        "name": tool_name,
+        "input": tool_input
+    })) {
+        Ok(data) => data,
+        Err(e) => {
+            tracing::warn!(
+                "Failed to deserialize tool_input for tool '{}': {}",
+                tool_name,
+                e
+            );
+            return None;
+        }
+    };
 
     // Search backward through history for a matching tool use
     for msg in history.iter().rev() {
@@ -316,19 +335,20 @@ fn find_matching_tool_use(
                     continue;
                 }
 
-                // Extract the original tool input from metadata
-                // The metadata contains the original tool_use structure with the input field
+                // Extract and deserialize the tool data from metadata
                 if let Some(metadata) = &entry.metadata {
-                    if let Some(entry_input) = metadata.get("input") {
-                        if entry_input == tool_input {
+                    // Deserialize the stored tool data
+                    if let Ok(entry_tool_data) = serde_json::from_value::<ClaudeToolData>(metadata.clone()) {
+                        // Compare the deserialized tool data structures
+                        if entry_tool_data == approval_tool_data {
                             tracing::debug!(
-                                "Matched tool use entry at index {idx} for tool '{tool_name}' by name and input"
+                                "Matched tool use entry at index {idx} for tool '{tool_name}' by deserialized tool data"
                             );
                             return Some((idx, entry));
                         }
                     }
                 }
-                // Input doesn't match or metadata missing, continue searching
+                // Input doesn't match or deserialization failed, continue searching
             }
         }
     }
