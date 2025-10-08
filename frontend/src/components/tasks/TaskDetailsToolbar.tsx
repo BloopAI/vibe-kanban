@@ -9,12 +9,11 @@ import type {
 } from 'shared/types';
 import type { ExecutorProfileId } from 'shared/types';
 
-import { useAttemptExecution, useBranchStatus } from '@/hooks';
+import { useAttemptExecution } from '@/hooks';
 import { useTaskStopping } from '@/stores/useTaskDetailsUiStore';
 
 import CreateAttempt from '@/components/tasks/Toolbar/CreateAttempt.tsx';
 import CurrentAttempt from '@/components/tasks/Toolbar/CurrentAttempt.tsx';
-import GitOperations from '@/components/tasks/Toolbar/GitOperations.tsx';
 import { useUserSystem } from '@/components/config-provider';
 import { Card } from '../ui/card';
 
@@ -42,11 +41,9 @@ function TaskDetailsToolbar({
   // const { setLoading } = useTaskLoading(task.id);
   const { isStopping } = useTaskStopping(task.id);
   const { isAttemptRunning } = useAttemptExecution(selectedAttempt?.id);
-  const { data: branchStatus } = useBranchStatus(selectedAttempt?.id);
 
   // UI state
   const [userForcedCreateMode, setUserForcedCreateMode] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // Data state
   const [branches, setBranches] = useState<GitBranch[]>([]);
@@ -155,13 +152,6 @@ function TaskDetailsToolbar({
   return (
     <>
       <div>
-        {/* Error Display */}
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200">
-            <div className="text-destructive text-sm">{error}</div>
-          </div>
-        )}
-
         {isInCreateAttemptMode ? (
           <CreateAttempt
             task={task}
@@ -221,20 +211,6 @@ function TaskDetailsToolbar({
               )}
             </div>
           </div>
-        )}
-
-        {/* Independent Git Operations Section */}
-        {selectedAttempt && (
-          <GitOperations
-            selectedAttempt={selectedAttempt}
-            task={task}
-            projectId={projectId}
-            branchStatus={branchStatus ?? null}
-            branches={branches}
-            isAttemptRunning={isAttemptRunning}
-            setError={setError}
-            selectedBranch={selectedBranch}
-          />
         )}
       </div>
     </>

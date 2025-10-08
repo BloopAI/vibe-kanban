@@ -119,12 +119,14 @@ export function PreviewToolbar({
 
   return (
     <NewCardHeader className="shrink-0" actions={actions}>
-      <span
-        className="font-normal text-muted-foreground font-mono truncate whitespace-nowrap"
-        aria-live="polite"
-      >
-        {url || <Loader2 className="h-4 w-4 animate-spin" />}
-      </span>
+      <div className="flex items-center">
+        <span
+          className="text-sm text-muted-foreground font-mono truncate whitespace-nowrap"
+          aria-live="polite"
+        >
+          {url || <Loader2 className="h-4 w-4 animate-spin" />}
+        </span>
+      </div>
     </NewCardHeader>
   );
 }

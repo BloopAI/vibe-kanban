@@ -15,12 +15,16 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import type { TaskAttempt } from 'shared/types';
+import GitOperations, {
+  type GitOperationsInputs,
+} from '@/components/tasks/Toolbar/GitOperations.tsx';
 
 interface DiffsPanelProps {
   selectedAttempt: TaskAttempt | null;
+  gitOps?: GitOperationsInputs;
 }
 
-export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
+export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
   const [loading, setLoading] = useState(true);
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const [hasInitialized, setHasInitialized] = useState(false);
@@ -127,6 +131,7 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
         handleCollapseAll={handleCollapseAll}
         toggle={toggle}
         selectedAttempt={selectedAttempt}
+        gitOps={gitOps}
       />
     </ReviewProvider>
   );
@@ -142,6 +147,7 @@ interface DiffsPanelContentProps {
   handleCollapseAll: () => void;
   toggle: (id: string) => void;
   selectedAttempt: TaskAttempt | null;
+  gitOps?: GitOperationsInputs;
 }
 
 function DiffsPanelContent({
@@ -154,6 +160,7 @@ function DiffsPanelContent({
   handleCollapseAll,
   toggle,
   selectedAttempt,
+  gitOps,
 }: DiffsPanelContentProps) {
   return (
     <div className="h-full flex flex-col relative">
@@ -190,15 +197,24 @@ function DiffsPanelContent({
             </>
           }
         >
-          <span
-            className="font-normal text-muted-foreground whitespace-nowrap"
-            aria-live="polite"
-          >
-            {fileCount} file{fileCount === 1 ? '' : 's'} changed,{' '}
-            <span className="text-green-600 dark:text-green-500">+{added}</span>{' '}
-            <span className="text-red-600 dark:text-red-500">-{deleted}</span>
-          </span>
+          <div className="flex items-center">
+            <span
+              className="text-sm text-muted-foreground whitespace-nowrap"
+              aria-live="polite"
+            >
+              {fileCount} file{fileCount === 1 ? '' : 's'} changed,{' '}
+              <span className="text-green-600 dark:text-green-500">
+                +{added}
+              </span>{' '}
+              <span className="text-red-600 dark:text-red-500">-{deleted}</span>
+            </span>
+          </div>
         </NewCardHeader>
+      )}
+      {gitOps && selectedAttempt && (
+        <div className="px-3">
+          <GitOperations selectedAttempt={selectedAttempt} {...gitOps} />
+        </div>
       )}
       <div className="flex-1 overflow-y-auto px-3">
         {diffs.map((diff, idx) => {

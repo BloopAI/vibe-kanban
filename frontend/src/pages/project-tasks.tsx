@@ -6,6 +6,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { AlertTriangle, Plus } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { tasksApi } from '@/lib/api';
+import { useState } from 'react';
+import type { GitBranch } from 'shared/types';
 import { openTaskForm } from '@/lib/openTaskForm';
 
 import { useSearch } from '@/contexts/search-context';
@@ -13,6 +15,8 @@ import { useProject } from '@/contexts/project-context';
 import { useTaskAttempts } from '@/hooks/useTaskAttempts';
 import { useTaskAttempt } from '@/hooks/useTaskAttempt';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { useBranchStatus, useAttemptExecution } from '@/hooks';
+import { projectsApi } from '@/lib/api';
 import { paths } from '@/lib/paths';
 import {
   useKeyCreate,
@@ -167,6 +171,19 @@ export function ProjectTasks() {
   const effectiveAttemptId = attemptId === 'latest' ? undefined : attemptId;
   const { data: attempt } = useTaskAttempt(effectiveAttemptId);
   const hasAttempt = Boolean(attemptId);
+
+  const { data: branchStatus } = useBranchStatus(attempt?.id);
+  const { isAttemptRunning } = useAttemptExecution(attempt?.id);
+  const [branches, setBranches] = useState<GitBranch[]>([]);
+  const [gitError, setGitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!projectId) return;
+    projectsApi
+      .getBranches(projectId)
+      .then(setBranches)
+      .catch(() => setBranches([]));
+  }, [projectId]);
 
   const rawMode = searchParams.get('view') as LayoutMode;
   const mode: LayoutMode =
@@ -621,6 +638,11 @@ export function ProjectTasks() {
       <TaskAttemptPanel attempt={attempt} task={selectedTask}>
         {({ logs, followUp }) => (
           <>
+            {gitError && (
+              <div className="mx-4 mt-4 p-3 bg-red-50 border border-red-200 rounded">
+                <div className="text-destructive text-sm">{gitError}</div>
+              </div>
+            )}
             <div className="flex-1 min-h-0 flex flex-col">{logs}</div>
 
             <div className="shrink-0 border-t">
@@ -646,7 +668,22 @@ export function ProjectTasks() {
         style={{ display: mode === 'diffs' ? 'block' : 'none' }}
         className="h-full"
       >
-        <DiffsPanel selectedAttempt={attempt ?? null} />
+        <DiffsPanel
+          selectedAttempt={attempt ?? null}
+          gitOps={
+            attempt && selectedTask && projectId
+              ? {
+                  task: selectedTask,
+                  projectId,
+                  branchStatus: branchStatus ?? null,
+                  branches,
+                  isAttemptRunning,
+                  setError: setGitError,
+                  selectedBranch: branchStatus?.target_branch_name ?? null,
+                }
+              : undefined
+          }
+        />
       </div>
     </div>
   );
