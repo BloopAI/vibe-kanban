@@ -10,5 +10,33 @@
     "title": "Aún no hay proyectos",
     "description": "Comienza creando tu primer proyecto.",
     "createFirst": "Crear tu primer proyecto"
+  },
+  "setup": {
+    "title": "Configuración del Proyecto",
+    "description": "Configura scripts para tu flujo de trabajo de desarrollo",
+    "setupScript": {
+      "label": "Script de Configuración",
+      "help": "Este script se ejecutará después de crear el worktree y antes de que comience el agente de codificación. Úsalo para tareas de configuración como instalar dependencias o preparar el entorno."
+    },
+    "devScript": {
+      "label": "Script del Servidor de Desarrollo",
+      "help": "Este script se puede ejecutar desde los intentos de tareas para iniciar un servidor de desarrollo. Úsalo para iniciar rápidamente el servidor de desarrollo de tu proyecto para probar cambios."
+    },
+    "cleanupScript": {
+      "label": "Script de Limpieza",
+      "help": "Este script se ejecuta después de la ejecución del agente de codificación solo si se realizaron cambios. Úsalo para tareas de control de calidad como ejecutar linters, formateadores, pruebas u otros pasos de validación. Si no se realizan cambios, este script se omite."
+    },
+    "copyFiles": {
+      "label": "Copiar Archivos",
+      "help": "Lista separada por comas de archivos para copiar del directorio del proyecto original al worktree. Estos archivos se copiarán después de crear el worktree pero antes de ejecutar el script de configuración. Útil para archivos específicos del entorno como .env, archivos de configuración y configuraciones locales. ¡Asegúrate de que estén en gitignore o podrían ser confirmados!"
+    },
+    "starterTasks": "Tareas Iniciales",
+    "saveButton": "Guardar Configuración",
+    "saving": "Guardando...",
+    "defaultTasks": {
+      "companionInstall": {
+        "description": "Instalar automáticamente vibe-kanban-web-companion e integrarlo en tu aplicación."
+      }
+    }
   }
 }

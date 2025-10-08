@@ -10,5 +10,33 @@
     "title": "No projects yet",
     "description": "Get started by creating your first project.",
     "createFirst": "Create your first project"
+  },
+  "setup": {
+    "title": "Project Configuration",
+    "description": "Configure scripts for your development workflow",
+    "setupScript": {
+      "label": "Setup Script",
+      "help": "This script will run after creating the worktree and before the coding agent starts. Use it for setup tasks like installing dependencies or preparing the environment."
+    },
+    "devScript": {
+      "label": "Dev Server Script",
+      "help": "This script can be run from task attempts to start a development server. Use it to quickly start your project's dev server for testing changes."
+    },
+    "cleanupScript": {
+      "label": "Cleanup Script",
+      "help": "This script runs after coding agent execution only if changes were made. Use it for quality assurance tasks like running linters, formatters, tests, or other validation steps. If no changes are made, this script is skipped."
+    },
+    "copyFiles": {
+      "label": "Copy Files",
+      "help": "Comma-separated list of files to copy from the original project directory to the worktree. These files will be copied after the worktree is created but before the setup script runs. Useful for environment-specific files like .env, configuration files, and local settings. Make sure these are gitignored or they could get committed!"
+    },
+    "starterTasks": "Starter Tasks",
+    "saveButton": "Save Configuration",
+    "saving": "Saving...",
+    "defaultTasks": {
+      "companionInstall": {
+        "description": "Automatically install vibe-kanban-web-companion and integrate it into your app."
+      }
+    }
   }
 }

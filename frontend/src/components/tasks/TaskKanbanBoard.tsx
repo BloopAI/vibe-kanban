@@ -15,7 +15,8 @@ import { statusBoardColors, statusLabels } from '@/utils/status-labels';
 type Task = TaskWithAttemptStatus;
 
 interface TaskKanbanBoardProps {
-  groupedTasks: Record<TaskStatus, Task[]>;
+  // Partial to support showing only a subset of columns (e.g., just TODO in setup wizard)
+  groupedTasks: Partial<Record<TaskStatus, Task[]>>;
   onDragEnd: (event: DragEndEvent) => void;
   onEditTask: (task: Task) => void;
   onDeleteTask: (taskId: string) => void;
@@ -45,7 +46,7 @@ function TaskKanbanBoard({
             onAddTask={onCreateTask}
           />
           <KanbanCards>
-            {statusTasks.map((task, index) => (
+            {(statusTasks ?? []).map((task, index) => (
               <TaskCard
                 key={task.id}
                 task={task}
