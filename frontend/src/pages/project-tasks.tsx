@@ -615,6 +615,8 @@ export function ProjectTasks() {
             onClose={() =>
               navigate(`/projects/${projectId}/tasks`, { replace: true })
             }
+            taskId={taskId!}
+            latestAttempt={attempt ?? null}
           />
         }
       >
