@@ -12,16 +12,8 @@ pub async fn write_port_file(port: u16) -> std::io::Result<PathBuf> {
 }
 
 pub async fn read_port_file(app_name: &str) -> std::io::Result<u16> {
-    let base = if cfg!(target_os = "linux") {
-        match env::var("XDG_RUNTIME_DIR") {
-            Ok(val) if !val.is_empty() => PathBuf::from(val),
-            _ => env::temp_dir(),
-        }
-    } else {
-        env::temp_dir()
-    };
-
-    let path = base.join(app_name).join(format!("{app_name}.port"));
+    let dir = env::temp_dir().join(app_name);
+    let path = dir.join(format!("{app_name}.port"));
     tracing::debug!("Reading port from {:?}", path);
 
     let content = fs::read_to_string(&path).await?;
