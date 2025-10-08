@@ -43,6 +43,7 @@ import { TasksLayout, type LayoutMode } from '@/components/layout/TasksLayout';
 import { PreviewPanel } from '@/components/panels/PreviewPanel';
 import { DiffsPanel } from '@/components/panels/DiffsPanel';
 import TaskAttemptPanel from '@/components/panels/TaskAttemptPanel';
+import TodoPanel from '@/components/tasks/TodoPanel';
 import { NewCard, NewCardHeader } from '@/components/ui/new-card';
 import {
   Breadcrumb,
@@ -644,6 +645,12 @@ export function ProjectTasks() {
               </div>
             )}
             <div className="flex-1 min-h-0 flex flex-col">{logs}</div>
+
+            <div className="shrink-0 border-t">
+              <div className="mx-auto w-full max-w-[50rem]">
+                <TodoPanel />
+              </div>
+            </div>
 
             <div className="shrink-0 border-t">
               <div className="mx-auto w-full max-w-[50rem]">{followUp}</div>
