@@ -1,4 +1,4 @@
-import { Eye, GitCompareArrows, X } from 'lucide-react';
+import { Eye, GitCompareArrows, X, MoreHorizontal } from 'lucide-react';
 import { Button } from '../ui/button';
 import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
 import {
@@ -7,6 +7,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '../ui/tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
 import type { LayoutMode } from '../layout/TasksLayout';
 
 interface AttemptHeaderActionsProps {
@@ -62,6 +68,47 @@ export const AttemptHeaderActions = ({
       {typeof mode !== 'undefined' && onModeChange && (
         <div className="h-4 w-px bg-border" />
       )}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+          <Button variant="icon" aria-label="More actions">
+            <MoreHorizontal size={16} />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log('Open attempt in IDE');
+            }}
+          >
+            Open attempt in IDE
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log('View processes');
+            }}
+          >
+            View processes
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log('Create new attempt');
+            }}
+          >
+            Create new attempt
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log('Create subtask');
+            }}
+          >
+            Create subtask
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
       <Button variant="icon" aria-label="Close" onClick={onClose}>
         <X size={16} />
       </Button>
