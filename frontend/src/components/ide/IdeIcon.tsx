@@ -16,54 +16,61 @@ function getResolvedTheme(theme: ThemeMode): 'light' | 'dark' {
   return theme === ThemeMode.DARK ? 'dark' : 'light';
 }
 
+export function getIdeName(editorType: EditorType | undefined | null): string {
+  if (!editorType) return 'IDE';
+  switch (editorType) {
+    case EditorType.VS_CODE:
+      return 'VS Code';
+    case EditorType.CURSOR:
+      return 'Cursor';
+    case EditorType.WINDSURF:
+      return 'Windsurf';
+    case EditorType.INTELLI_J:
+      return 'IntelliJ IDEA';
+    case EditorType.ZED:
+      return 'Zed';
+    case EditorType.XCODE:
+      return 'Xcode';
+    case EditorType.CUSTOM:
+      return 'IDE';
+  }
+}
+
 export function IdeIcon({ editorType, className = 'h-4 w-4' }: IdeIconProps) {
   const { theme } = useTheme();
   const resolvedTheme = getResolvedTheme(theme);
+  const isDark = resolvedTheme === 'dark';
 
-  if (editorType === EditorType.VS_CODE) {
-    const vscodeIcon =
-      resolvedTheme === 'dark'
-        ? '/ide/vscode-dark.svg'
-        : '/ide/vscode-light.svg';
+  const ideName = getIdeName(editorType);
+  let ideIconPath = '';
 
-    return <img src={vscodeIcon} alt="VS Code" className={className} />;
+  if (!editorType || editorType === EditorType.CUSTOM) {
+    // Generic fallback for other IDEs or no IDE configured
+    return <Code2 className={className} />;
   }
 
-  if (editorType === EditorType.CURSOR) {
-    const cursorIcon =
-      resolvedTheme === 'dark'
-        ? '/ide/cursor-dark.svg' // dark
-        : '/ide/cursor-light.svg'; // light
-
-    return <img src={cursorIcon} alt="Cursor" className={className} />;
+  switch (editorType) {
+    case EditorType.VS_CODE:
+      ideIconPath = isDark ? '/ide/vscode-dark.svg' : '/ide/vscode-light.svg';
+      break;
+    case EditorType.CURSOR:
+      ideIconPath = isDark ? '/ide/cursor-dark.svg' : '/ide/cursor-light.svg';
+      break;
+    case EditorType.WINDSURF:
+      ideIconPath = isDark
+        ? '/ide/windsurf-dark.svg'
+        : '/ide/windsurf-light.svg';
+      break;
+    case EditorType.INTELLI_J:
+      ideIconPath = '/ide/intellij.svg';
+      break;
+    case EditorType.ZED:
+      ideIconPath = isDark ? '/ide/zed-dark.svg' : '/ide/zed-light.svg';
+      break;
+    case EditorType.XCODE:
+      ideIconPath = '/ide/xcode.svg';
+      break;
   }
 
-  if (editorType === EditorType.WINDSURF) {
-    const windsurfIcon =
-      resolvedTheme === 'dark'
-        ? '/ide/windsurf-light.svg'
-        : '/ide/windsurf-dark.svg';
-
-    return <img src={windsurfIcon} alt="Windsurf" className={className} />;
-  }
-
-  if (editorType === EditorType.INTELLI_J) {
-    return (
-      <img src="/ide/intellij.svg" alt="IntelliJ IDEA" className={className} />
-    );
-  }
-
-  if (editorType === EditorType.ZED) {
-    const zedIcon =
-      resolvedTheme === 'dark' ? '/ide/zed-light.svg' : '/ide/zed-dark.svg';
-
-    return <img src={zedIcon} alt="Zed" className={className} />;
-  }
-
-  if (editorType === EditorType.XCODE) {
-    return <img src="/ide/xcode.svg" alt="Xcode" className={className} />;
-  }
-
-  // Generic fallback for other IDEs or no IDE configured
-  return <Code2 className={className} />;
+  return <img src={ideIconPath} alt={ideName} className={className} />;
 }
