@@ -75,9 +75,12 @@ impl Approvals {
         let req_id = request.id.clone();
 
         if let Some(store) = self.msg_store_by_id(&request.execution_process_id).await {
-            let last_tool = get_last_tool_use(store.clone());
-            if let Some((idx, last_tool)) = last_tool {
-                let approval_entry = last_tool
+            // Find the matching tool use entry by name and input
+            let matching_tool =
+                find_matching_tool_use(store.clone(), &request.tool_name, &request.tool_input);
+
+            if let Some((idx, matching_tool)) = matching_tool {
+                let approval_entry = matching_tool
                     .with_tool_status(ToolStatus::PendingApproval {
                         approval_id: req_id.clone(),
                         requested_at: request.created_at,
@@ -90,13 +93,25 @@ impl Approvals {
                     req_id.clone(),
                     PendingApproval {
                         entry_index: idx,
-                        entry: last_tool,
+                        entry: matching_tool,
                         execution_process_id: request.execution_process_id,
                         tool_name: request.tool_name.clone(),
                         requested_at: request.created_at,
                         timeout_at: request.timeout_at,
                         response_tx: tx,
                     },
+                );
+                tracing::debug!(
+                    "Created approval {} for tool '{}' at entry index {}",
+                    req_id,
+                    request.tool_name,
+                    idx
+                );
+            } else {
+                tracing::warn!(
+                    "No matching tool use entry found for approval request: tool='{}', execution_process_id={}",
+                    request.tool_name,
+                    request.execution_process_id
                 );
             }
         } else {
@@ -271,15 +286,162 @@ impl Approvals {
     }
 }
 
-fn get_last_tool_use(store: Arc<MsgStore>) -> Option<(usize, NormalizedEntry)> {
+/// Find a matching tool use entry that hasn't been assigned to an approval yet
+/// Matches by tool name and tool input to support parallel tool calls
+fn find_matching_tool_use(
+    store: Arc<MsgStore>,
+    tool_name: &str,
+    tool_input: &serde_json::Value,
+) -> Option<(usize, NormalizedEntry)> {
     let history = store.get_history();
+
+    // Search backward through history for a matching tool use
     for msg in history.iter().rev() {
         if let LogMsg::JsonPatch(patch) = msg
             && let Some((idx, entry)) = extract_normalized_entry_from_patch(patch)
-            && matches!(entry.entry_type, NormalizedEntryType::ToolUse { .. })
         {
-            return Some((idx, entry));
+            if let NormalizedEntryType::ToolUse {
+                tool_name: entry_tool_name,
+                status,
+                ..
+            } = &entry.entry_type
+            {
+                // Only match tools that are in Created state (not already pending approval)
+                if !matches!(status, ToolStatus::Created) {
+                    continue;
+                }
+
+                // Tool name must match
+                if entry_tool_name != tool_name {
+                    continue;
+                }
+
+                // Extract the original tool input from metadata
+                // The metadata contains the original tool_use structure with the input field
+                if let Some(metadata) = &entry.metadata {
+                    if let Some(entry_input) = metadata.get("input") {
+                        if entry_input == tool_input {
+                            tracing::debug!(
+                                "Matched tool use entry at index {idx} for tool '{tool_name}' by name and input"
+                            );
+                            return Some((idx, entry));
+                        }
+                    }
+                }
+                // Input doesn't match or metadata missing, continue searching
+            }
         }
     }
+
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use executors::logs::{ActionType, NormalizedEntry, NormalizedEntryType, ToolStatus};
+    use utils::msg_store::MsgStore;
+
+    use super::*;
+
+    fn create_tool_use_entry(
+        tool_name: &str,
+        file_path: &str,
+        status: ToolStatus,
+    ) -> NormalizedEntry {
+        // Create metadata that mimics the actual structure from Claude Code
+        // which has an "input" field containing the original tool parameters
+        let metadata = serde_json::json!({
+            "type": "tool_use",
+            "id": format!("test-{}", file_path),
+            "name": tool_name,
+            "input": {
+                "file_path": file_path
+            }
+        });
+
+        NormalizedEntry {
+            timestamp: None,
+            entry_type: NormalizedEntryType::ToolUse {
+                tool_name: tool_name.to_string(),
+                action_type: ActionType::FileRead {
+                    path: file_path.to_string(),
+                },
+                status,
+            },
+            content: format!("Reading {}", file_path),
+            metadata: Some(metadata),
+        }
+    }
+
+    #[test]
+    fn test_parallel_tool_call_approval_matching() {
+        let store = Arc::new(MsgStore::new());
+
+        // Setup: Simulate 3 parallel Read tool calls with different files
+        let read_foo = create_tool_use_entry("Read", "foo.rs", ToolStatus::Created);
+        let read_bar = create_tool_use_entry("Read", "bar.rs", ToolStatus::Created);
+        let read_baz = create_tool_use_entry("Read", "baz.rs", ToolStatus::Created);
+
+        store.push_patch(
+            executors::logs::utils::patch::ConversationPatch::add_normalized_entry(0, read_foo),
+        );
+        store.push_patch(
+            executors::logs::utils::patch::ConversationPatch::add_normalized_entry(1, read_bar),
+        );
+        store.push_patch(
+            executors::logs::utils::patch::ConversationPatch::add_normalized_entry(2, read_baz),
+        );
+
+        // Test 1: Each approval request matches its specific tool by input
+        let foo_input = serde_json::json!({"file_path": "foo.rs"});
+        let bar_input = serde_json::json!({"file_path": "bar.rs"});
+        let baz_input = serde_json::json!({"file_path": "baz.rs"});
+
+        let (idx_foo, _) =
+            find_matching_tool_use(store.clone(), "Read", &foo_input).expect("Should match foo.rs");
+        let (idx_bar, _) =
+            find_matching_tool_use(store.clone(), "Read", &bar_input).expect("Should match bar.rs");
+        let (idx_baz, _) =
+            find_matching_tool_use(store.clone(), "Read", &baz_input).expect("Should match baz.rs");
+
+        assert_eq!(idx_foo, 0, "foo.rs should match first entry");
+        assert_eq!(idx_bar, 1, "bar.rs should match second entry");
+        assert_eq!(idx_baz, 2, "baz.rs should match third entry");
+
+        // Test 2: Already pending tools are skipped
+        let read_pending = create_tool_use_entry(
+            "Read",
+            "pending.rs",
+            ToolStatus::PendingApproval {
+                approval_id: "test-id".to_string(),
+                requested_at: chrono::Utc::now(),
+                timeout_at: chrono::Utc::now(),
+            },
+        );
+        store.push_patch(
+            executors::logs::utils::patch::ConversationPatch::add_normalized_entry(3, read_pending),
+        );
+
+        let pending_input = serde_json::json!({"file_path": "pending.rs"});
+        assert!(
+            find_matching_tool_use(store.clone(), "Read", &pending_input).is_none(),
+            "Should not match tools in PendingApproval state"
+        );
+
+        // Test 3: Wrong tool name returns None
+        let write_input = serde_json::json!({"file_path": "foo.rs", "content": "test"});
+        assert!(
+            find_matching_tool_use(store.clone(), "Write", &write_input).is_none(),
+            "Should not match different tool names"
+        );
+
+        // Test 4: Wrong input parameters returns None
+        let wrong_input = serde_json::json!({"file_path": "nonexistent.rs"});
+        assert!(
+            find_matching_tool_use(store.clone(), "Read", &wrong_input).is_none(),
+            "Should not match with different input parameters"
+        );
+    }
 }
