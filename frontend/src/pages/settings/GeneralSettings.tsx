@@ -540,7 +540,7 @@ export function GeneralSettings() {
             <p className="text-sm text-muted-foreground">
               {t('settings.general.github.pat.helper')}{' '}
               <a
-                href="https://github.com/settings/tokens"
+                href="https://github.com/settings/personal-access-tokens/new?name=Vibe+kanban+token&description=Token+for+creating+pull+requests+and+pushing+content&contents=write&actions=write&pull_requests=write"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-600 hover:underline"
