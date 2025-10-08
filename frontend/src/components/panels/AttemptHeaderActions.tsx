@@ -1,4 +1,4 @@
-import { Eye, GitCompareArrows, Maximize, X } from 'lucide-react';
+import { Eye, GitCompareArrows, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
 import {
@@ -31,19 +31,6 @@ export const AttemptHeaderActions = ({
             className="inline-flex gap-4"
             aria-label="Layout mode"
           >
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <ToggleGroupItem
-                  value="expand"
-                  aria-label="Expand"
-                  active={mode === 'expand'}
-                >
-                  <Maximize className="h-4 w-4" />
-                </ToggleGroupItem>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Expand</TooltipContent>
-            </Tooltip>
-
             <Tooltip>
               <TooltipTrigger asChild>
                 <ToggleGroupItem
