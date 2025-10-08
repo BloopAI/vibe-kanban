@@ -286,15 +286,49 @@ impl Approvals {
     }
 }
 
-/// Match tool use entry by comparing raw JSON input fields
-/// Used for Unknown tools (MCP tools, future tools, etc.) that don't have structured types
-fn match_by_raw_input(
+/// Comparison strategy for matching tool use entries
+enum ToolComparisonStrategy {
+    /// Compare deserialized ClaudeToolData structures (for known tools)
+    Deserialized(executors::executors::claude::ClaudeToolData),
+    /// Compare raw JSON input fields (for Unknown tools like MCP)
+    RawJson,
+}
+
+/// Find a matching tool use entry that hasn't been assigned to an approval yet
+/// Matches by tool name and tool input to support parallel tool calls
+fn find_matching_tool_use(
     store: Arc<MsgStore>,
     tool_name: &str,
     tool_input: &serde_json::Value,
 ) -> Option<(usize, NormalizedEntry)> {
+    use executors::executors::claude::ClaudeToolData;
+
     let history = store.get_history();
 
+    // Determine comparison strategy based on tool type
+    let strategy = match serde_json::from_value::<ClaudeToolData>(serde_json::json!({
+        "name": tool_name,
+        "input": tool_input
+    })) {
+        Ok(ClaudeToolData::Unknown { .. }) => {
+            // For Unknown tools (MCP, future tools), use raw JSON comparison
+            ToolComparisonStrategy::RawJson
+        }
+        Ok(data) => {
+            // For known tools, use deserialized comparison with proper alias handling
+            ToolComparisonStrategy::Deserialized(data)
+        }
+        Err(e) => {
+            tracing::warn!(
+                "Failed to deserialize tool_input for tool '{}': {}",
+                tool_name,
+                e
+            );
+            return None;
+        }
+    };
+
+    // Single loop through history with strategy-based comparison
     for msg in history.iter().rev() {
         if let LogMsg::JsonPatch(patch) = msg
             && let Some((idx, entry)) = extract_normalized_entry_from_patch(patch)
@@ -315,87 +349,38 @@ fn match_by_raw_input(
                     continue;
                 }
 
-                // Compare raw JSON input
+                // Apply comparison strategy
                 if let Some(metadata) = &entry.metadata {
-                    if let Some(entry_input) = metadata.get("input") {
-                        if entry_input == tool_input {
-                            tracing::debug!(
-                                "Matched tool use entry at index {idx} for unknown tool '{tool_name}' by raw input comparison"
-                            );
-                            return Some((idx, entry));
+                    let is_match = match &strategy {
+                        ToolComparisonStrategy::RawJson => {
+                            // Compare raw JSON input for Unknown tools
+                            if let Some(entry_input) = metadata.get("input") {
+                                entry_input == tool_input
+                            } else {
+                                false
+                            }
                         }
-                    }
-                }
-            }
-        }
-    }
-
-    None
-}
-
-/// Find a matching tool use entry that hasn't been assigned to an approval yet
-/// Matches by tool name and tool input to support parallel tool calls
-fn find_matching_tool_use(
-    store: Arc<MsgStore>,
-    tool_name: &str,
-    tool_input: &serde_json::Value,
-) -> Option<(usize, NormalizedEntry)> {
-    use executors::executors::claude::ClaudeToolData;
-
-    let history = store.get_history();
-
-    // Parse the incoming tool_input into ClaudeToolData and check if it's an Unknown tool
-    let approval_tool_data: ClaudeToolData = match serde_json::from_value(serde_json::json!({
-        "name": tool_name,
-        "input": tool_input
-    })) {
-        Ok(ClaudeToolData::Unknown { .. }) => {
-            // For Unknown tools (MCP, future tools), use raw JSON comparison
-            return match_by_raw_input(store, tool_name, tool_input);
-        }
-        Ok(data) => data,
-        Err(e) => {
-            tracing::warn!(
-                "Failed to deserialize tool_input for tool '{}': {}",
-                tool_name,
-                e
-            );
-            return None;
-        }
-    };
-
-    // For known tools, use deserialized comparison with proper alias handling
-    for msg in history.iter().rev() {
-        if let LogMsg::JsonPatch(patch) = msg
-            && let Some((idx, entry)) = extract_normalized_entry_from_patch(patch)
-        {
-            if let NormalizedEntryType::ToolUse {
-                tool_name: entry_tool_name,
-                status,
-                ..
-            } = &entry.entry_type
-            {
-                // Only match tools that are in Created state (not already pending approval)
-                if !matches!(status, ToolStatus::Created) {
-                    continue;
-                }
-
-                // Tool name must match
-                if entry_tool_name != tool_name {
-                    continue;
-                }
-
-                // Deserialize and compare using the structured type
-                if let Some(metadata) = &entry.metadata {
-                    if let Ok(entry_tool_data) =
-                        serde_json::from_value::<ClaudeToolData>(metadata.clone())
-                    {
-                        if entry_tool_data == approval_tool_data {
-                            tracing::debug!(
-                                "Matched tool use entry at index {idx} for tool '{tool_name}' by deserialized tool data"
-                            );
-                            return Some((idx, entry));
+                        ToolComparisonStrategy::Deserialized(approval_data) => {
+                            // Compare deserialized structures for known tools
+                            if let Ok(entry_tool_data) =
+                                serde_json::from_value::<ClaudeToolData>(metadata.clone())
+                            {
+                                entry_tool_data == *approval_data
+                            } else {
+                                false
+                            }
                         }
+                    };
+
+                    if is_match {
+                        let strategy_name = match strategy {
+                            ToolComparisonStrategy::RawJson => "raw input comparison",
+                            ToolComparisonStrategy::Deserialized(_) => "deserialized tool data",
+                        };
+                        tracing::debug!(
+                            "Matched tool use entry at index {idx} for tool '{tool_name}' by {strategy_name}"
+                        );
+                        return Some((idx, entry));
                     }
                 }
             }
