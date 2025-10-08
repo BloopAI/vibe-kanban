@@ -19,7 +19,6 @@ interface ApprovalFormContextType {
   getState: (approvalId: string) => ApprovalFormState;
   setState: (approvalId: string, partial: Partial<ApprovalFormState>) => void;
   clear: (approvalId: string) => void;
-  clearAll: () => void;
 }
 
 const ApprovalFormContext = createContext<ApprovalFormContextType | null>(null);
@@ -28,8 +27,6 @@ const defaultState: ApprovalFormState = {
   isEnteringReason: false,
   denyReason: '',
 };
-
-const MAX_CACHED_APPROVALS = 10; // Prevent unbounded growth
 
 export function useApprovalForm(approvalId: string) {
   const context = useContext(ApprovalFormContext);
@@ -79,17 +76,7 @@ export function ApprovalFormProvider({ children }: { children: ReactNode }) {
       setStateMap((prev) => {
         const current = prev[approvalId] ?? defaultState;
         const updated = { ...current, ...partial };
-        const newMap = { ...prev, [approvalId]: updated };
-
-        // Prune old entries if we exceed the limit
-        const keys = Object.keys(newMap);
-        if (keys.length > MAX_CACHED_APPROVALS) {
-          // Remove the oldest entry (first key)
-          const oldestKey = keys[0];
-          delete newMap[oldestKey];
-        }
-
-        return newMap;
+        return { ...prev, [approvalId]: updated };
       });
     },
     []
@@ -103,17 +90,12 @@ export function ApprovalFormProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const clearAll = useCallback(() => {
-    setStateMap({});
-  }, []);
-
   return (
     <ApprovalFormContext.Provider
       value={{
         getState,
         setState,
         clear,
-        clearAll,
       }}
     >
       {children}
