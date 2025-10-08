@@ -170,10 +170,10 @@ export function ProjectTasks() {
 
   const rawMode = searchParams.get('view') as LayoutMode;
   const mode: LayoutMode =
-    rawMode === 'expand' || rawMode === 'preview' || rawMode === 'diffs'
-      ? rawMode
-      : null;
+    rawMode === 'preview' || rawMode === 'diffs' ? rawMode : null;
 
+  // TODO: Remove this redirect after v0.1.0 (legacy URL support for bookmarked links)
+  // Migrates old `view=logs` to `view=diffs`
   useEffect(() => {
     const view = searchParams.get('view');
     if (view === 'logs') {
@@ -321,20 +321,6 @@ export function ProjectTasks() {
       scope: Scope.KANBAN,
       preventDefault: true,
     }
-  );
-
-  useKeyboardShortcut(
-    {
-      keys: 'w',
-      callback: () => {
-        if (hasAttempt) {
-          setMode(mode === 'expand' ? null : 'expand');
-        }
-      },
-      description: 'Toggle expand mode',
-      scope: Scope.KANBAN,
-    },
-    { preventDefault: true }
   );
 
   useKeyboardShortcut(
