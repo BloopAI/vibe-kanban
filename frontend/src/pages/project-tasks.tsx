@@ -628,6 +628,7 @@ export function ProjectTasks() {
                     })
                 : undefined
             }
+            attemptId={attempt?.id}
           />
         }
       >

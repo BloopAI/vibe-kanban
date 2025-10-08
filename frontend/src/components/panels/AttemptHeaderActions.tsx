@@ -17,6 +17,7 @@ import {
 import type { LayoutMode } from '../layout/TasksLayout';
 import type { TaskAttempt } from 'shared/types';
 import { CreateAttemptDialog } from '../dialogs/tasks/CreateAttemptDialog';
+import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 
 interface AttemptHeaderActionsProps {
   onClose: () => void;
@@ -25,6 +26,7 @@ interface AttemptHeaderActionsProps {
   taskId: string;
   latestAttempt?: TaskAttempt | null;
   onCreateSubtask?: () => void;
+  attemptId?: string;
 }
 
 export const AttemptHeaderActions = ({
@@ -34,8 +36,10 @@ export const AttemptHeaderActions = ({
   taskId,
   latestAttempt,
   onCreateSubtask,
+  attemptId,
 }: AttemptHeaderActionsProps) => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const openInEditor = useOpenInEditor(attemptId);
 
   return (
     <>
@@ -87,9 +91,10 @@ export const AttemptHeaderActions = ({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem
+            disabled={!attemptId}
             onClick={(e) => {
               e.stopPropagation();
-              console.log('Open attempt in IDE');
+              openInEditor();
             }}
           >
             Open attempt in IDE
