@@ -157,6 +157,8 @@ export function PreviewPanel() {
               url={previewState.url}
               onRefresh={handleRefresh}
               onCopyUrl={handleCopyUrl}
+              onStop={stopDevServer}
+              isStopping={isStoppingDevServer}
             />
             <ReadyContent
               url={previewState.url}
