@@ -10,6 +10,9 @@
   "author": "bloop",
   "license": "",
   "description": "NPX wrapper around vibe-kanban and vibe-kanban-mcp",
+  "dependencies": {
+    "adm-zip": "^0.5.16"
+  },
   "files": [
     "dist",
     "bin"

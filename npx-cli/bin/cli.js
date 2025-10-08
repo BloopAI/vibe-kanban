@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const { execSync, spawn } = require("child_process");
+const AdmZip = require("adm-zip");
 const path = require("path");
 const fs = require("fs");
 
@@ -88,11 +89,22 @@ function extractAndRun(baseName, launch) {
   }
 
   // extract
-  const unzipCmd =
-    platform === "win32"
-      ? `powershell -Command "Expand-Archive -Path '${zipPath}' -DestinationPath '${extractDir}' -Force"`
-      : `unzip -qq -o "${zipPath}" -d "${extractDir}"`;
-  execSync(unzipCmd, { stdio: "inherit" });
+  try {
+    const zip = new AdmZip(zipPath);
+    zip.extractAllTo(extractDir, true);
+  } catch (err) {
+    console.error("❌ Failed to extract vibe-kanban archive:", err.message);
+    if (process.env.VIBE_KANBAN_DEBUG) {
+      console.error(err.stack);
+    }
+    process.exit(1);
+  }
+
+  if (!fs.existsSync(binPath)) {
+    console.error(`❌ Extracted binary not found at: ${binPath}`);
+    console.error("This usually indicates a corrupt download. Please reinstall the package.");
+    process.exit(1);
+  }
 
   // perms & launch
   if (platform !== "win32") {
