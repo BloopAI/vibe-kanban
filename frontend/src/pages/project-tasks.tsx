@@ -617,6 +617,17 @@ export function ProjectTasks() {
             }
             taskId={taskId!}
             latestAttempt={attempt ?? null}
+            onCreateSubtask={
+              attempt && projectId
+                ? () =>
+                    openTaskForm({
+                      projectId,
+                      parentTaskAttemptId: attempt.id,
+                      initialBaseBranch:
+                        attempt.branch || attempt.target_branch,
+                    })
+                : undefined
+            }
           />
         }
       >
