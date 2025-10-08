@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Eye, GitCompareArrows, X, MoreHorizontal } from 'lucide-react';
 import { Button } from '../ui/button';
 import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
@@ -14,18 +15,26 @@ import {
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
 import type { LayoutMode } from '../layout/TasksLayout';
+import type { TaskAttempt } from 'shared/types';
+import { CreateAttemptDialog } from '../dialogs/tasks/CreateAttemptDialog';
 
 interface AttemptHeaderActionsProps {
   onClose: () => void;
   mode?: LayoutMode;
   onModeChange?: (mode: LayoutMode) => void;
+  taskId: string;
+  latestAttempt?: TaskAttempt | null;
 }
 
 export const AttemptHeaderActions = ({
   onClose,
   mode,
   onModeChange,
+  taskId,
+  latestAttempt,
 }: AttemptHeaderActionsProps) => {
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+
   return (
     <>
       {typeof mode !== 'undefined' && onModeChange && (
@@ -94,7 +103,7 @@ export const AttemptHeaderActions = ({
           <DropdownMenuItem
             onClick={(e) => {
               e.stopPropagation();
-              console.log('Create new attempt');
+              setIsCreateOpen(true);
             }}
           >
             Create new attempt
@@ -112,6 +121,13 @@ export const AttemptHeaderActions = ({
       <Button variant="icon" aria-label="Close" onClick={onClose}>
         <X size={16} />
       </Button>
+
+      <CreateAttemptDialog
+        taskId={taskId}
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        latestAttempt={latestAttempt ?? null}
+      />
     </>
   );
 };
