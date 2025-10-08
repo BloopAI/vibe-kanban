@@ -1,5 +1,6 @@
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
+import { AnimatePresence, motion } from 'framer-motion';
 
 export type LayoutMode = 'preview' | 'diffs' | null;
 
@@ -305,6 +306,13 @@ function DesktopAttemptAux({
   );
 }
 
+const KEY_DEPTH: Record<string, number> = {
+  'kanban-only': 0,
+  'kanban-attempt': 1,
+  'attempt-preview': 2,
+  'attempt-diffs': 2,
+};
+
 export function TasksLayout({
   kanban,
   attempt,
@@ -361,8 +369,11 @@ export function TasksLayout({
     );
   }
 
+  let desktopNode: ReactNode;
+  let desktopKey: string;
+
   if (!hasAttempt) {
-    return (
+    desktopNode = (
       <div
         className="h-full min-h-0 min-w-0 overflow-hidden"
         role="region"
@@ -371,35 +382,82 @@ export function TasksLayout({
         {kanban}
       </div>
     );
+    desktopKey = 'kanban-only';
+  } else {
+    switch (mode) {
+      case null:
+        desktopNode = (
+          <DesktopKanbanAttempt kanban={kanban} attempt={attempt} />
+        );
+        desktopKey = 'kanban-attempt';
+        break;
+      case 'preview':
+        desktopNode = (
+          <DesktopAttemptAux
+            attempt={attempt}
+            aux={aux}
+            auxLabel="Preview"
+            storageKey={STORAGE_KEYS.V2.ATTEMPT_PREVIEW}
+            migrateFromLegacy
+          />
+        );
+        desktopKey = 'attempt-preview';
+        break;
+      case 'diffs':
+        desktopNode = (
+          <DesktopAttemptAux
+            attempt={attempt}
+            aux={aux}
+            auxLabel="Diffs"
+            storageKey={STORAGE_KEYS.V2.ATTEMPT_DIFFS}
+            migrateFromLegacy
+          />
+        );
+        desktopKey = 'attempt-diffs';
+        break;
+      default:
+        desktopNode = (
+          <DesktopKanbanAttempt kanban={kanban} attempt={attempt} />
+        );
+        desktopKey = 'kanban-attempt';
+    }
   }
 
-  switch (mode) {
-    case null:
-      return <DesktopKanbanAttempt kanban={kanban} attempt={attempt} />;
+  const depth = KEY_DEPTH[desktopKey] ?? 0;
+  const prevDepthRef = useRef(depth);
+  const dir =
+    depth === prevDepthRef.current ? 0 : depth > prevDepthRef.current ? 1 : -1;
 
-    case 'preview':
-      return (
-        <DesktopAttemptAux
-          attempt={attempt}
-          aux={aux}
-          auxLabel="Preview"
-          storageKey={STORAGE_KEYS.V2.ATTEMPT_PREVIEW}
-          migrateFromLegacy
-        />
-      );
+  useEffect(() => {
+    prevDepthRef.current = depth;
+  }, [depth]);
 
-    case 'diffs':
-      return (
-        <DesktopAttemptAux
-          attempt={attempt}
-          aux={aux}
-          auxLabel="Diffs"
-          storageKey={STORAGE_KEYS.V2.ATTEMPT_DIFFS}
-          migrateFromLegacy
-        />
-      );
+  const slideVariants = {
+    enter: (d: number) => ({
+      x: d === 0 ? 0 : d > 0 ? '100%' : '-100%',
+      opacity: d === 0 ? 0 : 1,
+    }),
+    center: { x: 0, opacity: 1 },
+    exit: (d: number) => ({
+      x: d === 0 ? 0 : d > 0 ? '-100%' : '100%',
+      opacity: d === 0 ? 0 : 1,
+    }),
+  };
 
-    default:
-      return <DesktopKanbanAttempt kanban={kanban} attempt={attempt} />;
-  }
+  return (
+    <AnimatePresence initial={false} mode="popLayout">
+      <motion.div
+        key={desktopKey}
+        className="h-full min-h-0"
+        custom={dir}
+        variants={slideVariants}
+        initial="enter"
+        animate="center"
+        exit="exit"
+        transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}
+      >
+        {desktopNode}
+      </motion.div>
+    </AnimatePresence>
+  );
 }
