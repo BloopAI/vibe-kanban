@@ -1,30 +1,50 @@
-import { Circle, CircleCheckBig, CircleDotDashed } from 'lucide-react';
+import { Circle, Check, CircleDot, ChevronDown } from 'lucide-react';
 import { useEntries } from '@/contexts/EntriesContext';
 import { usePinnedTodos } from '@/hooks/usePinnedTodos';
 import { Card } from '../ui/card';
+import { useState, useEffect } from 'react';
+
+const TODO_PANEL_OPEN_KEY = 'todo-panel-open';
 
 function getStatusIcon(status?: string) {
   const s = (status || '').toLowerCase();
   if (s === 'completed')
-    return <CircleCheckBig aria-hidden className="h-4 w-4 text-success" />;
+    return <Check aria-hidden className="h-4 w-4 text-success" />;
   if (s === 'in_progress' || s === 'in-progress')
-    return <CircleDotDashed aria-hidden className="h-4 w-4 text-blue-500" />;
+    return <CircleDot aria-hidden className="h-4 w-4 text-blue-500" />;
   return <Circle aria-hidden className="h-4 w-4 text-muted-foreground" />;
 }
 
 function TodoPanel() {
   const { entries } = useEntries();
   const { todos } = usePinnedTodos(entries);
+  const [isOpen, setIsOpen] = useState(() => {
+    const stored = localStorage.getItem(TODO_PANEL_OPEN_KEY);
+    return stored === null ? true : stored === 'true';
+  });
 
-  // Only show once the agent has created subtasks
+  useEffect(() => {
+    localStorage.setItem(TODO_PANEL_OPEN_KEY, String(isOpen));
+  }, [isOpen]);
+
   if (!todos || todos.length === 0) return null;
 
   return (
-    <div>
-      <Card className="bg-background p-3 border border-dashed text-sm">
-        Todos
-      </Card>
-      <div className="p-3">
+    <details
+      className="group"
+      open={isOpen}
+      onToggle={(e) => setIsOpen(e.currentTarget.open)}
+    >
+      <summary className="list-none cursor-pointer">
+        <Card className="bg-muted p-3 text-sm flex items-center justify-between">
+          <span>Todos ({todos.length})</span>
+          <ChevronDown
+            aria-hidden
+            className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180"
+          />
+        </Card>
+      </summary>
+      <div className="px-3 pb-2">
         <ul className="space-y-2">
           {todos.map((todo, index) => (
             <li
@@ -41,7 +61,7 @@ function TodoPanel() {
           ))}
         </ul>
       </div>
-    </div>
+    </details>
   );
 }
 
