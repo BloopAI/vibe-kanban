@@ -612,6 +612,7 @@ export function ProjectTasks() {
           <AttemptHeaderActions
             mode={mode}
             onModeChange={setMode}
+            attemptId={effectiveAttemptId}
             onClose={() =>
               navigate(`/projects/${projectId}/tasks`, { replace: true })
             }
@@ -628,7 +629,6 @@ export function ProjectTasks() {
                     })
                 : undefined
             }
-            attemptId={attempt?.id}
           />
         }
       >

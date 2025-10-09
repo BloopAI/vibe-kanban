@@ -29,6 +29,7 @@ import { useUserSystem } from '@/components/config-provider.tsx';
 
 import { writeClipboardViaBridge } from '@/vscode/bridge';
 import { useProcessSelection } from '@/contexts/ProcessSelectionContext';
+import { useTabNavigation } from '@/contexts/TabNavigationContext';
 import { openTaskForm } from '@/lib/openTaskForm';
 
 // Helper function to get the display name for different editor types
@@ -85,7 +86,8 @@ function CurrentAttempt({
     [branchStatus?.conflicted_files]
   );
   const handleOpenInEditor = useOpenInEditor(selectedAttempt?.id);
-  const { jumpToProcess } = useProcessSelection();
+  const { setSelectedProcessId } = useProcessSelection();
+  const { setActiveTab } = useTabNavigation();
 
   // Attempt action hooks
   const {
@@ -100,7 +102,8 @@ function CurrentAttempt({
 
   const handleViewDevServerLogs = () => {
     if (latestDevServerProcess) {
-      jumpToProcess(latestDevServerProcess.id);
+      setSelectedProcessId(latestDevServerProcess.id);
+      setActiveTab('processes');
     }
   };
 
