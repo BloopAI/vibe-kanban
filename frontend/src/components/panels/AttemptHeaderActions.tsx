@@ -18,6 +18,7 @@ import type { LayoutMode } from '../layout/TasksLayout';
 import type { TaskAttempt } from 'shared/types';
 import { CreateAttemptDialog } from '../dialogs/tasks/CreateAttemptDialog';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
+import NiceModal from '@ebay/nice-modal-react';
 
 interface AttemptHeaderActionsProps {
   onClose: () => void;
@@ -100,9 +101,11 @@ export const AttemptHeaderActions = ({
             Open attempt in IDE
           </DropdownMenuItem>
           <DropdownMenuItem
+            disabled={!attemptId}
             onClick={(e) => {
               e.stopPropagation();
-              console.log('View processes');
+              if (!attemptId) return;
+              NiceModal.show('view-processes', { attemptId });
             }}
           >
             View processes
