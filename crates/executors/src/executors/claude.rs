@@ -45,9 +45,9 @@ const USER_FEEDBACK_MARKER: &str = "User feedback: ";
 
 fn base_command(claude_code_router: bool) -> &'static str {
     if claude_code_router {
-        "npx -y @musistudio/claude-code-router@1.0.49 code"
+        "npx -y @musistudio/claude-code-router@1.0.58 code"
     } else {
-        "npx -y @anthropic-ai/claude-code@2.0.1"
+        "npx -y @anthropic-ai/claude-code@2.0.11"
     }
 }
 
