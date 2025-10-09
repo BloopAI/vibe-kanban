@@ -332,56 +332,54 @@ fn find_matching_tool_use(
     for msg in history.iter().rev() {
         if let LogMsg::JsonPatch(patch) = msg
             && let Some((idx, entry)) = extract_normalized_entry_from_patch(patch)
-        {
-            if let NormalizedEntryType::ToolUse {
+            && let NormalizedEntryType::ToolUse {
                 tool_name: entry_tool_name,
                 status,
                 ..
             } = &entry.entry_type
-            {
-                // Only match tools that are in Created state
-                if !matches!(status, ToolStatus::Created) {
-                    continue;
-                }
+        {
+            // Only match tools that are in Created state
+            if !matches!(status, ToolStatus::Created) {
+                continue;
+            }
 
-                // Tool name must match
-                if entry_tool_name != tool_name {
-                    continue;
-                }
+            // Tool name must match
+            if entry_tool_name != tool_name {
+                continue;
+            }
 
-                // Apply comparison strategy
-                if let Some(metadata) = &entry.metadata {
-                    let is_match = match &strategy {
-                        ToolComparisonStrategy::RawJson => {
-                            // Compare raw JSON input for Unknown tools
-                            if let Some(entry_input) = metadata.get("input") {
-                                entry_input == tool_input
-                            } else {
-                                false
-                            }
+            // Apply comparison strategy
+            if let Some(metadata) = &entry.metadata {
+                let is_match = match &strategy {
+                    ToolComparisonStrategy::RawJson => {
+                        // Compare raw JSON input for Unknown tools
+                        if let Some(entry_input) = metadata.get("input") {
+                            entry_input == tool_input
+                        } else {
+                            false
                         }
-                        ToolComparisonStrategy::Deserialized(approval_data) => {
-                            // Compare deserialized structures for known tools
-                            if let Ok(entry_tool_data) =
-                                serde_json::from_value::<ClaudeToolData>(metadata.clone())
-                            {
-                                entry_tool_data == *approval_data
-                            } else {
-                                false
-                            }
-                        }
-                    };
-
-                    if is_match {
-                        let strategy_name = match strategy {
-                            ToolComparisonStrategy::RawJson => "raw input comparison",
-                            ToolComparisonStrategy::Deserialized(_) => "deserialized tool data",
-                        };
-                        tracing::debug!(
-                            "Matched tool use entry at index {idx} for tool '{tool_name}' by {strategy_name}"
-                        );
-                        return Some((idx, entry));
                     }
+                    ToolComparisonStrategy::Deserialized(approval_data) => {
+                        // Compare deserialized structures for known tools
+                        if let Ok(entry_tool_data) =
+                            serde_json::from_value::<ClaudeToolData>(metadata.clone())
+                        {
+                            entry_tool_data == *approval_data
+                        } else {
+                            false
+                        }
+                    }
+                };
+
+                if is_match {
+                    let strategy_name = match strategy {
+                        ToolComparisonStrategy::RawJson => "raw input comparison",
+                        ToolComparisonStrategy::Deserialized(_) => "deserialized tool data",
+                    };
+                    tracing::debug!(
+                        "Matched tool use entry at index {idx} for tool '{tool_name}' by {strategy_name}"
+                    );
+                    return Some((idx, entry));
                 }
             }
         }
@@ -424,7 +422,7 @@ mod tests {
                 },
                 status,
             },
-            content: format!("Reading {}", file_path),
+            content: format!("Reading {file_path}"),
             metadata: Some(metadata),
         }
     }
