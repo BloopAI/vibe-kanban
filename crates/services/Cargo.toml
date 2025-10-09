@@ -39,8 +39,6 @@ regex = "1.11.1"
 notify-rust = "4.11"
 octocrab = "0.44"
 os_info = "3.12.0"
-sentry = { version = "0.41.0", features = ["anyhow", "backtrace", "panic", "debug-images"] }
-sentry-tracing = { version = "0.41.0", features = ["backtrace"] }
 reqwest = { version = "0.12", features = ["json"] }
 lazy_static = "1.4"
 futures-util = "0.3"

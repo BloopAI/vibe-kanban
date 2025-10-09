@@ -34,8 +34,6 @@ rmcp = { version = "0.5.0", features = ["server", "transport-io"] }
 schemars = { workspace = true }
 regex = "1.11.1"
 toml = "0.8"
-sentry = { version = "0.41.0", features = ["anyhow", "backtrace", "panic", "debug-images"] }
-sentry-tracing = { version = "0.41.0", features = ["backtrace"] }
 reqwest = { version = "0.12", features = ["json"] }
 strip-ansi-escapes = "0.2.1"
 thiserror = { workspace = true }

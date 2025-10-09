@@ -1,25 +1,13 @@
 use rmcp::{ServiceExt, transport::stdio};
 use server::mcp::task_server::TaskServer;
 use tracing_subscriber::{EnvFilter, prelude::*};
-use utils::{port_file::read_port_file, sentry::sentry_layer};
+use utils::{
+    port_file::read_port_file,
+    sentry::{self as sentry_utils, SentrySource, sentry_layer},
+};
 
 fn main() -> anyhow::Result<()> {
-    let environment = if cfg!(debug_assertions) {
-        "dev"
-    } else {
-        "production"
-    };
-    let _guard = sentry::init((
-        "https://1065a1d276a581316999a07d5dffee26@o4509603705192449.ingest.de.sentry.io/4509605576441937",
-        sentry::ClientOptions {
-            release: sentry::release_name!(),
-            environment: Some(environment.into()),
-            ..Default::default()
-        },
-    ));
-    sentry::configure_scope(|scope| {
-        scope.set_tag("source", "mcp");
-    });
+    sentry_utils::init_once(SentrySource::Mcp);
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -67,9 +55,9 @@ fn main() -> anyhow::Result<()> {
             let service = TaskServer::new(&base_url)
                 .serve(stdio())
                 .await
-                .inspect_err(|e| {
+                .map_err(|e| {
                     tracing::error!("serving error: {:?}", e);
-                    sentry::capture_error(e);
+                    e
                 })?;
 
             service.waiting().await?;

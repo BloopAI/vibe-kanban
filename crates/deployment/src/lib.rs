@@ -30,13 +30,12 @@ use services::services::{
     git::{GitService, GitServiceError},
     image::{ImageError, ImageService},
     pr_monitor::PrMonitorService,
-    sentry::SentryService,
     worktree_manager::WorktreeError,
 };
 use sqlx::{Error as SqlxError, types::Uuid};
 use thiserror::Error;
 use tokio::sync::RwLock;
-use utils::msg_store::MsgStore;
+use utils::{msg_store::MsgStore, sentry as sentry_utils};
 
 #[derive(Debug, Error)]
 pub enum DeploymentError {
@@ -82,8 +81,6 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     fn config(&self) -> &Arc<RwLock<Config>>;
 
-    fn sentry(&self) -> &SentryService;
-
     fn db(&self) -> &DBService;
 
     fn analytics(&self) -> &Option<AnalyticsService>;
@@ -113,8 +110,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
         let config = self.config().read().await;
         let username = config.github.username.as_deref();
         let email = config.github.primary_email.as_deref();
-
-        self.sentry().update_scope(user_id, username, email).await;
+        sentry_utils::configure_user_scope(user_id, username, email);
 
         Ok(())
     }

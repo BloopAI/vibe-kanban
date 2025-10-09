@@ -1,5 +1,6 @@
 use axum::{
     Router,
+    middleware::from_fn_with_state,
     routing::{IntoMakeService, get},
 };
 
@@ -39,6 +40,10 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(events::router(&deployment))
         .merge(approvals::router())
         .nest("/images", images::routes())
+        .layer(from_fn_with_state(
+            deployment.clone(),
+            auth::sentry_user_context_middleware,
+        ))
         .with_state(deployment);
 
     Router::new()

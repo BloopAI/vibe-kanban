@@ -16,21 +16,18 @@ use services::services::{
     filesystem::FilesystemService,
     git::GitService,
     image::ImageService,
-    sentry::SentryService,
 };
 use tokio::sync::RwLock;
 use utils::{assets::config_path, msg_store::MsgStore};
 use uuid::Uuid;
 
 use crate::container::LocalContainerService;
-
 mod command;
 pub mod container;
 
 #[derive(Clone)]
 pub struct LocalDeployment {
     config: Arc<RwLock<Config>>,
-    sentry: SentryService,
     user_id: String,
     db: DBService,
     analytics: Option<AnalyticsService>,
@@ -74,7 +71,6 @@ impl Deployment for LocalDeployment {
         save_config_to_file(&raw_config, &config_path()).await?;
 
         let config = Arc::new(RwLock::new(raw_config));
-        let sentry = SentryService::new();
         let user_id = generate_user_id();
         let analytics = AnalyticsConfig::new().map(AnalyticsService::new);
         let git = GitService::new();
@@ -131,7 +127,6 @@ impl Deployment for LocalDeployment {
 
         Ok(Self {
             config,
-            sentry,
             user_id,
             db,
             analytics,
@@ -158,10 +153,6 @@ impl Deployment for LocalDeployment {
 
     fn config(&self) -> &Arc<RwLock<Config>> {
         &self.config
-    }
-
-    fn sentry(&self) -> &SentryService {
-        &self.sentry
     }
 
     fn db(&self) -> &DBService {

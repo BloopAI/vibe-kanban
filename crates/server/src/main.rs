@@ -6,7 +6,10 @@ use strip_ansi_escapes::strip;
 use thiserror::Error;
 use tracing_subscriber::{EnvFilter, prelude::*};
 use utils::{
-    assets::asset_dir, browser::open_browser, port_file::write_port_file, sentry::sentry_layer,
+    assets::asset_dir,
+    browser::open_browser,
+    port_file::write_port_file,
+    sentry::{self as sentry_utils, SentrySource, sentry_layer},
 };
 
 #[derive(Debug, Error)]
@@ -23,6 +26,8 @@ pub enum VibeKanbanError {
 
 #[tokio::main]
 async fn main() -> Result<(), VibeKanbanError> {
+    sentry_utils::init_once(SentrySource::Backend);
+
     let log_level = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
     let filter_string = format!(
         "warn,server={level},services={level},db={level},executors={level},deployment={level},local_deployment={level},utils={level}",

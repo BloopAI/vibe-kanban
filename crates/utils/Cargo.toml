@@ -19,6 +19,7 @@ rust-embed = "8.2"
 directories = "6.0.0"
 open = "5.3.2"
 regex = "1.11.1"
+sentry = { version = "0.41.0", features = ["anyhow", "backtrace", "panic", "debug-images"] }
 sentry-tracing = { version = "0.41.0", features = ["backtrace"] }
 lazy_static = "1.4"
 futures-util = "0.3"
