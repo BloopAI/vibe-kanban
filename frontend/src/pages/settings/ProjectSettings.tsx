@@ -22,7 +22,10 @@ import { Loader2 } from 'lucide-react';
 import { useProjects } from '@/hooks/useProjects';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { useUserSystem } from '@/components/config-provider';
-import { createScriptPlaceholderStrategy, ScriptPlaceholderContext } from '@/utils/script-placeholders';
+import {
+  createScriptPlaceholderStrategy,
+  ScriptPlaceholderContext,
+} from '@/utils/script-placeholders';
 import { CopyFilesField } from '@/components/projects/copy-files-field';
 import type { Project, UpdateProject } from 'shared/types';
 
@@ -38,7 +41,11 @@ export function ProjectSettings() {
   const { system } = useUserSystem();
 
   // Fetch all projects
-  const { data: projects, isLoading: projectsLoading, error: projectsError } = useProjects();
+  const {
+    data: projects,
+    isLoading: projectsLoading,
+    error: projectsError,
+  } = useProjects();
 
   // Selected project state
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
@@ -66,7 +73,7 @@ export function ProjectSettings() {
   // Update selected project when ID changes
   useEffect(() => {
     if (selectedProjectId && projects) {
-      const project = projects.find(p => p.id === selectedProjectId);
+      const project = projects.find((p) => p.id === selectedProjectId);
       setSelectedProject(project || null);
 
       if (project) {
@@ -125,7 +132,9 @@ export function ProjectSettings() {
       setSaving(false);
     },
     onUpdateError: (err) => {
-      setError(err instanceof Error ? err.message : 'Failed to save project settings');
+      setError(
+        err instanceof Error ? err.message : 'Failed to save project settings'
+      );
       setSaving(false);
     },
   });
@@ -172,7 +181,7 @@ export function ProjectSettings() {
   };
 
   const updateDraft = (updates: Partial<ProjectFormState>) => {
-    setDraft(prev => {
+    setDraft((prev) => {
       if (!prev) return prev;
       return { ...prev, ...updates };
     });
