@@ -5,6 +5,8 @@
         "title": "Settings",
         "general": "General",
         "generalDesc": "Theme, notifications, and preferences",
+        "projects": "Projects",
+        "projectsDesc": "Project scripts and configuration",
         "agents": "Agents",
         "agentsDesc": "Coding agent configurations",
         "mcp": "MCP Servers",
@@ -198,6 +200,45 @@
         "success": "Settings Saved!",
         "successMessage": "✓ MCP configuration saved successfully!",
         "loading": "Loading current MCP server configuration..."
+      }
+    },
+    "projects": {
+      "title": "Project Configuration",
+      "description": "Configure project-specific scripts and settings.",
+      "loading": "Loading projects...",
+      "loadError": "Failed to load projects.",
+      "selector": {
+        "label": "Select Project",
+        "placeholder": "Choose a project to configure",
+        "helper": "Select a project to view and edit its configuration.",
+        "noProjects": "No projects available"
+      },
+      "scripts": {
+        "title": "Scripts & Configuration",
+        "description": "Configure setup, development, and cleanup scripts for this project.",
+        "setup": {
+          "label": "Setup Script",
+          "helper": "This script will run after creating the worktree and before the coding agent starts. Use it for setup tasks like installing dependencies or preparing the environment."
+        },
+        "dev": {
+          "label": "Dev Server Script",
+          "helper": "This script can be run from task attempts to start a development server. Use it to quickly start your project's dev server for testing changes."
+        },
+        "cleanup": {
+          "label": "Cleanup Script",
+          "helper": "This script runs after coding agent execution only if changes were made. Use it for quality assurance tasks like running linters, formatters, tests, or other validation steps. If no changes are made, this script is skipped."
+        },
+        "copyFiles": {
+          "label": "Copy Files",
+          "helper": "Comma-separated list of files to copy from the original project directory to the worktree. These files will be copied after the worktree is created but before the setup script runs. Useful for environment-specific files like .env, configuration files, and local settings. Make sure these are gitignored or they could get committed!"
+        }
+      },
+      "save": {
+        "button": "Save Project Settings",
+        "success": "✓ Project settings saved successfully!",
+        "error": "Failed to save project settings",
+        "unsavedChanges": "• You have unsaved changes",
+        "discard": "Discard"
       }
     }
   }

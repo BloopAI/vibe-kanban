@@ -5,6 +5,8 @@
         "title": "Configuración",
         "general": "General",
         "generalDesc": "Tema, notificaciones y preferencias",
+        "projects": "Proyectos",
+        "projectsDesc": "Scripts y configuración de proyectos",
         "agents": "Agentes",
         "agentsDesc": "Configuraciones de agentes",
         "mcp": "Servidores MCP",
@@ -198,6 +200,45 @@
         "success": "¡Configuración Guardada!",
         "successMessage": "✓ ¡Configuración MCP guardada exitosamente!",
         "loading": "Cargando configuración actual del servidor MCP..."
+      }
+    },
+    "projects": {
+      "title": "Configuración de Proyectos",
+      "description": "Configura scripts y ajustes específicos del proyecto.",
+      "loading": "Cargando proyectos...",
+      "loadError": "Error al cargar proyectos.",
+      "selector": {
+        "label": "Seleccionar Proyecto",
+        "placeholder": "Elige un proyecto para configurar",
+        "helper": "Selecciona un proyecto para ver y editar su configuración.",
+        "noProjects": "No hay proyectos disponibles"
+      },
+      "scripts": {
+        "title": "Scripts y Configuración",
+        "description": "Configura los scripts de instalación, desarrollo y limpieza para este proyecto.",
+        "setup": {
+          "label": "Script de Instalación",
+          "helper": "Este script se ejecutará después de crear el worktree y antes de que comience el agente de codificación. Úsalo para tareas de configuración como instalar dependencias o preparar el entorno."
+        },
+        "dev": {
+          "label": "Script del Servidor de Desarrollo",
+          "helper": "Este script se puede ejecutar desde los intentos de tarea para iniciar un servidor de desarrollo. Úsalo para iniciar rápidamente el servidor de desarrollo de tu proyecto para probar cambios."
+        },
+        "cleanup": {
+          "label": "Script de Limpieza",
+          "helper": "Este script se ejecuta después de la ejecución del agente de codificación solo si se realizaron cambios. Úsalo para tareas de garantía de calidad como ejecutar linters, formateadores, pruebas u otros pasos de validación. Si no se realizan cambios, se omite este script."
+        },
+        "copyFiles": {
+          "label": "Copiar Archivos",
+          "helper": "Lista separada por comas de archivos para copiar del directorio del proyecto original al worktree. Estos archivos se copiarán después de que se cree el worktree pero antes de que se ejecute el script de configuración. Útil para archivos específicos del entorno como .env, archivos de configuración y ajustes locales. ¡Asegúrate de que estén en gitignore o podrían ser confirmados!"
+        }
+      },
+      "save": {
+        "button": "Guardar Configuración del Proyecto",
+        "success": "✓ ¡Configuración del proyecto guardada exitosamente!",
+        "error": "Error al guardar la configuración del proyecto",
+        "unsavedChanges": "• Tienes cambios sin guardar",
+        "discard": "Descartar"
       }
     }
   }
