@@ -1061,10 +1061,22 @@ impl LocalContainerService {
                 {
                     let content = entry.content.trim();
                     if !content.is_empty() {
-                        // Truncate to reasonable size (4KB as Oracle suggested)
                         const MAX_SUMMARY_LENGTH: usize = 4096;
                         if content.len() > MAX_SUMMARY_LENGTH {
-                            return Some(format!("{}...", &content[..MAX_SUMMARY_LENGTH]));
+                            // Truncate without splitting multi-byte characters.
+                            let cutoff = content
+                                .char_indices()
+                                .map(|(idx, ch)| idx + ch.len_utf8())
+                                .take_while(|&end| end <= MAX_SUMMARY_LENGTH)
+                                .last()
+                                .unwrap_or(0);
+
+                            if cutoff == 0 {
+                                return Some("...".to_string());
+                            }
+
+                            let truncated = &content[..cutoff];
+                            return Some(format!("{truncated}..."));
                         }
                         return Some(content.to_string());
                     }
