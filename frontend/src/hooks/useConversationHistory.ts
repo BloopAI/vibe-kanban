@@ -164,16 +164,16 @@ export const useConversationHistory = ({
     }
   };
 
-  const getRunningExecutionProcesses = (): ExecutionProcess | null => {
-    // Filter for running processes, excluding dev server and other non-agent processes
-    const runningProcesses = executionProcesses?.current.filter(
-      (p) => p.status === 'running' && p.run_reason !== 'devserver'
+  const getActiveAgentProcess = (): ExecutionProcess | null => {
+    const activeProcesses = executionProcesses?.current.filter(
+      (p) =>
+        ['created', 'queued', 'running'].includes(p.status) &&
+        p.run_reason !== 'devserver'
     );
-    // Only throw error if there are multiple agent processes running
-    if (runningProcesses.length > 1) {
-      console.error('More than one running execution process found');
+    if (activeProcesses.length > 1) {
+      console.error('More than one active execution process found');
     }
-    return runningProcesses[0] || null;
+    return activeProcesses[0] || null;
   };
 
   const flattenEntries = (
@@ -429,14 +429,41 @@ export const useConversationHistory = ({
     addEntryType: AddEntryType,
     loading: boolean
   ) => {
-    // Flatten entries in chronological order of process start
     const entries = flattenEntriesForEmit(executionProcessState);
     onEntriesUpdatedRef.current?.(entries, addEntryType, loading);
   };
 
-  // Stable key for dependency arrays when process list changes
+  const ensureProcessVisible = (p: ExecutionProcess) => {
+    mergeIntoDisplayed((state) => {
+      if (!state[p.id]) {
+        state[p.id] = {
+          executionProcess: {
+            id: p.id,
+            created_at: p.created_at,
+            updated_at: p.updated_at,
+            executor_action: p.executor_action,
+          },
+          entries: [],
+        };
+      } else {
+        state[p.id].executionProcess = {
+          id: p.id,
+          created_at: p.created_at,
+          updated_at: p.updated_at,
+          executor_action: p.executor_action,
+        };
+      }
+    });
+    emitEntries(displayedExecutionProcesses.current, 'running', false);
+  };
+
   const idListKey = useMemo(
     () => executionProcessesRaw?.map((p) => p.id).join(','),
+    [executionProcessesRaw]
+  );
+
+  const idStatusKey = useMemo(
+    () => executionProcessesRaw?.map((p) => `${p.id}:${p.status}`).join(','),
     [executionProcessesRaw]
   );
 
@@ -475,14 +502,19 @@ export const useConversationHistory = ({
     };
   }, [attempt.id, idListKey]); // include idListKey so new processes trigger reload
 
-  // Running processes
   useEffect(() => {
-    const runningProcess = getRunningExecutionProcesses();
-    if (runningProcess && lastRunningProcessId.current !== runningProcess.id) {
-      lastRunningProcessId.current = runningProcess.id;
-      loadRunningAndEmitWithBackoff(runningProcess);
+    const activeProcess = getActiveAgentProcess();
+    if (!activeProcess) return;
+
+    if (!displayedExecutionProcesses.current[activeProcess.id]) {
+      ensureProcessVisible(activeProcess);
     }
-  }, [attempt.id, idListKey]);
+
+    if (lastRunningProcessId.current !== activeProcess.id) {
+      lastRunningProcessId.current = activeProcess.id;
+      loadRunningAndEmitWithBackoff(activeProcess);
+    }
+  }, [attempt.id, idStatusKey]);
 
   // If an execution process is removed, remove it from the state
   useEffect(() => {
