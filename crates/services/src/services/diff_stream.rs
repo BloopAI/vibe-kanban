@@ -103,19 +103,39 @@ impl DiffWatcherContext {
             return true;
         }
 
-        match process_file_changes(
-            &self.git_service,
-            &self.worktree_path,
-            &self.base_commit,
-            &changed_paths,
-            &self.cumulative,
-            &self.full_sent,
-            self.stats_only,
-        ) {
-            Ok(messages) => send_messages(&self.tx, messages).await,
-            Err(err) => {
+        let git_service = self.git_service.clone();
+        let worktree_path = self.worktree_path.clone();
+        let base_commit = self.base_commit.clone();
+        let cumulative = self.cumulative.clone();
+        let full_sent = self.full_sent.clone();
+        let stats_only = self.stats_only;
+
+        match tokio::task::spawn_blocking(move || {
+            process_file_changes(
+                &git_service,
+                &worktree_path,
+                &base_commit,
+                &changed_paths,
+                &cumulative,
+                &full_sent,
+                stats_only,
+            )
+        })
+        .await
+        {
+            Ok(Ok(messages)) => send_messages(&self.tx, messages).await,
+            Ok(Err(err)) => {
                 tracing::error!("Error processing file changes: {err}");
                 send_error(&self.tx, err.to_string()).await;
+                false
+            }
+            Err(join_err) => {
+                tracing::error!("Diff processing task join error: {join_err}");
+                send_error(
+                    &self.tx,
+                    format!("Diff processing task join error: {join_err}"),
+                )
+                .await;
                 false
             }
         }
