@@ -618,6 +618,7 @@ impl LocalContainerService {
             base_commit.clone(),
             stats_only,
         )
+        .await
         .map_err(|e| ContainerError::Other(anyhow!("{e}")))
     }
 }
