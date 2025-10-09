@@ -1063,19 +1063,7 @@ impl LocalContainerService {
                     if !content.is_empty() {
                         const MAX_SUMMARY_LENGTH: usize = 4096;
                         if content.len() > MAX_SUMMARY_LENGTH {
-                            // Truncate without splitting multi-byte characters.
-                            let cutoff = content
-                                .char_indices()
-                                .map(|(idx, ch)| idx + ch.len_utf8())
-                                .take_while(|&end| end <= MAX_SUMMARY_LENGTH)
-                                .last()
-                                .unwrap_or(0);
-
-                            if cutoff == 0 {
-                                return Some("...".to_string());
-                            }
-
-                            let truncated = &content[..cutoff];
+                            let truncated = truncate_to_char_boundary(content, MAX_SUMMARY_LENGTH);
                             return Some(format!("{truncated}..."));
                         }
                         return Some(content.to_string());
@@ -1257,5 +1245,41 @@ impl LocalContainerService {
             Draft::clear_after_send(&self.db.pool, ctx.task_attempt.id, DraftType::FollowUp).await;
 
         Ok(())
+    }
+}
+
+fn truncate_to_char_boundary(content: &str, max_len: usize) -> &str {
+    if content.len() <= max_len {
+        return content;
+    }
+
+    let cutoff = content
+        .char_indices()
+        .map(|(idx, _)| idx)
+        .chain(std::iter::once(content.len()))
+        .take_while(|&idx| idx <= max_len)
+        .last()
+        .unwrap_or(0);
+
+    debug_assert!(content.is_char_boundary(cutoff));
+    &content[..cutoff]
+}
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn test_truncate_to_char_boundary() {
+        use super::truncate_to_char_boundary;
+
+        let input = "a".repeat(10);
+        assert_eq!(truncate_to_char_boundary(&input, 7), "a".repeat(7));
+
+        let input = "hello world";
+        assert_eq!(truncate_to_char_boundary(input, input.len()), input);
+
+        let input = "🔥🔥🔥"; // each fire emoji is 4 bytes
+        assert_eq!(truncate_to_char_boundary(input, 5), "🔥");
+        assert_eq!(truncate_to_char_boundary(input, 3), "");
     }
 }
