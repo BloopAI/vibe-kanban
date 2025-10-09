@@ -514,7 +514,10 @@ export const useConversationHistory = ({
       emitEntries(displayedExecutionProcesses.current, 'running', false);
     }
 
-    if (lastActiveProcessId.current !== activeProcess.id) {
+    if (
+      activeProcess.status === 'running' &&
+      lastActiveProcessId.current !== activeProcess.id
+    ) {
       lastActiveProcessId.current = activeProcess.id;
       loadRunningAndEmitWithBackoff(activeProcess);
     }
