@@ -57,6 +57,10 @@ export {
   type RestoreLogsDialogProps,
   type RestoreLogsDialogResult,
 } from './tasks/RestoreLogsDialog';
+export {
+  ViewProcessesDialog,
+  type ViewProcessesDialogProps,
+} from './tasks/ViewProcessesDialog';
 
 // Settings dialogs
 export {
