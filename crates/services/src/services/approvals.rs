@@ -147,6 +147,7 @@ impl Approvals {
     #[tracing::instrument(skip(self, id, req))]
     pub async fn respond(
         &self,
+        pool: &SqlitePool,
         id: &str,
         req: ApprovalResponse,
     ) -> Result<(ApprovalStatus, ToolContext), ApprovalError> {
@@ -175,6 +176,22 @@ impl Approvals {
                 tool_name: p.tool_name,
                 execution_process_id: p.execution_process_id,
             };
+
+            // If approved or denied, and task is still InReview, move back to InProgress
+            if matches!(
+                req.status,
+                ApprovalStatus::Approved | ApprovalStatus::Denied { .. }
+            ) && let Ok(ctx) =
+                ExecutionProcess::load_context(pool, tool_ctx.execution_process_id).await
+                && ctx.task.status == TaskStatus::InReview
+                && let Err(e) = Task::update_status(pool, ctx.task.id, TaskStatus::InProgress).await
+            {
+                tracing::warn!(
+                    "Failed to update task status to InProgress after approval response: {}",
+                    e
+                );
+            }
+
             Ok((req.status, tool_ctx))
         } else if self.completed.contains_key(id) {
             Err(ApprovalError::AlreadyCompleted)

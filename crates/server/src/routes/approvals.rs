@@ -4,10 +4,7 @@ use axum::{
     http::StatusCode,
     routing::{get, post},
 };
-use db::models::{
-    execution_process::ExecutionProcess,
-    task::{Task, TaskStatus},
-};
+use db::models::execution_process::ExecutionProcess;
 use deployment::Deployment;
 use services::services::container::ContainerService;
 use utils::approvals::{
@@ -66,7 +63,7 @@ pub async fn respond_to_approval(
 ) -> Result<Json<ApprovalStatus>, StatusCode> {
     let service = deployment.approvals();
 
-    match service.respond(&id, request).await {
+    match service.respond(&deployment.db().pool, &id, request).await {
         Ok((status, context)) => {
             deployment
                 .track_if_analytics_allowed(
@@ -79,23 +76,6 @@ pub async fn respond_to_approval(
                     }),
                 )
                 .await;
-
-            if matches!(
-                status,
-                ApprovalStatus::Approved | ApprovalStatus::Denied { .. }
-            ) && let Ok(ctx) =
-                ExecutionProcess::load_context(&deployment.db().pool, context.execution_process_id)
-                    .await
-                && ctx.task.status == TaskStatus::InReview
-                && let Err(e) =
-                    Task::update_status(&deployment.db().pool, ctx.task.id, TaskStatus::InProgress)
-                        .await
-            {
-                tracing::warn!(
-                    "Failed to update task status to InProgress after approval response: {}",
-                    e
-                );
-            }
 
             if matches!(status, ApprovalStatus::Approved)
                 && context.tool_name == EXIT_PLAN_MODE_TOOL_NAME
