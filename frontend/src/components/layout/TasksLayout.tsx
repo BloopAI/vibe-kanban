@@ -131,7 +131,7 @@ function usePersistentSplitSizes(
 
   useEffect(() => {
     setSizes(loadPanelSizes(key, fallback, migration));
-  }, [key]);
+  }, [key, fallback, migration]);
 
   useEffect(() => {
     persistJSON(key, sizes);
@@ -321,6 +321,23 @@ export function TasksLayout({
   mode,
   isMobile = false,
 }: TasksLayoutProps) {
+  const desktopKey = !hasAttempt
+    ? 'kanban-only'
+    : mode === 'preview'
+      ? 'attempt-preview'
+      : mode === 'diffs'
+        ? 'attempt-diffs'
+        : 'kanban-attempt';
+
+  const depth = KEY_DEPTH[desktopKey] ?? 0;
+  const prevDepthRef = useRef(depth);
+  const dir =
+    depth === prevDepthRef.current ? 0 : depth > prevDepthRef.current ? 1 : -1;
+
+  useEffect(() => {
+    prevDepthRef.current = depth;
+  }, [depth]);
+
   if (isMobile) {
     const columns = hasAttempt ? ['0fr', '1fr', '0fr'] : ['1fr', '0fr', '0fr'];
     const gridTemplateColumns = `minmax(0, ${columns[0]}) minmax(0, ${columns[1]}) minmax(0, ${columns[2]})`;
@@ -370,7 +387,6 @@ export function TasksLayout({
   }
 
   let desktopNode: ReactNode;
-  let desktopKey: string;
 
   if (!hasAttempt) {
     desktopNode = (
@@ -382,14 +398,12 @@ export function TasksLayout({
         {kanban}
       </div>
     );
-    desktopKey = 'kanban-only';
   } else {
     switch (mode) {
       case null:
         desktopNode = (
           <DesktopKanbanAttempt kanban={kanban} attempt={attempt} />
         );
-        desktopKey = 'kanban-attempt';
         break;
       case 'preview':
         desktopNode = (
@@ -401,7 +415,6 @@ export function TasksLayout({
             migrateFromLegacy
           />
         );
-        desktopKey = 'attempt-preview';
         break;
       case 'diffs':
         desktopNode = (
@@ -413,24 +426,13 @@ export function TasksLayout({
             migrateFromLegacy
           />
         );
-        desktopKey = 'attempt-diffs';
         break;
       default:
         desktopNode = (
           <DesktopKanbanAttempt kanban={kanban} attempt={attempt} />
         );
-        desktopKey = 'kanban-attempt';
     }
   }
-
-  const depth = KEY_DEPTH[desktopKey] ?? 0;
-  const prevDepthRef = useRef(depth);
-  const dir =
-    depth === prevDepthRef.current ? 0 : depth > prevDepthRef.current ? 1 : -1;
-
-  useEffect(() => {
-    prevDepthRef.current = depth;
-  }, [depth]);
 
   const slideVariants = {
     enter: (d: number) => ({
