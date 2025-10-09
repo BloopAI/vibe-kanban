@@ -59,7 +59,7 @@ export const useConversationHistory = ({
   const executionProcesses = useRef<ExecutionProcess[]>(executionProcessesRaw);
   const displayedExecutionProcesses = useRef<ExecutionProcessStateStore>({});
   const loadedInitialEntries = useRef(false);
-  const lastRunningProcessId = useRef<string | null>(null);
+  const lastActiveProcessId = useRef<string | null>(null);
   const onEntriesUpdatedRef = useRef<OnEntriesUpdated | null>(null);
 
   const mergeIntoDisplayed = (
@@ -365,7 +365,8 @@ export const useConversationHistory = ({
     if (!executionProcesses?.current) return localDisplayedExecutionProcesses;
 
     for (const executionProcess of [...executionProcesses.current].reverse()) {
-      if (executionProcess.status === 'running') continue;
+      if (['created', 'queued', 'running'].includes(executionProcess.status))
+        continue;
 
       const entries =
         await loadEntriesForHistoricExecutionProcess(executionProcess);
@@ -397,7 +398,10 @@ export const useConversationHistory = ({
     let anyUpdated = false;
     for (const executionProcess of [...executionProcesses.current].reverse()) {
       const current = displayedExecutionProcesses.current;
-      if (current[executionProcess.id] || executionProcess.status === 'running')
+      if (
+        current[executionProcess.id] ||
+        ['created', 'queued', 'running'].includes(executionProcess.status)
+      )
         continue;
 
       const entries =
@@ -454,7 +458,6 @@ export const useConversationHistory = ({
         };
       }
     });
-    emitEntries(displayedExecutionProcesses.current, 'running', false);
   };
 
   const idListKey = useMemo(
@@ -508,10 +511,11 @@ export const useConversationHistory = ({
 
     if (!displayedExecutionProcesses.current[activeProcess.id]) {
       ensureProcessVisible(activeProcess);
+      emitEntries(displayedExecutionProcesses.current, 'running', false);
     }
 
-    if (lastRunningProcessId.current !== activeProcess.id) {
-      lastRunningProcessId.current = activeProcess.id;
+    if (lastActiveProcessId.current !== activeProcess.id) {
+      lastActiveProcessId.current = activeProcess.id;
       loadRunningAndEmitWithBackoff(activeProcess);
     }
   }, [attempt.id, idStatusKey]);
@@ -537,8 +541,7 @@ export const useConversationHistory = ({
   useEffect(() => {
     displayedExecutionProcesses.current = {};
     loadedInitialEntries.current = false;
-    lastRunningProcessId.current = null;
-    // Emit blank entries
+    lastActiveProcessId.current = null;
     emitEntries(displayedExecutionProcesses.current, 'initial', true);
   }, [attempt.id]);
 
