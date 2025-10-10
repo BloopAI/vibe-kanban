@@ -2,6 +2,7 @@
 import {
   CommandExitStatus,
   ExecutionProcess,
+  ExecutionProcessStatus,
   ExecutorAction,
   NormalizedEntry,
   PatchType,
@@ -167,7 +168,7 @@ export const useConversationHistory = ({
   const getActiveAgentProcess = (): ExecutionProcess | null => {
     const activeProcesses = executionProcesses?.current.filter(
       (p) =>
-        ['created', 'queued', 'running'].includes(p.status) &&
+        p.status === ExecutionProcessStatus.running &&
         p.run_reason !== 'devserver'
     );
     if (activeProcesses.length > 1) {
@@ -268,7 +269,7 @@ export const useConversationHistory = ({
           entries.push(...entriesExcludingUser);
           const isProcessRunning =
             getLiveExecutionProcess(p.executionProcess.id)?.status ===
-            'running';
+            ExecutionProcessStatus.running;
 
           if (isProcessRunning && !hasPendingApprovalEntry) {
             entries.push(loadingPatch);
@@ -303,7 +304,7 @@ export const useConversationHistory = ({
                 };
 
           const toolStatus: ToolStatus =
-            executionProcess?.status === 'running'
+            executionProcess?.status === ExecutionProcessStatus.running
               ? { status: 'created' }
               : exitCode === 0
                 ? { status: 'success' }
@@ -365,8 +366,7 @@ export const useConversationHistory = ({
     if (!executionProcesses?.current) return localDisplayedExecutionProcesses;
 
     for (const executionProcess of [...executionProcesses.current].reverse()) {
-      if (['created', 'queued', 'running'].includes(executionProcess.status))
-        continue;
+      if (executionProcess.status === ExecutionProcessStatus.running) continue;
 
       const entries =
         await loadEntriesForHistoricExecutionProcess(executionProcess);
@@ -400,7 +400,7 @@ export const useConversationHistory = ({
       const current = displayedExecutionProcesses.current;
       if (
         current[executionProcess.id] ||
-        ['created', 'queued', 'running'].includes(executionProcess.status)
+        executionProcess.status === ExecutionProcessStatus.running
       )
         continue;
 
@@ -515,7 +515,7 @@ export const useConversationHistory = ({
     }
 
     if (
-      activeProcess.status === 'running' &&
+      activeProcess.status === ExecutionProcessStatus.running &&
       lastActiveProcessId.current !== activeProcess.id
     ) {
       lastActiveProcessId.current = activeProcess.id;

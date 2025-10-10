@@ -262,7 +262,7 @@ after_head_commit: string | null, status: ExecutionProcessStatus, exit_code: big
  */
 dropped: boolean, started_at: string, completed_at: string | null, created_at: string, updated_at: string, };
 
-export type ExecutionProcessStatus = "running" | "completed" | "failed" | "killed";
+export enum ExecutionProcessStatus { running = "running", completed = "completed", failed = "failed", killed = "killed" }
 
 export type ExecutionProcessRunReason = "setupscript" | "cleanupscript" | "codingagent" | "devserver";
 
