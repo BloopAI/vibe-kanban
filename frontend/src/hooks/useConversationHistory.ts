@@ -449,13 +449,6 @@ export const useConversationHistory = ({
           },
           entries: [],
         };
-      } else {
-        state[p.id].executionProcess = {
-          id: p.id,
-          created_at: p.created_at,
-          updated_at: p.updated_at,
-          executor_action: p.executor_action,
-        };
       }
     });
   };
