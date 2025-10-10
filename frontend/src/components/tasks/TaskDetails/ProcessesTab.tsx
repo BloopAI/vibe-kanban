@@ -177,13 +177,16 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
                   onClick={() => handleProcessClick(process)}
                 >
                   <div className="flex items-start justify-between">
-                    <div className="flex items-center space-x-3">
+                    <div className="flex items-center space-x-3 min-w-0">
                       {getStatusIcon(process.status)}
-                      <div>
+                      <div className="min-w-0">
                         <h3 className="font-medium text-sm">
                           {process.run_reason}
                         </h3>
-                        <p className="text-sm text-muted-foreground mt-1">
+                        <p
+                          className="text-sm text-muted-foreground mt-1 truncate"
+                          title={process.id}
+                        >
                           Process ID: {process.id}
                         </p>
                         {process.dropped && (
@@ -236,7 +239,6 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
                         </span>
                       )}
                     </div>
-                    <div className="mt-1">Process ID: {process.id}</div>
                   </div>
                 </div>
               ))}

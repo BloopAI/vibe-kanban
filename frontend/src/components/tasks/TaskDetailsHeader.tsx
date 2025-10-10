@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Edit, Trash2, X, Maximize2, Minimize2 } from 'lucide-react';
+import { Edit, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -11,7 +11,6 @@ import type { TaskWithAttemptStatus } from 'shared/types';
 import { TaskTitleDescription } from './TaskDetails/TaskTitleDescription';
 import { Card } from '../ui/card';
 import { statusBoardColors, statusLabels } from '@/utils/status-labels';
-import { useTaskViewManager } from '@/hooks/useTaskViewManager';
 
 interface TaskDetailsHeaderProps {
   task: TaskWithAttemptStatus;
@@ -32,7 +31,6 @@ function TaskDetailsHeader({
   hideCloseButton = false,
   isFullScreen,
 }: TaskDetailsHeaderProps) {
-  const { toggleFullscreen } = useTaskViewManager();
   return (
     <div>
       <Card
@@ -49,35 +47,6 @@ function TaskDetailsHeader({
           <p className="ml-2 text-sm">{statusLabels[task.status]}</p>
         </div>
         <div className="mr-3">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => toggleFullscreen(!isFullScreen)}
-                  aria-label={
-                    isFullScreen
-                      ? 'Collapse to sidebar'
-                      : 'Expand to fullscreen'
-                  }
-                >
-                  {isFullScreen ? (
-                    <Minimize2 className="h-4 w-4" />
-                  ) : (
-                    <Maximize2 className="h-4 w-4" />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>
-                  {isFullScreen
-                    ? 'Collapse to sidebar'
-                    : 'Expand to fullscreen'}
-                </p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
           {onEditTask && (
             <TooltipProvider>
               <Tooltip>

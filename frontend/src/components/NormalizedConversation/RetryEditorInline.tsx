@@ -251,7 +251,7 @@ export function RetryEditorInline({
   ]);
 
   return (
-    <div className="border rounded-md p-2 space-y-2">
+    <div className="space-y-2">
       {initError && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { tasksApi } from '@/lib/api';
-import { useTaskViewManager } from '@/hooks/useTaskViewManager';
+import { paths } from '@/lib/paths';
 import type {
   CreateTask,
   CreateAndStartTaskRequest,
@@ -11,7 +12,7 @@ import type {
 
 export function useTaskMutations(projectId?: string) {
   const queryClient = useQueryClient();
-  const { navigateToTask } = useTaskViewManager();
+  const navigate = useNavigate();
 
   const invalidateQueries = (taskId?: string) => {
     queryClient.invalidateQueries({ queryKey: ['tasks', projectId] });
@@ -25,7 +26,7 @@ export function useTaskMutations(projectId?: string) {
     onSuccess: (createdTask: Task) => {
       invalidateQueries();
       if (projectId) {
-        navigateToTask(projectId, createdTask.id);
+        navigate(`${paths.task(projectId, createdTask.id)}/attempts/latest`);
       }
     },
     onError: (err) => {
@@ -39,7 +40,7 @@ export function useTaskMutations(projectId?: string) {
     onSuccess: (createdTask: TaskWithAttemptStatus) => {
       invalidateQueries();
       if (projectId) {
-        navigateToTask(projectId, createdTask.id);
+        navigate(`${paths.task(projectId, createdTask.id)}/attempts/latest`);
       }
     },
     onError: (err) => {
@@ -58,9 +59,22 @@ export function useTaskMutations(projectId?: string) {
     },
   });
 
+  const deleteTask = useMutation({
+    mutationFn: (taskId: string) => tasksApi.delete(taskId),
+    onSuccess: (_: unknown, taskId: string) => {
+      invalidateQueries(taskId);
+      // Remove single-task cache entry to avoid stale data flashes
+      queryClient.removeQueries({ queryKey: ['task', taskId], exact: true });
+    },
+    onError: (err) => {
+      console.error('Failed to delete task:', err);
+    },
+  });
+
   return {
     createTask,
     createAndStart,
     updateTask,
+    deleteTask,
   };
 }

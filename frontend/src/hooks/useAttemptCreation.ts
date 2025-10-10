@@ -1,14 +1,14 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { attemptsApi } from '@/lib/api';
-import { useTaskViewManager } from '@/hooks/useTaskViewManager';
+import { paths } from '@/lib/paths';
 import type { TaskAttempt } from 'shared/types';
 import type { ExecutorProfileId } from 'shared/types';
 
 export function useAttemptCreation(taskId: string) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { projectId } = useParams<{ projectId: string }>();
-  const { navigateToAttempt } = useTaskViewManager();
 
   const mutation = useMutation({
     mutationFn: ({
@@ -24,15 +24,13 @@ export function useAttemptCreation(taskId: string) {
         base_branch: baseBranch,
       }),
     onSuccess: (newAttempt: TaskAttempt) => {
-      // Optimistically add to cache to prevent UI flicker
       queryClient.setQueryData(
         ['taskAttempts', taskId],
         (old: TaskAttempt[] = []) => [newAttempt, ...old]
       );
 
-      // Navigate to new attempt (triggers polling switch)
       if (projectId) {
-        navigateToAttempt(projectId, taskId, newAttempt.id);
+        navigate(paths.attempt(projectId, taskId, newAttempt.id));
       }
     },
   });
