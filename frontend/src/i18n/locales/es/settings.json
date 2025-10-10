@@ -213,6 +213,20 @@
         "helper": "Selecciona un proyecto para ver y editar su configuración.",
         "noProjects": "No hay proyectos disponibles"
       },
+      "general": {
+        "title": "Configuración General",
+        "description": "Configura la información básica del proyecto.",
+        "name": {
+          "label": "Nombre del Proyecto",
+          "placeholder": "Ingresa el nombre del proyecto",
+          "helper": "Un nombre para mostrar para este proyecto."
+        },
+        "repoPath": {
+          "label": "Ruta del Repositorio Git",
+          "placeholder": "/ruta/a/tu/repositorio/existente",
+          "helper": "La ruta absoluta a tu repositorio git en disco."
+        }
+      },
       "scripts": {
         "title": "Scripts y Configuración",
         "description": "Configura los scripts de instalación, desarrollo y limpieza para este proyecto.",

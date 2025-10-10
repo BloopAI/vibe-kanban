@@ -17,8 +17,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Folder } from 'lucide-react';
 import { useProjects } from '@/hooks/useProjects';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { useUserSystem } from '@/components/config-provider';
@@ -28,9 +29,12 @@ import {
 } from '@/utils/script-placeholders';
 import { CopyFilesField } from '@/components/projects/copy-files-field';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
+import { showFolderPicker } from '@/lib/modals';
 import type { Project, UpdateProject } from 'shared/types';
 
 interface ProjectFormState {
+  name: string;
+  git_repo_path: string;
   setup_script: string;
   dev_script: string;
   cleanup_script: string;
@@ -79,6 +83,8 @@ export function ProjectSettings() {
 
       if (project) {
         const formState: ProjectFormState = {
+          name: project.name,
+          git_repo_path: project.git_repo_path,
           setup_script: project.setup_script ?? '',
           dev_script: project.dev_script ?? '',
           cleanup_script: project.cleanup_script ?? '',
@@ -99,6 +105,8 @@ export function ProjectSettings() {
     if (!draft || !selectedProject) return false;
 
     const original: ProjectFormState = {
+      name: selectedProject.name,
+      git_repo_path: selectedProject.git_repo_path,
       setup_script: selectedProject.setup_script ?? '',
       dev_script: selectedProject.dev_script ?? '',
       cleanup_script: selectedProject.cleanup_script ?? '',
@@ -149,8 +157,8 @@ export function ProjectSettings() {
 
     try {
       const updateData: UpdateProject = {
-        name: selectedProject.name,
-        git_repo_path: selectedProject.git_repo_path,
+        name: draft.name.trim(),
+        git_repo_path: draft.git_repo_path.trim(),
         setup_script: draft.setup_script.trim() || null,
         dev_script: draft.dev_script.trim() || null,
         cleanup_script: draft.cleanup_script.trim() || null,
@@ -172,6 +180,8 @@ export function ProjectSettings() {
     if (!selectedProject) return;
 
     const formState: ProjectFormState = {
+      name: selectedProject.name,
+      git_repo_path: selectedProject.git_repo_path,
       setup_script: selectedProject.setup_script ?? '',
       dev_script: selectedProject.dev_script ?? '',
       cleanup_script: selectedProject.cleanup_script ?? '',
@@ -271,6 +281,73 @@ export function ProjectSettings() {
 
       {selectedProject && draft && (
         <>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('settings.projects.general.title')}</CardTitle>
+              <CardDescription>
+                {t('settings.projects.general.description')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="project-name">
+                  {t('settings.projects.general.name.label')}
+                </Label>
+                <Input
+                  id="project-name"
+                  type="text"
+                  value={draft.name}
+                  onChange={(e) => updateDraft({ name: e.target.value })}
+                  placeholder={t('settings.projects.general.name.placeholder')}
+                  required
+                />
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.projects.general.name.helper')}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="git-repo-path">
+                  {t('settings.projects.general.repoPath.label')}
+                </Label>
+                <div className="flex space-x-2">
+                  <Input
+                    id="git-repo-path"
+                    type="text"
+                    value={draft.git_repo_path}
+                    onChange={(e) =>
+                      updateDraft({ git_repo_path: e.target.value })
+                    }
+                    placeholder={t(
+                      'settings.projects.general.repoPath.placeholder'
+                    )}
+                    required
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={async () => {
+                      const selectedPath = await showFolderPicker({
+                        title: 'Select Git Repository',
+                        description: 'Choose an existing git repository',
+                        value: draft.git_repo_path,
+                      });
+                      if (selectedPath) {
+                        updateDraft({ git_repo_path: selectedPath });
+                      }
+                    }}
+                  >
+                    <Folder className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.projects.general.repoPath.helper')}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>{t('settings.projects.scripts.title')}</CardTitle>
