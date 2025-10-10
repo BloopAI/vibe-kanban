@@ -23,6 +23,7 @@ import { useHotkeysContext } from 'react-hotkeys-hook';
 import { TabNavContext } from '@/contexts/TabNavigationContext';
 import { useKeyApproveRequest, useKeyDenyApproval, Scope } from '@/keyboard';
 import { useProject } from '@/contexts/project-context';
+import { useApprovalForm } from '@/contexts/ApprovalFormContext';
 
 const DEFAULT_DENIAL_REASON = 'User denied this tool use request.';
 
@@ -177,8 +178,14 @@ const PendingApprovalEntry = ({
   const [isResponding, setIsResponding] = useState(false);
   const [hasResponded, setHasResponded] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isEnteringReason, setIsEnteringReason] = useState(false);
-  const [denyReason, setDenyReason] = useState('');
+
+  const {
+    isEnteringReason,
+    denyReason,
+    setIsEnteringReason,
+    setDenyReason,
+    clear,
+  } = useApprovalForm(pendingStatus.approval_id);
 
   const denyReasonRef = useRef<HTMLTextAreaElement | null>(null);
   const { projectId } = useProject();
@@ -257,8 +264,7 @@ const PendingApprovalEntry = ({
           status,
         });
         setHasResponded(true);
-        setIsEnteringReason(false);
-        setDenyReason('');
+        clear();
       } catch (e: any) {
         console.error('Approval respond failed:', e);
         setError(e?.message || 'Failed to send response');
@@ -266,7 +272,7 @@ const PendingApprovalEntry = ({
         setIsResponding(false);
       }
     },
-    [disabled, executionProcessId, pendingStatus.approval_id]
+    [disabled, executionProcessId, pendingStatus.approval_id, clear]
   );
 
   const handleApprove = useCallback(() => respond(true), [respond]);
@@ -274,13 +280,12 @@ const PendingApprovalEntry = ({
     if (disabled) return;
     setError(null);
     setIsEnteringReason(true);
-  }, [disabled]);
+  }, [disabled, setIsEnteringReason]);
 
   const handleCancelDeny = useCallback(() => {
     if (isResponding) return;
-    setIsEnteringReason(false);
-    setDenyReason('');
-  }, [isResponding]);
+    clear();
+  }, [isResponding, clear]);
 
   const handleSubmitDeny = useCallback(() => {
     const trimmed = denyReason.trim();
