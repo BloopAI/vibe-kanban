@@ -209,6 +209,20 @@
         "helper": "Select a project to view and edit its configuration.",
         "noProjects": "No projects available"
       },
+      "general": {
+        "title": "General Settings",
+        "description": "Configure basic project information.",
+        "name": {
+          "label": "Project Name",
+          "placeholder": "Enter project name",
+          "helper": "A display name for this project."
+        },
+        "repoPath": {
+          "label": "Git Repository Path",
+          "placeholder": "/path/to/your/existing/repo",
+          "helper": "The absolute path to your git repository on disk."
+        }
+      },
       "scripts": {
         "title": "Scripts & Configuration",
         "description": "Configure setup, development, and cleanup scripts for this project.",
