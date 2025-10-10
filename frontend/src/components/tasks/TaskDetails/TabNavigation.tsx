@@ -1,6 +1,19 @@
-import { GitCompare, MessageSquare, Cog, Monitor } from 'lucide-react';
+import {
+  GitCompare,
+  MessageSquare,
+  Cog,
+  Monitor,
+  ChevronsLeft,
+  ChevronsRight,
+} from 'lucide-react';
 import type { TabType } from '@/types/tabs';
 import type { TaskAttempt } from 'shared/types';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 type Props = {
   activeTab: TabType;
@@ -9,9 +22,17 @@ type Props = {
   selectedAttempt: TaskAttempt | null;
   showPreview?: boolean;
   previewStatus?: 'idle' | 'searching' | 'ready' | 'error';
+  isSidebarCollapsed?: boolean;
+  onToggleSidebar?: () => void;
 };
 
-function TabNavigation({ activeTab, setActiveTab, rightContent }: Props) {
+function TabNavigation({
+  activeTab,
+  setActiveTab,
+  rightContent,
+  isSidebarCollapsed,
+  onToggleSidebar,
+}: Props) {
   const tabs = [
     { id: 'logs' as TabType, label: 'Logs', icon: MessageSquare },
     { id: 'diffs' as TabType, label: 'Diffs', icon: GitCompare },
@@ -31,6 +52,27 @@ function TabNavigation({ activeTab, setActiveTab, rightContent }: Props) {
   return (
     <div className="border-b border-dashed bg-background sticky top-0 z-10">
       <div className="flex items-center px-3 space-x-3">
+        {onToggleSidebar && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={onToggleSidebar}
+                  className="flex items-center py-2 px-2 text-sm font-medium text-secondary-foreground hover:text-primary-foreground"
+                >
+                  {isSidebarCollapsed ? (
+                    <ChevronsRight className="h-4 w-4" />
+                  ) : (
+                    <ChevronsLeft className="h-4 w-4" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                {isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
         {tabs.map(({ id, label, icon: Icon }) => (
           <button
             key={id}

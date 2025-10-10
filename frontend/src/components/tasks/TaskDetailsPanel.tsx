@@ -74,6 +74,7 @@ export function TaskDetailsPanel({
 
   // Tab and collapsible state
   const [activeTab, setActiveTab] = useState<TabType>('logs');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Handler for jumping to diff tab in full screen
   const { toggleFullscreen } = useTaskViewManager();
@@ -132,7 +133,7 @@ export function TaskDetailsPanel({
                         <div className="flex-1 min-h-0 flex">
                           {/* Sidebar */}
                           <aside
-                            className={`w-[28rem] shrink-0 border-r overflow-y-auto ${inIframe() ? 'hidden' : ''}`}
+                            className={`${isSidebarCollapsed ? 'w-0' : 'w-[28rem]'} shrink-0 border-r overflow-y-auto transition-all ${inIframe() || isSidebarCollapsed ? 'hidden' : ''}`}
                           >
                             {/* Fullscreen sidebar shows title and description above edit/delete */}
                             <div className="space-y-2 p-3">
@@ -175,6 +176,10 @@ export function TaskDetailsPanel({
                                     activeTab={activeTab}
                                     setActiveTab={setActiveTab}
                                     selectedAttempt={selectedAttempt}
+                                    isSidebarCollapsed={isSidebarCollapsed}
+                                    onToggleSidebar={() =>
+                                      setIsSidebarCollapsed(!isSidebarCollapsed)
+                                    }
                                   />
 
                                   <div className="flex-1 flex flex-col min-h-0">
