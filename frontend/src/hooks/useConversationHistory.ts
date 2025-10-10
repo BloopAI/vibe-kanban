@@ -44,7 +44,7 @@ interface UseConversationHistoryParams {
   onEntriesUpdated: OnEntriesUpdated;
 }
 
-interface UseConversationHistoryResult {}
+interface UseConversationHistoryResult { }
 
 const MIN_INITIAL_ENTRIES = 10;
 const REMAINING_BATCH_SIZE = 50;
@@ -183,9 +183,9 @@ export const useConversationHistory = ({
       .filter(
         (p) =>
           p.executionProcess.executor_action.typ.type ===
-            'CodingAgentFollowUpRequest' ||
+          'CodingAgentFollowUpRequest' ||
           p.executionProcess.executor_action.typ.type ===
-            'CodingAgentInitialRequest'
+          'CodingAgentInitialRequest'
       )
       .sort(
         (a, b) =>
@@ -226,9 +226,9 @@ export const useConversationHistory = ({
         const entries: PatchTypeWithKey[] = [];
         if (
           p.executionProcess.executor_action.typ.type ===
-            'CodingAgentInitialRequest' ||
+          'CodingAgentInitialRequest' ||
           p.executionProcess.executor_action.typ.type ===
-            'CodingAgentFollowUpRequest'
+          'CodingAgentFollowUpRequest'
         ) {
           // New user message
           const userNormalizedEntry: NormalizedEntry = {
@@ -298,9 +298,9 @@ export const useConversationHistory = ({
             executionProcess?.status === 'running'
               ? null
               : {
-                  type: 'exit_code',
-                  code: exitCode,
-                };
+                type: 'exit_code',
+                code: exitCode,
+              };
 
           const toolStatus: ToolStatus =
             executionProcess?.status === 'running'
