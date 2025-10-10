@@ -27,6 +27,7 @@ import {
   ScriptPlaceholderContext,
 } from '@/utils/script-placeholders';
 import { CopyFilesField } from '@/components/projects/copy-files-field';
+import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import type { Project, UpdateProject } from 'shared/types';
 
 interface ProjectFormState {
@@ -219,7 +220,7 @@ export function ProjectSettings() {
       )}
 
       {success && (
-        <Alert className="border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
+        <Alert variant="success">
           <AlertDescription className="font-medium">
             {t('settings.projects.save.success')}
           </AlertDescription>
@@ -282,15 +283,15 @@ export function ProjectSettings() {
                 <Label htmlFor="setup-script">
                   {t('settings.projects.scripts.setup.label')}
                 </Label>
-                <textarea
+                <AutoExpandingTextarea
                   id="setup-script"
                   value={draft.setup_script}
                   onChange={(e) =>
                     updateDraft({ setup_script: e.target.value })
                   }
                   placeholder={placeholders.setup}
-                  rows={6}
-                  className="w-full px-3 py-2 text-sm border border-input bg-background text-foreground rounded-md resize-vertical focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+                  maxRows={12}
+                  className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring font-mono"
                 />
                 <p className="text-sm text-muted-foreground">
                   {t('settings.projects.scripts.setup.helper')}
@@ -301,13 +302,13 @@ export function ProjectSettings() {
                 <Label htmlFor="dev-script">
                   {t('settings.projects.scripts.dev.label')}
                 </Label>
-                <textarea
+                <AutoExpandingTextarea
                   id="dev-script"
                   value={draft.dev_script}
                   onChange={(e) => updateDraft({ dev_script: e.target.value })}
                   placeholder={placeholders.dev}
-                  rows={6}
-                  className="w-full px-3 py-2 text-sm border border-input bg-background text-foreground rounded-md resize-vertical focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+                  maxRows={12}
+                  className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring font-mono"
                 />
                 <p className="text-sm text-muted-foreground">
                   {t('settings.projects.scripts.dev.helper')}
@@ -318,15 +319,15 @@ export function ProjectSettings() {
                 <Label htmlFor="cleanup-script">
                   {t('settings.projects.scripts.cleanup.label')}
                 </Label>
-                <textarea
+                <AutoExpandingTextarea
                   id="cleanup-script"
                   value={draft.cleanup_script}
                   onChange={(e) =>
                     updateDraft({ cleanup_script: e.target.value })
                   }
                   placeholder={placeholders.cleanup}
-                  rows={6}
-                  className="w-full px-3 py-2 text-sm border border-input bg-background text-foreground rounded-md resize-vertical focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+                  maxRows={12}
+                  className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring font-mono"
                 />
                 <p className="text-sm text-muted-foreground">
                   {t('settings.projects.scripts.cleanup.helper')}
