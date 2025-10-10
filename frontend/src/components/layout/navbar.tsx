@@ -27,9 +27,7 @@ import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
 import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
 import { useDiscordOnlineCount } from '@/hooks/useDiscordOnlineCount';
 
-const INTERNAL_NAV = [
-  { label: 'Projects', icon: FolderOpen, to: '/projects' },
-];
+const INTERNAL_NAV = [{ label: 'Projects', icon: FolderOpen, to: '/projects' }];
 
 const EXTERNAL_LINKS = [
   {
@@ -133,12 +131,7 @@ export function Navbar() {
                 </Button>
               </>
             )}
-            <Button
-              variant="ghost"
-              size="icon"
-              asChild
-              aria-label="Settings"
-            >
+            <Button variant="ghost" size="icon" asChild aria-label="Settings">
               <Link to="/settings">
                 <Settings className="h-4 w-4" />
               </Link>
