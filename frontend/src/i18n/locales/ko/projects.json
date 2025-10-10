@@ -1,0 +1,14 @@
+{
+  "title": "프로젝트",
+  "subtitle": "프로젝트를 관리하고 진행 상황을 추적하세요",
+  "createProject": "프로젝트 생성",
+  "loading": "프로젝트 로딩 중...",
+  "errors": {
+    "fetchFailed": "프로젝트를 불러오지 못했습니다"
+  },
+  "empty": {
+    "title": "아직 프로젝트가 없습니다",
+    "description": "첫 번째 프로젝트를 만들어 시작하세요.",
+    "createFirst": "첫 번째 프로젝트 생성"
+  }
+}

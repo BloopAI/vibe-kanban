@@ -10,15 +10,17 @@ export const UI_TO_I18N = {
   EN: 'en',
   JA: 'ja',
   ES: 'es',
+  KO: 'ko',
 } as const;
 
-const SUPPORTED_UI_LANGUAGES = ['BROWSER', 'EN', 'JA', 'ES'] as const;
+const SUPPORTED_UI_LANGUAGES = ['BROWSER', 'EN', 'JA', 'ES', 'KO'] as const;
 export const SUPPORTED_I18N_CODES = Object.values(UI_TO_I18N);
 
 const FALLBACK_ENDONYMS = {
   en: 'English',
   ja: '日本語',
   es: 'Español',
+  ko: '한국어',
 } as const;
 
 /**

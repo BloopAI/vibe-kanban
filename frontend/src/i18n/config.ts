@@ -16,6 +16,10 @@ import esCommon from './locales/es/common.json';
 import esSettings from './locales/es/settings.json';
 import esProjects from './locales/es/projects.json';
 import esTasks from './locales/es/tasks.json';
+import koCommon from './locales/ko/common.json';
+import koSettings from './locales/ko/settings.json';
+import koProjects from './locales/ko/projects.json';
+import koTasks from './locales/ko/tasks.json';
 
 const resources = {
   en: {
@@ -35,6 +39,12 @@ const resources = {
     settings: esSettings,
     projects: esProjects,
     tasks: esTasks,
+  },
+  ko: {
+    common: koCommon,
+    settings: koSettings,
+    projects: koProjects,
+    tasks: koTasks,
   },
 };
 
