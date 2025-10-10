@@ -23,6 +23,7 @@ use workspace_utils::{
 };
 
 use crate::{
+    approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuilder, apply_overrides},
     executors::{AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
     logs::{
@@ -96,7 +97,12 @@ impl Copilot {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Copilot {
-    async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
+    async fn spawn(
+        &self,
+        current_dir: &Path,
+        prompt: &str,
+        _approvals: Arc<dyn ExecutorApprovalService>,
+    ) -> Result<SpawnedChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
         let log_dir = Self::create_temp_log_dir(current_dir).await?;
         let copilot_command = self
@@ -135,6 +141,7 @@ impl StandardCodingAgentExecutor for Copilot {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        _approvals: Arc<dyn ExecutorApprovalService>,
     ) -> Result<SpawnedChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
         let log_dir = Self::create_temp_log_dir(current_dir).await?;

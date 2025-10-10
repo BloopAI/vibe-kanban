@@ -13,26 +13,33 @@ use codex_app_server_protocol::{
     ResumeConversationParams, ResumeConversationResponse, SendUserMessageParams,
     SendUserMessageResponse, ServerNotification, ServerRequest,
 };
+use codex_protocol::{ConversationId, protocol::ReviewDecision};
 use serde::{Serialize, de::DeserializeOwned};
-use serde_json::Value;
+use serde_json::{self, Value};
 use tokio::{
     io::{AsyncWrite, AsyncWriteExt, BufWriter},
     sync::Mutex,
 };
+use workspace_utils::approvals::ApprovalStatus;
 
 use super::jsonrpc::{JsonRpcCallbacks, JsonRpcPeer};
-use crate::executors::ExecutorError;
+use crate::{approvals::ExecutorApprovalService, executors::ExecutorError};
 
 pub struct AppServerClient {
     rpc: OnceLock<JsonRpcPeer>,
     log_writer: LogWriter,
+    approvals: Option<Arc<dyn ExecutorApprovalService>>,
 }
 
 impl AppServerClient {
-    pub fn new(log_writer: LogWriter) -> Arc<Self> {
+    pub fn new(
+        log_writer: LogWriter,
+        approvals: Option<Arc<dyn ExecutorApprovalService>>,
+    ) -> Arc<Self> {
         Arc::new(Self {
             rpc: OnceLock::new(),
             log_writer,
+            approvals,
         })
     }
 
@@ -113,6 +120,89 @@ impl AppServerClient {
         self.send_request(request, "sendUserMessage").await
     }
 
+    async fn handle_server_request(
+        &self,
+        peer: &JsonRpcPeer,
+        request: ServerRequest,
+    ) -> Result<(), ExecutorError> {
+        match request {
+            ServerRequest::ApplyPatchApproval { request_id, params } => {
+                let auto_approve = self.approvals.is_none();
+                let input = serde_json::to_value(&params)
+                    .map_err(|err| ExecutorError::Io(io::Error::other(err.to_string())))?;
+                let status = match self.request_tool_approval("codex.apply_patch", input).await {
+                    Ok(status) => status,
+                    Err(err) => {
+                        tracing::error!("failed to request patch approval: {err}");
+                        ApprovalStatus::Denied {
+                            reason: Some("approval service error".to_string()),
+                        }
+                    }
+                };
+                let decision = if auto_approve {
+                    ReviewDecision::ApprovedForSession
+                } else {
+                    map_status_to_decision(&status)
+                };
+                let response = ApplyPatchApprovalResponse { decision };
+                send_server_response(peer, request_id, response).await
+            }
+            ServerRequest::ExecCommandApproval { request_id, params } => {
+                let auto_approve = self.approvals.is_none();
+                let input = serde_json::to_value(&params)
+                    .map_err(|err| ExecutorError::Io(io::Error::other(err.to_string())))?;
+                let status = match self
+                    .request_tool_approval("codex.exec_command", input)
+                    .await
+                {
+                    Ok(status) => status,
+                    Err(err) => {
+                        tracing::error!("failed to request command approval: {err}");
+                        ApprovalStatus::Denied {
+                            reason: Some("approval service error".to_string()),
+                        }
+                    }
+                };
+                let decision = if auto_approve {
+                    ReviewDecision::ApprovedForSession
+                } else {
+                    map_status_to_decision(&status)
+                };
+                let response = ExecCommandApprovalResponse { decision };
+                send_server_response(peer, request_id, response).await
+            }
+        }
+    }
+
+    async fn request_tool_approval(
+        &self,
+        tool_name: &str,
+        tool_input: Value,
+    ) -> Result<ApprovalStatus, ExecutorError> {
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await; // allow request to be normalized
+        if let Some(service) = &self.approvals {
+            service
+                .request_tool_approval(tool_name, tool_input)
+                .await
+                .map_err(|err| ExecutorError::Io(io::Error::other(err.to_string())))
+        } else {
+            Ok(ApprovalStatus::Approved)
+        }
+    }
+
+    pub async fn register_session(
+        &self,
+        conversation_id: &ConversationId,
+    ) -> Result<(), ExecutorError> {
+        if let Some(service) = &self.approvals {
+            service
+                .register_session(&conversation_id.to_string())
+                .await
+                .map_err(|err| ExecutorError::Io(io::Error::other(err.to_string())))?;
+        }
+        Ok(())
+    }
+
     async fn send_message<M>(&self, message: &M) -> Result<(), ExecutorError>
     where
         M: Serialize + Sync,
@@ -143,7 +233,7 @@ impl JsonRpcCallbacks for AppServerClient {
     ) -> Result<(), ExecutorError> {
         self.log_writer.log_raw(raw).await?;
         match ServerRequest::try_from(request.clone()) {
-            Ok(server_request) => handle_server_request(peer, server_request).await,
+            Ok(server_request) => self.handle_server_request(peer, server_request).await,
             Err(err) => {
                 tracing::debug!("Unhandled server request `{}`: {err}", request.method);
                 let response = JSONRPCResponse {
@@ -202,7 +292,7 @@ impl JsonRpcCallbacks for AppServerClient {
 
         let has_finished = method
             .strip_prefix("codex/event/")
-            .is_some_and(|suffix| suffix == "task_complete");
+            .is_some_and(|suffix| matches!(suffix, "task_complete" | "turn_aborted"));
 
         Ok(has_finished)
     }
@@ -213,24 +303,17 @@ impl JsonRpcCallbacks for AppServerClient {
     }
 }
 
-// Aprovals
-async fn handle_server_request(
-    peer: &JsonRpcPeer,
-    request: ServerRequest,
-) -> Result<(), ExecutorError> {
-    match request {
-        ServerRequest::ApplyPatchApproval { request_id, .. } => {
-            let response = ApplyPatchApprovalResponse {
-                decision: codex_protocol::protocol::ReviewDecision::ApprovedForSession,
-            };
-            send_server_response(peer, request_id, response).await
-        }
-        ServerRequest::ExecCommandApproval { request_id, .. } => {
-            let response = ExecCommandApprovalResponse {
-                decision: codex_protocol::protocol::ReviewDecision::ApprovedForSession,
-            };
-            send_server_response(peer, request_id, response).await
-        }
+fn map_status_to_decision(status: &ApprovalStatus) -> ReviewDecision {
+    match status {
+        ApprovalStatus::Approved => ReviewDecision::Approved,
+        // ApprovalStatus::Denied { reason }
+        //     if reason.as_ref().is_some_and(|r| !r.trim().is_empty()) =>
+        // {
+        //     ReviewDecision::Abort
+        // }
+        ApprovalStatus::Denied { .. } => ReviewDecision::Denied,
+        ApprovalStatus::TimedOut => ReviewDecision::Denied,
+        ApprovalStatus::Pending => ReviewDecision::Denied,
     }
 }
 

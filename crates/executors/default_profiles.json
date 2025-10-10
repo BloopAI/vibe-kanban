@@ -49,6 +49,12 @@
           "sandbox": "danger-full-access",
           "model_reasoning_effort": "high"
         }
+      },
+      "APPROVALS": {
+        "CODEX": {
+          "sandbox": "workspace-write",
+          "ask_for_approval": "unless-trusted"
+        }
       }
     },
     "OPENCODE": {

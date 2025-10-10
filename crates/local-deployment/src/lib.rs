@@ -118,6 +118,7 @@ impl Deployment for LocalDeployment {
             git.clone(),
             image.clone(),
             analytics_ctx,
+            approvals.clone(),
         );
         container.spawn_worktree_cleanup().await;
 

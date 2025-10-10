@@ -78,6 +78,7 @@ fn generate_types_content() -> String {
         executors::executors::amp::Amp::decl(),
         executors::executors::codex::Codex::decl(),
         executors::executors::codex::SandboxMode::decl(),
+        executors::executors::codex::AskForApproval::decl(),
         executors::executors::codex::ReasoningEffort::decl(),
         executors::executors::codex::ReasoningSummary::decl(),
         executors::executors::codex::ReasoningSummaryFormat::decl(),

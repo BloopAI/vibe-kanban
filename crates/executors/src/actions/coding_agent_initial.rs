@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{path::Path, sync::Arc};
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -6,6 +6,7 @@ use ts_rs::TS;
 
 use crate::{
     actions::Executable,
+    approvals::ExecutorApprovalService,
     executors::{ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
     profile::{ExecutorConfigs, ExecutorProfileId},
 };
@@ -21,7 +22,11 @@ pub struct CodingAgentInitialRequest {
 
 #[async_trait]
 impl Executable for CodingAgentInitialRequest {
-    async fn spawn(&self, current_dir: &Path) -> Result<SpawnedChild, ExecutorError> {
+    async fn spawn(
+        &self,
+        current_dir: &Path,
+        approvals: Arc<dyn ExecutorApprovalService>,
+    ) -> Result<SpawnedChild, ExecutorError> {
         let executor_profile_id = self.executor_profile_id.clone();
         let agent = ExecutorConfigs::get_cached()
             .get_coding_agent(&executor_profile_id)
@@ -29,6 +34,6 @@ impl Executable for CodingAgentInitialRequest {
                 executor_profile_id.to_string(),
             ))?;
 
-        agent.spawn(current_dir, &self.prompt).await
+        agent.spawn(current_dir, &self.prompt, approvals).await
     }
 }
