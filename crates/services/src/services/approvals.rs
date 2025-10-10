@@ -1,3 +1,5 @@
+pub mod executor_approvals;
+
 use std::{collections::HashMap, sync::Arc, time::Duration as StdDuration};
 
 use chrono::{DateTime, Utc};
@@ -11,6 +13,7 @@ use executors::logs::{
     NormalizedEntry, NormalizedEntryType, ToolStatus,
     utils::patch::{ConversationPatch, extract_normalized_entry_from_patch},
 };
+use futures::future::{BoxFuture, FutureExt, Shared};
 use sqlx::{Error as SqlxError, SqlitePool};
 use thiserror::Error;
 use tokio::sync::{RwLock, oneshot};
@@ -34,6 +37,8 @@ struct PendingApproval {
     timeout_at: DateTime<Utc>,
     response_tx: oneshot::Sender<ApprovalStatus>,
 }
+
+type ApprovalWaiter = Shared<BoxFuture<'static, ApprovalStatus>>;
 
 #[derive(Debug)]
 pub struct ToolContext {
@@ -73,9 +78,15 @@ impl Approvals {
         }
     }
 
-    #[tracing::instrument(skip(self, request))]
-    pub async fn create(&self, request: ApprovalRequest) -> Result<ApprovalRequest, ApprovalError> {
+    async fn create_internal(
+        &self,
+        request: ApprovalRequest,
+    ) -> Result<(ApprovalRequest, ApprovalWaiter), ApprovalError> {
         let (tx, rx) = oneshot::channel();
+        let waiter: ApprovalWaiter = rx
+            .map(|result| result.unwrap_or(ApprovalStatus::TimedOut))
+            .boxed()
+            .shared();
         let req_id = request.id.clone();
 
         if let Some(store) = self.msg_store_by_id(&request.execution_process_id).await {
@@ -125,8 +136,21 @@ impl Approvals {
             );
         }
 
-        self.spawn_timeout_watcher(req_id.clone(), request.timeout_at, rx);
+        self.spawn_timeout_watcher(req_id.clone(), request.timeout_at, waiter.clone());
+        Ok((request, waiter))
+    }
+
+    #[tracing::instrument(skip(self, request))]
+    pub async fn create(&self, request: ApprovalRequest) -> Result<ApprovalRequest, ApprovalError> {
+        let (request, _) = self.create_internal(request).await?;
         Ok(request)
+    }
+
+    pub async fn create_with_waiter(
+        &self,
+        request: ApprovalRequest,
+    ) -> Result<(ApprovalRequest, ApprovalWaiter), ApprovalError> {
+        self.create_internal(request).await
     }
 
     pub async fn create_from_session(
@@ -145,15 +169,7 @@ impl Approvals {
             };
 
         // Move the task to InReview if it's still InProgress
-        if let Ok(ctx) = ExecutionProcess::load_context(pool, execution_process_id).await
-            && ctx.task.status == TaskStatus::InProgress
-            && let Err(e) = Task::update_status(pool, ctx.task.id, TaskStatus::InReview).await
-        {
-            tracing::warn!(
-                "Failed to update task status to InReview for approval request: {}",
-                e
-            );
-        }
+        ensure_task_in_review(pool, execution_process_id).await;
 
         let request = ApprovalRequest::from_create(payload, execution_process_id);
         self.create(request).await
@@ -248,12 +264,12 @@ impl Approvals {
             .collect()
     }
 
-    #[tracing::instrument(skip(self, id, timeout_at, rx))]
+    #[tracing::instrument(skip(self, id, timeout_at, waiter))]
     fn spawn_timeout_watcher(
         &self,
         id: String,
         timeout_at: chrono::DateTime<chrono::Utc>,
-        mut rx: oneshot::Receiver<ApprovalStatus>,
+        waiter: ApprovalWaiter,
     ) {
         let pending = self.pending.clone();
         let completed = self.completed.clone();
@@ -269,19 +285,18 @@ impl Approvals {
             let status = tokio::select! {
                 biased;
 
-                r = &mut rx => match r {
-                    Ok(status) => status,
-                    Err(_canceled) => ApprovalStatus::TimedOut,
-                },
+                resolved = waiter.clone() => resolved,
                 _ = tokio::time::sleep_until(deadline) => ApprovalStatus::TimedOut,
             };
 
             let is_timeout = matches!(&status, ApprovalStatus::TimedOut);
             completed.insert(id.clone(), status.clone());
 
-            let removed = pending.remove(&id);
+            if is_timeout && let Some((_, pending_approval)) = pending.remove(&id) {
+                if pending_approval.response_tx.send(status.clone()).is_err() {
+                    tracing::debug!("approval '{}' timeout notification receiver dropped", id);
+                }
 
-            if is_timeout && let Some((_, pending_approval)) = removed {
                 let store = {
                     let map = msg_stores.read().await;
                     map.get(&pending_approval.execution_process_id).cloned()
@@ -315,6 +330,18 @@ impl Approvals {
     async fn msg_store_by_id(&self, execution_process_id: &Uuid) -> Option<Arc<MsgStore>> {
         let map = self.msg_stores.read().await;
         map.get(execution_process_id).cloned()
+    }
+}
+
+pub(crate) async fn ensure_task_in_review(pool: &SqlitePool, execution_process_id: Uuid) {
+    if let Ok(ctx) = ExecutionProcess::load_context(pool, execution_process_id).await
+        && ctx.task.status == TaskStatus::InProgress
+        && let Err(e) = Task::update_status(pool, ctx.task.id, TaskStatus::InReview).await
+    {
+        tracing::warn!(
+            "Failed to update task status to InReview for approval request: {}",
+            e
+        );
     }
 }
 

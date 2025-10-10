@@ -11,7 +11,9 @@ use std::{
 
 use async_trait::async_trait;
 use codex_app_server_protocol::NewConversationParams;
-use codex_protocol::config_types::SandboxMode as CodexSandboxMode;
+use codex_protocol::{
+    config_types::SandboxMode as CodexSandboxMode, protocol::AskForApproval as CodexAskForApproval,
+};
 use command_group::AsyncCommandGroup;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -28,6 +30,7 @@ use self::{
     session::SessionHandler,
 };
 use crate::{
+    approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuilder, apply_overrides},
     executors::{
         AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
@@ -45,6 +48,25 @@ pub enum SandboxMode {
     ReadOnly,
     WorkspaceWrite,
     DangerFullAccess,
+}
+
+/// Determines when the user is consulted to approve Codex actions.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, AsRefStr)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum AskForApproval {
+    /// Read-only commands are auto-approved. Everything else will ask the user to approve.
+    UnlessTrusted,
+
+    /// All commands run in a restricted sandbox initially.
+    /// If the command fails, the user is asked to approve execution without the sandbox.
+    OnFailure,
+
+    /// The model decides when to ask the user for approval.
+    OnRequest,
+
+    /// Never ask the user to approve commands. Commands that fail in the restricted sandbox will not be retried.
+    Never,
 }
 
 /// Reasoning effort for the underlying model
@@ -84,6 +106,8 @@ pub struct Codex {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sandbox: Option<SandboxMode>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ask_for_approval: Option<AskForApproval>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub oss: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
@@ -107,9 +131,15 @@ pub struct Codex {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Codex {
-    async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
+    async fn spawn(
+        &self,
+        current_dir: &Path,
+        prompt: &str,
+        approvals: Arc<dyn ExecutorApprovalService>,
+    ) -> Result<SpawnedChild, ExecutorError> {
         let command = self.build_command_builder().build_initial();
-        self.spawn(current_dir, prompt, command, None).await
+        self.spawn(current_dir, prompt, command, None, approvals)
+            .await
     }
 
     async fn spawn_follow_up(
@@ -117,9 +147,10 @@ impl StandardCodingAgentExecutor for Codex {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        approvals: Arc<dyn ExecutorApprovalService>,
     ) -> Result<SpawnedChild, ExecutorError> {
         let command = self.build_command_builder().build_follow_up(&[]);
-        self.spawn(current_dir, prompt, command, Some(session_id))
+        self.spawn(current_dir, prompt, command, Some(session_id), approvals)
             .await
     }
 
@@ -151,11 +182,18 @@ impl Codex {
             Some(SandboxMode::DangerFullAccess) => Some(CodexSandboxMode::DangerFullAccess),
         };
 
+        let approval_policy = self.ask_for_approval.as_ref().map(|policy| match policy {
+            AskForApproval::UnlessTrusted => CodexAskForApproval::UnlessTrusted,
+            AskForApproval::OnFailure => CodexAskForApproval::OnFailure,
+            AskForApproval::OnRequest => CodexAskForApproval::OnRequest,
+            AskForApproval::Never => CodexAskForApproval::Never,
+        });
+
         NewConversationParams {
             model: self.model.clone(),
             profile: self.profile.clone(),
             cwd: Some(cwd.to_string_lossy().to_string()),
-            approval_policy: None,
+            approval_policy,
             sandbox,
             config: self.build_config_overrides(),
             base_instructions: self.base_instructions.clone(),
@@ -203,6 +241,7 @@ impl Codex {
         prompt: &str,
         command: String,
         resume_session: Option<&str>,
+        approvals: Arc<dyn ExecutorApprovalService>,
     ) -> Result<SpawnedChild, ExecutorError> {
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let (shell_cmd, shell_arg) = get_shell_command();
@@ -234,6 +273,11 @@ impl Codex {
 
         let params = self.build_new_conversation_params(current_dir);
         let resume_session = resume_session.map(|s| s.to_string());
+        let approvals = approvals.clone();
+        let auto_approve = matches!(
+            (&self.sandbox, &self.ask_for_approval),
+            (Some(SandboxMode::DangerFullAccess), None)
+        );
         tokio::spawn(async move {
             let exit_signal_tx = ExitSignalSender::new(exit_signal_tx);
             let log_writer = LogWriter::new(new_stdout);
@@ -245,6 +289,8 @@ impl Codex {
                 child_stdin,
                 log_writer.clone(),
                 exit_signal_tx.clone(),
+                approvals,
+                auto_approve,
             )
             .await
             {
@@ -268,6 +314,7 @@ impl Codex {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn launch_codex_app_server(
         conversation_params: NewConversationParams,
         resume_session: Option<String>,
@@ -276,8 +323,10 @@ impl Codex {
         child_stdin: tokio::process::ChildStdin,
         log_writer: LogWriter,
         exit_signal_tx: ExitSignalSender,
+        approvals: Arc<dyn ExecutorApprovalService>,
+        auto_approve: bool,
     ) -> Result<(), ExecutorError> {
-        let client = AppServerClient::new(log_writer);
+        let client = AppServerClient::new(log_writer, approvals, auto_approve);
         let rpc_peer =
             JsonRpcPeer::spawn(child_stdin, child_stdout, client.clone(), exit_signal_tx);
         client.connect(rpc_peer);
@@ -286,11 +335,11 @@ impl Codex {
             None => {
                 let params = conversation_params;
                 let response = client.new_conversation(params).await?;
+                let conversation_id = response.conversation_id;
+                client.register_session(&conversation_id).await?;
+                client.add_conversation_listener(conversation_id).await?;
                 client
-                    .add_conversation_listener(response.conversation_id)
-                    .await?;
-                client
-                    .send_user_message(response.conversation_id, combined_prompt)
+                    .send_user_message(conversation_id, combined_prompt)
                     .await?;
             }
             Some(session_id) => {
@@ -306,11 +355,11 @@ impl Codex {
                     rollout_path.display(),
                     response
                 );
+                let conversation_id = response.conversation_id;
+                client.register_session(&conversation_id).await?;
+                client.add_conversation_listener(conversation_id).await?;
                 client
-                    .add_conversation_listener(response.conversation_id)
-                    .await?;
-                client
-                    .send_user_message(response.conversation_id, combined_prompt)
+                    .send_user_message(conversation_id, combined_prompt)
                     .await?;
             }
         }
