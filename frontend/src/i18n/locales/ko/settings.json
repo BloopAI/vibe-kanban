@@ -1,0 +1,201 @@
+{
+  "settings": {
+    "layout": {
+      "nav": {
+        "title": "설정",
+        "general": "일반",
+        "generalDesc": "테마, 알림 및 환경설정",
+        "agents": "에이전트",
+        "agentsDesc": "코딩 에이전트 구성",
+        "mcp": "MCP 서버",
+        "mcpDesc": "Model Context Protocol 서버",
+        "backToApp": "앱으로 돌아가기"
+      }
+    },
+    "general": {
+      "loading": "설정 로딩 중...",
+      "loadError": "구성을 불러오지 못했습니다.",
+      "save": {
+        "button": "설정 저장",
+        "success": "✓ 설정이 성공적으로 저장되었습니다!",
+        "error": "구성을 저장하지 못했습니다",
+        "unsavedChanges": "• 저장되지 않은 변경사항이 있습니다",
+        "discard": "취소"
+      },
+      "appearance": {
+        "title": "외관",
+        "description": "애플리케이션의 모양과 느낌을 사용자 정의하세요.",
+        "theme": {
+          "label": "테마",
+          "placeholder": "테마 선택",
+          "helper": "선호하는 색상 구성표를 선택하세요."
+        },
+        "language": {
+          "label": "언어",
+          "placeholder": "언어 선택",
+          "helper": "선호하는 언어를 선택하세요. 브라우저 기본값은 시스템 언어를 따릅니다."
+        }
+      },
+      "taskExecution": {
+        "title": "작업 실행",
+        "description": "작업이 실행되고 처리되는 방식을 구성하세요.",
+        "executor": {
+          "label": "기본 에이전트 구성",
+          "placeholder": "프로필 선택",
+          "helper": "작업 시도를 생성할 때 사용할 기본 에이전트 구성을 선택하세요."
+        },
+        "variant": "DEFAULT",
+        "defaultLabel": "기본"
+      },
+      "editor": {
+        "title": "에디터",
+        "description": "코드 편집 환경을 구성하세요.",
+        "type": {
+          "label": "에디터 유형",
+          "placeholder": "에디터 선택",
+          "helper": "선호하는 코드 에디터 인터페이스를 선택하세요."
+        }
+      },
+      "github": {
+        "title": "GitHub 연동",
+        "connected": "{{username}}으로 연결됨",
+        "connectButton": "GitHub 계정 연결",
+        "manage": "관리",
+        "disconnect": "연결 해제",
+        "helper": "GitHub 계정을 연결하여 비공개 저장소에 액세스하고 고급 Git 작업을 활성화하세요.",
+        "or": "또는",
+        "pat": {
+          "label": "개인 액세스 토큰",
+          "helper": "'repo' 권한이 있는 GitHub 개인 액세스 토큰입니다. OAuth 권한이 비공개 저장소 및 조직 소유 저장소에 충분하지 않은 경우 사용하세요.",
+          "createTokenLink": "여기에서 토큰 생성"
+        }
+      },
+      "git": {
+        "title": "Git",
+        "description": "Git 브랜치 이름 지정 기본 설정 구성",
+        "branchPrefix": {
+          "label": "브랜치 접두사",
+          "placeholder": "vk",
+          "helper": "자동 생성된 브랜치 이름의 접두사입니다. 접두사가 없으려면 비워두세요.",
+          "preview": "미리보기:",
+          "previewWithPrefix": "{{prefix}}/1a2b-task-name",
+          "previewNoPrefix": "1a2b-task-name",
+          "errors": {
+            "slash": "접두사에는 '/'를 포함할 수 없습니다.",
+            "startsWithDot": "접두사는 '.'로 시작할 수 없습니다.",
+            "endsWithDot": "접두사는 '.' 또는 '.lock'으로 끝날 수 없습니다.",
+            "invalidSequence": "유효하지 않은 시퀀스(.., @{)가 포함되어 있습니다.",
+            "invalidChars": "유효하지 않은 문자가 포함되어 있습니다.",
+            "controlChars": "제어 문자가 포함되어 있습니다."
+          }
+        }
+      },
+      "notifications": {
+        "title": "알림",
+        "description": "알림을 받는 시기와 방법을 제어하세요.",
+        "sound": {
+          "label": "소리 알림",
+          "helper": "작업 시도가 완료되면 소리를 재생합니다.",
+          "fileLabel": "소리",
+          "filePlaceholder": "소리 선택",
+          "fileHelper": "작업이 완료될 때 재생할 소리를 선택하세요. 볼륨 버튼을 클릭하여 미리 들을 수 있습니다."
+        },
+        "push": {
+          "label": "푸시 알림",
+          "helper": "작업 시도가 완료되면 시스템 알림을 표시합니다."
+        }
+      },
+      "privacy": {
+        "title": "개인정보 보호",
+        "description": "익명 사용 데이터를 공유하여 Vibe-Kanban 개선에 도움을 주세요.",
+        "telemetry": {
+          "label": "원격 분석 활성화",
+          "helper": "애플리케이션 개선을 위한 익명 사용 이벤트 추적을 활성화합니다. 프롬프트나 프로젝트 정보는 수집되지 않습니다."
+        }
+      },
+      "taskTemplates": {
+        "title": "작업 템플릿",
+        "description": "모든 프로젝트에서 사용할 수 있는 전역 작업 템플릿을 관리하세요."
+      },
+      "safety": {
+        "title": "안전 및 면책 조항",
+        "description": "안전 경고 및 온보딩에 대한 확인을 재설정하세요.",
+        "disclaimer": {
+          "title": "면책 조항 확인",
+          "description": "안전 면책 조항을 재설정합니다.",
+          "button": "초기화"
+        },
+        "onboarding": {
+          "title": "온보딩",
+          "description": "온보딩 흐름을 재설정합니다.",
+          "button": "초기화"
+        }
+      }
+    },
+    "agents": {
+      "title": "코딩 에이전트 구성",
+      "description": "다양한 구성으로 코딩 에이전트의 동작을 사용자 정의하세요.",
+      "loading": "에이전트 구성 로딩 중...",
+      "save": {
+        "button": "에이전트 구성 저장",
+        "success": "✓ 실행자 구성이 성공적으로 저장되었습니다!"
+      },
+      "editor": {
+        "formLabel": "JSON 편집",
+        "agentLabel": "에이전트",
+        "agentPlaceholder": "실행자 유형 선택",
+        "configLabel": "구성",
+        "configPlaceholder": "구성 선택",
+        "createNew": "새로 만들기...",
+        "deleteTitle": "마지막 구성은 삭제할 수 없습니다",
+        "deleteButton": "{{name}} 삭제",
+        "deleteText": "삭제",
+        "jsonLabel": "에이전트 구성 (JSON)",
+        "jsonPlaceholder": "프로필 로딩 중...",
+        "jsonLoading": "로딩 중...",
+        "pathLabel": "구성 파일 위치:"
+      },
+      "errors": {
+        "deleteFailed": "구성을 삭제하지 못했습니다. 다시 시도해 주세요.",
+        "saveFailed": "에이전트 구성을 저장하지 못했습니다. 다시 시도해 주세요.",
+        "saveConfigFailed": "구성을 저장하지 못했습니다. 다시 시도해 주세요."
+      }
+    },
+    "mcp": {
+      "title": "MCP 서버 구성",
+      "description": "Model Context Protocol 서버를 구성하여 사용자 정의 도구 및 리소스로 코딩 에이전트 기능을 확장하세요.",
+      "loading": "MCP 구성 로딩 중...",
+      "applying": "구성 적용 중...",
+      "labels": {
+        "agent": "에이전트",
+        "agentPlaceholder": "실행자 선택",
+        "agentHelper": "MCP 서버를 구성할 에이전트를 선택하세요.",
+        "serverConfig": "서버 구성 (JSON)",
+        "popularServers": "인기 서버",
+        "serverHelper": "카드를 클릭하여 위의 JSON에 해당 MCP 서버를 삽입하세요.",
+        "saveLocation": "변경 사항이 저장될 위치:"
+      },
+      "loading": {
+        "jsonEditor": "로딩 중...",
+        "configuration": "현재 MCP 서버 구성 로딩 중..."
+      },
+      "errors": {
+        "loadFailed": "구성을 불러오지 못했습니다.",
+        "invalidJson": "유효하지 않은 JSON 형식",
+        "validationError": "검증 오류",
+        "saveFailed": "MCP 서버를 저장하지 못했습니다",
+        "applyFailed": "MCP 서버 구성을 적용하지 못했습니다",
+        "addServerFailed": "미리 구성된 서버를 추가하지 못했습니다",
+        "mcpError": "MCP 구성 오류: {{error}}",
+        "notSupported": "MCP가 지원되지 않습니다",
+        "supportMessage": "MCP 서버를 사용하려면 위에서 MCP를 지원하는 다른 실행자(Claude, Amp, Gemini, Codex 또는 Opencode)를 선택하세요."
+      },
+      "save": {
+        "button": "MCP 구성 저장",
+        "success": "설정 저장됨!",
+        "successMessage": "✓ MCP 구성이 성공적으로 저장되었습니다!",
+        "loading": "현재 MCP 서버 구성 로딩 중..."
+      }
+    }
+  }
+}
