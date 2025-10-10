@@ -34,7 +34,7 @@ import { AppWithStyleOverride } from '@/utils/style-override';
 import { WebviewContextMenu } from '@/vscode/ContextMenu';
 import { DevBanner } from '@/components/DevBanner';
 import NiceModal from '@ebay/nice-modal-react';
-import { OnboardingResult } from './components/dialogs/global/OnboardingDialog';
+import { UnifiedOnboardingResult } from './components/dialogs/global/UnifiedOnboardingDialog';
 import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
@@ -51,36 +51,22 @@ function AppContent() {
   useEffect(() => {
     let cancelled = false;
 
-    const handleOnboardingComplete = async (
-      onboardingConfig: OnboardingResult
+    const handleUnifiedOnboardingComplete = async (
+      result: UnifiedOnboardingResult
     ) => {
       if (cancelled) return;
       const updatedConfig = {
         ...config,
         onboarding_acknowledged: true,
-        executor_profile: onboardingConfig.profile,
-        editor: onboardingConfig.editor,
+        disclaimer_acknowledged: result.disclaimerAccepted,
+        telemetry_acknowledged: true,
+        analytics_enabled: result.analyticsEnabled,
+        github_login_acknowledged: result.githubLoginAcknowledged,
+        executor_profile: result.profile,
+        editor: result.editor,
       };
 
-      updateAndSaveConfig(updatedConfig);
-    };
-
-    const handleDisclaimerAccept = async () => {
-      if (cancelled) return;
-      await updateAndSaveConfig({ disclaimer_acknowledged: true });
-    };
-
-    const handleGitHubLoginComplete = async () => {
-      if (cancelled) return;
-      await updateAndSaveConfig({ github_login_acknowledged: true });
-    };
-
-    const handleTelemetryOptIn = async (analyticsEnabled: boolean) => {
-      if (cancelled) return;
-      await updateAndSaveConfig({
-        telemetry_acknowledged: true,
-        analytics_enabled: analyticsEnabled,
-      });
+      await updateAndSaveConfig(updatedConfig);
     };
 
     const handleReleaseNotesClose = async () => {
@@ -91,32 +77,20 @@ function AppContent() {
     const checkOnboardingSteps = async () => {
       if (!config || cancelled) return;
 
-      if (!config.disclaimer_acknowledged) {
-        await NiceModal.show('disclaimer');
-        await handleDisclaimerAccept();
-        await NiceModal.hide('disclaimer');
+      // Check if we need to show the unified onboarding dialog
+      if (
+        !config.onboarding_acknowledged ||
+        !config.disclaimer_acknowledged ||
+        !config.telemetry_acknowledged ||
+        !config.github_login_acknowledged
+      ) {
+        const result: UnifiedOnboardingResult =
+          await NiceModal.show('unified-onboarding');
+        await handleUnifiedOnboardingComplete(result);
+        await NiceModal.hide('unified-onboarding');
       }
 
-      if (!config.onboarding_acknowledged) {
-        const onboardingResult: OnboardingResult =
-          await NiceModal.show('onboarding');
-        await handleOnboardingComplete(onboardingResult);
-        await NiceModal.hide('onboarding');
-      }
-
-      if (!config.github_login_acknowledged) {
-        await NiceModal.show('github-login');
-        await handleGitHubLoginComplete();
-        await NiceModal.hide('github-login');
-      }
-
-      if (!config.telemetry_acknowledged) {
-        const analyticsEnabled: boolean =
-          await NiceModal.show('privacy-opt-in');
-        await handleTelemetryOptIn(analyticsEnabled);
-        await NiceModal.hide('privacy-opt-in');
-      }
-
+      // Show release notes if needed (this remains separate)
       if (config.show_release_notes) {
         await NiceModal.show('release-notes');
         await handleReleaseNotesClose();

@@ -110,7 +110,7 @@ export type UiLanguage = "BROWSER" | "EN" | "JA" | "ES";
 
 export type DeviceFlowStartResponse = { user_code: string, verification_uri: string, expires_in: number, interval: number, };
 
-export enum DevicePollStatus { SLOW_DOWN = "SLOW_DOWN", AUTHORIZATION_PENDING = "AUTHORIZATION_PENDING", SUCCESS = "SUCCESS" }
+export enum DevicePollStatus { SLOW_DOWN = "SLOW_DOWN", AUTHORIZATION_PENDING = "AUTHORIZATION_PENDING", ACCESS_DENIED = "ACCESS_DENIED", EXPIRED_TOKEN = "EXPIRED_TOKEN", SUCCESS = "SUCCESS" }
 
 export enum CheckTokenResponse { VALID = "VALID", INVALID = "INVALID" }
 

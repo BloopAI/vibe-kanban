@@ -10,7 +10,10 @@
     "reset": "リセット",
     "manage": "管理",
     "connect": "接続",
-    "disconnect": "切断"
+    "disconnect": "切断",
+    "back": "戻る",
+    "next": "次へ",
+    "skip": "スキップ"
   },
   "states": {
     "loading": "読み込み中...",
@@ -46,5 +49,76 @@
       "remote": "リモート"
     },
     "currentDisabled": "現在のブランチは選択できません"
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Vibe Kanbanへようこそ",
+      "description": "4つの簡単なステップでセットアップしましょう。"
+    },
+    "agentConfig": {
+      "title": "エージェント設定",
+      "agentTitle": "コーディングエージェントを選択",
+      "agentLabel": "デフォルトエージェント",
+      "agentPlaceholder": "お好みのコーディングエージェントを選択",
+      "editorTitle": "コードエディタを選択",
+      "editorLabel": "優先エディタ",
+      "editorPlaceholder": "お好みのエディタを選択",
+      "editorHelper": "このエディタはタスク試行とプロジェクトファイルを開くために使用されます。",
+      "customCommandLabel": "カスタムコマンド",
+      "customCommandPlaceholder": "例: code, subl, vim",
+      "customCommandHelper": "カスタムエディタを実行するコマンドを入力してください。引数にはスペースを使用します（例: \"code --wait\"）。"
+    },
+    "githubLogin": {
+      "title": "GitHubでサインイン（オプション）",
+      "description": "GitHubアカウントを接続すると、Vibe Kanbanから直接プルリクエストを作成できます。",
+      "successTitle": "接続に成功しました！",
+      "signedInAs": "サインイン中：",
+      "deviceStep1": "GitHubデバイス認証にアクセス",
+      "deviceStep2": "このコードを入力：",
+      "copied": "コピー済み",
+      "copy": "コピー",
+      "codeCopied": "コードをコピーしました！GitHubで認証を完了してください。",
+      "waiting": "GitHubでの認証を待っています...",
+      "whyConnect": "GitHubに接続する理由",
+      "benefit1": "タスク試行からプルリクエストを作成",
+      "benefit2": "変更をプッシュしてブランチを自動的に作成",
+      "benefit3": "開発ワークフローを効率化",
+      "signInButton": "GitHubでサインイン",
+      "starting": "開始中...",
+      "error": {
+        "network": "ネットワークエラー。接続を確認して再試行してください。",
+        "failed": "ログインに失敗しました。再試行してください。",
+        "denied": "GitHubの認証が拒否されました。再試行できます。",
+        "expired": "デバイスコードが期限切れです。再試行してください。"
+      }
+    },
+    "safetyNotice": {
+      "title": "安全性に関する通知",
+      "warning1": "Vibe Kanbanは、AIコーディングエージェントを",
+      "code1": "--dangerously-skip-permissions",
+      "code2": "--yolo",
+      "warning2": "/",
+      "warning3": "でデフォルトで実行し、システム上でコードやコマンドを無制限に実行できるアクセス権を与えます。",
+      "important": "重要：",
+      "importantText": "エージェントが何をしているかを常に確認し、重要な作業のバックアップがあることを確認してください。このソフトウェアは実験的なものです - 責任を持って使用してください。",
+      "learnMore": "詳細はこちら",
+      "docsLink": "安全性に関するドキュメント"
+    },
+    "feedback": {
+      "title": "Vibe Kanbanの改善にご協力ください",
+      "optInLabel": "製品の改善に役立つ使用データを共有する",
+      "optInHelper": "高レベルの使用メトリクスとパフォーマンスデータを収集しますが、コードや個人情報は収集しません。",
+      "whatWeCollect": "収集するデータ：",
+      "collectGitHub": "重要な更新のためのGitHubプロフィール情報のみ",
+      "whenSignedIn": "（サインイン時）",
+      "collectUsage": "高レベルの使用メトリクスと機能使用状況",
+      "collectPerformance": "パフォーマンスとエラーデータ",
+      "doNotCollect": "タスクの内容、コード、プロジェクト名は収集しません",
+      "settingsNote": "この設定は設定でいつでも変更できます。"
+    },
+    "buttons": {
+      "understand": "理解しました、続行",
+      "complete": "セットアップを完了"
+    }
   }
 }

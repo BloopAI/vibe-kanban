@@ -10,7 +10,10 @@
     "reset": "Reset",
     "manage": "Manage",
     "connect": "Connect",
-    "disconnect": "Disconnect"
+    "disconnect": "Disconnect",
+    "back": "Back",
+    "next": "Next",
+    "skip": "Skip"
   },
   "states": {
     "loading": "Loading...",
@@ -46,5 +49,76 @@
       "remote": "remote"
     },
     "currentDisabled": "Cannot select the current branch"
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Welcome to Vibe Kanban",
+      "description": "Let's get you set up in just four quick steps."
+    },
+    "agentConfig": {
+      "title": "Agent & Editor Configuration",
+      "agentTitle": "Choose Your Coding Agent",
+      "agentLabel": "Default Agent",
+      "agentPlaceholder": "Select your preferred coding agent",
+      "editorTitle": "Choose Your Code Editor",
+      "editorLabel": "Preferred Editor",
+      "editorPlaceholder": "Select your preferred editor",
+      "editorHelper": "This editor will be used to open task attempts and project files.",
+      "customCommandLabel": "Custom Command",
+      "customCommandPlaceholder": "e.g., code, subl, vim",
+      "customCommandHelper": "Enter the command to run your custom editor. Use spaces for arguments (e.g., \"code --wait\")."
+    },
+    "githubLogin": {
+      "title": "Sign in with GitHub (Optional)",
+      "description": "Connect your GitHub account to create pull requests directly from Vibe Kanban.",
+      "successTitle": "Successfully connected!",
+      "signedInAs": "You are signed in as",
+      "deviceStep1": "Go to GitHub Device Authorization",
+      "deviceStep2": "Enter this code:",
+      "copied": "Copied",
+      "copy": "Copy",
+      "codeCopied": "Code copied! Complete the authorization on GitHub.",
+      "waiting": "Waiting for authorization on GitHub...",
+      "whyConnect": "Why connect GitHub?",
+      "benefit1": "Create pull requests from task attempts",
+      "benefit2": "Push changes and create branches automatically",
+      "benefit3": "Streamline your development workflow",
+      "signInButton": "Sign in with GitHub",
+      "starting": "Starting...",
+      "error": {
+        "network": "Network error. Please check your connection and try again.",
+        "failed": "Login failed. Please try again.",
+        "denied": "GitHub authorization was denied. You can try again.",
+        "expired": "Device code expired. Please try again."
+      }
+    },
+    "safetyNotice": {
+      "title": "Safety Notice",
+      "warning1": "Vibe Kanban runs AI coding agents with",
+      "code1": "--dangerously-skip-permissions",
+      "code2": "--yolo",
+      "warning2": "/",
+      "warning3": "by default, giving them unrestricted access to execute code and run commands on your system.",
+      "important": "Important:",
+      "importantText": "Always review what agents are doing and ensure you have backups of important work. This software is experimental - use it responsibly.",
+      "learnMore": "Learn more at",
+      "docsLink": "our safety documentation"
+    },
+    "feedback": {
+      "title": "Help Improve Vibe Kanban",
+      "optInLabel": "Share usage data to help us improve the product",
+      "optInHelper": "We collect high-level usage metrics and performance data, but never your code or personal information.",
+      "whatWeCollect": "What we collect:",
+      "collectGitHub": "GitHub profile info for important updates only",
+      "whenSignedIn": "(when signed in)",
+      "collectUsage": "High-level usage metrics and feature usage",
+      "collectPerformance": "Performance and error data",
+      "doNotCollect": "We do NOT collect task contents, code, or project names",
+      "settingsNote": "You can change this preference anytime in Settings."
+    },
+    "buttons": {
+      "understand": "I Understand, Continue",
+      "complete": "Complete Setup"
+    }
   }
 }

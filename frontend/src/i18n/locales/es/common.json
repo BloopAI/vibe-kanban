@@ -10,7 +10,10 @@
     "reset": "Restablecer",
     "manage": "Gestionar",
     "connect": "Conectar",
-    "disconnect": "Desconectar"
+    "disconnect": "Desconectar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "skip": "Omitir"
   },
   "states": {
     "loading": "Cargando...",
@@ -46,5 +49,76 @@
       "remote": "remota"
     },
     "currentDisabled": "No se puede seleccionar la rama actual"
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Bienvenido a Vibe Kanban",
+      "description": "Configuremos todo en solo cuatro pasos rápidos."
+    },
+    "agentConfig": {
+      "title": "Configuración del Agente",
+      "agentTitle": "Elige Tu Agente de Codificación",
+      "agentLabel": "Agente Predeterminado",
+      "agentPlaceholder": "Selecciona tu agente de codificación preferido",
+      "editorTitle": "Elige Tu Editor de Código",
+      "editorLabel": "Editor Preferido",
+      "editorPlaceholder": "Selecciona tu editor preferido",
+      "editorHelper": "Este editor se utilizará para abrir intentos de tareas y archivos de proyecto.",
+      "customCommandLabel": "Comando Personalizado",
+      "customCommandPlaceholder": "ej., code, subl, vim",
+      "customCommandHelper": "Ingresa el comando para ejecutar tu editor personalizado. Usa espacios para argumentos (ej., \"code --wait\")."
+    },
+    "githubLogin": {
+      "title": "Iniciar sesión con GitHub (Opcional)",
+      "description": "Conecta tu cuenta de GitHub para crear solicitudes de extracción directamente desde Vibe Kanban.",
+      "successTitle": "¡Conectado exitosamente!",
+      "signedInAs": "Has iniciado sesión como",
+      "deviceStep1": "Ve a Autorización de Dispositivo de GitHub",
+      "deviceStep2": "Ingresa este código:",
+      "copied": "Copiado",
+      "copy": "Copiar",
+      "codeCopied": "¡Código copiado! Completa la autorización en GitHub.",
+      "waiting": "Esperando autorización en GitHub...",
+      "whyConnect": "¿Por qué conectar GitHub?",
+      "benefit1": "Crear solicitudes de extracción desde intentos de tareas",
+      "benefit2": "Enviar cambios y crear ramas automáticamente",
+      "benefit3": "Optimizar tu flujo de trabajo de desarrollo",
+      "signInButton": "Iniciar sesión con GitHub",
+      "starting": "Iniciando...",
+      "error": {
+        "network": "Error de red. Por favor, verifica tu conexión e intenta de nuevo.",
+        "failed": "Error al iniciar sesión. Por favor, intenta de nuevo.",
+        "denied": "Se denegó la autorización de GitHub. Puedes intentar de nuevo.",
+        "expired": "El código del dispositivo expiró. Por favor, intenta de nuevo."
+      }
+    },
+    "safetyNotice": {
+      "title": "Aviso de Seguridad",
+      "warning1": "Vibe Kanban ejecuta agentes de codificación de IA con",
+      "code1": "--dangerously-skip-permissions",
+      "code2": "--yolo",
+      "warning2": "/",
+      "warning3": "por defecto, otorgándoles acceso sin restricciones para ejecutar código y comandos en tu sistema.",
+      "important": "Importante:",
+      "importantText": "Siempre revisa lo que están haciendo los agentes y asegúrate de tener copias de seguridad de tu trabajo importante. Este software es experimental - úsalo responsablemente.",
+      "learnMore": "Más información en",
+      "docsLink": "nuestra documentación de seguridad"
+    },
+    "feedback": {
+      "title": "Ayuda a Mejorar Vibe Kanban",
+      "optInLabel": "Compartir datos de uso para ayudarnos a mejorar el producto",
+      "optInHelper": "Recopilamos métricas de uso de alto nivel y datos de rendimiento, pero nunca tu código o información personal.",
+      "whatWeCollect": "Qué recopilamos:",
+      "collectGitHub": "Información del perfil de GitHub solo para actualizaciones importantes",
+      "whenSignedIn": "(cuando hayas iniciado sesión)",
+      "collectUsage": "Métricas de uso de alto nivel y uso de funciones",
+      "collectPerformance": "Datos de rendimiento y errores",
+      "doNotCollect": "NO recopilamos contenidos de tareas, código o nombres de proyectos",
+      "settingsNote": "Puedes cambiar esta preferencia en cualquier momento en Configuración."
+    },
+    "buttons": {
+      "understand": "Entiendo, Continuar",
+      "complete": "Completar Configuración"
+    }
   }
 }
