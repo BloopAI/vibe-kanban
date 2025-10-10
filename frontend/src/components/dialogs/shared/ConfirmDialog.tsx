@@ -33,10 +33,12 @@ const ConfirmDialog = NiceModal.create<ConfirmDialogProps>((props) => {
 
   const handleConfirm = () => {
     modal.resolve('confirmed' as ConfirmResult);
+    modal.hide();
   };
 
   const handleCancel = () => {
     modal.resolve('canceled' as ConfirmResult);
+    modal.hide();
   };
 
   const getIcon = () => {
@@ -59,7 +61,10 @@ const ConfirmDialog = NiceModal.create<ConfirmDialogProps>((props) => {
   };
 
   return (
-    <Dialog open={modal.visible} onOpenChange={handleCancel}>
+    <Dialog
+      open={modal.visible}
+      onOpenChange={(open) => !open && handleCancel()}
+    >
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <div className="flex items-center gap-3">

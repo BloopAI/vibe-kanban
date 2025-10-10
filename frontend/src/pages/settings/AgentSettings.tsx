@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSettingsContext } from '@/contexts/SettingsContext';
 import {
   Card,
   CardContent,
@@ -28,6 +29,7 @@ import { showModal } from '@/lib/modals';
 
 export function AgentSettings() {
   const { t } = useTranslation('settings');
+  const { setHasUnsavedChanges } = useSettingsContext();
   // Use profiles hook for server state
   const {
     profilesContent: serverProfilesContent,
@@ -68,6 +70,11 @@ export function AgentSettings() {
       }
     }
   }, [serverProfilesContent, isDirty]);
+
+  // Update settings context when dirty state changes
+  useEffect(() => {
+    setHasUnsavedChanges(isDirty);
+  }, [isDirty, setHasUnsavedChanges]);
 
   // Sync raw profiles with parsed profiles
   const syncRawProfiles = (profiles: unknown) => {

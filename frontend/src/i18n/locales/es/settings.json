@@ -20,7 +20,10 @@
         "success": "✓ ¡Configuración guardada!",
         "error": "Error al guardar la configuración",
         "unsavedChanges": "• Tienes cambios sin guardar",
-        "discard": "Descartar"
+        "discard": "Descartar",
+        "discardTitle": "¿Descartar cambios sin guardar?",
+        "discardMessage": "Tienes cambios sin guardar. ¿Estás seguro de que quieres descartarlos?",
+        "continueEditing": "Continuar Editando"
       },
       "appearance": {
         "title": "Apariencia",

@@ -42,9 +42,11 @@ import { useTheme } from '@/components/theme-provider';
 import { useUserSystem } from '@/components/config-provider';
 import { TaskTemplateManager } from '@/components/TaskTemplateManager';
 import NiceModal from '@ebay/nice-modal-react';
+import { useSettingsContext } from '@/contexts/SettingsContext';
 
 export function GeneralSettings() {
   const { t } = useTranslation(['settings', 'common']);
+  const { setHasUnsavedChanges } = useSettingsContext();
 
   // Get language options with proper display names
   const languageOptions = getLanguageOptions(
@@ -136,6 +138,11 @@ export function GeneralSettings() {
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
   }, [hasUnsavedChanges]);
+
+  // Update settings context when unsaved changes state changes
+  useEffect(() => {
+    setHasUnsavedChanges(hasUnsavedChanges);
+  }, [hasUnsavedChanges, setHasUnsavedChanges]);
 
   const playSound = async (soundFile: SoundFile) => {
     const audio = new Audio(`/api/sounds/${soundFile}`);

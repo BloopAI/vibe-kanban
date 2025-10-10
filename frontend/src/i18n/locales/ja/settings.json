@@ -20,7 +20,10 @@
         "success": "✓ 設定が正常に保存されました！",
         "error": "設定の保存に失敗しました",
         "unsavedChanges": "• 未保存の変更があります",
-        "discard": "破棄"
+        "discard": "破棄",
+        "discardTitle": "未保存の変更を破棄しますか？",
+        "discardMessage": "未保存の変更があります。本当に破棄してもよろしいですか？",
+        "continueEditing": "編集を続ける"
       },
       "appearance": {
         "title": "外観",

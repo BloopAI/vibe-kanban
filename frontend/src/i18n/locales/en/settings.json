@@ -20,7 +20,10 @@
         "success": "✓ Settings saved successfully!",
         "error": "Failed to save configuration",
         "unsavedChanges": "• You have unsaved changes",
-        "discard": "Discard"
+        "discard": "Discard",
+        "discardTitle": "Discard unsaved changes?",
+        "discardMessage": "You have unsaved changes. Are you sure you want to discard them?",
+        "continueEditing": "Continue Editing"
       },
       "appearance": {
         "title": "Appearance",

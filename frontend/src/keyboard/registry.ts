@@ -7,6 +7,7 @@ export enum Scope {
   APPROVALS = 'approvals',
   FOLLOW_UP = 'follow-up',
   FOLLOW_UP_READY = 'follow-up-ready',
+  SETTINGS = 'settings',
 }
 
 export enum Action {
@@ -61,6 +62,13 @@ export const keyBindings: KeyBinding[] = [
     scopes: [Scope.EDIT_COMMENT],
     description: 'Cancel comment',
     group: 'Comments',
+  },
+  {
+    action: Action.EXIT,
+    keys: 'esc',
+    scopes: [Scope.SETTINGS],
+    description: 'Go back to previous page',
+    group: 'Navigation',
   },
 
   // Creation actions

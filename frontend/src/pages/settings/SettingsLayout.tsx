@@ -4,6 +4,15 @@ import { Settings, Cpu, Server, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { usePreviousPath } from '@/hooks/usePreviousPath';
+import { useKeyExit } from '@/keyboard/hooks';
+import { Scope } from '@/keyboard/registry';
+import NiceModal from '@ebay/nice-modal-react';
+import {
+  SettingsProvider,
+  useSettingsContext,
+} from '@/contexts/SettingsContext';
+import { useHotkeysContext } from 'react-hotkeys-hook';
+import { useEffect } from 'react';
 
 const settingsNavigation = [
   {
@@ -20,9 +29,39 @@ const settingsNavigation = [
   },
 ];
 
-export function SettingsLayout() {
+function SettingsLayoutContent() {
   const { t } = useTranslation('settings');
   const goToPreviousPath = usePreviousPath();
+  const { checkForUnsavedChanges } = useSettingsContext();
+  const { enableScope, disableScope } = useHotkeysContext();
+
+  // Explicitly enable the SETTINGS scope so it remains active even after dialogs open/close
+  useEffect(() => {
+    enableScope(Scope.SETTINGS);
+    return () => disableScope(Scope.SETTINGS);
+  }, [enableScope, disableScope]);
+
+  // Handle navigation with unsaved changes protection
+  const handleNavigateBack = async () => {
+    if (checkForUnsavedChanges()) {
+      const result = await NiceModal.show('confirm', {
+        title: t('settings.general.save.discardTitle'),
+        message: t('settings.general.save.discardMessage'),
+        confirmText: t('settings.general.save.discard'),
+        cancelText: t('settings.general.save.continueEditing'),
+        variant: 'destructive',
+      });
+
+      if (result === 'confirmed') {
+        goToPreviousPath();
+      }
+    } else {
+      goToPreviousPath();
+    }
+  };
+
+  // Handle ESC key to go back to previous page with unsaved changes protection
+  useKeyExit(handleNavigateBack, { scope: Scope.SETTINGS });
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -30,7 +69,11 @@ export function SettingsLayout() {
         {/* Sidebar Navigation */}
         <aside className="w-full lg:w-64 lg:shrink-0 lg:sticky lg:top-8 lg:h-fit lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto">
           <div className="space-y-1">
-            <Button variant="ghost" onClick={goToPreviousPath} className="mb-4">
+            <Button
+              variant="ghost"
+              onClick={handleNavigateBack}
+              className="mb-4"
+            >
               <ArrowLeft className="mr-2 h-4 w-4" />
               {t('settings.layout.nav.backToApp')}
             </Button>
@@ -75,5 +118,13 @@ export function SettingsLayout() {
         </main>
       </div>
     </div>
+  );
+}
+
+export function SettingsLayout() {
+  return (
+    <SettingsProvider>
+      <SettingsLayoutContent />
+    </SettingsProvider>
   );
 }
