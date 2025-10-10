@@ -113,6 +113,14 @@ impl ConversationPatch {
 
         from_value(json!([patch_entry])).unwrap()
     }
+
+    pub fn remove(entry_index: usize) -> Patch {
+        from_value(json!([{
+            "op": PatchOperation::Remove,
+            "path": format!("/entries/{entry_index}"),
+        }]))
+        .unwrap()
+    }
 }
 
 /// Extract the entry index and `NormalizedEntry` from a JsonPatch if it contains one

@@ -11,6 +11,7 @@ use executors::logs::{
     NormalizedEntry, NormalizedEntryType, ToolStatus,
     utils::patch::{ConversationPatch, extract_normalized_entry_from_patch},
 };
+use futures::future::{BoxFuture, FutureExt, Shared};
 use sqlx::{Error as SqlxError, SqlitePool};
 use thiserror::Error;
 use tokio::sync::{RwLock, oneshot};
@@ -34,6 +35,8 @@ struct PendingApproval {
     timeout_at: DateTime<Utc>,
     response_tx: oneshot::Sender<ApprovalStatus>,
 }
+
+type ApprovalWaiter = Shared<BoxFuture<'static, ApprovalStatus>>;
 
 #[derive(Debug)]
 pub struct ToolContext {
@@ -73,9 +76,15 @@ impl Approvals {
         }
     }
 
-    #[tracing::instrument(skip(self, request))]
-    pub async fn create(&self, request: ApprovalRequest) -> Result<ApprovalRequest, ApprovalError> {
+    async fn create_internal(
+        &self,
+        request: ApprovalRequest,
+    ) -> Result<(ApprovalRequest, ApprovalWaiter), ApprovalError> {
         let (tx, rx) = oneshot::channel();
+        let waiter: ApprovalWaiter = rx
+            .map(|result| result.unwrap_or(ApprovalStatus::TimedOut))
+            .boxed()
+            .shared();
         let req_id = request.id.clone();
 
         if let Some(store) = self.msg_store_by_id(&request.execution_process_id).await {
@@ -125,8 +134,21 @@ impl Approvals {
             );
         }
 
-        self.spawn_timeout_watcher(req_id.clone(), request.timeout_at, rx);
+        self.spawn_timeout_watcher(req_id.clone(), request.timeout_at, waiter.clone());
+        Ok((request, waiter))
+    }
+
+    #[tracing::instrument(skip(self, request))]
+    pub async fn create(&self, request: ApprovalRequest) -> Result<ApprovalRequest, ApprovalError> {
+        let (request, _) = self.create_internal(request).await?;
         Ok(request)
+    }
+
+    pub async fn create_with_waiter(
+        &self,
+        request: ApprovalRequest,
+    ) -> Result<(ApprovalRequest, ApprovalWaiter), ApprovalError> {
+        self.create_internal(request).await
     }
 
     pub async fn create_from_session(
@@ -248,12 +270,12 @@ impl Approvals {
             .collect()
     }
 
-    #[tracing::instrument(skip(self, id, timeout_at, rx))]
+    #[tracing::instrument(skip(self, id, timeout_at, waiter))]
     fn spawn_timeout_watcher(
         &self,
         id: String,
         timeout_at: chrono::DateTime<chrono::Utc>,
-        mut rx: oneshot::Receiver<ApprovalStatus>,
+        waiter: ApprovalWaiter,
     ) {
         let pending = self.pending.clone();
         let completed = self.completed.clone();
@@ -269,44 +291,45 @@ impl Approvals {
             let status = tokio::select! {
                 biased;
 
-                r = &mut rx => match r {
-                    Ok(status) => status,
-                    Err(_canceled) => ApprovalStatus::TimedOut,
-                },
+                resolved = waiter.clone() => resolved,
                 _ = tokio::time::sleep_until(deadline) => ApprovalStatus::TimedOut,
             };
 
             let is_timeout = matches!(&status, ApprovalStatus::TimedOut);
             completed.insert(id.clone(), status.clone());
 
-            let removed = pending.remove(&id);
+            if is_timeout {
+                if let Some((_, pending_approval)) = pending.remove(&id) {
+                    if pending_approval.response_tx.send(status.clone()).is_err() {
+                        tracing::debug!("approval '{}' timeout notification receiver dropped", id);
+                    }
 
-            if is_timeout && let Some((_, pending_approval)) = removed {
-                let store = {
-                    let map = msg_stores.read().await;
-                    map.get(&pending_approval.execution_process_id).cloned()
-                };
+                    let store = {
+                        let map = msg_stores.read().await;
+                        map.get(&pending_approval.execution_process_id).cloned()
+                    };
 
-                if let Some(store) = store {
-                    if let Some(updated_entry) = pending_approval
-                        .entry
-                        .with_tool_status(ToolStatus::TimedOut)
-                    {
-                        store.push_patch(ConversationPatch::replace(
-                            pending_approval.entry_index,
-                            updated_entry,
-                        ));
+                    if let Some(store) = store {
+                        if let Some(updated_entry) = pending_approval
+                            .entry
+                            .with_tool_status(ToolStatus::TimedOut)
+                        {
+                            store.push_patch(ConversationPatch::replace(
+                                pending_approval.entry_index,
+                                updated_entry,
+                            ));
+                        } else {
+                            tracing::warn!(
+                                "Timed out approval '{}' but couldn't update tool status (no tool-use entry).",
+                                id
+                            );
+                        }
                     } else {
                         tracing::warn!(
-                            "Timed out approval '{}' but couldn't update tool status (no tool-use entry).",
-                            id
+                            "No msg_store found for execution_process_id: {}",
+                            pending_approval.execution_process_id
                         );
                     }
-                } else {
-                    tracing::warn!(
-                        "No msg_store found for execution_process_id: {}",
-                        pending_approval.execution_process_id
-                    );
                 }
             }
         });
