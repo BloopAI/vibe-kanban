@@ -202,7 +202,7 @@ export const RestoreLogsDialog = NiceModal.create<RestoreLogsDialogProps>(
                           <p className="mt-2 text-xs text-muted-foreground">
                             Your worktree will be restored to this commit.
                           </p>
-                          <div className="mt-1 flex items-center gap-2 min-w-0">
+                          <div className="mt-1 flex flex-wrap items-center gap-2 min-w-0">
                             <GitCommit className="h-3.5 w-3.5 text-muted-foreground" />
                             {short && (
                               <span className="font-mono text-xs px-2 py-0.5 rounded bg-muted">
@@ -342,7 +342,7 @@ export const RestoreLogsDialog = NiceModal.create<RestoreLogsDialogProps>(
                           <p className="mt-2 text-xs text-muted-foreground">
                             Your worktree will be restored to this commit.
                           </p>
-                          <div className="mt-1 flex items-center gap-2 min-w-0">
+                          <div className="mt-1 flex flex-wrap items-center gap-2 min-w-0">
                             <GitCommit className="h-3.5 w-3.5 text-muted-foreground" />
                             <span className="font-mono text-xs px-2 py-0.5 rounded bg-muted">
                               {short}
