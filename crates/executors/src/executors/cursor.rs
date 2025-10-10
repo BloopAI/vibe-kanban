@@ -19,6 +19,7 @@ use workspace_utils::{
 };
 
 use crate::{
+    approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuilder, apply_overrides},
     executors::{AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
     logs::{
@@ -62,7 +63,12 @@ impl Cursor {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Cursor {
-    async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
+    async fn spawn(
+        &self,
+        current_dir: &Path,
+        prompt: &str,
+        _approvals: Option<Arc<dyn ExecutorApprovalService>>,
+    ) -> Result<SpawnedChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
         let agent_cmd = self.build_command_builder().build_initial();
 
@@ -93,6 +99,7 @@ impl StandardCodingAgentExecutor for Cursor {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        _approvals: Option<Arc<dyn ExecutorApprovalService>>,
     ) -> Result<SpawnedChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
         let agent_cmd = self

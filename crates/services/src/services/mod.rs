@@ -6,6 +6,7 @@ pub mod container;
 pub mod diff_stream;
 pub mod drafts;
 pub mod events;
+pub mod executor_approvals;
 pub mod file_ranker;
 pub mod file_search_cache;
 pub mod filesystem;

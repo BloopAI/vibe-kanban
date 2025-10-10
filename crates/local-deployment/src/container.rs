@@ -26,7 +26,8 @@ use db::{
 };
 use deployment::DeploymentError;
 use executors::{
-    actions::{Executable, ExecutorAction},
+    actions::{Executable, ExecutorAction, ExecutorActionType},
+    approvals::ExecutorApprovalService,
     logs::{
         NormalizedEntryType,
         utils::{
@@ -39,9 +40,11 @@ use futures::{FutureExt, StreamExt, TryStreamExt, stream::select};
 use serde_json::json;
 use services::services::{
     analytics::AnalyticsContext,
+    approvals::Approvals,
     config::Config,
     container::{ContainerError, ContainerRef, ContainerService},
     diff_stream::{self, DiffStreamHandle},
+    executor_approvals::ExecutorApprovalBridge,
     git::{Commit, DiffTarget, GitService},
     image::ImageService,
     notification::NotificationService,
@@ -67,6 +70,7 @@ pub struct LocalContainerService {
     git: GitService,
     image_service: ImageService,
     analytics: Option<AnalyticsContext>,
+    approvals: Approvals,
 }
 
 impl LocalContainerService {
@@ -77,6 +81,7 @@ impl LocalContainerService {
         git: GitService,
         image_service: ImageService,
         analytics: Option<AnalyticsContext>,
+        approvals: Approvals,
     ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
 
@@ -88,6 +93,7 @@ impl LocalContainerService {
             git,
             image_service,
             analytics,
+            approvals,
         }
     }
 
@@ -801,8 +807,25 @@ impl ContainerService for LocalContainerService {
             )))?;
         let current_dir = PathBuf::from(container_ref);
 
+        // Create executor approval bridge when needed
+        let approval_service: Option<Arc<dyn ExecutorApprovalService>> = match executor_action.typ()
+        {
+            ExecutorActionType::CodingAgentInitialRequest(_)
+            | ExecutorActionType::CodingAgentFollowUpRequest(_) => {
+                let bridge: Arc<dyn ExecutorApprovalService> = ExecutorApprovalBridge::new(
+                    self.approvals.clone(),
+                    self.db.clone(),
+                    execution_process.id,
+                );
+                Some(bridge)
+            }
+            _ => None,
+        };
+
         // Create the child and stream, add to execution tracker
-        let mut spawned = executor_action.spawn(&current_dir).await?;
+        let mut spawned = executor_action
+            .spawn(&current_dir, approval_service)
+            .await?;
 
         self.track_child_msgs_in_store(execution_process.id, &mut spawned.child)
             .await;

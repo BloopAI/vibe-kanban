@@ -13,7 +13,8 @@ use codex_protocol::{
     plan_tool::{StepStatus, UpdatePlanArgs},
     protocol::{
         AgentMessageDeltaEvent, AgentReasoningDeltaEvent, AgentReasoningSectionBreakEvent,
-        BackgroundEventEvent, ErrorEvent, EventMsg, ExecCommandBeginEvent, ExecCommandEndEvent,
+        ApplyPatchApprovalRequestEvent, BackgroundEventEvent, ErrorEvent, EventMsg,
+        ExecApprovalRequestEvent, ExecCommandBeginEvent, ExecCommandEndEvent,
         ExecCommandOutputDeltaEvent, ExecOutputStream, FileChange as CodexProtoFileChange,
         McpInvocation, McpToolCallBeginEvent, McpToolCallEndEvent, PatchApplyBeginEvent,
         PatchApplyEndEvent, StreamErrorEvent, TokenUsageInfo, ViewImageToolCallEvent,
@@ -66,10 +67,16 @@ struct CommandState {
     formatted_output: Option<String>,
     status: ToolStatus,
     exit_code: Option<i32>,
+    awaiting_approval: bool,
 }
 
 impl ToNormalizedEntry for CommandState {
     fn to_normalized_entry(&self) -> NormalizedEntry {
+        let mut content = format!("`{}`", self.command);
+        if self.awaiting_approval {
+            content.push_str(" (approval requested)");
+        }
+
         NormalizedEntry {
             timestamp: None,
             entry_type: NormalizedEntryType::ToolUse {
@@ -89,7 +96,7 @@ impl ToNormalizedEntry for CommandState {
                 },
                 status: self.status.clone(),
             },
-            content: format!("`{}`", self.command),
+            content,
             metadata: None,
         }
     }
@@ -165,10 +172,16 @@ struct PatchEntry {
     path: String,
     changes: Vec<FileChange>,
     status: ToolStatus,
+    awaiting_approval: bool,
 }
 
 impl ToNormalizedEntry for PatchEntry {
     fn to_normalized_entry(&self) -> NormalizedEntry {
+        let mut content = self.path.clone();
+        if self.awaiting_approval {
+            content.push_str(" (approval requested)");
+        }
+
         NormalizedEntry {
             timestamp: None,
             entry_type: NormalizedEntryType::ToolUse {
@@ -179,7 +192,7 @@ impl ToNormalizedEntry for PatchEntry {
                 },
                 status: self.status.clone(),
             },
-            content: self.path.clone(),
+            content,
             metadata: None,
         }
     }
@@ -416,6 +429,72 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                     state.assistant = None;
                     state.thinking = None;
                 }
+                EventMsg::ExecApprovalRequest(ExecApprovalRequestEvent {
+                    call_id,
+                    command,
+                    cwd: _,
+                    reason,
+                }) => {
+                    state.assistant = None;
+                    state.thinking = None;
+
+                    let command_text = if command.is_empty() {
+                        reason.filter(|r| !r.is_empty()).unwrap_or_else(|| "command execution".to_string())
+                    } else {
+                        command.join(" ")
+                    };
+
+                    let command_state = state.commands.entry(call_id.clone()).or_default();
+
+                    if command_state.command.is_empty() {
+                        command_state.command = command_text;
+                    }
+                    command_state.awaiting_approval = true;
+                    if let Some(index) = command_state.index {
+                        replace_normalized_entry(&msg_store, index, command_state.to_normalized_entry());
+                    } else {
+                        let index = add_normalized_entry(&msg_store, &entry_index, command_state.to_normalized_entry());
+                        command_state.index = Some(index);
+                    }
+                }
+                EventMsg::ApplyPatchApprovalRequest(ApplyPatchApprovalRequestEvent {
+                    call_id,
+                    changes,
+                    reason: _,
+                    grant_root: _,
+                }) => {
+                    state.assistant = None;
+                    state.thinking = None;
+
+                    let normalized = normalize_file_changes(&worktree_path_str, &changes);
+                    let patch_state = state
+                        .patches
+                        .entry(call_id.clone())
+                        .or_insert_with(PatchState::default);
+
+                    for entry in patch_state.entries.drain(..) {
+                        if let Some(index) = entry.index {
+                            msg_store.push_patch(ConversationPatch::remove(index));
+                        }
+                    }
+
+                    for (path, file_changes) in normalized {
+                        let mut entry = PatchEntry {
+                            index: None,
+                            path,
+                            changes: file_changes,
+                            status: ToolStatus::Created,
+                            awaiting_approval: true,
+                        };
+                        let index = add_normalized_entry(
+                            &msg_store,
+                            &entry_index,
+                            entry.to_normalized_entry(),
+                        );
+                        entry.index = Some(index);
+                        patch_state.entries.push(entry);
+                    }
+                }
                 EventMsg::ExecCommandBegin(ExecCommandBeginEvent {
                     call_id, command, ..
                 }) => {
@@ -435,6 +514,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                             formatted_output: None,
                             status: ToolStatus::Created,
                             exit_code: None,
+                            awaiting_approval: false,
                         },
                     );
                     let command_state = state.commands.get_mut(&call_id).unwrap();
@@ -474,6 +554,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                     if let Some(mut command_state) = state.commands.remove(&call_id) {
                         command_state.formatted_output = Some(formatted_output);
                         command_state.exit_code = Some(exit_code);
+                        command_state.awaiting_approval = false;
                         command_state.status = if exit_code == 0 {
                             ToolStatus::Success
                         } else {
@@ -569,19 +650,66 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                     state.assistant = None;
                     state.thinking = None;
                     let normalized = normalize_file_changes(&worktree_path_str, &changes);
-                    let mut patch_state = PatchState::default();
-                    for (path, file_changes) in normalized {
-                        patch_state.entries.push(PatchEntry {
-                            index: None,
-                            path,
-                            changes: file_changes,
-                            status: ToolStatus::Created,
-                        });
-                        let patch_entry = patch_state.entries.last_mut().unwrap();
-                        let index = add_normalized_entry(&msg_store, &entry_index, patch_entry.to_normalized_entry());
-                        patch_entry.index = Some(index);
+                    if let Some(patch_state) = state.patches.get_mut(&call_id) {
+                        let mut iter = normalized.into_iter();
+                        for entry in &mut patch_state.entries {
+                            if let Some((path, file_changes)) = iter.next() {
+                                entry.path = path;
+                                entry.changes = file_changes;
+                            }
+                            entry.status = ToolStatus::Created;
+                            entry.awaiting_approval = false;
+                            if let Some(index) = entry.index {
+                                replace_normalized_entry(
+                                    &msg_store,
+                                    index,
+                                    entry.to_normalized_entry(),
+                                );
+                            } else {
+                                let index = add_normalized_entry(
+                                    &msg_store,
+                                    &entry_index,
+                                    entry.to_normalized_entry(),
+                                );
+                                entry.index = Some(index);
+                            }
+                        }
+                        for (path, file_changes) in iter {
+                            let mut entry = PatchEntry {
+                                index: None,
+                                path,
+                                changes: file_changes,
+                                status: ToolStatus::Created,
+                                awaiting_approval: false,
+                            };
+                            let index = add_normalized_entry(
+                                &msg_store,
+                                &entry_index,
+                                entry.to_normalized_entry(),
+                            );
+                            entry.index = Some(index);
+                            patch_state.entries.push(entry);
+                        }
+                    } else {
+                        let mut patch_state = PatchState::default();
+                        for (path, file_changes) in normalized {
+                            patch_state.entries.push(PatchEntry {
+                                index: None,
+                                path,
+                                changes: file_changes,
+                                status: ToolStatus::Created,
+                                awaiting_approval: false,
+                            });
+                            let patch_entry = patch_state.entries.last_mut().unwrap();
+                            let index = add_normalized_entry(
+                                &msg_store,
+                                &entry_index,
+                                patch_entry.to_normalized_entry(),
+                            );
+                            patch_entry.index = Some(index);
+                        }
+                        state.patches.insert(call_id, patch_state);
                     }
-                    state.patches.insert(call_id, patch_state);
                 }
                 EventMsg::PatchApplyEnd(PatchApplyEndEvent {
                     call_id,
@@ -720,8 +848,6 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                 | EventMsg::EnteredReviewMode(..)
                 | EventMsg::ExitedReviewMode(..)
                 | EventMsg::TaskComplete(..)
-                |EventMsg::ExecApprovalRequest(..)
-                |EventMsg::ApplyPatchApprovalRequest(..)
                 => {}
             }
         }
