@@ -1,5 +1,6 @@
 use std::{
     borrow::Cow,
+    collections::VecDeque,
     io,
     sync::{Arc, OnceLock},
 };
@@ -28,18 +29,25 @@ use crate::{approvals::ExecutorApprovalService, executors::ExecutorError};
 pub struct AppServerClient {
     rpc: OnceLock<JsonRpcPeer>,
     log_writer: LogWriter,
-    approvals: Option<Arc<dyn ExecutorApprovalService>>,
+    approvals: Arc<dyn ExecutorApprovalService>,
+    conversation_id: Mutex<Option<ConversationId>>,
+    pending_feedback: Mutex<VecDeque<String>>,
+    auto_approve: bool,
 }
 
 impl AppServerClient {
     pub fn new(
         log_writer: LogWriter,
-        approvals: Option<Arc<dyn ExecutorApprovalService>>,
+        approvals: Arc<dyn ExecutorApprovalService>,
+        auto_approve: bool,
     ) -> Arc<Self> {
         Arc::new(Self {
             rpc: OnceLock::new(),
             log_writer,
             approvals,
+            auto_approve,
+            conversation_id: Mutex::new(None),
+            pending_feedback: Mutex::new(VecDeque::new()),
         })
     }
 
@@ -127,7 +135,6 @@ impl AppServerClient {
     ) -> Result<(), ExecutorError> {
         match request {
             ServerRequest::ApplyPatchApproval { request_id, params } => {
-                let auto_approve = self.approvals.is_none();
                 let input = serde_json::to_value(&params)
                     .map_err(|err| ExecutorError::Io(io::Error::other(err.to_string())))?;
                 let status = match self.request_tool_approval("codex.apply_patch", input).await {
@@ -139,16 +146,16 @@ impl AppServerClient {
                         }
                     }
                 };
-                let decision = if auto_approve {
-                    ReviewDecision::ApprovedForSession
-                } else {
-                    map_status_to_decision(&status)
-                };
+                let (decision, feedback) = self.review_decision(&status).await?;
                 let response = ApplyPatchApprovalResponse { decision };
-                send_server_response(peer, request_id, response).await
+                send_server_response(peer, request_id, response).await?;
+                if let Some(message) = feedback {
+                    tracing::debug!("queueing patch denial feedback: {message}");
+                    self.enqueue_feedback(message).await;
+                }
+                Ok(())
             }
             ServerRequest::ExecCommandApproval { request_id, params } => {
-                let auto_approve = self.approvals.is_none();
                 let input = serde_json::to_value(&params)
                     .map_err(|err| ExecutorError::Io(io::Error::other(err.to_string())))?;
                 let status = match self
@@ -163,13 +170,14 @@ impl AppServerClient {
                         }
                     }
                 };
-                let decision = if auto_approve {
-                    ReviewDecision::ApprovedForSession
-                } else {
-                    map_status_to_decision(&status)
-                };
+                let (decision, feedback) = self.review_decision(&status).await?;
                 let response = ExecCommandApprovalResponse { decision };
-                send_server_response(peer, request_id, response).await
+                send_server_response(peer, request_id, response).await?;
+                if let Some(message) = feedback {
+                    tracing::debug!("queueing exec denial feedback: {message}");
+                    self.enqueue_feedback(message).await;
+                }
+                Ok(())
             }
         }
     }
@@ -179,27 +187,29 @@ impl AppServerClient {
         tool_name: &str,
         tool_input: Value,
     ) -> Result<ApprovalStatus, ExecutorError> {
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await; // allow request to be normalized
-        if let Some(service) = &self.approvals {
-            service
-                .request_tool_approval(tool_name, tool_input)
-                .await
-                .map_err(|err| ExecutorError::Io(io::Error::other(err.to_string())))
-        } else {
-            Ok(ApprovalStatus::Approved)
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        if self.auto_approve {
+            return Ok(ApprovalStatus::Approved);
         }
+        Ok(self
+            .approvals
+            .request_tool_approval(tool_name, tool_input)
+            .await?)
     }
 
     pub async fn register_session(
         &self,
         conversation_id: &ConversationId,
     ) -> Result<(), ExecutorError> {
-        if let Some(service) = &self.approvals {
-            service
-                .register_session(&conversation_id.to_string())
-                .await
-                .map_err(|err| ExecutorError::Io(io::Error::other(err.to_string())))?;
+        {
+            let mut guard = self.conversation_id.lock().await;
+            guard.replace(*conversation_id);
         }
+        self.approvals
+            .register_session(&conversation_id.to_string())
+            .await
+            .map_err(|err| ExecutorError::Io(io::Error::other(err.to_string())))?;
+        self.flush_pending_feedback().await;
         Ok(())
     }
 
@@ -220,6 +230,94 @@ impl AppServerClient {
 
     fn next_request_id(&self) -> RequestId {
         self.rpc().next_request_id()
+    }
+
+    async fn review_decision(
+        &self,
+        status: &ApprovalStatus,
+    ) -> Result<(ReviewDecision, Option<String>), ExecutorError> {
+        if self.auto_approve {
+            return Ok((ReviewDecision::ApprovedForSession, None));
+        }
+
+        let outcome = match status {
+            ApprovalStatus::Approved => (ReviewDecision::Approved, None),
+            ApprovalStatus::Denied { reason } => {
+                let feedback = reason
+                    .as_ref()
+                    .map(|s| s.trim())
+                    .filter(|s| !s.is_empty())
+                    .map(|s| s.to_string());
+                if feedback.is_some() {
+                    (ReviewDecision::Abort, feedback)
+                } else {
+                    (ReviewDecision::Denied, None)
+                }
+            }
+            ApprovalStatus::TimedOut => (ReviewDecision::Denied, None),
+            ApprovalStatus::Pending => (ReviewDecision::Denied, None),
+        };
+        Ok(outcome)
+    }
+
+    async fn enqueue_feedback(&self, message: String) {
+        if message.trim().is_empty() {
+            return;
+        }
+        let mut guard = self.pending_feedback.lock().await;
+        guard.push_back(message);
+    }
+
+    async fn flush_pending_feedback(&self) {
+        let messages: Vec<String> = {
+            let mut guard = self.pending_feedback.lock().await;
+            guard.drain(..).collect()
+        };
+
+        if messages.is_empty() {
+            return;
+        }
+
+        let Some(conversation_id) = *self.conversation_id.lock().await else {
+            tracing::warn!(
+                "pending Codex feedback but conversation id unavailable; dropping {} messages",
+                messages.len()
+            );
+            return;
+        };
+
+        for message in messages {
+            let trimmed = message.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            self.spawn_feedback_message(conversation_id, trimmed.to_string());
+        }
+    }
+
+    fn spawn_feedback_message(&self, conversation_id: ConversationId, feedback: String) {
+        let peer = self.rpc().clone();
+        let request = ClientRequest::SendUserMessage {
+            request_id: peer.next_request_id(),
+            params: SendUserMessageParams {
+                conversation_id,
+                items: vec![InputItem::Text {
+                    text: format!("User feedback: {feedback}"),
+                }],
+            },
+        };
+        tokio::spawn(async move {
+            if let Err(err) = peer
+                .request::<SendUserMessageResponse, _>(
+                    request_id(&request),
+                    &request,
+                    "sendUserMessage",
+                )
+                .await
+            {
+                tracing::error!("failed to send feedback follow-up message: {err}");
+            }
+        });
     }
 }
 
@@ -290,9 +388,15 @@ impl JsonRpcCallbacks for AppServerClient {
             return Ok(false);
         }
 
+        if method.ends_with("turn_aborted") {
+            tracing::debug!("codex turn aborted; flushing feedback queue");
+            self.flush_pending_feedback().await;
+            return Ok(false);
+        }
+
         let has_finished = method
             .strip_prefix("codex/event/")
-            .is_some_and(|suffix| matches!(suffix, "task_complete" | "turn_aborted"));
+            .is_some_and(|suffix| suffix == "task_complete");
 
         Ok(has_finished)
     }
@@ -300,20 +404,6 @@ impl JsonRpcCallbacks for AppServerClient {
     async fn on_non_json(&self, raw: &str) -> Result<(), ExecutorError> {
         self.log_writer.log_raw(raw).await?;
         Ok(())
-    }
-}
-
-fn map_status_to_decision(status: &ApprovalStatus) -> ReviewDecision {
-    match status {
-        ApprovalStatus::Approved => ReviewDecision::Approved,
-        // ApprovalStatus::Denied { reason }
-        //     if reason.as_ref().is_some_and(|r| !r.trim().is_empty()) =>
-        // {
-        //     ReviewDecision::Abort
-        // }
-        ApprovalStatus::Denied { .. } => ReviewDecision::Denied,
-        ApprovalStatus::TimedOut => ReviewDecision::Denied,
-        ApprovalStatus::Pending => ReviewDecision::Denied,
     }
 }
 
