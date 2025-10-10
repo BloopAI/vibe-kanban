@@ -1,6 +1,6 @@
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
-use std::{path::Path, process::Stdio, sync::Arc};
+use std::{collections::HashMap, path::Path, process::Stdio, sync::Arc};
 
 use async_trait::async_trait;
 use command_group::AsyncCommandGroup;
@@ -117,7 +117,11 @@ impl ClaudeCode {
         if let Some(model) = &self.model {
             builder = builder.extend_params(["--model", model]);
         }
-        builder = builder.extend_params(["--verbose", "--output-format=stream-json"]);
+        builder = builder.extend_params([
+            "--verbose",
+            "--output-format=stream-json",
+            "--include-partial-messages",
+        ]);
 
         apply_overrides(builder, &self.cmd)
     }
@@ -352,9 +356,11 @@ pub enum HistoryStrategy {
 pub struct ClaudeLogProcessor {
     model_name: Option<String>,
     // Map tool_use_id -> structured info for follow-up ToolResult replacement
-    tool_map: std::collections::HashMap<String, ClaudeToolCallInfo>,
+    tool_map: HashMap<String, ClaudeToolCallInfo>,
     // Strategy controlling how to handle history and user messages
     strategy: HistoryStrategy,
+    streaming_messages: HashMap<String, StreamingMessageState>,
+    streaming_message_id: Option<String>,
 }
 
 impl ClaudeLogProcessor {
@@ -366,8 +372,10 @@ impl ClaudeLogProcessor {
     fn new_with_strategy(strategy: HistoryStrategy) -> Self {
         Self {
             model_name: None,
-            tool_map: std::collections::HashMap::new(),
+            tool_map: HashMap::new(),
             strategy,
+            streaming_messages: HashMap::new(),
+            streaming_message_id: None,
         }
     }
 
@@ -428,26 +436,25 @@ impl ClaudeLogProcessor {
                             // Special handling to capture tool_use ids and replace with results later
                             match &claude_json {
                                 ClaudeJson::Assistant { message, .. } => {
-                                    // Inject system init with model if first time
-                                    if processor.model_name.is_none()
-                                        && let Some(model) = message.model.as_ref()
-                                    {
-                                        processor.model_name = Some(model.clone());
-                                        let entry = NormalizedEntry {
-                                            timestamp: None,
-                                            entry_type: NormalizedEntryType::SystemMessage,
-                                            content: format!(
-                                                "System initialized with model: {model}"
-                                            ),
-                                            metadata: None,
-                                        };
-                                        let id = entry_index_provider.next();
-                                        msg_store.push_patch(
-                                            ConversationPatch::add_normalized_entry(id, entry),
-                                        );
-                                    }
+                                    extract_model_name(
+                                        &msg_store,
+                                        &entry_index_provider,
+                                        &mut processor,
+                                        message,
+                                    );
 
-                                    for item in &message.content {
+                                    let mut streaming_message_state = message
+                                        .id
+                                        .as_ref()
+                                        .and_then(|id| processor.streaming_messages.remove(id));
+
+                                    for (content_index, item) in message.content.iter().enumerate()
+                                    {
+                                        let entry_index =
+                                            streaming_message_state.as_mut().and_then(|state| {
+                                                state.content_entry_index(content_index)
+                                            });
+
                                         match item {
                                             ClaudeContentItem::ToolUse { id, tool_data } => {
                                                 let tool_name = tool_data.get_name().to_string();
@@ -473,7 +480,9 @@ impl ClaudeLogProcessor {
                                                             .unwrap_or(serde_json::Value::Null),
                                                     ),
                                                 };
-                                                let id_num = entry_index_provider.next();
+                                                let is_new = entry_index.is_none();
+                                                let id_num = entry_index
+                                                    .unwrap_or_else(|| entry_index_provider.next());
                                                 processor.tool_map.insert(
                                                     id.clone(),
                                                     ClaudeToolCallInfo {
@@ -483,11 +492,17 @@ impl ClaudeLogProcessor {
                                                         content: content_text.clone(),
                                                     },
                                                 );
-                                                msg_store.push_patch(
-                                                    ConversationPatch::add_normalized_entry(
-                                                        id_num, entry,
-                                                    ),
-                                                );
+                                                if is_new {
+                                                    msg_store.push_patch(
+                                                        ConversationPatch::add_normalized_entry(
+                                                            id_num, entry,
+                                                        ),
+                                                    );
+                                                } else {
+                                                    msg_store.push_patch(
+                                                        ConversationPatch::replace(id_num, entry),
+                                                    );
+                                                }
                                             }
                                             ClaudeContentItem::Text { .. }
                                             | ClaudeContentItem::Thinking { .. } => {
@@ -498,12 +513,21 @@ impl ClaudeLogProcessor {
                                                         &worktree_path,
                                                     )
                                                 {
-                                                    let id = entry_index_provider.next();
-                                                    msg_store.push_patch(
-                                                        ConversationPatch::add_normalized_entry(
-                                                            id, entry,
-                                                        ),
-                                                    );
+                                                    let is_new = entry_index.is_none();
+                                                    let id = entry_index.unwrap_or_else(|| {
+                                                        entry_index_provider.next()
+                                                    });
+                                                    if is_new {
+                                                        msg_store.push_patch(
+                                                            ConversationPatch::add_normalized_entry(
+                                                                id, entry,
+                                                            ),
+                                                        );
+                                                    } else {
+                                                        msg_store.push_patch(
+                                                            ConversationPatch::replace(id, entry),
+                                                        );
+                                                    }
                                                 }
                                             }
                                             ClaudeContentItem::ToolResult { .. } => {
@@ -746,6 +770,71 @@ impl ClaudeLogProcessor {
                                         }
                                     }
                                 }
+                                ClaudeJson::StreamEvent { event, .. } => match event {
+                                    ClaudeStreamEvent::MessageStart { message } => {
+                                        if message.role == "assistant" {
+                                            extract_model_name(
+                                                &msg_store,
+                                                &entry_index_provider,
+                                                &mut processor,
+                                                message,
+                                            );
+
+                                            if let Some(message_id) = message.id.clone() {
+                                                processor.streaming_messages.insert(
+                                                    message_id.clone(),
+                                                    StreamingMessageState::new(
+                                                        message.role.clone(),
+                                                    ),
+                                                );
+                                                processor.streaming_message_id = Some(message_id);
+                                            } else {
+                                                processor.streaming_message_id = None;
+                                            }
+                                        } else {
+                                            processor.streaming_message_id = None;
+                                        }
+                                    }
+                                    ClaudeStreamEvent::ContentBlockStart {
+                                        index,
+                                        content_block,
+                                    } => {
+                                        if let Some(state) = processor
+                                            .streaming_message_id
+                                            .as_ref()
+                                            .and_then(|id| processor.streaming_messages.get_mut(id))
+                                        {
+                                            state
+                                                .content_block_start(*index, content_block.clone());
+                                        }
+                                    }
+                                    ClaudeStreamEvent::ContentBlockDelta { index, delta } => {
+                                        if let Some(state) = processor
+                                            .streaming_message_id
+                                            .as_ref()
+                                            .and_then(|id| processor.streaming_messages.get_mut(id))
+                                            && let Some(patch) = state.apply_content_block_delta(
+                                                *index,
+                                                delta,
+                                                &worktree_path,
+                                                &entry_index_provider,
+                                            )
+                                        {
+                                            msg_store.push_patch(patch);
+                                        }
+                                    }
+                                    ClaudeStreamEvent::ContentBlockStop { .. } => {}
+                                    ClaudeStreamEvent::MessageDelta { .. } => {}
+                                    ClaudeStreamEvent::MessageStop => {
+                                        if let Some(message_id) =
+                                            processor.streaming_message_id.take()
+                                        {
+                                            let _ =
+                                                processor.streaming_messages.remove(&message_id);
+                                        }
+                                    }
+                                    ClaudeStreamEvent::Unknown => {}
+                                },
                                 _ => {
                                     // Convert to normalized entries and create patches for other kinds
                                     for entry in
@@ -807,6 +896,7 @@ impl ClaudeLogProcessor {
             ClaudeJson::User { session_id, .. } => session_id.clone(),
             ClaudeJson::ToolUse { session_id, .. } => session_id.clone(),
             ClaudeJson::ToolResult { session_id, .. } => session_id.clone(),
+            ClaudeJson::StreamEvent { session_id, .. } => session_id.clone(),
             ClaudeJson::Result { session_id, .. } => session_id.clone(),
             ClaudeJson::Unknown { .. } => None,
         }
@@ -884,31 +974,8 @@ impl ClaudeLogProcessor {
 
                 entries
             }
-            ClaudeJson::Assistant { message, .. } => {
-                let mut entries = Vec::new();
-
-                if self.model_name.is_none()
-                    && let Some(model) = message.model.as_ref()
-                {
-                    self.model_name = Some(model.clone());
-                    entries.push(NormalizedEntry {
-                        timestamp: None,
-                        entry_type: NormalizedEntryType::SystemMessage,
-                        content: format!("System initialized with model: {model}"),
-                        metadata: None,
-                    });
-                }
-
-                for content_item in &message.content {
-                    if let Some(entry) = Self::content_item_to_normalized_entry(
-                        content_item,
-                        "assistant",
-                        worktree_path,
-                    ) {
-                        entries.push(entry);
-                    }
-                }
-                entries
+            ClaudeJson::Assistant { .. } => {
+                vec![]
             }
             ClaudeJson::User { .. } => {
                 vec![]
@@ -936,6 +1003,7 @@ impl ClaudeLogProcessor {
                 // TODO: Add proper ToolResult support to NormalizedEntry when the type system supports it
                 vec![]
             }
+            ClaudeJson::StreamEvent { .. } => vec![],
             ClaudeJson::Result {
                 subtype: _,
                 is_error,
@@ -1322,6 +1390,163 @@ impl ClaudeLogProcessor {
     }
 }
 
+fn extract_model_name(
+    msg_store: &Arc<MsgStore>,
+    entry_index_provider: &EntryIndexProvider,
+    processor: &mut ClaudeLogProcessor,
+    message: &ClaudeMessage,
+) {
+    // Inject system init with model if first time
+    if processor.model_name.is_none()
+        && let Some(model) = message.model.as_ref()
+    {
+        processor.model_name = Some(model.clone());
+        let entry = NormalizedEntry {
+            timestamp: None,
+            entry_type: NormalizedEntryType::SystemMessage,
+            content: format!("System initialized with model: {model}"),
+            metadata: None,
+        };
+        let id = entry_index_provider.next();
+        msg_store.push_patch(ConversationPatch::add_normalized_entry(id, entry));
+    }
+}
+
+struct StreamingMessageState {
+    role: String,
+    contents: HashMap<usize, StreamingContentState>,
+}
+
+impl StreamingMessageState {
+    fn new(role: String) -> Self {
+        Self {
+            role,
+            contents: HashMap::new(),
+        }
+    }
+
+    fn content_block_start(&mut self, index: usize, content_block: ClaudeContentItem) {
+        if let Some(state) = StreamingContentState::from_content_block(content_block) {
+            self.contents.insert(index, state);
+        }
+    }
+
+    fn apply_content_block_delta(
+        &mut self,
+        index: usize,
+        delta: &ClaudeContentBlockDelta,
+        worktree_path: &str,
+        entry_index_provider: &EntryIndexProvider,
+    ) -> Option<json_patch::Patch> {
+        if let std::collections::hash_map::Entry::Vacant(e) = self.contents.entry(index) {
+            let new_state = StreamingContentState::from_delta(delta)?;
+            e.insert(new_state);
+        }
+
+        let entry_state = self.contents.get_mut(&index)?;
+        entry_state.apply_content_delta(delta);
+
+        let content_item = entry_state.to_content_item();
+        let entry = ClaudeLogProcessor::content_item_to_normalized_entry(
+            &content_item,
+            &self.role,
+            worktree_path,
+        )?;
+
+        if let Some(existing_index) = entry_state.entry_index {
+            Some(ConversationPatch::replace(existing_index, entry))
+        } else {
+            let entry_index = entry_index_provider.next();
+            entry_state.entry_index = Some(entry_index);
+            Some(ConversationPatch::add_normalized_entry(entry_index, entry))
+        }
+    }
+
+    fn content_entry_index(&self, content_index: usize) -> Option<usize> {
+        self.contents
+            .get(&content_index)
+            .and_then(|s| s.entry_index)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum StreamingContentKind {
+    Text,
+    Thinking,
+}
+
+struct StreamingContentState {
+    kind: StreamingContentKind,
+    buffer: String,
+    entry_index: Option<usize>,
+}
+
+impl StreamingContentState {
+    fn from_content_block(content_block: ClaudeContentItem) -> Option<Self> {
+        match content_block {
+            ClaudeContentItem::Text { text } => Some(Self {
+                kind: StreamingContentKind::Text,
+                buffer: text,
+                entry_index: None,
+            }),
+            ClaudeContentItem::Thinking { thinking } => Some(Self {
+                kind: StreamingContentKind::Thinking,
+                buffer: thinking,
+                entry_index: None,
+            }),
+            _ => None,
+        }
+    }
+
+    fn from_delta(delta: &ClaudeContentBlockDelta) -> Option<Self> {
+        match delta {
+            ClaudeContentBlockDelta::TextDelta { .. } => Some(Self {
+                kind: StreamingContentKind::Text,
+                buffer: String::new(),
+                entry_index: None,
+            }),
+            ClaudeContentBlockDelta::ThinkingDelta { .. } => Some(Self {
+                kind: StreamingContentKind::Thinking,
+                buffer: String::new(),
+                entry_index: None,
+            }),
+            _ => None,
+        }
+    }
+
+    fn apply_content_delta(&mut self, delta: &ClaudeContentBlockDelta) {
+        match (self.kind, delta) {
+            (StreamingContentKind::Text, ClaudeContentBlockDelta::TextDelta { text }) => {
+                self.buffer.push_str(text);
+            }
+            (
+                StreamingContentKind::Thinking,
+                ClaudeContentBlockDelta::ThinkingDelta { thinking },
+            ) => {
+                self.buffer.push_str(thinking);
+            }
+            _ => {
+                tracing::warn!(
+                    "Mismatched content types: delta {:?}, kind {:?}",
+                    delta,
+                    self.kind
+                );
+            }
+        }
+    }
+
+    fn to_content_item(&self) -> ClaudeContentItem {
+        match self.kind {
+            StreamingContentKind::Text => ClaudeContentItem::Text {
+                text: self.buffer.clone(),
+            },
+            StreamingContentKind::Thinking => ClaudeContentItem::Thinking {
+                thinking: self.buffer.clone(),
+            },
+        }
+    }
+}
+
 // Data structures for parsing Claude's JSON output format
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 #[serde(tag = "type")]
@@ -1359,6 +1584,16 @@ pub enum ClaudeJson {
         is_error: Option<bool>,
         session_id: Option<String>,
     },
+    #[serde(rename = "stream_event")]
+    StreamEvent {
+        event: ClaudeStreamEvent,
+        #[serde(default)]
+        session_id: Option<String>,
+        #[serde(default)]
+        parent_tool_use_id: Option<String>,
+        #[serde(default)]
+        uuid: Option<String>,
+    },
     #[serde(rename = "result")]
     Result {
         #[serde(default)]
@@ -1380,7 +1615,7 @@ pub enum ClaudeJson {
     #[serde(untagged)]
     Unknown {
         #[serde(flatten)]
-        data: std::collections::HashMap<String, serde_json::Value>,
+        data: HashMap<String, serde_json::Value>,
     },
 }
 
@@ -1414,6 +1649,69 @@ pub enum ClaudeContentItem {
         content: serde_json::Value,
         is_error: Option<bool>,
     },
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[serde(tag = "type")]
+pub enum ClaudeStreamEvent {
+    #[serde(rename = "message_start")]
+    MessageStart { message: ClaudeMessage },
+    #[serde(rename = "content_block_start")]
+    ContentBlockStart {
+        index: usize,
+        content_block: ClaudeContentItem,
+    },
+    #[serde(rename = "content_block_delta")]
+    ContentBlockDelta {
+        index: usize,
+        delta: ClaudeContentBlockDelta,
+    },
+    #[serde(rename = "content_block_stop")]
+    ContentBlockStop { index: usize },
+    #[serde(rename = "message_delta")]
+    MessageDelta {
+        #[serde(default)]
+        delta: Option<ClaudeMessageDelta>,
+        #[serde(default)]
+        usage: Option<ClaudeUsage>,
+    },
+    #[serde(rename = "message_stop")]
+    MessageStop,
+    #[serde(other)]
+    Unknown,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[serde(tag = "type")]
+pub enum ClaudeContentBlockDelta {
+    #[serde(rename = "text_delta")]
+    TextDelta { text: String },
+    #[serde(rename = "thinking_delta")]
+    ThinkingDelta { thinking: String },
+    #[serde(other)]
+    Unknown,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Default)]
+pub struct ClaudeMessageDelta {
+    #[serde(default)]
+    pub stop_reason: Option<String>,
+    #[serde(default)]
+    pub stop_sequence: Option<String>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Default)]
+pub struct ClaudeUsage {
+    #[serde(default)]
+    pub input_tokens: Option<u64>,
+    #[serde(default)]
+    pub output_tokens: Option<u64>,
+    #[serde(default, rename = "cache_creation_input_tokens")]
+    pub cache_creation_input_tokens: Option<u64>,
+    #[serde(default, rename = "cache_read_input_tokens")]
+    pub cache_read_input_tokens: Option<u64>,
+    #[serde(default)]
+    pub service_tier: Option<String>,
 }
 
 /// Structured tool data for Claude tools based on real samples
