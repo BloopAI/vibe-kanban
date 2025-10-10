@@ -28,9 +28,7 @@ import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
 
 const DISCORD_GUILD_ID = '1423630976524877857';
 
-const INTERNAL_NAV = [
-  { label: 'Projects', icon: FolderOpen, to: '/projects' },
-];
+const INTERNAL_NAV = [{ label: 'Projects', icon: FolderOpen, to: '/projects' }];
 
 const EXTERNAL_LINKS = [
   {
@@ -163,12 +161,7 @@ export function Navbar() {
                 </Button>
               </>
             )}
-            <Button
-              variant="ghost"
-              size="icon"
-              asChild
-              aria-label="Settings"
-            >
+            <Button variant="ghost" size="icon" asChild aria-label="Settings">
               <Link to="/settings">
                 <Settings className="h-4 w-4" />
               </Link>
