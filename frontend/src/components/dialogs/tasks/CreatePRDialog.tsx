@@ -86,23 +86,40 @@ const CreatePrDialog = NiceModal.create(() => {
       setPrTitle('');
       setPrBody('');
       setPrBaseBranch('');
+      setCreatingPR(false);
       modal.hide();
     } else {
+      setCreatingPR(false);
       if (result.error) {
         modal.hide();
         switch (result.error) {
-          case GitHubServiceError.TOKEN_INVALID:
-            NiceModal.show('github-login');
-            break;
-          case GitHubServiceError.INSUFFICIENT_PERMISSIONS:
-            NiceModal.show('provide-pat');
-            break;
-          case GitHubServiceError.REPO_NOT_FOUND_OR_NO_ACCESS:
-            NiceModal.show('provide-pat', {
+          case GitHubServiceError.TOKEN_INVALID: {
+            const authSuccess = await NiceModal.show('github-login');
+            if (authSuccess) {
+              modal.show();
+              await handleConfirmCreatePR();
+            }
+            return;
+          }
+          case GitHubServiceError.INSUFFICIENT_PERMISSIONS: {
+            const patProvided = await NiceModal.show('provide-pat');
+            if (patProvided) {
+              modal.show();
+              await handleConfirmCreatePR();
+            }
+            return;
+          }
+          case GitHubServiceError.REPO_NOT_FOUND_OR_NO_ACCESS: {
+            const patProvided = await NiceModal.show('provide-pat', {
               errorMessage:
                 'Your token does not have access to this repository, or the repository does not exist. Please check the repository URL and/or provide a Personal Access Token with access.',
             });
-            break;
+            if (patProvided) {
+              modal.show();
+              await handleConfirmCreatePR();
+            }
+            return;
+          }
         }
       } else if (result.message) {
         setError(result.message);
@@ -110,7 +127,6 @@ const CreatePrDialog = NiceModal.create(() => {
         setError('Failed to create GitHub PR');
       }
     }
-    setCreatingPR(false);
   }, [data, prBaseBranch, prBody, prTitle, modal]);
 
   const handleCancelCreatePR = useCallback(() => {
