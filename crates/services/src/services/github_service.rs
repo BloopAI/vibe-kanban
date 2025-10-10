@@ -123,6 +123,7 @@ pub struct CreatePrRequest {
     pub body: Option<String>,
     pub head_branch: String,
     pub base_branch: String,
+    pub head_repo: Option<GitHubRepoInfo>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -223,9 +224,10 @@ impl GitHubService {
                 other => other,
             })?;
 
-        // Check if the head branch exists
+        let head_repo = request.head_repo.as_ref().unwrap_or(repo_info);
+
         self.client
-            .repos(&repo_info.owner, &repo_info.repo_name)
+            .repos(&head_repo.owner, &head_repo.repo_name)
             .get_ref(&octocrab::params::repos::Reference::Branch(
                 request.head_branch.to_string(),
             ))
@@ -238,11 +240,18 @@ impl GitHubService {
                 other => other,
             })?;
 
+        let head_ref =
+            if head_repo.owner != repo_info.owner || head_repo.repo_name != repo_info.repo_name {
+                format!("{}:{}", head_repo.owner, request.head_branch)
+            } else {
+                request.head_branch.clone()
+            };
+
         // Create the pull request
         let pr_info = self
             .client
             .pulls(&repo_info.owner, &repo_info.repo_name)
-            .create(&request.title, &request.head_branch, &request.base_branch)
+            .create(&request.title, &head_ref, &request.base_branch)
             .body(request.body.as_deref().unwrap_or(""))
             .send()
             .await

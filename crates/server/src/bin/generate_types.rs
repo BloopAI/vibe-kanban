@@ -64,6 +64,7 @@ fn generate_types_content() -> String {
         server::routes::auth::DevicePollStatus::decl(),
         server::routes::auth::CheckTokenResponse::decl(),
         services::services::git::GitBranch::decl(),
+        services::services::git::GitRemote::decl(),
         utils::diff::Diff::decl(),
         utils::diff::DiffChangeKind::decl(),
         services::services::github_service::RepositoryInfo::decl(),

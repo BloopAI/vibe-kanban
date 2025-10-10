@@ -86,7 +86,7 @@ export type ChangeTargetBranchResponse = { new_target_branch: string, status: [n
 
 export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id: ExecutorProfileId, base_branch: string, };
 
-export type CreateGitHubPrRequest = { title: string, body: string | null, target_branch: string | null, };
+export type CreateGitHubPrRequest = { title: string, body: string | null, target_branch: string | null, remote_name: string | null, head_remote_name: string | null, };
 
 export type ImageResponse = { id: string, file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, created_at: string, updated_at: string, };
 
@@ -115,6 +115,8 @@ export enum DevicePollStatus { SLOW_DOWN = "SLOW_DOWN", AUTHORIZATION_PENDING = 
 export enum CheckTokenResponse { VALID = "VALID", INVALID = "INVALID" }
 
 export type GitBranch = { name: string, is_current: boolean, is_remote: boolean, last_commit_date: Date, };
+
+export type GitRemote = { name: string, url: string | null, };
 
 export type Diff = { change: DiffChangeKind, oldPath: string | null, newPath: string | null, oldContent: string | null, newContent: string | null, 
 /**
