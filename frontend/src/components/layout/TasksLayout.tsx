@@ -235,6 +235,8 @@ function DesktopSimple({
       }}
     >
       <Panel
+        id="kanban"
+        order={1}
         defaultSize={targetLayout[0]}
         minSize={isKA ? MIN_PANEL_SIZE : 0}
         collapsible
@@ -247,26 +249,38 @@ function DesktopSimple({
       </Panel>
 
       <PanelResizeHandle
-        className="relative z-30 w-1 bg-border cursor-col-resize group touch-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+        id="handle-ka"
+        disabled={!isKA}
+        aria-hidden={!isKA}
+        className={
+          isKA
+            ? 'relative z-30 w-1 bg-border cursor-col-resize group touch-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1 focus-visible:ring-offset-background'
+            : 'w-0 pointer-events-none opacity-0'
+        }
         aria-label="Resize panels"
         role="separator"
         aria-orientation="vertical"
-        disabled={!isKA}
       >
-        <div className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border" />
-        <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 bg-muted/90 border border-border rounded-full px-1.5 py-3 opacity-70 group-hover:opacity-100 group-focus:opacity-100 transition-opacity shadow-sm">
-          <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-          <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-          <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-        </div>
+        {isKA && (
+          <>
+            <div className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border" />
+            <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 bg-muted/90 border border-border rounded-full px-1.5 py-3 opacity-70 group-hover:opacity-100 group-focus:opacity-100 transition-opacity shadow-sm">
+              <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+              <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+              <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+            </div>
+          </>
+        )}
       </PanelResizeHandle>
 
       <Panel
+        id="attempt"
+        order={2}
         defaultSize={targetLayout[1]}
         minSize={MIN_PANEL_SIZE}
         collapsible
         collapsedSize={0}
-        className="min-w-0 min-h-0 overflow-hidden border-l"
+        className="min-w-0 min-h-0 overflow-hidden"
         role="region"
         aria-label="Attempt details"
       >
@@ -274,26 +288,38 @@ function DesktopSimple({
       </Panel>
 
       <PanelResizeHandle
-        className="relative z-30 w-1 bg-border cursor-col-resize group touch-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+        id="handle-aa"
+        disabled={isKA}
+        aria-hidden={isKA}
+        className={
+          !isKA
+            ? 'relative z-30 w-1 bg-border cursor-col-resize group touch-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1 focus-visible:ring-offset-background'
+            : 'w-0 pointer-events-none opacity-0'
+        }
         aria-label="Resize panels"
         role="separator"
         aria-orientation="vertical"
-        disabled={isKA}
       >
-        <div className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border" />
-        <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 bg-muted/90 border border-border rounded-full px-1.5 py-3 opacity-70 group-hover:opacity-100 group-focus:opacity-100 transition-opacity shadow-sm">
-          <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-          <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-          <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-        </div>
+        {!isKA && (
+          <>
+            <div className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border" />
+            <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 bg-muted/90 border border-border rounded-full px-1.5 py-3 opacity-70 group-hover:opacity-100 group-focus:opacity-100 transition-opacity shadow-sm">
+              <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+              <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+              <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+            </div>
+          </>
+        )}
       </PanelResizeHandle>
 
       <Panel
+        id="aux"
+        order={3}
         defaultSize={targetLayout[2]}
         minSize={isKA ? 0 : MIN_PANEL_SIZE}
         collapsible
         collapsedSize={0}
-        className="min-w-0 min-h-0 overflow-hidden border-l"
+        className="min-w-0 min-h-0 overflow-hidden"
         role="region"
         aria-label={mode === 'preview' ? 'Preview' : 'Diffs'}
       >
