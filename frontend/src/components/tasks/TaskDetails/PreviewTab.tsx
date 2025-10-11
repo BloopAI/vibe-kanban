@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2 } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDevserverPreview } from '@/hooks/useDevserverPreview';
 import { useDevServer } from '@/hooks/useDevServer';
@@ -29,6 +29,7 @@ export default function PreviewTab({
   const [isReady, setIsReady] = useState(false);
   const [loadingTimeFinished, setLoadingTimeFinished] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showCompanionWarning, setShowCompanionWarning] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showLogs, setShowLogs] = useState(false);
   const listenerRef = useRef<ClickToComponentListener | null>(null);
@@ -81,6 +82,7 @@ export default function PreviewTab({
         setIsReady(true);
         setShowLogs(false);
         setShowHelp(false);
+        setShowCompanionWarning(false);
       },
     });
 
@@ -109,12 +111,17 @@ export default function PreviewTab({
     if (
       loadingTimeFinished &&
       !isReady &&
-      previewState.status !== 'ready' &&
       latestDevServerProcess &&
       runningDevServer
     ) {
-      setShowHelp(true);
-      setShowLogs(true);
+      // If preview is working (URL discovered), show companion warning instead
+      if (previewState.status === 'ready') {
+        setShowCompanionWarning(true);
+      } else {
+        // If preview is not working, show critical error
+        setShowHelp(true);
+        setShowLogs(true);
+      }
       setLoadingTimeFinished(false);
     }
   }, [
@@ -136,6 +143,7 @@ export default function PreviewTab({
     startDevServer();
     startTimer();
     setShowHelp(false);
+    setShowCompanionWarning(false);
     setIsReady(false);
   };
 
@@ -205,6 +213,33 @@ export default function PreviewTab({
               {isStoppingDevServer && <Loader2 className="mr-2 animate-spin" />}
               {t('preview.noServer.stopAndEditButton')}
             </Button>
+          </Alert>
+        )}
+        {showCompanionWarning && (
+          <Alert variant="default" className="space-y-2">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1">
+                <p className="font-bold">{t('preview.companionAlert.title')}</p>
+                <p className="mt-2">
+                  {t('preview.companionAlert.message')}{' '}
+                  <a
+                    href="https://github.com/BloopAI/vibe-kanban-web-companion"
+                    target="_blank"
+                    className="underline font-bold"
+                  >
+                    {t('preview.companionAlert.link')}
+                  </a>
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowCompanionWarning(false)}
+                className="h-6 w-6 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </Alert>
         )}
         <DevServerLogsView

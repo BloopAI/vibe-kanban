@@ -97,6 +97,11 @@
       "item3": "Have you installed the Web Companion (required for click-to-edit)? If not, please",
       "item3Link": "follow the installation instructions here"
     },
+    "companionAlert": {
+      "title": "Enable Click-to-Component",
+      "message": "Install the Web Companion to unlock click-to-edit functionality.",
+      "link": "View installation guide"
+    },
     "noServer": {
       "title": "No dev server running",
       "startPrompt": "Please start a dev server to see the preview",
