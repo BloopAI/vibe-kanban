@@ -19,6 +19,8 @@ import { useBranchStatus, useAttemptExecution } from '@/hooks';
 import { projectsApi } from '@/lib/api';
 import { paths } from '@/lib/paths';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
+import { ClickedElementsProvider } from '@/contexts/ClickedElementsProvider';
+import { ReviewProvider } from '@/contexts/ReviewProvider';
 import {
   useKeyCreate,
   useKeyExit,
@@ -739,16 +741,20 @@ export function ProjectTasks() {
   );
 
   const attemptArea = attempt ? (
-    <ExecutionProcessesProvider key={attempt.id} attemptId={attempt.id}>
-      <TasksLayout
-        kanban={kanbanContent}
-        attempt={attemptContent}
-        aux={auxContent}
-        hasAttempt={hasAttempt}
-        mode={mode}
-        isMobile={isMobile}
-      />
-    </ExecutionProcessesProvider>
+    <ClickedElementsProvider attempt={attempt}>
+      <ReviewProvider key={attempt.id}>
+        <ExecutionProcessesProvider key={attempt.id} attemptId={attempt.id}>
+          <TasksLayout
+            kanban={kanbanContent}
+            attempt={attemptContent}
+            aux={auxContent}
+            hasAttempt={hasAttempt}
+            mode={mode}
+            isMobile={isMobile}
+          />
+        </ExecutionProcessesProvider>
+      </ReviewProvider>
+    </ClickedElementsProvider>
   ) : (
     <TasksLayout
       kanban={kanbanContent}

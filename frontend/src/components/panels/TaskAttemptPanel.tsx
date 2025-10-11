@@ -2,8 +2,6 @@ import type { TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
 import VirtualizedList from '@/components/logs/VirtualizedList';
 import { TaskFollowUpSection } from '@/components/tasks/TaskFollowUpSection';
 import { EntriesProvider } from '@/contexts/EntriesContext';
-import { ReviewProvider } from '@/contexts/ReviewProvider';
-import { ClickedElementsProvider } from '@/contexts/ClickedElementsProvider';
 import { RetryUiProvider } from '@/contexts/RetryUiContext';
 import type { ReactNode } from 'react';
 
@@ -27,24 +25,20 @@ const TaskAttemptPanel = ({
   }
 
   return (
-    <ReviewProvider>
-      <ClickedElementsProvider attempt={attempt}>
-        <EntriesProvider key={attempt.id}>
-          <RetryUiProvider attemptId={attempt.id}>
-            {children({
-              logs: <VirtualizedList key={attempt.id} attempt={attempt} />,
-              followUp: (
-                <TaskFollowUpSection
-                  task={task}
-                  selectedAttemptId={attempt.id}
-                  jumpToLogsTab={() => {}}
-                />
-              ),
-            })}
-          </RetryUiProvider>
-        </EntriesProvider>
-      </ClickedElementsProvider>
-    </ReviewProvider>
+    <EntriesProvider key={attempt.id}>
+      <RetryUiProvider attemptId={attempt.id}>
+        {children({
+          logs: <VirtualizedList key={attempt.id} attempt={attempt} />,
+          followUp: (
+            <TaskFollowUpSection
+              task={task}
+              selectedAttemptId={attempt.id}
+              jumpToLogsTab={() => {}}
+            />
+          ),
+        })}
+      </RetryUiProvider>
+    </EntriesProvider>
   );
 };
 
