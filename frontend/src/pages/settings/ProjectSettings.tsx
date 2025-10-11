@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { cloneDeep, isEqual } from 'lodash';
+import { isEqual } from 'lodash';
 import {
   Card,
   CardContent,
@@ -148,9 +148,20 @@ export function ProjectSettings() {
   }, [hasUnsavedChanges]);
 
   const { updateProject } = useProjectMutations({
-    onUpdateSuccess: () => {
-      setSuccess(true);
+    onUpdateSuccess: (updatedProject: Project) => {
+      // Update local state with fresh data from server
+      setSelectedProject(updatedProject);
+      const formState: ProjectFormState = {
+        name: updatedProject.name,
+        git_repo_path: updatedProject.git_repo_path,
+        setup_script: updatedProject.setup_script ?? '',
+        dev_script: updatedProject.dev_script ?? '',
+        cleanup_script: updatedProject.cleanup_script ?? '',
+        copy_files: updatedProject.copy_files ?? '',
+      };
+      setDraft(formState);
       setDirty(false);
+      setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
       setSaving(false);
     },

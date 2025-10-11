@@ -17,6 +17,7 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
     mutationFn: (data: CreateProject) => projectsApi.create(data),
     onSuccess: (project: Project) => {
       queryClient.setQueryData(['project', project.id], project);
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
       options?.onCreateSuccess?.(project);
     },
     onError: (err) => {
@@ -36,6 +37,7 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
     }) => projectsApi.update(projectId, data),
     onSuccess: (project: Project) => {
       queryClient.setQueryData(['project', project.id], project);
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
       options?.onUpdateSuccess?.(project);
     },
     onError: (err) => {
