@@ -7,21 +7,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { TaskTemplateManager } from '@/components/TaskTemplateManager';
 import { ProjectFormFields } from '@/components/projects/project-form-fields';
-import { CreateProject, Project } from 'shared/types';
+import { CreateProject } from 'shared/types';
 import { generateProjectNameFromPath } from '@/utils/string';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 
 export interface ProjectFormDialogProps {
-  project?: Project | null;
+  // No props needed - this is only for creating projects now
 }
 
 export type ProjectFormDialogResult = 'saved' | 'canceled';
 
 export const ProjectFormDialog = NiceModal.create<ProjectFormDialogProps>(
-  ({ project }) => {
+  () => {
     const modal = useModal();
     const [name, setName] = useState('');
     const [gitRepoPath, setGitRepoPath] = useState('');
@@ -29,8 +28,6 @@ export const ProjectFormDialog = NiceModal.create<ProjectFormDialogProps>(
     const [repoMode, setRepoMode] = useState<'existing' | 'new'>('existing');
     const [parentPath, setParentPath] = useState('');
     const [folderName, setFolderName] = useState('');
-
-    const isEditing = !!project;
 
     const { createProject } = useProjectMutations({
       onCreateSuccess: () => {
@@ -46,8 +43,7 @@ export const ProjectFormDialog = NiceModal.create<ProjectFormDialogProps>(
     const handleGitRepoPathChange = (path: string) => {
       setGitRepoPath(path);
 
-      // Only auto-populate name for new projects
-      if (!isEditing && path) {
+      if (path) {
         const cleanName = generateProjectNameFromPath(path);
         if (cleanName) setName(cleanName);
       }
@@ -122,58 +118,46 @@ export const ProjectFormDialog = NiceModal.create<ProjectFormDialogProps>(
       <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
         <DialogContent className="overflow-x-hidden">
           <DialogHeader>
-            <DialogTitle>
-              {isEditing ? 'Project Task Templates' : 'Create Project'}
-            </DialogTitle>
-            <DialogDescription>
-              {isEditing
-                ? 'Manage task templates for this project.'
-                : 'Choose your repository source'}
-            </DialogDescription>
+            <DialogTitle>Create Project</DialogTitle>
+            <DialogDescription>Choose your repository source</DialogDescription>
           </DialogHeader>
 
           <div className="mx-auto w-full max-w-2xl overflow-x-hidden px-1">
-            {isEditing ? (
-              <TaskTemplateManager
-                projectId={project ? project.id : undefined}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <ProjectFormFields
+                isEditing={false}
+                repoMode={repoMode}
+                setRepoMode={setRepoMode}
+                gitRepoPath={gitRepoPath}
+                handleGitRepoPathChange={handleGitRepoPathChange}
+                parentPath={parentPath}
+                setParentPath={setParentPath}
+                setFolderName={setFolderName}
+                setName={setName}
+                name={name}
+                setupScript=""
+                setSetupScript={() => {}}
+                devScript=""
+                setDevScript={() => {}}
+                cleanupScript=""
+                setCleanupScript={() => {}}
+                copyFiles=""
+                setCopyFiles={() => {}}
+                error={error}
+                setError={setError}
+                projectId={undefined}
+                onCreateProject={handleDirectCreate}
               />
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <ProjectFormFields
-                  isEditing={isEditing}
-                  repoMode={repoMode}
-                  setRepoMode={setRepoMode}
-                  gitRepoPath={gitRepoPath}
-                  handleGitRepoPathChange={handleGitRepoPathChange}
-                  parentPath={parentPath}
-                  setParentPath={setParentPath}
-                  setFolderName={setFolderName}
-                  setName={setName}
-                  name={name}
-                  setupScript=""
-                  setSetupScript={() => {}}
-                  devScript=""
-                  setDevScript={() => {}}
-                  cleanupScript=""
-                  setCleanupScript={() => {}}
-                  copyFiles=""
-                  setCopyFiles={() => {}}
-                  error={error}
-                  setError={setError}
-                  projectId={undefined}
-                  onCreateProject={handleDirectCreate}
-                />
-                {repoMode === 'new' && (
-                  <Button
-                    type="submit"
-                    disabled={createProject.isPending || !folderName.trim()}
-                    className="w-full"
-                  >
-                    {createProject.isPending ? 'Creating...' : 'Create Project'}
-                  </Button>
-                )}
-              </form>
-            )}
+              {repoMode === 'new' && (
+                <Button
+                  type="submit"
+                  disabled={createProject.isPending || !folderName.trim()}
+                  className="w-full"
+                >
+                  {createProject.isPending ? 'Creating...' : 'Create Project'}
+                </Button>
+              )}
+            </form>
           </div>
         </DialogContent>
       </Dialog>

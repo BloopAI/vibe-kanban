@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { cloneDeep, isEqual } from 'lodash';
 import {
@@ -42,6 +43,7 @@ interface ProjectFormState {
 }
 
 export function ProjectSettings() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useTranslation('settings');
   const { system } = useUserSystem();
 
@@ -53,7 +55,9 @@ export function ProjectSettings() {
   } = useProjects();
 
   // Selected project state
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(
+    searchParams.get('projectId') || ''
+  );
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
   // Form state
@@ -74,6 +78,16 @@ export function ProjectSettings() {
         cleanup:
           '#!/bin/bash\n# Add cleanup commands here...\n# This runs after coding agent execution',
       };
+
+  // Sync URL param when project ID changes from dropdown
+  const handleProjectSelect = (projectId: string) => {
+    setSelectedProjectId(projectId);
+    if (projectId) {
+      setSearchParams({ projectId });
+    } else {
+      setSearchParams({});
+    }
+  };
 
   // Update selected project when ID changes
   useEffect(() => {
@@ -251,7 +265,7 @@ export function ProjectSettings() {
             </Label>
             <Select
               value={selectedProjectId}
-              onValueChange={setSelectedProjectId}
+              onValueChange={handleProjectSelect}
             >
               <SelectTrigger id="project-selector">
                 <SelectValue

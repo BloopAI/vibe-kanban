@@ -11,7 +11,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Project } from 'shared/types';
-import { showProjectForm } from '@/lib/modals';
 import { projectsApi } from '@/lib/api';
 import {
   AlertCircle,
@@ -70,15 +69,8 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
     }
   };
 
-  const handleEditClick = async () => {
-    try {
-      const result = await showProjectForm({ project });
-      if (result === 'saved') {
-        fetchProject();
-      }
-    } catch (error) {
-      // User cancelled - do nothing
-    }
+  const handleEditClick = () => {
+    navigate(`/settings/projects?projectId=${projectId}`);
   };
 
   useEffect(() => {
