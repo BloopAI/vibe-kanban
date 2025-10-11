@@ -2,7 +2,7 @@ import { useMemo, useCallback } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import { attemptsApi, executionProcessesApi } from '@/lib/api';
 import { useTaskStopping } from '@/stores/useTaskDetailsUiStore';
-import { useExecutionProcesses } from './useExecutionProcesses';
+import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
 import type { AttemptData } from '@/lib/types';
 import type { ExecutionProcess } from 'shared/types';
 
@@ -10,10 +10,10 @@ export function useAttemptExecution(attemptId?: string, taskId?: string) {
   const { isStopping, setIsStopping } = useTaskStopping(taskId || '');
 
   const {
-    executionProcesses,
-    isAttemptRunning,
+    executionProcessesVisible: executionProcesses,
+    isAttemptRunningVisible: isAttemptRunning,
     isLoading: streamLoading,
-  } = useExecutionProcesses(attemptId ?? '');
+  } = useExecutionProcessesContext();
 
   // Get setup script processes that need detailed info
   const setupProcesses = useMemo(() => {

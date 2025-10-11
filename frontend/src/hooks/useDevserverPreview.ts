@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
-import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
+import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
 import { streamJsonPatchEntries } from '@/utils/streamJsonPatchEntries';
 import { PatchType } from 'shared/types';
 import { stripAnsi } from 'fancy-ansi';
@@ -23,10 +23,10 @@ export function useDevserverPreview(
     projectHasDevScript: false,
   }
 ): DevserverPreviewState {
-  const { executionProcesses, error: processesError } = useExecutionProcesses(
-    attemptId || '',
-    { showSoftDeleted: false }
-  );
+  const {
+    executionProcessesVisible: executionProcesses,
+    error: processesError,
+  } = useExecutionProcessesContext();
 
   const [state, setState] = useState<DevserverPreviewState>({
     status: 'idle',
