@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import DiffViewSwitch from '@/components/diff-view-switch';
 import DiffCard from '@/components/DiffCard';
 import { useDiffSummary } from '@/hooks/useDiffSummary';
-import { ReviewProvider } from '@/contexts/ReviewProvider';
 import { NewCardHeader } from '@/components/ui/new-card';
 import { ChevronsUp, ChevronsDown } from 'lucide-react';
 import {
@@ -120,20 +119,18 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
   }
 
   return (
-    <ReviewProvider>
-      <DiffsPanelContent
-        diffs={diffs}
-        fileCount={fileCount}
-        added={added}
-        deleted={deleted}
-        collapsedIds={collapsedIds}
-        allCollapsed={allCollapsed}
-        handleCollapseAll={handleCollapseAll}
-        toggle={toggle}
-        selectedAttempt={selectedAttempt}
-        gitOps={gitOps}
-      />
-    </ReviewProvider>
+    <DiffsPanelContent
+      diffs={diffs}
+      fileCount={fileCount}
+      added={added}
+      deleted={deleted}
+      collapsedIds={collapsedIds}
+      allCollapsed={allCollapsed}
+      handleCollapseAll={handleCollapseAll}
+      toggle={toggle}
+      selectedAttempt={selectedAttempt}
+      gitOps={gitOps}
+    />
   );
 }
 
