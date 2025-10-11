@@ -1,5 +1,10 @@
-import { ReactNode, useEffect, useRef, useState } from 'react';
-import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
+import { ReactNode, useEffect, useRef, useState, useLayoutEffect } from 'react';
+import {
+  PanelGroup,
+  Panel,
+  PanelResizeHandle,
+  ImperativePanelGroupHandle,
+} from 'react-resizable-panels';
 import { AnimatePresence, motion } from 'framer-motion';
 
 export type LayoutMode = 'preview' | 'diffs' | null;
@@ -131,187 +136,172 @@ function usePersistentSplitSizes(
 
   useEffect(() => {
     setSizes(loadPanelSizes(key, fallback, migration));
-  }, [key, fallback, migration]);
-
-  useEffect(() => {
-    persistJSON(key, sizes);
-  }, [key, sizes]);
+  }, [key]);
 
   return [sizes, setSizes] as const;
 }
 
 /**
- * Resize handle divider with visual affordance.
- *
- * Includes a subtle vertical line and a hoverable grip indicator with three dots
- * for improved discoverability. Fully keyboard-accessible with focus ring.
+ * AuxRouter - Handles nested AnimatePresence for preview/diffs transitions.
  */
-function Divider() {
+function AuxRouter({ mode, aux }: { mode: LayoutMode; aux: ReactNode }) {
   return (
-    <PanelResizeHandle
-      className="relative z-30 w-1 bg-border cursor-col-resize group touch-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
-      aria-label="Resize panels"
-      role="separator"
-      aria-orientation="vertical"
-    >
-      <div className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border" />
-      <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 bg-muted/90 border border-border rounded-full px-1.5 py-3 opacity-70 group-hover:opacity-100 group-focus:opacity-100 transition-opacity shadow-sm">
-        <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-        <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-        <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-      </div>
-    </PanelResizeHandle>
+    <AnimatePresence initial={false} mode="popLayout">
+      {mode && (
+        <motion.div
+          key={mode}
+          initial={{ x: 16, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          exit={{ x: -16, opacity: 0 }}
+          transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
+          className="h-full min-h-0"
+        >
+          {aux}
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
 /**
- * Generic two-panel split with resizable divider and localStorage persistence.
- *
- * This component manages a horizontal split between two panels, persisting the
- * user's preferred sizes and supporting migration from legacy storage formats.
- *
- * Panel sizes are stored as percentages that sum to ~100.
+ * DesktopSimple - Single 3-panel layout that keeps attempt mounted across all mode transitions.
+ * Uses imperative setLayout to collapse the inactive side (Kanban or Aux) based on mode.
  */
-function TwoPanelSplit({
-  left,
-  right,
-  leftLabel,
-  rightLabel,
-  storageKey,
-  defaultSizes,
-  minLeft = MIN_PANEL_SIZE,
-  minRight = MIN_PANEL_SIZE,
-  leftClassName = 'min-w-0 min-h-0 overflow-hidden',
-  rightClassName = 'min-w-0 min-h-0 overflow-hidden border-l',
-  migration,
-}: {
-  left: ReactNode;
-  right: ReactNode;
-  leftLabel: string;
-  rightLabel: string;
-  storageKey: string;
-  defaultSizes: SplitSizes;
-  minLeft?: number;
-  minRight?: number;
-  leftClassName?: string;
-  rightClassName?: string;
-  migration?: {
-    fromKey: string;
-    map: (legacy: [number, number, number]) => SplitSizes;
-  };
-}) {
-  const [sizes, setSizes] = usePersistentSplitSizes(
-    storageKey,
-    defaultSizes,
-    migration
-  );
-
-  return (
-    <PanelGroup
-      key={storageKey}
-      direction="horizontal"
-      onLayout={(layout) => {
-        if (Array.isArray(layout) && layout.length === 2) {
-          setSizes([layout[0], layout[1]]);
-        }
-      }}
-      className="h-full min-h-0"
-    >
-      <Panel
-        defaultSize={sizes[0]}
-        minSize={minLeft}
-        collapsible
-        collapsedSize={0}
-        className={leftClassName}
-        role="region"
-        aria-label={leftLabel}
-      >
-        {left}
-      </Panel>
-
-      <Divider />
-
-      <Panel
-        defaultSize={sizes[1]}
-        minSize={minRight}
-        collapsible
-        collapsedSize={0}
-        className={rightClassName}
-        role="region"
-        aria-label={rightLabel}
-      >
-        {right}
-      </Panel>
-    </PanelGroup>
-  );
-}
-
-function DesktopKanbanAttempt({
+function DesktopSimple({
   kanban,
   attempt,
+  aux,
+  mode,
 }: {
   kanban: ReactNode;
   attempt: ReactNode;
+  aux: ReactNode;
+  mode: LayoutMode;
 }) {
-  const migration = {
+  const kaMigration = {
     fromKey: STORAGE_KEYS.LEGACY.MAIN,
     map: (legacy: [number, number, number]) =>
       [legacy[0], legacy[1]] as SplitSizes,
   };
 
+  const aaMigration = {
+    fromKey: STORAGE_KEYS.LEGACY.AUX,
+    map: (legacy: [number, number, number]) =>
+      [legacy[1], legacy[2]] as SplitSizes,
+  };
+
+  const [kaSizes] = usePersistentSplitSizes(
+    STORAGE_KEYS.V2.KANBAN_ATTEMPT,
+    DEFAULT_KANBAN_ATTEMPT,
+    kaMigration
+  );
+
+  const aaStorageKey =
+    mode === 'diffs'
+      ? STORAGE_KEYS.V2.ATTEMPT_DIFFS
+      : STORAGE_KEYS.V2.ATTEMPT_PREVIEW;
+
+  const [aaSizes] = usePersistentSplitSizes(
+    aaStorageKey,
+    DEFAULT_ATTEMPT_AUX,
+    aaMigration
+  );
+
+  const isKA = mode === null;
+  const targetLayout: [number, number, number] = isKA
+    ? [kaSizes[0], kaSizes[1], 0]
+    : [0, aaSizes[0], aaSizes[1]];
+
+  const groupRef = useRef<ImperativePanelGroupHandle | null>(null);
+
+  useLayoutEffect(() => {
+    if (groupRef.current) {
+      groupRef.current.setLayout(targetLayout);
+    }
+  }, [isKA, kaSizes, aaSizes]);
+
   return (
-    <TwoPanelSplit
-      left={kanban}
-      right={attempt}
-      leftLabel="Kanban board"
-      rightLabel="Attempt details"
-      storageKey={STORAGE_KEYS.V2.KANBAN_ATTEMPT}
-      defaultSizes={DEFAULT_KANBAN_ATTEMPT}
-      migration={migration}
-    />
+    <PanelGroup
+      ref={groupRef}
+      direction="horizontal"
+      className="h-full min-h-0"
+      onLayout={(layout) => {
+        if (!Array.isArray(layout) || layout.length !== 3) return;
+        if (isKA) {
+          persistJSON(STORAGE_KEYS.V2.KANBAN_ATTEMPT, [layout[0], layout[1]]);
+        } else {
+          persistJSON(aaStorageKey, [layout[1], layout[2]]);
+        }
+      }}
+    >
+      <Panel
+        defaultSize={targetLayout[0]}
+        minSize={isKA ? MIN_PANEL_SIZE : 0}
+        collapsible
+        collapsedSize={0}
+        className="min-w-0 min-h-0 overflow-hidden"
+        role="region"
+        aria-label="Kanban board"
+      >
+        {kanban}
+      </Panel>
+
+      <PanelResizeHandle
+        className="relative z-30 w-1 bg-border cursor-col-resize group touch-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+        aria-label="Resize panels"
+        role="separator"
+        aria-orientation="vertical"
+        disabled={!isKA}
+      >
+        <div className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border" />
+        <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 bg-muted/90 border border-border rounded-full px-1.5 py-3 opacity-70 group-hover:opacity-100 group-focus:opacity-100 transition-opacity shadow-sm">
+          <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+          <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+          <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+        </div>
+      </PanelResizeHandle>
+
+      <Panel
+        defaultSize={targetLayout[1]}
+        minSize={MIN_PANEL_SIZE}
+        collapsible
+        collapsedSize={0}
+        className="min-w-0 min-h-0 overflow-hidden border-l"
+        role="region"
+        aria-label="Attempt details"
+      >
+        {attempt}
+      </Panel>
+
+      <PanelResizeHandle
+        className="relative z-30 w-1 bg-border cursor-col-resize group touch-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+        aria-label="Resize panels"
+        role="separator"
+        aria-orientation="vertical"
+        disabled={isKA}
+      >
+        <div className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border" />
+        <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 bg-muted/90 border border-border rounded-full px-1.5 py-3 opacity-70 group-hover:opacity-100 group-focus:opacity-100 transition-opacity shadow-sm">
+          <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+          <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+          <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+        </div>
+      </PanelResizeHandle>
+
+      <Panel
+        defaultSize={targetLayout[2]}
+        minSize={isKA ? 0 : MIN_PANEL_SIZE}
+        collapsible
+        collapsedSize={0}
+        className="min-w-0 min-h-0 overflow-hidden border-l"
+        role="region"
+        aria-label={mode === 'preview' ? 'Preview' : 'Diffs'}
+      >
+        <AuxRouter mode={mode} aux={aux} />
+      </Panel>
+    </PanelGroup>
   );
 }
-
-function DesktopAttemptAux({
-  attempt,
-  aux,
-  auxLabel,
-  storageKey,
-  migrateFromLegacy = true,
-}: {
-  attempt: ReactNode;
-  aux: ReactNode;
-  auxLabel: 'Preview' | 'Diffs';
-  storageKey: string;
-  migrateFromLegacy?: boolean;
-}) {
-  const migration = migrateFromLegacy
-    ? {
-        fromKey: STORAGE_KEYS.LEGACY.AUX,
-        map: (legacy: [number, number, number]) =>
-          [legacy[1], legacy[2]] as SplitSizes,
-      }
-    : undefined;
-
-  return (
-    <TwoPanelSplit
-      left={attempt}
-      right={aux}
-      leftLabel="Attempt details"
-      rightLabel={auxLabel}
-      storageKey={storageKey}
-      defaultSizes={DEFAULT_ATTEMPT_AUX}
-      migration={migration}
-    />
-  );
-}
-
-const KEY_DEPTH: Record<string, number> = {
-  'kanban-only': 0,
-  'kanban-attempt': 1,
-  'attempt-preview': 2,
-  'attempt-diffs': 2,
-};
 
 export function TasksLayout({
   kanban,
@@ -321,15 +311,9 @@ export function TasksLayout({
   mode,
   isMobile = false,
 }: TasksLayoutProps) {
-  const desktopKey = !hasAttempt
-    ? 'kanban-only'
-    : mode === 'preview'
-      ? 'attempt-preview'
-      : mode === 'diffs'
-        ? 'attempt-diffs'
-        : 'kanban-attempt';
+  const desktopKey = hasAttempt ? 'desktop-with-attempt' : 'kanban-only';
 
-  const depth = KEY_DEPTH[desktopKey] ?? 0;
+  const depth = hasAttempt ? 1 : 0;
   const prevDepthRef = useRef(depth);
   const dir =
     depth === prevDepthRef.current ? 0 : depth > prevDepthRef.current ? 1 : -1;
@@ -399,39 +383,9 @@ export function TasksLayout({
       </div>
     );
   } else {
-    switch (mode) {
-      case null:
-        desktopNode = (
-          <DesktopKanbanAttempt kanban={kanban} attempt={attempt} />
-        );
-        break;
-      case 'preview':
-        desktopNode = (
-          <DesktopAttemptAux
-            attempt={attempt}
-            aux={aux}
-            auxLabel="Preview"
-            storageKey={STORAGE_KEYS.V2.ATTEMPT_PREVIEW}
-            migrateFromLegacy
-          />
-        );
-        break;
-      case 'diffs':
-        desktopNode = (
-          <DesktopAttemptAux
-            attempt={attempt}
-            aux={aux}
-            auxLabel="Diffs"
-            storageKey={STORAGE_KEYS.V2.ATTEMPT_DIFFS}
-            migrateFromLegacy
-          />
-        );
-        break;
-      default:
-        desktopNode = (
-          <DesktopKanbanAttempt kanban={kanban} attempt={attempt} />
-        );
-    }
+    desktopNode = (
+      <DesktopSimple kanban={kanban} attempt={attempt} aux={aux} mode={mode} />
+    );
   }
 
   const slideVariants = {

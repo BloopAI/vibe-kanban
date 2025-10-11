@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { applyPatch } from 'rfc6902';
 import type { Operation } from 'rfc6902';
@@ -50,23 +50,14 @@ function useDraftsStreamState(projectId?: string): Drafts | undefined {
   const initialData = useCallback((): DraftsContainer => ({ drafts: {} }), []);
   const queryKey = useMemo(() => ['ws-json-patch', wsUrl], [wsUrl]);
 
-  const { data } = useQuery<DraftsContainer | undefined>({
+  const { data } = useQuery<DraftsContainer>({
     queryKey,
-    enabled: isStreamEnabled,
+    queryFn: initialData, // Defensive fallback (won't run because enabled: false)
+    enabled: false, // State holder only - data comes from WebSocket
     staleTime: Infinity,
     gcTime: 0,
-    initialData: undefined,
+    initialData,
   });
-
-  useEffect(() => {
-    if (!isStreamEnabled) return;
-    const current = queryClient.getQueryData<DraftsContainer | undefined>(
-      queryKey
-    );
-    if (current === undefined) {
-      queryClient.setQueryData<DraftsContainer>(queryKey, initialData());
-    }
-  }, [isStreamEnabled, queryClient, queryKey, initialData]);
 
   const { getWebSocket } = useWebSocket(
     wsUrl ?? 'ws://invalid',
@@ -82,15 +73,12 @@ function useDraftsStreamState(projectId?: string): Drafts | undefined {
           if ('JsonPatch' in msg) {
             const patches = msg.JsonPatch;
             if (!patches.length) return;
-            queryClient.setQueryData<DraftsContainer | undefined>(
-              queryKey,
-              (prev) => {
-                const base = prev ?? initialData();
-                const next = structuredClone(base) as DraftsContainer;
-                applyPatch(next, patches);
-                return next;
-              }
-            );
+            queryClient.setQueryData<DraftsContainer>(queryKey, (prev) => {
+              const base = prev ?? initialData();
+              const next = structuredClone(base) as DraftsContainer;
+              applyPatch(next, patches);
+              return next;
+            });
           } else if ('finished' in msg) {
             try {
               getWebSocket()?.close();
@@ -106,7 +94,7 @@ function useDraftsStreamState(projectId?: string): Drafts | undefined {
     isStreamEnabled
   );
 
-  return isStreamEnabled ? data?.drafts : undefined;
+  return isStreamEnabled ? data.drafts : undefined;
 }
 
 function toWsUrl(endpoint?: string): string | undefined {
