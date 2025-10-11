@@ -109,6 +109,7 @@ export default function PreviewTab({
     if (
       loadingTimeFinished &&
       !isReady &&
+      previewState.status !== 'ready' &&
       latestDevServerProcess &&
       runningDevServer
     ) {
@@ -119,6 +120,7 @@ export default function PreviewTab({
   }, [
     loadingTimeFinished,
     isReady,
+    previewState.status,
     latestDevServerProcess?.id,
     runningDevServer,
   ]);
