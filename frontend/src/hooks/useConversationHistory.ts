@@ -9,7 +9,7 @@ import {
   TaskAttempt,
   ToolStatus,
 } from 'shared/types';
-import { useExecutionProcesses } from './useExecutionProcesses';
+import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
 import { useEffect, useMemo, useRef } from 'react';
 import { streamJsonPatchEntries } from '@/utils/streamJsonPatchEntries';
 
@@ -54,9 +54,8 @@ export const useConversationHistory = ({
   attempt,
   onEntriesUpdated,
 }: UseConversationHistoryParams): UseConversationHistoryResult => {
-  const { executionProcesses: executionProcessesRaw } = useExecutionProcesses(
-    attempt.id
-  );
+  const { executionProcessesVisible: executionProcessesRaw } =
+    useExecutionProcessesContext();
   const executionProcesses = useRef<ExecutionProcess[]>(executionProcessesRaw);
   const displayedExecutionProcesses = useRef<ExecutionProcessStateStore>({});
   const loadedInitialEntries = useRef(false);

@@ -18,6 +18,7 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useBranchStatus, useAttemptExecution } from '@/hooks';
 import { projectsApi } from '@/lib/api';
 import { paths } from '@/lib/paths';
+import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import {
   useKeyCreate,
   useKeyExit,
@@ -63,6 +64,43 @@ const TASK_STATUSES = [
   'done',
   'cancelled',
 ] as const;
+
+function DiffsPanelContainer({
+  attempt,
+  selectedTask,
+  projectId,
+  branchStatus,
+  branches,
+  setGitError,
+}: {
+  attempt: any;
+  selectedTask: any;
+  projectId: string;
+  branchStatus: any;
+  branches: GitBranch[];
+  setGitError: (error: string | null) => void;
+}) {
+  const { isAttemptRunning } = useAttemptExecution(attempt?.id);
+
+  return (
+    <DiffsPanel
+      selectedAttempt={attempt}
+      gitOps={
+        attempt && selectedTask
+          ? {
+              task: selectedTask,
+              projectId,
+              branchStatus: branchStatus ?? null,
+              branches,
+              isAttemptRunning,
+              setError: setGitError,
+              selectedBranch: branchStatus?.target_branch_name ?? null,
+            }
+          : undefined
+      }
+    />
+  );
+}
 
 export function ProjectTasks() {
   const { t } = useTranslation(['tasks', 'common']);
@@ -174,7 +212,6 @@ export function ProjectTasks() {
   const hasAttempt = Boolean(attemptId);
 
   const { data: branchStatus } = useBranchStatus(attempt?.id);
-  const { isAttemptRunning } = useAttemptExecution(attempt?.id);
   const [branches, setBranches] = useState<GitBranch[]>([]);
   const [gitError, setGitError] = useState<string | null>(null);
 
@@ -689,24 +726,38 @@ export function ProjectTasks() {
         style={{ display: mode === 'diffs' ? 'block' : 'none' }}
         className="h-full"
       >
-        <DiffsPanel
-          selectedAttempt={attempt ?? null}
-          gitOps={
-            attempt && selectedTask && projectId
-              ? {
-                  task: selectedTask,
-                  projectId,
-                  branchStatus: branchStatus ?? null,
-                  branches,
-                  isAttemptRunning,
-                  setError: setGitError,
-                  selectedBranch: branchStatus?.target_branch_name ?? null,
-                }
-              : undefined
-          }
+        <DiffsPanelContainer
+          attempt={attempt ?? null}
+          selectedTask={selectedTask}
+          projectId={projectId!}
+          branchStatus={branchStatus}
+          branches={branches}
+          setGitError={setGitError}
         />
       </div>
     </div>
+  );
+
+  const attemptArea = attempt ? (
+    <ExecutionProcessesProvider key={attempt.id} attemptId={attempt.id}>
+      <TasksLayout
+        kanban={kanbanContent}
+        attempt={attemptContent}
+        aux={auxContent}
+        hasAttempt={hasAttempt}
+        mode={mode}
+        isMobile={isMobile}
+      />
+    </ExecutionProcessesProvider>
+  ) : (
+    <TasksLayout
+      kanban={kanbanContent}
+      attempt={attemptContent}
+      aux={auxContent}
+      hasAttempt={hasAttempt}
+      mode={mode}
+      isMobile={isMobile}
+    />
   );
 
   return (
@@ -721,16 +772,7 @@ export function ProjectTasks() {
         </Alert>
       )}
 
-      <div className="flex-1 min-h-0">
-        <TasksLayout
-          kanban={kanbanContent}
-          attempt={attemptContent}
-          aux={auxContent}
-          hasAttempt={hasAttempt}
-          mode={mode}
-          isMobile={isMobile}
-        />
-      </div>
+      <div className="flex-1 min-h-0">{attemptArea}</div>
     </div>
   );
 }
