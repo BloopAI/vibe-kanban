@@ -725,7 +725,7 @@ export function ProjectTasks() {
 
   const auxContent = (
     <div className="relative h-full w-full">
-      {mode === 'preview' && <PreviewPanel />}
+      {mode === 'preview' && attempt && <PreviewPanel />}
       {mode === 'diffs' && attempt && (
         <DiffsPanelContainer
           attempt={attempt}
