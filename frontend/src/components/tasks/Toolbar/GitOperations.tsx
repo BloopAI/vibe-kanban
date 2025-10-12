@@ -155,6 +155,17 @@ function GitOperations({
     return t('git.states.rebase');
   }, [rebasing, t]);
 
+  const prButtonLabel = useMemo(() => {
+    if (mergeInfo.hasOpenPR) {
+      return pushSuccess
+        ? t('git.states.pushed')
+        : pushing
+          ? t('git.states.pushing')
+          : t('git.states.push');
+    }
+    return t('git.states.createPr');
+  }, [mergeInfo.hasOpenPR, pushSuccess, pushing, t]);
+
   const handleMergeClick = async () => {
     // Directly perform merge without checking branch status
     await performMerge();
@@ -259,14 +270,14 @@ function GitOperations({
 
   return (
     <div className="w-full border-b py-2">
-      <div className="flex items-center gap-3 flex-wrap">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 overflow-hidden">
         {/* Left: Branch flow */}
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 shrink-0 overflow-hidden">
           {/* Task branch chip */}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="inline-flex items-center gap-1.5 max-w-[280px] px-2 py-0.5 rounded-full bg-muted text-xs font-medium min-w-0">
+                <span className="hidden sm:inline-flex items-center gap-1.5 max-w-[280px] px-2 py-0.5 rounded-full bg-muted text-xs font-medium min-w-0">
                   <GitBranchIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                   <span className="truncate">{selectedAttempt.branch}</span>
                 </span>
@@ -277,7 +288,7 @@ function GitOperations({
             </Tooltip>
           </TooltipProvider>
 
-          <ArrowRight className="h-4 w-4 text-muted-foreground" />
+          <ArrowRight className="hidden sm:inline h-4 w-4 text-muted-foreground" />
 
           {/* Target branch chip + change button */}
           <div className="flex items-center gap-1 min-w-0">
@@ -308,7 +319,7 @@ function GitOperations({
                     size="xs"
                     onClick={handleChangeTargetBranchDialogOpen}
                     disabled={isAttemptRunning || hasConflictsCalculated}
-                    className="h-5 w-5 p-0 hover:bg-muted"
+                    className="hidden md:inline-flex h-5 w-5 p-0 hover:bg-muted"
                     aria-label={t('branches.changeTarget.dialog.title')}
                   >
                     <Settings className="h-3.5 w-3.5" />
@@ -323,7 +334,7 @@ function GitOperations({
         </div>
 
         {/* Center: Status chips */}
-        <div className="flex items-center gap-2 text-xs flex-1 min-w-[240px]">
+        <div className="flex items-center gap-2 text-xs min-w-0 overflow-hidden whitespace-nowrap">
           {(() => {
             const commitsAhead = branchStatus?.commits_ahead ?? 0;
             const commitsBehind = branchStatus?.commits_behind ?? 0;
@@ -360,7 +371,7 @@ function GitOperations({
               return (
                 <button
                   onClick={() => window.open(prMerge.pr_info.url, '_blank')}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100/60 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 hover:underline"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100/60 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 hover:underline truncate max-w-[180px] sm:max-w-none"
                   aria-label={`Open PR #${Number(prMerge.pr_info.number)}`}
                 >
                   <GitPullRequest className="h-3.5 w-3.5" />
@@ -375,7 +386,7 @@ function GitOperations({
               chips.push(
                 <span
                   key="ahead"
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100/70 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
+                  className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100/70 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
                 >
                   +{commitsAhead}{' '}
                   {t('git.status.commits', { count: commitsAhead })}{' '}
@@ -399,7 +410,7 @@ function GitOperations({
               return <div className="flex items-center gap-2">{chips}</div>;
 
             return (
-              <span className="text-muted-foreground">
+              <span className="text-muted-foreground hidden sm:inline">
                 {t('git.status.upToDate')}
               </span>
             );
@@ -408,7 +419,7 @@ function GitOperations({
 
         {/* Right: Actions (compact, right-aligned) */}
         {branchStatus && (
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="shrink-0 flex flex-wrap items-center gap-2 overflow-y-hidden overflow-x-visible max-h-8">
             <Button
               onClick={handleMergeClick}
               disabled={
@@ -423,10 +434,11 @@ function GitOperations({
               }
               variant="outline"
               size="xs"
-              className="border-success text-success hover:bg-success gap-1"
+              className="border-success text-success hover:bg-success gap-1 shrink-0"
+              aria-label={mergeButtonLabel}
             >
               <GitBranchIcon className="h-3.5 w-3.5" />
-              {mergeButtonLabel}
+              <span className="truncate max-w-[10ch]">{mergeButtonLabel}</span>
             </Button>
 
             <Button
@@ -445,16 +457,11 @@ function GitOperations({
               }
               variant="outline"
               size="xs"
-              className="border-info text-info hover:bg-info gap-1"
+              className="border-info text-info hover:bg-info gap-1 shrink-0"
+              aria-label={prButtonLabel}
             >
               <GitPullRequest className="h-3.5 w-3.5" />
-              {mergeInfo.hasOpenPR
-                ? pushSuccess
-                  ? t('git.states.pushed')
-                  : pushing
-                    ? t('git.states.pushing')
-                    : t('git.states.push')
-                : t('git.states.createPr')}
+              <span className="truncate max-w-[10ch]">{prButtonLabel}</span>
             </Button>
 
             <Button
@@ -467,12 +474,13 @@ function GitOperations({
               }
               variant="outline"
               size="xs"
-              className="border-warning text-warning hover:bg-warning gap-1"
+              className="border-warning text-warning hover:bg-warning gap-1 shrink-0"
+              aria-label={rebaseButtonLabel}
             >
               <RefreshCw
                 className={`h-3.5 w-3.5 ${rebasing ? 'animate-spin' : ''}`}
               />
-              {rebaseButtonLabel}
+              <span className="truncate max-w-[10ch]">{rebaseButtonLabel}</span>
             </Button>
           </div>
         )}
