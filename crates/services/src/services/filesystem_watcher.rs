@@ -111,6 +111,10 @@ fn path_allowed(path: &Path, gi: &Gitignore, canonical_root: &Path) -> bool {
 
 fn debounced_should_forward(event: &DebouncedEvent, gi: &Gitignore, canonical_root: &Path) -> bool {
     // DebouncedEvent is a struct that wraps the underlying notify::Event
+    if event.kind.is_access() {
+        // Ignore access events
+        return false;
+    }
     // We can check its paths field to determine if the event should be forwarded
     event
         .paths
