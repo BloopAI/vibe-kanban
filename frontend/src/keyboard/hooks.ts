@@ -142,3 +142,14 @@ export const useKeySubmitTaskAlt = createSemanticHook(Action.SUBMIT_TASK_ALT);
  * useKeySubmitComment(() => handleSave(), { scope: Scope.EDIT_COMMENT, when: hasContent });
  */
 export const useKeySubmitComment = createSemanticHook(Action.SUBMIT_COMMENT);
+
+/**
+ * Cycle view backward action - typically Cmd+Shift+Enter
+ * Cycle views backward in attempt area
+ *
+ * @example
+ * useKeyCycleViewBackward(() => cycleBackward(), { scope: Scope.KANBAN });
+ */
+export const useKeyCycleViewBackward = createSemanticHook(
+  Action.CYCLE_VIEW_BACKWARD
+);

@@ -29,6 +29,7 @@ export enum Action {
   SUBMIT_TASK = 'submit_task',
   SUBMIT_TASK_ALT = 'submit_task_alt',
   SUBMIT_COMMENT = 'submit_comment',
+  CYCLE_VIEW_BACKWARD = 'cycle_view_backward',
 }
 
 export interface KeyBinding {
@@ -135,8 +136,16 @@ export const keyBindings: KeyBinding[] = [
     action: Action.OPEN_DETAILS,
     keys: ['meta+enter', 'ctrl+enter'],
     scopes: [Scope.KANBAN],
-    description: 'Open selected task details',
-    group: 'Kanban',
+    description:
+      'Open details; when open, cycle views forward (attempt → preview → diffs)',
+    group: 'Navigation',
+  },
+  {
+    action: Action.CYCLE_VIEW_BACKWARD,
+    keys: ['meta+shift+enter', 'ctrl+shift+enter'],
+    scopes: [Scope.KANBAN],
+    description: 'Cycle views backward (diffs → preview → attempt)',
+    group: 'Navigation',
   },
 
   // Global actions

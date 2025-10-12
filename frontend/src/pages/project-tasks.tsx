@@ -32,7 +32,7 @@ import {
   useKeyOpenDetails,
   Scope,
   useKeyDeleteTask,
-  useKeyboardShortcut,
+  useKeyCycleViewBackward,
 } from '@/keyboard';
 
 import TaskKanbanBoard from '@/components/tasks/TaskKanbanBoard';
@@ -359,13 +359,50 @@ export function ProjectTasks() {
     }
   );
 
+  /**
+   * Cycle the attempt area view.
+   * - When panel is closed: opens task details (if a task is selected)
+   * - When panel is open: cycles among [attempt, preview, diffs]
+   */
+  const cycleView = useCallback(
+    (direction: 'forward' | 'backward' = 'forward') => {
+      const order: LayoutMode[] = [null, 'preview', 'diffs'];
+      const idx = order.indexOf(mode);
+      const next =
+        direction === 'forward'
+          ? order[(idx + 1) % order.length]
+          : order[(idx - 1 + order.length) % order.length];
+      setMode(next);
+    },
+    [mode, setMode]
+  );
+
+  const cycleViewForward = useCallback(() => cycleView('forward'), [cycleView]);
+  const cycleViewBackward = useCallback(
+    () => cycleView('backward'),
+    [cycleView]
+  );
+
+  // meta/ctrl+enter → open details or cycle forward
   useKeyOpenDetails(
     () => {
-      if (selectedTask) {
+      if (isPanelOpen) {
+        cycleViewForward();
+      } else if (selectedTask) {
         handleViewTaskDetails(selectedTask);
       }
     },
     { scope: Scope.KANBAN }
+  );
+
+  // meta/ctrl+shift+enter → cycle backward
+  useKeyCycleViewBackward(
+    () => {
+      if (isPanelOpen) {
+        cycleViewBackward();
+      }
+    },
+    { scope: Scope.KANBAN, preventDefault: true }
   );
 
   useKeyDeleteTask(
@@ -378,34 +415,6 @@ export function ProjectTasks() {
       scope: Scope.KANBAN,
       preventDefault: true,
     }
-  );
-
-  useKeyboardShortcut(
-    {
-      keys: 'p',
-      callback: () => {
-        if (hasAttempt) {
-          setMode(mode === 'preview' ? null : 'preview');
-        }
-      },
-      description: 'Toggle preview mode',
-      scope: Scope.KANBAN,
-    },
-    { preventDefault: true }
-  );
-
-  useKeyboardShortcut(
-    {
-      keys: 'l',
-      callback: () => {
-        if (hasAttempt) {
-          setMode(mode === 'diffs' ? null : 'diffs');
-        }
-      },
-      description: 'Toggle diffs mode',
-      scope: Scope.KANBAN,
-    },
-    { preventDefault: true }
   );
 
   const handleClosePanel = useCallback(() => {
