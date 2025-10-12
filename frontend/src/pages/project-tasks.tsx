@@ -716,27 +716,17 @@ export function ProjectTasks() {
 
   const auxContent = (
     <div className="relative h-full w-full">
-      <div
-        aria-hidden={mode !== 'preview'}
-        style={{ display: mode === 'preview' ? 'block' : 'none' }}
-        className="h-full"
-      >
-        <PreviewPanel />
-      </div>
-      <div
-        aria-hidden={mode !== 'diffs'}
-        style={{ display: mode === 'diffs' ? 'block' : 'none' }}
-        className="h-full"
-      >
+      {mode === 'preview' && <PreviewPanel />}
+      {mode === 'diffs' && attempt && (
         <DiffsPanelContainer
-          attempt={attempt ?? null}
+          attempt={attempt}
           selectedTask={selectedTask}
           projectId={projectId!}
           branchStatus={branchStatus}
           branches={branches}
           setGitError={setGitError}
         />
-      </div>
+      )}
     </div>
   );
 
