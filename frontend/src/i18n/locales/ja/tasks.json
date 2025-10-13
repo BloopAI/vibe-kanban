@@ -97,6 +97,11 @@
       "item3": "Web Companion（クリックして編集機能に必要）をインストールしましたか？インストールしていない場合は、",
       "item3Link": "こちらのインストール手順に従ってください"
     },
+    "companionAlert": {
+      "title": "Click-to-Componentを有効化",
+      "message": "Web Companionをインストールして、クリックして編集機能を有効にします。",
+      "link": "インストールガイドを表示"
+    },
     "noServer": {
       "title": "開発サーバーが実行されていません",
       "startPrompt": "プレビューを表示するには開発サーバーを起動してください",

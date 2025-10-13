@@ -185,34 +185,46 @@ export default function PreviewTab({
 
         {showHelp && (
           <Alert variant="destructive" className="space-y-2">
-            <p className="font-bold">{t('preview.troubleAlert.title')}</p>
-            <ol className="list-decimal list-inside space-y-2">
-              <li>{t('preview.troubleAlert.item1')}</li>
-              <li>
-                {t('preview.troubleAlert.item2')}{' '}
-                <code>http://localhost:3000</code>
-                {t('preview.troubleAlert.item2Suffix')}
-              </li>
-              <li>
-                {t('preview.troubleAlert.item3')}{' '}
-                <a
-                  href="https://github.com/BloopAI/vibe-kanban-web-companion"
-                  target="_blank"
-                  className="underline font-bold"
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 space-y-2">
+                <p className="font-bold">{t('preview.troubleAlert.title')}</p>
+                <ol className="list-decimal list-inside space-y-2">
+                  <li>{t('preview.troubleAlert.item1')}</li>
+                  <li>
+                    {t('preview.troubleAlert.item2')}{' '}
+                    <code>http://localhost:3000</code>
+                    {t('preview.troubleAlert.item2Suffix')}
+                  </li>
+                  <li>
+                    {t('preview.troubleAlert.item3')}{' '}
+                    <a
+                      href="https://github.com/BloopAI/vibe-kanban-web-companion"
+                      target="_blank"
+                      className="underline font-bold"
+                    >
+                      {t('preview.troubleAlert.item3Link')}
+                    </a>
+                    .
+                  </li>
+                </ol>
+                <Button
+                  variant="destructive"
+                  onClick={handleStopAndEdit}
+                  disabled={isStoppingDevServer}
                 >
-                  {t('preview.troubleAlert.item3Link')}
-                </a>
-                .
-              </li>
-            </ol>
-            <Button
-              variant="destructive"
-              onClick={handleStopAndEdit}
-              disabled={isStoppingDevServer}
-            >
-              {isStoppingDevServer && <Loader2 className="mr-2 animate-spin" />}
-              {t('preview.noServer.stopAndEditButton')}
-            </Button>
+                  {isStoppingDevServer && <Loader2 className="mr-2 animate-spin" />}
+                  {t('preview.noServer.stopAndEditButton')}
+                </Button>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowHelp(false)}
+                className="h-6 w-6 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </Alert>
         )}
         {showCompanionWarning && (
