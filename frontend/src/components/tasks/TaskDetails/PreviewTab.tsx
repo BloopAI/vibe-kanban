@@ -212,7 +212,9 @@ export default function PreviewTab({
                   onClick={handleStopAndEdit}
                   disabled={isStoppingDevServer}
                 >
-                  {isStoppingDevServer && <Loader2 className="mr-2 animate-spin" />}
+                  {isStoppingDevServer && (
+                    <Loader2 className="mr-2 animate-spin" />
+                  )}
                   {t('preview.noServer.stopAndEditButton')}
                 </Button>
               </div>
