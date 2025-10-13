@@ -39,7 +39,7 @@ impl QwenCode {
 #[async_trait]
 impl StandardCodingAgentExecutor for QwenCode {
     async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
-        let qwen_command = self.build_command_builder().build_initial();
+        let qwen_command = self.build_command_builder().build_initial()?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let harness = AcpAgentHarness::with_session_namespace("qwen_sessions");
         harness
@@ -53,7 +53,7 @@ impl StandardCodingAgentExecutor for QwenCode {
         prompt: &str,
         session_id: &str,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let qwen_command = self.build_command_builder().build_follow_up(&[]);
+        let qwen_command = self.build_command_builder().build_follow_up(&[])?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let harness = AcpAgentHarness::with_session_namespace("qwen_sessions");
         harness

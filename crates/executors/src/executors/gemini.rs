@@ -65,7 +65,7 @@ impl StandardCodingAgentExecutor for Gemini {
     async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
         let harness = AcpAgentHarness::new();
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
-        let gemini_command = self.build_command_builder().build_initial();
+        let gemini_command = self.build_command_builder().build_initial()?;
         harness
             .spawn_with_command(current_dir, combined_prompt, gemini_command)
             .await
@@ -79,7 +79,7 @@ impl StandardCodingAgentExecutor for Gemini {
     ) -> Result<SpawnedChild, ExecutorError> {
         let harness = AcpAgentHarness::new();
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
-        let gemini_command = self.build_command_builder().build_follow_up(&[]);
+        let gemini_command = self.build_command_builder().build_follow_up(&[])?;
         harness
             .spawn_follow_up_with_command(current_dir, combined_prompt, session_id, gemini_command)
             .await

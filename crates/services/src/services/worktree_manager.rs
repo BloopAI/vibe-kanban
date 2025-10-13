@@ -7,7 +7,7 @@ use std::{
 use git2::{Error as GitError, Repository};
 use thiserror::Error;
 use tracing::{debug, info};
-use utils::shell::get_shell_command;
+use utils::shell::resolve_executable_path;
 
 use super::{
     git::{GitService, GitServiceError},
@@ -430,11 +430,10 @@ impl WorktreeManager {
         let worktree_path_owned = worktree_path.to_path_buf();
 
         tokio::task::spawn_blocking(move || {
-            let (shell_cmd, shell_arg) = get_shell_command();
-            let git_command = "git rev-parse --git-common-dir";
+            let git_path = resolve_executable_path("git")?;
 
-            let output = std::process::Command::new(shell_cmd)
-                .args([shell_arg, git_command])
+            let output = std::process::Command::new(git_path)
+                .args(["rev-parse", "--git-common-dir"])
                 .current_dir(&worktree_path_owned)
                 .output()
                 .ok()?;

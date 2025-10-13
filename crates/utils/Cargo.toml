@@ -21,7 +21,6 @@ open = "5.3.2"
 regex = "1.11.1"
 sentry = { version = "0.41.0", features = ["anyhow", "backtrace", "panic", "debug-images"] }
 sentry-tracing = { version = "0.41.0", features = ["backtrace"] }
-lazy_static = "1.4"
 futures-util = "0.3"
 json-patch = "2.0"
 base64 = "0.22"
@@ -33,3 +32,7 @@ shellexpand = "3.1.1"
 which = "8.0.0"
 similar = "2"
 git2 = "0.18"
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.55"
+windows-sys = { version = "0.61", features = ["Win32_System_Environment"] }
