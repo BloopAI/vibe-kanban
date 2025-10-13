@@ -27,6 +27,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use workspace_utils::{
+    approvals::ApprovalStatus,
     diff::{concatenate_diff_hunks, extract_unified_diff_hunks},
     msg_store::MsgStore,
     path::make_path_relative,
@@ -44,6 +45,10 @@ use crate::{
 
 trait ToNormalizedEntry {
     fn to_normalized_entry(&self) -> NormalizedEntry;
+}
+
+trait ToNormalizedEntryOpt {
+    fn to_normalized_entry_opt(&self) -> Option<NormalizedEntry>;
 }
 
 #[derive(Debug, Deserialize)]
@@ -389,6 +394,13 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
         while let Some(Ok(line)) = stdout_lines.next().await {
             if let Ok(error) = serde_json::from_str::<Error>(&line) {
                 add_normalized_entry(&msg_store, &entry_index, error.to_normalized_entry());
+                continue;
+            }
+
+            if let Ok(approval) = serde_json::from_str::<Approval>(&line) {
+                if let Some(entry) = approval.to_normalized_entry_opt() {
+                    add_normalized_entry(&msg_store, &entry_index, entry);
+                }
                 continue;
             }
 
@@ -1057,6 +1069,76 @@ impl ToNormalizedEntry for Error {
                 Error::LaunchError { error } => error.clone(),
             },
             metadata: None,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum Approval {
+    ApprovalResponse {
+        call_id: String,
+        tool_name: String,
+        approval_status: ApprovalStatus,
+    },
+}
+
+impl Approval {
+    pub fn approval_response(
+        call_id: String,
+        tool_name: String,
+        approval_status: ApprovalStatus,
+    ) -> Self {
+        Self::ApprovalResponse {
+            call_id,
+            tool_name,
+            approval_status,
+        }
+    }
+
+    pub fn raw(&self) -> String {
+        serde_json::to_string(self).unwrap_or_default()
+    }
+
+    pub fn display_tool_name(&self) -> String {
+        let Self::ApprovalResponse { tool_name, .. } = self;
+        match tool_name.as_str() {
+            "codex.exec_command" => "Exec Command".to_string(),
+            "codex.apply_patch" => "Edit".to_string(),
+            other => other.to_string(),
+        }
+    }
+}
+
+impl ToNormalizedEntryOpt for Approval {
+    fn to_normalized_entry_opt(&self) -> Option<NormalizedEntry> {
+        let Self::ApprovalResponse {
+            call_id: _,
+            tool_name: _,
+            approval_status,
+        } = self;
+        let tool_name = self.display_tool_name();
+
+        match approval_status {
+            ApprovalStatus::Pending => None,
+            ApprovalStatus::Approved => None,
+            ApprovalStatus::Denied { reason } => Some(NormalizedEntry {
+                timestamp: None,
+                entry_type: NormalizedEntryType::UserFeedback {
+                    denied_tool: tool_name.clone(),
+                },
+                content: reason
+                    .clone()
+                    .unwrap_or_else(|| "User denied this tool use request".to_string())
+                    .trim()
+                    .to_string(),
+                metadata: None,
+            }),
+            ApprovalStatus::TimedOut => Some(NormalizedEntry {
+                timestamp: None,
+                entry_type: NormalizedEntryType::ErrorMessage,
+                content: format!("Approval timed out for tool {tool_name}"),
+                metadata: None,
+            }),
         }
     }
 }
