@@ -23,7 +23,10 @@ use tokio::{
 use workspace_utils::approvals::ApprovalStatus;
 
 use super::jsonrpc::{JsonRpcCallbacks, JsonRpcPeer};
-use crate::{approvals::ExecutorApprovalService, executors::ExecutorError};
+use crate::{
+    approvals::ExecutorApprovalService,
+    executors::{ExecutorError, codex::normalize_logs::Approval},
+};
 
 pub struct AppServerClient {
     rpc: OnceLock<JsonRpcPeer>,
@@ -145,6 +148,16 @@ impl AppServerClient {
                         }
                     }
                 };
+                self.log_writer
+                    .log_raw(
+                        &Approval::approval_response(
+                            params.call_id,
+                            "codex.apply_patch".to_string(),
+                            status.clone(),
+                        )
+                        .raw(),
+                    )
+                    .await?;
                 let (decision, feedback) = self.review_decision(&status).await?;
                 let response = ApplyPatchApprovalResponse { decision };
                 send_server_response(peer, request_id, response).await?;
@@ -169,6 +182,17 @@ impl AppServerClient {
                         }
                     }
                 };
+                self.log_writer
+                    .log_raw(
+                        &Approval::approval_response(
+                            params.call_id,
+                            "codex.exec_command".to_string(),
+                            status.clone(),
+                        )
+                        .raw(),
+                    )
+                    .await?;
+
                 let (decision, feedback) = self.review_decision(&status).await?;
                 let response = ExecCommandApprovalResponse { decision };
                 send_server_response(peer, request_id, response).await?;
