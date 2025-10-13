@@ -37,7 +37,7 @@ export function SettingsLayout() {
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar Navigation */}
-          <aside className="w-full lg:w-64 lg:shrink-0">
+          <aside className="w-full lg:w-64 lg:shrink-0 lg:sticky lg:top-8 lg:h-fit lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto">
             <div className="space-y-1">
               <Button variant="ghost" onClick={handleBack} className="mb-4">
                 <ArrowLeft className="mr-2 h-4 w-4" />
