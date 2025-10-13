@@ -62,7 +62,6 @@ export function ProjectSettings() {
 
   // Form state
   const [draft, setDraft] = useState<ProjectFormState | null>(null);
-  const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -105,12 +104,10 @@ export function ProjectSettings() {
           copy_files: project.copy_files ?? '',
         };
         setDraft(formState);
-        setDirty(false);
       }
     } else {
       setSelectedProject(null);
       setDraft(null);
-      setDirty(false);
     }
   }, [selectedProjectId, projects]);
 
@@ -129,11 +126,6 @@ export function ProjectSettings() {
 
     return !isEqual(draft, original);
   }, [draft, selectedProject]);
-
-  // Update dirty flag when changes are detected
-  useEffect(() => {
-    setDirty(hasUnsavedChanges);
-  }, [hasUnsavedChanges]);
 
   // Warn on tab close/navigation with unsaved changes
   useEffect(() => {
@@ -160,7 +152,6 @@ export function ProjectSettings() {
         copy_files: updatedProject.copy_files ?? '',
       };
       setDraft(formState);
-      setDirty(false);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
       setSaving(false);
@@ -213,7 +204,6 @@ export function ProjectSettings() {
       copy_files: selectedProject.copy_files ?? '',
     };
     setDraft(formState);
-    setDirty(false);
   };
 
   const updateDraft = (updates: Partial<ProjectFormState>) => {
