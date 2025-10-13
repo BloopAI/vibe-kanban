@@ -346,8 +346,9 @@ impl EditorConfig {
         }
 
         if cfg!(windows) {
-            command[0] =
-                utils::shell::resolve_executable_path(&command[0]).ok_or(std::io::Error::new(
+            command[0] = utils::shell::resolve_executable_path(&command[0])
+                .map(|p| p.to_string_lossy().to_string())
+                .ok_or(std::io::Error::new(
                     std::io::ErrorKind::NotFound,
                     format!("Editor command '{}' not found", command[0]),
                 ))?;

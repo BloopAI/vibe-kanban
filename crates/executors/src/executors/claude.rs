@@ -125,34 +125,51 @@ impl ClaudeCode {
 
         apply_overrides(builder, &self.cmd)
     }
-}
 
-#[async_trait]
-impl StandardCodingAgentExecutor for ClaudeCode {
-    async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
-        let (shell_cmd, shell_arg) = get_shell_command();
+    async fn spawn(
+        &self,
+        current_dir: &Path,
+        prompt: &str,
+        session_id: Option<&str>,
+    ) -> Result<SpawnedChild, ExecutorError> {
         let command_builder = self.build_command_builder().await;
-        let mut base_command = command_builder.build_initial();
+        let command_parts = if let Some(session_id) = session_id {
+            command_builder.build_follow_up(&[
+                "--fork-session".to_string(),
+                "--resume".to_string(),
+                session_id.to_string(),
+            ])?
+        } else {
+            command_builder.build_initial()?
+        };
 
-        if self.plan.unwrap_or(false) {
-            base_command = create_watchkill_script(&base_command);
-        }
+        let plan_enabled = self.plan.unwrap_or(false);
 
-        if self.approvals.unwrap_or(false) || self.plan.unwrap_or(false) {
+        if self.approvals.unwrap_or(false) || plan_enabled {
             write_python_hook(current_dir).await?
         }
 
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
-        let mut command = Command::new(shell_cmd);
+        let mut command = if plan_enabled {
+            let plan_script = create_watchkill_script(&command_parts.to_shell_string()?);
+            let (shell_cmd, shell_arg) = get_shell_command();
+            let mut cmd = Command::new(shell_cmd);
+            cmd.arg(shell_arg).arg(plan_script);
+            cmd
+        } else {
+            let (program_path, args) = command_parts.into_resolved()?;
+            let mut cmd = Command::new(program_path);
+            cmd.args(&args);
+            cmd
+        };
+
         command
             .kill_on_drop(true)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .current_dir(current_dir)
-            .arg(shell_arg)
-            .arg(&base_command);
+            .current_dir(current_dir);
 
         let mut child = command.group_spawn()?;
 
@@ -164,6 +181,13 @@ impl StandardCodingAgentExecutor for ClaudeCode {
 
         Ok(child.into())
     }
+}
+
+#[async_trait]
+impl StandardCodingAgentExecutor for ClaudeCode {
+    async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
+        self.spawn(current_dir, prompt, None).await
+    }
 
     async fn spawn_follow_up(
         &self,
@@ -171,44 +195,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         prompt: &str,
         session_id: &str,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let (shell_cmd, shell_arg) = get_shell_command();
-        let command_builder = self.build_command_builder().await;
-        // Build follow-up command with --resume {session_id}
-        let mut base_command = command_builder.build_follow_up(&[
-            "--fork-session".to_string(),
-            "--resume".to_string(),
-            session_id.to_string(),
-        ]);
-
-        if self.plan.unwrap_or(false) {
-            base_command = create_watchkill_script(&base_command);
-        }
-
-        if self.approvals.unwrap_or(false) || self.plan.unwrap_or(false) {
-            write_python_hook(current_dir).await?
-        }
-
-        let combined_prompt = self.append_prompt.combine_prompt(prompt);
-
-        let mut command = Command::new(shell_cmd);
-        command
-            .kill_on_drop(true)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .current_dir(current_dir)
-            .arg(shell_arg)
-            .arg(&base_command);
-
-        let mut child = command.group_spawn()?;
-
-        // Feed the followup prompt in, then close the pipe
-        if let Some(mut stdin) = child.inner().stdin.take() {
-            stdin.write_all(combined_prompt.as_bytes()).await?;
-            stdin.shutdown().await?;
-        }
-
-        Ok(child.into())
+        self.spawn(current_dir, prompt, Some(session_id)).await
     }
 
     fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &Path) {
