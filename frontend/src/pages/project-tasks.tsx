@@ -554,7 +554,7 @@ export function ProjectTasks() {
       let newPosition: number;
 
       if (droppedOverTaskId) {
-        // Dropped over a specific task - insert before it
+        // Dropped over a specific task - we want to take its position
         const targetIndex = tasksInColumn.findIndex(
           (t) => t.id === droppedOverTaskId
         );
@@ -563,14 +563,16 @@ export function ProjectTasks() {
           // Dropped over the dragged task itself? Use current position
           newPosition = draggedTask.position;
         } else {
-          const taskAbove = tasksInColumn[targetIndex - 1];
-          const taskBelow = tasksInColumn[targetIndex];
+          // We want to insert at the dropped-over task's position
+          // Get the tasks around where we're inserting
+          const taskAbove = tasksInColumn[targetIndex];     // The task we dropped on
+          const taskBelow = tasksInColumn[targetIndex + 1]; // The task after it
 
-          if (!taskAbove) {
-            // Dropped at top
-            newPosition = (taskBelow?.position || Date.now() / 1000) + 1;
+          if (!taskBelow) {
+            // Dropped at bottom - go below the last task
+            newPosition = (taskAbove?.position || Date.now() / 1000) - 1;
           } else {
-            // Dropped between two tasks
+            // Insert between the dropped-on task and the one below it
             newPosition =
               ((taskAbove?.position || 0) + (taskBelow?.position || 0)) / 2;
           }
