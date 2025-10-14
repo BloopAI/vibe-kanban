@@ -152,14 +152,6 @@ function AppContent() {
                     path="/projects/:projectId/tasks"
                     element={<ProjectTasks />}
                   />
-                  <Route
-                    path="/projects/:projectId/tasks/:taskId/attempts/:attemptId"
-                    element={<ProjectTasks />}
-                  />
-                  <Route
-                    path="/projects/:projectId/tasks/:taskId"
-                    element={<ProjectTasks />}
-                  />
                   <Route path="/settings/*" element={<SettingsLayout />}>
                     <Route index element={<Navigate to="general" replace />} />
                     <Route path="general" element={<GeneralSettings />} />
@@ -169,6 +161,16 @@ function AppContent() {
                   <Route
                     path="/mcp-servers"
                     element={<Navigate to="/settings/mcp" replace />}
+                  />
+                </Route>
+                <Route element={<NormalLayout hideNavbar />}>
+                  <Route
+                    path="/projects/:projectId/tasks/:taskId"
+                    element={<ProjectTasks />}
+                  />
+                  <Route
+                    path="/projects/:projectId/tasks/:taskId/attempts/:attemptId"
+                    element={<ProjectTasks />}
                   />
                 </Route>
               </SentryRoutes>
