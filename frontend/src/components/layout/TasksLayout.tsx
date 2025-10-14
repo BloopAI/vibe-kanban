@@ -13,7 +13,7 @@ interface TasksLayoutProps {
   kanban: ReactNode;
   attempt: ReactNode;
   aux: ReactNode;
-  hasAttempt: boolean;
+  isPanelOpen: boolean;
   mode: LayoutMode;
   isMobile?: boolean;
 }
@@ -282,7 +282,7 @@ function DesktopSimple({
         collapsedSize={0}
         className="min-w-0 min-h-0 overflow-hidden"
         role="region"
-        aria-label="Attempt details"
+        aria-label="Details"
       >
         {attempt}
       </Panel>
@@ -333,13 +333,13 @@ export function TasksLayout({
   kanban,
   attempt,
   aux,
-  hasAttempt,
+  isPanelOpen,
   mode,
   isMobile = false,
 }: TasksLayoutProps) {
-  const desktopKey = hasAttempt ? 'desktop-with-attempt' : 'kanban-only';
+  const desktopKey = isPanelOpen ? 'desktop-with-panel' : 'kanban-only';
 
-  const depth = hasAttempt ? 1 : 0;
+  const depth = isPanelOpen ? 1 : 0;
   const prevDepthRef = useRef(depth);
   const dir =
     depth === prevDepthRef.current ? 0 : depth > prevDepthRef.current ? 1 : -1;
@@ -349,7 +349,7 @@ export function TasksLayout({
   }, [depth]);
 
   if (isMobile) {
-    const columns = hasAttempt ? ['0fr', '1fr', '0fr'] : ['1fr', '0fr', '0fr'];
+    const columns = isPanelOpen ? ['0fr', '1fr', '0fr'] : ['1fr', '0fr', '0fr'];
     const gridTemplateColumns = `minmax(0, ${columns[0]}) minmax(0, ${columns[1]}) minmax(0, ${columns[2]})`;
     const isKanbanVisible = columns[0] !== '0fr';
     const isAttemptVisible = columns[1] !== '0fr';
@@ -376,7 +376,7 @@ export function TasksLayout({
         <div
           className="min-w-0 min-h-0 overflow-hidden border-l"
           aria-hidden={!isAttemptVisible}
-          aria-label="Attempt details"
+          aria-label="Details"
           role="region"
           style={{ pointerEvents: isAttemptVisible ? 'auto' : 'none' }}
         >
@@ -398,7 +398,7 @@ export function TasksLayout({
 
   let desktopNode: ReactNode;
 
-  if (!hasAttempt) {
+  if (!isPanelOpen) {
     desktopNode = (
       <div
         className="h-full min-h-0 min-w-0 overflow-hidden"

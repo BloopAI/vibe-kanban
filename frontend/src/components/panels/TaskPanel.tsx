@@ -1,7 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import TitleDescriptionEditor from '../ui/TitleDescriptionEditor';
-import { useTaskMutations } from '@/hooks/useTaskMutations';
 import { useProject } from '@/contexts/project-context';
 import { useTaskAttempts } from '@/hooks/useTaskAttempts';
 import { paths } from '@/lib/paths';
@@ -10,6 +8,7 @@ import { NewCardContent } from '../ui/new-card';
 import { Button } from '../ui/button';
 import { PlusIcon } from 'lucide-react';
 import { CreateAttemptDialog } from '../dialogs/tasks/CreateAttemptDialog';
+import MarkdownRenderer from '@/components/ui/markdown-renderer';
 
 interface TaskPanelProps {
   task: TaskWithAttemptStatus | null;
@@ -18,10 +17,6 @@ interface TaskPanelProps {
 const TaskPanel = ({ task }: TaskPanelProps) => {
   const navigate = useNavigate();
   const { projectId } = useProject();
-  const { updateTask } = useTaskMutations(projectId);
-
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState<string>('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   const {
@@ -65,52 +60,24 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
 
   const latestAttempt = displayedAttempts[0] ?? null;
 
-  // Reset editor state when task changes
-  useEffect(() => {
-    setTitle(task?.title ?? '');
-    setDescription(task?.description ?? '');
-  }, [task?.id]); // only reset when the task switches
-
-  // Debounced save
-  useEffect(() => {
-    if (!task) return;
-
-    const changed =
-      title !== (task.title ?? '') ||
-      (description ?? '') !== (task.description ?? '');
-
-    if (!changed) return;
-
-    const handle = setTimeout(() => {
-      updateTask.mutate({
-        taskId: task.id,
-        data: {
-          title,
-          description,
-          status: task.status,
-          parent_task_attempt: task.parent_task_attempt,
-          image_ids: null,
-        },
-      });
-    }, 500);
-
-    return () => clearTimeout(handle);
-  }, [title, description, task, updateTask]);
-
   if (!task) {
     return <div className="text-muted-foreground">No task selected</div>;
   }
+
+  const titleContent = `# ${task.title || 'Task'}`;
+  const descriptionContent = task.description || '';
 
   return (
     <>
       <NewCardContent>
         <div className="p-6 space-y-6">
-          <TitleDescriptionEditor
-            title={title}
-            description={description}
-            onTitleChange={setTitle}
-            onDescriptionChange={setDescription}
-          />
+          <div className="space-y-3">
+            <MarkdownRenderer content={titleContent} />
+            {descriptionContent && (
+              <MarkdownRenderer content={descriptionContent} />
+            )}
+          </div>
+
           {isAttemptsLoading && (
             <div className="text-muted-foreground">Loading attempts...</div>
           )}
