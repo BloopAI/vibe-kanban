@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Copy, Trash2 } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import type { TaskWithAttemptStatus, TaskAttempt } from 'shared/types';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import NiceModal from '@ebay/nice-modal-react';
@@ -123,11 +123,9 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
             <>
               <DropdownMenuLabel>Task</DropdownMenuLabel>
               <DropdownMenuItem disabled={!projectId} onClick={handleEdit}>
-                <Edit className="h-4 w-4 mr-2" />
                 Edit
               </DropdownMenuItem>
               <DropdownMenuItem disabled={!projectId} onClick={handleDuplicate}>
-                <Copy className="h-4 w-4 mr-2" />
                 Duplicate
               </DropdownMenuItem>
               <DropdownMenuItem
@@ -135,7 +133,6 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
                 onClick={handleDelete}
                 className="text-destructive"
               >
-                <Trash2 className="h-4 w-4 mr-2" />
                 Delete
               </DropdownMenuItem>
             </>
