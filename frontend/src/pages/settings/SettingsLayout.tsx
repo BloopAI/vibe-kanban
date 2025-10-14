@@ -25,25 +25,23 @@ export function SettingsLayout() {
   const goToPreviousPath = usePreviousPath();
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 relative">
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={goToPreviousPath}
+        className="absolute top-4 right-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+      >
+        <X className="h-4 w-4" />
+        <span className="sr-only">Close</span>
+      </Button>
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Sidebar Navigation */}
         <aside className="w-full lg:w-64 lg:shrink-0 lg:sticky lg:top-8 lg:h-fit lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto">
           <div className="space-y-1">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="px-3 py-2 text-lg font-semibold">
-                {t('settings.layout.nav.title')}
-              </h2>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={goToPreviousPath}
-                className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-              >
-                <X className="h-4 w-4" />
-                <span className="sr-only">Close</span>
-              </Button>
-            </div>
+            <h2 className="px-3 py-2 text-lg font-semibold mb-4">
+              {t('settings.layout.nav.title')}
+            </h2>
             <nav className="space-y-1">
               {settingsNavigation.map((item) => {
                 const Icon = item.icon;
