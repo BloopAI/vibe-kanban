@@ -295,8 +295,7 @@ pub async fn delete_task(
     // This breaks parent-child relationships to avoid foreign key constraint violations
     let mut total_children_affected = 0u64;
     for attempt in &attempts {
-        let children_affected =
-            Task::nullify_children_by_attempt_id(&mut *tx, attempt.id).await?;
+        let children_affected = Task::nullify_children_by_attempt_id(&mut *tx, attempt.id).await?;
         total_children_affected += children_affected;
     }
 
