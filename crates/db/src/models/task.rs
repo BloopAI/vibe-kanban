@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, SqlitePool, Type};
+use sqlx::{Executor, FromRow, Sqlite, SqlitePool, Type};
 use strum_macros::{Display, EnumString};
 use ts_rs::TS;
 use uuid::Uuid;
@@ -290,22 +290,28 @@ ORDER BY t.created_at DESC"#,
 
     /// Nullify parent_task_attempt for all tasks that reference the given attempt ID
     /// This breaks parent-child relationships before deleting a parent task
-    pub async fn nullify_children_by_attempt_id(
-        pool: &SqlitePool,
+    pub async fn nullify_children_by_attempt_id<'e, E>(
+        executor: E,
         attempt_id: Uuid,
-    ) -> Result<u64, sqlx::Error> {
+    ) -> Result<u64, sqlx::Error>
+    where
+        E: Executor<'e, Database = Sqlite>,
+    {
         let result = sqlx::query!(
             "UPDATE tasks SET parent_task_attempt = NULL WHERE parent_task_attempt = $1",
             attempt_id
         )
-        .execute(pool)
+        .execute(executor)
         .await?;
         Ok(result.rows_affected())
     }
 
-    pub async fn delete(pool: &SqlitePool, id: Uuid) -> Result<u64, sqlx::Error> {
+    pub async fn delete<'e, E>(executor: E, id: Uuid) -> Result<u64, sqlx::Error>
+    where
+        E: Executor<'e, Database = Sqlite>,
+    {
         let result = sqlx::query!("DELETE FROM tasks WHERE id = $1", id)
-            .execute(pool)
+            .execute(executor)
             .await?;
         Ok(result.rows_affected())
     }

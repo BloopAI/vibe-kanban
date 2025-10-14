@@ -287,12 +287,16 @@ pub async fn delete_task(
         })
         .collect();
 
+    // Use a transaction to ensure atomicity: either all operations succeed or all are rolled back
+    // This prevents partial state where children are nullified but task deletion fails
+    let mut tx = deployment.db().pool.begin().await?;
+
     // Nullify parent_task_attempt for all child tasks before deletion
     // This breaks parent-child relationships to avoid foreign key constraint violations
     let mut total_children_affected = 0u64;
     for attempt in &attempts {
         let children_affected =
-            Task::nullify_children_by_attempt_id(&deployment.db().pool, attempt.id).await?;
+            Task::nullify_children_by_attempt_id(&mut *tx, attempt.id).await?;
         total_children_affected += children_affected;
     }
 
@@ -305,11 +309,14 @@ pub async fn delete_task(
     }
 
     // Delete task from database (FK CASCADE will handle task_attempts)
-    let rows_affected = Task::delete(&deployment.db().pool, task.id).await?;
+    let rows_affected = Task::delete(&mut *tx, task.id).await?;
 
     if rows_affected == 0 {
         return Err(ApiError::Database(SqlxError::RowNotFound));
     }
+
+    // Commit the transaction - if this fails, all changes are rolled back
+    tx.commit().await?;
 
     deployment
         .track_if_analytics_allowed(
