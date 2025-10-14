@@ -525,116 +525,88 @@ export function ProjectTasks() {
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
       const { active, over } = event;
-      if (!over || !active.data.current) return;
+      if (!over) return;
 
       const draggedTaskId = active.id as string;
-      const task = tasksById[draggedTaskId];
-      if (!task) return;
+      const draggedTask = tasksById[draggedTaskId];
+      if (!draggedTask) return;
 
-      // Determine target status - check if over a column or another task
+      // Determine target status and task we dropped over
       let newStatus: Task['status'];
+      let droppedOverTaskId: string | null = null;
+
       if (over.data.current?.sortable) {
         // Dropped over another task
-        newStatus = active.data.current.parent as Task['status'];
+        droppedOverTaskId = over.id as string;
+        const droppedOverTask = tasksById[droppedOverTaskId];
+        newStatus = droppedOverTask?.status || draggedTask.status;
       } else {
-        // Dropped over a column
+        // Dropped over a column header
         newStatus = over.id as Task['status'];
       }
 
-      // Get tasks in destination column, sorted by position
-      const allTasksInColumn = (groupedFilteredTasks[newStatus] || []).sort(
-        (a, b) => (b.position || 0) - (a.position || 0)
-      );
+      // Get all tasks in destination column (excluding dragged task), sorted by position
+      const tasksInColumn = Object.values(tasksById)
+        .filter((t) => t.status === newStatus && t.id !== draggedTaskId)
+        .sort((a, b) => (b.position || 0) - (a.position || 0));
 
-      // Find the original index of the dragged task in the destination column
-      const draggedTaskOriginalIndex = allTasksInColumn.findIndex(
-        (t) => t.id === draggedTaskId
-      );
-
-      // Calculate new position based on drop location
+      // Calculate new position
       let newPosition: number;
 
-      if (over.data.current?.sortable) {
-        // Dropped over another task - get the index
-        // This index is from the SortableContext which includes all tasks
-        let overIndex = over.data.current.sortable.index;
+      if (droppedOverTaskId) {
+        // Dropped over a specific task - insert before it
+        const targetIndex = tasksInColumn.findIndex(
+          (t) => t.id === droppedOverTaskId
+        );
 
-        // If dragging within the same column, we need to adjust the index
-        // because the dragged task is still in the visual list
-        if (task.status === newStatus && draggedTaskOriginalIndex !== -1) {
-          // If we're moving down (overIndex > original), the target index is already correct
-          // If we're moving up (overIndex < original), we don't need adjustment
-          // But we need to get neighbors from the list WITHOUT the dragged task
-          const tasksWithoutDragged = allTasksInColumn.filter(
-            (t) => t.id !== draggedTaskId
-          );
-
-          // Adjust overIndex: if dropping after original position, decrement by 1
-          if (overIndex > draggedTaskOriginalIndex) {
-            overIndex = overIndex - 1;
-          }
-
-          const taskAbove = tasksWithoutDragged[overIndex - 1];
-          const taskBelow = tasksWithoutDragged[overIndex];
+        if (targetIndex === -1) {
+          // Dropped over the dragged task itself? Use current position
+          newPosition = draggedTask.position;
+        } else {
+          const taskAbove = tasksInColumn[targetIndex - 1];
+          const taskBelow = tasksInColumn[targetIndex];
 
           if (!taskAbove) {
             // Dropped at top
             newPosition = (taskBelow?.position || Date.now() / 1000) + 1;
-          } else if (!taskBelow) {
-            // Dropped at bottom
-            newPosition = (taskAbove?.position || Date.now() / 1000) - 1;
           } else {
             // Dropped between two tasks
             newPosition =
               ((taskAbove?.position || 0) + (taskBelow?.position || 0)) / 2;
           }
-        } else {
-          // Moving to a different column - simpler case
-          const taskAbove = allTasksInColumn[overIndex - 1];
-          const taskBelow = allTasksInColumn[overIndex];
-
-          if (!taskAbove) {
-            newPosition = (taskBelow?.position || Date.now() / 1000) + 1;
-          } else if (!taskBelow) {
-            newPosition = (taskAbove?.position || Date.now() / 1000) - 1;
-          } else {
-            newPosition =
-              ((taskAbove?.position || 0) + (taskBelow?.position || 0)) / 2;
-          }
         }
       } else {
-        // Dropped over empty column or at end
-        if (allTasksInColumn.length === 0) {
+        // Dropped over empty column or column header - add to bottom
+        if (tasksInColumn.length === 0) {
           newPosition = Date.now() / 1000;
         } else {
-          // Add to bottom
-          const lastTask = allTasksInColumn[allTasksInColumn.length - 1];
+          const lastTask = tasksInColumn[tasksInColumn.length - 1];
           newPosition = (lastTask?.position || Date.now() / 1000) - 1;
         }
       }
 
       // Only update if status or position changed
       if (
-        task.status === newStatus &&
-        Math.abs((task.position || 0) - newPosition) < 0.001
+        draggedTask.status === newStatus &&
+        Math.abs((draggedTask.position || 0) - newPosition) < 0.001
       ) {
         return;
       }
 
       try {
         await tasksApi.update(draggedTaskId, {
-          title: task.title,
-          description: task.description,
+          title: draggedTask.title,
+          description: draggedTask.description,
           status: newStatus,
           position: newPosition,
-          parent_task_attempt: task.parent_task_attempt,
+          parent_task_attempt: draggedTask.parent_task_attempt,
           image_ids: null,
         });
       } catch (err) {
         console.error('Failed to update task:', err);
       }
     },
-    [tasksById, groupedFilteredTasks]
+    [tasksById]
   );
 
   const isInitialTasksLoad = isLoading && tasks.length === 0;
