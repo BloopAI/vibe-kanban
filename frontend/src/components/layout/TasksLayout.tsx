@@ -1,10 +1,5 @@
-import { ReactNode, useEffect, useRef, useState, useLayoutEffect } from 'react';
-import {
-  PanelGroup,
-  Panel,
-  PanelResizeHandle,
-  ImperativePanelGroupHandle,
-} from 'react-resizable-panels';
+import { ReactNode, useEffect, useRef, useState } from 'react';
+import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
 import { AnimatePresence, motion } from 'framer-motion';
 
 export type LayoutMode = 'preview' | 'diffs' | null;
@@ -16,6 +11,7 @@ interface TasksLayoutProps {
   isPanelOpen: boolean;
   mode: LayoutMode;
   isMobile?: boolean;
+  rightHeader?: ReactNode;
 }
 
 type SplitSizes = [number, number];
@@ -164,81 +160,162 @@ function AuxRouter({ mode, aux }: { mode: LayoutMode; aux: ReactNode }) {
 }
 
 /**
- * DesktopSimple - Single 3-panel layout that keeps attempt mounted across all mode transitions.
- * Uses imperative setLayout to collapse the inactive side (Kanban or Aux) based on mode.
+ * RightWorkArea - Contains header and Attempt/Aux content.
+ * Shows just Attempt when mode === null, or Attempt | Aux split when mode !== null.
+ */
+function RightWorkArea({
+  attempt,
+  aux,
+  mode,
+  rightHeader,
+}: {
+  attempt: ReactNode;
+  aux: ReactNode;
+  mode: LayoutMode;
+  rightHeader?: ReactNode;
+}) {
+  const innerMigration = {
+    fromKey: STORAGE_KEYS.LEGACY.AUX,
+    map: (legacy: [number, number, number]) =>
+      [legacy[1], legacy[2]] as SplitSizes,
+  };
+
+  const innerStorageKey =
+    mode === 'diffs'
+      ? STORAGE_KEYS.V2.ATTEMPT_DIFFS
+      : STORAGE_KEYS.V2.ATTEMPT_PREVIEW;
+
+  const [innerSizes] = usePersistentSplitSizes(
+    innerStorageKey,
+    DEFAULT_ATTEMPT_AUX,
+    innerMigration
+  );
+
+  return (
+    <div className="h-full min-h-0 flex flex-col">
+      {rightHeader && (
+        <div className="shrink-0 sticky top-0 z-20 bg-background border-b">
+          {rightHeader}
+        </div>
+      )}
+      <div className="flex-1 min-h-0">
+        {mode === null ? (
+          attempt
+        ) : (
+          <PanelGroup
+            direction="horizontal"
+            className="h-full min-h-0"
+            onLayout={(layout) => {
+              if (!Array.isArray(layout) || layout.length !== 2) return;
+              persistJSON(innerStorageKey, [layout[0], layout[1]]);
+            }}
+          >
+            <Panel
+              id="attempt"
+              order={1}
+              defaultSize={innerSizes[0]}
+              minSize={MIN_PANEL_SIZE}
+              collapsible
+              collapsedSize={0}
+              className="min-w-0 min-h-0 overflow-hidden"
+              role="region"
+              aria-label="Details"
+            >
+              {attempt}
+            </Panel>
+
+            <PanelResizeHandle
+              id="handle-aa"
+              className="relative z-30 w-1 bg-border cursor-col-resize group touch-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+              aria-label="Resize panels"
+              role="separator"
+              aria-orientation="vertical"
+            >
+              <div className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border" />
+              <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 bg-muted/90 border border-border rounded-full px-1.5 py-3 opacity-70 group-hover:opacity-100 group-focus:opacity-100 transition-opacity shadow-sm">
+                <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+                <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+                <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+              </div>
+            </PanelResizeHandle>
+
+            <Panel
+              id="aux"
+              order={2}
+              defaultSize={innerSizes[1]}
+              minSize={MIN_PANEL_SIZE}
+              collapsible
+              collapsedSize={0}
+              className="min-w-0 min-h-0 overflow-hidden"
+              role="region"
+              aria-label={mode === 'preview' ? 'Preview' : 'Diffs'}
+            >
+              <AuxRouter mode={mode} aux={aux} />
+            </Panel>
+          </PanelGroup>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * DesktopSimple - Conditionally renders layout based on mode.
+ * When mode === null: Shows Kanban | Attempt
+ * When mode !== null: Hides Kanban, shows only RightWorkArea with Attempt | Aux
  */
 function DesktopSimple({
   kanban,
   attempt,
   aux,
   mode,
+  rightHeader,
 }: {
   kanban: ReactNode;
   attempt: ReactNode;
   aux: ReactNode;
   mode: LayoutMode;
+  rightHeader?: ReactNode;
 }) {
-  const kaMigration = {
+  const outerMigration = {
     fromKey: STORAGE_KEYS.LEGACY.MAIN,
     map: (legacy: [number, number, number]) =>
       [legacy[0], legacy[1]] as SplitSizes,
   };
 
-  const aaMigration = {
-    fromKey: STORAGE_KEYS.LEGACY.AUX,
-    map: (legacy: [number, number, number]) =>
-      [legacy[1], legacy[2]] as SplitSizes,
-  };
-
-  const [kaSizes] = usePersistentSplitSizes(
+  const [outerSizes] = usePersistentSplitSizes(
     STORAGE_KEYS.V2.KANBAN_ATTEMPT,
     DEFAULT_KANBAN_ATTEMPT,
-    kaMigration
+    outerMigration
   );
 
-  const aaStorageKey =
-    mode === 'diffs'
-      ? STORAGE_KEYS.V2.ATTEMPT_DIFFS
-      : STORAGE_KEYS.V2.ATTEMPT_PREVIEW;
+  // When preview/diffs is open, hide Kanban entirely and render only RightWorkArea
+  if (mode !== null) {
+    return (
+      <RightWorkArea
+        attempt={attempt}
+        aux={aux}
+        mode={mode}
+        rightHeader={rightHeader}
+      />
+    );
+  }
 
-  const [aaSizes] = usePersistentSplitSizes(
-    aaStorageKey,
-    DEFAULT_ATTEMPT_AUX,
-    aaMigration
-  );
-
-  const isKA = mode === null;
-  const targetLayout: [number, number, number] = isKA
-    ? [kaSizes[0], kaSizes[1], 0]
-    : [0, aaSizes[0], aaSizes[1]];
-
-  const groupRef = useRef<ImperativePanelGroupHandle | null>(null);
-
-  useLayoutEffect(() => {
-    if (groupRef.current) {
-      groupRef.current.setLayout(targetLayout);
-    }
-  }, [isKA, kaSizes, aaSizes]);
-
+  // When only viewing attempt logs, show Kanban | Attempt (no aux)
   return (
     <PanelGroup
-      ref={groupRef}
       direction="horizontal"
       className="h-full min-h-0"
       onLayout={(layout) => {
-        if (!Array.isArray(layout) || layout.length !== 3) return;
-        if (isKA) {
-          persistJSON(STORAGE_KEYS.V2.KANBAN_ATTEMPT, [layout[0], layout[1]]);
-        } else {
-          persistJSON(aaStorageKey, [layout[1], layout[2]]);
-        }
+        if (!Array.isArray(layout) || layout.length !== 2) return;
+        persistJSON(STORAGE_KEYS.V2.KANBAN_ATTEMPT, [layout[0], layout[1]]);
       }}
     >
       <Panel
         id="kanban"
         order={1}
-        defaultSize={targetLayout[0]}
-        minSize={isKA ? MIN_PANEL_SIZE : 0}
+        defaultSize={outerSizes[0]}
+        minSize={MIN_PANEL_SIZE}
         collapsible
         collapsedSize={0}
         className="min-w-0 min-h-0 overflow-hidden"
@@ -249,81 +326,35 @@ function DesktopSimple({
       </Panel>
 
       <PanelResizeHandle
-        id="handle-ka"
-        disabled={!isKA}
-        aria-hidden={!isKA}
-        className={
-          isKA
-            ? 'relative z-30 w-1 bg-border cursor-col-resize group touch-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1 focus-visible:ring-offset-background'
-            : 'w-0 pointer-events-none opacity-0'
-        }
+        id="handle-kr"
+        className="relative z-30 w-1 bg-border cursor-col-resize group touch-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
         aria-label="Resize panels"
         role="separator"
         aria-orientation="vertical"
       >
-        {isKA && (
-          <>
-            <div className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border" />
-            <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 bg-muted/90 border border-border rounded-full px-1.5 py-3 opacity-70 group-hover:opacity-100 group-focus:opacity-100 transition-opacity shadow-sm">
-              <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-              <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-              <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-            </div>
-          </>
-        )}
+        <div className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border" />
+        <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 bg-muted/90 border border-border rounded-full px-1.5 py-3 opacity-70 group-hover:opacity-100 group-focus:opacity-100 transition-opacity shadow-sm">
+          <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+          <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+          <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+        </div>
       </PanelResizeHandle>
 
       <Panel
-        id="attempt"
+        id="right"
         order={2}
-        defaultSize={targetLayout[1]}
+        defaultSize={outerSizes[1]}
         minSize={MIN_PANEL_SIZE}
         collapsible
         collapsedSize={0}
         className="min-w-0 min-h-0 overflow-hidden"
-        role="region"
-        aria-label="Details"
       >
-        {attempt}
-      </Panel>
-
-      <PanelResizeHandle
-        id="handle-aa"
-        disabled={isKA}
-        aria-hidden={isKA}
-        className={
-          !isKA
-            ? 'relative z-30 w-1 bg-border cursor-col-resize group touch-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1 focus-visible:ring-offset-background'
-            : 'w-0 pointer-events-none opacity-0'
-        }
-        aria-label="Resize panels"
-        role="separator"
-        aria-orientation="vertical"
-      >
-        {!isKA && (
-          <>
-            <div className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border" />
-            <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 bg-muted/90 border border-border rounded-full px-1.5 py-3 opacity-70 group-hover:opacity-100 group-focus:opacity-100 transition-opacity shadow-sm">
-              <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-              <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-              <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-            </div>
-          </>
-        )}
-      </PanelResizeHandle>
-
-      <Panel
-        id="aux"
-        order={3}
-        defaultSize={targetLayout[2]}
-        minSize={isKA ? 0 : MIN_PANEL_SIZE}
-        collapsible
-        collapsedSize={0}
-        className="min-w-0 min-h-0 overflow-hidden"
-        role="region"
-        aria-label={mode === 'preview' ? 'Preview' : 'Diffs'}
-      >
-        <AuxRouter mode={mode} aux={aux} />
+        <RightWorkArea
+          attempt={attempt}
+          aux={aux}
+          mode={mode}
+          rightHeader={rightHeader}
+        />
       </Panel>
     </PanelGroup>
   );
@@ -336,6 +367,7 @@ export function TasksLayout({
   isPanelOpen,
   mode,
   isMobile = false,
+  rightHeader,
 }: TasksLayoutProps) {
   const desktopKey = isPanelOpen ? 'desktop-with-panel' : 'kanban-only';
 
@@ -410,7 +442,13 @@ export function TasksLayout({
     );
   } else {
     desktopNode = (
-      <DesktopSimple kanban={kanban} attempt={attempt} aux={aux} mode={mode} />
+      <DesktopSimple
+        kanban={kanban}
+        attempt={attempt}
+        aux={aux}
+        mode={mode}
+        rightHeader={rightHeader}
+      />
     );
   }
 

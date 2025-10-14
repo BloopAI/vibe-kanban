@@ -607,64 +607,67 @@ export function ProjectTasks() {
       </div>
     );
 
+  const rightHeader = selectedTask ? (
+    <NewCardHeader
+      className="shrink-0"
+      actions={
+        isTaskView ? (
+          <TaskPanelHeaderActions
+            task={selectedTask}
+            onClose={() =>
+              navigate(`/projects/${projectId}/tasks`, { replace: true })
+            }
+          />
+        ) : (
+          <AttemptHeaderActions
+            mode={mode}
+            onModeChange={setMode}
+            task={selectedTask}
+            attempt={attempt ?? null}
+            onClose={() =>
+              navigate(`/projects/${projectId}/tasks`, { replace: true })
+            }
+          />
+        )
+      }
+    >
+      <div className="mx-auto w-full">
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              {isTaskView ? (
+                <BreadcrumbPage>
+                  {truncateTitle(selectedTask?.title)}
+                </BreadcrumbPage>
+              ) : (
+                <BreadcrumbLink
+                  className="cursor-pointer hover:underline"
+                  onClick={() =>
+                    navigateWithSearch(paths.task(projectId!, taskId!))
+                  }
+                >
+                  {truncateTitle(selectedTask?.title)}
+                </BreadcrumbLink>
+              )}
+            </BreadcrumbItem>
+            {!isTaskView && (
+              <>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage>
+                    {attempt?.branch || 'Task Attempt'}
+                  </BreadcrumbPage>
+                </BreadcrumbItem>
+              </>
+            )}
+          </BreadcrumbList>
+        </Breadcrumb>
+      </div>
+    </NewCardHeader>
+  ) : null;
+
   const attemptContent = selectedTask ? (
     <NewCard className="h-full min-h-0 flex flex-col bg-diagonal-lines bg-muted border-0">
-      <NewCardHeader
-        className="shrink-0"
-        actions={
-          isTaskView ? (
-            <TaskPanelHeaderActions
-              task={selectedTask}
-              onClose={() =>
-                navigate(`/projects/${projectId}/tasks`, { replace: true })
-              }
-            />
-          ) : (
-            <AttemptHeaderActions
-              mode={mode}
-              onModeChange={setMode}
-              task={selectedTask}
-              attempt={attempt ?? null}
-              onClose={() =>
-                navigate(`/projects/${projectId}/tasks`, { replace: true })
-              }
-            />
-          )
-        }
-      >
-        <div className="mx-auto w-full">
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                {isTaskView ? (
-                  <BreadcrumbPage>
-                    {truncateTitle(selectedTask?.title)}
-                  </BreadcrumbPage>
-                ) : (
-                  <BreadcrumbLink
-                    className="cursor-pointer hover:underline"
-                    onClick={() =>
-                      navigateWithSearch(paths.task(projectId!, taskId!))
-                    }
-                  >
-                    {truncateTitle(selectedTask?.title)}
-                  </BreadcrumbLink>
-                )}
-              </BreadcrumbItem>
-              {!isTaskView && (
-                <>
-                  <BreadcrumbSeparator />
-                  <BreadcrumbItem>
-                    <BreadcrumbPage>
-                      {attempt?.branch || 'Task Attempt'}
-                    </BreadcrumbPage>
-                  </BreadcrumbItem>
-                </>
-              )}
-            </BreadcrumbList>
-          </Breadcrumb>
-        </div>
-      </NewCardHeader>
       {isTaskView ? (
         <TaskPanel task={selectedTask} />
       ) : (
@@ -721,6 +724,7 @@ export function ProjectTasks() {
             isPanelOpen={isPanelOpen}
             mode={mode}
             isMobile={isMobile}
+            rightHeader={rightHeader}
           />
         </ExecutionProcessesProvider>
       </ReviewProvider>
@@ -733,6 +737,7 @@ export function ProjectTasks() {
       isPanelOpen={isPanelOpen}
       mode={mode}
       isMobile={isMobile}
+      rightHeader={rightHeader}
     />
   );
 
