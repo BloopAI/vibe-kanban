@@ -301,7 +301,11 @@ export function ProjectTasks() {
     return tasks.map((task) => {
       const optimistic = optimisticPositions[task.id];
       if (optimistic) {
-        return { ...task, status: optimistic.status, position: optimistic.position };
+        return {
+          ...task,
+          status: optimistic.status,
+          position: optimistic.position,
+        };
       }
       return task;
     });
