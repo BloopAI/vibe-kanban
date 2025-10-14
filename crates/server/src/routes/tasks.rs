@@ -288,7 +288,6 @@ pub async fn delete_task(
         .collect();
 
     // Use a transaction to ensure atomicity: either all operations succeed or all are rolled back
-    // This prevents partial state where children are nullified but task deletion fails
     let mut tx = deployment.db().pool.begin().await?;
 
     // Nullify parent_task_attempt for all child tasks before deletion
@@ -309,7 +308,6 @@ pub async fn delete_task(
     // Commit the transaction - if this fails, all changes are rolled back
     tx.commit().await?;
 
-    // Log after successful commit
     if total_children_affected > 0 {
         tracing::info!(
             "Nullified {} child task references before deleting task {}",
