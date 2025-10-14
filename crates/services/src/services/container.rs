@@ -670,6 +670,22 @@ pub trait ContainerService {
                 );
             }
 
+            if let ContainerError::ExecutorError(ExecutorError::ExecutableNotFound { .. }) =
+                &start_error
+                && executor_action.typ().is_coding_agent()
+            {
+                if let Err(flag_error) =
+                    ExecutionProcess::set_agent_not_installed(&self.db().pool, execution_process.id)
+                        .await
+                {
+                    tracing::error!(
+                        "Failed to flag execution process {} as agent not installed: {}",
+                        execution_process.id,
+                        flag_error
+                    );
+                }
+            }
+
             return Err(start_error);
         }
 

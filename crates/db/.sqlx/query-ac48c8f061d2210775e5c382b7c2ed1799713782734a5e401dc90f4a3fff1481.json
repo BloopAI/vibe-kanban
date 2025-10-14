@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "INSERT INTO execution_processes (\n                    id, task_attempt_id, run_reason, executor_action, before_head_commit,\n                    after_head_commit, status, exit_code, started_at, completed_at, created_at, updated_at\n                ) VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?) RETURNING\n                    id as \"id!: Uuid\", task_attempt_id as \"task_attempt_id!: Uuid\", run_reason as \"run_reason!: ExecutionProcessRunReason\", executor_action as \"executor_action!: sqlx::types::Json<ExecutorActionField>\", before_head_commit,\n                    after_head_commit, status as \"status!: ExecutionProcessStatus\", exit_code, dropped, started_at as \"started_at!: DateTime<Utc>\", completed_at as \"completed_at?: DateTime<Utc>\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "SELECT id as \"id!: Uuid\", task_attempt_id as \"task_attempt_id!: Uuid\", run_reason as \"run_reason!: ExecutionProcessRunReason\", executor_action as \"executor_action!: sqlx::types::Json<ExecutorActionField>\", before_head_commit,\n                      after_head_commit, status as \"status!: ExecutionProcessStatus\", exit_code, dropped, agent_not_installed, started_at as \"started_at!: DateTime<Utc>\", completed_at as \"completed_at?: DateTime<Utc>\",\n                      created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM execution_processes WHERE status = 'running' ORDER BY created_at ASC",
   "describe": {
     "columns": [
       {
@@ -49,28 +49,33 @@
         "type_info": "Bool"
       },
       {
-        "name": "started_at!: DateTime<Utc>",
+        "name": "agent_not_installed",
         "ordinal": 9,
-        "type_info": "Text"
+        "type_info": "Bool"
       },
       {
-        "name": "completed_at?: DateTime<Utc>",
+        "name": "started_at!: DateTime<Utc>",
         "ordinal": 10,
         "type_info": "Text"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "completed_at?: DateTime<Utc>",
         "ordinal": 11,
         "type_info": "Text"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "created_at!: DateTime<Utc>",
         "ordinal": 12,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 13,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 11
+      "Right": 0
     },
     "nullable": [
       true,
@@ -83,10 +88,11 @@
       true,
       false,
       false,
+      false,
       true,
       false,
       false
     ]
   },
-  "hash": "929cd77c5aa8015af36aa70ef830d030788b96aaddcef73aed4e8c7d7d5dee46"
+  "hash": "ac48c8f061d2210775e5c382b7c2ed1799713782734a5e401dc90f4a3fff1481"
 }
