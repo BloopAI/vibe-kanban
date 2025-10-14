@@ -30,7 +30,7 @@ export function SettingsLayout() {
         variant="ghost"
         size="icon"
         onClick={goToPreviousPath}
-        className="absolute top-4 right-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+        className="absolute top-0 right-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
       >
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
