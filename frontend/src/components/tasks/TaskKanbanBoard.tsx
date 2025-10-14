@@ -17,9 +17,6 @@ type Task = TaskWithAttemptStatus;
 interface TaskKanbanBoardProps {
   groupedTasks: Record<TaskStatus, Task[]>;
   onDragEnd: (event: DragEndEvent) => void;
-  onEditTask: (task: Task) => void;
-  onDeleteTask: (taskId: string) => void;
-  onDuplicateTask?: (task: Task) => void;
   onViewTaskDetails: (task: Task) => void;
   selectedTask?: Task;
   onCreateTask?: () => void;
@@ -28,9 +25,6 @@ interface TaskKanbanBoardProps {
 function TaskKanbanBoard({
   groupedTasks,
   onDragEnd,
-  onEditTask,
-  onDeleteTask,
-  onDuplicateTask,
   onViewTaskDetails,
   selectedTask,
   onCreateTask,
@@ -51,9 +45,6 @@ function TaskKanbanBoard({
                 task={task}
                 index={index}
                 status={status}
-                onEdit={onEditTask}
-                onDelete={onDeleteTask}
-                onDuplicate={onDuplicateTask}
                 onViewDetails={onViewTaskDetails}
                 isOpen={selectedTask?.id === task.id}
               />

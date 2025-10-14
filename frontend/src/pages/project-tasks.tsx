@@ -40,22 +40,24 @@ import type { TaskWithAttemptStatus } from 'shared/types';
 import type { DragEndEvent } from '@/components/ui/shadcn-io/kanban';
 import { useProjectTasks } from '@/hooks/useProjectTasks';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import NiceModal from '@ebay/nice-modal-react';
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { TasksLayout, type LayoutMode } from '@/components/layout/TasksLayout';
 import { PreviewPanel } from '@/components/panels/PreviewPanel';
 import { DiffsPanel } from '@/components/panels/DiffsPanel';
 import TaskAttemptPanel from '@/components/panels/TaskAttemptPanel';
+import TaskPanel from '@/components/panels/TaskPanel';
 import TodoPanel from '@/components/tasks/TodoPanel';
 import { NewCard, NewCardHeader } from '@/components/ui/new-card';
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbList,
+  BreadcrumbLink,
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import { AttemptHeaderActions } from '@/components/panels/AttemptHeaderActions';
+import { TaskPanelHeaderActions } from '@/components/panels/TaskPanelHeaderActions';
 
 type Task = TaskWithAttemptStatus;
 
@@ -136,24 +138,6 @@ export function ProjectTasks() {
       openTaskForm({ projectId });
     }
   }, [projectId]);
-
-  const handleEditTask = useCallback(
-    (task: Task) => {
-      if (projectId) {
-        openTaskForm({ projectId, task });
-      }
-    },
-    [projectId]
-  );
-
-  const handleDuplicateTask = useCallback(
-    (task: Task) => {
-      if (projectId) {
-        openTaskForm({ projectId, initialTask: task });
-      }
-    },
-    [projectId]
-  );
   const { query: searchQuery, focusInput } = useSearch();
 
   const {
@@ -163,11 +147,12 @@ export function ProjectTasks() {
     error: streamError,
   } = useProjectTasks(projectId || '');
 
-  const isPanelOpen = Boolean(taskId);
   const selectedTask = useMemo(
     () => (taskId ? (tasksById[taskId] ?? null) : null),
     [taskId, tasksById]
   );
+
+  const isPanelOpen = Boolean(taskId && selectedTask);
 
   const isLatest = attemptId === 'latest';
   const { data: attempts = [], isLoading: isAttemptsLoading } = useTaskAttempts(
@@ -193,7 +178,7 @@ export function ProjectTasks() {
     if (isAttemptsLoading) return;
 
     if (!latestAttemptId) {
-      navigate(paths.task(projectId, taskId), { replace: true });
+      navigateWithSearch(paths.task(projectId, taskId), { replace: true });
       return;
     }
 
@@ -209,9 +194,16 @@ export function ProjectTasks() {
     navigate,
   ]);
 
+  useEffect(() => {
+    if (!projectId || !taskId || isLoading) return;
+    if (selectedTask === null) {
+      navigate(`/projects/${projectId}/tasks`, { replace: true });
+    }
+  }, [projectId, taskId, isLoading, selectedTask, navigate]);
+
   const effectiveAttemptId = attemptId === 'latest' ? undefined : attemptId;
+  const isTaskView = !!taskId && !effectiveAttemptId;
   const { data: attempt } = useTaskAttempt(effectiveAttemptId);
-  const hasAttempt = Boolean(attemptId);
 
   const { data: branchStatus } = useBranchStatus(attempt?.id);
   const [branches, setBranches] = useState<GitBranch[]>([]);
@@ -407,9 +399,8 @@ export function ProjectTasks() {
 
   useKeyDeleteTask(
     () => {
-      if (selectedTask) {
-        handleDeleteTask(selectedTask.id);
-      }
+      // Note: Delete is now handled by TaskActionsDropdown
+      // This keyboard shortcut could trigger the dropdown action if needed
     },
     {
       scope: Scope.KANBAN,
@@ -422,39 +413,6 @@ export function ProjectTasks() {
       navigate(`/projects/${projectId}/tasks`, { replace: true });
     }
   }, [projectId, navigate]);
-
-  const handleDeleteTask = useCallback(
-    (taskId: string) => {
-      const task = tasksById[taskId];
-      if (task) {
-        NiceModal.show('delete-task-confirmation', {
-          task,
-          projectId: projectId!,
-        })
-          .then(() => {
-            if (selectedTask?.id === taskId) {
-              handleClosePanel();
-            }
-          })
-          .catch(() => {});
-      }
-    },
-    [tasksById, projectId, selectedTask, handleClosePanel]
-  );
-
-  const handleEditTaskCallback = useCallback(
-    (task: Task) => {
-      handleEditTask(task);
-    },
-    [handleEditTask]
-  );
-
-  const handleDuplicateTaskCallback = useCallback(
-    (task: Task) => {
-      handleDuplicateTask(task);
-    },
-    [handleDuplicateTask]
-  );
 
   const handleViewTaskDetails = useCallback(
     (task: Task, attemptIdToShow?: string) => {
@@ -642,9 +600,6 @@ export function ProjectTasks() {
         <TaskKanbanBoard
           groupedTasks={groupedFilteredTasks}
           onDragEnd={handleDragEnd}
-          onEditTask={handleEditTaskCallback}
-          onDeleteTask={handleDeleteTask}
-          onDuplicateTask={handleDuplicateTaskCallback}
           onViewTaskDetails={handleViewTaskDetails}
           selectedTask={selectedTask || undefined}
           onCreateTask={handleCreateNewTask}
@@ -652,81 +607,97 @@ export function ProjectTasks() {
       </div>
     );
 
-  const attemptContent = (
+  const attemptContent = selectedTask ? (
     <NewCard className="h-full min-h-0 flex flex-col bg-diagonal-lines bg-muted border-0">
       <NewCardHeader
         className="shrink-0"
         actions={
-          <AttemptHeaderActions
-            mode={mode}
-            onModeChange={setMode}
-            attemptId={effectiveAttemptId}
-            onClose={() =>
-              navigate(`/projects/${projectId}/tasks`, { replace: true })
-            }
-            taskId={taskId!}
-            latestAttempt={attempt ?? null}
-            onCreateSubtask={
-              attempt && projectId
-                ? () =>
-                    openTaskForm({
-                      projectId,
-                      parentTaskAttemptId: attempt.id,
-                      initialBaseBranch:
-                        attempt.branch || attempt.target_branch,
-                    })
-                : undefined
-            }
-          />
+          isTaskView ? (
+            <TaskPanelHeaderActions
+              task={selectedTask}
+              onClose={() =>
+                navigate(`/projects/${projectId}/tasks`, { replace: true })
+              }
+            />
+          ) : (
+            <AttemptHeaderActions
+              mode={mode}
+              onModeChange={setMode}
+              task={selectedTask}
+              attempt={attempt ?? null}
+              onClose={() =>
+                navigate(`/projects/${projectId}/tasks`, { replace: true })
+              }
+            />
+          )
         }
       >
         <div className="mx-auto w-full">
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
-                <BreadcrumbPage>
-                  {truncateTitle(selectedTask?.title)}
-                </BreadcrumbPage>
+                {isTaskView ? (
+                  <BreadcrumbPage>
+                    {truncateTitle(selectedTask?.title)}
+                  </BreadcrumbPage>
+                ) : (
+                  <BreadcrumbLink
+                    className="cursor-pointer hover:underline"
+                    onClick={() =>
+                      navigateWithSearch(paths.task(projectId!, taskId!))
+                    }
+                  >
+                    {truncateTitle(selectedTask?.title)}
+                  </BreadcrumbLink>
+                )}
               </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage>
-                  {attempt?.branch || 'Task Attempt'}
-                </BreadcrumbPage>
-              </BreadcrumbItem>
+              {!isTaskView && (
+                <>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>
+                      {attempt?.branch || 'Task Attempt'}
+                    </BreadcrumbPage>
+                  </BreadcrumbItem>
+                </>
+              )}
             </BreadcrumbList>
           </Breadcrumb>
         </div>
       </NewCardHeader>
-      <TaskAttemptPanel attempt={attempt} task={selectedTask}>
-        {({ logs, followUp }) => (
-          <>
-            {gitError && (
-              <div className="mx-4 mt-4 p-3 bg-red-50 border border-red-200 rounded">
-                <div className="text-destructive text-sm">{gitError}</div>
-              </div>
-            )}
-            <div className="flex-1 min-h-0 flex flex-col">{logs}</div>
+      {isTaskView ? (
+        <TaskPanel task={selectedTask} />
+      ) : (
+        <TaskAttemptPanel attempt={attempt} task={selectedTask}>
+          {({ logs, followUp }) => (
+            <>
+              {gitError && (
+                <div className="mx-4 mt-4 p-3 bg-red-50 border border-red-200 rounded">
+                  <div className="text-destructive text-sm">{gitError}</div>
+                </div>
+              )}
+              <div className="flex-1 min-h-0 flex flex-col">{logs}</div>
 
-            <div className="shrink-0 border-t">
-              <div className="mx-auto w-full max-w-[50rem]">
-                <TodoPanel />
+              <div className="shrink-0 border-t">
+                <div className="mx-auto w-full max-w-[50rem]">
+                  <TodoPanel />
+                </div>
               </div>
-            </div>
 
-            <div className="shrink-0 border-t">
-              <div className="mx-auto w-full max-w-[50rem]">{followUp}</div>
-            </div>
-          </>
-        )}
-      </TaskAttemptPanel>
+              <div className="shrink-0 border-t">
+                <div className="mx-auto w-full max-w-[50rem]">{followUp}</div>
+              </div>
+            </>
+          )}
+        </TaskAttemptPanel>
+      )}
     </NewCard>
-  );
+  ) : null;
 
   const auxContent = (
     <div className="relative h-full w-full">
-      {mode === 'preview' && attempt && <PreviewPanel />}
-      {mode === 'diffs' && attempt && (
+      {mode === 'preview' && attempt && selectedTask && <PreviewPanel />}
+      {mode === 'diffs' && attempt && selectedTask && (
         <DiffsPanelContainer
           attempt={attempt}
           selectedTask={selectedTask}
@@ -747,7 +718,7 @@ export function ProjectTasks() {
             kanban={kanbanContent}
             attempt={attemptContent}
             aux={auxContent}
-            hasAttempt={hasAttempt}
+            isPanelOpen={isPanelOpen}
             mode={mode}
             isMobile={isMobile}
           />
@@ -759,7 +730,7 @@ export function ProjectTasks() {
       kanban={kanbanContent}
       attempt={attemptContent}
       aux={auxContent}
-      hasAttempt={hasAttempt}
+      isPanelOpen={isPanelOpen}
       mode={mode}
       isMobile={isMobile}
     />

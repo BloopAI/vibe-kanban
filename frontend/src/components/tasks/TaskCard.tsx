@@ -1,22 +1,8 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { KanbanCard } from '@/components/ui/shadcn-io/kanban';
-import {
-  CheckCircle,
-  Copy,
-  Edit,
-  Loader2,
-  MoreHorizontal,
-  Trash2,
-  XCircle,
-} from 'lucide-react';
+import { CheckCircle, Loader2, XCircle } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
+import { ActionsDropdown } from '@/components/ui/ActionsDropdown';
 
 type Task = TaskWithAttemptStatus;
 
@@ -24,9 +10,6 @@ interface TaskCardProps {
   task: Task;
   index: number;
   status: string;
-  onEdit: (task: Task) => void;
-  onDelete: (taskId: string) => void;
-  onDuplicate?: (task: Task) => void;
   onViewDetails: (task: Task) => void;
   isOpen?: boolean;
 }
@@ -35,9 +18,6 @@ export function TaskCard({
   task,
   index,
   status,
-  onEdit,
-  onDelete,
-  onDuplicate,
   onViewDetails,
   isOpen,
 }: TaskCardProps) {
@@ -93,36 +73,7 @@ export function TaskCard({
             onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0 hover:bg-muted"
-                >
-                  <MoreHorizontal className="h-3 w-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onEdit(task)}>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit
-                </DropdownMenuItem>
-                {onDuplicate && (
-                  <DropdownMenuItem onClick={() => onDuplicate(task)}>
-                    <Copy className="h-4 w-4 mr-2" />
-                    Duplicate
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem
-                  onClick={() => onDelete(task.id)}
-                  className="text-destructive"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <ActionsDropdown task={task} />
           </div>
         </div>
       </div>

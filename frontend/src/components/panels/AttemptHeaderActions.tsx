@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { Eye, GitCompareArrows, X, MoreHorizontal } from 'lucide-react';
+import { Eye, GitCompareArrows, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
 import {
@@ -8,40 +7,25 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '../ui/tooltip';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '../ui/dropdown-menu';
 import type { LayoutMode } from '../layout/TasksLayout';
-import type { TaskAttempt } from 'shared/types';
-import { CreateAttemptDialog } from '../dialogs/tasks/CreateAttemptDialog';
-import { useOpenInEditor } from '@/hooks/useOpenInEditor';
-import NiceModal from '@ebay/nice-modal-react';
+import type { TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
+import { ActionsDropdown } from '../ui/ActionsDropdown';
 
 interface AttemptHeaderActionsProps {
   onClose: () => void;
   mode?: LayoutMode;
   onModeChange?: (mode: LayoutMode) => void;
-  taskId: string;
-  latestAttempt?: TaskAttempt | null;
-  onCreateSubtask?: () => void;
-  attemptId?: string;
+  task: TaskWithAttemptStatus;
+  attempt?: TaskAttempt | null;
 }
 
 export const AttemptHeaderActions = ({
   onClose,
   mode,
   onModeChange,
-  taskId,
-  latestAttempt,
-  onCreateSubtask,
-  attemptId,
+  task,
+  attempt,
 }: AttemptHeaderActionsProps) => {
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const openInEditor = useOpenInEditor(attemptId);
-
   return (
     <>
       {typeof mode !== 'undefined' && onModeChange && (
@@ -84,61 +68,10 @@ export const AttemptHeaderActions = ({
       {typeof mode !== 'undefined' && onModeChange && (
         <div className="h-4 w-px bg-border" />
       )}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-          <Button variant="icon" aria-label="More actions">
-            <MoreHorizontal size={16} />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem
-            disabled={!attemptId}
-            onClick={(e) => {
-              e.stopPropagation();
-              openInEditor();
-            }}
-          >
-            Open attempt in IDE
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            disabled={!attemptId}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!attemptId) return;
-              NiceModal.show('view-processes', { attemptId });
-            }}
-          >
-            View processes
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsCreateOpen(true);
-            }}
-          >
-            Create new attempt
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={(e) => {
-              e.stopPropagation();
-              onCreateSubtask?.();
-            }}
-            disabled={!onCreateSubtask}
-          >
-            Create subtask
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <ActionsDropdown task={task} attempt={attempt} />
       <Button variant="icon" aria-label="Close" onClick={onClose}>
         <X size={16} />
       </Button>
-
-      <CreateAttemptDialog
-        taskId={taskId}
-        open={isCreateOpen}
-        onOpenChange={setIsCreateOpen}
-        latestAttempt={latestAttempt ?? null}
-      />
     </>
   );
 };
