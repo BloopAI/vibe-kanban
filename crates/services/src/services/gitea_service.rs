@@ -8,8 +8,11 @@ use serde::{Deserialize, Serialize};
 use tracing::info;
 
 use crate::services::git_platform::{
-    CreatePrRequest, GitPlatformError, GitPlatformService, RepoInfo, RepositoryInfo,
+    CreatePrRequest, GitPlatformError, GitPlatformService, RepoInfo,
 };
+
+#[cfg(feature = "cloud")]
+use crate::services::git_platform::RepositoryInfo;
 
 #[derive(Debug, Clone)]
 pub struct GiteaService {
@@ -56,7 +59,7 @@ impl GiteaService {
             number: pr.number,
             url: pr.html_url,
             status: state,
-            merged_at: pr.merged_at.map(|dt| dt.and_utc()),
+            merged_at: pr.merged_at,
             merge_commit_sha: pr.merge_commit_sha,
         }
     }
@@ -132,7 +135,18 @@ impl GitPlatformService for GiteaService {
 
             match response.status() {
                 StatusCode::OK => {
-                    let pr: GiteaPullRequest = response.json().await.map_err(|e| {
+                    // First get the response text for better error reporting
+                    let response_text = response.text().await.map_err(|e| {
+                        GitPlatformError::Parse(format!("Failed to read PR response text: {e}"))
+                    })?;
+
+                    // Try to parse it
+                    let pr: GiteaPullRequest = serde_json::from_str(&response_text).map_err(|e| {
+                        tracing::error!(
+                            "Failed to parse Gitea PR response. Error: {}. Response body: {}",
+                            e,
+                            response_text
+                        );
                         GitPlatformError::Parse(format!("Failed to parse PR response: {e}"))
                     })?;
                     Ok(Self::map_pull_request(pr))
@@ -331,7 +345,16 @@ impl GiteaService {
 
         match pr_response.status() {
             StatusCode::CREATED => {
-                let pr: GiteaPullRequest = pr_response.json().await.map_err(|e| {
+                let response_text = pr_response.text().await.map_err(|e| {
+                    GitPlatformError::Parse(format!("Failed to read PR create response text: {e}"))
+                })?;
+
+                let pr: GiteaPullRequest = serde_json::from_str(&response_text).map_err(|e| {
+                    tracing::error!(
+                        "Failed to parse Gitea PR create response. Error: {}. Response body: {}",
+                        e,
+                        response_text
+                    );
                     GitPlatformError::Parse(format!("Failed to parse PR response: {e}"))
                 })?;
 
@@ -382,7 +405,16 @@ impl GiteaService {
 
         match response.status() {
             StatusCode::OK => {
-                let all_prs: Vec<GiteaPullRequest> = response.json().await.map_err(|e| {
+                let response_text = response.text().await.map_err(|e| {
+                    GitPlatformError::Parse(format!("Failed to read PRs list response text: {e}"))
+                })?;
+
+                let all_prs: Vec<GiteaPullRequest> = serde_json::from_str(&response_text).map_err(|e| {
+                    tracing::error!(
+                        "Failed to parse Gitea PRs list response. Error: {}. Response body: {}",
+                        e,
+                        response_text
+                    );
                     GitPlatformError::Parse(format!("Failed to parse PRs response: {e}"))
                 })?;
 
@@ -468,20 +500,57 @@ impl GiteaService {
 
 // Gitea API response structures
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(default)]
 struct GiteaPullRequest {
+    id: i64,
+    url: String,
     number: i64,
+    title: String,
+    body: Option<String>,
     html_url: String,
     state: String,
     merged: bool,
-    merged_at: Option<chrono::NaiveDateTime>,
+    merged_at: Option<chrono::DateTime<chrono::Utc>>,
     merge_commit_sha: Option<String>,
     head: Option<GiteaPRRef>,
+    #[serde(rename = "base")]
+    base_ref: Option<GiteaPRRef>,
+    created_at: Option<chrono::DateTime<chrono::Utc>>,
+    updated_at: Option<chrono::DateTime<chrono::Utc>>,
+    closed_at: Option<chrono::DateTime<chrono::Utc>>,
+    // Allow other fields to be ignored silently
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+impl Default for GiteaPullRequest {
+    fn default() -> Self {
+        Self {
+            id: 0,
+            url: String::new(),
+            number: 0,
+            title: String::new(),
+            body: None,
+            html_url: String::new(),
+            state: "unknown".to_string(),
+            merged: false,
+            merged_at: None,
+            merge_commit_sha: None,
+            head: None,
+            base_ref: None,
+            created_at: None,
+            updated_at: None,
+            closed_at: None,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Default)]
+#[serde(default)]
 struct GiteaPRRef {
     #[serde(rename = "ref")]
     ref_field: String,
+    label: Option<String>,
+    sha: Option<String>,
+    repo_id: Option<i64>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

@@ -97,7 +97,7 @@ impl WorktreeManager {
 
         // Check if worktree already exists and is properly set up
         if Self::is_worktree_properly_set_up(repo_path, worktree_path).await? {
-            debug!("Worktree already properly set up at path: {}", path_str);
+            tracing::trace!("Worktree already properly set up at path: {}", path_str);
             return Ok(());
         }
 

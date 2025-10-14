@@ -20,6 +20,7 @@ import {
   EditorType,
   ExecutionProcess,
   GitBranch,
+  GitRemote,
   Project,
   CreateProject,
   RepositoryInfo,
@@ -50,7 +51,7 @@ import {
 } from 'shared/types';
 
 // Re-export types for convenience
-export type { RepositoryInfo } from 'shared/types';
+export type { RepositoryInfo, GitRemote } from 'shared/types';
 export type {
   UpdateFollowUpDraftRequest,
   UpdateRetryFollowUpDraftRequest,
@@ -249,6 +250,42 @@ export const projectsApi = {
   getBranches: async (id: string): Promise<GitBranch[]> => {
     const response = await makeRequest(`/api/projects/${id}/branches`);
     return handleApiResponse<GitBranch[]>(response);
+  },
+
+  getRemotes: async (id: string): Promise<GitRemote[]> => {
+    const response = await makeRequest(`/api/projects/${id}/remotes`);
+    return handleApiResponse<GitRemote[]>(response);
+  },
+
+  addRemote: async (
+    id: string,
+    name: string,
+    url: string
+  ): Promise<void> => {
+    const response = await makeRequest(`/api/projects/${id}/remotes`, {
+      method: 'POST',
+      body: JSON.stringify({ name, url }),
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  updateRemote: async (
+    id: string,
+    name: string,
+    url: string
+  ): Promise<void> => {
+    const response = await makeRequest(`/api/projects/${id}/remotes/${encodeURIComponent(name)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ url }),
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  deleteRemote: async (id: string, name: string): Promise<void> => {
+    const response = await makeRequest(`/api/projects/${id}/remotes/${encodeURIComponent(name)}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
   },
 
   searchFiles: async (

@@ -46,6 +46,10 @@ interface ProjectFormFieldsProps {
   setError: (error: string) => void;
   projectId?: string;
   onCreateProject?: (path: string, name: string) => void;
+  remoteName?: string;
+  setRemoteName?: (name: string) => void;
+  remoteUrl?: string;
+  setRemoteUrl?: (url: string) => void;
 }
 
 export function ProjectFormFields({
@@ -71,6 +75,10 @@ export function ProjectFormFields({
   setError,
   projectId,
   onCreateProject,
+  remoteName,
+  setRemoteName,
+  remoteUrl,
+  setRemoteUrl,
 }: ProjectFormFieldsProps) {
   const { system } = useUserSystem();
 
@@ -374,6 +382,45 @@ export function ProjectFormFields({
                 Leave empty to use your current working directory, or specify a
                 custom path.
               </p>
+            </div>
+
+            {/* Git Remote Configuration (Optional) */}
+            <div className="space-y-4 pt-4 border-t border-border">
+              <div>
+                <h3 className="text-sm font-medium text-foreground mb-1">
+                  Git Remote (Optional)
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Configure a git remote for pushing branches and creating pull requests
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="remote-name">Remote Name</Label>
+                <Input
+                  id="remote-name"
+                  type="text"
+                  value={remoteName}
+                  onChange={(e) => setRemoteName?.(e.target.value)}
+                  placeholder="origin"
+                  className="placeholder:text-secondary-foreground placeholder:opacity-100"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="remote-url">Remote URL</Label>
+                <Input
+                  id="remote-url"
+                  type="text"
+                  value={remoteUrl}
+                  onChange={(e) => setRemoteUrl?.(e.target.value)}
+                  placeholder="https://github.com/username/repo.git"
+                  className="placeholder:text-secondary-foreground placeholder:opacity-100"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Example: https://github.com/username/repo.git or git@github.com:username/repo.git
+                </p>
+              </div>
             </div>
           </div>
         </div>

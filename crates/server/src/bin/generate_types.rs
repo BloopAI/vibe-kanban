@@ -68,6 +68,7 @@ fn generate_types_content() -> String {
         server::routes::auth::GiteaConfigureRequest::decl(),
         server::routes::auth::GiteaConfigureResponse::decl(),
         services::services::git::GitBranch::decl(),
+        services::services::git::GitRemote::decl(),
         utils::diff::Diff::decl(),
         utils::diff::DiffChangeKind::decl(),
         services::services::git_platform::RepositoryInfo::decl(),

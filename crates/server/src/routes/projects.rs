@@ -16,7 +16,7 @@ use ignore::WalkBuilder;
 use services::services::{
     file_ranker::FileRanker,
     file_search_cache::{CacheError, SearchMode, SearchQuery},
-    git::GitBranch,
+    git::{GitBranch, GitRemote},
 };
 use utils::{path::expand_tilde, response::ApiResponse};
 use uuid::Uuid;
@@ -44,6 +44,59 @@ pub async fn get_project_branches(
     Ok(ResponseJson(ApiResponse::success(branches)))
 }
 
+pub async fn get_project_remotes(
+    Extension(project): Extension<Project>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<GitRemote>>>, ApiError> {
+    let remotes = deployment.git().list_remotes(&project.git_repo_path)?;
+    Ok(ResponseJson(ApiResponse::success(remotes)))
+}
+
+#[derive(serde::Deserialize)]
+pub struct AddRemoteRequest {
+    name: String,
+    url: String,
+}
+
+pub async fn add_project_remote(
+    Extension(project): Extension<Project>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<AddRemoteRequest>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    deployment
+        .git()
+        .set_remote(&project.git_repo_path, &payload.name, &payload.url)?;
+    Ok(ResponseJson(ApiResponse::success(())))
+}
+
+#[derive(serde::Deserialize)]
+pub struct UpdateRemoteRequest {
+    url: String,
+}
+
+pub async fn update_project_remote(
+    Extension(project): Extension<Project>,
+    State(deployment): State<DeploymentImpl>,
+    axum::extract::Path(remote_name): axum::extract::Path<String>,
+    Json(payload): Json<UpdateRemoteRequest>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    deployment
+        .git()
+        .set_remote(&project.git_repo_path, &remote_name, &payload.url)?;
+    Ok(ResponseJson(ApiResponse::success(())))
+}
+
+pub async fn delete_project_remote(
+    Extension(project): Extension<Project>,
+    State(deployment): State<DeploymentImpl>,
+    axum::extract::Path(remote_name): axum::extract::Path<String>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    deployment
+        .git()
+        .delete_remote(&project.git_repo_path, &remote_name)?;
+    Ok(ResponseJson(ApiResponse::success(())))
+}
+
 pub async fn create_project(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateProject>,
@@ -57,6 +110,8 @@ pub async fn create_project(
         cleanup_script,
         copy_files,
         use_existing_repo,
+        remote_name,
+        remote_url,
     } = payload;
     tracing::debug!("Creating project '{}'", name);
 
@@ -133,6 +188,18 @@ pub async fn create_project(
         }
     }
 
+    // Configure git remote if provided
+    if let (Some(name), Some(url)) = (remote_name.as_ref(), remote_url.as_ref()) {
+        if let Err(e) = deployment.git().set_remote(&path, name, url) {
+            tracing::error!("Failed to configure git remote: {}", e);
+            return Ok(ResponseJson(ApiResponse::error(&format!(
+                "Failed to configure git remote: {}",
+                e
+            ))));
+        }
+        tracing::debug!("Configured git remote '{}' with URL: {}", name, url);
+    }
+
     match Project::create(
         &deployment.db().pool,
         &CreateProject {
@@ -143,6 +210,8 @@ pub async fn create_project(
             dev_script,
             cleanup_script,
             copy_files,
+            remote_name,
+            remote_url,
         },
         id,
     )
@@ -498,6 +567,11 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             get(get_project).put(update_project).delete(delete_project),
         )
         .route("/branches", get(get_project_branches))
+        .route("/remotes", get(get_project_remotes).post(add_project_remote))
+        .route(
+            "/remotes/{remote_name}",
+            axum::routing::put(update_project_remote).delete(delete_project_remote),
+        )
         .route("/search", get(search_project_files))
         .route("/open-editor", post(open_project_in_editor))
         .layer(from_fn_with_state(

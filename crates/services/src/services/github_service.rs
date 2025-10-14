@@ -12,10 +12,11 @@ use ts_rs::TS;
 use crate::services::{
     git::GitServiceError,
     git_cli::GitCliError,
-    git_platform::{
-        CreatePrRequest, GitPlatformError, GitPlatformService, RepoInfo, RepositoryInfo,
-    },
+    git_platform::{CreatePrRequest, GitPlatformError, GitPlatformService, RepoInfo},
 };
+
+#[cfg(feature = "cloud")]
+use crate::services::git_platform::RepositoryInfo;
 
 #[derive(Debug, Error, Serialize, Deserialize, TS)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]

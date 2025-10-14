@@ -11,6 +11,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TaskTemplateManager } from '@/components/TaskTemplateManager';
 import { ProjectFormFields } from '@/components/projects/project-form-fields';
+import { GitRemotesList } from '@/components/projects/git-remotes-list';
 import { CreateProject, Project, UpdateProject } from 'shared/types';
 import { generateProjectNameFromPath } from '@/utils/string';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
@@ -39,6 +40,8 @@ export const ProjectFormDialog = NiceModal.create<ProjectFormDialogProps>(
     const [repoMode, setRepoMode] = useState<'existing' | 'new'>('existing');
     const [parentPath, setParentPath] = useState('');
     const [folderName, setFolderName] = useState('');
+    const [remoteName, setRemoteName] = useState('origin');
+    const [remoteUrl, setRemoteUrl] = useState('');
 
     const isEditing = !!project;
 
@@ -101,6 +104,8 @@ export const ProjectFormDialog = NiceModal.create<ProjectFormDialogProps>(
         dev_script: null,
         cleanup_script: null,
         copy_files: null,
+        remote_name: remoteUrl ? remoteName : null,
+        remote_url: remoteUrl || null,
       };
 
       createProject.mutate(createData);
@@ -143,6 +148,8 @@ export const ProjectFormDialog = NiceModal.create<ProjectFormDialogProps>(
           dev_script: null,
           cleanup_script: null,
           copy_files: null,
+          remote_name: remoteUrl ? remoteName : null,
+          remote_url: remoteUrl || null,
         };
 
         createProject.mutate(createData);
@@ -195,9 +202,10 @@ export const ProjectFormDialog = NiceModal.create<ProjectFormDialogProps>(
           <div className="mx-auto w-full max-w-2xl overflow-x-hidden px-1">
             {isEditing ? (
               <Tabs defaultValue="general" className="w-full -mt-2">
-                <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsList className="grid w-full grid-cols-3 mb-4">
                   <TabsTrigger value="general">General</TabsTrigger>
                   <TabsTrigger value="templates">Task Templates</TabsTrigger>
+                  <TabsTrigger value="remotes">Git Remotes</TabsTrigger>
                 </TabsList>
                 <TabsContent value="general" className="space-y-4">
                   <form onSubmit={handleSubmit} className="space-y-4">
@@ -241,6 +249,9 @@ export const ProjectFormDialog = NiceModal.create<ProjectFormDialogProps>(
                     projectId={project ? project.id : undefined}
                   />
                 </TabsContent>
+                <TabsContent value="remotes" className="mt-0 pt-4">
+                  <GitRemotesList projectId={project ? project.id : ''} />
+                </TabsContent>
               </Tabs>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -267,6 +278,10 @@ export const ProjectFormDialog = NiceModal.create<ProjectFormDialogProps>(
                   setError={setError}
                   projectId={undefined}
                   onCreateProject={handleDirectCreate}
+                  remoteName={remoteName}
+                  setRemoteName={setRemoteName}
+                  remoteUrl={remoteUrl}
+                  setRemoteUrl={setRemoteUrl}
                 />
                 {repoMode === 'new' && (
                   <DialogFooter>

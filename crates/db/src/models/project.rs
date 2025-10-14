@@ -46,6 +46,8 @@ pub struct CreateProject {
     pub dev_script: Option<String>,
     pub cleanup_script: Option<String>,
     pub copy_files: Option<String>,
+    pub remote_name: Option<String>,
+    pub remote_url: Option<String>,
 }
 
 #[derive(Debug, Deserialize, TS)]

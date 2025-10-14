@@ -65,6 +65,12 @@ pub struct GitBranch {
     pub last_commit_date: DateTime<Utc>,
 }
 
+#[derive(Debug, Serialize, TS)]
+pub struct GitRemote {
+    pub name: String,
+    pub url: String,
+}
+
 #[derive(Debug, Clone)]
 pub struct HeadInfo {
     pub branch: String,
@@ -1246,6 +1252,37 @@ impl GitService {
                 repo.remote(name, url)?;
             }
         }
+        Ok(())
+    }
+
+    /// List all remotes configured for the repository
+    pub fn list_remotes(&self, repo_path: &Path) -> Result<Vec<GitRemote>, GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
+        let remotes = repo.remotes()?;
+
+        let mut result = Vec::new();
+        for remote_name in remotes.iter().flatten() {
+            if let Ok(remote) = repo.find_remote(remote_name) {
+                if let Some(url) = remote.url() {
+                    result.push(GitRemote {
+                        name: remote_name.to_string(),
+                        url: url.to_string(),
+                    });
+                }
+            }
+        }
+
+        Ok(result)
+    }
+
+    /// Delete a remote from the repository
+    pub fn delete_remote(
+        &self,
+        repo_path: &Path,
+        name: &str,
+    ) -> Result<(), GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
+        repo.remote_delete(name)?;
         Ok(())
     }
 
