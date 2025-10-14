@@ -542,9 +542,10 @@ export function ProjectTasks() {
       }
 
       // Get tasks in destination column, sorted by position
-      const tasksInColumn = (groupedFilteredTasks[newStatus] || []).sort(
-        (a, b) => (b.position || 0) - (a.position || 0)
-      );
+      // IMPORTANT: Exclude the dragged task to avoid off-by-one errors
+      const tasksInColumn = (groupedFilteredTasks[newStatus] || [])
+        .filter((t) => t.id !== draggedTaskId)
+        .sort((a, b) => (b.position || 0) - (a.position || 0));
 
       // Calculate new position based on drop location
       let newPosition: number;
