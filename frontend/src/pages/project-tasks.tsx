@@ -542,38 +542,73 @@ export function ProjectTasks() {
       }
 
       // Get tasks in destination column, sorted by position
-      // IMPORTANT: Exclude the dragged task to avoid off-by-one errors
-      const tasksInColumn = (groupedFilteredTasks[newStatus] || [])
-        .filter((t) => t.id !== draggedTaskId)
-        .sort((a, b) => (b.position || 0) - (a.position || 0));
+      const allTasksInColumn = (groupedFilteredTasks[newStatus] || []).sort(
+        (a, b) => (b.position || 0) - (a.position || 0)
+      );
+
+      // Find the original index of the dragged task in the destination column
+      const draggedTaskOriginalIndex = allTasksInColumn.findIndex(
+        (t) => t.id === draggedTaskId
+      );
 
       // Calculate new position based on drop location
       let newPosition: number;
 
       if (over.data.current?.sortable) {
         // Dropped over another task - get the index
-        const overIndex = over.data.current.sortable.index;
-        const taskAbove = tasksInColumn[overIndex - 1];
-        const taskBelow = tasksInColumn[overIndex];
+        // This index is from the SortableContext which includes all tasks
+        let overIndex = over.data.current.sortable.index;
 
-        if (!taskAbove) {
-          // Dropped at top
-          newPosition = (taskBelow?.position || Date.now() / 1000) + 1;
-        } else if (!taskBelow) {
-          // Dropped at bottom
-          newPosition = (taskAbove?.position || Date.now() / 1000) - 1;
+        // If dragging within the same column, we need to adjust the index
+        // because the dragged task is still in the visual list
+        if (task.status === newStatus && draggedTaskOriginalIndex !== -1) {
+          // If we're moving down (overIndex > original), the target index is already correct
+          // If we're moving up (overIndex < original), we don't need adjustment
+          // But we need to get neighbors from the list WITHOUT the dragged task
+          const tasksWithoutDragged = allTasksInColumn.filter(
+            (t) => t.id !== draggedTaskId
+          );
+
+          // Adjust overIndex: if dropping after original position, decrement by 1
+          if (overIndex > draggedTaskOriginalIndex) {
+            overIndex = overIndex - 1;
+          }
+
+          const taskAbove = tasksWithoutDragged[overIndex - 1];
+          const taskBelow = tasksWithoutDragged[overIndex];
+
+          if (!taskAbove) {
+            // Dropped at top
+            newPosition = (taskBelow?.position || Date.now() / 1000) + 1;
+          } else if (!taskBelow) {
+            // Dropped at bottom
+            newPosition = (taskAbove?.position || Date.now() / 1000) - 1;
+          } else {
+            // Dropped between two tasks
+            newPosition =
+              ((taskAbove?.position || 0) + (taskBelow?.position || 0)) / 2;
+          }
         } else {
-          // Dropped between two tasks
-          newPosition =
-            ((taskAbove?.position || 0) + (taskBelow?.position || 0)) / 2;
+          // Moving to a different column - simpler case
+          const taskAbove = allTasksInColumn[overIndex - 1];
+          const taskBelow = allTasksInColumn[overIndex];
+
+          if (!taskAbove) {
+            newPosition = (taskBelow?.position || Date.now() / 1000) + 1;
+          } else if (!taskBelow) {
+            newPosition = (taskAbove?.position || Date.now() / 1000) - 1;
+          } else {
+            newPosition =
+              ((taskAbove?.position || 0) + (taskBelow?.position || 0)) / 2;
+          }
         }
       } else {
         // Dropped over empty column or at end
-        if (tasksInColumn.length === 0) {
+        if (allTasksInColumn.length === 0) {
           newPosition = Date.now() / 1000;
         } else {
           // Add to bottom
-          const lastTask = tasksInColumn[tasksInColumn.length - 1];
+          const lastTask = allTasksInColumn[allTasksInColumn.length - 1];
           newPosition = (lastTask?.position || Date.now() / 1000) - 1;
         }
       }
