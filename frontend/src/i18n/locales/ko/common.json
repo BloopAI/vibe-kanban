@@ -10,7 +10,8 @@
     "reset": "초기화",
     "manage": "관리",
     "connect": "연결",
-    "disconnect": "연결 해제"
+    "disconnect": "연결 해제",
+    "close": "닫기"
   },
   "states": {
     "loading": "로딩 중...",

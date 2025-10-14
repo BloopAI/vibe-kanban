@@ -10,7 +10,8 @@
     "reset": "Restablecer",
     "manage": "Gestionar",
     "connect": "Conectar",
-    "disconnect": "Desconectar"
+    "disconnect": "Desconectar",
+    "close": "Cerrar"
   },
   "states": {
     "loading": "Cargando...",
