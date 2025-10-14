@@ -228,3 +228,40 @@ export function useUserSystem() {
   }
   return context;
 }
+
+// Helper functions for git platform checks
+export function useGitPlatform() {
+  const { config } = useUserSystem();
+
+  const isGitHub = useMemo(() => {
+    return config?.git_platform?.platform_type === 'GIT_HUB';
+  }, [config?.git_platform?.platform_type]);
+
+  const isGitea = useMemo(() => {
+    return config?.git_platform?.platform_type === 'GITEA';
+  }, [config?.git_platform?.platform_type]);
+
+  const isConfigured = useMemo(() => {
+    const platform = config?.git_platform;
+    if (!platform) return false;
+
+    // Check if either OAuth token (GitHub) or PAT (Gitea) is configured
+    return !!(platform.oauth_token || platform.pat);
+  }, [config?.git_platform]);
+
+  const platformType = useMemo(() => {
+    return config?.git_platform?.platform_type;
+  }, [config?.git_platform?.platform_type]);
+
+  const giteaUrl = useMemo(() => {
+    return config?.git_platform?.gitea_url;
+  }, [config?.git_platform?.gitea_url]);
+
+  return {
+    isGitHub,
+    isGitea,
+    isConfigured,
+    platformType,
+    giteaUrl,
+  };
+}

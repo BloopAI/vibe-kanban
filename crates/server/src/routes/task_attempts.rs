@@ -32,9 +32,12 @@ use executors::{
 use git2::BranchType;
 use serde::{Deserialize, Serialize};
 use services::services::{
+    config::{GitPlatformConfig, GitPlatformType},
     container::ContainerService,
     git::{ConflictOp, WorktreeResetOptions},
-    github_service::{CreatePrRequest, GitHubService, GitHubServiceError},
+    git_platform::{CreatePrRequest, GitPlatformService},
+    gitea_service::GiteaService,
+    github_service::{GitHubService, GitHubServiceError},
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
@@ -47,6 +50,38 @@ use crate::{
     middleware::load_task_attempt_middleware,
     routes::task_attempts::util::{ensure_worktree_path, handle_images_for_prompt},
 };
+
+/// Helper function to create the appropriate platform service based on configuration
+fn create_platform_service(
+    config: &GitPlatformConfig,
+) -> Result<Box<dyn GitPlatformService>, ApiError> {
+    match config.platform_type {
+        GitPlatformType::GitHub => {
+            let token = config
+                .token()
+                .ok_or(ApiError::GitHubService(GitHubServiceError::TokenInvalid))?;
+            let service = GitHubService::new(&token)?;
+            Ok(Box::new(service))
+        }
+        GitPlatformType::Gitea => {
+            let token = config
+                .token()
+                .ok_or(ApiError::GitHubService(GitHubServiceError::TokenInvalid))?;
+            let gitea_url = config.gitea_url.as_ref().ok_or_else(|| {
+                ApiError::GitHubService(GitHubServiceError::Repository(
+                    "Gitea URL not configured".to_string(),
+                ))
+            })?;
+            let service = GiteaService::new(&token, gitea_url).map_err(|e| {
+                ApiError::GitHubService(GitHubServiceError::Repository(format!(
+                    "Failed to create Gitea service: {}",
+                    e
+                )))
+            })?;
+            Ok(Box::new(service))
+        }
+    }
+}
 
 #[derive(Debug, Deserialize, Serialize, TS)]
 pub struct RebaseTaskAttemptRequest {
@@ -666,19 +701,32 @@ pub async fn push_task_attempt_branch(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
-    let github_config = deployment.config().read().await.github.clone();
-    let Some(github_token) = github_config.token() else {
+    let platform_config = deployment.config().read().await.git_platform.clone();
+    let Some(token) = platform_config.token() else {
         return Err(GitHubServiceError::TokenInvalid.into());
     };
 
-    let github_service = GitHubService::new(&github_token)?;
-    github_service.check_token().await?;
+    // Check token validity for the configured platform
+    match platform_config.platform_type {
+        services::services::config::GitPlatformType::GitHub => {
+            let service = GitHubService::new(&token)?;
+            service.check_token().await?;
+        }
+        services::services::config::GitPlatformType::Gitea => {
+            if let Some(gitea_url) = &platform_config.gitea_url {
+                let service = services::services::gitea_service::GiteaService::new(&token, gitea_url)?;
+                service.check_token().await.map_err(|e| GitHubServiceError::Repository(format!("Gitea error: {}", e)))?;
+            } else {
+                return Err(GitHubServiceError::TokenInvalid.into());
+            }
+        }
+    }
 
     let ws_path = ensure_worktree_path(&deployment, &task_attempt).await?;
 
     deployment
         .git()
-        .push_to_github(&ws_path, &task_attempt.branch, &github_token)?;
+        .push_to_github(&ws_path, &task_attempt.branch, &token)?;
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
@@ -687,14 +735,14 @@ pub async fn create_github_pr(
     State(deployment): State<DeploymentImpl>,
     Json(request): Json<CreateGitHubPrRequest>,
 ) -> Result<ResponseJson<ApiResponse<String, GitHubServiceError>>, ApiError> {
-    let github_config = deployment.config().read().await.github.clone();
-    let Some(github_token) = github_config.token() else {
+    let platform_config = deployment.config().read().await.git_platform.clone();
+    let Some(token) = platform_config.token() else {
         return Ok(ResponseJson(ApiResponse::error_with_data(
             GitHubServiceError::TokenInvalid,
         )));
     };
-    // Create GitHub service instance
-    let github_service = GitHubService::new(&github_token)?;
+    // Create platform service instance
+    let platform_service = create_platform_service(&platform_config)?;
     // Get the task attempt to access the stored target branch
     let target_branch = request.target_branch.unwrap_or_else(|| {
         // Use the stored target branch from the task attempt as the default
@@ -702,7 +750,7 @@ pub async fn create_github_pr(
         if !task_attempt.target_branch.trim().is_empty() {
             task_attempt.target_branch.clone()
         } else {
-            github_config
+            platform_config
                 .default_pr_base
                 .as_ref()
                 .map_or_else(|| "main".to_string(), |b| b.to_string())
@@ -720,19 +768,19 @@ pub async fn create_github_pr(
 
     let workspace_path = ensure_worktree_path(&deployment, &task_attempt).await?;
 
-    // Push the branch to GitHub first
+    // Push the branch to remote first
     if let Err(e) =
         deployment
             .git()
-            .push_to_github(&workspace_path, &task_attempt.branch, &github_token)
+            .push_to_github(&workspace_path, &task_attempt.branch, &token)
     {
-        tracing::error!("Failed to push branch to GitHub: {}", e);
+        tracing::error!("Failed to push branch to remote: {}", e);
         let gh_e = GitHubServiceError::from(e);
         if gh_e.is_api_data() {
             return Ok(ResponseJson(ApiResponse::error_with_data(gh_e)));
         } else {
             return Ok(ResponseJson(ApiResponse::error(
-                format!("Failed to push branch to GitHub: {}", gh_e).as_str(),
+                format!("Failed to push branch to remote: {}", gh_e).as_str(),
             )));
         }
     }
@@ -756,19 +804,20 @@ pub async fn create_github_pr(
     } else {
         target_branch
     };
-    // Create the PR using GitHub service
+    // Create the PR using platform service
     let pr_request = CreatePrRequest {
         title: request.title.clone(),
         body: request.body.clone(),
         head_branch: task_attempt.branch.clone(),
         base_branch: norm_target_branch_name.clone(),
     };
-    // Use GitService to get the remote URL, then create GitHubRepoInfo
-    let repo_info = deployment
+    // Use GitService to get the remote URL, then parse it with the platform service
+    let remote_url = deployment
         .git()
-        .get_github_repo_info(&project.git_repo_path)?;
+        .get_remote_url(&project.git_repo_path)?;
+    let repo_info = platform_service.parse_repo_url(&remote_url)?;
 
-    match github_service.create_pr(&repo_info, &pr_request).await {
+    match platform_service.create_pr(&repo_info, &pr_request).await {
         Ok(pr_info) => {
             // Update the task attempt with PR information
             if let Err(e) = Merge::create_pr(
@@ -789,11 +838,12 @@ pub async fn create_github_pr(
             }
             deployment
                 .track_if_analytics_allowed(
-                    "github_pr_created",
+                    "git_platform_pr_created",
                     serde_json::json!({
                         "task_id": task.id.to_string(),
                         "project_id": project.id.to_string(),
                         "attempt_id": task_attempt.id.to_string(),
+                        "platform": format!("{:?}", platform_config.platform_type),
                     }),
                 )
                 .await;
@@ -802,15 +852,16 @@ pub async fn create_github_pr(
         }
         Err(e) => {
             tracing::error!(
-                "Failed to create GitHub PR for attempt {}: {}",
+                "Failed to create PR for attempt {}: {}",
                 task_attempt.id,
                 e
             );
-            if e.is_api_data() {
-                Ok(ResponseJson(ApiResponse::error_with_data(e)))
+            let gh_err: GitHubServiceError = e.into();
+            if gh_err.is_api_data() {
+                Ok(ResponseJson(ApiResponse::error_with_data(gh_err)))
             } else {
                 Ok(ResponseJson(ApiResponse::error(
-                    format!("Failed to create PR: {}", e).as_str(),
+                    format!("Failed to create PR: {}", gh_err).as_str(),
                 )))
             }
         }
@@ -959,8 +1010,8 @@ pub async fn get_task_attempt_branch_status(
             (Some(a), Some(b))
         }
         BranchType::Remote => {
-            let github_config = deployment.config().read().await.github.clone();
-            let token = github_config
+            let platform_config = deployment.config().read().await.git_platform.clone();
+            let token = platform_config
                 .token()
                 .ok_or(ApiError::GitHubService(GitHubServiceError::TokenInvalid))?;
             let (remote_commits_ahead, remote_commits_behind) =
@@ -984,8 +1035,8 @@ pub async fn get_task_attempt_branch_status(
     })) = merges.first()
     {
         // check remote status if the attempt has an open PR
-        let github_config = deployment.config().read().await.github.clone();
-        let token = github_config
+        let platform_config = deployment.config().read().await.git_platform.clone();
+        let token = platform_config
             .token()
             .ok_or(ApiError::GitHubService(GitHubServiceError::TokenInvalid))?;
         let (remote_commits_ahead, remote_commits_behind) =
@@ -1101,7 +1152,7 @@ pub async fn rebase_task_attempt(
     let new_base_branch = payload
         .new_base_branch
         .unwrap_or(task_attempt.target_branch.clone());
-    let github_config = deployment.config().read().await.github.clone();
+    let platform_config = deployment.config().read().await.git_platform.clone();
 
     let pool = &deployment.db().pool;
 
@@ -1142,7 +1193,7 @@ pub async fn rebase_task_attempt(
         &new_base_branch,
         &old_base_branch,
         &task_attempt.branch.clone(),
-        github_config.token(),
+        platform_config.token(),
     );
     if let Err(e) = result {
         use services::services::git::GitServiceError;
@@ -1392,11 +1443,9 @@ pub async fn attach_existing_pr(
         })));
     }
 
-    // Get GitHub token
-    let github_config = deployment.config().read().await.github.clone();
-    let Some(github_token) = github_config.token() else {
-        return Err(ApiError::GitHubService(GitHubServiceError::TokenInvalid));
-    };
+    // Get platform config and token
+    let platform_config = deployment.config().read().await.git_platform.clone();
+    let platform_service = create_platform_service(&platform_config)?;
 
     // Get project and repo info
     let Some(task) = task_attempt.parent_task(pool).await? else {
@@ -1406,15 +1455,16 @@ pub async fn attach_existing_pr(
         return Err(ApiError::Project(ProjectError::ProjectNotFound));
     };
 
-    let github_service = GitHubService::new(&github_token)?;
-    let repo_info = deployment
+    let remote_url = deployment
         .git()
-        .get_github_repo_info(&project.git_repo_path)?;
+        .get_remote_url(&project.git_repo_path)?;
+    let repo_info = platform_service.parse_repo_url(&remote_url)?;
 
     // List all PRs for branch (open, closed, and merged)
-    let prs = github_service
+    let prs = platform_service
         .list_all_prs_for_branch(&repo_info, &task_attempt.branch)
-        .await?;
+        .await
+        .map_err(|e| ApiError::GitHubService(e.into()))?;
 
     // Take the first PR (prefer open, but also accept merged/closed)
     if let Some(pr_info) = prs.into_iter().next() {

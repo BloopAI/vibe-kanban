@@ -12,8 +12,8 @@ use executors::executors::ExecutorError;
 use git2::Error as Git2Error;
 use services::services::{
     auth::AuthError, config::ConfigError, container::ContainerError, drafts::DraftsServiceError,
-    git::GitServiceError, github_service::GitHubServiceError, image::ImageError,
-    worktree_manager::WorktreeError,
+    git::GitServiceError, git_platform::GitPlatformError, github_service::GitHubServiceError,
+    image::ImageError, worktree_manager::WorktreeError,
 };
 use thiserror::Error;
 use utils::response::ApiResponse;
@@ -31,6 +31,8 @@ pub enum ApiError {
     GitService(#[from] GitServiceError),
     #[error(transparent)]
     GitHubService(#[from] GitHubServiceError),
+    #[error(transparent)]
+    GitPlatform(#[from] GitPlatformError),
     #[error(transparent)]
     Auth(#[from] AuthError),
     #[error(transparent)]
@@ -85,6 +87,7 @@ impl IntoResponse for ApiError {
                 _ => (StatusCode::INTERNAL_SERVER_ERROR, "GitServiceError"),
             },
             ApiError::GitHubService(_) => (StatusCode::INTERNAL_SERVER_ERROR, "GitHubServiceError"),
+            ApiError::GitPlatform(_) => (StatusCode::INTERNAL_SERVER_ERROR, "GitPlatformError"),
             ApiError::Auth(_) => (StatusCode::INTERNAL_SERVER_ERROR, "AuthError"),
             ApiError::Deployment(_) => (StatusCode::INTERNAL_SERVER_ERROR, "DeploymentError"),
             ApiError::Container(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ContainerError"),

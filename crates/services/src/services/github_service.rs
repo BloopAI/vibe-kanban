@@ -1,15 +1,21 @@
 use std::time::Duration;
 
+use async_trait::async_trait;
 use backon::{ExponentialBuilder, Retryable};
 use db::models::merge::{MergeStatus, PullRequestInfo};
 use octocrab::{Octocrab, OctocrabBuilder, models::IssueState};
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::info;
 use ts_rs::TS;
 
-use crate::services::{git::GitServiceError, git_cli::GitCliError};
+use crate::services::{
+    git::GitServiceError,
+    git_cli::GitCliError,
+    git_platform::{
+        CreatePrRequest, GitPlatformError, GitPlatformService, RepoInfo, RepositoryInfo,
+    },
+};
 
 #[derive(Debug, Error, Serialize, Deserialize, TS)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -93,50 +99,8 @@ impl GitHubServiceError {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct GitHubRepoInfo {
-    pub owner: String,
-    pub repo_name: String,
-}
-impl GitHubRepoInfo {
-    pub fn from_remote_url(remote_url: &str) -> Result<Self, GitHubServiceError> {
-        // Supports SSH, HTTPS and PR GitHub URLs. See tests for examples.
-        let re = Regex::new(r"github\.com[:/](?P<owner>[^/]+)/(?P<repo>[^/]+?)(?:\.git)?(?:/|$)")
-            .map_err(|e| {
-            GitHubServiceError::Repository(format!("Failed to compile regex: {e}"))
-        })?;
-
-        let caps = re.captures(remote_url).ok_or_else(|| {
-            GitHubServiceError::Repository(format!("Invalid GitHub URL format: {remote_url}"))
-        })?;
-
-        Ok(Self {
-            owner: caps.name("owner").unwrap().as_str().to_string(),
-            repo_name: caps.name("repo").unwrap().as_str().to_string(),
-        })
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct CreatePrRequest {
-    pub title: String,
-    pub body: Option<String>,
-    pub head_branch: String,
-    pub base_branch: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct RepositoryInfo {
-    pub id: i64,
-    pub name: String,
-    pub full_name: String,
-    pub owner: String,
-    pub description: Option<String>,
-    pub clone_url: String,
-    pub ssh_url: String,
-    pub default_branch: String,
-    pub private: bool,
-}
+// Re-export for backwards compatibility
+pub use crate::services::git_platform::RepoInfo as GitHubRepoInfo;
 
 #[derive(Debug, Clone)]
 pub struct GitHubService {
@@ -447,5 +411,89 @@ impl GitHubService {
             page
         );
         Ok(repositories)
+    }
+}
+
+// Error conversions between GitHubServiceError and GitPlatformError
+impl From<GitHubServiceError> for GitPlatformError {
+    fn from(err: GitHubServiceError) -> Self {
+        match err {
+            GitHubServiceError::Repository(msg) => GitPlatformError::Repository(msg),
+            GitHubServiceError::PullRequest(msg) => GitPlatformError::PullRequest(msg),
+            GitHubServiceError::Branch(msg) => GitPlatformError::Branch(msg),
+            GitHubServiceError::TokenInvalid => GitPlatformError::TokenInvalid,
+            GitHubServiceError::InsufficientPermissions => GitPlatformError::InsufficientPermissions,
+            GitHubServiceError::RepoNotFoundOrNoAccess => GitPlatformError::RepoNotFoundOrNoAccess,
+            GitHubServiceError::GitService(e) => GitPlatformError::GitService(e),
+            GitHubServiceError::Client(e) => GitPlatformError::Http(format!("GitHub client error: {e}")),
+        }
+    }
+}
+
+impl From<GitPlatformError> for GitHubServiceError {
+    fn from(err: GitPlatformError) -> Self {
+        match err {
+            GitPlatformError::Repository(msg) => GitHubServiceError::Repository(msg),
+            GitPlatformError::PullRequest(msg) => GitHubServiceError::PullRequest(msg),
+            GitPlatformError::Branch(msg) => GitHubServiceError::Branch(msg),
+            GitPlatformError::TokenInvalid => GitHubServiceError::TokenInvalid,
+            GitPlatformError::InsufficientPermissions => GitHubServiceError::InsufficientPermissions,
+            GitPlatformError::RepoNotFoundOrNoAccess => GitHubServiceError::RepoNotFoundOrNoAccess,
+            GitPlatformError::GitService(e) => GitHubServiceError::GitService(e),
+            GitPlatformError::Http(msg) | GitPlatformError::Parse(msg) => {
+                GitHubServiceError::Repository(format!("Platform error: {msg}"))
+            }
+        }
+    }
+}
+
+// Implement GitPlatformService trait for GitHubService
+#[async_trait]
+impl GitPlatformService for GitHubService {
+    async fn check_token(&self) -> Result<(), GitPlatformError> {
+        GitHubService::check_token(self)
+            .await
+            .map_err(GitPlatformError::from)
+    }
+
+    async fn create_pr(
+        &self,
+        repo_info: &RepoInfo,
+        request: &CreatePrRequest,
+    ) -> Result<PullRequestInfo, GitPlatformError> {
+        GitHubService::create_pr(self, repo_info, request)
+            .await
+            .map_err(GitPlatformError::from)
+    }
+
+    async fn update_pr_status(
+        &self,
+        repo_info: &RepoInfo,
+        pr_number: i64,
+    ) -> Result<PullRequestInfo, GitPlatformError> {
+        GitHubService::update_pr_status(self, repo_info, pr_number)
+            .await
+            .map_err(GitPlatformError::from)
+    }
+
+    async fn list_all_prs_for_branch(
+        &self,
+        repo_info: &RepoInfo,
+        branch_name: &str,
+    ) -> Result<Vec<PullRequestInfo>, GitPlatformError> {
+        GitHubService::list_all_prs_for_branch(self, repo_info, branch_name)
+            .await
+            .map_err(GitPlatformError::from)
+    }
+
+    #[cfg(feature = "cloud")]
+    async fn list_repositories(&self, page: u8) -> Result<Vec<RepositoryInfo>, GitPlatformError> {
+        GitHubService::list_repositories(self, page)
+            .await
+            .map_err(GitPlatformError::from)
+    }
+
+    fn parse_repo_url(&self, remote_url: &str) -> Result<RepoInfo, GitPlatformError> {
+        RepoInfo::from_github_url(remote_url)
     }
 }

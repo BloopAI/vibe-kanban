@@ -16,23 +16,27 @@ use tracing::{debug, error, info};
 
 use crate::services::{
     analytics::AnalyticsContext,
-    config::Config,
-    github_service::{GitHubRepoInfo, GitHubService, GitHubServiceError},
+    config::{Config, GitPlatformType},
+    git_platform::{GitPlatformError, GitPlatformService},
+    gitea_service::GiteaService,
+    github_service::GitHubService,
 };
 
 #[derive(Debug, Error)]
 enum PrMonitorError {
-    #[error("No GitHub token configured")]
-    NoGitHubToken,
+    #[error("No git platform token configured")]
+    NoToken,
     #[error(transparent)]
-    GitHubServiceError(#[from] GitHubServiceError),
+    GitPlatformError(#[from] GitPlatformError),
     #[error(transparent)]
     TaskAttemptError(#[from] TaskAttemptError),
     #[error(transparent)]
     Sqlx(#[from] SqlxError),
+    #[error("Gitea URL not configured")]
+    GiteaUrlNotConfigured,
 }
 
-/// Service to monitor GitHub PRs and update task status when they are merged
+/// Service to monitor Git platform PRs (GitHub/Gitea) and update task status when they are merged
 pub struct PrMonitorService {
     db: DBService,
     config: Arc<RwLock<Config>>,
@@ -97,16 +101,24 @@ impl PrMonitorService {
 
     /// Check the status of a specific PR
     async fn check_pr_status(&self, pr_merge: &PrMerge) -> Result<(), PrMonitorError> {
-        let github_config = self.config.read().await.github.clone();
-        let github_token = github_config.token().ok_or(PrMonitorError::NoGitHubToken)?;
+        let platform_config = self.config.read().await.git_platform.clone();
+        let token = platform_config.token().ok_or(PrMonitorError::NoToken)?;
 
-        let github_service = GitHubService::new(&github_token)?;
+        // Create the appropriate service based on platform type and get PR status
+        let service: Box<dyn GitPlatformService> = match platform_config.platform_type {
+            GitPlatformType::GitHub => {
+                let service = GitHubService::new(&token).map_err(GitPlatformError::from)?;
+                Box::new(service)
+            }
+            GitPlatformType::Gitea => {
+                let gitea_url = platform_config.gitea_url.ok_or(PrMonitorError::GiteaUrlNotConfigured)?;
+                let service = GiteaService::new(&token, &gitea_url)?;
+                Box::new(service)
+            }
+        };
 
-        let repo_info = GitHubRepoInfo::from_remote_url(&pr_merge.pr_info.url)?;
-
-        let pr_status = github_service
-            .update_pr_status(&repo_info, pr_merge.pr_info.number)
-            .await?;
+        let repo_info = service.parse_repo_url(&pr_merge.pr_info.url)?;
+        let pr_status = service.update_pr_status(&repo_info, pr_merge.pr_info.number).await?;
 
         debug!(
             "PR #{} status: {:?} (was open)",

@@ -104,10 +104,6 @@ export enum EditorType { VS_CODE = "VS_CODE", CURSOR = "CURSOR", WINDSURF = "WIN
 
 export type GitHubConfig = { pat: string | null, oauth_token: string | null, username: string | null, primary_email: string | null, default_pr_base: string | null, };
 
-export type GitPlatformConfig = { platform_type: GitPlatformType, pat: string | null, oauth_token: string | null, username: string | null, primary_email: string | null, default_pr_base: string | null, gitea_url: string | null, };
-
-export enum GitPlatformType { GIT_HUB = "GIT_HUB", GITEA = "GITEA" }
-
 export enum SoundFile { ABSTRACT_SOUND1 = "ABSTRACT_SOUND1", ABSTRACT_SOUND2 = "ABSTRACT_SOUND2", ABSTRACT_SOUND3 = "ABSTRACT_SOUND3", ABSTRACT_SOUND4 = "ABSTRACT_SOUND4", COW_MOOING = "COW_MOOING", PHONE_VIBRATION = "PHONE_VIBRATION", ROOSTER = "ROOSTER" }
 
 export type UiLanguage = "BROWSER" | "EN" | "JA" | "ES" | "KO";
@@ -117,10 +113,6 @@ export type DeviceFlowStartResponse = { user_code: string, verification_uri: str
 export enum DevicePollStatus { SLOW_DOWN = "SLOW_DOWN", AUTHORIZATION_PENDING = "AUTHORIZATION_PENDING", SUCCESS = "SUCCESS" }
 
 export enum CheckTokenResponse { VALID = "VALID", INVALID = "INVALID" }
-
-export type GiteaConfigureRequest = { gitea_url: string, pat: string, username: string | null, };
-
-export enum GiteaConfigureResponse { SUCCESS = "SUCCESS", INVALID_URL = "INVALID_URL", INVALID_TOKEN = "INVALID_TOKEN", ERROR = "ERROR" }
 
 export type GitBranch = { name: string, is_current: boolean, is_remote: boolean, last_commit_date: Date, };
 

@@ -46,6 +46,7 @@ import {
   RebaseTaskAttemptRequest,
   ChangeTargetBranchRequest,
   ChangeTargetBranchResponse,
+  GiteaConfigureResponse,
 } from 'shared/types';
 
 // Re-export types for convenience
@@ -54,6 +55,7 @@ export type {
   UpdateFollowUpDraftRequest,
   UpdateRetryFollowUpDraftRequest,
 } from 'shared/types';
+export { GiteaConfigureResponse } from 'shared/types';
 
 class ApiError<E = unknown> extends Error {
   public status?: number;
@@ -662,6 +664,21 @@ export const githubAuthApi = {
       method: 'POST',
     });
     return handleApiResponse<DevicePollStatus>(response);
+  },
+};
+
+// Gitea Auth APIs
+export const giteaAuthApi = {
+  configure: async (
+    giteaUrl: string,
+    pat: string,
+    username?: string
+  ): Promise<GiteaConfigureResponse> => {
+    const response = await makeRequest('/api/auth/gitea/configure', {
+      method: 'POST',
+      body: JSON.stringify({ gitea_url: giteaUrl, pat, username }),
+    });
+    return handleApiResponse<GiteaConfigureResponse>(response);
   },
 };
 

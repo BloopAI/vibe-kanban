@@ -108,8 +108,8 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     async fn update_sentry_scope(&self) -> Result<(), DeploymentError> {
         let user_id = self.user_id();
         let config = self.config().read().await;
-        let username = config.github.username.as_deref();
-        let email = config.github.primary_email.as_deref();
+        let username = config.git_platform.username.as_deref();
+        let email = config.git_platform.primary_email.as_deref();
         sentry_utils::configure_user_scope(user_id, username, email);
 
         Ok(())

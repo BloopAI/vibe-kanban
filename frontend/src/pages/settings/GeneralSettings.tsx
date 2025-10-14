@@ -26,7 +26,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ChevronDown, Key, Loader2, Volume2 } from 'lucide-react';
+import { ChevronDown, Github, Key, Loader2, Server, Volume2 } from 'lucide-react';
 import {
   BaseCodingAgent,
   EditorType,
@@ -39,9 +39,11 @@ import { getLanguageOptions } from '@/i18n/languages';
 
 import { toPrettyCase } from '@/utils/string';
 import { useTheme } from '@/components/theme-provider';
-import { useUserSystem } from '@/components/config-provider';
+import { useUserSystem, useGitPlatform } from '@/components/config-provider';
 import { TaskTemplateManager } from '@/components/TaskTemplateManager';
 import NiceModal from '@ebay/nice-modal-react';
+import { GitHubLoginDialog } from '@/components/dialogs/auth/GitHubLoginDialog';
+import { GiteaLoginDialog } from '@/components/dialogs/auth/GiteaLoginDialog';
 
 export function GeneralSettings() {
   const { t } = useTranslation(['settings', 'common']);
@@ -59,6 +61,7 @@ export function GeneralSettings() {
     updateAndSaveConfig, // Use this on Save
     profiles,
   } = useUserSystem();
+  const { isGitHub, isGitea, isConfigured, giteaUrl } = useGitPlatform();
 
   // Draft state management
   const [draft, setDraft] = useState(() => (config ? cloneDeep(config) : null));
@@ -183,18 +186,17 @@ export function GeneralSettings() {
     updateAndSaveConfig({ onboarding_acknowledged: false });
   };
 
-  const isAuthenticated = !!(
-    config?.github?.username && config?.github?.oauth_token
-  );
-
-  const handleLogout = useCallback(async () => {
+  const handleDisconnectPlatform = useCallback(async () => {
     if (!config) return;
     updateAndSaveConfig({
-      github: {
-        ...config.github,
+      git_platform: {
+        platform_type: config.git_platform?.platform_type || 'GITHUB',
         oauth_token: null,
+        pat: null,
         username: null,
         primary_email: null,
+        default_pr_base: config.git_platform?.default_pr_base || null,
+        gitea_url: null,
       },
     });
   }, [config, updateAndSaveConfig]);
@@ -474,35 +476,59 @@ export function GeneralSettings() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Key className="h-5 w-5" />
-            {t('settings.general.github.title')}
+            Git Platform
           </CardTitle>
+          <CardDescription>
+            Connect to GitHub or Gitea to manage pull requests and repositories
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {isAuthenticated ? (
+          {isConfigured ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div>
-                  <p className="font-medium">
-                    {t('settings.general.github.connected', {
-                      username: config.github.username,
-                    })}
-                  </p>
-                  {config.github.primary_email && (
-                    <p className="text-sm text-muted-foreground">
-                      {config.github.primary_email}
-                    </p>
+                <div className="flex items-center gap-3">
+                  {isGitHub ? (
+                    <Github className="h-5 w-5 text-muted-foreground" />
+                  ) : (
+                    <Server className="h-5 w-5 text-muted-foreground" />
                   )}
+                  <div>
+                    <p className="font-medium">
+                      Connected to {isGitHub ? 'GitHub' : 'Gitea'}
+                      {config?.git_platform?.username && (
+                        <> as <b>{config.git_platform.username}</b></>
+                      )}
+                    </p>
+                    {isGitea && giteaUrl && (
+                      <p className="text-sm text-muted-foreground">{giteaUrl}</p>
+                    )}
+                    {config?.git_platform?.primary_email && (
+                      <p className="text-sm text-muted-foreground">
+                        {config.git_platform.primary_email}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm">
-                      {t('settings.general.github.manage')}{' '}
-                      <ChevronDown className="ml-1 h-4 w-4" />
+                      Manage <ChevronDown className="ml-1 h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={handleLogout}>
-                      {t('settings.general.github.disconnect')}
+                    <DropdownMenuItem
+                      onClick={() => {
+                        if (isGitHub) {
+                          NiceModal.show(GitHubLoginDialog);
+                        } else {
+                          NiceModal.show(GiteaLoginDialog);
+                        }
+                      }}
+                    >
+                      Reconnect
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleDisconnectPlatform}>
+                      Disconnect
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -511,44 +537,20 @@ export function GeneralSettings() {
           ) : (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                {t('settings.general.github.helper')}
+                Connect to a Git platform to create pull requests and manage repositories
               </p>
-              <Button onClick={() => NiceModal.show('github-login')}>
-                {t('settings.general.github.connectButton')}
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={() => NiceModal.show(GitHubLoginDialog)}>
+                  <Github className="h-4 w-4 mr-2" />
+                  Connect GitHub
+                </Button>
+                <Button variant="outline" onClick={() => NiceModal.show(GiteaLoginDialog)}>
+                  <Server className="h-4 w-4 mr-2" />
+                  Connect Gitea
+                </Button>
+              </div>
             </div>
           )}
-
-          <div className="space-y-2">
-            <Label htmlFor="github-token">
-              {t('settings.general.github.pat.label')}
-            </Label>
-            <Input
-              id="github-token"
-              type="password"
-              placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-              value={draft?.github.pat || ''}
-              onChange={(e) =>
-                updateDraft({
-                  github: {
-                    ...draft!.github,
-                    pat: e.target.value || null,
-                  },
-                })
-              }
-            />
-            <p className="text-sm text-muted-foreground">
-              {t('settings.general.github.pat.helper')}{' '}
-              <a
-                href="https://github.com/settings/tokens"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
-              >
-                {t('settings.general.github.pat.createTokenLink')}
-              </a>
-            </p>
-          </div>
         </CardContent>
       </Card>
 

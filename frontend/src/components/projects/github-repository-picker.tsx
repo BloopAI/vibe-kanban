@@ -3,8 +3,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Github } from 'lucide-react';
+import { Loader2, Github, Server } from 'lucide-react';
 import { githubApi, RepositoryInfo } from '@/lib/api';
+import { useGitPlatform } from '@/components/config-provider';
 
 interface GitHubRepositoryPickerProps {
   selectedRepository: RepositoryInfo | null;
@@ -31,6 +32,7 @@ export function GitHubRepositoryPicker({
   name,
   error,
 }: GitHubRepositoryPickerProps) {
+  const { isGitea } = useGitPlatform();
   const [repositories, setRepositories] = useState<RepositoryInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
@@ -38,6 +40,9 @@ export function GitHubRepositoryPicker({
   const [hasMorePages, setHasMorePages] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Platform-aware icon
+  const PlatformIcon = isGitea ? Server : Github;
 
   const loadRepositories = useCallback(
     async (pageNum: number = 1, isLoadingMore: boolean = false) => {
@@ -173,7 +178,7 @@ export function GitHubRepositoryPicker({
                 onClick={() => handleRepositorySelect(repository)}
               >
                 <div className="flex items-start space-x-3">
-                  <Github className="h-4 w-4 mt-1" />
+                  <PlatformIcon className="h-4 w-4 mt-1" />
                   <div className="flex-1 space-y-1">
                     <div className="flex items-center space-x-2">
                       <span className="font-medium">{repository.name}</span>

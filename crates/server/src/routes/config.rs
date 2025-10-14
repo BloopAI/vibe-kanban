@@ -143,15 +143,17 @@ async fn track_config_events(deployment: &DeploymentImpl, old: &Config, new: &Co
         ),
         (
             !old.github_login_acknowledged && new.github_login_acknowledged,
-            "onboarding_github_login_completed",
+            "onboarding_git_platform_login_completed",
             serde_json::json!({
-                "username": new.github.username,
-                "email": new.github.primary_email,
-                "auth_method": if new.github.oauth_token.is_some() { "oauth" }
-                              else if new.github.pat.is_some() { "pat" }
+                "platform": format!("{:?}", new.git_platform.platform_type),
+                "username": new.git_platform.username,
+                "email": new.git_platform.primary_email,
+                "auth_method": if new.git_platform.oauth_token.is_some() { "oauth" }
+                              else if new.git_platform.pat.is_some() { "pat" }
                               else { "none" },
-                "has_default_pr_base": new.github.default_pr_base.is_some(),
-                "skipped": new.github.username.is_none()
+                "has_default_pr_base": new.git_platform.default_pr_base.is_some(),
+                "gitea_configured": new.git_platform.gitea_url.is_some(),
+                "skipped": new.git_platform.username.is_none()
             }),
         ),
         (

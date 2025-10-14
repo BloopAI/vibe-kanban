@@ -16,6 +16,7 @@ import { githubAuthApi } from '@/lib/api';
 import { DeviceFlowStartResponse, DevicePollStatus } from 'shared/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { GiteaLoginDialog } from './GiteaLoginDialog';
 
 const GitHubLoginDialog = NiceModal.create(() => {
   const modal = useModal();
@@ -28,8 +29,9 @@ const GitHubLoginDialog = NiceModal.create(() => {
   const [copied, setCopied] = useState(false);
 
   const isAuthenticated =
-    !!(config?.github?.username && config?.github?.oauth_token) &&
-    !githubTokenInvalid;
+    !!(config?.git_platform?.username && config?.git_platform?.oauth_token) &&
+    !githubTokenInvalid &&
+    config?.git_platform?.platform_type === 'GIT_HUB';
 
   const handleLogin = async () => {
     setFetching(true);
@@ -44,6 +46,14 @@ const GitHubLoginDialog = NiceModal.create(() => {
       setError(e?.message || 'Network error');
     } finally {
       setFetching(false);
+    }
+  };
+
+  const handleSwitchToGitea = async () => {
+    modal.hide();
+    const result = await NiceModal.show(GiteaLoginDialog);
+    if (result) {
+      modal.resolve(true);
     }
   };
 
@@ -160,7 +170,7 @@ const GitHubLoginDialog = NiceModal.create(() => {
                   Successfully connected!
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  You are signed in as <b>{config?.github?.username ?? ''}</b>
+                  You are signed in as <b>{config?.git_platform?.username ?? ''}</b>
                 </div>
               </CardContent>
             </Card>
@@ -313,6 +323,16 @@ const GitHubLoginDialog = NiceModal.create(() => {
                 {fetching ? 'Starting…' : 'Sign in with GitHub'}
               </Button>
             </DialogFooter>
+
+            <div className="flex items-center justify-center pt-3">
+              <Button
+                variant="link"
+                onClick={handleSwitchToGitea}
+                className="text-xs text-muted-foreground"
+              >
+                Or use Gitea instead
+              </Button>
+            </div>
           </div>
         )}
       </DialogContent>

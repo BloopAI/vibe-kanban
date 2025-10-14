@@ -30,8 +30,8 @@ export const ProvidePatDialog = NiceModal.create<ProvidePatDialogProps>(
       setError(null);
       try {
         await updateAndSaveConfig({
-          github: {
-            ...config.github,
+          git_platform: {
+            ...config.git_platform,
             pat,
           },
         });

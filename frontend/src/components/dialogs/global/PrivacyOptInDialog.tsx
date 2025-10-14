@@ -17,7 +17,8 @@ const PrivacyOptInDialog = NiceModal.create(() => {
 
   // Check if user is authenticated with GitHub
   const isGitHubAuthenticated =
-    config?.github?.username && config?.github?.oauth_token;
+    config?.git_platform?.username && config?.git_platform?.oauth_token &&
+    config?.git_platform?.platform_type === 'GIT_HUB';
 
   const handleOptIn = () => {
     modal.resolve(true);

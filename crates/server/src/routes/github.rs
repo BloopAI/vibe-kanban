@@ -20,7 +20,10 @@ use crate::{
     services::{
         GitHubServiceError,
         git_service::GitService,
-        github_service::{GitHubService, RepositoryInfo},
+        github_service::GitHubService,
+        gitea_service::GiteaService,
+        git_platform::{GitPlatformService, GitPlatformError, RepositoryInfo},
+        config::{GitPlatformType, GitPlatformConfig},
     },
 };
 
@@ -34,56 +37,90 @@ pub struct CreateProjectFromGitHub {
     pub cleanup_script: Option<String>,
 }
 
+// Alias for backward compatibility and platform-agnostic naming
+pub type CreateProjectFromGitPlatform = CreateProjectFromGitHub;
+
 #[derive(serde::Deserialize)]
 pub struct RepositoryQuery {
     pub page: Option<u8>,
 }
 
-/// List GitHub repositories for the authenticated user
+/// Helper function to create a platform service based on configuration
+fn create_platform_service(
+    config: &GitPlatformConfig,
+) -> Result<Box<dyn GitPlatformService>, StatusCode> {
+    let token = config.token().ok_or_else(|| {
+        tracing::error!("Git platform token not configured");
+        StatusCode::UNAUTHORIZED
+    })?;
+
+    match config.platform_type {
+        GitPlatformType::GitHub => {
+            GitHubService::new(&token)
+                .map(|service| Box::new(service) as Box<dyn GitPlatformService>)
+                .map_err(|e| {
+                    tracing::error!("Failed to create GitHub service: {}", e);
+                    StatusCode::INTERNAL_SERVER_ERROR
+                })
+        }
+        GitPlatformType::Gitea => {
+            let gitea_url = config.gitea_url.as_ref().ok_or_else(|| {
+                tracing::error!("Gitea URL not configured");
+                StatusCode::BAD_REQUEST
+            })?;
+            GiteaService::new(&token, gitea_url)
+                .map(|service| Box::new(service) as Box<dyn GitPlatformService>)
+                .map_err(|e| {
+                    tracing::error!("Failed to create Gitea service: {}", e);
+                    StatusCode::INTERNAL_SERVER_ERROR
+                })
+        }
+    }
+}
+
+/// List repositories for the authenticated user from their configured Git platform
 pub async fn list_repositories(
     State(app_state): State<AppState>,
     Query(params): Query<RepositoryQuery>,
 ) -> Result<ResponseJson<ApiResponse<Vec<RepositoryInfo>>>, StatusCode> {
     let page = params.page.unwrap_or(1);
 
-    // Get GitHub configuration
-    let github_config = {
+    // Get Git platform configuration
+    let platform_config = {
         let config = app_state.get_config().read().await;
-        config.github.clone()
+        config.git_platform.clone()
     };
 
-    // Check if GitHub is configured
-    if github_config.token.is_none() {
+    // Check if platform is configured
+    if platform_config.token().is_none() {
         return Ok(ResponseJson(ApiResponse::error(
-            "GitHub token not configured. Please authenticate with GitHub first.",
+            "Git platform token not configured. Please authenticate first.",
         )));
     }
 
-    // Create GitHub service with token
-    let github_token = github_config.token.as_deref().unwrap();
-    let github_service = match GitHubService::new(github_token) {
-        Ok(service) => service,
-        Err(e) => {
-            tracing::error!("Failed to create GitHub service: {}", e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-    };
+    // Create platform service
+    let platform_service = create_platform_service(&platform_config)?;
 
     // List repositories
-    match github_service.list_repositories(page).await {
+    match platform_service.list_repositories(page).await {
         Ok(repositories) => {
+            let platform_name = match platform_config.platform_type {
+                GitPlatformType::GitHub => "GitHub",
+                GitPlatformType::Gitea => "Gitea",
+            };
             tracing::info!(
-                "Retrieved {} repositories from GitHub (page {})",
+                "Retrieved {} repositories from {} (page {})",
                 repositories.len(),
+                platform_name,
                 page
             );
             Ok(ResponseJson(ApiResponse::success(repositories)))
         }
-        Err(GitHubServiceError::TokenInvalid) => Ok(ResponseJson(ApiResponse::error(
-            "GitHub token is invalid or expired. Please re-authenticate with GitHub.",
+        Err(GitPlatformError::TokenInvalid) => Ok(ResponseJson(ApiResponse::error(
+            "Git platform token is invalid or expired. Please re-authenticate.",
         ))),
         Err(e) => {
-            tracing::error!("Failed to list GitHub repositories: {}", e);
+            tracing::error!("Failed to list repositories: {}", e);
             Ok(ResponseJson(ApiResponse::error(&format!(
                 "Failed to retrieve repositories: {}",
                 e
@@ -92,12 +129,23 @@ pub async fn list_repositories(
     }
 }
 
-/// Create a project from a GitHub repository
+/// Create a project from a Git platform repository (GitHub or Gitea)
 pub async fn create_project_from_github(
     State(app_state): State<AppState>,
     Json(payload): Json<CreateProjectFromGitHub>,
 ) -> Result<ResponseJson<ApiResponse<Project>>, StatusCode> {
-    tracing::debug!("Creating project '{}' from GitHub repository", payload.name);
+    // Get platform configuration
+    let platform_config = {
+        let config = app_state.get_config().read().await;
+        config.git_platform.clone()
+    };
+
+    let platform_name = match platform_config.platform_type {
+        GitPlatformType::GitHub => "GitHub",
+        GitPlatformType::Gitea => "Gitea",
+    };
+
+    tracing::debug!("Creating project '{}' from {} repository", payload.name, platform_name);
 
     // Get workspace path
     let workspace_path = match app_state.get_workspace_path().await {
@@ -133,14 +181,11 @@ pub async fn create_project_from_github(
         }
     }
 
-    // Get GitHub token
-    let github_token = {
-        let config = app_state.get_config().read().await;
-        config.github.token.clone()
-    };
+    // Get Git platform token
+    let platform_token = platform_config.token();
 
     // Clone the repository
-    match GitService::clone_repository(&payload.clone_url, &target_path, github_token.as_deref()) {
+    match GitService::clone_repository(&payload.clone_url, &target_path, platform_token.as_deref()) {
         Ok(_) => {
             tracing::info!(
                 "Successfully cloned repository {} to {}",
@@ -173,6 +218,11 @@ pub async fn create_project_from_github(
     match Project::create(&app_state.db_pool, &project_data, project_id).await {
         Ok(project) => {
             // Track project creation event
+            let source = match platform_config.platform_type {
+                GitPlatformType::GitHub => "github",
+                GitPlatformType::Gitea => "gitea",
+            };
+
             app_state
                 .track_analytics_event(
                     "project_created",
@@ -182,7 +232,7 @@ pub async fn create_project_from_github(
                         "clone_url": payload.clone_url,
                         "has_setup_script": has_setup_script,
                         "has_dev_script": has_dev_script,
-                        "source": "github",
+                        "source": source,
                     })),
                 )
                 .await;
