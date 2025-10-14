@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useRef, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -146,9 +146,9 @@ function AuxRouter({ mode, aux }: { mode: LayoutMode; aux: ReactNode }) {
       {mode && (
         <motion.div
           key={mode}
-          initial={{ x: 16, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          exit={{ x: -16, opacity: 0 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
           transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
           className="h-full min-h-0"
         >
@@ -371,15 +371,6 @@ export function TasksLayout({
 }: TasksLayoutProps) {
   const desktopKey = isPanelOpen ? 'desktop-with-panel' : 'kanban-only';
 
-  const depth = isPanelOpen ? 1 : 0;
-  const prevDepthRef = useRef(depth);
-  const dir =
-    depth === prevDepthRef.current ? 0 : depth > prevDepthRef.current ? 1 : -1;
-
-  useEffect(() => {
-    prevDepthRef.current = depth;
-  }, [depth]);
-
   if (isMobile) {
     const columns = isPanelOpen ? ['0fr', '1fr', '0fr'] : ['1fr', '0fr', '0fr'];
     const gridTemplateColumns = `minmax(0, ${columns[0]}) minmax(0, ${columns[1]}) minmax(0, ${columns[2]})`;
@@ -452,28 +443,14 @@ export function TasksLayout({
     );
   }
 
-  const slideVariants = {
-    enter: (d: number) => ({
-      x: d === 0 ? 0 : d > 0 ? '100%' : '-100%',
-      opacity: d === 0 ? 0 : 1,
-    }),
-    center: { x: 0, opacity: 1 },
-    exit: (d: number) => ({
-      x: d === 0 ? 0 : d > 0 ? '-100%' : '100%',
-      opacity: d === 0 ? 0 : 1,
-    }),
-  };
-
   return (
     <AnimatePresence initial={false} mode="popLayout">
       <motion.div
         key={desktopKey}
         className="h-full min-h-0"
-        custom={dir}
-        variants={slideVariants}
-        initial="enter"
-        animate="center"
-        exit="exit"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
         transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}
       >
         {desktopNode}
