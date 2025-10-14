@@ -11,6 +11,7 @@ import { openTaskForm } from '@/lib/openTaskForm';
 import { FeatureShowcaseModal } from '@/components/showcase/FeatureShowcaseModal';
 import { taskPanelShowcase } from '@/config/showcases';
 import { useShowcaseTrigger } from '@/hooks/useShowcaseTrigger';
+import { arrayMove } from '@dnd-kit/sortable';
 
 import { useSearch } from '@/contexts/search-context';
 import { useProject } from '@/contexts/project-context';
@@ -527,76 +528,68 @@ export function ProjectTasks() {
       const { active, over } = event;
       if (!over) return;
 
-      const draggedTaskId = active.id as string;
-      const draggedTask = tasksById[draggedTaskId];
+      const draggedId = active.id as string;
+      const overId = over.id as string;
+      const draggedTask = tasksById[draggedId];
       if (!draggedTask) return;
 
-      // Determine target status and task we dropped over
-      let newStatus: Task['status'];
-      let droppedOverTaskId: string | null = null;
+      // Determine target status (either from the task we dropped on, or the column header)
+      const overTask = tasksById[overId];
+      const newStatus = overTask?.status || (overId as Task['status']);
 
-      if (over.data.current?.sortable) {
-        // Dropped over another task
-        droppedOverTaskId = over.id as string;
-        const droppedOverTask = tasksById[droppedOverTaskId];
-        newStatus = droppedOverTask?.status || draggedTask.status;
-      } else {
-        // Dropped over a column header
-        newStatus = over.id as Task['status'];
-      }
+      // Get all tasks in destination column, sorted by position DESC (highest first)
+      const columnTasks = Object.values(tasksById)
+        .filter((t) => t.status === newStatus)
+        .sort((a, b) => b.position - a.position);
 
-      // Get all tasks in destination column (excluding dragged task), sorted by position
-      const tasksInColumn = Object.values(tasksById)
-        .filter((t) => t.status === newStatus && t.id !== draggedTaskId)
-        .sort((a, b) => (b.position || 0) - (a.position || 0));
+      // Find indices in the current order
+      const oldIndex = columnTasks.findIndex((t) => t.id === draggedId);
+      const newIndex = columnTasks.findIndex((t) => t.id === overId);
 
-      // Calculate new position
-      let newPosition: number;
+      // If dropped on column header (not a task), add to bottom
+      if (newIndex === -1) {
+        const lastTask = columnTasks[columnTasks.length - 1];
+        const newPosition = lastTask
+          ? lastTask.position - 1000
+          : Date.now() / 1000;
 
-      if (droppedOverTaskId) {
-        // Dropped over a specific task - we want to take its position
-        const targetIndex = tasksInColumn.findIndex(
-          (t) => t.id === droppedOverTaskId
-        );
-
-        if (targetIndex === -1) {
-          // Dropped over the dragged task itself? Use current position
-          newPosition = draggedTask.position;
-        } else {
-          // We want to insert at the dropped-over task's position
-          // Get the tasks around where we're inserting
-          const taskAbove = tasksInColumn[targetIndex]; // The task we dropped on
-          const taskBelow = tasksInColumn[targetIndex + 1]; // The task after it
-
-          if (!taskBelow) {
-            // Dropped at bottom - go below the last task
-            newPosition = (taskAbove?.position || Date.now() / 1000) - 1;
-          } else {
-            // Insert between the dropped-on task and the one below it
-            newPosition =
-              ((taskAbove?.position || 0) + (taskBelow?.position || 0)) / 2;
-          }
-        }
-      } else {
-        // Dropped over empty column or column header - add to bottom
-        if (tasksInColumn.length === 0) {
-          newPosition = Date.now() / 1000;
-        } else {
-          const lastTask = tasksInColumn[tasksInColumn.length - 1];
-          newPosition = (lastTask?.position || Date.now() / 1000) - 1;
-        }
-      }
-
-      // Only update if status or position changed
-      if (
-        draggedTask.status === newStatus &&
-        Math.abs((draggedTask.position || 0) - newPosition) < 0.001
-      ) {
+        await tasksApi.update(draggedId, {
+          title: draggedTask.title,
+          description: draggedTask.description,
+          status: newStatus,
+          position: newPosition,
+          parent_task_attempt: draggedTask.parent_task_attempt,
+          image_ids: null,
+        });
         return;
       }
 
+      // If nothing changed, don't update
+      if (draggedTask.status === newStatus && oldIndex === newIndex) {
+        return;
+      }
+
+      // Use arrayMove to get the new order (handles all edge cases correctly)
+      const reordered = arrayMove(columnTasks, oldIndex, newIndex);
+
+      // Calculate position based on neighbors in the new order
+      const taskAbove = reordered[newIndex - 1];
+      const taskBelow = reordered[newIndex + 1];
+
+      let newPosition: number;
+      if (!taskAbove) {
+        // At top
+        newPosition = (taskBelow?.position || Date.now() / 1000) + 1000;
+      } else if (!taskBelow) {
+        // At bottom
+        newPosition = taskAbove.position - 1000;
+      } else {
+        // Between two tasks
+        newPosition = (taskAbove.position + taskBelow.position) / 2;
+      }
+
       try {
-        await tasksApi.update(draggedTaskId, {
+        await tasksApi.update(draggedId, {
           title: draggedTask.title,
           description: draggedTask.description,
           status: newStatus,
