@@ -97,11 +97,6 @@
       "item3": "¿Has instalado el Web Companion (requerido para hacer clic y editar)? Si no, por favor",
       "item3Link": "sigue las instrucciones de instalación aquí"
     },
-    "companionAlert": {
-      "title": "Habilitar Click-to-Component",
-      "message": "Instala el Web Companion para desbloquear la funcionalidad de clic para editar.",
-      "link": "Ver guía de instalación"
-    },
     "noServer": {
       "title": "No hay servidor de desarrollo en ejecución",
       "startPrompt": "Por favor inicia un servidor de desarrollo para ver la vista previa",
