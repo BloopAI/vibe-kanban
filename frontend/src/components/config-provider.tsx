@@ -12,6 +12,7 @@ import {
   type Environment,
   type UserSystemInfo,
   type BaseAgentCapability,
+  type ExecutorDocumentation,
   CheckTokenResponse,
 } from 'shared/types';
 import type { ExecutorConfig } from 'shared/types';
@@ -23,6 +24,7 @@ interface UserSystemState {
   environment: Environment | null;
   profiles: Record<string, ExecutorConfig> | null;
   capabilities: Record<string, BaseAgentCapability[]> | null;
+  executorDocs: Record<string, ExecutorDocumentation> | null;
 }
 
 interface UserSystemContextType {
@@ -39,9 +41,7 @@ interface UserSystemContextType {
   environment: Environment | null;
   profiles: Record<string, ExecutorConfig> | null;
   capabilities: Record<string, BaseAgentCapability[]> | null;
-  setEnvironment: (env: Environment | null) => void;
-  setProfiles: (profiles: Record<string, ExecutorConfig> | null) => void;
-  setCapabilities: (caps: Record<string, BaseAgentCapability[]> | null) => void;
+  executorDocs: Record<string, ExecutorDocumentation> | null;
 
   // Reload system data
   reloadSystem: () => Promise<void>;
@@ -71,6 +71,10 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
     string,
     BaseAgentCapability[]
   > | null>(null);
+  const [executorDocs, setExecutorDocs] = useState<Record<
+    string,
+    ExecutorDocumentation
+  > | null>(null);
   const [loading, setLoading] = useState(true);
   const [githubTokenInvalid, setGithubTokenInvalid] = useState(false);
 
@@ -87,6 +91,12 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
           (userSystemInfo.capabilities || null) as Record<
             string,
             BaseAgentCapability[]
+          > | null
+        );
+        setExecutorDocs(
+          (userSystemInfo.executor_docs || null) as Record<
+            string,
+            ExecutorDocumentation
           > | null
         );
       } catch (err) {
@@ -177,6 +187,12 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
           BaseAgentCapability[]
         > | null
       );
+      setExecutorDocs(
+        (userSystemInfo.executor_docs || null) as Record<
+          string,
+          ExecutorDocumentation
+        > | null
+      );
     } catch (err) {
       console.error('Error reloading user system:', err);
     }
@@ -185,17 +201,15 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
   // Memoize context value to prevent unnecessary re-renders
   const value = useMemo<UserSystemContextType>(
     () => ({
-      system: { config, environment, profiles, capabilities },
+      system: { config, environment, profiles, capabilities, executorDocs },
       config,
       environment,
       profiles,
       capabilities,
+      executorDocs,
       updateConfig,
       saveConfig,
       updateAndSaveConfig,
-      setEnvironment,
-      setProfiles,
-      setCapabilities,
       reloadSystem,
       loading,
       githubTokenInvalid,
@@ -205,6 +219,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       environment,
       profiles,
       capabilities,
+      executorDocs,
       updateConfig,
       saveConfig,
       updateAndSaveConfig,

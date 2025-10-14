@@ -408,7 +408,7 @@ impl ExecutionProcess {
         sqlx::query!(
             r#"UPDATE execution_processes
                SET agent_not_installed = TRUE
-               WHERE id = $2"#,
+               WHERE id = $1"#,
             id
         )
         .execute(pool)

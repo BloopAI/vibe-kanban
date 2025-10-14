@@ -66,6 +66,42 @@ pub struct UserSystemInfo {
     pub environment: Environment,
     /// Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["SESSION_FORK"] })
     pub capabilities: HashMap<String, Vec<BaseAgentCapability>>,
+    /// Documentation information for each executor
+    pub executor_docs: HashMap<BaseCodingAgent, ExecutorDocumentation>,
+}
+
+fn executor_docs_url(executor: &BaseCodingAgent) -> String {
+    let anchor = match executor {
+        BaseCodingAgent::ClaudeCode => "claude-code",
+        BaseCodingAgent::Amp => "amp",
+        BaseCodingAgent::Gemini => "gemini-cli",
+        BaseCodingAgent::Codex => "openai-codex",
+        BaseCodingAgent::Opencode => "opencode",
+        BaseCodingAgent::Cursor => "cursor-cli",
+        BaseCodingAgent::QwenCode => "qwen-code",
+        BaseCodingAgent::Copilot => "github-copilot",
+    };
+    format!("https://www.vibekanban.com/docs/supported-coding-agents#{anchor}")
+}
+
+fn executor_display_name(executor: &BaseCodingAgent) -> String {
+    match executor {
+        BaseCodingAgent::ClaudeCode => "Claude Code",
+        BaseCodingAgent::Amp => "Amp",
+        BaseCodingAgent::Gemini => "Gemini CLI",
+        BaseCodingAgent::Codex => "OpenAI Codex",
+        BaseCodingAgent::Opencode => "OpenCode",
+        BaseCodingAgent::Cursor => "Cursor CLI",
+        BaseCodingAgent::QwenCode => "Qwen Code",
+        BaseCodingAgent::Copilot => "GitHub Copilot",
+    }
+    .to_string()
+}
+
+#[derive(Debug, Serialize, Deserialize, TS, Clone)]
+pub struct ExecutorDocumentation {
+    pub url: String,
+    pub display_name: String,
 }
 
 // TODO: update frontend, BE schema has changed, this replaces GET /config and /config/constants
@@ -74,21 +110,31 @@ async fn get_user_system_info(
     State(deployment): State<DeploymentImpl>,
 ) -> ResponseJson<ApiResponse<UserSystemInfo>> {
     let config = deployment.config().read().await;
+    let executor_configs = ExecutorConfigs::get_cached();
+
+    let mut capabilities: HashMap<String, Vec<BaseAgentCapability>> = HashMap::new();
+    let mut executor_docs: HashMap<BaseCodingAgent, ExecutorDocumentation> = HashMap::new();
+
+    for executor_key in executor_configs.executors.keys().cloned() {
+        let profile_id = ExecutorProfileId::new(executor_key.clone());
+        if let Some(agent) = executor_configs.get_coding_agent(&profile_id) {
+            capabilities.insert(executor_key.to_string(), agent.capabilities());
+        }
+        executor_docs.insert(
+            executor_key.clone(),
+            ExecutorDocumentation {
+                url: executor_docs_url(&executor_key),
+                display_name: executor_display_name(&executor_key),
+            },
+        );
+    }
 
     let user_system_info = UserSystemInfo {
         config: config.clone(),
-        profiles: ExecutorConfigs::get_cached(),
+        profiles: executor_configs.clone(),
         environment: Environment::new(),
-        capabilities: {
-            let mut caps: HashMap<String, Vec<BaseAgentCapability>> = HashMap::new();
-            let profs = ExecutorConfigs::get_cached();
-            for key in profs.executors.keys() {
-                if let Some(agent) = profs.get_coding_agent(&ExecutorProfileId::new(*key)) {
-                    caps.insert(key.to_string(), agent.capabilities());
-                }
-            }
-            caps
-        },
+        capabilities,
+        executor_docs,
     };
 
     ResponseJson(ApiResponse::success(user_system_info))
