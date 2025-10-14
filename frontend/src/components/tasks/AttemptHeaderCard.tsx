@@ -19,6 +19,7 @@ import { useMemo, useState } from 'react';
 import NiceModal from '@ebay/nice-modal-react';
 import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
 import { useTranslation } from 'react-i18next';
+import { showModal, getErrorMessage } from '@/lib/modals';
 
 interface AttemptHeaderCardProps {
   attemptNumber: number;
@@ -128,7 +129,11 @@ export function AttemptHeaderCard({
     try {
       await mergeMutation.mutateAsync();
     } catch (error) {
-      // Error handling is done by the mutation
+      const errorMessage = getErrorMessage(error);
+      await showModal('error-dialog', {
+        title: 'Merge Failed',
+        error: errorMessage,
+      });
     } finally {
       setMerging(false);
     }
@@ -234,6 +239,7 @@ export function AttemptHeaderCard({
                   mergeInfo.hasOpenPR ||
                   merging ||
                   hasConflicts ||
+                  Boolean(branchStatus.has_uncommitted_changes) ||
                   Boolean((branchStatus.commits_behind ?? 0) > 0) ||
                   isAttemptRunning ||
                   (branchStatus.commits_ahead ?? 0) === 0

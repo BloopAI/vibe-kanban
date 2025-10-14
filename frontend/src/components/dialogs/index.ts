@@ -76,3 +76,4 @@ export {
   FolderPickerDialog,
   type FolderPickerDialogProps,
 } from './shared/FolderPickerDialog';
+export { ErrorDialog } from './ErrorDialog';
