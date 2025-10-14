@@ -159,7 +159,7 @@ impl Task {
 
 FROM tasks t
 WHERE t.project_id = $1
-ORDER BY t.position DESC, t.created_at DESC"#,
+ORDER BY t.position DESC"#,
             project_id
         )
         .fetch_all(pool)
@@ -259,43 +259,24 @@ ORDER BY t.position DESC, t.created_at DESC"#,
         description: Option<String>,
         status: TaskStatus,
         parent_task_attempt: Option<Uuid>,
-        position: Option<f64>,
+        position: f64,
     ) -> Result<Self, sqlx::Error> {
-        // If position is provided, update it; otherwise keep existing
-        if let Some(pos) = position {
-            sqlx::query_as!(
-                Task,
-                r#"UPDATE tasks
-                   SET title = $3, description = $4, status = $5, parent_task_attempt = $6, position = $7
-                   WHERE id = $1 AND project_id = $2
-                   RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", position as "position!: f64", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
-                id,
-                project_id,
-                title,
-                description,
-                status,
-                parent_task_attempt,
-                pos
-            )
-            .fetch_one(pool)
-            .await
-        } else {
-            sqlx::query_as!(
-                Task,
-                r#"UPDATE tasks
-                   SET title = $3, description = $4, status = $5, parent_task_attempt = $6
-                   WHERE id = $1 AND project_id = $2
-                   RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", position as "position!: f64", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
-                id,
-                project_id,
-                title,
-                description,
-                status,
-                parent_task_attempt
-            )
-            .fetch_one(pool)
-            .await
-        }
+        sqlx::query_as!(
+            Task,
+            r#"UPDATE tasks
+               SET title = $3, description = $4, status = $5, parent_task_attempt = $6, position = $7
+               WHERE id = $1 AND project_id = $2
+               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", position as "position!: f64", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            id,
+            project_id,
+            title,
+            description,
+            status,
+            parent_task_attempt,
+            position
+        )
+        .fetch_one(pool)
+        .await
     }
 
     pub async fn update_status(
@@ -366,7 +347,7 @@ ORDER BY t.position DESC, t.created_at DESC"#,
             r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", position as "position!: f64", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks
                WHERE parent_task_attempt = $1
-               ORDER BY position DESC, created_at DESC"#,
+               ORDER BY position DESC"#,
             attempt_id,
         )
         .fetch_all(pool)

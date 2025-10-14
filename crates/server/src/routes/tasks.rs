@@ -226,7 +226,7 @@ pub async fn update_task(
     let parent_task_attempt = payload
         .parent_task_attempt
         .or(existing_task.parent_task_attempt);
-    let position = payload.position; // Optional: only update if provided
+    let position = payload.position.unwrap_or(existing_task.position);
 
     let task = Task::update(
         &deployment.db().pool,
