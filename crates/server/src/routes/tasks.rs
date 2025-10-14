@@ -289,17 +289,19 @@ pub async fn delete_task(
 
     // Nullify parent_task_attempt for all child tasks before deletion
     // This breaks parent-child relationships to avoid foreign key constraint violations
-    let attempt_ids: Vec<Uuid> = attempts.iter().map(|a| a.id).collect();
-    if !attempt_ids.is_empty() {
+    let mut total_children_affected = 0u64;
+    for attempt in &attempts {
         let children_affected =
-            Task::nullify_children_references(&deployment.db().pool, &attempt_ids).await?;
-        if children_affected > 0 {
-            tracing::info!(
-                "Nullified {} child task references before deleting task {}",
-                children_affected,
-                task.id
-            );
-        }
+            Task::nullify_children_by_attempt_id(&deployment.db().pool, attempt.id).await?;
+        total_children_affected += children_affected;
+    }
+
+    if total_children_affected > 0 {
+        tracing::info!(
+            "Nullified {} child task references before deleting task {}",
+            total_children_affected,
+            task.id
+        );
     }
 
     // Delete task from database (FK CASCADE will handle task_attempts)

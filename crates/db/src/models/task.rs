@@ -288,35 +288,18 @@ ORDER BY t.created_at DESC"#,
         Ok(())
     }
 
-    /// Nullify parent_task_attempt for all tasks that reference any of the given attempt IDs
+    /// Nullify parent_task_attempt for all tasks that reference the given attempt ID
     /// This breaks parent-child relationships before deleting a parent task
-    pub async fn nullify_children_references(
+    pub async fn nullify_children_by_attempt_id(
         pool: &SqlitePool,
-        attempt_ids: &[Uuid],
+        attempt_id: Uuid,
     ) -> Result<u64, sqlx::Error> {
-        if attempt_ids.is_empty() {
-            return Ok(0);
-        }
-
-        // Build a query with the correct number of placeholders
-        let placeholders = attempt_ids
-            .iter()
-            .enumerate()
-            .map(|(i, _)| format!("${}", i + 1))
-            .collect::<Vec<_>>()
-            .join(", ");
-
-        let query = format!(
-            "UPDATE tasks SET parent_task_attempt = NULL WHERE parent_task_attempt IN ({})",
-            placeholders
-        );
-
-        let mut query_builder = sqlx::query(&query);
-        for attempt_id in attempt_ids {
-            query_builder = query_builder.bind(attempt_id);
-        }
-
-        let result = query_builder.execute(pool).await?;
+        let result = sqlx::query!(
+            "UPDATE tasks SET parent_task_attempt = NULL WHERE parent_task_attempt = $1",
+            attempt_id
+        )
+        .execute(pool)
+        .await?;
         Ok(result.rows_affected())
     }
 
