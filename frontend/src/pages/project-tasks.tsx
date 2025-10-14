@@ -565,7 +565,7 @@ export function ProjectTasks() {
         } else {
           // We want to insert at the dropped-over task's position
           // Get the tasks around where we're inserting
-          const taskAbove = tasksInColumn[targetIndex];     // The task we dropped on
+          const taskAbove = tasksInColumn[targetIndex]; // The task we dropped on
           const taskBelow = tasksInColumn[targetIndex + 1]; // The task after it
 
           if (!taskBelow) {
