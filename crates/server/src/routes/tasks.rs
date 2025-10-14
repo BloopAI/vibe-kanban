@@ -299,14 +299,6 @@ pub async fn delete_task(
         total_children_affected += children_affected;
     }
 
-    if total_children_affected > 0 {
-        tracing::info!(
-            "Nullified {} child task references before deleting task {}",
-            total_children_affected,
-            task.id
-        );
-    }
-
     // Delete task from database (FK CASCADE will handle task_attempts)
     let rows_affected = Task::delete(&mut *tx, task.id).await?;
 
@@ -316,6 +308,15 @@ pub async fn delete_task(
 
     // Commit the transaction - if this fails, all changes are rolled back
     tx.commit().await?;
+
+    // Log after successful commit
+    if total_children_affected > 0 {
+        tracing::info!(
+            "Nullified {} child task references before deleting task {}",
+            total_children_affected,
+            task.id
+        );
+    }
 
     deployment
         .track_if_analytics_allowed(
