@@ -8,8 +8,7 @@
         "agents": "에이전트",
         "agentsDesc": "코딩 에이전트 구성",
         "mcp": "MCP 서버",
-        "mcpDesc": "Model Context Protocol 서버",
-        "backToApp": "앱으로 돌아가기"
+        "mcpDesc": "Model Context Protocol 서버"
       }
     },
     "general": {

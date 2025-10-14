@@ -8,8 +8,7 @@
         "agents": "Agentes",
         "agentsDesc": "Configuraciones de agentes",
         "mcp": "Servidores MCP",
-        "mcpDesc": "Servidores de Protocolo de Contexto de Modelo (MCP)",
-        "backToApp": "Volver a la app"
+        "mcpDesc": "Servidores de Protocolo de Contexto de Modelo (MCP)"
       }
     },
     "general": {

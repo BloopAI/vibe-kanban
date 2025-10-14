@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Settings, Cpu, Server, ArrowLeft } from 'lucide-react';
+import { Settings, Cpu, Server, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { usePreviousPath } from '@/hooks/usePreviousPath';
@@ -30,13 +30,20 @@ export function SettingsLayout() {
         {/* Sidebar Navigation */}
         <aside className="w-full lg:w-64 lg:shrink-0 lg:sticky lg:top-8 lg:h-fit lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto">
           <div className="space-y-1">
-            <Button variant="ghost" onClick={goToPreviousPath} className="mb-4">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              {t('settings.layout.nav.backToApp')}
-            </Button>
-            <h2 className="px-3 py-2 text-lg font-semibold">
-              {t('settings.layout.nav.title')}
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="px-3 py-2 text-lg font-semibold">
+                {t('settings.layout.nav.title')}
+              </h2>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={goToPreviousPath}
+                className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              >
+                <X className="h-4 w-4" />
+                <span className="sr-only">Close</span>
+              </Button>
+            </div>
             <nav className="space-y-1">
               {settingsNavigation.map((item) => {
                 const Icon = item.icon;
