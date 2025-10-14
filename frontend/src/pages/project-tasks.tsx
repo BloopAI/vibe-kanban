@@ -528,23 +528,74 @@ export function ProjectTasks() {
       if (!over || !active.data.current) return;
 
       const draggedTaskId = active.id as string;
-      const newStatus = over.id as Task['status'];
       const task = tasksById[draggedTaskId];
-      if (!task || task.status === newStatus) return;
+      if (!task) return;
+
+      // Determine target status - check if over a column or another task
+      let newStatus: Task['status'];
+      if (over.data.current?.sortable) {
+        // Dropped over another task
+        newStatus = active.data.current.parent as Task['status'];
+      } else {
+        // Dropped over a column
+        newStatus = over.id as Task['status'];
+      }
+
+      // Get tasks in destination column, sorted by position
+      const tasksInColumn = (groupedFilteredTasks[newStatus] || []).sort(
+        (a, b) => (b.position || 0) - (a.position || 0)
+      );
+
+      // Calculate new position based on drop location
+      let newPosition: number;
+
+      if (over.data.current?.sortable) {
+        // Dropped over another task - get the index
+        const overIndex = over.data.current.sortable.index;
+        const taskAbove = tasksInColumn[overIndex - 1];
+        const taskBelow = tasksInColumn[overIndex];
+
+        if (!taskAbove) {
+          // Dropped at top
+          newPosition = (taskBelow?.position || Date.now() / 1000) + 1;
+        } else if (!taskBelow) {
+          // Dropped at bottom
+          newPosition = (taskAbove?.position || Date.now() / 1000) - 1;
+        } else {
+          // Dropped between two tasks
+          newPosition =
+            ((taskAbove?.position || 0) + (taskBelow?.position || 0)) / 2;
+        }
+      } else {
+        // Dropped over empty column or at end
+        if (tasksInColumn.length === 0) {
+          newPosition = Date.now() / 1000;
+        } else {
+          // Add to bottom
+          const lastTask = tasksInColumn[tasksInColumn.length - 1];
+          newPosition = (lastTask?.position || Date.now() / 1000) - 1;
+        }
+      }
+
+      // Only update if status or position changed
+      if (task.status === newStatus && Math.abs((task.position || 0) - newPosition) < 0.001) {
+        return;
+      }
 
       try {
         await tasksApi.update(draggedTaskId, {
           title: task.title,
           description: task.description,
           status: newStatus,
+          position: newPosition,
           parent_task_attempt: task.parent_task_attempt,
           image_ids: null,
         });
       } catch (err) {
-        console.error('Failed to update task status:', err);
+        console.error('Failed to update task:', err);
       }
     },
-    [tasksById]
+    [tasksById, groupedFilteredTasks]
   );
 
   const isInitialTasksLoad = isLoading && tasks.length === 0;

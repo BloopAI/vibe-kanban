@@ -8,16 +8,21 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import type { DragEndEvent, Modifier } from '@dnd-kit/core';
+import type { DragEndEvent, DragStartEvent, Modifier } from '@dnd-kit/core';
 import {
   DndContext,
   PointerSensor,
-  rectIntersection,
-  useDraggable,
+  closestCenter,
   useDroppable,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { type ReactNode, type Ref, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -26,6 +31,7 @@ import type { ClientRect } from '@dnd-kit/core';
 import type { Transform } from '@dnd-kit/utilities';
 import { Button } from '../../button';
 export type { DragEndEvent } from '@dnd-kit/core';
+export { SortableContext, verticalListSortingStrategy };
 
 export type Status = {
   id: string;
@@ -89,11 +95,17 @@ export const KanbanCard = ({
   onKeyDown,
   isOpen,
 }: KanbanCardProps) => {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id,
-      data: { index, parent },
-    });
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id,
+    data: { index, parent },
+  });
 
   // Combine DnD ref and forwarded ref
   const combinedRef = (node: HTMLDivElement | null) => {
@@ -104,6 +116,12 @@ export const KanbanCard = ({
       (forwardedRef as React.MutableRefObject<HTMLDivElement | null>).current =
         node;
     }
+  };
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 1000 : 1,
   };
 
   return (
@@ -120,12 +138,7 @@ export const KanbanCard = ({
       tabIndex={tabIndex}
       onClick={onClick}
       onKeyDown={onKeyDown}
-      style={{
-        zIndex: isDragging ? 1000 : 1,
-        transform: transform
-          ? `translateX(${transform.x}px) translateY(${transform.y}px)`
-          : 'none',
-      }}
+      style={style}
     >
       {children ?? <p className="m-0 font-medium text-sm">{name}</p>}
     </Card>
@@ -203,7 +216,6 @@ function restrictToBoundingRectWithRightPadding(
   boundingRect: ClientRect,
   rightPadding: number
 ): Transform {
-  console.log(rect, boundingRect);
   const value = {
     ...transform,
   };
@@ -260,12 +272,14 @@ const restrictToFirstScrollableAncestorCustom: Modifier = (args) => {
 export type KanbanProviderProps = {
   children: ReactNode;
   onDragEnd: (event: DragEndEvent) => void;
+  onDragStart?: (event: DragStartEvent) => void;
   className?: string;
 };
 
 export const KanbanProvider = ({
   children,
   onDragEnd,
+  onDragStart,
   className,
 }: KanbanProviderProps) => {
   const sensors = useSensors(
@@ -276,7 +290,8 @@ export const KanbanProvider = ({
 
   return (
     <DndContext
-      collisionDetection={rectIntersection}
+      collisionDetection={closestCenter}
+      onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       sensors={sensors}
       modifiers={[restrictToFirstScrollableAncestorCustom]}
