@@ -578,7 +578,10 @@ export function ProjectTasks() {
       }
 
       // Only update if status or position changed
-      if (task.status === newStatus && Math.abs((task.position || 0) - newPosition) < 0.001) {
+      if (
+        task.status === newStatus &&
+        Math.abs((task.position || 0) - newPosition) < 0.001
+      ) {
         return;
       }
 
