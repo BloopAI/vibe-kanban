@@ -12,7 +12,7 @@ use serde_json::json;
 use sqlx::error::Error as SqlxError;
 use thiserror::Error;
 use tokio::{sync::RwLock, time::interval};
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 use crate::services::{
     analytics::AnalyticsContext,
@@ -85,11 +85,17 @@ impl PrMonitorService {
         info!("Checking {} open PRs", open_prs.len());
 
         for pr_merge in open_prs {
-            if let Err(e) = self.check_pr_status(&pr_merge).await {
-                error!(
-                    "Error checking PR #{} for attempt {}: {}",
-                    pr_merge.pr_info.number, pr_merge.task_attempt_id, e
-                );
+            match self.check_pr_status(&pr_merge).await {
+                Err(PrMonitorError::NoGitHubToken) => {
+                    warn!("No GitHub token configured, cannot check PR status");
+                }
+                Err(e) => {
+                    error!(
+                        "Error checking PR #{} for attempt {}: {}",
+                        pr_merge.pr_info.number, pr_merge.task_attempt_id, e
+                    );
+                }
+                Ok(_) => {}
             }
         }
         Ok(())

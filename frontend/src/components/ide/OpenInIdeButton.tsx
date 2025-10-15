@@ -1,35 +1,13 @@
 import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { useUserSystem } from '@/components/config-provider';
-import { IdeIcon } from './IdeIcon';
-import { EditorType } from 'shared/types';
+import { IdeIcon, getIdeName } from './IdeIcon';
 
 type OpenInIdeButtonProps = {
   onClick: () => void;
   disabled?: boolean;
   className?: string;
 };
-
-function getIdeName(editorType: EditorType | undefined | null): string {
-  switch (editorType) {
-    case EditorType.VS_CODE:
-      return 'VS Code';
-    case EditorType.CURSOR:
-      return 'Cursor';
-    case EditorType.WINDSURF:
-      return 'Windsurf';
-    case EditorType.INTELLI_J:
-      return 'IntelliJ IDEA';
-    case EditorType.ZED:
-      return 'Zed';
-    case EditorType.XCODE:
-      return 'Xcode';
-    case EditorType.CUSTOM:
-      return 'IDE';
-    default:
-      return 'IDE';
-  }
-}
 
 export function OpenInIdeButton({
   onClick,
