@@ -196,6 +196,18 @@
     "title_other": "Todos ({{count}})"
   },
   "attempt": {
+    "actions": {
+      "openInIde": "Open in IDE",
+      "openMenu": "Open menu",
+      "startDevServer": "Start dev server",
+      "stopDevServer": "Stop dev server"
+    },
+    "labels": {
+      "attempt": "Attempt",
+      "agent": "Agent",
+      "branch": "Branch",
+      "diffs": "Diffs"
+    },
     "agent": "Agent",
     "path": "Path",
     "openInEditor": "Open in {{editor}}",
@@ -213,6 +225,38 @@
     "diffs": "Diffs"
   },
   "git": {
+    "labels": {
+      "taskBranch": "Task Branch"
+    },
+    "branch": {
+      "current": "current"
+    },
+    "status": {
+      "commits_one": "commit",
+      "commits_other": "commits",
+      "conflicts": "Conflicts",
+      "upToDate": "Up to date",
+      "ahead": "ahead",
+      "behind": "behind"
+    },
+    "states": {
+      "merged": "Merged!",
+      "merging": "Merging...",
+      "merge": "Merge",
+      "rebasing": "Rebasing...",
+      "rebase": "Rebase",
+      "pushed": "Pushed!",
+      "pushing": "Pushing...",
+      "push": "Push",
+      "creating": "Creating...",
+      "createPr": "Create PR"
+    },
+    "errors": {
+      "changeTargetBranch": "Failed to change target branch",
+      "pushChanges": "Failed to push changes",
+      "mergeChanges": "Failed to merge changes",
+      "rebaseBranch": "Failed to rebase branch"
+    },
     "pr": {
       "open": "Open PR #{{number}}",
       "number": "PR #{{number}}"

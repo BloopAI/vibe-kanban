@@ -4,12 +4,12 @@
   },
   "actionsMenu": {
     "attempt": "Attempt",
-    "openInIde": "Open attempt in IDE",
-    "viewProcesses": "View processes",
     "createNewAttempt": "Create new attempt",
     "createSubtask": "Create subtask",
+    "duplicate": "Duplicate",
+    "openInIde": "Open attempt in IDE",
     "task": "Task",
-    "duplicate": "Duplicate"
+    "viewProcesses": "View processes"
   },
   "attempt": {
     "actions": {
@@ -24,8 +24,8 @@
     "createSubtask": "Create Subtask",
     "diffs": "Diffs",
     "labels": {
-      "attempt": "試行",
       "agent": "エージェント",
+      "attempt": "試行",
       "branch": "ブランチ",
       "diffs": "差分"
     },
@@ -41,8 +41,8 @@
     "viewHistory": "View attempt history"
   },
   "attemptHeaderActions": {
-    "preview": "Preview",
-    "diffs": "Diffs"
+    "diffs": "Diffs",
+    "preview": "Preview"
   },
   "branches": {
     "changeTarget": {
@@ -56,26 +56,26 @@
     }
   },
   "createAttemptDialog": {
-    "title": "Create Attempt",
-    "description": "Start a new attempt with a coding agent. A git worktree and task branch will be created.",
     "baseBranch": "Base branch",
+    "creating": "Creating...",
+    "description": "Start a new attempt with a coding agent. A git worktree and task branch will be created.",
+    "error": "Failed to create attempt. Please try again.",
     "loadingBranches": "Loading branches...",
     "selectBranch": "Select branch",
-    "error": "Failed to create attempt. Please try again.",
-    "creating": "Creating...",
-    "start": "Start"
+    "start": "Start",
+    "title": "Create Attempt"
   },
   "diff": {
+    "collapseAll": "Collapse all diffs",
+    "errorLoadingDiff": "Failed to load diff: {{error}}",
+    "expandAll": "Expand all diffs",
+    "filesChanged_one": "{{count}} file changed",
+    "filesChanged_other": "{{count}} files changed",
+    "noChanges": "No changes have been made yet",
     "viewModes": {
       "inline": "Inline view",
       "split": "Split view"
-    },
-    "errorLoadingDiff": "Failed to load diff: {{error}}",
-    "expandAll": "Expand all diffs",
-    "collapseAll": "Collapse all diffs",
-    "filesChanged_one": "{{count}} file changed",
-    "filesChanged_other": "{{count}} files changed",
-    "noChanges": "No changes have been made yet"
+    }
   },
   "empty": {
     "createFirst": "最初のタスクを作成",
@@ -83,14 +83,14 @@
     "noTasks": "このプロジェクトにタスクが見つかりません。"
   },
   "followUp": {
-    "stop": "Stop",
     "clearReviewComments": "Clear Review Comments",
+    "edit": "Edit",
+    "queueForNextTurn": "Queue for next turn",
+    "queuing": "Queuing…",
     "resolveConflicts": "Resolve conflicts",
     "send": "Send",
-    "unqueuing": "Unqueuing…",
-    "edit": "Edit",
-    "queuing": "Queuing…",
-    "queueForNextTurn": "Queue for next turn"
+    "stop": "Stop",
+    "unqueuing": "Unqueuing…"
   },
   "git": {
     "branch": {
@@ -98,36 +98,36 @@
     },
     "errors": {
       "changeTargetBranch": "ターゲットブランチの変更に失敗しました",
-      "pushChanges": "変更のプッシュに失敗しました",
       "mergeChanges": "変更のマージに失敗しました",
+      "pushChanges": "変更のプッシュに失敗しました",
       "rebaseBranch": "ブランチのリベースに失敗しました"
     },
     "labels": {
       "taskBranch": "タスクブランチ"
     },
     "pr": {
-      "open": "Open PR #{{number}}",
-      "number": "PR #{{number}}"
+      "number": "PR #{{number}}",
+      "open": "Open PR #{{number}}"
     },
     "states": {
+      "createPr": "PRを作成",
+      "creating": "作成中...",
+      "merge": "マージ",
       "merged": "マージ完了！",
       "merging": "マージ中...",
-      "merge": "マージ",
-      "rebasing": "リベース中...",
-      "rebase": "リベース",
+      "push": "プッシュ",
       "pushed": "プッシュ完了！",
       "pushing": "プッシュ中...",
-      "push": "プッシュ",
-      "creating": "作成中...",
-      "createPr": "PRを作成"
+      "rebase": "リベース",
+      "rebasing": "リベース中..."
     },
     "status": {
+      "ahead": "先行",
+      "behind": "遅れ",
       "commits_one": "コミット",
       "commits_other": "コミット",
       "conflicts": "競合",
-      "upToDate": "最新",
-      "ahead": "先行",
-      "behind": "遅れ"
+      "upToDate": "最新"
     }
   },
   "loading": "タスクを読み込み中...",
@@ -177,22 +177,22 @@
     }
   },
   "processes": {
-    "selectAttempt": "Select an attempt to view execution processes.",
-    "errorLoadingUpdates": "Failed to load live updates for processes.",
-    "reconnecting": "Reconnecting...",
-    "loading": "Loading execution processes...",
-    "noProcesses": "No execution processes found for this attempt.",
-    "processId": "Process ID: {{id}}",
+    "agent": "Agent:",
+    "backToList": "Back to list",
+    "completed": "Completed: {{date}}",
     "deleted": "Deleted",
     "deletedTooltip": "Deleted by restore: timeline was restored to a checkpoint and later executions were removed",
-    "agent": "Agent:",
-    "exit": "Exit: {{code}}",
-    "started": "Started: {{date}}",
-    "completed": "Completed: {{date}}",
     "detailsTitle": "Process Details",
-    "backToList": "Back to list",
+    "errorLoadingDetails": "Failed to load process details. Please try again.",
+    "errorLoadingUpdates": "Failed to load live updates for processes.",
+    "exit": "Exit: {{code}}",
+    "loading": "Loading execution processes...",
     "loadingDetails": "Loading process details...",
-    "errorLoadingDetails": "Failed to load process details. Please try again."
+    "noProcesses": "No execution processes found for this attempt.",
+    "processId": "Process ID: {{id}}",
+    "reconnecting": "Reconnecting...",
+    "selectAttempt": "Select an attempt to view execution processes.",
+    "started": "Started: {{date}}"
   },
   "rebase": {
     "common": {
@@ -216,16 +216,16 @@
     }
   },
   "taskHeader": {
-    "editTask": "Edit task",
+    "closePanel": "Close panel",
     "deleteTask": "Delete task",
-    "closePanel": "Close panel"
+    "editTask": "Edit task"
   },
   "taskPanel": {
-    "noTaskSelected": "No task selected",
-    "loadingAttempts": "Loading attempts...",
-    "errorLoadingAttempts": "Failed to load attempts",
     "attemptsCount": "Attempts ({{count}})",
-    "noAttempts": "No attempts yet"
+    "errorLoadingAttempts": "Failed to load attempts",
+    "loadingAttempts": "Loading attempts...",
+    "noAttempts": "No attempts yet",
+    "noTaskSelected": "No task selected"
   },
   "todos": {
     "title_one": "Todos ({{count}})",
@@ -234,8 +234,8 @@
   "toolbar": {
     "actions": "Actions",
     "noAttempts": "No attempts yet",
-    "startFirstAttempt": "Start your first attempt to begin working on this task",
-    "startAttempt": "Start Attempt"
+    "startAttempt": "Start Attempt",
+    "startFirstAttempt": "Start your first attempt to begin working on this task"
   },
   "viewProcessesDialog": {
     "title": "Execution processes"
