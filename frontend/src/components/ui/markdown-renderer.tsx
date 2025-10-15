@@ -138,42 +138,54 @@ function MarkdownRenderer({
       },
       p: {
         component: ({ children, ...props }: any) => (
-          <p {...props} className="leading-tight">
+          <p {...props} className="leading-tight my-2">
             {children}
           </p>
         ),
       },
       h1: {
         component: ({ children, ...props }: any) => (
-          <h1 {...props} className="text-lg leading-tight font-medium">
+          <h1
+            {...props}
+            className="text-lg font-medium leading-tight mt-4 mb-2"
+          >
             {children}
           </h1>
         ),
       },
       h2: {
         component: ({ children, ...props }: any) => (
-          <h2 {...props} className="text-base leading-tight font-medium">
+          <h2
+            {...props}
+            className="text-base font-medium leading-tight mt-4 mb-2"
+          >
             {children}
           </h2>
         ),
       },
       h3: {
         component: ({ children, ...props }: any) => (
-          <h3 {...props} className="text-sm leading-tight">
+          <h3 {...props} className="text-sm leading-tight mt-3 mb-2">
             {children}
           </h3>
         ),
       },
       ul: {
         component: ({ children, ...props }: any) => (
-          <ul {...props} className="list-disc list-outside space-y-1 ps-6">
+          <ul
+            {...props}
+            className="list-disc list-outside ps-6 my-3 space-y-1.5"
+          >
             {children}
           </ul>
         ),
       },
       ol: {
         component: ({ children, ...props }: any) => (
-          <ol {...props} className="list-decimal list-outside space-y-1 ps-6">
+          <ol
+            {...props}
+            className="list-decimal list-outside ps-6 my-3 space-y-1.5"
+          >
             {children}
           </ol>
         ),
