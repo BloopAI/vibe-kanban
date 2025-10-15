@@ -23,12 +23,13 @@ const DEFAULT_ATTEMPT_AUX: SplitSizes = [34, 66];
 const STORAGE_KEYS = {
   V2: {
     KANBAN_ATTEMPT: 'tasksLayout.desktop.v2.kanbanAttempt',
-    ATTEMPT_PREVIEW: 'tasksLayout.desktop.v2.attemptPreview',
-    ATTEMPT_DIFFS: 'tasksLayout.desktop.v2.attemptDiffs',
+    ATTEMPT_AUX: 'tasksLayout.desktop.v2.attemptAux',
   },
   LEGACY: {
     MAIN: 'tasksLayout.desktop.main',
     AUX: 'tasksLayout.desktop.aux',
+    ATTEMPT_PREVIEW: 'tasksLayout.desktop.v2.attemptPreview',
+    ATTEMPT_DIFFS: 'tasksLayout.desktop.v2.attemptDiffs',
   },
 } as const;
 
@@ -86,7 +87,7 @@ function loadPanelSizes(
   key: string,
   fallback: SplitSizes,
   migration?: {
-    fromKey: string;
+    fromKeys: string[];
     map: (legacy: [number, number, number]) => SplitSizes;
   }
 ): SplitSizes {
@@ -96,12 +97,21 @@ function loadPanelSizes(
   }
 
   if (migration) {
-    const legacy = parseJSON<unknown>(migration.fromKey);
-    if (isLegacySizes(legacy)) {
-      const migrated = migration.map(legacy);
-      persistJSON(key, migrated);
-      removeStorageKey(migration.fromKey);
-      return migrated;
+    // Try each legacy key in order
+    for (const fromKey of migration.fromKeys) {
+      const legacy = parseJSON<unknown>(fromKey);
+      if (isLegacySizes(legacy)) {
+        const migrated = migration.map(legacy);
+        persistJSON(key, migrated);
+        removeStorageKey(fromKey);
+        return migrated;
+      }
+      // Also try reading as SplitSizes (for v2 legacy keys)
+      if (isSplitSizes(legacy)) {
+        persistJSON(key, legacy);
+        removeStorageKey(fromKey);
+        return legacy;
+      }
     }
   }
 
@@ -122,7 +132,7 @@ function usePersistentSplitSizes(
   key: string,
   fallback: SplitSizes,
   migration?: {
-    fromKey: string;
+    fromKeys: string[];
     map: (legacy: [number, number, number]) => SplitSizes;
   }
 ) {
@@ -175,18 +185,17 @@ function RightWorkArea({
   rightHeader?: ReactNode;
 }) {
   const innerMigration = {
-    fromKey: STORAGE_KEYS.LEGACY.AUX,
+    fromKeys: [
+      STORAGE_KEYS.LEGACY.ATTEMPT_DIFFS,
+      STORAGE_KEYS.LEGACY.ATTEMPT_PREVIEW,
+      STORAGE_KEYS.LEGACY.AUX,
+    ],
     map: (legacy: [number, number, number]) =>
       [legacy[1], legacy[2]] as SplitSizes,
   };
 
-  const innerStorageKey =
-    mode === 'diffs'
-      ? STORAGE_KEYS.V2.ATTEMPT_DIFFS
-      : STORAGE_KEYS.V2.ATTEMPT_PREVIEW;
-
   const [innerSizes] = usePersistentSplitSizes(
-    innerStorageKey,
+    STORAGE_KEYS.V2.ATTEMPT_AUX,
     DEFAULT_ATTEMPT_AUX,
     innerMigration
   );
@@ -207,7 +216,7 @@ function RightWorkArea({
             className="h-full min-h-0"
             onLayout={(layout) => {
               if (!Array.isArray(layout) || layout.length !== 2) return;
-              persistJSON(innerStorageKey, [layout[0], layout[1]]);
+              persistJSON(STORAGE_KEYS.V2.ATTEMPT_AUX, [layout[0], layout[1]]);
             }}
           >
             <Panel
@@ -278,7 +287,7 @@ function DesktopSimple({
   rightHeader?: ReactNode;
 }) {
   const outerMigration = {
-    fromKey: STORAGE_KEYS.LEGACY.MAIN,
+    fromKeys: [STORAGE_KEYS.LEGACY.MAIN],
     map: (legacy: [number, number, number]) =>
       [legacy[0], legacy[1]] as SplitSizes,
   };
