@@ -46,3 +46,4 @@ agent-client-protocol = "0.4"
 codex-protocol = { git = "https://github.com/openai/codex.git", package = "codex-protocol", rev = "488ec061bf4d36916b8f477c700ea4fde4162a7a" }
 codex-app-server-protocol = { git = "https://github.com/openai/codex.git", package = "codex-app-server-protocol", rev = "488ec061bf4d36916b8f477c700ea4fde4162a7a" }
 codex-mcp-types = { git = "https://github.com/openai/codex.git", package = "mcp-types", rev = "488ec061bf4d36916b8f477c700ea4fde4162a7a" }
+sha2 = "0.10"

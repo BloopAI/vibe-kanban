@@ -29,6 +29,8 @@ use crate::{
     },
 };
 
+mod mcp;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct Cursor {
     #[serde(default)]
@@ -63,6 +65,8 @@ impl Cursor {
 #[async_trait]
 impl StandardCodingAgentExecutor for Cursor {
     async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
+        mcp::ensure_mcp_server_trust(self, current_dir).await;
+
         let (shell_cmd, shell_arg) = get_shell_command();
         let agent_cmd = self.build_command_builder().build_initial();
 
@@ -94,6 +98,8 @@ impl StandardCodingAgentExecutor for Cursor {
         prompt: &str,
         session_id: &str,
     ) -> Result<SpawnedChild, ExecutorError> {
+        mcp::ensure_mcp_server_trust(self, current_dir).await;
+
         let (shell_cmd, shell_arg) = get_shell_command();
         let agent_cmd = self
             .build_command_builder()
