@@ -88,43 +88,8 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       useState<boolean>(false);
     const imageUploadRef = useRef<ImageUploadSectionHandle>(null);
     const [isTextareaFocused, setIsTextareaFocused] = useState(false);
-    const [maxRows, setMaxRows] = useState(8);
 
     const isEditMode = Boolean(task);
-
-    // Calculate dynamic maxRows based on viewport height
-    useEffect(() => {
-      const calculateMaxRows = () => {
-        // Estimate space needed for other dialog elements:
-        // - Dialog header/title: ~80px
-        // - Title input: ~70px
-        // - Description label: ~30px
-        // - Image upload section (collapsed): ~40px
-        // - Status/template/quickstart sections: ~100px (average)
-        // - Buttons: ~60px
-        // - Padding/margins: ~80px
-        const dialogChrome = 460;
-
-        // Available viewport height (with some padding)
-        const availableHeight = window.innerHeight - 100;
-
-        // Space available for textarea
-        const textareaSpace = Math.max(availableHeight - dialogChrome, 160);
-
-        // Assuming line height of ~24px (typical for text-sm with padding)
-        const lineHeight = 24;
-
-        // Calculate maxRows, with sensible bounds
-        const calculatedMaxRows = Math.floor(textareaSpace / lineHeight);
-        const boundedMaxRows = Math.min(Math.max(calculatedMaxRows, 8), 30);
-
-        setMaxRows(boundedMaxRows);
-      };
-
-      calculateMaxRows();
-      window.addEventListener('resize', calculateMaxRows);
-      return () => window.removeEventListener('resize', calculateMaxRows);
-    }, []);
 
     // Check if there's any content that would be lost
     const hasUnsavedChanges = useCallback(() => {
@@ -584,7 +549,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                   value={description}
                   onChange={setDescription}
                   rows={3}
-                  maxRows={maxRows}
+                  maxRows={30}
                   placeholder="Add more details (optional). Type @ to search files."
                   className="mt-1.5"
                   disabled={isSubmitting || isSubmittingAndStart}
