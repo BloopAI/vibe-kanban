@@ -26,7 +26,6 @@ const settingsNavigation = [
 
 export function SettingsLayout() {
   const { t } = useTranslation('settings');
-  const { t: tCommon } = useTranslation('common');
   const goToPreviousPath = usePreviousPath();
   const { enableScope, disableScope } = useHotkeysContext();
 
