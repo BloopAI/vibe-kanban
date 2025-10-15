@@ -164,15 +164,20 @@ impl StandardCodingAgentExecutor for Codex {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        fork_session: bool,
     ) -> Result<AsyncGroupChild, ExecutorError> {
-        // Fork rollout: copy and assign a new session id so each execution has a unique session
-        let (_rollout_file_path, new_session_id) = SessionHandler::fork_rollout_file(session_id)
-            .map_err(|e| ExecutorError::SpawnError(std::io::Error::other(e)))?;
+        let effective_session_id = if fork_session {
+            let (_rollout_file_path, new_session_id) = SessionHandler::fork_rollout_file(session_id)
+                .map_err(|e| ExecutorError::SpawnError(std::io::Error::other(e)))?;
+            new_session_id
+        } else {
+            session_id.to_string()
+        };
 
         let (shell_cmd, shell_arg) = get_shell_command();
         let codex_command = self
             .build_command_builder()
-            .build_follow_up(&["resume".to_string(), new_session_id]);
+            .build_follow_up(&["resume".to_string(), effective_session_id]);
 
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 

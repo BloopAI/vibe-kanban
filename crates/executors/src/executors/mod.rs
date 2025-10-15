@@ -143,6 +143,7 @@ pub trait StandardCodingAgentExecutor {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        fork_session: bool,
     ) -> Result<AsyncGroupChild, ExecutorError>;
     fn normalize_logs(&self, _raw_logs_event_store: Arc<MsgStore>, _worktree_path: &Path);
 

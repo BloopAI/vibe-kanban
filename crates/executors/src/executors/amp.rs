@@ -80,11 +80,13 @@ impl StandardCodingAgentExecutor for Amp {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        fork_session: bool,
     ) -> Result<AsyncGroupChild, ExecutorError> {
-        // Use shell command for cross-platform compatibility
+        let _ = fork_session;
+
         let (shell_cmd, shell_arg) = get_shell_command();
 
-        // 1) Fork the thread synchronously to obtain new thread id
+        // Fork the thread synchronously to obtain new thread id
         let fork_cmd = self.build_command_builder().build_follow_up(&[
             "threads".to_string(),
             "fork".to_string(),

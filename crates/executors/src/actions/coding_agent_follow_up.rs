@@ -19,6 +19,9 @@ pub struct CodingAgentFollowUpRequest {
     #[serde(alias = "profile_variant_label")]
     // Backwards compatability with ProfileVariantIds, esp stored in DB under ExecutorAction
     pub executor_profile_id: ExecutorProfileId,
+    /// Whether to fork the session (create a new session ID instead of continuing the original)
+    #[serde(default)]
+    pub fork_session: bool,
 }
 
 impl CodingAgentFollowUpRequest {
@@ -39,7 +42,7 @@ impl Executable for CodingAgentFollowUpRequest {
             ))?;
 
         agent
-            .spawn_follow_up(current_dir, &self.prompt, &self.session_id)
+            .spawn_follow_up(current_dir, &self.prompt, &self.session_id, self.fork_session)
             .await
     }
 }

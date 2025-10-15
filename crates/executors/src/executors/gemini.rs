@@ -121,6 +121,7 @@ impl StandardCodingAgentExecutor for Gemini {
         current_dir: &Path,
         prompt: &str,
         _session_id: &str,
+        _fork_session: bool,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         // Build comprehensive prompt with session context
         let followup_prompt = self.build_followup_prompt(current_dir, prompt).await?;

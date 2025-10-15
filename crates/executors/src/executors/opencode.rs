@@ -197,6 +197,7 @@ impl StandardCodingAgentExecutor for Opencode {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        _fork_session: bool,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         // Start a dedicated local share bridge bound to this opencode process
         let bridge = ShareBridge::start().await.map_err(ExecutorError::Io)?;

@@ -29,11 +29,13 @@ No configuration required! The feature automatically uses the agent when availab
 
 1. **Agent Context**: When merging a task, the system first checks if there's an active agent session from the task execution.
 
-2. **Agent-Based Generation**: If an agent session exists:
-   - The agent has full access to the conversation history and understands the reasoning behind changes
-   - Agent analyzes the git diff of changes it made
+2. **Agent-Based Generation (with Session Forking)**: If an agent session exists:
+   - The system creates a **forked session** to generate the commit message
+   - Session forking means: Agent has full conversation context but the commit message generation doesn't appear in the main conversation history
+   - Agent analyzes the git diff of changes it made with complete context
    - Generates a contextual commit message based on what it actually implemented and why
    - Agent understands the full context: WHY changes were made, not just WHAT changed
+   - The forked session is discarded after generating the commit message
 
 3. **Simple Fallback**: If agent session unavailable or agent generation fails, uses the original simple format.
 
@@ -85,7 +87,8 @@ Add comprehensive examples and error response formats
 5. **Intelligence**: Agent understands WHY changes were made, not just WHAT changed
 6. **Zero Cost**: Uses existing agent session - no additional API costs
 7. **Privacy**: No additional data exposure beyond existing agent access
-8. **Fallback**: Graceful degradation to simple format when agent unavailable
+8. **Clean History**: Session forking keeps commit message generation separate from main conversation
+9. **Fallback**: Graceful degradation to simple format when agent unavailable
 
 ## Implementation Details
 

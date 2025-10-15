@@ -100,11 +100,13 @@ impl CommitMessageService {
         let executor_profile_id = ExecutorProfileId::parse(&task_attempt.executor)
             .map_err(|e| CommitMessageError::AgentError(format!("Invalid executor profile: {}", e)))?;
 
-        // Create a follow-up request
+        // Create a follow-up request with session forking enabled
+        // This ensures the commit message generation doesn't pollute the main conversation
         let follow_up_request = CodingAgentFollowUpRequest {
             prompt: prompt.clone(),
             session_id: session_id.to_string(),
             executor_profile_id,
+            fork_session: true,  // Fork the session to avoid polluting conversation history
         };
 
         // Spawn the agent process

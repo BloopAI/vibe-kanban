@@ -166,12 +166,17 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        fork_session: bool,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
         let command_builder = self.build_command_builder().await;
-        // Build follow-up command with --resume {session_id}
-        let mut base_command =
-            command_builder.build_follow_up(&["--resume".to_string(), session_id.to_string()]);
+
+        // Build follow-up command with --resume {session_id} and optionally --fork-session
+        let mut resume_args = vec!["--resume".to_string(), session_id.to_string()];
+        if fork_session {
+            resume_args.push("--fork-session".to_string());
+        }
+        let mut base_command = command_builder.build_follow_up(&resume_args);
 
         if self.plan.unwrap_or(false) {
             base_command = create_watchkill_script(&base_command);

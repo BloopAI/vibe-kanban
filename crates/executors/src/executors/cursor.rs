@@ -96,6 +96,7 @@ impl StandardCodingAgentExecutor for Cursor {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        _fork_session: bool,
     ) -> Result<AsyncGroupChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
         let agent_cmd = self
