@@ -34,7 +34,7 @@ impl CommandParts {
         let CommandParts { program, args } = self;
         let executable = resolve_executable_path(&program)
             .await
-            .ok_or_else(|| ExecutorError::ExecutableNotFound { program })?;
+            .ok_or(ExecutorError::ExecutableNotFound { program })?;
         Ok((executable, args))
     }
 
