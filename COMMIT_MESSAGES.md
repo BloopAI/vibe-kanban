@@ -127,7 +127,13 @@ The service uses a priority system for commit message generation:
 
 ### Error Handling
 
-- Network timeouts (30 second limit)
+**Agent execution**:
+- 60 second timeout for agent response
+- Automatic process cleanup
+- stdout parsing with filtering of log lines
+
+**LLM API calls**:
+- 30 second network timeout
 - API rate limits and errors
 - Invalid responses
 - Missing API keys
@@ -169,7 +175,8 @@ For a team making 100 task merges per month with 20% requiring LLM fallback, the
 Look for log messages like:
 ```
 INFO Found executor session abc123 for task attempt, trying agent-based commit message generation
+INFO Successfully generated commit message using agent: feat(auth): implement user login system
 INFO Generated enhanced commit message: feat(auth): implement user login system
-WARN Agent-based generation failed: not yet implemented, falling back to LLM API
+WARN Agent-based generation failed: Timeout waiting for agent response, falling back to LLM API
 WARN Enhanced commit message generation failed: API rate limit exceeded, using fallback
 ```

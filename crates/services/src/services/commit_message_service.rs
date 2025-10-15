@@ -377,6 +377,13 @@ impl CommitMessageService {
         task_description: Option<&str>,
         session_id: &str,
     ) -> Result<String, CommitMessageError> {
+        use executors::{
+            actions::{coding_agent_follow_up::CodingAgentFollowUpRequest, ExecutorActionType, Executable},
+            profile::ExecutorProfileId,
+        };
+        use tokio::io::{AsyncBufReadExt, BufReader};
+        use tokio::time::{timeout, Duration as TokioDuration};
+
         // Build the prompt for the agent
         let prompt = self.build_agent_prompt(task_title, task_description, &task_attempt.base_branch);
 
@@ -386,11 +393,81 @@ impl CommitMessageService {
         })?;
         let worktree_path = Path::new(container_ref);
 
-        // Execute the commit message generation using the existing agent infrastructure
-        // For now, return an error to trigger fallback - this would need full executor integration
-        Err(CommitMessageError::LlmApiError(
-            "Agent-based generation not yet fully implemented - falling back to API".to_string()
-        ))
+        // Parse executor profile from task_attempt.executor
+        let executor_profile_id = ExecutorProfileId::parse(&task_attempt.executor)
+            .map_err(|e| CommitMessageError::LlmApiError(format!("Invalid executor profile: {}", e)))?;
+
+        // Create a follow-up request
+        let follow_up_request = CodingAgentFollowUpRequest {
+            prompt: prompt.clone(),
+            session_id: session_id.to_string(),
+            executor_profile_id,
+        };
+
+        // Spawn the agent process
+        let mut child = follow_up_request.spawn(worktree_path).await
+            .map_err(|e| CommitMessageError::LlmApiError(format!("Failed to spawn agent: {}", e)))?;
+
+        // Capture stdout
+        let stdout = child.inner_mut().stdout.take().ok_or_else(|| {
+            CommitMessageError::LlmApiError("Failed to capture agent stdout".to_string())
+        })?;
+
+        let mut reader = BufReader::new(stdout).lines();
+        let mut last_non_empty_line = String::new();
+
+        // Read output with timeout (60 seconds)
+        let read_result = timeout(TokioDuration::from_secs(60), async {
+            while let Ok(Some(line)) = reader.next_line().await {
+                // Skip empty lines and lines that look like logging
+                let trimmed = line.trim();
+                if !trimmed.is_empty()
+                    && !trimmed.starts_with("INFO")
+                    && !trimmed.starts_with("WARN")
+                    && !trimmed.starts_with("ERROR")
+                    && !trimmed.starts_with("DEBUG")
+                    && !trimmed.starts_with('[')
+                    && !trimmed.starts_with('{')  // Skip JSON lines
+                {
+                    last_non_empty_line = trimmed.to_string();
+                }
+            }
+            Ok::<(), CommitMessageError>(())
+        }).await;
+
+        // Kill the process after capturing output
+        let _ = child.kill();
+
+        match read_result {
+            Ok(_) => {
+                if last_non_empty_line.is_empty() {
+                    return Err(CommitMessageError::LlmApiError(
+                        "Agent returned empty commit message".to_string()
+                    ));
+                }
+            }
+            Err(_) => {
+                return Err(CommitMessageError::LlmApiError(
+                    "Timeout waiting for agent response".to_string()
+                ));
+            }
+        }
+
+        // Clean up the commit message - remove any markdown code blocks
+        let commit_message = last_non_empty_line
+            .trim()
+            .trim_start_matches("```")
+            .trim_end_matches("```")
+            .trim()
+            .to_string();
+
+        if commit_message.is_empty() {
+            return Err(CommitMessageError::LlmApiError(
+                "Cleaned commit message is empty".to_string()
+            ));
+        }
+
+        Ok(commit_message)
     }
 
     /// Build a prompt specifically for agent-based commit message generation
