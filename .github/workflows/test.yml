@@ -2,7 +2,9 @@ name: Test
 
 on:
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
+      - louis/fe-revision
   workflow_dispatch:
 
 concurrency:
