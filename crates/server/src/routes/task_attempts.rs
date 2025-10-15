@@ -845,7 +845,7 @@ pub async fn open_task_attempt_in_editor(
         config.editor.with_override(editor_type_str)
     };
 
-    match editor_config.open_file(&path.to_string_lossy()) {
+    match editor_config.open_file(&path.to_string_lossy()).await {
         Ok(_) => {
             tracing::info!(
                 "Opened editor for task attempt {} at path: {}",

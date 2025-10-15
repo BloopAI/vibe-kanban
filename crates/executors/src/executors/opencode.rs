@@ -132,7 +132,7 @@ impl StandardCodingAgentExecutor for Opencode {
         // Start a dedicated local share bridge bound to this opencode process
         let bridge = ShareBridge::start().await.map_err(ExecutorError::Io)?;
         let command_parts = self.build_command_builder().build_initial()?;
-        let (program_path, args) = command_parts.into_resolved()?;
+        let (program_path, args) = command_parts.into_resolved().await?;
 
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
@@ -198,7 +198,7 @@ impl StandardCodingAgentExecutor for Opencode {
         let command_parts = self
             .build_command_builder()
             .build_follow_up(&["--session".to_string(), session_id.to_string()])?;
-        let (program_path, args) = command_parts.into_resolved()?;
+        let (program_path, args) = command_parts.into_resolved().await?;
 
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 

@@ -158,7 +158,7 @@ impl ClaudeCode {
             cmd.arg(shell_arg).arg(plan_script);
             cmd
         } else {
-            let (program_path, args) = command_parts.into_resolved()?;
+            let (program_path, args) = command_parts.into_resolved().await?;
             let mut cmd = Command::new(program_path);
             cmd.args(&args);
             cmd

@@ -55,7 +55,7 @@ impl AcpAgentHarness {
         prompt: String,
         command_parts: CommandParts,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let (program_path, args) = command_parts.into_resolved()?;
+        let (program_path, args) = command_parts.into_resolved().await?;
         let mut command = Command::new(program_path);
         command
             .kill_on_drop(true)
@@ -92,7 +92,7 @@ impl AcpAgentHarness {
         session_id: &str,
         command_parts: CommandParts,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let (program_path, args) = command_parts.into_resolved()?;
+        let (program_path, args) = command_parts.into_resolved().await?;
         let mut command = Command::new(program_path);
         command
             .kill_on_drop(true)

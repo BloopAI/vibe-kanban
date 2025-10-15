@@ -30,9 +30,10 @@ impl CommandParts {
         Self { program, args }
     }
 
-    pub fn into_resolved(self) -> Result<(PathBuf, Vec<String>), ExecutorError> {
+    pub async fn into_resolved(self) -> Result<(PathBuf, Vec<String>), ExecutorError> {
         let CommandParts { program, args } = self;
         let executable = resolve_executable_path(&program)
+            .await
             .ok_or_else(|| ExecutorError::ExecutableNotFound { program })?;
         Ok((executable, args))
     }

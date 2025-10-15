@@ -335,7 +335,7 @@ impl EditorConfig {
         }
     }
 
-    pub fn open_file(&self, path: &str) -> Result<(), std::io::Error> {
+    pub async fn open_file(&self, path: &str) -> Result<(), std::io::Error> {
         let mut command = self.get_command();
 
         if command.is_empty() {
@@ -347,6 +347,7 @@ impl EditorConfig {
 
         if cfg!(windows) {
             command[0] = utils::shell::resolve_executable_path(&command[0])
+                .await
                 .map(|p| p.to_string_lossy().to_string())
                 .ok_or(std::io::Error::new(
                     std::io::ErrorKind::NotFound,
@@ -354,7 +355,7 @@ impl EditorConfig {
                 ))?;
         }
 
-        let mut cmd = std::process::Command::new(&command[0]);
+        let mut cmd = tokio::process::Command::new(&command[0]);
         for arg in &command[1..] {
             cmd.arg(arg);
         }
