@@ -28,7 +28,7 @@ export function SettingsLayout() {
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header with title and close button */}
-      <div className="flex items-center justify-between mb-8 sticky top-0 bg-background z-10 py-2 -mt-2">
+      <div className="flex items-center justify-between mb-8 sticky top-0 bg-background z-10 pb-4">
         <h1 className="text-2xl font-semibold">
           {t('settings.layout.nav.title')}
         </h1>
