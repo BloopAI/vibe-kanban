@@ -33,7 +33,6 @@ pub struct CreateTaskRequest {
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct CreateTaskResponse {
     pub task_id: String,
-    pub message: String,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -95,6 +94,41 @@ pub struct TaskSummary {
     pub id: String,
     #[schemars(description = "The title of the task")]
     pub title: String,
+    #[schemars(description = "Current status of the task")]
+    pub status: String,
+    #[schemars(description = "When the task was created")]
+    pub created_at: String,
+    #[schemars(description = "When the task was last updated")]
+    pub updated_at: String,
+    #[schemars(description = "Whether the task has an in-progress execution attempt")]
+    pub has_in_progress_attempt: Option<bool>,
+    #[schemars(description = "Whether the task has a merged execution attempt")]
+    pub has_merged_attempt: Option<bool>,
+    #[schemars(description = "Whether the last execution attempt failed")]
+    pub last_attempt_failed: Option<bool>,
+}
+
+impl TaskSummary {
+    fn from_task_with_status(task: TaskWithAttemptStatus) -> Self {
+        Self {
+            id: task.id.to_string(),
+            title: task.title.to_string(),
+            status: task.status.to_string(),
+            created_at: task.created_at.to_rfc3339(),
+            updated_at: task.updated_at.to_rfc3339(),
+            has_in_progress_attempt: Some(task.has_in_progress_attempt),
+            has_merged_attempt: Some(task.has_merged_attempt),
+            last_attempt_failed: Some(task.last_attempt_failed),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct TaskDetails {
+    #[schemars(description = "The unique identifier of the task")]
+    pub id: String,
+    #[schemars(description = "The title of the task")]
+    pub title: String,
     #[schemars(description = "Optional description of the task")]
     pub description: Option<String>,
     #[schemars(description = "Current status of the task")]
@@ -111,7 +145,7 @@ pub struct TaskSummary {
     pub last_attempt_failed: Option<bool>,
 }
 
-impl TaskSummary {
+impl TaskDetails {
     fn from_task(task: Task) -> Self {
         Self {
             id: task.id.to_string(),
@@ -123,20 +157,6 @@ impl TaskSummary {
             has_in_progress_attempt: None,
             has_merged_attempt: None,
             last_attempt_failed: None,
-        }
-    }
-
-    fn from_task_with_status(task: TaskWithAttemptStatus) -> Self {
-        Self {
-            id: task.id.to_string(),
-            title: task.title.to_string(),
-            description: task.description.clone(),
-            status: task.status.to_string(),
-            created_at: task.created_at.to_rfc3339(),
-            updated_at: task.updated_at.to_rfc3339(),
-            has_in_progress_attempt: Some(task.has_in_progress_attempt),
-            has_merged_attempt: Some(task.has_merged_attempt),
-            last_attempt_failed: Some(task.last_attempt_failed),
         }
     }
 }
@@ -169,8 +189,7 @@ pub struct UpdateTaskRequest {
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct UpdateTaskResponse {
-    pub message: String,
-    pub task: Option<TaskSummary>,
+    pub task: TaskDetails,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -195,14 +214,12 @@ pub struct StartTaskAttemptRequest {
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct StartTaskAttemptResponse {
-    pub message: String,
     pub task_id: String,
     pub attempt_id: String,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct DeleteTaskResponse {
-    pub message: String,
     pub deleted_task_id: Option<String>,
 }
 
@@ -214,8 +231,7 @@ pub struct GetTaskRequest {
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct GetTaskResponse {
-    pub task: Option<TaskSummary>,
-    pub project_name: Option<String>,
+    pub task: TaskDetails,
 }
 
 #[derive(Debug, Clone)]
@@ -336,7 +352,6 @@ impl TaskServer {
 
         TaskServer::success(&CreateTaskResponse {
             task_id: task.id.to_string(),
-            message: "Task created successfully".to_string(),
         })
     }
 
@@ -480,7 +495,6 @@ impl TaskServer {
         };
 
         let response = StartTaskAttemptResponse {
-            message: "Task attempt started successfully".to_string(),
             task_id: attempt.task_id.to_string(),
             attempt_id: attempt.id.to_string(),
         };
@@ -527,12 +541,8 @@ impl TaskServer {
             Err(e) => return Ok(e),
         };
 
-        let summary = TaskSummary::from_task(updated_task);
-        let repsonse = UpdateTaskResponse {
-            message: "Task updated successfully".to_string(),
-            task: Some(summary),
-        };
-
+        let details = TaskDetails::from_task(updated_task);
+        let repsonse = UpdateTaskResponse { task: details };
         TaskServer::success(&repsonse)
     }
 
@@ -552,7 +562,6 @@ impl TaskServer {
         }
 
         let repsonse = DeleteTaskResponse {
-            message: "Task deleted successfully".to_string(),
             deleted_task_id: Some(task_id.to_string()),
         };
 
@@ -560,7 +569,7 @@ impl TaskServer {
     }
 
     #[tool(
-        description = "Get detailed information about a specific task/ticket. `project_id` and `task_id` are required!"
+        description = "Get detailed information (like task description) about a specific task/ticket. You can use `list_tasks` to find the `task_ids` of all tasks in a project. `project_id` and `task_id` are required!"
     )]
     async fn get_task(
         &self,
@@ -572,11 +581,8 @@ impl TaskServer {
             Err(e) => return Ok(e),
         };
 
-        let summary = TaskSummary::from_task(task);
-        let response = GetTaskResponse {
-            task: Some(summary),
-            project_name: None,
-        };
+        let details = TaskDetails::from_task(task);
+        let response = GetTaskResponse { task: details };
 
         TaskServer::success(&response)
     }
