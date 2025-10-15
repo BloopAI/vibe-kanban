@@ -1,4 +1,4 @@
-import { FileDiff, MessageSquare, Cog, Monitor } from 'lucide-react';
+import { GitCompare, MessageSquare, Cog, Monitor } from 'lucide-react';
 import type { TabType } from '@/types/tabs';
 import type { TaskAttempt } from 'shared/types';
 
@@ -14,7 +14,7 @@ type Props = {
 function TabNavigation({ activeTab, setActiveTab, rightContent }: Props) {
   const tabs = [
     { id: 'logs' as TabType, label: 'Logs', icon: MessageSquare },
-    { id: 'diffs' as TabType, label: 'Diffs', icon: FileDiff },
+    { id: 'diffs' as TabType, label: 'Diffs', icon: GitCompare },
     { id: 'processes' as TabType, label: 'Processes', icon: Cog },
     { id: 'preview' as TabType, label: 'Preview', icon: Monitor },
   ];
