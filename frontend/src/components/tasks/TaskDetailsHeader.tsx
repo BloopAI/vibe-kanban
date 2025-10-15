@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Edit, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -31,6 +32,7 @@ function TaskDetailsHeader({
   hideCloseButton = false,
   isFullScreen,
 }: TaskDetailsHeaderProps) {
+  const { t } = useTranslation('tasks');
   return (
     <div>
       <Card
@@ -60,7 +62,7 @@ function TaskDetailsHeader({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Edit task</p>
+                  <p>{t('taskHeader.editTask')}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -78,7 +80,7 @@ function TaskDetailsHeader({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Delete task</p>
+                  <p>{t('taskHeader.deleteTask')}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -92,7 +94,7 @@ function TaskDetailsHeader({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Close panel</p>
+                  <p>{t('taskHeader.closePanel')}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

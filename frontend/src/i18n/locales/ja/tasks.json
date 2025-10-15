@@ -1,134 +1,247 @@
 {
-  "loading": "タスクを読み込み中...",
+  "loading": "Loading tasks...",
   "empty": {
-    "noTasks": "このプロジェクトにタスクが見つかりません。",
-    "createFirst": "最初のタスクを作成",
-    "noSearchResults": "検索条件に一致するタスクがありません。"
+    "noTasks": "No tasks found for this project.",
+    "createFirst": "Create First Task",
+    "noSearchResults": "No tasks match your search."
   },
   "actions": {
-    "addTask": "タスクを追加"
+    "addTask": "Add task"
   },
   "rebase": {
     "common": {
-      "action": "リベース",
-      "inProgress": "リベース中...",
-      "withTarget": "{{branch}} にリベース"
+      "action": "Rebase",
+      "inProgress": "Rebasing...",
+      "withTarget": "Rebase onto {{branch}}"
     },
     "dialog": {
-      "title": "タスク試行をリベース",
-      "description": "このタスク試行をリベースする新しいベースブランチを選択してください。",
-      "upstreamLabel": "アップストリームブランチ",
-      "upstreamPlaceholder": "アップストリームブランチを選択",
-      "targetLabel": "ターゲットブランチ",
-      "targetPlaceholder": "ターゲットブランチを選択",
-      "advanced": "詳細設定"
+      "title": "Rebase Task Attempt",
+      "description": "Choose a new base branch to rebase this task attempt onto.",
+      "upstreamLabel": "Upstream Branch",
+      "upstreamPlaceholder": "Select an upstream branch",
+      "targetLabel": "Target Branch",
+      "targetPlaceholder": "Select a target branch",
+      "advanced": "Advanced"
     },
     "status": {
-      "inProgress": "リベース進行中{{counts}}",
-      "needed": "リベースが必要です{{dirty}}{{counts}}",
-      "dirtyMarker": " （未コミットあり）"
+      "inProgress": "Rebase in progress{{counts}}",
+      "needed": "Rebase needed{{dirty}}{{counts}}",
+      "dirtyMarker": " (dirty)"
     }
   },
   "branches": {
     "changeTarget": {
       "dialog": {
-        "title": "ターゲットブランチを変更",
-        "description": "タスク試行の新しいターゲットブランチを選択してください。",
-        "placeholder": "ターゲットブランチを選択",
-        "action": "ブランチを変更",
-        "inProgress": "変更中..."
+        "title": "Change target branch",
+        "description": "Choose a new target branch for the task attempt.",
+        "placeholder": "Select a target branch",
+        "action": "Change Branch",
+        "inProgress": "Changing..."
       }
     }
   },
   "attempt": {
     "labels": {
-      "attempt": "試行",
-      "agent": "エージェント",
-      "branch": "ブランチ",
-      "diffs": "差分"
+      "attempt": "Attempt",
+      "agent": "Agent",
+      "branch": "Branch",
+      "diffs": "Diffs"
     },
     "actions": {
-      "openInIde": "IDEで開く",
-      "openMenu": "メニューを開く",
-      "startDevServer": "開発サーバーを開始",
-      "stopDevServer": "開発サーバーを停止"
+      "openInIde": "Open in IDE",
+      "openMenu": "Open menu",
+      "startDevServer": "Start dev server",
+      "stopDevServer": "Stop dev server"
     }
   },
   "git": {
     "labels": {
-      "taskBranch": "タスクブランチ"
+      "taskBranch": "Task Branch"
     },
     "branch": {
-      "current": "現在"
+      "current": "current"
     },
     "status": {
-      "commits_one": "コミット",
-      "commits_other": "コミット",
-      "conflicts": "競合",
-      "upToDate": "最新",
-      "ahead": "先行",
-      "behind": "遅れ"
+      "commits_one": "commit",
+      "commits_other": "commits",
+      "conflicts": "Conflicts",
+      "upToDate": "Up to date",
+      "ahead": "ahead",
+      "behind": "behind"
     },
     "states": {
-      "merged": "マージ完了！",
-      "merging": "マージ中...",
-      "merge": "マージ",
-      "rebasing": "リベース中...",
-      "rebase": "リベース",
-      "pushed": "プッシュ完了！",
-      "pushing": "プッシュ中...",
-      "push": "プッシュ",
-      "creating": "作成中...",
-      "createPr": "PRを作成"
+      "merged": "Merged!",
+      "merging": "Merging...",
+      "merge": "Merge",
+      "rebasing": "Rebasing...",
+      "rebase": "Rebase",
+      "pushed": "Pushed!",
+      "pushing": "Pushing...",
+      "push": "Push",
+      "creating": "Creating...",
+      "createPr": "Create PR"
     },
     "errors": {
-      "changeTargetBranch": "ターゲットブランチの変更に失敗しました",
-      "pushChanges": "変更のプッシュに失敗しました",
-      "mergeChanges": "変更のマージに失敗しました",
-      "rebaseBranch": "ブランチのリベースに失敗しました"
+      "changeTargetBranch": "Failed to change target branch",
+      "pushChanges": "Failed to push changes",
+      "mergeChanges": "Failed to merge changes",
+      "rebaseBranch": "Failed to rebase branch"
     }
   },
   "preview": {
+    "title": "Preview",
+    "selectAttempt": "Select an attempt to see preview",
     "troubleAlert": {
-      "title": "アプリケーションのプレビューに問題があります：",
-      "item1": "開発サーバーが正常に起動しましたか？解決すべきバグがあるか、依存関係のインストールが必要な可能性があります。",
-      "item2": "開発サーバーがターミナルにURLとポートを次の形式で出力しましたか",
-      "item2Suffix": "？（これにより実行中であることを認識します）",
-      "item3": "Web Companion（クリックして編集機能に必要）をインストールしましたか？インストールしていない場合は、",
-      "item3Link": "こちらのインストール手順に従ってください"
+      "title": "We're having trouble previewing your application:",
+      "item1": "Did the dev server start successfully? There may be a bug you need to resolve, or perhaps dependencies need to be installed.",
+      "item2": "Did your dev server print the URL and port to the terminal in the format",
+      "item2Suffix": "? (this is how we know it's running)",
+      "item3": "Have you installed the Web Companion (required for click-to-edit)? If not, please",
+      "item3Link": "follow the installation instructions here"
     },
     "noServer": {
-      "title": "開発サーバーが実行されていません",
-      "startPrompt": "プレビューを表示するには開発サーバーを起動してください",
-      "setupPrompt": "ライブプレビューとクリックして編集機能を使用するには、このプロジェクトに開発サーバースクリプトを追加してください。",
-      "companionPrompt": "クリック編集機能のために、プロジェクトにブラウザコンパニオンを追加してください。",
-      "companionLink": "インストールガイドを表示",
-      "startButton": "開発サーバーを開始",
-      "editButton": "開発スクリプトを編集",
-      "stopAndEditButton": "開発サーバーを停止して問題を解決"
+      "title": "No dev server running",
+      "startPrompt": "Please start a dev server to see the preview",
+      "setupPrompt": "To use the live preview and click-to-edit, please add a dev server script to this project.",
+      "companionPrompt": "For click-to-edit functionality, add the browser companion to your project.",
+      "companionLink": "View installation guide",
+      "startButton": "Start Dev Server",
+      "editButton": "Edit Dev Script",
+      "stopAndEditButton": "Stop Dev Server & Resolve Issues"
     },
     "devScript": {
-      "saveAndStart": "保存して開始",
-      "saveOnly": "保存のみ",
-      "saveChanges": "変更を保存",
-      "cancel": "キャンセル",
+      "saveAndStart": "Save & Start",
+      "saveOnly": "Save Only",
+      "saveChanges": "Save Changes",
+      "cancel": "Cancel",
       "errors": {
-        "notLoaded": "プロジェクトが読み込まれていません",
-        "empty": "開発スクリプトを空にすることはできません"
+        "notLoaded": "Project not loaded",
+        "empty": "Dev script cannot be empty"
       }
     },
     "logs": {
-      "title": "開発サーバーログ",
-      "hide": "非表示",
-      "show": "表示"
+      "title": "Dev Server Logs",
+      "hide": "Hide",
+      "show": "Show"
     },
     "iframe": {
-      "title": "開発サーバープレビュー"
+      "title": "Dev server preview"
     },
     "toolbar": {
-      "refresh": "プレビューを更新",
-      "copyUrl": "URLをコピー",
-      "openInTab": "新しいタブで開く"
+      "refresh": "Refresh preview",
+      "copyUrl": "Copy URL",
+      "openInTab": "Open in new tab"
     }
+  },
+  "diff": {
+    "viewModes": {
+      "inline": "Inline view",
+      "split": "Split view"
+    },
+    "errorLoadingDiff": "Failed to load diff: {{error}}",
+    "expandAll": "Expand all diffs",
+    "collapseAll": "Collapse all diffs",
+    "filesChanged_one": "{{count}} file changed",
+    "filesChanged_other": "{{count}} files changed",
+    "noChanges": "No changes have been made yet"
+  },
+  "taskPanel": {
+    "noTaskSelected": "No task selected",
+    "loadingAttempts": "Loading attempts...",
+    "errorLoadingAttempts": "Failed to load attempts",
+    "attemptsCount": "Attempts ({{count}})",
+    "noAttempts": "No attempts yet"
+  },
+  "processes": {
+    "selectAttempt": "Select an attempt to view execution processes.",
+    "errorLoadingUpdates": "Failed to load live updates for processes.",
+    "reconnecting": "Reconnecting...",
+    "loading": "Loading execution processes...",
+    "noProcesses": "No execution processes found for this attempt.",
+    "processId": "Process ID: {{id}}",
+    "deleted": "Deleted",
+    "deletedTooltip": "Deleted by restore: timeline was restored to a checkpoint and later executions were removed",
+    "agent": "Agent:",
+    "exit": "Exit: {{code}}",
+    "started": "Started: {{date}}",
+    "completed": "Completed: {{date}}",
+    "detailsTitle": "Process Details",
+    "backToList": "Back to list",
+    "loadingDetails": "Loading process details...",
+    "errorLoadingDetails": "Failed to load process details. Please try again."
+  },
+  "taskHeader": {
+    "editTask": "Edit task",
+    "deleteTask": "Delete task",
+    "closePanel": "Close panel"
+  },
+  "toolbar": {
+    "actions": "Actions",
+    "noAttempts": "No attempts yet",
+    "startFirstAttempt": "Start your first attempt to begin working on this task",
+    "startAttempt": "Start Attempt"
+  },
+  "followUp": {
+    "stop": "Stop",
+    "clearReviewComments": "Clear Review Comments",
+    "resolveConflicts": "Resolve conflicts",
+    "send": "Send",
+    "unqueuing": "Unqueuing…",
+    "edit": "Edit",
+    "queuing": "Queuing…",
+    "queueForNextTurn": "Queue for next turn"
+  },
+  "todos": {
+    "title_one": "Todos ({{count}})",
+    "title_other": "Todos ({{count}})"
+  },
+  "attempt": {
+    "agent": "Agent",
+    "path": "Path",
+    "openInEditor": "Open in {{editor}}",
+    "copied": "Copied!",
+    "clickToCopy": "Click to copy worktree path",
+    "stopDev": "Stop Dev",
+    "startDev": "Start Dev",
+    "viewDevLogs": "View dev server logs",
+    "stopping": "Stopping...",
+    "stopAttempt": "Stop Attempt",
+    "newAttempt": "New Attempt",
+    "viewHistory": "View attempt history",
+    "createSubtask": "Create Subtask",
+    "preview": "Preview",
+    "diffs": "Diffs"
+  },
+  "git": {
+    "pr": {
+      "open": "Open PR #{{number}}",
+      "number": "PR #{{number}}"
+    }
+  },
+  "createAttemptDialog": {
+    "title": "Create Attempt",
+    "description": "Start a new attempt with a coding agent. A git worktree and task branch will be created.",
+    "baseBranch": "Base branch",
+    "loadingBranches": "Loading branches...",
+    "selectBranch": "Select branch",
+    "error": "Failed to create attempt. Please try again.",
+    "creating": "Creating...",
+    "start": "Start"
+  },
+  "viewProcessesDialog": {
+    "title": "Execution processes"
+  },
+  "attemptHeaderActions": {
+    "preview": "Preview",
+    "diffs": "Diffs"
+  },
+  "actionsMenu": {
+    "attempt": "Attempt",
+    "openInIde": "Open attempt in IDE",
+    "viewProcesses": "View processes",
+    "createNewAttempt": "Create new attempt",
+    "createSubtask": "Create subtask",
+    "task": "Task",
+    "duplicate": "Duplicate"
   }
 }

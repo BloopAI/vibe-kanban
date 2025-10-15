@@ -31,6 +31,7 @@ import { writeClipboardViaBridge } from '@/vscode/bridge';
 import { useProcessSelection } from '@/contexts/ProcessSelectionContext';
 import { useTabNavigation } from '@/contexts/TabNavigationContext';
 import { openTaskForm } from '@/lib/openTaskForm';
+import { useTranslation } from 'react-i18next';
 
 // Helper function to get the display name for different editor types
 function getEditorDisplayName(editorType: string): string {
@@ -73,6 +74,7 @@ function CurrentAttempt({
   handleEnterCreateAttemptMode,
   setSelectedAttempt,
 }: Props) {
+  const { t } = useTranslation('tasks');
   const { config } = useUserSystem();
   const { isAttemptRunning, stopExecution, isStopping } = useAttemptExecution(
     selectedAttempt?.id,
@@ -157,7 +159,7 @@ function CurrentAttempt({
       <div className="flex items-start">
         <div className="min-w-0">
           <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-            Agent
+            {t('attempt.agent')}
           </div>
           <div className="text-sm font-medium">{selectedAttempt.executor}</div>
         </div>
@@ -166,7 +168,7 @@ function CurrentAttempt({
       <div>
         <div className="flex items-center gap-1.5 mb-1">
           <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1 pt-1">
-            Path
+            {t('attempt.path')}
           </div>
           <Button
             variant="ghost"
@@ -175,7 +177,7 @@ function CurrentAttempt({
             className="h-6 px-2 text-xs hover:bg-muted gap-1"
           >
             <ExternalLink className="h-3 w-3" />
-            Open in {editorDisplayName}
+            {t('attempt.openInEditor', { editor: editorDisplayName })}
           </Button>
         </div>
         <div
@@ -185,7 +187,7 @@ function CurrentAttempt({
               : 'text-muted-foreground bg-muted hover:bg-muted/80'
           }`}
           onClick={handleCopyWorktreePath}
-          title={copied ? 'Copied!' : 'Click to copy worktree path'}
+          title={copied ? t('attempt.copied') : t('attempt.clickToCopy')}
         >
           <span
             className={`truncate ${copied ? 'text-green-800' : ''}`}
@@ -195,7 +197,7 @@ function CurrentAttempt({
           </span>
           {copied && (
             <span className="text-green-700 font-medium whitespace-nowrap">
-              Copied!
+              {t('attempt.copied')}
             </span>
           )}
         </div>
@@ -219,12 +221,12 @@ function CurrentAttempt({
               {runningDevServer ? (
                 <>
                   <StopCircle className="h-3 w-3" />
-                  Stop Dev
+                  {t('attempt.stopDev')}
                 </>
               ) : (
                 <>
                   <Play className="h-3 w-3" />
-                  Start Dev
+                  {t('attempt.startDev')}
                 </>
               )}
             </Button>
@@ -244,7 +246,7 @@ function CurrentAttempt({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>View dev server logs</p>
+                    <p>{t('attempt.viewDevLogs')}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -262,7 +264,7 @@ function CurrentAttempt({
                 className="gap-1 flex-1"
               >
                 <StopCircle className="h-4 w-4" />
-                {isStopping ? 'Stopping...' : 'Stop Attempt'}
+                {isStopping ? t('attempt.stopping') : t('attempt.stopAttempt')}
               </Button>
             ) : (
               <Button
@@ -272,7 +274,7 @@ function CurrentAttempt({
                 className={`gap-1 ${taskAttempts.length > 1 ? 'flex-1' : 'flex-1'}`}
               >
                 <Plus className="h-4 w-4" />
-                New Attempt
+                {t('attempt.newAttempt')}
               </Button>
             )}
 
@@ -292,7 +294,7 @@ function CurrentAttempt({
                       </DropdownMenuTrigger>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>View attempt history</p>
+                      <p>{t('attempt.viewHistory')}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -329,7 +331,7 @@ function CurrentAttempt({
             className="gap-1 flex-1"
           >
             <GitFork className="h-3 w-3" />
-            Create Subtask
+            {t('attempt.createSubtask')}
           </Button>
         </div>
       </div>

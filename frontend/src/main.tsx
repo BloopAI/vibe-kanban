@@ -7,6 +7,7 @@ import { VibeKanbanWebCompanion } from 'vibe-kanban-web-companion';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as Sentry from '@sentry/react';
 import NiceModal from '@ebay/nice-modal-react';
+import i18n from './i18n';
 // Import modal type definitions
 import './types/modals';
 // Import and register modals
@@ -94,7 +95,10 @@ const queryClient = new QueryClient({
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <Sentry.ErrorBoundary fallback={<p>An error has occurred</p>} showDialog>
+      <Sentry.ErrorBoundary
+        fallback={<p>{i18n.t('common:states.error')}</p>}
+        showDialog
+      >
         <ClickToComponent />
         <VibeKanbanWebCompanion />
         <App />

@@ -47,5 +47,8 @@
       "remote": "remote"
     },
     "currentDisabled": "Cannot select the current branch"
+  },
+  "breadcrumb": {
+    "more": "More"
   }
 }

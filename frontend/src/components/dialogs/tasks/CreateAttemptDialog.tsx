@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -35,6 +36,7 @@ export function CreateAttemptDialog({
   onOpenChange,
   latestAttempt,
 }: CreateAttemptDialogProps) {
+  const { t } = useTranslation('tasks');
   const { projectId } = useProject();
   const { profiles, config } = useUserSystem();
   const { createAttempt, isCreating, error } = useAttemptCreation(taskId);
@@ -118,10 +120,9 @@ export function CreateAttemptDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Create Attempt</DialogTitle>
+          <DialogTitle>{t('createAttemptDialog.title')}</DialogTitle>
           <DialogDescription>
-            Start a new attempt with a coding agent. A git worktree and task
-            branch will be created.
+            {t('createAttemptDialog.description')}
           </DialogDescription>
         </DialogHeader>
 
@@ -139,21 +140,21 @@ export function CreateAttemptDialog({
 
           <div className="space-y-2">
             <Label className="text-sm font-medium">
-              Base branch <span className="text-destructive">*</span>
+              {t('createAttemptDialog.baseBranch')} <span className="text-destructive">*</span>
             </Label>
             <BranchSelector
               branches={branches}
               selectedBranch={selectedBranch}
               onBranchSelect={setSelectedBranch}
               placeholder={
-                isLoadingBranches ? 'Loading branches...' : 'Select branch'
+                isLoadingBranches ? t('createAttemptDialog.loadingBranches') : t('createAttemptDialog.selectBranch')
               }
             />
           </div>
 
           {error && (
             <div className="text-sm text-destructive">
-              Failed to create attempt. Please try again.
+              {t('createAttemptDialog.error')}
             </div>
           )}
         </div>
@@ -164,10 +165,10 @@ export function CreateAttemptDialog({
             onClick={() => onOpenChange(false)}
             disabled={isCreating}
           >
-            Cancel
+            {t('common:buttons.cancel')}
           </Button>
           <Button onClick={handleCreate} disabled={!canCreate}>
-            {isCreating ? 'Creating...' : 'Start'}
+            {isCreating ? t('createAttemptDialog.creating') : t('createAttemptDialog.start')}
           </Button>
         </DialogFooter>
       </DialogContent>

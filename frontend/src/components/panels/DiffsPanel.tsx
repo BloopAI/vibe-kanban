@@ -1,5 +1,6 @@
 import { useDiffStream } from '@/hooks/useDiffStream';
 import { useMemo, useCallback, useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Loader } from '@/components/ui/loader';
 import { Button } from '@/components/ui/button';
 import DiffViewSwitch from '@/components/diff-view-switch';
@@ -24,6 +25,7 @@ interface DiffsPanelProps {
 }
 
 export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
+  const { t } = useTranslation('tasks');
   const [loading, setLoading] = useState(true);
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const [hasInitialized, setHasInitialized] = useState(false);
@@ -97,7 +99,7 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
   if (error) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4 m-4">
-        <div className="text-red-800 text-sm">Failed to load diff: {error}</div>
+        <div className="text-red-800 text-sm">{t('diffs.errorLoadingDiff', { error })}</div>
       </div>
     );
   }
@@ -115,6 +117,7 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
       selectedAttempt={selectedAttempt}
       gitOps={gitOps}
       loading={loading}
+      t={t}
     />
   );
 }
@@ -131,6 +134,7 @@ interface DiffsPanelContentProps {
   selectedAttempt: TaskAttempt | null;
   gitOps?: GitOperationsInputs;
   loading: boolean;
+  t: (key: string, params?: any) => string;
 }
 
 function DiffsPanelContent({
@@ -145,6 +149,7 @@ function DiffsPanelContent({
   selectedAttempt,
   gitOps,
   loading,
+  t,
 }: DiffsPanelContentProps) {
   return (
     <div className="h-full flex flex-col relative">
@@ -163,7 +168,7 @@ function DiffsPanelContent({
                       onClick={handleCollapseAll}
                       aria-pressed={allCollapsed}
                       aria-label={
-                        allCollapsed ? 'Expand all diffs' : 'Collapse all diffs'
+                        allCollapsed ? t('diffs.expandAll') : t('diffs.collapseAll')
                       }
                     >
                       {allCollapsed ? (
@@ -174,7 +179,7 @@ function DiffsPanelContent({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
-                    {allCollapsed ? 'Expand all diffs' : 'Collapse all diffs'}
+                    {allCollapsed ? t('diffs.expandAll') : t('diffs.collapseAll')}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -186,7 +191,7 @@ function DiffsPanelContent({
               className="text-sm text-muted-foreground whitespace-nowrap"
               aria-live="polite"
             >
-              {fileCount} file{fileCount === 1 ? '' : 's'} changed,{' '}
+              {t('diffs.filesChanged', { count: fileCount })}{' '}
               <span className="text-green-600 dark:text-green-500">
                 +{added}
               </span>{' '}
@@ -207,7 +212,7 @@ function DiffsPanelContent({
           </div>
         ) : diffs.length === 0 ? (
           <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-            No changes have been made yet
+            {t('diffs.noChanges')}
           </div>
         ) : (
           diffs.map((diff, idx) => {

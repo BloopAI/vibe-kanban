@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Eye, FileDiff, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
@@ -26,6 +27,7 @@ export const AttemptHeaderActions = ({
   task,
   attempt,
 }: AttemptHeaderActionsProps) => {
+  const { t } = useTranslation('tasks');
   return (
     <>
       {typeof mode !== 'undefined' && onModeChange && (
@@ -47,7 +49,7 @@ export const AttemptHeaderActions = ({
                   <Eye className="h-4 w-4" />
                 </ToggleGroupItem>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Preview</TooltipContent>
+              <TooltipContent side="bottom">{t('attemptHeaderActions.preview')}</TooltipContent>
             </Tooltip>
 
             <Tooltip>
@@ -60,7 +62,7 @@ export const AttemptHeaderActions = ({
                   <FileDiff className="h-4 w-4" />
                 </ToggleGroupItem>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Diffs</TooltipContent>
+              <TooltipContent side="bottom">{t('attemptHeaderActions.diffs')}</TooltipContent>
             </Tooltip>
           </ToggleGroup>
         </TooltipProvider>

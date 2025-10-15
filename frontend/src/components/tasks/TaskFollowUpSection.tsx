@@ -41,6 +41,7 @@ import { useFollowUpSend } from '@/hooks/follow-up/useFollowUpSend';
 import { useDefaultVariant } from '@/hooks/follow-up/useDefaultVariant';
 import { buildResolveConflictsInstructions } from '@/lib/conflicts';
 import { appendImageMarkdown } from '@/utils/markdownImages';
+import { useTranslation } from 'react-i18next';
 
 interface TaskFollowUpSectionProps {
   task: TaskWithAttemptStatus;
@@ -53,6 +54,8 @@ export function TaskFollowUpSection({
   selectedAttemptId,
   jumpToLogsTab,
 }: TaskFollowUpSectionProps) {
+  const { t } = useTranslation('tasks');
+  
   const { isAttemptRunning, stopExecution, isStopping, processes } =
     useAttemptExecution(selectedAttemptId, task.id);
   const { data: branchStatus, refetch: refetchBranchStatus } =
@@ -538,7 +541,7 @@ export function TaskFollowUpSection({
                     ) : (
                       <>
                         <StopCircle className="h-4 w-4 mr-2" />
-                        Stop
+                        {t('followUp.stop')}
                       </>
                     )}
                   </Button>
@@ -551,7 +554,7 @@ export function TaskFollowUpSection({
                         variant="destructive"
                         disabled={!isEditable}
                       >
-                        Clear Review Comments
+                        {t('followUp.clearReviewComments')}
                       </Button>
                     )}
                     <Button
@@ -571,8 +574,8 @@ export function TaskFollowUpSection({
                         <>
                           <Send className="h-4 w-4 mr-2" />
                           {conflictResolutionInstructions
-                            ? 'Resolve conflicts'
-                            : 'Send'}
+                            ? t('followUp.resolveConflicts')
+                            : t('followUp.send')}
                         </>
                       )}
                     </Button>
@@ -595,10 +598,10 @@ export function TaskFollowUpSection({
                         {isUnqueuing ? (
                           <>
                             <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                            Unqueuing…
+                            {t('followUp.unqueuing')}
                           </>
                         ) : (
-                          'Edit'
+                          t('followUp.edit')
                         )}
                       </Button>
                     )}
@@ -644,18 +647,18 @@ export function TaskFollowUpSection({
                         isUnqueuing ? (
                           <>
                             <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                            Unqueuing…
+                            {t('followUp.unqueuing')}
                           </>
                         ) : (
-                          'Edit'
+                          t('followUp.edit')
                         )
                       ) : isQueuing ? (
                         <>
                           <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                          Queuing…
+                          {t('followUp.queuing')}
                         </>
                       ) : (
-                        'Queue for next turn'
+                        t('followUp.queueForNextTurn')
                       )}
                     </Button>
                   </div>
