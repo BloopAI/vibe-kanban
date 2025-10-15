@@ -26,9 +26,9 @@ export function SettingsLayout() {
   const goToPreviousPath = usePreviousPath();
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4">
       {/* Header with title and close button */}
-      <div className="flex items-center justify-between mb-8 sticky top-0 bg-background z-10 pb-4">
+      <div className="flex items-center justify-between sticky top-0 bg-background z-10 py-8 -mx-4 px-4">
         <h1 className="text-2xl font-semibold">
           {t('settings.layout.nav.title')}
         </h1>
