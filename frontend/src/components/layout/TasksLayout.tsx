@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useState } from 'react';
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -21,120 +21,29 @@ const DEFAULT_KANBAN_ATTEMPT: SplitSizes = [66, 34];
 const DEFAULT_ATTEMPT_AUX: SplitSizes = [34, 66];
 
 const STORAGE_KEYS = {
-  V2: {
-    KANBAN_ATTEMPT: 'tasksLayout.desktop.v2.kanbanAttempt',
-    ATTEMPT_PREVIEW: 'tasksLayout.desktop.v2.attemptPreview',
-    ATTEMPT_DIFFS: 'tasksLayout.desktop.v2.attemptDiffs',
-  },
-  LEGACY: {
-    MAIN: 'tasksLayout.desktop.main',
-    AUX: 'tasksLayout.desktop.aux',
-  },
+  KANBAN_ATTEMPT: 'tasksLayout.desktop.v2.kanbanAttempt',
+  ATTEMPT_AUX: 'tasksLayout.desktop.v2.attemptAux',
 } as const;
 
-function parseJSON<T>(key: string): T | null {
+function loadSizes(key: string, fallback: SplitSizes): SplitSizes {
   try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    return JSON.parse(raw) as T;
+    const saved = localStorage.getItem(key);
+    if (!saved) return fallback;
+    const parsed = JSON.parse(saved);
+    if (Array.isArray(parsed) && parsed.length === 2)
+      return parsed as SplitSizes;
+    return fallback;
   } catch {
-    return null;
+    return fallback;
   }
 }
 
-function persistJSON<T>(key: string, value: T): void {
+function saveSizes(key: string, sizes: SplitSizes): void {
   try {
-    localStorage.setItem(key, JSON.stringify(value));
+    localStorage.setItem(key, JSON.stringify(sizes));
   } catch {
-    console.warn(`Failed to persist ${key}`);
+    // Ignore errors
   }
-}
-
-function removeStorageKey(key: string): void {
-  try {
-    localStorage.removeItem(key);
-  } catch {
-    console.warn(`Failed to remove ${key}`);
-  }
-}
-
-function isSplitSizes(value: unknown): value is SplitSizes {
-  return (
-    Array.isArray(value) &&
-    value.length === 2 &&
-    value.every((n) => typeof n === 'number')
-  );
-}
-
-function isLegacySizes(value: unknown): value is [number, number, number] {
-  return (
-    Array.isArray(value) &&
-    value.length === 3 &&
-    value.every((n) => typeof n === 'number')
-  );
-}
-
-/**
- * Loads panel split sizes from localStorage with automatic migration from legacy format.
- *
- * @param key - The localStorage key to read from
- * @param fallback - Default sizes if no stored value exists
- * @param migration - Optional migration config to convert legacy 3-length arrays to 2-length
- * @returns Panel sizes as [left%, right%]
- */
-function loadPanelSizes(
-  key: string,
-  fallback: SplitSizes,
-  migration?: {
-    fromKey: string;
-    map: (legacy: [number, number, number]) => SplitSizes;
-  }
-): SplitSizes {
-  const existing = parseJSON<unknown>(key);
-  if (isSplitSizes(existing)) {
-    return existing;
-  }
-
-  if (migration) {
-    const legacy = parseJSON<unknown>(migration.fromKey);
-    if (isLegacySizes(legacy)) {
-      const migrated = migration.map(legacy);
-      persistJSON(key, migrated);
-      removeStorageKey(migration.fromKey);
-      return migrated;
-    }
-  }
-
-  return fallback;
-}
-
-/**
- * Hook to manage persistent panel split sizes with localStorage.
- *
- * Automatically migrates from legacy 3-panel format to 2-panel format and cleans up old keys.
- *
- * @param key - The localStorage key for this split
- * @param fallback - Default sizes if no stored value exists
- * @param migration - Optional migration config from legacy storage
- * @returns [sizes, setSizes] tuple
- */
-function usePersistentSplitSizes(
-  key: string,
-  fallback: SplitSizes,
-  migration?: {
-    fromKey: string;
-    map: (legacy: [number, number, number]) => SplitSizes;
-  }
-) {
-  const [sizes, setSizes] = useState<SplitSizes>(() =>
-    loadPanelSizes(key, fallback, migration)
-  );
-
-  useEffect(() => {
-    setSizes(loadPanelSizes(key, fallback, migration));
-  }, [key]);
-
-  return [sizes, setSizes] as const;
 }
 
 /**
@@ -174,21 +83,8 @@ function RightWorkArea({
   mode: LayoutMode;
   rightHeader?: ReactNode;
 }) {
-  const innerMigration = {
-    fromKey: STORAGE_KEYS.LEGACY.AUX,
-    map: (legacy: [number, number, number]) =>
-      [legacy[1], legacy[2]] as SplitSizes,
-  };
-
-  const innerStorageKey =
-    mode === 'diffs'
-      ? STORAGE_KEYS.V2.ATTEMPT_DIFFS
-      : STORAGE_KEYS.V2.ATTEMPT_PREVIEW;
-
-  const [innerSizes] = usePersistentSplitSizes(
-    innerStorageKey,
-    DEFAULT_ATTEMPT_AUX,
-    innerMigration
+  const [innerSizes] = useState<SplitSizes>(() =>
+    loadSizes(STORAGE_KEYS.ATTEMPT_AUX, DEFAULT_ATTEMPT_AUX)
   );
 
   return (
@@ -206,8 +102,9 @@ function RightWorkArea({
             direction="horizontal"
             className="h-full min-h-0"
             onLayout={(layout) => {
-              if (!Array.isArray(layout) || layout.length !== 2) return;
-              persistJSON(innerStorageKey, [layout[0], layout[1]]);
+              if (layout.length === 2) {
+                saveSizes(STORAGE_KEYS.ATTEMPT_AUX, [layout[0], layout[1]]);
+              }
             }}
           >
             <Panel
@@ -277,16 +174,8 @@ function DesktopSimple({
   mode: LayoutMode;
   rightHeader?: ReactNode;
 }) {
-  const outerMigration = {
-    fromKey: STORAGE_KEYS.LEGACY.MAIN,
-    map: (legacy: [number, number, number]) =>
-      [legacy[0], legacy[1]] as SplitSizes,
-  };
-
-  const [outerSizes] = usePersistentSplitSizes(
-    STORAGE_KEYS.V2.KANBAN_ATTEMPT,
-    DEFAULT_KANBAN_ATTEMPT,
-    outerMigration
+  const [outerSizes] = useState<SplitSizes>(() =>
+    loadSizes(STORAGE_KEYS.KANBAN_ATTEMPT, DEFAULT_KANBAN_ATTEMPT)
   );
 
   // When preview/diffs is open, hide Kanban entirely and render only RightWorkArea
@@ -307,8 +196,9 @@ function DesktopSimple({
       direction="horizontal"
       className="h-full min-h-0"
       onLayout={(layout) => {
-        if (!Array.isArray(layout) || layout.length !== 2) return;
-        persistJSON(STORAGE_KEYS.V2.KANBAN_ATTEMPT, [layout[0], layout[1]]);
+        if (layout.length === 2) {
+          saveSizes(STORAGE_KEYS.KANBAN_ATTEMPT, [layout[0], layout[1]]);
+        }
       }}
     >
       <Panel
