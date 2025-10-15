@@ -63,7 +63,11 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
   const latestAttempt = displayedAttempts[0] ?? null;
 
   if (!task) {
-    return <div className="text-muted-foreground">{t('taskPanel.noTaskSelected')}</div>;
+    return (
+      <div className="text-muted-foreground">
+        {t('taskPanel.noTaskSelected')}
+      </div>
+    );
   }
 
   const titleContent = `# ${task.title || 'Task'}`;
@@ -81,10 +85,14 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
           </div>
 
           {isAttemptsLoading && (
-            <div className="text-muted-foreground">{t('taskPanel.loadingAttempts')}</div>
+            <div className="text-muted-foreground">
+              {t('taskPanel.loadingAttempts')}
+            </div>
           )}
           {isAttemptsError && (
-            <div className="text-destructive">{t('taskPanel.errorLoadingAttempts')}</div>
+            <div className="text-destructive">
+              {t('taskPanel.errorLoadingAttempts')}
+            </div>
           )}
           {!isAttemptsLoading && !isAttemptsError && (
             <table className="w-full text-sm">
@@ -93,7 +101,9 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
                   <th colSpan={3}>
                     <div className="w-full flex text-left">
                       <span className="flex-1">
-                        {t('taskPanel.attemptsCount', { count: displayedAttempts.length })}
+                        {t('taskPanel.attemptsCount', {
+                          count: displayedAttempts.length,
+                        })}
                       </span>
                       <span>
                         <Button

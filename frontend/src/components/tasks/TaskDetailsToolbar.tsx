@@ -38,7 +38,7 @@ function TaskDetailsToolbar({
   setSelectedAttempt: (attempt: TaskAttempt | null) => void;
 }) {
   const { t } = useTranslation('tasks');
-  
+
   // Use props instead of context
   const taskAttempts = attempts;
   // const { setLoading } = useTaskLoading(task.id);

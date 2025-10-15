@@ -49,7 +49,9 @@ export const AttemptHeaderActions = ({
                   <Eye className="h-4 w-4" />
                 </ToggleGroupItem>
               </TooltipTrigger>
-              <TooltipContent side="bottom">{t('attemptHeaderActions.preview')}</TooltipContent>
+              <TooltipContent side="bottom">
+                {t('attemptHeaderActions.preview')}
+              </TooltipContent>
             </Tooltip>
 
             <Tooltip>
@@ -62,7 +64,9 @@ export const AttemptHeaderActions = ({
                   <FileDiff className="h-4 w-4" />
                 </ToggleGroupItem>
               </TooltipTrigger>
-              <TooltipContent side="bottom">{t('attemptHeaderActions.diffs')}</TooltipContent>
+              <TooltipContent side="bottom">
+                {t('attemptHeaderActions.diffs')}
+              </TooltipContent>
             </Tooltip>
           </ToggleGroup>
         </TooltipProvider>

@@ -227,17 +227,25 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
                       </span>
                       {process.exit_code !== null && (
                         <p className="text-xs text-muted-foreground mt-1">
-                          {t('processes.exit', { code: process.exit_code.toString() })}
+                          {t('processes.exit', {
+                            code: process.exit_code.toString(),
+                          })}
                         </p>
                       )}
                     </div>
                   </div>
                   <div className="mt-3 text-xs text-muted-foreground">
                     <div className="flex justify-between">
-                      <span>{t('processes.started', { date: formatDate(process.started_at) })}</span>
+                      <span>
+                        {t('processes.started', {
+                          date: formatDate(process.started_at),
+                        })}
+                      </span>
                       {process.completed_at && (
                         <span>
-                          {t('processes.completed', { date: formatDate(process.completed_at) })}
+                          {t('processes.completed', {
+                            date: formatDate(process.completed_at),
+                          })}
                         </span>
                       )}
                     </div>
@@ -250,7 +258,9 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
       ) : (
         <div className="flex-1 flex flex-col min-h-0">
           <div className="flex items-center justify-between px-4 py-2 border-b flex-shrink-0">
-            <h2 className="text-lg font-semibold">{t('processes.detailsTitle')}</h2>
+            <h2 className="text-lg font-semibold">
+              {t('processes.detailsTitle')}
+            </h2>
             <button
               onClick={() => setSelectedProcessId(null)}
               className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md border border-border transition-colors"

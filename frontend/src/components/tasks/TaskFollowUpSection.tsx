@@ -55,7 +55,7 @@ export function TaskFollowUpSection({
   jumpToLogsTab,
 }: TaskFollowUpSectionProps) {
   const { t } = useTranslation('tasks');
-  
+
   const { isAttemptRunning, stopExecution, isStopping, processes } =
     useAttemptExecution(selectedAttemptId, task.id);
   const { data: branchStatus, refetch: refetchBranchStatus } =

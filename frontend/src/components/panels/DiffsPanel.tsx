@@ -99,7 +99,9 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
   if (error) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4 m-4">
-        <div className="text-red-800 text-sm">{t('diffs.errorLoadingDiff', { error })}</div>
+        <div className="text-red-800 text-sm">
+          {t('diffs.errorLoadingDiff', { error })}
+        </div>
       </div>
     );
   }
@@ -168,7 +170,9 @@ function DiffsPanelContent({
                       onClick={handleCollapseAll}
                       aria-pressed={allCollapsed}
                       aria-label={
-                        allCollapsed ? t('diffs.expandAll') : t('diffs.collapseAll')
+                        allCollapsed
+                          ? t('diffs.expandAll')
+                          : t('diffs.collapseAll')
                       }
                     >
                       {allCollapsed ? (
@@ -179,7 +183,9 @@ function DiffsPanelContent({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
-                    {allCollapsed ? t('diffs.expandAll') : t('diffs.collapseAll')}
+                    {allCollapsed
+                      ? t('diffs.expandAll')
+                      : t('diffs.collapseAll')}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

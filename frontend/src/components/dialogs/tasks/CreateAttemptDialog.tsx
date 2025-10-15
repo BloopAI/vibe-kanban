@@ -140,14 +140,17 @@ export function CreateAttemptDialog({
 
           <div className="space-y-2">
             <Label className="text-sm font-medium">
-              {t('createAttemptDialog.baseBranch')} <span className="text-destructive">*</span>
+              {t('createAttemptDialog.baseBranch')}{' '}
+              <span className="text-destructive">*</span>
             </Label>
             <BranchSelector
               branches={branches}
               selectedBranch={selectedBranch}
               onBranchSelect={setSelectedBranch}
               placeholder={
-                isLoadingBranches ? t('createAttemptDialog.loadingBranches') : t('createAttemptDialog.selectBranch')
+                isLoadingBranches
+                  ? t('createAttemptDialog.loadingBranches')
+                  : t('createAttemptDialog.selectBranch')
               }
             />
           </div>
@@ -168,7 +171,9 @@ export function CreateAttemptDialog({
             {t('common:buttons.cancel')}
           </Button>
           <Button onClick={handleCreate} disabled={!canCreate}>
-            {isCreating ? t('createAttemptDialog.creating') : t('createAttemptDialog.start')}
+            {isCreating
+              ? t('createAttemptDialog.creating')
+              : t('createAttemptDialog.start')}
           </Button>
         </DialogFooter>
       </DialogContent>
