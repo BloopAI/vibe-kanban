@@ -27,12 +27,13 @@ use executors::{
         coding_agent_follow_up::CodingAgentFollowUpRequest,
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     },
+    executors::ExecutorError,
     profile::ExecutorProfileId,
 };
 use git2::BranchType;
 use serde::{Deserialize, Serialize};
 use services::services::{
-    container::ContainerService,
+    container::{ContainerError, ContainerService},
     git::{ConflictOp, WorktreeResetOptions},
     github_service::{CreatePrRequest, GitHubService, GitHubServiceError},
 };
@@ -60,6 +61,19 @@ pub struct RebaseTaskAttemptRequest {
 pub enum GitOperationError {
     MergeConflicts { message: String, op: ConflictOp },
     RebaseInProgress,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[ts(use_ts_enum)]
+pub enum FollowupErrorData {
+    AgentNeedsInstallation,
+}
+
+impl FollowupErrorData {
+    pub fn agent_needs_installation() -> Self {
+        Self::AgentNeedsInstallation
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, TS)]
@@ -208,7 +222,7 @@ pub async fn follow_up(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateFollowUpAttempt>,
-) -> Result<ResponseJson<ApiResponse<ExecutionProcess>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<ExecutionProcess, FollowupErrorData>>, ApiError> {
     tracing::info!("{:?}", task_attempt);
 
     // Ensure worktree exists (recreate if needed for cold task support)
@@ -330,14 +344,23 @@ pub async fn follow_up(
 
     let action = ExecutorAction::new(action_type, cleanup_action);
 
-    let execution_process = deployment
+    let execution_process = match deployment
         .container()
         .start_execution(
             &task_attempt,
             &action,
             &ExecutionProcessRunReason::CodingAgent,
         )
-        .await?;
+        .await
+    {
+        Ok(execution_process) => execution_process,
+        Err(ContainerError::ExecutorError(ExecutorError::ExecutableNotFound { .. })) => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                FollowupErrorData::agent_needs_installation(),
+            )));
+        }
+        Err(e) => Err(e)?,
+    };
 
     // Clear drafts post-send:
     // - If this was a retry send, the retry draft has already been cleared above.

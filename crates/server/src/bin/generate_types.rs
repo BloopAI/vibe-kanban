@@ -94,6 +94,7 @@ fn generate_types_content() -> String {
         server::routes::task_attempts::ReplaceProcessRequest::decl(),
         server::routes::task_attempts::CommitInfo::decl(),
         server::routes::task_attempts::BranchStatus::decl(),
+        server::routes::task_attempts::FollowupErrorData::decl(),
         services::services::git::ConflictOp::decl(),
         db::models::task_attempt::TaskAttempt::decl(),
         db::models::execution_process::ExecutionProcess::decl(),

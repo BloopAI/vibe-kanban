@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
-import { attemptsApi } from '@/lib/api';
-import type { ImageResponse } from 'shared/types';
+import { attemptsApi, Err } from '@/lib/api';
+import { FollowupErrorData, ImageResponse } from 'shared/types';
 
 type Args = {
   attemptId?: string;
@@ -57,7 +57,7 @@ export function useFollowUpSend({
           : images.length > 0
             ? images.map((img) => img.id)
             : null;
-      await attemptsApi.followUp(attemptId, {
+      let result = await attemptsApi.followUp(attemptId, {
         prompt: finalPrompt,
         variant: selectedVariant,
         image_ids,
@@ -65,16 +65,21 @@ export function useFollowUpSend({
         force_when_dirty: null,
         perform_git_reset: null,
       } as any);
+      if (!result.success) {
+        throw result;
+      }
       setMessage('');
       clearComments();
       clearClickedElements?.();
       onAfterSendCleanup();
       jumpToLogsTab();
-    } catch (error: unknown) {
-      const err = error as { message?: string };
-      setFollowUpError(
-        `Failed to start follow-up execution: ${err.message ?? 'Unknown error'}`
-      );
+    } catch (error: Err<FollowupErrorData> | unknown) {
+      const err = error as Partial<Err<FollowupErrorData>>;
+      if (err.error != FollowupErrorData.AGENT_NEEDS_INSTALLATION) {
+        setFollowUpError(
+          `Failed to start follow-up execution: ${err.message ?? 'Unknown error'}`
+        );
+      }
     } finally {
       setIsSendingFollowUp(false);
     }

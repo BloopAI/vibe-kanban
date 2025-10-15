@@ -16,8 +16,9 @@ import {
   imagesApi,
   executionProcessesApi,
   commitsApi,
+  Err,
 } from '@/lib/api';
-import type { DraftResponse, TaskAttempt } from 'shared/types';
+import type { DraftResponse, FollowupErrorData, TaskAttempt } from 'shared/types';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useUserSystem } from '@/components/config-provider';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
@@ -215,7 +216,7 @@ export function RetryEditorInline({
         return;
       }
 
-      await attemptsApi.followUp(attemptId, {
+      const result = await attemptsApi.followUp(attemptId, {
         prompt: message,
         variant: selectedVariant,
         image_ids: images.map((img) => img.id),
@@ -223,11 +224,15 @@ export function RetryEditorInline({
         force_when_dirty: modalResult.forceWhenDirty ?? false,
         perform_git_reset: modalResult.performGitReset ?? true,
       });
+      if (!result.success) {
+        throw result;
+      }
       clearImagesAndUploads();
       // Keep overlay up until stream clears the retry draft
       setIsFinalizing('send');
-    } catch (error: unknown) {
-      setSendError((error as Error)?.message || 'Failed to send retry');
+    } catch (error: Err<FollowupErrorData> | unknown) {
+      const err = error as Partial<Err<FollowupErrorData>>;
+      setSendError(err.message || 'Failed to send retry');
       setIsSending(false);
       setIsFinalizing(false);
     }
