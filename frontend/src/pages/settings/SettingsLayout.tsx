@@ -98,15 +98,15 @@ export function SettingsLayout() {
                   );
                 })}
               </nav>
-            </div>
-          </aside>
+            </div >
+          </aside >
 
           {/* Main Content */}
-          <main className="flex-1 min-w-0">
+          < main className="flex-1 min-w-0" >
             <Outlet />
-          </main>
-        </div>
-      </div>
+          </main >
+        </div >
+      </div >
     </div>
   );
 }
