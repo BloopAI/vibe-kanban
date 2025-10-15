@@ -19,6 +19,10 @@ const AutoExpandingTextarea = React.forwardRef<
       .current;
     if (!textarea) return;
 
+    // Temporarily remove overflow to get accurate scrollHeight
+    const originalOverflow = textarea.style.overflow;
+    textarea.style.overflow = 'hidden';
+
     // Reset height to auto to get the natural height
     textarea.style.height = 'auto';
 
@@ -34,7 +38,10 @@ const AutoExpandingTextarea = React.forwardRef<
     // Set the height to scrollHeight, but cap at maxHeight
     const newHeight = Math.min(textarea.scrollHeight, maxHeight);
     textarea.style.height = `${newHeight}px`;
-  }, [maxRows]);
+
+    // Restore overflow
+    textarea.style.overflow = originalOverflow;
+  }, [maxRows, textareaRef]);
 
   // Adjust height on mount and when content changes
   React.useEffect(() => {
