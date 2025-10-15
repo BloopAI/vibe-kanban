@@ -18,7 +18,11 @@ import {
   commitsApi,
   Err,
 } from '@/lib/api';
-import type { DraftResponse, FollowupErrorData, TaskAttempt } from 'shared/types';
+import type {
+  DraftResponse,
+  FollowupErrorData,
+  TaskAttempt,
+} from 'shared/types';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useUserSystem } from '@/components/config-provider';
 import { useBranchStatus } from '@/hooks/useBranchStatus';

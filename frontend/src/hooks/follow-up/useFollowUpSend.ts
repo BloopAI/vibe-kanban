@@ -57,7 +57,7 @@ export function useFollowUpSend({
           : images.length > 0
             ? images.map((img) => img.id)
             : null;
-      let result = await attemptsApi.followUp(attemptId, {
+      const result = await attemptsApi.followUp(attemptId, {
         prompt: finalPrompt,
         variant: selectedVariant,
         image_ids,

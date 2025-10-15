@@ -115,13 +115,13 @@ async fn get_user_system_info(
     let mut capabilities: HashMap<String, Vec<BaseAgentCapability>> = HashMap::new();
     let mut executor_docs: HashMap<BaseCodingAgent, ExecutorDocumentation> = HashMap::new();
 
-    for executor_key in executor_configs.executors.keys().cloned() {
-        let profile_id = ExecutorProfileId::new(executor_key.clone());
+    for &executor_key in executor_configs.executors.keys() {
+        let profile_id = ExecutorProfileId::new(executor_key);
         if let Some(agent) = executor_configs.get_coding_agent(&profile_id) {
             capabilities.insert(executor_key.to_string(), agent.capabilities());
         }
         executor_docs.insert(
-            executor_key.clone(),
+            executor_key,
             ExecutorDocumentation {
                 url: executor_docs_url(&executor_key),
                 display_name: executor_display_name(&executor_key),
