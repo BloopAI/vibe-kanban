@@ -4,6 +4,10 @@ import { Settings, Cpu, Server, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { usePreviousPath } from '@/hooks/usePreviousPath';
+import { useEffect } from 'react';
+import { useHotkeysContext } from 'react-hotkeys-hook';
+import { useKeyExit } from '@/keyboard/hooks';
+import { Scope } from '@/keyboard/registry';
 
 const settingsNavigation = [
   {
@@ -24,6 +28,18 @@ export function SettingsLayout() {
   const { t } = useTranslation('settings');
   const { t: tCommon } = useTranslation('common');
   const goToPreviousPath = usePreviousPath();
+  const { enableScope, disableScope } = useHotkeysContext();
+
+  // Enable SETTINGS scope when component mounts
+  useEffect(() => {
+    enableScope(Scope.SETTINGS);
+    return () => {
+      disableScope(Scope.SETTINGS);
+    };
+  }, [enableScope, disableScope]);
+
+  // Register ESC keyboard shortcut
+  useKeyExit(goToPreviousPath, { scope: Scope.SETTINGS });
 
   return (
     <div className="container mx-auto">

@@ -3,6 +3,7 @@ export enum Scope {
   DIALOG = 'dialog',
   KANBAN = 'kanban',
   PROJECTS = 'projects',
+  SETTINGS = 'settings',
   EDIT_COMMENT = 'edit-comment',
   APPROVALS = 'approvals',
   FOLLOW_UP = 'follow-up',
@@ -61,6 +62,13 @@ export const keyBindings: KeyBinding[] = [
     scopes: [Scope.EDIT_COMMENT],
     description: 'Cancel comment',
     group: 'Comments',
+  },
+  {
+    action: Action.EXIT,
+    keys: 'esc',
+    scopes: [Scope.SETTINGS],
+    description: 'Close settings',
+    group: 'Navigation',
   },
 
   // Creation actions
