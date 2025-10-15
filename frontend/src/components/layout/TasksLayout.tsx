@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useState } from 'react';
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -21,16 +21,8 @@ const DEFAULT_KANBAN_ATTEMPT: SplitSizes = [66, 34];
 const DEFAULT_ATTEMPT_AUX: SplitSizes = [34, 66];
 
 const STORAGE_KEYS = {
-  V2: {
-    KANBAN_ATTEMPT: 'tasksLayout.desktop.v2.kanbanAttempt',
-    ATTEMPT_AUX: 'tasksLayout.desktop.v2.attemptAux',
-  },
-  LEGACY: {
-    MAIN: 'tasksLayout.desktop.main',
-    AUX: 'tasksLayout.desktop.aux',
-    ATTEMPT_PREVIEW: 'tasksLayout.desktop.v2.attemptPreview',
-    ATTEMPT_DIFFS: 'tasksLayout.desktop.v2.attemptDiffs',
-  },
+  KANBAN_ATTEMPT: 'tasksLayout.desktop.v2.kanbanAttempt',
+  ATTEMPT_AUX: 'tasksLayout.desktop.v2.attemptAux',
 } as const;
 
 function parseJSON<T>(key: string): T | null {
@@ -51,14 +43,6 @@ function persistJSON<T>(key: string, value: T): void {
   }
 }
 
-function removeStorageKey(key: string): void {
-  try {
-    localStorage.removeItem(key);
-  } catch {
-    console.warn(`Failed to remove ${key}`);
-  }
-}
-
 function isSplitSizes(value: unknown): value is SplitSizes {
   return (
     Array.isArray(value) &&
@@ -67,84 +51,12 @@ function isSplitSizes(value: unknown): value is SplitSizes {
   );
 }
 
-function isLegacySizes(value: unknown): value is [number, number, number] {
-  return (
-    Array.isArray(value) &&
-    value.length === 3 &&
-    value.every((n) => typeof n === 'number')
-  );
-}
-
-/**
- * Loads panel split sizes from localStorage with automatic migration from legacy format.
- *
- * @param key - The localStorage key to read from
- * @param fallback - Default sizes if no stored value exists
- * @param migration - Optional migration config to convert legacy 3-length arrays to 2-length
- * @returns Panel sizes as [left%, right%]
- */
-function loadPanelSizes(
-  key: string,
-  fallback: SplitSizes,
-  migration?: {
-    fromKeys: string[];
-    map: (legacy: [number, number, number]) => SplitSizes;
-  }
-): SplitSizes {
+function loadSizes(key: string, fallback: SplitSizes): SplitSizes {
   const existing = parseJSON<unknown>(key);
   if (isSplitSizes(existing)) {
     return existing;
   }
-
-  if (migration) {
-    // Try each legacy key in order
-    for (const fromKey of migration.fromKeys) {
-      const legacy = parseJSON<unknown>(fromKey);
-      if (isLegacySizes(legacy)) {
-        const migrated = migration.map(legacy);
-        persistJSON(key, migrated);
-        removeStorageKey(fromKey);
-        return migrated;
-      }
-      // Also try reading as SplitSizes (for v2 legacy keys)
-      if (isSplitSizes(legacy)) {
-        persistJSON(key, legacy);
-        removeStorageKey(fromKey);
-        return legacy;
-      }
-    }
-  }
-
   return fallback;
-}
-
-/**
- * Hook to manage persistent panel split sizes with localStorage.
- *
- * Automatically migrates from legacy 3-panel format to 2-panel format and cleans up old keys.
- *
- * @param key - The localStorage key for this split
- * @param fallback - Default sizes if no stored value exists
- * @param migration - Optional migration config from legacy storage
- * @returns [sizes, setSizes] tuple
- */
-function usePersistentSplitSizes(
-  key: string,
-  fallback: SplitSizes,
-  migration?: {
-    fromKeys: string[];
-    map: (legacy: [number, number, number]) => SplitSizes;
-  }
-) {
-  const [sizes, setSizes] = useState<SplitSizes>(() =>
-    loadPanelSizes(key, fallback, migration)
-  );
-
-  useEffect(() => {
-    setSizes(loadPanelSizes(key, fallback, migration));
-  }, [key]);
-
-  return [sizes, setSizes] as const;
 }
 
 /**
@@ -184,20 +96,8 @@ function RightWorkArea({
   mode: LayoutMode;
   rightHeader?: ReactNode;
 }) {
-  const innerMigration = {
-    fromKeys: [
-      STORAGE_KEYS.LEGACY.ATTEMPT_DIFFS,
-      STORAGE_KEYS.LEGACY.ATTEMPT_PREVIEW,
-      STORAGE_KEYS.LEGACY.AUX,
-    ],
-    map: (legacy: [number, number, number]) =>
-      [legacy[1], legacy[2]] as SplitSizes,
-  };
-
-  const [innerSizes] = usePersistentSplitSizes(
-    STORAGE_KEYS.V2.ATTEMPT_AUX,
-    DEFAULT_ATTEMPT_AUX,
-    innerMigration
+  const [innerSizes] = useState<SplitSizes>(() =>
+    loadSizes(STORAGE_KEYS.ATTEMPT_AUX, DEFAULT_ATTEMPT_AUX)
   );
 
   return (
@@ -216,7 +116,7 @@ function RightWorkArea({
             className="h-full min-h-0"
             onLayout={(layout) => {
               if (!Array.isArray(layout) || layout.length !== 2) return;
-              persistJSON(STORAGE_KEYS.V2.ATTEMPT_AUX, [layout[0], layout[1]]);
+              persistJSON(STORAGE_KEYS.ATTEMPT_AUX, [layout[0], layout[1]]);
             }}
           >
             <Panel
@@ -286,16 +186,8 @@ function DesktopSimple({
   mode: LayoutMode;
   rightHeader?: ReactNode;
 }) {
-  const outerMigration = {
-    fromKeys: [STORAGE_KEYS.LEGACY.MAIN],
-    map: (legacy: [number, number, number]) =>
-      [legacy[0], legacy[1]] as SplitSizes,
-  };
-
-  const [outerSizes] = usePersistentSplitSizes(
-    STORAGE_KEYS.V2.KANBAN_ATTEMPT,
-    DEFAULT_KANBAN_ATTEMPT,
-    outerMigration
+  const [outerSizes] = useState<SplitSizes>(() =>
+    loadSizes(STORAGE_KEYS.KANBAN_ATTEMPT, DEFAULT_KANBAN_ATTEMPT)
   );
 
   // When preview/diffs is open, hide Kanban entirely and render only RightWorkArea
@@ -317,7 +209,7 @@ function DesktopSimple({
       className="h-full min-h-0"
       onLayout={(layout) => {
         if (!Array.isArray(layout) || layout.length !== 2) return;
-        persistJSON(STORAGE_KEYS.V2.KANBAN_ATTEMPT, [layout[0], layout[1]]);
+        persistJSON(STORAGE_KEYS.KANBAN_ATTEMPT, [layout[0], layout[1]]);
       }}
     >
       <Panel
