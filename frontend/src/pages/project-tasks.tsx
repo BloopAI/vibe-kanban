@@ -68,15 +68,6 @@ export function ProjectTasks() {
     };
   }, [enableScope, disableScope]);
 
-  // Update page title with project name
-  useEffect(() => {
-    if (project) {
-      document.title = `${project.name} | vibe-kanban`;
-    } else {
-      document.title = 'vibe-kanban';
-    }
-  }, [project]);
-
   // Helper functions to open task forms
   const handleCreateTask = () => {
     if (projectId) {

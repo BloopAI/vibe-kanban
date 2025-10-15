@@ -85,15 +85,6 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
     fetchProject();
   }, [fetchProject]);
 
-  // Update page title with project name
-  useEffect(() => {
-    if (project) {
-      document.title = `${project.name} | vibe-kanban`;
-    } else {
-      document.title = 'vibe-kanban';
-    }
-  }, [project]);
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">

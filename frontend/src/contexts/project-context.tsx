@@ -1,4 +1,4 @@
-import { createContext, useContext, ReactNode, useMemo } from 'react';
+import { createContext, useContext, ReactNode, useMemo, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { projectsApi } from '@/lib/api';
@@ -44,6 +44,15 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
     }),
     [projectId, query.data, query.isLoading, query.error, query.isError]
   );
+
+  // Centralized page title management
+  useEffect(() => {
+    if (query.data) {
+      document.title = `${query.data.name} | vibe-kanban`;
+    } else {
+      document.title = 'vibe-kanban';
+    }
+  }, [query.data]);
 
   return (
     <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>
