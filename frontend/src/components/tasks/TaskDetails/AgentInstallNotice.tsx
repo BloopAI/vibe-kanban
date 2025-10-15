@@ -1,4 +1,5 @@
 import { AlertTriangle, ArrowRight, Terminal } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useUserSystem } from '@/components/config-provider';
 import { useAgentNeedsInstallation } from '@/hooks/useAgentNeedsInstallation';
 import { cn } from '@/lib/utils';
@@ -13,6 +14,7 @@ export function AgentInstallNotice({
   attemptId,
   className,
 }: AgentInstallNoticeProps) {
+  const { t } = useTranslation('tasks');
   const { executorDocs } = useUserSystem();
   const codingAgent = useAgentNeedsInstallation(attemptId);
 
@@ -38,10 +40,10 @@ export function AgentInstallNotice({
           </span>
           <div className="space-y-1">
             <h3 className="text-lg font-semibold leading-6">
-              {agentName} isn't installed
+              {t('agentInstallNotice.title', { agentName })}
             </h3>
             <p className="text-sm text-muted-foreground">
-              Install {agentName} before sending more instructions.
+              {t('agentInstallNotice.subtitle', { agentName })}
             </p>
           </div>
         </div>
@@ -51,8 +53,7 @@ export function AgentInstallNotice({
             <Terminal className="h-4 w-4" />
           </span>
           <p className="text-sm text-muted-foreground">
-            Vibe Kanban needs this agent installed and authenticated to execute
-            tasks on your behalf.
+            {t('agentInstallNotice.info')}
           </p>
         </div>
 
@@ -63,22 +64,20 @@ export function AgentInstallNotice({
               className="h-auto w-full justify-center gap-2 px-4 py-3 text-sm font-semibold shadow-md"
             >
               <a href={docsUrl} target="_blank" rel="noopener noreferrer">
-                Open the {agentName} installation guide
+                {t('agentInstallNotice.cta', { agentName })}
                 <ArrowRight className="h-4 w-4" />
               </a>
             </Button>
           ) : (
             <div className="rounded-md border border-dashed border-border/70 bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-              Installation instructions for {agentName} are coming soon. Check
-              your team's docs to finish setup.
+              {t('agentInstallNotice.instructionsFallback', { agentName })}
             </div>
           )}
         </div>
       </div>
       <div className="border-t border-border/60 bg-muted/40 px-5 py-3">
         <p className="text-xs text-muted-foreground">
-          Once installation is complete, you can resend your instructions or
-          start a new attempt.
+          {t('agentInstallNotice.footer')}
         </p>
       </div>
     </div>
