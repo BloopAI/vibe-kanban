@@ -4,6 +4,10 @@ import { Settings, Cpu, Server, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { usePreviousPath } from '@/hooks/usePreviousPath';
+import { useEffect } from 'react';
+import { useHotkeysContext } from 'react-hotkeys-hook';
+import { useKeyExit } from '@/keyboard/hooks';
+import { Scope } from '@/keyboard/registry';
 
 const settingsNavigation = [
   {
@@ -24,25 +28,39 @@ export function SettingsLayout() {
   const { t } = useTranslation('settings');
   const { t: tCommon } = useTranslation('common');
   const goToPreviousPath = usePreviousPath();
+  const { enableScope, disableScope } = useHotkeysContext();
+
+  // Enable SETTINGS scope when component mounts
+  useEffect(() => {
+    enableScope(Scope.SETTINGS);
+    return () => {
+      disableScope(Scope.SETTINGS);
+    };
+  }, [enableScope, disableScope]);
+
+  // Register ESC keyboard shortcut
+  useKeyExit(goToPreviousPath, { scope: Scope.SETTINGS });
 
   return (
-    <div className="container mx-auto px-4 py-8 relative">
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={goToPreviousPath}
-        className="absolute top-0 right-3 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
-      >
-        <X className="h-4 w-4" />
-        <span className="sr-only">{tCommon('buttons.close')}</span>
-      </Button>
+    <div className="container mx-auto">
+      {/* Header with title and close button */}
+      <div className="flex items-center justify-between sticky top-0 bg-background z-10 py-4 -mx-4 px-4">
+        <h1 className="text-2xl font-semibold">
+          {t('settings.layout.nav.title')}
+        </h1>
+        <Button
+          variant="ghost"
+          onClick={goToPreviousPath}
+          className="h-8 px-2 rounded-none border border-foreground/20 hover:border-foreground/30 transition-all hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 flex items-center gap-1.5"
+        >
+          <X className="h-4 w-4" />
+          <span className="text-xs font-medium">ESC</span>
+        </Button>
+      </div>
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Sidebar Navigation */}
-        <aside className="w-full lg:w-64 lg:shrink-0 lg:sticky lg:top-8 lg:h-fit lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto">
+        <aside className="w-full lg:w-64 lg:shrink-0 lg:sticky lg:top-24 lg:h-fit lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
           <div className="space-y-1">
-            <h2 className="px-3 py-2 text-lg font-semibold mb-4">
-              {t('settings.layout.nav.title')}
-            </h2>
             <nav className="space-y-1">
               {settingsNavigation.map((item) => {
                 const Icon = item.icon;
