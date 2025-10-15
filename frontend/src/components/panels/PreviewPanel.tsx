@@ -184,7 +184,6 @@ export function PreviewPanel() {
               <li>{t('preview.troubleAlert.item1')}</li>
               <li>
                 {t('preview.troubleAlert.item2')}{' '}
-                {/* eslint-disable-next-line i18next/no-literal-string */}
                 <code>http://localhost:3000</code>
                 {t('preview.troubleAlert.item2Suffix')}
               </li>
