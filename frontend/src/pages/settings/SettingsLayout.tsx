@@ -26,23 +26,26 @@ export function SettingsLayout() {
   const goToPreviousPath = usePreviousPath();
 
   return (
-    <div className="container mx-auto px-4 py-8 relative">
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={goToPreviousPath}
-        className="absolute top-0 right-3 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
-      >
-        <X className="h-4 w-4" />
-        <span className="sr-only">{tCommon('buttons.close')}</span>
-      </Button>
+    <div className="container mx-auto px-4 py-8">
+      {/* Header with title and close button */}
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-2xl font-semibold">
+          {t('settings.layout.nav.title')}
+        </h1>
+        <Button
+          variant="ghost"
+          onClick={goToPreviousPath}
+          className="h-8 px-2 rounded-sm border border-border opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 flex items-center gap-1.5"
+        >
+          <X className="h-4 w-4" />
+          <span className="text-xs font-medium">ESC</span>
+          <span className="sr-only">{tCommon('buttons.close')}</span>
+        </Button>
+      </div>
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Sidebar Navigation */}
         <aside className="w-full lg:w-64 lg:shrink-0 lg:sticky lg:top-8 lg:h-fit lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto">
           <div className="space-y-1">
-            <h2 className="px-3 py-2 text-lg font-semibold mb-4">
-              {t('settings.layout.nav.title')}
-            </h2>
             <nav className="space-y-1">
               {settingsNavigation.map((item) => {
                 const Icon = item.icon;
