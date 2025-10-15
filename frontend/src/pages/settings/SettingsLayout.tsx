@@ -55,7 +55,6 @@ export function SettingsLayout() {
         >
           <X className="h-4 w-4" />
           <span className="text-xs font-medium">ESC</span>
-          <span className="sr-only">{tCommon('buttons.close')}</span>
         </Button>
       </div>
       <div className="flex flex-col lg:flex-row gap-8">
