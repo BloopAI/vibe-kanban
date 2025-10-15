@@ -35,7 +35,7 @@ export function SettingsLayout() {
         <Button
           variant="ghost"
           onClick={goToPreviousPath}
-          className="h-8 px-2 rounded-sm border-2 border-foreground/20 hover:border-foreground/30 transition-all hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 flex items-center gap-1.5"
+          className="h-8 px-2 rounded-none border-2 border-foreground/20 hover:border-foreground/30 transition-all hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 flex items-center gap-1.5"
         >
           <X className="h-4 w-4" />
           <span className="text-xs font-medium">ESC</span>
