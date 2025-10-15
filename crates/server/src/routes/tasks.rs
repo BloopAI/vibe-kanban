@@ -180,10 +180,12 @@ pub async fn create_task_and_start(
         task.id,
     )
     .await?;
-    let execution_process = deployment
+    let is_attempt_running = deployment
         .container()
         .start_attempt(&task_attempt, payload.executor_profile_id.clone())
-        .await?;
+        .await
+        .inspect_err(|err| tracing::error!("Failed to start task attempt: {}", err))
+        .is_ok();
     deployment
         .track_if_analytics_allowed(
             "task_attempt_started",
@@ -200,10 +202,10 @@ pub async fn create_task_and_start(
         .await?
         .ok_or(ApiError::Database(SqlxError::RowNotFound))?;
 
-    tracing::info!("Started execution process {}", execution_process.id);
+    tracing::info!("Started attempt for task {}", task.id);
     Ok(ResponseJson(ApiResponse::success(TaskWithAttemptStatus {
         task,
-        has_in_progress_attempt: true,
+        has_in_progress_attempt: is_attempt_running,
         has_merged_attempt: false,
         last_attempt_failed: false,
         executor: task_attempt.executor,
