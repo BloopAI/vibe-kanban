@@ -102,7 +102,7 @@ function TaskDetailsHeader({
 
       {/* Title and Task Actions */}
       {!isFullScreen && (
-        <div className="p-3 border-b border-dashed max-h-96 overflow-y-auto">
+        <div className="p-3 border-b border-dashed overflow-y-auto">
           <TaskTitleDescription task={task} />
         </div>
       )}
