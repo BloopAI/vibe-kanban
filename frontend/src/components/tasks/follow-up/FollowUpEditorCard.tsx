@@ -51,7 +51,7 @@ export function FollowUpEditorCard({
         disabled={disabled}
         projectId={projectId}
         rows={1}
-        maxRows={6}
+        maxRows={30}
         onPasteFiles={onPasteFiles}
       />
       {showLoadingOverlay && (
