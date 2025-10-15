@@ -48,15 +48,10 @@ sqlx database create                 # Create database
 # Database is auto-copied from dev_assets_seed/ on dev server start
 ```
 
-### LLM-Enhanced Commit Messages
-```bash
-# Set environment variable to enable LLM-generated commit messages
-export ANTHROPIC_API_KEY="your-api-key"    # Preferred (Claude)
-export OPENAI_API_KEY="your-api-key"       # Alternative (GPT)
-
-# Commit messages will automatically use LLM when merging tasks
-# Falls back to simple format if no API key is set
-```
+### Agent-Enhanced Commit Messages
+Commit messages are automatically generated using the coding agent when merging tasks.
+The agent uses full conversation context to create meaningful conventional commit messages.
+Falls back to simple format if agent session is unavailable.
 
 ## Architecture Overview
 

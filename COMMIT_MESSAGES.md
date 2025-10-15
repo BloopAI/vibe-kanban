@@ -23,24 +23,7 @@ Add login/registration endpoints with JWT token support
 
 ## Configuration
 
-### Environment Variables
-
-Set one of the following environment variables to enable LLM-generated commit messages:
-
-#### Anthropic Claude (Recommended)
-```bash
-export ANTHROPIC_API_KEY="your-anthropic-api-key"
-```
-
-#### OpenAI GPT
-```bash
-export OPENAI_API_KEY="your-openai-api-key"
-```
-
-### Default Models
-
-- **Anthropic**: `claude-3-haiku-20240307` (fast, cost-effective)
-- **OpenAI**: `gpt-4o-mini` (fast, cost-effective)
+No configuration required! The feature automatically uses the agent when available.
 
 ## How It Works
 
@@ -50,18 +33,9 @@ export OPENAI_API_KEY="your-openai-api-key"
    - The agent has full access to the conversation history and understands the reasoning behind changes
    - Agent analyzes the git diff of changes it made
    - Generates a contextual commit message based on what it actually implemented and why
+   - Agent understands the full context: WHY changes were made, not just WHAT changed
 
-3. **LLM API Fallback**: If no agent session exists or agent generation fails:
-   - Falls back to direct LLM API calls (Anthropic Claude or OpenAI GPT)
-   - Analyzes file diffs and task description
-   - Generates conventional commit message based on changes alone
-
-4. **Simple Fallback**: If both enhanced methods fail or no API keys are configured, uses the original simple format.
-
-The agent-based approach is superior because:
-- Agent understands the full context of what was implemented
-- Has access to conversation history explaining decisions
-- Can better explain WHY changes were made, not just WHAT changed
+3. **Simple Fallback**: If agent session unavailable or agent generation fails, uses the original simple format.
 
 ## Examples
 
@@ -109,66 +83,43 @@ Add comprehensive examples and error response formats
 3. **History**: Better git history for debugging and code archaeology
 4. **Automation**: No manual effort required - works automatically
 5. **Intelligence**: Agent understands WHY changes were made, not just WHAT changed
-6. **Fallback**: Multiple levels of graceful degradation (agent → LLM API → simple format)
+6. **Zero Cost**: Uses existing agent session - no additional API costs
+7. **Privacy**: No additional data exposure beyond existing agent access
+8. **Fallback**: Graceful degradation to simple format when agent unavailable
 
 ## Implementation Details
 
 The feature is implemented in:
-- `crates/services/src/services/commit_message_service.rs` - Core LLM integration
+- `crates/services/src/services/commit_message_service.rs` - Agent integration and commit message generation
 - `crates/server/src/routes/task_attempts.rs` - Integration into merge workflow
 
-### Configuration Options
+### How It Works
 
-The service uses a priority system for commit message generation:
+The service uses a simple two-tier system:
 1. **Agent-based generation** (when agent session exists from task execution)
-2. **Anthropic API** (preferred LLM fallback with API key)
-3. **OpenAI API** (alternative LLM fallback with API key)
-4. **Simple format** (final fallback when no enhanced options available)
+2. **Simple format** (fallback when agent unavailable)
 
 ### Error Handling
 
 **Agent execution**:
 - 60 second timeout for agent response
 - Automatic process cleanup
-- stdout parsing with filtering of log lines
+- Intelligent stdout parsing with filtering of log lines
+- Clean markdown code block removal
 
-**LLM API calls**:
-- 30 second network timeout
-- API rate limits and errors
-- Invalid responses
-- Missing API keys
-
-All errors result in graceful fallback through the priority system with appropriate logging.
+All errors result in graceful fallback to simple format with appropriate logging.
 
 ## Cost Considerations
 
-**Agent-based generation**: Free! Uses existing agent session with no additional API costs.
-
-**LLM API fallback** (when agent session unavailable):
-- Anthropic Claude Haiku and OpenAI GPT-4o-mini are cost-effective
-- Typical cost: $0.001-$0.005 per commit message
-- Messages are short (usually <500 tokens total)
-- Only called during task merging when agent session unavailable
-
-For a team making 100 task merges per month with 20% requiring LLM fallback, the cost would be approximately $0.02-$0.10/month.
-
-## Privacy and Security
-
-**Agent-based generation**: Maximum privacy since agent already has access to full context - no additional data exposure.
-
-**LLM API fallback**:
-- Only file paths and change types are sent to the LLM (no file contents)
-- Task titles and descriptions are included (ensure no sensitive data)
-- All API calls use HTTPS encryption
-- No data is stored by the LLM providers (as per their API terms)
+**Completely free!** Uses existing agent session with no additional API costs.
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **No enhanced messages**: Check if API key environment variable is set
-2. **Fallback messages**: Check logs for LLM API errors
-3. **Rate limits**: LLM providers may have rate limits; messages will fall back to simple format
+1. **No enhanced messages**: Agent session may not have been created during task execution
+2. **Simple fallback used**: Check logs for agent execution errors
+3. **Timeout errors**: Agent took too long to respond (>60s)
 
 ### Logs
 
@@ -177,6 +128,6 @@ Look for log messages like:
 INFO Found executor session abc123 for task attempt, trying agent-based commit message generation
 INFO Successfully generated commit message using agent: feat(auth): implement user login system
 INFO Generated enhanced commit message: feat(auth): implement user login system
-WARN Agent-based generation failed: Timeout waiting for agent response, falling back to LLM API
-WARN Enhanced commit message generation failed: API rate limit exceeded, using fallback
+WARN Agent-based generation failed: Timeout waiting for agent response, falling back to simple format
+INFO Using simple fallback format for commit message
 ```
