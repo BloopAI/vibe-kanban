@@ -25,38 +25,24 @@ const STORAGE_KEYS = {
   ATTEMPT_AUX: 'tasksLayout.desktop.v2.attemptAux',
 } as const;
 
-function parseJSON<T>(key: string): T | null {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    return JSON.parse(raw) as T;
-  } catch {
-    return null;
-  }
-}
-
-function persistJSON<T>(key: string, value: T): void {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    console.warn(`Failed to persist ${key}`);
-  }
-}
-
-function isSplitSizes(value: unknown): value is SplitSizes {
-  return (
-    Array.isArray(value) &&
-    value.length === 2 &&
-    value.every((n) => typeof n === 'number')
-  );
-}
-
 function loadSizes(key: string, fallback: SplitSizes): SplitSizes {
-  const existing = parseJSON<unknown>(key);
-  if (isSplitSizes(existing)) {
-    return existing;
+  try {
+    const saved = localStorage.getItem(key);
+    if (!saved) return fallback;
+    const parsed = JSON.parse(saved);
+    if (Array.isArray(parsed) && parsed.length === 2) return parsed as SplitSizes;
+    return fallback;
+  } catch {
+    return fallback;
   }
-  return fallback;
+}
+
+function saveSizes(key: string, sizes: SplitSizes): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(sizes));
+  } catch {
+    // Ignore errors
+  }
 }
 
 /**
@@ -115,8 +101,9 @@ function RightWorkArea({
             direction="horizontal"
             className="h-full min-h-0"
             onLayout={(layout) => {
-              if (!Array.isArray(layout) || layout.length !== 2) return;
-              persistJSON(STORAGE_KEYS.ATTEMPT_AUX, [layout[0], layout[1]]);
+              if (layout.length === 2) {
+                saveSizes(STORAGE_KEYS.ATTEMPT_AUX, [layout[0], layout[1]]);
+              }
             }}
           >
             <Panel
@@ -208,8 +195,9 @@ function DesktopSimple({
       direction="horizontal"
       className="h-full min-h-0"
       onLayout={(layout) => {
-        if (!Array.isArray(layout) || layout.length !== 2) return;
-        persistJSON(STORAGE_KEYS.KANBAN_ATTEMPT, [layout[0], layout[1]]);
+        if (layout.length === 2) {
+          saveSizes(STORAGE_KEYS.KANBAN_ATTEMPT, [layout[0], layout[1]]);
+        }
       }}
     >
       <Panel
