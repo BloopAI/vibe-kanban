@@ -25,13 +25,14 @@ impl CommitMessageService {
     }
 
     /// Generate commit message using the task's agent session if available, fallback to simple format
-    pub async fn generate_commit_message_with_agent(
+    /// This method always succeeds by falling back to simple format when agent is unavailable
+    pub async fn generate_commit_message(
         &self,
         pool: &SqlitePool,
         task_attempt: &TaskAttempt,
         task_title: &str,
         task_description: Option<&str>,
-    ) -> Result<String, CommitMessageError> {
+    ) -> String {
         // First try to get the latest executor session for this task attempt
         if let Ok(Some(executor_session)) = ExecutorSession::find_latest_by_task_attempt_id(pool, task_attempt.id).await {
             if let Some(session_id) = &executor_session.session_id {
@@ -41,7 +42,7 @@ impl CommitMessageService {
                 match self.generate_with_agent(task_attempt, task_title, task_description, session_id).await {
                     Ok(message) => {
                         tracing::info!("Successfully generated commit message using agent: {}", message);
-                        return Ok(message);
+                        return message;
                     }
                     Err(err) => {
                         tracing::warn!("Agent-based generation failed: {}, falling back to simple format", err);
@@ -52,7 +53,7 @@ impl CommitMessageService {
 
         // Fallback to the simple format
         tracing::info!("Using simple fallback format for commit message");
-        Err(CommitMessageError::AgentError("No agent session available".to_string()))
+        self.generate_fallback_message(task_title, task_description, &task_attempt.task_id.to_string())
     }
 
     pub fn generate_fallback_message(&self, task_title: &str, task_description: Option<&str>, task_id: &str) -> String {

@@ -1066,27 +1066,14 @@ pub async fn merge_task_attempt(
         ))
     })?;
 
-    // Generate an enhanced commit message using agent context when available, fallback to LLM API
+    // Generate commit message using agent when available, with automatic fallback to simple format
     let commit_message_service = CommitMessageService::new();
-    let commit_message = match commit_message_service.generate_commit_message_with_agent(
+    let commit_message = commit_message_service.generate_commit_message(
         pool,
         &task_attempt,
         &ctx.task.title,
         ctx.task.description.as_deref(),
-    ).await {
-        Ok(message) => {
-            tracing::info!("Generated enhanced commit message: {}", message);
-            message
-        }
-        Err(err) => {
-            tracing::warn!("Enhanced commit message generation failed: {}, using fallback", err);
-            commit_message_service.generate_fallback_message(
-                &ctx.task.title,
-                ctx.task.description.as_deref(),
-                &task.id.to_string(),
-            )
-        }
-    };
+    ).await;
 
     let merge_commit_id = deployment.git().merge_changes(
         &ctx.project.git_repo_path,
