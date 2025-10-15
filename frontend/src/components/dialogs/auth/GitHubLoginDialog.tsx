@@ -68,17 +68,24 @@ const GitHubLoginDialog = NiceModal.create(() => {
               break;
             case DevicePollStatus.SLOW_DOWN:
               timer = setTimeout(poll, (deviceState.interval + 5) * 1000);
+              break;
+            case DevicePollStatus.ACCESS_DENIED:
+              setPolling(false);
+              setError(
+                'GitHub authorization was denied. No changes were made. You can try again.'
+              );
+              setDeviceState(null);
+              break;
+            case DevicePollStatus.EXPIRED_TOKEN:
+              setPolling(false);
+              setError('Device code expired. Please try again.');
+              setDeviceState(null);
+              break;
           }
         } catch (e: any) {
-          if (e?.message === 'expired_token') {
-            setPolling(false);
-            setError('Device code expired. Please try again.');
-            setDeviceState(null);
-          } else {
-            setPolling(false);
-            setError(e?.message || 'Login failed.');
-            setDeviceState(null);
-          }
+          setPolling(false);
+          setError(e?.message || 'Login failed.');
+          setDeviceState(null);
         }
       };
       timer = setTimeout(poll, deviceState.interval * 1000);

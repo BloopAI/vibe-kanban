@@ -28,6 +28,10 @@ pub enum AuthError {
     DeviceFlowNotStarted,
     #[error("Device flow pending")]
     Pending(Continue),
+    #[error("Access denied")]
+    AccessDenied,
+    #[error("Expired token")]
+    ExpiredToken,
     #[error(transparent)]
     Other(#[from] AnyhowError),
 }
@@ -56,6 +60,34 @@ impl Default for AuthService {
     fn default() -> Self {
         Self::new()
     }
+}
+
+#[derive(Serialize)]
+struct PollForDevice<'a> {
+    /// Required. The client ID you received from GitHub for your OAuth App.
+    client_id: &'a str,
+    /// Required. The device verification code you received from the POST <https://github.com/login/device/code> request.
+    device_code: &'a str,
+    /// Required. The grant type must be urn:ietf:params:oauth:grant-type:device_code.
+    grant_type: &'static str,
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum TokenResponse {
+    // We got the auth information.
+    Ok(OAuth),
+    // We got an error that allows us to continue polling.
+    Continue { error: Continue },
+    // We got an error and cannot continue
+    Error { error: TokenResponseError },
+}
+
+#[derive(Deserialize, Debug, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
+enum TokenResponseError {
+    AccessDenied,
+    ExpiredToken,
 }
 
 impl AuthService {
@@ -90,7 +122,7 @@ impl AuthService {
         })
     }
 
-    pub async fn device_poll(&self) -> Result<UserInfo, AuthError> {
+    async fn get_oauth(&self) -> Result<OAuth, AuthError> {
         let device_codes = {
             let guard = self.device_codes.read().await;
             guard
@@ -102,13 +134,31 @@ impl AuthService {
             .base_uri("https://github.com")?
             .add_header(ACCEPT, "application/json".to_string())
             .build()?;
-        let poll_response = device_codes
-            .poll_once(&client, &SecretString::from(self.client_id.clone()))
+        let poll_token_response: TokenResponse = client
+            .post(
+                "/login/oauth/access_token",
+                Some(&PollForDevice {
+                    client_id: &self.client_id,
+                    device_code: &device_codes.device_code,
+                    grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+                }),
+            )
             .await?;
-        let access_token = poll_response.either(
-            |OAuth { access_token, .. }| Ok(access_token),
-            |c| Err(AuthError::Pending(c)),
-        )?;
+
+        match poll_token_response {
+            TokenResponse::Ok(oauth) => Ok(oauth),
+            TokenResponse::Continue { error } => Err(AuthError::Pending(error)),
+            TokenResponse::Error { error } => Err(match error {
+                TokenResponseError::AccessDenied => AuthError::AccessDenied,
+                TokenResponseError::ExpiredToken => AuthError::ExpiredToken,
+            }),
+        }
+    }
+
+    async fn get_user_info(
+        &self,
+        access_token: &secrecy::SecretBox<str>,
+    ) -> Result<UserInfo, AuthError> {
         let client = OctocrabBuilder::new()
             .add_header(
                 HeaderName::try_from("User-Agent").unwrap(),
@@ -122,10 +172,16 @@ impl AuthService {
             .iter()
             .find(|entry| entry.primary)
             .map(|entry| entry.email.clone());
+
         Ok(UserInfo {
             username: user.login,
             primary_email,
             token: access_token.expose_secret().to_string(),
         })
+    }
+
+    pub async fn device_poll(&self) -> Result<UserInfo, AuthError> {
+        let access_token = self.get_oauth().await?.access_token;
+        self.get_user_info(&access_token).await
     }
 }

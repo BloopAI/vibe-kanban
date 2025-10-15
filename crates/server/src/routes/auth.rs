@@ -43,6 +43,8 @@ async fn device_start(
 pub enum DevicePollStatus {
     SlowDown,
     AuthorizationPending,
+    AccessDenied,
+    ExpiredToken,
     Success,
 }
 
@@ -70,7 +72,19 @@ async fn device_poll(
                 DevicePollStatus::AuthorizationPending,
             )));
         }
-        Err(e) => return Err(e.into()),
+        Err(AuthError::AccessDenied) => {
+            return Ok(ResponseJson(ApiResponse::success(
+                DevicePollStatus::AccessDenied,
+            )));
+        }
+        Err(AuthError::ExpiredToken) => {
+            return Ok(ResponseJson(ApiResponse::success(
+                DevicePollStatus::ExpiredToken,
+            )));
+        }
+        Err(e) => {
+            return Err(e.into());
+        }
     };
     // Save to config
     {

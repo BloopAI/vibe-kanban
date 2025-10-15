@@ -14,9 +14,7 @@ import {
   GitHubLoginDialog,
   CreatePRDialog,
   ConfirmDialog,
-  DisclaimerDialog,
-  OnboardingDialog,
-  PrivacyOptInDialog,
+  UnifiedOnboardingDialog,
   ProvidePatDialog,
   ReleaseNotesDialog,
   TaskFormDialog,
@@ -37,9 +35,7 @@ import {
 NiceModal.register('github-login', GitHubLoginDialog);
 NiceModal.register('create-pr', CreatePRDialog);
 NiceModal.register('confirm', ConfirmDialog);
-NiceModal.register('disclaimer', DisclaimerDialog);
-NiceModal.register('onboarding', OnboardingDialog);
-NiceModal.register('privacy-opt-in', PrivacyOptInDialog);
+NiceModal.register('unified-onboarding', UnifiedOnboardingDialog);
 NiceModal.register('provide-pat', ProvidePatDialog);
 NiceModal.register('release-notes', ReleaseNotesDialog);
 NiceModal.register('delete-task-confirmation', DeleteTaskConfirmationDialog);

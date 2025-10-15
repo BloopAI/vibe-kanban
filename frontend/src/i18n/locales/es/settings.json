@@ -54,6 +54,10 @@
           "label": "Tipo de Editor",
           "placeholder": "Seleccionar editor",
           "helper": "Elige tu editor de código preferido."
+        },
+        "customCommand": {
+          "label": "Comando Personalizado",
+          "helper": "Ingresa el comando para ejecutar tu editor personalizado. Usa espacios para argumentos (ej., \"code --wait\")."
         }
       },
       "github": {
