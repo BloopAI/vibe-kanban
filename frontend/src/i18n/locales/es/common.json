@@ -1,54 +1,54 @@
 {
-  "buttons": {
-    "save": "Save",
-    "cancel": "Cancel",
-    "send": "Send",
-    "delete": "Delete",
-    "edit": "Edit",
-    "create": "Create",
-    "continue": "Continue",
-    "reset": "Reset",
-    "manage": "Manage",
-    "connect": "Connect",
-    "disconnect": "Disconnect",
-    "close": "Close"
-  },
-  "states": {
-    "loading": "Loading...",
-    "saving": "Saving...",
-    "error": "Error",
-    "success": "Success",
-    "reconnecting": "Reconnecting"
-  },
-  "language": {
-    "browserDefault": "Browser Default"
-  },
-  "conversation": {
-    "plan": "Plan",
-    "planToggle": {
-      "show": "Show plan",
-      "hide": "Hide plan"
-    },
-    "toolDetailsToggle": {
-      "show": "Show details",
-      "hide": "Hide details"
-    },
-    "args": "Args",
-    "output": "Output",
-    "result": "Result",
-    "deniedByUser": "{{toolName}} denied by user"
-  },
   "branchSelector": {
-    "placeholder": "Select a branch",
-    "searchPlaceholder": "Search branches...",
-    "empty": "No branches found",
     "badges": {
-      "current": "current",
-      "remote": "remote"
+      "current": "actual",
+      "remote": "remota"
     },
-    "currentDisabled": "Cannot select the current branch"
+    "currentDisabled": "No se puede seleccionar la rama actual",
+    "empty": "No se encontraron ramas",
+    "placeholder": "Seleccionar una rama",
+    "searchPlaceholder": "Buscar ramas..."
   },
   "breadcrumb": {
     "more": "More"
+  },
+  "buttons": {
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "connect": "Conectar",
+    "continue": "Continuar",
+    "create": "Crear",
+    "delete": "Eliminar",
+    "disconnect": "Desconectar",
+    "edit": "Editar",
+    "manage": "Gestionar",
+    "reset": "Restablecer",
+    "save": "Guardar",
+    "send": "Enviar"
+  },
+  "conversation": {
+    "args": "Argumentos",
+    "deniedByUser": "{{toolName}} denegado por el usuario",
+    "output": "Salida",
+    "plan": "Plan",
+    "planToggle": {
+      "hide": "Ocultar plan",
+      "show": "Mostrar plan"
+    },
+    "result": "Resultado",
+    "toolDetailsToggle": {
+      "hide": "Ocultar detalles",
+      "show": "Mostrar detalles"
+    }
+  },
+  "language": {
+    "browserDefault": "Predeterminado del navegador"
+  },
+  "states": {
+    "error": "Error",
+    "loading": "Cargando...",
+    "reconnecting": "Reconectando",
+    "saving": "Guardando...",
+    "success": "Éxito"
   }
 }

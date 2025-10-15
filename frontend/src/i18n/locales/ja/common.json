@@ -1,54 +1,54 @@
 {
-  "buttons": {
-    "save": "Save",
-    "cancel": "Cancel",
-    "send": "Send",
-    "delete": "Delete",
-    "edit": "Edit",
-    "create": "Create",
-    "continue": "Continue",
-    "reset": "Reset",
-    "manage": "Manage",
-    "connect": "Connect",
-    "disconnect": "Disconnect",
-    "close": "Close"
-  },
-  "states": {
-    "loading": "Loading...",
-    "saving": "Saving...",
-    "error": "Error",
-    "success": "Success",
-    "reconnecting": "Reconnecting"
-  },
-  "language": {
-    "browserDefault": "Browser Default"
-  },
-  "conversation": {
-    "plan": "Plan",
-    "planToggle": {
-      "show": "Show plan",
-      "hide": "Hide plan"
-    },
-    "toolDetailsToggle": {
-      "show": "Show details",
-      "hide": "Hide details"
-    },
-    "args": "Args",
-    "output": "Output",
-    "result": "Result",
-    "deniedByUser": "{{toolName}} denied by user"
-  },
   "branchSelector": {
-    "placeholder": "Select a branch",
-    "searchPlaceholder": "Search branches...",
-    "empty": "No branches found",
     "badges": {
-      "current": "current",
-      "remote": "remote"
+      "current": "現在",
+      "remote": "リモート"
     },
-    "currentDisabled": "Cannot select the current branch"
+    "currentDisabled": "現在のブランチは選択できません",
+    "empty": "ブランチが見つかりません",
+    "placeholder": "ブランチを選択",
+    "searchPlaceholder": "ブランチを検索..."
   },
   "breadcrumb": {
     "more": "More"
+  },
+  "buttons": {
+    "cancel": "キャンセル",
+    "close": "閉じる",
+    "connect": "接続",
+    "continue": "続行",
+    "create": "作成",
+    "delete": "削除",
+    "disconnect": "切断",
+    "edit": "編集",
+    "manage": "管理",
+    "reset": "リセット",
+    "save": "保存",
+    "send": "送信"
+  },
+  "conversation": {
+    "args": "引数",
+    "deniedByUser": "{{toolName}} がユーザーによって拒否されました",
+    "output": "出力",
+    "plan": "計画",
+    "planToggle": {
+      "hide": "計画を非表示",
+      "show": "計画を表示"
+    },
+    "result": "結果",
+    "toolDetailsToggle": {
+      "hide": "詳細を非表示",
+      "show": "詳細を表示"
+    }
+  },
+  "language": {
+    "browserDefault": "ブラウザ設定"
+  },
+  "states": {
+    "error": "エラー",
+    "loading": "読み込み中...",
+    "reconnecting": "再接続中",
+    "saving": "保存中...",
+    "success": "成功"
   }
 }
