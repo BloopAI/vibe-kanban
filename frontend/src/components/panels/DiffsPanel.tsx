@@ -102,22 +102,6 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
     );
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <Loader />
-      </div>
-    );
-  }
-
-  if (!loading && diffs.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-        No changes have been made yet
-      </div>
-    );
-  }
-
   return (
     <DiffsPanelContent
       diffs={diffs}
@@ -130,6 +114,7 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
       toggle={toggle}
       selectedAttempt={selectedAttempt}
       gitOps={gitOps}
+      loading={loading}
     />
   );
 }
@@ -145,6 +130,7 @@ interface DiffsPanelContentProps {
   toggle: (id: string) => void;
   selectedAttempt: TaskAttempt | null;
   gitOps?: GitOperationsInputs;
+  loading: boolean;
 }
 
 function DiffsPanelContent({
@@ -158,6 +144,7 @@ function DiffsPanelContent({
   toggle,
   selectedAttempt,
   gitOps,
+  loading,
 }: DiffsPanelContentProps) {
   return (
     <div className="h-full flex flex-col relative">
@@ -214,18 +201,28 @@ function DiffsPanelContent({
         </div>
       )}
       <div className="flex-1 overflow-y-auto px-3">
-        {diffs.map((diff, idx) => {
-          const id = diff.newPath || diff.oldPath || String(idx);
-          return (
-            <DiffCard
-              key={id}
-              diff={diff}
-              expanded={!collapsedIds.has(id)}
-              onToggle={() => toggle(id)}
-              selectedAttempt={selectedAttempt}
-            />
-          );
-        })}
+        {loading ? (
+          <div className="flex items-center justify-center h-full">
+            <Loader />
+          </div>
+        ) : diffs.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+            No changes have been made yet
+          </div>
+        ) : (
+          diffs.map((diff, idx) => {
+            const id = diff.newPath || diff.oldPath || String(idx);
+            return (
+              <DiffCard
+                key={id}
+                diff={diff}
+                expanded={!collapsedIds.has(id)}
+                onToggle={() => toggle(id)}
+                selectedAttempt={selectedAttempt}
+              />
+            );
+          })
+        )}
       </div>
     </div>
   );
