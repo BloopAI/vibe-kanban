@@ -1,4 +1,4 @@
-import { Eye, GitCompareArrows, X } from 'lucide-react';
+import { Eye, FileDiff, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
 import {
@@ -57,7 +57,7 @@ export const AttemptHeaderActions = ({
                   aria-label="Diffs"
                   active={mode === 'diffs'}
                 >
-                  <GitCompareArrows className="h-4 w-4" />
+                  <FileDiff className="h-4 w-4" />
                 </ToggleGroupItem>
               </TooltipTrigger>
               <TooltipContent side="bottom">Diffs</TooltipContent>
