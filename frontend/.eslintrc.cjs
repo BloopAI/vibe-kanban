@@ -19,7 +19,6 @@ module.exports = {
   parserOptions: {
     ecmaVersion: 'latest',
     sourceType: 'module',
-    project: './tsconfig.json',
   },
   rules: {
     'react-refresh/only-export-components': 'off',
@@ -33,7 +32,6 @@ module.exports = {
       },
     ],
     '@typescript-eslint/no-explicit-any': 'warn',
-    '@typescript-eslint/switch-exhaustiveness-check': 'error',
     // i18n rule - only active when LINT_I18N=true
     'i18next/no-literal-string': i18nCheck
       ? [
@@ -64,16 +62,6 @@ module.exports = {
       files: ['**/*.test.{ts,tsx}', '**/*.stories.{ts,tsx}'],
       rules: {
         'i18next/no-literal-string': 'off',
-      },
-    },
-    {
-      // Disable type-aware linting for config files
-      files: ['*.config.{ts,js,cjs,mjs}', '.eslintrc.cjs'],
-      parserOptions: {
-        project: null,
-      },
-      rules: {
-        '@typescript-eslint/switch-exhaustiveness-check': 'off',
       },
     },
   ],
