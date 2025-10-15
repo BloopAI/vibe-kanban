@@ -23,16 +23,12 @@ import { SearchBar } from '@/components/search-bar';
 import { useSearch } from '@/contexts/search-context';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { useProject } from '@/contexts/project-context';
-import { showProjectForm } from '@/lib/modals';
 import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
 import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
 
 const DISCORD_GUILD_ID = '1423630976524877857';
 
-const INTERNAL_NAV = [
-  { label: 'Projects', icon: FolderOpen, to: '/projects' },
-  { label: 'Settings', icon: Settings, to: '/settings' },
-];
+const INTERNAL_NAV = [{ label: 'Projects', icon: FolderOpen, to: '/projects' }];
 
 const EXTERNAL_LINKS = [
   {
@@ -105,15 +101,6 @@ export function Navbar() {
     handleOpenInEditor();
   };
 
-  const handleProjectSettings = async () => {
-    try {
-      await showProjectForm({ project });
-      // Settings saved successfully - no additional action needed
-    } catch (error) {
-      // User cancelled - do nothing
-    }
-  };
-
   return (
     <div className="border-b bg-background">
       <div className="w-full px-3">
@@ -167,14 +154,6 @@ export function Navbar() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={handleProjectSettings}
-                  aria-label="Project settings"
-                >
-                  <Settings className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
                   onClick={handleCreateTask}
                   aria-label="Create new task"
                 >
@@ -182,6 +161,11 @@ export function Navbar() {
                 </Button>
               </>
             )}
+            <Button variant="ghost" size="icon" asChild aria-label="Settings">
+              <Link to="/settings">
+                <Settings className="h-4 w-4" />
+              </Link>
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
