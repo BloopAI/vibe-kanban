@@ -5,7 +5,7 @@ use db::models::{
 };
 use futures::StreamExt;
 use serde_json::json;
-use tokio_stream::wrappers::BroadcastStream;
+use tokio_stream::wrappers::{BroadcastStream, errors::BroadcastStreamRecvError};
 use utils::log_msg::LogMsg;
 use uuid::Uuid;
 
@@ -150,6 +150,26 @@ impl EventService {
         show_soft_deleted: bool,
     ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, EventError>
     {
+        fn execution_processes_snapshot_msg(processes: Vec<ExecutionProcess>) -> LogMsg {
+            let processes_map: serde_json::Map<String, serde_json::Value> = processes
+                .into_iter()
+                .map(|process| {
+                    (
+                        process.id.to_string(),
+                        serde_json::to_value(process).unwrap(),
+                    )
+                })
+                .collect();
+
+            let snapshot_patch = json!([{
+                "op": "replace",
+                "path": "/execution_processes",
+                "value": processes_map
+            }]);
+
+            LogMsg::JsonPatch(serde_json::from_value(snapshot_patch).unwrap())
+        }
+
         // Get initial snapshot of execution processes (filtering at SQL level)
         let processes = ExecutionProcess::find_by_task_attempt_id(
             &self.db.pool,
@@ -158,108 +178,128 @@ impl EventService {
         )
         .await?;
 
-        // Convert processes array to object keyed by process ID
-        let processes_map: serde_json::Map<String, serde_json::Value> = processes
-            .into_iter()
-            .map(|process| {
-                (
-                    process.id.to_string(),
-                    serde_json::to_value(process).unwrap(),
-                )
-            })
-            .collect();
+        let initial_msg = execution_processes_snapshot_msg(processes);
 
-        let initial_patch = json!([{
-            "op": "replace",
-            "path": "/execution_processes",
-            "value": processes_map
-        }]);
-        let initial_msg = LogMsg::JsonPatch(serde_json::from_value(initial_patch).unwrap());
-
+        let db_pool = self.db.pool.clone();
         // Get filtered event stream
         let filtered_stream = BroadcastStream::new(self.msg_store.get_receiver()).filter_map(
-            move |msg_result| async move {
-                match msg_result {
-                    Ok(LogMsg::JsonPatch(patch)) => {
+            move |msg_result| {
+                let db_pool = db_pool.clone();
+                async move {
+                    match msg_result {
+                        Ok(LogMsg::JsonPatch(patch)) => {
                         // Filter events based on task_attempt_id
-                        if let Some(patch_op) = patch.0.first() {
+                            if let Some(patch_op) = patch.0.first() {
                             // Check if this is a modern execution process patch
-                            if patch_op.path().starts_with("/execution_processes/") {
-                                match patch_op {
-                                    json_patch::PatchOperation::Add(op) => {
+                                if patch_op.path().starts_with("/execution_processes/") {
+                                    match patch_op {
+                                        json_patch::PatchOperation::Add(op) => {
                                         // Parse execution process data directly from value
-                                        if let Ok(process) =
-                                            serde_json::from_value::<ExecutionProcess>(
-                                                op.value.clone(),
-                                            )
-                                            && process.task_attempt_id == task_attempt_id
-                                        {
-                                            if !show_soft_deleted && process.dropped {
-                                                let remove_patch =
-                                                    execution_process_patch::remove(process.id);
-                                                return Some(Ok(LogMsg::JsonPatch(remove_patch)));
+                                            if let Ok(process) =
+                                                serde_json::from_value::<ExecutionProcess>(
+                                                    op.value.clone(),
+                                                )
+                                                && process.task_attempt_id == task_attempt_id
+                                            {
+                                                if !show_soft_deleted && process.dropped {
+                                                    let remove_patch =
+                                                        execution_process_patch::remove(
+                                                            process.id,
+                                                        );
+                                                    return Some(Ok(LogMsg::JsonPatch(
+                                                        remove_patch,
+                                                    )));
+                                                }
+                                                return Some(Ok(LogMsg::JsonPatch(patch)));
                                             }
+                                        }
+                                        json_patch::PatchOperation::Replace(op) => {
+                                        // Parse execution process data directly from value
+                                            if let Ok(process) =
+                                                serde_json::from_value::<ExecutionProcess>(
+                                                    op.value.clone(),
+                                                )
+                                                && process.task_attempt_id == task_attempt_id
+                                            {
+                                                if !show_soft_deleted && process.dropped {
+                                                    let remove_patch =
+                                                        execution_process_patch::remove(
+                                                            process.id,
+                                                        );
+                                                    return Some(Ok(LogMsg::JsonPatch(
+                                                        remove_patch,
+                                                    )));
+                                                }
+                                                return Some(Ok(LogMsg::JsonPatch(patch)));
+                                            }
+                                        }
+                                        json_patch::PatchOperation::Remove(_) => {
+                                            // For remove operations, we can't verify task_attempt_id
+                                            // so we allow all removals and let the client handle filtering
                                             return Some(Ok(LogMsg::JsonPatch(patch)));
                                         }
+                                        _ => {}
                                     }
-                                    json_patch::PatchOperation::Replace(op) => {
-                                        // Parse execution process data directly from value
-                                        if let Ok(process) =
-                                            serde_json::from_value::<ExecutionProcess>(
-                                                op.value.clone(),
-                                            )
-                                            && process.task_attempt_id == task_attempt_id
-                                        {
-                                            if !show_soft_deleted && process.dropped {
-                                                let remove_patch =
-                                                    execution_process_patch::remove(process.id);
-                                                return Some(Ok(LogMsg::JsonPatch(remove_patch)));
+                                }
+                                // Fallback to legacy EventPatch format for backward compatibility
+                                else if let Ok(event_patch_value) = serde_json::to_value(patch_op)
+                                    && let Ok(event_patch) = serde_json::from_value::<EventPatch>(
+                                        event_patch_value,
+                                    )
+                                {
+                                    match &event_patch.value.record {
+                                        RecordTypes::ExecutionProcess(process) => {
+                                            if process.task_attempt_id == task_attempt_id {
+                                                if !show_soft_deleted && process.dropped {
+                                                    let remove_patch =
+                                                        execution_process_patch::remove(
+                                                            process.id,
+                                                        );
+                                                    return Some(Ok(LogMsg::JsonPatch(
+                                                        remove_patch,
+                                                    )));
+                                                }
+                                                return Some(Ok(LogMsg::JsonPatch(patch)));
                                             }
-                                            return Some(Ok(LogMsg::JsonPatch(patch)));
                                         }
+                                        RecordTypes::DeletedExecutionProcess {
+                                            task_attempt_id: Some(deleted_attempt_id),
+                                            ..
+                                        } => {
+                                            if *deleted_attempt_id == task_attempt_id {
+                                                return Some(Ok(LogMsg::JsonPatch(patch)));
+                                            }
+                                        }
+                                        _ => {}
                                     }
-                                    json_patch::PatchOperation::Remove(_) => {
-                                        // For remove operations, we can't verify task_attempt_id
-                                        // so we allow all removals and let the client handle filtering
-                                        return Some(Ok(LogMsg::JsonPatch(patch)));
-                                    }
-                                    _ => {}
                                 }
                             }
-                            // Fallback to legacy EventPatch format for backward compatibility
-                            else if let Ok(event_patch_value) = serde_json::to_value(patch_op)
-                                && let Ok(event_patch) =
-                                    serde_json::from_value::<EventPatch>(event_patch_value)
+                            None
+                        }
+                        Ok(other) => Some(Ok(other)), // Pass through non-patch messages
+                        Err(BroadcastStreamRecvError::Lagged(skipped)) => {
+                            match ExecutionProcess::find_by_task_attempt_id(
+                                &db_pool,
+                                task_attempt_id,
+                                show_soft_deleted,
+                            )
+                            .await
                             {
-                                match &event_patch.value.record {
-                                    RecordTypes::ExecutionProcess(process) => {
-                                        if process.task_attempt_id == task_attempt_id {
-                                            if !show_soft_deleted && process.dropped {
-                                                let remove_patch =
-                                                    execution_process_patch::remove(process.id);
-                                                return Some(Ok(LogMsg::JsonPatch(remove_patch)));
-                                            }
-                                            return Some(Ok(LogMsg::JsonPatch(patch)));
-                                        }
-                                    }
-                                    RecordTypes::DeletedExecutionProcess {
-                                        task_attempt_id: Some(deleted_attempt_id),
-                                        ..
-                                    } => {
-                                        if *deleted_attempt_id == task_attempt_id {
-                                            return Some(Ok(LogMsg::JsonPatch(patch)));
-                                        }
-                                    }
-                                    _ => {}
+                                Ok(processes) => Some(Ok(
+                                    execution_processes_snapshot_msg(processes),
+                                )),
+                                Err(read_err) => {
+                                    tracing::warn!(
+                                        task_attempt_id = %task_attempt_id,
+                                        skipped_messages = skipped,
+                                        "failed to rebuild execution process snapshot after lag: {read_err}",
+                                    );
+                                    None
                                 }
                             }
                         }
-                        None
-                    }
-                    Ok(other) => Some(Ok(other)), // Pass through non-patch messages
-                    Err(_) => None,               // Filter out broadcast errors
                 }
-            },
+            }},
         );
 
         // Start with initial snapshot, then live updates
