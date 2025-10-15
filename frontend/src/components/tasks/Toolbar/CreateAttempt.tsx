@@ -1,4 +1,5 @@
 import { Dispatch, SetStateAction, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button.tsx';
 import { X } from 'lucide-react';
 import type { GitBranch, Task } from 'shared/types';
@@ -9,6 +10,8 @@ import { useAttemptCreation } from '@/hooks/useAttemptCreation';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import BranchSelector from '@/components/tasks/BranchSelector.tsx';
 import { ExecutorProfileSelector } from '@/components/settings';
+import { useProject } from '@/contexts/project-context';
+import { paths } from '@/lib/paths';
 
 import { showModal } from '@/lib/modals';
 import { Card } from '@/components/ui/card';
@@ -41,8 +44,17 @@ function CreateAttempt({
   availableProfiles,
   selectedAttempt,
 }: Props) {
+  const navigate = useNavigate();
+  const { projectId } = useProject();
   const { isAttemptRunning } = useAttemptExecution(selectedAttempt?.id);
-  const { createAttempt, isCreating } = useAttemptCreation(task.id);
+  const { createAttempt, isCreating } = useAttemptCreation({
+    taskId: task.id,
+    onSuccess: (attempt) => {
+      if (projectId) {
+        navigate(paths.attempt(projectId, task.id, attempt.id));
+      }
+    },
+  });
 
   // Create attempt logic
   const actuallyCreateAttempt = useCallback(

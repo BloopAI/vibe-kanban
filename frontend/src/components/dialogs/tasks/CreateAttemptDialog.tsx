@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -16,6 +17,7 @@ import { useAttemptCreation } from '@/hooks/useAttemptCreation';
 import { useProject } from '@/contexts/project-context';
 import { useUserSystem } from '@/components/config-provider';
 import { projectsApi } from '@/lib/api';
+import { paths } from '@/lib/paths';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import type {
   GitBranch,
@@ -32,10 +34,18 @@ export interface CreateAttemptDialogProps {
 export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
   ({ taskId, latestAttempt }) => {
     const modal = useModal();
+    const navigate = useNavigate();
     const { projectId } = useProject();
     const { t } = useTranslation('tasks');
     const { profiles, config } = useUserSystem();
-    const { createAttempt, isCreating, error } = useAttemptCreation(taskId);
+    const { createAttempt, isCreating, error } = useAttemptCreation({
+      taskId,
+      onSuccess: (attempt) => {
+        if (projectId) {
+          navigate(paths.attempt(projectId, taskId, attempt.id));
+        }
+      },
+    });
 
     const [selectedProfile, setSelectedProfile] =
       useState<ExecutorProfileId | null>(null);
