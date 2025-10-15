@@ -30,7 +30,8 @@ function loadSizes(key: string, fallback: SplitSizes): SplitSizes {
     const saved = localStorage.getItem(key);
     if (!saved) return fallback;
     const parsed = JSON.parse(saved);
-    if (Array.isArray(parsed) && parsed.length === 2) return parsed as SplitSizes;
+    if (Array.isArray(parsed) && parsed.length === 2)
+      return parsed as SplitSizes;
     return fallback;
   } catch {
     return fallback;
