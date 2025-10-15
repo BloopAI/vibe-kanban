@@ -99,7 +99,7 @@ impl StandardCodingAgentExecutor for Copilot {
         let command_parts = self
             .build_command_builder(&log_dir.to_string_lossy())
             .build_initial()?;
-        let (program_path, args) = command_parts.into_resolved()?;
+        let (program_path, args) = command_parts.into_resolved().await?;
 
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
@@ -137,7 +137,7 @@ impl StandardCodingAgentExecutor for Copilot {
         let command_parts = self
             .build_command_builder(&log_dir.to_string_lossy())
             .build_follow_up(&["--resume".to_string(), session_id.to_string()])?;
-        let (program_path, args) = command_parts.into_resolved()?;
+        let (program_path, args) = command_parts.into_resolved().await?;
 
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 

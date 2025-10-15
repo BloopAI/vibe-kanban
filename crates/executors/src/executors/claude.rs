@@ -204,7 +204,7 @@ impl ClaudeCode {
         prompt: &str,
         command_parts: CommandParts,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let (program_path, args) = command_parts.into_resolved()?;
+        let (program_path, args) = command_parts.into_resolved().await?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
         let mut command = Command::new(program_path);

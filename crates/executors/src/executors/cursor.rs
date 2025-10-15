@@ -68,7 +68,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
         mcp::ensure_mcp_server_trust(self, current_dir).await;
 
         let command_parts = self.build_command_builder().build_initial()?;
-        let (executable_path, args) = command_parts.into_resolved()?;
+        let (executable_path, args) = command_parts.into_resolved().await?;
 
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
@@ -102,7 +102,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
         let command_parts = self
             .build_command_builder()
             .build_follow_up(&["--resume".to_string(), session_id.to_string()])?;
-        let (executable_path, args) = command_parts.into_resolved()?;
+        let (executable_path, args) = command_parts.into_resolved().await?;
 
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
@@ -443,7 +443,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
     }
 
     async fn check_availability(&self) -> bool {
-        resolve_executable_path("cursor-agent").is_some()
+        resolve_executable_path("cursor-agent").await.is_some()
     }
 }
 

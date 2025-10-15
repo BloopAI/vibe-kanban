@@ -46,7 +46,7 @@ impl Amp {
 impl StandardCodingAgentExecutor for Amp {
     async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
         let command_parts = self.build_command_builder().build_initial()?;
-        let (executable_path, args) = command_parts.into_resolved()?;
+        let (executable_path, args) = command_parts.into_resolved().await?;
 
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
@@ -83,7 +83,7 @@ impl StandardCodingAgentExecutor for Amp {
             "fork".to_string(),
             session_id.to_string(),
         ])?;
-        let (fork_program, fork_args) = fork_line.into_resolved()?;
+        let (fork_program, fork_args) = fork_line.into_resolved().await?;
         let fork_output = Command::new(fork_program)
             .kill_on_drop(true)
             .stdout(Stdio::piped())
@@ -114,7 +114,7 @@ impl StandardCodingAgentExecutor for Amp {
             "continue".to_string(),
             new_thread_id.clone(),
         ])?;
-        let (continue_program, continue_args) = continue_line.into_resolved()?;
+        let (continue_program, continue_args) = continue_line.into_resolved().await?;
 
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 

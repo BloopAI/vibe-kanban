@@ -5,7 +5,10 @@ use std::{
     env::{join_paths, split_paths},
     ffi::{OsStr, OsString},
     path::{Path, PathBuf},
+    time::Duration,
 };
+
+use crate::tokio::block_on;
 
 /// Returns the appropriate shell command and argument for the current platform.
 ///
@@ -41,7 +44,7 @@ pub fn get_shell_command() -> (String, &'static str) {
 /// 2. The current process PATH via `which`.
 /// 3. A platform-specific refresh of PATH (login shell on Unix, PowerShell on Windows),
 ///    after which we re-run the `which` lookup and update the process PATH for future calls.
-pub fn resolve_executable_path(executable: &str) -> Option<PathBuf> {
+pub async fn resolve_executable_path(executable: &str) -> Option<PathBuf> {
     if executable.trim().is_empty() {
         return None;
     }
@@ -51,17 +54,21 @@ pub fn resolve_executable_path(executable: &str) -> Option<PathBuf> {
         return Some(path.to_path_buf());
     }
 
-    if let Ok(found) = which::which(executable) {
+    if let Some(found) = which(executable).await {
         return Some(found);
     }
 
-    if refresh_path()
-        && let Ok(found) = which::which(executable)
+    if refresh_path().await
+        && let Some(found) = which(executable).await
     {
         return Some(found);
     }
 
     None
+}
+
+pub fn resolve_executable_path_blocking(executable: &str) -> Option<PathBuf> {
+    block_on(resolve_executable_path(executable))
 }
 
 /// Merge two PATH strings into a single, de-duplicated PATH.
@@ -83,8 +90,8 @@ pub fn merge_paths(primary: impl AsRef<OsStr>, secondary: impl AsRef<OsStr>) -> 
     join_paths(merged).unwrap_or_default()
 }
 
-fn refresh_path() -> bool {
-    let Some(refreshed) = get_fresh_path() else {
+async fn refresh_path() -> bool {
+    let Some(refreshed) = get_fresh_path().await else {
         return false;
     };
     let existing = std::env::var_os("PATH").unwrap_or_default();
@@ -100,20 +107,56 @@ fn refresh_path() -> bool {
     true
 }
 
-#[cfg(not(windows))]
-fn get_fresh_path() -> Option<String> {
-    use std::process::Command;
+async fn which(executable: &str) -> Option<PathBuf> {
+    let executable = executable.to_string();
+    tokio::task::spawn_blocking(move || which::which(executable))
+        .await
+        .ok()
+        .and_then(|result| result.ok())
+}
 
-    fn run(shell: &Path, login: bool) -> Option<String> {
+#[cfg(not(windows))]
+async fn get_fresh_path() -> Option<String> {
+    use tokio::process::Command;
+
+    async fn run(shell: &Path, login: bool) -> Option<String> {
         let mut cmd = Command::new(shell);
         if login {
             cmd.arg("-l");
         }
         cmd.arg("-c")
             .arg("printf '%s' \"$PATH\"")
-            .env("TERM", "dumb");
+            .env("TERM", "dumb")
+            .kill_on_drop(true);
 
-        let output = cmd.output().ok()?;
+        const PATH_REFRESH_COMMAND_TIMEOUT: Duration = Duration::from_secs(5);
+
+        let child = cmd.spawn().ok()?;
+        let output = match tokio::time::timeout(
+            PATH_REFRESH_COMMAND_TIMEOUT,
+            child.wait_with_output(),
+        )
+        .await
+        {
+            Ok(Ok(output)) => output,
+            Ok(Err(err)) => {
+                tracing::debug!(
+                    shell = %shell.display(),
+                    ?err,
+                    "Failed to retrieve PATH from login shell"
+                );
+                return None;
+            }
+            Err(_) => {
+                tracing::warn!(
+                    shell = %shell.display(),
+                    timeout_secs = PATH_REFRESH_COMMAND_TIMEOUT.as_secs(),
+                    "Timed out retrieving PATH from login shell"
+                );
+                return None;
+            }
+        };
+
         if !output.status.success() {
             return None;
         }
@@ -134,7 +177,9 @@ fn get_fresh_path() -> Option<String> {
         let path = Path::new(&shell);
         if path.is_absolute() && path.is_file() {
             current_shell_name = path.file_name().and_then(OsStr::to_str).map(String::from);
-            paths.extend(run(path, true));
+            if let Some(path) = run(path, true).await {
+                paths.push(path);
+            }
         }
     }
 
@@ -146,8 +191,10 @@ fn get_fresh_path() -> Option<String> {
             .file_name()
             .and_then(OsStr::to_str)
             .map(String::from);
-        if current_shell_name != shell_name {
-            paths.extend(run(&shell_path, login));
+        if current_shell_name != shell_name
+            && let Some(path) = run(&shell_path, login).await
+        {
+            paths.push(path);
         }
     }
 
@@ -163,7 +210,15 @@ fn get_fresh_path() -> Option<String> {
 }
 
 #[cfg(windows)]
-fn get_fresh_path() -> Option<String> {
+async fn get_fresh_path() -> Option<String> {
+    tokio::task::spawn_blocking(get_fresh_path_blocking)
+        .await
+        .ok()
+        .flatten()
+}
+
+#[cfg(windows)]
+fn get_fresh_path_blocking() -> Option<String> {
     use std::{
         ffi::{OsStr, OsString},
         os::windows::ffi::{OsStrExt, OsStringExt},
