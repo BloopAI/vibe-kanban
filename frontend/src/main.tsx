@@ -34,6 +34,7 @@ import {
   RestoreLogsDialog,
   ViewProcessesDialog,
 } from './components/dialogs';
+import { CreateAttemptDialog } from './components/dialogs/tasks/CreateAttemptDialog';
 
 // Register modals
 NiceModal.register('github-login', GitHubLoginDialog);
@@ -57,6 +58,7 @@ NiceModal.register('project-form', ProjectFormDialog);
 NiceModal.register('project-editor-selection', ProjectEditorSelectionDialog);
 NiceModal.register('restore-logs', RestoreLogsDialog);
 NiceModal.register('view-processes', ViewProcessesDialog);
+NiceModal.register('create-attempt', CreateAttemptDialog);
 // Install VS Code iframe keyboard bridge when running inside an iframe
 import './vscode/bridge';
 

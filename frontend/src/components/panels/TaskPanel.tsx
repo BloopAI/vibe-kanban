@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useProject } from '@/contexts/project-context';
@@ -8,7 +7,7 @@ import type { TaskWithAttemptStatus } from 'shared/types';
 import { NewCardContent } from '../ui/new-card';
 import { Button } from '../ui/button';
 import { PlusIcon } from 'lucide-react';
-import { CreateAttemptDialog } from '../dialogs/tasks/CreateAttemptDialog';
+import NiceModal from '@ebay/nice-modal-react';
 import MarkdownRenderer from '@/components/ui/markdown-renderer';
 
 interface TaskPanelProps {
@@ -19,7 +18,6 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
   const { t } = useTranslation('tasks');
   const navigate = useNavigate();
   const { projectId } = useProject();
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   const {
     data: attempts = [],
@@ -108,7 +106,12 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
                       <span>
                         <Button
                           variant="icon"
-                          onClick={() => setIsCreateDialogOpen(true)}
+                          onClick={() =>
+                            NiceModal.show('create-attempt', {
+                              taskId: task.id,
+                              latestAttempt,
+                            })
+                          }
                         >
                           <PlusIcon size={16} />
                         </Button>
@@ -157,12 +160,6 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
           )}
         </div>
       </NewCardContent>
-      <CreateAttemptDialog
-        taskId={task.id}
-        open={isCreateDialogOpen}
-        onOpenChange={setIsCreateDialogOpen}
-        latestAttempt={latestAttempt}
-      />
     </>
   );
 };
