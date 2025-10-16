@@ -47,7 +47,6 @@ interface TaskPanelOnboardingProps {
 export function TaskPanelOnboarding({ isOpen }: TaskPanelOnboardingProps) {
   const [currentStage, setCurrentStage] = useState(0);
   const [position, setPosition] = useState({ top: 0, right: 0 });
-  const [useTopAlign, setUseTopAlign] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -65,30 +64,18 @@ export function TaskPanelOnboarding({ isOpen }: TaskPanelOnboardingProps) {
         const panelHeight = panel.offsetHeight;
         const viewportHeight = window.innerHeight;
 
-        const centerTop = handleRect.top + handleRect.height / 2;
-        const halfPanelHeight = panelHeight / 2;
-
-        const wouldOverflowBottom =
-          centerTop + halfPanelHeight > viewportHeight - 20;
-        const wouldOverflowTop = centerTop - halfPanelHeight < 20;
-
-        if (wouldOverflowBottom || wouldOverflowTop) {
-          setUseTopAlign(true);
-          const topPosition = Math.max(
-            20,
-            Math.min(centerTop - 100, viewportHeight - panelHeight - 20)
-          );
-          setPosition({
-            top: topPosition,
-            right: window.innerWidth - handleRect.left + 20,
-          });
-        } else {
-          setUseTopAlign(false);
-          setPosition({
-            top: centerTop,
-            right: window.innerWidth - handleRect.left + 20,
-          });
+        let targetTop = handleRect.top - panelHeight / 2;
+        
+        if (targetTop < 20) {
+          targetTop = 20;
+        } else if (targetTop + panelHeight > viewportHeight - 20) {
+          targetTop = viewportHeight - panelHeight - 20;
         }
+
+        setPosition({
+          top: targetTop,
+          right: window.innerWidth - handleRect.left + 20,
+        });
       }
     };
 
@@ -151,7 +138,6 @@ export function TaskPanelOnboarding({ isOpen }: TaskPanelOnboardingProps) {
             position: 'fixed',
             top: position.top,
             right: position.right,
-            transform: useTopAlign ? 'translateY(0)' : 'translateY(-50%)',
             zIndex: 9999,
           }}
           className="w-[36rem] bg-card border border-border rounded-lg shadow-lg overflow-hidden"
