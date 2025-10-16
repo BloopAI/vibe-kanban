@@ -9,7 +9,8 @@ interface ShowcaseStageMediaProps {
 
 export function ShowcaseStageMedia({ media }: ShowcaseStageMediaProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { isLoading, playedPercent, bufferedPercent } = useVideoProgress(videoRef);
+  const { isLoading, playedPercent, bufferedPercent } =
+    useVideoProgress(videoRef);
   const [imageLoaded, setImageLoaded] = useState(false);
 
   if (media.type === 'video') {

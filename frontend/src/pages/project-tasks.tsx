@@ -158,7 +158,11 @@ export function ProjectTasks() {
   const isPanelOpen = Boolean(taskId && selectedTask);
 
   useEffect(() => {
-    if (isPanelOpen && !isMobile && !hasSeen(taskPanelShowcase.id, taskPanelShowcase.version)) {
+    if (
+      isPanelOpen &&
+      !isMobile &&
+      !hasSeen(taskPanelShowcase.id, taskPanelShowcase.version)
+    ) {
       setShowTaskPanelShowcase(true);
     }
   }, [isPanelOpen, isMobile]);
