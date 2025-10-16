@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import ProcessLogsViewer, {
   ProcessLogsViewerContent,
 } from '../ProcessLogsViewer';
-import type { DevserverLogEntry } from '@/hooks/useLogStream';
 import { ExecutionProcess } from 'shared/types';
 
 interface DevServerLogsViewProps {
@@ -13,7 +12,7 @@ interface DevServerLogsViewProps {
   onToggle: () => void;
   height?: string;
   showToggleText?: boolean;
-  logs?: DevserverLogEntry[];
+  logs?: Array<{ type: 'STDOUT' | 'STDERR'; content: string }>;
   error?: string | null;
 }
 

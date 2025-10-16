@@ -2,7 +2,6 @@ import { useEffect, useState, useRef } from 'react';
 import type { PatchType } from 'shared/types';
 
 type LogEntry = Extract<PatchType, { type: 'STDOUT' } | { type: 'STDERR' }>;
-export type DevserverLogEntry = LogEntry;
 
 interface UseLogStreamResult {
   logs: LogEntry[];

@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import type { DevserverLogEntry } from '@/hooks/useLogStream';
 import { stripAnsi } from 'fancy-ansi';
 
 const urlPatterns = [
@@ -52,7 +51,7 @@ export const detectDevserverUrl = (line: string): DevserverUrlInfo | null => {
 };
 
 export const useDevserverUrlFromLogs = (
-  logs: DevserverLogEntry[] | undefined
+  logs: Array<{ content: string }> | undefined
 ): DevserverUrlInfo | undefined => {
   return useMemo(() => {
     if (!logs || logs.length === 0) return undefined;

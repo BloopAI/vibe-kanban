@@ -125,8 +125,6 @@ export function PreviewPanel() {
     previewState.status === 'ready' &&
     Boolean(previewState.url) &&
     !iframeError;
-  const isDetecting =
-    previewState.status === 'searching' && !iframeError && !!runningDevServer;
   const mode = iframeError ? 'error' : isPreviewReady ? 'ready' : 'noServer';
   const toggleLogs = () => {
     setShowLogs((v) => !v);
@@ -178,15 +176,6 @@ export function PreviewPanel() {
               onIframeError={handleIframeError}
             />
           </>
-        ) : isDetecting ? (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center space-y-4">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto" />
-              <p className="text-sm text-muted-foreground">
-                {t('preview.detectingUrl')}
-              </p>
-            </div>
-          </div>
         ) : (
           <NoServerContent
             projectHasDevScript={projectHasDevScript}

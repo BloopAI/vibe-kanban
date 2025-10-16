@@ -1,18 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import { AlertCircle } from 'lucide-react';
-import { useLogStream, type DevserverLogEntry } from '@/hooks/useLogStream';
+import { useLogStream } from '@/hooks/useLogStream';
 import RawLogText from '@/components/common/RawLogText';
+import type { PatchType } from 'shared/types';
+
+type LogEntry = Extract<PatchType, { type: 'STDOUT' } | { type: 'STDERR' }>;
 
 interface ProcessLogsViewerProps {
   processId: string;
 }
 
+
 export function ProcessLogsViewerContent({
   logs,
   error,
 }: {
-  logs: DevserverLogEntry[];
+  logs: LogEntry[];
   error: string | null;
 }) {
   const virtuosoRef = useRef<VirtuosoHandle>(null);
@@ -52,7 +56,7 @@ export function ProcessLogsViewerContent({
     }
   }, [logs.length, atBottom, logs]);
 
-  const formatLogLine = (entry: DevserverLogEntry, index: number) => {
+  const formatLogLine = (entry: LogEntry, index: number) => {
     return (
       <RawLogText
         key={index}
@@ -75,12 +79,12 @@ export function ProcessLogsViewerContent({
           {error}
         </div>
       ) : (
-        <Virtuoso<DevserverLogEntry>
+        <Virtuoso<LogEntry>
           ref={virtuosoRef}
           className="flex-1 rounded-lg"
           data={logs}
           itemContent={(index, entry) =>
-            formatLogLine(entry as DevserverLogEntry, index)
+            formatLogLine(entry as LogEntry, index)
           }
           // Keep pinned while user is at bottom; release when they scroll up
           atBottomStateChange={setAtBottom}
