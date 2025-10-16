@@ -6,6 +6,7 @@ import {
   type To,
   type NavigateOptions,
   type Path,
+  type NavigateFunction,
 } from 'react-router-dom';
 
 /**
@@ -48,12 +49,12 @@ import {
  * // Numeric navigation (back/forward)
  * navigate(-1); // Goes back
  */
-export function useNavigateWithSearch() {
+export function useNavigateWithSearch(): NavigateFunction {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   return useCallback(
-    (to: To, options?: NavigateOptions) => {
+    (to: To | number, options?: NavigateOptions) => {
       // Handle numeric navigation (back/forward)
       if (typeof to === 'number') {
         navigate(to);
@@ -111,5 +112,5 @@ export function useNavigateWithSearch() {
       );
     },
     [navigate, searchParams]
-  );
+  ) as NavigateFunction;
 }
