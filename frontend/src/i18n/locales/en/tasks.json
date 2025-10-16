@@ -240,5 +240,34 @@
     "createSubtask": "Create subtask",
     "task": "Task",
     "duplicate": "Duplicate"
+  },
+  "showcases": {
+    "taskPanel": {
+      "sendFollowups": {
+        "title": "Send Follow-ups",
+        "description": "Communicate with the AI agent directly from the task panel. Ask questions, request changes, and provide additional context to guide task execution."
+      },
+      "codeReview": {
+        "title": "Code Review",
+        "description": "Review code changes in-context with detailed diffs and file comparisons. Leave comments and suggestions to improve the quality of generated code."
+      },
+      "gitActions": {
+        "title": "Git Actions",
+        "description": "Manage branches, commits, and pull requests without leaving the task panel. Create, merge, and switch branches with a single click."
+      },
+      "livePreviews": {
+        "title": "Live Previews",
+        "description": "See your changes in real-time with integrated preview panels. Test and validate UI changes instantly before committing them."
+      },
+      "vkCompanion": {
+        "title": "VK Companion",
+        "description": "Your AI pair programming assistant is always available in the sidebar. Get instant help, explanations, and suggestions while working on tasks."
+      }
+    },
+    "buttons": {
+      "previous": "Previous",
+      "next": "Next",
+      "finish": "Finish"
+    }
   }
 }

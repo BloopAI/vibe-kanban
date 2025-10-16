@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
@@ -6,9 +6,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { AlertTriangle, Plus } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { tasksApi } from '@/lib/api';
-import { useState } from 'react';
 import type { GitBranch } from 'shared/types';
 import { openTaskForm } from '@/lib/openTaskForm';
+import { FeatureShowcaseModal } from '@/components/showcase/FeatureShowcaseModal';
+import { taskPanelShowcase } from '@/config/showcases';
+import { hasSeen, markSeen } from '@/utils/showcasePersistence';
 
 import { useSearch } from '@/contexts/search-context';
 import { useProject } from '@/contexts/project-context';
@@ -58,7 +60,6 @@ import {
 } from '@/components/ui/breadcrumb';
 import { AttemptHeaderActions } from '@/components/panels/AttemptHeaderActions';
 import { TaskPanelHeaderActions } from '@/components/panels/TaskPanelHeaderActions';
-import { TaskPanelOnboarding } from '@/components/onboarding/TaskPanelOnboarding';
 
 type Task = TaskWithAttemptStatus;
 
@@ -119,6 +120,7 @@ export function ProjectTasks() {
   const [searchParams, setSearchParams] = useSearchParams();
   const isXL = useMediaQuery('(min-width: 1280px)');
   const isMobile = !isXL;
+  const [showTaskPanelShowcase, setShowTaskPanelShowcase] = useState(false);
 
   const {
     projectId,
@@ -154,6 +156,12 @@ export function ProjectTasks() {
   );
 
   const isPanelOpen = Boolean(taskId && selectedTask);
+
+  useEffect(() => {
+    if (isPanelOpen && !isMobile && !hasSeen(taskPanelShowcase.id, taskPanelShowcase.version)) {
+      setShowTaskPanelShowcase(true);
+    }
+  }, [isPanelOpen, isMobile]);
 
   const isLatest = attemptId === 'latest';
   const { data: attempts = [], isLoading: isAttemptsLoading } = useTaskAttempts(
@@ -755,7 +763,14 @@ export function ProjectTasks() {
       )}
 
       <div className="flex-1 min-h-0">{attemptArea}</div>
-      <TaskPanelOnboarding isOpen={isPanelOpen && !isMobile} />
+      <FeatureShowcaseModal
+        isOpen={showTaskPanelShowcase}
+        onClose={() => {
+          markSeen(taskPanelShowcase.id, taskPanelShowcase.version);
+          setShowTaskPanelShowcase(false);
+        }}
+        config={taskPanelShowcase}
+      />
     </div>
   );
 }
