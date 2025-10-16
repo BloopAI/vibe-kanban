@@ -50,45 +50,14 @@ check_duplicate_keys() {
     return 2
   fi
 
-  # Strategy: Parse the JSON with a streaming parser that can detect duplicate keys
-  # Use Python for this since it can be configured to detect duplicates
-  local duplicates
-  duplicates=$(python3 -c '
-import json
-import sys
-from collections import OrderedDict
-
-def check_duplicates(pairs):
-    """Check for duplicate keys and raise ValueError if found"""
-    seen = {}
-    result = OrderedDict()
-    for key, value in pairs:
-        if key in seen:
-            raise ValueError(f"Duplicate key: {key}")
-        seen[key] = True
-        result[key] = value
-    return result
-
-try:
-    with open(sys.argv[1], "r") as f:
-        json.load(f, object_pairs_hook=check_duplicates)
-except ValueError as e:
-    if "Duplicate key" in str(e):
-        # Extract just the key name
-        print(str(e).replace("Duplicate key: ", ""))
-        sys.exit(1)
-    else:
-        raise
-except Exception as e:
-    sys.exit(2)
-' "$file" 2>&1)
-
-  local exit_code=$?
-  if [ $exit_code -eq 1 ]; then
-    echo "$duplicates"
+  # Strategy: Use jq's --stream flag to detect duplicate keys
+  # jq --stream processes JSON before parsing (preserves duplicates)
+  # jq tostream processes JSON after parsing (duplicates already collapsed)
+  # If the outputs differ, duplicate keys exist
+  if ! diff -q <(jq --stream . "$file" 2>/dev/null) <(jq tostream "$file" 2>/dev/null) > /dev/null 2>&1; then
+    # Duplicates found
+    echo "duplicate keys detected"
     return 1
-  elif [ $exit_code -eq 2 ]; then
-    return 2
   fi
   return 0
 }
