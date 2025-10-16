@@ -81,8 +81,6 @@ export const useJsonPatchWsStream = <T>(
       if (options.injectInitialEntry) {
         options.injectInitialEntry(dataRef.current);
       }
-
-      setData({ ...dataRef.current });
     }
 
     // Create WebSocket if it doesn't exist
