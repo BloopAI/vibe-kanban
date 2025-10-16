@@ -183,9 +183,7 @@ function DiffsPanelContent({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
-                    {allCollapsed
-                      ? t('diff.expandAll')
-                      : t('diff.collapseAll')}
+                    {allCollapsed ? t('diff.expandAll') : t('diff.collapseAll')}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
