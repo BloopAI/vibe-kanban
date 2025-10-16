@@ -81,6 +81,31 @@
       "creating": "Creating...",
       "createPr": "Create PR"
     },
+    "createPr": {
+      "labels": {
+        "title": "Title",
+        "descriptionOptional": "Description (optional)",
+        "remote": "Remote",
+        "sourceRemote": "Source Remote",
+        "baseBranch": "Base Branch"
+      },
+      "placeholders": {
+        "title": "Enter PR title",
+        "description": "Enter PR description",
+        "remote": {
+          "default": "Select remote",
+          "loading": "Loading remotes...",
+          "empty": "No remotes found"
+        },
+        "sourceRemote": {
+          "default": "Select source remote"
+        },
+        "baseBranch": {
+          "default": "Select base branch",
+          "loading": "Loading branches..."
+        }
+      }
+    },
     "errors": {
       "changeTargetBranch": "Failed to change target branch",
       "pushChanges": "Failed to push changes",
