@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -31,6 +31,7 @@ interface ProjectDetailProps {
 
 export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -138,7 +139,13 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => navigate(`/projects/${projectId}/tasks`)}>
+          <Button onClick={() => {
+            const search = searchParams.toString();
+            navigate({
+              pathname: `/projects/${projectId}/tasks`,
+              search: search ? `?${search}` : '',
+            });
+          }}>
             <CheckSquare className="mr-2 h-4 w-4" />
             View Tasks
           </Button>

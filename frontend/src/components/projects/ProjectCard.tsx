@@ -20,7 +20,7 @@ import {
   MoreHorizontal,
   Trash2,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Project } from 'shared/types';
 import { useEffect, useRef } from 'react';
 import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
@@ -42,6 +42,7 @@ function ProjectCard({
   onEdit,
 }: Props) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const ref = useRef<HTMLDivElement>(null);
   const handleOpenInEditor = useOpenProjectInEditor(project);
 
@@ -80,7 +81,13 @@ function ProjectCard({
   return (
     <Card
       className={`hover:shadow-md transition-shadow cursor-pointer focus:ring-2 focus:ring-primary outline-none border`}
-      onClick={() => navigate(`/projects/${project.id}/tasks`)}
+      onClick={() => {
+        const search = searchParams.toString();
+        navigate({
+          pathname: `/projects/${project.id}/tasks`,
+          search: search ? `?${search}` : '',
+        });
+      }}
       tabIndex={isFocused ? 0 : -1}
       ref={ref}
     >
@@ -99,7 +106,11 @@ function ProjectCard({
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigate(`/projects/${project.id}`);
+                    const search = searchParams.toString();
+                    navigate({
+                      pathname: `/projects/${project.id}`,
+                      search: search ? `?${search}` : '',
+                    });
                   }}
                 >
                   <ExternalLink className="mr-2 h-4 w-4" />

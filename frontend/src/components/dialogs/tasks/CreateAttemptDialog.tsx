@@ -42,7 +42,12 @@ export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
       taskId,
       onSuccess: (attempt) => {
         if (projectId) {
-          navigate(paths.attempt(projectId, taskId, attempt.id));
+          const params = new URLSearchParams(window.location.search);
+          const search = params.toString();
+          navigate({
+            pathname: paths.attempt(projectId, taskId, attempt.id),
+            search: search ? `?${search}` : '',
+          });
         }
       },
     });

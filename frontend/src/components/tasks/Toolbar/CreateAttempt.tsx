@@ -1,5 +1,5 @@
 import { Dispatch, SetStateAction, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button.tsx';
 import { X } from 'lucide-react';
 import type { GitBranch, Task } from 'shared/types';
@@ -45,13 +45,18 @@ function CreateAttempt({
   selectedAttempt,
 }: Props) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { projectId } = useProject();
   const { isAttemptRunning } = useAttemptExecution(selectedAttempt?.id);
   const { createAttempt, isCreating } = useAttemptCreation({
     taskId: task.id,
     onSuccess: (attempt) => {
       if (projectId) {
-        navigate(paths.attempt(projectId, task.id, attempt.id));
+        const search = searchParams.toString();
+        navigate({
+          pathname: paths.attempt(projectId, task.id, attempt.id),
+          search: search ? `?${search}` : '',
+        });
       }
     },
   });
