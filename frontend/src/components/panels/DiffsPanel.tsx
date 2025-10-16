@@ -100,7 +100,7 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4 m-4">
         <div className="text-red-800 text-sm">
-          {t('diffs.errorLoadingDiff', { error })}
+          {t('diff.errorLoadingDiff', { error })}
         </div>
       </div>
     );
@@ -171,8 +171,8 @@ function DiffsPanelContent({
                       aria-pressed={allCollapsed}
                       aria-label={
                         allCollapsed
-                          ? t('diffs.expandAll')
-                          : t('diffs.collapseAll')
+                          ? t('diff.expandAll')
+                          : t('diff.collapseAll')
                       }
                     >
                       {allCollapsed ? (
@@ -184,8 +184,8 @@ function DiffsPanelContent({
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
                     {allCollapsed
-                      ? t('diffs.expandAll')
-                      : t('diffs.collapseAll')}
+                      ? t('diff.expandAll')
+                      : t('diff.collapseAll')}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -197,7 +197,7 @@ function DiffsPanelContent({
               className="text-sm text-muted-foreground whitespace-nowrap"
               aria-live="polite"
             >
-              {t('diffs.filesChanged', { count: fileCount })}{' '}
+              {t('diff.filesChanged', { count: fileCount })}{' '}
               <span className="text-green-600 dark:text-green-500">
                 +{added}
               </span>{' '}
@@ -218,7 +218,7 @@ function DiffsPanelContent({
           </div>
         ) : diffs.length === 0 ? (
           <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-            {t('diffs.noChanges')}
+            {t('diff.noChanges')}
           </div>
         ) : (
           diffs.map((diff, idx) => {
