@@ -63,16 +63,16 @@ export function TaskPanelOnboarding({ isOpen }: TaskPanelOnboardingProps) {
         const handleRect = handleElement.getBoundingClientRect();
         const panelHeight = panel.offsetHeight;
         const viewportHeight = window.innerHeight;
-        
+
         let targetTop = handleRect.top + handleRect.height / 2;
         const halfPanelHeight = panelHeight / 2;
-        
+
         if (targetTop - halfPanelHeight < 20) {
           targetTop = halfPanelHeight + 20;
         } else if (targetTop + halfPanelHeight > viewportHeight - 20) {
           targetTop = viewportHeight - halfPanelHeight - 20;
         }
-        
+
         setPosition({
           top: targetTop,
           right: window.innerWidth - handleRect.left + 20,
