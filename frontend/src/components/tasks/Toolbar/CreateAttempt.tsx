@@ -1,5 +1,4 @@
 import { Dispatch, SetStateAction, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button.tsx';
 import { X } from 'lucide-react';
 import type { GitBranch, Task } from 'shared/types';
@@ -7,7 +6,7 @@ import type { ExecutorConfig } from 'shared/types';
 import type { ExecutorProfileId } from 'shared/types';
 import type { TaskAttempt } from 'shared/types';
 import { useAttemptCreation } from '@/hooks/useAttemptCreation';
-import { useAttemptExecution } from '@/hooks/useAttemptExecution';
+import { useAttemptExecution, useNavigateWithSearch } from '@/hooks';
 import BranchSelector from '@/components/tasks/BranchSelector.tsx';
 import { ExecutorProfileSelector } from '@/components/settings';
 import { useProject } from '@/contexts/project-context';
@@ -44,7 +43,7 @@ function CreateAttempt({
   availableProfiles,
   selectedAttempt,
 }: Props) {
-  const navigate = useNavigate();
+  const navigate = useNavigateWithSearch();
   const { projectId } = useProject();
   const { isAttemptRunning } = useAttemptExecution(selectedAttempt?.id);
   const { createAttempt, isCreating } = useAttemptCreation({

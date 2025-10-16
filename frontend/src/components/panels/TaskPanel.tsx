@@ -1,7 +1,7 @@
-import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useProject } from '@/contexts/project-context';
 import { useTaskAttempts } from '@/hooks/useTaskAttempts';
+import { useNavigateWithSearch } from '@/hooks';
 import { paths } from '@/lib/paths';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { NewCardContent } from '../ui/new-card';
@@ -16,7 +16,7 @@ interface TaskPanelProps {
 
 const TaskPanel = ({ task }: TaskPanelProps) => {
   const { t } = useTranslation('tasks');
-  const navigate = useNavigate();
+  const navigate = useNavigateWithSearch();
   const { projectId } = useProject();
 
   const {

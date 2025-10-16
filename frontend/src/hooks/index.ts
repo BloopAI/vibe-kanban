@@ -8,3 +8,4 @@ export { useMerge } from './useMerge';
 export { usePush } from './usePush';
 export { useKeyboardShortcut } from './useKeyboardShortcut';
 export { useAttemptConflicts } from './useAttemptConflicts';
+export { useNavigateWithSearch } from './useNavigateWithSearch';

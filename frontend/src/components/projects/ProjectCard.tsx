@@ -20,10 +20,10 @@ import {
   MoreHorizontal,
   Trash2,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { Project } from 'shared/types';
 import { useEffect, useRef } from 'react';
 import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
+import { useNavigateWithSearch } from '@/hooks';
 import { projectsApi } from '@/lib/api';
 
 type Props = {
@@ -41,7 +41,7 @@ function ProjectCard({
   setError,
   onEdit,
 }: Props) {
-  const navigate = useNavigate();
+  const navigate = useNavigateWithSearch();
   const ref = useRef<HTMLDivElement>(null);
   const handleOpenInEditor = useOpenProjectInEditor(project);
 
