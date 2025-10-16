@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { stripAnsi } from 'fancy-ansi';
 
 const urlPatterns = [
@@ -53,15 +53,33 @@ export const detectDevserverUrl = (line: string): DevserverUrlInfo | null => {
 export const useDevserverUrlFromLogs = (
   logs: Array<{ content: string }> | undefined
 ): DevserverUrlInfo | undefined => {
-  return useMemo(() => {
-    if (!logs || logs.length === 0) return undefined;
-    for (let i = logs.length - 1; i >= 0; i -= 1) {
-      const entry = logs[i];
-      const detected = detectDevserverUrl(entry.content);
+  const [urlInfo, setUrlInfo] = useState<DevserverUrlInfo | undefined>();
+  const lastIndexRef = useRef(0);
+
+  useEffect(() => {
+    if (!logs) {
+      setUrlInfo(undefined);
+      lastIndexRef.current = 0;
+      return;
+    }
+
+    if (logs.length < lastIndexRef.current) {
+      lastIndexRef.current = 0;
+      setUrlInfo(undefined);
+    }
+
+    for (let i = logs.length - 1; i >= lastIndexRef.current; i -= 1) {
+      const detected = detectDevserverUrl(logs[i].content);
       if (detected) {
-        return detected;
+        setUrlInfo((prev) =>
+          prev && prev.url === detected.url ? prev : detected
+        );
+        break;
       }
     }
-    return undefined;
+
+    lastIndexRef.current = logs.length;
   }, [logs]);
+
+  return urlInfo;
 };
