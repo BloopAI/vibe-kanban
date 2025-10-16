@@ -162,16 +162,15 @@ function AppContent() {
                     path="/mcp-servers"
                     element={<Navigate to="/settings/mcp" replace />}
                   />
+                  <Route
+                    path="/projects/:projectId/tasks/:taskId"
+                    element={<ProjectTasks />}
+                  />
+                  <Route
+                    path="/projects/:projectId/tasks/:taskId/attempts/:attemptId"
+                    element={<ProjectTasks />}
+                  />
                 </Route>
-                <Route
-                  path="/projects/:projectId/tasks/:taskId"
-                  element={<ProjectTasks />}
-                />
-                <Route
-                  path="/projects/:projectId/tasks/:taskId/attempts/:attemptId"
-                  element={<ProjectTasks />}
-                />
-              </Route>
               </SentryRoutes>
             </div>
             <ShortcutsHelp />
