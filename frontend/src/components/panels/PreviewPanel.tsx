@@ -125,7 +125,13 @@ export function PreviewPanel() {
     previewState.status === 'ready' &&
     Boolean(previewState.url) &&
     !iframeError;
-  const mode = iframeError ? 'error' : isPreviewReady ? 'ready' : 'noServer';
+  const mode = iframeError
+    ? 'error'
+    : isPreviewReady
+      ? 'ready'
+      : runningDevServer
+        ? 'searching'
+        : 'noServer';
   const toggleLogs = () => {
     setShowLogs((v) => !v);
   };
