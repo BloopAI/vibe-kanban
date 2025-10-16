@@ -12,6 +12,7 @@ pub struct ApprovalRequest {
     pub tool_name: String,
     pub tool_input: serde_json::Value,
     pub session_id: String,
+    pub tool_call_id: Option<String>,
     pub execution_process_id: Uuid,
     pub created_at: DateTime<Utc>,
     pub timeout_at: DateTime<Utc>,
@@ -25,6 +26,7 @@ impl ApprovalRequest {
             tool_name: request.tool_name,
             tool_input: request.tool_input,
             session_id: request.session_id,
+            tool_call_id: request.tool_call_id,
             execution_process_id,
             created_at: now,
             timeout_at: now + Duration::seconds(APPROVAL_TIMEOUT_SECONDS),
@@ -38,6 +40,7 @@ pub struct CreateApprovalRequest {
     pub tool_name: String,
     pub tool_input: serde_json::Value,
     pub session_id: String,
+    pub tool_call_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]

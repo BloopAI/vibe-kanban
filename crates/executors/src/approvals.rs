@@ -1,6 +1,7 @@
 use std::fmt;
 
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
 use workspace_utils::approvals::ApprovalStatus;
@@ -31,5 +32,11 @@ pub trait ExecutorApprovalService: Send + Sync {
         &self,
         tool_name: &str,
         tool_input: Value,
+        tool_call_id: &str,
     ) -> Result<ApprovalStatus, ExecutorApprovalError>;
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ToolCallMetadata {
+    pub tool_call_id: String,
 }

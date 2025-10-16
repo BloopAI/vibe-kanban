@@ -140,7 +140,10 @@ impl AppServerClient {
             ServerRequest::ApplyPatchApproval { request_id, params } => {
                 let input = serde_json::to_value(&params)
                     .map_err(|err| ExecutorError::Io(io::Error::other(err.to_string())))?;
-                let status = match self.request_tool_approval("codex.apply_patch", input).await {
+                let status = match self
+                    .request_tool_approval("edit", input, &params.call_id)
+                    .await
+                {
                     Ok(status) => status,
                     Err(err) => {
                         tracing::error!("failed to request patch approval: {err}");
@@ -172,7 +175,7 @@ impl AppServerClient {
                 let input = serde_json::to_value(&params)
                     .map_err(|err| ExecutorError::Io(io::Error::other(err.to_string())))?;
                 let status = match self
-                    .request_tool_approval("codex.exec_command", input)
+                    .request_tool_approval("bash", input, &params.call_id)
                     .await
                 {
                     Ok(status) => status,
@@ -210,6 +213,7 @@ impl AppServerClient {
         &self,
         tool_name: &str,
         tool_input: Value,
+        tool_call_id: &str,
     ) -> Result<ApprovalStatus, ExecutorError> {
         tokio::time::sleep(std::time::Duration::from_millis(20)).await;
         if self.auto_approve {
@@ -217,7 +221,7 @@ impl AppServerClient {
         }
         Ok(self
             .approvals
-            .request_tool_approval(tool_name, tool_input)
+            .request_tool_approval(tool_name, tool_input, tool_call_id)
             .await?)
     }
 
