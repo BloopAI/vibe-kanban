@@ -106,18 +106,18 @@ export function TaskPanelOnboarding({ isOpen }: TaskPanelOnboardingProps) {
                 transition={{ duration: 0.2 }}
               >
                 {stage.video && (
-                  <div className="w-full bg-muted">
-                    <video
-                      ref={videoRef}
-                      className="w-full h-auto"
-                      autoPlay
-                      loop
-                      muted
-                      playsInline
-                    >
-                      <source src={stage.video} type="video/mp4" />
-                    </video>
-                  </div>
+                <div className="w-full bg-muted aspect-video">
+                <video
+                ref={videoRef}
+                className="w-full h-full object-cover"
+                autoPlay
+                loop
+                muted
+                playsInline
+                >
+                <source src={stage.video} type="video/mp4" />
+                </video>
+                </div>
                 )}
 
                 <div className="p-6 space-y-4">
