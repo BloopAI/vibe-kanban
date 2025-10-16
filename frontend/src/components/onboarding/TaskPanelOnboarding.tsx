@@ -25,7 +25,7 @@ export function TaskPanelOnboarding({ isOpen }: TaskPanelOnboardingProps) {
 
     updatePosition();
     window.addEventListener('resize', updatePosition);
-    
+
     const observer = new MutationObserver(updatePosition);
     observer.observe(document.body, {
       childList: true,
@@ -70,10 +70,10 @@ export function TaskPanelOnboarding({ isOpen }: TaskPanelOnboardingProps) {
                 ✕
               </button>
             </div>
-            
+
             <p className="text-sm text-muted-foreground">
-              This is your task details panel. Here you can view task information,
-              track progress, and manage task attempts.
+              This is your task details panel. Here you can view task
+              information, track progress, and manage task attempts.
             </p>
 
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
