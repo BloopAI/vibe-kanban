@@ -5,6 +5,7 @@ import i18n from '@/i18n';
 import { Projects } from '@/pages/projects';
 import { ProjectTasks } from '@/pages/project-tasks';
 import { NormalLayout } from '@/components/layout/NormalLayout';
+import { initializeAnalytics, trackEvent } from '@/lib/analytics';
 
 import {
   AgentSettings,
@@ -38,6 +39,23 @@ const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
 function AppContent() {
   const { config, updateAndSaveConfig, loading } = useUserSystem();
+
+  // Initialize analytics when config is loaded
+  useEffect(() => {
+    if (config) {
+      const analyticsEnabled = config.analytics_enabled ?? false;
+      initializeAnalytics(analyticsEnabled);
+
+      // Track app loaded event
+      if (analyticsEnabled) {
+        trackEvent('app_loaded', {
+          version: '0.0.108', // TODO: Get from package.json or env
+          theme: config.theme,
+          language: config.language,
+        });
+      }
+    }
+  }, [config]);
 
   useEffect(() => {
     let cancelled = false;
