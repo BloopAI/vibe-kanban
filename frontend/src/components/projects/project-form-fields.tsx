@@ -16,8 +16,7 @@ import {
   ScriptPlaceholderContext,
 } from '@/utils/script-placeholders';
 import { useUserSystem } from '@/components/config-provider';
-import { CopyFilesField } from './copy-files-field';
-// Removed collapsible sections for simplicity; show fields always in edit mode
+import { ProjectScriptsForm } from './ProjectScriptsForm';
 import { fileSystemApi } from '@/lib/api';
 import { showFolderPicker } from '@/lib/modals';
 import { DirectoryEntry } from 'shared/types';
@@ -427,75 +426,19 @@ export function ProjectFormFields({
       )}
 
       {isEditing && (
-        <div className="space-y-4 pt-4 border-t border-border">
-          <div className="space-y-2">
-            <Label htmlFor="setup-script">Setup Script</Label>
-            <textarea
-              id="setup-script"
-              value={setupScript}
-              onChange={(e) => setSetupScript(e.target.value)}
-              placeholder={placeholders.setup}
-              rows={4}
-              className="w-full px-3 py-2 text-sm border border-input bg-background text-foreground rounded-md resize-vertical focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-            <p className="text-sm text-muted-foreground">
-              This script will run after creating the worktree and before the
-              coding agent starts. Use it for setup tasks like installing
-              dependencies or preparing the environment.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="dev-script">Dev Server Script</Label>
-            <textarea
-              id="dev-script"
-              value={devScript}
-              onChange={(e) => setDevScript(e.target.value)}
-              placeholder={placeholders.dev}
-              rows={4}
-              className="w-full px-3 py-2 text-sm border border-input bg-background text-foreground rounded-md resize-vertical focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-            <p className="text-sm text-muted-foreground">
-              This script can be run from task attempts to start a development
-              server. Use it to quickly start your project's dev server for
-              testing changes.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="cleanup-script">Cleanup Script</Label>
-            <textarea
-              id="cleanup-script"
-              value={cleanupScript}
-              onChange={(e) => setCleanupScript(e.target.value)}
-              placeholder={placeholders.cleanup}
-              rows={4}
-              className="w-full px-3 py-2 text-sm border border-input bg-background text-foreground rounded-md resize-vertical focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-            <p className="text-sm text-muted-foreground">
-              This script runs after coding agent execution{' '}
-              <strong>only if changes were made</strong>. Use it for quality
-              assurance tasks like running linters, formatters, tests, or other
-              validation steps. If no changes are made, this script is skipped.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Copy Files</Label>
-            <CopyFilesField
-              value={copyFiles}
-              onChange={setCopyFiles}
-              projectId={projectId}
-            />
-            <p className="text-sm text-muted-foreground">
-              Comma-separated list of files to copy from the original project
-              directory to the worktree. These files will be copied after the
-              worktree is created but before the setup script runs. Useful for
-              environment-specific files like .env, configuration files, and
-              local settings. Make sure these are gitignored or they could get
-              committed!
-            </p>
-          </div>
+        <div className="pt-4 border-t border-border">
+          <ProjectScriptsForm
+            setupScript={setupScript}
+            setSetupScript={setSetupScript}
+            devScript={devScript}
+            setDevScript={setDevScript}
+            cleanupScript={cleanupScript}
+            setCleanupScript={setCleanupScript}
+            copyFiles={copyFiles}
+            setCopyFiles={setCopyFiles}
+            placeholders={placeholders}
+            projectId={projectId}
+          />
         </div>
       )}
 

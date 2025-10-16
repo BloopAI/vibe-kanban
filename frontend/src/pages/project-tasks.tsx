@@ -39,6 +39,7 @@ import { useProjectTasks } from '@/hooks/useProjectTasks';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import NiceModal from '@ebay/nice-modal-react';
 import { useHotkeysContext } from 'react-hotkeys-hook';
+import { ProjectSetupView } from '@/components/projects/ProjectSetupView';
 
 type Task = TaskWithAttemptStatus;
 
@@ -462,6 +463,9 @@ export function ProjectTasks() {
   // Combine loading states for initial load
   const isInitialTasksLoad = isLoading && tasks.length === 0;
 
+  // Show setup wizard when there are no tasks
+  const shouldShowSetup = tasks.length === 0 && !isLoading && !!project;
+
   if (projectError) {
     return (
       <div className="p-4">
@@ -500,7 +504,12 @@ export function ProjectTasks() {
       <div className="flex-1 min-h-0 xl:flex">
         {/* Left Column - Kanban Section */}
         <div className={getKanbanSectionClasses(isPanelOpen, isFullscreen)}>
-          {tasks.length === 0 ? (
+          {shouldShowSetup && project ? (
+            <ProjectSetupView
+              project={project}
+              onCreateTask={handleCreateNewTask}
+            />
+          ) : tasks.length === 0 ? (
             <div className="max-w-7xl mx-auto mt-8">
               <Card>
                 <CardContent className="text-center py-8">

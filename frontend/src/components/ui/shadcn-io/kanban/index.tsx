@@ -133,7 +133,7 @@ export const KanbanCard = ({
 };
 
 export type KanbanCardsProps = {
-  children: ReactNode;
+  children?: ReactNode;
   className?: string;
 };
 
