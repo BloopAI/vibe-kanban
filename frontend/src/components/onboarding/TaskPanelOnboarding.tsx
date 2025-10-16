@@ -46,58 +46,10 @@ interface TaskPanelOnboardingProps {
 
 export function TaskPanelOnboarding({ isOpen }: TaskPanelOnboardingProps) {
   const [currentStage, setCurrentStage] = useState(0);
-  const [position, setPosition] = useState({ top: 0, right: 0 });
-  const panelRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const stage = ONBOARDING_STAGES[currentStage];
   const totalStages = ONBOARDING_STAGES.length;
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const updatePosition = () => {
-      const handleElement = document.getElementById('handle-kr');
-      const panel = panelRef.current;
-      if (handleElement && panel) {
-        const handleRect = handleElement.getBoundingClientRect();
-        const panelHeight = panel.offsetHeight;
-        const viewportHeight = window.innerHeight;
-
-        let targetTop =
-          handleRect.top + handleRect.height / 2 - panelHeight / 2;
-
-        if (targetTop < 20) {
-          targetTop = 20;
-        } else if (targetTop + panelHeight > viewportHeight - 20) {
-          targetTop = viewportHeight - panelHeight - 20;
-        }
-
-        setPosition({
-          top: targetTop,
-          right: window.innerWidth - handleRect.left + 20,
-        });
-      }
-    };
-
-    updatePosition();
-    const timer = setTimeout(updatePosition, 100);
-    window.addEventListener('resize', updatePosition);
-
-    const observer = new MutationObserver(updatePosition);
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['style'],
-    });
-
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('resize', updatePosition);
-      observer.disconnect();
-    };
-  }, [isOpen, currentStage]);
 
   useEffect(() => {
     if (videoRef.current) {
@@ -129,105 +81,108 @@ export function TaskPanelOnboarding({ isOpen }: TaskPanelOnboardingProps) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
-          ref={panelRef}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: 20 }}
-          transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}
-          style={{
-            position: 'fixed',
-            top: position.top,
-            right: position.right,
-            zIndex: 9999,
-          }}
-          className="w-[36rem] bg-card border border-border rounded-lg shadow-lg overflow-hidden"
-        >
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentStage}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
-            >
-              {stage.video && (
-                <div className="w-full bg-muted">
-                  <video
-                    ref={videoRef}
-                    className="w-full h-auto"
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                  >
-                    <source src={stage.video} type="video/mp4" />
-                  </video>
-                </div>
-              )}
-
-              <div className="p-6 space-y-4">
-                <div className="flex items-start justify-between">
-                  <h3 className="text-lg font-semibold text-foreground">
-                    {stage.title}
-                  </h3>
-                  <button
-                    onClick={handleClose}
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label="Close onboarding"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {stage.description}
-                </p>
-
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <div className="flex gap-1">
-                    {Array.from({ length: totalStages }).map((_, index) => (
-                      <span
-                        key={index}
-                        className={`w-2 h-2 rounded-full transition-colors ${
-                          index === currentStage ? 'bg-primary' : 'bg-muted'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <span>
-                    Step {currentStage + 1} of {totalStages}
-                  </span>
-                </div>
-
-                <div className="flex justify-between gap-2 pt-2">
-                  <button
-                    onClick={handleSkip}
-                    className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Skip
-                  </button>
-                  <div className="flex gap-2">
-                    {currentStage > 0 && (
-                      <button
-                        onClick={handlePrevious}
-                        className="px-3 py-1.5 text-sm border border-border rounded hover:bg-muted transition-colors"
-                      >
-                        Previous
-                      </button>
-                    )}
-                    <button
-                      onClick={handleNext}
-                      className="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-black/50 z-[9998]"
+            onClick={handleClose}
+          />
+          <motion.div
+            initial={{ opacity: 0, y: 100 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 100 }}
+            transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 w-2/3 bg-card border border-border rounded-lg shadow-2xl overflow-hidden z-[9999]"
+          >
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentStage}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+              >
+                {stage.video && (
+                  <div className="w-full bg-muted">
+                    <video
+                      ref={videoRef}
+                      className="w-full h-auto"
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
                     >
-                      {currentStage === totalStages - 1 ? 'Finish' : 'Next'}
+                      <source src={stage.video} type="video/mp4" />
+                    </video>
+                  </div>
+                )}
+
+                <div className="p-6 space-y-4">
+                  <div className="flex items-start justify-between">
+                    <h3 className="text-lg font-semibold text-foreground">
+                      {stage.title}
+                    </h3>
+                    <button
+                      onClick={handleClose}
+                      className="text-muted-foreground hover:text-foreground transition-colors"
+                      aria-label="Close onboarding"
+                    >
+                      ✕
                     </button>
                   </div>
+
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {stage.description}
+                  </p>
+
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="flex gap-1">
+                      {Array.from({ length: totalStages }).map((_, index) => (
+                        <span
+                          key={index}
+                          className={`w-2 h-2 rounded-full transition-colors ${
+                            index === currentStage ? 'bg-primary' : 'bg-muted'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span>
+                      Step {currentStage + 1} of {totalStages}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between gap-2 pt-2">
+                    <button
+                      onClick={handleSkip}
+                      className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      Skip
+                    </button>
+                    <div className="flex gap-2">
+                      {currentStage > 0 && (
+                        <button
+                          onClick={handlePrevious}
+                          className="px-3 py-1.5 text-sm border border-border rounded hover:bg-muted transition-colors"
+                        >
+                          Previous
+                        </button>
+                      )}
+                      <button
+                        onClick={handleNext}
+                        className="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
+                      >
+                        {currentStage === totalStages - 1 ? 'Finish' : 'Next'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          </AnimatePresence>
-        </motion.div>
+              </motion.div>
+            </AnimatePresence>
+          </motion.div>
+        </>
       )}
     </AnimatePresence>
   );
