@@ -53,6 +53,8 @@ pub enum ApiError {
     Multipart(#[from] MultipartError),
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
+    #[error("Unauthorized")]
+    Unauthorized,
     #[error("Conflict: {0}")]
     Conflict(String),
 }
@@ -113,6 +115,7 @@ impl IntoResponse for ApiError {
             },
             ApiError::Io(_) => (StatusCode::INTERNAL_SERVER_ERROR, "IoError"),
             ApiError::Multipart(_) => (StatusCode::BAD_REQUEST, "MultipartError"),
+            ApiError::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized"),
             ApiError::Conflict(_) => (StatusCode::CONFLICT, "ConflictError"),
         };
 
@@ -137,6 +140,7 @@ impl IntoResponse for ApiError {
                 _ => format!("{}: {}", error_type, self),
             },
             ApiError::Multipart(_) => "Failed to upload file. Please ensure the file is valid and try again.".to_string(),
+            ApiError::Unauthorized => "Unauthorized. Please sign in again.".to_string(),
             ApiError::Conflict(msg) => msg.clone(),
             ApiError::Drafts(drafts_err) => match drafts_err {
                 DraftsServiceError::Conflict(msg) => msg.clone(),

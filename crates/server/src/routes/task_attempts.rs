@@ -32,6 +32,7 @@ use executors::{
 use git2::BranchType;
 use serde::{Deserialize, Serialize};
 use services::services::{
+    clerk::ClerkSession,
     container::ContainerService,
     git::{ConflictOp, WorktreeResetOptions},
     github_service::{CreatePrRequest, GitHubService, GitHubServiceError},
@@ -605,6 +606,7 @@ pub async fn compare_commit_to_head(
 pub async fn merge_task_attempt(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
+    session: Option<Extension<ClerkSession>>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     let pool = &deployment.db().pool;
 
@@ -647,8 +649,13 @@ pub async fn merge_task_attempt(
     )
     .await?;
     Task::update_status(pool, ctx.task.id, TaskStatus::Done).await?;
-    if let Ok(publisher) = ShareTaskPublisher::new(deployment.db().clone()) {
-        if let Err(err) = publisher.update_shared_task_by_id(ctx.task.id).await {
+    if let Ok(publisher) =
+        ShareTaskPublisher::new(deployment.db().clone(), deployment.clerk_sessions().clone())
+    {
+        if let Err(err) = publisher
+            .update_shared_task_by_id(ctx.task.id, session.as_ref().map(|ext| &ext.0))
+            .await
+        {
             tracing::warn!(
                 ?err,
                 "Failed to propagate shared task update for {}",
@@ -1320,6 +1327,7 @@ pub struct AttachPrResponse {
 pub async fn attach_existing_pr(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
+    session: Option<Extension<ClerkSession>>,
 ) -> Result<ResponseJson<ApiResponse<AttachPrResponse>>, ApiError> {
     let pool = &deployment.db().pool;
 
@@ -1385,8 +1393,14 @@ pub async fn attach_existing_pr(
         // If PR is merged, mark task as done
         if matches!(pr_info.status, MergeStatus::Merged) {
             Task::update_status(pool, task.id, TaskStatus::Done).await?;
-            if let Ok(publisher) = ShareTaskPublisher::new(deployment.db().clone()) {
-                if let Err(err) = publisher.update_shared_task_by_id(task.id).await {
+            if let Ok(publisher) = ShareTaskPublisher::new(
+                deployment.db().clone(),
+                deployment.clerk_sessions().clone(),
+            ) {
+                if let Err(err) = publisher
+                    .update_shared_task_by_id(task.id, session.as_ref().map(|ext| &ext.0))
+                    .await
+                {
                     tracing::warn!(
                         ?err,
                         "Failed to propagate shared task update for {}",

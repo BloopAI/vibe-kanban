@@ -22,6 +22,7 @@ use executors::profile::ExecutorProfileId;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use serde::{Deserialize, Serialize};
 use services::services::{
+    clerk::ClerkSession,
     container::{ContainerService, WorktreeCleanupData, cleanup_worktrees_direct},
     share::{ShareError, ShareTaskPublisher},
 };
@@ -213,6 +214,7 @@ pub async fn create_task_and_start(
 pub async fn update_task(
     Extension(existing_task): Extension<Task>,
     State(deployment): State<DeploymentImpl>,
+    session: Option<Extension<ClerkSession>>,
     Json(payload): Json<UpdateTask>,
 ) -> Result<ResponseJson<ApiResponse<Task>>, ApiError> {
     // Use existing values if not provided in update
@@ -244,10 +246,12 @@ pub async fn update_task(
     }
 
     if task.shared_task_id.is_some() {
+        let session_ref = session.as_ref().map(|ext| &ext.0);
         let publisher =
-            ShareTaskPublisher::new(deployment.db().clone()).map_err(map_share_error)?;
+            ShareTaskPublisher::new(deployment.db().clone(), deployment.clerk_sessions().clone())
+                .map_err(map_share_error)?;
         publisher
-            .update_shared_task(&task)
+            .update_shared_task(&task, session_ref)
             .await
             .map_err(map_share_error)?;
     }
@@ -338,16 +342,18 @@ pub struct ShareTaskResponse {
 pub async fn share_task(
     Extension(task): Extension<Task>,
     State(deployment): State<DeploymentImpl>,
+    session: Option<Extension<ClerkSession>>,
 ) -> Result<ResponseJson<ApiResponse<ShareTaskResponse>>, ApiError> {
     let publisher = ShareTaskPublisher::new_with_metadata(
         deployment.db().clone(),
+        deployment.clerk_sessions().clone(),
         deployment.git().clone(),
         deployment.config().clone(),
     )
     .map_err(map_share_error)?;
 
     let shared_task_id = publisher
-        .share_task(task.id)
+        .share_task(task.id, session.as_ref().map(|ext| &ext.0))
         .await
         .map_err(map_share_error)?;
 
@@ -390,6 +396,7 @@ fn map_share_error(err: ShareError) -> ApiError {
         ShareError::InvalidResponse => {
             ApiError::Conflict("Remote share service returned an unexpected response".to_string())
         }
+        ShareError::MissingAuth => ApiError::Unauthorized,
     }
 }
 

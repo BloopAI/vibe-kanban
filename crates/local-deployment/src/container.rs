@@ -398,6 +398,7 @@ impl LocalContainerService {
         let config = self.config.clone();
         let container = self.clone();
         let analytics = self.analytics.clone();
+        let clerk_sessions = self.clerk_sessions.clone();
 
         let mut process_exit_rx = self.spawn_os_exit_watcher(exec_id);
 
@@ -500,12 +501,12 @@ impl LocalContainerService {
                         );
 
                         // Manually finalize task since we're bypassing normal execution flow
-                        Self::finalize_task(&db, &self.clerk_sessions, &config, &ctx).await;
+                        Self::finalize_task(&db, &clerk_sessions, &config, &ctx).await;
                     }
                 }
 
                 if Self::should_finalize(&ctx) {
-                    Self::finalize_task(&db, &self.clerk_sessions, &config, &ctx).await;
+                    Self::finalize_task(&db, &clerk_sessions, &config, &ctx).await;
                     // After finalization, check if a queued follow-up exists and start it
                     if let Err(e) = container.try_consume_queued_followup(&ctx).await {
                         tracing::error!(

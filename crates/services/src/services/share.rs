@@ -5,6 +5,7 @@ mod publisher;
 use std::sync::{Arc, Mutex as StdMutex};
 
 use async_trait::async_trait;
+use axum::http::{HeaderName, HeaderValue, header::AUTHORIZATION};
 use config::RemoteSyncConfig;
 use db::{
     DBService,
@@ -22,7 +23,7 @@ use remote::{
 use thiserror::Error;
 use tokio::{sync::oneshot, task::JoinHandle};
 use tokio_tungstenite::tungstenite::Message as WsMessage;
-use utils::ws::{WsClient, WsConfig, WsError, WsHandler, run_ws_client};
+use utils::ws::{WsClient, WsConfig, WsError, WsHandler, WsResult, run_ws_client};
 use uuid::Uuid;
 
 use crate::services::clerk::{ClerkSession, ClerkSessionStore};
@@ -184,14 +185,11 @@ async fn spawn_shared_remote(
     Ok(client)
 }
 
-fn build_ws_headers(
-    session: &ClerkSession,
-) -> utils::ws::WsResult<Vec<(http::HeaderName, http::HeaderValue)>> {
+fn build_ws_headers(session: &ClerkSession) -> WsResult<Vec<(HeaderName, HeaderValue)>> {
     let mut headers = Vec::new();
     let value = format!("Bearer {}", session.bearer());
-    let header =
-        http::HeaderValue::from_str(&value).map_err(|err| WsError::Header(err.to_string()))?;
-    headers.push((http::header::AUTHORIZATION, header));
+    let header = HeaderValue::from_str(&value).map_err(|err| WsError::Header(err.to_string()))?;
+    headers.push((AUTHORIZATION, header));
     Ok(headers)
 }
 

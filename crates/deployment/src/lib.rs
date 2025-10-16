@@ -125,7 +125,8 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     async fn spawn_pr_monitor_service(&self) -> tokio::task::JoinHandle<()> {
         let db = self.db().clone();
         let config = self.config().clone();
-        PrMonitorService::spawn(db, config).await
+        let sessions = self.clerk_sessions().clone();
+        PrMonitorService::spawn(db, config, sessions).await
     }
 
     async fn track_if_analytics_allowed(&self, event_name: &str, properties: Value) {
@@ -195,8 +196,12 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                     match Task::update_status(&self.db().pool, task.id, TaskStatus::InReview).await
                     {
                         Ok(_) => {
-                            if let Ok(publisher) = ShareTaskPublisher::new(self.db().clone()) {
-                                if let Err(err) = publisher.update_shared_task_by_id(task.id).await
+                            if let Ok(publisher) = ShareTaskPublisher::new(
+                                self.db().clone(),
+                                self.clerk_sessions().clone(),
+                            ) {
+                                if let Err(err) =
+                                    publisher.update_shared_task_by_id(task.id, None).await
                                 {
                                     tracing::warn!(
                                         ?err,

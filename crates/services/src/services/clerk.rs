@@ -92,7 +92,7 @@ impl ClerkSession {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 struct ClerkClaims {
     sub: String,
     sid: String,

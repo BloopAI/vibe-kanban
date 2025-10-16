@@ -1,5 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
+use axum::http::{self, HeaderName, HeaderValue};
 use futures::future::BoxFuture;
 use futures_util::{SinkExt, StreamExt};
 use thiserror::Error;
@@ -12,7 +13,7 @@ use tokio_tungstenite::{
     tungstenite::{client::IntoClientRequest, protocol::Message},
 };
 
-pub type HeaderFuture = BoxFuture<'static, WsResult<Vec<(http::HeaderName, http::HeaderValue)>>>;
+pub type HeaderFuture = BoxFuture<'static, WsResult<Vec<(HeaderName, HeaderValue)>>>;
 pub type HeaderFactory = Arc<dyn Fn() -> HeaderFuture + Send + Sync>;
 
 #[derive(Error, Debug)]
