@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 import { siDiscord } from 'simple-icons';
 import { Button } from '@/components/ui/button';
 import {
@@ -26,8 +26,7 @@ import { useProject } from '@/contexts/project-context';
 import { showProjectForm } from '@/lib/modals';
 import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
 import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
-
-const DISCORD_GUILD_ID = '1423630976524877857';
+import { useDiscordOnlineCount } from '@/hooks/useDiscordOnlineCount';
 
 const INTERNAL_NAV = [
   { label: 'Projects', icon: FolderOpen, to: '/projects' },
@@ -57,36 +56,7 @@ export function Navbar() {
   const { projectId, project } = useProject();
   const { query, setQuery, active, clear, registerInputRef } = useSearch();
   const handleOpenInEditor = useOpenProjectInEditor(project || null);
-  const [onlineCount, setOnlineCount] = useState<number | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const fetchCount = async () => {
-      try {
-        const res = await fetch(
-          `https://discord.com/api/guilds/${DISCORD_GUILD_ID}/widget.json`,
-          { cache: 'no-store' }
-        );
-        if (!res.ok) return; // Widget disabled or temporary error; keep previous value
-        const data = await res.json();
-        if (!cancelled && typeof data?.presence_count === 'number') {
-          setOnlineCount(data.presence_count);
-        }
-      } catch {
-        // Network error; ignore and keep previous value
-      }
-    };
-
-    // Initial fetch + refresh every 60s
-    fetchCount();
-    const interval = setInterval(fetchCount, 60_000);
-
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, []);
+  const { data: onlineCount } = useDiscordOnlineCount();
 
   const setSearchBarRef = useCallback(
     (node: HTMLInputElement | null) => {
@@ -143,7 +113,7 @@ export function Navbar() {
                 className=" h-full items-center flex p-2"
                 aria-live="polite"
               >
-                {onlineCount !== null
+                {onlineCount != null
                   ? `${onlineCount.toLocaleString()} online`
                   : 'online'}
               </span>
