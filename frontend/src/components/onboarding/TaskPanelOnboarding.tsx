@@ -121,48 +121,48 @@ export function TaskPanelOnboarding({ isOpen }: TaskPanelOnboardingProps) {
                 )}
 
                 <div className="p-6 space-y-4">
-                <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                <h3 className="text-lg font-semibold text-foreground">
-                    {stage.title}
-                  </h3>
-                </div>
-                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                {currentStage + 1} / {totalStages}
-                </div>
-                </div>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-foreground">
+                        {stage.title}
+                      </h3>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                      {currentStage + 1} / {totalStages}
+                    </div>
+                  </div>
 
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {stage.description}
-                </p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {stage.description}
+                  </p>
 
-                <div className="flex items-center gap-2">
-                  {Array.from({ length: totalStages }).map((_, index) => (
-                    <div
-                    key={index}
-                  className={`h-1 flex-1 rounded-full transition-colors ${
-                  index === currentStage ? 'bg-primary' : 'bg-muted'
-                }`}
-                />
-                ))}
-                </div>
+                  <div className="flex items-center gap-2">
+                    {Array.from({ length: totalStages }).map((_, index) => (
+                      <div
+                        key={index}
+                        className={`h-1 flex-1 rounded-full transition-colors ${
+                          index === currentStage ? 'bg-primary' : 'bg-muted'
+                        }`}
+                      />
+                    ))}
+                  </div>
 
-                <div className="flex justify-end gap-2 pt-2">
-                {currentStage > 0 && (
-                  <button
-                  onClick={handlePrevious}
-                    className="px-3 py-1.5 text-sm border border-border rounded hover:bg-muted transition-colors"
+                  <div className="flex justify-end gap-2 pt-2">
+                    {currentStage > 0 && (
+                      <button
+                        onClick={handlePrevious}
+                        className="px-3 py-1.5 text-sm border border-border rounded hover:bg-muted transition-colors"
+                      >
+                        Previous
+                      </button>
+                    )}
+                    <button
+                      onClick={handleNext}
+                      className="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
                     >
-                      Previous
+                      {currentStage === totalStages - 1 ? 'Finish' : 'Next'}
                     </button>
-                )}
-                <button
-                onClick={handleNext}
-                  className="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
-                >
-                  {currentStage === totalStages - 1 ? 'Finish' : 'Next'}
-                </button>
-                </div>
+                  </div>
                 </div>
               </motion.div>
             </AnimatePresence>
