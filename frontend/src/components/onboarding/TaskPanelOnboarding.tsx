@@ -149,23 +149,23 @@ export function TaskPanelOnboarding({ isOpen }: TaskPanelOnboardingProps) {
                   </div>
 
                   <div className="flex justify-end gap-2 pt-2">
-                  {currentStage > 0 && (
-                  <button
-                  onClick={handlePrevious}
-                  className="h-10 px-4 py-2 inline-flex items-center justify-center gap-2 text-sm font-medium border border-input hover:bg-accent hover:text-accent-foreground transition-colors"
-                  >
-                  <ChevronLeft className="h-4 w-4" />
-                    Previous
-                    </button>
-                  )}
-                  <button
-                  onClick={handleNext}
-                    className="h-10 px-4 py-2 inline-flex items-center justify-center gap-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 border border-foreground transition-colors"
-                  >
-                    {currentStage === totalStages - 1 ? 'Finish' : 'Next'}
+                    {currentStage > 0 && (
+                      <button
+                        onClick={handlePrevious}
+                        className="h-10 px-4 py-2 inline-flex items-center justify-center gap-2 text-sm font-medium border border-input hover:bg-accent hover:text-accent-foreground transition-colors"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        Previous
+                      </button>
+                    )}
+                    <button
+                      onClick={handleNext}
+                      className="h-10 px-4 py-2 inline-flex items-center justify-center gap-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 border border-foreground transition-colors"
+                    >
+                      {currentStage === totalStages - 1 ? 'Finish' : 'Next'}
                       <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             </AnimatePresence>
