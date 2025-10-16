@@ -42,6 +42,7 @@ use utils::{
 use uuid::Uuid;
 
 use crate::services::{
+    clerk::ClerkSessionStore,
     git::{GitService, GitServiceError},
     image::ImageService,
     share::ShareTaskPublisher,
@@ -110,6 +111,8 @@ pub trait ContainerService {
     fn db(&self) -> &DBService;
 
     fn git(&self) -> &GitService;
+
+    fn clerk_sessions(&self) -> &ClerkSessionStore;
 
     fn task_attempt_to_current_dir(&self, task_attempt: &TaskAttempt) -> PathBuf;
 
@@ -589,8 +592,10 @@ pub trait ContainerService {
             && run_reason != &ExecutionProcessRunReason::DevServer
         {
             Task::update_status(&self.db().pool, task.id, TaskStatus::InProgress).await?;
-            if let Ok(publisher) = ShareTaskPublisher::new(self.db().clone()) {
-                if let Err(err) = publisher.update_shared_task_by_id(task.id).await {
+            if let Ok(publisher) =
+                ShareTaskPublisher::new(self.db().clone(), self.clerk_sessions().clone())
+            {
+                if let Err(err) = publisher.update_shared_task_by_id(task.id, None).await {
                     tracing::warn!(
                         ?err,
                         "Failed to propagate shared task update for {}",

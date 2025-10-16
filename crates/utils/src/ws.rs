@@ -1,12 +1,20 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
+use axum::http::{self, HeaderName, HeaderValue};
+use futures::future::BoxFuture;
 use futures_util::{SinkExt, StreamExt};
 use thiserror::Error;
 use tokio::{
     sync::{mpsc, watch},
     time::sleep,
 };
-use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
+use tokio_tungstenite::{
+    connect_async,
+    tungstenite::{client::IntoClientRequest, protocol::Message},
+};
+
+pub type HeaderFuture = BoxFuture<'static, WsResult<Vec<(HeaderName, HeaderValue)>>>;
+pub type HeaderFactory = Arc<dyn Fn() -> HeaderFuture + Send + Sync>;
 
 #[derive(Error, Debug)]
 pub enum WsError {
@@ -24,6 +32,12 @@ pub enum WsError {
 
     #[error("Shutdown channel closed unexpectedly")]
     ShutdownChannelClosed,
+
+    #[error("failed to build websocket request: {0}")]
+    Request(#[from] http::Error),
+
+    #[error("failed to prepare websocket headers: {0}")]
+    Header(String),
 }
 
 pub type WsResult<T> = std::result::Result<T, WsError>;
@@ -43,6 +57,7 @@ pub struct WsConfig {
     pub reconnect_base_delay: Duration,
     pub reconnect_max_delay: Duration,
     pub ping_interval: Option<Duration>,
+    pub header_factory: Option<HeaderFactory>,
 }
 
 pub struct WsClient {
@@ -79,7 +94,15 @@ where
 
         loop {
             tracing::debug!(url = %config.url, "WebSocket connecting");
-            match connect_async(config.url.clone()).await {
+            let request = match build_request(&config).await {
+                Ok(req) => req,
+                Err(err) => {
+                    tracing::error!(?err, "failed to build websocket request");
+                    break;
+                }
+            };
+
+            match connect_async(request).await {
                 Ok((ws_stream, _resp)) => {
                     tracing::info!("WebSocket connected");
                     backoff = config.reconnect_base_delay;
@@ -185,4 +208,16 @@ where
         msg_tx,
         shutdown: shutdown_tx,
     })
+}
+
+async fn build_request(config: &WsConfig) -> WsResult<http::Request<()>> {
+    let mut request = config.url.clone().into_client_request()?;
+    if let Some(factory) = &config.header_factory {
+        let headers = factory().await?;
+        for (name, value) in headers {
+            request.headers_mut().insert(name, value);
+        }
+    }
+
+    Ok(request)
 }

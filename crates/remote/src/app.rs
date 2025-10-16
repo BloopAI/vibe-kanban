@@ -3,8 +3,11 @@ use std::net::SocketAddr;
 use anyhow::Context;
 
 use crate::{
-    AppState, activity::ActivityBroker, auth::ClerkAuth, clerk::ClerkService,
-    config::RemoteServerConfig, db, routes,
+    AppState,
+    activity::ActivityBroker,
+    auth::{ClerkAuth, ClerkService},
+    config::RemoteServerConfig,
+    db, routes,
 };
 
 pub struct Server;
@@ -20,7 +23,7 @@ impl Server {
             .context("failed to run database migrations")?;
 
         let broker = ActivityBroker::default();
-        let auth = ClerkAuth::new(&config.clerk)?;
+        let auth = ClerkAuth::new(config.clerk.get_issuer().clone())?;
         let clerk = ClerkService::new(&config.clerk)?;
         let state = AppState::new(pool.clone(), broker.clone(), config.clone(), auth, clerk);
 

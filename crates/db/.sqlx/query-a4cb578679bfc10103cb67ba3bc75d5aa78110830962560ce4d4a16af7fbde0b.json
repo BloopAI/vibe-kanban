@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO shared_activity_cursors (\n                organization_id,\n                last_seq,\n                updated_at\n            )\n            VALUES (\n                $1,\n                $2,\n                datetime('now', 'subsec')\n            )\n            ON CONFLICT(organization_id) DO UPDATE SET\n                last_seq   = excluded.last_seq,\n                updated_at = excluded.updated_at\n            RETURNING\n                organization_id AS \"organization_id!: String\",\n                last_seq        AS \"last_seq!: i64\",\n                updated_at      AS \"updated_at!: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "organization_id!: String",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_seq!: i64",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 2,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "a4cb578679bfc10103cb67ba3bc75d5aa78110830962560ce4d4a16af7fbde0b"
+}

@@ -2,13 +2,13 @@ PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS shared_tasks (
     id                 BLOB PRIMARY KEY,
-    organization_id    BLOB NOT NULL,
+    organization_id    TEXT NOT NULL,
     project_id         BLOB NOT NULL,
     title              TEXT NOT NULL,
     description        TEXT,
     status             TEXT NOT NULL DEFAULT 'todo'
                         CHECK (status IN ('todo','inprogress','done','cancelled','inreview')),
-    assignee_member_id BLOB,
+    assignee_user_id TEXT,
     version            INTEGER NOT NULL DEFAULT 1,
     last_event_seq     INTEGER,
     created_at         TEXT NOT NULL DEFAULT (datetime('now', 'subsec')),
@@ -26,7 +26,7 @@ CREATE INDEX IF NOT EXISTS idx_shared_tasks_project
     ON shared_tasks (project_id);
 
 CREATE TABLE IF NOT EXISTS shared_activity_cursors (
-    organization_id BLOB PRIMARY KEY,
+    organization_id TEXT PRIMARY KEY,
     last_seq        INTEGER NOT NULL CHECK (last_seq >= 0),
     updated_at      TEXT NOT NULL DEFAULT (datetime('now', 'subsec'))
 );

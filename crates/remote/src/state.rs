@@ -3,7 +3,9 @@ use std::sync::Arc;
 use sqlx::PgPool;
 
 use crate::{
-    activity::ActivityBroker, auth::ClerkAuth, clerk::ClerkService, config::RemoteServerConfig,
+    activity::ActivityBroker,
+    auth::{ClerkAuth, ClerkService},
+    config::RemoteServerConfig,
 };
 
 #[derive(Clone)]

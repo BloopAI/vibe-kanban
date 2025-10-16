@@ -46,7 +46,10 @@ pub async fn require_clerk_session(
     };
 
     let repo = IdentityRepository::new(state.pool(), state.clerk());
-    let organization = match repo.ensure_organization(&org_id).await {
+    let organization = match repo
+        .ensure_organization(&org_id, identity.org_slug.as_deref())
+        .await
+    {
         Ok(org) => org,
         Err(IdentityError::Clerk(error)) => {
             tracing::warn!(?error, "clerk organization lookup failed");

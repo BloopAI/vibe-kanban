@@ -65,15 +65,13 @@ pub async fn create_shared_task(
         assignee_user_id,
     } = payload;
 
-    if let Some(assignee) = &assignee_user_id {
-        if assignee != &ctx.user.id {
-            if let Err(err) = identity_repo
-                .ensure_user(&ctx.organization.id, assignee)
-                .await
-            {
-                return identity_error_response(err, "assignee not found or inactive");
-            }
-        }
+    if let Some(assignee) = &assignee_user_id
+        && assignee != &ctx.user.id
+        && let Err(err) = identity_repo
+            .ensure_user(&ctx.organization.id, assignee)
+            .await
+    {
+        return identity_error_response(err, "assignee not found or inactive");
     }
 
     let project_metadata = project.map(|p| CreateSharedTaskProjectData {
@@ -128,15 +126,13 @@ pub async fn transfer_task_assignment(
     let repo = SharedTaskRepository::new(state.pool());
     let identity_repo = IdentityRepository::new(state.pool(), state.clerk());
 
-    if let Some(assignee) = payload.new_assignee_user_id.as_ref() {
-        if assignee != &ctx.user.id {
-            if let Err(err) = identity_repo
-                .ensure_user(&ctx.organization.id, assignee)
-                .await
-            {
-                return identity_error_response(err, "assignee not found or inactive");
-            }
-        }
+    if let Some(assignee) = payload.new_assignee_user_id.as_ref()
+        && assignee != &ctx.user.id
+        && let Err(err) = identity_repo
+            .ensure_user(&ctx.organization.id, assignee)
+            .await
+    {
+        return identity_error_response(err, "assignee not found or inactive");
     }
 
     let data = TransferTaskAssignmentData {

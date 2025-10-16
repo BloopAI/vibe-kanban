@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            SELECT\n                id                         AS \"id!: Uuid\",\n                organization_id            AS \"organization_id!: Uuid\",\n                project_id                 AS \"project_id!: Uuid\",\n                title                      AS title,\n                description                AS description,\n                status                     AS \"status!: TaskStatus\",\n                assignee_member_id         AS \"assignee_member_id: Uuid\",\n                version                    AS \"version!: i64\",\n                last_event_seq             AS \"last_event_seq: i64\",\n                created_at                 AS \"created_at!: DateTime<Utc>\",\n                updated_at                 AS \"updated_at!: DateTime<Utc>\"\n            FROM shared_tasks\n            WHERE rowid = $1\n            ",
+  "query": "\n            SELECT\n                id                         AS \"id!: Uuid\",\n                organization_id            AS \"organization_id!: String\",\n                project_id                 AS \"project_id!: Uuid\",\n                title                      AS title,\n                description                AS description,\n                status                     AS \"status!: TaskStatus\",\n                assignee_user_id           AS \"assignee_user_id: String\",\n                version                    AS \"version!: i64\",\n                last_event_seq             AS \"last_event_seq: i64\",\n                created_at                 AS \"created_at!: DateTime<Utc>\",\n                updated_at                 AS \"updated_at!: DateTime<Utc>\"\n            FROM shared_tasks\n            ORDER BY updated_at DESC\n            ",
   "describe": {
     "columns": [
       {
@@ -9,9 +9,9 @@
         "type_info": "Blob"
       },
       {
-        "name": "organization_id!: Uuid",
+        "name": "organization_id!: String",
         "ordinal": 1,
-        "type_info": "Blob"
+        "type_info": "Text"
       },
       {
         "name": "project_id!: Uuid",
@@ -34,9 +34,9 @@
         "type_info": "Text"
       },
       {
-        "name": "assignee_member_id: Uuid",
+        "name": "assignee_user_id: String",
         "ordinal": 6,
-        "type_info": "Blob"
+        "type_info": "Text"
       },
       {
         "name": "version!: i64",
@@ -60,7 +60,7 @@
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 0
     },
     "nullable": [
       true,
@@ -76,5 +76,5 @@
       false
     ]
   },
-  "hash": "f14230c03abcec7b687529c2293f07a14f0993c1013840b88b0324f097f0d189"
+  "hash": "478cdf19781b6a57be0f6cac6b3908178473877e1adc6b285e97ac6f8ec37993"
 }

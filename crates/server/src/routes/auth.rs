@@ -1,16 +1,18 @@
 use axum::{
     Router,
-    extract::{Request, State},
+    extract::{Json, Request, State},
     http::StatusCode,
     middleware::{Next, from_fn_with_state},
     response::{Json as ResponseJson, Response},
     routing::{get, post},
 };
+use chrono::{DateTime, Utc};
 use deployment::Deployment;
 use octocrab::auth::Continue;
 use serde::{Deserialize, Serialize};
 use services::services::{
     auth::{AuthError, DeviceFlowStartResponse},
+    clerk::ClerkSession,
     config::save_config_to_file,
     github_service::{GitHubService, GitHubServiceError},
 };
@@ -23,6 +25,10 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/auth/github/device/start", post(device_start))
         .route("/auth/github/device/poll", post(device_poll))
         .route("/auth/github/check", get(github_check_token))
+        .route(
+            "/auth/clerk/session",
+            post(set_clerk_session).delete(clear_clerk_session),
+        )
         .layer(from_fn_with_state(
             deployment.clone(),
             sentry_user_context_middleware,
@@ -115,6 +121,60 @@ async fn github_check_token(
         ))),
         Err(e) => Err(e.into()),
     }
+}
+
+#[derive(Debug, Deserialize)]
+struct ClerkSessionRequest {
+    token: String,
+}
+
+#[derive(Debug, Serialize)]
+struct ClerkSessionResponse {
+    user_id: String,
+    organization_id: Option<String>,
+    session_id: String,
+    expires_at: DateTime<Utc>,
+}
+
+async fn set_clerk_session(
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<ClerkSessionRequest>,
+) -> Result<ResponseJson<ApiResponse<ClerkSessionResponse>>, ApiError> {
+    let Some(auth) = deployment.clerk_auth() else {
+        return Err(ApiError::Conflict(
+            "Clerk authentication is not configured".to_string(),
+        ));
+    };
+
+    let token = payload.token.trim();
+    if token.is_empty() {
+        return Err(ApiError::Unauthorized);
+    }
+
+    let identity = match auth.verify(token).await {
+        Ok(identity) => identity,
+        Err(err) => {
+            tracing::warn!(?err, "failed to verify Clerk session during registration");
+            return Err(ApiError::Unauthorized);
+        }
+    };
+
+    let session = ClerkSession::from_parts(token.to_string(), identity);
+    deployment.clerk_sessions().set(session.clone()).await;
+
+    let response = ClerkSessionResponse {
+        user_id: session.user_id.clone(),
+        organization_id: session.org_id.clone(),
+        session_id: session.session_id.clone(),
+        expires_at: session.expires_at,
+    };
+
+    Ok(ResponseJson(ApiResponse::success(response)))
+}
+
+async fn clear_clerk_session(State(deployment): State<DeploymentImpl>) -> StatusCode {
+    deployment.clerk_sessions().clear().await;
+    StatusCode::NO_CONTENT
 }
 
 /// Middleware to set Sentry user context for every request
