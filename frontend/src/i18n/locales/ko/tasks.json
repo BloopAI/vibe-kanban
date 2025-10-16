@@ -150,6 +150,7 @@
       "show": "표시",
       "title": "개발 서버 로그"
     },
+    "detectingUrl": "미리보기 URL을 감지하는 중...",
     "noServer": {
       "companionLink": "설치 가이드 보기",
       "companionPrompt": "클릭하여 편집 기능을 사용하려면 프로젝트에 브라우저 컴패니언을 추가하세요.",

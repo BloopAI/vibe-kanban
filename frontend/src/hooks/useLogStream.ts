@@ -1,16 +1,66 @@
 import { useEffect, useState, useRef } from 'react';
 import type { PatchType } from 'shared/types';
+import { stripAnsi } from 'fancy-ansi';
 
 type LogEntry = Extract<PatchType, { type: 'STDOUT' } | { type: 'STDERR' }>;
+export type DevserverLogEntry = LogEntry;
 
 interface UseLogStreamResult {
   logs: LogEntry[];
   error: string | null;
+  lastUrl?: {
+    url: string;
+    port?: number;
+    scheme: 'http' | 'https';
+  };
 }
+
+const urlPatterns = [
+  /(https?:\/\/(?:\[[0-9a-f:]+\]|localhost|127\.0\.0\.1|0\.0\.0\.0|\d{1,3}(?:\.\d{1,3}){3})(?::\d{2,5})?(?:\/\S*)?)/i,
+  /(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[[0-9a-f:]+\]|(?:\d{1,3}\.){3}\d{1,3}):(\d{2,5})/i,
+];
+
+const extractUrl = (line: string) => {
+  const cleaned = stripAnsi(line);
+  const full = urlPatterns[0].exec(cleaned);
+  if (full) {
+    try {
+      const parsed = new URL(full[1]);
+      if (
+        parsed.hostname === '0.0.0.0' ||
+        parsed.hostname === '::' ||
+        parsed.hostname === '[::]'
+      ) {
+        parsed.hostname = 'localhost';
+      }
+      return {
+        url: parsed.toString(),
+        port: parsed.port ? Number(parsed.port) : undefined,
+        scheme: parsed.protocol === 'https:' ? 'https' : 'http',
+      } as const;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  const hostPort = urlPatterns[1].exec(cleaned);
+  if (hostPort) {
+    const port = Number(hostPort[1]);
+    const scheme = /https/i.test(cleaned) ? 'https' : 'http';
+    return {
+      url: `${scheme}://localhost:${port}`,
+      port,
+      scheme: scheme as 'http' | 'https',
+    } as const;
+  }
+
+  return null;
+};
 
 export const useLogStream = (processId: string): UseLogStreamResult => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [lastUrl, setLastUrl] = useState<UseLogStreamResult['lastUrl']>();
   const wsRef = useRef<WebSocket | null>(null);
   const retryCountRef = useRef<number>(0);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -24,6 +74,7 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
     // Clear logs when process changes
     setLogs([]);
     setError(null);
+    setLastUrl(undefined);
 
     const open = () => {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -61,6 +112,12 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
                 case 'STDOUT':
                 case 'STDERR':
                   addLogEntry({ type: value.type, content: value.content });
+                  const detected = extractUrl(value.content);
+                  if (detected) {
+                    setLastUrl((prev) =>
+                      prev && prev.url === detected.url ? prev : detected
+                    );
+                  }
                   break;
                 // Ignore other patch types (NORMALIZED_ENTRY, DIFF, etc.)
                 default:
@@ -108,5 +165,5 @@ export const useLogStream = (processId: string): UseLogStreamResult => {
     };
   }, [processId]);
 
-  return { logs, error };
+  return { logs, error, lastUrl };
 };

@@ -150,6 +150,7 @@
       "show": "Mostrar",
       "title": "Registros del Servidor de Desarrollo"
     },
+    "detectingUrl": "Detectando URL de vista previa...",
     "noServer": {
       "companionLink": "Ver guía de instalación",
       "companionPrompt": "Para la funcionalidad de clic y editar, agrega el complemento del navegador a tu proyecto.",

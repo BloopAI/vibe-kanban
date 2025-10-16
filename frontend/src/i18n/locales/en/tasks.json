@@ -76,6 +76,7 @@
       "hide": "Hide",
       "show": "Show"
     },
+    "detectingUrl": "Detecting preview URL...",
     "iframe": {
       "title": "Dev server preview"
     },

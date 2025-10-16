@@ -150,6 +150,7 @@
       "show": "表示",
       "title": "開発サーバーログ"
     },
+    "detectingUrl": "プレビュー URL を検出しています...",
     "noServer": {
       "companionLink": "インストールガイドを表示",
       "companionPrompt": "クリック編集機能のために、プロジェクトにブラウザコンパニオンを追加してください。",

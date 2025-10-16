@@ -1,7 +1,10 @@
 import { useTranslation } from 'react-i18next';
 import { Terminal, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import ProcessLogsViewer from '../ProcessLogsViewer';
+import ProcessLogsViewer, {
+  ProcessLogsViewerContent,
+} from '../ProcessLogsViewer';
+import type { DevserverLogEntry } from '@/hooks/useLogStream';
 import { ExecutionProcess } from 'shared/types';
 
 interface DevServerLogsViewProps {
@@ -10,6 +13,8 @@ interface DevServerLogsViewProps {
   onToggle: () => void;
   height?: string;
   showToggleText?: boolean;
+  logs?: DevserverLogEntry[];
+  error?: string | null;
 }
 
 export function DevServerLogsView({
@@ -18,6 +23,8 @@ export function DevServerLogsView({
   onToggle,
   height = 'h-60',
   showToggleText = true,
+  logs,
+  error,
 }: DevServerLogsViewProps) {
   const { t } = useTranslation('tasks');
 
@@ -50,7 +57,11 @@ export function DevServerLogsView({
       {/* Logs viewer */}
       {showLogs && (
         <div className={height}>
-          <ProcessLogsViewer processId={latestDevServerProcess.id} />
+          {logs ? (
+            <ProcessLogsViewerContent logs={logs} error={error ?? null} />
+          ) : (
+            <ProcessLogsViewer processId={latestDevServerProcess.id} />
+          )}
         </div>
       )}
     </div>

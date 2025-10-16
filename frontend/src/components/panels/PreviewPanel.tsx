@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDevserverPreview } from '@/hooks/useDevserverPreview';
 import { useDevServer } from '@/hooks/useDevServer';
+import { useLogStream } from '@/hooks/useLogStream';
 import { ClickToComponentListener } from '@/utils/previewBridge';
 import { useClickedElements } from '@/contexts/ClickedElementsProvider';
 import { Alert } from '@/components/ui/alert';
@@ -31,11 +32,6 @@ export function PreviewPanel() {
     rawAttemptId && rawAttemptId !== 'latest' ? rawAttemptId : undefined;
   const projectHasDevScript = Boolean(project?.dev_script);
 
-  const previewState = useDevserverPreview(attemptId, {
-    projectHasDevScript,
-    projectId: projectId!,
-  });
-
   const {
     start: startDevServer,
     stop: stopDevServer,
@@ -44,6 +40,14 @@ export function PreviewPanel() {
     runningDevServer,
     latestDevServerProcess,
   } = useDevServer(attemptId);
+
+  const logStream = useLogStream(latestDevServerProcess?.id ?? '');
+
+  const previewState = useDevserverPreview(attemptId, {
+    projectHasDevScript,
+    projectId: projectId!,
+    lastKnownUrl: logStream.lastUrl,
+  });
 
   const handleRefresh = () => {
     setIframeError(false);
@@ -115,7 +119,13 @@ export function PreviewPanel() {
     runningDevServer,
   ]);
 
-  const mode = !runningDevServer ? 'noServer' : iframeError ? 'error' : 'ready';
+  const isPreviewReady =
+    previewState.status === 'ready' &&
+    Boolean(previewState.url) &&
+    !iframeError;
+  const isDetecting =
+    previewState.status === 'searching' && !iframeError && !!runningDevServer;
+  const mode = iframeError ? 'error' : isPreviewReady ? 'ready' : 'noServer';
   const toggleLogs = () => {
     setShowLogs((v) => !v);
   };
@@ -166,6 +176,15 @@ export function PreviewPanel() {
               onIframeError={handleIframeError}
             />
           </>
+        ) : isDetecting ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center space-y-4">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto" />
+              <p className="text-sm text-muted-foreground">
+                {t('preview.detectingUrl')}
+              </p>
+            </div>
+          </div>
         ) : (
           <NoServerContent
             projectHasDevScript={projectHasDevScript}
@@ -214,6 +233,8 @@ export function PreviewPanel() {
           showLogs={showLogs}
           onToggle={toggleLogs}
           showToggleText
+          logs={logStream.logs}
+          error={logStream.error}
         />
       </div>
     </div>
