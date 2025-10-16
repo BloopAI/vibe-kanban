@@ -40,54 +40,6 @@
       }
     }
   },
-  "attempt": {
-    "labels": {
-      "attempt": "Attempt",
-      "agent": "Agent",
-      "branch": "Branch",
-      "diffs": "Diffs"
-    },
-    "actions": {
-      "openInIde": "Open in IDE",
-      "openMenu": "Open menu",
-      "startDevServer": "Start dev server",
-      "stopDevServer": "Stop dev server"
-    }
-  },
-  "git": {
-    "labels": {
-      "taskBranch": "Task Branch"
-    },
-    "branch": {
-      "current": "current"
-    },
-    "status": {
-      "commits_one": "commit",
-      "commits_other": "commits",
-      "conflicts": "Conflicts",
-      "upToDate": "Up to date",
-      "ahead": "ahead",
-      "behind": "behind"
-    },
-    "states": {
-      "merged": "Merged!",
-      "merging": "Merging...",
-      "merge": "Merge",
-      "rebasing": "Rebasing...",
-      "rebase": "Rebase",
-      "pushed": "Pushed!",
-      "pushing": "Pushing...",
-      "push": "Push",
-      "creating": "Creating...",
-      "createPr": "Create PR"
-    },
-    "errors": {
-      "changeTargetBranch": "Failed to change target branch",
-      "pushChanges": "Failed to push changes",
-      "mergeChanges": "Failed to merge changes",
-      "rebaseBranch": "Failed to rebase branch"
-    }
-  },
   "preview": {
     "title": "Preview",
     "selectAttempt": "Select an attempt to see preview",
@@ -130,7 +82,8 @@
     "toolbar": {
       "refresh": "Refresh preview",
       "copyUrl": "Copy URL",
-      "openInTab": "Open in new tab"
+      "openInTab": "Open in new tab",
+      "stopDevServer": "Stop dev server"
     }
   },
   "diff": {

@@ -165,7 +165,8 @@
     "toolbar": {
       "copyUrl": "Copiar URL",
       "openInTab": "Abrir en nueva pestaña",
-      "refresh": "Actualizar vista previa"
+      "refresh": "Actualizar vista previa",
+      "stopDevServer": "Detener servidor de desarrollo"
     },
     "troubleAlert": {
       "item1": "¿Se inició correctamente el servidor de desarrollo? Puede haber un error que necesites resolver, o quizás sea necesario instalar dependencias.",

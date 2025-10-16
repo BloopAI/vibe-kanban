@@ -44,6 +44,51 @@ get_json_keys() {
   ' "$file" 2>/dev/null | LC_ALL=C sort -u
 }
 
+check_duplicate_keys() {
+  local file=$1
+  if [ ! -f "$file" ]; then
+    return 2
+  fi
+
+  # Strategy: Use jq's --stream flag to detect duplicate keys
+  # jq --stream processes JSON before parsing (preserves duplicates)
+  # jq tostream processes JSON after parsing (duplicates already collapsed)
+  # If the outputs differ, duplicate keys exist
+  if ! diff -q <(jq --stream . "$file" 2>/dev/null) <(jq tostream "$file" 2>/dev/null) > /dev/null 2>&1; then
+    # Duplicates found
+    echo "duplicate keys detected"
+    return 1
+  fi
+  return 0
+}
+
+check_duplicate_json_keys() {
+  local locales_dir="$REPO_ROOT/frontend/src/i18n/locales"
+  local exit_code=0
+
+  if [ ! -d "$locales_dir" ]; then
+    echo "❌ Locales directory not found: $locales_dir"
+    return 1
+  fi
+
+  # Check all JSON files in all locale directories
+  while IFS= read -r file; do
+    local rel_path="${file#$locales_dir/}"
+    local duplicates
+
+    if duplicates=$(check_duplicate_keys "$file"); then
+      : # No duplicates found
+    else
+      echo "❌ [$rel_path] Duplicate keys found:"
+      printf '   - %s\n' $duplicates
+      echo "   JSON silently overwrites duplicate keys - only the last occurrence is used!"
+      exit_code=1
+    fi
+  done < <(find "$locales_dir" -type f -name "*.json" 2>/dev/null)
+
+  return "$exit_code"
+}
+
 check_key_consistency() {
   local locales_dir="$REPO_ROOT/frontend/src/i18n/locales"
   local exit_code=0
@@ -173,6 +218,14 @@ elif (( PR_COUNT < BASE_COUNT )); then
   echo "   This helps improve i18n coverage!"
 else
   echo "✅ No new literal strings introduced."
+fi
+
+echo ""
+echo "▶️  Checking for duplicate JSON keys..."
+if ! check_duplicate_json_keys; then
+  EXIT_STATUS=1
+else
+  echo "✅ No duplicate keys found in JSON files."
 fi
 
 echo ""
