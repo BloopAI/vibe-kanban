@@ -34,6 +34,7 @@ use workspace_utils::{
 };
 
 use crate::{
+    approvals::ToolCallMetadata,
     executors::codex::session::SessionHandler,
     logs::{
         ActionType, CommandExitStatus, CommandRunResult, FileChange, NormalizedEntry,
@@ -73,6 +74,7 @@ struct CommandState {
     status: ToolStatus,
     exit_code: Option<i32>,
     awaiting_approval: bool,
+    call_id: String,
 }
 
 impl ToNormalizedEntry for CommandState {
@@ -99,7 +101,10 @@ impl ToNormalizedEntry for CommandState {
                 status: self.status.clone(),
             },
             content,
-            metadata: None,
+            metadata: serde_json::to_value(ToolCallMetadata {
+                tool_call_id: self.call_id.clone(),
+            })
+            .ok(),
         }
     }
 }
@@ -175,6 +180,7 @@ struct PatchEntry {
     changes: Vec<FileChange>,
     status: ToolStatus,
     awaiting_approval: bool,
+    call_id: String,
 }
 
 impl ToNormalizedEntry for PatchEntry {
@@ -192,7 +198,10 @@ impl ToNormalizedEntry for PatchEntry {
                 status: self.status.clone(),
             },
             content,
-            metadata: None,
+            metadata: serde_json::to_value(ToolCallMetadata {
+                tool_call_id: self.call_id.clone(),
+            })
+            .ok(),
         }
     }
 }
@@ -548,6 +557,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                             changes: file_changes,
                             status: ToolStatus::Created,
                             awaiting_approval: true,
+                            call_id: call_id.clone(),
                         };
                         let index = add_normalized_entry(
                             &msg_store,
@@ -578,6 +588,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                             status: ToolStatus::Created,
                             exit_code: None,
                             awaiting_approval: false,
+                            call_id: call_id.clone(),
                         },
                     );
                     let command_state = state.commands.get_mut(&call_id).unwrap();
@@ -789,6 +800,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                                 changes: file_changes,
                                 status: ToolStatus::Created,
                                 awaiting_approval: false,
+                                call_id: call_id.clone(),
                             };
                             let index = add_normalized_entry(
                                 &msg_store,
@@ -807,6 +819,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                                 changes: file_changes,
                                 status: ToolStatus::Created,
                                 awaiting_approval: false,
+                                call_id: call_id.clone(),
                             });
                             let patch_entry = patch_state.entries.last_mut().unwrap();
                             let index = add_normalized_entry(

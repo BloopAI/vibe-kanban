@@ -41,6 +41,7 @@ impl ExecutorApprovalService for ExecutorApprovalBridge {
         &self,
         tool_name: &str,
         tool_input: Value,
+        tool_call_id: &str,
     ) -> Result<ApprovalStatus, ExecutorApprovalError> {
         let session_id = {
             let guard = self.session_id.read().await;
@@ -56,6 +57,7 @@ impl ExecutorApprovalService for ExecutorApprovalBridge {
                 tool_name: tool_name.to_string(),
                 tool_input,
                 session_id,
+                tool_call_id: Some(tool_call_id.to_string()),
             },
             self.execution_process_id,
         );
