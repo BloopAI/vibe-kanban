@@ -58,16 +58,30 @@ export function TaskPanelOnboarding({ isOpen }: TaskPanelOnboardingProps) {
 
     const updatePosition = () => {
       const handleElement = document.getElementById('handle-kr');
-      if (handleElement) {
-        const rect = handleElement.getBoundingClientRect();
+      const panel = panelRef.current;
+      if (handleElement && panel) {
+        const handleRect = handleElement.getBoundingClientRect();
+        const panelHeight = panel.offsetHeight;
+        const viewportHeight = window.innerHeight;
+        
+        let targetTop = handleRect.top + handleRect.height / 2;
+        const halfPanelHeight = panelHeight / 2;
+        
+        if (targetTop - halfPanelHeight < 20) {
+          targetTop = halfPanelHeight + 20;
+        } else if (targetTop + halfPanelHeight > viewportHeight - 20) {
+          targetTop = viewportHeight - halfPanelHeight - 20;
+        }
+        
         setPosition({
-          top: rect.top + rect.height / 2,
-          right: window.innerWidth - rect.left + 20,
+          top: targetTop,
+          right: window.innerWidth - handleRect.left + 20,
         });
       }
     };
 
     updatePosition();
+    const timer = setTimeout(updatePosition, 100);
     window.addEventListener('resize', updatePosition);
 
     const observer = new MutationObserver(updatePosition);
@@ -79,10 +93,11 @@ export function TaskPanelOnboarding({ isOpen }: TaskPanelOnboardingProps) {
     });
 
     return () => {
+      clearTimeout(timer);
       window.removeEventListener('resize', updatePosition);
       observer.disconnect();
     };
-  }, [isOpen]);
+  }, [isOpen, currentStage]);
 
   useEffect(() => {
     if (videoRef.current) {
