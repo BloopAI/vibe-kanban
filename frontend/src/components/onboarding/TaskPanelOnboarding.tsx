@@ -58,27 +58,31 @@ export function TaskPanelOnboarding({ isOpen }: TaskPanelOnboardingProps) {
     if (!isOpen) return;
 
     const updatePosition = () => {
-    const handleElement = document.getElementById('handle-kr');
-    const panel = panelRef.current;
-    if (handleElement && panel) {
-    const handleRect = handleElement.getBoundingClientRect();
-    const panelHeight = panel.offsetHeight;
-    const viewportHeight = window.innerHeight;
-    
-    const centerTop = handleRect.top + handleRect.height / 2;
-    const halfPanelHeight = panelHeight / 2;
-    
-    const wouldOverflowBottom = centerTop + halfPanelHeight > viewportHeight - 20;
-    const wouldOverflowTop = centerTop - halfPanelHeight < 20;
-    
-    if (wouldOverflowBottom || wouldOverflowTop) {
-      setUseTopAlign(true);
-      const topPosition = Math.max(20, Math.min(centerTop - 100, viewportHeight - panelHeight - 20));
-      setPosition({
-      top: topPosition,
-      right: window.innerWidth - handleRect.left + 20,
-      });
-      } else {
+      const handleElement = document.getElementById('handle-kr');
+      const panel = panelRef.current;
+      if (handleElement && panel) {
+        const handleRect = handleElement.getBoundingClientRect();
+        const panelHeight = panel.offsetHeight;
+        const viewportHeight = window.innerHeight;
+
+        const centerTop = handleRect.top + handleRect.height / 2;
+        const halfPanelHeight = panelHeight / 2;
+
+        const wouldOverflowBottom =
+          centerTop + halfPanelHeight > viewportHeight - 20;
+        const wouldOverflowTop = centerTop - halfPanelHeight < 20;
+
+        if (wouldOverflowBottom || wouldOverflowTop) {
+          setUseTopAlign(true);
+          const topPosition = Math.max(
+            20,
+            Math.min(centerTop - 100, viewportHeight - panelHeight - 20)
+          );
+          setPosition({
+            top: topPosition,
+            right: window.innerWidth - handleRect.left + 20,
+          });
+        } else {
           setUseTopAlign(false);
           setPosition({
             top: centerTop,
