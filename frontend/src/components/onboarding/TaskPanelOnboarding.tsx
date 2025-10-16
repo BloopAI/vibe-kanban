@@ -127,7 +127,7 @@ export function TaskPanelOnboarding({ isOpen }: TaskPanelOnboardingProps) {
             transform: 'translateY(-50%)',
             zIndex: 9999,
           }}
-          className="w-96 bg-card border border-border rounded-lg shadow-lg overflow-hidden"
+          className="w-[36rem] bg-card border border-border rounded-lg shadow-lg overflow-hidden"
         >
           <AnimatePresence mode="wait">
             <motion.div
