@@ -1,60 +1,12 @@
 import { useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-
-/**
- * Parsed path components from a URL string
- */
-interface ParsedPath {
-  pathname: string;
-  search: string;
-  hash: string;
-}
-
-/**
- * Parses a path string into its components (pathname, search, hash).
- *
- * @example
- * parsePath('/projects/123?tab=settings#section')
- * // Returns: { pathname: '/projects/123', search: '?tab=settings', hash: '#section' }
- */
-function parsePath(path: string): ParsedPath {
-  const hashIndex = path.indexOf('#');
-  const searchIndex = path.indexOf('?');
-
-  let pathname = path;
-  let search = '';
-  let hash = '';
-
-  // Extract hash first (always at the end)
-  if (hashIndex !== -1) {
-    hash = path.slice(hashIndex);
-    pathname = path.slice(0, hashIndex);
-  }
-
-  // Extract search params (between pathname and hash)
-  if (searchIndex !== -1 && (hashIndex === -1 || searchIndex < hashIndex)) {
-    search = pathname.slice(searchIndex);
-    pathname = pathname.slice(0, searchIndex);
-  }
-
-  return { pathname, search, hash };
-}
-
-/**
- * Navigation target - can be a string path, numeric delta, or path object
- */
-type NavigateTo =
-  | string
-  | number
-  | Partial<{ pathname: string; search: string; hash: string }>;
-
-/**
- * Options for navigation
- */
-interface NavigateOptions {
-  replace?: boolean;
-  state?: any;
-}
+import {
+  useNavigate,
+  useSearchParams,
+  parsePath,
+  type To,
+  type NavigateOptions,
+  type Path,
+} from 'react-router-dom';
 
 /**
  * Custom hook that wraps React Router's useNavigate to automatically preserve
@@ -101,7 +53,7 @@ export function useNavigateWithSearch() {
   const [searchParams] = useSearchParams();
 
   return useCallback(
-    (to: NavigateTo, options?: NavigateOptions) => {
+    (to: To, options?: NavigateOptions) => {
       // Handle numeric navigation (back/forward)
       if (typeof to === 'number') {
         navigate(to);
@@ -115,11 +67,7 @@ export function useNavigateWithSearch() {
 
         // Build the final navigation object, preserving undefined values
         // so React Router can use current pathname/hash when not specified
-        const finalTo: Partial<{
-          pathname: string;
-          search: string;
-          hash: string;
-        }> = {};
+        const finalTo: Partial<Path> = {};
 
         // Only set pathname if it was provided
         if (to.pathname !== undefined) {
