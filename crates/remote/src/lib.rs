@@ -1,7 +1,6 @@
 pub mod activity;
 mod app;
 mod auth;
-mod clerk;
 pub mod config;
 pub mod db;
 pub mod routes;

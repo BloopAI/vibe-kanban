@@ -1,138 +1,139 @@
-use std::{sync::Arc, time::Duration};
+mod middleware;
 
-use chrono::{DateTime, TimeZone, Utc};
-use dashmap::DashMap;
-use jsonwebtoken::{
-    Algorithm, DecodingKey, TokenData, Validation, decode, decode_header,
-    jwk::{AlgorithmParameters, JwkSet},
-};
-use reqwest::Client as HttpClient;
+use std::time::Duration;
+
+pub use middleware::{RequestContext, require_clerk_session};
+use reqwest::{Client, StatusCode, Url};
+use secrecy::ExposeSecret;
 use serde::Deserialize;
 use thiserror::Error;
-
-mod middleware;
-pub use middleware::{RequestContext, require_clerk_session};
+pub use utils::clerk::ClerkAuth;
 
 use crate::config::ClerkConfig;
 
-#[derive(Debug, Error)]
-pub enum ClerkError {
-    #[error("missing authorization token")]
-    MissingToken,
-    #[error("invalid token header: {0}")]
-    InvalidHeader(#[from] jsonwebtoken::errors::Error),
-    #[error("invalid JWKS key: {0}")]
-    KeyConstruction(#[source] jsonwebtoken::errors::Error),
-    #[error("token header missing `kid`")]
-    MissingKeyId,
-    #[error("failed to fetch JWKS: {0}")]
-    JwksFetch(#[from] reqwest::Error),
-    #[error("JWKS key `{0}` not found")]
-    KeyNotFound(String),
-    #[error("invalid expiration: {0}")]
-    InvalidExpiry(i64),
+#[derive(Debug, Clone)]
+pub struct ClerkService {
+    client: Client,
+    api_url: Url,
+    secret_key: String,
 }
 
 #[derive(Debug, Clone)]
-pub struct ClerkIdentity {
-    pub user_id: String,
-    pub org_id: Option<String>,
-    pub session_id: String,
-    pub expires_at: DateTime<Utc>,
+pub struct ClerkUser {
+    pub id: String,
+    pub email: String,
+    pub display_name: String,
 }
 
-#[derive(Debug, Clone, Deserialize)]
-struct ClerkClaims {
-    sub: String,
-    sid: String,
-    iss: String,
-    exp: i64,
-    #[serde(default, rename = "organization_id")]
-    organization_id: Option<String>,
+#[derive(Debug, Error)]
+pub enum ClerkServiceError {
+    #[error("resource `{0}` not found")]
+    NotFound(String),
+    #[error("unexpected response: {0}")]
+    InvalidResponse(String),
+    #[error(transparent)]
+    Http(#[from] reqwest::Error),
 }
 
-fn claims_to_identity(token: TokenData<ClerkClaims>) -> Result<ClerkIdentity, ClerkError> {
-    let ClerkClaims {
-        sub,
-        sid,
-        exp,
-        organization_id,
-        ..
-    } = token.claims;
+impl ClerkService {
+    pub fn new(config: &ClerkConfig) -> Result<Self, ClerkServiceError> {
+        let client = Client::builder().timeout(Duration::from_secs(30)).build()?;
 
-    let expires_at = Utc
-        .timestamp_opt(exp, 0)
-        .single()
-        .ok_or_else(|| ClerkError::InvalidExpiry(exp))?;
-
-    Ok(ClerkIdentity {
-        user_id: sub,
-        org_id: organization_id,
-        session_id: sid,
-        expires_at,
-    })
-}
-
-pub struct ClerkAuth {
-    config: ClerkConfig,
-    client: HttpClient,
-    jwks: Arc<DashMap<String, DecodingKey>>,
-}
-
-impl ClerkAuth {
-    pub(crate) fn new(config: &ClerkConfig) -> Result<Self, ClerkError> {
-        let client = HttpClient::builder()
-            .timeout(Duration::from_secs(30))
-            .build()?;
         Ok(Self {
-            config: config.clone(),
             client,
-            jwks: Arc::new(DashMap::new()),
+            api_url: config.get_api_url().clone(),
+            secret_key: config.get_secret_key().expose_secret().to_string().clone(),
         })
     }
 
-    pub(crate) async fn verify(&self, bearer: &str) -> Result<ClerkIdentity, ClerkError> {
-        if bearer.trim().is_empty() {
-            return Err(ClerkError::MissingToken);
+    pub async fn get_user(&self, user_id: &str) -> Result<ClerkUser, ClerkServiceError> {
+        let url = self.endpoint(&format!("users/{user_id}"))?;
+        dbg!(&self.secret_key);
+        dbg!(&url);
+        let response = self
+            .client
+            .get(url)
+            .bearer_auth(&self.secret_key)
+            .send()
+            .await?;
+
+        dbg!(&response.status());
+
+        if response.status() == StatusCode::NOT_FOUND {
+            return Err(ClerkServiceError::NotFound(user_id.to_string()));
         }
 
-        let header = decode_header(bearer)?;
-        let kid = header.kid.ok_or(ClerkError::MissingKeyId)?;
-
-        let decoding_key = if let Some(key) = self.jwks.get(&kid) {
-            key.clone()
-        } else {
-            self.fetch_key(&kid).await?
-        };
-
-        let mut validation = Validation::new(Algorithm::RS256);
-        validation.set_issuer(&[self.config.get_issuer()]);
-        validation.validate_exp = true;
-
-        let claims = decode::<ClerkClaims>(bearer, &decoding_key, &validation)?;
-        claims_to_identity(claims)
+        let response = response.error_for_status()?;
+        let body: UserResponse = response.json().await?;
+        body.try_into()
     }
 
-    async fn fetch_key(&self, kid: &str) -> Result<DecodingKey, ClerkError> {
-        let jwks_url = self
-            .config
-            .get_issuer()
-            .join("/.well-known/jwks.json")
-            .expect("issuer missing /.well-known path");
+    fn endpoint(&self, path: &str) -> Result<Url, ClerkServiceError> {
+        self.api_url
+            .join(path)
+            .map_err(|err| ClerkServiceError::InvalidResponse(err.to_string()))
+    }
+}
 
-        let jwks: JwkSet = self.client.get(jwks_url).send().await?.json().await?;
-        let key = jwks
-            .find(kid)
-            .ok_or_else(|| ClerkError::KeyNotFound(kid.to_owned()))?;
+#[derive(Debug, Deserialize)]
+struct UserResponse {
+    id: String,
+    first_name: Option<String>,
+    last_name: Option<String>,
+    username: Option<String>,
+    primary_email_address_id: Option<String>,
+    email_addresses: Vec<UserEmailAddress>,
+}
 
-        let rsa = match &key.algorithm {
-            AlgorithmParameters::RSA(params) => params,
-            _ => return Err(ClerkError::KeyNotFound(kid.to_owned())),
-        };
-        let decoding_key = DecodingKey::from_rsa_components(&rsa.n, &rsa.e)
-            .map_err(ClerkError::KeyConstruction)?;
+#[derive(Debug, Deserialize)]
+struct UserEmailAddress {
+    id: String,
+    email_address: String,
+}
 
-        self.jwks.insert(kid.to_owned(), decoding_key.clone());
-        Ok(decoding_key)
+impl TryFrom<UserResponse> for ClerkUser {
+    type Error = ClerkServiceError;
+
+    fn try_from(value: UserResponse) -> Result<Self, Self::Error> {
+        let email = resolve_primary_email(&value.primary_email_address_id, &value.email_addresses)
+            .ok_or_else(|| {
+                ClerkServiceError::InvalidResponse(format!(
+                    "user {} missing primary email address",
+                    value.id
+                ))
+            })?;
+
+        let display_name = value
+            .username
+            .or_else(|| compose_name(&value.first_name, &value.last_name))
+            .unwrap_or_else(|| email.clone());
+
+        Ok(Self {
+            id: value.id,
+            email,
+            display_name,
+        })
+    }
+}
+
+fn resolve_primary_email(
+    primary_id: &Option<String>,
+    addresses: &[UserEmailAddress],
+) -> Option<String> {
+    if let Some(primary_id) = primary_id
+        && let Some(primary) = addresses.iter().find(|address| address.id == *primary_id)
+    {
+        return Some(primary.email_address.clone());
+    }
+
+    addresses.first().map(|addr| addr.email_address.clone())
+}
+
+fn compose_name(first_name: &Option<String>, last_name: &Option<String>) -> Option<String> {
+    match (first_name.as_deref(), last_name.as_deref()) {
+        (Some(first), Some(last)) => Some(format!("{first} {last}")),
+        (Some(first), None) => Some(first.to_string()),
+        (None, Some(last)) => Some(last.to_string()),
+        (None, None) => None,
     }
 }

@@ -74,17 +74,137 @@ class ApiError<E = unknown> extends Error {
   }
 }
 
+let lastRegisteredClerkToken: string | null = null;
+let registerTokenPromise: Promise<void> | null = null;
+let clearTokenPromise: Promise<void> | null = null;
+
 const makeRequest = async (url: string, options: RequestInit = {}) => {
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(options.headers || {}),
-  };
+  const headers = new Headers(options.headers ?? {});
+  if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  const headersWithAuth = await buildAuthHeaders(headers);
 
   return fetch(url, {
     ...options,
-    headers,
+    headers: headersWithAuth,
   });
 };
+
+async function buildAuthHeaders(base?: HeadersInit): Promise<Headers> {
+  const headers = base instanceof Headers ? base : new Headers(base ?? {});
+  const token = await getClerkToken();
+
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+    headers.set('X-Clerk-Token', token);
+    await registerClerkSession(token);
+  } else {
+    await maybeClearClerkSession();
+  }
+
+  return headers;
+}
+
+async function getClerkToken(): Promise<string | null> {
+  if (typeof window === 'undefined') return null;
+  const clerk = window.Clerk;
+  if (!clerk?.session) return null;
+
+  try {
+    const token = await clerk.session.getToken();
+    return token ?? null;
+  } catch (error) {
+    console.warn('Failed to acquire Clerk token', error);
+    return null;
+  }
+}
+
+async function registerClerkSession(token: string): Promise<void> {
+  if (!token) return;
+
+  if (registerTokenPromise) {
+    await registerTokenPromise;
+  }
+
+  if (token === lastRegisteredClerkToken) {
+    return;
+  }
+
+  registerTokenPromise = (async () => {
+    try {
+      const response = await fetch('/api/auth/clerk/session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token }),
+      });
+
+      if (!response.ok) {
+        console.warn(
+          'Failed to register Clerk session',
+          response.status,
+          await safeParseJson(response)
+        );
+        return;
+      }
+
+      lastRegisteredClerkToken = token;
+    } catch (error) {
+      console.warn('Unable to register Clerk session', error);
+    } finally {
+      registerTokenPromise = null;
+    }
+  })();
+
+  await registerTokenPromise;
+}
+
+async function maybeClearClerkSession(): Promise<void> {
+  if (!lastRegisteredClerkToken) {
+    return;
+  }
+
+  if (clearTokenPromise) {
+    await clearTokenPromise;
+    return;
+  }
+
+  clearTokenPromise = (async () => {
+    try {
+      const response = await fetch('/api/auth/clerk/session', {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        console.warn(
+          'Failed to clear Clerk session',
+          response.status,
+          await safeParseJson(response)
+        );
+        return;
+      }
+
+      lastRegisteredClerkToken = null;
+    } catch (error) {
+      console.warn('Unable to clear Clerk session', error);
+    } finally {
+      clearTokenPromise = null;
+    }
+  })();
+
+  await clearTokenPromise;
+}
+
+async function safeParseJson(response: Response): Promise<unknown> {
+  try {
+    return await response.clone().json();
+  } catch {
+    return null;
+  }
+}
 
 export interface FollowUpResponse {
   message: string;
@@ -786,10 +906,13 @@ export const imagesApi = {
     const formData = new FormData();
     formData.append('image', file);
 
+    const headers = await buildAuthHeaders();
+
     const response = await fetch('/api/images/upload', {
       method: 'POST',
       body: formData,
       credentials: 'include',
+      headers,
     });
 
     if (!response.ok) {
@@ -808,10 +931,13 @@ export const imagesApi = {
     const formData = new FormData();
     formData.append('image', file);
 
+    const headers = await buildAuthHeaders();
+
     const response = await fetch(`/api/images/task/${taskId}/upload`, {
       method: 'POST',
       body: formData,
       credentials: 'include',
+      headers,
     });
 
     if (!response.ok) {

@@ -15,7 +15,6 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\""
   },
   "dependencies": {
-    "@clerk/clerk-react": "^5.53.0",
     "@codemirror/lang-json": "^6.0.2",
     "@codemirror/language": "^6.11.2",
     "@codemirror/lint": "^6.8.5",

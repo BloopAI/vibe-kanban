@@ -168,6 +168,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
   );
 
   const reloadSystem = useCallback(async () => {
+    setLoading(true);
     try {
       const userSystemInfo: UserSystemInfo = await configApi.getConfig();
       setConfig(userSystemInfo.config);
@@ -184,6 +185,8 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       );
     } catch (err) {
       console.error('Error reloading user system:', err);
+    } finally {
+      setLoading(false);
     }
   }, []);
 

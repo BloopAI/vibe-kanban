@@ -32,7 +32,7 @@ impl EventService {
             .map(|task| (task.id.to_string(), serde_json::to_value(task).unwrap()))
             .collect();
 
-        let shared_tasks = SharedTask::list(&self.db.pool).await?;
+        let shared_tasks = SharedTask::list_by_project_id(&self.db.pool, project_id).await?;
         let shared_tasks_map: serde_json::Map<String, serde_json::Value> = shared_tasks
             .into_iter()
             .map(|task| (task.id.to_string(), serde_json::to_value(task).unwrap()))
@@ -65,8 +65,34 @@ impl EventService {
                             // Filter events based on project_id
                             if let Some(patch_op) = patch.0.first() {
                                 if patch_op.path().starts_with("/shared_tasks/") {
-                                    // Shared tasks are global; forward all updates
-                                    return Some(Ok(LogMsg::JsonPatch(patch)));
+                                    match patch_op {
+                                        json_patch::PatchOperation::Add(op) => {
+                                            if let Ok(shared_task) =
+                                                serde_json::from_value::<SharedTask>(
+                                                    op.value.clone(),
+                                                )
+                                                && shared_task.project_id == project_id
+                                            {
+                                                return Some(Ok(LogMsg::JsonPatch(patch)));
+                                            }
+                                        }
+                                        json_patch::PatchOperation::Replace(op) => {
+                                            if let Ok(shared_task) =
+                                                serde_json::from_value::<SharedTask>(
+                                                    op.value.clone(),
+                                                )
+                                                && shared_task.project_id == project_id
+                                            {
+                                                return Some(Ok(LogMsg::JsonPatch(patch)));
+                                            }
+                                        }
+                                        json_patch::PatchOperation::Remove(_) => {
+                                            // Forward removals; clients will ignore missing tasks
+                                            return Some(Ok(LogMsg::JsonPatch(patch)));
+                                        }
+                                        _ => {}
+                                    }
+                                    return None;
                                 }
                                 // Check if this is a direct task patch (new format)
                                 if patch_op.path().starts_with("/tasks/") {
@@ -121,8 +147,10 @@ impl EventService {
                                                 return Some(Ok(LogMsg::JsonPatch(patch)));
                                             }
                                         }
-                                        RecordTypes::SharedTask(_) => {
-                                            return Some(Ok(LogMsg::JsonPatch(patch)));
+                                        RecordTypes::SharedTask(shared_task) => {
+                                            if shared_task.project_id == project_id {
+                                                return Some(Ok(LogMsg::JsonPatch(patch)));
+                                            }
                                         }
                                         RecordTypes::DeletedSharedTask { .. } => {
                                             return Some(Ok(LogMsg::JsonPatch(patch)));
