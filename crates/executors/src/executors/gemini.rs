@@ -8,7 +8,6 @@ use workspace_utils::msg_store::MsgStore;
 
 pub use super::acp::AcpAgentHarness;
 use crate::{
-    approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuilder, apply_overrides},
     executors::{AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
 };
@@ -63,12 +62,7 @@ impl Gemini {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Gemini {
-    async fn spawn(
-        &self,
-        current_dir: &Path,
-        prompt: &str,
-        _approvals: Arc<dyn ExecutorApprovalService>,
-    ) -> Result<SpawnedChild, ExecutorError> {
+    async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
         let harness = AcpAgentHarness::new();
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let gemini_command = self.build_command_builder().build_initial();
@@ -82,7 +76,6 @@ impl StandardCodingAgentExecutor for Gemini {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
-        _approvals: Arc<dyn ExecutorApprovalService>,
     ) -> Result<SpawnedChild, ExecutorError> {
         let harness = AcpAgentHarness::new();
         let combined_prompt = self.append_prompt.combine_prompt(prompt);

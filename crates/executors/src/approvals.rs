@@ -13,6 +13,8 @@ pub enum ExecutorApprovalError {
     SessionNotRegistered,
     #[error("executor approval request failed: {0}")]
     RequestFailed(String),
+    #[error("executor approval service unavailable")]
+    ServiceUnavailable,
 }
 
 impl ExecutorApprovalError {

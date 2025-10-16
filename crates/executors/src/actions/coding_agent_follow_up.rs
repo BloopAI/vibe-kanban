@@ -36,14 +36,16 @@ impl Executable for CodingAgentFollowUpRequest {
         approvals: Arc<dyn ExecutorApprovalService>,
     ) -> Result<SpawnedChild, ExecutorError> {
         let executor_profile_id = self.get_executor_profile_id();
-        let agent = ExecutorConfigs::get_cached()
+        let mut agent = ExecutorConfigs::get_cached()
             .get_coding_agent(&executor_profile_id)
             .ok_or(ExecutorError::UnknownExecutorType(
                 executor_profile_id.to_string(),
             ))?;
 
+        agent.use_approvals(approvals.clone());
+
         agent
-            .spawn_follow_up(current_dir, &self.prompt, &self.session_id, approvals)
+            .spawn_follow_up(current_dir, &self.prompt, &self.session_id)
             .await
     }
 }

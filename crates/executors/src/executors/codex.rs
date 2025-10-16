@@ -2,7 +2,6 @@ pub mod client;
 pub mod jsonrpc;
 pub mod normalize_logs;
 pub mod session;
-
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -15,6 +14,7 @@ use codex_protocol::{
     config_types::SandboxMode as CodexSandboxMode, protocol::AskForApproval as CodexAskForApproval,
 };
 use command_group::AsyncCommandGroup;
+use derivative::Derivative;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -99,7 +99,8 @@ pub enum ReasoningSummaryFormat {
     Experimental,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
+#[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
+#[derivative(Debug, PartialEq)]
 pub struct Codex {
     #[serde(default)]
     pub append_prompt: AppendPrompt,
@@ -127,19 +128,22 @@ pub struct Codex {
     pub include_apply_patch_tool: Option<bool>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
+
+    #[serde(skip)]
+    #[ts(skip)]
+    #[derivative(Debug = "ignore", PartialEq = "ignore")]
+    approvals: Option<Arc<dyn ExecutorApprovalService>>,
 }
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Codex {
-    async fn spawn(
-        &self,
-        current_dir: &Path,
-        prompt: &str,
-        approvals: Arc<dyn ExecutorApprovalService>,
-    ) -> Result<SpawnedChild, ExecutorError> {
+    fn use_approvals(&mut self, approvals: Arc<dyn ExecutorApprovalService>) {
+        self.approvals = Some(approvals);
+    }
+
+    async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
         let command = self.build_command_builder().build_initial();
-        self.spawn(current_dir, prompt, command, None, approvals)
-            .await
+        self.spawn(current_dir, prompt, command, None).await
     }
 
     async fn spawn_follow_up(
@@ -147,10 +151,9 @@ impl StandardCodingAgentExecutor for Codex {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
-        approvals: Arc<dyn ExecutorApprovalService>,
     ) -> Result<SpawnedChild, ExecutorError> {
         let command = self.build_command_builder().build_follow_up(&[]);
-        self.spawn(current_dir, prompt, command, Some(session_id), approvals)
+        self.spawn(current_dir, prompt, command, Some(session_id))
             .await
     }
 
@@ -241,7 +244,6 @@ impl Codex {
         prompt: &str,
         command: String,
         resume_session: Option<&str>,
-        approvals: Arc<dyn ExecutorApprovalService>,
     ) -> Result<SpawnedChild, ExecutorError> {
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let (shell_cmd, shell_arg) = get_shell_command();
@@ -273,11 +275,11 @@ impl Codex {
 
         let params = self.build_new_conversation_params(current_dir);
         let resume_session = resume_session.map(|s| s.to_string());
-        let approvals = approvals.clone();
         let auto_approve = matches!(
             (&self.sandbox, &self.ask_for_approval),
             (Some(SandboxMode::DangerFullAccess), None)
         );
+        let approvals = self.approvals.clone();
         tokio::spawn(async move {
             let exit_signal_tx = ExitSignalSender::new(exit_signal_tx);
             let log_writer = LogWriter::new(new_stdout);
@@ -323,7 +325,7 @@ impl Codex {
         child_stdin: tokio::process::ChildStdin,
         log_writer: LogWriter,
         exit_signal_tx: ExitSignalSender,
-        approvals: Arc<dyn ExecutorApprovalService>,
+        approvals: Option<Arc<dyn ExecutorApprovalService>>,
         auto_approve: bool,
     ) -> Result<(), ExecutorError> {
         let client = AppServerClient::new(log_writer, approvals, auto_approve);

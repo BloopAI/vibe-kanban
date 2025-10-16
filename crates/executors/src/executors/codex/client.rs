@@ -25,14 +25,14 @@ use workspace_utils::approvals::ApprovalStatus;
 
 use super::jsonrpc::{JsonRpcCallbacks, JsonRpcPeer};
 use crate::{
-    approvals::ExecutorApprovalService,
+    approvals::{ExecutorApprovalError, ExecutorApprovalService},
     executors::{ExecutorError, codex::normalize_logs::Approval},
 };
 
 pub struct AppServerClient {
     rpc: OnceLock<JsonRpcPeer>,
     log_writer: LogWriter,
-    approvals: Arc<dyn ExecutorApprovalService>,
+    approvals: Option<Arc<dyn ExecutorApprovalService>>,
     conversation_id: Mutex<Option<ConversationId>>,
     pending_feedback: Mutex<VecDeque<String>>,
     auto_approve: bool,
@@ -41,7 +41,7 @@ pub struct AppServerClient {
 impl AppServerClient {
     pub fn new(
         log_writer: LogWriter,
-        approvals: Arc<dyn ExecutorApprovalService>,
+        approvals: Option<Arc<dyn ExecutorApprovalService>>,
         auto_approve: bool,
     ) -> Arc<Self> {
         Arc::new(Self {
@@ -221,6 +221,8 @@ impl AppServerClient {
         }
         Ok(self
             .approvals
+            .as_ref()
+            .ok_or(ExecutorApprovalError::ServiceUnavailable)?
             .request_tool_approval(tool_name, tool_input, tool_call_id)
             .await?)
     }
@@ -233,10 +235,12 @@ impl AppServerClient {
             let mut guard = self.conversation_id.lock().await;
             guard.replace(*conversation_id);
         }
-        self.approvals
-            .register_session(&conversation_id.to_string())
-            .await
-            .map_err(|err| ExecutorError::Io(io::Error::other(err.to_string())))?;
+        if let Some(approvals) = self.approvals.as_ref() {
+            approvals
+                .register_session(&conversation_id.to_string())
+                .await
+                .map_err(|err| ExecutorError::Io(io::Error::other(err.to_string())))?;
+        }
         self.flush_pending_feedback().await;
         Ok(())
     }

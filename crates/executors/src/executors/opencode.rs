@@ -19,7 +19,6 @@ use ts_rs::TS;
 use workspace_utils::{msg_store::MsgStore, path::make_path_relative, shell::get_shell_command};
 
 use crate::{
-    approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuilder, apply_overrides},
     executors::{
         AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
@@ -129,12 +128,7 @@ impl Opencode {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Opencode {
-    async fn spawn(
-        &self,
-        current_dir: &Path,
-        prompt: &str,
-        _approvals: Arc<dyn ExecutorApprovalService>,
-    ) -> Result<SpawnedChild, ExecutorError> {
+    async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
         // Start a dedicated local share bridge bound to this opencode process
         let bridge = ShareBridge::start().await.map_err(ExecutorError::Io)?;
         let (shell_cmd, shell_arg) = get_shell_command();
@@ -199,7 +193,6 @@ impl StandardCodingAgentExecutor for Opencode {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
-        _approvals: Arc<dyn ExecutorApprovalService>,
     ) -> Result<SpawnedChild, ExecutorError> {
         // Start a dedicated local share bridge bound to this opencode process
         let bridge = ShareBridge::start().await.map_err(ExecutorError::Io)?;
