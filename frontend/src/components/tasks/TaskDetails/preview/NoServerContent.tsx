@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   Play,
   Edit3,
+  Square,
   SquareTerminal,
   Save,
   X,
@@ -169,8 +170,17 @@ export function NoServerContent({
                 disabled={isStartingDevServer || !projectHasDevScript}
                 className="gap-1"
               >
-                <Play className="h-4 w-4" />
-                {t('preview.noServer.startButton')}
+                {runningDevServer ? (
+                  <>
+                    <Square className="h-4 w-4" />
+                    {t('preview.toolbar.stopDevServer')}
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-4 w-4" />
+                    {t('preview.noServer.startButton')}
+                  </>
+                )}
               </Button>
 
               {!runningDevServer && (
