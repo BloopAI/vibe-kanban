@@ -69,7 +69,7 @@ interface NavigateOptions {
  *
  * const navigate = useNavigateWithSearch();
  *
- * // Preserves current search params
+ * // Preserves current search params when navigating to new path
  * navigate('/projects/123/tasks');
  * // Result: /projects/123/tasks?view=preview
  *
@@ -85,7 +85,11 @@ interface NavigateOptions {
  * navigate('/projects/123?tab=settings#section');
  * // Result: /projects/123?tab=settings#section
  *
- * // Object-style navigation
+ * // Change search params without changing pathname (stays on /tasks)
+ * navigate({ search: '?view=diffs' });
+ * // Result: /tasks?view=diffs
+ *
+ * // Object-style navigation with pathname
  * navigate({ pathname: '/projects/123', search: '?tab=settings' });
  * // Result: /projects/123?tab=settings
  *
@@ -108,16 +112,28 @@ export function useNavigateWithSearch() {
       if (typeof to === 'object') {
         // Only add current search params if none provided
         const currentSearch = searchParams.toString();
-        const finalTo = {
-          pathname: to.pathname || '',
-          search:
-            to.search !== undefined
-              ? to.search
-              : currentSearch
-                ? `?${currentSearch}`
-                : '',
-          hash: to.hash || '',
-        };
+
+        // Build the final navigation object, preserving undefined values
+        // so React Router can use current pathname/hash when not specified
+        const finalTo: Partial<{ pathname: string; search: string; hash: string }> = {};
+
+        // Only set pathname if it was provided
+        if (to.pathname !== undefined) {
+          finalTo.pathname = to.pathname;
+        }
+
+        // Set search: use provided, or preserve current if not provided
+        if (to.search !== undefined) {
+          finalTo.search = to.search;
+        } else if (currentSearch) {
+          finalTo.search = `?${currentSearch}`;
+        }
+
+        // Only set hash if it was provided
+        if (to.hash !== undefined) {
+          finalTo.hash = to.hash;
+        }
+
         navigate(finalTo, options);
         return;
       }
