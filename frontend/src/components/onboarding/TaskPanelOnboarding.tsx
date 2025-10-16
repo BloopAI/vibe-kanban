@@ -64,7 +64,7 @@ export function TaskPanelOnboarding({ isOpen }: TaskPanelOnboardingProps) {
         const panelHeight = panel.offsetHeight;
         const viewportHeight = window.innerHeight;
 
-        let targetTop = handleRect.top - panelHeight / 2;
+        let targetTop = handleRect.top + handleRect.height / 2 - panelHeight / 2;
 
         if (targetTop < 20) {
           targetTop = 20;
