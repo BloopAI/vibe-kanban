@@ -58,6 +58,7 @@ import {
 } from '@/components/ui/breadcrumb';
 import { AttemptHeaderActions } from '@/components/panels/AttemptHeaderActions';
 import { TaskPanelHeaderActions } from '@/components/panels/TaskPanelHeaderActions';
+import { TaskPanelOnboarding } from '@/components/onboarding/TaskPanelOnboarding';
 
 type Task = TaskWithAttemptStatus;
 
@@ -754,6 +755,7 @@ export function ProjectTasks() {
       )}
 
       <div className="flex-1 min-h-0">{attemptArea}</div>
+      <TaskPanelOnboarding isOpen={isPanelOpen && !isMobile} />
     </div>
   );
 }
