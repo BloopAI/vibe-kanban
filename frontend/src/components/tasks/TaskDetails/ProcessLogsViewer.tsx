@@ -11,7 +11,6 @@ interface ProcessLogsViewerProps {
   processId: string;
 }
 
-
 export function ProcessLogsViewerContent({
   logs,
   error,
