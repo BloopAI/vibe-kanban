@@ -162,8 +162,6 @@ function AppContent() {
                     path="/mcp-servers"
                     element={<Navigate to="/settings/mcp" replace />}
                   />
-                </Route>
-                <Route element={<NormalLayout hideNavbar />}>
                   <Route
                     path="/projects/:projectId/tasks/:taskId"
                     element={<ProjectTasks />}
