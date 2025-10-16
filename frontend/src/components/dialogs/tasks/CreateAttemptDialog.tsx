@@ -84,7 +84,10 @@ export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
         if (prev) return prev;
 
         const fromAttempt: ExecutorProfileId | null = latestAttempt?.executor
-          ? { executor: latestAttempt.executor as BaseCodingAgent, variant: null }
+          ? {
+              executor: latestAttempt.executor as BaseCodingAgent,
+              variant: null,
+            }
           : null;
 
         return fromAttempt ?? config?.executor_profile ?? null;
@@ -152,9 +155,9 @@ export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
 
             <div className="space-y-2">
               <Label className="text-sm font-medium">
-                {t('createAttemptDialog.baseBranch')} {' '}
+                {t('createAttemptDialog.baseBranch')}{' '}
                 <span className="text-destructive">*</span>
-              </Label >
+              </Label>
               <BranchSelector
                 branches={branches}
                 selectedBranch={selectedBranch}
@@ -165,14 +168,14 @@ export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
                     : t('createAttemptDialog.selectBranch')
                 }
               />
-            </div >
+            </div>
 
             {error && (
               <div className="text-sm text-destructive">
                 {t('createAttemptDialog.error')}
-              </div >
+              </div>
             )}
-          </div >
+          </div>
 
           <DialogFooter>
             <Button
@@ -181,14 +184,15 @@ export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
               disabled={isCreating}
             >
               {t('common:buttons.cancel')}
-            </Button >
+            </Button>
             <Button onClick={handleCreate} disabled={!canCreate}>
               {isCreating
                 ? t('createAttemptDialog.creating')
                 : t('createAttemptDialog.start')}
             </Button>
-          </DialogFooter >
-        </DialogContent >
-      </Dialog >
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     );
-  });
+  }
+);
