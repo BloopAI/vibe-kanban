@@ -95,8 +95,7 @@ export function TaskPanelOnboarding({ isOpen }: TaskPanelOnboardingProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 100 }}
             transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}
-            className="fixed bottom-8 left-1/2 w-2/3 bg-card border border-border rounded-lg shadow-2xl overflow-hidden z-[9999]"
-            style={{ transform: 'translateX(-50%)' }}
+            className="fixed bottom-8 left-[16.66%] w-2/3 bg-card border border-border rounded-lg shadow-2xl overflow-hidden z-[9999]"
           >
             <AnimatePresence mode="wait">
               <motion.div
