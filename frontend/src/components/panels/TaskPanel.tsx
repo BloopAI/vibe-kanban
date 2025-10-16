@@ -142,7 +142,11 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
                         if (projectId && task.id && attempt.id) {
                           const search = searchParams.toString();
                           navigate({
-                            pathname: paths.attempt(projectId, task.id, attempt.id),
+                            pathname: paths.attempt(
+                              projectId,
+                              task.id,
+                              attempt.id
+                            ),
                             search: search ? `?${search}` : '',
                           });
                         }
