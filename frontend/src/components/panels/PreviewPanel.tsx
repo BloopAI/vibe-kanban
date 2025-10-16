@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useDevserverPreview } from '@/hooks/useDevserverPreview';
 import { useDevServer } from '@/hooks/useDevServer';
 import { useLogStream } from '@/hooks/useLogStream';
+import { useDevserverUrlFromLogs } from '@/hooks/useDevserverUrl';
 import { ClickToComponentListener } from '@/utils/previewBridge';
 import { useClickedElements } from '@/contexts/ClickedElementsProvider';
 import { Alert } from '@/components/ui/alert';
@@ -42,11 +43,12 @@ export function PreviewPanel() {
   } = useDevServer(attemptId);
 
   const logStream = useLogStream(latestDevServerProcess?.id ?? '');
+  const lastKnownUrl = useDevserverUrlFromLogs(logStream.logs);
 
   const previewState = useDevserverPreview(attemptId, {
     projectHasDevScript,
     projectId: projectId!,
-    lastKnownUrl: logStream.lastUrl,
+    lastKnownUrl,
   });
 
   const handleRefresh = () => {
