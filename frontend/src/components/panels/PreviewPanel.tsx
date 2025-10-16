@@ -5,6 +5,8 @@ import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDevserverPreview } from '@/hooks/useDevserverPreview';
 import { useDevServer } from '@/hooks/useDevServer';
+import { useLogStream } from '@/hooks/useLogStream';
+import { useDevserverUrlFromLogs } from '@/hooks/useDevserverUrl';
 import { ClickToComponentListener } from '@/utils/previewBridge';
 import { useClickedElements } from '@/contexts/ClickedElementsProvider';
 import { Alert } from '@/components/ui/alert';
@@ -31,11 +33,6 @@ export function PreviewPanel() {
     rawAttemptId && rawAttemptId !== 'latest' ? rawAttemptId : undefined;
   const projectHasDevScript = Boolean(project?.dev_script);
 
-  const previewState = useDevserverPreview(attemptId, {
-    projectHasDevScript,
-    projectId: projectId!,
-  });
-
   const {
     start: startDevServer,
     stop: stopDevServer,
@@ -44,6 +41,15 @@ export function PreviewPanel() {
     runningDevServer,
     latestDevServerProcess,
   } = useDevServer(attemptId);
+
+  const logStream = useLogStream(latestDevServerProcess?.id ?? '');
+  const lastKnownUrl = useDevserverUrlFromLogs(logStream.logs);
+
+  const previewState = useDevserverPreview(attemptId, {
+    projectHasDevScript,
+    projectId: projectId!,
+    lastKnownUrl,
+  });
 
   const handleRefresh = () => {
     setIframeError(false);
@@ -115,7 +121,17 @@ export function PreviewPanel() {
     runningDevServer,
   ]);
 
-  const mode = !runningDevServer ? 'noServer' : iframeError ? 'error' : 'ready';
+  const isPreviewReady =
+    previewState.status === 'ready' &&
+    Boolean(previewState.url) &&
+    !iframeError;
+  const mode = iframeError
+    ? 'error'
+    : isPreviewReady
+      ? 'ready'
+      : runningDevServer
+        ? 'searching'
+        : 'noServer';
   const toggleLogs = () => {
     setShowLogs((v) => !v);
   };
@@ -214,6 +230,8 @@ export function PreviewPanel() {
           showLogs={showLogs}
           onToggle={toggleLogs}
           showToggleText
+          logs={logStream.logs}
+          error={logStream.error}
         />
       </div>
     </div>

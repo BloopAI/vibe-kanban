@@ -11,15 +11,17 @@ interface ProcessLogsViewerProps {
   processId: string;
 }
 
-export default function ProcessLogsViewer({
-  processId,
-}: ProcessLogsViewerProps) {
+export function ProcessLogsViewerContent({
+  logs,
+  error,
+}: {
+  logs: LogEntry[];
+  error: string | null;
+}) {
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   const didInitScroll = useRef(false);
   const prevLenRef = useRef(0);
   const [atBottom, setAtBottom] = useState(true);
-
-  const { logs, error } = useLogStream(processId);
 
   // 1) Initial jump to bottom once data appears.
   useEffect(() => {
@@ -92,4 +94,11 @@ export default function ProcessLogsViewer({
       )}
     </div>
   );
+}
+
+export default function ProcessLogsViewer({
+  processId,
+}: ProcessLogsViewerProps) {
+  const { logs, error } = useLogStream(processId);
+  return <ProcessLogsViewerContent logs={logs} error={error} />;
 }
