@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,7 +14,6 @@ import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import NiceModal from '@ebay/nice-modal-react';
 import { useProject } from '@/contexts/project-context';
 import { openTaskForm } from '@/lib/openTaskForm';
-import { CreateAttemptDialog } from '../dialogs/tasks/CreateAttemptDialog';
 
 interface ActionsDropdownProps {
   task?: TaskWithAttemptStatus | null;
@@ -26,7 +24,6 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
   const { t } = useTranslation('tasks');
   const { projectId } = useProject();
   const openInEditor = useOpenInEditor(attempt?.id);
-  const [isCreateAttemptOpen, setIsCreateAttemptOpen] = useState(false);
 
   const hasAttemptActions = Boolean(attempt);
   const hasTaskActions = Boolean(task);
@@ -67,7 +64,11 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
 
   const handleCreateNewAttempt = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsCreateAttemptOpen(true);
+    if (!task?.id) return;
+    NiceModal.show('create-attempt', {
+      taskId: task.id,
+      latestAttempt: null,
+    });
   };
 
   const handleCreateSubtask = (e: React.MouseEvent) => {
@@ -141,15 +142,6 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-
-      {isCreateAttemptOpen && task?.id && (
-        <CreateAttemptDialog
-          taskId={task.id}
-          open={isCreateAttemptOpen}
-          onOpenChange={setIsCreateAttemptOpen}
-          latestAttempt={null}
-        />
-      )}
     </>
   );
 }

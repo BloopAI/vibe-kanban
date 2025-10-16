@@ -26,6 +26,11 @@ const Dialog = React.forwardRef<
       enableScope(Scope.KANBAN);
       enableScope(Scope.PROJECTS);
     }
+    return () => {
+      disableScope(Scope.DIALOG);
+      enableScope(Scope.KANBAN);
+      enableScope(Scope.PROJECTS);
+    };
   }, [open, enableScope, disableScope]);
 
   // Dialog keyboard shortcuts using semantic hooks

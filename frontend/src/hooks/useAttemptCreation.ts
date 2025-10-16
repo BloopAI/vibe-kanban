@@ -1,23 +1,25 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useParams, useNavigate } from 'react-router-dom';
 import { attemptsApi } from '@/lib/api';
-import { paths } from '@/lib/paths';
-import type { TaskAttempt } from 'shared/types';
-import type { ExecutorProfileId } from 'shared/types';
+import type { TaskAttempt, ExecutorProfileId } from 'shared/types';
 
-export function useAttemptCreation(taskId: string) {
+type CreateAttemptArgs = {
+  profile: ExecutorProfileId;
+  baseBranch: string;
+};
+
+type UseAttemptCreationArgs = {
+  taskId: string;
+  onSuccess?: (attempt: TaskAttempt) => void;
+};
+
+export function useAttemptCreation({
+  taskId,
+  onSuccess,
+}: UseAttemptCreationArgs) {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
-  const { projectId } = useParams<{ projectId: string }>();
 
   const mutation = useMutation({
-    mutationFn: ({
-      profile,
-      baseBranch,
-    }: {
-      profile: ExecutorProfileId;
-      baseBranch: string;
-    }) =>
+    mutationFn: ({ profile, baseBranch }: CreateAttemptArgs) =>
       attemptsApi.create({
         task_id: taskId,
         executor_profile_id: profile,
@@ -28,10 +30,7 @@ export function useAttemptCreation(taskId: string) {
         ['taskAttempts', taskId],
         (old: TaskAttempt[] = []) => [newAttempt, ...old]
       );
-
-      if (projectId) {
-        navigate(paths.attempt(projectId, taskId, newAttempt.id));
-      }
+      onSuccess?.(newAttempt);
     },
   });
 
