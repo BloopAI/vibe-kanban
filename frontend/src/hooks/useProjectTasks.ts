@@ -5,10 +5,11 @@ import type { TaskWithAttemptStatus } from 'shared/types';
 type SharedTaskRecord = {
   id: string;
   organization_id: string;
+  project_id: string;
   title: string;
   description: string | null;
   status: TaskWithAttemptStatus['status'];
-  assignee_member_id: string | null;
+  assignee_user_id: string | null;
   version: number;
   last_event_seq: number | null;
   created_at: string | Date;
@@ -62,6 +63,9 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
     );
 
     Object.values(sharedTasksById).forEach((sharedTask: SharedTaskRecord) => {
+      if (sharedTask.project_id !== projectId) {
+        return;
+      }
       if (claimedSharedTaskIds.has(sharedTask.id)) {
         return;
       }
@@ -75,7 +79,7 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
     );
 
     return { tasks: sorted, tasksById: merged };
-  }, [localTasksById, sharedTasksById]);
+  }, [localTasksById, sharedTasksById, projectId]);
 
   const isLoading = !data && !error; // until first snapshot
 
@@ -85,7 +89,7 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
 function convertSharedTask(task: SharedTaskRecord): TaskWithAttemptStatus {
   return {
     id: task.id,
-    project_id: task.organization_id,
+    project_id: task.project_id,
     title: task.title,
     description: task.description ?? null,
     status: task.status,

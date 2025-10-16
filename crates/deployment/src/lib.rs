@@ -20,6 +20,7 @@ use services::services::{
     analytics::{AnalyticsContext, AnalyticsService},
     approvals::Approvals,
     auth::{AuthError, AuthService},
+    clerk::{ClerkAuth, ClerkAuthError, ClerkSessionStore},
     config::{Config, ConfigError},
     container::{ContainerError, ContainerService},
     drafts::DraftsService,
@@ -30,7 +31,7 @@ use services::services::{
     git::{GitService, GitServiceError},
     image::{ImageError, ImageService},
     pr_monitor::PrMonitorService,
-    share::ShareTaskPublisher,
+    share::{ShareError, ShareTaskPublisher},
     worktree_manager::WorktreeError,
 };
 use sqlx::{Error as SqlxError, types::Uuid};
@@ -69,6 +70,8 @@ pub enum DeploymentError {
     #[error(transparent)]
     Config(#[from] ConfigError),
     #[error(transparent)]
+    ClerkAuth(#[from] ClerkAuthError),
+    #[error(transparent)]
     Other(#[from] AnyhowError),
 }
 
@@ -106,6 +109,23 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     fn drafts(&self) -> &DraftsService;
 
+    fn clerk_sessions(&self) -> &ClerkSessionStore;
+
+    fn clerk_auth(&self) -> Option<Arc<ClerkAuth>>;
+
+    fn share_publisher(&self) -> Result<ShareTaskPublisher, ShareError> {
+        ShareTaskPublisher::new(self.db().clone(), self.clerk_sessions().clone())
+    }
+
+    fn share_publisher_with_metadata(&self) -> Result<ShareTaskPublisher, ShareError> {
+        ShareTaskPublisher::new_with_metadata(
+            self.db().clone(),
+            self.clerk_sessions().clone(),
+            self.git().clone(),
+            self.config().clone(),
+        )
+    }
+
     async fn update_sentry_scope(&self) -> Result<(), DeploymentError> {
         let user_id = self.user_id();
         let config = self.config().read().await;
@@ -126,7 +146,8 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                 user_id: self.user_id().to_string(),
                 analytics_service: analytics_service.clone(),
             });
-        PrMonitorService::spawn(db, config, analytics).await
+        let sessions = self.clerk_sessions().clone();
+        PrMonitorService::spawn(db, config, analytics, sessions).await
     }
 
     async fn track_if_analytics_allowed(&self, event_name: &str, properties: Value) {
@@ -196,8 +217,12 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                     match Task::update_status(&self.db().pool, task.id, TaskStatus::InReview).await
                     {
                         Ok(_) => {
-                            if let Ok(publisher) = ShareTaskPublisher::new(self.db().clone()) {
-                                if let Err(err) = publisher.update_shared_task_by_id(task.id).await
+                            if let Ok(publisher) = ShareTaskPublisher::new(
+                                self.db().clone(),
+                                self.clerk_sessions().clone(),
+                            ) {
+                                if let Err(err) =
+                                    publisher.update_shared_task_by_id(task.id, None).await
                                 {
                                     tracing::warn!(
                                         ?err,

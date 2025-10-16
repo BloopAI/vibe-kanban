@@ -8,6 +8,7 @@ use services::services::{
     analytics::{AnalyticsConfig, AnalyticsContext, AnalyticsService, generate_user_id},
     approvals::Approvals,
     auth::AuthService,
+    clerk::{ClerkAuth, ClerkPublicConfig, ClerkPublicConfigError, ClerkSessionStore},
     config::{Config, load_config_from_file, save_config_to_file},
     container::ContainerService,
     drafts::DraftsService,
@@ -42,6 +43,8 @@ pub struct LocalDeployment {
     file_search_cache: Arc<FileSearchCache>,
     approvals: Approvals,
     drafts: DraftsService,
+    clerk_sessions: ClerkSessionStore,
+    clerk_auth: Option<Arc<ClerkAuth>>,
     _remote_sync: Option<RemoteSyncHandle>,
 }
 
@@ -78,6 +81,15 @@ impl Deployment for LocalDeployment {
         let git = GitService::new();
         let msg_stores = Arc::new(RwLock::new(HashMap::new()));
         let auth = AuthService::new();
+        let clerk_sessions = ClerkSessionStore::new();
+        let clerk_auth = match ClerkPublicConfig::from_env() {
+            Ok(public_config) => Some(Arc::new(public_config.build_auth()?)),
+            Err(ClerkPublicConfigError::MissingEnv(_)) => {
+                tracing::info!("CLERK_ISSUER not set; share features disabled");
+                None
+            }
+            Err(err) => return Err(DeploymentError::Other(err.into())),
+        };
         let filesystem = FilesystemService::new();
 
         // Create shared components for EventService
@@ -121,13 +133,14 @@ impl Deployment for LocalDeployment {
             image.clone(),
             analytics_ctx,
             approvals.clone(),
+            clerk_sessions.clone(),
         );
         container.spawn_worktree_cleanup().await;
 
         let events = EventService::new(db.clone(), events_msg_store, events_entry_count);
 
         // start remote server communication
-        let remote_sync = RemoteSync::spawn_if_configured(db.clone());
+        let remote_sync = RemoteSync::spawn_if_configured(db.clone(), clerk_sessions.clone());
 
         let drafts = DraftsService::new(db.clone(), image.clone());
         let file_search_cache = Arc::new(FileSearchCache::new());
@@ -147,6 +160,8 @@ impl Deployment for LocalDeployment {
             file_search_cache,
             approvals,
             drafts,
+            clerk_sessions,
+            clerk_auth,
             _remote_sync: remote_sync,
         })
     }
@@ -208,5 +223,13 @@ impl Deployment for LocalDeployment {
 
     fn drafts(&self) -> &DraftsService {
         &self.drafts
+    }
+
+    fn clerk_sessions(&self) -> &ClerkSessionStore {
+        &self.clerk_sessions
+    }
+
+    fn clerk_auth(&self) -> Option<Arc<ClerkAuth>> {
+        self.clerk_auth.clone()
     }
 }

@@ -37,7 +37,6 @@ use services::services::{
     container::ContainerService,
     git::{ConflictOp, WorktreeResetOptions},
     github_service::{CreatePrRequest, GitHubService, GitHubServiceError},
-    share::ShareTaskPublisher,
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
@@ -47,7 +46,7 @@ use uuid::Uuid;
 use crate::{
     DeploymentImpl,
     error::ApiError,
-    middleware::load_task_attempt_middleware,
+    middleware::{ClerkSessionMaybe, load_task_attempt_middleware},
     routes::task_attempts::util::{ensure_worktree_path, handle_images_for_prompt},
 };
 
@@ -648,6 +647,7 @@ pub async fn compare_commit_to_head(
 pub async fn merge_task_attempt(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
+    session: ClerkSessionMaybe,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     let pool = &deployment.db().pool;
 
@@ -690,13 +690,21 @@ pub async fn merge_task_attempt(
     )
     .await?;
     Task::update_status(pool, ctx.task.id, TaskStatus::Done).await?;
-    if let Ok(publisher) = ShareTaskPublisher::new(deployment.db().clone()) {
-        if let Err(err) = publisher.update_shared_task_by_id(ctx.task.id).await {
-            tracing::warn!(
-                ?err,
-                "Failed to propagate shared task update for {}",
-                ctx.task.id
-            );
+    match deployment.share_publisher() {
+        Ok(publisher) => {
+            if let Err(err) = publisher
+                .update_shared_task_by_id(ctx.task.id, session.as_ref())
+                .await
+            {
+                tracing::warn!(
+                    ?err,
+                    "Failed to propagate shared task update for {}",
+                    ctx.task.id
+                );
+            }
+        }
+        Err(err) => {
+            tracing::warn!(?err, "Failed to create share publisher for {}", ctx.task.id);
         }
     }
 
@@ -1549,6 +1557,7 @@ pub struct AttachPrResponse {
 pub async fn attach_existing_pr(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
+    session: ClerkSessionMaybe,
 ) -> Result<ResponseJson<ApiResponse<AttachPrResponse>>, ApiError> {
     let pool = &deployment.db().pool;
 
@@ -1614,13 +1623,21 @@ pub async fn attach_existing_pr(
         // If PR is merged, mark task as done
         if matches!(pr_info.status, MergeStatus::Merged) {
             Task::update_status(pool, task.id, TaskStatus::Done).await?;
-            if let Ok(publisher) = ShareTaskPublisher::new(deployment.db().clone()) {
-                if let Err(err) = publisher.update_shared_task_by_id(task.id).await {
-                    tracing::warn!(
-                        ?err,
-                        "Failed to propagate shared task update for {}",
-                        task.id
-                    );
+            match deployment.share_publisher() {
+                Ok(publisher) => {
+                    if let Err(err) = publisher
+                        .update_shared_task_by_id(task.id, session.as_ref())
+                        .await
+                    {
+                        tracing::warn!(
+                            ?err,
+                            "Failed to propagate shared task update for {}",
+                            task.id
+                        );
+                    }
+                }
+                Err(err) => {
+                    tracing::warn!(?err, "Failed to create share publisher for {}", task.id);
                 }
             }
         }

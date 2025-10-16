@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use thiserror::Error;
 
-use crate::clerk::{ClerkOrganization, ClerkService, ClerkServiceError, ClerkUser};
+use crate::auth::{ClerkService, ClerkServiceError, ClerkUser};
 
 #[derive(Debug, Error)]
 pub enum IdentityError {
@@ -16,7 +16,6 @@ pub enum IdentityError {
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct Organization {
     pub id: String,
-    pub name: String,
     pub slug: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -44,9 +43,10 @@ impl<'a> IdentityRepository<'a> {
     pub async fn ensure_organization(
         &self,
         organization_id: &str,
+        slug: Option<&str>,
     ) -> Result<Organization, IdentityError> {
-        let org = self.clerk.get_organization(organization_id).await?;
-        upsert_organization(self.pool, &org)
+        let slug = slug.unwrap_or(organization_id);
+        upsert_organization(self.pool, organization_id, slug)
             .await
             .map_err(IdentityError::from)
     }
@@ -65,28 +65,24 @@ impl<'a> IdentityRepository<'a> {
 
 async fn upsert_organization(
     pool: &PgPool,
-    org: &ClerkOrganization,
+    organization_id: &str,
+    slug: &str,
 ) -> Result<Organization, sqlx::Error> {
-    let slug = org.slug.clone().unwrap_or_else(|| org.id.clone());
-
     sqlx::query_as!(
         Organization,
         r#"
-        INSERT INTO organizations (id, name, slug)
-        VALUES ($1, $2, $3)
+        INSERT INTO organizations (id, slug)
+        VALUES ($1, $2)
         ON CONFLICT (id) DO UPDATE
-        SET name = EXCLUDED.name,
-            slug = EXCLUDED.slug,
+        SET slug = EXCLUDED.slug,
             updated_at = NOW()
         RETURNING
             id          AS "id!",
-            name        AS "name!",
             slug        AS "slug!",
             created_at  AS "created_at!",
             updated_at  AS "updated_at!"
         "#,
-        org.id,
-        org.name,
+        organization_id,
         slug
     )
     .fetch_one(pool)

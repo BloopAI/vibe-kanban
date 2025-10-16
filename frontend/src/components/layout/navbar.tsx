@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useCallback } from 'react';
 import { siDiscord } from 'simple-icons';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,6 +28,7 @@ import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
 import { useDiscordOnlineCount } from '@/hooks/useDiscordOnlineCount';
 
 import {
+  OrganizationSwitcher,
   SignedIn,
   SignedOut,
   SignInButton,
@@ -61,6 +62,12 @@ export function Navbar() {
   const { query, setQuery, active, clear, registerInputRef } = useSearch();
   const handleOpenInEditor = useOpenProjectInEditor(project || null);
   const { data: onlineCount } = useDiscordOnlineCount();
+  const navButtonClass = buttonVariants({ variant: 'ghost', size: 'sm' });
+  const navButtonTightClass = buttonVariants({
+    variant: 'ghost',
+    size: 'sm',
+    className: 'px-2',
+  });
 
   const setSearchBarRef = useCallback(
     (node: HTMLInputElement | null) => {
@@ -125,7 +132,42 @@ export function Navbar() {
             project={project || null}
           />
 
-          <div className="flex-1 flex justify-end">
+          <div className="flex-1 flex items-center justify-end gap-2">
+            <SignedOut>
+              <SignInButton mode="modal">
+                <button className={navButtonClass}>Sign In</button>
+              </SignInButton>
+            </SignedOut>
+
+            <SignedIn>
+              <div className="flex items-center gap-1">
+                <OrganizationSwitcher
+                  hidePersonal
+                  afterCreateOrganizationUrl="/"
+                  afterSelectOrganizationUrl="/"
+                  afterLeaveOrganizationUrl="/"
+                  appearance={{
+                    elements: {
+                      organizationSwitcherTrigger: `${navButtonClass} gap-2`,
+                      organizationSwitcherTriggerIcon: 'text-muted-foreground',
+                    },
+                  }}
+                />
+                <UserButton
+                  appearance={{
+                    elements: {
+                      userButtonTrigger:
+                        'rounded-full border border-input hover:bg-accent transition-colors p-0 h-6 w-6',
+                      avatarBox: 'h-6 w-6',
+                    },
+                  }}
+                />
+                <SignOutButton>
+                  <button className={navButtonTightClass}>Sign Out</button>
+                </SignOutButton>
+              </div>
+            </SignedIn>
+
             {projectId && (
               <>
                 <OpenInIdeButton onClick={handleOpenInIDE} />
@@ -150,19 +192,6 @@ export function Navbar() {
                 <Settings className="h-4 w-4" />
               </Link>
             </Button>
-
-            <SignedOut>
-              <SignInButton mode="modal">
-                <button className="btn btn-primary">Sign In</button>
-              </SignInButton>
-            </SignedOut>
-
-            <SignedIn>
-              <UserButton />
-              <SignOutButton>
-                <button className="btn btn-secondary">Sign Out</button>
-              </SignOutButton>
-            </SignedIn>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

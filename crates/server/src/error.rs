@@ -12,7 +12,7 @@ use executors::executors::ExecutorError;
 use git2::Error as Git2Error;
 use services::services::{
     auth::AuthError, config::ConfigError, container::ContainerError, drafts::DraftsServiceError,
-    git::GitServiceError, github_service::GitHubServiceError, image::ImageError,
+    git::GitServiceError, github_service::GitHubServiceError, image::ImageError, share::ShareError,
     worktree_manager::WorktreeError,
 };
 use thiserror::Error;
@@ -53,6 +53,8 @@ pub enum ApiError {
     Multipart(#[from] MultipartError),
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
+    #[error("Unauthorized")]
+    Unauthorized,
     #[error("Conflict: {0}")]
     Conflict(String),
 }
@@ -113,6 +115,7 @@ impl IntoResponse for ApiError {
             },
             ApiError::Io(_) => (StatusCode::INTERNAL_SERVER_ERROR, "IoError"),
             ApiError::Multipart(_) => (StatusCode::BAD_REQUEST, "MultipartError"),
+            ApiError::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized"),
             ApiError::Conflict(_) => (StatusCode::CONFLICT, "ConflictError"),
         };
 
@@ -137,6 +140,7 @@ impl IntoResponse for ApiError {
                 _ => format!("{}: {}", error_type, self),
             },
             ApiError::Multipart(_) => "Failed to upload file. Please ensure the file is valid and try again.".to_string(),
+            ApiError::Unauthorized => "Unauthorized. Please sign in again.".to_string(),
             ApiError::Conflict(msg) => msg.clone(),
             ApiError::Drafts(drafts_err) => match drafts_err {
                 DraftsServiceError::Conflict(msg) => msg.clone(),
@@ -151,5 +155,45 @@ impl IntoResponse for ApiError {
         };
         let response = ApiResponse::<()>::error(&error_message);
         (status_code, Json(response)).into_response()
+    }
+}
+
+impl From<ShareError> for ApiError {
+    fn from(err: ShareError) -> Self {
+        match err {
+            ShareError::Database(db_err) => ApiError::Database(db_err),
+            ShareError::TaskNotFound(task_id) => {
+                ApiError::Conflict(format!("Task {task_id} not found for sharing"))
+            }
+            ShareError::ProjectNotFound(project_id) => {
+                ApiError::Conflict(format!("Project {project_id} not found for sharing"))
+            }
+            ShareError::MissingProjectMetadata(project_id) => ApiError::Conflict(format!(
+                "Project {project_id} is missing GitHub metadata required for sharing"
+            )),
+            ShareError::MissingConfig(reason) => {
+                ApiError::Conflict(format!("Share service not configured: {reason}"))
+            }
+            ShareError::Transport(err) => {
+                tracing::error!(?err, "share task transport error");
+                ApiError::Conflict("Failed to share task with remote service".to_string())
+            }
+            ShareError::Serialization(err) => {
+                tracing::error!(?err, "share task serialization error");
+                ApiError::Conflict("Failed to parse remote share response".to_string())
+            }
+            ShareError::Url(err) => {
+                tracing::error!(?err, "share task URL error");
+                ApiError::Conflict("Share service URL is invalid".to_string())
+            }
+            ShareError::WebSocket(err) => {
+                tracing::error!(?err, "share task websocket error");
+                ApiError::Conflict("Unexpected websocket error during sharing".to_string())
+            }
+            ShareError::InvalidResponse => ApiError::Conflict(
+                "Remote share service returned an unexpected response".to_string(),
+            ),
+            ShareError::MissingAuth => ApiError::Unauthorized,
+        }
     }
 }
