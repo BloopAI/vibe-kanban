@@ -25,6 +25,8 @@ use tokio_tungstenite::tungstenite::Message as WsMessage;
 use utils::ws::{WsClient, WsConfig, WsError, WsHandler, run_ws_client};
 use uuid::Uuid;
 
+use crate::services::clerk::{ClerkSession, ClerkSessionStore};
+
 #[derive(Debug, Error)]
 pub enum ShareError {
     #[error(transparent)]
@@ -47,6 +49,8 @@ pub enum ShareError {
     MissingProjectMetadata(Uuid),
     #[error("invalid response from remote share service")]
     InvalidResponse,
+    #[error("share authentication missing or expired")]
+    MissingAuth,
 }
 
 pub struct RemoteSync {
@@ -54,18 +58,23 @@ pub struct RemoteSync {
     processor: ActivityProcessor,
     remote_client: Option<Arc<WsClient>>,
     config: RemoteSyncConfig,
+    sessions: ClerkSessionStore,
 }
 
 impl RemoteSync {
-    pub fn spawn_if_configured(db: DBService) -> Option<RemoteSyncHandle> {
+    pub fn spawn_if_configured(
+        db: DBService,
+        sessions: ClerkSessionStore,
+    ) -> Option<RemoteSyncHandle> {
         if let Some(config) = RemoteSyncConfig::from_env() {
-            tracing::info!(org_id = %config.organization_id, "starting shared task synchronizer");
+            tracing::info!(api = %config.api_base, "starting shared task synchronizer");
             let processor = ActivityProcessor::new(db.clone(), config.clone());
             let sync = Self {
                 db,
                 processor,
                 remote_client: None,
                 config,
+                sessions,
             };
             let (shutdown_tx, shutdown_rx) = oneshot::channel();
             let join = tokio::spawn(async move {
@@ -82,14 +91,20 @@ impl RemoteSync {
     }
 
     pub async fn run(mut self, shutdown_rx: oneshot::Receiver<()>) -> Result<(), ShareError> {
-        let mut last_seq =
-            SharedActivityCursor::get(&self.db.pool, self.config.organization_id.to_string())
-                .await?
-                .map(|cursor| cursor.last_seq);
-        last_seq = self.processor.catch_up(last_seq).await.unwrap_or(last_seq);
+        let session = self.sessions.wait_for_active().await;
+        let org_id = session.org_id.clone().ok_or(ShareError::MissingAuth)?;
+
+        let mut last_seq = SharedActivityCursor::get(&self.db.pool, org_id.clone())
+            .await?
+            .map(|cursor| cursor.last_seq);
+        last_seq = self
+            .processor
+            .catch_up(&session, last_seq)
+            .await
+            .unwrap_or(last_seq);
 
         let ws_url = self.config.websocket_endpoint(last_seq);
-        let remote = spawn_shared_remote(self.processor.clone(), &ws_url).await?;
+        let remote = spawn_shared_remote(self.processor.clone(), &self.sessions, &ws_url).await?;
         self.remote_client = Some(remote);
 
         let _ = shutdown_rx.await;
@@ -144,20 +159,40 @@ impl WsHandler for SharedWsHandler {
 
 async fn spawn_shared_remote(
     processor: ActivityProcessor,
+    sessions: &ClerkSessionStore,
     url: &str,
 ) -> Result<Arc<WsClient>, ShareError> {
+    let session_source = sessions.clone();
     let ws_config = WsConfig {
         url: url.to_string(),
         autoreconnect: true,
         reconnect_base_delay: std::time::Duration::from_secs(1),
         reconnect_max_delay: std::time::Duration::from_secs(30),
         ping_interval: Some(std::time::Duration::from_secs(30)),
+        header_factory: Some(Arc::new(move || {
+            let session_source = session_source.clone();
+            Box::pin(async move {
+                let session = session_source.wait_for_active().await;
+                build_ws_headers(&session)
+            })
+        })),
     };
 
     let handler = SharedWsHandler { processor };
     let client = Arc::new(run_ws_client(handler, ws_config).await?);
 
     Ok(client)
+}
+
+fn build_ws_headers(
+    session: &ClerkSession,
+) -> utils::ws::WsResult<Vec<(http::HeaderName, http::HeaderValue)>> {
+    let mut headers = Vec::new();
+    let value = format!("Bearer {}", session.bearer());
+    let header =
+        http::HeaderValue::from_str(&value).map_err(|err| WsError::Header(err.to_string()))?;
+    headers.push((http::header::AUTHORIZATION, header));
+    Ok(headers)
 }
 
 #[derive(Clone)]

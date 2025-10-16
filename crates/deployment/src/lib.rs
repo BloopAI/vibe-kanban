@@ -20,6 +20,7 @@ use services::services::{
     analytics::AnalyticsService,
     approvals::Approvals,
     auth::{AuthError, AuthService},
+    clerk::ClerkSessionStore,
     config::{Config, ConfigError},
     container::{ContainerError, ContainerService},
     drafts::DraftsService,
@@ -108,6 +109,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     fn approvals(&self) -> &Approvals;
 
     fn drafts(&self) -> &DraftsService;
+    fn clerk_sessions(&self) -> &ClerkSessionStore;
 
     async fn update_sentry_scope(&self) -> Result<(), DeploymentError> {
         let user_id = self.user_id();

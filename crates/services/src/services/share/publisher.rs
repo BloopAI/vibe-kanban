@@ -15,13 +15,19 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use super::{RemoteSyncConfig, ShareError, convert_local_status, convert_remote_task};
-use crate::services::{config::Config, git::GitService, github_service::GitHubService};
+use crate::services::{
+    clerk::{ClerkSession, ClerkSessionStore},
+    config::Config,
+    git::GitService,
+    github_service::GitHubService,
+};
 
 #[derive(Clone)]
 pub struct ShareTaskPublisher {
     db: DBService,
     config: RemoteSyncConfig,
     client: HttpClient,
+    sessions: ClerkSessionStore,
     metadata: Option<MetadataContext>,
 }
 
@@ -32,21 +38,40 @@ struct MetadataContext {
 }
 
 impl ShareTaskPublisher {
-    pub fn new(db: DBService) -> Result<Self, ShareError> {
-        Self::new_with_metadata_context(db, None)
+    pub fn new(db: DBService, sessions: ClerkSessionStore) -> Result<Self, ShareError> {
+        Self::new_with_metadata_context(db, sessions, None)
+    }
+
+    async fn resolve_session(
+        &self,
+        provided: Option<&ClerkSession>,
+    ) -> Result<ClerkSession, ShareError> {
+        if let Some(session) = provided {
+            if !session.is_expired() {
+                return Ok(session.clone());
+            }
+        }
+
+        if let Some(active) = self.sessions.active().await {
+            return Ok(active);
+        }
+
+        Err(ShareError::MissingAuth)
     }
 
     pub fn new_with_metadata(
         db: DBService,
+        sessions: ClerkSessionStore,
         git: GitService,
         user_config: Arc<RwLock<Config>>,
     ) -> Result<Self, ShareError> {
         let context = MetadataContext { git, user_config };
-        Self::new_with_metadata_context(db, Some(context))
+        Self::new_with_metadata_context(db, sessions, Some(context))
     }
 
     fn new_with_metadata_context(
         db: DBService,
+        sessions: ClerkSessionStore,
         metadata: Option<MetadataContext>,
     ) -> Result<Self, ShareError> {
         let config = RemoteSyncConfig::from_env()
@@ -61,11 +86,17 @@ impl ShareTaskPublisher {
             db,
             config,
             client,
+            sessions,
             metadata,
         })
     }
 
-    pub async fn share_task(&self, task_id: Uuid) -> Result<Uuid, ShareError> {
+    pub async fn share_task(
+        &self,
+        task_id: Uuid,
+        session: Option<&ClerkSession>,
+    ) -> Result<Uuid, ShareError> {
+        let session = self.resolve_session(session).await?;
         let task = Task::find_by_id(&self.db.pool, task_id)
             .await?
             .ok_or(ShareError::TaskNotFound(task_id))?;
@@ -83,16 +114,21 @@ impl ShareTaskPublisher {
             project: Some(metadata),
             title: task.title.clone(),
             description: task.description.clone(),
-            assignee_member_id: Some(self.config.member_id),
+            assignee_user_id: Some(session.user_id.clone()),
         };
 
         let response = self
             .client
             .post(self.config.create_task_endpoint())
+            .bearer_auth(session.bearer())
             .json(&payload)
             .send()
             .await
             .map_err(ShareError::Transport)?;
+
+        if response.status() == StatusCode::UNAUTHORIZED {
+            return Err(ShareError::MissingAuth);
+        }
 
         if response.status() == StatusCode::CONFLICT {
             tracing::warn!(task_id = %task_id, "remote task already exists; skipping create");
@@ -112,11 +148,16 @@ impl ShareTaskPublisher {
         Ok(resp_body.task.id)
     }
 
-    pub async fn update_shared_task(&self, task: &Task) -> Result<(), ShareError> {
+    pub async fn update_shared_task(
+        &self,
+        task: &Task,
+        session: Option<&ClerkSession>,
+    ) -> Result<(), ShareError> {
         let Some(shared_task_id) = task.shared_task_id else {
             return Ok(());
         };
 
+        let session = self.resolve_session(session).await?;
         let payload = UpdateSharedTaskRequest {
             title: Some(task.title.clone()),
             description: task.description.clone(),
@@ -127,10 +168,15 @@ impl ShareTaskPublisher {
         let response = self
             .client
             .patch(self.config.update_task_endpoint(shared_task_id))
+            .bearer_auth(session.bearer())
             .json(&payload)
             .send()
             .await
             .map_err(ShareError::Transport)?;
+
+        if response.status() == StatusCode::UNAUTHORIZED {
+            return Err(ShareError::MissingAuth);
+        }
 
         let response = response.error_for_status().map_err(ShareError::Transport)?;
         let resp_body: UpdateTaskResponse = response.json().await?;
@@ -142,12 +188,16 @@ impl ShareTaskPublisher {
         Ok(())
     }
 
-    pub async fn update_shared_task_by_id(&self, task_id: Uuid) -> Result<(), ShareError> {
+    pub async fn update_shared_task_by_id(
+        &self,
+        task_id: Uuid,
+        session: Option<&ClerkSession>,
+    ) -> Result<(), ShareError> {
         let task = Task::find_by_id(&self.db.pool, task_id)
             .await?
             .ok_or(ShareError::TaskNotFound(task_id))?;
 
-        self.update_shared_task(&task).await
+        self.update_shared_task(&task, session).await
     }
 
     /// Check and populate missing project metadata needed for sharing tasks.
@@ -258,7 +308,7 @@ struct CreateSharedTaskRequest {
     project: Option<ProjectMetadata>,
     title: String,
     description: Option<String>,
-    assignee_member_id: Option<Uuid>,
+    assignee_user_id: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

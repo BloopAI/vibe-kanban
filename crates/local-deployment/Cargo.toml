@@ -39,3 +39,6 @@ async-stream = "0.3"
 json-patch = "2.0"
 tokio = { workspace = true }
 tokio-stream = { version = "0.1.17", features = ["sync"] }
+dashmap = "5.5"
+jsonwebtoken = { version = "10.0.0", features = ["rust_crypto"] }
+url = "2.5"

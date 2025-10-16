@@ -47,6 +47,10 @@ mime_guess = "2.0"
 rust-embed = "8.2"
 octocrab = "0.44"
 dirs = "5.0"
+axum-extra = { version = "0.9", features = ["typed-header"] }
+dashmap = "5.5"
+jsonwebtoken = { version = "10.0.0", features = ["rust_crypto"] }
+url = "2.5"
 
 [dev-dependencies]
 tempfile = "3.8"
@@ -54,4 +58,3 @@ tower = { version = "0.4", features = ["util"] }
 
 [build-dependencies]
 dotenv = "0.15"
-
