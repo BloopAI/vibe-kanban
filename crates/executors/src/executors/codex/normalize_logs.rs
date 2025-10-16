@@ -12,12 +12,12 @@ use codex_protocol::{
     config_types::ReasoningEffort,
     plan_tool::{StepStatus, UpdatePlanArgs},
     protocol::{
-        AgentMessageDeltaEvent, AgentReasoningDeltaEvent, AgentReasoningSectionBreakEvent,
-        BackgroundEventEvent, ErrorEvent, EventMsg, ExecCommandBeginEvent, ExecCommandEndEvent,
-        ExecCommandOutputDeltaEvent, ExecOutputStream, FileChange as CodexProtoFileChange,
-        McpInvocation, McpToolCallBeginEvent, McpToolCallEndEvent, PatchApplyBeginEvent,
-        PatchApplyEndEvent, StreamErrorEvent, TokenUsageInfo, ViewImageToolCallEvent,
-        WebSearchBeginEvent, WebSearchEndEvent,
+        AgentMessageDeltaEvent, AgentMessageEvent, AgentReasoningDeltaEvent, AgentReasoningEvent,
+        AgentReasoningSectionBreakEvent, BackgroundEventEvent, ErrorEvent, EventMsg,
+        ExecCommandBeginEvent, ExecCommandEndEvent, ExecCommandOutputDeltaEvent, ExecOutputStream,
+        FileChange as CodexProtoFileChange, McpInvocation, McpToolCallBeginEvent,
+        McpToolCallEndEvent, PatchApplyBeginEvent, PatchApplyEndEvent, StreamErrorEvent,
+        TokenUsageInfo, ViewImageToolCallEvent, WebSearchBeginEvent, WebSearchEndEvent,
     },
 };
 use futures::StreamExt;
@@ -219,6 +219,7 @@ impl LogState {
         &mut self,
         content: String,
         type_: StreamingTextKind,
+        mode: UpdateMode,
     ) -> (NormalizedEntry, usize, bool) {
         let index_provider = &self.entry_index;
         let entry = match type_ {
@@ -232,7 +233,10 @@ impl LogState {
             (&entry.as_ref().unwrap().content, index)
         } else {
             let streaming_state = entry.as_mut().unwrap();
-            streaming_state.content.push_str(&content);
+            match mode {
+                UpdateMode::Append => streaming_state.content.push_str(&content),
+                UpdateMode::Set => streaming_state.content = content,
+            }
             (&streaming_state.content, streaming_state.index)
         };
         let normalized_entry = NormalizedEntry {
@@ -247,13 +251,42 @@ impl LogState {
         (normalized_entry, index, is_new)
     }
 
-    fn assistant_message_update(&mut self, content: String) -> (NormalizedEntry, usize, bool) {
-        self.streaming_text_update(content, StreamingTextKind::Assistant)
+    fn streaming_text_append(
+        &mut self,
+        content: String,
+        type_: StreamingTextKind,
+    ) -> (NormalizedEntry, usize, bool) {
+        self.streaming_text_update(content, type_, UpdateMode::Append)
     }
 
-    fn thinking_update(&mut self, content: String) -> (NormalizedEntry, usize, bool) {
-        self.streaming_text_update(content, StreamingTextKind::Thinking)
+    fn streaming_text_set(
+        &mut self,
+        content: String,
+        type_: StreamingTextKind,
+    ) -> (NormalizedEntry, usize, bool) {
+        self.streaming_text_update(content, type_, UpdateMode::Set)
     }
+
+    fn assistant_message_append(&mut self, content: String) -> (NormalizedEntry, usize, bool) {
+        self.streaming_text_append(content, StreamingTextKind::Assistant)
+    }
+
+    fn thinking_append(&mut self, content: String) -> (NormalizedEntry, usize, bool) {
+        self.streaming_text_append(content, StreamingTextKind::Thinking)
+    }
+
+    fn assistant_message(&mut self, content: String) -> (NormalizedEntry, usize, bool) {
+        self.streaming_text_set(content, StreamingTextKind::Assistant)
+    }
+
+    fn thinking(&mut self, content: String) -> (NormalizedEntry, usize, bool) {
+        self.streaming_text_set(content, StreamingTextKind::Thinking)
+    }
+}
+
+enum UpdateMode {
+    Append,
+    Set,
 }
 
 fn upsert_normalized_entry(
@@ -404,13 +437,25 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                 }
                 EventMsg::AgentMessageDelta(AgentMessageDeltaEvent { delta }) => {
                     state.thinking = None;
-                    let (entry, index, is_new) = state.assistant_message_update(delta);
+                    let (entry, index, is_new) = state.assistant_message_append(delta);
                     upsert_normalized_entry(&msg_store, index, entry, is_new);
                 }
                 EventMsg::AgentReasoningDelta(AgentReasoningDeltaEvent { delta }) => {
                     state.assistant = None;
-                    let (entry, index, is_new) = state.thinking_update(delta);
+                    let (entry, index, is_new) = state.thinking_append(delta);
                     upsert_normalized_entry(&msg_store, index, entry, is_new);
+                }
+                EventMsg::AgentMessage(AgentMessageEvent { message }) => {
+                    state.thinking = None;
+                    let (entry, index, is_new) = state.assistant_message(message);
+                    upsert_normalized_entry(&msg_store, index, entry, is_new);
+                    state.assistant = None;
+                }
+                EventMsg::AgentReasoning(AgentReasoningEvent { text }) => {
+                    state.assistant = None;
+                    let (entry, index, is_new) = state.thinking(text);
+                    upsert_normalized_entry(&msg_store, index, entry, is_new);
+                    state.thinking = None;
                 }
                 EventMsg::AgentReasoningSectionBreak(AgentReasoningSectionBreakEvent {}) => {
                     state.assistant = None;
@@ -704,9 +749,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                         state.token_usage_info = Some(info);
                     }
                 }
-                EventMsg::AgentReasoning(..) // content duplicated with delta events
-                | EventMsg::AgentMessage(..) // ditto
-                | EventMsg::AgentReasoningRawContent(..)
+                EventMsg::AgentReasoningRawContent(..)
                 | EventMsg::AgentReasoningRawContentDelta(..)
                 | EventMsg::TaskStarted(..)
                 | EventMsg::UserMessage(..)
