@@ -372,10 +372,14 @@ function GitOperations({
                 <button
                   onClick={() => window.open(prMerge.pr_info.url, '_blank')}
                   className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100/60 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 hover:underline truncate max-w-[180px] sm:max-w-none"
-                  aria-label={`Open PR #${Number(prMerge.pr_info.number)}`}
+                  aria-label={t('git.pr.open', {
+                    number: Number(prMerge.pr_info.number),
+                  })}
                 >
                   <GitPullRequest className="h-3.5 w-3.5" />
-                  PR #{Number(prMerge.pr_info.number)}
+                  {t('git.pr.number', {
+                    number: Number(prMerge.pr_info.number),
+                  })}
                   <ExternalLink className="h-3.5 w-3.5" />
                 </button>
               );

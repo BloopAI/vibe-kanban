@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useProject } from '@/contexts/project-context';
 import { useTaskAttempts } from '@/hooks/useTaskAttempts';
 import { paths } from '@/lib/paths';
@@ -15,6 +16,7 @@ interface TaskPanelProps {
 }
 
 const TaskPanel = ({ task }: TaskPanelProps) => {
+  const { t } = useTranslation('tasks');
   const navigate = useNavigate();
   const { projectId } = useProject();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -61,7 +63,11 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
   const latestAttempt = displayedAttempts[0] ?? null;
 
   if (!task) {
-    return <div className="text-muted-foreground">No task selected</div>;
+    return (
+      <div className="text-muted-foreground">
+        {t('taskPanel.noTaskSelected')}
+      </div>
+    );
   }
 
   const titleContent = `# ${task.title || 'Task'}`;
@@ -79,10 +85,14 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
           </div>
 
           {isAttemptsLoading && (
-            <div className="text-muted-foreground">Loading attempts...</div>
+            <div className="text-muted-foreground">
+              {t('taskPanel.loadingAttempts')}
+            </div>
           )}
           {isAttemptsError && (
-            <div className="text-destructive">Failed to load attempts</div>
+            <div className="text-destructive">
+              {t('taskPanel.errorLoadingAttempts')}
+            </div>
           )}
           {!isAttemptsLoading && !isAttemptsError && (
             <table className="w-full text-sm">
@@ -91,7 +101,9 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
                   <th colSpan={3}>
                     <div className="w-full flex text-left">
                       <span className="flex-1">
-                        Attempts ({displayedAttempts.length})
+                        {t('taskPanel.attemptsCount', {
+                          count: displayedAttempts.length,
+                        })}
                       </span>
                       <span>
                         <Button
@@ -112,7 +124,7 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
                       colSpan={3}
                       className="py-2 text-muted-foreground border-t"
                     >
-                      No attempts yet
+                      {t('taskPanel.noAttempts')}
                     </td>
                   </tr>
                 ) : (

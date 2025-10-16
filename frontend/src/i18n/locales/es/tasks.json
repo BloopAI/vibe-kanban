@@ -1,12 +1,198 @@
 {
-  "loading": "Cargando tareas...",
-  "empty": {
-    "noTasks": "No se encontraron tareas para este proyecto.",
-    "createFirst": "Crear Primera Tarea",
-    "noSearchResults": "Ninguna tarea coincide con tu búsqueda."
-  },
   "actions": {
     "addTask": "Agregar tarea"
+  },
+  "actionsMenu": {
+    "attempt": "Attempt",
+    "createNewAttempt": "Create new attempt",
+    "createSubtask": "Create subtask",
+    "duplicate": "Duplicate",
+    "openInIde": "Open attempt in IDE",
+    "task": "Task",
+    "viewProcesses": "View processes"
+  },
+  "attempt": {
+    "actions": {
+      "openInIde": "Abrir en IDE",
+      "openMenu": "Abrir menú",
+      "startDevServer": "Iniciar servidor de desarrollo",
+      "stopDevServer": "Detener servidor de desarrollo"
+    },
+    "agent": "Agent",
+    "clickToCopy": "Click to copy worktree path",
+    "copied": "Copied!",
+    "createSubtask": "Create Subtask",
+    "diffs": "Diffs",
+    "labels": {
+      "agent": "Agente",
+      "attempt": "Intento",
+      "branch": "Rama",
+      "diffs": "Diferencias"
+    },
+    "newAttempt": "New Attempt",
+    "openInEditor": "Open in {{editor}}",
+    "path": "Path",
+    "preview": "Preview",
+    "startDev": "Start Dev",
+    "stopAttempt": "Stop Attempt",
+    "stopDev": "Stop Dev",
+    "stopping": "Stopping...",
+    "viewDevLogs": "View dev server logs",
+    "viewHistory": "View attempt history"
+  },
+  "attemptHeaderActions": {
+    "diffs": "Diffs",
+    "preview": "Preview"
+  },
+  "branches": {
+    "changeTarget": {
+      "dialog": {
+        "action": "Cambiar rama",
+        "description": "Elige una nueva rama de destino para el intento de tarea.",
+        "inProgress": "Cambiando...",
+        "placeholder": "Selecciona una rama de destino",
+        "title": "Cambiar rama de destino"
+      }
+    }
+  },
+  "createAttemptDialog": {
+    "baseBranch": "Base branch",
+    "creating": "Creating...",
+    "description": "Start a new attempt with a coding agent. A git worktree and task branch will be created.",
+    "error": "Failed to create attempt. Please try again.",
+    "loadingBranches": "Loading branches...",
+    "selectBranch": "Select branch",
+    "start": "Start",
+    "title": "Create Attempt"
+  },
+  "diff": {
+    "collapseAll": "Collapse all diffs",
+    "errorLoadingDiff": "Failed to load diff: {{error}}",
+    "expandAll": "Expand all diffs",
+    "filesChanged_one": "{{count}} file changed",
+    "filesChanged_other": "{{count}} files changed",
+    "noChanges": "No changes have been made yet",
+    "viewModes": {
+      "inline": "Inline view",
+      "split": "Split view"
+    }
+  },
+  "empty": {
+    "createFirst": "Crear Primera Tarea",
+    "noSearchResults": "Ninguna tarea coincide con tu búsqueda.",
+    "noTasks": "No se encontraron tareas para este proyecto."
+  },
+  "followUp": {
+    "clearReviewComments": "Clear Review Comments",
+    "edit": "Edit",
+    "queueForNextTurn": "Queue for next turn",
+    "queuing": "Queuing…",
+    "resolveConflicts": "Resolve conflicts",
+    "send": "Send",
+    "stop": "Stop",
+    "unqueuing": "Unqueuing…"
+  },
+  "git": {
+    "branch": {
+      "current": "actual"
+    },
+    "errors": {
+      "changeTargetBranch": "Error al cambiar rama de destino",
+      "mergeChanges": "Error al fusionar cambios",
+      "pushChanges": "Error al enviar cambios",
+      "rebaseBranch": "Error al hacer rebase de la rama"
+    },
+    "labels": {
+      "taskBranch": "Rama de tarea"
+    },
+    "pr": {
+      "number": "PR #{{number}}",
+      "open": "Open PR #{{number}}"
+    },
+    "states": {
+      "createPr": "Crear PR",
+      "creating": "Creando...",
+      "merge": "Fusionar",
+      "merged": "¡Fusionado!",
+      "merging": "Fusionando...",
+      "push": "Enviar",
+      "pushed": "¡Enviado!",
+      "pushing": "Enviando...",
+      "rebase": "Rebase",
+      "rebasing": "Rebaseando..."
+    },
+    "status": {
+      "ahead": "adelante",
+      "behind": "atrás",
+      "commits_one": "commit",
+      "commits_other": "commits",
+      "conflicts": "Conflictos",
+      "upToDate": "Al día"
+    }
+  },
+  "loading": "Cargando tareas...",
+  "preview": {
+    "devScript": {
+      "cancel": "Cancelar",
+      "errors": {
+        "empty": "El script de desarrollo no puede estar vacío",
+        "notLoaded": "Proyecto no cargado"
+      },
+      "saveAndStart": "Guardar e Iniciar",
+      "saveChanges": "Guardar Cambios",
+      "saveOnly": "Solo Guardar"
+    },
+    "iframe": {
+      "title": "Vista previa del servidor de desarrollo"
+    },
+    "logs": {
+      "hide": "Ocultar",
+      "show": "Mostrar",
+      "title": "Registros del Servidor de Desarrollo"
+    },
+    "noServer": {
+      "companionLink": "Ver guía de instalación",
+      "companionPrompt": "Para la funcionalidad de clic y editar, agrega el complemento del navegador a tu proyecto.",
+      "editButton": "Editar Script de Desarrollo",
+      "setupPrompt": "Para usar la vista previa en vivo y la función de hacer clic y editar, por favor agrega un script de servidor de desarrollo a este proyecto.",
+      "startButton": "Iniciar Servidor de Desarrollo",
+      "startPrompt": "Por favor inicia un servidor de desarrollo para ver la vista previa",
+      "stopAndEditButton": "Detener Servidor de Desarrollo y Resolver Problemas",
+      "title": "No hay servidor de desarrollo en ejecución"
+    },
+    "selectAttempt": "Select an attempt to see preview",
+    "title": "Preview",
+    "toolbar": {
+      "copyUrl": "Copiar URL",
+      "openInTab": "Abrir en nueva pestaña",
+      "refresh": "Actualizar vista previa"
+    },
+    "troubleAlert": {
+      "item1": "¿Se inició correctamente el servidor de desarrollo? Puede haber un error que necesites resolver, o quizás sea necesario instalar dependencias.",
+      "item2": "¿Tu servidor de desarrollo imprimió la URL y el puerto en la terminal en el formato",
+      "item2Suffix": "? (así es como sabemos que está funcionando)",
+      "item3": "¿Has instalado el Web Companion (requerido para hacer clic y editar)? Si no, por favor",
+      "item3Link": "sigue las instrucciones de instalación aquí",
+      "title": "Tenemos problemas al previsualizar tu aplicación:"
+    }
+  },
+  "processes": {
+    "agent": "Agent:",
+    "backToList": "Back to list",
+    "completed": "Completed: {{date}}",
+    "deleted": "Deleted",
+    "deletedTooltip": "Deleted by restore: timeline was restored to a checkpoint and later executions were removed",
+    "detailsTitle": "Process Details",
+    "errorLoadingDetails": "Failed to load process details. Please try again.",
+    "errorLoadingUpdates": "Failed to load live updates for processes.",
+    "exit": "Exit: {{code}}",
+    "loading": "Loading execution processes...",
+    "loadingDetails": "Loading process details...",
+    "noProcesses": "No execution processes found for this attempt.",
+    "processId": "Process ID: {{id}}",
+    "reconnecting": "Reconnecting...",
+    "selectAttempt": "Select an attempt to view execution processes.",
+    "started": "Started: {{date}}"
   },
   "rebase": {
     "common": {
@@ -15,120 +201,43 @@
       "withTarget": "Rebase sobre {{branch}}"
     },
     "dialog": {
-      "title": "Rebase del intento de tarea",
+      "advanced": "Avanzado",
       "description": "Elige una nueva rama base para hacer rebase de este intento de tarea.",
-      "upstreamLabel": "Rama upstream",
-      "upstreamPlaceholder": "Selecciona una rama upstream",
       "targetLabel": "Rama de destino",
       "targetPlaceholder": "Selecciona una rama de destino",
-      "advanced": "Avanzado"
+      "title": "Rebase del intento de tarea",
+      "upstreamLabel": "Rama upstream",
+      "upstreamPlaceholder": "Selecciona una rama upstream"
     },
     "status": {
+      "dirtyMarker": " (sucio)",
       "inProgress": "Rebase en progreso{{counts}}",
-      "needed": "Rebase necesario{{dirty}}{{counts}}",
-      "dirtyMarker": " (sucio)"
+      "needed": "Rebase necesario{{dirty}}{{counts}}"
     }
   },
-  "branches": {
-    "changeTarget": {
-      "dialog": {
-        "title": "Cambiar rama de destino",
-        "description": "Elige una nueva rama de destino para el intento de tarea.",
-        "placeholder": "Selecciona una rama de destino",
-        "action": "Cambiar rama",
-        "inProgress": "Cambiando..."
-      }
-    }
+  "taskHeader": {
+    "closePanel": "Close panel",
+    "deleteTask": "Delete task",
+    "editTask": "Edit task"
   },
-  "attempt": {
-    "labels": {
-      "attempt": "Intento",
-      "agent": "Agente",
-      "branch": "Rama",
-      "diffs": "Diferencias"
-    },
-    "actions": {
-      "openInIde": "Abrir en IDE",
-      "openMenu": "Abrir menú",
-      "startDevServer": "Iniciar servidor de desarrollo",
-      "stopDevServer": "Detener servidor de desarrollo"
-    }
+  "taskPanel": {
+    "attemptsCount": "Attempts ({{count}})",
+    "errorLoadingAttempts": "Failed to load attempts",
+    "loadingAttempts": "Loading attempts...",
+    "noAttempts": "No attempts yet",
+    "noTaskSelected": "No task selected"
   },
-  "git": {
-    "labels": {
-      "taskBranch": "Rama de tarea"
-    },
-    "branch": {
-      "current": "actual"
-    },
-    "status": {
-      "commits_one": "commit",
-      "commits_other": "commits",
-      "conflicts": "Conflictos",
-      "upToDate": "Al día",
-      "ahead": "adelante",
-      "behind": "atrás"
-    },
-    "states": {
-      "merged": "¡Fusionado!",
-      "merging": "Fusionando...",
-      "merge": "Fusionar",
-      "rebasing": "Rebaseando...",
-      "rebase": "Rebase",
-      "pushed": "¡Enviado!",
-      "pushing": "Enviando...",
-      "push": "Enviar",
-      "creating": "Creando...",
-      "createPr": "Crear PR"
-    },
-    "errors": {
-      "changeTargetBranch": "Error al cambiar rama de destino",
-      "pushChanges": "Error al enviar cambios",
-      "mergeChanges": "Error al fusionar cambios",
-      "rebaseBranch": "Error al hacer rebase de la rama"
-    }
+  "todos": {
+    "title_one": "Todos ({{count}})",
+    "title_other": "Todos ({{count}})"
   },
-  "preview": {
-    "troubleAlert": {
-      "title": "Tenemos problemas al previsualizar tu aplicación:",
-      "item1": "¿Se inició correctamente el servidor de desarrollo? Puede haber un error que necesites resolver, o quizás sea necesario instalar dependencias.",
-      "item2": "¿Tu servidor de desarrollo imprimió la URL y el puerto en la terminal en el formato",
-      "item2Suffix": "? (así es como sabemos que está funcionando)",
-      "item3": "¿Has instalado el Web Companion (requerido para hacer clic y editar)? Si no, por favor",
-      "item3Link": "sigue las instrucciones de instalación aquí"
-    },
-    "noServer": {
-      "title": "No hay servidor de desarrollo en ejecución",
-      "startPrompt": "Por favor inicia un servidor de desarrollo para ver la vista previa",
-      "setupPrompt": "Para usar la vista previa en vivo y la función de hacer clic y editar, por favor agrega un script de servidor de desarrollo a este proyecto.",
-      "companionPrompt": "Para la funcionalidad de clic y editar, agrega el complemento del navegador a tu proyecto.",
-      "companionLink": "Ver guía de instalación",
-      "startButton": "Iniciar Servidor de Desarrollo",
-      "editButton": "Editar Script de Desarrollo",
-      "stopAndEditButton": "Detener Servidor de Desarrollo y Resolver Problemas"
-    },
-    "devScript": {
-      "saveAndStart": "Guardar e Iniciar",
-      "saveOnly": "Solo Guardar",
-      "saveChanges": "Guardar Cambios",
-      "cancel": "Cancelar",
-      "errors": {
-        "notLoaded": "Proyecto no cargado",
-        "empty": "El script de desarrollo no puede estar vacío"
-      }
-    },
-    "logs": {
-      "title": "Registros del Servidor de Desarrollo",
-      "hide": "Ocultar",
-      "show": "Mostrar"
-    },
-    "iframe": {
-      "title": "Vista previa del servidor de desarrollo"
-    },
-    "toolbar": {
-      "refresh": "Actualizar vista previa",
-      "copyUrl": "Copiar URL",
-      "openInTab": "Abrir en nueva pestaña"
-    }
+  "toolbar": {
+    "actions": "Actions",
+    "noAttempts": "No attempts yet",
+    "startAttempt": "Start Attempt",
+    "startFirstAttempt": "Start your first attempt to begin working on this task"
+  },
+  "viewProcessesDialog": {
+    "title": "Execution processes"
   }
 }

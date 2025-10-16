@@ -140,8 +140,8 @@ export function PreviewPanel() {
     return (
       <div className="h-full flex items-center justify-center p-8">
         <div className="text-center text-muted-foreground">
-          <p className="text-lg font-medium">Preview</p>
-          <p className="text-sm mt-2">Select an attempt to see preview</p>
+          <p className="text-lg font-medium">{t('preview.title')}</p>
+          <p className="text-sm mt-2">{t('preview.selectAttempt')}</p>
         </div>
       </div>
     );

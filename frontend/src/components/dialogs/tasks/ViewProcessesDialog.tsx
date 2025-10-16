@@ -1,4 +1,5 @@
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -14,6 +15,7 @@ export interface ViewProcessesDialogProps {
 
 export const ViewProcessesDialog = NiceModal.create<ViewProcessesDialogProps>(
   ({ attemptId }) => {
+    const { t } = useTranslation('tasks');
     const modal = useModal();
 
     const handleOpenChange = (open: boolean) => {
@@ -38,7 +40,7 @@ export const ViewProcessesDialog = NiceModal.create<ViewProcessesDialogProps>(
           }}
         >
           <DialogHeader className="px-4 py-3 border-b">
-            <DialogTitle>Execution processes</DialogTitle>
+            <DialogTitle>{t('viewProcessesDialog.title')}</DialogTitle>
           </DialogHeader>
           <div className="h-[75vh] flex flex-col min-h-0 min-w-0">
             <ProcessSelectionProvider>

@@ -1,4 +1,5 @@
 import { Columns, FileText } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { useDiffViewMode, useDiffViewStore } from '@/stores/useDiffViewStore';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -14,6 +15,7 @@ type Props = {
 };
 
 export default function DiffViewSwitch({ className }: Props) {
+  const { t } = useTranslation('tasks');
   const mode = useDiffViewMode();
   const setMode = useDiffViewStore((s) => s.setMode);
 
@@ -36,7 +38,9 @@ export default function DiffViewSwitch({ className }: Props) {
               <FileText className="h-4 w-4" />
             </ToggleGroupItem>
           </TooltipTrigger>
-          <TooltipContent side="bottom">Inline view</TooltipContent>
+          <TooltipContent side="bottom">
+            {t('diff.viewModes.inline')}
+          </TooltipContent>
         </Tooltip>
 
         <Tooltip>
@@ -49,7 +53,9 @@ export default function DiffViewSwitch({ className }: Props) {
               <Columns className="h-4 w-4" />
             </ToggleGroupItem>
           </TooltipTrigger>
-          <TooltipContent side="bottom">Split view</TooltipContent>
+          <TooltipContent side="bottom">
+            {t('diff.viewModes.split')}
+          </TooltipContent>
         </Tooltip>
       </ToggleGroup>
     </TooltipProvider>

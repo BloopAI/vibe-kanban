@@ -1,51 +1,54 @@
 {
-  "buttons": {
-    "save": "保存",
-    "cancel": "キャンセル",
-    "send": "送信",
-    "delete": "削除",
-    "edit": "編集",
-    "create": "作成",
-    "continue": "続行",
-    "reset": "リセット",
-    "manage": "管理",
-    "connect": "接続",
-    "disconnect": "切断",
-    "close": "閉じる"
-  },
-  "states": {
-    "loading": "読み込み中...",
-    "saving": "保存中...",
-    "error": "エラー",
-    "success": "成功",
-    "reconnecting": "再接続中"
-  },
-  "language": {
-    "browserDefault": "ブラウザ設定"
-  },
-  "conversation": {
-    "plan": "計画",
-    "planToggle": {
-      "show": "計画を表示",
-      "hide": "計画を非表示"
-    },
-    "toolDetailsToggle": {
-      "show": "詳細を表示",
-      "hide": "詳細を非表示"
-    },
-    "args": "引数",
-    "output": "出力",
-    "result": "結果",
-    "deniedByUser": "{{toolName}} がユーザーによって拒否されました"
-  },
   "branchSelector": {
-    "placeholder": "ブランチを選択",
-    "searchPlaceholder": "ブランチを検索...",
-    "empty": "ブランチが見つかりません",
     "badges": {
       "current": "現在",
       "remote": "リモート"
     },
-    "currentDisabled": "現在のブランチは選択できません"
+    "currentDisabled": "現在のブランチは選択できません",
+    "empty": "ブランチが見つかりません",
+    "placeholder": "ブランチを選択",
+    "searchPlaceholder": "ブランチを検索..."
+  },
+  "breadcrumb": {
+    "more": "More"
+  },
+  "buttons": {
+    "cancel": "キャンセル",
+    "close": "閉じる",
+    "connect": "接続",
+    "continue": "続行",
+    "create": "作成",
+    "delete": "削除",
+    "disconnect": "切断",
+    "edit": "編集",
+    "manage": "管理",
+    "reset": "リセット",
+    "save": "保存",
+    "send": "送信"
+  },
+  "conversation": {
+    "args": "引数",
+    "deniedByUser": "{{toolName}} がユーザーによって拒否されました",
+    "output": "出力",
+    "plan": "計画",
+    "planToggle": {
+      "hide": "計画を非表示",
+      "show": "計画を表示"
+    },
+    "result": "結果",
+    "toolDetailsToggle": {
+      "hide": "詳細を非表示",
+      "show": "詳細を表示"
+    }
+  },
+  "language": {
+    "browserDefault": "ブラウザ設定"
+  },
+  "states": {
+    "error": "エラー",
+    "loading": "読み込み中...",
+    "reconnecting": "再接続中",
+    "saving": "保存中...",
+    "success": "成功"
   }
 }

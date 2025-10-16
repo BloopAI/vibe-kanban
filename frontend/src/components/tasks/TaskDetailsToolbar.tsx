@@ -16,6 +16,7 @@ import CreateAttempt from '@/components/tasks/Toolbar/CreateAttempt.tsx';
 import CurrentAttempt from '@/components/tasks/Toolbar/CurrentAttempt.tsx';
 import { useUserSystem } from '@/components/config-provider';
 import { Card } from '../ui/card';
+import { useTranslation } from 'react-i18next';
 
 function TaskDetailsToolbar({
   task,
@@ -36,6 +37,8 @@ function TaskDetailsToolbar({
   selectedAttempt: TaskAttempt | null;
   setSelectedAttempt: (attempt: TaskAttempt | null) => void;
 }) {
+  const { t } = useTranslation('tasks');
+
   // Use props instead of context
   const taskAttempts = attempts;
   // const { setLoading } = useTaskLoading(task.id);
@@ -169,7 +172,7 @@ function TaskDetailsToolbar({
         ) : (
           <div className="">
             <Card className="bg-background border-y border-dashed p-3 text-sm">
-              Actions
+              {t('toolbar.actions')}
             </Card>
             <div className="p-3">
               {/* Current Attempt Info */}
@@ -187,10 +190,10 @@ function TaskDetailsToolbar({
                 ) : (
                   <div className="text-center py-8">
                     <div className="text-lg font-medium text-muted-foreground">
-                      No attempts yet
+                      {t('toolbar.noAttempts')}
                     </div>
                     <div className="text-sm text-muted-foreground mt-1">
-                      Start your first attempt to begin working on this task
+                      {t('toolbar.startFirstAttempt')}
                     </div>
                   </div>
                 )}
@@ -205,7 +208,7 @@ function TaskDetailsToolbar({
                     className="w-full gap-2 bg-black text-white hover:bg-black/90"
                   >
                     <Play className="h-4 w-4" />
-                    Start Attempt
+                    {t('toolbar.startAttempt')}
                   </Button>
                 </div>
               )}

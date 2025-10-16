@@ -89,6 +89,8 @@
     }
   },
   "preview": {
+    "title": "Preview",
+    "selectAttempt": "Select an attempt to see preview",
     "troubleAlert": {
       "title": "We're having trouble previewing your application:",
       "item1": "Did the dev server start successfully? There may be a bug you need to resolve, or perhaps dependencies need to be installed.",
@@ -130,5 +132,160 @@
       "copyUrl": "Copy URL",
       "openInTab": "Open in new tab"
     }
+  },
+  "diff": {
+    "viewModes": {
+      "inline": "Inline view",
+      "split": "Split view"
+    },
+    "errorLoadingDiff": "Failed to load diff: {{error}}",
+    "expandAll": "Expand all diffs",
+    "collapseAll": "Collapse all diffs",
+    "filesChanged_one": "{{count}} file changed",
+    "filesChanged_other": "{{count}} files changed",
+    "noChanges": "No changes have been made yet"
+  },
+  "taskPanel": {
+    "noTaskSelected": "No task selected",
+    "loadingAttempts": "Loading attempts...",
+    "errorLoadingAttempts": "Failed to load attempts",
+    "attemptsCount": "Attempts ({{count}})",
+    "noAttempts": "No attempts yet"
+  },
+  "processes": {
+    "selectAttempt": "Select an attempt to view execution processes.",
+    "errorLoadingUpdates": "Failed to load live updates for processes.",
+    "reconnecting": "Reconnecting...",
+    "loading": "Loading execution processes...",
+    "noProcesses": "No execution processes found for this attempt.",
+    "processId": "Process ID: {{id}}",
+    "deleted": "Deleted",
+    "deletedTooltip": "Deleted by restore: timeline was restored to a checkpoint and later executions were removed",
+    "agent": "Agent:",
+    "exit": "Exit: {{code}}",
+    "started": "Started: {{date}}",
+    "completed": "Completed: {{date}}",
+    "detailsTitle": "Process Details",
+    "backToList": "Back to list",
+    "loadingDetails": "Loading process details...",
+    "errorLoadingDetails": "Failed to load process details. Please try again."
+  },
+  "taskHeader": {
+    "editTask": "Edit task",
+    "deleteTask": "Delete task",
+    "closePanel": "Close panel"
+  },
+  "toolbar": {
+    "actions": "Actions",
+    "noAttempts": "No attempts yet",
+    "startFirstAttempt": "Start your first attempt to begin working on this task",
+    "startAttempt": "Start Attempt"
+  },
+  "followUp": {
+    "stop": "Stop",
+    "clearReviewComments": "Clear Review Comments",
+    "resolveConflicts": "Resolve conflicts",
+    "send": "Send",
+    "unqueuing": "Unqueuing…",
+    "edit": "Edit",
+    "queuing": "Queuing…",
+    "queueForNextTurn": "Queue for next turn"
+  },
+  "todos": {
+    "title_one": "Todos ({{count}})",
+    "title_other": "Todos ({{count}})"
+  },
+  "attempt": {
+    "actions": {
+      "openInIde": "Open in IDE",
+      "openMenu": "Open menu",
+      "startDevServer": "Start dev server",
+      "stopDevServer": "Stop dev server"
+    },
+    "labels": {
+      "attempt": "Attempt",
+      "agent": "Agent",
+      "branch": "Branch",
+      "diffs": "Diffs"
+    },
+    "agent": "Agent",
+    "path": "Path",
+    "openInEditor": "Open in {{editor}}",
+    "copied": "Copied!",
+    "clickToCopy": "Click to copy worktree path",
+    "stopDev": "Stop Dev",
+    "startDev": "Start Dev",
+    "viewDevLogs": "View dev server logs",
+    "stopping": "Stopping...",
+    "stopAttempt": "Stop Attempt",
+    "newAttempt": "New Attempt",
+    "viewHistory": "View attempt history",
+    "createSubtask": "Create Subtask",
+    "preview": "Preview",
+    "diffs": "Diffs"
+  },
+  "git": {
+    "labels": {
+      "taskBranch": "Task Branch"
+    },
+    "branch": {
+      "current": "current"
+    },
+    "status": {
+      "commits_one": "commit",
+      "commits_other": "commits",
+      "conflicts": "Conflicts",
+      "upToDate": "Up to date",
+      "ahead": "ahead",
+      "behind": "behind"
+    },
+    "states": {
+      "merged": "Merged!",
+      "merging": "Merging...",
+      "merge": "Merge",
+      "rebasing": "Rebasing...",
+      "rebase": "Rebase",
+      "pushed": "Pushed!",
+      "pushing": "Pushing...",
+      "push": "Push",
+      "creating": "Creating...",
+      "createPr": "Create PR"
+    },
+    "errors": {
+      "changeTargetBranch": "Failed to change target branch",
+      "pushChanges": "Failed to push changes",
+      "mergeChanges": "Failed to merge changes",
+      "rebaseBranch": "Failed to rebase branch"
+    },
+    "pr": {
+      "open": "Open PR #{{number}}",
+      "number": "PR #{{number}}"
+    }
+  },
+  "createAttemptDialog": {
+    "title": "Create Attempt",
+    "description": "Start a new attempt with a coding agent. A git worktree and task branch will be created.",
+    "baseBranch": "Base branch",
+    "loadingBranches": "Loading branches...",
+    "selectBranch": "Select branch",
+    "error": "Failed to create attempt. Please try again.",
+    "creating": "Creating...",
+    "start": "Start"
+  },
+  "viewProcessesDialog": {
+    "title": "Execution processes"
+  },
+  "attemptHeaderActions": {
+    "preview": "Preview",
+    "diffs": "Diffs"
+  },
+  "actionsMenu": {
+    "attempt": "Attempt",
+    "openInIde": "Open attempt in IDE",
+    "viewProcesses": "View processes",
+    "createNewAttempt": "Create new attempt",
+    "createSubtask": "Create subtask",
+    "task": "Task",
+    "duplicate": "Duplicate"
   }
 }

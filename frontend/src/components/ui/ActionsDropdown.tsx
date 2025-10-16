@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -22,6 +23,7 @@ interface ActionsDropdownProps {
 }
 
 export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
+  const { t } = useTranslation('tasks');
   const { projectId } = useProject();
   const openInEditor = useOpenInEditor(attempt?.id);
   const [isCreateAttemptOpen, setIsCreateAttemptOpen] = useState(false);
@@ -93,27 +95,27 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
         <DropdownMenuContent align="end">
           {hasAttemptActions && (
             <>
-              <DropdownMenuLabel>Attempt</DropdownMenuLabel>
+              <DropdownMenuLabel>{t('actionsMenu.attempt')}</DropdownMenuLabel>
               <DropdownMenuItem
                 disabled={!attempt?.id}
                 onClick={handleOpenInEditor}
               >
-                Open attempt in IDE
+                {t('actionsMenu.openInIde')}
               </DropdownMenuItem>
               <DropdownMenuItem
                 disabled={!attempt?.id}
                 onClick={handleViewProcesses}
               >
-                View processes
+                {t('actionsMenu.viewProcesses')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleCreateNewAttempt}>
-                Create new attempt
+                {t('actionsMenu.createNewAttempt')}
               </DropdownMenuItem>
               <DropdownMenuItem
                 disabled={!projectId || !attempt}
                 onClick={handleCreateSubtask}
               >
-                Create subtask
+                {t('actionsMenu.createSubtask')}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
             </>
@@ -121,19 +123,19 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
 
           {hasTaskActions && (
             <>
-              <DropdownMenuLabel>Task</DropdownMenuLabel>
+              <DropdownMenuLabel>{t('actionsMenu.task')}</DropdownMenuLabel>
               <DropdownMenuItem disabled={!projectId} onClick={handleEdit}>
-                Edit
+                {t('common:buttons.edit')}
               </DropdownMenuItem>
               <DropdownMenuItem disabled={!projectId} onClick={handleDuplicate}>
-                Duplicate
+                {t('actionsMenu.duplicate')}
               </DropdownMenuItem>
               <DropdownMenuItem
                 disabled={!projectId}
                 onClick={handleDelete}
                 className="text-destructive"
               >
-                Delete
+                {t('common:buttons.delete')}
               </DropdownMenuItem>
             </>
           )}

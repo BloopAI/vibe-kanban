@@ -1,51 +1,54 @@
 {
-  "buttons": {
-    "save": "저장",
-    "cancel": "취소",
-    "send": "보내기",
-    "delete": "삭제",
-    "edit": "편집",
-    "create": "생성",
-    "continue": "계속",
-    "reset": "초기화",
-    "manage": "관리",
-    "connect": "연결",
-    "disconnect": "연결 해제",
-    "close": "닫기"
-  },
-  "states": {
-    "loading": "로딩 중...",
-    "saving": "저장 중...",
-    "error": "오류",
-    "success": "성공",
-    "reconnecting": "재연결 중"
-  },
-  "language": {
-    "browserDefault": "브라우저 기본값"
-  },
-  "conversation": {
-    "plan": "계획",
-    "planToggle": {
-      "show": "계획 보기",
-      "hide": "계획 숨기기"
-    },
-    "toolDetailsToggle": {
-      "show": "세부 정보 보기",
-      "hide": "세부 정보 숨기기"
-    },
-    "args": "인자",
-    "output": "출력",
-    "result": "결과",
-    "deniedByUser": "{{toolName}} 사용자에 의해 거부됨"
-  },
   "branchSelector": {
-    "placeholder": "브랜치 선택",
-    "searchPlaceholder": "브랜치 검색...",
-    "empty": "브랜치를 찾을 수 없습니다",
     "badges": {
       "current": "현재",
       "remote": "원격"
     },
-    "currentDisabled": "현재 브랜치는 선택할 수 없습니다"
+    "currentDisabled": "현재 브랜치는 선택할 수 없습니다",
+    "empty": "브랜치를 찾을 수 없습니다",
+    "placeholder": "브랜치 선택",
+    "searchPlaceholder": "브랜치 검색..."
+  },
+  "breadcrumb": {
+    "more": "More"
+  },
+  "buttons": {
+    "cancel": "취소",
+    "close": "닫기",
+    "connect": "연결",
+    "continue": "계속",
+    "create": "생성",
+    "delete": "삭제",
+    "disconnect": "연결 해제",
+    "edit": "편집",
+    "manage": "관리",
+    "reset": "초기화",
+    "save": "저장",
+    "send": "보내기"
+  },
+  "conversation": {
+    "args": "인자",
+    "deniedByUser": "{{toolName}} 사용자에 의해 거부됨",
+    "output": "출력",
+    "plan": "계획",
+    "planToggle": {
+      "hide": "계획 숨기기",
+      "show": "계획 보기"
+    },
+    "result": "결과",
+    "toolDetailsToggle": {
+      "hide": "세부 정보 숨기기",
+      "show": "세부 정보 보기"
+    }
+  },
+  "language": {
+    "browserDefault": "브라우저 기본값"
+  },
+  "states": {
+    "error": "오류",
+    "loading": "로딩 중...",
+    "reconnecting": "재연결 중",
+    "saving": "저장 중...",
+    "success": "성공"
   }
 }
