@@ -28,12 +28,14 @@ impl Executable for CodingAgentInitialRequest {
         approvals: Arc<dyn ExecutorApprovalService>,
     ) -> Result<SpawnedChild, ExecutorError> {
         let executor_profile_id = self.executor_profile_id.clone();
-        let agent = ExecutorConfigs::get_cached()
+        let mut agent = ExecutorConfigs::get_cached()
             .get_coding_agent(&executor_profile_id)
             .ok_or(ExecutorError::UnknownExecutorType(
                 executor_profile_id.to_string(),
             ))?;
 
-        agent.spawn(current_dir, &self.prompt, approvals).await
+        agent.use_approvals(approvals.clone());
+
+        agent.spawn(current_dir, &self.prompt).await
     }
 }
