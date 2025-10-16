@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -14,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import BranchSelector from '@/components/tasks/BranchSelector';
 import { ExecutorProfileSelector } from '@/components/settings';
 import { useAttemptCreation } from '@/hooks/useAttemptCreation';
+import { useNavigateWithSearch } from '@/hooks';
 import { useProject } from '@/contexts/project-context';
 import { useUserSystem } from '@/components/config-provider';
 import { projectsApi } from '@/lib/api';
@@ -34,7 +34,7 @@ export interface CreateAttemptDialogProps {
 export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
   ({ taskId, latestAttempt }) => {
     const modal = useModal();
-    const navigate = useNavigate();
+    const navigate = useNavigateWithSearch();
     const { projectId } = useProject();
     const { t } = useTranslation('tasks');
     const { profiles, config } = useUserSystem();
@@ -42,12 +42,7 @@ export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
       taskId,
       onSuccess: (attempt) => {
         if (projectId) {
-          const params = new URLSearchParams(window.location.search);
-          const search = params.toString();
-          navigate({
-            pathname: paths.attempt(projectId, taskId, attempt.id),
-            search: search ? `?${search}` : '',
-          });
+          navigate(paths.attempt(projectId, taskId, attempt.id));
         }
       },
     });

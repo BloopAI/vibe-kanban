@@ -1,7 +1,7 @@
-import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useProject } from '@/contexts/project-context';
 import { useTaskAttempts } from '@/hooks/useTaskAttempts';
+import { useNavigateWithSearch } from '@/hooks';
 import { paths } from '@/lib/paths';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { NewCardContent } from '../ui/new-card';
@@ -16,8 +16,7 @@ interface TaskPanelProps {
 
 const TaskPanel = ({ task }: TaskPanelProps) => {
   const { t } = useTranslation('tasks');
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const navigate = useNavigateWithSearch();
   const { projectId } = useProject();
 
   const {
@@ -140,15 +139,9 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
                       tabIndex={0}
                       onClick={() => {
                         if (projectId && task.id && attempt.id) {
-                          const search = searchParams.toString();
-                          navigate({
-                            pathname: paths.attempt(
-                              projectId,
-                              task.id,
-                              attempt.id
-                            ),
-                            search: search ? `?${search}` : '',
-                          });
+                          navigate(
+                            paths.attempt(projectId, task.id, attempt.id)
+                          );
                         }
                       }}
                     >

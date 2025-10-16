@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigateWithSearch } from '@/hooks';
 import { tasksApi } from '@/lib/api';
 import { paths } from '@/lib/paths';
 import type {
@@ -12,8 +12,7 @@ import type {
 
 export function useTaskMutations(projectId?: string) {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const navigate = useNavigateWithSearch();
 
   const invalidateQueries = (taskId?: string) => {
     queryClient.invalidateQueries({ queryKey: ['tasks', projectId] });
@@ -27,11 +26,7 @@ export function useTaskMutations(projectId?: string) {
     onSuccess: (createdTask: Task) => {
       invalidateQueries();
       if (projectId) {
-        const search = searchParams.toString();
-        navigate({
-          pathname: `${paths.task(projectId, createdTask.id)}/attempts/latest`,
-          search: search ? `?${search}` : '',
-        });
+        navigate(`${paths.task(projectId, createdTask.id)}/attempts/latest`);
       }
     },
     onError: (err) => {
@@ -45,11 +40,7 @@ export function useTaskMutations(projectId?: string) {
     onSuccess: (createdTask: TaskWithAttemptStatus) => {
       invalidateQueries();
       if (projectId) {
-        const search = searchParams.toString();
-        navigate({
-          pathname: `${paths.task(projectId, createdTask.id)}/attempts/latest`,
-          search: search ? `?${search}` : '',
-        });
+        navigate(`${paths.task(projectId, createdTask.id)}/attempts/latest`);
       }
     },
     onError: (err) => {
