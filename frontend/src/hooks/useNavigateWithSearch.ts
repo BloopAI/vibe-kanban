@@ -115,7 +115,11 @@ export function useNavigateWithSearch() {
 
         // Build the final navigation object, preserving undefined values
         // so React Router can use current pathname/hash when not specified
-        const finalTo: Partial<{ pathname: string; search: string; hash: string }> = {};
+        const finalTo: Partial<{
+          pathname: string;
+          search: string;
+          hash: string;
+        }> = {};
 
         // Only set pathname if it was provided
         if (to.pathname !== undefined) {
