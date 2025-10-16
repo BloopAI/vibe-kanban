@@ -174,7 +174,7 @@
         "serverHelper": "Click a card to insert that MCP Server into the JSON above.",
         "saveLocation": "Changes will be saved to:"
       },
-      "loading": {
+      "loadingStates": {
         "jsonEditor": "Loading...",
         "configuration": "Loading current MCP server configuration..."
       },

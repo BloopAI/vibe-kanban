@@ -163,11 +163,12 @@
     "mcp": {
       "title": "Configuración de Servidor MCP",
       "description": "Configura los servidores del Protocolo de Contexto de Modelos (MCP) para ampliar las capacidades del agente de codificación con herramientas y recursos personalizados.",
-      "loading": {
+      "loading": "Cargando configuración MCP...",
+      "applying": "Aplicando configuración...",
+      "loadingStates": {
         "jsonEditor": "Cargando...",
         "configuration": "Cargando configuración actual del servidor MCP..."
       },
-      "applying": "Aplicando configuración...",
       "labels": {
         "agent": "Agente",
         "agentPlaceholder": "Seleccionar",
