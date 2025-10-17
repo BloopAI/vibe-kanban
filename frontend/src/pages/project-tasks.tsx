@@ -149,6 +149,11 @@ export function ProjectTasks() {
     Record<string, { status: Task['status']; position: number }>
   >({});
 
+  // Store original positions to revert on cancel/error
+  const [originalPositions, setOriginalPositions] = useState<
+    Record<string, { status: Task['status']; position: number }>
+  >({});
+
   const {
     tasks,
     tasksById,
