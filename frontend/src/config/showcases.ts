@@ -9,7 +9,7 @@ export const taskPanelShowcase: ShowcaseConfig = {
       descriptionKey: 'showcases.taskPanel.companion.description',
       media: {
         type: 'video',
-        src: 'https://vkcdn.britannio.dev/showcase/flat-task-panel/vk-onb-companion-demo-2.mp4',
+        src: 'https://vkcdn.britannio.dev/showcase/flat-task-panel/vk-onb-companion-demo-3.mp4',
       },
     },
     {
@@ -17,7 +17,7 @@ export const taskPanelShowcase: ShowcaseConfig = {
       descriptionKey: 'showcases.taskPanel.installation.description',
       media: {
         type: 'video',
-        src: 'https://vkcdn.britannio.dev/showcase/flat-task-panel/vk-onb-install-companion-2.mp4',
+        src: 'https://vkcdn.britannio.dev/showcase/flat-task-panel/vk-onb-install-companion-3.mp4',
       },
     },
     {
@@ -25,7 +25,7 @@ export const taskPanelShowcase: ShowcaseConfig = {
       descriptionKey: 'showcases.taskPanel.codeReview.description',
       media: {
         type: 'video',
-        src: 'https://vkcdn.britannio.dev/showcase/flat-task-panel/vk-onb-code-review-2.mp4',
+        src: 'https://vkcdn.britannio.dev/showcase/flat-task-panel/vk-onb-code-review-3.mp4',
       },
     },
     {
@@ -33,7 +33,7 @@ export const taskPanelShowcase: ShowcaseConfig = {
       descriptionKey: 'showcases.taskPanel.pullRequest.description',
       media: {
         type: 'video',
-        src: 'https://vkcdn.britannio.dev/showcase/flat-task-panel/vk-onb-git-pr.mp4',
+        src: 'https://vkcdn.britannio.dev/showcase/flat-task-panel/vk-onb-git-pr-3.mp4',
       },
     },
   ],
