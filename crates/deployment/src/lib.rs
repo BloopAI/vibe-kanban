@@ -32,7 +32,7 @@ use services::services::{
     image::{ImageError, ImageService},
     pr_monitor::PrMonitorService,
     sentry::SentryService,
-    share::ShareTaskPublisher,
+    share::{ShareError, ShareTaskPublisher},
     worktree_manager::WorktreeError,
 };
 use sqlx::{Error as SqlxError, types::Uuid};
@@ -110,6 +110,19 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     fn drafts(&self) -> &DraftsService;
     fn clerk_sessions(&self) -> &ClerkSessionStore;
+
+    fn share_publisher(&self) -> Result<ShareTaskPublisher, ShareError> {
+        ShareTaskPublisher::new(self.db().clone(), self.clerk_sessions().clone())
+    }
+
+    fn share_publisher_with_metadata(&self) -> Result<ShareTaskPublisher, ShareError> {
+        ShareTaskPublisher::new_with_metadata(
+            self.db().clone(),
+            self.clerk_sessions().clone(),
+            self.git().clone(),
+            self.config().clone(),
+        )
+    }
 
     async fn update_sentry_scope(&self) -> Result<(), DeploymentError> {
         let user_id = self.user_id();

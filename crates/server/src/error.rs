@@ -12,7 +12,7 @@ use executors::executors::ExecutorError;
 use git2::Error as Git2Error;
 use services::services::{
     auth::AuthError, config::ConfigError, container::ContainerError, drafts::DraftsServiceError,
-    git::GitServiceError, github_service::GitHubServiceError, image::ImageError,
+    git::GitServiceError, github_service::GitHubServiceError, image::ImageError, share::ShareError,
     worktree_manager::WorktreeError,
 };
 use thiserror::Error;
@@ -155,5 +155,45 @@ impl IntoResponse for ApiError {
         };
         let response = ApiResponse::<()>::error(&error_message);
         (status_code, Json(response)).into_response()
+    }
+}
+
+impl From<ShareError> for ApiError {
+    fn from(err: ShareError) -> Self {
+        match err {
+            ShareError::Database(db_err) => ApiError::Database(db_err),
+            ShareError::TaskNotFound(task_id) => {
+                ApiError::Conflict(format!("Task {task_id} not found for sharing"))
+            }
+            ShareError::ProjectNotFound(project_id) => {
+                ApiError::Conflict(format!("Project {project_id} not found for sharing"))
+            }
+            ShareError::MissingProjectMetadata(project_id) => ApiError::Conflict(format!(
+                "Project {project_id} is missing GitHub metadata required for sharing"
+            )),
+            ShareError::MissingConfig(reason) => {
+                ApiError::Conflict(format!("Share service not configured: {reason}"))
+            }
+            ShareError::Transport(err) => {
+                tracing::error!(?err, "share task transport error");
+                ApiError::Conflict("Failed to share task with remote service".to_string())
+            }
+            ShareError::Serialization(err) => {
+                tracing::error!(?err, "share task serialization error");
+                ApiError::Conflict("Failed to parse remote share response".to_string())
+            }
+            ShareError::Url(err) => {
+                tracing::error!(?err, "share task URL error");
+                ApiError::Conflict("Share service URL is invalid".to_string())
+            }
+            ShareError::WebSocket(err) => {
+                tracing::error!(?err, "share task websocket error");
+                ApiError::Conflict("Unexpected websocket error during sharing".to_string())
+            }
+            ShareError::InvalidResponse => ApiError::Conflict(
+                "Remote share service returned an unexpected response".to_string(),
+            ),
+            ShareError::MissingAuth => ApiError::Unauthorized,
+        }
     }
 }
