@@ -45,5 +45,9 @@ export enum AnalyticsId {
   NAV_PROJECTS_LINK = 'nav-projects-link',
   NAV_SETTINGS_LINK = 'nav-settings-link',
 
+  // View Navigation (Preview/Diffs)
+  NAV_PREVIEW_BUTTON = 'attempt-header-preview-button',
+  NAV_DIFFS_BUTTON = 'attempt-header-diffs-button',
+
   // Add more IDs as you instrument the UI...
 }
