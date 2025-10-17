@@ -10,7 +10,7 @@ import type { GitBranch } from 'shared/types';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { FeatureShowcaseModal } from '@/components/showcase/FeatureShowcaseModal';
 import { taskPanelShowcase } from '@/config/showcases';
-import { hasSeen, markSeen } from '@/utils/showcasePersistence';
+import { useShowcaseTrigger } from '@/hooks/useShowcaseTrigger';
 
 import { useSearch } from '@/contexts/search-context';
 import { useProject } from '@/contexts/project-context';
@@ -120,7 +120,6 @@ export function ProjectTasks() {
   const [searchParams, setSearchParams] = useSearchParams();
   const isXL = useMediaQuery('(min-width: 1280px)');
   const isMobile = !isXL;
-  const [showTaskPanelShowcase, setShowTaskPanelShowcase] = useState(false);
 
   const {
     projectId,
@@ -157,21 +156,10 @@ export function ProjectTasks() {
 
   const isPanelOpen = Boolean(taskId && selectedTask);
 
-  useEffect(() => {
-    if (isPanelOpen) {
-      // Check if showcase should be shown when panel opens
-      if (!hasSeen(taskPanelShowcase.id, taskPanelShowcase.version)) {
-        // Small delay to ensure panel is fully mounted
-        const timer = setTimeout(() => {
-          setShowTaskPanelShowcase(true);
-        }, 300);
-        return () => clearTimeout(timer);
-      }
-    } else {
-      // Reset when panel closes so it can trigger again on next open
-      setShowTaskPanelShowcase(false);
-    }
-  }, [isPanelOpen]);
+  const { isOpen: showTaskPanelShowcase, close: closeTaskPanelShowcase } = 
+    useShowcaseTrigger(taskPanelShowcase, {
+      enabled: isPanelOpen,
+    });
 
   const isLatest = attemptId === 'latest';
   const { data: attempts = [], isLoading: isAttemptsLoading } = useTaskAttempts(
@@ -775,10 +763,7 @@ export function ProjectTasks() {
       <div className="flex-1 min-h-0">{attemptArea}</div>
       <FeatureShowcaseModal
         isOpen={showTaskPanelShowcase}
-        onClose={() => {
-          markSeen(taskPanelShowcase.id, taskPanelShowcase.version);
-          setShowTaskPanelShowcase(false);
-        }}
+        onClose={closeTaskPanelShowcase}
         config={taskPanelShowcase}
       />
     </div>

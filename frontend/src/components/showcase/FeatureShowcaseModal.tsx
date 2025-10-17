@@ -44,6 +44,13 @@ export function FeatureShowcaseModal({
   const stage = config.stages[currentStage];
   const totalStages = config.stages.length;
 
+  /**
+   * Scope management for keyboard shortcuts:
+   * When showcase is open, we enable DIALOG scope and disable KANBAN/PROJECTS scopes.
+   * This ensures that ESC key presses are captured by our showcase handler (which does nothing)
+   * instead of triggering the underlying feature's close handlers (e.g., closing the task panel).
+   * Without this, pressing ESC would close both the showcase AND the task panel underneath.
+   */
   useEffect(() => {
     if (isOpen) {
       enableScope(Scope.DIALOG);

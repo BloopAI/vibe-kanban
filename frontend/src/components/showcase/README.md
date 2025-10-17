@@ -66,35 +66,39 @@ Add translations to [`frontend/src/i18n/locales/en/tasks.json`](../../../i18n/lo
 
 ### Step 4: Trigger the Showcase
 
+Use the `useShowcaseTrigger` hook to automatically manage showcase visibility:
+
 ```typescript
 import { FeatureShowcaseModal } from '@/components/showcase/FeatureShowcaseModal';
-import { hasSeen, markSeen } from '@/utils/showcasePersistence';
+import { useShowcaseTrigger } from '@/hooks/useShowcaseTrigger';
 import { myFeatureShowcase } from '@/config/showcases';
 
 function MyComponent() {
-  const [showShowcase, setShowShowcase] = useState(false);
-
-  useEffect(() => {
-    if (!hasSeen(myFeatureShowcase.id, myFeatureShowcase.version)) {
-      setShowShowcase(true);
-    }
-  }, []);
+  const isFeatureActive = /* your condition here */;
+  
+  const { isOpen, close } = useShowcaseTrigger(myFeatureShowcase, {
+    enabled: isFeatureActive,
+  });
 
   return (
     <>
       {/* Your component */}
       <FeatureShowcaseModal
-        isOpen={showShowcase}
-        onClose={() => {
-          markSeen(myFeatureShowcase.id, myFeatureShowcase.version);
-          setShowShowcase(false);
-        }}
+        isOpen={isOpen}
+        onClose={close}
         config={myFeatureShowcase}
       />
     </>
   );
 }
 ```
+
+**Hook options:**
+
+- `enabled` (required): Boolean to control when the showcase can appear
+- `openDelay`: Milliseconds to wait before showing (default: 300)
+- `resetOnDisable`: Reset `isOpen` when `enabled` becomes false (default: true)
+- `markSeenOnClose`: Automatically mark as seen when closed (default: true)
 
 ### Step 5: Test and Verify
 
@@ -206,68 +210,68 @@ media: {
 **On Component Mount (First Time):**
 
 ```typescript
-useEffect(() => {
-  if (!hasSeen(showcase.id, showcase.version)) {
-    setShowShowcase(true);
-  }
-}, []);
+const { isOpen, close } = useShowcaseTrigger(showcase, {
+  enabled: true, // Always enabled, will show once if not seen
+});
 ```
 
-**On Specific Action:**
+**On Specific Condition:**
 
 ```typescript
-const handleFeatureActivation = () => {
-  if (!hasSeen(showcase.id, showcase.version)) {
-    setShowShowcase(true);
+const isFeatureReady = /* your condition */;
+
+const { isOpen, close } = useShowcaseTrigger(showcase, {
+  enabled: isFeatureReady, // Only show when condition is met
+});
+```
+
+**With Custom Delay:**
+
+```typescript
+const { isOpen, close } = useShowcaseTrigger(showcase, {
+  enabled: isFeatureReady,
+  openDelay: 500, // Wait 500ms after enabled becomes true
+});
+```
+
+**Manual Control (Don't Mark as Seen on Close):**
+
+```typescript
+const { isOpen, close, open, hasSeen } = useShowcaseTrigger(showcase, {
+  enabled: false, // Manually control when to open
+  markSeenOnClose: false, // Don't auto-mark as seen
+});
+
+// Manually trigger later
+const handleShowDemo = () => {
+  if (!hasSeen) {
+    open();
   }
-  // ... rest of logic
 };
-```
-
-**With Delay After UI Ready:**
-
-```typescript
-useEffect(() => {
-  if (isFeatureReady && !hasSeen(showcase.id, showcase.version)) {
-    const timer = setTimeout(() => {
-      setShowShowcase(true);
-    }, 300);
-    return () => clearTimeout(timer);
-  }
-}, [isFeatureReady]);
 ```
 
 ### Real-World Example from project-tasks.tsx
 
 ```typescript
 import { FeatureShowcaseModal } from '@/components/showcase/FeatureShowcaseModal';
-import { hasSeen, markSeen } from '@/utils/showcasePersistence';
+import { useShowcaseTrigger } from '@/hooks/useShowcaseTrigger';
 import { taskPanelShowcase } from '@/config/showcases';
 
 function ProjectTasks() {
-  const [showTaskPanelShowcase, setShowTaskPanelShowcase] = useState(false);
+  const isPanelOpen = Boolean(taskId && selectedTask);
 
-  // Show when panel opens for first time
-  useEffect(() => {
-    if (isPanelOpen) {
-      if (!hasSeen(taskPanelShowcase.id, taskPanelShowcase.version)) {
-        const timer = setTimeout(() => {
-          setShowTaskPanelShowcase(true);
-        }, 300);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [isPanelOpen]);
+  // Automatically show showcase when panel opens (if not seen before)
+  const { isOpen: showTaskPanelShowcase, close: closeTaskPanelShowcase } = 
+    useShowcaseTrigger(taskPanelShowcase, {
+      enabled: isPanelOpen,
+    });
 
   return (
     <div>
       {/* Component content */}
       <FeatureShowcaseModal
         isOpen={showTaskPanelShowcase}
-        onClose={() => {
-          markSeen(taskPanelShowcase.id, taskPanelShowcase.version);
-          setShowTaskPanelShowcase(false);
-        }}
+        onClose={closeTaskPanelShowcase}
         config={taskPanelShowcase}
       />
     </div>
