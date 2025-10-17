@@ -6,7 +6,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
-use workspace_utils::{msg_store::MsgStore, shell::get_shell_command};
+use workspace_utils::msg_store::MsgStore;
 
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
@@ -45,20 +45,19 @@ impl Amp {
 #[async_trait]
 impl StandardCodingAgentExecutor for Amp {
     async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
-        let (shell_cmd, shell_arg) = get_shell_command();
-        let amp_command = self.build_command_builder().build_initial();
+        let command_parts = self.build_command_builder().build_initial()?;
+        let (executable_path, args) = command_parts.into_resolved().await?;
 
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
-        let mut command = Command::new(shell_cmd);
+        let mut command = Command::new(executable_path);
         command
             .kill_on_drop(true)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(current_dir)
-            .arg(shell_arg)
-            .arg(&amp_command);
+            .args(&args);
 
         let mut child = command.group_spawn()?;
 
@@ -77,22 +76,20 @@ impl StandardCodingAgentExecutor for Amp {
         prompt: &str,
         session_id: &str,
     ) -> Result<SpawnedChild, ExecutorError> {
-        // Use shell command for cross-platform compatibility
-        let (shell_cmd, shell_arg) = get_shell_command();
-
         // 1) Fork the thread synchronously to obtain new thread id
-        let fork_cmd = self.build_command_builder().build_follow_up(&[
+        let builder = self.build_command_builder();
+        let fork_line = builder.build_follow_up(&[
             "threads".to_string(),
             "fork".to_string(),
             session_id.to_string(),
-        ]);
-        let fork_output = Command::new(shell_cmd)
+        ])?;
+        let (fork_program, fork_args) = fork_line.into_resolved().await?;
+        let fork_output = Command::new(fork_program)
             .kill_on_drop(true)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(current_dir)
-            .arg(shell_arg)
-            .arg(&fork_cmd)
+            .args(&fork_args)
             .output()
             .await?;
         let stdout_str = String::from_utf8_lossy(&fork_output.stdout);
@@ -112,23 +109,23 @@ impl StandardCodingAgentExecutor for Amp {
         tracing::debug!("AMP threads fork -> new thread id: {}", new_thread_id);
 
         // 2) Continue using the new thread id
-        let continue_cmd = self.build_command_builder().build_follow_up(&[
+        let continue_line = builder.build_follow_up(&[
             "threads".to_string(),
             "continue".to_string(),
             new_thread_id.clone(),
-        ]);
+        ])?;
+        let (continue_program, continue_args) = continue_line.into_resolved().await?;
 
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
-        let mut command = Command::new(shell_cmd);
+        let mut command = Command::new(continue_program);
         command
             .kill_on_drop(true)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(current_dir)
-            .arg(shell_arg)
-            .arg(&continue_cmd);
+            .args(&continue_args);
 
         let mut child = command.group_spawn()?;
 

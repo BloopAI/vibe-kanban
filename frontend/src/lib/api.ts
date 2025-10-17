@@ -46,6 +46,7 @@ import {
   RebaseTaskAttemptRequest,
   ChangeTargetBranchRequest,
   ChangeTargetBranchResponse,
+  FollowupErrorData,
 } from 'shared/types';
 
 // Re-export types for convenience
@@ -367,7 +368,7 @@ export const attemptsApi = {
   followUp: async (
     attemptId: string,
     data: CreateFollowUpAttempt
-  ): Promise<void> => {
+  ): Promise<Result<void, FollowupErrorData>> => {
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/follow-up`,
       {
@@ -375,7 +376,7 @@ export const attemptsApi = {
         body: JSON.stringify(data),
       }
     );
-    return handleApiResponse<void>(response);
+    return handleApiResponseAsResult<void, FollowupErrorData>(response);
   },
 
   getDraft: async (

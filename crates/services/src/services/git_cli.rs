@@ -23,7 +23,7 @@ use std::{
 
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use thiserror::Error;
-use utils::shell::resolve_executable_path;
+use utils::shell::resolve_executable_path_blocking; // TODO: make GitCli async
 
 use crate::services::git::Commit;
 
@@ -497,14 +497,15 @@ impl GitCli {
     /// Return true if there are staged changes (index differs from HEAD)
     pub fn has_staged_changes(&self, repo_path: &Path) -> Result<bool, GitCliError> {
         // `git diff --cached --quiet` returns exit code 1 if there are differences
-        let out = Command::new(resolve_executable_path("git").ok_or(GitCliError::NotAvailable)?)
-            .arg("-C")
-            .arg(repo_path)
-            .arg("diff")
-            .arg("--cached")
-            .arg("--quiet")
-            .output()
-            .map_err(|e| GitCliError::CommandFailed(e.to_string()))?;
+        let out =
+            Command::new(resolve_executable_path_blocking("git").ok_or(GitCliError::NotAvailable)?)
+                .arg("-C")
+                .arg(repo_path)
+                .arg("diff")
+                .arg("--cached")
+                .arg("--quiet")
+                .output()
+                .map_err(|e| GitCliError::CommandFailed(e.to_string()))?;
         match out.status.code() {
             Some(0) => Ok(false),
             Some(1) => Ok(true),
@@ -625,7 +626,7 @@ impl GitCli {
 
     /// Ensure `git` is available on PATH
     fn ensure_available(&self) -> Result<(), GitCliError> {
-        let git = resolve_executable_path("git").ok_or(GitCliError::NotAvailable)?;
+        let git = resolve_executable_path_blocking("git").ok_or(GitCliError::NotAvailable)?;
         let out = Command::new(&git)
             .arg("--version")
             .output()
@@ -656,7 +657,7 @@ impl GitCli {
         S: AsRef<OsStr>,
     {
         self.ensure_available()?;
-        let git = resolve_executable_path("git").ok_or(GitCliError::NotAvailable)?;
+        let git = resolve_executable_path_blocking("git").ok_or(GitCliError::NotAvailable)?;
         let mut cmd = Command::new(&git);
         cmd.arg("-C").arg(repo_path);
         for a in args {
@@ -684,7 +685,7 @@ impl GitCli {
         S: AsRef<OsStr>,
     {
         self.ensure_available()?;
-        let git = resolve_executable_path("git").ok_or(GitCliError::NotAvailable)?;
+        let git = resolve_executable_path_blocking("git").ok_or(GitCliError::NotAvailable)?;
         let mut cmd = Command::new(&git);
         cmd.arg("-C").arg(repo_path);
         for (k, v) in envs {

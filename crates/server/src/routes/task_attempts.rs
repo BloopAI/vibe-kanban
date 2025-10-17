@@ -27,12 +27,13 @@ use executors::{
         coding_agent_follow_up::CodingAgentFollowUpRequest,
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     },
+    executors::ExecutorError,
     profile::ExecutorProfileId,
 };
 use git2::BranchType;
 use serde::{Deserialize, Serialize};
 use services::services::{
-    container::ContainerService,
+    container::{ContainerError, ContainerService},
     git::{ConflictOp, WorktreeResetOptions},
     github_service::{CreatePrRequest, GitHubService, GitHubServiceError},
 };
@@ -60,6 +61,19 @@ pub struct RebaseTaskAttemptRequest {
 pub enum GitOperationError {
     MergeConflicts { message: String, op: ConflictOp },
     RebaseInProgress,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[ts(use_ts_enum)]
+pub enum FollowupErrorData {
+    AgentNeedsInstallation,
+}
+
+impl FollowupErrorData {
+    pub fn agent_needs_installation() -> Self {
+        Self::AgentNeedsInstallation
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, TS)]
@@ -169,10 +183,13 @@ pub async fn create_task_attempt(
     )
     .await?;
 
-    let execution_process = deployment
+    if let Err(err) = deployment
         .container()
         .start_attempt(&task_attempt, executor_profile_id.clone())
-        .await?;
+        .await
+    {
+        tracing::error!("Failed to start task attempt: {}", err);
+    }
 
     deployment
         .track_if_analytics_allowed(
@@ -186,7 +203,7 @@ pub async fn create_task_attempt(
         )
         .await;
 
-    tracing::info!("Started execution process {}", execution_process.id);
+    tracing::info!("Created attempt for task {}", task.id);
 
     Ok(ResponseJson(ApiResponse::success(task_attempt)))
 }
@@ -205,7 +222,7 @@ pub async fn follow_up(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateFollowUpAttempt>,
-) -> Result<ResponseJson<ApiResponse<ExecutionProcess>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<ExecutionProcess, FollowupErrorData>>, ApiError> {
     tracing::info!("{:?}", task_attempt);
 
     // Ensure worktree exists (recreate if needed for cold task support)
@@ -327,14 +344,23 @@ pub async fn follow_up(
 
     let action = ExecutorAction::new(action_type, cleanup_action);
 
-    let execution_process = deployment
+    let execution_process = match deployment
         .container()
         .start_execution(
             &task_attempt,
             &action,
             &ExecutionProcessRunReason::CodingAgent,
         )
-        .await?;
+        .await
+    {
+        Ok(execution_process) => execution_process,
+        Err(ContainerError::ExecutorError(ExecutorError::ExecutableNotFound { .. })) => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                FollowupErrorData::agent_needs_installation(),
+            )));
+        }
+        Err(e) => Err(e)?,
+    };
 
     // Clear drafts post-send:
     // - If this was a retry send, the retry draft has already been cleared above.
@@ -845,7 +871,7 @@ pub async fn open_task_attempt_in_editor(
         config.editor.with_override(editor_type_str)
     };
 
-    match editor_config.open_file(&path.to_string_lossy()) {
+    match editor_config.open_file(&path.to_string_lossy()).await {
         Ok(_) => {
             tracing::info!(
                 "Opened editor for task attempt {} at path: {}",
