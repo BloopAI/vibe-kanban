@@ -304,7 +304,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                                     "use_existing_repo": create_data.use_existing_repo,
                                     "has_setup_script": create_data.setup_script.is_some(),
                                     "has_dev_script": create_data.dev_script.is_some(),
-                                    "source": "auto_setup",
+                                    "trigger": "auto_setup",
                                 }),
                             )
                             .await;
