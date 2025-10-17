@@ -11,6 +11,7 @@ import { openTaskForm } from '@/lib/openTaskForm';
 import { FeatureShowcaseModal } from '@/components/showcase/FeatureShowcaseModal';
 import { showcases } from '@/config/showcases';
 import { useShowcaseTrigger } from '@/hooks/useShowcaseTrigger';
+import { trackEvent } from '@/lib/analytics';
 
 import { useSearch } from '@/contexts/search-context';
 import { useProject } from '@/contexts/project-context';
@@ -94,14 +95,14 @@ function DiffsPanelContainer({
       gitOps={
         attempt && selectedTask
           ? {
-              task: selectedTask,
-              projectId,
-              branchStatus: branchStatus ?? null,
-              branches,
-              isAttemptRunning,
-              setError: setGitError,
-              selectedBranch: branchStatus?.target_branch_name ?? null,
-            }
+            task: selectedTask,
+            projectId,
+            branchStatus: branchStatus ?? null,
+            branches,
+            isAttemptRunning,
+            setError: setGitError,
+            selectedBranch: branchStatus?.target_branch_name ?? null,
+          }
           : undefined
       }
     />
@@ -241,6 +242,14 @@ export function ProjectTasks() {
 
   const setMode = useCallback(
     (newMode: LayoutMode) => {
+      // Track view navigation (captures both button clicks and keyboard shortcuts)
+      if (newMode !== mode) {
+        trackEvent('view_navigated', {
+          from_view: mode ?? 'attempt',
+          to_view: newMode ?? 'attempt',
+        });
+      }
+
       const params = new URLSearchParams(searchParams);
       if (newMode === null) {
         params.delete('view');
@@ -249,7 +258,7 @@ export function ProjectTasks() {
       }
       setSearchParams(params, { replace: true });
     },
-    [searchParams, setSearchParams]
+    [mode, searchParams, setSearchParams]
   );
 
   const navigateWithSearch = useCallback(
