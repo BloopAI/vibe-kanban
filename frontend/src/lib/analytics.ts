@@ -25,23 +25,16 @@ export function initializeAnalytics(
     return;
   }
 
-  if (!analyticsInfo) {
-    console.log('[Analytics] No analytics configuration available');
-    analyticsEnabled = false;
-    isInitialized = true;
-    return;
-  }
-
-  if (!analyticsInfo.posthog_api_key || !analyticsInfo.posthog_api_endpoint) {
-    console.log('[Analytics] Missing PostHog credentials from backend');
+  if (!analyticsInfo || !analyticsInfo.config) {
+    console.log('[Analytics] No PostHog configuration available from backend');
     analyticsEnabled = false;
     isInitialized = true;
     return;
   }
 
   try {
-    posthog.init(analyticsInfo.posthog_api_key, {
-      api_host: analyticsInfo.posthog_api_endpoint,
+    posthog.init(analyticsInfo.config.posthog_api_key, {
+      api_host: analyticsInfo.config.posthog_api_endpoint,
       loaded: () => {
         console.log('[Analytics] PostHog initialized successfully');
 
