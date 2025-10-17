@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ShowcaseConfig } from '@/types/showcase';
 import { hasSeen as hasSeenUtil, markSeen } from '@/utils/showcasePersistence';
 
@@ -28,14 +28,16 @@ export function useShowcaseTrigger(
   } = options;
 
   const [isOpen, setIsOpen] = useState(false);
+  const [hasSeen, setHasSeen] = useState(() =>
+    hasSeenUtil(config.id, config.version)
+  );
   const timerRef = useRef<number | null>(null);
   const mountedRef = useRef(true);
 
-  // Check if user has seen this showcase version (memoized)
-  const hasSeen = useMemo(
-    () => hasSeenUtil(config.id, config.version),
-    [config.id, config.version]
-  );
+  // Keep 'hasSeen' in sync if id/version change
+  useEffect(() => {
+    setHasSeen(hasSeenUtil(config.id, config.version));
+  }, [config.id, config.version]);
 
   // Cleanup timers
   useEffect(() => {
@@ -94,6 +96,11 @@ export function useShowcaseTrigger(
   const close = useCallback(() => {
     if (markSeenOnClose) {
       markSeen(config.id, config.version);
+      setHasSeen(true);
+    }
+    if (timerRef.current !== null) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
     }
     setIsOpen(false);
   }, [config.id, config.version, markSeenOnClose]);
