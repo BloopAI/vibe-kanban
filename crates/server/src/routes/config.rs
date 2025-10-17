@@ -48,7 +48,9 @@ impl AnalyticsInfo {
         Self {
             user_id,
             posthog_api_key: analytics_config.as_ref().map(|c| c.posthog_api_key.clone()),
-            posthog_api_endpoint: analytics_config.as_ref().map(|c| c.posthog_api_endpoint.clone()),
+            posthog_api_endpoint: analytics_config
+                .as_ref()
+                .map(|c| c.posthog_api_endpoint.clone()),
         }
     }
 }
