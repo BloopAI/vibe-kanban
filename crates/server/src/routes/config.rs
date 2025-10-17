@@ -33,6 +33,14 @@ pub fn router() -> Router<DeploymentImpl> {
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct AnalyticsInfo {
+    pub user_id: String,
+    pub posthog_api_key: Option<String>,
+    pub posthog_api_endpoint: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
 pub struct Environment {
     pub os_type: String,
     pub os_version: String,
@@ -61,6 +69,7 @@ impl Environment {
 #[derive(Debug, Serialize, Deserialize, TS)]
 pub struct UserSystemInfo {
     pub config: Config,
+    pub analytics: AnalyticsInfo,
     #[serde(flatten)]
     pub profiles: ExecutorConfigs,
     pub environment: Environment,
@@ -77,6 +86,11 @@ async fn get_user_system_info(
 
     let user_system_info = UserSystemInfo {
         config: config.clone(),
+        analytics: AnalyticsInfo {
+            user_id: deployment.user_id().to_string(),
+            posthog_api_key: option_env!("POSTHOG_API_KEY").map(|s| s.to_string()),
+            posthog_api_endpoint: option_env!("POSTHOG_API_ENDPOINT").map(|s| s.to_string()),
+        },
         profiles: ExecutorConfigs::get_cached(),
         environment: Environment::new(),
         capabilities: {

@@ -1,20 +1,21 @@
 import posthog from 'posthog-js';
+import type { AnalyticsInfo } from 'shared/types';
 
 let isInitialized = false;
 let analyticsEnabled = false;
 
 /**
- * Initialize PostHog with user's analytics preference
- * @param userAnalyticsEnabled - Whether the user has opted in to analytics (from config)
+ * Initialize PostHog with analytics configuration from the backend
+ * @param analyticsInfo - Analytics configuration including user_id, api_key, and endpoint from backend
+ * @param userAnalyticsEnabled - Whether the user has opted in to analytics (from config.analytics_enabled)
  */
-export function initializeAnalytics(userAnalyticsEnabled: boolean): void {
+export function initializeAnalytics(
+  analyticsInfo: AnalyticsInfo | null,
+  userAnalyticsEnabled: boolean
+): void {
   if (isInitialized) {
     return;
   }
-
-  // Get PostHog credentials from Vite env variables
-  const posthogApiKey = import.meta.env.VITE_POSTHOG_API_KEY;
-  const posthogApiEndpoint = import.meta.env.VITE_POSTHOG_API_ENDPOINT;
 
   // Check if user has explicitly opted out (opt-out by default: track unless explicitly false)
   if (userAnalyticsEnabled === false) {
@@ -24,18 +25,30 @@ export function initializeAnalytics(userAnalyticsEnabled: boolean): void {
     return;
   }
 
-  if (!posthogApiKey || !posthogApiEndpoint) {
-    console.log('[Analytics] Missing PostHog configuration in build');
+  if (!analyticsInfo) {
+    console.log('[Analytics] No analytics configuration available');
+    analyticsEnabled = false;
+    isInitialized = true;
+    return;
+  }
+
+  if (!analyticsInfo.posthog_api_key || !analyticsInfo.posthog_api_endpoint) {
+    console.log('[Analytics] Missing PostHog credentials from backend');
     analyticsEnabled = false;
     isInitialized = true;
     return;
   }
 
   try {
-    posthog.init(posthogApiKey, {
-      api_host: posthogApiEndpoint,
+    posthog.init(analyticsInfo.posthog_api_key, {
+      api_host: analyticsInfo.posthog_api_endpoint,
       loaded: () => {
         console.log('[Analytics] PostHog initialized successfully');
+
+        // Identify user with backend's user_id for correlation
+        posthog.identify(analyticsInfo.user_id);
+        console.log('[Analytics] User identified:', analyticsInfo.user_id);
+
         analyticsEnabled = true;
       },
       capture_pageview: false, // We'll manually capture page views

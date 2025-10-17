@@ -82,7 +82,6 @@
     "@typescript-eslint/parser": "^6.21.0",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.16",
-    "dotenv": "^17.2.3",
     "eslint": "^8.55.0",
     "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-i18next": "^6.1.3",
