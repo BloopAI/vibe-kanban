@@ -12,6 +12,7 @@ import type { LayoutMode } from '../layout/TasksLayout';
 import type { TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
 import { ActionsDropdown } from '../ui/ActionsDropdown';
 import { AnalyticsId } from '@/lib/analytics-ids';
+import { trackEvent } from '@/lib/analytics';
 
 interface AttemptHeaderActionsProps {
   onClose: () => void;
@@ -36,7 +37,18 @@ export const AttemptHeaderActions = ({
           <ToggleGroup
             type="single"
             value={mode ?? ''}
-            onValueChange={(v) => onModeChange((v as LayoutMode) || null)}
+            onValueChange={(v) => {
+              const newMode = (v as LayoutMode) || null;
+
+              // Track button click
+              if (newMode === 'preview') {
+                trackEvent('preview_button_clicked');
+              } else if (newMode === 'diffs') {
+                trackEvent('diffs_button_clicked');
+              }
+
+              onModeChange(newMode);
+            }}
             className="inline-flex gap-4"
             aria-label="Layout mode"
           >
