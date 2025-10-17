@@ -45,8 +45,8 @@ export function initializeAnalytics(
       },
       capture_pageview: false,
       capture_pageleave: true,
-      capture_performance: false, // Disable automatic web vitals tracking
-      autocapture: false, // Disable autocapture entirely - we'll use manual events only
+      capture_performance: true, // Track web vitals (LCP, FID, CLS, etc.)
+      autocapture: false, // Disabled - we use manual events only
     });
     isInitialized = true;
   } catch (error) {
