@@ -40,7 +40,7 @@ export function initializeAnalytics(userAnalyticsEnabled: boolean): void {
       },
       capture_pageview: false, // We'll manually capture page views
       capture_pageleave: true,
-      autocapture: false, // Disable automatic event capture for more control
+      autocapture: true, // Capture clicks and interactions automatically
     });
     isInitialized = true;
   } catch (error) {
