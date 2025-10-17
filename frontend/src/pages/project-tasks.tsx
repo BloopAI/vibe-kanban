@@ -395,9 +395,15 @@ export function ProjectTasks() {
         const next = order[(idx + 1) % order.length];
 
         if (next === 'preview') {
-          trackEvent('preview_keyboard_shortcut', { direction: 'forward' });
+          trackEvent('preview_navigated', {
+            trigger: 'keyboard',
+            direction: 'forward',
+          });
         } else if (next === 'diffs') {
-          trackEvent('diffs_keyboard_shortcut', { direction: 'forward' });
+          trackEvent('diffs_navigated', {
+            trigger: 'keyboard',
+            direction: 'forward',
+          });
         }
 
         cycleViewForward();
@@ -418,9 +424,15 @@ export function ProjectTasks() {
         const next = order[(idx - 1 + order.length) % order.length];
 
         if (next === 'preview') {
-          trackEvent('preview_keyboard_shortcut', { direction: 'backward' });
+          trackEvent('preview_navigated', {
+            trigger: 'keyboard',
+            direction: 'backward',
+          });
         } else if (next === 'diffs') {
-          trackEvent('diffs_keyboard_shortcut', { direction: 'backward' });
+          trackEvent('diffs_navigated', {
+            trigger: 'keyboard',
+            direction: 'backward',
+          });
         }
 
         cycleViewBackward();

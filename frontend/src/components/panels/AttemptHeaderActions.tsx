@@ -39,11 +39,17 @@ export const AttemptHeaderActions = ({
             onValueChange={(v) => {
               const newMode = (v as LayoutMode) || null;
 
-              // Track button click
+              // Track view navigation
               if (newMode === 'preview') {
-                trackEvent('preview_button_clicked');
+                trackEvent('preview_navigated', { trigger: 'button' });
               } else if (newMode === 'diffs') {
-                trackEvent('diffs_button_clicked');
+                trackEvent('diffs_navigated', { trigger: 'button' });
+              } else if (newMode === null) {
+                // Closing the view (clicked active button)
+                trackEvent('view_closed', {
+                  trigger: 'button',
+                  from_view: mode ?? 'attempt',
+                });
               }
 
               onModeChange(newMode);
