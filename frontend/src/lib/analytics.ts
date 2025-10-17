@@ -16,8 +16,8 @@ export function initializeAnalytics(userAnalyticsEnabled: boolean): void {
   const posthogApiKey = import.meta.env.VITE_POSTHOG_API_KEY;
   const posthogApiEndpoint = import.meta.env.VITE_POSTHOG_API_ENDPOINT;
 
-  // Check if user has opted in and if PostHog credentials are available
-  if (!userAnalyticsEnabled) {
+  // Check if user has explicitly opted out (opt-out by default: track unless explicitly false)
+  if (userAnalyticsEnabled === false) {
     console.log('[Analytics] Analytics disabled by user preference');
     analyticsEnabled = false;
     isInitialized = true;

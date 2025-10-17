@@ -43,13 +43,14 @@ function AppContent() {
   // Initialize analytics when config is loaded
   useEffect(() => {
     if (config) {
-      const analyticsEnabled = config.analytics_enabled ?? false;
+      // Opt-out by default: track unless explicitly false
+      const analyticsEnabled = config.analytics_enabled !== false;
       initializeAnalytics(analyticsEnabled);
 
       // Track app loaded event
       if (analyticsEnabled) {
         trackEvent('app_loaded', {
-          version: '0.0.108', // TODO: Get from package.json or env
+          version: import.meta.env.VITE_APP_VERSION,
           theme: config.theme,
           language: config.language,
         });
