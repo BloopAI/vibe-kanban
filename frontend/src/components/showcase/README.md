@@ -75,7 +75,7 @@ import { myFeatureShowcase } from '@/config/showcases';
 
 function MyComponent() {
   const isFeatureActive = /* your condition here */;
-  
+
   const { isOpen, close } = useShowcaseTrigger(myFeatureShowcase, {
     enabled: isFeatureActive,
   });
@@ -261,7 +261,7 @@ function ProjectTasks() {
   const isPanelOpen = Boolean(taskId && selectedTask);
 
   // Automatically show showcase when panel opens (if not seen before)
-  const { isOpen: showTaskPanelShowcase, close: closeTaskPanelShowcase } = 
+  const { isOpen: showTaskPanelShowcase, close: closeTaskPanelShowcase } =
     useShowcaseTrigger(taskPanelShowcase, {
       enabled: isPanelOpen,
     });

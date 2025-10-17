@@ -156,7 +156,7 @@ export function ProjectTasks() {
 
   const isPanelOpen = Boolean(taskId && selectedTask);
 
-  const { isOpen: showTaskPanelShowcase, close: closeTaskPanelShowcase } = 
+  const { isOpen: showTaskPanelShowcase, close: closeTaskPanelShowcase } =
     useShowcaseTrigger(taskPanelShowcase, {
       enabled: isPanelOpen,
     });
