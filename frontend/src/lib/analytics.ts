@@ -26,7 +26,7 @@ export function initializeAnalytics(
   }
 
   if (!analyticsInfo || !analyticsInfo.config) {
-    console.log('[Analytics] No PostHog configuration available from backend');
+    console.warn('[Analytics] No PostHog configuration available from backend');
     analyticsEnabled = false;
     isInitialized = true;
     return;
@@ -40,12 +40,11 @@ export function initializeAnalytics(
 
         // Identify user with backend's user_id for correlation
         posthog.identify(analyticsInfo.user_id);
-        console.log('[Analytics] User identified:', analyticsInfo.user_id);
 
         analyticsEnabled = true;
       },
       capture_pageview: false, // We'll manually capture page views
-      capture_pageleave: true,
+      capture_pageleave: true, // Track when user closes/leaves the page
       autocapture: {
         // Opt-in autocapture: only track elements with data-ph-capture-attribute
         css_selector_allowlist: ['[data-ph-capture-attribute]'],
