@@ -42,14 +42,8 @@ export function FeatureShowcaseModal({
   const { enableScope, disableScope, activeScopes } = useHotkeysContext();
   const previousScopesRef = useRef<string[]>([]);
 
+  const stage = config.stages[currentStage];
   const totalStages = config.stages.length;
-
-  if (totalStages === 0) {
-    return null;
-  }
-
-  const safeIndex = Math.max(0, Math.min(currentStage, totalStages - 1));
-  const stage = config.stages[safeIndex];
 
   /**
    * Scope management for keyboard shortcuts:
@@ -82,10 +76,6 @@ export function FeatureShowcaseModal({
     },
     { scope: Scope.DIALOG, enabled: isOpen }
   );
-
-  useEffect(() => {
-    setCurrentStage((prev) => Math.min(prev, Math.max(0, totalStages - 1)));
-  }, [totalStages]);
 
   const handleNext = () => {
     setCurrentStage((prev) => {
@@ -121,7 +111,7 @@ export function FeatureShowcaseModal({
           >
             <AnimatePresence mode="wait">
               <motion.div
-                key={safeIndex}
+                key={currentStage}
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
@@ -137,7 +127,7 @@ export function FeatureShowcaseModal({
                       </h3>
                     </div>
                     <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                      {safeIndex + 1} / {totalStages}
+                      {currentStage + 1} / {totalStages}
                     </div>
                   </div>
 
@@ -150,7 +140,7 @@ export function FeatureShowcaseModal({
                       <div
                         key={index}
                         className={`h-1 flex-1 rounded-full transition-colors ${
-                          index === safeIndex ? 'bg-primary' : 'bg-muted'
+                          index === currentStage ? 'bg-primary' : 'bg-muted'
                         }`}
                       />
                     ))}
@@ -158,7 +148,7 @@ export function FeatureShowcaseModal({
 
                   {totalStages > 1 && (
                     <div className="flex justify-end gap-2 pt-2">
-                      {safeIndex > 0 && (
+                      {currentStage > 0 && (
                         <button
                           onClick={handlePrevious}
                           className="h-10 px-4 py-2 inline-flex items-center justify-center gap-2 text-sm font-medium border border-input hover:bg-accent hover:text-accent-foreground transition-colors"
@@ -171,7 +161,7 @@ export function FeatureShowcaseModal({
                         onClick={handleNext}
                         className="h-10 px-4 py-2 inline-flex items-center justify-center gap-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 border border-foreground transition-colors"
                       >
-                        {safeIndex === totalStages - 1
+                        {currentStage === totalStages - 1
                           ? t('showcases.buttons.finish')
                           : t('showcases.buttons.next')}
                         <ChevronRight className="h-4 w-4" />
