@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -39,34 +39,35 @@ export function FeatureShowcaseModal({
 }: FeatureShowcaseModalProps) {
   const [currentStage, setCurrentStage] = useState(0);
   const { t } = useTranslation('tasks');
-  const { enableScope, disableScope } = useHotkeysContext();
+  const { enableScope, disableScope, activeScopes } = useHotkeysContext();
+  const previousScopesRef = useRef<string[]>([]);
 
   const stage = config.stages[currentStage];
   const totalStages = config.stages.length;
 
   /**
    * Scope management for keyboard shortcuts:
-   * When showcase is open, we enable DIALOG scope and disable KANBAN/PROJECTS scopes.
-   * This ensures that ESC key presses are captured by our showcase handler (which does nothing)
-   * instead of triggering the underlying feature's close handlers (e.g., closing the task panel).
-   * Without this, pressing ESC would close both the showcase AND the task panel underneath.
+   * When showcase opens, we capture all currently active scopes, disable them,
+   * and enable only DIALOG scope. This ensures ESC key presses are captured by
+   * our showcase handler (which does nothing) instead of triggering underlying
+   * close handlers. When closing, we restore the original scopes.
    */
   useEffect(() => {
     if (isOpen) {
+      previousScopesRef.current = activeScopes;
+      activeScopes.forEach((scope) => disableScope(scope));
       enableScope(Scope.DIALOG);
-      disableScope(Scope.KANBAN);
-      disableScope(Scope.PROJECTS);
     } else {
       disableScope(Scope.DIALOG);
-      enableScope(Scope.KANBAN);
-      enableScope(Scope.PROJECTS);
+      previousScopesRef.current.forEach((scope) => enableScope(scope));
     }
 
     return () => {
       disableScope(Scope.DIALOG);
-      enableScope(Scope.KANBAN);
-      enableScope(Scope.PROJECTS);
+      previousScopesRef.current.forEach((scope) => enableScope(scope));
     };
+    // activeScopes intentionally omitted - we only capture on open, not on every scope change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, enableScope, disableScope]);
 
   useKeyExit(
