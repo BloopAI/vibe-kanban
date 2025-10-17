@@ -16,7 +16,10 @@ use executors::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use services::services::config::{Config, ConfigError, SoundFile, save_config_to_file};
+use services::services::{
+    analytics::AnalyticsConfig,
+    config::{Config, ConfigError, SoundFile, save_config_to_file},
+};
 use tokio::fs;
 use ts_rs::TS;
 use utils::{assets::config_path, response::ApiResponse};
@@ -84,12 +87,15 @@ async fn get_user_system_info(
 ) -> ResponseJson<ApiResponse<UserSystemInfo>> {
     let config = deployment.config().read().await;
 
+    // Reuse AnalyticsConfig::new() to get PostHog credentials
+    let analytics_config = AnalyticsConfig::new();
+
     let user_system_info = UserSystemInfo {
         config: config.clone(),
         analytics: AnalyticsInfo {
             user_id: deployment.user_id().to_string(),
-            posthog_api_key: option_env!("POSTHOG_API_KEY").map(|s| s.to_string()),
-            posthog_api_endpoint: option_env!("POSTHOG_API_ENDPOINT").map(|s| s.to_string()),
+            posthog_api_key: analytics_config.as_ref().map(|c| c.posthog_api_key.clone()),
+            posthog_api_endpoint: analytics_config.as_ref().map(|c| c.posthog_api_endpoint.clone()),
         },
         profiles: ExecutorConfigs::get_cached(),
         environment: Environment::new(),

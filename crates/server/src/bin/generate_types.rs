@@ -38,6 +38,7 @@ fn generate_types_content() -> String {
         db::models::image::CreateImage::decl(),
         utils::response::ApiResponse::<()>::decl(),
         server::routes::config::UserSystemInfo::decl(),
+        server::routes::config::AnalyticsInfo::decl(),
         server::routes::config::Environment::decl(),
         server::routes::config::McpServerQuery::decl(),
         server::routes::config::UpdateMcpServersBody::decl(),
