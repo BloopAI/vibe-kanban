@@ -4,6 +4,10 @@ import { defineConfig, Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import fs from "fs";
+import * as dotenv from "dotenv";
+
+// Load backend's .env file at config evaluation time
+dotenv.config({ path: path.resolve(__dirname, "../crates/server/.env") });
 
 function executorSchemasPlugin(): Plugin {
   const VIRTUAL_ID = "virtual:executor-schemas";
@@ -64,6 +68,9 @@ export default defineConfig({
   define: {
     // Expose app version from package.json
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(require('./package.json').version),
+    // Expose PostHog config from backend's .env file (loaded above)
+    'import.meta.env.VITE_POSTHOG_API_KEY': JSON.stringify(process.env.POSTHOG_API_KEY || ''),
+    'import.meta.env.VITE_POSTHOG_API_ENDPOINT': JSON.stringify(process.env.POSTHOG_API_ENDPOINT || ''),
   },
   server: {
     port: parseInt(process.env.FRONTEND_PORT || "3000"),
