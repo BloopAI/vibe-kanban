@@ -43,11 +43,11 @@ export function FeatureShowcaseModal({
   const previousScopesRef = useRef<string[]>([]);
 
   const totalStages = config.stages.length;
-  
+
   if (totalStages === 0) {
     return null;
   }
-  
+
   const safeIndex = Math.max(0, Math.min(currentStage, totalStages - 1));
   const stage = config.stages[safeIndex];
 
@@ -146,14 +146,14 @@ export function FeatureShowcaseModal({
                   </p>
 
                   <div className="flex items-center gap-2">
-                  {Array.from({ length: totalStages }).map((_, index) => (
-                  <div
-                  key={index}
-                  className={`h-1 flex-1 rounded-full transition-colors ${
-                  index === safeIndex ? 'bg-primary' : 'bg-muted'
-                  }`}
-                  />
-                  ))}
+                    {Array.from({ length: totalStages }).map((_, index) => (
+                      <div
+                        key={index}
+                        className={`h-1 flex-1 rounded-full transition-colors ${
+                          index === safeIndex ? 'bg-primary' : 'bg-muted'
+                        }`}
+                      />
+                    ))}
                   </div>
 
                   {totalStages > 1 && (
