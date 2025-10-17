@@ -2,7 +2,7 @@ import { ShowcaseConfig } from '@/types/showcase';
 
 export const taskPanelShowcase: ShowcaseConfig = {
   id: 'task-panel-onboarding',
-  version: '1.0.0',
+  version: 1,
   stages: [
     {
       titleKey: 'showcases.taskPanel.companion.title',

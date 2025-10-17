@@ -21,7 +21,7 @@ Add your showcase to [`frontend/src/config/showcases.ts`](../../../config/showca
 ```typescript
 export const myFeatureShowcase: ShowcaseConfig = {
   id: 'my-feature-onboarding',
-  version: '1.0.0',
+  version: 1,
   stages: [
     {
       titleKey: 'showcases.myFeature.stage1.title',
@@ -113,7 +113,7 @@ function MyComponent() {
 ```typescript
 interface ShowcaseConfig {
   id: string; // Unique identifier (e.g., 'task-panel-onboarding')
-  version: string; // Semver version (e.g., '1.0.0')
+  version: number; // Version number (e.g., 1, 2, 3)
   stages: ShowcaseStage[];
 }
 ```
@@ -121,7 +121,7 @@ interface ShowcaseConfig {
 **Properties:**
 
 - `id`: Unique identifier used for persistence. Should be descriptive and stable (don't change this).
-- `version`: Semantic version string. Increment when updating content. Users who've seen older versions will see new ones.
+- `version`: Version number. Increment when updating content. Users who've seen older versions will see new ones.
 - `stages`: Array of showcase stages (see below).
 
 ### ShowcaseStage Properties
@@ -297,11 +297,11 @@ showcase:{id}:v{version}:seen
 
 **Version format:**
 
-Use semantic versioning (semver):
+Use simple incrementing numbers:
 
-- `1.0.0` → Initial release
-- `1.1.0` → Added new stage or minor content update
-- `2.0.0` → Major overhaul of showcase
+- `1` → Initial release
+- `2` → Added new stage or content update
+- `3` → Major overhaul of showcase
 
 **Example:**
 
@@ -309,7 +309,7 @@ Use semantic versioning (semver):
 // Original
 export const myShowcase: ShowcaseConfig = {
   id: 'my-feature',
-  version: '1.0.0',
+  version: 1,
   stages: [
     /* ... */
   ],
@@ -318,7 +318,7 @@ export const myShowcase: ShowcaseConfig = {
 // After adding a new stage
 export const myShowcase: ShowcaseConfig = {
   id: 'my-feature',
-  version: '1.1.0', // ← Incremented
+  version: 2, // ← Incremented
   stages: [
     /* ... new stage added */
   ],
@@ -384,7 +384,7 @@ Add showcase translations to the `tasks` namespace:
    // In browser console
    localStorage.clear();
    // Or specifically:
-   localStorage.removeItem('showcase:my-feature:v1.0.0:seen');
+   localStorage.removeItem('showcase:my-feature:v1:seen');
    ```
 
 2. **Verify translations appear:**
@@ -454,7 +454,7 @@ Add showcase translations to the `tasks` namespace:
 **Solutions:**
 
 - Verify `markSeen()` is called in the `onClose` handler
-- Check localStorage for the key: `localStorage.getItem('showcase:id:v1.0.0:seen')`
+- Check localStorage for the key: `localStorage.getItem('showcase:id:v1:seen')`
 - Ensure the `id` and `version` match between config and persistence calls
 - Check for errors in `onClose` handler that prevent `markSeen()` execution
 
