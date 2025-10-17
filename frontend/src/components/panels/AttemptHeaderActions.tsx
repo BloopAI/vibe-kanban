@@ -11,7 +11,6 @@ import {
 import type { LayoutMode } from '../layout/TasksLayout';
 import type { TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
 import { ActionsDropdown } from '../ui/ActionsDropdown';
-import { AnalyticsId } from '@/lib/analytics-ids';
 import { trackEvent } from '@/lib/analytics';
 
 interface AttemptHeaderActionsProps {
@@ -58,7 +57,6 @@ export const AttemptHeaderActions = ({
                   value="preview"
                   aria-label="Preview"
                   active={mode === 'preview'}
-                  data-ph-capture-attribute={AnalyticsId.NAV_PREVIEW_BUTTON}
                 >
                   <Eye className="h-4 w-4" />
                 </ToggleGroupItem>
@@ -74,7 +72,6 @@ export const AttemptHeaderActions = ({
                   value="diffs"
                   aria-label="Diffs"
                   active={mode === 'diffs'}
-                  data-ph-capture-attribute={AnalyticsId.NAV_DIFFS_BUTTON}
                 >
                   <FileDiff className="h-4 w-4" />
                 </ToggleGroupItem>
