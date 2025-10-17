@@ -143,6 +143,12 @@ export function ProjectTasks() {
   }, [projectId]);
   const { query: searchQuery, focusInput } = useSearch();
 
+  // Optimistic updates: required to prevent snap-back when using async API calls
+  // @dnd-kit needs the items array to update immediately for smooth drop animations
+  const [optimisticPositions, setOptimisticPositions] = useState<
+    Record<string, { status: Task['status']; position: number }>
+  >({});
+
   const {
     tasks,
     tasksById,
@@ -291,18 +297,33 @@ export function ProjectTasks() {
     { scope: Scope.KANBAN }
   );
 
+  // Merge WebSocket tasks with optimistic position updates
+  const tasksWithOptimisticUpdates = useMemo(() => {
+    return tasks.map((task) => {
+      const optimistic = optimisticPositions[task.id];
+      if (optimistic) {
+        return {
+          ...task,
+          status: optimistic.status,
+          position: optimistic.position,
+        };
+      }
+      return task;
+    });
+  }, [tasks, optimisticPositions]);
+
   // Memoize filtered tasks based on search query
   const filteredTasks = useMemo(() => {
     if (!searchQuery.trim()) {
-      return tasks;
+      return tasksWithOptimisticUpdates;
     }
     const query = searchQuery.toLowerCase();
-    return tasks.filter(
+    return tasksWithOptimisticUpdates.filter(
       (task) =>
         task.title.toLowerCase().includes(query) ||
         (task.description && task.description.toLowerCase().includes(query))
     );
-  }, [tasks, searchQuery]);
+  }, [tasksWithOptimisticUpdates, searchQuery]);
 
   const groupedFilteredTasks = useMemo(() => {
     const groups: Record<string, Task[]> = {};
@@ -554,14 +575,37 @@ export function ProjectTasks() {
           ? lastTask.position - 1000
           : Date.now() / 1000;
 
-        await tasksApi.update(draggedId, {
-          title: draggedTask.title,
-          description: draggedTask.description,
-          status: newStatus,
-          position: newPosition,
-          parent_task_attempt: draggedTask.parent_task_attempt,
-          image_ids: null,
-        });
+        // Apply optimistic update immediately
+        setOptimisticPositions((prev) => ({
+          ...prev,
+          [draggedId]: { status: newStatus, position: newPosition },
+        }));
+
+        try {
+          await tasksApi.update(draggedId, {
+            title: draggedTask.title,
+            description: draggedTask.description,
+            status: newStatus,
+            position: newPosition,
+            parent_task_attempt: draggedTask.parent_task_attempt,
+            image_ids: null,
+          });
+
+          // Clear optimistic update when WebSocket confirms
+          setOptimisticPositions((prev) => {
+            const updated = { ...prev };
+            delete updated[draggedId];
+            return updated;
+          });
+        } catch (err) {
+          console.error('Failed to update task:', err);
+          // Revert on error
+          setOptimisticPositions((prev) => {
+            const updated = { ...prev };
+            delete updated[draggedId];
+            return updated;
+          });
+        }
         return;
       }
 
@@ -589,14 +633,38 @@ export function ProjectTasks() {
         newPosition = (taskAbove.position + taskBelow.position) / 2;
       }
 
-      await tasksApi.update(draggedId, {
-        title: draggedTask.title,
-        description: draggedTask.description,
-        status: newStatus,
-        position: newPosition,
-        parent_task_attempt: draggedTask.parent_task_attempt,
-        image_ids: null,
-      });
+      // Apply optimistic update IMMEDIATELY (synchronously) before API call
+      // This prevents the snap-back animation when DragOverlay completes
+      setOptimisticPositions((prev) => ({
+        ...prev,
+        [draggedId]: { status: newStatus, position: newPosition },
+      }));
+
+      try {
+        await tasksApi.update(draggedId, {
+          title: draggedTask.title,
+          description: draggedTask.description,
+          status: newStatus,
+          position: newPosition,
+          parent_task_attempt: draggedTask.parent_task_attempt,
+          image_ids: null,
+        });
+
+        // Clear optimistic update when WebSocket confirms the change
+        setOptimisticPositions((prev) => {
+          const updated = { ...prev };
+          delete updated[draggedId];
+          return updated;
+        });
+      } catch (err) {
+        console.error('Failed to update task:', err);
+        // Revert optimistic update on error
+        setOptimisticPositions((prev) => {
+          const updated = { ...prev };
+          delete updated[draggedId];
+          return updated;
+        });
+      }
     },
     [tasksById]
   );
