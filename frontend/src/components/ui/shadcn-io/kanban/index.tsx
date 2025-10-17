@@ -103,6 +103,7 @@ export const KanbanCard = ({
   } = useSortable({
     id,
     data: { index, parent },
+    animateLayoutChanges: () => false,
   });
 
   // Combine DnD ref and forwarded ref
