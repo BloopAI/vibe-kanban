@@ -5,14 +5,11 @@ use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 pub use v7::{
-    EditorConfig, EditorType, GitHubConfig, NotificationConfig, SoundFile, ThemeMode, UiLanguage,
+    default_git_branch_prefix, EditorConfig, EditorType, GitHubConfig, NotificationConfig,
+    SoundFile, ThemeMode, UiLanguage,
 };
 
 use crate::services::config::versions::v7;
-
-fn default_git_branch_prefix() -> String {
-    "vk".to_string()
-}
 
 #[derive(Clone, Debug, Serialize, Deserialize, TS, Default)]
 pub struct ShowcaseState {
