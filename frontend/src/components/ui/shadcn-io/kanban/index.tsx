@@ -215,6 +215,7 @@ export type KanbanProviderProps = {
   children: ReactNode;
   onDragEnd: (event: DragEndEvent) => void;
   onDragStart?: (event: DragStartEvent) => void;
+  activeTaskContent?: ReactNode;
   className?: string;
 };
 
@@ -222,6 +223,7 @@ export const KanbanProvider = ({
   children,
   onDragEnd,
   onDragStart,
+  activeTaskContent,
   className,
 }: KanbanProviderProps) => {
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -258,11 +260,7 @@ export const KanbanProvider = ({
         {children}
       </div>
       <DragOverlay>
-        {activeId ? (
-          <Card className="p-3 border-b cursor-grabbing shadow-lg rotate-3">
-            <p className="m-0 font-medium text-sm">Dragging...</p>
-          </Card>
-        ) : null}
+        {activeId && activeTaskContent}
       </DragOverlay>
     </DndContext>
   );

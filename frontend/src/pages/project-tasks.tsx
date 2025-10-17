@@ -662,6 +662,7 @@ export function ProjectTasks() {
       <div className="w-full h-full overflow-x-auto overflow-y-auto overscroll-x-contain touch-pan-y">
         <TaskKanbanBoard
           groupedTasks={groupedFilteredTasks}
+          tasksById={tasksById}
           onDragEnd={handleDragEnd}
           onViewTaskDetails={handleViewTaskDetails}
           selectedTask={selectedTask || undefined}

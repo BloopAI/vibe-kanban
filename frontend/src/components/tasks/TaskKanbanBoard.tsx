@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import {
   type DragEndEvent,
   KanbanBoard,
@@ -18,6 +18,7 @@ type Task = TaskWithAttemptStatus;
 
 interface TaskKanbanBoardProps {
   groupedTasks: Record<TaskStatus, Task[]>;
+  tasksById: Record<string, Task>;
   onDragEnd: (event: DragEndEvent) => void;
   onDragStart?: (event: any) => void;
   onViewTaskDetails: (task: Task) => void;
@@ -27,14 +28,42 @@ interface TaskKanbanBoardProps {
 
 function TaskKanbanBoard({
   groupedTasks,
+  tasksById,
   onDragEnd,
   onDragStart,
   onViewTaskDetails,
   selectedTask,
   onCreateTask,
 }: TaskKanbanBoardProps) {
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+
+  const handleDragStart = (event: any) => {
+    setActiveTaskId(event.active.id as string);
+    onDragStart?.(event);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveTaskId(null);
+    onDragEnd(event);
+  };
+
+  const activeTask = activeTaskId ? tasksById[activeTaskId] : null;
+
   return (
-    <KanbanProvider onDragEnd={onDragEnd} onDragStart={onDragStart}>
+    <KanbanProvider
+      onDragEnd={handleDragEnd}
+      onDragStart={handleDragStart}
+      activeTaskContent={
+        activeTask ? (
+          <TaskCard
+            task={activeTask}
+            index={0}
+            status={activeTask.status}
+            onViewDetails={() => {}}
+          />
+        ) : null
+      }
+    >
       {Object.entries(groupedTasks).map(([status, statusTasks]) => {
         const taskIds = statusTasks.map((task) => task.id);
 
