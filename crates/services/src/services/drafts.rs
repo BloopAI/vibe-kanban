@@ -4,7 +4,10 @@ use db::{
     DBService,
     models::{
         draft::{Draft, DraftType, UpsertDraft},
-        execution_process::{ExecutionProcess, ExecutionProcessError, ExecutionProcessRunReason},
+        execution_process::{
+            ExecutionProcess, ExecutionProcessError, ExecutionProcessRunReason,
+            ExecutionProcessStatus,
+        },
         image::TaskImage,
         task_attempt::TaskAttempt,
     },
@@ -155,10 +158,8 @@ impl DraftsService {
         let processes =
             ExecutionProcess::find_by_task_attempt_id(self.pool(), attempt_id, false).await?;
         Ok(processes.into_iter().any(|p| {
-            matches!(
-                p.status,
-                db::models::execution_process::ExecutionProcessStatus::Running
-            )
+            matches!(p.status, ExecutionProcessStatus::Running)
+                && !matches!(p.run_reason, ExecutionProcessRunReason::DevServer)
         }))
     }
 
