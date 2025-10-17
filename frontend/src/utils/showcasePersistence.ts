@@ -24,16 +24,3 @@ export function markSeen(id: string, version: number): void {
   const key = `showcase:${id}:v${version}:seen`;
   localStorage.setItem(key, 'true');
 }
-
-/**
- * Clear seen status for a showcase (useful for testing)
- *
- * @param id - Unique identifier for the showcase
- * @param version - Version number for the showcase
- *
- * Storage key format: `showcase:{id}:v{version}:seen`
- */
-export function clearSeen(id: string, version: number): void {
-  const key = `showcase:${id}:v${version}:seen`;
-  localStorage.removeItem(key);
-}
