@@ -268,7 +268,7 @@ pub async fn open_project_in_editor(
     Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<Option<OpenEditorRequest>>,
-) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     let path = project.git_repo_path.to_string_lossy();
 
     let editor_config = {
@@ -277,27 +277,21 @@ pub async fn open_project_in_editor(
         config.editor.with_override(editor_type_str)
     };
 
-    match editor_config.open_file(&path) {
-        Ok(_) => {
-            tracing::info!("Opened editor for project {} at path: {}", project.id, path);
+    editor_config.open_file(&path)?;
 
-            deployment
-                .track_if_analytics_allowed(
-                    "project_editor_opened",
-                    serde_json::json!({
-                        "project_id": project.id.to_string(),
-                        "editor_type": payload.as_ref().and_then(|req| req.editor_type.as_ref()),
-                    }),
-                )
-                .await;
+    tracing::info!("Opened editor for project {} at path: {}", project.id, path);
 
-            Ok(ResponseJson(ApiResponse::success(())))
-        }
-        Err(e) => {
-            tracing::error!("Failed to open editor for project {}: {}", project.id, e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
-        }
-    }
+    deployment
+        .track_if_analytics_allowed(
+            "project_editor_opened",
+            serde_json::json!({
+                "project_id": project.id.to_string(),
+                "editor_type": payload.as_ref().and_then(|req| req.editor_type.as_ref()),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(())))
 }
 
 pub async fn search_project_files(

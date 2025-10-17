@@ -51,5 +51,24 @@
     "reconnecting": "Reconectando",
     "saving": "Guardando...",
     "success": "Éxito"
+  },
+  "errors": {
+    "cannotOpenEditor": {
+      "title": "No se puede abrir el editor"
+    },
+    "ideCli": {
+      "missing": {
+        "summary": "No se encontró el comando CLI del IDE '{{cmd}}' en tu PATH."
+      },
+      "instructions": {
+        "VS_CODE": "Para instalar el comando '{{cmd}}':\n1. Descarga, instala y abre Visual Studio Code\n2. Abre la Paleta de Comandos (⌘ + ⇧ + P en Mac, Ctrl + Shift + P en Windows/Linux)\n3. Escribe 'shell command' para encontrar 'Shell Command: Install '{{cmd}}' command in PATH'\n4. Ejecuta el comando y reinicia tu terminal",
+        "CURSOR": "Para instalar el comando '{{cmd}}':\n1. Descarga, instala y abre Cursor\n2. Abre la Paleta de Comandos (⌘ + ⇧ + P en Mac, Ctrl + Shift + P en Windows/Linux)\n3. Escribe 'shell command' para encontrar 'Shell Command: Install '{{cmd}}' command in PATH'\n4. Ejecuta el comando y reinicia tu terminal",
+        "WINDSURF": "Para instalar el comando '{{cmd}}':\n1. Descarga, instala y abre Windsurf\n2. Abre la Paleta de Comandos (⌘ + ⇧ + P en Mac, Ctrl + Shift + P en Windows/Linux)\n3. Escribe 'shell command' para encontrar 'Shell Command: Install '{{cmd}}' command in PATH'\n4. Ejecuta el comando y reinicia tu terminal",
+        "ZED": "Para instalar el comando '{{cmd}}':\n1. Descarga e instala Zed desde https://zed.dev\n2. La CLI está documentada en https://zed.dev/features#cli\n3. Sigue las instrucciones para tu plataforma",
+        "INTELLI_J": "Para instalar el comando '{{cmd}}':\n1. Descarga e instala IntelliJ IDEA\n2. Sigue las instrucciones en https://www.jetbrains.com/help/idea/working-with-the-ide-features-from-command-line.html\n3. El lanzador de línea de comandos debería configurarse durante la instalación",
+        "XCODE": "Para instalar el comando '{{cmd}}':\n1. Instala Xcode desde la Mac App Store\n2. El comando '{{cmd}}' debería estar disponible automáticamente después de la instalación\n3. Si no, puede que necesites ejecutar: sudo xcode-select --install",
+        "CUSTOM": "El comando personalizado '{{cmd}}' no se encontró en PATH.\nAsegúrate de que el comando esté instalado y disponible en tu PATH del sistema."
+      }
+    }
   }
 }

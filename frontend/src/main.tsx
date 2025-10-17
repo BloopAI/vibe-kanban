@@ -15,6 +15,7 @@ import {
   GitHubLoginDialog,
   CreatePRDialog,
   ConfirmDialog,
+  ErrorDialog,
   DisclaimerDialog,
   OnboardingDialog,
   PrivacyOptInDialog,
@@ -40,6 +41,7 @@ import { CreateAttemptDialog } from './components/dialogs/tasks/CreateAttemptDia
 NiceModal.register('github-login', GitHubLoginDialog);
 NiceModal.register('create-pr', CreatePRDialog);
 NiceModal.register('confirm', ConfirmDialog);
+NiceModal.register('error-dialog', ErrorDialog);
 NiceModal.register('disclaimer', DisclaimerDialog);
 NiceModal.register('onboarding', OnboardingDialog);
 NiceModal.register('privacy-opt-in', PrivacyOptInDialog);

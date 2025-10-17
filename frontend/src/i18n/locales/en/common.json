@@ -51,5 +51,24 @@
   },
   "breadcrumb": {
     "more": "More"
+  },
+  "errors": {
+    "cannotOpenEditor": {
+      "title": "Cannot Open Editor"
+    },
+    "ideCli": {
+      "missing": {
+        "summary": "IDE CLI command '{{cmd}}' was not found in your PATH."
+      },
+      "instructions": {
+        "VS_CODE": "To install the '{{cmd}}' command:\n1. Download, install and open Visual Studio Code\n2. Open the Command Palette (⌘ + ⇧ + P on Mac, Ctrl + Shift + P on Windows/Linux)\n3. Type 'shell command' to find 'Shell Command: Install '{{cmd}}' command in PATH'\n4. Run the command and restart your terminal",
+        "CURSOR": "To install the '{{cmd}}' command:\n1. Download, install and open Cursor\n2. Open the Command Palette (⌘ + ⇧ + P on Mac, Ctrl + Shift + P on Windows/Linux)\n3. Type 'shell command' to find 'Shell Command: Install '{{cmd}}' command in PATH'\n4. Run the command and restart your terminal",
+        "WINDSURF": "To install the '{{cmd}}' command:\n1. Download, install and open Windsurf\n2. Open the Command Palette (⌘ + ⇧ + P on Mac, Ctrl + Shift + P on Windows/Linux)\n3. Type 'shell command' to find 'Shell Command: Install '{{cmd}}' command in PATH'\n4. Run the command and restart your terminal",
+        "ZED": "To install the '{{cmd}}' command:\n1. Download and install Zed from https://zed.dev\n2. The CLI is documented at https://zed.dev/features#cli\n3. Follow the instructions for your platform",
+        "INTELLI_J": "To install the '{{cmd}}' command:\n1. Download and install IntelliJ IDEA\n2. Follow the instructions at https://www.jetbrains.com/help/idea/working-with-the-ide-features-from-command-line.html\n3. The command line launcher should be set up during installation",
+        "XCODE": "To install the '{{cmd}}' command:\n1. Install Xcode from the Mac App Store\n2. The '{{cmd}}' command should be automatically available after installation\n3. If not, you may need to run: sudo xcode-select --install",
+        "CUSTOM": "Custom command '{{cmd}}' not found in PATH.\nPlease ensure the command is installed and available in your system PATH."
+      }
+    }
   }
 }

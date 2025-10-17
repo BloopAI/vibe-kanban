@@ -57,6 +57,7 @@ fn generate_types_content() -> String {
         services::services::config::ThemeMode::decl(),
         services::services::config::EditorConfig::decl(),
         services::services::config::EditorType::decl(),
+        services::services::config::OpenEditorError::decl(),
         services::services::config::GitHubConfig::decl(),
         services::services::config::SoundFile::decl(),
         services::services::config::UiLanguage::decl(),

@@ -76,6 +76,7 @@ export {
 
 // Shared/Generic dialogs
 export { ConfirmDialog, type ConfirmDialogProps } from './shared/ConfirmDialog';
+export { ErrorDialog, type ErrorDialogProps } from './shared/ErrorDialog';
 export {
   FolderPickerDialog,
   type FolderPickerDialogProps,
