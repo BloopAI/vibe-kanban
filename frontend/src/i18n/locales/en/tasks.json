@@ -249,7 +249,7 @@
       },
       "installation": {
         "title": "Automatic Companion Setup",
-        "description": "Install the Web Companion with one click. Vibe Kanban creates a task that installs and configures it automatically. Your dev server is detected and embedded seamlessly."
+        "description": "Automatically create a task to install the Web Companion with one click."
       },
       "codeReview": {
         "title": "Built-in Code Review",
@@ -257,7 +257,7 @@
       },
       "pullRequest": {
         "title": "Create PR from Task",
-        "description": "Push commits and create pull requests directly from task attempts. The PR dialog pre-fills title and description from your task details for streamlined workflows."
+        "description": "Merge your changes or create pull requests directly from task attempts. The PR dialog pre-fills title and description from your task details for streamlined workflows."
       }
     },
     "buttons": {
