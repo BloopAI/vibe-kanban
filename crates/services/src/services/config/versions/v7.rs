@@ -9,7 +9,7 @@ pub use v6::{EditorConfig, EditorType, GitHubConfig, NotificationConfig, SoundFi
 
 use crate::services::config::versions::v6;
 
-pub fn default_git_branch_prefix() -> String {
+fn default_git_branch_prefix() -> String {
     "vk".to_string()
 }
 
