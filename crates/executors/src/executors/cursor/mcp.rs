@@ -20,6 +20,9 @@ async fn ensure_mcp_server_trust_impl(
     cursor: &Cursor,
     current_dir: &Path,
 ) -> Result<(), ExecutorError> {
+    let current_dir =
+        std::fs::canonicalize(current_dir).unwrap_or_else(|_| current_dir.to_path_buf());
+
     let Some(config_path) = cursor.default_mcp_config_path() else {
         return Ok(());
     };
