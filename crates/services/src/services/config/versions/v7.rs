@@ -1,6 +1,7 @@
 use anyhow::Error;
 use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use strum_macros::EnumString;
 use ts_rs::TS;
 pub use v6::{EditorConfig, EditorType, GitHubConfig, NotificationConfig, SoundFile, UiLanguage};
@@ -9,6 +10,12 @@ use crate::services::config::versions::v6;
 
 pub fn default_git_branch_prefix() -> String {
     "vk".to_string()
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, TS, Default)]
+pub struct ShowcaseState {
+    #[serde(default)]
+    pub seen_versions: HashMap<String, u32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS, EnumString)]
@@ -41,6 +48,8 @@ pub struct Config {
     pub language: UiLanguage,
     #[serde(default = "default_git_branch_prefix")]
     pub git_branch_prefix: String,
+    #[serde(default)]
+    pub showcases: ShowcaseState,
 }
 
 impl Config {
@@ -90,6 +99,7 @@ impl Config {
             show_release_notes: old_config.show_release_notes,
             language: old_config.language,
             git_branch_prefix: default_git_branch_prefix(),
+            showcases: ShowcaseState::default(),
         })
     }
 }
@@ -134,6 +144,7 @@ impl Default for Config {
             show_release_notes: false,
             language: UiLanguage::default(),
             git_branch_prefix: default_git_branch_prefix(),
+            showcases: ShowcaseState::default(),
         }
     }
 }
