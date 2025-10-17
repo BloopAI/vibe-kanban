@@ -39,6 +39,7 @@ fn generate_types_content() -> String {
         utils::response::ApiResponse::<()>::decl(),
         server::routes::config::UserSystemInfo::decl(),
         server::routes::config::AnalyticsInfo::decl(),
+        services::services::analytics::AnalyticsConfig::decl(),
         server::routes::config::Environment::decl(),
         server::routes::config::McpServerQuery::decl(),
         server::routes::config::UpdateMcpServersBody::decl(),

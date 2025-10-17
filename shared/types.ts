@@ -66,6 +66,8 @@ capabilities: { [key in string]?: Array<BaseAgentCapability> }, executors: { [ke
 
 export type AnalyticsInfo = { user_id: string, posthog_api_key: string | null, posthog_api_endpoint: string | null, };
 
+export type AnalyticsConfig = { posthog_api_key: string, posthog_api_endpoint: string, };
+
 export type Environment = { os_type: string, os_version: string, os_architecture: string, bitness: string, };
 
 export type McpServerQuery = { executor: BaseCodingAgent, };
