@@ -46,7 +46,10 @@ export function initializeAnalytics(
       },
       capture_pageview: false, // We'll manually capture page views
       capture_pageleave: true,
-      autocapture: true, // Capture clicks and interactions automatically
+      autocapture: {
+        // Opt-in autocapture: only track elements with data-ph-capture-attribute
+        css_selector_allowlist: ['[data-ph-capture-attribute]'],
+      },
     });
     isInitialized = true;
   } catch (error) {

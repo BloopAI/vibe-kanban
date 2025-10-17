@@ -35,6 +35,7 @@ import type {
 } from 'shared/types';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useKeySubmitTask, useKeySubmitTaskAlt, Scope } from '@/keyboard';
+import { ANALYTICS_IDS } from '@/lib/analytics-ids';
 
 interface Task {
   id: string;
@@ -714,6 +715,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                   variant="outline"
                   onClick={handleCancel}
                   disabled={isSubmitting || isSubmittingAndStart}
+                  analyticsId="task-form-cancel-button"
                 >
                   Cancel
                 </Button>
@@ -721,6 +723,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                   <Button
                     onClick={handleSubmit}
                     disabled={isSubmitting || !title.trim()}
+                    analyticsId="task-form-update-button"
                   >
                     {isSubmitting ? 'Updating...' : 'Update Task'}
                   </Button>
@@ -732,6 +735,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                       disabled={
                         isSubmitting || isSubmittingAndStart || !title.trim()
                       }
+                      analyticsId={ANALYTICS_IDS.TASK_CREATE_BUTTON}
                     >
                       {isSubmitting ? 'Creating...' : 'Create Task'}
                     </Button>
@@ -741,6 +745,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                         isSubmitting || isSubmittingAndStart || !title.trim()
                       }
                       className={'font-medium'}
+                      analyticsId="task-form-create-and-start-button"
                     >
                       {isSubmittingAndStart
                         ? 'Creating & Starting...'
