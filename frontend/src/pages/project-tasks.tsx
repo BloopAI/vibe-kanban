@@ -599,16 +599,10 @@ export function ProjectTasks() {
             parent_task_attempt: draggedTask.parent_task_attempt,
             image_ids: null,
           });
-
-          // Clear optimistic update when WebSocket confirms
-          setOptimisticPositions((prev) => {
-            const updated = { ...prev };
-            delete updated[draggedId];
-            return updated;
-          });
         } catch (err) {
           console.error('Failed to update task:', err);
-          // Revert on error
+        } finally {
+          // Clear optimistic update (WebSocket will have the correct data)
           setOptimisticPositions((prev) => {
             const updated = { ...prev };
             delete updated[draggedId];
@@ -658,16 +652,10 @@ export function ProjectTasks() {
           parent_task_attempt: draggedTask.parent_task_attempt,
           image_ids: null,
         });
-
-        // Clear optimistic update when WebSocket confirms the change
-        setOptimisticPositions((prev) => {
-          const updated = { ...prev };
-          delete updated[draggedId];
-          return updated;
-        });
       } catch (err) {
         console.error('Failed to update task:', err);
-        // Revert optimistic update on error
+      } finally {
+        // Clear optimistic update (WebSocket will have the correct data)
         setOptimisticPositions((prev) => {
           const updated = { ...prev };
           delete updated[draggedId];
