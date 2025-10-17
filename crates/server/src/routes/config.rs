@@ -39,20 +39,7 @@ pub fn router() -> Router<DeploymentImpl> {
 #[ts(export)]
 pub struct AnalyticsInfo {
     pub user_id: String,
-    pub posthog_api_key: Option<String>,
-    pub posthog_api_endpoint: Option<String>,
-}
-
-impl AnalyticsInfo {
-    pub fn new(user_id: String, analytics_config: Option<AnalyticsConfig>) -> Self {
-        Self {
-            user_id,
-            posthog_api_key: analytics_config.as_ref().map(|c| c.posthog_api_key.clone()),
-            posthog_api_endpoint: analytics_config
-                .as_ref()
-                .map(|c| c.posthog_api_endpoint.clone()),
-        }
-    }
+    pub config: Option<AnalyticsConfig>,
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -101,7 +88,10 @@ async fn get_user_system_info(
 
     let user_system_info = UserSystemInfo {
         config: config.clone(),
-        analytics: AnalyticsInfo::new(deployment.user_id().to_string(), AnalyticsConfig::new()),
+        analytics: AnalyticsInfo {
+            user_id: deployment.user_id().to_string(),
+            config: AnalyticsConfig::new(),
+        },
         profiles: ExecutorConfigs::get_cached(),
         environment: Environment::new(),
         capabilities: {
