@@ -45,6 +45,7 @@ function AppContent() {
     if (config) {
       // Opt-out by default: track unless explicitly false
       const analyticsEnabled = config.analytics_enabled !== false;
+      console.log('Analytics enabled:', analyticsEnabled);
       initializeAnalytics(analyticsEnabled);
 
       // Track app loaded event

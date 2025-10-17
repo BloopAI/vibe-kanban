@@ -62,9 +62,6 @@ export default defineConfig({
     },
   },
   define: {
-    // Expose PostHog configuration to the frontend
-    'import.meta.env.VITE_POSTHOG_API_KEY': JSON.stringify(process.env.POSTHOG_API_KEY || ''),
-    'import.meta.env.VITE_POSTHOG_API_ENDPOINT': JSON.stringify(process.env.POSTHOG_API_ENDPOINT || ''),
     // Expose app version from package.json
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(require('./package.json').version),
   },
