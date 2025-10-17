@@ -5,6 +5,10 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 import fs from "fs";
 
+const packageJson = JSON.parse(
+  fs.readFileSync(path.resolve(__dirname, "./package.json"), "utf8")
+);
+
 function executorSchemasPlugin(): Plugin {
   const VIRTUAL_ID = "virtual:executor-schemas";
   const RESOLVED_VIRTUAL_ID = "\0" + VIRTUAL_ID;
@@ -63,7 +67,7 @@ export default defineConfig({
   },
   define: {
     // Expose app version from package.json
-    'import.meta.env.VITE_APP_VERSION': JSON.stringify(require('./package.json').version),
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(packageJson.version),
   },
   server: {
     port: parseInt(process.env.FRONTEND_PORT || "3000"),
