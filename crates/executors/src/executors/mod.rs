@@ -13,6 +13,7 @@ use ts_rs::TS;
 use workspace_utils::msg_store::MsgStore;
 
 use crate::{
+    approvals::ExecutorApprovalService,
     executors::{
         amp::Amp, claude::ClaudeCode, codex::Codex, copilot::Copilot, cursor::Cursor,
         gemini::Gemini, opencode::Opencode, qwen::QwenCode,
@@ -52,6 +53,8 @@ pub enum ExecutorError {
     TomlSerialize(#[from] toml::ser::Error),
     #[error(transparent)]
     TomlDeserialize(#[from] toml::de::Error),
+    #[error(transparent)]
+    ExecutorApprovalError(#[from] crate::approvals::ExecutorApprovalError),
 }
 
 #[enum_dispatch]
@@ -138,6 +141,8 @@ impl CodingAgent {
 #[async_trait]
 #[enum_dispatch(CodingAgent)]
 pub trait StandardCodingAgentExecutor {
+    fn use_approvals(&mut self, _approvals: Arc<dyn ExecutorApprovalService>) {}
+
     async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError>;
     async fn spawn_follow_up(
         &self,

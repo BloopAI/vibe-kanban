@@ -39,6 +39,7 @@ use futures::{FutureExt, StreamExt, TryStreamExt, stream::select};
 use serde_json::json;
 use services::services::{
     analytics::AnalyticsContext,
+    approvals::{Approvals, executor_approvals::ExecutorApprovalBridge},
     config::Config,
     container::{ContainerError, ContainerRef, ContainerService},
     diff_stream::{self, DiffStreamHandle},
@@ -67,6 +68,7 @@ pub struct LocalContainerService {
     git: GitService,
     image_service: ImageService,
     analytics: Option<AnalyticsContext>,
+    approvals: Approvals,
 }
 
 impl LocalContainerService {
@@ -77,6 +79,7 @@ impl LocalContainerService {
         git: GitService,
         image_service: ImageService,
         analytics: Option<AnalyticsContext>,
+        approvals: Approvals,
     ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
 
@@ -88,6 +91,7 @@ impl LocalContainerService {
             git,
             image_service,
             analytics,
+            approvals,
         }
     }
 
@@ -650,6 +654,21 @@ impl ContainerService for LocalContainerService {
         &self.git
     }
 
+    fn approvals(&self) -> &Approvals {
+        &self.approvals
+    }
+
+    fn get_executor_approval_service(
+        &self,
+        execution_process_id: &Uuid,
+    ) -> Arc<dyn executors::approvals::ExecutorApprovalService> {
+        ExecutorApprovalBridge::new(
+            self.approvals.clone(),
+            self.db.clone(),
+            *execution_process_id,
+        )
+    }
+
     async fn git_branch_prefix(&self) -> String {
         self.config.read().await.git_branch_prefix.clone()
     }
@@ -801,8 +820,14 @@ impl ContainerService for LocalContainerService {
             )))?;
         let current_dir = PathBuf::from(container_ref);
 
+        // Create executor approval bridge when needed
         // Create the child and stream, add to execution tracker
-        let mut spawned = executor_action.spawn(&current_dir).await?;
+        let mut spawned = executor_action
+            .spawn(
+                &current_dir,
+                self.get_executor_approval_service(&execution_process.id),
+            )
+            .await?;
 
         self.track_child_msgs_in_store(execution_process.id, &mut spawned.child)
             .await;

@@ -13,11 +13,12 @@ use codex_protocol::{
     plan_tool::{StepStatus, UpdatePlanArgs},
     protocol::{
         AgentMessageDeltaEvent, AgentMessageEvent, AgentReasoningDeltaEvent, AgentReasoningEvent,
-        AgentReasoningSectionBreakEvent, BackgroundEventEvent, ErrorEvent, EventMsg,
-        ExecCommandBeginEvent, ExecCommandEndEvent, ExecCommandOutputDeltaEvent, ExecOutputStream,
-        FileChange as CodexProtoFileChange, McpInvocation, McpToolCallBeginEvent,
-        McpToolCallEndEvent, PatchApplyBeginEvent, PatchApplyEndEvent, StreamErrorEvent,
-        TokenUsageInfo, ViewImageToolCallEvent, WebSearchBeginEvent, WebSearchEndEvent,
+        AgentReasoningSectionBreakEvent, ApplyPatchApprovalRequestEvent, BackgroundEventEvent,
+        ErrorEvent, EventMsg, ExecApprovalRequestEvent, ExecCommandBeginEvent, ExecCommandEndEvent,
+        ExecCommandOutputDeltaEvent, ExecOutputStream, FileChange as CodexProtoFileChange,
+        McpInvocation, McpToolCallBeginEvent, McpToolCallEndEvent, PatchApplyBeginEvent,
+        PatchApplyEndEvent, StreamErrorEvent, TokenUsageInfo, ViewImageToolCallEvent,
+        WebSearchBeginEvent, WebSearchEndEvent,
     },
 };
 use futures::StreamExt;
@@ -26,12 +27,14 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use workspace_utils::{
+    approvals::ApprovalStatus,
     diff::{concatenate_diff_hunks, extract_unified_diff_hunks},
     msg_store::MsgStore,
     path::make_path_relative,
 };
 
 use crate::{
+    approvals::ToolCallMetadata,
     executors::codex::session::SessionHandler,
     logs::{
         ActionType, CommandExitStatus, CommandRunResult, FileChange, NormalizedEntry,
@@ -43,6 +46,10 @@ use crate::{
 
 trait ToNormalizedEntry {
     fn to_normalized_entry(&self) -> NormalizedEntry;
+}
+
+trait ToNormalizedEntryOpt {
+    fn to_normalized_entry_opt(&self) -> Option<NormalizedEntry>;
 }
 
 #[derive(Debug, Deserialize)]
@@ -66,10 +73,14 @@ struct CommandState {
     formatted_output: Option<String>,
     status: ToolStatus,
     exit_code: Option<i32>,
+    awaiting_approval: bool,
+    call_id: String,
 }
 
 impl ToNormalizedEntry for CommandState {
     fn to_normalized_entry(&self) -> NormalizedEntry {
+        let content = format!("`{}`", self.command);
+
         NormalizedEntry {
             timestamp: None,
             entry_type: NormalizedEntryType::ToolUse {
@@ -89,8 +100,11 @@ impl ToNormalizedEntry for CommandState {
                 },
                 status: self.status.clone(),
             },
-            content: format!("`{}`", self.command),
-            metadata: None,
+            content,
+            metadata: serde_json::to_value(ToolCallMetadata {
+                tool_call_id: self.call_id.clone(),
+            })
+            .ok(),
         }
     }
 }
@@ -165,10 +179,14 @@ struct PatchEntry {
     path: String,
     changes: Vec<FileChange>,
     status: ToolStatus,
+    awaiting_approval: bool,
+    call_id: String,
 }
 
 impl ToNormalizedEntry for PatchEntry {
     fn to_normalized_entry(&self) -> NormalizedEntry {
+        let content = self.path.clone();
+
         NormalizedEntry {
             timestamp: None,
             entry_type: NormalizedEntryType::ToolUse {
@@ -179,8 +197,11 @@ impl ToNormalizedEntry for PatchEntry {
                 },
                 status: self.status.clone(),
             },
-            content: self.path.clone(),
-            metadata: None,
+            content,
+            metadata: serde_json::to_value(ToolCallMetadata {
+                tool_call_id: self.call_id.clone(),
+            })
+            .ok(),
         }
     }
 }
@@ -385,6 +406,13 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                 continue;
             }
 
+            if let Ok(approval) = serde_json::from_str::<Approval>(&line) {
+                if let Some(entry) = approval.to_normalized_entry_opt() {
+                    add_normalized_entry(&msg_store, &entry_index, entry);
+                }
+                continue;
+            }
+
             if let Ok(response) = serde_json::from_str::<JSONRPCResponse>(&line) {
                 handle_jsonrpc_response(response, &msg_store, &entry_index);
                 continue;
@@ -466,6 +494,80 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                     state.assistant = None;
                     state.thinking = None;
                 }
+                EventMsg::ExecApprovalRequest(ExecApprovalRequestEvent {
+                    call_id,
+                    command,
+                    cwd: _,
+                    reason,
+                }) => {
+                    state.assistant = None;
+                    state.thinking = None;
+
+                    let command_text = if command.is_empty() {
+                        reason
+                            .filter(|r| !r.is_empty())
+                            .unwrap_or_else(|| "command execution".to_string())
+                    } else {
+                        command.join(" ")
+                    };
+
+                    let command_state = state.commands.entry(call_id.clone()).or_default();
+
+                    if command_state.command.is_empty() {
+                        command_state.command = command_text;
+                    }
+                    command_state.awaiting_approval = true;
+                    if let Some(index) = command_state.index {
+                        replace_normalized_entry(
+                            &msg_store,
+                            index,
+                            command_state.to_normalized_entry(),
+                        );
+                    } else {
+                        let index = add_normalized_entry(
+                            &msg_store,
+                            &entry_index,
+                            command_state.to_normalized_entry(),
+                        );
+                        command_state.index = Some(index);
+                    }
+                }
+                EventMsg::ApplyPatchApprovalRequest(ApplyPatchApprovalRequestEvent {
+                    call_id,
+                    changes,
+                    reason: _,
+                    grant_root: _,
+                }) => {
+                    state.assistant = None;
+                    state.thinking = None;
+
+                    let normalized = normalize_file_changes(&worktree_path_str, &changes);
+                    let patch_state = state.patches.entry(call_id.clone()).or_default();
+
+                    for entry in patch_state.entries.drain(..) {
+                        if let Some(index) = entry.index {
+                            msg_store.push_patch(ConversationPatch::remove(index));
+                        }
+                    }
+
+                    for (path, file_changes) in normalized {
+                        let mut entry = PatchEntry {
+                            index: None,
+                            path,
+                            changes: file_changes,
+                            status: ToolStatus::Created,
+                            awaiting_approval: true,
+                            call_id: call_id.clone(),
+                        };
+                        let index = add_normalized_entry(
+                            &msg_store,
+                            &entry_index,
+                            entry.to_normalized_entry(),
+                        );
+                        entry.index = Some(index);
+                        patch_state.entries.push(entry);
+                    }
+                }
                 EventMsg::ExecCommandBegin(ExecCommandBeginEvent {
                     call_id, command, ..
                 }) => {
@@ -485,6 +587,8 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                             formatted_output: None,
                             status: ToolStatus::Created,
                             exit_code: None,
+                            awaiting_approval: false,
+                            call_id: call_id.clone(),
                         },
                     );
                     let command_state = state.commands.get_mut(&call_id).unwrap();
@@ -532,6 +636,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                     if let Some(mut command_state) = state.commands.remove(&call_id) {
                         command_state.formatted_output = Some(formatted_output);
                         command_state.exit_code = Some(exit_code);
+                        command_state.awaiting_approval = false;
                         command_state.status = if exit_code == 0 {
                             ToolStatus::Success
                         } else {
@@ -664,23 +769,68 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                     state.assistant = None;
                     state.thinking = None;
                     let normalized = normalize_file_changes(&worktree_path_str, &changes);
-                    let mut patch_state = PatchState::default();
-                    for (path, file_changes) in normalized {
-                        patch_state.entries.push(PatchEntry {
-                            index: None,
-                            path,
-                            changes: file_changes,
-                            status: ToolStatus::Created,
-                        });
-                        let patch_entry = patch_state.entries.last_mut().unwrap();
-                        let index = add_normalized_entry(
-                            &msg_store,
-                            &entry_index,
-                            patch_entry.to_normalized_entry(),
-                        );
-                        patch_entry.index = Some(index);
+                    if let Some(patch_state) = state.patches.get_mut(&call_id) {
+                        let mut iter = normalized.into_iter();
+                        for entry in &mut patch_state.entries {
+                            if let Some((path, file_changes)) = iter.next() {
+                                entry.path = path;
+                                entry.changes = file_changes;
+                            }
+                            entry.status = ToolStatus::Created;
+                            entry.awaiting_approval = false;
+                            if let Some(index) = entry.index {
+                                replace_normalized_entry(
+                                    &msg_store,
+                                    index,
+                                    entry.to_normalized_entry(),
+                                );
+                            } else {
+                                let index = add_normalized_entry(
+                                    &msg_store,
+                                    &entry_index,
+                                    entry.to_normalized_entry(),
+                                );
+                                entry.index = Some(index);
+                            }
+                        }
+                        for (path, file_changes) in iter {
+                            let mut entry = PatchEntry {
+                                index: None,
+                                path,
+                                changes: file_changes,
+                                status: ToolStatus::Created,
+                                awaiting_approval: false,
+                                call_id: call_id.clone(),
+                            };
+                            let index = add_normalized_entry(
+                                &msg_store,
+                                &entry_index,
+                                entry.to_normalized_entry(),
+                            );
+                            entry.index = Some(index);
+                            patch_state.entries.push(entry);
+                        }
+                    } else {
+                        let mut patch_state = PatchState::default();
+                        for (path, file_changes) in normalized {
+                            patch_state.entries.push(PatchEntry {
+                                index: None,
+                                path,
+                                changes: file_changes,
+                                status: ToolStatus::Created,
+                                awaiting_approval: false,
+                                call_id: call_id.clone(),
+                            });
+                            let patch_entry = patch_state.entries.last_mut().unwrap();
+                            let index = add_normalized_entry(
+                                &msg_store,
+                                &entry_index,
+                                patch_entry.to_normalized_entry(),
+                            );
+                            patch_entry.index = Some(index);
+                        }
+                        state.patches.insert(call_id, patch_state);
                     }
-                    state.patches.insert(call_id, patch_state);
                 }
                 EventMsg::PatchApplyEnd(PatchApplyEndEvent {
                     call_id,
@@ -826,9 +976,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                 | EventMsg::ConversationPath(..)
                 | EventMsg::EnteredReviewMode(..)
                 | EventMsg::ExitedReviewMode(..)
-                | EventMsg::TaskComplete(..)
-                | EventMsg::ExecApprovalRequest(..)
-                | EventMsg::ApplyPatchApprovalRequest(..) => {}
+                | EventMsg::TaskComplete(..) => {}
             }
         }
     });
@@ -934,6 +1082,76 @@ impl ToNormalizedEntry for Error {
                 Error::LaunchError { error } => error.clone(),
             },
             metadata: None,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum Approval {
+    ApprovalResponse {
+        call_id: String,
+        tool_name: String,
+        approval_status: ApprovalStatus,
+    },
+}
+
+impl Approval {
+    pub fn approval_response(
+        call_id: String,
+        tool_name: String,
+        approval_status: ApprovalStatus,
+    ) -> Self {
+        Self::ApprovalResponse {
+            call_id,
+            tool_name,
+            approval_status,
+        }
+    }
+
+    pub fn raw(&self) -> String {
+        serde_json::to_string(self).unwrap_or_default()
+    }
+
+    pub fn display_tool_name(&self) -> String {
+        let Self::ApprovalResponse { tool_name, .. } = self;
+        match tool_name.as_str() {
+            "codex.exec_command" => "Exec Command".to_string(),
+            "codex.apply_patch" => "Edit".to_string(),
+            other => other.to_string(),
+        }
+    }
+}
+
+impl ToNormalizedEntryOpt for Approval {
+    fn to_normalized_entry_opt(&self) -> Option<NormalizedEntry> {
+        let Self::ApprovalResponse {
+            call_id: _,
+            tool_name: _,
+            approval_status,
+        } = self;
+        let tool_name = self.display_tool_name();
+
+        match approval_status {
+            ApprovalStatus::Pending => None,
+            ApprovalStatus::Approved => None,
+            ApprovalStatus::Denied { reason } => Some(NormalizedEntry {
+                timestamp: None,
+                entry_type: NormalizedEntryType::UserFeedback {
+                    denied_tool: tool_name.clone(),
+                },
+                content: reason
+                    .clone()
+                    .unwrap_or_else(|| "User denied this tool use request".to_string())
+                    .trim()
+                    .to_string(),
+                metadata: None,
+            }),
+            ApprovalStatus::TimedOut => Some(NormalizedEntry {
+                timestamp: None,
+                entry_type: NormalizedEntryType::ErrorMessage,
+                content: format!("Approval timed out for tool {tool_name}"),
+                metadata: None,
+            }),
         }
     }
 }
