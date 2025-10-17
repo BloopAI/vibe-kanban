@@ -43,12 +43,10 @@ export function initializeAnalytics(
 
         analyticsEnabled = true;
       },
-      capture_pageview: false, // We'll manually capture page views
-      capture_pageleave: true, // Track when user closes/leaves the page
-      autocapture: {
-        // Opt-in autocapture: only track elements with data-ph-capture-attribute
-        css_selector_allowlist: ['[data-ph-capture-attribute]'],
-      },
+      capture_pageview: false,
+      capture_pageleave: true,
+      capture_performance: false, // Disable automatic web vitals tracking
+      autocapture: false, // Disable autocapture entirely - we'll use manual events only
     });
     isInitialized = true;
   } catch (error) {
