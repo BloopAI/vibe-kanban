@@ -180,7 +180,7 @@ impl JsonRpcCallbacks for AppServerClient {
         notification: JSONRPCNotification,
     ) -> Result<bool, ExecutorError> {
         let raw =
-            if let Ok(mut server_notification) = serde_json::from_str::<ServerNotification>(&raw) {
+            if let Ok(mut server_notification) = serde_json::from_str::<ServerNotification>(raw) {
                 if let ServerNotification::SessionConfigured(session_configured) =
                     &mut server_notification
                 {
