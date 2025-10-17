@@ -78,17 +78,17 @@ export function FeatureShowcaseModal({
   );
 
   const handleNext = () => {
-    if (currentStage < totalStages - 1) {
-      setCurrentStage((prev) => prev + 1);
-    } else {
-      onClose();
-    }
+    setCurrentStage((prev) => {
+      if (prev >= totalStages - 1) {
+        onClose();
+        return prev;
+      }
+      return prev + 1;
+    });
   };
 
   const handlePrevious = () => {
-    if (currentStage > 0) {
-      setCurrentStage((prev) => prev - 1);
-    }
+    setCurrentStage((prev) => Math.max(prev - 1, 0));
   };
 
   return (
