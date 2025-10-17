@@ -1,7 +1,8 @@
+use std::collections::HashMap;
+
 use anyhow::Error;
 use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use strum_macros::EnumString;
 use ts_rs::TS;
 pub use v6::{EditorConfig, EditorType, GitHubConfig, NotificationConfig, SoundFile, UiLanguage};
