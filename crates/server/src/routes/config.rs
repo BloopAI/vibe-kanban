@@ -95,7 +95,9 @@ async fn get_user_system_info(
         analytics: AnalyticsInfo {
             user_id: deployment.user_id().to_string(),
             posthog_api_key: analytics_config.as_ref().map(|c| c.posthog_api_key.clone()),
-            posthog_api_endpoint: analytics_config.as_ref().map(|c| c.posthog_api_endpoint.clone()),
+            posthog_api_endpoint: analytics_config
+                .as_ref()
+                .map(|c| c.posthog_api_endpoint.clone()),
         },
         profiles: ExecutorConfigs::get_cached(),
         environment: Environment::new(),
