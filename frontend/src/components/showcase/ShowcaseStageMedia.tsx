@@ -7,6 +7,18 @@ interface ShowcaseStageMediaProps {
   media: ShowcaseMedia;
 }
 
+/**
+ * ShowcaseStageMedia - Renders media (images or videos) for showcase stages
+ * 
+ * Handles different media types with appropriate loading states:
+ * - Videos: Shows loading spinner, autoplay with loop, and thin progress bar
+ *   displaying both buffered (light) and played (primary) progress
+ * - Images: Shows loading skeleton until image loads
+ * 
+ * Uses fixed aspect ratio (16:10) to prevent layout shift during loading.
+ * 
+ * @param media - ShowcaseMedia object with type ('image' or 'video') and src URL
+ */
 export function ShowcaseStageMedia({ media }: ShowcaseStageMediaProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const { isLoading, playedPercent, bufferedPercent } =
@@ -31,13 +43,13 @@ export function ShowcaseStageMedia({ media }: ShowcaseStageMediaProps) {
           playsInline
           className="w-full h-full object-contain"
         />
-        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-transparent">
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-transparent">
           <div
-            className="h-full bg-muted-foreground/30 transition-all"
+            className="h-1 bg-muted-foreground/30 transition-all"
             style={{ width: `${bufferedPercent}%` }}
           />
           <div
-            className="absolute top-0 left-0 h-full bg-primary transition-all"
+            className="absolute top-0 left-0 h-1 bg-primary transition-all"
             style={{ width: `${playedPercent}%` }}
           />
         </div>

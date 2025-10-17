@@ -13,6 +13,25 @@ interface FeatureShowcaseModalProps {
   config: ShowcaseConfig;
 }
 
+/**
+ * FeatureShowcaseModal - Generic multi-stage modal for showcasing features with media
+ * 
+ * Displays a bottom-aligned modal with stages containing videos or images, title, description,
+ * and navigation controls. Properly manages keyboard shortcuts (ESC captured but disabled)
+ * and scopes to prevent closing underlying features.
+ * 
+ * Features:
+ * - Multi-stage or single-stage support (hides navigation if 1 stage)
+ * - Video support with loading states and progress bars
+ * - Image support with loading skeleton
+ * - Responsive design (full-width on mobile, 2/3 width on desktop)
+ * - i18n support via translation keys
+ * - Smooth transitions between stages
+ * 
+ * @param isOpen - Controls modal visibility
+ * @param onClose - Called when user finishes the showcase (via Finish button on last stage)
+ * @param config - ShowcaseConfig object defining stages, media, and translation keys
+ */
 export function FeatureShowcaseModal({
   isOpen,
   onClose,
