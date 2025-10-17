@@ -399,15 +399,11 @@ Add showcase translations to the `tasks` namespace:
    - Verify "Finish" appears on last stage
 
 5. **Test persistence:**
-   - Close the showcase
+   - Click "Finish" on the last stage
    - Refresh the page
    - Confirm it doesn't show again
 
-6. **Test ESC key behavior:**
-   - Press ESC to close the modal
-   - Verify persistence is still saved
-
-7. **Test on different viewports:**
+6. **Test on different viewports:**
    - Desktop (1920x1080, 1366x768)
    - Tablet (768px width)
    - Mobile responsiveness
