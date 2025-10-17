@@ -5,8 +5,8 @@ use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 pub use v7::{
-    default_git_branch_prefix, EditorConfig, EditorType, GitHubConfig, NotificationConfig,
-    SoundFile, ThemeMode, UiLanguage,
+    EditorConfig, EditorType, GitHubConfig, NotificationConfig, SoundFile, ThemeMode, UiLanguage,
+    default_git_branch_prefix,
 };
 
 use crate::services::config::versions::v7;
