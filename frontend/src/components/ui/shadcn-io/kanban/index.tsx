@@ -8,24 +8,29 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import type { DragEndEvent, Modifier } from '@dnd-kit/core';
+import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import {
   DndContext,
+  DragOverlay,
   PointerSensor,
-  rectIntersection,
-  useDraggable,
+  closestCenter,
   useDroppable,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import { type ReactNode, type Ref, type KeyboardEvent } from 'react';
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { type ReactNode, type Ref, type KeyboardEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Plus } from 'lucide-react';
-import type { ClientRect } from '@dnd-kit/core';
-import type { Transform } from '@dnd-kit/utilities';
 import { Button } from '../../button';
 export type { DragEndEvent } from '@dnd-kit/core';
+export { SortableContext, verticalListSortingStrategy };
 
 export type Status = {
   id: string;
@@ -89,11 +94,18 @@ export const KanbanCard = ({
   onKeyDown,
   isOpen,
 }: KanbanCardProps) => {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id,
-      data: { index, parent },
-    });
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id,
+    data: { index, parent },
+    animateLayoutChanges: () => false,
+  });
 
   // Combine DnD ref and forwarded ref
   const combinedRef = (node: HTMLDivElement | null) => {
@@ -104,6 +116,13 @@ export const KanbanCard = ({
       (forwardedRef as React.MutableRefObject<HTMLDivElement | null>).current =
         node;
     }
+  };
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0 : 1,
+    zIndex: isDragging ? 1000 : 1,
   };
 
   return (
@@ -120,12 +139,7 @@ export const KanbanCard = ({
       tabIndex={tabIndex}
       onClick={onClick}
       onKeyDown={onKeyDown}
-      style={{
-        zIndex: isDragging ? 1000 : 1,
-        transform: transform
-          ? `translateX(${transform.x}px) translateY(${transform.y}px)`
-          : 'none',
-      }}
+      style={style}
     >
       {children ?? <p className="m-0 font-medium text-sm">{name}</p>}
     </Card>
@@ -197,89 +211,45 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
   );
 };
 
-function restrictToBoundingRectWithRightPadding(
-  transform: Transform,
-  rect: ClientRect,
-  boundingRect: ClientRect,
-  rightPadding: number
-): Transform {
-  console.log(rect, boundingRect);
-  const value = {
-    ...transform,
-  };
-
-  if (rect.top + transform.y <= boundingRect.top) {
-    value.y = boundingRect.top - rect.top;
-  } else if (
-    rect.bottom + transform.y >=
-    boundingRect.top + boundingRect.height
-  ) {
-    value.y = boundingRect.top + boundingRect.height - rect.bottom;
-  }
-
-  if (rect.left + transform.x <= boundingRect.left) {
-    value.x = boundingRect.left - rect.left;
-  } else if (
-    // branch that checks if the right edge of the dragged element is beyond
-    // the right edge of the bounding rectangle
-    rect.right + transform.x + rightPadding >=
-    boundingRect.left + boundingRect.width
-  ) {
-    value.x =
-      boundingRect.left + boundingRect.width - rect.right - rightPadding;
-  }
-
-  return {
-    ...value,
-    x: value.x,
-  };
-}
-
-// An alternative to `restrictToFirstScrollableAncestor` from the dnd-kit library
-const restrictToFirstScrollableAncestorCustom: Modifier = (args) => {
-  const { draggingNodeRect, transform, scrollableAncestorRects } = args;
-  const firstScrollableAncestorRect = scrollableAncestorRects[0];
-
-  if (!draggingNodeRect || !firstScrollableAncestorRect) {
-    return transform;
-  }
-
-  // Inset the right edge that the rect can be dragged to by this amount.
-  // This is a workaround for the kanban board where dragging a card too far
-  // to the right causes infinite horizontal scrolling if there are also
-  // enough cards for vertical scrolling to be enabled.
-  const rightPadding = 16;
-  return restrictToBoundingRectWithRightPadding(
-    transform,
-    draggingNodeRect,
-    firstScrollableAncestorRect,
-    rightPadding
-  );
-};
-
 export type KanbanProviderProps = {
   children: ReactNode;
   onDragEnd: (event: DragEndEvent) => void;
+  onDragStart?: (event: DragStartEvent) => void;
+  activeTaskContent?: ReactNode;
   className?: string;
 };
 
 export const KanbanProvider = ({
   children,
   onDragEnd,
+  onDragStart,
+  activeTaskContent,
   className,
 }: KanbanProviderProps) => {
+  const [activeId, setActiveId] = useState<string | null>(null);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
     })
   );
 
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+    onDragStart?.(event);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveId(null);
+    onDragEnd(event);
+  };
+
   return (
     <DndContext
-      collisionDetection={rectIntersection}
-      onDragEnd={onDragEnd}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
       sensors={sensors}
-      modifiers={[restrictToFirstScrollableAncestorCustom]}
     >
       <div
         className={cn(
@@ -289,6 +259,9 @@ export const KanbanProvider = ({
       >
         {children}
       </div>
+      <DragOverlay dropAnimation={null}>
+        {activeId && activeTaskContent}
+      </DragOverlay>
     </DndContext>
   );
 };
