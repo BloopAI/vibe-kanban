@@ -9,8 +9,6 @@
  *
  * Only elements with data-ph-capture-attribute will be tracked by autocapture.
  * This ensures stable, semantic identification that survives UI changes.
- *
- * TypeScript enforces that ONLY values from this enum can be used - no random strings!
  */
 export enum AnalyticsId {
   // View Navigation (Preview/Diffs)
