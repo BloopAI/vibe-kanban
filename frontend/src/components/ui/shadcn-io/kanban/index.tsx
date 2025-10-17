@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import {
   DndContext,
+  DragOverlay,
   PointerSensor,
   closestCenter,
   useDroppable,
@@ -23,7 +24,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { type ReactNode, type Ref, type KeyboardEvent } from 'react';
+import { type ReactNode, type Ref, type KeyboardEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Plus } from 'lucide-react';
@@ -120,6 +121,7 @@ export const KanbanCard = ({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    opacity: isDragging ? 0 : 1,
     zIndex: isDragging ? 1000 : 1,
   };
 
@@ -222,17 +224,29 @@ export const KanbanProvider = ({
   onDragStart,
   className,
 }: KanbanProviderProps) => {
+  const [activeId, setActiveId] = useState<string | null>(null);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
     })
   );
 
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+    onDragStart?.(event);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveId(null);
+    onDragEnd(event);
+  };
+
   return (
     <DndContext
       collisionDetection={closestCenter}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
       sensors={sensors}
     >
       <div
@@ -243,6 +257,13 @@ export const KanbanProvider = ({
       >
         {children}
       </div>
+      <DragOverlay>
+        {activeId ? (
+          <Card className="p-3 border-b cursor-grabbing shadow-lg rotate-3">
+            <p className="m-0 font-medium text-sm">Dragging...</p>
+          </Card>
+        ) : null}
+      </DragOverlay>
     </DndContext>
   );
 };
