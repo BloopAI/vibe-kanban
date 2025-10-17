@@ -9,14 +9,14 @@ interface ShowcaseStageMediaProps {
 
 /**
  * ShowcaseStageMedia - Renders media (images or videos) for showcase stages
- * 
+ *
  * Handles different media types with appropriate loading states:
  * - Videos: Shows loading spinner, autoplay with loop, and thin progress bar
  *   displaying both buffered (light) and played (primary) progress
  * - Images: Shows loading skeleton until image loads
- * 
+ *
  * Uses fixed aspect ratio (16:10) to prevent layout shift during loading.
- * 
+ *
  * @param media - ShowcaseMedia object with type ('image' or 'video') and src URL
  */
 export function ShowcaseStageMedia({ media }: ShowcaseStageMediaProps) {

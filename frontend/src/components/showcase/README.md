@@ -5,6 +5,7 @@
 The showcase system provides a modal-based, multi-stage onboarding experience for introducing new features to users. Each showcase consists of multiple stages with rich media (videos or images) and localized text.
 
 **When to use it:**
+
 - Introducing new features that require explanation
 - Onboarding flows for complex UI components
 - Feature announcements with visual demonstrations
@@ -108,8 +109,8 @@ function MyComponent() {
 
 ```typescript
 interface ShowcaseConfig {
-  id: string;           // Unique identifier (e.g., 'task-panel-onboarding')
-  version: string;      // Semver version (e.g., '1.0.0')
+  id: string; // Unique identifier (e.g., 'task-panel-onboarding')
+  version: string; // Semver version (e.g., '1.0.0')
   stages: ShowcaseStage[];
 }
 ```
@@ -124,9 +125,9 @@ interface ShowcaseConfig {
 
 ```typescript
 interface ShowcaseStage {
-  titleKey: string;           // i18n key for stage title
-  descriptionKey: string;     // i18n key for stage description
-  media: ShowcaseMedia;       // Media to display
+  titleKey: string; // i18n key for stage title
+  descriptionKey: string; // i18n key for stage description
+  media: ShowcaseMedia; // Media to display
 }
 ```
 
@@ -140,10 +141,10 @@ interface ShowcaseStage {
 
 ```typescript
 interface ShowcaseMedia {
-  type: 'image' | 'video';  // Media type
-  src: string;              // URL to media file
-  poster?: string;          // Optional poster image URL (for videos)
-  alt?: string;             // Optional alt text (for images)
+  type: 'image' | 'video'; // Media type
+  src: string; // URL to media file
+  poster?: string; // Optional poster image URL (for videos)
+  alt?: string; // Optional alt text (for images)
 }
 ```
 
@@ -294,6 +295,7 @@ showcase:{id}:v{version}:seen
 **Version format:**
 
 Use semantic versioning (semver):
+
 - `1.0.0` → Initial release
 - `1.1.0` → Added new stage or minor content update
 - `2.0.0` → Major overhaul of showcase
@@ -305,14 +307,18 @@ Use semantic versioning (semver):
 export const myShowcase: ShowcaseConfig = {
   id: 'my-feature',
   version: '1.0.0',
-  stages: [/* ... */],
+  stages: [
+    /* ... */
+  ],
 };
 
 // After adding a new stage
 export const myShowcase: ShowcaseConfig = {
   id: 'my-feature',
-  version: '1.1.0',  // ← Incremented
-  stages: [/* ... new stage added */],
+  version: '1.1.0', // ← Incremented
+  stages: [
+    /* ... new stage added */
+  ],
 };
 ```
 
@@ -370,6 +376,7 @@ Add showcase translations to the `tasks` namespace:
 ### Manual Testing Steps
 
 1. **Clear localStorage:**
+
    ```javascript
    // In browser console
    localStorage.clear();
@@ -412,6 +419,7 @@ Add showcase translations to the `tasks` namespace:
 **Problem:** You see `showcases.myFeature.stage1.title` instead of the actual title.
 
 **Solutions:**
+
 - Verify the key exists in `frontend/src/i18n/locales/en/tasks.json`
 - Check for typos in the key name
 - Ensure the JSON is valid (no trailing commas, proper quotes)
@@ -422,6 +430,7 @@ Add showcase translations to the `tasks` namespace:
 **Problem:** The showcase doesn't display when it should.
 
 **Solutions:**
+
 - Check `hasSeen()` returns `false` (clear localStorage)
 - Verify the trigger condition is met (e.g., `isPanelOpen === true`)
 - Check browser console for errors
@@ -432,6 +441,7 @@ Add showcase translations to the `tasks` namespace:
 **Problem:** Videos fail to play or show broken.
 
 **Solutions:**
+
 - Verify the video URL is accessible (open in new tab)
 - Check video encoding (should be H.264 MP4)
 - Ensure CORS headers allow video loading
@@ -443,6 +453,7 @@ Add showcase translations to the `tasks` namespace:
 **Problem:** The showcase appears on every page load despite being closed.
 
 **Solutions:**
+
 - Verify `markSeen()` is called in the `onClose` handler
 - Check localStorage for the key: `localStorage.getItem('showcase:id:v1.0.0:seen')`
 - Ensure the `id` and `version` match between config and persistence calls
@@ -453,6 +464,7 @@ Add showcase translations to the `tasks` namespace:
 **Problem:** Media doesn't fit properly or modal looks broken.
 
 **Solutions:**
+
 - Check media aspect ratio (should be 16:10)
 - Verify media dimensions (recommended: 1728 × 1080)
 - Inspect CSS in browser DevTools
