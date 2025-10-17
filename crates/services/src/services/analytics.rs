@@ -13,7 +13,8 @@ pub struct AnalyticsContext {
     pub analytics_service: AnalyticsService,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, ts_rs::TS)]
+#[ts(export)]
 pub struct AnalyticsConfig {
     pub posthog_api_key: String,
     pub posthog_api_endpoint: String,

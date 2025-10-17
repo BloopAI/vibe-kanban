@@ -43,6 +43,16 @@ pub struct AnalyticsInfo {
     pub posthog_api_endpoint: Option<String>,
 }
 
+impl AnalyticsInfo {
+    pub fn new(user_id: String, analytics_config: Option<AnalyticsConfig>) -> Self {
+        Self {
+            user_id,
+            posthog_api_key: analytics_config.as_ref().map(|c| c.posthog_api_key.clone()),
+            posthog_api_endpoint: analytics_config.as_ref().map(|c| c.posthog_api_endpoint.clone()),
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, TS)]
 pub struct Environment {
     pub os_type: String,
@@ -87,18 +97,9 @@ async fn get_user_system_info(
 ) -> ResponseJson<ApiResponse<UserSystemInfo>> {
     let config = deployment.config().read().await;
 
-    // Reuse AnalyticsConfig::new() to get PostHog credentials
-    let analytics_config = AnalyticsConfig::new();
-
     let user_system_info = UserSystemInfo {
         config: config.clone(),
-        analytics: AnalyticsInfo {
-            user_id: deployment.user_id().to_string(),
-            posthog_api_key: analytics_config.as_ref().map(|c| c.posthog_api_key.clone()),
-            posthog_api_endpoint: analytics_config
-                .as_ref()
-                .map(|c| c.posthog_api_endpoint.clone()),
-        },
+        analytics: AnalyticsInfo::new(deployment.user_id().to_string(), AnalyticsConfig::new()),
         profiles: ExecutorConfigs::get_cached(),
         environment: Environment::new(),
         capabilities: {
