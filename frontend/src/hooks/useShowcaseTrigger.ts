@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ShowcaseConfig } from '@/types/showcase';
-import { hasSeen as hasSeenUtil, markSeen } from '@/utils/showcasePersistence';
+import { useShowcasePersistence } from './useShowcasePersistence';
 
 export interface ShowcaseTriggerOptions {
   enabled: boolean;
@@ -27,17 +27,17 @@ export function useShowcaseTrigger(
     markSeenOnClose = true,
   } = options;
 
+  const persistence = useShowcasePersistence();
   const [isOpen, setIsOpen] = useState(false);
-  const [hasSeen, setHasSeen] = useState(() =>
-    hasSeenUtil(config.id, config.version)
-  );
+  const [hasSeenState, setHasSeenState] = useState(false);
   const timerRef = useRef<number | null>(null);
   const mountedRef = useRef(true);
 
-  // Keep 'hasSeen' in sync if id/version change
+  // Keep 'hasSeenState' in sync if id/version change or config loads
   useEffect(() => {
-    setHasSeen(hasSeenUtil(config.id, config.version));
-  }, [config.id, config.version]);
+    if (!persistence.isLoaded) return;
+    setHasSeenState(persistence.hasSeen(config.id, config.version));
+  }, [persistence.isLoaded, config.id, config.version, persistence]);
 
   // Cleanup timers
   useEffect(() => {
@@ -53,9 +53,11 @@ export function useShowcaseTrigger(
 
   // Handle enabled state changes
   useEffect(() => {
+    if (!persistence.isLoaded) return;
+
     if (enabled) {
       // Only show if not seen
-      if (!hasSeen) {
+      if (!hasSeenState) {
         // Clear any existing timer
         if (timerRef.current !== null) {
           clearTimeout(timerRef.current);
@@ -87,7 +89,7 @@ export function useShowcaseTrigger(
         timerRef.current = null;
       }
     };
-  }, [enabled, hasSeen, openDelay, resetOnDisable]);
+  }, [persistence.isLoaded, enabled, hasSeenState, openDelay, resetOnDisable]);
 
   const open = useCallback(() => {
     setIsOpen(true);
@@ -95,15 +97,15 @@ export function useShowcaseTrigger(
 
   const close = useCallback(() => {
     if (markSeenOnClose) {
-      markSeen(config.id, config.version);
-      setHasSeen(true);
+      persistence.markSeen(config.id, config.version);
+      setHasSeenState(true);
     }
     if (timerRef.current !== null) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
     setIsOpen(false);
-  }, [config.id, config.version, markSeenOnClose]);
+  }, [config.id, config.version, markSeenOnClose, persistence]);
 
-  return { isOpen, open, close, hasSeen };
+  return { isOpen, open, close, hasSeen: hasSeenState };
 }
