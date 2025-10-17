@@ -242,14 +242,6 @@ export function ProjectTasks() {
 
   const setMode = useCallback(
     (newMode: LayoutMode) => {
-      // Track view navigation (captures both button clicks and keyboard shortcuts)
-      if (newMode !== mode) {
-        trackEvent('view_navigated', {
-          from_view: mode ?? 'attempt',
-          to_view: newMode ?? 'attempt',
-        });
-      }
-
       const params = new URLSearchParams(searchParams);
       if (newMode === null) {
         params.delete('view');
@@ -258,7 +250,7 @@ export function ProjectTasks() {
       }
       setSearchParams(params, { replace: true });
     },
-    [mode, searchParams, setSearchParams]
+    [searchParams, setSearchParams]
   );
 
   const navigateWithSearch = useCallback(
@@ -397,6 +389,17 @@ export function ProjectTasks() {
   useKeyOpenDetails(
     () => {
       if (isPanelOpen) {
+        // Track keyboard shortcut before cycling view
+        const order: LayoutMode[] = [null, 'preview', 'diffs'];
+        const idx = order.indexOf(mode);
+        const next = order[(idx + 1) % order.length];
+
+        if (next === 'preview') {
+          trackEvent('preview_keyboard_shortcut', { direction: 'forward' });
+        } else if (next === 'diffs') {
+          trackEvent('diffs_keyboard_shortcut', { direction: 'forward' });
+        }
+
         cycleViewForward();
       } else if (selectedTask) {
         handleViewTaskDetails(selectedTask);
@@ -409,6 +412,17 @@ export function ProjectTasks() {
   useKeyCycleViewBackward(
     () => {
       if (isPanelOpen) {
+        // Track keyboard shortcut before cycling view
+        const order: LayoutMode[] = [null, 'preview', 'diffs'];
+        const idx = order.indexOf(mode);
+        const next = order[(idx - 1 + order.length) % order.length];
+
+        if (next === 'preview') {
+          trackEvent('preview_keyboard_shortcut', { direction: 'backward' });
+        } else if (next === 'diffs') {
+          trackEvent('diffs_keyboard_shortcut', { direction: 'backward' });
+        }
+
         cycleViewBackward();
       }
     },
