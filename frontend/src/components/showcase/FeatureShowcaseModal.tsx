@@ -46,7 +46,6 @@ export function FeatureShowcaseModal({
   useKeyExit(
     (e) => {
       e?.preventDefault();
-      onClose();
     },
     { scope: Scope.DIALOG, enabled: isOpen }
   );
