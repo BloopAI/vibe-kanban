@@ -54,6 +54,7 @@ function AppContent() {
           version: import.meta.env.VITE_APP_VERSION,
           theme: config.theme,
           language: config.language,
+          load_time_ms: Math.round(performance.now()),
         });
       }
     }
