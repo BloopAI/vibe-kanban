@@ -312,6 +312,15 @@ export function ProjectTasks() {
     });
   }, [tasks, optimisticPositions]);
 
+  // Create optimistic tasksById map for lookups
+  const tasksByIdWithOptimistic = useMemo(() => {
+    const result: Record<string, Task> = {};
+    tasksWithOptimisticUpdates.forEach((task) => {
+      result[task.id] = task;
+    });
+    return result;
+  }, [tasksWithOptimisticUpdates]);
+
   // Memoize filtered tasks based on search query
   const filteredTasks = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -552,15 +561,15 @@ export function ProjectTasks() {
 
       const draggedId = active.id as string;
       const overId = over.id as string;
-      const draggedTask = tasksById[draggedId];
+      const draggedTask = tasksByIdWithOptimistic[draggedId];
       if (!draggedTask) return;
 
       // Determine target status (either from the task we dropped on, or the column header)
-      const overTask = tasksById[overId];
+      const overTask = tasksByIdWithOptimistic[overId];
       const newStatus = overTask?.status || (overId as Task['status']);
 
       // Get all tasks in destination column, sorted by position DESC (highest first)
-      const columnTasks = Object.values(tasksById)
+      const columnTasks = Object.values(tasksByIdWithOptimistic)
         .filter((t) => t.status === newStatus)
         .sort((a, b) => b.position - a.position);
 
@@ -666,7 +675,7 @@ export function ProjectTasks() {
         });
       }
     },
-    [tasksById]
+    [tasksByIdWithOptimistic]
   );
 
   const isInitialTasksLoad = isLoading && tasks.length === 0;
@@ -730,7 +739,7 @@ export function ProjectTasks() {
       <div className="w-full h-full overflow-x-auto overflow-y-auto overscroll-x-contain touch-pan-y">
         <TaskKanbanBoard
           groupedTasks={groupedFilteredTasks}
-          tasksById={tasksById}
+          tasksById={tasksByIdWithOptimistic}
           onDragEnd={handleDragEnd}
           onViewTaskDetails={handleViewTaskDetails}
           selectedTask={selectedTask || undefined}
