@@ -158,7 +158,7 @@ export function ProjectTasks() {
   const isPanelOpen = Boolean(taskId && selectedTask);
 
   useEffect(() => {
-    if (isPanelOpen && !isMobile) {
+    if (isPanelOpen) {
       // Check if showcase should be shown when panel opens
       if (!hasSeen(taskPanelShowcase.id, taskPanelShowcase.version)) {
         // Small delay to ensure panel is fully mounted
@@ -171,7 +171,7 @@ export function ProjectTasks() {
       // Reset when panel closes so it can trigger again on next open
       setShowTaskPanelShowcase(false);
     }
-  }, [isPanelOpen, isMobile]);
+  }, [isPanelOpen]);
 
   const isLatest = attemptId === 'latest';
   const { data: attempts = [], isLoading: isAttemptsLoading } = useTaskAttempts(

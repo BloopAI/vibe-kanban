@@ -81,7 +81,7 @@ export function FeatureShowcaseModal({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 100 }}
             transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}
-            className="fixed bottom-8 left-[16.66%] w-2/3 bg-card border border-border rounded-lg shadow-2xl overflow-hidden z-[9999]"
+            className="fixed bottom-4 left-0 right-0 mx-4 w-auto xl:bottom-8 xl:left-[16.66%] xl:right-auto xl:mx-0 xl:w-2/3 bg-card border border-border rounded-lg shadow-2xl overflow-hidden z-[9999]"
           >
             <AnimatePresence mode="wait">
               <motion.div
