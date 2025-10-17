@@ -5,11 +5,19 @@ export const taskPanelShowcase: ShowcaseConfig = {
   version: '1.0.0',
   stages: [
     {
-      titleKey: 'showcases.taskPanel.sendFollowups.title',
-      descriptionKey: 'showcases.taskPanel.sendFollowups.description',
+      titleKey: 'showcases.taskPanel.companion.title',
+      descriptionKey: 'showcases.taskPanel.companion.description',
       media: {
         type: 'video',
-        src: 'https://vkcdn.britannio.dev/vk-parallel-tasks-2.mp4',
+        src: 'https://vkcdn.britannio.dev/showcase/flat-task-panel/vk-onb-companion-demo.mp4',
+      },
+    },
+    {
+      titleKey: 'showcases.taskPanel.installation.title',
+      descriptionKey: 'showcases.taskPanel.installation.description',
+      media: {
+        type: 'video',
+        src: 'https://vkcdn.britannio.dev/showcase/flat-task-panel/vk-onb-install-companion.mp4',
       },
     },
     {
@@ -17,31 +25,15 @@ export const taskPanelShowcase: ShowcaseConfig = {
       descriptionKey: 'showcases.taskPanel.codeReview.description',
       media: {
         type: 'video',
-        src: 'https://vkcdn.britannio.dev/vk-parallel-tasks-2.mp4',
+        src: 'https://vkcdn.britannio.dev/showcase/flat-task-panel/vk-onb-code-review.mp4',
       },
     },
     {
-      titleKey: 'showcases.taskPanel.gitActions.title',
-      descriptionKey: 'showcases.taskPanel.gitActions.description',
+      titleKey: 'showcases.taskPanel.pullRequest.title',
+      descriptionKey: 'showcases.taskPanel.pullRequest.description',
       media: {
         type: 'video',
-        src: 'https://vkcdn.britannio.dev/vk-parallel-tasks-2.mp4',
-      },
-    },
-    {
-      titleKey: 'showcases.taskPanel.livePreviews.title',
-      descriptionKey: 'showcases.taskPanel.livePreviews.description',
-      media: {
-        type: 'video',
-        src: 'https://vkcdn.britannio.dev/vk-parallel-tasks-2.mp4',
-      },
-    },
-    {
-      titleKey: 'showcases.taskPanel.vkCompanion.title',
-      descriptionKey: 'showcases.taskPanel.vkCompanion.description',
-      media: {
-        type: 'video',
-        src: 'https://vkcdn.britannio.dev/vk-parallel-tasks-2.mp4',
+        src: 'https://vkcdn.britannio.dev/showcase/flat-task-panel/vk-onb-git-pr.mp4',
       },
     },
   ],

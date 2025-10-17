@@ -15,7 +15,7 @@ export function ShowcaseStageMedia({ media }: ShowcaseStageMediaProps) {
 
   if (media.type === 'video') {
     return (
-      <div className="relative w-full aspect-video bg-black">
+      <div className="relative w-full aspect-[16/10] bg-black">
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center">
             <Loader size={32} />
@@ -46,7 +46,7 @@ export function ShowcaseStageMedia({ media }: ShowcaseStageMediaProps) {
   }
 
   return (
-    <div className="relative w-full aspect-video bg-muted">
+    <div className="relative w-full aspect-[16/10] bg-muted">
       {!imageLoaded && (
         <div className="absolute inset-0 flex items-center justify-center">
           <Loader size={32} />

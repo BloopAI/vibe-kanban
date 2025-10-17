@@ -19,7 +19,7 @@ export function FeatureShowcaseModal({
   config,
 }: FeatureShowcaseModalProps) {
   const [currentStage, setCurrentStage] = useState(0);
-  const { t } = useTranslation('showcases');
+  const { t } = useTranslation('tasks');
   const { enableScope, disableScope } = useHotkeysContext();
 
   const stage = config.stages[currentStage];
@@ -65,10 +65,6 @@ export function FeatureShowcaseModal({
     }
   };
 
-  const handleBackdropClick = () => {
-    onClose();
-  };
-
   return (
     <AnimatePresence>
       {isOpen && (
@@ -79,7 +75,6 @@ export function FeatureShowcaseModal({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             className="fixed inset-0 bg-black/50 z-[9998]"
-            onClick={handleBackdropClick}
           />
           <motion.div
             initial={{ opacity: 0, y: 100 }}

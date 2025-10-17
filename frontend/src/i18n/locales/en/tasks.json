@@ -243,25 +243,21 @@
   },
   "showcases": {
     "taskPanel": {
-      "sendFollowups": {
-        "title": "Send Follow-ups",
-        "description": "Communicate with the AI agent directly from the task panel. Ask questions, request changes, and provide additional context to guide task execution."
+      "companion": {
+        "title": "Vibe Kanban Companion Point-and-Click",
+        "description": "Click any UI component in the preview window to select it precisely. The coding agent receives exact DOM selectors and component hierarchy, eliminating ambiguous feedback."
+      },
+      "installation": {
+        "title": "Automatic Companion Setup",
+        "description": "Install the Web Companion with one click. Vibe Kanban creates a task that installs and configures it automatically. Your dev server is detected and embedded seamlessly."
       },
       "codeReview": {
-        "title": "Code Review",
-        "description": "Review code changes in-context with detailed diffs and file comparisons. Leave comments and suggestions to improve the quality of generated code."
+        "title": "Built-in Code Review",
+        "description": "Add line-specific comments directly in the diffs view with the plus icon. All feedback is collected and sent as a complete review to the coding agent."
       },
-      "gitActions": {
-        "title": "Git Actions",
-        "description": "Manage branches, commits, and pull requests without leaving the task panel. Create, merge, and switch branches with a single click."
-      },
-      "livePreviews": {
-        "title": "Live Previews",
-        "description": "See your changes in real-time with integrated preview panels. Test and validate UI changes instantly before committing them."
-      },
-      "vkCompanion": {
-        "title": "VK Companion",
-        "description": "Your AI pair programming assistant is always available in the sidebar. Get instant help, explanations, and suggestions while working on tasks."
+      "pullRequest": {
+        "title": "Create PR from Task",
+        "description": "Push commits and create pull requests directly from task attempts. The PR dialog pre-fills title and description from your task details for streamlined workflows."
       }
     },
     "buttons": {
