@@ -38,15 +38,15 @@ import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
 function AppContent() {
-  const { config, updateAndSaveConfig, loading } = useUserSystem();
+  const { config, analytics, updateAndSaveConfig, loading } = useUserSystem();
 
-  // Initialize analytics when config is loaded
+  // Initialize analytics when analytics info is loaded
   useEffect(() => {
-    if (config) {
+    if (config && analytics) {
       // Opt-out by default: track unless explicitly false
       const analyticsEnabled = config.analytics_enabled !== false;
       console.log('Analytics enabled:', analyticsEnabled);
-      initializeAnalytics(analyticsEnabled);
+      initializeAnalytics(analytics, analyticsEnabled);
 
       // Track app loaded event
       if (analyticsEnabled) {
@@ -57,7 +57,7 @@ function AppContent() {
         });
       }
     }
-  }, [config]);
+  }, [config, analytics]);
 
   useEffect(() => {
     let cancelled = false;
