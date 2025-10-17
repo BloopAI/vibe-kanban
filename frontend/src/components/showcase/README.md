@@ -102,8 +102,7 @@ function MyComponent() {
 - Verify all stages display correctly
 - Check translations appear
 - Test video playback
-- Verify ESC key closes the modal
-- Confirm persistence works (shouldn't show again after closing)
+- Confirm persistence works (shouldn't show again after finishing)
 
 ## 3. ShowcaseConfig Structure
 
