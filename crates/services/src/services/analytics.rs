@@ -13,7 +13,8 @@ pub struct AnalyticsContext {
     pub analytics_service: AnalyticsService,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, ts_rs::TS)]
+#[ts(export)]
 pub struct AnalyticsConfig {
     pub posthog_api_key: String,
     pub posthog_api_endpoint: String,
@@ -77,6 +78,7 @@ impl AnalyticsService {
                 );
                 props.insert("version".to_string(), json!(env!("CARGO_PKG_VERSION")));
                 props.insert("device".to_string(), get_device_info());
+                props.insert("source".to_string(), json!("backend"));
             }
             payload["properties"] = event_properties;
         }

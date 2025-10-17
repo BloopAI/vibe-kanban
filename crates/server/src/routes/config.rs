@@ -16,7 +16,10 @@ use executors::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use services::services::config::{Config, ConfigError, SoundFile, save_config_to_file};
+use services::services::{
+    analytics::AnalyticsConfig,
+    config::{Config, ConfigError, SoundFile, save_config_to_file},
+};
 use tokio::fs;
 use ts_rs::TS;
 use utils::{assets::config_path, response::ApiResponse};
@@ -30,6 +33,13 @@ pub fn router() -> Router<DeploymentImpl> {
         .route("/sounds/{sound}", get(get_sound))
         .route("/mcp-config", get(get_mcp_servers).post(update_mcp_servers))
         .route("/profiles", get(get_profiles).put(update_profiles))
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct AnalyticsInfo {
+    pub user_id: String,
+    pub config: Option<AnalyticsConfig>,
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -61,6 +71,7 @@ impl Environment {
 #[derive(Debug, Serialize, Deserialize, TS)]
 pub struct UserSystemInfo {
     pub config: Config,
+    pub analytics: AnalyticsInfo,
     #[serde(flatten)]
     pub profiles: ExecutorConfigs,
     pub environment: Environment,
@@ -77,6 +88,10 @@ async fn get_user_system_info(
 
     let user_system_info = UserSystemInfo {
         config: config.clone(),
+        analytics: AnalyticsInfo {
+            user_id: deployment.user_id().to_string(),
+            config: AnalyticsConfig::new(),
+        },
         profiles: ExecutorConfigs::get_cached(),
         environment: Environment::new(),
         capabilities: {

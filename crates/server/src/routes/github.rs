@@ -182,7 +182,7 @@ pub async fn create_project_from_github(
                         "clone_url": payload.clone_url,
                         "has_setup_script": has_setup_script,
                         "has_dev_script": has_dev_script,
-                        "source": "github",
+                        "trigger": "github",
                     })),
                 )
                 .await;

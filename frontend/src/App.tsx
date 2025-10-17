@@ -5,6 +5,7 @@ import i18n from '@/i18n';
 import { Projects } from '@/pages/projects';
 import { ProjectTasks } from '@/pages/project-tasks';
 import { NormalLayout } from '@/components/layout/NormalLayout';
+import { initializeAnalytics, trackEvent } from '@/lib/analytics';
 
 import {
   AgentSettings,
@@ -37,7 +38,27 @@ import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
 function AppContent() {
-  const { config, updateAndSaveConfig, loading } = useUserSystem();
+  const { config, analytics, updateAndSaveConfig, loading } = useUserSystem();
+
+  // Initialize analytics when analytics info is loaded
+  useEffect(() => {
+    if (config && analytics) {
+      // Opt-out by default: track unless explicitly false
+      const analyticsEnabled = config.analytics_enabled !== false;
+      console.log('Analytics enabled:', analyticsEnabled);
+      initializeAnalytics(analytics, analyticsEnabled);
+
+      // Track app loaded event
+      if (analyticsEnabled) {
+        trackEvent('app_loaded', {
+          version: import.meta.env.VITE_APP_VERSION,
+          theme: config.theme,
+          language: config.language,
+          load_time_ms: Math.round(performance.now()),
+        });
+      }
+    }
+  }, [config, analytics]);
 
   useEffect(() => {
     let cancelled = false;

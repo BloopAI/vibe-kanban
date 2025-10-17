@@ -11,6 +11,7 @@ import {
 import type { LayoutMode } from '../layout/TasksLayout';
 import type { TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
 import { ActionsDropdown } from '../ui/ActionsDropdown';
+import { trackEvent } from '@/lib/analytics';
 
 interface AttemptHeaderActionsProps {
   onClose: () => void;
@@ -35,7 +36,24 @@ export const AttemptHeaderActions = ({
           <ToggleGroup
             type="single"
             value={mode ?? ''}
-            onValueChange={(v) => onModeChange((v as LayoutMode) || null)}
+            onValueChange={(v) => {
+              const newMode = (v as LayoutMode) || null;
+
+              // Track view navigation
+              if (newMode === 'preview') {
+                trackEvent('preview_navigated', { trigger: 'button' });
+              } else if (newMode === 'diffs') {
+                trackEvent('diffs_navigated', { trigger: 'button' });
+              } else if (newMode === null) {
+                // Closing the view (clicked active button)
+                trackEvent('view_closed', {
+                  trigger: 'button',
+                  from_view: mode ?? 'attempt',
+                });
+              }
+
+              onModeChange(newMode);
+            }}
             className="inline-flex gap-4"
             aria-label="Layout mode"
           >

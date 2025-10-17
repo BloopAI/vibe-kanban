@@ -158,7 +158,7 @@ pub async fn create_project(
                         "use_existing_repo": use_existing_repo,
                         "has_setup_script": project.setup_script.is_some(),
                         "has_dev_script": project.dev_script.is_some(),
-                        "source": "manual",
+                        "trigger": "manual",
                     }),
                 )
                 .await;
