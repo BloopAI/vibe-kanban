@@ -13,6 +13,5 @@ export interface ShowcaseStage {
 
 export interface ShowcaseConfig {
   id: string;
-  version: number;
   stages: ShowcaseStage[];
 }

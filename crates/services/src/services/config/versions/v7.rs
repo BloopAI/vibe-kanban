@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use anyhow::Error;
 use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
 use serde::{Deserialize, Serialize};
@@ -16,7 +14,7 @@ fn default_git_branch_prefix() -> String {
 #[derive(Clone, Debug, Serialize, Deserialize, TS, Default)]
 pub struct ShowcaseState {
     #[serde(default)]
-    pub seen_versions: HashMap<String, u32>,
+    pub seen_features: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS, EnumString)]

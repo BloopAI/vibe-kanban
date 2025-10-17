@@ -2,43 +2,36 @@ import { useCallback } from 'react';
 import { useUserSystem } from '@/components/config-provider';
 
 export interface ShowcasePersistence {
-  hasSeen: (id: string, version: number) => boolean;
-  markSeen: (id: string, version: number) => Promise<void>;
+  hasSeen: (id: string) => boolean;
+  markSeen: (id: string) => Promise<void>;
   isLoaded: boolean;
 }
 
 export function useShowcasePersistence(): ShowcasePersistence {
   const { config, updateAndSaveConfig, loading } = useUserSystem();
 
-  const seen = config?.showcases?.seen_versions ?? {};
+  const seenFeatures = config?.showcases?.seen_features ?? [];
 
   const hasSeen = useCallback(
-    (id: string, version: number): boolean => {
-      const currentVersion = seen[id] ?? 0;
-      return currentVersion >= version;
+    (id: string): boolean => {
+      return seenFeatures.includes(id);
     },
-    [seen]
+    [seenFeatures]
   );
 
   const markSeen = useCallback(
-    async (id: string, version: number): Promise<void> => {
-      const currentVersion = seen[id] ?? 0;
-      if (currentVersion >= version) {
+    async (id: string): Promise<void> => {
+      if (seenFeatures.includes(id)) {
         return;
       }
 
-      const nextSeenVersions = {
-        ...seen,
-        [id]: Math.max(currentVersion, version),
-      };
-
       await updateAndSaveConfig({
         showcases: {
-          seen_versions: nextSeenVersions,
+          seen_features: [...seenFeatures, id],
         },
       });
     },
-    [seen, updateAndSaveConfig]
+    [seenFeatures, updateAndSaveConfig]
   );
 
   return {

@@ -33,11 +33,11 @@ export function useShowcaseTrigger(
   const timerRef = useRef<number | null>(null);
   const mountedRef = useRef(true);
 
-  // Keep 'hasSeenState' in sync if id/version change or config loads
+  // Keep 'hasSeenState' in sync if id change or config loads
   useEffect(() => {
     if (!persistence.isLoaded) return;
-    setHasSeenState(persistence.hasSeen(config.id, config.version));
-  }, [persistence.isLoaded, config.id, config.version, persistence]);
+    setHasSeenState(persistence.hasSeen(config.id));
+  }, [persistence.isLoaded, config.id, persistence]);
 
   // Cleanup timers
   useEffect(() => {
@@ -97,7 +97,7 @@ export function useShowcaseTrigger(
 
   const close = useCallback(() => {
     if (markSeenOnClose) {
-      persistence.markSeen(config.id, config.version);
+      persistence.markSeen(config.id);
       setHasSeenState(true);
     }
     if (timerRef.current !== null) {
@@ -105,7 +105,7 @@ export function useShowcaseTrigger(
       timerRef.current = null;
     }
     setIsOpen(false);
-  }, [config.id, config.version, markSeenOnClose, persistence]);
+  }, [config.id, markSeenOnClose, persistence]);
 
   return { isOpen, open, close, hasSeen: hasSeenState };
 }

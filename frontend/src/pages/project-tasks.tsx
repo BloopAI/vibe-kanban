@@ -9,7 +9,7 @@ import { tasksApi } from '@/lib/api';
 import type { GitBranch } from 'shared/types';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { FeatureShowcaseModal } from '@/components/showcase/FeatureShowcaseModal';
-import { taskPanelShowcase } from '@/config/showcases';
+import { showcases } from '@/config/showcases';
 import { useShowcaseTrigger } from '@/hooks/useShowcaseTrigger';
 
 import { useSearch } from '@/contexts/search-context';
@@ -157,7 +157,7 @@ export function ProjectTasks() {
   const isPanelOpen = Boolean(taskId && selectedTask);
 
   const { isOpen: showTaskPanelShowcase, close: closeTaskPanelShowcase } =
-    useShowcaseTrigger(taskPanelShowcase, {
+    useShowcaseTrigger(showcases.taskPanel, {
       enabled: isPanelOpen,
     });
 
@@ -766,7 +766,7 @@ export function ProjectTasks() {
       <FeatureShowcaseModal
         isOpen={showTaskPanelShowcase}
         onClose={closeTaskPanelShowcase}
-        config={taskPanelShowcase}
+        config={showcases.taskPanel}
       />
     </div>
   );
