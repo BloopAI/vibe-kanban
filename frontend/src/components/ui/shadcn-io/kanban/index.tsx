@@ -259,9 +259,7 @@ export const KanbanProvider = ({
       >
         {children}
       </div>
-      <DragOverlay>
-        {activeId && activeTaskContent}
-      </DragOverlay>
+      <DragOverlay>{activeId && activeTaskContent}</DragOverlay>
     </DndContext>
   );
 };
