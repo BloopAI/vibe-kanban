@@ -143,11 +143,6 @@ export function ProjectTasks() {
   }, [projectId]);
   const { query: searchQuery, focusInput } = useSearch();
 
-  // Optimistic updates: override positions locally until WebSocket confirms
-  const [optimisticPositions, setOptimisticPositions] = useState<
-    Record<string, { status: Task['status']; position: number }>
-  >({});
-
   const {
     tasks,
     tasksById,
@@ -296,33 +291,18 @@ export function ProjectTasks() {
     { scope: Scope.KANBAN }
   );
 
-  // Merge WebSocket tasks with optimistic position updates
-  const tasksWithOptimisticUpdates = useMemo(() => {
-    return tasks.map((task) => {
-      const optimistic = optimisticPositions[task.id];
-      if (optimistic) {
-        return {
-          ...task,
-          status: optimistic.status,
-          position: optimistic.position,
-        };
-      }
-      return task;
-    });
-  }, [tasks, optimisticPositions]);
-
   // Memoize filtered tasks based on search query
   const filteredTasks = useMemo(() => {
     if (!searchQuery.trim()) {
-      return tasksWithOptimisticUpdates;
+      return tasks;
     }
     const query = searchQuery.toLowerCase();
-    return tasksWithOptimisticUpdates.filter(
+    return tasks.filter(
       (task) =>
         task.title.toLowerCase().includes(query) ||
         (task.description && task.description.toLowerCase().includes(query))
     );
-  }, [tasksWithOptimisticUpdates, searchQuery]);
+  }, [tasks, searchQuery]);
 
   const groupedFilteredTasks = useMemo(() => {
     const groups: Record<string, Task[]> = {};
@@ -574,36 +554,14 @@ export function ProjectTasks() {
           ? lastTask.position - 1000
           : Date.now() / 1000;
 
-        // Optimistic update
-        setOptimisticPositions((prev) => ({
-          ...prev,
-          [draggedId]: { status: newStatus, position: newPosition },
-        }));
-
-        try {
-          await tasksApi.update(draggedId, {
-            title: draggedTask.title,
-            description: draggedTask.description,
-            status: newStatus,
-            position: newPosition,
-            parent_task_attempt: draggedTask.parent_task_attempt,
-            image_ids: null,
-          });
-          // Clear optimistic update after server confirms
-          setOptimisticPositions((prev) => {
-            const updated = { ...prev };
-            delete updated[draggedId];
-            return updated;
-          });
-        } catch (err) {
-          console.error('Failed to update task:', err);
-          // Revert optimistic update on error
-          setOptimisticPositions((prev) => {
-            const updated = { ...prev };
-            delete updated[draggedId];
-            return updated;
-          });
-        }
+        await tasksApi.update(draggedId, {
+          title: draggedTask.title,
+          description: draggedTask.description,
+          status: newStatus,
+          position: newPosition,
+          parent_task_attempt: draggedTask.parent_task_attempt,
+          image_ids: null,
+        });
         return;
       }
 
@@ -631,36 +589,14 @@ export function ProjectTasks() {
         newPosition = (taskAbove.position + taskBelow.position) / 2;
       }
 
-      // Optimistic update - apply immediately
-      setOptimisticPositions((prev) => ({
-        ...prev,
-        [draggedId]: { status: newStatus, position: newPosition },
-      }));
-
-      try {
-        await tasksApi.update(draggedId, {
-          title: draggedTask.title,
-          description: draggedTask.description,
-          status: newStatus,
-          position: newPosition,
-          parent_task_attempt: draggedTask.parent_task_attempt,
-          image_ids: null,
-        });
-        // Clear optimistic update after server confirms
-        setOptimisticPositions((prev) => {
-          const updated = { ...prev };
-          delete updated[draggedId];
-          return updated;
-        });
-      } catch (err) {
-        console.error('Failed to update task:', err);
-        // Revert optimistic update on error
-        setOptimisticPositions((prev) => {
-          const updated = { ...prev };
-          delete updated[draggedId];
-          return updated;
-        });
-      }
+      await tasksApi.update(draggedId, {
+        title: draggedTask.title,
+        description: draggedTask.description,
+        status: newStatus,
+        position: newPosition,
+        parent_task_attempt: draggedTask.parent_task_attempt,
+        image_ids: null,
+      });
     },
     [tasksById]
   );
