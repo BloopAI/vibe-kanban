@@ -240,5 +240,30 @@
   },
   "viewProcessesDialog": {
     "title": "Execution processes"
+  },
+  "showcases": {
+    "taskPanel": {
+      "companion": {
+        "title": "Vibe Kanban Companion 포인트 앤 클릭",
+        "description": "미리보기 창에서 UI 구성 요소를 클릭하여 정확하게 선택하세요. 코딩 에이전트는 정확한 DOM 선택자와 구성 요소 계층을 수신하여 모호한 피드백을 제거합니다."
+      },
+      "installation": {
+        "title": "개발 서버 및 Companion 설치",
+        "description": "미리보기를 위한 개발 서버 명령을 설정하고 설정에서 구성 가능한 설정 스크립트를 사용하세요. 코딩 에이전트를 사용하여 Vibe Kanban 웹 컴패니언을 자동으로 설치합니다."
+      },
+      "codeReview": {
+        "title": "내장 코드 리뷰",
+        "description": "더하기 아이콘을 사용하여 차이점 보기에서 직접 줄별 주석을 추가하세요. 모든 피드백이 수집되어 완전한 리뷰로 코딩 에이전트에게 전송됩니다."
+      },
+      "pullRequest": {
+        "title": "작업에서 PR 생성",
+        "description": "작업 시도에서 직접 변경사항을 병합하거나 풀 리퀘스트를 생성하세요. PR 대화상자는 작업 세부정보에서 제목과 설명을 미리 채워 워크플로를 간소화합니다."
+      }
+    },
+    "buttons": {
+      "previous": "이전",
+      "next": "다음",
+      "finish": "완료"
+    }
   }
 }

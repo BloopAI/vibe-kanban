@@ -240,5 +240,30 @@
   },
   "viewProcessesDialog": {
     "title": "Execution processes"
+  },
+  "showcases": {
+    "taskPanel": {
+      "companion": {
+        "title": "Vibe Kanban Companion ポイント＆クリック",
+        "description": "プレビューウィンドウ内の任意のUIコンポーネントをクリックして正確に選択できます。コーディングエージェントは正確なDOMセレクタとコンポーネント階層を受け取り、曖昧なフィードバックを排除します。"
+      },
+      "installation": {
+        "title": "開発サーバーとCompanionのインストール",
+        "description": "プレビュー用に開発サーバーコマンドを設定します。設定でセットアップスクリプトを構成できます。コーディングエージェントを使用してVibe Kanban Webコンパニオンを自動的にインストールします。"
+      },
+      "codeReview": {
+        "title": "組み込みコードレビュー",
+        "description": "プラスアイコンを使用して、差分ビューに直接行固有のコメントを追加します。すべてのフィードバックが収集され、完全なレビューとしてコーディングエージェントに送信されます。"
+      },
+      "pullRequest": {
+        "title": "タスクからPRを作成",
+        "description": "タスク試行から直接変更をマージしたり、プルリクエストを作成できます。PRダイアログはタスク詳細からタイトルと説明を事前入力し、ワークフローを効率化します。"
+      }
+    },
+    "buttons": {
+      "previous": "前へ",
+      "next": "次へ",
+      "finish": "完了"
+    }
   }
 }

@@ -240,5 +240,30 @@
   },
   "viewProcessesDialog": {
     "title": "Execution processes"
+  },
+  "showcases": {
+    "taskPanel": {
+      "companion": {
+        "title": "Vibe Kanban Companion: Apuntar y Hacer Clic",
+        "description": "Haz clic en cualquier componente de la interfaz en la ventana de vista previa para seleccionarlo con precisión. El agente de codificación recibe selectores DOM exactos y jerarquía de componentes, eliminando comentarios ambiguos."
+      },
+      "installation": {
+        "title": "Instalación del Servidor de Desarrollo y Companion",
+        "description": "Configura un comando de servidor de desarrollo para vistas previas, con un script de configuración configurable en ajustes. Usa un agente de codificación para instalar automáticamente el companion web de Vibe Kanban."
+      },
+      "codeReview": {
+        "title": "Revisión de Código Integrada",
+        "description": "Agrega comentarios específicos de línea directamente en la vista de diferencias con el icono de más. Todos los comentarios se recopilan y envían como una revisión completa al agente de codificación."
+      },
+      "pullRequest": {
+        "title": "Crear PR desde Tarea",
+        "description": "Fusiona tus cambios o crea pull requests directamente desde los intentos de tarea. El diálogo de PR rellena previamente el título y la descripción desde los detalles de tu tarea para flujos de trabajo optimizados."
+      }
+    },
+    "buttons": {
+      "previous": "Anterior",
+      "next": "Siguiente",
+      "finish": "Finalizar"
+    }
   }
 }
