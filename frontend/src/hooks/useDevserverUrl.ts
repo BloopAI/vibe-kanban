@@ -68,14 +68,17 @@ export const useDevserverUrlFromLogs = (
       setUrlInfo(undefined);
     }
 
-    for (let i = logs.length - 1; i >= lastIndexRef.current; i -= 1) {
+    let detectedUrl: DevserverUrlInfo | undefined;
+    for (let i = lastIndexRef.current; i < logs.length; i += 1) {
       const detected = detectDevserverUrl(logs[i].content);
       if (detected) {
-        setUrlInfo((prev) =>
-          prev && prev.url === detected.url ? prev : detected
-        );
+        detectedUrl = detected;
         break;
       }
+    }
+
+    if (detectedUrl) {
+      setUrlInfo((prev) => prev ?? detectedUrl);
     }
 
     lastIndexRef.current = logs.length;
