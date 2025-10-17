@@ -11,7 +11,8 @@
     "manage": "Manage",
     "connect": "Connect",
     "disconnect": "Disconnect",
-    "close": "Close"
+    "close": "Close",
+    "replay": "Replay"
   },
   "states": {
     "loading": "Loading...",
