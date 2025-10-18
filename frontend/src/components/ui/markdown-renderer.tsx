@@ -200,6 +200,16 @@ function MarkdownRenderer({
           </li>
         ),
       },
+      pre: {
+        component: ({ children, ...props }: any) => (
+          <pre
+            {...props}
+            className="overflow-x-auto whitespace-pre-wrap break-words font-mono text-sm bg-muted/50 rounded-sm p-2 my-2"
+          >
+            {children}
+          </pre>
+        ),
+      },
     }),
     []
   );
