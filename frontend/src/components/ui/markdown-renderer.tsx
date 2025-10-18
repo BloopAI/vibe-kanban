@@ -201,6 +201,9 @@ function MarkdownRenderer({
         component: ({ children, ...props }: any) => (
           <pre
             {...props}
+            // whitespace-pre-wrap: Override default pre behavior (white-space: pre) to allow line wrapping
+            // break-words: Force breaks in long unbroken strings (e.g., long commands) to prevent horizontal overflow
+            // overflow-x-auto: Fallback scrollbar if content still overflows
             className="overflow-x-auto whitespace-pre-wrap break-words font-mono text-sm bg-muted/50 rounded-sm p-2 my-2"
           >
             {children}
