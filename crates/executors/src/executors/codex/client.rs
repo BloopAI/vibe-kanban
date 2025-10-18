@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     io,
     sync::{Arc, OnceLock},
 };
@@ -10,7 +11,7 @@ use codex_app_server_protocol::{
     InitializeResponse, InputItem, JSONRPCError, JSONRPCNotification, JSONRPCRequest,
     JSONRPCResponse, NewConversationParams, NewConversationResponse, RequestId,
     ResumeConversationParams, ResumeConversationResponse, SendUserMessageParams,
-    SendUserMessageResponse, ServerRequest,
+    SendUserMessageResponse, ServerNotification, ServerRequest,
 };
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value;
@@ -178,7 +179,22 @@ impl JsonRpcCallbacks for AppServerClient {
         raw: &str,
         notification: JSONRPCNotification,
     ) -> Result<bool, ExecutorError> {
-        self.log_writer.log_raw(raw).await?;
+        let raw =
+            if let Ok(mut server_notification) = serde_json::from_str::<ServerNotification>(raw) {
+                if let ServerNotification::SessionConfigured(session_configured) =
+                    &mut server_notification
+                {
+                    // history can be large, which might get truncated during transmission, corrupting the JSON line and losing valuable session and model information.
+                    session_configured.initial_messages = None;
+                    Cow::Owned(serde_json::to_string(&server_notification)?)
+                } else {
+                    Cow::Borrowed(raw)
+                }
+            } else {
+                Cow::Borrowed(raw)
+            };
+        self.log_writer.log_raw(&raw).await?;
+
         let method = notification.method.as_str();
         if !method.starts_with("codex/event") {
             return Ok(false);
