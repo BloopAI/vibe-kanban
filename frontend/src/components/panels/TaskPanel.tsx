@@ -74,90 +74,92 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
   return (
     <>
       <NewCardContent>
-        <div className="p-6 space-y-6">
-          <div className="space-y-3">
+        <div className="p-6 flex flex-col h-full max-h-[calc(100vh-8rem)]">
+          <div className="space-y-3 overflow-y-auto flex-shrink min-h-0">
             <MarkdownRenderer content={titleContent} />
             {descriptionContent && (
               <MarkdownRenderer content={descriptionContent} />
             )}
           </div>
 
-          {isAttemptsLoading && (
-            <div className="text-muted-foreground">
-              {t('taskPanel.loadingAttempts')}
-            </div>
-          )}
-          {isAttemptsError && (
-            <div className="text-destructive">
-              {t('taskPanel.errorLoadingAttempts')}
-            </div>
-          )}
-          {!isAttemptsLoading && !isAttemptsError && (
-            <table className="w-full text-sm">
-              <thead className="uppercase text-muted-foreground">
-                <tr>
-                  <th colSpan={3}>
-                    <div className="w-full flex text-left">
-                      <span className="flex-1">
-                        {t('taskPanel.attemptsCount', {
-                          count: displayedAttempts.length,
-                        })}
-                      </span>
-                      <span>
-                        <Button
-                          variant="icon"
-                          onClick={() =>
-                            NiceModal.show('create-attempt', {
-                              taskId: task.id,
-                              latestAttempt,
-                            })
-                          }
-                        >
-                          <PlusIcon size={16} />
-                        </Button>
-                      </span>
-                    </div>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {displayedAttempts.length === 0 ? (
+          <div className="mt-6 flex-shrink-0">
+            {isAttemptsLoading && (
+              <div className="text-muted-foreground">
+                {t('taskPanel.loadingAttempts')}
+              </div>
+            )}
+            {isAttemptsError && (
+              <div className="text-destructive">
+                {t('taskPanel.errorLoadingAttempts')}
+              </div>
+            )}
+            {!isAttemptsLoading && !isAttemptsError && (
+              <table className="w-full text-sm">
+                <thead className="uppercase text-muted-foreground">
                   <tr>
-                    <td
-                      colSpan={3}
-                      className="py-2 text-muted-foreground border-t"
-                    >
-                      {t('taskPanel.noAttempts')}
-                    </td>
+                    <th colSpan={3}>
+                      <div className="w-full flex text-left">
+                        <span className="flex-1">
+                          {t('taskPanel.attemptsCount', {
+                            count: displayedAttempts.length,
+                          })}
+                        </span>
+                        <span>
+                          <Button
+                            variant="icon"
+                            onClick={() =>
+                              NiceModal.show('create-attempt', {
+                                taskId: task.id,
+                                latestAttempt,
+                              })
+                            }
+                          >
+                            <PlusIcon size={16} />
+                          </Button>
+                        </span>
+                      </div>
+                    </th>
                   </tr>
-                ) : (
-                  displayedAttempts.map((attempt) => (
-                    <tr
-                      key={attempt.id}
-                      className="border-t cursor-pointer hover:bg-muted"
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => {
-                        if (projectId && task.id && attempt.id) {
-                          navigate(
-                            paths.attempt(projectId, task.id, attempt.id)
-                          );
-                        }
-                      }}
-                    >
-                      <td className="py-2 pr-4">
-                        {attempt.executor || 'Base Agent'}
-                      </td>
-                      <td className="py-2 pr-4">{attempt.branch || '—'}</td>
-                      <td className="py-2 pr-0 text-right">
-                        {formatTimeAgo(attempt.created_at)}
+                </thead>
+                <tbody>
+                  {displayedAttempts.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={3}
+                        className="py-2 text-muted-foreground border-t"
+                      >
+                        {t('taskPanel.noAttempts')}
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          )}
+                  ) : (
+                    displayedAttempts.map((attempt) => (
+                      <tr
+                        key={attempt.id}
+                        className="border-t cursor-pointer hover:bg-muted"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => {
+                          if (projectId && task.id && attempt.id) {
+                            navigate(
+                              paths.attempt(projectId, task.id, attempt.id)
+                            );
+                          }
+                        }}
+                      >
+                        <td className="py-2 pr-4">
+                          {attempt.executor || 'Base Agent'}
+                        </td>
+                        <td className="py-2 pr-4">{attempt.branch || '—'}</td>
+                        <td className="py-2 pr-0 text-right">
+                          {formatTimeAgo(attempt.created_at)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       </NewCardContent>
     </>
