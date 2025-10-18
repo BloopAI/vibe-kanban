@@ -80,7 +80,7 @@ export function CommentWidgetLine({
   });
 
   return (
-    <div className="p-4 border-y">
+    <div className="p-4 border-y bg-primary">
       <FileSearchTextarea
         ref={textareaRef}
         value={value}
