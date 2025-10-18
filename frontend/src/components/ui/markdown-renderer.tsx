@@ -138,7 +138,7 @@ function MarkdownRenderer({
       },
       p: {
         component: ({ children, ...props }: any) => (
-          <p {...props} className="leading-tight my-2">
+          <p {...props} className="leading-tight my-2 break-words overflow-wrap-anywhere">
             {children}
           </p>
         ),
