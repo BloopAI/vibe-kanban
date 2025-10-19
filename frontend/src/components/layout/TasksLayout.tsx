@@ -141,8 +141,7 @@ function RightWorkArea({
               order={2}
               defaultSize={innerSizes[1]}
               minSize={MIN_PANEL_SIZE}
-              collapsible
-              collapsedSize={0}
+              collapsible={false}
               className="min-w-0 min-h-0 overflow-hidden"
               role="region"
               aria-label={mode === 'preview' ? 'Preview' : 'Diffs'}
