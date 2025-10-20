@@ -88,10 +88,7 @@ Sentry.init({
 Sentry.setTag('source', 'frontend');
 
 // Initialize PostHog if credentials are available
-if (
-  import.meta.env.POSTHOG_API_KEY &&
-  import.meta.env.POSTHOG_API_ENDPOINT
-) {
+if (import.meta.env.POSTHOG_API_KEY && import.meta.env.POSTHOG_API_ENDPOINT) {
   posthog.init(import.meta.env.POSTHOG_API_KEY, {
     api_host: import.meta.env.POSTHOG_API_ENDPOINT,
     capture_pageview: false,
