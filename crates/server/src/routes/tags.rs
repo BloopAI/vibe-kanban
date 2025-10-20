@@ -1,9 +1,6 @@
 use axum::{
-    Extension, Json, Router,
-    extract::State,
-    middleware::from_fn_with_state,
-    response::Json as ResponseJson,
-    routing::get,
+    Extension, Json, Router, extract::State, middleware::from_fn_with_state,
+    response::Json as ResponseJson, routing::get,
 };
 use db::models::tag::{CreateTag, Tag, UpdateTag};
 use deployment::Deployment;
@@ -48,8 +45,7 @@ pub async fn update_tag(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<UpdateTag>,
 ) -> Result<ResponseJson<ApiResponse<Tag>>, ApiError> {
-    let updated_tag =
-        Tag::update(&deployment.db().pool, tag.id, &payload).await?;
+    let updated_tag = Tag::update(&deployment.db().pool, tag.id, &payload).await?;
 
     deployment
         .track_if_analytics_allowed(
@@ -78,16 +74,8 @@ pub async fn delete_tag(
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let tag_router = Router::new()
-        .route(
-            "/",
-            get(get_tag)
-                .put(update_tag)
-                .delete(delete_tag),
-        )
-        .layer(from_fn_with_state(
-            deployment.clone(),
-            load_tag_middleware,
-        ));
+        .route("/", get(get_tag).put(update_tag).delete(delete_tag))
+        .layer(from_fn_with_state(deployment.clone(), load_tag_middleware));
 
     let inner = Router::new()
         .route("/", get(get_tags).post(create_tag))

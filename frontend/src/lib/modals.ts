@@ -39,13 +39,8 @@ export function showFolderPicker(
  * @param props - Props for tag edit dialog
  * @returns Promise that resolves with 'saved' or 'canceled'
  */
-export function showTagEdit(
-  props: TagEditDialogProps
-): Promise<TagEditResult> {
-  return showModal<TagEditResult>(
-    'tag-edit',
-    props as Record<string, unknown>
-  );
+export function showTagEdit(props: TagEditDialogProps): Promise<TagEditResult> {
+  return showModal<TagEditResult>('tag-edit', props as Record<string, unknown>);
 }
 
 /**
