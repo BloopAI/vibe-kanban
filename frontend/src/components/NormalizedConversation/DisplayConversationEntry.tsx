@@ -31,6 +31,9 @@ import UserMessage from './UserMessage';
 import PendingApprovalEntry from './PendingApprovalEntry';
 import { cn } from '@/lib/utils';
 import { useRetryUi } from '@/contexts/RetryUiContext';
+import { toolRendererRegistry } from './renderers';
+import './renderers/mermaid-renderer';
+import './renderers/playwright-screenshot-renderer';
 
 type Props = {
   entry: NormalizedEntry | ProcessStartPayload;
@@ -437,9 +440,22 @@ const ToolCallCard: React.FC<{
 }) => {
   const { t } = useTranslation('common');
   const at: any = entryType?.action_type || action;
+
+  const customRenderer =
+    entryType?.action_type?.action === 'tool' || at?.action === 'tool'
+      ? toolRendererRegistry.findRenderer({
+          toolName: entryType?.tool_name || at?.tool_name || '',
+          arguments:
+            (entryType?.action_type as any)?.arguments ||
+            (at as any)?.arguments,
+          result:
+            (entryType?.action_type as any)?.result || (at as any)?.result,
+        })
+      : null;
+
   const [expanded, toggle] = useExpandable(
     `tool-entry:${expansionKey}`,
-    defaultExpanded
+    defaultExpanded || (customRenderer?.shouldAutoExpand ?? false)
   );
   const effectiveExpanded = forceExpanded || expanded;
 
@@ -471,9 +487,11 @@ const ToolCallCard: React.FC<{
     argsText = (fromArgs || fallback).trim();
   }
 
-  const hasExpandableDetails = isCommand
-    ? Boolean(argsText) || Boolean(output)
-    : hasArgs || hasResult;
+  const hasExpandableDetails = customRenderer
+    ? (customRenderer.collapsible ?? false)
+    : isCommand
+      ? Boolean(argsText) || Boolean(output)
+      : hasArgs || hasResult;
 
   const HeaderWrapper: React.ElementType = hasExpandableDetails
     ? 'button'
@@ -512,8 +530,22 @@ const ToolCallCard: React.FC<{
       </HeaderWrapper>
 
       {effectiveExpanded && (
-        <div className="max-h-[200px] overflow-y-auto border">
-          {isCommand ? (
+        <div
+          className={cn(
+            'border',
+            customRenderer ? '' : 'max-h-[200px] overflow-y-auto'
+          )}
+        >
+          {customRenderer ? (
+            customRenderer.render({
+              toolName: entryType?.tool_name || at?.tool_name || '',
+              arguments:
+                (entryType?.action_type as any)?.arguments ||
+                (at as any)?.arguments,
+              result:
+                (entryType?.action_type as any)?.result || (at as any)?.result,
+            })
+          ) : isCommand ? (
             <>
               {argsText && (
                 <>
