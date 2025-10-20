@@ -103,7 +103,9 @@ export function ProjectSettings() {
 
       // Confirm if there are unsaved changes
       if (hasUnsavedChanges) {
-        const confirmed = window.confirm(t('settings.projects.save.confirmSwitch'));
+        const confirmed = window.confirm(
+          t('settings.projects.save.confirmSwitch')
+        );
         if (!confirmed) return;
 
         // Clear local state before switching
@@ -130,7 +132,9 @@ export function ProjectSettings() {
 
     // Confirm if there are unsaved changes
     if (hasUnsavedChanges) {
-      const confirmed = window.confirm(t('settings.projects.save.confirmSwitch'));
+      const confirmed = window.confirm(
+        t('settings.projects.save.confirmSwitch')
+      );
       if (!confirmed) {
         // Revert URL to previous value
         if (selectedProjectId) {
@@ -149,7 +153,13 @@ export function ProjectSettings() {
     }
 
     setSelectedProjectId(projectIdParam);
-  }, [projectIdParam, hasUnsavedChanges, selectedProjectId, setSearchParams, t]);
+  }, [
+    projectIdParam,
+    hasUnsavedChanges,
+    selectedProjectId,
+    setSearchParams,
+    t,
+  ]);
 
   // Populate draft from server data
   useEffect(() => {
@@ -160,7 +170,7 @@ export function ProjectSettings() {
       : null;
 
     setSelectedProject((prev) =>
-      prev?.id === nextProject?.id ? prev : nextProject ?? null
+      prev?.id === nextProject?.id ? prev : (nextProject ?? null)
     );
 
     if (!nextProject) {
