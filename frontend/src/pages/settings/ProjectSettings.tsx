@@ -88,6 +88,14 @@ export function ProjectSettings() {
     }
   };
 
+  // Sync selectedProjectId when URL changes (e.g., clicking Edit from project list)
+  useEffect(() => {
+    const projectIdFromUrl = searchParams.get('projectId');
+    if (projectIdFromUrl && projectIdFromUrl !== selectedProjectId) {
+      setSelectedProjectId(projectIdFromUrl);
+    }
+  }, [searchParams]);
+
   // Update selected project when ID changes
   useEffect(() => {
     if (selectedProjectId && projects) {
