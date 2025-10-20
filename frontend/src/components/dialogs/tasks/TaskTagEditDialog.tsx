@@ -139,7 +139,8 @@ export const TaskTagEditDialog = NiceModal.create<TaskTagEditDialogProps>(
                 {formData.tag_name || 'tag_name'}
               </p>
               <p className="text-xs text-muted-foreground mb-1.5">
-                Format: lowercase letters, numbers, and underscores only. Must start with a letter.
+                Format: lowercase letters, numbers, and underscores only. Must
+                start with a letter.
               </p>
               <Input
                 id="tag-name"
