@@ -61,10 +61,6 @@ export default defineConfig({
       shared: path.resolve(__dirname, "../shared"),
     },
   },
-  define: {
-    'import.meta.env.POSTHOG_API_KEY': JSON.stringify(process.env.POSTHOG_API_KEY || ''),
-    'import.meta.env.POSTHOG_API_ENDPOINT': JSON.stringify(process.env.POSTHOG_API_ENDPOINT || ''),
-  },
   server: {
     port: parseInt(process.env.FRONTEND_PORT || "3000"),
     proxy: {
