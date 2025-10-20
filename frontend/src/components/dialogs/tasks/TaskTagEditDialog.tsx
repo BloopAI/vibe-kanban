@@ -107,7 +107,8 @@ export const TaskTagEditDialog = NiceModal.create<TaskTagEditDialogProps>(
                 {formData.tag_name || 'tag_name'}
               </p>
               <p className="text-xs text-muted-foreground mb-1.5">
-                Tip: Use lowercase with underscores for easier typing (e.g., bug_fix instead of "Bug Fix")
+                Tip: Use lowercase with underscores for easier typing (e.g.,
+                bug_fix instead of "Bug Fix")
               </p>
               <Input
                 id="tag-name"
