@@ -13,9 +13,14 @@ CREATE TABLE task_tags (
 
 -- Migrate data from old table
 -- Only migrate global templates (project_id IS NULL) to avoid duplicate tag names
--- Project-specific templates would need manual migration by user if desired
+-- Auto-convert template names to valid tag names: lowercase, spaces to underscores
 INSERT INTO task_tags (id, tag_name, content, created_at, updated_at)
-SELECT id, template_name, description, created_at, updated_at
+SELECT
+    id,
+    LOWER(REPLACE(template_name, ' ', '_')) as tag_name,
+    description,
+    created_at,
+    updated_at
 FROM task_templates
 WHERE project_id IS NULL;
 
