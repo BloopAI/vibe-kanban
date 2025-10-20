@@ -38,6 +38,25 @@ pub trait ExecutorApprovalService: Send + Sync {
     ) -> Result<ApprovalStatus, ExecutorApprovalError>;
 }
 
+#[derive(Debug, Default)]
+pub struct NoopExecutorApprovalService;
+
+#[async_trait]
+impl ExecutorApprovalService for NoopExecutorApprovalService {
+    async fn register_session(&self, _session_id: &str) -> Result<(), ExecutorApprovalError> {
+        Ok(())
+    }
+
+    async fn request_tool_approval(
+        &self,
+        _tool_name: &str,
+        _tool_input: Value,
+        _tool_call_id: &str,
+    ) -> Result<ApprovalStatus, ExecutorApprovalError> {
+        Ok(ApprovalStatus::Approved)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ToolCallMetadata {
     pub tool_call_id: String,

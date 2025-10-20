@@ -41,7 +41,6 @@ use utils::{
 use uuid::Uuid;
 
 use crate::services::{
-    approvals::Approvals,
     git::{GitService, GitServiceError},
     image::ImageService,
     worktree_manager::{WorktreeError, WorktreeManager},
@@ -109,13 +108,6 @@ pub trait ContainerService {
     fn db(&self) -> &DBService;
 
     fn git(&self) -> &GitService;
-
-    fn approvals(&self) -> &Approvals;
-
-    fn get_executor_approval_service(
-        &self,
-        execution_process_id: &Uuid,
-    ) -> Arc<dyn executors::approvals::ExecutorApprovalService>;
 
     fn task_attempt_to_current_dir(&self, task_attempt: &TaskAttempt) -> PathBuf;
 

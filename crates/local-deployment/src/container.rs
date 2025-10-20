@@ -27,6 +27,8 @@ use db::{
 use deployment::DeploymentError;
 use executors::{
     actions::{Executable, ExecutorAction},
+    approvals::{ExecutorApprovalService, NoopExecutorApprovalService},
+    executors::BaseCodingAgent,
     logs::{
         NormalizedEntryType,
         utils::{
@@ -654,21 +656,6 @@ impl ContainerService for LocalContainerService {
         &self.git
     }
 
-    fn approvals(&self) -> &Approvals {
-        &self.approvals
-    }
-
-    fn get_executor_approval_service(
-        &self,
-        execution_process_id: &Uuid,
-    ) -> Arc<dyn executors::approvals::ExecutorApprovalService> {
-        ExecutorApprovalBridge::new(
-            self.approvals.clone(),
-            self.db.clone(),
-            *execution_process_id,
-        )
-    }
-
     async fn git_branch_prefix(&self) -> String {
         self.config.read().await.git_branch_prefix.clone()
     }
@@ -820,13 +807,19 @@ impl ContainerService for LocalContainerService {
             )))?;
         let current_dir = PathBuf::from(container_ref);
 
-        // Create executor approval bridge when needed
+        let approvals_service: Arc<dyn ExecutorApprovalService> =
+            match executor_action.base_executor() {
+                Some(BaseCodingAgent::Codex) => ExecutorApprovalBridge::new(
+                    self.approvals.clone(),
+                    self.db.clone(),
+                    execution_process.id,
+                ),
+                _ => Arc::new(NoopExecutorApprovalService {}),
+            };
+
         // Create the child and stream, add to execution tracker
         let mut spawned = executor_action
-            .spawn(
-                &current_dir,
-                self.get_executor_approval_service(&execution_process.id),
-            )
+            .spawn(&current_dir, approvals_service)
             .await?;
 
         self.track_child_msgs_in_store(execution_process.id, &mut spawned.child)

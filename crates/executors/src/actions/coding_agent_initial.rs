@@ -7,7 +7,7 @@ use ts_rs::TS;
 use crate::{
     actions::Executable,
     approvals::ExecutorApprovalService,
-    executors::{ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
+    executors::{BaseCodingAgent, ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
     profile::{ExecutorConfigs, ExecutorProfileId},
 };
 
@@ -18,6 +18,12 @@ pub struct CodingAgentInitialRequest {
     #[serde(alias = "profile_variant_label")]
     // Backwards compatability with ProfileVariantIds, esp stored in DB under ExecutorAction
     pub executor_profile_id: ExecutorProfileId,
+}
+
+impl CodingAgentInitialRequest {
+    pub fn base_executor(&self) -> BaseCodingAgent {
+        self.executor_profile_id.executor
+    }
 }
 
 #[async_trait]

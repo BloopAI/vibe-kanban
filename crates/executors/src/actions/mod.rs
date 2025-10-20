@@ -11,7 +11,7 @@ use crate::{
         coding_agent_initial::CodingAgentInitialRequest, script::ScriptRequest,
     },
     approvals::ExecutorApprovalService,
-    executors::{ExecutorError, SpawnedChild},
+    executors::{BaseCodingAgent, ExecutorError, SpawnedChild},
 };
 pub mod coding_agent_follow_up;
 pub mod coding_agent_initial;
@@ -43,6 +43,16 @@ impl ExecutorAction {
 
     pub fn next_action(&self) -> Option<&ExecutorAction> {
         self.next_action.as_deref()
+    }
+
+    pub fn base_executor(&self) -> Option<BaseCodingAgent> {
+        match self.typ() {
+            ExecutorActionType::CodingAgentInitialRequest(request) => Some(request.base_executor()),
+            ExecutorActionType::CodingAgentFollowUpRequest(request) => {
+                Some(request.base_executor())
+            }
+            ExecutorActionType::ScriptRequest(_) => None,
+        }
     }
 }
 

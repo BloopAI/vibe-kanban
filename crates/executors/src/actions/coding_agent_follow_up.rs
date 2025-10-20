@@ -7,7 +7,7 @@ use ts_rs::TS;
 use crate::{
     actions::Executable,
     approvals::ExecutorApprovalService,
-    executors::{ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
+    executors::{BaseCodingAgent, ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
     profile::{ExecutorConfigs, ExecutorProfileId},
 };
 
@@ -25,6 +25,10 @@ impl CodingAgentFollowUpRequest {
     /// Get the executor profile ID
     pub fn get_executor_profile_id(&self) -> ExecutorProfileId {
         self.executor_profile_id.clone()
+    }
+
+    pub fn base_executor(&self) -> BaseCodingAgent {
+        self.executor_profile_id.executor
     }
 }
 
