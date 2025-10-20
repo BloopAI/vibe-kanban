@@ -1,8 +1,7 @@
 -- Convert task_templates to tags
 -- Migrate ALL templates (global + project-scoped)
 -- No UNIQUE constraint on tag_name - users can create duplicates if they want
--- Global templates: keep original names
--- Project templates: prefixed with project name
+-- Convert all names to snake_case (lowercase with underscores)
 
 CREATE TABLE tags (
     id            BLOB PRIMARY KEY,
@@ -12,27 +11,15 @@ CREATE TABLE tags (
     updated_at    TEXT NOT NULL DEFAULT (datetime('now', 'subsec'))
 );
 
--- Insert global templates (keep original names as-is)
+-- Insert ALL templates (global + project) with snake_case conversion
 INSERT INTO tags (id, tag_name, content, created_at, updated_at)
 SELECT
     id,
-    template_name,  -- Keep original casing and spaces
+    LOWER(REPLACE(template_name, ' ', '_')) as tag_name,
     description,
     created_at,
     updated_at
-FROM task_templates
-WHERE project_id IS NULL;
-
--- Insert ALL project templates with project prefix
-INSERT INTO tags (id, tag_name, content, created_at, updated_at)
-SELECT
-    t.id,
-    p.name || '_' || t.template_name as tag_name,
-    t.description,
-    t.created_at,
-    t.updated_at
-FROM task_templates t
-JOIN projects p ON t.project_id = p.id;
+FROM task_templates;
 
 -- Drop old table and indexes
 DROP INDEX idx_task_templates_project_id;
