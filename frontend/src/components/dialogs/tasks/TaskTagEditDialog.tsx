@@ -34,36 +34,6 @@ export const TaskTagEditDialog = NiceModal.create<TaskTagEditDialogProps>(
 
     const isEditMode = Boolean(tag);
 
-    // Validate tag name format
-    const validateTagName = (name: string): string | null => {
-      const trimmed = name.trim();
-
-      if (trimmed.length < 2) {
-        return 'Tag name must be at least 2 characters long';
-      }
-      if (trimmed.length > 50) {
-        return 'Tag name must be at most 50 characters long';
-      }
-
-      // Check format: must start with lowercase letter
-      if (!/^[a-z]/.test(trimmed)) {
-        return 'Tag name must start with a lowercase letter';
-      }
-
-      // Check all characters are valid (lowercase, numbers, underscores)
-      if (!/^[a-z][a-z0-9_]*$/.test(trimmed)) {
-        return 'Tag name can only contain lowercase letters, numbers, and underscores';
-      }
-
-      // Check for reserved words
-      const reserved = ['all', 'none', 'undefined', 'null', 'true', 'false'];
-      if (reserved.includes(trimmed)) {
-        return `'${trimmed}' is a reserved word and cannot be used as a tag name`;
-      }
-
-      return null;
-    };
-
     useEffect(() => {
       if (tag) {
         setFormData({
@@ -80,10 +50,8 @@ export const TaskTagEditDialog = NiceModal.create<TaskTagEditDialogProps>(
     }, [tag]);
 
     const handleSave = async () => {
-      // Validate tag name
-      const validationError = validateTagName(formData.tag_name);
-      if (validationError) {
-        setError(validationError);
+      if (!formData.tag_name.trim()) {
+        setError('Tag name is required');
         return;
       }
 
@@ -139,8 +107,7 @@ export const TaskTagEditDialog = NiceModal.create<TaskTagEditDialogProps>(
                 {formData.tag_name || 'tag_name'}
               </p>
               <p className="text-xs text-muted-foreground mb-1.5">
-                Format: lowercase letters, numbers, and underscores only. Must
-                start with a letter.
+                Tip: Use lowercase with underscores for easier typing (e.g., bug_fix instead of "Bug Fix")
               </p>
               <Input
                 id="tag-name"

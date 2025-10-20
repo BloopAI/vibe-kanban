@@ -25,45 +25,6 @@ pub struct UpdateTaskTag {
     pub content: Option<String>,
 }
 
-/// Validate tag name format
-/// Rules: lowercase letters, numbers, underscores only
-/// Must start with letter, be 2-50 characters long
-fn validate_tag_name(name: &str) -> Result<(), String> {
-    // Check length
-    if name.len() < 2 {
-        return Err("Tag name must be at least 2 characters long".to_string());
-    }
-    if name.len() > 50 {
-        return Err("Tag name must be at most 50 characters long".to_string());
-    }
-
-    // Check format: lowercase letters, numbers, underscores
-    // Must start with a letter
-    let first_char = name.chars().next().unwrap();
-    if !first_char.is_ascii_lowercase() {
-        return Err("Tag name must start with a lowercase letter".to_string());
-    }
-
-    // Check all characters are valid
-    for ch in name.chars() {
-        if !ch.is_ascii_lowercase() && !ch.is_ascii_digit() && ch != '_' {
-            return Err(
-                "Tag name can only contain lowercase letters, numbers, and underscores".to_string(),
-            );
-        }
-    }
-
-    // Check for reserved words
-    let reserved = ["all", "none", "undefined", "null", "true", "false"];
-    if reserved.contains(&name) {
-        return Err(format!(
-            "'{name}' is a reserved word and cannot be used as a tag name"
-        ));
-    }
-
-    Ok(())
-}
-
 impl TaskTag {
     pub async fn find_all(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
@@ -89,9 +50,6 @@ impl TaskTag {
     }
 
     pub async fn create(pool: &SqlitePool, data: &CreateTaskTag) -> Result<Self, sqlx::Error> {
-        // Validate tag name format
-        validate_tag_name(&data.tag_name).map_err(sqlx::Error::Protocol)?;
-
         let id = Uuid::new_v4();
         sqlx::query_as!(
             TaskTag,
@@ -119,11 +77,6 @@ impl TaskTag {
         // Use let bindings to create longer-lived values
         let tag_name = data.tag_name.as_ref().unwrap_or(&existing.tag_name);
         let content = data.content.as_ref().or(existing.content.as_ref());
-
-        // Validate tag name format if it's being updated
-        if data.tag_name.is_some() {
-            validate_tag_name(tag_name).map_err(sqlx::Error::Protocol)?;
-        }
 
         sqlx::query_as!(
             TaskTag,
