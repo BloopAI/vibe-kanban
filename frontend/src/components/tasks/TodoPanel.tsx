@@ -42,7 +42,7 @@ function TodoPanel() {
           <span>{t('todos.title', { count: todos.length })}</span>
           <ChevronDown
             aria-hidden
-            className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180"
+            className="h-4 w-4 text-muted-foreground transition-transform group-open:-rotate-180"
           />
         </Card>
       </summary>
