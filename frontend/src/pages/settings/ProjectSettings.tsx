@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { isEqual } from 'lodash';
@@ -59,6 +59,7 @@ export function ProjectSettings() {
     searchParams.get('projectId') || ''
   );
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const previousProjectIdRef = useRef<string>(selectedProjectId);
 
   // Form state
   const [draft, setDraft] = useState<ProjectFormState | null>(null);
@@ -90,19 +91,23 @@ export function ProjectSettings() {
 
   // Sync selectedProjectId when URL changes (e.g., clicking Edit from project list)
   useEffect(() => {
-    const projectIdFromUrl = searchParams.get('projectId');
-    if (projectIdFromUrl && projectIdFromUrl !== selectedProjectId) {
+    const projectIdFromUrl = searchParams.get('projectId') ?? '';
+    if (projectIdFromUrl !== selectedProjectId) {
       setSelectedProjectId(projectIdFromUrl);
     }
-  }, [searchParams]);
+  }, [searchParams, selectedProjectId]);
 
   // Update selected project when ID changes
   useEffect(() => {
+    const projectIdChanged = selectedProjectId !== previousProjectIdRef.current;
+    previousProjectIdRef.current = selectedProjectId;
+
     if (selectedProjectId && projects) {
       const project = projects.find((p) => p.id === selectedProjectId);
       setSelectedProject(project || null);
 
-      if (project) {
+      // Only reset draft if project ID changed OR user has no unsaved edits
+      if (project && (projectIdChanged || !hasUnsavedChanges)) {
         const formState: ProjectFormState = {
           name: project.name,
           git_repo_path: project.git_repo_path,
@@ -117,7 +122,7 @@ export function ProjectSettings() {
       setSelectedProject(null);
       setDraft(null);
     }
-  }, [selectedProjectId, projects]);
+  }, [selectedProjectId, projects, hasUnsavedChanges]);
 
   // Check for unsaved changes
   const hasUnsavedChanges = useMemo(() => {
