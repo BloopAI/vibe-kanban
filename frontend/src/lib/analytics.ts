@@ -1,8 +1,10 @@
 import posthog from 'posthog-js';
 import type { AnalyticsInfo } from 'shared/types';
 
-let isInitialized = false;
+let posthogInitialized = false;
 let analyticsEnabled = false;
+let eventQueue: Array<{ eventName: string; properties?: Record<string, any> }> =
+  [];
 
 /**
  * Initialize PostHog with analytics configuration from the backend
@@ -13,25 +15,33 @@ export function initializeAnalytics(
   analyticsInfo: AnalyticsInfo | null,
   userAnalyticsEnabled: boolean
 ): void {
-  if (isInitialized) {
-    return;
-  }
-
   // Check if user has explicitly opted out (opt-out by default: track unless explicitly false)
   if (userAnalyticsEnabled === false) {
     console.log('[Analytics] Analytics disabled by user preference');
     analyticsEnabled = false;
-    isInitialized = true;
+
+    // If PostHog is already initialized, opt out
+    if (posthogInitialized) {
+      posthog.opt_out_capturing();
+    }
     return;
   }
 
   if (!analyticsInfo || !analyticsInfo.config) {
     console.warn('[Analytics] No PostHog configuration available from backend');
     analyticsEnabled = false;
-    isInitialized = true;
     return;
   }
 
+  // If already initialized, just opt in and we're done
+  if (posthogInitialized) {
+    posthog.opt_in_capturing();
+    analyticsEnabled = true;
+    console.log('[Analytics] Analytics re-enabled');
+    return;
+  }
+
+  // Initialize PostHog for the first time
   try {
     posthog.init(analyticsInfo.config.posthog_api_key, {
       api_host: analyticsInfo.config.posthog_api_endpoint,
@@ -42,17 +52,31 @@ export function initializeAnalytics(
         posthog.identify(analyticsInfo.user_id);
 
         analyticsEnabled = true;
+
+        // Flush queued events
+        if (eventQueue.length > 0) {
+          console.log(
+            `[Analytics] Flushing ${eventQueue.length} queued events`
+          );
+          eventQueue.forEach(({ eventName, properties }) => {
+            posthog.capture(eventName, {
+              ...properties,
+              timestamp: new Date().toISOString(),
+              source: 'frontend',
+            });
+          });
+          eventQueue = [];
+        }
       },
       capture_pageview: false,
       capture_pageleave: true,
       capture_performance: true, // Track web vitals (LCP, FID, CLS, etc.)
       autocapture: false, // Disabled - we use manual events only
     });
-    isInitialized = true;
+    posthogInitialized = true;
   } catch (error) {
     console.error('[Analytics] Failed to initialize PostHog:', error);
     analyticsEnabled = false;
-    isInitialized = true;
   }
 }
 
@@ -63,6 +87,12 @@ export function trackEvent(
   eventName: string,
   properties?: Record<string, any>
 ): void {
+  // If PostHog is initializing but not ready yet, queue the event
+  if (posthogInitialized && !analyticsEnabled) {
+    eventQueue.push({ eventName, properties });
+    return;
+  }
+
   if (!analyticsEnabled) {
     return;
   }
