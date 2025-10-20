@@ -32,7 +32,7 @@ COPY . .
 
 # Build application
 RUN npm run generate-types
-RUN cd frontend && npm install && npm run build
+RUN cd frontend && pnpm run build
 RUN cargo build --release --bin server
 
 # Runtime stage
