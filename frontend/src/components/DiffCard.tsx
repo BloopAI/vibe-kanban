@@ -25,7 +25,10 @@ import type { TaskAttempt } from 'shared/types';
 import { useReview, type ReviewDraft } from '@/contexts/ReviewProvider';
 import { CommentWidgetLine } from '@/components/diff/CommentWidgetLine';
 import { ReviewCommentRenderer } from '@/components/diff/ReviewCommentRenderer';
-import { useDiffViewMode } from '@/stores/useDiffViewStore';
+import {
+  useDiffViewMode,
+  useIgnoreWhitespaceDiff,
+} from '@/stores/useDiffViewStore';
 import { useProject } from '@/contexts/project-context';
 
 type Props = {
@@ -76,6 +79,7 @@ export default function DiffCard({
   const theme = getActualTheme(config?.theme);
   const { comments, drafts, setDraft } = useReview();
   const globalMode = useDiffViewMode();
+  const ignoreWhitespace = useIgnoreWhitespaceDiff();
   const { projectId } = useProject();
 
   const oldName = diff.oldPath || undefined;
@@ -92,6 +96,11 @@ export default function DiffCard({
   const newContentSafe = diff.newContent || '';
   const isContentEqual = oldContentSafe === newContentSafe;
 
+  const diffOptions = useMemo(
+    () => (ignoreWhitespace ? { ignoreWhitespace: true as const } : undefined),
+    [ignoreWhitespace]
+  );
+
   const diffFile = useMemo(() => {
     if (isContentEqual || isOmitted) return null;
     try {
@@ -103,7 +112,8 @@ export default function DiffCard({
         newFileName,
         newContentSafe,
         oldLang,
-        newLang
+        newLang,
+        diffOptions
       );
       file.initRaw();
       return file;
@@ -120,6 +130,7 @@ export default function DiffCard({
     newLang,
     oldContentSafe,
     newContentSafe,
+    diffOptions,
   ]);
 
   const add = isOmitted
