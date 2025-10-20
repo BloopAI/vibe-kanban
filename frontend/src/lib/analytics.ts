@@ -3,8 +3,6 @@ import type { AnalyticsInfo } from 'shared/types';
 
 let posthogInitialized = false;
 let analyticsEnabled = false;
-let eventQueue: Array<{ eventName: string; properties?: Record<string, any> }> =
-  [];
 
 /**
  * Initialize PostHog with analytics configuration from the backend
@@ -41,6 +39,10 @@ export function initializeAnalytics(
     return;
   }
 
+  // User has opted in - enable tracking immediately
+  // PostHog will queue events internally until loaded callback fires
+  analyticsEnabled = true;
+
   // Initialize PostHog for the first time
   try {
     posthog.init(analyticsInfo.config.posthog_api_key, {
@@ -51,22 +53,7 @@ export function initializeAnalytics(
         // Identify user with backend's user_id for correlation
         posthog.identify(analyticsInfo.user_id);
 
-        analyticsEnabled = true;
-
-        // Flush queued events
-        if (eventQueue.length > 0) {
-          console.log(
-            `[Analytics] Flushing ${eventQueue.length} queued events`
-          );
-          eventQueue.forEach(({ eventName, properties }) => {
-            posthog.capture(eventName, {
-              ...properties,
-              timestamp: new Date().toISOString(),
-              source: 'frontend',
-            });
-          });
-          eventQueue = [];
-        }
+        // PostHog automatically flushes its internal queue here
       },
       capture_pageview: false,
       capture_pageleave: true,
@@ -87,16 +74,12 @@ export function trackEvent(
   eventName: string,
   properties?: Record<string, any>
 ): void {
-  // If PostHog is initializing but not ready yet, queue the event
-  if (posthogInitialized && !analyticsEnabled) {
-    eventQueue.push({ eventName, properties });
+  // Don't track if user opted out or PostHog not initialized
+  if (!posthogInitialized || !analyticsEnabled) {
     return;
   }
 
-  if (!analyticsEnabled) {
-    return;
-  }
-
+  // PostHog handles queueing internally if loaded callback hasn't fired yet
   try {
     posthog.capture(eventName, {
       ...properties,
