@@ -1,4 +1,4 @@
-import { Circle, Check, CircleDot, ChevronDown } from 'lucide-react';
+import { Circle, Check, CircleDot, ChevronUp } from 'lucide-react';
 import { useEntries } from '@/contexts/EntriesContext';
 import { usePinnedTodos } from '@/hooks/usePinnedTodos';
 import { Card } from '../ui/card';
@@ -40,9 +40,9 @@ function TodoPanel() {
       <summary className="list-none cursor-pointer">
         <Card className="bg-muted p-3 text-sm flex items-center justify-between">
           <span>{t('todos.title', { count: todos.length })}</span>
-          <ChevronDown
+          <ChevronUp
             aria-hidden
-            className="h-4 w-4 text-muted-foreground transition-transform group-open:-rotate-180"
+            className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180"
           />
         </Card>
       </summary>
