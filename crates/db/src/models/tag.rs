@@ -69,12 +69,10 @@ impl Tag {
         id: Uuid,
         data: &UpdateTag,
     ) -> Result<Self, sqlx::Error> {
-        // Get existing tag first
         let existing = Self::find_by_id(pool, id)
             .await?
             .ok_or(sqlx::Error::RowNotFound)?;
 
-        // Use let bindings to create longer-lived values
         let tag_name = data.tag_name.as_ref().unwrap_or(&existing.tag_name);
         let content = data.content.as_ref().or(existing.content.as_ref());
 
