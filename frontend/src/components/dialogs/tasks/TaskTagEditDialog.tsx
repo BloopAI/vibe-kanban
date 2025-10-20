@@ -18,14 +18,12 @@ import NiceModal, { useModal } from '@ebay/nice-modal-react';
 
 export interface TaskTagEditDialogProps {
   tag?: TaskTag | null; // null for create mode
-  projectId?: string;
-  isGlobal?: boolean;
 }
 
 export type TaskTagEditResult = 'saved' | 'canceled';
 
 export const TaskTagEditDialog = NiceModal.create<TaskTagEditDialogProps>(
-  ({ tag, projectId, isGlobal = false }) => {
+  ({ tag }) => {
     const modal = useModal();
     const [formData, setFormData] = useState({
       tag_name: '',
@@ -69,7 +67,6 @@ export const TaskTagEditDialog = NiceModal.create<TaskTagEditDialogProps>(
           await tagsApi.update(tag.id, updateData);
         } else {
           const createData: CreateTaskTag = {
-            project_id: isGlobal ? null : projectId || null,
             tag_name: formData.tag_name,
             content: formData.content || null,
           };

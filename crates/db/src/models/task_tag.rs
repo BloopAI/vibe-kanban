@@ -7,7 +7,6 @@ use uuid::Uuid;
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
 pub struct TaskTag {
     pub id: Uuid,
-    pub project_id: Option<Uuid>, // None for global tags
     pub tag_name: String,
     pub content: Option<String>,
     pub created_at: DateTime<Utc>,
@@ -16,7 +15,6 @@ pub struct TaskTag {
 
 #[derive(Debug, Deserialize, TS)]
 pub struct CreateTaskTag {
-    pub project_id: Option<Uuid>,
     pub tag_name: String,
     pub content: Option<String>,
 }
@@ -31,48 +29,18 @@ impl TaskTag {
     pub async fn find_all(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             TaskTag,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id?: Uuid", tag_name, content, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid", tag_name, content, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM task_tags
-               ORDER BY project_id IS NULL DESC, tag_name ASC"#
+               ORDER BY tag_name ASC"#
         )
         .fetch_all(pool)
         .await
     }
 
-    pub async fn find_by_project_id(
-        pool: &SqlitePool,
-        project_id: Option<Uuid>,
-    ) -> Result<Vec<Self>, sqlx::Error> {
-        if let Some(pid) = project_id {
-            // Return only project-specific tags
-            sqlx::query_as!(
-                TaskTag,
-                r#"SELECT id as "id!: Uuid", project_id as "project_id?: Uuid", tag_name, content, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
-                   FROM task_tags
-                   WHERE project_id = ?
-                   ORDER BY tag_name ASC"#,
-                pid
-            )
-            .fetch_all(pool)
-            .await
-        } else {
-            // Return only global tags
-            sqlx::query_as!(
-                TaskTag,
-                r#"SELECT id as "id!: Uuid", project_id as "project_id?: Uuid", tag_name, content, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
-                   FROM task_tags
-                   WHERE project_id IS NULL
-                   ORDER BY tag_name ASC"#
-            )
-            .fetch_all(pool)
-            .await
-        }
-    }
-
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             TaskTag,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id?: Uuid", tag_name, content, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid", tag_name, content, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM task_tags
                WHERE id = $1"#,
             id
@@ -85,11 +53,10 @@ impl TaskTag {
         let id = Uuid::new_v4();
         sqlx::query_as!(
             TaskTag,
-            r#"INSERT INTO task_tags (id, project_id, tag_name, content)
-               VALUES ($1, $2, $3, $4)
-               RETURNING id as "id!: Uuid", project_id as "project_id?: Uuid", tag_name, content, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            r#"INSERT INTO task_tags (id, tag_name, content)
+               VALUES ($1, $2, $3)
+               RETURNING id as "id!: Uuid", tag_name, content, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,
-            data.project_id,
             data.tag_name,
             data.content
         )
@@ -116,7 +83,7 @@ impl TaskTag {
             r#"UPDATE task_tags
                SET tag_name = $2, content = $3, updated_at = datetime('now', 'subsec')
                WHERE id = $1
-               RETURNING id as "id!: Uuid", project_id as "project_id?: Uuid", tag_name, content, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+               RETURNING id as "id!: Uuid", tag_name, content, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             tag_name,
             content

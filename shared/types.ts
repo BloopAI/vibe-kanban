@@ -34,9 +34,9 @@ export enum BaseCodingAgent { CLAUDE_CODE = "CLAUDE_CODE", AMP = "AMP", GEMINI =
 
 export type CodingAgent = { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR": Cursor } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot };
 
-export type TaskTag = { id: string, project_id: string | null, tag_name: string, content: string | null, created_at: string, updated_at: string, };
+export type TaskTag = { id: string, tag_name: string, content: string | null, created_at: string, updated_at: string, };
 
-export type CreateTaskTag = { project_id: string | null, tag_name: string, content: string | null, };
+export type CreateTaskTag = { tag_name: string, content: string | null, };
 
 export type UpdateTaskTag = { tag_name: string | null, content: string | null, };
 

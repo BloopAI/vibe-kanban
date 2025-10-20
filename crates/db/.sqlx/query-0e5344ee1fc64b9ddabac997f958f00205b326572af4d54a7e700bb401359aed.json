@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "UPDATE task_tags\n               SET tag_name = $2, content = $3, updated_at = datetime('now', 'subsec')\n               WHERE id = $1\n               RETURNING id as \"id!: Uuid\", project_id as \"project_id?: Uuid\", tag_name, content, created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "UPDATE task_tags\n               SET tag_name = $2, content = $3, updated_at = datetime('now', 'subsec')\n               WHERE id = $1\n               RETURNING id as \"id!: Uuid\", tag_name, content, created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -9,28 +9,23 @@
         "type_info": "Blob"
       },
       {
-        "name": "project_id?: Uuid",
-        "ordinal": 1,
-        "type_info": "Blob"
-      },
-      {
         "name": "tag_name",
-        "ordinal": 2,
+        "ordinal": 1,
         "type_info": "Text"
       },
       {
         "name": "content",
-        "ordinal": 3,
+        "ordinal": 2,
         "type_info": "Text"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 4,
+        "ordinal": 3,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 5,
+        "ordinal": 4,
         "type_info": "Text"
       }
     ],
@@ -39,12 +34,11 @@
     },
     "nullable": [
       true,
-      true,
       false,
       true,
       false,
       false
     ]
   },
-  "hash": "50031249d7878764405ef9c8cb337ead0d5c1f8ad7432c94f7bf651f450e8b86"
+  "hash": "0e5344ee1fc64b9ddabac997f958f00205b326572af4d54a7e700bb401359aed"
 }

@@ -115,8 +115,8 @@
         }
       },
       "taskTemplates": {
-        "title": "Plantillas de Tareas",
-        "description": "Gestiona las plantillas globales que se pueden usar en todos los proyectos."
+        "title": "Etiquetas de Tareas",
+        "description": "Crea fragmentos de texto reutilizables que se pueden insertar en descripciones de tareas usando @nombre_etiqueta."
       },
       "safety": {
         "title": "Avisos legales y de seguridad",

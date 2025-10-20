@@ -673,20 +673,10 @@ export const githubApi = {
   },
 };
 
-// Task Tags APIs
+// Task Tags APIs (all tags are global)
 export const tagsApi = {
   list: async (): Promise<TaskTag[]> => {
     const response = await makeRequest('/api/tags');
-    return handleApiResponse<TaskTag[]>(response);
-  },
-
-  listGlobal: async (): Promise<TaskTag[]> => {
-    const response = await makeRequest('/api/tags?global=true');
-    return handleApiResponse<TaskTag[]>(response);
-  },
-
-  listByProject: async (projectId: string): Promise<TaskTag[]> => {
-    const response = await makeRequest(`/api/tags?project_id=${projectId}`);
     return handleApiResponse<TaskTag[]>(response);
   },
 

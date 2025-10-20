@@ -115,8 +115,8 @@
         }
       },
       "taskTemplates": {
-        "title": "Task Templates",
-        "description": "Manage global task templates that can be used across all projects."
+        "title": "Task Tags",
+        "description": "Create reusable text snippets that can be inserted into task descriptions using @tag_name."
       },
       "safety": {
         "title": "Safety & Disclaimers",

@@ -741,7 +741,7 @@ export function GeneralSettings() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <TaskTagManager isGlobal={true} />
+          <TaskTagManager />
         </CardContent>
       </Card>
 

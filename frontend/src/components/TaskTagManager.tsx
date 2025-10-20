@@ -5,39 +5,21 @@ import { tagsApi } from '@/lib/api';
 import { showTaskTagEdit } from '@/lib/modals';
 import type { TaskTag } from 'shared/types';
 
-interface TaskTagManagerProps {
-  projectId?: string;
-  isGlobal?: boolean;
-}
-
-export function TaskTagManager({
-  projectId,
-  isGlobal = false,
-}: TaskTagManagerProps) {
+export function TaskTagManager() {
   const [tags, setTags] = useState<TaskTag[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchTags = useCallback(async () => {
     setLoading(true);
     try {
-      const data = isGlobal
-        ? await tagsApi.listGlobal()
-        : projectId
-          ? await tagsApi.listByProject(projectId)
-          : [];
-
-      // Filter to show only tags for this specific scope
-      const filtered = data.filter((tag) =>
-        isGlobal ? tag.project_id === null : tag.project_id === projectId
-      );
-
-      setTags(filtered);
+      const data = await tagsApi.list();
+      setTags(data);
     } catch (err) {
       console.error('Failed to fetch tags:', err);
     } finally {
       setLoading(false);
     }
-  }, [isGlobal, projectId]);
+  }, []);
 
   useEffect(() => {
     fetchTags();
@@ -48,8 +30,6 @@ export function TaskTagManager({
       try {
         const result = await showTaskTagEdit({
           tag: tag || null,
-          projectId,
-          isGlobal,
         });
 
         if (result === 'saved') {
@@ -59,7 +39,7 @@ export function TaskTagManager({
         // User cancelled - do nothing
       }
     },
-    [projectId, isGlobal, fetchTags]
+    [fetchTags]
   );
 
   const handleDelete = useCallback(
@@ -91,9 +71,7 @@ export function TaskTagManager({
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">
-          {isGlobal ? 'Global Task Tags' : 'Project Task Tags'}
-        </h3>
+        <h3 className="text-lg font-semibold">Task Tags</h3>
         <Button onClick={() => handleOpenDialog()} size="sm">
           <Plus className="h-4 w-4 mr-2" />
           Add Tag
@@ -102,8 +80,7 @@ export function TaskTagManager({
 
       {tags.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
-          No tags yet. Create your first tag to reuse content in task
-          descriptions with @tag_name
+          No tags yet. Create reusable text snippets for common task descriptions. Use @tag_name in any task.
         </div>
       ) : (
         <div className="border rounded-lg overflow-hidden">
