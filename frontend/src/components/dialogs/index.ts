@@ -38,10 +38,10 @@ export {
   type DeleteTaskConfirmationDialogProps,
 } from './tasks/DeleteTaskConfirmationDialog';
 export {
-  TaskTemplateEditDialog,
-  type TaskTemplateEditDialogProps,
-  type TaskTemplateEditResult,
-} from './tasks/TaskTemplateEditDialog';
+  TaskTagEditDialog,
+  type TaskTagEditDialogProps,
+  type TaskTagEditResult,
+} from './tasks/TaskTagEditDialog';
 export {
   ChangeTargetBranchDialog,
   type ChangeTargetBranchDialogProps,

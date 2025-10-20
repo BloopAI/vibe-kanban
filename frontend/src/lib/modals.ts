@@ -1,8 +1,8 @@
 import NiceModal from '@ebay/nice-modal-react';
 import type {
   FolderPickerDialogProps,
-  TaskTemplateEditDialogProps,
-  TaskTemplateEditResult,
+  TaskTagEditDialogProps,
+  TaskTagEditResult,
   ProjectFormDialogProps,
   ProjectFormDialogResult,
 } from '@/components/dialogs';
@@ -35,15 +35,15 @@ export function showFolderPicker(
 }
 
 /**
- * Show task template edit dialog
- * @param props - Props for template edit dialog
+ * Show task tag edit dialog
+ * @param props - Props for tag edit dialog
  * @returns Promise that resolves with 'saved' or 'canceled'
  */
-export function showTaskTemplateEdit(
-  props: TaskTemplateEditDialogProps
-): Promise<TaskTemplateEditResult> {
-  return showModal<TaskTemplateEditResult>(
-    'task-template-edit',
+export function showTaskTagEdit(
+  props: TaskTagEditDialogProps
+): Promise<TaskTagEditResult> {
+  return showModal<TaskTagEditResult>(
+    'task-tag-edit',
     props as Record<string, unknown>
   );
 }

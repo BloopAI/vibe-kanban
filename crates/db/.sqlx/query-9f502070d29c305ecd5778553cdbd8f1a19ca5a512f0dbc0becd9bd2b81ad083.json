@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\", project_id as \"project_id?: Uuid\", title, description, template_name, created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM task_templates \n               ORDER BY project_id IS NULL DESC, template_name ASC",
+  "query": "SELECT id as \"id!: Uuid\", project_id as \"project_id?: Uuid\", tag_name, content, created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM task_tags\n               WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -14,33 +14,28 @@
         "type_info": "Blob"
       },
       {
-        "name": "title",
+        "name": "tag_name",
         "ordinal": 2,
         "type_info": "Text"
       },
       {
-        "name": "description",
+        "name": "content",
         "ordinal": 3,
         "type_info": "Text"
       },
       {
-        "name": "template_name",
+        "name": "created_at!: DateTime<Utc>",
         "ordinal": 4,
         "type_info": "Text"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
-        "ordinal": 5,
-        "type_info": "Text"
-      },
-      {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 6,
+        "ordinal": 5,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 1
     },
     "nullable": [
       true,
@@ -48,9 +43,8 @@
       false,
       true,
       false,
-      false,
       false
     ]
   },
-  "hash": "96036c4f9e0f48bdc5a4a4588f0c5f288ac7aaa5425cac40fc33f337e1a351f2"
+  "hash": "9f502070d29c305ecd5778553cdbd8f1a19ca5a512f0dbc0becd9bd2b81ad083"
 }

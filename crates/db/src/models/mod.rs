@@ -7,4 +7,4 @@ pub mod merge;
 pub mod project;
 pub mod task;
 pub mod task_attempt;
-pub mod task_template;
+pub mod task_tag;
