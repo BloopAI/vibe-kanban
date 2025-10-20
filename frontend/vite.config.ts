@@ -62,7 +62,6 @@ export default defineConfig({
     },
   },
   define: {
-    // Expose PostHog credentials from environment variables
     'import.meta.env.POSTHOG_API_KEY': JSON.stringify(process.env.POSTHOG_API_KEY || ''),
     'import.meta.env.POSTHOG_API_ENDPOINT': JSON.stringify(process.env.POSTHOG_API_ENDPOINT || ''),
   },

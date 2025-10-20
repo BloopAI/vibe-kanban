@@ -87,7 +87,6 @@ Sentry.init({
 });
 Sentry.setTag('source', 'frontend');
 
-// Initialize PostHog if credentials are available
 if (import.meta.env.POSTHOG_API_KEY && import.meta.env.POSTHOG_API_ENDPOINT) {
   posthog.init(import.meta.env.POSTHOG_API_KEY, {
     api_host: import.meta.env.POSTHOG_API_ENDPOINT,
@@ -95,7 +94,7 @@ if (import.meta.env.POSTHOG_API_KEY && import.meta.env.POSTHOG_API_ENDPOINT) {
     capture_pageleave: true,
     capture_performance: true,
     autocapture: false,
-    opt_out_capturing_by_default: true, // Start opted out - will opt in after checking user preference
+    opt_out_capturing_by_default: true,
   });
 }
 
