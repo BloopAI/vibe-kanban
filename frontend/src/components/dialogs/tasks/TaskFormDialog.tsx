@@ -157,17 +157,13 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
         setSelectedExecutorProfile(system.config?.executor_profile || null);
         setQuickstartExpanded(false);
       }
-    }, [
-      task,
-      initialTask,
-      modal.visible,
-      system.config?.executor_profile,
-    ]);
+    }, [task, initialTask, modal.visible, system.config?.executor_profile]);
 
     // Fetch branches when dialog opens in create mode
     useEffect(() => {
       if (modal.visible && !isEditMode && projectId) {
-        projectsApi.getBranches(projectId)
+        projectsApi
+          .getBranches(projectId)
           .then((projectBranches) => {
             // Set branches and default to initialBaseBranch if provided, otherwise current branch
             setBranches(projectBranches);

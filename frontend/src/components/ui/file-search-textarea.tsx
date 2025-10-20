@@ -86,16 +86,28 @@ export const FileSearchTextarea = forwardRef<
         const filteredTags = tags.filter((tag) =>
           tag.tag_name.toLowerCase().includes(searchQuery.toLowerCase())
         );
-        results.push(...filteredTags.map((tag) => ({ type: 'tag' as const, tag })));
+        results.push(
+          ...filteredTags.map((tag) => ({ type: 'tag' as const, tag }))
+        );
 
         // Then fetch files (if projectId is available)
         if (projectId) {
-          const fileResults = await projectsApi.searchFiles(projectId, searchQuery);
-          const fileSearchResults: FileSearchResult[] = fileResults.map((item) => ({
-            ...item,
-            name: item.path.split('/').pop() || item.path,
-          }));
-          results.push(...fileSearchResults.map((file) => ({ type: 'file' as const, file })));
+          const fileResults = await projectsApi.searchFiles(
+            projectId,
+            searchQuery
+          );
+          const fileSearchResults: FileSearchResult[] = fileResults.map(
+            (item) => ({
+              ...item,
+              name: item.path.split('/').pop() || item.path,
+            })
+          );
+          results.push(
+            ...fileSearchResults.map((file) => ({
+              type: 'file' as const,
+              file,
+            }))
+          );
         }
 
         setSearchResults(results);
@@ -403,9 +415,7 @@ export const FileSearchTextarea = forwardRef<
                 {/* Files Section */}
                 {fileResults.length > 0 && (
                   <>
-                    {tagResults.length > 0 && (
-                      <div className="border-t my-1" />
-                    )}
+                    {tagResults.length > 0 && <div className="border-t my-1" />}
                     <div className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase">
                       Files
                     </div>

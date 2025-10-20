@@ -80,7 +80,8 @@ export function TaskTagManager() {
 
       {tags.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
-          No tags yet. Create reusable text snippets for common task descriptions. Use @tag_name in any task.
+          No tags yet. Create reusable text snippets for common task
+          descriptions. Use @tag_name in any task.
         </div>
       ) : (
         <div className="border rounded-lg overflow-hidden">
