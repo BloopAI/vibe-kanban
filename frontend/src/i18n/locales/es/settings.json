@@ -248,7 +248,8 @@
         "success": "✓ ¡Configuración del proyecto guardada exitosamente!",
         "error": "Error al guardar la configuración del proyecto",
         "unsavedChanges": "• Tienes cambios sin guardar",
-        "discard": "Descartar"
+        "discard": "Descartar",
+        "confirmSwitch": "Tienes cambios sin guardar. ¿Estás seguro de que quieres cambiar de proyecto? Tus cambios se perderán."
       }
     }
   }

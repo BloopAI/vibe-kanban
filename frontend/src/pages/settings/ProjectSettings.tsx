@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { isEqual } from 'lodash';
@@ -44,6 +44,7 @@ interface ProjectFormState {
 
 export function ProjectSettings() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const projectIdParam = searchParams.get('projectId') ?? '';
   const { t } = useTranslation('settings');
   const { system } = useUserSystem();
 
@@ -59,7 +60,6 @@ export function ProjectSettings() {
     searchParams.get('projectId') || ''
   );
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const previousProjectIdRef = useRef<string>(selectedProjectId);
 
   // Form state
   const [draft, setDraft] = useState<ProjectFormState | null>(null);
@@ -79,51 +79,6 @@ export function ProjectSettings() {
           '#!/bin/bash\n# Add cleanup commands here...\n# This runs after coding agent execution',
       };
 
-  // Sync URL param when project ID changes from dropdown
-  const handleProjectSelect = (projectId: string) => {
-    setSelectedProjectId(projectId);
-    if (projectId) {
-      setSearchParams({ projectId });
-    } else {
-      setSearchParams({});
-    }
-  };
-
-  // Sync selectedProjectId when URL changes (e.g., clicking Edit from project list)
-  useEffect(() => {
-    const projectIdFromUrl = searchParams.get('projectId') ?? '';
-    if (projectIdFromUrl !== selectedProjectId) {
-      setSelectedProjectId(projectIdFromUrl);
-    }
-  }, [searchParams, selectedProjectId]);
-
-  // Update selected project when ID changes
-  useEffect(() => {
-    const projectIdChanged = selectedProjectId !== previousProjectIdRef.current;
-    previousProjectIdRef.current = selectedProjectId;
-
-    if (selectedProjectId && projects) {
-      const project = projects.find((p) => p.id === selectedProjectId);
-      setSelectedProject(project || null);
-
-      // Only reset draft if project ID changed OR user has no unsaved edits
-      if (project && (projectIdChanged || !hasUnsavedChanges)) {
-        const formState: ProjectFormState = {
-          name: project.name,
-          git_repo_path: project.git_repo_path,
-          setup_script: project.setup_script ?? '',
-          dev_script: project.dev_script ?? '',
-          cleanup_script: project.cleanup_script ?? '',
-          copy_files: project.copy_files ?? '',
-        };
-        setDraft(formState);
-      }
-    } else {
-      setSelectedProject(null);
-      setDraft(null);
-    }
-  }, [selectedProjectId, projects, hasUnsavedChanges]);
-
   // Check for unsaved changes
   const hasUnsavedChanges = useMemo(() => {
     if (!draft || !selectedProject) return false;
@@ -139,6 +94,92 @@ export function ProjectSettings() {
 
     return !isEqual(draft, original);
   }, [draft, selectedProject]);
+
+  // Handle project selection from dropdown
+  const handleProjectSelect = useCallback(
+    (id: string) => {
+      // No-op if same project
+      if (id === selectedProjectId) return;
+
+      // Confirm if there are unsaved changes
+      if (hasUnsavedChanges) {
+        const confirmed = window.confirm(t('settings.projects.save.confirmSwitch'));
+        if (!confirmed) return;
+
+        // Clear local state before switching
+        setDraft(null);
+        setSelectedProject(null);
+        setSuccess(false);
+        setError(null);
+      }
+
+      // Update state and URL
+      setSelectedProjectId(id);
+      if (id) {
+        setSearchParams({ projectId: id });
+      } else {
+        setSearchParams({});
+      }
+    },
+    [hasUnsavedChanges, selectedProjectId, setSearchParams, t]
+  );
+
+  // Sync selectedProjectId when URL changes (with unsaved changes prompt)
+  useEffect(() => {
+    if (projectIdParam === selectedProjectId) return;
+
+    // Confirm if there are unsaved changes
+    if (hasUnsavedChanges) {
+      const confirmed = window.confirm(t('settings.projects.save.confirmSwitch'));
+      if (!confirmed) {
+        // Revert URL to previous value
+        if (selectedProjectId) {
+          setSearchParams({ projectId: selectedProjectId });
+        } else {
+          setSearchParams({});
+        }
+        return;
+      }
+
+      // Clear local state before switching
+      setDraft(null);
+      setSelectedProject(null);
+      setSuccess(false);
+      setError(null);
+    }
+
+    setSelectedProjectId(projectIdParam);
+  }, [projectIdParam, hasUnsavedChanges, selectedProjectId, setSearchParams, t]);
+
+  // Populate draft from server data
+  useEffect(() => {
+    if (!projects) return;
+
+    const nextProject = selectedProjectId
+      ? projects.find((p) => p.id === selectedProjectId)
+      : null;
+
+    setSelectedProject((prev) =>
+      prev?.id === nextProject?.id ? prev : nextProject ?? null
+    );
+
+    if (!nextProject) {
+      if (!hasUnsavedChanges) setDraft(null);
+      return;
+    }
+
+    if (hasUnsavedChanges) return;
+
+    const original: ProjectFormState = {
+      name: nextProject.name,
+      git_repo_path: nextProject.git_repo_path,
+      setup_script: nextProject.setup_script ?? '',
+      dev_script: nextProject.dev_script ?? '',
+      cleanup_script: nextProject.cleanup_script ?? '',
+      copy_files: nextProject.copy_files ?? '',
+    };
+    setDraft(original);
+  }, [projects, selectedProjectId, hasUnsavedChanges]);
 
   // Warn on tab close/navigation with unsaved changes
   useEffect(() => {
