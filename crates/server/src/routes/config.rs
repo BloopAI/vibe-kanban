@@ -33,12 +33,6 @@ pub fn router() -> Router<DeploymentImpl> {
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
-#[ts(export)]
-pub struct AnalyticsInfo {
-    pub user_id: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, TS)]
 pub struct Environment {
     pub os_type: String,
     pub os_version: String,
@@ -67,7 +61,7 @@ impl Environment {
 #[derive(Debug, Serialize, Deserialize, TS)]
 pub struct UserSystemInfo {
     pub config: Config,
-    pub analytics: AnalyticsInfo,
+    pub analytics_user_id: String,
     #[serde(flatten)]
     pub profiles: ExecutorConfigs,
     pub environment: Environment,
@@ -84,9 +78,7 @@ async fn get_user_system_info(
 
     let user_system_info = UserSystemInfo {
         config: config.clone(),
-        analytics: AnalyticsInfo {
-            user_id: deployment.user_id().to_string(),
-        },
+        analytics_user_id: deployment.user_id().to_string(),
         profiles: ExecutorConfigs::get_cached(),
         environment: Environment::new(),
         capabilities: {

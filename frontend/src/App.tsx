@@ -38,24 +38,25 @@ import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
 function AppContent() {
-  const { config, analytics, updateAndSaveConfig, loading } = useUserSystem();
+  const { config, analyticsUserId, updateAndSaveConfig, loading } =
+    useUserSystem();
   const posthog = usePostHog();
 
   // Handle opt-in/opt-out and user identification when config loads
   useEffect(() => {
-    if (!posthog || !analytics) return;
+    if (!posthog || !analyticsUserId) return;
 
     const userOptedIn = config?.analytics_enabled !== false;
 
     if (userOptedIn) {
       posthog.opt_in_capturing();
-      posthog.identify(analytics.user_id);
+      posthog.identify(analyticsUserId);
       console.log('[Analytics] Analytics enabled and user identified');
     } else {
       posthog.opt_out_capturing();
       console.log('[Analytics] Analytics disabled by user preference');
     }
-  }, [config?.analytics_enabled, analytics, posthog]);
+  }, [config?.analytics_enabled, analyticsUserId, posthog]);
 
   useEffect(() => {
     let cancelled = false;

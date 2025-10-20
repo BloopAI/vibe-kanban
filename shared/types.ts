@@ -58,13 +58,11 @@ export type CreateImage = { file_path: string, original_name: string, mime_type:
 
 export type ApiResponse<T, E = T> = { success: boolean, data: T | null, error_data: E | null, message: string | null, };
 
-export type UserSystemInfo = { config: Config, analytics: AnalyticsInfo, environment: Environment, 
+export type UserSystemInfo = { config: Config, analytics_user_id: string, environment: Environment, 
 /**
  * Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["SESSION_FORK"] })
  */
 capabilities: { [key in string]?: Array<BaseAgentCapability> }, executors: { [key in BaseCodingAgent]?: ExecutorConfig }, };
-
-export type AnalyticsInfo = { user_id: string, };
 
 export type Environment = { os_type: string, os_version: string, os_architecture: string, bitness: string, };
 

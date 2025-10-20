@@ -63,8 +63,8 @@ export default defineConfig({
   },
   define: {
     // Expose PostHog credentials from environment variables
-    'import.meta.env.VITE_POSTHOG_API_KEY': JSON.stringify(process.env.POSTHOG_API_KEY || ''),
-    'import.meta.env.VITE_POSTHOG_API_ENDPOINT': JSON.stringify(process.env.POSTHOG_API_ENDPOINT || ''),
+    'import.meta.env.POSTHOG_API_KEY': JSON.stringify(process.env.POSTHOG_API_KEY || ''),
+    'import.meta.env.POSTHOG_API_ENDPOINT': JSON.stringify(process.env.POSTHOG_API_ENDPOINT || ''),
   },
   server: {
     port: parseInt(process.env.FRONTEND_PORT || "3000"),
