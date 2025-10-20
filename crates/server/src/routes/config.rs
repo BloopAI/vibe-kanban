@@ -16,10 +16,7 @@ use executors::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use services::services::{
-    analytics::AnalyticsConfig,
-    config::{Config, ConfigError, SoundFile, save_config_to_file},
-};
+use services::services::config::{Config, ConfigError, SoundFile, save_config_to_file};
 use tokio::fs;
 use ts_rs::TS;
 use utils::{assets::config_path, response::ApiResponse};
@@ -39,7 +36,6 @@ pub fn router() -> Router<DeploymentImpl> {
 #[ts(export)]
 pub struct AnalyticsInfo {
     pub user_id: String,
-    pub config: Option<AnalyticsConfig>,
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -90,7 +86,6 @@ async fn get_user_system_info(
         config: config.clone(),
         analytics: AnalyticsInfo {
             user_id: deployment.user_id().to_string(),
-            config: AnalyticsConfig::new(),
         },
         profiles: ExecutorConfigs::get_cached(),
         environment: Environment::new(),

@@ -11,7 +11,7 @@ import {
 import type { LayoutMode } from '../layout/TasksLayout';
 import type { TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
 import { ActionsDropdown } from '../ui/ActionsDropdown';
-import { trackEvent } from '@/lib/analytics';
+import { usePostHog } from 'posthog-js/react';
 
 interface AttemptHeaderActionsProps {
   onClose: () => void;
@@ -29,6 +29,8 @@ export const AttemptHeaderActions = ({
   attempt,
 }: AttemptHeaderActionsProps) => {
   const { t } = useTranslation('tasks');
+  const posthog = usePostHog();
+
   return (
     <>
       {typeof mode !== 'undefined' && onModeChange && (
@@ -41,14 +43,24 @@ export const AttemptHeaderActions = ({
 
               // Track view navigation
               if (newMode === 'preview') {
-                trackEvent('preview_navigated', { trigger: 'button' });
+                posthog?.capture('preview_navigated', {
+                  trigger: 'button',
+                  timestamp: new Date().toISOString(),
+                  source: 'frontend',
+                });
               } else if (newMode === 'diffs') {
-                trackEvent('diffs_navigated', { trigger: 'button' });
+                posthog?.capture('diffs_navigated', {
+                  trigger: 'button',
+                  timestamp: new Date().toISOString(),
+                  source: 'frontend',
+                });
               } else if (newMode === null) {
                 // Closing the view (clicked active button)
-                trackEvent('view_closed', {
+                posthog?.capture('view_closed', {
                   trigger: 'button',
                   from_view: mode ?? 'attempt',
+                  timestamp: new Date().toISOString(),
+                  source: 'frontend',
                 });
               }
 

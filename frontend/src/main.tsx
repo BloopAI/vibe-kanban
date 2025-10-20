@@ -8,6 +8,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as Sentry from '@sentry/react';
 import NiceModal from '@ebay/nice-modal-react';
 import i18n from './i18n';
+import posthog from 'posthog-js';
+import { PostHogProvider } from 'posthog-js/react';
 // Import modal type definitions
 import './types/modals';
 // Import and register modals
@@ -85,6 +87,21 @@ Sentry.init({
 });
 Sentry.setTag('source', 'frontend');
 
+// Initialize PostHog if credentials are available
+if (
+  import.meta.env.VITE_POSTHOG_API_KEY &&
+  import.meta.env.VITE_POSTHOG_API_ENDPOINT
+) {
+  posthog.init(import.meta.env.VITE_POSTHOG_API_KEY, {
+    api_host: import.meta.env.VITE_POSTHOG_API_ENDPOINT,
+    capture_pageview: false,
+    capture_pageleave: true,
+    capture_performance: true,
+    autocapture: false,
+    opt_out_capturing_by_default: true, // Start opted out - will opt in after checking user preference
+  });
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -97,15 +114,17 @@ const queryClient = new QueryClient({
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <Sentry.ErrorBoundary
-        fallback={<p>{i18n.t('common:states.error')}</p>}
-        showDialog
-      >
-        <ClickToComponent />
-        <VibeKanbanWebCompanion />
-        <App />
-        {/* <ReactQueryDevtools initialIsOpen={false} /> */}
-      </Sentry.ErrorBoundary>
+      <PostHogProvider client={posthog}>
+        <Sentry.ErrorBoundary
+          fallback={<p>{i18n.t('common:states.error')}</p>}
+          showDialog
+        >
+          <ClickToComponent />
+          <VibeKanbanWebCompanion />
+          <App />
+          {/* <ReactQueryDevtools initialIsOpen={false} /> */}
+        </Sentry.ErrorBoundary>
+      </PostHogProvider>
     </QueryClientProvider>
   </React.StrictMode>
 );

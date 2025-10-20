@@ -11,7 +11,7 @@ import { openTaskForm } from '@/lib/openTaskForm';
 import { FeatureShowcaseModal } from '@/components/showcase/FeatureShowcaseModal';
 import { showcases } from '@/config/showcases';
 import { useShowcaseTrigger } from '@/hooks/useShowcaseTrigger';
-import { trackEvent } from '@/lib/analytics';
+import { usePostHog } from 'posthog-js/react';
 
 import { useSearch } from '@/contexts/search-context';
 import { useProject } from '@/contexts/project-context';
@@ -121,6 +121,7 @@ export function ProjectTasks() {
   const [searchParams, setSearchParams] = useSearchParams();
   const isXL = useMediaQuery('(min-width: 1280px)');
   const isMobile = !isXL;
+  const posthog = usePostHog();
 
   const {
     projectId,
@@ -395,14 +396,18 @@ export function ProjectTasks() {
         const next = order[(idx + 1) % order.length];
 
         if (next === 'preview') {
-          trackEvent('preview_navigated', {
+          posthog?.capture('preview_navigated', {
             trigger: 'keyboard',
             direction: 'forward',
+            timestamp: new Date().toISOString(),
+            source: 'frontend',
           });
         } else if (next === 'diffs') {
-          trackEvent('diffs_navigated', {
+          posthog?.capture('diffs_navigated', {
             trigger: 'keyboard',
             direction: 'forward',
+            timestamp: new Date().toISOString(),
+            source: 'frontend',
           });
         }
 
@@ -424,14 +429,18 @@ export function ProjectTasks() {
         const next = order[(idx - 1 + order.length) % order.length];
 
         if (next === 'preview') {
-          trackEvent('preview_navigated', {
+          posthog?.capture('preview_navigated', {
             trigger: 'keyboard',
             direction: 'backward',
+            timestamp: new Date().toISOString(),
+            source: 'frontend',
           });
         } else if (next === 'diffs') {
-          trackEvent('diffs_navigated', {
+          posthog?.capture('diffs_navigated', {
             trigger: 'keyboard',
             direction: 'backward',
+            timestamp: new Date().toISOString(),
+            source: 'frontend',
           });
         }
 

@@ -64,9 +64,7 @@ export type UserSystemInfo = { config: Config, analytics: AnalyticsInfo, environ
  */
 capabilities: { [key in string]?: Array<BaseAgentCapability> }, executors: { [key in BaseCodingAgent]?: ExecutorConfig }, };
 
-export type AnalyticsInfo = { user_id: string, config: AnalyticsConfig | null, };
-
-export type AnalyticsConfig = { posthog_api_key: string, posthog_api_endpoint: string, };
+export type AnalyticsInfo = { user_id: string, };
 
 export type Environment = { os_type: string, os_version: string, os_architecture: string, bitness: string, };
 
