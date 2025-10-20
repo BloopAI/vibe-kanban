@@ -132,7 +132,13 @@ export function Navbar() {
               </>
             )}
             <Button variant="ghost" size="icon" asChild aria-label="Settings">
-              <Link to="/settings">
+              <Link
+                to={
+                  projectId
+                    ? `/settings/projects?projectId=${projectId}`
+                    : '/settings'
+                }
+              >
                 <Settings className="h-4 w-4" />
               </Link>
             </Button>
