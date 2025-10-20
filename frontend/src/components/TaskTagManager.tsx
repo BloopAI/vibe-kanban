@@ -28,9 +28,7 @@ export function TaskTagManager({
 
       // Filter to show only tags for this specific scope
       const filtered = data.filter((tag) =>
-        isGlobal
-          ? tag.project_id === null
-          : tag.project_id === projectId
+        isGlobal ? tag.project_id === null : tag.project_id === projectId
       );
 
       setTags(filtered);
@@ -67,9 +65,7 @@ export function TaskTagManager({
   const handleDelete = useCallback(
     async (tag: TaskTag) => {
       if (
-        !confirm(
-          `Are you sure you want to delete the tag "${tag.tag_name}"?`
-        )
+        !confirm(`Are you sure you want to delete the tag "${tag.tag_name}"?`)
       ) {
         return;
       }
@@ -106,7 +102,8 @@ export function TaskTagManager({
 
       {tags.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
-          No tags yet. Create your first tag to reuse content in task descriptions with @tag_name
+          No tags yet. Create your first tag to reuse content in task
+          descriptions with @tag_name
         </div>
       ) : (
         <div className="border rounded-lg overflow-hidden">
@@ -117,9 +114,7 @@ export function TaskTagManager({
                   <th className="text-left p-2 text-sm font-medium">
                     Tag Name
                   </th>
-                  <th className="text-left p-2 text-sm font-medium">
-                    Content
-                  </th>
+                  <th className="text-left p-2 text-sm font-medium">Content</th>
                   <th className="text-right p-2 text-sm font-medium">
                     Actions
                   </th>
@@ -131,9 +126,7 @@ export function TaskTagManager({
                     key={tag.id}
                     className="border-b hover:bg-muted/30 transition-colors"
                   >
-                    <td className="p-2 text-sm font-medium">
-                      @{tag.tag_name}
-                    </td>
+                    <td className="p-2 text-sm font-medium">@{tag.tag_name}</td>
                     <td className="p-2 text-sm">
                       <div
                         className="max-w-[400px] truncate"

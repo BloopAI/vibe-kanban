@@ -76,8 +76,7 @@ pub async fn update_tag(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<UpdateTaskTag>,
 ) -> Result<ResponseJson<ApiResponse<TaskTag>>, ApiError> {
-    let updated_tag =
-        TaskTag::update(&deployment.db().pool, tag.id, &payload).await?;
+    let updated_tag = TaskTag::update(&deployment.db().pool, tag.id, &payload).await?;
 
     deployment
         .track_if_analytics_allowed(
@@ -107,12 +106,7 @@ pub async fn delete_tag(
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_tag_router = Router::new()
-        .route(
-            "/",
-            get(get_tag)
-                .put(update_tag)
-                .delete(delete_tag),
-        )
+        .route("/", get(get_tag).put(update_tag).delete(delete_tag))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_task_tag_middleware,

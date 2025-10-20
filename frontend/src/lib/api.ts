@@ -686,9 +686,7 @@ export const tagsApi = {
   },
 
   listByProject: async (projectId: string): Promise<TaskTag[]> => {
-    const response = await makeRequest(
-      `/api/tags?project_id=${projectId}`
-    );
+    const response = await makeRequest(`/api/tags?project_id=${projectId}`);
     return handleApiResponse<TaskTag[]>(response);
   },
 
@@ -705,10 +703,7 @@ export const tagsApi = {
     return handleApiResponse<TaskTag>(response);
   },
 
-  update: async (
-    tagId: string,
-    data: UpdateTaskTag
-  ): Promise<TaskTag> => {
+  update: async (tagId: string, data: UpdateTaskTag): Promise<TaskTag> => {
     const response = await makeRequest(`/api/tags/${tagId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
