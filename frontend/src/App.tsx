@@ -1,11 +1,11 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { I18nextProvider } from 'react-i18next';
 import i18n from '@/i18n';
 import { Projects } from '@/pages/projects';
 import { ProjectTasks } from '@/pages/project-tasks';
 import { NormalLayout } from '@/components/layout/NormalLayout';
-import { initializeAnalytics, trackEvent } from '@/lib/analytics';
+import { initializeAnalytics } from '@/lib/analytics';
 
 import {
   AgentSettings,
@@ -39,7 +39,6 @@ const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
 function AppContent() {
   const { config, analytics, updateAndSaveConfig, loading } = useUserSystem();
-  const appLoadedTracked = useRef(false);
 
   // Initialize analytics when analytics info is loaded
   useEffect(() => {
@@ -48,17 +47,6 @@ function AppContent() {
       const analyticsEnabled = config.analytics_enabled !== false;
       console.log('Analytics enabled:', analyticsEnabled);
       initializeAnalytics(analytics, analyticsEnabled);
-
-      // Track app loaded event only once per session
-      if (analyticsEnabled && !appLoadedTracked.current) {
-        trackEvent('app_loaded', {
-          version: import.meta.env.VITE_APP_VERSION,
-          theme: config.theme,
-          language: config.language,
-          load_time_ms: Math.round(performance.now()),
-        });
-        appLoadedTracked.current = true;
-      }
     }
   }, [config, analytics]);
 
