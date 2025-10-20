@@ -5,7 +5,7 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
-pub struct TaskTag {
+pub struct Tag {
     pub id: Uuid,
     pub tag_name: String,
     pub content: Option<String>,
@@ -14,23 +14,23 @@ pub struct TaskTag {
 }
 
 #[derive(Debug, Deserialize, TS)]
-pub struct CreateTaskTag {
+pub struct CreateTag {
     pub tag_name: String,
     pub content: Option<String>,
 }
 
 #[derive(Debug, Deserialize, TS)]
-pub struct UpdateTaskTag {
+pub struct UpdateTag {
     pub tag_name: Option<String>,
     pub content: Option<String>,
 }
 
-impl TaskTag {
+impl Tag {
     pub async fn find_all(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
-            TaskTag,
+            Tag,
             r#"SELECT id as "id!: Uuid", tag_name, content, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
-               FROM task_tags
+               FROM tags
                ORDER BY tag_name ASC"#
         )
         .fetch_all(pool)
@@ -39,9 +39,9 @@ impl TaskTag {
 
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
-            TaskTag,
+            Tag,
             r#"SELECT id as "id!: Uuid", tag_name, content, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
-               FROM task_tags
+               FROM tags
                WHERE id = $1"#,
             id
         )
@@ -49,11 +49,11 @@ impl TaskTag {
         .await
     }
 
-    pub async fn create(pool: &SqlitePool, data: &CreateTaskTag) -> Result<Self, sqlx::Error> {
+    pub async fn create(pool: &SqlitePool, data: &CreateTag) -> Result<Self, sqlx::Error> {
         let id = Uuid::new_v4();
         sqlx::query_as!(
-            TaskTag,
-            r#"INSERT INTO task_tags (id, tag_name, content)
+            Tag,
+            r#"INSERT INTO tags (id, tag_name, content)
                VALUES ($1, $2, $3)
                RETURNING id as "id!: Uuid", tag_name, content, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,
@@ -67,7 +67,7 @@ impl TaskTag {
     pub async fn update(
         pool: &SqlitePool,
         id: Uuid,
-        data: &UpdateTaskTag,
+        data: &UpdateTag,
     ) -> Result<Self, sqlx::Error> {
         // Get existing tag first
         let existing = Self::find_by_id(pool, id)
@@ -79,8 +79,8 @@ impl TaskTag {
         let content = data.content.as_ref().or(existing.content.as_ref());
 
         sqlx::query_as!(
-            TaskTag,
-            r#"UPDATE task_tags
+            Tag,
+            r#"UPDATE tags
                SET tag_name = $2, content = $3, updated_at = datetime('now', 'subsec')
                WHERE id = $1
                RETURNING id as "id!: Uuid", tag_name, content, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
@@ -93,7 +93,7 @@ impl TaskTag {
     }
 
     pub async fn delete(pool: &SqlitePool, id: Uuid) -> Result<u64, sqlx::Error> {
-        let result = sqlx::query!("DELETE FROM task_tags WHERE id = $1", id)
+        let result = sqlx::query!("DELETE FROM tags WHERE id = $1", id)
             .execute(pool)
             .await?;
         Ok(result.rows_affected())

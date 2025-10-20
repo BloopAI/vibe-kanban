@@ -13,16 +13,16 @@ import {
 } from '@/components/ui/dialog';
 import { Loader2 } from 'lucide-react';
 import { tagsApi } from '@/lib/api';
-import type { TaskTag, CreateTaskTag, UpdateTaskTag } from 'shared/types';
+import type { Tag, CreateTag, UpdateTag } from 'shared/types';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 
-export interface TaskTagEditDialogProps {
-  tag?: TaskTag | null; // null for create mode
+export interface TagEditDialogProps {
+  tag?: Tag | null; // null for create mode
 }
 
-export type TaskTagEditResult = 'saved' | 'canceled';
+export type TagEditResult = 'saved' | 'canceled';
 
-export const TaskTagEditDialog = NiceModal.create<TaskTagEditDialogProps>(
+export const TagEditDialog = NiceModal.create<TagEditDialogProps>(
   ({ tag }) => {
     const modal = useModal();
     const [formData, setFormData] = useState({
@@ -60,20 +60,20 @@ export const TaskTagEditDialog = NiceModal.create<TaskTagEditDialogProps>(
 
       try {
         if (isEditMode && tag) {
-          const updateData: UpdateTaskTag = {
+          const updateData: UpdateTag = {
             tag_name: formData.tag_name,
             content: formData.content || null,
           };
           await tagsApi.update(tag.id, updateData);
         } else {
-          const createData: CreateTaskTag = {
+          const createData: CreateTag = {
             tag_name: formData.tag_name,
             content: formData.content || null,
           };
           await tagsApi.create(createData);
         }
 
-        modal.resolve('saved' as TaskTagEditResult);
+        modal.resolve('saved' as TagEditResult);
         modal.hide();
       } catch (err: any) {
         setError(err.message || 'Failed to save tag');
@@ -83,7 +83,7 @@ export const TaskTagEditDialog = NiceModal.create<TaskTagEditDialogProps>(
     };
 
     const handleCancel = () => {
-      modal.resolve('canceled' as TaskTagEditResult);
+      modal.resolve('canceled' as TagEditResult);
       modal.hide();
     };
 

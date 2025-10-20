@@ -2,9 +2,9 @@ import { useEffect, useRef, useState, forwardRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { projectsApi, tagsApi } from '@/lib/api';
-import { Tag, FileText } from 'lucide-react';
+import { Tag as TagIcon, FileText } from 'lucide-react';
 
-import type { SearchResult, TaskTag } from 'shared/types';
+import type { SearchResult, Tag } from 'shared/types';
 
 interface FileSearchResult extends SearchResult {
   name: string;
@@ -14,7 +14,7 @@ interface FileSearchResult extends SearchResult {
 interface SearchResultItem {
   type: 'tag' | 'file';
   // For tags
-  tag?: TaskTag;
+  tag?: Tag;
   // For files
   file?: FileSearchResult;
 }
@@ -397,7 +397,7 @@ export const FileSearchTextarea = forwardRef<
                           role="option"
                         >
                           <div className="flex items-center gap-2 font-medium">
-                            <Tag className="h-3.5 w-3.5 text-blue-600" />
+                            <TagIcon className="h-3.5 w-3.5 text-blue-600" />
                             <span>@{tag.tag_name}</span>
                           </div>
                           {tag.content && (

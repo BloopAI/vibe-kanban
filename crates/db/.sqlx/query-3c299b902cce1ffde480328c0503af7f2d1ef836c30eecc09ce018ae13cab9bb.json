@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\", tag_name, content, created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM task_tags\n               WHERE id = $1",
+  "query": "UPDATE tags\n               SET tag_name = $2, content = $3, updated_at = datetime('now', 'subsec')\n               WHERE id = $1\n               RETURNING id as \"id!: Uuid\", tag_name, content, created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -30,7 +30,7 @@
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 3
     },
     "nullable": [
       true,
@@ -40,5 +40,5 @@
       false
     ]
   },
-  "hash": "e9d5df397c3f5aef90ab561d52dcea297a685d00a570c09d9e35c05a62283987"
+  "hash": "3c299b902cce1ffde480328c0503af7f2d1ef836c30eecc09ce018ae13cab9bb"
 }

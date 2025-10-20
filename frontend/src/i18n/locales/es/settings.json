@@ -115,7 +115,7 @@
         }
       },
       "taskTemplates": {
-        "title": "Etiquetas de Tareas",
+        "title": "Etiquetas",
         "description": "Crea fragmentos de texto reutilizables que se pueden insertar en descripciones de tareas usando @nombre_etiqueta."
       },
       "safety": {

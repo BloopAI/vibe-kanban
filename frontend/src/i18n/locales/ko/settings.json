@@ -115,7 +115,7 @@
         }
       },
       "taskTemplates": {
-        "title": "작업 태그",
+        "title": "태그",
         "description": "@tag_name을 사용하여 작업 설명에 삽입할 수 있는 재사용 가능한 텍스트 스니펫을 만드세요."
       },
       "safety": {

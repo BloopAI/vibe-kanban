@@ -2,11 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
 import { tagsApi } from '@/lib/api';
-import { showTaskTagEdit } from '@/lib/modals';
-import type { TaskTag } from 'shared/types';
+import { showTagEdit } from '@/lib/modals';
+import type { Tag } from 'shared/types';
 
-export function TaskTagManager() {
-  const [tags, setTags] = useState<TaskTag[]>([]);
+export function TagManager() {
+  const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchTags = useCallback(async () => {
@@ -26,9 +26,9 @@ export function TaskTagManager() {
   }, [fetchTags]);
 
   const handleOpenDialog = useCallback(
-    async (tag?: TaskTag) => {
+    async (tag?: Tag) => {
       try {
-        const result = await showTaskTagEdit({
+        const result = await showTagEdit({
           tag: tag || null,
         });
 
@@ -43,7 +43,7 @@ export function TaskTagManager() {
   );
 
   const handleDelete = useCallback(
-    async (tag: TaskTag) => {
+    async (tag: Tag) => {
       if (
         !confirm(`Are you sure you want to delete the tag "${tag.tag_name}"?`)
       ) {

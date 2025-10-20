@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "INSERT INTO task_tags (id, tag_name, content)\n               VALUES ($1, $2, $3)\n               RETURNING id as \"id!: Uuid\", tag_name, content, created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "INSERT INTO tags (id, tag_name, content)\n               VALUES ($1, $2, $3)\n               RETURNING id as \"id!: Uuid\", tag_name, content, created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -40,5 +40,5 @@
       false
     ]
   },
-  "hash": "813afea470cfdff6106afcf2005b6836789833d8ecd09dad009b4d78ffbb6e6c"
+  "hash": "4ce87ba88dfb92681035451fedb4817c300566738dde260edb3ee2cf67e36902"
 }

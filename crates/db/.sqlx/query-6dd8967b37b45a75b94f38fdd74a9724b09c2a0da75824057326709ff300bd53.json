@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\", tag_name, content, created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM task_tags\n               ORDER BY tag_name ASC",
+  "query": "SELECT id as \"id!: Uuid\", tag_name, content, created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tags\n               WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -30,7 +30,7 @@
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 1
     },
     "nullable": [
       true,
@@ -40,5 +40,5 @@
       false
     ]
   },
-  "hash": "c01fdb1278c9f2a9d33327e116a378e5c46e18a756645a4ad80e8352bed67dbd"
+  "hash": "6dd8967b37b45a75b94f38fdd74a9724b09c2a0da75824057326709ff300bd53"
 }

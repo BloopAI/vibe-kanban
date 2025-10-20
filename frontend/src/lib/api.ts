@@ -12,7 +12,7 @@ import {
   CreateTask,
   CreateAndStartTaskRequest,
   CreateTaskAttemptBody,
-  CreateTaskTag,
+  CreateTag,
   DeviceFlowStartResponse,
   DevicePollStatus,
   DirectoryListResponse,
@@ -27,11 +27,11 @@ import {
   Task,
   TaskAttempt,
   TaskRelationships,
-  TaskTag,
+  Tag,
   TaskWithAttemptStatus,
   UpdateProject,
   UpdateTask,
-  UpdateTaskTag,
+  UpdateTag,
   UserSystemInfo,
   GitHubServiceError,
   UpdateRetryFollowUpDraftRequest,
@@ -675,30 +675,30 @@ export const githubApi = {
 
 // Task Tags APIs (all tags are global)
 export const tagsApi = {
-  list: async (): Promise<TaskTag[]> => {
+  list: async (): Promise<Tag[]> => {
     const response = await makeRequest('/api/tags');
-    return handleApiResponse<TaskTag[]>(response);
+    return handleApiResponse<Tag[]>(response);
   },
 
-  get: async (tagId: string): Promise<TaskTag> => {
+  get: async (tagId: string): Promise<Tag> => {
     const response = await makeRequest(`/api/tags/${tagId}`);
-    return handleApiResponse<TaskTag>(response);
+    return handleApiResponse<Tag>(response);
   },
 
-  create: async (data: CreateTaskTag): Promise<TaskTag> => {
+  create: async (data: CreateTag): Promise<Tag> => {
     const response = await makeRequest('/api/tags', {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    return handleApiResponse<TaskTag>(response);
+    return handleApiResponse<Tag>(response);
   },
 
-  update: async (tagId: string, data: UpdateTaskTag): Promise<TaskTag> => {
+  update: async (tagId: string, data: UpdateTag): Promise<Tag> => {
     const response = await makeRequest(`/api/tags/${tagId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
-    return handleApiResponse<TaskTag>(response);
+    return handleApiResponse<Tag>(response);
   },
 
   delete: async (tagId: string): Promise<void> => {

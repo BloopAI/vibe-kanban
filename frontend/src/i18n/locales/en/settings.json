@@ -115,7 +115,7 @@
         }
       },
       "taskTemplates": {
-        "title": "Task Tags",
+        "title": "Tags",
         "description": "Create reusable text snippets that can be inserted into task descriptions using @tag_name."
       },
       "safety": {
