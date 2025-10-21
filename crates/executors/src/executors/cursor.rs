@@ -32,7 +32,9 @@ use crate::{
 mod mcp;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
-pub struct Cursor {
+#[serde(rename = "Cursor")]
+#[ts(rename = "Cursor")]
+pub struct CursorAgent {
     #[serde(default)]
     pub append_prompt: AppendPrompt,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -45,7 +47,7 @@ pub struct Cursor {
     pub cmd: CmdOverrides,
 }
 
-impl Cursor {
+impl CursorAgent {
     fn build_command_builder(&self) -> CommandBuilder {
         let mut builder =
             CommandBuilder::new("cursor-agent").params(["-p", "--output-format=stream-json"]);
@@ -63,7 +65,7 @@ impl Cursor {
 }
 
 #[async_trait]
-impl StandardCodingAgentExecutor for Cursor {
+impl StandardCodingAgentExecutor for CursorAgent {
     async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
         mcp::ensure_mcp_server_trust(self, current_dir).await;
 
@@ -178,7 +180,7 @@ impl StandardCodingAgentExecutor for Cursor {
 
                         // Provide a useful sign-in message if needed
                         let line = if line == "Press any key to sign in..." {
-                            "Please sign in to Cursor CLI using `cursor-agent login` or set the CURSOR_API_KEY environment variable.".to_string()
+                            "Please sign in to Cursor Agent CLI using `cursor-agent login` or set the CURSOR_API_KEY environment variable.".to_string()
                         } else {
                             line
                         };

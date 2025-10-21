@@ -15,7 +15,7 @@ use workspace_utils::msg_store::MsgStore;
 use crate::{
     approvals::ExecutorApprovalService,
     executors::{
-        amp::Amp, claude::ClaudeCode, codex::Codex, copilot::Copilot, cursor::Cursor,
+        amp::Amp, claude::ClaudeCode, codex::Codex, copilot::Copilot, cursor::CursorAgent,
         gemini::Gemini, opencode::Opencode, qwen::QwenCode,
     },
     mcp_config::McpConfig,
@@ -78,7 +78,9 @@ pub enum CodingAgent {
     Gemini,
     Codex,
     Opencode,
-    Cursor,
+    #[serde(rename = "CURSOR")]
+    #[strum(serialize = "CURSOR")]
+    CursorAgent,
     QwenCode,
     Copilot,
 }
@@ -133,7 +135,7 @@ impl CodingAgent {
             Self::Codex(_) => vec![BaseAgentCapability::SessionFork],
             Self::Gemini(_) => vec![BaseAgentCapability::SessionFork],
             Self::QwenCode(_) => vec![BaseAgentCapability::SessionFork],
-            Self::Opencode(_) | Self::Cursor(_) | Self::Copilot(_) => vec![],
+            Self::Opencode(_) | Self::CursorAgent(_) | Self::Copilot(_) => vec![],
         }
     }
 }
