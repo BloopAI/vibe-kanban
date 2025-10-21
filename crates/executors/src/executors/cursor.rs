@@ -32,7 +32,7 @@ use crate::{
 mod mcp;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
-pub struct CursorAgent {
+pub struct Cursor {
     #[serde(default)]
     pub append_prompt: AppendPrompt,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -45,7 +45,7 @@ pub struct CursorAgent {
     pub cmd: CmdOverrides,
 }
 
-impl CursorAgent {
+impl Cursor {
     fn build_command_builder(&self) -> CommandBuilder {
         let mut builder =
             CommandBuilder::new("cursor-agent").params(["-p", "--output-format=stream-json"]);
@@ -63,7 +63,7 @@ impl CursorAgent {
 }
 
 #[async_trait]
-impl StandardCodingAgentExecutor for CursorAgent {
+impl StandardCodingAgentExecutor for Cursor {
     async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
         mcp::ensure_mcp_server_trust(self, current_dir).await;
 

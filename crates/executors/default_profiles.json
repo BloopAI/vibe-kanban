@@ -69,39 +69,39 @@
         }
       }
     },
-    "CURSOR_AGENT": {
+    "CURSOR": {
       "DEFAULT": {
-        "CURSOR_AGENT": {
+        "CURSOR": {
           "force": true,
           "model": "auto"
         }
       },
       "SONNET_4_5": {
-        "CURSOR_AGENT": {
+        "CURSOR": {
           "force": true,
           "model": "sonnet-4.5"
         }
       },
       "SONNET_4_5_THINKING": {
-        "CURSOR_AGENT": {
+        "CURSOR": {
           "force": true,
           "model": "sonnet-4.5-thinking"
         }
       },
       "OPUS_4_1": {
-        "CURSOR_AGENT": {
+        "CURSOR": {
           "force": true,
           "model": "opus-4.1"
         }
       },
       "GPT_5": {
-        "CURSOR_AGENT": {
+        "CURSOR": {
           "force": true,
           "model": "gpt-5"
         }
       },
       "GROK": {
-        "CURSOR_AGENT": {
+        "CURSOR": {
           "force": true,
           "model": "grok"
         }
