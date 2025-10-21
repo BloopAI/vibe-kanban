@@ -15,7 +15,7 @@ type ExecutorType =
   | 'CLAUDE_CODE'
   | 'GEMINI'
   | 'CODEX'
-  | 'CURSOR_AGENT'
+  | 'CURSOR'
   | 'COPILOT'
   | 'OPENCODE'
   | 'QWEN_CODE';

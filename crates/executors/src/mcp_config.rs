@@ -266,7 +266,7 @@ fn adapt_copilot(mut servers: ServerMap, meta: Option<Value>) -> Value {
 enum Adapter {
     Passthrough,
     Gemini,
-    CursorAgent,
+    Cursor,
     Codex,
     Opencode,
     Copilot,
@@ -281,7 +281,7 @@ fn apply_adapter(adapter: Adapter, canonical: Value) -> Value {
     match adapter {
         Adapter::Passthrough => adapt_passthrough(servers_only, meta),
         Adapter::Gemini => adapt_gemini(servers_only, meta),
-        Adapter::CursorAgent => adapt_cursor(servers_only, meta),
+        Adapter::Cursor => adapt_cursor(servers_only, meta),
         Adapter::Codex => adapt_codex(servers_only, meta),
         Adapter::Opencode => adapt_opencode(servers_only, meta),
         Adapter::Copilot => adapt_copilot(servers_only, meta),
@@ -295,7 +295,7 @@ impl CodingAgent {
         let adapter = match self {
             CodingAgent::ClaudeCode(_) | CodingAgent::Amp(_) => Passthrough,
             CodingAgent::QwenCode(_) | CodingAgent::Gemini(_) => Gemini,
-            CodingAgent::CursorAgent(_) => CursorAgent,
+            CodingAgent::Cursor(_) => Cursor,
             CodingAgent::Codex(_) => Codex,
             CodingAgent::Opencode(_) => Opencode,
             CodingAgent::Copilot(..) => Copilot,
