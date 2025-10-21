@@ -467,6 +467,30 @@ export function GeneralSettings() {
               {t('settings.general.editor.type.helper')}
             </p>
           </div>
+
+          {draft?.editor.editor_type === EditorType.CUSTOM && (
+            <div className="space-y-2">
+              <Label htmlFor="custom-command">
+                {t('settings.general.editor.customCommand.label')}
+              </Label>
+              <Input
+                id="custom-command"
+                placeholder="e.g., code, subl, vim"
+                value={draft?.editor.custom_command || ''}
+                onChange={(e) =>
+                  updateDraft({
+                    editor: {
+                      ...draft!.editor,
+                      custom_command: e.target.value || null,
+                    },
+                  })
+                }
+              />
+              <p className="text-sm text-muted-foreground">
+                {t('settings.general.editor.customCommand.helper')}
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

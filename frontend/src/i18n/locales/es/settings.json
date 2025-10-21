@@ -53,6 +53,10 @@
           "label": "Tipo de Editor",
           "placeholder": "Seleccionar editor",
           "helper": "Elige tu editor de código preferido."
+        },
+        "customCommand": {
+          "label": "Comando de Editor Personalizado",
+          "helper": "Ingresa el comando para lanzar tu editor personalizado. Se utilizará para abrir archivos."
         }
       },
       "github": {

@@ -53,6 +53,10 @@
           "label": "Editor Type",
           "placeholder": "Select editor",
           "helper": "Choose your preferred code editor interface."
+        },
+        "customCommand": {
+          "label": "Custom Editor Command",
+          "helper": "Enter the command to launch your custom editor. This will be used to open files."
         }
       },
       "github": {
