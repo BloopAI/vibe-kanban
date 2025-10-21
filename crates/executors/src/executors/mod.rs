@@ -78,8 +78,6 @@ pub enum CodingAgent {
     Gemini,
     Codex,
     Opencode,
-    #[serde(rename = "CURSOR")]
-    #[strum(serialize = "CURSOR")]
     CursorAgent,
     QwenCode,
     Copilot,

@@ -32,8 +32,6 @@ use crate::{
 mod mcp;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
-#[serde(rename = "Cursor")]
-#[ts(rename = "Cursor")]
 pub struct CursorAgent {
     #[serde(default)]
     pub append_prompt: AppendPrompt,
