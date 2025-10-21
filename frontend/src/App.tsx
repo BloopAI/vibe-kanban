@@ -20,9 +20,7 @@ import {
 } from '@/components/config-provider';
 import { ThemeProvider } from '@/components/theme-provider';
 import { SearchProvider } from '@/contexts/search-context';
-import { KeyboardShortcutsProvider } from '@/contexts/keyboard-shortcuts-context';
 
-import { ShortcutsHelp } from '@/components/shortcuts-help';
 import { HotkeysProvider } from 'react-hotkeys-hook';
 
 import { ProjectProvider } from '@/contexts/project-context';
@@ -208,11 +206,9 @@ function App() {
         <ClickedElementsProvider>
           <ProjectProvider>
             <HotkeysProvider initiallyActiveScopes={['*', 'global', 'kanban']}>
-              <KeyboardShortcutsProvider>
-                <NiceModal.Provider>
-                  <AppContent />
-                </NiceModal.Provider>
-              </KeyboardShortcutsProvider>
+              <NiceModal.Provider>
+                <AppContent />
+              </NiceModal.Provider>
             </HotkeysProvider>
           </ProjectProvider>
         </ClickedElementsProvider>

@@ -1,10 +1,7 @@
 import { useMemo } from 'react';
-import {
-  useKeyboardShortcut,
-  type KeyboardShortcutOptions,
-} from '@/hooks/useKeyboardShortcut';
 import type { EnableOnFormTags } from './types';
-import { Action, Scope, getKeysFor, getBindingFor } from './registry';
+import { Action, Scope, getKeysFor } from './registry';
+import { useHotkeys } from 'react-hotkeys-hook';
 
 export interface SemanticKeyOptions {
   scope?: Scope;
@@ -40,29 +37,28 @@ export function createSemanticHook<A extends Action>(action: A) {
     // Memoize to get stable array references and prevent unnecessary re-registrations
     const keys = useMemo(() => getKeysFor(action, scope), [action, scope]);
 
-    const binding = useMemo(
-      () => getBindingFor(action, scope),
-      [action, scope]
-    );
 
-    const keyboardShortcutOptions: KeyboardShortcutOptions = {};
-    if (enableOnContentEditable !== undefined)
-      keyboardShortcutOptions.enableOnContentEditable = enableOnContentEditable;
-    if (enableOnFormTags !== undefined)
-      keyboardShortcutOptions.enableOnFormTags = enableOnFormTags;
-    if (preventDefault !== undefined)
-      keyboardShortcutOptions.preventDefault = preventDefault;
+    useHotkeys(
+      keys,
+      (event) => {
+        // Skip if IME composition is in progress (e.g., Japanese, Chinese, Korean input)
+        // This prevents shortcuts from firing when user is converting text with Enter
+        if (event.isComposing) {
+          return;
+        }
 
-    useKeyboardShortcut(
-      {
-        keys: keys.length === 1 ? keys[0] : keys,
-        callback: keys.length === 0 ? () => {} : handler,
-        description: binding?.description || `${action} action`,
-        group: binding?.group || 'Actions',
-        scope: scope || Scope.GLOBAL,
-        when: keys.length > 0 && isEnabled,
+        if (isEnabled) {
+          handler(event);
+        }
       },
-      keyboardShortcutOptions
+      {
+        enabled,
+        enableOnContentEditable,
+        enableOnFormTags,
+        preventDefault,
+        scopes: scope ? [scope] : ['*'],
+      },
+      [keys, scope, enableOnContentEditable, enableOnFormTags, preventDefault] // handler uses refs; only rebinding when identity changes
     );
 
     if (keys.length === 0) {
