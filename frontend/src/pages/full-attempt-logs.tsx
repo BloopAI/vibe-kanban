@@ -10,7 +10,11 @@ import { useProjectTasks } from '@/hooks/useProjectTasks';
 import { Logo } from '@/components/logo';
 
 export function FullAttemptLogsPage() {
-  const { projectId = '', taskId = '', attemptId = '' } = useParams<{
+  const {
+    projectId = '',
+    taskId = '',
+    attemptId = '',
+  } = useParams<{
     projectId: string;
     taskId: string;
     attemptId: string;
@@ -18,7 +22,7 @@ export function FullAttemptLogsPage() {
 
   const { data: attempt } = useTaskAttempt(attemptId);
   const { tasksById } = useProjectTasks(projectId);
-  const task = taskId ? tasksById[taskId] ?? null : null;
+  const task = taskId ? (tasksById[taskId] ?? null) : null;
 
   return (
     <AppWithStyleOverride>

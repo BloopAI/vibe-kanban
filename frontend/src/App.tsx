@@ -166,32 +166,32 @@ function AppContent() {
               />
 
               <Route element={<NormalLayout />}>
-                  <Route path="/" element={<Projects />} />
-                  <Route path="/projects" element={<Projects />} />
-                  <Route path="/projects/:projectId" element={<Projects />} />
-                  <Route
-                    path="/projects/:projectId/tasks"
-                    element={<ProjectTasks />}
-                  />
-                  <Route path="/settings/*" element={<SettingsLayout />}>
-                    <Route index element={<Navigate to="general" replace />} />
-                    <Route path="general" element={<GeneralSettings />} />
-                    <Route path="agents" element={<AgentSettings />} />
-                    <Route path="mcp" element={<McpSettings />} />
-                  </Route>
-                  <Route
-                    path="/mcp-servers"
-                    element={<Navigate to="/settings/mcp" replace />}
-                  />
-                  <Route
-                    path="/projects/:projectId/tasks/:taskId"
-                    element={<ProjectTasks />}
-                  />
-                  <Route
-                    path="/projects/:projectId/tasks/:taskId/attempts/:attemptId"
-                    element={<ProjectTasks />}
-                  />
+                <Route path="/" element={<Projects />} />
+                <Route path="/projects" element={<Projects />} />
+                <Route path="/projects/:projectId" element={<Projects />} />
+                <Route
+                  path="/projects/:projectId/tasks"
+                  element={<ProjectTasks />}
+                />
+                <Route path="/settings/*" element={<SettingsLayout />}>
+                  <Route index element={<Navigate to="general" replace />} />
+                  <Route path="general" element={<GeneralSettings />} />
+                  <Route path="agents" element={<AgentSettings />} />
+                  <Route path="mcp" element={<McpSettings />} />
                 </Route>
+                <Route
+                  path="/mcp-servers"
+                  element={<Navigate to="/settings/mcp" replace />}
+                />
+                <Route
+                  path="/projects/:projectId/tasks/:taskId"
+                  element={<ProjectTasks />}
+                />
+                <Route
+                  path="/projects/:projectId/tasks/:taskId/attempts/:attemptId"
+                  element={<ProjectTasks />}
+                />
+              </Route>
             </SentryRoutes>
           </div>
           <ShortcutsHelp />
