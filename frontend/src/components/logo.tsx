@@ -1,7 +1,11 @@
-export function Logo() {
+interface LogoProps {
+  width?: number;
+}
+
+export function Logo({ width = 140 }: LogoProps) {
   return (
     <svg
-      width="140"
+      width={width}
       viewBox="0 0 604 74"
       xmlns="http://www.w3.org/2000/svg"
       className="logo"

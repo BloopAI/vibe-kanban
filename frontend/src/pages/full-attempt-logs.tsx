@@ -29,11 +29,11 @@ export function FullAttemptLogsPage() {
 
   return (
     <AppWithStyleOverride>
-      <div className="h-screen flex flex-col bg-background">
+      <div className="h-screen flex flex-col bg-muted">
         <WebviewContextMenu />
 
         <header className="h-6 border-b flex items-center px-4 shrink-0">
-          <Logo />
+          <Logo width={80} />
         </header>
 
         <main className="flex-1 min-h-0">
