@@ -61,8 +61,6 @@ NiceModal.register('project-editor-selection', ProjectEditorSelectionDialog);
 NiceModal.register('restore-logs', RestoreLogsDialog);
 NiceModal.register('view-processes', ViewProcessesDialog);
 NiceModal.register('create-attempt', CreateAttemptDialog);
-// Install VS Code iframe keyboard bridge when running inside an iframe
-import './vscode/bridge';
 
 import {
   useLocation,
