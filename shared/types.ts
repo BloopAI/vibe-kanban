@@ -32,7 +32,7 @@ export type ScriptRequestLanguage = "Bash";
 
 export enum BaseCodingAgent { CLAUDE_CODE = "CLAUDE_CODE", AMP = "AMP", GEMINI = "GEMINI", CODEX = "CODEX", OPENCODE = "OPENCODE", CURSOR = "CURSOR", QWEN_CODE = "QWEN_CODE", COPILOT = "COPILOT" }
 
-export type CodingAgent = { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR": Cursor } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot };
+export type CodingAgent = { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR_AGENT": Cursor } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot };
 
 export type Tag = { id: string, tag_name: string, content: string, created_at: string, updated_at: string, };
 
@@ -154,7 +154,7 @@ executor: BaseCodingAgent,
  */
 variant: string | null, };
 
-export type ExecutorConfig = { [key in string]?: { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR": Cursor } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot } };
+export type ExecutorConfig = { [key in string]?: { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR_AGENT": Cursor } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot } };
 
 export type BaseAgentCapability = "SESSION_FORK";
 
