@@ -8,6 +8,7 @@ import TaskAttemptPanel from '@/components/panels/TaskAttemptPanel';
 import { useTaskAttempt } from '@/hooks/useTaskAttempt';
 import { useProjectTasks } from '@/hooks/useProjectTasks';
 import { Logo } from '@/components/logo';
+import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 
 export function FullAttemptLogsPage() {
   const {
@@ -34,16 +35,35 @@ export function FullAttemptLogsPage() {
         </header>
 
         <main className="flex-1 min-h-0">
-          <TaskAttemptPanel attempt={attempt} task={task}>
-            {({ logs, followUp }) => (
-              <div className="h-full flex flex-col">
-                <div className="flex-1 min-h-0">{logs}</div>
-                <div className="border-t shrink-0">
-                  <div className="mx-auto w-full max-w-[50rem]">{followUp}</div>
+          {attempt ? (
+            <ExecutionProcessesProvider attemptId={attempt.id}>
+              <TaskAttemptPanel attempt={attempt} task={task}>
+                {({ logs, followUp }) => (
+                  <div className="h-full flex flex-col">
+                    <div className="flex-1 min-h-0">{logs}</div>
+                    <div className="border-t shrink-0">
+                      <div className="mx-auto w-full max-w-[50rem]">
+                        {followUp}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </TaskAttemptPanel>
+            </ExecutionProcessesProvider>
+          ) : (
+            <TaskAttemptPanel attempt={attempt} task={task}>
+              {({ logs, followUp }) => (
+                <div className="h-full flex flex-col">
+                  <div className="flex-1 min-h-0">{logs}</div>
+                  <div className="border-t shrink-0">
+                    <div className="mx-auto w-full max-w-[50rem]">
+                      {followUp}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )}
-          </TaskAttemptPanel>
+              )}
+            </TaskAttemptPanel>
+          )}
         </main>
       </div>
     </AppWithStyleOverride>
