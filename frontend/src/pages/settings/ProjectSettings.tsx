@@ -38,6 +38,17 @@ interface ProjectFormState {
   copy_files: string;
 }
 
+function projectToFormState(project: Project): ProjectFormState {
+  return {
+    name: project.name,
+    git_repo_path: project.git_repo_path,
+    setup_script: project.setup_script ?? '',
+    dev_script: project.dev_script ?? '',
+    cleanup_script: project.cleanup_script ?? '',
+    copy_files: project.copy_files ?? '',
+  };
+}
+
 export function ProjectSettings() {
   const [searchParams, setSearchParams] = useSearchParams();
   const projectIdParam = searchParams.get('projectId') ?? '';
@@ -68,17 +79,7 @@ export function ProjectSettings() {
   // Check for unsaved changes
   const hasUnsavedChanges = useMemo(() => {
     if (!draft || !selectedProject) return false;
-
-    const original: ProjectFormState = {
-      name: selectedProject.name,
-      git_repo_path: selectedProject.git_repo_path,
-      setup_script: selectedProject.setup_script ?? '',
-      dev_script: selectedProject.dev_script ?? '',
-      cleanup_script: selectedProject.cleanup_script ?? '',
-      copy_files: selectedProject.copy_files ?? '',
-    };
-
-    return !isEqual(draft, original);
+    return !isEqual(draft, projectToFormState(selectedProject));
   }, [draft, selectedProject]);
 
   // Handle project selection from dropdown
@@ -166,15 +167,7 @@ export function ProjectSettings() {
 
     if (hasUnsavedChanges) return;
 
-    const original: ProjectFormState = {
-      name: nextProject.name,
-      git_repo_path: nextProject.git_repo_path,
-      setup_script: nextProject.setup_script ?? '',
-      dev_script: nextProject.dev_script ?? '',
-      cleanup_script: nextProject.cleanup_script ?? '',
-      copy_files: nextProject.copy_files ?? '',
-    };
-    setDraft(original);
+    setDraft(projectToFormState(nextProject));
   }, [projects, selectedProjectId, hasUnsavedChanges]);
 
   // Warn on tab close/navigation with unsaved changes
@@ -193,15 +186,7 @@ export function ProjectSettings() {
     onUpdateSuccess: (updatedProject: Project) => {
       // Update local state with fresh data from server
       setSelectedProject(updatedProject);
-      const formState: ProjectFormState = {
-        name: updatedProject.name,
-        git_repo_path: updatedProject.git_repo_path,
-        setup_script: updatedProject.setup_script ?? '',
-        dev_script: updatedProject.dev_script ?? '',
-        cleanup_script: updatedProject.cleanup_script ?? '',
-        copy_files: updatedProject.copy_files ?? '',
-      };
-      setDraft(formState);
+      setDraft(projectToFormState(updatedProject));
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
       setSaving(false);
@@ -244,16 +229,7 @@ export function ProjectSettings() {
 
   const handleDiscard = () => {
     if (!selectedProject) return;
-
-    const formState: ProjectFormState = {
-      name: selectedProject.name,
-      git_repo_path: selectedProject.git_repo_path,
-      setup_script: selectedProject.setup_script ?? '',
-      dev_script: selectedProject.dev_script ?? '',
-      cleanup_script: selectedProject.cleanup_script ?? '',
-      copy_files: selectedProject.copy_files ?? '',
-    };
-    setDraft(formState);
+    setDraft(projectToFormState(selectedProject));
   };
 
   const updateDraft = (updates: Partial<ProjectFormState>) => {
