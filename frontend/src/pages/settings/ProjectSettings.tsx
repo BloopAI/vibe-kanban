@@ -23,11 +23,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Folder } from 'lucide-react';
 import { useProjects } from '@/hooks/useProjects';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
-import { useUserSystem } from '@/components/config-provider';
-import {
-  createScriptPlaceholderStrategy,
-  ScriptPlaceholderContext,
-} from '@/utils/script-placeholders';
+import { useScriptPlaceholders } from '@/hooks/useScriptPlaceholders';
 import { CopyFilesField } from '@/components/projects/copy-files-field';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { showFolderPicker } from '@/lib/modals';
@@ -46,7 +42,6 @@ export function ProjectSettings() {
   const [searchParams, setSearchParams] = useSearchParams();
   const projectIdParam = searchParams.get('projectId') ?? '';
   const { t } = useTranslation('settings');
-  const { system } = useUserSystem();
 
   // Fetch all projects
   const {
@@ -67,17 +62,8 @@ export function ProjectSettings() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  // Create strategy-based placeholders
-  const placeholders = system.environment
-    ? new ScriptPlaceholderContext(
-        createScriptPlaceholderStrategy(system.environment.os_type)
-      ).getPlaceholders()
-    : {
-        setup: '#!/bin/bash\nnpm install\n# Add any setup commands here...',
-        dev: '#!/bin/bash\nnpm run dev\n# Add dev server start command here...',
-        cleanup:
-          '#!/bin/bash\n# Add cleanup commands here...\n# This runs after coding agent execution',
-      };
+  // Get OS-appropriate script placeholders
+  const placeholders = useScriptPlaceholders();
 
   // Check for unsaved changes
   const hasUnsavedChanges = useMemo(() => {
