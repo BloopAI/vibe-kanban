@@ -32,7 +32,7 @@ export function FullAttemptLogsPage() {
       <div className="h-screen flex flex-col bg-background">
         <WebviewContextMenu />
 
-        <header className="h-12 border-b flex items-center px-4 shrink-0">
+        <header className="h-6 border-b flex items-center px-4 shrink-0">
           <Logo />
         </header>
 
@@ -47,7 +47,7 @@ export function FullAttemptLogsPage() {
                   <TaskAttemptPanel attempt={attempt} task={task}>
                     {({ logs, followUp }) => (
                       <div className="h-full flex flex-col">
-                        <div className="flex-1 min-h-0">{logs}</div>
+                        <div className="flex-1 min-h-0 flex flex-col">{logs}</div>
                         <div className="border-t shrink-0">
                           <div className="mx-auto w-full max-w-[50rem]">
                             {followUp}
@@ -63,7 +63,7 @@ export function FullAttemptLogsPage() {
             <TaskAttemptPanel attempt={attempt} task={task}>
               {({ logs, followUp }) => (
                 <div className="h-full flex flex-col">
-                  <div className="flex-1 min-h-0">{logs}</div>
+                  <div className="flex-1 min-h-0 flex flex-col">{logs}</div>
                   <div className="border-t shrink-0">
                     <div className="mx-auto w-full max-w-[50rem]">
                       {followUp}
