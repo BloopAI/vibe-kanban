@@ -1,5 +1,8 @@
-#[cfg(unix)]
-use std::os::unix::fs::PermissionsExt;
+// SDK submodules
+pub mod types;
+pub mod protocol;
+pub mod client;
+
 use std::{collections::HashMap, path::Path, process::Stdio, sync::Arc};
 
 use async_trait::async_trait;
@@ -7,15 +10,13 @@ use command_group::AsyncCommandGroup;
 use futures::StreamExt;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use tokio::{io::AsyncWriteExt, process::Command, sync::OnceCell};
+use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
 use workspace_utils::{
-    approvals::APPROVAL_TIMEOUT_SECONDS,
     diff::{concatenate_diff_hunks, create_unified_diff, create_unified_diff_hunk},
     log_msg::LogMsg,
     msg_store::MsgStore,
     path::make_path_relative,
-    port_file::read_port_file,
     shell::get_shell_command,
 };
 
@@ -28,20 +29,6 @@ use crate::{
         utils::{EntryIndexProvider, patch::ConversationPatch},
     },
 };
-
-static BACKEND_PORT: OnceCell<u16> = OnceCell::const_new();
-async fn get_backend_port() -> std::io::Result<u16> {
-    BACKEND_PORT
-        .get_or_try_init(|| async { read_port_file("vibe-kanban").await })
-        .await
-        .copied()
-}
-
-const CONFIRM_HOOK_SCRIPT: &str = include_str!("./hooks/confirm.py");
-
-/// Natural language marker we add in our Python hook to denote user feedback
-/// This marker is added by our confirm.py hook script and is robust to Claude Code format changes
-const USER_FEEDBACK_MARKER: &str = "User feedback: ";
 
 fn base_command(claude_code_router: bool) -> &'static str {
     if claude_code_router {
@@ -92,23 +79,9 @@ impl ClaudeCode {
             builder = builder.extend_params(["--permission-mode=plan"]);
         }
 
+        // Enable control protocol for approvals/plan mode
         if plan || approvals {
-            match settings_json(plan).await {
-                // TODO: Avoid quoting
-                Ok(settings) => match shlex::try_quote(&settings) {
-                    Ok(quoted) => {
-                        builder = builder.extend_params(["--settings", &quoted]);
-                    }
-                    Err(e) => {
-                        tracing::error!("Failed to quote approvals JSON for --settings: {e}");
-                    }
-                },
-                Err(e) => {
-                    tracing::error!(
-                        "Failed to generate approvals JSON. Not running approvals: {e}"
-                    );
-                }
-            }
+            builder = builder.extend_params(["--input-format=stream-json"]);
         }
 
         if self.dangerously_skip_permissions.unwrap_or(false) {
@@ -130,17 +103,13 @@ impl ClaudeCode {
 #[async_trait]
 impl StandardCodingAgentExecutor for ClaudeCode {
     async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
+        use crate::{executors::codex::client::LogWriter, stdout_dup::create_stdout_pipe_writer};
+        use self::client::ClaudeAgentClient;
+        use self::protocol::ProtocolPeer;
+
         let (shell_cmd, shell_arg) = get_shell_command();
         let command_builder = self.build_command_builder().await;
-        let mut base_command = command_builder.build_initial();
-
-        if self.plan.unwrap_or(false) {
-            base_command = create_watchkill_script(&base_command);
-        }
-
-        if self.approvals.unwrap_or(false) || self.plan.unwrap_or(false) {
-            write_python_hook(current_dir).await?
-        }
+        let base_command = command_builder.build_initial();
 
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
@@ -152,17 +121,63 @@ impl StandardCodingAgentExecutor for ClaudeCode {
             .stderr(Stdio::piped())
             .current_dir(current_dir)
             .arg(shell_arg)
-            .arg(&base_command);
+            .arg(&base_command)
+            .env("CLAUDE_CODE_ENTRYPOINT", "sdk-rust")
+            .env("NO_COLOR", "1");
 
         let mut child = command.group_spawn()?;
 
-        // Feed the prompt in, then close the pipe so Claude sees EOF
-        if let Some(mut stdin) = child.inner().stdin.take() {
-            stdin.write_all(combined_prompt.as_bytes()).await?;
-            stdin.shutdown().await?;
-        }
+        let plan_or_approvals = self.plan.unwrap_or(false) || self.approvals.unwrap_or(false);
 
-        Ok(child.into())
+        if plan_or_approvals {
+            // Use control protocol for approvals
+            let child_stdout = child.inner().stdout.take().ok_or_else(|| {
+                ExecutorError::Io(std::io::Error::other("Claude Code missing stdout"))
+            })?;
+            let child_stdin = child.inner().stdin.take().ok_or_else(|| {
+                ExecutorError::Io(std::io::Error::other("Claude Code missing stdin"))
+            })?;
+
+            let new_stdout = create_stdout_pipe_writer(&mut child)?;
+
+            // Spawn task to handle the SDK client with control protocol
+            let prompt_clone = combined_prompt.clone();
+            tokio::spawn(async move {
+                let log_writer = LogWriter::new(new_stdout);
+                let client = ClaudeAgentClient::new(log_writer.clone());
+                let protocol_peer = ProtocolPeer::spawn(child_stdin, child_stdout, client.clone());
+                client.connect(protocol_peer.clone());
+
+                // Initialize control protocol
+                if let Err(e) = protocol_peer.initialize().await {
+                    tracing::error!("Failed to initialize control protocol: {}", e);
+                    let _ = log_writer.log_raw(&format!("Error: Failed to initialize - {}", e)).await;
+                    return;
+                }
+
+                // Send initial user message
+                if let Err(e) = protocol_peer.send_user_message(prompt_clone).await {
+                    tracing::error!("Failed to send initial prompt: {}", e);
+                    let _ = log_writer.log_raw(&format!("Error: Failed to send prompt - {}", e)).await;
+                }
+
+                tracing::info!("Control protocol initialized and initial prompt sent");
+                // Protocol peer runs in background, handling bidirectional communication
+            });
+
+            Ok(SpawnedChild {
+                child,
+                exit_signal: None,
+            })
+        } else {
+            // No approvals - just feed prompt and close stdin
+            if let Some(mut stdin) = child.inner().stdin.take() {
+                stdin.write_all(combined_prompt.as_bytes()).await?;
+                stdin.shutdown().await?;
+            }
+
+            Ok(child.into())
+        }
     }
 
     async fn spawn_follow_up(
@@ -171,22 +186,18 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         prompt: &str,
         session_id: &str,
     ) -> Result<SpawnedChild, ExecutorError> {
+        use crate::{executors::codex::client::LogWriter, stdout_dup::create_stdout_pipe_writer};
+        use self::client::ClaudeAgentClient;
+        use self::protocol::ProtocolPeer;
+
         let (shell_cmd, shell_arg) = get_shell_command();
         let command_builder = self.build_command_builder().await;
         // Build follow-up command with --resume {session_id}
-        let mut base_command = command_builder.build_follow_up(&[
+        let base_command = command_builder.build_follow_up(&[
             "--fork-session".to_string(),
             "--resume".to_string(),
             session_id.to_string(),
         ]);
-
-        if self.plan.unwrap_or(false) {
-            base_command = create_watchkill_script(&base_command);
-        }
-
-        if self.approvals.unwrap_or(false) || self.plan.unwrap_or(false) {
-            write_python_hook(current_dir).await?
-        }
 
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
@@ -198,17 +209,63 @@ impl StandardCodingAgentExecutor for ClaudeCode {
             .stderr(Stdio::piped())
             .current_dir(current_dir)
             .arg(shell_arg)
-            .arg(&base_command);
+            .arg(&base_command)
+            .env("CLAUDE_CODE_ENTRYPOINT", "sdk-rust")
+            .env("NO_COLOR", "1");
 
         let mut child = command.group_spawn()?;
 
-        // Feed the followup prompt in, then close the pipe
-        if let Some(mut stdin) = child.inner().stdin.take() {
-            stdin.write_all(combined_prompt.as_bytes()).await?;
-            stdin.shutdown().await?;
-        }
+        let plan_or_approvals = self.plan.unwrap_or(false) || self.approvals.unwrap_or(false);
 
-        Ok(child.into())
+        if plan_or_approvals {
+            // Use control protocol for approvals
+            let child_stdout = child.inner().stdout.take().ok_or_else(|| {
+                ExecutorError::Io(std::io::Error::other("Claude Code missing stdout"))
+            })?;
+            let child_stdin = child.inner().stdin.take().ok_or_else(|| {
+                ExecutorError::Io(std::io::Error::other("Claude Code missing stdin"))
+            })?;
+
+            let new_stdout = create_stdout_pipe_writer(&mut child)?;
+
+            // Spawn task to handle the SDK client with control protocol
+            let prompt_clone = combined_prompt.clone();
+            tokio::spawn(async move {
+                let log_writer = LogWriter::new(new_stdout);
+                let client = ClaudeAgentClient::new(log_writer.clone());
+                let protocol_peer = ProtocolPeer::spawn(child_stdin, child_stdout, client.clone());
+                client.connect(protocol_peer.clone());
+
+                // Initialize control protocol
+                if let Err(e) = protocol_peer.initialize().await {
+                    tracing::error!("Failed to initialize control protocol: {}", e);
+                    let _ = log_writer.log_raw(&format!("Error: Failed to initialize - {}", e)).await;
+                    return;
+                }
+
+                // Send follow-up user message
+                if let Err(e) = protocol_peer.send_user_message(prompt_clone).await {
+                    tracing::error!("Failed to send follow-up prompt: {}", e);
+                    let _ = log_writer.log_raw(&format!("Error: Failed to send prompt - {}", e)).await;
+                }
+
+                tracing::info!("Control protocol initialized and follow-up prompt sent");
+                // Protocol peer runs in background, handling bidirectional communication
+            });
+
+            Ok(SpawnedChild {
+                child,
+                exit_signal: None,
+            })
+        } else {
+            // No approvals - just feed prompt and close stdin
+            if let Some(mut stdin) = child.inner().stdin.take() {
+                stdin.write_all(combined_prompt.as_bytes()).await?;
+                stdin.shutdown().await?;
+            }
+
+            Ok(child.into())
+        }
     }
 
     fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &Path) {
@@ -230,118 +287,6 @@ impl StandardCodingAgentExecutor for ClaudeCode {
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
         dirs::home_dir().map(|home| home.join(".claude.json"))
     }
-}
-
-async fn write_python_hook(current_dir: &Path) -> Result<(), ExecutorError> {
-    let hooks_dir = current_dir.join(".claude").join("hooks");
-    tokio::fs::create_dir_all(&hooks_dir).await?;
-    let hook_path = hooks_dir.join("confirm.py");
-
-    let mut file = tokio::fs::File::create(&hook_path).await?;
-    file.write_all(CONFIRM_HOOK_SCRIPT.as_bytes()).await?;
-    file.flush().await?;
-
-    // TODO: Handle Windows permissioning
-    #[cfg(unix)]
-    {
-        let perm = std::fs::Permissions::from_mode(0o755);
-        tokio::fs::set_permissions(&hook_path, perm).await?;
-    }
-
-    // ignore the confirm.py script
-    let gitignore_path = hooks_dir.join(".gitignore");
-    if !tokio::fs::try_exists(&gitignore_path).await? {
-        let mut gitignore_file = tokio::fs::File::create(&gitignore_path).await?;
-        gitignore_file
-            .write_all(b"confirm.py\n.gitignore\n")
-            .await?;
-        gitignore_file.flush().await?;
-    }
-
-    Ok(())
-}
-
-// Configure settings json
-async fn settings_json(plan: bool) -> Result<String, std::io::Error> {
-    let backend_port = get_backend_port().await?;
-    let backend_timeout = APPROVAL_TIMEOUT_SECONDS + 5; // add buffer
-
-    let matcher = if plan {
-        "^ExitPlanMode$"
-    } else {
-        "^(?!(Glob|Grep|NotebookRead|Read|Task|TodoWrite)$).*"
-    };
-
-    Ok(serde_json::json!({
-        "hooks": {
-            "PreToolUse": [
-                {
-                    "matcher": matcher,
-                    "hooks": [
-                        {
-                            "type": "command",
-                            "command": format!("$CLAUDE_PROJECT_DIR/.claude/hooks/confirm.py --timeout-seconds {backend_timeout} --poll-interval 5 --backend-port {backend_port} --feedback-marker '{USER_FEEDBACK_MARKER}'"),
-                            "timeout": backend_timeout + 10
-                       }
-                    ]
-                }
-            ]
-        }
-    })
-    .to_string())
-}
-
-fn create_watchkill_script(command: &str) -> String {
-    // Hack: we concatenate so that Claude doesn't trigger the watchkill when reading this file
-    // during development, since it contains the stop phrase
-    let claude_plan_stop_indicator = concat!("Approval ", "request timed out");
-    let cmd = shlex::try_quote(command).unwrap().to_string();
-
-    format!(
-        r#"#!/usr/bin/env bash
-set -euo pipefail
-
-word="{claude_plan_stop_indicator}"
-
-exit_code=0
-while IFS= read -r line; do
-    printf '%s\n' "$line"
-    if [[ $line == *"$word"* ]]; then
-        exit 0
-    fi
-done < <(bash -lc {cmd} <&0 2>&1)
-
-exit_code=${{PIPESTATUS[0]}}
-exit "$exit_code"
-"#
-    )
-}
-
-/// Extract user denial reason from tool result error messages
-/// Our confirm.py hook prefixes user feedback with "User feedback: " for easy extraction
-/// Supports both string content and Claude's array format: [{"type":"text","text":"..."}]
-fn extract_denial_reason(content: &serde_json::Value) -> Option<String> {
-    // First try to parse as string
-    let content_str = if let Some(s) = content.as_str() {
-        s.to_string()
-    } else if let Ok(items) =
-        serde_json::from_value::<Vec<ClaudeToolResultTextItem>>(content.clone())
-    {
-        // Handle array format: [{"type":"text","text":"..."}]
-        items
-            .into_iter()
-            .map(|item| item.text)
-            .collect::<Vec<_>>()
-            .join("\n")
-    } else {
-        // Try to serialize the value as a string
-        content.to_string()
-    };
-
-    content_str
-        .split_once(USER_FEEDBACK_MARKER)
-        .map(|(_, rest)| rest.trim().to_string())
-        .filter(|s| !s.is_empty())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -930,7 +875,7 @@ impl ClaudeLogProcessor {
                     {
                         let is_command = matches!(info.tool_data, ClaudeToolData::Bash { .. });
 
-                        let display_tool_name = if is_command {
+                        let _display_tool_name = if is_command {
                             info.tool_name.clone()
                         } else {
                             let raw_name = info.tool_data.get_name().to_string();
@@ -1048,24 +993,8 @@ impl ClaudeLogProcessor {
                             };
                             patches.push(ConversationPatch::replace(info.entry_index, entry));
                         }
-
-                        if is_error.unwrap_or(false)
-                            && let Some(denial_reason) = extract_denial_reason(content)
-                        {
-                            let user_feedback = NormalizedEntry {
-                                timestamp: None,
-                                entry_type: NormalizedEntryType::UserFeedback {
-                                    denied_tool: display_tool_name.clone(),
-                                },
-                                content: denial_reason,
-                                metadata: None,
-                            };
-                            let feedback_index = entry_index_provider.next();
-                            patches.push(ConversationPatch::add_normalized_entry(
-                                feedback_index,
-                                user_feedback,
-                            ));
-                        }
+                        // Note: With control protocol, denials are handled via protocol messages
+                        // rather than error content parsing
                     }
                 }
             }
