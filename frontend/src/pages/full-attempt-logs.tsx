@@ -9,6 +9,8 @@ import { useTaskAttempt } from '@/hooks/useTaskAttempt';
 import { useProjectTasks } from '@/hooks/useProjectTasks';
 import { Logo } from '@/components/logo';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
+import { ReviewProvider } from '@/contexts/ReviewProvider';
+import { ClickedElementsProvider } from '@/contexts/ClickedElementsProvider';
 
 export function FullAttemptLogsPage() {
   const {
@@ -36,20 +38,27 @@ export function FullAttemptLogsPage() {
 
         <main className="flex-1 min-h-0">
           {attempt ? (
-            <ExecutionProcessesProvider attemptId={attempt.id}>
-              <TaskAttemptPanel attempt={attempt} task={task}>
-                {({ logs, followUp }) => (
-                  <div className="h-full flex flex-col">
-                    <div className="flex-1 min-h-0">{logs}</div>
-                    <div className="border-t shrink-0">
-                      <div className="mx-auto w-full max-w-[50rem]">
-                        {followUp}
+            <ClickedElementsProvider attempt={attempt}>
+              <ReviewProvider key={attempt.id}>
+                <ExecutionProcessesProvider
+                  key={attempt.id}
+                  attemptId={attempt.id}
+                >
+                  <TaskAttemptPanel attempt={attempt} task={task}>
+                    {({ logs, followUp }) => (
+                      <div className="h-full flex flex-col">
+                        <div className="flex-1 min-h-0">{logs}</div>
+                        <div className="border-t shrink-0">
+                          <div className="mx-auto w-full max-w-[50rem]">
+                            {followUp}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                )}
-              </TaskAttemptPanel>
-            </ExecutionProcessesProvider>
+                    )}
+                  </TaskAttemptPanel>
+                </ExecutionProcessesProvider>
+              </ReviewProvider>
+            </ClickedElementsProvider>
           ) : (
             <TaskAttemptPanel attempt={attempt} task={task}>
               {({ logs, followUp }) => (
