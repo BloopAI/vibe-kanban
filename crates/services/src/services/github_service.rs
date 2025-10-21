@@ -78,6 +78,28 @@ impl From<GitServiceError> for GitHubServiceError {
     }
 }
 
+fn format_octocrab_error(error: &octocrab::Error) -> String {
+    match error {
+        octocrab::Error::GitHub { source, .. } => {
+            let details = source.as_ref().to_string();
+            let trimmed = details.trim();
+            if trimmed.is_empty() {
+                format!(
+                    "GitHub API responded with status {}",
+                    source.status_code.as_u16()
+                )
+            } else {
+                format!(
+                    "GitHub API responded with status {}: {}",
+                    source.status_code.as_u16(),
+                    trimmed
+                )
+            }
+        }
+        _ => error.to_string(),
+    }
+}
+
 impl GitHubServiceError {
     pub fn is_api_data(&self) -> bool {
         matches!(
@@ -196,7 +218,9 @@ impl GitHubService {
             .map_err(|error| match GitHubServiceError::from(error) {
                 GitHubServiceError::Client(source) => GitHubServiceError::Repository(format!(
                     "Cannot access repository {}/{}: {}",
-                    repo_info.owner, repo_info.repo_name, source
+                    repo_info.owner,
+                    repo_info.repo_name,
+                    format_octocrab_error(&source)
                 )),
                 other => other,
             })?;
@@ -217,7 +241,9 @@ impl GitHubService {
                     };
                     GitHubServiceError::Branch(format!(
                         "Base branch '{}' does not exist: {}{}",
-                        request.base_branch, source, hint
+                        request.base_branch,
+                        format_octocrab_error(&source),
+                        hint
                     ))
                 }
                 other => other,
@@ -233,7 +259,8 @@ impl GitHubService {
             .map_err(|err| match GitHubServiceError::from(err) {
                 GitHubServiceError::Client(source) => GitHubServiceError::Branch(format!(
                     "Head branch '{}' does not exist: {}",
-                    request.head_branch, source
+                    request.head_branch,
+                    format_octocrab_error(&source)
                 )),
                 other => other,
             })?;
@@ -250,7 +277,9 @@ impl GitHubService {
             .map_err(|err| match GitHubServiceError::from(err) {
                 GitHubServiceError::Client(source) => GitHubServiceError::PullRequest(format!(
                     "Failed to create PR for '{} -> {}': {}",
-                    request.head_branch, request.base_branch, source
+                    request.head_branch,
+                    request.base_branch,
+                    format_octocrab_error(&source)
                 )),
                 other => other,
             })?;
@@ -278,6 +307,7 @@ impl GitHubService {
                 .map_err(|err| match GitHubServiceError::from(err) {
                     GitHubServiceError::Client(source) => GitHubServiceError::PullRequest(format!(
                         "Failed to get PR #{pr_number}: {source}",
+                        source = format_octocrab_error(&source),
                     )),
                     other => other,
                 })
@@ -368,6 +398,7 @@ impl GitHubService {
             .map_err(|err| match GitHubServiceError::from(err) {
                 GitHubServiceError::Client(source) => GitHubServiceError::PullRequest(format!(
                     "Failed to list all PRs for branch '{branch_name}': {source}",
+                    source = format_octocrab_error(&source),
                 )),
                 other => other,
             })?;
