@@ -80,6 +80,7 @@ pub enum CodingAgent {
     Opencode,
     #[serde(rename = "CURSOR_AGENT", alias = "CURSOR")]
     #[strum(serialize = "CURSOR_AGENT")]
+    #[strum_discriminants(serde(rename = "CURSOR_AGENT", alias = "CURSOR"))]
     Cursor,
     QwenCode,
     Copilot,
