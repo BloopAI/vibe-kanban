@@ -11,11 +11,7 @@ import {
   FolderPlus,
   ArrowLeft,
 } from 'lucide-react';
-import {
-  createScriptPlaceholderStrategy,
-  ScriptPlaceholderContext,
-} from '@/utils/script-placeholders';
-import { useUserSystem } from '@/components/config-provider';
+import { useScriptPlaceholders } from '@/hooks/useScriptPlaceholders';
 import { CopyFilesField } from './copy-files-field';
 // Removed collapsible sections for simplicity; show fields always in edit mode
 import { fileSystemApi } from '@/lib/api';
@@ -72,19 +68,7 @@ export function ProjectFormFields({
   projectId,
   onCreateProject,
 }: ProjectFormFieldsProps) {
-  const { system } = useUserSystem();
-
-  // Create strategy-based placeholders
-  const placeholders = system.environment
-    ? new ScriptPlaceholderContext(
-        createScriptPlaceholderStrategy(system.environment.os_type)
-      ).getPlaceholders()
-    : {
-        setup: '#!/bin/bash\nnpm install\n# Add any setup commands here...',
-        dev: '#!/bin/bash\nnpm run dev\n# Add dev server start command here...',
-        cleanup:
-          '#!/bin/bash\n# Add cleanup commands here...\n# This runs after coding agent execution',
-      };
+  const placeholders = useScriptPlaceholders();
 
   // Repository loading state
   const [allRepos, setAllRepos] = useState<DirectoryEntry[]>([]);
