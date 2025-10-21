@@ -7,7 +7,6 @@ import { WebviewContextMenu } from '@/vscode/ContextMenu';
 import TaskAttemptPanel from '@/components/panels/TaskAttemptPanel';
 import { useTaskAttempt } from '@/hooks/useTaskAttempt';
 import { useProjectTasks } from '@/hooks/useProjectTasks';
-import { Logo } from '@/components/logo';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { ReviewProvider } from '@/contexts/ReviewProvider';
 import { ClickedElementsProvider } from '@/contexts/ClickedElementsProvider';
@@ -31,10 +30,6 @@ export function FullAttemptLogsPage() {
     <AppWithStyleOverride>
       <div className="h-screen flex flex-col bg-muted">
         <WebviewContextMenu />
-
-        <header className="h-6 border-b flex items-center px-4 shrink-0">
-          <Logo width={80} />
-        </header>
 
         <main className="flex-1 min-h-0">
           {attempt ? (
