@@ -180,7 +180,7 @@ fn generate_schemas() -> Result<HashMap<&'static str, String>, serde_json::Error
             generate_json_schema::<executors::executors::codex::Codex>()?,
         ),
         (
-            "cursor",
+            "cursor_agent",
             generate_json_schema::<executors::executors::cursor::Cursor>()?,
         ),
         (
