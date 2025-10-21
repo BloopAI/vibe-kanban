@@ -37,7 +37,6 @@ export function createSemanticHook<A extends Action>(action: A) {
     // Memoize to get stable array references and prevent unnecessary re-registrations
     const keys = useMemo(() => getKeysFor(action, scope), [action, scope]);
 
-
     useHotkeys(
       keys,
       (event) => {
@@ -58,7 +57,15 @@ export function createSemanticHook<A extends Action>(action: A) {
         preventDefault,
         scopes: scope ? [scope] : ['*'],
       },
-      [keys, scope, enableOnContentEditable, enableOnFormTags, preventDefault] // handler uses refs; only rebinding when identity changes
+      [
+        keys,
+        scope,
+        enableOnContentEditable,
+        enableOnFormTags,
+        preventDefault,
+        handler,
+        isEnabled,
+      ]
     );
 
     if (keys.length === 0) {
