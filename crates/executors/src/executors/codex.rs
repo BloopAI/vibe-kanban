@@ -51,21 +51,21 @@ pub enum SandboxMode {
 }
 
 /// Determines when the user is consulted to approve Codex actions.
+///
+/// - `UnlessTrusted`: Read-only commands are auto-approved. Everything else will
+///   ask the user to approve.
+/// - `OnFailure`: All commands run in a restricted sandbox initially. If a
+///   command fails, the user is asked to approve execution without the sandbox.
+/// - `OnRequest`: The model decides when to ask the user for approval.
+/// - `Never`: Commands never ask for approval. Commands that fail in the
+///   restricted sandbox are not retried.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, AsRefStr)]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum AskForApproval {
-    /// Read-only commands are auto-approved. Everything else will ask the user to approve.
     UnlessTrusted,
-
-    /// All commands run in a restricted sandbox initially.
-    /// If the command fails, the user is asked to approve execution without the sandbox.
     OnFailure,
-
-    /// The model decides when to ask the user for approval.
     OnRequest,
-
-    /// Never ask the user to approve commands. Commands that fail in the restricted sandbox will not be retried.
     Never,
 }
 
@@ -179,18 +179,23 @@ impl Codex {
 
     fn build_new_conversation_params(&self, cwd: &Path) -> NewConversationParams {
         let sandbox = match self.sandbox.as_ref() {
-            None | Some(SandboxMode::Auto) => None,
+            None | Some(SandboxMode::Auto) => Some(CodexSandboxMode::WorkspaceWrite), // match the Auto preset in codex
             Some(SandboxMode::ReadOnly) => Some(CodexSandboxMode::ReadOnly),
             Some(SandboxMode::WorkspaceWrite) => Some(CodexSandboxMode::WorkspaceWrite),
             Some(SandboxMode::DangerFullAccess) => Some(CodexSandboxMode::DangerFullAccess),
         };
 
-        let approval_policy = self.ask_for_approval.as_ref().map(|policy| match policy {
-            AskForApproval::UnlessTrusted => CodexAskForApproval::UnlessTrusted,
-            AskForApproval::OnFailure => CodexAskForApproval::OnFailure,
-            AskForApproval::OnRequest => CodexAskForApproval::OnRequest,
-            AskForApproval::Never => CodexAskForApproval::Never,
-        });
+        let approval_policy = match self.ask_for_approval.as_ref() {
+            None if matches!(self.sandbox.as_ref(), None | Some(SandboxMode::Auto)) => {
+                // match the Auto preset in codex
+                Some(CodexAskForApproval::OnRequest)
+            }
+            None => None,
+            Some(AskForApproval::UnlessTrusted) => Some(CodexAskForApproval::UnlessTrusted),
+            Some(AskForApproval::OnFailure) => Some(CodexAskForApproval::OnFailure),
+            Some(AskForApproval::OnRequest) => Some(CodexAskForApproval::OnRequest),
+            Some(AskForApproval::Never) => Some(CodexAskForApproval::Never),
+        };
 
         NewConversationParams {
             model: self.model.clone(),

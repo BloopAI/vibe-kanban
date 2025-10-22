@@ -26,35 +26,17 @@
       ]
     },
     "ask_for_approval": {
-      "anyOf": [
-        {
-          "description": "Determines when the user is consulted to approve Codex actions.",
-          "oneOf": [
-            {
-              "description": "Read-only commands are auto-approved. Everything else will ask the user to approve.",
-              "type": "string",
-              "const": "unless-trusted"
-            },
-            {
-              "description": "All commands run in a restricted sandbox initially.\nIf the command fails, the user is asked to approve execution without the sandbox.",
-              "type": "string",
-              "const": "on-failure"
-            },
-            {
-              "description": "The model decides when to ask the user for approval.",
-              "type": "string",
-              "const": "on-request"
-            },
-            {
-              "description": "Never ask the user to approve commands. Commands that fail in the restricted sandbox will not be retried.",
-              "type": "string",
-              "const": "never"
-            }
-          ]
-        },
-        {
-          "type": "null"
-        }
+      "description": "Determines when the user is consulted to approve Codex actions.\n\n- `UnlessTrusted`: Read-only commands are auto-approved. Everything else will\n  ask the user to approve.\n- `OnFailure`: All commands run in a restricted sandbox initially. If a\n  command fails, the user is asked to approve execution without the sandbox.\n- `OnRequest`: The model decides when to ask the user for approval.\n- `Never`: Commands never ask for approval. Commands that fail in the\n  restricted sandbox are not retried.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "unless-trusted",
+        "on-failure",
+        "on-request",
+        "never",
+        null
       ]
     },
     "oss": {
