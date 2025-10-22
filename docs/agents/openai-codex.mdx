@@ -1,0 +1,29 @@
+---
+title: "OpenAI Codex"
+description: "Set up OpenAI Codex integration"
+icon: https://www.vibekanban.com/images/logos/openai-logo.svg
+---
+
+<Steps>
+<Step title="Run OpenAI Codex">
+  ```bash
+  npx -y @openai/codex
+  ```
+</Step>
+
+<Step title="Follow the login instructions">
+  Complete the authentication flow as prompted. Follow the authentication instructions from the [OpenAI help centre](https://help.openai.com/en/articles/11369540-using-codex-with-your-chatgpt-plan) to use Codex with your ChatGPT plan.
+
+  Alternatively, Codex can be used via the OpenAI API by setting the `OPENAI_API_KEY` environment variable. For more details, see the [OpenAI documentation](https://developers.openai.com/codex/pricing/#use-an-openai-api-key)
+</Step>
+
+<Step title="Start Vibe Kanban">
+  Once authenticated, launch Vibe Kanban:
+
+  ```bash
+  npx vibe-kanban
+  ```
+
+  You can now select OpenAI Codex when creating task attempts.
+</Step>
+</Steps>

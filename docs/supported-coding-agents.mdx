@@ -5,318 +5,42 @@ description: "Complete guide to all coding agents supported by Vibe Kanban, incl
 
 Vibe Kanban integrates with a variety of coding agents. Each agent requires installation and authentication before use. Select your preferred agent when creating task attempts.
 
-<AccordionGroup>
-
-<Accordion title="Claude Code" icon="code">
-**Anthropic's Claude Code**
-
-<Steps>
-<Step title="Run Claude Code">
-  ```bash
-  npx -y @anthropic-ai/claude-code
-  ```
-</Step>
-
-<Step title="Follow the login instructions">
-  Complete the authentication flow as prompted. For more details, see the [Claude Code documentation](https://docs.claude.com/en/docs/claude-code/quickstart).
-</Step>
-
-<Step title="Start Vibe Kanban">
-  Once authenticated, launch Vibe Kanban:
-  
-  ```bash
-  npx vibe-kanban
-  ```
-  
-  You can now select Claude Code when creating task attempts.
-</Step>
-</Steps>
-</Accordion>
-
-<Accordion title="OpenAI Codex" icon="code">
-**OpenAI Codex integration**
-
-<Steps>
-<Step title="Run OpenAI Codex">
-  ```bash
-  npx -y @openai/codex
-  ```
-</Step>
-
-<Step title="Follow the login instructions">
-  Complete the authentication flow as prompted. Follow the authentication instructions from the [OpenAI help center](https://help.openai.com/en/articles/11369540-using-codex-with-your-chatgpt-plan) to use Codex with your ChatGPT plan.
-
-  Alternatively, Codex can be used via the OpenAI API by setting the `OPENAI_API_KEY` environment variable. For more details, see the [OpenAI documentation](https://developers.openai.com/codex/pricing/#use-an-openai-api-key)
-</Step>
-
-<Step title="Start Vibe Kanban">
-  Once authenticated, launch Vibe Kanban:
-  
-  ```bash
-  npx vibe-kanban
-  ```
-  
-  You can now select OpenAI Codex when creating task attempts.
-</Step>
-</Steps>
-</Accordion>
-
-<Accordion title="Amp" icon="code">
-**Amp code completion agent**
-
-<Steps>
-<Step title="Run Amp">
-  ```bash
-  npx -y @sourcegraph/amp
-  ```
-</Step>
-
-<Step title="Follow the login instructions">
-  Complete the authentication flow as prompted. For more details, see the [Amp Owner's Manual](https://ampcode.com/manual#install).
-</Step>
-
-<Step title="Start Vibe Kanban">
-  Once authenticated, launch Vibe Kanban:
-  
-  ```bash
-  npx vibe-kanban
-  ```
-  
-  You can now select Amp when creating task attempts.
-</Step>
-</Steps>
-</Accordion>
-
-<Accordion title="GitHub Copilot" icon="code">
-**GitHub Copilot CLI**
-
-<Steps>
-<Step title="Run GitHub Copilot">
-  ```bash
-  npx -y @github/copilot
-  ```
-</Step>
-
-<Step title="Follow the login instructions">
-  When prompted, follow the on-screen instructions to authenticate using the `/login` command. For more details, see the [GitHub Copilot CLI documentation](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/use-copilot-cli).
-</Step>
-
-<Step title="Start Vibe Kanban">
-  Once authenticated, launch Vibe Kanban:
-  
-  ```bash
-  npx vibe-kanban
-  ```
-  
-  You can now select GitHub Copilot when creating task attempts.
-</Step>
-</Steps>
-</Accordion>
-
-<Accordion title="Cursor CLI" icon="code">
-**Cursor's command-line agent**
-
-<Steps>
-<Step title="Install Cursor CLI">
-  ```bash
-  curl https://cursor.com/install -fsS | bash
-  ```
-  
-  Verify installation with `cursor-agent --version`. For more details, see the [official installation guide](https://docs.cursor.com/en/cli/installation).
-</Step>
-
-<Step title="Follow the login instructions">
-  Sign in with `cursor-agent login` (opens a browser). You can also set the `CURSOR_API_KEY` environment variable. Full instructions: https://docs.cursor.com/en/cli/reference/authentication
-</Step>
-
-<Step title="Start Vibe Kanban">
-  Once authenticated, launch Vibe Kanban:
-  
-  ```bash
-  npx vibe-kanban
-  ```
-  
-  You can now select Cursor CLI when creating task attempts.
-</Step>
-</Steps>
-</Accordion>
-
-<Accordion title="CCR (Claude Code Router)" icon="code">
-**Orchestrate multiple Claude Code models**
-
-CCR (Claude Code Router) lets you route coding prompts across different LLM providers and models, and select specialised models for specific tasks like long context, background work, or image understanding.
-
-## Installation
-CCR is available via `npx` – no separate installation required.
-
-```bash
-npx -y @musistudio/claude-code-router ui
-```
-
-This launches the CCR local UI where you configure providers and models.
-
-## Authentication
-Authenticate and configure CCR outside of Vibe Kanban. Follow the instructions on the CCR GitHub repo:
-
-- GitHub: https://github.com/musistudio/claude-code-router
-
-You'll add providers, set API keys, and register model names in the CCR UI or via CCR's JSON configuration (see the CCR repo for the schema and file location).
-
-## Configure CCR (Providers and Models)
-
-Configure CCR either via the UI or JSON config.
-
-In the CCR UI (`npx -y @musistudio/claude-code-router ui`):
-
-1) Add providers
-- Choose a provider (e.g., `openrouter`, `deepseek`, etc.).
-- Enter the required API key(s) and settings for that provider.
-
-2) Add models
-- For each provider, register the model identifier (e.g., `moonshotai/kimi-k2-0905`, `deepseek-chat`).
-- CCR supports configuring different models for specific cases:
-  - `default`: general coding
-  - `background`: lightweight/background operations
-  - `think`: models that support "thinking" modes
-  - `longContext`: very long inputs/files
-  - `webSearch`: models that support web/tool use
-  - `image`: models with vision capabilities
-
-Note: not all models support web search, thinking, or images. Choose models accordingly in the CCR UI.
-
-### Configure via JSON (optional)
-CCR can also be configured via its JSON configuration file. Refer to the CCR GitHub documentation for the exact schema, keys, and file location. Define providers (with API keys) and map the model cases (`default`, `background`, `think`, `longContext`, `webSearch`, `image`) to specific provider/model pairs.
-
-### Example: OpenRouter provider configured in CCR UI
-
-<Frame>
-<img src="/images/ccr-openrouter-ui.png" alt="OpenRouter configured in CCR UI" />
-</Frame>
-
-### Example: CCR model mapping (default/background/think/etc.)
-
-<Frame>
-<img src="/images/ccr-config-example.png" alt="CCR models configuration example" />
-</Frame>
-
-## Configure Vibe Kanban
-
-Vibe Kanban does not ship a default configuration for CCR. Add configurations to the existing Claude Code agent:
-
-1) Open the "Coding Agent Configurations" page.
-2) Add a new configuration for the Claude Code agent (or edit an existing one).
-3) Enable the `claude_code_router` checkbox.
-4) Optionally set a model string to target a specific CCR provider/model.
-
-See the [Agent Profiles & Variants](/configuration-customisation/agent-configurations) guide for managing agent configurations.
-
-Model string format: `<provider>,<model-name>`
-
-Examples:
-```text
-openrouter,moonshotai/kimi-k2-0905
-deepseek,deepseek-chat
-```
-
-Tips:
-- Create multiple configurations if you want easy switching between different models.
-- Leave the model string empty if you want CCR to use its own routing based on your CCR UI configuration (e.g., its `default`/`longContext`/etc. mappings).
-
-### Example: Claude Code agent configuration in Vibe Kanban
-
-<Frame>
-<img src="/images/vk-ccr-agent-config.png" alt="Claude Code agent configuration in Vibe Kanban" />
-</Frame>
-
-## Using CCR in Vibe Kanban
-
-When creating a Task Attempt, select the coding agent and configuration: choose the Claude Code agent, then pick one of your CCR-enabled configurations.
-
-## Troubleshooting
-
-- Authentication errors: verify your API keys/provider settings in CCR (via UI or JSON config).
-- Model not found: confirm the model identifier is correct for the chosen provider.
-- Missing features (webSearch/think/image): switch to a model that supports the capability and update your CCR mapping (via UI or JSON config).
-</Accordion>
-
-
-
-<Accordion title="Gemini CLI" icon="code">
-**Google Gemini CLI**
-
-<Steps>
-<Step title="Run Gemini CLI">
-  ```bash
-  npx -y @google/gemini-cli
-  ```
-</Step>
-
-<Step title="Follow the login instructions">
-  Complete the authentication flow as prompted. For more details, see [geminicli.com](https://geminicli.com/).
-</Step>
-
-<Step title="Start Vibe Kanban">
-  Once authenticated, launch Vibe Kanban:
-  
-  ```bash
-  npx vibe-kanban
-  ```
-  
-  You can now select Gemini CLI when creating task attempts.
-</Step>
-</Steps>
-</Accordion>
-
-<Accordion title="OpenCode" icon="code">
-**SST's OpenCode**
-
-<Steps>
-<Step title="Run OpenCode">
-  ```bash
-  npx -y opencode-ai
-  ```
-</Step>
-
-<Step title="Follow the login instructions">
-  Complete the authentication flow as prompted. For more details, see the [OpenCode GitHub page](https://github.com/sst/opencode).
-</Step>
-
-<Step title="Start Vibe Kanban">
-  Once authenticated, launch Vibe Kanban:
-  
-  ```bash
-  npx vibe-kanban
-  ```
-  
-  You can now select OpenCode when creating task attempts.
-</Step>
-</Steps>
-</Accordion>
-
-<Accordion title="Qwen Code" icon="code">
-**Qwen code-focused assistant**
-
-<Steps>
-<Step title="Run Qwen Code">
-  ```bash
-  npx -y @qwen-code/qwen-code
-  ```
-</Step>
-
-<Step title="Follow the login instructions">
-  Complete the authentication flow as prompted. For more details, see the [official Qwen documentation](https://github.com/QwenLM/qwen-code).
-</Step>
-
-<Step title="Start Vibe Kanban">
-  Once authenticated, launch Vibe Kanban:
-  
-  ```bash
-  npx vibe-kanban
-  ```
-  
-  You can now select Qwen Code when creating task attempts.
-</Step>
-</Steps>
-</Accordion>
-
-</AccordionGroup>
+## Available Agents
+
+<CardGroup cols={2}>
+<Card title="Claude Code" icon="code" href="/agents/claude-code">
+Anthropic's Claude Code
+</Card>
+
+<Card title="Amp" icon="code" href="/agents/amp">
+Amp code completion agent
+</Card>
+
+<Card title="Cursor CLI" icon="code" href="/agents/cursor-cli">
+Cursor's command-line agent
+</Card>
+
+<Card title="CCR" icon="code" href="/agents/ccr">
+Claude Code Router - orchestrate multiple models
+</Card>
+
+<Card title="OpenAI Codex" icon="code" href="/agents/openai-codex">
+OpenAI Codex integration
+</Card>
+
+<Card title="Gemini CLI" icon="code" href="/agents/gemini-cli">
+Google Gemini CLI
+</Card>
+
+<Card title="GitHub Copilot" icon="code" href="/agents/github-copilot">
+GitHub Copilot CLI
+</Card>
+
+<Card title="OpenCode" icon="code" href="/agents/opencode">
+SST's OpenCode
+</Card>
+
+<Card title="Qwen Code" icon="code" href="/agents/qwen-code">
+Qwen code-focused assistant
+</Card>
+</CardGroup>
