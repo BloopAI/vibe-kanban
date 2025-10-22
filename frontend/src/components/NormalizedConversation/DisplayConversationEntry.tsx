@@ -501,7 +501,7 @@ const ToolCallCard: React.FC<{
           {getEntryIcon(entryType)}
           <span className="font-normal">{label}</span>
           {showInlineSummary && (
-            <span className="font-light">: {inlineText}</span>
+            <span className="font-light">{inlineText}</span>
           )}
         </span>
       </HeaderWrapper>
