@@ -238,14 +238,27 @@
   "viewProcessesDialog": {
     "title": "Execution processes"
   },
+  "viewRelatedTasksDialog": {
+    "title": "Related tasks",
+    "empty": "No related tasks for this attempt",
+    "error": "Failed to load related tasks",
+    "tasksCount": "Tasks ({{count}})",
+    "columns": {
+      "title": "Title",
+      "description": "Description",
+      "status": "Status"
+    }
+  },
   "attemptHeaderActions": {
     "preview": "Preview",
-    "diffs": "Diffs"
+    "diffs": "Diffs",
+    "relatedTasks": "Related tasks"
   },
   "actionsMenu": {
     "attempt": "Attempt",
     "openInIde": "Open attempt in IDE",
     "viewProcesses": "View processes",
+    "viewRelatedTasks": "View related tasks",
     "createNewAttempt": "Create new attempt",
     "createSubtask": "Create subtask",
     "gitActions": "Git actions",

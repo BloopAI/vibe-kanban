@@ -14,6 +14,8 @@ import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import NiceModal from '@ebay/nice-modal-react';
 import { useProject } from '@/contexts/project-context';
 import { openTaskForm } from '@/lib/openTaskForm';
+import { ViewRelatedTasksDialog } from '@/components/dialogs/tasks/ViewRelatedTasksDialog';
+import { useNavigate } from 'react-router-dom';
 
 interface ActionsDropdownProps {
   task?: TaskWithAttemptStatus | null;
@@ -24,6 +26,7 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
   const { t } = useTranslation('tasks');
   const { projectId } = useProject();
   const openInEditor = useOpenInEditor(attempt?.id);
+  const navigate = useNavigate();
 
   const hasAttemptActions = Boolean(attempt);
   const hasTaskActions = Boolean(task);
@@ -63,6 +66,21 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
     e.stopPropagation();
     if (!attempt?.id) return;
     NiceModal.show('view-processes', { attemptId: attempt.id });
+  };
+
+  const handleViewRelatedTasks = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!attempt?.id || !projectId) return;
+    NiceModal.show(ViewRelatedTasksDialog, {
+      attemptId: attempt.id,
+      projectId,
+      attempt,
+      onNavigateToTask: (taskId: string) => {
+        if (projectId) {
+          navigate(`/projects/${projectId}/tasks/${taskId}`);
+        }
+      },
+    });
   };
 
   const handleCreateNewAttempt = (e: React.MouseEvent) => {
@@ -123,6 +141,12 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
                 onClick={handleViewProcesses}
               >
                 {t('actionsMenu.viewProcesses')}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!attempt?.id}
+                onClick={handleViewRelatedTasks}
+              >
+                {t('actionsMenu.viewRelatedTasks')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleCreateNewAttempt}>
                 {t('actionsMenu.createNewAttempt')}
