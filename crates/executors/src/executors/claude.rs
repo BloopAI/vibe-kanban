@@ -189,9 +189,9 @@ impl StandardCodingAgentExecutor for ClaudeCode {
             client.connect(protocol_peer.clone());
             // Initialize control protocol
             if let Err(e) = protocol_peer.initialize(hooks).await {
-                tracing::error!("Failed to initialize control protocol: {}", e);
+                tracing::error!("Failed to initialize control protocol: {e}");
                 let _ = log_writer
-                    .log_raw(&format!("Error: Failed to initialize - {}", e))
+                    .log_raw(&format!("Error: Failed to initialize - {e}"))
                     .await;
                 return;
             }
@@ -202,9 +202,9 @@ impl StandardCodingAgentExecutor for ClaudeCode {
 
             // Send initial user message
             if let Err(e) = protocol_peer.send_user_message(prompt_clone).await {
-                tracing::error!("Failed to send initial prompt: {}", e);
+                tracing::error!("Failed to send initial prompt: {e}");
                 let _ = log_writer
-                    .log_raw(&format!("Error: Failed to send prompt - {}", e))
+                    .log_raw(&format!("Error: Failed to send prompt - {e}"))
                     .await;
             }
         });
@@ -271,9 +271,9 @@ impl StandardCodingAgentExecutor for ClaudeCode {
 
             // Initialize control protocol
             if let Err(e) = protocol_peer.initialize(hooks).await {
-                tracing::error!("Failed to initialize control protocol: {}", e);
+                tracing::error!("Failed to initialize control protocol: {e}");
                 let _ = log_writer
-                    .log_raw(&format!("Error: Failed to initialize - {}", e))
+                    .log_raw(&format!("Error: Failed to initialize - {e}"))
                     .await;
                 return;
             }
@@ -283,9 +283,9 @@ impl StandardCodingAgentExecutor for ClaudeCode {
 
             // Send follow-up user message
             if let Err(e) = protocol_peer.send_user_message(prompt_clone).await {
-                tracing::error!("Failed to send follow-up prompt: {}", e);
+                tracing::error!("Failed to send follow-up prompt: {e}");
                 let _ = log_writer
-                    .log_raw(&format!("Error: Failed to send prompt - {}", e))
+                    .log_raw(&format!("Error: Failed to send prompt - {e}"))
                     .await;
             }
 
@@ -1168,7 +1168,7 @@ impl ClaudeLogProcessor {
                     ApprovalStatus::TimedOut => Some(NormalizedEntry {
                         timestamp: None,
                         entry_type: NormalizedEntryType::ErrorMessage,
-                        content: format!("Approval timed out for tool {}", tool_name),
+                        content: format!("Approval timed out for tool {tool_name}"),
                         metadata: None,
                     }),
                 };

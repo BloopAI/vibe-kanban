@@ -118,7 +118,7 @@ impl ProtocolCallbacks for ClaudeAgentClient {
 
         if self.auto_approve {
             self.log_writer
-                .log_raw(&format!("[AUTO-APPROVE via hook] Tool: {}", tool_name))
+                .log_raw(&format!("[AUTO-APPROVE via hook] Tool: {tool_name}"))
                 .await?;
             Ok(serde_json::json!({
                 "hookSpecificOutput": {
@@ -210,11 +210,11 @@ impl ProtocolCallbacks for ClaudeAgentClient {
         self.log_writer.log_raw(line).await?;
 
         // Check for result message indicating task completion
-        if let Ok(value) = serde_json::from_str::<serde_json::Value>(line) {
-            if value.get("type").and_then(|t| t.as_str()) == Some("result") {
-                tracing::info!("Detected result message, task complete");
-                return Ok(true);
-            }
+        if let Ok(value) = serde_json::from_str::<serde_json::Value>(line)
+            && value.get("type").and_then(|t| t.as_str()) == Some("result")
+        {
+            tracing::info!("Detected result message, task complete");
+            return Ok(true);
         }
 
         Ok(false)
