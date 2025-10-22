@@ -1,11 +1,7 @@
-//! Claude Agent SDK client implementation
-//!
-//! This client handles control protocol callbacks and manages tool approvals.
-//! MVP: Auto-approves all tools and switches to bypassPermissions mode.
-
 use std::sync::{Arc, OnceLock};
 
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 use workspace_utils::approvals::ApprovalStatus;
 
@@ -66,11 +62,35 @@ impl ClaudeAgentClient {
     pub fn connect(&self, peer: ProtocolPeer) {
         let _ = self.protocol.set(peer);
     }
+}
 
-    /// Get the protocol peer (panics if not connected)
-    #[allow(dead_code)]
-    fn protocol(&self) -> &ProtocolPeer {
-        self.protocol.get().expect("Protocol peer not attached")
+/// Approval message for logging to output stream
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "snake_case")]
+pub struct Approval {
+    #[serde(rename = "type")]
+    message_type: String,
+    pub call_id: String,
+    pub tool_name: String,
+    pub approval_status: ApprovalStatus,
+}
+
+impl Approval {
+    pub fn approval_response(
+        call_id: String,
+        tool_name: String,
+        approval_status: ApprovalStatus,
+    ) -> Self {
+        Self {
+            message_type: "approval_response".to_string(),
+            call_id,
+            tool_name,
+            approval_status,
+        }
+    }
+
+    pub fn raw(&self) -> String {
+        serde_json::to_string(self).unwrap_or_default()
     }
 }
 
@@ -100,15 +120,6 @@ impl ProtocolCallbacks for ClaudeAgentClient {
             self.log_writer
                 .log_raw(&format!("[AUTO-APPROVE via hook] Tool: {}", tool_name))
                 .await?;
-
-            // After approval, switch to bypassPermissions
-            if let Err(e) = peer
-                .set_permission_mode(PermissionMode::BypassPermissions)
-                .await
-            {
-                tracing::warn!("Failed to set permission mode: {}", e);
-            }
-
             Ok(serde_json::json!({
                 "hookSpecificOutput": {
                     "hookEventName": "PreToolUse",
@@ -132,20 +143,26 @@ impl ProtocolCallbacks for ClaudeAgentClient {
                 .request_tool_approval(&tool_name, tool_input.clone(), &tool_use_id)
                 .await?;
 
+            // Log approval response for UI
+            self.log_writer
+                .log_raw(
+                    &Approval::approval_response(
+                        tool_use_id.clone(),
+                        tool_name.clone(),
+                        status.clone(),
+                    )
+                    .raw(),
+                )
+                .await?;
+
             match status {
                 ApprovalStatus::Approved => {
-                    self.log_writer
-                        .log_raw(&format!("[APPROVED via hook] Tool: {}", tool_name))
-                        .await?;
-
                     if tool_name == EXIT_PLAN_MODE_NAME {
-                        tracing::info!("Exiting plan mode as per approval for tool: {}", tool_name);
-                        // After approval, switch to acceptEdits mode
                         if let Err(e) = peer.set_permission_mode(PermissionMode::AcceptEdits).await
                         {
                             tracing::warn!("Failed to set permission mode: {}", e);
                         } else {
-                            tracing::info!("Switched to acceptEdits mode");
+                            tracing::debug!("Exited plan mode");
                         }
                     }
                     Ok(serde_json::json!({
@@ -157,12 +174,6 @@ impl ProtocolCallbacks for ClaudeAgentClient {
                 }
                 ApprovalStatus::Denied { reason } => {
                     let message = reason.unwrap_or_else(|| "Denied by user".to_string());
-                    self.log_writer
-                        .log_raw(&format!(
-                            "[DENIED via hook] Tool: {} - {}",
-                            tool_name, message
-                        ))
-                        .await?;
 
                     Ok(serde_json::json!({
                         "hookSpecificOutput": {
@@ -191,7 +202,6 @@ impl ProtocolCallbacks for ClaudeAgentClient {
     }
 
     async fn on_session_init(&self, session_id: String) -> Result<(), ExecutorError> {
-        tracing::info!("Registering session: {}", session_id);
         self.register_session(session_id).await
     }
 

@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 use ts_rs::TS;
 use workspace_utils::{
+    approvals::ApprovalStatus,
     diff::{concatenate_diff_hunks, create_unified_diff, create_unified_diff_hunk},
     log_msg::LogMsg,
     msg_store::MsgStore,
@@ -466,6 +467,7 @@ impl ClaudeLogProcessor {
             ClaudeJson::ToolResult { session_id, .. } => session_id.clone(),
             ClaudeJson::StreamEvent { session_id, .. } => session_id.clone(),
             ClaudeJson::Result { session_id, .. } => session_id.clone(),
+            ClaudeJson::ApprovalResponse { .. } => None,
             ClaudeJson::Unknown { .. } => None,
         }
     }
@@ -1142,6 +1144,40 @@ impl ClaudeLogProcessor {
                     patches.push(ConversationPatch::add_normalized_entry(idx, entry));
                 }
             }
+            ClaudeJson::ApprovalResponse {
+                call_id: _,
+                tool_name,
+                approval_status,
+            } => {
+                // Convert denials and timeouts to visible entries (matching Codex behavior)
+                let entry_opt = match approval_status {
+                    ApprovalStatus::Pending => None,
+                    ApprovalStatus::Approved => None,
+                    ApprovalStatus::Denied { reason } => Some(NormalizedEntry {
+                        timestamp: None,
+                        entry_type: NormalizedEntryType::UserFeedback {
+                            denied_tool: tool_name.clone(),
+                        },
+                        content: reason
+                            .as_ref()
+                            .map(|s| s.trim().to_string())
+                            .filter(|s| !s.is_empty())
+                            .unwrap_or_else(|| "User denied this tool use request".to_string()),
+                        metadata: None,
+                    }),
+                    ApprovalStatus::TimedOut => Some(NormalizedEntry {
+                        timestamp: None,
+                        entry_type: NormalizedEntryType::ErrorMessage,
+                        content: format!("Approval timed out for tool {}", tool_name),
+                        metadata: None,
+                    }),
+                };
+
+                if let Some(entry) = entry_opt {
+                    let idx = entry_index_provider.next();
+                    patches.push(ConversationPatch::add_normalized_entry(idx, entry));
+                }
+            }
             ClaudeJson::Unknown { data } => {
                 let entry = NormalizedEntry {
                     timestamp: None,
@@ -1410,7 +1446,7 @@ impl StreamingContentState {
 }
 
 // Data structures for parsing Claude's JSON output format
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum ClaudeJson {
     #[serde(rename = "system")]
@@ -1472,6 +1508,12 @@ pub enum ClaudeJson {
         num_turns: Option<u32>,
         #[serde(default, alias = "sessionId")]
         session_id: Option<String>,
+    },
+    #[serde(rename = "approval_response")]
+    ApprovalResponse {
+        call_id: String,
+        tool_name: String,
+        approval_status: ApprovalStatus,
     },
     // Catch-all for unknown message types
     #[serde(untagged)]

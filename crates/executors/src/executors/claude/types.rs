@@ -48,15 +48,22 @@ pub enum ControlRequestType {
         #[serde(skip_serializing_if = "Option::is_none")]
         tool_use_id: Option<String>,
     },
-    // Add more as needed: Initialize, SetPermissionMode, etc.
 }
 
 /// Control response from SDK to CLI
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "subtype", rename_all = "snake_case")]
 pub enum ControlResponseType {
-    Success { request_id: String, response: Value },
-    Error { request_id: String, error: String },
+    Success {
+        request_id: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        response: Option<Value>,
+    },
+    Error {
+        request_id: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        error: Option<String>,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -67,7 +74,7 @@ pub enum SDKControlRequestType {
     },
     Initialize {
         #[serde(skip_serializing_if = "Option::is_none")]
-        hooks: Option<Value>, // Could define a more specific type if needed
+        hooks: Option<Value>,
     },
 }
 
@@ -99,7 +106,6 @@ pub struct PermissionUpdate {
     pub destination: Option<String>, // "session", "userSettings", "projectSettings", "localSettings"
 }
 
-/// Permission modes
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum PermissionMode {

@@ -23,7 +23,6 @@ pub struct ProtocolPeer {
 }
 
 impl ProtocolPeer {
-    /// Spawn a new protocol peer that reads from stdout and handles control requests
     pub fn spawn(
         stdin: ChildStdin,
         stdout: ChildStdout,
@@ -61,7 +60,6 @@ impl ProtocolPeer {
                     if line.is_empty() {
                         continue;
                     }
-                    tracing::info!("Received from CLI stdout: {}", line);
                     // Try parsing as control request
                     if let Ok(control_req) = serde_json::from_str::<ControlRequestMessage>(line) {
                         if control_req.message_type == "control_request" {
@@ -91,12 +89,12 @@ impl ProtocolPeer {
                         }
 
                         // Forward all non-control messages to stdout
-                        let has_finished = callbacks.on_non_control(line).await.unwrap_or_else(|e| {
-                            tracing::warn!("Error handling non-control message: {}", e);
-                            false
-                        });
+                        let has_finished =
+                            callbacks.on_non_control(line).await.unwrap_or_else(|e| {
+                                tracing::warn!("Error handling non-control message: {}", e);
+                                false
+                            });
                         if has_finished {
-                            tracing::info!("Task completed, exiting read loop");
                             break;
                         }
                     }
@@ -119,11 +117,7 @@ impl ProtocolPeer {
         let request_id = request.request_id.clone();
 
         match request.request {
-            ControlRequestType::CanUseTool {
-                tool_name,
-                input,
-                permission_suggestions,
-            } => {
+            ControlRequestType::CanUseTool { tool_name, .. } => {
                 tracing::warn!(
                     "on_can_use_tool callback is not implemented. Tool: {}",
                     tool_name
@@ -139,7 +133,6 @@ impl ProtocolPeer {
                     .await
                 {
                     Ok(hook_output) => {
-                        // Send hook output directly (not wrapped in PermissionResult)
                         if let Err(e) = self.send_hook_response(request_id, hook_output).await {
                             tracing::error!("Failed to send hook callback result: {}", e);
                         }
@@ -155,7 +148,6 @@ impl ProtocolPeer {
         }
     }
 
-    /// Send permission result back to CLI (for can_use_tool)
     pub async fn send_permission_result(
         &self,
         request_id: String,
@@ -163,7 +155,7 @@ impl ProtocolPeer {
     ) -> Result<(), ExecutorError> {
         let response = ControlResponseType::Success {
             request_id,
-            response: serde_json::to_value(result)?,
+            response: Some(serde_json::to_value(result)?),
         };
 
         let message = ControlResponseMessage {
@@ -174,7 +166,6 @@ impl ProtocolPeer {
         self.send_json(&message).await
     }
 
-    /// Send hook callback response to CLI
     pub async fn send_hook_response(
         &self,
         request_id: String,
@@ -182,7 +173,7 @@ impl ProtocolPeer {
     ) -> Result<(), ExecutorError> {
         let response = ControlResponseType::Success {
             request_id,
-            response: hook_output,
+            response: Some(hook_output),
         };
 
         let message = ControlResponseMessage {
@@ -197,7 +188,7 @@ impl ProtocolPeer {
     async fn send_error(&self, request_id: String, error: String) -> Result<(), ExecutorError> {
         let response = ControlResponseType::Error {
             request_id,
-            error: error,
+            error: Some(error),
         };
 
         let message = ControlResponseMessage {
