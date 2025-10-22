@@ -26,7 +26,8 @@
           "index",
           "getting-started",
           {
-            "group": "Agents",
+            "group": "Supported Coding Agents",
+            "expanded": true,
             "pages": [
               "supported-coding-agents",
               "agents/claude-code",
