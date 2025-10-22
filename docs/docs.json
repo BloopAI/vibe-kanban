@@ -31,18 +31,17 @@
         "pages": [
           "core-features/creating-projects",
           "core-features/creating-tasks",
-          "core-features/monitoring-agent-logs",
-          "core-features/preview-mode",
+          "core-features/monitoring-task-execution",
+          "core-features/testing-your-application",
           "core-features/reviewing-code-changes",
-          "core-features/git-operations",
-          "core-features/task-details-full-screen"
+          "core-features/completing-a-task"
         ]
       },
       {
         "group": "Advanced Features",
         "pages": [
           "core-features/subtasks",
-          "core-features/creating-task-attempts",
+          "core-features/new-task-attempts",
           "core-features/resolving-rebase-conflicts"
         ]
       },
