@@ -14,12 +14,21 @@ pub struct ControlRequestMessage {
     pub request: ControlRequestType,
 }
 
+/// Control request from SDK to CLI (outgoing)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SDKControlRequestMessage {
+    #[serde(rename = "type")]
+    pub message_type: String, // "control_request"
+    pub request_id: String,
+    pub request: SDKControlRequestType,
+}
+
 /// Control response from SDK to CLI (outgoing)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ControlResponseMessage {
     #[serde(rename = "type")]
     pub message_type: String, // "control_response"
-    pub response: ControlResponse,
+    pub response: ControlResponseType,
 }
 
 /// Types of control requests
@@ -44,13 +53,22 @@ pub enum ControlRequestType {
 
 /// Control response from SDK to CLI
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ControlResponse {
-    pub request_id: String,
-    pub subtype: String, // "success" or "error"
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub response: Option<Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
+#[serde(tag = "subtype", rename_all = "snake_case")]
+pub enum ControlResponseType {
+    Success { request_id: String, response: Value },
+    Error { request_id: String, error: String },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "subtype", rename_all = "snake_case")]
+pub enum SDKControlRequestType {
+    SetPermissionMode {
+        mode: PermissionMode,
+    },
+    Initialize {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        hooks: Option<Value>, // Could define a more specific type if needed
+    },
 }
 
 /// Result of permission check
@@ -79,7 +97,6 @@ pub struct PermissionUpdate {
     pub mode: Option<String>, // "bypassPermissions", "plan", "default", "acceptEdits"
     #[serde(skip_serializing_if = "Option::is_none")]
     pub destination: Option<String>, // "session", "userSettings", "projectSettings", "localSettings"
-                                     // Add more fields as needed: rules, behavior, directories
 }
 
 /// Permission modes

@@ -14,10 +14,13 @@ use tokio::{
 };
 
 use super::types::{
-    ControlRequestMessage, ControlRequestType, ControlResponse, ControlResponseMessage,
-    PermissionResult, PermissionUpdate,
+    ControlRequestMessage, ControlRequestType, ControlResponseMessage, ControlResponseType,
+    PermissionResult, SDKControlRequestMessage,
 };
-use crate::executors::{ExecutorError, claude::types::PermissionMode};
+use crate::executors::{
+    ExecutorError,
+    claude::types::{PermissionMode, SDKControlRequestType},
+};
 
 /// Handles bidirectional control protocol communication
 #[derive(Clone)]
@@ -121,22 +124,6 @@ impl ProtocolPeer {
                 input,
                 permission_suggestions,
             } => {
-                // match callbacks
-                //     .on_can_use_tool(self, tool_name, input, permission_suggestions)
-                //     .await
-                // {
-                //     Ok(result) => {
-                //         if let Err(e) = self.send_permission_result(request_id, result).await {
-                //             tracing::error!("Failed to send permission result: {}", e);
-                //         }
-                //     }
-                //     Err(e) => {
-                //         tracing::error!("Error in on_can_use_tool: {}", e);
-                //         if let Err(e2) = self.send_error(request_id, e.to_string()).await {
-                //             tracing::error!("Failed to send error response: {}", e2);
-                //         }
-                //     }
-                // }
                 tracing::warn!(
                     "on_can_use_tool callback is not implemented. Tool: {}",
                     tool_name
@@ -174,11 +161,9 @@ impl ProtocolPeer {
         request_id: String,
         result: PermissionResult,
     ) -> Result<(), ExecutorError> {
-        let response = ControlResponse {
+        let response = ControlResponseType::Success {
             request_id,
-            subtype: "success".to_string(),
-            response: Some(serde_json::to_value(result)?),
-            error: None,
+            response: serde_json::to_value(result)?,
         };
 
         let message = ControlResponseMessage {
@@ -195,11 +180,9 @@ impl ProtocolPeer {
         request_id: String,
         hook_output: serde_json::Value,
     ) -> Result<(), ExecutorError> {
-        let response = ControlResponse {
+        let response = ControlResponseType::Success {
             request_id,
-            subtype: "success".to_string(),
-            response: Some(hook_output),
-            error: None,
+            response: hook_output,
         };
 
         let message = ControlResponseMessage {
@@ -212,11 +195,9 @@ impl ProtocolPeer {
 
     /// Send error response to CLI
     async fn send_error(&self, request_id: String, error: String) -> Result<(), ExecutorError> {
-        let response = ControlResponse {
+        let response = ControlResponseType::Error {
             request_id,
-            subtype: "error".to_string(),
-            response: None,
-            error: Some(error),
+            error: error,
         };
 
         let message = ControlResponseMessage {
@@ -241,21 +222,21 @@ impl ProtocolPeer {
     /// Initialize control protocol with the CLI
     /// Registers a hook callback for PreToolUse events to enable approval flow
     pub async fn initialize(&self) -> Result<(), ExecutorError> {
-        let init_request = serde_json::json!({
-            "type": "control_request",
-            // "request_id": "init_001",
-            "request": {
-                "subtype": "initialize",
-                "hooks": {
+        use uuid::Uuid;
+        let init_request = SDKControlRequestMessage {
+            message_type: "control_request".to_string(),
+            request_id: format!("init_{}", Uuid::new_v4()),
+            request: SDKControlRequestType::Initialize {
+                hooks: Some(serde_json::json!({
                     "PreToolUse": [
                         {
                             "matcher": ".*",
                             "hookCallbackIds": ["tool_approval"]
                         }
                     ]
-                }
-            }
-        });
+                })),
+            },
+        };
         self.send_json(&init_request).await?;
         Ok(())
     }
@@ -275,15 +256,11 @@ impl ProtocolPeer {
     /// Send a control request to change permission mode
     pub async fn set_permission_mode(&self, mode: PermissionMode) -> Result<(), ExecutorError> {
         use uuid::Uuid;
-
-        let mode_request = serde_json::json!({
-            "type": "control_request",
-            "request_id": format!("set_mode_{}", Uuid::new_v4()),
-            "request": {
-                "subtype": "set_permission_mode",
-                "mode": mode.as_str()
-            }
-        });
+        let mode_request = SDKControlRequestMessage {
+            message_type: "control_request".to_string(),
+            request_id: format!("set_mode_{}", Uuid::new_v4()),
+            request: SDKControlRequestType::SetPermissionMode { mode },
+        };
         self.send_json(&mode_request).await
     }
 }
