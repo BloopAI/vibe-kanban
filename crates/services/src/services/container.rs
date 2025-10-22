@@ -41,10 +41,9 @@ use utils::{
 use uuid::Uuid;
 
 use crate::services::{
-    clerk::ClerkSessionStore,
     git::{GitService, GitServiceError},
     image::ImageService,
-    share::ShareTaskPublisher,
+    share::SharePublisher,
     worktree_manager::{WorktreeError, WorktreeManager},
 };
 pub type ContainerRef = String;
@@ -111,7 +110,7 @@ pub trait ContainerService {
 
     fn git(&self) -> &GitService;
 
-    fn clerk_sessions(&self) -> &ClerkSessionStore;
+    fn share_publisher(&self) -> Option<&SharePublisher>;
 
     fn task_attempt_to_current_dir(&self, task_attempt: &TaskAttempt) -> PathBuf;
 
@@ -193,6 +192,7 @@ pub trait ContainerService {
         &self,
         task_attempt: &TaskAttempt,
     ) -> Result<ContainerRef, ContainerError>;
+
     async fn is_container_clean(&self, task_attempt: &TaskAttempt) -> Result<bool, ContainerError>;
 
     async fn start_execution_inner(
@@ -587,16 +587,15 @@ pub trait ContainerService {
             && run_reason != &ExecutionProcessRunReason::DevServer
         {
             Task::update_status(&self.db().pool, task.id, TaskStatus::InProgress).await?;
-            if let Ok(publisher) =
-                ShareTaskPublisher::new(self.db().clone(), self.clerk_sessions().clone())
+
+            if let Some(publisher) = self.share_publisher()
+                && let Err(err) = publisher.update_shared_task_by_id(task.id, None).await
             {
-                if let Err(err) = publisher.update_shared_task_by_id(task.id, None).await {
-                    tracing::warn!(
-                        ?err,
-                        "Failed to propagate shared task update for {}",
-                        task.id
-                    );
-                }
+                tracing::warn!(
+                    ?err,
+                    "Failed to propagate shared task update for {}",
+                    task.id
+                );
             }
         }
         // Create new execution process record

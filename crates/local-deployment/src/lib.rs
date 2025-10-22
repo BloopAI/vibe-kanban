@@ -17,7 +17,7 @@ use services::services::{
     filesystem::FilesystemService,
     git::GitService,
     image::ImageService,
-    share::{RemoteSync, RemoteSyncHandle},
+    share::{RemoteSync, SharePublisher},
 };
 use tokio::sync::RwLock;
 use utils::{assets::config_path, msg_store::MsgStore};
@@ -43,9 +43,9 @@ pub struct LocalDeployment {
     file_search_cache: Arc<FileSearchCache>,
     approvals: Approvals,
     drafts: DraftsService,
+    share_publisher: Option<SharePublisher>,
     clerk_sessions: ClerkSessionStore,
     clerk_auth: Option<Arc<ClerkAuth>>,
-    _remote_sync: Option<RemoteSyncHandle>,
 }
 
 #[async_trait]
@@ -81,15 +81,6 @@ impl Deployment for LocalDeployment {
         let git = GitService::new();
         let msg_stores = Arc::new(RwLock::new(HashMap::new()));
         let auth = AuthService::new();
-        let clerk_sessions = ClerkSessionStore::new();
-        let clerk_auth = match ClerkPublicConfig::from_env() {
-            Ok(public_config) => Some(Arc::new(public_config.build_auth()?)),
-            Err(ClerkPublicConfigError::MissingEnv(_)) => {
-                tracing::info!("CLERK_ISSUER not set; share features disabled");
-                None
-            }
-            Err(err) => return Err(DeploymentError::Other(err.into())),
-        };
         let filesystem = FilesystemService::new();
 
         // Create shared components for EventService
@@ -119,6 +110,34 @@ impl Deployment for LocalDeployment {
 
         let approvals = Approvals::new(msg_stores.clone());
 
+        let clerk_sessions = ClerkSessionStore::new();
+        let clerk_auth = match ClerkPublicConfig::from_env() {
+            Ok(public_config) => Some(Arc::new(public_config.build_auth()?)),
+            Err(ClerkPublicConfigError::MissingEnv(_)) => {
+                tracing::error!("CLERK_ISSUER not set; share features disabled");
+                None
+            }
+            Err(err) => return Err(DeploymentError::Other(err.into())),
+        };
+        let share_publisher = if clerk_auth.is_some() {
+            match SharePublisher::new(db.clone(), git.clone(), config.clone()) {
+                Ok(publisher) => {
+                    // start remote server sync communication
+                    RemoteSync::spawn_if_configured(db.clone(), clerk_sessions.clone());
+                    Some(publisher)
+                }
+                Err(err) => {
+                    tracing::error!(
+                        "Failed to initialize SharePublisher; disabling share feature: {}",
+                        err
+                    );
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
         // We need to make analytics accessible to the ContainerService
         // TODO: Handle this more gracefully
         let analytics_ctx = analytics.as_ref().map(|s| AnalyticsContext {
@@ -133,14 +152,11 @@ impl Deployment for LocalDeployment {
             image.clone(),
             analytics_ctx,
             approvals.clone(),
-            clerk_sessions.clone(),
+            share_publisher.clone(),
         );
         container.spawn_worktree_cleanup().await;
 
         let events = EventService::new(db.clone(), events_msg_store, events_entry_count);
-
-        // start remote server communication
-        let remote_sync = RemoteSync::spawn_if_configured(db.clone(), clerk_sessions.clone());
 
         let drafts = DraftsService::new(db.clone(), image.clone());
         let file_search_cache = Arc::new(FileSearchCache::new());
@@ -160,9 +176,9 @@ impl Deployment for LocalDeployment {
             file_search_cache,
             approvals,
             drafts,
+            share_publisher,
             clerk_sessions,
             clerk_auth,
-            _remote_sync: remote_sync,
         })
     }
 
@@ -223,6 +239,10 @@ impl Deployment for LocalDeployment {
 
     fn drafts(&self) -> &DraftsService {
         &self.drafts
+    }
+
+    fn share_publisher(&self) -> Option<SharePublisher> {
+        self.share_publisher.clone()
     }
 
     fn clerk_sessions(&self) -> &ClerkSessionStore {

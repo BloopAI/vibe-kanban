@@ -57,6 +57,8 @@ pub enum ApiError {
     Unauthorized,
     #[error("Conflict: {0}")]
     Conflict(String),
+    #[error("Forbidden: {0}")]
+    Forbidden(String),
 }
 
 impl From<Git2Error> for ApiError {
@@ -117,6 +119,7 @@ impl IntoResponse for ApiError {
             ApiError::Multipart(_) => (StatusCode::BAD_REQUEST, "MultipartError"),
             ApiError::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized"),
             ApiError::Conflict(_) => (StatusCode::CONFLICT, "ConflictError"),
+            ApiError::Forbidden(_) => (StatusCode::FORBIDDEN, "ForbiddenError"),
         };
 
         let error_message = match &self {
@@ -142,6 +145,7 @@ impl IntoResponse for ApiError {
             ApiError::Multipart(_) => "Failed to upload file. Please ensure the file is valid and try again.".to_string(),
             ApiError::Unauthorized => "Unauthorized. Please sign in again.".to_string(),
             ApiError::Conflict(msg) => msg.clone(),
+            ApiError::Forbidden(msg) => msg.clone(),
             ApiError::Drafts(drafts_err) => match drafts_err {
                 DraftsServiceError::Conflict(msg) => msg.clone(),
                 DraftsServiceError::Database(_) => format!("{}: {}", error_type, drafts_err),
@@ -162,15 +166,23 @@ impl From<ShareError> for ApiError {
     fn from(err: ShareError) -> Self {
         match err {
             ShareError::Database(db_err) => ApiError::Database(db_err),
-            ShareError::TaskNotFound(task_id) => {
-                ApiError::Conflict(format!("Task {task_id} not found for sharing"))
+            ShareError::AlreadyShared(_) => ApiError::Conflict(format!("Task already shared")),
+            ShareError::TaskNotFound(_) => {
+                ApiError::Conflict(format!("Task not found for sharing"))
             }
-            ShareError::ProjectNotFound(project_id) => {
-                ApiError::Conflict(format!("Project {project_id} not found for sharing"))
+            ShareError::ProjectNotFound(_) => {
+                ApiError::Conflict(format!("Project not found for sharing"))
             }
-            ShareError::MissingProjectMetadata(project_id) => ApiError::Conflict(format!(
-                "Project {project_id} is missing GitHub metadata required for sharing"
-            )),
+            ShareError::MissingProjectMetadata(project_id) => {
+                tracing::warn!(
+                    %project_id,
+                    "project missing GitHub metadata required for sharing"
+                );
+                ApiError::Conflict(
+                    "This project needs a linked GitHub repository before tasks can be shared. Open the project settings, connect GitHub, and try again."
+                        .to_string(),
+                )
+            }
             ShareError::MissingConfig(reason) => {
                 ApiError::Conflict(format!("Share service not configured: {reason}"))
             }
@@ -193,6 +205,11 @@ impl From<ShareError> for ApiError {
             ShareError::InvalidResponse => ApiError::Conflict(
                 "Remote share service returned an unexpected response".to_string(),
             ),
+            ShareError::MissingGitHubToken => ApiError::Conflict(
+                "GitHub token is required to fetch repository metadata for sharing".to_string(),
+            ),
+            ShareError::Git(err) => ApiError::GitService(err),
+            ShareError::GitHub(err) => ApiError::GitHubService(err),
             ShareError::MissingAuth => ApiError::Unauthorized,
         }
     }

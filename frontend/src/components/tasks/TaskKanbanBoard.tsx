@@ -11,11 +11,13 @@ import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
 // import { useParams } from 'react-router-dom';
 
 import { statusBoardColors, statusLabels } from '@/utils/status-labels';
+import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 
 type Task = TaskWithAttemptStatus;
 
 interface TaskKanbanBoardProps {
   groupedTasks: Record<TaskStatus, Task[]>;
+  sharedTasksById?: Record<string, SharedTaskRecord>;
   onDragEnd: (event: DragEndEvent) => void;
   onViewTaskDetails: (task: Task) => void;
   selectedTask?: Task;
@@ -24,6 +26,7 @@ interface TaskKanbanBoardProps {
 
 function TaskKanbanBoard({
   groupedTasks,
+  sharedTasksById,
   onDragEnd,
   onViewTaskDetails,
   selectedTask,
@@ -47,6 +50,13 @@ function TaskKanbanBoard({
                 status={status}
                 onViewDetails={onViewTaskDetails}
                 isOpen={selectedTask?.id === task.id}
+                sharedTask={
+                  sharedTasksById
+                    ? task.shared_task_id
+                      ? sharedTasksById[task.shared_task_id]
+                      : sharedTasksById[task.id]
+                    : undefined
+                }
               />
             ))}
           </KanbanCards>

@@ -648,22 +648,25 @@ pub async fn merge_task_attempt(
     )
     .await?;
     Task::update_status(pool, ctx.task.id, TaskStatus::Done).await?;
-    match deployment.share_publisher() {
-        Ok(publisher) => {
-            if let Err(err) = publisher
-                .update_shared_task_by_id(ctx.task.id, session.as_ref())
-                .await
-            {
-                tracing::warn!(
-                    ?err,
-                    "Failed to propagate shared task update for {}",
-                    ctx.task.id
-                );
-            }
+
+    // Try broadcast update to other users in organization
+    if let Some(publisher) = deployment.share_publisher() {
+        let acting_session = session.require()?;
+        if let Err(err) = publisher
+            .update_shared_task_by_id(ctx.task.id, Some(acting_session))
+            .await
+        {
+            tracing::warn!(
+                ?err,
+                "Failed to propagate shared task update for {}",
+                ctx.task.id
+            );
         }
-        Err(err) => {
-            tracing::warn!(?err, "Failed to create share publisher for {}", ctx.task.id);
-        }
+    } else {
+        tracing::debug!(
+            "Share publisher unavailable; skipping remote update for {}",
+            ctx.task.id
+        );
     }
 
     deployment
@@ -1461,22 +1464,25 @@ pub async fn attach_existing_pr(
         // If PR is merged, mark task as done
         if matches!(pr_info.status, MergeStatus::Merged) {
             Task::update_status(pool, task.id, TaskStatus::Done).await?;
-            match deployment.share_publisher() {
-                Ok(publisher) => {
-                    if let Err(err) = publisher
-                        .update_shared_task_by_id(task.id, session.as_ref())
-                        .await
-                    {
-                        tracing::warn!(
-                            ?err,
-                            "Failed to propagate shared task update for {}",
-                            task.id
-                        );
-                    }
+
+            // Try broadcast update to other users in organization
+            if let Some(publisher) = deployment.share_publisher() {
+                let acting_session = session.require()?;
+                if let Err(err) = publisher
+                    .update_shared_task_by_id(task.id, Some(acting_session))
+                    .await
+                {
+                    tracing::warn!(
+                        ?err,
+                        "Failed to propagate shared task update for {}",
+                        task.id
+                    );
                 }
-                Err(err) => {
-                    tracing::warn!(?err, "Failed to create share publisher for {}", task.id);
-                }
+            } else {
+                tracing::debug!(
+                    "Share publisher unavailable; skipping remote update for {}",
+                    task.id
+                );
             }
         }
 

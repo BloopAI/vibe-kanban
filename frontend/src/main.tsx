@@ -37,6 +37,7 @@ import {
   RestoreLogsDialog,
   ViewProcessesDialog,
   ShareDialog,
+  ReassignDialog,
 } from './components/dialogs';
 import { CreateAttemptDialog } from './components/dialogs/tasks/CreateAttemptDialog';
 
@@ -64,6 +65,7 @@ NiceModal.register('restore-logs', RestoreLogsDialog);
 NiceModal.register('view-processes', ViewProcessesDialog);
 NiceModal.register('create-attempt', CreateAttemptDialog);
 NiceModal.register('share-task', ShareDialog);
+NiceModal.register('reassign-shared-task', ReassignDialog);
 // Install VS Code iframe keyboard bridge when running inside an iframe
 import './vscode/bridge';
 

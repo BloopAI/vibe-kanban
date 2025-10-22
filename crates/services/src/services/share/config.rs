@@ -1,25 +1,21 @@
+use url::Url;
+use utils::ws::derive_ws_url;
 use uuid::Uuid;
 
 const DEFAULT_ACTIVITY_LIMIT: u32 = 200;
 
 #[derive(Clone)]
-pub struct RemoteSyncConfig {
-    pub api_base: String,
-    pub websocket_base: String,
+pub struct ShareConfig {
+    pub api_base: Url,
+    pub websocket_base: Url,
     pub activity_page_limit: u32,
 }
 
-impl RemoteSyncConfig {
+impl ShareConfig {
     pub fn from_env() -> Option<Self> {
-        let api_base = std::env::var("VK_SHARED_API_BASE").ok()?.trim().to_string();
-
-        let websocket_base = match std::env::var("VK_SHARED_WS_URL") {
-            Ok(raw) => raw.trim().to_string(),
-            Err(_) => {
-                tracing::error!("VK_SHARED_WS_URL not set");
-                return None;
-            }
-        };
+        let raw_base = std::env::var("VK_SHARED_API_BASE").ok()?;
+        let api_base = Url::parse(raw_base.trim()).ok()?;
+        let websocket_base = derive_ws_url(api_base.clone()).ok()?;
 
         Some(Self {
             api_base,
@@ -28,41 +24,27 @@ impl RemoteSyncConfig {
         })
     }
 
-    pub fn activity_endpoint(&self) -> String {
-        format!("{}/v1/activity", self.api_base.trim_end_matches('/'))
+    pub fn activity_endpoint(&self) -> Result<Url, url::ParseError> {
+        self.api_base.join("/v1/activity")
     }
 
-    pub fn create_task_endpoint(&self) -> String {
-        format!("{}/v1/tasks", self.api_base.trim_end_matches('/'))
+    pub fn create_task_endpoint(&self) -> Result<Url, url::ParseError> {
+        self.api_base.join("/v1/tasks")
     }
 
-    pub fn update_task_endpoint(&self, task_id: Uuid) -> String {
-        format!(
-            "{}/v1/tasks/{}",
-            self.api_base.trim_end_matches('/'),
-            task_id
-        )
+    pub fn update_task_endpoint(&self, task_id: Uuid) -> Result<Url, url::ParseError> {
+        self.api_base.join(&format!("/v1/tasks/{task_id}"))
     }
 
-    pub fn transfer_assignment_endpoint(&self, task_id: Uuid) -> String {
-        format!(
-            "{}/v1/tasks/{}/assign",
-            self.api_base.trim_end_matches('/'),
-            task_id
-        )
+    pub fn assign_endpoint(&self, task_id: Uuid) -> Result<Url, url::ParseError> {
+        self.api_base.join(&format!("/v1/tasks/{task_id}/assign"))
     }
 
-    pub fn websocket_endpoint(&self, cursor: Option<i64>) -> String {
-        let base = self.websocket_base.trim_end_matches('/');
-        let path = if base.ends_with("/v1/ws") || base.contains("/v1/ws?") {
-            base.to_string()
-        } else {
-            format!("{base}/v1/ws")
-        };
-
-        match cursor {
-            Some(c) => format!("{path}?cursor={c}"),
-            None => path,
+    pub fn websocket_endpoint(&self, cursor: Option<i64>) -> Result<Url, url::ParseError> {
+        let mut url = self.websocket_base.join("v1/ws")?;
+        if let Some(c) = cursor {
+            url.query_pairs_mut().append_pair("cursor", &c.to_string());
         }
+        Ok(url)
     }
 }
