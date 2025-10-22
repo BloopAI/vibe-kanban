@@ -497,16 +497,11 @@ const ToolCallCard: React.FC<{
     <div className="inline-block w-full flex flex-col gap-4">
       <HeaderWrapper {...headerProps} className={headerClassName}>
         <span className=" min-w-0 flex items-center gap-1.5">
-          {entryType ? (
-            <span>
-              {getStatusIndicator(entryType)}
-              {getEntryIcon(entryType)}
-            </span>
-          ) : (
-            <span className="font-normal flex">{label}</span>
-          )}
+          {getStatusIndicator(entryType)}
+          {getEntryIcon(entryType)}
+          <span className="font-normal">{label}</span>
           {showInlineSummary && (
-            <span className="font-light">{inlineText}</span>
+            <span className="font-light">: {inlineText}</span>
           )}
         </span>
       </HeaderWrapper>
