@@ -3,7 +3,9 @@
   "theme": "mint",
   "name": "Vibe Kanban",
   "description": "A kanban board for developers to track coding tasks with AI coding agents",
-
+  "appearance": {
+    "default": "light"
+  },
   "colors": {
     "primary": "#000000",
     "light": "#fefefe",
