@@ -4,12 +4,9 @@ use axum::{
     http::StatusCode,
     routing::{get, post},
 };
-use db::models::execution_process::ExecutionProcess;
 use deployment::Deployment;
-use services::services::container::ContainerService;
 use utils::approvals::{
     ApprovalPendingInfo, ApprovalRequest, ApprovalResponse, ApprovalStatus, CreateApprovalRequest,
-    EXIT_PLAN_MODE_TOOL_NAME,
 };
 
 use crate::DeploymentImpl;
@@ -76,21 +73,6 @@ pub async fn respond_to_approval(
                     }),
                 )
                 .await;
-
-            if matches!(status, ApprovalStatus::Approved)
-                && context.tool_name == EXIT_PLAN_MODE_TOOL_NAME
-                // If exiting plan mode, automatically start a new execution process with different
-                // permissions
-                && let Ok(ctx) = ExecutionProcess::load_context(
-                    &deployment.db().pool,
-                    context.execution_process_id,
-                )
-                .await
-                && let Err(e) = deployment.container().exit_plan_mode_tool(ctx).await
-            {
-                tracing::error!("failed to exit plan mode: {:?}", e);
-                return Err(StatusCode::INTERNAL_SERVER_ERROR);
-            }
 
             Ok(Json(status))
         }
