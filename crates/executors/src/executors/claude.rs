@@ -22,6 +22,7 @@ use workspace_utils::{
 
 use self::{client::ClaudeAgentClient, protocol::ProtocolPeer, types::PermissionMode};
 use crate::{
+    approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuilder, apply_overrides},
     executors::{
         AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
@@ -43,7 +44,10 @@ fn base_command(claude_code_router: bool) -> &'static str {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
+use derivative::Derivative;
+
+#[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
+#[derivative(Debug, PartialEq)]
 pub struct ClaudeCode {
     #[serde(default)]
     pub append_prompt: AppendPrompt,
@@ -59,6 +63,11 @@ pub struct ClaudeCode {
     pub dangerously_skip_permissions: Option<bool>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
+
+    #[serde(skip)]
+    #[ts(skip)]
+    #[derivative(Debug = "ignore", PartialEq = "ignore")]
+    approvals_service: Option<Arc<dyn ExecutorApprovalService>>,
 }
 
 impl ClaudeCode {
@@ -115,6 +124,10 @@ impl ClaudeCode {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for ClaudeCode {
+    fn use_approvals(&mut self, approvals: Arc<dyn ExecutorApprovalService>) {
+        self.approvals_service = Some(approvals);
+    }
+
     async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
         let command_builder = self.build_command_builder().await;
@@ -147,9 +160,10 @@ impl StandardCodingAgentExecutor for ClaudeCode {
 
         // Spawn task to handle the SDK client with control protocol
         let prompt_clone = combined_prompt.clone();
+        let approvals_clone = self.approvals_service.clone();
         tokio::spawn(async move {
             let log_writer = LogWriter::new(new_stdout);
-            let client = ClaudeAgentClient::new(log_writer.clone());
+            let client = ClaudeAgentClient::new(log_writer.clone(), approvals_clone);
             let protocol_peer = ProtocolPeer::spawn(child_stdin, child_stdout, client.clone());
             client.connect(protocol_peer.clone());
 
@@ -227,9 +241,10 @@ impl StandardCodingAgentExecutor for ClaudeCode {
 
         // Spawn task to handle the SDK client with control protocol
         let prompt_clone = combined_prompt.clone();
+        let approvals_clone = self.approvals_service.clone();
         tokio::spawn(async move {
             let log_writer = LogWriter::new(new_stdout);
-            let client = ClaudeAgentClient::new(log_writer.clone());
+            let client = ClaudeAgentClient::new(log_writer.clone(), approvals_clone);
             let protocol_peer = ProtocolPeer::spawn(child_stdin, child_stdout, client.clone());
             client.connect(protocol_peer.clone());
 
@@ -520,11 +535,17 @@ impl ClaudeLogProcessor {
                     serde_json::to_value(content_item).unwrap_or(serde_json::Value::Null),
                 ),
             }),
-            ClaudeContentItem::ToolUse { tool_data, .. } => {
+            ClaudeContentItem::ToolUse { tool_data, id } => {
                 let name = tool_data.get_name();
                 let action_type = Self::extract_action_type(tool_data, worktree_path);
                 let content =
                     Self::generate_concise_content(tool_data, &action_type, worktree_path);
+
+                // Create metadata with tool_call_id for approval matching
+                let mut metadata = serde_json::to_value(content_item).unwrap_or(serde_json::Value::Null);
+                if let Some(obj) = metadata.as_object_mut() {
+                    obj.insert("tool_call_id".to_string(), serde_json::Value::String(id.clone()));
+                }
 
                 Some(NormalizedEntry {
                     timestamp: None,
@@ -534,9 +555,7 @@ impl ClaudeLogProcessor {
                         status: ToolStatus::Created,
                     },
                     content,
-                    metadata: Some(
-                        serde_json::to_value(content_item).unwrap_or(serde_json::Value::Null),
-                    ),
+                    metadata: Some(metadata),
                 })
             }
             ClaudeContentItem::ToolResult { .. } => {
@@ -777,6 +796,13 @@ impl ClaudeLogProcessor {
                                 &action_type,
                                 worktree_path,
                             );
+
+                            // Create metadata with tool_call_id for approval matching
+                            let mut metadata = serde_json::to_value(item).unwrap_or(serde_json::Value::Null);
+                            if let Some(obj) = metadata.as_object_mut() {
+                                obj.insert("tool_call_id".to_string(), serde_json::Value::String(id.clone()));
+                            }
+
                             let entry = NormalizedEntry {
                                 timestamp: None,
                                 entry_type: NormalizedEntryType::ToolUse {
@@ -785,9 +811,7 @@ impl ClaudeLogProcessor {
                                     status: ToolStatus::Created,
                                 },
                                 content: content_text.clone(),
-                                metadata: Some(
-                                    serde_json::to_value(item).unwrap_or(serde_json::Value::Null),
-                                ),
+                                metadata: Some(metadata),
                             };
                             let is_new = entry_index.is_none();
                             let id_num = entry_index.unwrap_or_else(|| entry_index_provider.next());
@@ -1930,6 +1954,7 @@ mod tests {
                 base_command_override: None,
                 additional_params: None,
             },
+            approvals_service: None,
         };
         let msg_store = Arc::new(MsgStore::new());
         let current_dir = std::path::PathBuf::from("/tmp/test-worktree");

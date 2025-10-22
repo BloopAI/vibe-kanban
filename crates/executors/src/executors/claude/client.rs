@@ -6,28 +6,58 @@
 use std::sync::{Arc, OnceLock};
 
 use async_trait::async_trait;
+use tokio::sync::Mutex;
+use workspace_utils::approvals::ApprovalStatus;
 
 use super::{
     protocol::{ProtocolCallbacks, ProtocolPeer},
-    types::{PermissionResult, PermissionUpdate},
+    types::{PermissionMode, PermissionResult, PermissionUpdate},
 };
-use crate::executors::{ExecutorError, codex::client::LogWriter};
+use crate::{
+    approvals::ExecutorApprovalService,
+    executors::{ExecutorError, codex::client::LogWriter},
+};
 
 /// Claude Agent client with control protocol support
 pub struct ClaudeAgentClient {
     protocol: OnceLock<ProtocolPeer>,
     log_writer: LogWriter,
-    auto_approve: bool, // true for MVP, false when using approval service
+    approvals: Option<Arc<dyn ExecutorApprovalService>>,
+    auto_approve: bool, // true when approvals is None
+    session_id: Mutex<Option<String>>,
 }
 
 impl ClaudeAgentClient {
-    /// Create a new client with auto-approve mode
-    pub fn new(log_writer: LogWriter) -> Arc<Self> {
+    /// Create a new client with optional approval service
+    pub fn new(
+        log_writer: LogWriter,
+        approvals: Option<Arc<dyn ExecutorApprovalService>>,
+    ) -> Arc<Self> {
+        let auto_approve = approvals.is_none();
         Arc::new(Self {
             protocol: OnceLock::new(),
             log_writer,
-            auto_approve: true, // Hardcoded for MVP
+            approvals,
+            auto_approve,
+            session_id: Mutex::new(None),
         })
+    }
+
+    /// Register the session with the approval service
+    pub async fn register_session(&self, session_id: String) -> Result<(), ExecutorError> {
+        {
+            let mut guard = self.session_id.lock().await;
+            guard.replace(session_id.clone());
+        }
+
+        if let Some(approvals) = self.approvals.as_ref() {
+            approvals
+                .register_session(&session_id)
+                .await
+                .map_err(|err| ExecutorError::Io(std::io::Error::other(err.to_string())))?;
+        }
+
+        Ok(())
     }
 
     /// Connect the protocol peer
@@ -44,70 +74,209 @@ impl ClaudeAgentClient {
 
 #[async_trait]
 impl ProtocolCallbacks for ClaudeAgentClient {
-    async fn on_can_use_tool(
-        &self,
-        _peer: &ProtocolPeer,
-        tool_name: String,
-        input: serde_json::Value,
-        _suggestions: Option<Vec<PermissionUpdate>>,
-    ) -> Result<PermissionResult, ExecutorError> {
-        // MVP: Auto-approve everything
-        if self.auto_approve {
-            // Log what we're approving
-            let input_str =
-                serde_json::to_string(&input).unwrap_or_else(|_| "<invalid json>".to_string());
+    // async fn on_can_use_tool(
+    //     &self,
+    //     peer: &ProtocolPeer,
+    //     tool_name: String,
+    //     input: serde_json::Value,
+    //     _suggestions: Option<Vec<PermissionUpdate>>,
+    // ) -> Result<PermissionResult, ExecutorError> {
+    //     if self.auto_approve {
+    //         // Auto-approve mode
+    //         let input_str =
+    //             serde_json::to_string(&input).unwrap_or_else(|_| "<invalid json>".to_string());
 
+    //         self.log_writer
+    //             .log_raw(&format!(
+    //                 "[AUTO-APPROVE] Tool: {} Input: {}",
+    //                 tool_name, input_str
+    //             ))
+    //             .await?;
+
+    //         // After approval, switch to bypassPermissions
+    //         if let Err(e) = peer
+    //             .set_permission_mode(PermissionMode::BypassPermissions)
+    //             .await
+    //         {
+    //             tracing::warn!("Failed to set permission mode: {}", e);
+    //         }
+
+    //         Ok(PermissionResult::Allow {
+    //             updated_input: input,
+    //             updated_permissions: None,
+    //         })
+    //     } else {
+    //         // Use approval service
+    //         let approval_service = self.approvals.as_ref().ok_or_else(|| {
+    //             ExecutorError::Io(std::io::Error::other("Approval service not available"))
+    //         })?;
+
+    //         let status = approval_service
+    //             .request_tool_approval(&tool_name, input.clone(), "tool_call_id")
+    //             .await?;
+
+    //         match status {
+    //             ApprovalStatus::Approved => {
+    //                 self.log_writer
+    //                     .log_raw(&format!("[APPROVED] Tool: {}", tool_name))
+    //                     .await?;
+
+    //                 // After approval, switch to bypassPermissions mode
+    //                 if let Err(e) = peer
+    //                     .set_permission_mode(PermissionMode::BypassPermissions)
+    //                     .await
+    //                 {
+    //                     tracing::warn!("Failed to set permission mode: {}", e);
+    //                 } else {
+    //                     tracing::info!("Switched to bypassPermissions mode");
+    //                 }
+
+    //                 Ok(PermissionResult::Allow {
+    //                     updated_input: input,
+    //                     updated_permissions: None,
+    //                 })
+    //             }
+    //             ApprovalStatus::Denied { reason } => {
+    //                 let message = reason.unwrap_or_else(|| "Denied by user".to_string());
+    //                 self.log_writer
+    //                     .log_raw(&format!("[DENIED] Tool: {} - {}", tool_name, message))
+    //                     .await?;
+
+    //                 Ok(PermissionResult::Deny {
+    //                     message,
+    //                     interrupt: Some(false),
+    //                 })
+    //             }
+    //             ApprovalStatus::TimedOut => Ok(PermissionResult::Deny {
+    //                 message: "Approval request timed out".to_string(),
+    //                 interrupt: Some(false),
+    //             }),
+    //             ApprovalStatus::Pending => Ok(PermissionResult::Deny {
+    //                 message: "Approval still pending (unexpected)".to_string(),
+    //                 interrupt: Some(false),
+    //             }),
+    //         }
+    //     }
+    // }
+
+    async fn on_hook_callback(
+        &self,
+        peer: &ProtocolPeer,
+        _callback_id: String,
+        input: serde_json::Value,
+        tool_use_id: Option<String>,
+    ) -> Result<serde_json::Value, ExecutorError> {
+        // Hook callback provides tool_use_id for approval matching
+        let tool_name = input
+            .get("tool_name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown")
+            .to_string();
+
+        let tool_input = input
+            .get("tool_input")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null);
+        let tool_use_id = tool_use_id.unwrap_or("unknown_tool_use_id".to_string());
+
+        if self.auto_approve {
             self.log_writer
-                .log_raw(&format!(
-                    "[AUTO-APPROVE] Tool: {} Input: {}",
-                    tool_name, input_str
-                ))
+                .log_raw(&format!("[AUTO-APPROVE via hook] Tool: {}", tool_name))
                 .await?;
 
-            // Return allow with mode change to bypassPermissions
-            Ok(PermissionResult::Allow {
-                updated_input: input,
-                updated_permissions: Some(vec![PermissionUpdate {
-                    update_type: "setMode".to_string(),
-                    mode: Some("bypassPermissions".to_string()),
-                    destination: Some("session".to_string()),
-                }]),
-            })
+            // After approval, switch to bypassPermissions
+            if let Err(e) = peer
+                .set_permission_mode(PermissionMode::BypassPermissions)
+                .await
+            {
+                tracing::warn!("Failed to set permission mode: {}", e);
+            }
+
+            Ok(serde_json::json!({
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "allow",
+                    "permissionDecisionReason": "Auto-approved by SDK"
+                }
+            }))
         } else {
-            // TODO: Phase 2 - integrate with approval service
-            // For now, just deny if auto_approve is false
-            Ok(PermissionResult::Deny {
-                message: "Approval service not yet implemented".to_string(),
-                interrupt: Some(false),
-            })
+            // Use approval service with real tool_use_id
+            let approval_service = self.approvals.as_ref().ok_or_else(|| {
+                ExecutorError::Io(std::io::Error::other("Approval service not available"))
+            })?;
+
+            tracing::debug!(
+                "Requesting approval for tool: {} with tool_use_id: {}",
+                tool_name,
+                tool_use_id
+            );
+
+            let status = approval_service
+                .request_tool_approval(&tool_name, tool_input.clone(), &tool_use_id)
+                .await?;
+
+            match status {
+                ApprovalStatus::Approved => {
+                    self.log_writer
+                        .log_raw(&format!("[APPROVED via hook] Tool: {}", tool_name))
+                        .await?;
+
+                    // After approval, switch to bypassPermissions mode
+                    if let Err(e) = peer
+                        .set_permission_mode(PermissionMode::BypassPermissions)
+                        .await
+                    {
+                        tracing::warn!("Failed to set permission mode: {}", e);
+                    } else {
+                        tracing::info!("Switched to bypassPermissions mode");
+                    }
+
+                    Ok(serde_json::json!({
+                        "hookSpecificOutput": {
+                            "hookEventName": "PreToolUse",
+                            "permissionDecision": "allow"
+                        }
+                    }))
+                }
+                ApprovalStatus::Denied { reason } => {
+                    let message = reason.unwrap_or_else(|| "Denied by user".to_string());
+                    self.log_writer
+                        .log_raw(&format!(
+                            "[DENIED via hook] Tool: {} - {}",
+                            tool_name, message
+                        ))
+                        .await?;
+
+                    Ok(serde_json::json!({
+                        "hookSpecificOutput": {
+                            "hookEventName": "PreToolUse",
+                            "permissionDecision": "deny",
+                            "permissionDecisionReason": message
+                        }
+                    }))
+                }
+                ApprovalStatus::TimedOut => Ok(serde_json::json!({
+                    "hookSpecificOutput": {
+                        "hookEventName": "PreToolUse",
+                        "permissionDecision": "deny",
+                        "permissionDecisionReason": "Approval request timed out"
+                    }
+                })),
+                ApprovalStatus::Pending => Ok(serde_json::json!({
+                    "hookSpecificOutput": {
+                        "hookEventName": "PreToolUse",
+                        "permissionDecision": "deny",
+                        "permissionDecisionReason": "Approval still pending (unexpected)"
+                    }
+                })),
+            }
         }
     }
 
-    // async fn on_hook_callback(
-    //     &self,
-    //     peer: &ProtocolPeer,
-    //     _callback_id: String,
-    //     input: serde_json::Value,
-    // ) -> Result<serde_json::Value, ExecutorError> {
-    //     // Hook callback is how the CLI asks for approval via hooks
-    //     // Extract tool_name from the hook input
-    //     let tool_name = input
-    //         .get("tool_name")
-    //         .and_then(|v| v.as_str())
-    //         .unwrap_or("unknown")
-    //         .to_string();
-    //     self.log_writer
-    //         .log_raw(&format!("[AUTO-APPROVE via hook] Tool: {}", tool_name))
-    //         .await?;
-    //     // Return hook output format with hookSpecificOutput (no updatedPermissions here)
-    //     Ok(serde_json::json!({
-    //         "hookSpecificOutput": {
-    //             "hookEventName": "PreToolUse",
-    //             "permissionDecision": "ask",
-    //             "permissionDecisionReason": "Auto-approved by SDK"
-    //         }
-    //     }))
-    // }
+    async fn on_session_init(&self, session_id: String) -> Result<(), ExecutorError> {
+        tracing::info!("Registering session: {}", session_id);
+        self.register_session(session_id).await
+    }
 
     async fn on_non_control(&self, line: &str) -> Result<(), ExecutorError> {
         // Forward all non-control messages to stdout

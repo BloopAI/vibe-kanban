@@ -36,6 +36,8 @@ pub enum ControlRequestType {
         #[serde(rename = "callback_id")]
         callback_id: String,
         input: Value,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        tool_use_id: Option<String>,
     },
     // Add more as needed: Initialize, SetPermissionMode, etc.
 }

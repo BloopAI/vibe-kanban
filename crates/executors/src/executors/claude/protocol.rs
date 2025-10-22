@@ -66,7 +66,6 @@ impl ProtocolPeer {
                     }
                     // Try parsing as control request
                     if let Ok(control_req) = serde_json::from_str::<ControlRequestMessage>(line) {
-                        tracing::debug!("Received control request: {:?}", control_req.request);
                         if control_req.message_type == "control_request" {
                             self.handle_control_request(&callbacks, control_req).await;
                         }
@@ -76,7 +75,24 @@ impl ProtocolPeer {
                         // Control response - might be init response or other
                         tracing::debug!("Received control response: {:?}", control_resp.response);
                     } else {
-                        // Not a control message - regular Claude output
+                        // Check if it's a system init message (contains session_id)
+                        if let Ok(value) = serde_json::from_str::<serde_json::Value>(line) {
+                            if value.get("type").and_then(|t| t.as_str()) == Some("system")
+                                && value.get("subtype").and_then(|s| s.as_str()) == Some("init")
+                            {
+                                if let Some(session_id) =
+                                    value.get("session_id").and_then(|s| s.as_str())
+                                {
+                                    if let Err(e) =
+                                        callbacks.on_session_init(session_id.to_string()).await
+                                    {
+                                        tracing::error!("Failed to register session: {}", e);
+                                    }
+                                }
+                            }
+                        }
+
+                        // Forward all non-control messages to stdout
                         if let Err(e) = callbacks.on_non_control(line).await {
                             tracing::warn!("Error handling non-control message: {}", e);
                         }
@@ -88,7 +104,6 @@ impl ProtocolPeer {
                 }
             }
         }
-
         Ok(())
     }
 
@@ -106,39 +121,49 @@ impl ProtocolPeer {
                 input,
                 permission_suggestions,
             } => {
-                match callbacks
-                    .on_can_use_tool(self, tool_name, input, permission_suggestions)
-                    .await
-                {
-                    Ok(result) => {
-                        if let Err(e) = self.send_permission_result(request_id, result).await {
-                            tracing::error!("Failed to send permission result: {}", e);
-                        }
-                    }
-                    Err(e) => {
-                        tracing::error!("Error in on_can_use_tool: {}", e);
-                        if let Err(e2) = self.send_error(request_id, e.to_string()).await {
-                            tracing::error!("Failed to send error response: {}", e2);
-                        }
-                    }
-                }
-            }
-            ControlRequestType::HookCallback { callback_id, input } => {
-                tracing::warn!("Received unexpected HookCallback request - hooks not implemented");
-                // match callbacks.on_hook_callback(self, callback_id, input).await {
-                //     Ok(hook_output) => {
-                //         // Send hook output directly (not wrapped in PermissionResult)
-                //         if let Err(e) = self.send_hook_response(request_id, hook_output).await {
-                //             tracing::error!("Failed to send hook callback result: {}", e);
+                // match callbacks
+                //     .on_can_use_tool(self, tool_name, input, permission_suggestions)
+                //     .await
+                // {
+                //     Ok(result) => {
+                //         if let Err(e) = self.send_permission_result(request_id, result).await {
+                //             tracing::error!("Failed to send permission result: {}", e);
                 //         }
                 //     }
                 //     Err(e) => {
-                //         tracing::error!("Error in on_hook_callback: {}", e);
+                //         tracing::error!("Error in on_can_use_tool: {}", e);
                 //         if let Err(e2) = self.send_error(request_id, e.to_string()).await {
                 //             tracing::error!("Failed to send error response: {}", e2);
                 //         }
                 //     }
                 // }
+                tracing::warn!(
+                    "on_can_use_tool callback is not implemented. Tool: {}",
+                    tool_name
+                );
+            }
+            ControlRequestType::HookCallback {
+                callback_id,
+                input,
+                tool_use_id,
+            } => {
+                match callbacks
+                    .on_hook_callback(self, callback_id, input, tool_use_id)
+                    .await
+                {
+                    Ok(hook_output) => {
+                        // Send hook output directly (not wrapped in PermissionResult)
+                        if let Err(e) = self.send_hook_response(request_id, hook_output).await {
+                            tracing::error!("Failed to send hook callback result: {}", e);
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!("Error in on_hook_callback: {}", e);
+                        if let Err(e2) = self.send_error(request_id, e.to_string()).await {
+                            tracing::error!("Failed to send error response: {}", e2);
+                        }
+                    }
+                }
             }
         }
     }
@@ -222,12 +247,12 @@ impl ProtocolPeer {
             "request": {
                 "subtype": "initialize",
                 "hooks": {
-                    // "PreToolUse": [
-                    //     {
-                    //         "matcher": ".*",
-                    //         "hookCallbackIds": ["tool_approval"]
-                    //     }
-                    // ]
+                    "PreToolUse": [
+                        {
+                            "matcher": ".*",
+                            "hookCallbackIds": ["tool_approval"]
+                        }
+                    ]
                 }
             }
         });
@@ -267,22 +292,26 @@ impl ProtocolPeer {
 #[async_trait]
 pub trait ProtocolCallbacks: Send + Sync {
     /// Called when CLI requests tool permission
-    async fn on_can_use_tool(
-        &self,
-        peer: &ProtocolPeer,
-        tool_name: String,
-        input: serde_json::Value,
-        suggestions: Option<Vec<PermissionUpdate>>,
-    ) -> Result<PermissionResult, ExecutorError>;
-
-    // /// Called when CLI sends hook callback (for PreToolUse hooks)
-    // /// Returns hook output JSON (not PermissionResult)
-    // async fn on_hook_callback(
+    // async fn on_can_use_tool(
     //     &self,
     //     peer: &ProtocolPeer,
-    //     callback_id: String,
+    //     tool_name: String,
     //     input: serde_json::Value,
-    // ) -> Result<serde_json::Value, ExecutorError>;
+    //     suggestions: Option<Vec<PermissionUpdate>>,
+    // ) -> Result<PermissionResult, ExecutorError>;
+
+    /// Called when CLI sends hook callback (for PreToolUse hooks)
+    /// Returns hook output JSON (not PermissionResult)
+    async fn on_hook_callback(
+        &self,
+        peer: &ProtocolPeer,
+        callback_id: String,
+        input: serde_json::Value,
+        tool_use_id: Option<String>,
+    ) -> Result<serde_json::Value, ExecutorError>;
+
+    /// Called when session is initialized (from system init message)
+    async fn on_session_init(&self, session_id: String) -> Result<(), ExecutorError>;
 
     /// Called for non-control messages (regular Claude output)
     async fn on_non_control(&self, line: &str) -> Result<(), ExecutorError>;
