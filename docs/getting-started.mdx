@@ -19,10 +19,6 @@ Before installing Vibe Kanban, ensure you have:
 - **Node.js**: Latest LTS version recommended
 - **Coding agent authentication**: Authenticate with your preferred coding agents outside of Vibe Kanban
 
-<Info>
-All supported coding agents can be used via npx without separate installation. You can find authentication instructions for each coding agent on their respective [websites](./supported-coding-agents).
-</Info>
-
 ## Safety Notice
 
 <Warning>
@@ -33,6 +29,10 @@ Agents can still perform system-level actions, so review their work and keep bac
 ## Installation & Setup
 
 <Steps>
+<Step title="Authenticate with a coding agent">
+  Before launching Vibe Kanban, ensure you're authenticated with at least one [supported coding agent](/supported-coding-agents). Follow the installation and authentication instructions for your preferred agent.
+</Step>
+
 <Step title="Install and launch Vibe Kanban">
   Open a terminal and run:
 
@@ -50,7 +50,7 @@ Agents can still perform system-level actions, so review their work and keep bac
 </Step>
 
 <Step title="Create your first project">
-  You'll land on an empty Projects page. Click "Create your first project" to set up your initial project.
+  You'll land on the Projects page, populated with your three most recently active git projects if automatically discovered. Click "Create project" to add more projects.
 </Step>
 
 <Step title="Add tasks">

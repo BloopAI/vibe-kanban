@@ -3,69 +3,142 @@ title: "Supported Coding Agents"
 description: "Complete guide to all coding agents supported by Vibe Kanban, including installation and authentication instructions"
 ---
 
-Vibe Kanban integrates with a variety of coding agents. These agents are available via `npx` and can be selected when creating task attempts.
+Vibe Kanban integrates with a variety of coding agents. Each agent requires installation and authentication before use. Select your preferred agent when creating task attempts.
 
 <AccordionGroup>
 
 <Accordion title="Claude Code" icon="code">
 **Anthropic's Claude Code**
 
-## Installation
-Claude Code is now available via npx - no separate installation required!
+<Steps>
+<Step title="Run Claude Code">
+  ```bash
+  npx -y @anthropic-ai/claude-code
+  ```
+</Step>
 
-## Authentication
-You need to authenticate with Claude Code outside of Vibe Kanban before using it. Please follow the authentication instructions on the [Claude Code GitHub page](https://github.com/anthropics/claude-code).
+<Step title="Follow the login instructions">
+  Complete the authentication flow as prompted. For more details, see the [Claude Code documentation](https://docs.claude.com/en/docs/claude-code/quickstart).
+</Step>
+
+<Step title="Start Vibe Kanban">
+  Once authenticated, launch Vibe Kanban:
+  
+  ```bash
+  npx vibe-kanban
+  ```
+  
+  You can now select Claude Code when creating task attempts.
+</Step>
+</Steps>
 </Accordion>
 
 <Accordion title="OpenAI Codex" icon="code">
 **OpenAI Codex integration**
 
-## Installation
-OpenAI Codex is now available via `npx` - no separate installation required!
+<Steps>
+<Step title="Run OpenAI Codex">
+  ```bash
+  npx -y @openai/codex
+  ```
+</Step>
 
-## Authentication
-You need to authenticate with OpenAI Codex outside of Vibe Kanban before using it. Please follow the authentication instructions from the [OpenAI help center](https://help.openai.com/en/articles/11369540-using-codex-with-your-chatgpt-plan) to use Codex with your ChatGPT plan.
+<Step title="Follow the login instructions">
+  Complete the authentication flow as prompted. Follow the authentication instructions from the [OpenAI help center](https://help.openai.com/en/articles/11369540-using-codex-with-your-chatgpt-plan) to use Codex with your ChatGPT plan.
 
-Alternatively, Codex can be used via the OpenAI API by setting the `OPENAI_API_KEY` environment variable. For more details, see the [OpenAI documentation](https://developers.openai.com/codex/pricing/#use-an-openai-api-key)
+  Alternatively, Codex can be used via the OpenAI API by setting the `OPENAI_API_KEY` environment variable. For more details, see the [OpenAI documentation](https://developers.openai.com/codex/pricing/#use-an-openai-api-key)
+</Step>
+
+<Step title="Start Vibe Kanban">
+  Once authenticated, launch Vibe Kanban:
+  
+  ```bash
+  npx vibe-kanban
+  ```
+  
+  You can now select OpenAI Codex when creating task attempts.
+</Step>
+</Steps>
 </Accordion>
 
 <Accordion title="Amp" icon="code">
 **Amp code completion agent**
 
-## Installation
-Amp is now available via npx - no separate installation required!
+<Steps>
+<Step title="Run Amp">
+  ```bash
+  npx -y @sourcegraph/amp
+  ```
+</Step>
 
-## Authentication
-You need to authenticate with Amp outside of Vibe Kanban before using it. Please follow the authentication instructions on the [Amp Owner's Manual](https://ampcode.com/manual#install).
+<Step title="Follow the login instructions">
+  Complete the authentication flow as prompted. For more details, see the [Amp Owner's Manual](https://ampcode.com/manual#install).
+</Step>
+
+<Step title="Start Vibe Kanban">
+  Once authenticated, launch Vibe Kanban:
+  
+  ```bash
+  npx vibe-kanban
+  ```
+  
+  You can now select Amp when creating task attempts.
+</Step>
+</Steps>
 </Accordion>
 
 <Accordion title="GitHub Copilot" icon="code">
 **GitHub Copilot CLI**
 
-## Installation
-GitHub Copilot CLI is available via npm. Install it globally:
+<Steps>
+<Step title="Run GitHub Copilot">
+  ```bash
+  npx -y @github/copilot
+  ```
+</Step>
 
-```bash
-npm install -g @github/copilot
-```
+<Step title="Follow the login instructions">
+  When prompted, follow the on-screen instructions to authenticate using the `/login` command. For more details, see the [GitHub Copilot CLI documentation](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/use-copilot-cli).
+</Step>
 
-## Prerequisites
-- A GitHub Copilot subscription
-- Node.js version 22 or later
-- npm version 10 or later
-
-## Authentication
-When you first start Copilot CLI, you'll be prompted to authenticate. Follow the on-screen instructions to log in to your GitHub account using the `/login` command. For more details, see the [GitHub Copilot CLI documentation](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/use-copilot-cli).
+<Step title="Start Vibe Kanban">
+  Once authenticated, launch Vibe Kanban:
+  
+  ```bash
+  npx vibe-kanban
+  ```
+  
+  You can now select GitHub Copilot when creating task attempts.
+</Step>
+</Steps>
 </Accordion>
 
 <Accordion title="Cursor CLI" icon="code">
 **Cursor's command-line agent**
 
-## Installation
-Install Cursor CLI using the official guide: https://docs.cursor.com/en/cli/installation. On most systems you can run `curl https://cursor.com/install -fsS | bash`, then verify with `cursor-agent --version`.
+<Steps>
+<Step title="Install Cursor CLI">
+  ```bash
+  curl https://cursor.com/install -fsS | bash
+  ```
+  
+  Verify installation with `cursor-agent --version`. For more details, see the [official installation guide](https://docs.cursor.com/en/cli/installation).
+</Step>
 
-## Authentication
-Sign in with `cursor-agent login` (opens a browser). You can also set the `CURSOR_API_KEY=...` environment variable. Full instructions: https://docs.cursor.com/en/cli/reference/authentication
+<Step title="Follow the login instructions">
+  Sign in with `cursor-agent login` (opens a browser). You can also set the `CURSOR_API_KEY` environment variable. Full instructions: https://docs.cursor.com/en/cli/reference/authentication
+</Step>
+
+<Step title="Start Vibe Kanban">
+  Once authenticated, launch Vibe Kanban:
+  
+  ```bash
+  npx vibe-kanban
+  ```
+  
+  You can now select Cursor CLI when creating task attempts.
+</Step>
+</Steps>
 </Accordion>
 
 <Accordion title="CCR (Claude Code Router)" icon="code">
@@ -171,31 +244,79 @@ When creating a Task Attempt, select the coding agent and configuration: choose 
 <Accordion title="Gemini CLI" icon="code">
 **Google Gemini CLI**
 
-## Installation
-Gemini CLI is now available via npx - no separate installation required!
+<Steps>
+<Step title="Run Gemini CLI">
+  ```bash
+  npx -y @google/gemini-cli
+  ```
+</Step>
 
-## Authentication
-You need to authenticate with Gemini CLI outside of Vibe Kanban before using it. Please follow the authentication instructions on the [Gemini CLI GitHub page](https://github.com/google-gemini/gemini-cli).
+<Step title="Follow the login instructions">
+  Complete the authentication flow as prompted. For more details, see [geminicli.com](https://geminicli.com/).
+</Step>
+
+<Step title="Start Vibe Kanban">
+  Once authenticated, launch Vibe Kanban:
+  
+  ```bash
+  npx vibe-kanban
+  ```
+  
+  You can now select Gemini CLI when creating task attempts.
+</Step>
+</Steps>
 </Accordion>
 
 <Accordion title="OpenCode" icon="code">
 **SST's OpenCode**
 
-## Installation
-OpenCode is now available via `npx` - no separate installation required!
+<Steps>
+<Step title="Run OpenCode">
+  ```bash
+  npx -y opencode-ai
+  ```
+</Step>
 
-## Authentication
-You need to authenticate with OpenCode outside of Vibe Kanban before using it. Please follow the authentication instructions on the [OpenCode GitHub page](https://github.com/sst/opencode).
+<Step title="Follow the login instructions">
+  Complete the authentication flow as prompted. For more details, see the [OpenCode GitHub page](https://github.com/sst/opencode).
+</Step>
+
+<Step title="Start Vibe Kanban">
+  Once authenticated, launch Vibe Kanban:
+  
+  ```bash
+  npx vibe-kanban
+  ```
+  
+  You can now select OpenCode when creating task attempts.
+</Step>
+</Steps>
 </Accordion>
 
 <Accordion title="Qwen Code" icon="code">
 **Qwen code-focused assistant**
 
-## Installation
-Qwen Code is available via npx - no separate installation required!
+<Steps>
+<Step title="Run Qwen Code">
+  ```bash
+  npx -y @qwen-code/qwen-code
+  ```
+</Step>
 
-## Authentication
-You need to authenticate with Qwen outside of Vibe Kanban before using it. Please follow the authentication instructions in the official Qwen documentation: https://github.com/QwenLM/qwen-code
+<Step title="Follow the login instructions">
+  Complete the authentication flow as prompted. For more details, see the [official Qwen documentation](https://github.com/QwenLM/qwen-code).
+</Step>
+
+<Step title="Start Vibe Kanban">
+  Once authenticated, launch Vibe Kanban:
+  
+  ```bash
+  npx vibe-kanban
+  ```
+  
+  You can now select Qwen Code when creating task attempts.
+</Step>
+</Steps>
 </Accordion>
 
 </AccordionGroup>

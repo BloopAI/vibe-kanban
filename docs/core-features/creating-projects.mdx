@@ -34,11 +34,11 @@ Each time a coding agent is executed it runs in a [git worktree](https://git-scm
 
 ### Dev Server Scripts
 
-The dev server script is run whenever you press the "run dev server" button. It's useful for quickly reviewing work after a coding agent has run.
+The dev server script is run when you press the "Start Dev Server" button from the [Preview](/core-features/preview-mode) section. It's useful for quickly reviewing work after a coding agent has run.
 
 ### Cleanup Scripts
 
-Cleanup scripts run after a coding agent finishes it's turn. You can use these to tidy up the workspace, remove temporary files, or perform any post-execution cleanup. For example, you might run `npm run format` to ensure your code is formatted correctly. Treat it like a pre-commit hook in git.
+Cleanup scripts run after a coding agent finishes it's turn. You can use these to tidy up the workspace, remove temporary files, or perform any post-execution cleanup. For example, you might run `npm run format` to ensure your code is formatted correctly. Treat it like a git pre-commit hook.
 
 
 ### Copy Files

@@ -7,7 +7,12 @@ description: "Learn how to create and manage tasks on your kanban board, includi
 <img src="/images/screenshot-create-task.png" alt="Task creation interface showing Add Task button and form fields" />
 </Frame>
 
-After creating a project, add tasks by clicking the **plus (+) icon** in the top right of your project kanban page, or by using the keyboard shortcut **`c`**. Creating a task adds it to your kanban board without automatically starting a coding agent.
+After creating a project, add tasks by clicking the **plus (+) icon** in the top right of your project kanban page, or by using the keyboard shortcut **`c`**.
+
+You have two options when creating a task:
+
+- **Create Task**: Adds the task to your kanban board without starting a coding agent
+- **Create & Start**: Creates the task and immediately starts it with your default coding agent and current branch
 
 ## Using Templates
 
@@ -25,27 +30,17 @@ When adding a task, you can select from your saved templates:
 Templates save time by reusing common task structures. Learn more about creating templates in the [Task Templates](/configuration-customisation/creating-task-templates) guide.
 </Note>
 
-## Starting Your First Task Attempt
+## Starting an Existing Task
 
 <Frame>
-<img src="/images/screenshot-create-task-attempt.png" alt="Task attempt creation dialog showing agent profile and variant selection options" />
+<img src="/images/vk-new-task-attempt.png" alt="Task attempt creation dialog showing agent profile and variant selection options" />
 </Frame>
 
-To activate a coding agent on your task, create a task attempt:
+When you open a task that hasn't been attempted yet, you'll see the task title, description, and a list of attempts showing "no attempts yet". Click the **plus (+) button** to create a task attempt and configure:
 
-<Steps>
-<Step title="Select your agent profile">
-  Choose from available agents (e.g., CLAUDE_CODE, GEMINI, CODEX). Your default configuration from Settings is pre-selected.
-</Step>
-
-<Step title="Choose a variant">
-  If your selected agent has variants, pick the appropriate one (e.g., DEFAULT, PLAN).
-</Step>
-
-<Step title="Set the base branch">
-  Specify which branch the agent should work from. Your current branch is selected by default.
-</Step>
-</Steps>
+- **Agent profile**: Choose from available agents (e.g., CLAUDE_CODE, GEMINI, CODEX). Your default configuration from Settings is pre-selected.
+- **Variant**: If your selected agent has variants, pick the appropriate one (e.g., DEFAULT, PLAN).
+- **Base branch**: Specify which branch the agent should work from. Your current branch is selected by default.
 
 <Tip>
 Use **Create & Start** to add the task and immediately create a task attempt with your default settings in one action.
@@ -67,7 +62,7 @@ For detailed task management after execution, see [Task Details Full Screen Mode
 ## Creating Tasks via MCP Clients
 
 <Warning>
-This is not the typical method for creating tasks but can be valuable for bulk task creation or migrating from other systems.
+This is not the typical method for creating tasks but can be valuable for bulk task creation, migrating from other systems, using an AI assistant with extra project context, or for coding agents that want to create new tasks.
 </Warning>
 
 Tasks can also be created programmatically using coding agents or MCP (Model Context Protocol) clients such as Claude Desktop or Raycast. This approach is particularly useful for:
