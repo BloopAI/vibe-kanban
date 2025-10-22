@@ -61,6 +61,7 @@ impl ProtocolPeer {
                     if line.is_empty() {
                         continue;
                     }
+                    tracing::info!("Received from CLI stdout: {}", line);
                     // Try parsing as control request
                     if let Ok(control_req) = serde_json::from_str::<ControlRequestMessage>(line) {
                         if control_req.message_type == "control_request" {
@@ -90,8 +91,13 @@ impl ProtocolPeer {
                         }
 
                         // Forward all non-control messages to stdout
-                        if let Err(e) = callbacks.on_non_control(line).await {
+                        let has_finished = callbacks.on_non_control(line).await.unwrap_or_else(|e| {
                             tracing::warn!("Error handling non-control message: {}", e);
+                            false
+                        });
+                        if has_finished {
+                            tracing::info!("Task completed, exiting read loop");
+                            break;
                         }
                     }
                 }
@@ -215,21 +221,12 @@ impl ProtocolPeer {
 
     /// Initialize control protocol with the CLI
     /// Registers a hook callback for PreToolUse events to enable approval flow
-    pub async fn initialize(&self) -> Result<(), ExecutorError> {
+    pub async fn initialize(&self, hooks: Option<serde_json::Value>) -> Result<(), ExecutorError> {
         use uuid::Uuid;
         let init_request = SDKControlRequestMessage {
             message_type: "control_request".to_string(),
             request_id: format!("init_{}", Uuid::new_v4()),
-            request: SDKControlRequestType::Initialize {
-                hooks: Some(serde_json::json!({
-                    "PreToolUse": [
-                        {
-                            "matcher": ".*",
-                            "hookCallbackIds": ["tool_approval"]
-                        }
-                    ]
-                })),
-            },
+            request: SDKControlRequestType::Initialize { hooks },
         };
         self.send_json(&init_request).await?;
         Ok(())
@@ -276,5 +273,6 @@ pub trait ProtocolCallbacks: Send + Sync {
     async fn on_session_init(&self, session_id: String) -> Result<(), ExecutorError>;
 
     /// Called for non-control messages (regular Claude output)
-    async fn on_non_control(&self, line: &str) -> Result<(), ExecutorError>;
+    /// Returns true if the task is complete and the read loop should exit
+    async fn on_non_control(&self, line: &str) -> Result<bool, ExecutorError>;
 }

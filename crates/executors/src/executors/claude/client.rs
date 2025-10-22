@@ -18,6 +18,8 @@ use crate::{
     executors::{ExecutorError, codex::client::LogWriter},
 };
 
+const EXIT_PLAN_MODE_NAME: &str = "ExitPlanMode";
+
 /// Claude Agent client with control protocol support
 pub struct ClaudeAgentClient {
     protocol: OnceLock<ProtocolPeer>,
@@ -136,16 +138,16 @@ impl ProtocolCallbacks for ClaudeAgentClient {
                         .log_raw(&format!("[APPROVED via hook] Tool: {}", tool_name))
                         .await?;
 
-                    // After approval, switch to bypassPermissions mode
-                    if let Err(e) = peer
-                        .set_permission_mode(PermissionMode::BypassPermissions)
-                        .await
-                    {
-                        tracing::warn!("Failed to set permission mode: {}", e);
-                    } else {
-                        tracing::info!("Switched to bypassPermissions mode");
+                    if tool_name == EXIT_PLAN_MODE_NAME {
+                        tracing::info!("Exiting plan mode as per approval for tool: {}", tool_name);
+                        // After approval, switch to acceptEdits mode
+                        if let Err(e) = peer.set_permission_mode(PermissionMode::AcceptEdits).await
+                        {
+                            tracing::warn!("Failed to set permission mode: {}", e);
+                        } else {
+                            tracing::info!("Switched to acceptEdits mode");
+                        }
                     }
-
                     Ok(serde_json::json!({
                         "hookSpecificOutput": {
                             "hookEventName": "PreToolUse",
@@ -193,8 +195,18 @@ impl ProtocolCallbacks for ClaudeAgentClient {
         self.register_session(session_id).await
     }
 
-    async fn on_non_control(&self, line: &str) -> Result<(), ExecutorError> {
+    async fn on_non_control(&self, line: &str) -> Result<bool, ExecutorError> {
         // Forward all non-control messages to stdout
-        self.log_writer.log_raw(line).await
+        self.log_writer.log_raw(line).await?;
+
+        // Check for result message indicating task completion
+        if let Ok(value) = serde_json::from_str::<serde_json::Value>(line) {
+            if value.get("type").and_then(|t| t.as_str()) == Some("result") {
+                tracing::info!("Detected result message, task complete");
+                return Ok(true);
+            }
+        }
+
+        Ok(false)
     }
 }

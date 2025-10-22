@@ -89,10 +89,6 @@ impl ClaudeCode {
         if plan && approvals {
             tracing::warn!("Both plan and approvals are enabled. Plan will take precedence.");
         }
-
-        // if plan {
-        //     builder = builder.extend_params(["--permission-mode=bypassPermissions"]);
-        // }
         builder = builder.extend_params(["--permission-prompt-tool=stdio"]);
         builder = builder.extend_params([format!("--permission-mode={}", self.permission_mode())]);
 
@@ -117,7 +113,30 @@ impl ClaudeCode {
         } else if self.approvals.unwrap_or(false) {
             PermissionMode::Default
         } else {
-            PermissionMode::BypassPermissions
+            PermissionMode::AcceptEdits
+        }
+    }
+
+    pub fn get_hooks(&self) -> Option<serde_json::Value> {
+        match self.permission_mode() {
+            PermissionMode::Plan => Some(serde_json::json!({
+                "PreToolUse": [
+                    {
+                        "matcher": "^ExitPlanMode$",
+                        "hookCallbackIds": ["tool_approval"]
+                    }
+                ]
+            })),
+            PermissionMode::Default => Some(serde_json::json!({
+                "PreToolUse": [
+                    {
+                        "matcher": "^(?!(Glob|Grep|NotebookRead|Read|Task|TodoWrite)$).*",
+                        "hookCallbackIds": ["tool_approval"]
+                    }
+                ]
+            })),
+            PermissionMode::BypassPermissions => None,
+            PermissionMode::AcceptEdits => None,
         }
     }
 }
@@ -157,6 +176,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
 
         let new_stdout = create_stdout_pipe_writer(&mut child)?;
         let permission_mode = self.permission_mode();
+        let hooks = self.get_hooks();
 
         // Spawn task to handle the SDK client with control protocol
         let prompt_clone = combined_prompt.clone();
@@ -166,9 +186,8 @@ impl StandardCodingAgentExecutor for ClaudeCode {
             let client = ClaudeAgentClient::new(log_writer.clone(), approvals_clone);
             let protocol_peer = ProtocolPeer::spawn(child_stdin, child_stdout, client.clone());
             client.connect(protocol_peer.clone());
-
             // Initialize control protocol
-            if let Err(e) = protocol_peer.initialize().await {
+            if let Err(e) = protocol_peer.initialize(hooks).await {
                 tracing::error!("Failed to initialize control protocol: {}", e);
                 let _ = log_writer
                     .log_raw(&format!("Error: Failed to initialize - {}", e))
@@ -238,6 +257,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
 
         let new_stdout = create_stdout_pipe_writer(&mut child)?;
         let permission_mode = self.permission_mode();
+        let hooks = self.get_hooks();
 
         // Spawn task to handle the SDK client with control protocol
         let prompt_clone = combined_prompt.clone();
@@ -249,7 +269,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
             client.connect(protocol_peer.clone());
 
             // Initialize control protocol
-            if let Err(e) = protocol_peer.initialize().await {
+            if let Err(e) = protocol_peer.initialize(hooks).await {
                 tracing::error!("Failed to initialize control protocol: {}", e);
                 let _ = log_writer
                     .log_raw(&format!("Error: Failed to initialize - {}", e))
@@ -542,9 +562,13 @@ impl ClaudeLogProcessor {
                     Self::generate_concise_content(tool_data, &action_type, worktree_path);
 
                 // Create metadata with tool_call_id for approval matching
-                let mut metadata = serde_json::to_value(content_item).unwrap_or(serde_json::Value::Null);
+                let mut metadata =
+                    serde_json::to_value(content_item).unwrap_or(serde_json::Value::Null);
                 if let Some(obj) = metadata.as_object_mut() {
-                    obj.insert("tool_call_id".to_string(), serde_json::Value::String(id.clone()));
+                    obj.insert(
+                        "tool_call_id".to_string(),
+                        serde_json::Value::String(id.clone()),
+                    );
                 }
 
                 Some(NormalizedEntry {
@@ -798,9 +822,13 @@ impl ClaudeLogProcessor {
                             );
 
                             // Create metadata with tool_call_id for approval matching
-                            let mut metadata = serde_json::to_value(item).unwrap_or(serde_json::Value::Null);
+                            let mut metadata =
+                                serde_json::to_value(item).unwrap_or(serde_json::Value::Null);
                             if let Some(obj) = metadata.as_object_mut() {
-                                obj.insert("tool_call_id".to_string(), serde_json::Value::String(id.clone()));
+                                obj.insert(
+                                    "tool_call_id".to_string(),
+                                    serde_json::Value::String(id.clone()),
+                                );
                             }
 
                             let entry = NormalizedEntry {
