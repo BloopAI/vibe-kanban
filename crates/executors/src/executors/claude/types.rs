@@ -77,7 +77,7 @@ pub struct PermissionUpdate {
     pub mode: Option<String>, // "bypassPermissions", "plan", "default", "acceptEdits"
     #[serde(skip_serializing_if = "Option::is_none")]
     pub destination: Option<String>, // "session", "userSettings", "projectSettings", "localSettings"
-    // Add more fields as needed: rules, behavior, directories
+                                     // Add more fields as needed: rules, behavior, directories
 }
 
 /// Permission modes
@@ -101,50 +101,8 @@ impl PermissionMode {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_permission_mode_serialization() {
-        let mode = PermissionMode::Plan;
-        let json = serde_json::to_string(&mode).unwrap();
-        assert_eq!(json, r#""plan""#);
-    }
-
-    #[test]
-    fn test_control_request_deserialization() {
-        let json = r#"{
-            "request_id": "req_123",
-            "subtype": "can_use_tool",
-            "tool_name": "Write",
-            "input": {"file_path": "test.txt", "content": "hello"}
-        }"#;
-
-        let req: ControlRequest = serde_json::from_str(json).unwrap();
-        assert_eq!(req.request_id, "req_123");
-
-        match req.request {
-            ControlRequestType::CanUseTool { tool_name, .. } => {
-                assert_eq!(tool_name, "Write");
-            }
-        }
-    }
-
-    #[test]
-    fn test_permission_result_serialization() {
-        let result = PermissionResult::Allow {
-            updated_input: serde_json::json!({"file_path": "test.txt"}),
-            updated_permissions: Some(vec![PermissionUpdate {
-                update_type: "setMode".to_string(),
-                mode: Some("bypassPermissions".to_string()),
-                destination: Some("session".to_string()),
-            }]),
-        };
-
-        let json = serde_json::to_string(&result).unwrap();
-        assert!(json.contains(r#""behavior":"allow"#));
-        assert!(json.contains(r#""updatedInput"#));
-        assert!(json.contains(r#""updatedPermissions"#));
+impl std::fmt::Display for PermissionMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
     }
 }

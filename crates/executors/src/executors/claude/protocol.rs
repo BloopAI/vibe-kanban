@@ -5,15 +5,19 @@
 //! Reference: https://github.com/ZhangHanDong/claude-code-api-rs/blob/main/claude-code-sdk-rs/src/transport/subprocess.rs
 
 use std::sync::Arc;
+
+use async_trait::async_trait;
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     process::{ChildStdin, ChildStdout},
     sync::Mutex,
 };
-use async_trait::async_trait;
 
-use super::types::{ControlRequestMessage, ControlResponseMessage, ControlRequestType, ControlResponse, PermissionResult, PermissionUpdate};
-use crate::executors::ExecutorError;
+use super::types::{
+    ControlRequestMessage, ControlRequestType, ControlResponse, ControlResponseMessage,
+    PermissionResult, PermissionUpdate,
+};
+use crate::executors::{ExecutorError, claude::types::PermissionMode};
 
 /// Handles bidirectional control protocol communication
 #[derive(Clone)]
@@ -60,15 +64,15 @@ impl ProtocolPeer {
                     if line.is_empty() {
                         continue;
                     }
-
-                    tracing::debug!("Received from CLI: {}", line);
-
                     // Try parsing as control request
                     if let Ok(control_req) = serde_json::from_str::<ControlRequestMessage>(line) {
+                        tracing::debug!("Received control request: {:?}", control_req.request);
                         if control_req.message_type == "control_request" {
                             self.handle_control_request(&callbacks, control_req).await;
                         }
-                    } else if let Ok(control_resp) = serde_json::from_str::<ControlResponseMessage>(line) {
+                    } else if let Ok(control_resp) =
+                        serde_json::from_str::<ControlResponseMessage>(line)
+                    {
                         // Control response - might be init response or other
                         tracing::debug!("Received control response: {:?}", control_resp.response);
                     } else {
@@ -102,7 +106,10 @@ impl ProtocolPeer {
                 input,
                 permission_suggestions,
             } => {
-                match callbacks.on_can_use_tool(self, tool_name, input, permission_suggestions).await {
+                match callbacks
+                    .on_can_use_tool(self, tool_name, input, permission_suggestions)
+                    .await
+                {
                     Ok(result) => {
                         if let Err(e) = self.send_permission_result(request_id, result).await {
                             tracing::error!("Failed to send permission result: {}", e);
@@ -116,24 +123,22 @@ impl ProtocolPeer {
                     }
                 }
             }
-            ControlRequestType::HookCallback {
-                callback_id,
-                input,
-            } => {
-                match callbacks.on_hook_callback(self, callback_id, input).await {
-                    Ok(hook_output) => {
-                        // Send hook output directly (not wrapped in PermissionResult)
-                        if let Err(e) = self.send_hook_response(request_id, hook_output).await {
-                            tracing::error!("Failed to send hook callback result: {}", e);
-                        }
-                    }
-                    Err(e) => {
-                        tracing::error!("Error in on_hook_callback: {}", e);
-                        if let Err(e2) = self.send_error(request_id, e.to_string()).await {
-                            tracing::error!("Failed to send error response: {}", e2);
-                        }
-                    }
-                }
+            ControlRequestType::HookCallback { callback_id, input } => {
+                tracing::warn!("Received unexpected HookCallback request - hooks not implemented");
+                // match callbacks.on_hook_callback(self, callback_id, input).await {
+                //     Ok(hook_output) => {
+                //         // Send hook output directly (not wrapped in PermissionResult)
+                //         if let Err(e) = self.send_hook_response(request_id, hook_output).await {
+                //             tracing::error!("Failed to send hook callback result: {}", e);
+                //         }
+                //     }
+                //     Err(e) => {
+                //         tracing::error!("Error in on_hook_callback: {}", e);
+                //         if let Err(e2) = self.send_error(request_id, e.to_string()).await {
+                //             tracing::error!("Failed to send error response: {}", e2);
+                //         }
+                //     }
+                // }
             }
         }
     }
@@ -181,11 +186,7 @@ impl ProtocolPeer {
     }
 
     /// Send error response to CLI
-    async fn send_error(
-        &self,
-        request_id: String,
-        error: String,
-    ) -> Result<(), ExecutorError> {
+    async fn send_error(&self, request_id: String, error: String) -> Result<(), ExecutorError> {
         let response = ControlResponse {
             request_id,
             subtype: "error".to_string(),
@@ -217,20 +218,21 @@ impl ProtocolPeer {
     pub async fn initialize(&self) -> Result<(), ExecutorError> {
         let init_request = serde_json::json!({
             "type": "control_request",
-            "request_id": "init_001",
+            // "request_id": "init_001",
             "request": {
                 "subtype": "initialize",
                 "hooks": {
-                    "PreToolUse": [
-                        {
-                            "matcher": ".*",
-                            "hookCallbackIds": ["tool_approval"]
-                        }
-                    ]
+                    // "PreToolUse": [
+                    //     {
+                    //         "matcher": ".*",
+                    //         "hookCallbackIds": ["tool_approval"]
+                    //     }
+                    // ]
                 }
             }
         });
-        self.send_json(&init_request).await
+        self.send_json(&init_request).await?;
+        Ok(())
     }
 
     /// Send user message (initial prompt)
@@ -243,6 +245,21 @@ impl ProtocolPeer {
             }
         });
         self.send_json(&message).await
+    }
+
+    /// Send a control request to change permission mode
+    pub async fn set_permission_mode(&self, mode: PermissionMode) -> Result<(), ExecutorError> {
+        use uuid::Uuid;
+
+        let mode_request = serde_json::json!({
+            "type": "control_request",
+            "request_id": format!("set_mode_{}", Uuid::new_v4()),
+            "request": {
+                "subtype": "set_permission_mode",
+                "mode": mode.as_str()
+            }
+        });
+        self.send_json(&mode_request).await
     }
 }
 
@@ -258,14 +275,14 @@ pub trait ProtocolCallbacks: Send + Sync {
         suggestions: Option<Vec<PermissionUpdate>>,
     ) -> Result<PermissionResult, ExecutorError>;
 
-    /// Called when CLI sends hook callback (for PreToolUse hooks)
-    /// Returns hook output JSON (not PermissionResult)
-    async fn on_hook_callback(
-        &self,
-        peer: &ProtocolPeer,
-        callback_id: String,
-        input: serde_json::Value,
-    ) -> Result<serde_json::Value, ExecutorError>;
+    // /// Called when CLI sends hook callback (for PreToolUse hooks)
+    // /// Returns hook output JSON (not PermissionResult)
+    // async fn on_hook_callback(
+    //     &self,
+    //     peer: &ProtocolPeer,
+    //     callback_id: String,
+    //     input: serde_json::Value,
+    // ) -> Result<serde_json::Value, ExecutorError>;
 
     /// Called for non-control messages (regular Claude output)
     async fn on_non_control(&self, line: &str) -> Result<(), ExecutorError>;

@@ -1,7 +1,7 @@
 // SDK submodules
-pub mod types;
-pub mod protocol;
 pub mod client;
+pub mod protocol;
+pub mod types;
 
 use std::{collections::HashMap, path::Path, process::Stdio, sync::Arc};
 
@@ -10,7 +10,7 @@ use command_group::AsyncCommandGroup;
 use futures::StreamExt;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use tokio::{io::AsyncWriteExt, process::Command};
+use tokio::process::Command;
 use ts_rs::TS;
 use workspace_utils::{
     diff::{concatenate_diff_hunks, create_unified_diff, create_unified_diff_hunk},
@@ -20,14 +20,19 @@ use workspace_utils::{
     shell::get_shell_command,
 };
 
+use self::{client::ClaudeAgentClient, protocol::ProtocolPeer, types::PermissionMode};
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
-    executors::{AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
+    executors::{
+        AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
+        codex::client::LogWriter,
+    },
     logs::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryType, TodoItem, ToolStatus,
         stderr_processor::normalize_stderr_logs,
         utils::{EntryIndexProvider, patch::ConversationPatch},
     },
+    stdout_dup::create_stdout_pipe_writer,
 };
 
 fn base_command(claude_code_router: bool) -> &'static str {
@@ -71,22 +76,20 @@ impl ClaudeCode {
 
         let plan = self.plan.unwrap_or(false);
         let approvals = self.approvals.unwrap_or(false);
+        builder = builder.extend_params(["--input-format=stream-json"]);
         if plan && approvals {
             tracing::warn!("Both plan and approvals are enabled. Plan will take precedence.");
         }
 
-        if plan {
-            builder = builder.extend_params(["--permission-mode=plan"]);
-        }
+        // if plan {
+        //     builder = builder.extend_params(["--permission-mode=bypassPermissions"]);
+        // }
+        builder = builder.extend_params(["--permission-prompt-tool=stdio"]);
+        builder = builder.extend_params([format!("--permission-mode={}", self.permission_mode())]);
 
-        // Enable control protocol for approvals/plan mode
-        if plan || approvals {
-            builder = builder.extend_params(["--input-format=stream-json"]);
-        }
-
-        if self.dangerously_skip_permissions.unwrap_or(false) {
-            builder = builder.extend_params(["--dangerously-skip-permissions"]);
-        }
+        // if self.dangerously_skip_permissions.unwrap_or(false) {
+        //     builder = builder.extend_params(["--dangerously-skip-permissions"]);
+        // }
         if let Some(model) = &self.model {
             builder = builder.extend_params(["--model", model]);
         }
@@ -98,15 +101,21 @@ impl ClaudeCode {
 
         apply_overrides(builder, &self.cmd)
     }
+
+    pub fn permission_mode(&self) -> PermissionMode {
+        if self.plan.unwrap_or(false) {
+            PermissionMode::Plan
+        } else if self.approvals.unwrap_or(false) {
+            PermissionMode::Default
+        } else {
+            PermissionMode::BypassPermissions
+        }
+    }
 }
 
 #[async_trait]
 impl StandardCodingAgentExecutor for ClaudeCode {
     async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
-        use crate::{executors::codex::client::LogWriter, stdout_dup::create_stdout_pipe_writer};
-        use self::client::ClaudeAgentClient;
-        use self::protocol::ProtocolPeer;
-
         let (shell_cmd, shell_arg) = get_shell_command();
         let command_builder = self.build_command_builder().await;
         let base_command = command_builder.build_initial();
@@ -122,62 +131,54 @@ impl StandardCodingAgentExecutor for ClaudeCode {
             .current_dir(current_dir)
             .arg(shell_arg)
             .arg(&base_command)
-            .env("CLAUDE_CODE_ENTRYPOINT", "sdk-rust")
-            .env("NO_COLOR", "1");
+            .env("CLAUDE_CODE_ENTRYPOINT", "sdk-rust");
 
         let mut child = command.group_spawn()?;
-
-        let plan_or_approvals = self.plan.unwrap_or(false) || self.approvals.unwrap_or(false);
-
-        if plan_or_approvals {
-            // Use control protocol for approvals
-            let child_stdout = child.inner().stdout.take().ok_or_else(|| {
-                ExecutorError::Io(std::io::Error::other("Claude Code missing stdout"))
-            })?;
-            let child_stdin = child.inner().stdin.take().ok_or_else(|| {
+        let child_stdout = child.inner().stdout.take().ok_or_else(|| {
+            ExecutorError::Io(std::io::Error::other("Claude Code missing stdout"))
+        })?;
+        let child_stdin =
+            child.inner().stdin.take().ok_or_else(|| {
                 ExecutorError::Io(std::io::Error::other("Claude Code missing stdin"))
             })?;
 
-            let new_stdout = create_stdout_pipe_writer(&mut child)?;
+        let new_stdout = create_stdout_pipe_writer(&mut child)?;
+        let permission_mode = self.permission_mode();
 
-            // Spawn task to handle the SDK client with control protocol
-            let prompt_clone = combined_prompt.clone();
-            tokio::spawn(async move {
-                let log_writer = LogWriter::new(new_stdout);
-                let client = ClaudeAgentClient::new(log_writer.clone());
-                let protocol_peer = ProtocolPeer::spawn(child_stdin, child_stdout, client.clone());
-                client.connect(protocol_peer.clone());
+        // Spawn task to handle the SDK client with control protocol
+        let prompt_clone = combined_prompt.clone();
+        tokio::spawn(async move {
+            let log_writer = LogWriter::new(new_stdout);
+            let client = ClaudeAgentClient::new(log_writer.clone());
+            let protocol_peer = ProtocolPeer::spawn(child_stdin, child_stdout, client.clone());
+            client.connect(protocol_peer.clone());
 
-                // Initialize control protocol
-                if let Err(e) = protocol_peer.initialize().await {
-                    tracing::error!("Failed to initialize control protocol: {}", e);
-                    let _ = log_writer.log_raw(&format!("Error: Failed to initialize - {}", e)).await;
-                    return;
-                }
-
-                // Send initial user message
-                if let Err(e) = protocol_peer.send_user_message(prompt_clone).await {
-                    tracing::error!("Failed to send initial prompt: {}", e);
-                    let _ = log_writer.log_raw(&format!("Error: Failed to send prompt - {}", e)).await;
-                }
-
-                tracing::info!("Control protocol initialized and initial prompt sent");
-                // Protocol peer runs in background, handling bidirectional communication
-            });
-
-            Ok(SpawnedChild {
-                child,
-                exit_signal: None,
-            })
-        } else {
-            // No approvals - just feed prompt and close stdin
-            if let Some(mut stdin) = child.inner().stdin.take() {
-                stdin.write_all(combined_prompt.as_bytes()).await?;
-                stdin.shutdown().await?;
+            // Initialize control protocol
+            if let Err(e) = protocol_peer.initialize().await {
+                tracing::error!("Failed to initialize control protocol: {}", e);
+                let _ = log_writer
+                    .log_raw(&format!("Error: Failed to initialize - {}", e))
+                    .await;
+                return;
             }
 
-            Ok(child.into())
-        }
+            if let Err(e) = protocol_peer.set_permission_mode(permission_mode).await {
+                tracing::warn!("Failed to set permission mode to {permission_mode}: {e}");
+            }
+
+            // Send initial user message
+            if let Err(e) = protocol_peer.send_user_message(prompt_clone).await {
+                tracing::error!("Failed to send initial prompt: {}", e);
+                let _ = log_writer
+                    .log_raw(&format!("Error: Failed to send prompt - {}", e))
+                    .await;
+            }
+        });
+
+        Ok(SpawnedChild {
+            child,
+            exit_signal: None,
+        })
     }
 
     async fn spawn_follow_up(
@@ -186,9 +187,8 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         prompt: &str,
         session_id: &str,
     ) -> Result<SpawnedChild, ExecutorError> {
+        use self::{client::ClaudeAgentClient, protocol::ProtocolPeer};
         use crate::{executors::codex::client::LogWriter, stdout_dup::create_stdout_pipe_writer};
-        use self::client::ClaudeAgentClient;
-        use self::protocol::ProtocolPeer;
 
         let (shell_cmd, shell_arg) = get_shell_command();
         let command_builder = self.build_command_builder().await;
@@ -210,62 +210,57 @@ impl StandardCodingAgentExecutor for ClaudeCode {
             .current_dir(current_dir)
             .arg(shell_arg)
             .arg(&base_command)
-            .env("CLAUDE_CODE_ENTRYPOINT", "sdk-rust")
-            .env("NO_COLOR", "1");
+            .env("CLAUDE_CODE_ENTRYPOINT", "sdk-rust");
 
         let mut child = command.group_spawn()?;
-
-        let plan_or_approvals = self.plan.unwrap_or(false) || self.approvals.unwrap_or(false);
-
-        if plan_or_approvals {
-            // Use control protocol for approvals
-            let child_stdout = child.inner().stdout.take().ok_or_else(|| {
-                ExecutorError::Io(std::io::Error::other("Claude Code missing stdout"))
-            })?;
-            let child_stdin = child.inner().stdin.take().ok_or_else(|| {
+        // Use control protocol for approvals
+        let child_stdout = child.inner().stdout.take().ok_or_else(|| {
+            ExecutorError::Io(std::io::Error::other("Claude Code missing stdout"))
+        })?;
+        let child_stdin =
+            child.inner().stdin.take().ok_or_else(|| {
                 ExecutorError::Io(std::io::Error::other("Claude Code missing stdin"))
             })?;
 
-            let new_stdout = create_stdout_pipe_writer(&mut child)?;
+        let new_stdout = create_stdout_pipe_writer(&mut child)?;
+        let permission_mode = self.permission_mode();
 
-            // Spawn task to handle the SDK client with control protocol
-            let prompt_clone = combined_prompt.clone();
-            tokio::spawn(async move {
-                let log_writer = LogWriter::new(new_stdout);
-                let client = ClaudeAgentClient::new(log_writer.clone());
-                let protocol_peer = ProtocolPeer::spawn(child_stdin, child_stdout, client.clone());
-                client.connect(protocol_peer.clone());
+        // Spawn task to handle the SDK client with control protocol
+        let prompt_clone = combined_prompt.clone();
+        tokio::spawn(async move {
+            let log_writer = LogWriter::new(new_stdout);
+            let client = ClaudeAgentClient::new(log_writer.clone());
+            let protocol_peer = ProtocolPeer::spawn(child_stdin, child_stdout, client.clone());
+            client.connect(protocol_peer.clone());
 
-                // Initialize control protocol
-                if let Err(e) = protocol_peer.initialize().await {
-                    tracing::error!("Failed to initialize control protocol: {}", e);
-                    let _ = log_writer.log_raw(&format!("Error: Failed to initialize - {}", e)).await;
-                    return;
-                }
-
-                // Send follow-up user message
-                if let Err(e) = protocol_peer.send_user_message(prompt_clone).await {
-                    tracing::error!("Failed to send follow-up prompt: {}", e);
-                    let _ = log_writer.log_raw(&format!("Error: Failed to send prompt - {}", e)).await;
-                }
-
-                tracing::info!("Control protocol initialized and follow-up prompt sent");
-                // Protocol peer runs in background, handling bidirectional communication
-            });
-
-            Ok(SpawnedChild {
-                child,
-                exit_signal: None,
-            })
-        } else {
-            // No approvals - just feed prompt and close stdin
-            if let Some(mut stdin) = child.inner().stdin.take() {
-                stdin.write_all(combined_prompt.as_bytes()).await?;
-                stdin.shutdown().await?;
+            // Initialize control protocol
+            if let Err(e) = protocol_peer.initialize().await {
+                tracing::error!("Failed to initialize control protocol: {}", e);
+                let _ = log_writer
+                    .log_raw(&format!("Error: Failed to initialize - {}", e))
+                    .await;
+                return;
+            }
+            if let Err(e) = protocol_peer.set_permission_mode(permission_mode).await {
+                tracing::warn!("Failed to set permission mode to {permission_mode}: {e}");
             }
 
-            Ok(child.into())
-        }
+            // Send follow-up user message
+            if let Err(e) = protocol_peer.send_user_message(prompt_clone).await {
+                tracing::error!("Failed to send follow-up prompt: {}", e);
+                let _ = log_writer
+                    .log_raw(&format!("Error: Failed to send prompt - {}", e))
+                    .await;
+            }
+
+            tracing::info!("Control protocol initialized and follow-up prompt sent");
+            // Protocol peer runs in background, handling bidirectional communication
+        });
+
+        Ok(SpawnedChild {
+            child,
+            exit_signal: None,
+        })
     }
 
     fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &Path) {
