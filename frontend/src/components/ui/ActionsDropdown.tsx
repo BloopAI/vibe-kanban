@@ -28,17 +28,20 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
   const hasAttemptActions = Boolean(attempt);
   const hasTaskActions = Boolean(task);
 
-  const handleEdit = () => {
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!projectId || !task) return;
     openTaskForm({ projectId, task });
   };
 
-  const handleDuplicate = () => {
+  const handleDuplicate = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!projectId || !task) return;
     openTaskForm({ projectId, initialTask: task });
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!projectId || !task) return;
     try {
       await NiceModal.show('delete-task-confirmation', {
@@ -98,6 +101,8 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
           <Button
             variant="icon"
             aria-label="Actions"
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
             <MoreHorizontal className="h-4 w-4" />
