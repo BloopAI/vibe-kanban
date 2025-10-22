@@ -1,9 +1,3 @@
-//! Protocol handler for Claude Code control protocol
-//!
-//! Handles bidirectional communication via stdin/stdout with the CLI process.
-//!
-//! Reference: https://github.com/ZhangHanDong/claude-code-api-rs/blob/main/claude-code-sdk-rs/src/transport/subprocess.rs
-
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -268,15 +262,6 @@ impl ProtocolPeer {
 /// Callbacks for control protocol events
 #[async_trait]
 pub trait ProtocolCallbacks: Send + Sync {
-    /// Called when CLI requests tool permission
-    // async fn on_can_use_tool(
-    //     &self,
-    //     peer: &ProtocolPeer,
-    //     tool_name: String,
-    //     input: serde_json::Value,
-    //     suggestions: Option<Vec<PermissionUpdate>>,
-    // ) -> Result<PermissionResult, ExecutorError>;
-
     /// Called when CLI sends hook callback (for PreToolUse hooks)
     /// Returns hook output JSON (not PermissionResult)
     async fn on_hook_callback(

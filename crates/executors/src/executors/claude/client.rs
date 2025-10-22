@@ -11,7 +11,7 @@ use workspace_utils::approvals::ApprovalStatus;
 
 use super::{
     protocol::{ProtocolCallbacks, ProtocolPeer},
-    types::{PermissionMode, PermissionResult, PermissionUpdate},
+    types::PermissionMode,
 };
 use crate::{
     approvals::ExecutorApprovalService,
@@ -74,91 +74,6 @@ impl ClaudeAgentClient {
 
 #[async_trait]
 impl ProtocolCallbacks for ClaudeAgentClient {
-    // async fn on_can_use_tool(
-    //     &self,
-    //     peer: &ProtocolPeer,
-    //     tool_name: String,
-    //     input: serde_json::Value,
-    //     _suggestions: Option<Vec<PermissionUpdate>>,
-    // ) -> Result<PermissionResult, ExecutorError> {
-    //     if self.auto_approve {
-    //         // Auto-approve mode
-    //         let input_str =
-    //             serde_json::to_string(&input).unwrap_or_else(|_| "<invalid json>".to_string());
-
-    //         self.log_writer
-    //             .log_raw(&format!(
-    //                 "[AUTO-APPROVE] Tool: {} Input: {}",
-    //                 tool_name, input_str
-    //             ))
-    //             .await?;
-
-    //         // After approval, switch to bypassPermissions
-    //         if let Err(e) = peer
-    //             .set_permission_mode(PermissionMode::BypassPermissions)
-    //             .await
-    //         {
-    //             tracing::warn!("Failed to set permission mode: {}", e);
-    //         }
-
-    //         Ok(PermissionResult::Allow {
-    //             updated_input: input,
-    //             updated_permissions: None,
-    //         })
-    //     } else {
-    //         // Use approval service
-    //         let approval_service = self.approvals.as_ref().ok_or_else(|| {
-    //             ExecutorError::Io(std::io::Error::other("Approval service not available"))
-    //         })?;
-
-    //         let status = approval_service
-    //             .request_tool_approval(&tool_name, input.clone(), "tool_call_id")
-    //             .await?;
-
-    //         match status {
-    //             ApprovalStatus::Approved => {
-    //                 self.log_writer
-    //                     .log_raw(&format!("[APPROVED] Tool: {}", tool_name))
-    //                     .await?;
-
-    //                 // After approval, switch to bypassPermissions mode
-    //                 if let Err(e) = peer
-    //                     .set_permission_mode(PermissionMode::BypassPermissions)
-    //                     .await
-    //                 {
-    //                     tracing::warn!("Failed to set permission mode: {}", e);
-    //                 } else {
-    //                     tracing::info!("Switched to bypassPermissions mode");
-    //                 }
-
-    //                 Ok(PermissionResult::Allow {
-    //                     updated_input: input,
-    //                     updated_permissions: None,
-    //                 })
-    //             }
-    //             ApprovalStatus::Denied { reason } => {
-    //                 let message = reason.unwrap_or_else(|| "Denied by user".to_string());
-    //                 self.log_writer
-    //                     .log_raw(&format!("[DENIED] Tool: {} - {}", tool_name, message))
-    //                     .await?;
-
-    //                 Ok(PermissionResult::Deny {
-    //                     message,
-    //                     interrupt: Some(false),
-    //                 })
-    //             }
-    //             ApprovalStatus::TimedOut => Ok(PermissionResult::Deny {
-    //                 message: "Approval request timed out".to_string(),
-    //                 interrupt: Some(false),
-    //             }),
-    //             ApprovalStatus::Pending => Ok(PermissionResult::Deny {
-    //                 message: "Approval still pending (unexpected)".to_string(),
-    //                 interrupt: Some(false),
-    //             }),
-    //         }
-    //     }
-    // }
-
     async fn on_hook_callback(
         &self,
         peer: &ProtocolPeer,

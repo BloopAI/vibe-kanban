@@ -1,6 +1,6 @@
 //! Type definitions for Claude Code control protocol
 //!
-//! Reference: https://github.com/ZhangHanDong/claude-code-api-rs/blob/main/claude-code-sdk-rs/src/types.rs
+//! Similar to: https://github.com/ZhangHanDong/claude-code-api-rs/blob/main/claude-code-sdk-rs/src/types.rs
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
