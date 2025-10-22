@@ -656,6 +656,7 @@ export function ProjectTasks() {
           onViewTaskDetails={handleViewTaskDetails}
           selectedTask={selectedTask || undefined}
           onCreateTask={handleCreateNewTask}
+          projectId={projectId!}
         />
       </div>
     );
