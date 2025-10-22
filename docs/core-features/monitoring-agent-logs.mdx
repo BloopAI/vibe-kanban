@@ -1,0 +1,141 @@
+---
+title: "Monitoring Task Execution"
+description: "Learn how to monitor coding agent execution with real-time logs, approvals, and interactive controls"
+sidebarTitle: "Monitoring Task Execution"
+---
+
+When you start a task, the main panel provides real-time visibility into everything happening during execution. Watch as agents think through problems, take actions, and respond to your feedback.
+
+<Frame>
+<img src="/images/vk-agent-log-main.png" alt="Task execution showing real-time agent logs with actions and responses" />
+</Frame>
+
+## What Happens During Execution
+
+When you start a task attempt, Vibe Kanban orchestrates several steps to create an isolated environment and execute your task:
+
+1. **Git Worktree Creation**: An isolated environment is created for this task attempt
+2. **Setup Scripts Run**: Any setup script defined in your project settings runs automatically
+3. **Agent Execution**: The coding agent processes your task using the title and description  
+4. **Real-time Monitoring**: Watch progress through streaming logs in the task interface
+5. **Follow-up Questions**: Continue the conversation after execution to refine results
+
+### Git Worktrees
+
+Vibe Kanban uses Git worktrees to create isolated environments for each task attempt. These environments are ephemeral and automatically cleaned up after execution completes.
+
+<Info>
+Worktrees ensure task attempts don't interfere with each other or your main working directory.
+</Info>
+
+## Execution Flow
+
+### 1. Setup Script
+
+The first log you'll see is your project's setup script running (if configured). This installs dependencies and prepares the environment before the agent starts working.
+
+### 2. Task Sent to Agent
+
+Your task title and description are sent to the agent. You'll see this as the initial message that kicks off the work.
+
+### 3. Real-Time Actions
+
+As the agent works, each action appears in real-time:
+
+- **Reasoning**: The agent's thought process as it analyses your task
+- **Commands**: Shell commands being executed
+- **File operations**: Files being created, modified, or deleted
+- **Tool usage**: API calls, searches, and other tool invocations
+- **Responses**: Agent messages and status updates
+
+**Expandable actions**: Click on file change actions to expand them and see exactly which part of the file was modified.
+
+### 4. Action Approvals
+
+<Note>
+Approvals are currently supported for Codex, with Claude Code coming soon.
+</Note>
+
+When an agent takes an action that requires human approval, a row appears below the action with approve/deny buttons.
+
+<Frame>
+<img src="/images/vk-approval.png" alt="Approval prompt showing tick and cross buttons to approve or deny an agent action" />
+</Frame>
+
+Click the tick to approve or the cross to deny the action. The agent will proceed or adjust based on your decision.
+
+### 5. Cleanup Script
+
+After every agent turn, your cleanup script runs (if configured). This is useful for running linters, formatters, or other post-execution tasks.
+
+### 6. Commit Messages
+
+Vibe Kanban generates commit messages based on the last message sent by the agent. These automated messages may not always be the most descriptive.
+
+<Tip>
+When merging to your base branch, use GitHub's "squash & merge" option to rewrite commits with a summary of what actually changed. Alternatively, ask your coding agent to clean up commits manually.
+</Tip>
+
+## Interacting During Execution
+
+### Keyboard Shortcuts
+
+- **Cmd/Ctrl + Enter**: Send a message to the agent
+- **Enter**: Create a new line in the message field
+- **Shift + Tab**: Switch agent profile (e.g., from PLAN to DEFAULT)
+
+### Viewing Task Details
+
+Click the task title in the top left to navigate to the task view.
+
+<Frame>
+<img src="/images/vk-task-title.png" alt="Task title in top left corner, click to view full task details" />
+</Frame>
+
+This lets you:
+- See the full task description
+- Edit the task title or description
+- View all task attempts
+
+### Editing Previous Messages
+
+<Note>
+Message editing is supported by Claude Code, Amp, Codex, Gemini, and Qwen.
+</Note>
+
+<Frame>
+<img src="/images/vk-edit-message.png" alt="Editing a previous message with options to save or cancel changes" />
+</Frame>
+
+When supported by your coding agent, you can edit previous messages in the conversation. This will revert the agent's work to that point and replay the conversation with your edited message.
+
+<Warning>
+Editing a message reverts all subsequent agent work. Use this carefully when you need to correct or clarify earlier instructions.
+</Warning>
+
+## Viewing Processes
+
+Click the triple dot icon in the top right and select **View Processes** to see all running and completed processes.
+
+<Frame>
+<img src="/images/vk-processes-dropdown.png" alt="Processes dropdown showing coding agent and development server processes" />
+</Frame>
+
+This shows:
+- Coding agent sessions
+- Development servers
+- Build scripts
+- Any other running processes
+
+Each process displays its status and execution timeline. Click any process to view its specific output logs.
+
+<Tip>
+For development server logs, the recommended way to view them is through [Testing Your Application](/core-features/preview-mode) where you can see logs alongside the live preview.
+</Tip>
+
+## Related Documentation
+
+- [Testing Your Application](/core-features/preview-mode) - Test your application with live preview and dev server logs
+- [Reviewing Code Changes](/core-features/reviewing-code-changes) - Review the changes agents make
+- [Creating Projects](/core-features/creating-projects) - Configure setup and cleanup scripts
+- [Agent Configurations](/configuration-customisation/agent-configurations) - Customise agent behaviour and profiles

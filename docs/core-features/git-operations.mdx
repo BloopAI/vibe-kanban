@@ -1,0 +1,68 @@
+---
+title: "Completing a Task"
+description: "Learn how to complete tasks by rebasing, merging, and managing pull requests directly from Vibe Kanban"
+sidebarTitle: "Completing a Task"
+---
+
+When your task is finished, Vibe Kanban provides integrated git operations to keep your branch up-to-date and merge your work back into the base branch.
+
+## Git Operations Header
+
+At the top of the diff view, you'll see important branch information and actions:
+
+<Frame>
+<img src="/images/vk-diff-header.png" alt="Diff header showing branch information and action buttons" />
+</Frame>
+
+**Branch Information:**
+- **Task branch**: The branch your task is working on
+- **Target branch**: The branch you'll merge into (with cog button to change it)
+- **Commits ahead**: Number of commits your branch has that aren't in the target
+- **Commits behind**: Number of commits in the target that you don't have (enables rebase button when >0)
+
+**Actions:**
+- **Merge**: Merge your changes into the target branch
+- **Create PR**: Create a pull request on GitHub
+- **Rebase**: Update your branch with the latest changes from the target branch
+
+## Rebase
+
+Click **Rebase** to update your branch with the latest changes from the target branch. This keeps your branch up-to-date and maintains a clean history.
+
+If conflicts occur, see [Resolving Rebase Conflicts](/core-features/resolving-rebase-conflicts).
+
+## Merge
+
+Click **Merge** to integrate your completed work into the target branch. Your task will automatically move to the **Done** column, and the worktree is cleaned up automatically. The branch remains until you manually delete it.
+
+<Tip>
+If you're working with GitHub, consider creating a pull request instead of merging directly. This allows for team review and CI checks.
+</Tip>
+
+## Pull Request Management
+
+### Creating a Pull Request
+
+Click **Create PR** to create a pull request on GitHub. The title and description are auto-populated from your task details.
+
+<Frame>
+<img src="/images/vk-pr-open.png" alt="Header showing disabled Push button after pull request creation" />
+</Frame>
+
+After creating the PR, the button changes to **Push** (initially disabled until you make more changes).
+
+### Updating a Pull Request
+
+When you continue working after creating a PR, the **Push** button becomes enabled. Click it to push your latest changes to the pull request.
+
+<Frame>
+<img src="/images/vk-pr-with-push.png" alt="Header showing enabled Push button with new changes ready" />
+</Frame>
+
+When your PR is merged on GitHub, your task automatically moves to **Done**.
+
+## Related Documentation
+
+- [Resolving Rebase Conflicts](/core-features/resolving-rebase-conflicts) - Handle conflicts during rebasing
+- [GitHub Integration](/integrations/github-integration) - Set up GitHub authentication
+- [Creating Projects](/core-features/creating-projects) - Configure base branches and project settings

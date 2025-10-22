@@ -1,11 +1,14 @@
 ---
-title: "Preview Mode"
+title: "Testing Your Application"
 description: "Live preview your web applications with embedded browser viewing and precise component selection for seamless development workflows"
+sidebarTitle: "Testing Your Application"
 ---
 
-<Frame>
-<img src="/images/preview-mode-overview.png" alt="Preview mode overview showing component selection and hierarchy" />
-</Frame>
+<video
+  controls
+  className="w-full aspect-video rounded-xl"
+  src="https://vkcdn.britannio.dev/showcase/flat-task-panel/vk-onb-companion-demo-3.mp4"
+></video>
 
 ## Overview
 
@@ -14,15 +17,8 @@ Preview Mode provides an embedded browser experience within Vibe Kanban, allowin
 **Key Benefits:**
 - **Embedded viewing**: See your application running directly in Vibe Kanban
 - **Precise component selection**: Click to select specific UI components for targeted feedback
+- **Dev Server Logs**: Monitor development server output with expandable/collapsible logs at the bottom
 - **Seamless workflows**: No context switching between tools
-
-## Prerequisites
-
-Before using Preview Mode, ensure you have:
-
-1. **Development server script configured** for your project
-2. **Web Companion installed** in your application (for component selection)
-3. **Project running** a web application that serves to localhost
 
 ## Setting Up Preview Mode
 
@@ -39,6 +35,10 @@ Before using Preview Mode, ensure you have:
   <Frame>
   <img src="/images/preview-mode-dev-script-config.png" alt="Development server script configuration interface" />
   </Frame>
+
+  <Info>
+  You may also need to configure a setup script (e.g., `npm install`) to install dependencies before the development server starts. Configure this in project settings under Setup Scripts.
+  </Info>
 
   <Tip>
   Ensure your development server prints the URL (e.g., `http://localhost:3000`) to stdout/stderr for automatic detection.
@@ -125,7 +125,7 @@ Before using Preview Mode, ensure you have:
 </Step>
 
 <Step title="Start Development Server">
-  In your task's full screen mode, click the **Dev** button (▶️) to start your development server.
+  In the Preview section, click the **Start Dev Server** button to start your development server.
 
   <Frame>
   <img src="/images/preview-mode-start-dev-server.png" alt="Starting development server from task interface" />
@@ -133,7 +133,7 @@ Before using Preview Mode, ensure you have:
 
   The system will:
   - Launch your configured development script
-  - Monitor the output for URL detection
+  - Detect the URL of your website and load it
 </Step>
 </Steps>
 
@@ -143,12 +143,12 @@ Before using Preview Mode, ensure you have:
 
 Once your development server is running and a URL is detected:
 
-1. **Navigate to Preview tab** in the task details panel
+1. **Click the Preview button** (eye icon) in the task interface
 2. **View embedded application** in the iframe
 3. **Interact with your app** directly within Vibe Kanban
 
 <Frame>
-<img src="/images/preview-mode-interface.png" alt="Preview mode showing embedded application with toolbar controls" />
+<img src="/images/vk-preview-interface.png" alt="Preview mode showing embedded application with toolbar controls" />
 </Frame>
 
 ### Preview Toolbar Controls
@@ -156,12 +156,21 @@ Once your development server is running and a URL is detected:
 The preview toolbar provides essential controls for managing your preview experience:
 
 <Frame>
-<img src="/images/preview-mode-toolbar.png" alt="Preview toolbar showing refresh, copy URL, and open in browser controls" />
+<img src="/images/vk-preview-toolbar.png" alt="Preview toolbar showing refresh, copy URL, open in browser, and stop server controls" />
 </Frame>
 
 - **Refresh**: Reload the preview iframe
 - **Copy URL**: Copy the development server URL to clipboard
 - **Open in Browser**: Open the application in your default browser
+- **Stop Dev Server**: Stop the running development server
+
+### Dev Server Logs
+
+At the bottom of the Preview panel, you'll find Dev Server Logs that can be expanded or collapsed. These logs show real-time output from your development server, making it easy to monitor server activity, errors, and debugging information without leaving the preview.
+
+<Frame>
+<img src="/images/vk-dev-server-logs.png" alt="Dev Server Logs showing expandable/collapsible log output at bottom of preview" />
+</Frame>
 
 ### Component Selection
 
@@ -172,7 +181,7 @@ When the Web Companion is installed, you can precisely select UI components for 
   Click the floating Vibe Kanban companion button in the bottom-right corner of your application to activate component selection mode.
 
   <Frame>
-  <img src="/images/preview-mode-component-selection.png" alt="Component selection interface showing selectable elements highlighted" />
+  <img src="/images/vk-component-selection.png" alt="Component selection interface showing selectable elements highlighted" />
   </Frame>
 </Step>
 

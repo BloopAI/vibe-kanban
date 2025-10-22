@@ -1,43 +1,11 @@
 ---
 title: "GitHub Integration"
-description: "Connect to GitHub to unlock seamless branch management and pull request workflows directly from your kanban board"
+description: "Connect to GitHub to create pull requests and manage your workflow directly from Vibe Kanban"
 ---
 
-Connect your GitHub account to push commits and create pull requests directly from task attempts.
+Connect your GitHub account to create pull requests and push changes directly from task attempts.
 
-## See It In Action
-
-### Pull Request Creation Dialog
-
-<Frame>
-<img src="/images/vk-create-pr.png" alt="Pull request creation dialog with title, description, and base branch selection" />
-</Frame>
-
-When you're ready to create a PR, get a streamlined dialog that:
-- Pre-fills title and description from your task details
-- Lets you select the target branch (defaults to main/master)
-- Validates that your branch is ready to go
-- Provides direct links to your new pull request
-
-### Smart Push/PR Button
-
-<Frame>
-<img src="/images/task-attempt-push-button.png" alt="Task attempt interface showing dynamic push/PR button" />
-</Frame>
-
-Each task attempt gets a smart button that adapts to your current state:
-- **"Create PR"** when ready to share your work
-- **"Push X commits"** when you have changes to upload  
-- **"Push to PR"** when updating an existing pull request
-- **"Pushed!"** confirmation after successful operations
-
-<Note>
-Each task attempt automatically creates an isolated git worktree, so you can work on multiple features simultaneously without conflicts.
-</Note>
-
-## Getting Started
-
-### Connect Your GitHub Account
+## Connect Your GitHub Account
 
 <Frame>
 <img src="/images/github-connect-settings.png" alt="Settings page with Connect GitHub Account button" />
@@ -62,25 +30,6 @@ The authentication process is simple:
 If you encounter permission issues when creating pull requests, you'll be prompted to provide a Personal Access Token as a fallback authentication method.
 </Note>
 
-### Start Working with GitHub
+## Related Documentation
 
-<Steps>
-<Step title="Create or Import Projects">
-[Create projects](/core-features/creating-projects) from existing Git repositories to enable GitHub features.
-</Step>
-
-<Step title="Work on Tasks">
-[Create task attempts](/core-features/creating-task-attempts) to start developing in isolated branches.
-</Step>
-
-<Step title="Push and Create PRs">
-Use the dynamic push/PR button in task attempts to share your work on GitHub.
-</Step>
-</Steps>
-
-## Next Steps
-
-With GitHub connected, you can:
-- [Learn about creating projects](/core-features/creating-projects)
-- [Set up task attempts for feature development](/core-features/creating-task-attempts) 
-- [Review code changes before committing](/core-features/reviewing-code-changes)
+- [Completing a Task](/core-features/git-operations) - Learn how to create pull requests and manage branches

@@ -1,8 +1,12 @@
 ---
-title: "Creating Task Attempts"
+title: "New Task Attempts"
 description: "Understand when and why to create multiple task attempts for fresh restarts with different configurations."
-sidebarTitle: "Creating Task Attempts"
+sidebarTitle: "New Task Attempts"
 ---
+
+<Frame>
+<img src="/images/vk-create-new-attempt.png" alt="Create new task attempt dialog showing configuration options" />
+</Frame>
 
 A task attempt represents a single session with a coding agent against a task. Most tasks only need one attempt, but you may need additional attempts for fresh restarts.
 
@@ -29,8 +33,8 @@ To create a new task attempt for an existing task:
   Open the task that needs a fresh attempt.
 </Step>
 
-<Step title="Click New Attempt">
-  In the task interface, click the **New Attempt** button.
+<Step title="Click Create New Attempt">
+  Click the triple dot icon in the top right of the task, then select **Create New Attempt**.
 </Step>
 
 <Step title="Configure the attempt">
@@ -52,27 +56,7 @@ When you create a new task attempt:
 
 - **Existing subtasks** remain linked to their original parent attempt
 - **New subtasks** created from the new attempt will use the new attempt's branch as their base
-- This allows you to maintain different subtask workflows for different approaches
 
 <Info>
 For more details about how subtasks work with task attempts, see [Creating Subtasks](/core-features/subtasks).
-</Info>
-
-## What Happens Next
-
-After creating a task attempt:
-
-1. **Setup scripts run** automatically (if configured in project settings)
-2. **Agent executes** using your task title and description
-3. **Real-time monitoring** shows progress through streaming logs
-4. **Follow-up questions** can be asked to refine results
-
-For detailed task management after execution, including development server controls, git operations, and monitoring features, see [Task Details Full Screen Mode](/core-features/task-details-full-screen).
-
-## Git Worktrees
-
-Vibe Kanban uses Git worktrees to create isolated environments for each task attempt. These environments are ephemeral and automatically cleaned up after execution completes.
-
-<Info>
-Worktrees ensure task attempts don't interfere with each other or your main working directory.
 </Info>
