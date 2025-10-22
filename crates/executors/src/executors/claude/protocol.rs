@@ -61,13 +61,20 @@ impl ProtocolPeer {
                     }
                     // Parse message using typed enum
                     match serde_json::from_str::<CLIMessage>(line) {
-                        Ok(CLIMessage::ControlRequest(req)) => {
-                            if req.message_type == "control_request" {
-                                self.handle_control_request(&callbacks, req).await;
-                            }
+                        Ok(CLIMessage::ControlRequest {
+                            request_id,
+                            request,
+                        }) => {
+                            // Construct ControlRequestMessage for handle_control_request
+                            let msg = ControlRequestMessage {
+                                message_type: "control_request".to_string(),
+                                request_id,
+                                request,
+                            };
+                            self.handle_control_request(&callbacks, msg).await;
                         }
-                        Ok(CLIMessage::ControlResponse(resp)) => {
-                            tracing::debug!("Received control response: {:?}", resp.response);
+                        Ok(CLIMessage::ControlResponse { response }) => {
+                            tracing::debug!("Received control response: {:?}", response);
                         }
                         Ok(CLIMessage::System {
                             subtype: Some(ref s),

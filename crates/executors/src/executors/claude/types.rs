@@ -9,8 +9,13 @@ use serde_json::Value;
 #[derive(Debug, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum CLIMessage {
-    ControlRequest(ControlRequestMessage),
-    ControlResponse(ControlResponseMessage),
+    ControlRequest {
+        request_id: String,
+        request: ControlRequestType,
+    },
+    ControlResponse {
+        response: ControlResponseType,
+    },
     System {
         #[serde(default)]
         subtype: Option<String>,
