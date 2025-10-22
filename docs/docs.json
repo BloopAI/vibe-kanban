@@ -20,11 +20,7 @@
     "groups": [
       {
         "group": "Getting started",
-        "pages": [
-          "index",
-          "getting-started",
-          "supported-coding-agents"
-        ]
+        "pages": ["index", "getting-started", "supported-coding-agents"]
       },
       {
         "group": "Core Features",
@@ -102,7 +98,8 @@
   },
   "footer": {
     "socials": {
-      "github": "https://github.com/BloopAI/vibe-kanban"
+      "github": "https://github.com/BloopAI/vibe-kanban",
+      "x": "https://x.com/vibekanban"
     }
   }
 }
