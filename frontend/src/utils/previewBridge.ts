@@ -40,8 +40,14 @@ export interface OpenInEditorPayload {
 export interface ClickToComponentMessage {
   source: 'click-to-component';
   version: number;
-  type: 'ready' | 'open-in-editor';
+  type: 'ready' | 'open-in-editor' | 'enable-button';
   payload?: OpenInEditorPayload;
+}
+
+export interface ClickToComponentEnableMessage {
+  source: 'click-to-component';
+  version: 1;
+  type: 'enable-button';
 }
 
 export interface EventHandlers {
@@ -76,6 +82,14 @@ export class ClickToComponentListener {
 
       switch (data.type) {
         case 'ready':
+          if (event.source) {
+            const enableMsg: ClickToComponentEnableMessage = {
+              source: 'click-to-component',
+              version: 1,
+              type: 'enable-button'
+            };
+            (event.source as Window).postMessage(enableMsg, '*');
+          }
           this.handlers.onReady?.();
           break;
 
