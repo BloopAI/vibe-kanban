@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 use ts_rs::TS;
 use workspace_utils::{
-    approvals::ApprovalStatus,
+    approvals::{APPROVAL_TIMEOUT_SECONDS, ApprovalStatus},
     diff::{concatenate_diff_hunks, create_unified_diff, create_unified_diff_hunk},
     log_msg::LogMsg,
     msg_store::MsgStore,
@@ -122,12 +122,15 @@ impl ClaudeCode {
     }
 
     pub fn get_hooks(&self) -> Option<serde_json::Value> {
+        let timeout = APPROVAL_TIMEOUT_SECONDS + 10; // Add 10s buffer
+
         if self.plan.unwrap_or(false) {
             Some(serde_json::json!({
                 "PreToolUse": [
                     {
                         "matcher": "^ExitPlanMode$",
-                        "hookCallbackIds": ["tool_approval"]
+                        "hookCallbackIds": ["tool_approval"],
+                        "timeout": timeout
                     }
                 ]
             }))
@@ -136,7 +139,8 @@ impl ClaudeCode {
                 "PreToolUse": [
                     {
                         "matcher": "^(?!(Glob|Grep|NotebookRead|Read|Task|TodoWrite)$).*",
-                        "hookCallbackIds": ["tool_approval"]
+                        "hookCallbackIds": ["tool_approval"],
+                        "timeout": timeout
                     }
                 ]
             }))
