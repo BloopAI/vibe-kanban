@@ -12,6 +12,7 @@ import type { LayoutMode } from '../layout/TasksLayout';
 import type { TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
 import { ActionsDropdown } from '../ui/ActionsDropdown';
 import { usePostHog } from 'posthog-js/react';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 interface AttemptHeaderActionsProps {
   onClose: () => void;
@@ -30,10 +31,11 @@ export const AttemptHeaderActions = ({
 }: AttemptHeaderActionsProps) => {
   const { t } = useTranslation('tasks');
   const posthog = usePostHog();
+  const isXL = useMediaQuery('(min-width: 1280px)');
 
   return (
     <>
-      {typeof mode !== 'undefined' && onModeChange && (
+      {typeof mode !== 'undefined' && onModeChange && isXL && (
         <TooltipProvider>
           <ToggleGroup
             type="single"
@@ -101,7 +103,7 @@ export const AttemptHeaderActions = ({
           </ToggleGroup>
         </TooltipProvider>
       )}
-      {typeof mode !== 'undefined' && onModeChange && (
+      {typeof mode !== 'undefined' && onModeChange && isXL && (
         <div className="h-4 w-px bg-border" />
       )}
       <ActionsDropdown task={task} attempt={attempt} />
