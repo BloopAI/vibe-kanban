@@ -15,7 +15,7 @@ impl ShareConfig {
     pub fn from_env() -> Option<Self> {
         let raw_base = std::env::var("VK_SHARED_API_BASE").ok()?;
         let api_base = Url::parse(raw_base.trim()).ok()?;
-        let websocket_base = derive_ws_url(&api_base).ok()?;
+        let websocket_base = derive_ws_url(api_base.clone()).ok()?;
 
         Some(Self {
             api_base,
@@ -25,18 +25,18 @@ impl ShareConfig {
     }
 
     pub fn activity_endpoint(&self) -> Result<Url, url::ParseError> {
-        self.api_base.join("/v1/activity")?
+        self.api_base.join("/v1/activity")
     }
 
     pub fn create_task_endpoint(&self) -> Result<Url, url::ParseError> {
         self.api_base.join("/v1/tasks")
     }
 
-    pub fn update_task_endpoint(&self, task_id: Uuid) -> Result<String, url::ParseError> {
+    pub fn update_task_endpoint(&self, task_id: Uuid) -> Result<Url, url::ParseError> {
         self.api_base.join(&format!("/v1/tasks/{}", task_id))
     }
 
-    pub fn assign_endpoint(&self, task_id: Uuid) -> Url {
+    pub fn assign_endpoint(&self, task_id: Uuid) -> Result<Url, url::ParseError> {
         self.api_base.join(&format!("/v1/tasks/{}/assign", task_id))
     }
 
@@ -45,6 +45,6 @@ impl ShareConfig {
         if let Some(c) = cursor {
             url.query_pairs_mut().append_pair("cursor", &c.to_string());
         }
-        url
+        Ok(url)
     }
 }

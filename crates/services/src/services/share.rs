@@ -1,6 +1,7 @@
 mod config;
 mod processor;
 mod publisher;
+mod status;
 
 use std::sync::{Arc, Mutex as StdMutex};
 
@@ -9,24 +10,23 @@ use axum::http::{HeaderName, HeaderValue, header::AUTHORIZATION};
 use config::ShareConfig;
 use db::{
     DBService,
-    models::{
-        shared_task::{SharedActivityCursor, SharedTaskInput},
-        task::TaskStatus,
-    },
+    models::shared_task::{SharedActivityCursor, SharedTaskInput},
 };
 use processor::ActivityProcessor;
 pub use publisher::SharePublisher;
-use remote::{
-    ServerMessage,
-    db::tasks::{SharedTask as RemoteSharedTask, TaskStatus as RemoteTaskStatus},
-};
+use remote::{ServerMessage, db::tasks::SharedTask as RemoteSharedTask};
 use thiserror::Error;
 use tokio::{sync::oneshot, task::JoinHandle};
 use tokio_tungstenite::tungstenite::Message as WsMessage;
+use url::Url;
 use utils::ws::{WsClient, WsConfig, WsError, WsHandler, WsResult, run_ws_client};
 use uuid::Uuid;
 
-use crate::services::clerk::{ClerkSession, ClerkSessionStore};
+use crate::services::{
+    clerk::{ClerkSession, ClerkSessionStore},
+    git::GitServiceError,
+    github_service::GitHubServiceError,
+};
 
 #[derive(Debug, Error)]
 pub enum ShareError {
@@ -50,10 +50,16 @@ pub enum ShareError {
     MissingProjectMetadata(Uuid),
     #[error("invalid response from remote share service")]
     InvalidResponse,
+    #[error("task {0} is already shared")]
+    AlreadyShared(Uuid),
+    #[error("GitHub token is required to fetch repository ID")]
+    MissingGitHubToken,
+    #[error(transparent)]
+    Git(#[from] GitServiceError),
+    #[error(transparent)]
+    GitHub(#[from] GitHubServiceError),
     #[error("share authentication missing or expired")]
     MissingAuth,
-    #[error(transparent)]
-    InvalidUrl(#[from] url::ParseError),
 }
 
 pub struct RemoteSync {
@@ -247,38 +253,21 @@ impl Drop for RemoteSyncHandleInner {
     }
 }
 
-fn convert_remote_task(task: &RemoteSharedTask, last_event_seq: Option<i64>) -> SharedTaskInput {
+pub(super) fn convert_remote_task(
+    task: &RemoteSharedTask,
+    last_event_seq: Option<i64>,
+) -> SharedTaskInput {
     SharedTaskInput {
         id: task.id,
         organization_id: task.organization_id.clone(),
         project_id: task.project_id,
         title: task.title.clone(),
         description: task.description.clone(),
-        status: convert_remote_status(&task.status),
+        status: status::from_remote(&task.status),
         assignee_user_id: task.assignee_user_id.clone(),
         version: task.version,
         last_event_seq,
         created_at: task.created_at,
         updated_at: task.updated_at,
-    }
-}
-
-fn convert_remote_status(status: &RemoteTaskStatus) -> TaskStatus {
-    match status {
-        RemoteTaskStatus::Todo => TaskStatus::Todo,
-        RemoteTaskStatus::InProgress => TaskStatus::InProgress,
-        RemoteTaskStatus::InReview => TaskStatus::InReview,
-        RemoteTaskStatus::Done => TaskStatus::Done,
-        RemoteTaskStatus::Cancelled => TaskStatus::Cancelled,
-    }
-}
-
-fn convert_local_status(status: &TaskStatus) -> RemoteTaskStatus {
-    match status {
-        TaskStatus::Todo => RemoteTaskStatus::Todo,
-        TaskStatus::InProgress => RemoteTaskStatus::InProgress,
-        TaskStatus::InReview => RemoteTaskStatus::InReview,
-        TaskStatus::Done => RemoteTaskStatus::Done,
-        TaskStatus::Cancelled => RemoteTaskStatus::Cancelled,
     }
 }

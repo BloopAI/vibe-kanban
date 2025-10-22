@@ -17,7 +17,7 @@ use services::services::{
     filesystem::FilesystemService,
     git::GitService,
     image::ImageService,
-    share::{RemoteSync, RemoteSyncHandle, SharePublisher},
+    share::{RemoteSync, SharePublisher},
 };
 use tokio::sync::RwLock;
 use utils::{assets::config_path, msg_store::MsgStore};
@@ -119,8 +119,13 @@ impl Deployment for LocalDeployment {
             }
             Err(err) => return Err(DeploymentError::Other(err.into())),
         };
-        let share_publisher = if let Some(clerk_auth) = clerk_auth {
-            match SharePublisher::new(&db, &git, clerk_sessions.clone(), config.clone()) {
+        let share_publisher = if clerk_auth.is_some() {
+            match SharePublisher::new(
+                db.clone(),
+                git.clone(),
+                clerk_sessions.clone(),
+                config.clone(),
+            ) {
                 Ok(publisher) => {
                     // start remote server sync communication
                     RemoteSync::spawn_if_configured(db.clone(), clerk_sessions.clone());
@@ -242,8 +247,8 @@ impl Deployment for LocalDeployment {
         &self.drafts
     }
 
-    fn share_publisher(&self) -> &Option<SharePublisher> {
-        &self.share_publisher
+    fn share_publisher(&self) -> Option<SharePublisher> {
+        self.share_publisher.clone()
     }
 
     fn clerk_sessions(&self) -> &ClerkSessionStore {

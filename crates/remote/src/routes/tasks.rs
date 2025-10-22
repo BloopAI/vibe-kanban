@@ -3,45 +3,25 @@ use axum::{
     extract::{Extension, Path, State},
     http::StatusCode,
 };
-use serde::Deserialize;
 use serde_json::json;
 use uuid::Uuid;
 
 use crate::{
     AppState,
+    api::tasks::{
+        CreateSharedTaskRequest,
+        TransferSharedTaskAssignmentRequest,
+        UpdateSharedTaskRequest,
+    },
     auth::RequestContext,
     db::{
         identity::{IdentityError, IdentityRepository},
-        projects::ProjectMetadata,
         tasks::{
-            CreateSharedTaskData, SharedTaskError, SharedTaskRepository, TaskStatus,
-            TransferTaskAssignmentData, UpdateSharedTaskData,
+            CreateSharedTaskData, SharedTaskError, SharedTaskRepository, TransferTaskAssignmentData,
+            UpdateSharedTaskData,
         },
     },
 };
-
-#[derive(Debug, Deserialize)]
-pub struct CreateSharedTaskRequest {
-    pub project: ProjectMetadata,
-    pub title: String,
-    pub description: Option<String>,
-    pub assignee_user_id: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct UpdateSharedTaskRequest {
-    pub title: Option<String>,
-    pub description: Option<String>,
-    pub status: Option<TaskStatus>,
-    pub version: Option<i64>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct TransferSharedTaskAssignmentRequest {
-    pub new_assignee_user_id: Option<String>,
-    pub previous_assignee_user_id: Option<String>,
-    pub version: Option<i64>,
-}
 
 pub async fn create_shared_task(
     State(state): State<AppState>,

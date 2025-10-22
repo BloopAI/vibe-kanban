@@ -20,7 +20,7 @@ pub struct CreateProjectData {
     pub metadata: ProjectMetadata,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectMetadata {
     pub github_repository_id: i64,
     pub owner: String,
@@ -56,7 +56,7 @@ impl ProjectRepository {
                 github_repository_id AS "github_repository_id!",
                 owner AS "owner!",
                 name AS "name!",
-                created_at AS "created_at!",
+                created_at AS "created_at!"
             FROM projects
             WHERE id = $1
               AND organization_id = $2
@@ -83,7 +83,7 @@ impl ProjectRepository {
                 github_repository_id AS "github_repository_id!",
                 owner AS "owner!",
                 name AS "name!",
-                created_at AS "created_at!",
+                created_at AS "created_at!"
             FROM projects
             WHERE organization_id = $1
               AND github_repository_id = $2
@@ -123,7 +123,7 @@ impl ProjectRepository {
                 github_repository_id AS "github_repository_id!",
                 owner AS "owner!",
                 name AS "name!",
-                created_at AS "created_at!",
+                created_at AS "created_at!"
             "#,
             organization_id,
             github_repository_id,

@@ -31,7 +31,7 @@ use services::services::{
     git::{GitService, GitServiceError},
     image::{ImageError, ImageService},
     pr_monitor::PrMonitorService,
-    share::{ShareError, SharePublisher},
+    share::SharePublisher,
     worktree_manager::WorktreeError,
 };
 use sqlx::{Error as SqlxError, types::Uuid};

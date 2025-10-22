@@ -162,6 +162,9 @@ impl From<ShareError> for ApiError {
     fn from(err: ShareError) -> Self {
         match err {
             ShareError::Database(db_err) => ApiError::Database(db_err),
+            ShareError::AlreadyShared(task_id) => {
+                ApiError::Conflict(format!("Task {task_id} is already shared"))
+            }
             ShareError::TaskNotFound(task_id) => {
                 ApiError::Conflict(format!("Task {task_id} not found for sharing"))
             }
@@ -193,6 +196,11 @@ impl From<ShareError> for ApiError {
             ShareError::InvalidResponse => ApiError::Conflict(
                 "Remote share service returned an unexpected response".to_string(),
             ),
+            ShareError::MissingGitHubToken => ApiError::Conflict(
+                "GitHub token is required to fetch repository metadata for sharing".to_string(),
+            ),
+            ShareError::Git(err) => ApiError::GitService(err),
+            ShareError::GitHub(err) => ApiError::GitHubService(err),
             ShareError::MissingAuth => ApiError::Unauthorized,
         }
     }

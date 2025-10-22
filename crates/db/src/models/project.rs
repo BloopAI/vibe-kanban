@@ -85,13 +85,16 @@ pub struct ProjectRemoteMetadata {
 }
 
 impl ProjectRemoteMetadata {
-    pub fn from_project(project: &Project) -> Self {
-        Self {
-            has_remote: project.has_remote,
-            github_repo_owner: project.github_repo_owner.clone(),
-            github_repo_name: project.github_repo_name.clone(),
-            github_repo_id: project.github_repo_id,
-        }
+    /// Do we need to read from `git remote`
+    pub fn needs_git_enrichment(&self) -> bool {
+        !self.has_remote || self.github_repo_owner.is_none() || self.github_repo_name.is_none()
+    }
+
+    // Do we need to fetch GitHub repo ID
+    pub fn needs_repo_id_enrichment(&self) -> bool {
+        self.github_repo_id.is_none()
+            && self.github_repo_owner.is_some()
+            && self.github_repo_name.is_some()
     }
 }
 
@@ -398,5 +401,14 @@ impl Project {
         .await?;
 
         Ok(result.count > 0)
+    }
+
+    pub fn metadata(&self) -> ProjectRemoteMetadata {
+        ProjectRemoteMetadata {
+            has_remote: self.has_remote,
+            github_repo_owner: self.github_repo_owner.clone(),
+            github_repo_name: self.github_repo_name.clone(),
+            github_repo_id: self.github_repo_id,
+        }
     }
 }

@@ -19,6 +19,7 @@ use crate::services::{
     clerk::ClerkSessionStore,
     config::Config,
     github_service::{GitHubRepoInfo, GitHubService, GitHubServiceError},
+    git::GitService,
     share::SharePublisher,
 };
 
@@ -162,7 +163,12 @@ impl PrMonitorService {
                     );
                 }
 
-                if let Ok(publisher) = SharePublisher::new(self.db.clone(), self.sessions.clone()) {
+                if let Ok(publisher) = SharePublisher::new(
+                    self.db.clone(),
+                    GitService::new(),
+                    self.sessions.clone(),
+                    self.config.clone(),
+                ) {
                     if let Err(err) = publisher
                         .update_shared_task_by_id(task_attempt.task_id, None)
                         .await

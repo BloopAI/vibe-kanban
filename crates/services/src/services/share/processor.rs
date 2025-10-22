@@ -6,7 +6,7 @@ use remote::{
     activity::{ActivityEvent, ActivityResponse},
     db::tasks::SharedTask as RemoteSharedTask,
 };
-use reqwest::{Client as HttpClient, Url};
+use reqwest::Client as HttpClient;
 
 use super::{ShareConfig, ShareError, convert_remote_task};
 use crate::services::clerk::ClerkSession;

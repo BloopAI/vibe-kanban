@@ -138,13 +138,13 @@ impl LocalContainerService {
     /// Finalize task execution by updating status to InReview and sending notifications
     async fn finalize_task(
         db: &DBService,
-        sessions: &ClerkSessionStore,
         config: &Arc<RwLock<Config>>,
+        share: Option<SharePublisher>,
         ctx: &ExecutionContext,
     ) {
         match Task::update_status(&db.pool, ctx.task.id, TaskStatus::InReview).await {
             Ok(_) => {
-                if let Some(publisher) = self.share_publisher() {
+                if let Some(publisher) = share {
                     if let Err(err) = publisher.update_shared_task_by_id(ctx.task.id, None).await {
                         tracing::warn!(
                             ?err,
@@ -329,7 +329,6 @@ impl LocalContainerService {
         let config = self.config.clone();
         let container = self.clone();
         let analytics = self.analytics.clone();
-        let clerk_sessions = self.clerk_sessions.clone();
 
         let mut process_exit_rx = self.spawn_os_exit_watcher(exec_id);
 
@@ -432,12 +431,24 @@ impl LocalContainerService {
                         );
 
                         // Manually finalize task since we're bypassing normal execution flow
-                        Self::finalize_task(&db, &clerk_sessions, &config, &ctx).await;
+                        Self::finalize_task(
+                            &db,
+                            &config,
+                            container.share_publisher().cloned(),
+                            &ctx,
+                        )
+                        .await;
                     }
                 }
 
                 if Self::should_finalize(&ctx) {
-                    Self::finalize_task(&db, &clerk_sessions, &config, &ctx).await;
+                    Self::finalize_task(
+                        &db,
+                        &config,
+                        container.share_publisher().cloned(),
+                        &ctx,
+                    )
+                    .await;
                     // After finalization, check if a queued follow-up exists and start it
                     if let Err(e) = container.try_consume_queued_followup(&ctx).await {
                         tracing::error!(
@@ -683,8 +694,8 @@ impl ContainerService for LocalContainerService {
         &self.git
     }
 
-    fn share_publisher(&self) -> &SharePublisher {
-        &self.publisher
+    fn share_publisher(&self) -> Option<&SharePublisher> {
+        self.publisher.as_ref()
     }
 
     async fn git_branch_prefix(&self) -> String {
