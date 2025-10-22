@@ -158,7 +158,9 @@ impl ProtocolCallbacks for ClaudeAgentClient {
             match status {
                 ApprovalStatus::Approved => {
                     if tool_name == EXIT_PLAN_MODE_NAME {
-                        if let Err(e) = peer.set_permission_mode(PermissionMode::AcceptEdits).await
+                        if let Err(e) = peer
+                            .set_permission_mode(PermissionMode::BypassPermissions)
+                            .await
                         {
                             tracing::warn!("Failed to set permission mode: {}", e);
                         } else {

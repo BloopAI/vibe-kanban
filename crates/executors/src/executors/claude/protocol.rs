@@ -118,6 +118,24 @@ impl ProtocolPeer {
                     "on_can_use_tool callback is not implemented. Tool: {}",
                     tool_name
                 );
+                {
+                    if let Err(e) = self
+                        .send_json(&serde_json::json!({
+                            "type": "control_response",
+                            "response": {
+                            "subtype": "success",
+                            "request_id": request_id,
+                            "response": {
+                            "behavior": "deny",
+                            "message": "Tool use blocked"
+                            }
+                          }
+                        }))
+                        .await
+                    {
+                        tracing::error!("Failed to send CanUseTool response: {}", e);
+                    }
+                }
             }
             ControlRequestType::HookCallback {
                 callback_id,

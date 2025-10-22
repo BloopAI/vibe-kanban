@@ -90,12 +90,17 @@ impl ClaudeCode {
         if plan && approvals {
             tracing::warn!("Both plan and approvals are enabled. Plan will take precedence.");
         }
-        builder = builder.extend_params(["--permission-prompt-tool=stdio"]);
-        builder = builder.extend_params([format!("--permission-mode={}", self.permission_mode())]);
-
-        // if self.dangerously_skip_permissions.unwrap_or(false) {
-        //     builder = builder.extend_params(["--dangerously-skip-permissions"]);
-        // }
+        if plan || approvals {
+            // Enable bypass at startup, otherwise we cannot change to it after approvals
+            builder = builder.extend_params(["--permission-prompt-tool=stdio"]);
+            builder = builder.extend_params([format!(
+                "--permission-mode={}",
+                PermissionMode::BypassPermissions
+            )]);
+        }
+        if self.dangerously_skip_permissions.unwrap_or(false) {
+            builder = builder.extend_params(["--dangerously-skip-permissions"]);
+        }
         if let Some(model) = &self.model {
             builder = builder.extend_params(["--model", model]);
         }
@@ -111,33 +116,32 @@ impl ClaudeCode {
     pub fn permission_mode(&self) -> PermissionMode {
         if self.plan.unwrap_or(false) {
             PermissionMode::Plan
-        } else if self.approvals.unwrap_or(false) {
-            PermissionMode::Default
         } else {
-            PermissionMode::AcceptEdits
+            PermissionMode::BypassPermissions
         }
     }
 
     pub fn get_hooks(&self) -> Option<serde_json::Value> {
-        match self.permission_mode() {
-            PermissionMode::Plan => Some(serde_json::json!({
+        if self.plan.unwrap_or(false) {
+            Some(serde_json::json!({
                 "PreToolUse": [
                     {
                         "matcher": "^ExitPlanMode$",
                         "hookCallbackIds": ["tool_approval"]
                     }
                 ]
-            })),
-            PermissionMode::Default => Some(serde_json::json!({
+            }))
+        } else if self.approvals.unwrap_or(false) {
+            Some(serde_json::json!({
                 "PreToolUse": [
                     {
                         "matcher": "^(?!(Glob|Grep|NotebookRead|Read|Task|TodoWrite)$).*",
                         "hookCallbackIds": ["tool_approval"]
                     }
                 ]
-            })),
-            PermissionMode::BypassPermissions => None,
-            PermissionMode::AcceptEdits => None,
+            }))
+        } else {
+            None
         }
     }
 }
