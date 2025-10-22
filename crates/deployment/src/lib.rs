@@ -31,7 +31,7 @@ use services::services::{
     git::{GitService, GitServiceError},
     image::{ImageError, ImageService},
     pr_monitor::PrMonitorService,
-    share::{ShareError, ShareTaskPublisher},
+    share::{ShareError, SharePublisher},
     worktree_manager::WorktreeError,
 };
 use sqlx::{Error as SqlxError, types::Uuid};
@@ -113,18 +113,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     fn clerk_auth(&self) -> Option<Arc<ClerkAuth>>;
 
-    fn share_publisher(&self) -> Result<ShareTaskPublisher, ShareError> {
-        ShareTaskPublisher::new(self.db().clone(), self.clerk_sessions().clone())
-    }
-
-    fn share_publisher_with_metadata(&self) -> Result<ShareTaskPublisher, ShareError> {
-        ShareTaskPublisher::new_with_metadata(
-            self.db().clone(),
-            self.clerk_sessions().clone(),
-            self.git().clone(),
-            self.config().clone(),
-        )
-    }
+    fn share_publisher(&self) -> Option<SharePublisher>;
 
     async fn update_sentry_scope(&self) -> Result<(), DeploymentError> {
         let user_id = self.user_id();
@@ -217,10 +206,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                     match Task::update_status(&self.db().pool, task.id, TaskStatus::InReview).await
                     {
                         Ok(_) => {
-                            if let Ok(publisher) = ShareTaskPublisher::new(
-                                self.db().clone(),
-                                self.clerk_sessions().clone(),
-                            ) {
+                            if let Some(publisher) = self.share_publisher() {
                                 if let Err(err) =
                                     publisher.update_shared_task_by_id(task.id, None).await
                                 {

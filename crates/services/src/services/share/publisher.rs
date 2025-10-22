@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use super::{RemoteSyncConfig, ShareError, convert_local_status, convert_remote_task};
+use super::{ShareConfig, ShareError, convert_local_status, convert_remote_task};
 use crate::services::{
     clerk::{ClerkSession, ClerkSessionStore},
     config::Config,
@@ -23,23 +23,38 @@ use crate::services::{
 };
 
 #[derive(Clone)]
-pub struct ShareTaskPublisher {
+pub struct SharePublisher {
     db: DBService,
-    config: RemoteSyncConfig,
-    client: HttpClient,
-    sessions: ClerkSessionStore,
-    metadata: Option<MetadataContext>,
-}
-
-#[derive(Clone)]
-struct MetadataContext {
     git: GitService,
+    client: HttpClient,
+    config: ShareConfig,
     user_config: Arc<RwLock<Config>>,
+    sessions: ClerkSessionStore,
 }
 
-impl ShareTaskPublisher {
-    pub fn new(db: DBService, sessions: ClerkSessionStore) -> Result<Self, ShareError> {
-        Self::new_with_metadata_context(db, sessions, None)
+impl SharePublisher {
+    pub fn new(
+        db: DBService,
+        git: GitService,
+        sessions: ClerkSessionStore,
+        user_config: Arc<RwLock<Config>>,
+    ) -> Result<Self, ShareError> {
+        let config =
+            ShareConfig::from_env().ok_or(ShareError::MissingConfig("share not configured"))?;
+
+        let client = HttpClient::builder()
+            .timeout(Duration::from_secs(30))
+            .build()
+            .map_err(ShareError::Transport)?;
+
+        Ok(Self {
+            db,
+            git,
+            config,
+            user_config,
+            client,
+            sessions,
+        })
     }
 
     async fn resolve_session(
@@ -57,38 +72,6 @@ impl ShareTaskPublisher {
         }
 
         Err(ShareError::MissingAuth)
-    }
-
-    pub fn new_with_metadata(
-        db: DBService,
-        sessions: ClerkSessionStore,
-        git: GitService,
-        user_config: Arc<RwLock<Config>>,
-    ) -> Result<Self, ShareError> {
-        let context = MetadataContext { git, user_config };
-        Self::new_with_metadata_context(db, sessions, Some(context))
-    }
-
-    fn new_with_metadata_context(
-        db: DBService,
-        sessions: ClerkSessionStore,
-        metadata: Option<MetadataContext>,
-    ) -> Result<Self, ShareError> {
-        let config = RemoteSyncConfig::from_env()
-            .ok_or(ShareError::MissingConfig("share not configured"))?;
-
-        let client = HttpClient::builder()
-            .timeout(Duration::from_secs(30))
-            .build()
-            .map_err(ShareError::Transport)?;
-
-        Ok(Self {
-            db,
-            config,
-            client,
-            sessions,
-            metadata,
-        })
     }
 
     pub async fn share_task(
@@ -110,8 +93,7 @@ impl ShareTaskPublisher {
         let metadata = ProjectMetadata::try_from(&project)?;
 
         let payload = CreateSharedTaskRequest {
-            project_id: project.id,
-            project: Some(metadata),
+            project: metadata,
             title: task.title.clone(),
             description: task.description.clone(),
             assignee_user_id: Some(session.user_id.clone()),
@@ -119,7 +101,7 @@ impl ShareTaskPublisher {
 
         let response = self
             .client
-            .post(self.config.create_task_endpoint())
+            .post(self.config.create_task_endpoint()?)
             .bearer_auth(session.bearer())
             .json(&payload)
             .send()
@@ -167,7 +149,7 @@ impl ShareTaskPublisher {
 
         let response = self
             .client
-            .patch(self.config.update_task_endpoint(shared_task_id))
+            .patch(self.config.update_task_endpoint(shared_task_id)?)
             .bearer_auth(session.bearer())
             .json(&payload)
             .send()
@@ -202,10 +184,6 @@ impl ShareTaskPublisher {
 
     /// Check and populate missing project metadata needed for sharing tasks.
     async fn ensure_project_metadata(&self, project: Project) -> Result<Project, ShareError> {
-        let Some(context) = &self.metadata else {
-            return Ok(project);
-        };
-
         let mut project = project;
         let original_metadata = ProjectRemoteMetadata::from_project(&project);
         let mut metadata = original_metadata.clone();
@@ -304,8 +282,7 @@ struct UpdateTaskResponse {
 
 #[derive(Debug, Serialize)]
 struct CreateSharedTaskRequest {
-    project_id: Uuid,
-    project: Option<ProjectMetadata>,
+    project: ProjectMetadata,
     title: String,
     description: Option<String>,
     assignee_user_id: Option<String>,

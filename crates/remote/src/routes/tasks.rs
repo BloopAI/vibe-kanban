@@ -12,27 +12,20 @@ use crate::{
     auth::RequestContext,
     db::{
         identity::{IdentityError, IdentityRepository},
+        projects::ProjectMetadata,
         tasks::{
-            CreateSharedTaskData, CreateSharedTaskProjectData, SharedTaskError,
-            SharedTaskRepository, TaskStatus, TransferTaskAssignmentData, UpdateSharedTaskData,
+            CreateSharedTaskData, SharedTaskError, SharedTaskRepository, TaskStatus,
+            TransferTaskAssignmentData, UpdateSharedTaskData,
         },
     },
 };
 
 #[derive(Debug, Deserialize)]
 pub struct CreateSharedTaskRequest {
-    pub project_id: Uuid,
-    pub project: Option<CreateSharedTaskProjectRequest>,
+    pub project: ProjectMetadata,
     pub title: String,
     pub description: Option<String>,
     pub assignee_user_id: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct CreateSharedTaskProjectRequest {
-    pub github_repository_id: i64,
-    pub owner: String,
-    pub name: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -58,7 +51,6 @@ pub async fn create_shared_task(
     let repo = SharedTaskRepository::new(state.pool());
     let identity_repo = IdentityRepository::new(state.pool(), state.clerk());
     let CreateSharedTaskRequest {
-        project_id,
         project,
         title,
         description,
@@ -74,15 +66,8 @@ pub async fn create_shared_task(
         return identity_error_response(err, "assignee not found or inactive");
     }
 
-    let project_metadata = project.map(|p| CreateSharedTaskProjectData {
-        github_repository_id: p.github_repository_id,
-        owner: p.owner,
-        name: p.name,
-    });
-
     let data = CreateSharedTaskData {
-        project_id,
-        project: project_metadata,
+        project,
         title,
         description,
         creator_user_id: ctx.user.id.clone(),

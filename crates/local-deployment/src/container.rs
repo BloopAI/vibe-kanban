@@ -49,7 +49,7 @@ use services::services::{
     git::{Commit, DiffTarget, GitService},
     image::ImageService,
     notification::NotificationService,
-    share::ShareTaskPublisher,
+    share::SharePublisher,
     worktree_manager::WorktreeManager,
 };
 use tokio::{sync::RwLock, task::JoinHandle};
@@ -73,6 +73,7 @@ pub struct LocalContainerService {
     image_service: ImageService,
     analytics: Option<AnalyticsContext>,
     approvals: Approvals,
+    publisher: Option<SharePublisher>,
     clerk_sessions: ClerkSessionStore,
 }
 
@@ -85,6 +86,7 @@ impl LocalContainerService {
         image_service: ImageService,
         analytics: Option<AnalyticsContext>,
         approvals: Approvals,
+        publisher: Option<SharePublisher>,
         clerk_sessions: ClerkSessionStore,
     ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
@@ -98,6 +100,7 @@ impl LocalContainerService {
             image_service,
             analytics,
             approvals,
+            publisher,
             clerk_sessions,
         }
     }
@@ -141,7 +144,7 @@ impl LocalContainerService {
     ) {
         match Task::update_status(&db.pool, ctx.task.id, TaskStatus::InReview).await {
             Ok(_) => {
-                if let Ok(publisher) = ShareTaskPublisher::new(db.clone(), sessions.clone()) {
+                if let Some(publisher) = self.share_publisher() {
                     if let Err(err) = publisher.update_shared_task_by_id(ctx.task.id, None).await {
                         tracing::warn!(
                             ?err,
@@ -680,6 +683,10 @@ impl ContainerService for LocalContainerService {
         &self.git
     }
 
+    fn share_publisher(&self) -> &SharePublisher {
+        &self.publisher
+    }
+
     async fn git_branch_prefix(&self) -> String {
         self.config.read().await.git_branch_prefix.clone()
     }
@@ -910,9 +917,7 @@ impl ContainerService for LocalContainerService {
         {
             match Task::update_status(&self.db.pool, ctx.task.id, TaskStatus::InReview).await {
                 Ok(_) => {
-                    if let Ok(publisher) =
-                        ShareTaskPublisher::new(self.db.clone(), self.clerk_sessions.clone())
-                    {
+                    if let Some(publisher) = self.share_publisher() {
                         if let Err(err) =
                             publisher.update_shared_task_by_id(ctx.task.id, None).await
                         {

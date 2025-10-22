@@ -8,23 +8,23 @@ use remote::{
 };
 use reqwest::{Client as HttpClient, Url};
 
-use super::{RemoteSyncConfig, ShareError, convert_remote_task};
+use super::{ShareConfig, ShareError, convert_remote_task};
 use crate::services::clerk::ClerkSession;
 
 /// Processor for handling activity events and synchronizing shared tasks.
 #[derive(Clone)]
 pub(super) struct ActivityProcessor {
     db: DBService,
-    remote_config: RemoteSyncConfig,
-    http_client: HttpClient,
+    config: ShareConfig,
+    client: HttpClient,
 }
 
 impl ActivityProcessor {
-    pub fn new(db: DBService, config: RemoteSyncConfig) -> Self {
+    pub fn new(db: DBService, config: ShareConfig) -> Self {
         Self {
             db,
-            remote_config: config,
-            http_client: HttpClient::new(),
+            config,
+            client: HttpClient::new(),
         }
     }
 
@@ -56,7 +56,7 @@ impl ActivityProcessor {
                 self.process_event(ev.clone()).await?;
                 last_seq = Some(ev.seq);
             }
-            if events.len() < (self.remote_config.activity_page_limit as usize) {
+            if events.len() < (self.config.activity_page_limit as usize) {
                 break;
             }
         }
@@ -69,17 +69,18 @@ impl ActivityProcessor {
         session: &ClerkSession,
         after: Option<i64>,
     ) -> Result<Vec<ActivityEvent>, ShareError> {
-        let mut url = Url::parse(&self.remote_config.activity_endpoint())?;
+        let mut url = self.config.activity_endpoint()?;
+
         {
             let mut qp = url.query_pairs_mut();
-            qp.append_pair("limit", &self.remote_config.activity_page_limit.to_string());
+            qp.append_pair("limit", &self.config.activity_page_limit.to_string());
             if let Some(s) = after {
                 qp.append_pair("after", &s.to_string());
             }
         }
 
         let resp = self
-            .http_client
+            .client
             .get(url)
             .bearer_auth(session.bearer())
             .send()

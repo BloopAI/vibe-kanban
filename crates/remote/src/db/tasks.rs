@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use super::{
     Tx,
-    projects::{CreateProjectData, ProjectError, ProjectRepository},
+    projects::{CreateProjectData, ProjectError, ProjectMetadata, ProjectRepository},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
@@ -37,16 +37,8 @@ pub struct SharedTask {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct CreateSharedTaskProjectData {
-    pub github_repository_id: i64,
-    pub owner: String,
-    pub name: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
 pub struct CreateSharedTaskData {
-    pub project_id: Uuid,
-    pub project: Option<CreateSharedTaskProjectData>,
+    pub project: ProjectMetadata,
     pub title: String,
     pub description: Option<String>,
     pub creator_user_id: String,
@@ -113,7 +105,6 @@ impl<'a> SharedTaskRepository<'a> {
         dbg!("Received create_shared_task request:", &data);
 
         let CreateSharedTaskData {
-            project_id,
             project,
             title,
             description,
@@ -121,29 +112,33 @@ impl<'a> SharedTaskRepository<'a> {
             assignee_user_id,
         } = data;
 
-        let existing_project =
-            ProjectRepository::find_by_id(&mut tx, project_id, organization_id).await?;
+        let project = match ProjectRepository::find_by_github_repo_id(
+            &mut tx,
+            organization_id,
+            project.github_repository_id,
+        )
+        .await?
+        {
+            Some(existing_project) => existing_project,
+            None => {
+                tracing::info!(
+                    "Creating new project for shared task: org_id={}, github_repo_id={}",
+                    organization_id,
+                    project.github_repository_id
+                );
 
-        if existing_project.is_none() {
-            let metadata = project.ok_or_else(|| {
-                SharedTaskError::Conflict(
-                    "project metadata required to share task for unknown project".to_string(),
+                ProjectRepository::insert(
+                    &mut tx,
+                    CreateProjectData {
+                        organization_id: organization_id.to_string(),
+                        metadata: project,
+                    },
                 )
-            })?;
+                .await?
+            }
+        };
 
-            ProjectRepository::upsert(
-                &mut tx,
-                CreateProjectData {
-                    id: project_id,
-                    organization_id: organization_id.to_string(),
-                    github_repository_id: metadata.github_repository_id,
-                    owner: metadata.owner,
-                    name: metadata.name,
-                },
-            )
-            .await?;
-        }
-
+        let project_id = project.id;
         let task = sqlx::query_as!(
             SharedTask,
             r#"

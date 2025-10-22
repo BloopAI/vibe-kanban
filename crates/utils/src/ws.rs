@@ -12,6 +12,7 @@ use tokio_tungstenite::{
     connect_async,
     tungstenite::{client::IntoClientRequest, protocol::Message},
 };
+use url::Url;
 
 pub type HeaderFuture = BoxFuture<'static, WsResult<Vec<(HeaderName, HeaderValue)>>>;
 pub type HeaderFactory = Arc<dyn Fn() -> HeaderFuture + Send + Sync>;
@@ -52,7 +53,7 @@ pub trait WsHandler: Send + Sync + 'static {
 }
 
 pub struct WsConfig {
-    pub url: String,
+    pub url: Url,
     pub autoreconnect: bool,
     pub reconnect_base_delay: Duration,
     pub reconnect_max_delay: Duration,
@@ -220,4 +221,15 @@ async fn build_request(config: &WsConfig) -> WsResult<http::Request<()>> {
     }
 
     Ok(request)
+}
+
+pub fn derive_ws_url(mut base: Url) -> Result<Url, url::ParseError> {
+    match base.scheme() {
+        "https" => base.set_scheme("wss").unwrap(),
+        "http" => base.set_scheme("ws").unwrap(),
+        _ => {
+            return Err(url::ParseError::RelativeUrlWithoutBase);
+        }
+    }
+    Ok(base)
 }

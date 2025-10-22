@@ -44,7 +44,7 @@ use crate::services::{
     clerk::ClerkSessionStore,
     git::{GitService, GitServiceError},
     image::ImageService,
-    share::ShareTaskPublisher,
+    share::SharePublisher,
     worktree_manager::{WorktreeError, WorktreeManager},
 };
 pub type ContainerRef = String;
@@ -110,6 +110,8 @@ pub trait ContainerService {
     fn db(&self) -> &DBService;
 
     fn git(&self) -> &GitService;
+
+    fn share_publisher(&self) -> Option<&SharePublisher>;
 
     fn clerk_sessions(&self) -> &ClerkSessionStore;
 
@@ -193,6 +195,7 @@ pub trait ContainerService {
         &self,
         task_attempt: &TaskAttempt,
     ) -> Result<ContainerRef, ContainerError>;
+
     async fn is_container_clean(&self, task_attempt: &TaskAttempt) -> Result<bool, ContainerError>;
 
     async fn start_execution_inner(
@@ -587,9 +590,8 @@ pub trait ContainerService {
             && run_reason != &ExecutionProcessRunReason::DevServer
         {
             Task::update_status(&self.db().pool, task.id, TaskStatus::InProgress).await?;
-            if let Ok(publisher) =
-                ShareTaskPublisher::new(self.db().clone(), self.clerk_sessions().clone())
-            {
+
+            if let Some(publisher) = self.share_publisher() {
                 if let Err(err) = publisher.update_shared_task_by_id(task.id, None).await {
                     tracing::warn!(
                         ?err,

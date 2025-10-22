@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex as StdMutex};
 
 use async_trait::async_trait;
 use axum::http::{HeaderName, HeaderValue, header::AUTHORIZATION};
-use config::RemoteSyncConfig;
+use config::ShareConfig;
 use db::{
     DBService,
     models::{
@@ -15,7 +15,7 @@ use db::{
     },
 };
 use processor::ActivityProcessor;
-pub use publisher::ShareTaskPublisher;
+pub use publisher::SharePublisher;
 use remote::{
     ServerMessage,
     db::tasks::{SharedTask as RemoteSharedTask, TaskStatus as RemoteTaskStatus},
@@ -52,13 +52,15 @@ pub enum ShareError {
     InvalidResponse,
     #[error("share authentication missing or expired")]
     MissingAuth,
+    #[error(transparent)]
+    InvalidUrl(#[from] url::ParseError),
 }
 
 pub struct RemoteSync {
     db: DBService,
     processor: ActivityProcessor,
     remote_client: Option<Arc<WsClient>>,
-    config: RemoteSyncConfig,
+    config: ShareConfig,
     sessions: ClerkSessionStore,
 }
 
@@ -67,7 +69,7 @@ impl RemoteSync {
         db: DBService,
         sessions: ClerkSessionStore,
     ) -> Option<RemoteSyncHandle> {
-        if let Some(config) = RemoteSyncConfig::from_env() {
+        if let Some(config) = ShareConfig::from_env() {
             tracing::info!(api = %config.api_base, "starting shared task synchronizer");
             let processor = ActivityProcessor::new(db.clone(), config.clone());
             let sync = Self {
@@ -104,8 +106,8 @@ impl RemoteSync {
             .await
             .unwrap_or(last_seq);
 
-        let ws_url = self.config.websocket_endpoint(last_seq);
-        let remote = spawn_shared_remote(self.processor.clone(), &self.sessions, &ws_url).await?;
+        let ws_url = self.config.websocket_endpoint(last_seq)?;
+        let remote = spawn_shared_remote(self.processor.clone(), &self.sessions, ws_url).await?;
         self.remote_client = Some(remote);
 
         let _ = shutdown_rx.await;
@@ -161,11 +163,11 @@ impl WsHandler for SharedWsHandler {
 async fn spawn_shared_remote(
     processor: ActivityProcessor,
     sessions: &ClerkSessionStore,
-    url: &str,
+    url: Url,
 ) -> Result<Arc<WsClient>, ShareError> {
     let session_source = sessions.clone();
     let ws_config = WsConfig {
-        url: url.to_string(),
+        url,
         autoreconnect: true,
         reconnect_base_delay: std::time::Duration::from_secs(1),
         reconnect_max_delay: std::time::Duration::from_secs(30),
