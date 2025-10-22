@@ -499,9 +499,10 @@ const ToolCallCard: React.FC<{
         <span className=" min-w-0 flex items-center gap-1.5">
           {getStatusIndicator(entryType)}
           {getEntryIcon(entryType)}
-          <span className="font-normal">{label}</span>
-          {showInlineSummary && (
+          {showInlineSummary ? (
             <span className="font-light">{inlineText}</span>
+          ) : (
+            <span className="font-normal">{label}</span>
           )}
         </span>
       </HeaderWrapper>
