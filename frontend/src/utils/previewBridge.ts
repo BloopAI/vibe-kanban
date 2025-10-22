@@ -86,7 +86,7 @@ export class ClickToComponentListener {
             const enableMsg: ClickToComponentEnableMessage = {
               source: 'click-to-component',
               version: 1,
-              type: 'enable-button'
+              type: 'enable-button',
             };
             (event.source as Window).postMessage(enableMsg, '*');
           }
