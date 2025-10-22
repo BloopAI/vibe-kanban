@@ -296,9 +296,7 @@ export function TasksLayout({
               {rightHeader}
             </div>
           )}
-          <div className="flex-1 min-h-0">
-            {attempt}
-          </div>
+          <div className="flex-1 min-h-0">{attempt}</div>
         </div>
 
         <div
