@@ -295,10 +295,30 @@ fn create_watchkill_script(command: &str) -> String {
     // Hack: we concatenate so that Claude doesn't trigger the watchkill when reading this file
     // during development, since it contains the stop phrase
     let claude_plan_stop_indicator = concat!("Approval ", "request timed out");
-    let cmd = shlex::try_quote(command).unwrap().to_string();
 
-    format!(
-        r#"#!/usr/bin/env bash
+    if cfg!(windows) {
+        // Windows batch script version
+        // Note: On Windows, shlex::try_quote may not produce cmd.exe-compatible quoting,
+        // so we use the command as-is and rely on cmd.exe's parsing
+        format!(
+            r#"@echo off
+setlocal enabledelayedexpansion
+
+REM Run the command and capture output line by line
+for /f "delims=" %%L in ('{command}') do (
+    echo %%L
+    echo %%L | findstr /C:"{claude_plan_stop_indicator}" >nul
+    if not errorlevel 1 (
+        exit /b 0
+    )
+)
+"#
+        )
+    } else {
+        // Unix/Linux bash script version
+        let cmd = shlex::try_quote(command).unwrap().to_string();
+        format!(
+            r#"#!/usr/bin/env bash
 set -euo pipefail
 
 word="{claude_plan_stop_indicator}"
@@ -314,7 +334,8 @@ done < <(bash -lc {cmd} <&0 2>&1)
 exit_code=${{PIPESTATUS[0]}}
 exit "$exit_code"
 "#
-    )
+        )
+    }
 }
 
 /// Extract user denial reason from tool result error messages
