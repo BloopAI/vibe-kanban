@@ -192,7 +192,6 @@ function AppContent() {
               </Route>
             </SentryRoutes>
           </div>
-          <ShortcutsHelp />
         </SearchProvider>
       </ThemeProvider>
     </I18nextProvider>
