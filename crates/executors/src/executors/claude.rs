@@ -149,70 +149,9 @@ impl StandardCodingAgentExecutor for ClaudeCode {
     }
 
     async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
-        let (shell_cmd, shell_arg) = get_shell_command();
         let command_builder = self.build_command_builder().await;
         let base_command = command_builder.build_initial();
-
-        let combined_prompt = self.append_prompt.combine_prompt(prompt);
-
-        let mut command = Command::new(shell_cmd);
-        command
-            .kill_on_drop(true)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .current_dir(current_dir)
-            .arg(shell_arg)
-            .arg(&base_command)
-            .env("CLAUDE_CODE_ENTRYPOINT", "sdk-rust");
-
-        let mut child = command.group_spawn()?;
-        let child_stdout = child.inner().stdout.take().ok_or_else(|| {
-            ExecutorError::Io(std::io::Error::other("Claude Code missing stdout"))
-        })?;
-        let child_stdin =
-            child.inner().stdin.take().ok_or_else(|| {
-                ExecutorError::Io(std::io::Error::other("Claude Code missing stdin"))
-            })?;
-
-        let new_stdout = create_stdout_pipe_writer(&mut child)?;
-        let permission_mode = self.permission_mode();
-        let hooks = self.get_hooks();
-
-        // Spawn task to handle the SDK client with control protocol
-        let prompt_clone = combined_prompt.clone();
-        let approvals_clone = self.approvals_service.clone();
-        tokio::spawn(async move {
-            let log_writer = LogWriter::new(new_stdout);
-            let client = ClaudeAgentClient::new(log_writer.clone(), approvals_clone);
-            let protocol_peer = ProtocolPeer::spawn(child_stdin, child_stdout, client.clone());
-            client.connect(protocol_peer.clone());
-            // Initialize control protocol
-            if let Err(e) = protocol_peer.initialize(hooks).await {
-                tracing::error!("Failed to initialize control protocol: {e}");
-                let _ = log_writer
-                    .log_raw(&format!("Error: Failed to initialize - {e}"))
-                    .await;
-                return;
-            }
-
-            if let Err(e) = protocol_peer.set_permission_mode(permission_mode).await {
-                tracing::warn!("Failed to set permission mode to {permission_mode}: {e}");
-            }
-
-            // Send initial user message
-            if let Err(e) = protocol_peer.send_user_message(prompt_clone).await {
-                tracing::error!("Failed to send initial prompt: {e}");
-                let _ = log_writer
-                    .log_raw(&format!("Error: Failed to send prompt - {e}"))
-                    .await;
-            }
-        });
-
-        Ok(SpawnedChild {
-            child,
-            exit_signal: None,
-        })
+        self.spawn_internal(current_dir, prompt, base_command).await
     }
 
     async fn spawn_follow_up(
@@ -221,82 +160,13 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         prompt: &str,
         session_id: &str,
     ) -> Result<SpawnedChild, ExecutorError> {
-        use self::{client::ClaudeAgentClient, protocol::ProtocolPeer};
-        use crate::{executors::codex::client::LogWriter, stdout_dup::create_stdout_pipe_writer};
-
-        let (shell_cmd, shell_arg) = get_shell_command();
         let command_builder = self.build_command_builder().await;
-        // Build follow-up command with --resume {session_id}
         let base_command = command_builder.build_follow_up(&[
             "--fork-session".to_string(),
             "--resume".to_string(),
             session_id.to_string(),
         ]);
-
-        let combined_prompt = self.append_prompt.combine_prompt(prompt);
-
-        let mut command = Command::new(shell_cmd);
-        command
-            .kill_on_drop(true)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .current_dir(current_dir)
-            .arg(shell_arg)
-            .arg(&base_command)
-            .env("CLAUDE_CODE_ENTRYPOINT", "sdk-rust");
-
-        let mut child = command.group_spawn()?;
-        // Use control protocol for approvals
-        let child_stdout = child.inner().stdout.take().ok_or_else(|| {
-            ExecutorError::Io(std::io::Error::other("Claude Code missing stdout"))
-        })?;
-        let child_stdin =
-            child.inner().stdin.take().ok_or_else(|| {
-                ExecutorError::Io(std::io::Error::other("Claude Code missing stdin"))
-            })?;
-
-        let new_stdout = create_stdout_pipe_writer(&mut child)?;
-        let permission_mode = self.permission_mode();
-        let hooks = self.get_hooks();
-
-        // Spawn task to handle the SDK client with control protocol
-        let prompt_clone = combined_prompt.clone();
-        let approvals_clone = self.approvals_service.clone();
-        tokio::spawn(async move {
-            let log_writer = LogWriter::new(new_stdout);
-            let client = ClaudeAgentClient::new(log_writer.clone(), approvals_clone);
-            let protocol_peer = ProtocolPeer::spawn(child_stdin, child_stdout, client.clone());
-            client.connect(protocol_peer.clone());
-
-            // Initialize control protocol
-            if let Err(e) = protocol_peer.initialize(hooks).await {
-                tracing::error!("Failed to initialize control protocol: {e}");
-                let _ = log_writer
-                    .log_raw(&format!("Error: Failed to initialize - {e}"))
-                    .await;
-                return;
-            }
-            if let Err(e) = protocol_peer.set_permission_mode(permission_mode).await {
-                tracing::warn!("Failed to set permission mode to {permission_mode}: {e}");
-            }
-
-            // Send follow-up user message
-            if let Err(e) = protocol_peer.send_user_message(prompt_clone).await {
-                tracing::error!("Failed to send follow-up prompt: {e}");
-                let _ = log_writer
-                    .log_raw(&format!("Error: Failed to send prompt - {e}"))
-                    .await;
-            }
-
-            tracing::info!("Control protocol initialized and follow-up prompt sent");
-            // Protocol peer runs in background, handling bidirectional communication
-        });
-
-        Ok(SpawnedChild {
-            child,
-            exit_signal: None,
-        })
+        self.spawn_internal(current_dir, prompt, base_command).await
     }
 
     fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &Path) {
@@ -317,6 +187,77 @@ impl StandardCodingAgentExecutor for ClaudeCode {
     // MCP configuration methods
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
         dirs::home_dir().map(|home| home.join(".claude.json"))
+    }
+}
+
+impl ClaudeCode {
+    async fn spawn_internal(
+        &self,
+        current_dir: &Path,
+        prompt: &str,
+        base_command: String,
+    ) -> Result<SpawnedChild, ExecutorError> {
+        let (shell_cmd, shell_arg) = get_shell_command();
+        let combined_prompt = self.append_prompt.combine_prompt(prompt);
+
+        let mut command = Command::new(shell_cmd);
+        command
+            .kill_on_drop(true)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .current_dir(current_dir)
+            .arg(shell_arg)
+            .arg(&base_command);
+
+        let mut child = command.group_spawn()?;
+        let child_stdout = child.inner().stdout.take().ok_or_else(|| {
+            ExecutorError::Io(std::io::Error::other("Claude Code missing stdout"))
+        })?;
+        let child_stdin =
+            child.inner().stdin.take().ok_or_else(|| {
+                ExecutorError::Io(std::io::Error::other("Claude Code missing stdin"))
+            })?;
+
+        let new_stdout = create_stdout_pipe_writer(&mut child)?;
+        let permission_mode = self.permission_mode();
+        let hooks = self.get_hooks();
+
+        // Spawn task to handle the SDK client with control protocol
+        let prompt_clone = combined_prompt.clone();
+        let approvals_clone = self.approvals_service.clone();
+        tokio::spawn(async move {
+            let log_writer = LogWriter::new(new_stdout);
+            let client = ClaudeAgentClient::new(log_writer.clone(), approvals_clone);
+            let protocol_peer = ProtocolPeer::spawn(child_stdin, child_stdout, client.clone());
+            client.connect(protocol_peer.clone());
+
+            // Initialize control protocol
+            if let Err(e) = protocol_peer.initialize(hooks).await {
+                tracing::error!("Failed to initialize control protocol: {e}");
+                let _ = log_writer
+                    .log_raw(&format!("Error: Failed to initialize - {e}"))
+                    .await;
+                return;
+            }
+
+            if let Err(e) = protocol_peer.set_permission_mode(permission_mode).await {
+                tracing::warn!("Failed to set permission mode to {permission_mode}: {e}");
+            }
+
+            // Send user message
+            if let Err(e) = protocol_peer.send_user_message(prompt_clone).await {
+                tracing::error!("Failed to send prompt: {e}");
+                let _ = log_writer
+                    .log_raw(&format!("Error: Failed to send prompt - {e}"))
+                    .await;
+            }
+        });
+
+        Ok(SpawnedChild {
+            child,
+            exit_signal: None,
+        })
     }
 }
 
