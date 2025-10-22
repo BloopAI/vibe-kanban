@@ -8,8 +8,8 @@ use tokio::{
 };
 
 use super::types::{
-    ControlRequestMessage, ControlRequestType, ControlResponseMessage, ControlResponseType,
-    PermissionResult, SDKControlRequestMessage,
+    CLIMessage, ControlRequestMessage, ControlRequestType, ControlResponseMessage,
+    ControlResponseType, SDKControlRequestMessage,
 };
 use crate::executors::{
     ExecutorError,
@@ -42,7 +42,6 @@ impl ProtocolPeer {
         peer
     }
 
-    /// Main read loop for stdout
     async fn read_loop(
         &self,
         stdout: ChildStdout,
@@ -60,42 +59,33 @@ impl ProtocolPeer {
                     if line.is_empty() {
                         continue;
                     }
-                    // Try parsing as control request
-                    if let Ok(control_req) = serde_json::from_str::<ControlRequestMessage>(line) {
-                        if control_req.message_type == "control_request" {
-                            self.handle_control_request(&callbacks, control_req).await;
-                        }
-                    } else if let Ok(control_resp) =
-                        serde_json::from_str::<ControlResponseMessage>(line)
-                    {
-                        // Control response - might be init response or other
-                        tracing::debug!("Received control response: {:?}", control_resp.response);
-                    } else {
-                        // Check if it's a system init message (contains session_id)
-                        if let Ok(value) = serde_json::from_str::<serde_json::Value>(line) {
-                            if value.get("type").and_then(|t| t.as_str()) == Some("system")
-                                && value.get("subtype").and_then(|s| s.as_str()) == Some("init")
-                            {
-                                if let Some(session_id) =
-                                    value.get("session_id").and_then(|s| s.as_str())
-                                {
-                                    if let Err(e) =
-                                        callbacks.on_session_init(session_id.to_string()).await
-                                    {
-                                        tracing::error!("Failed to register session: {}", e);
-                                    }
-                                }
+                    // Parse message using typed enum
+                    match serde_json::from_str::<CLIMessage>(line) {
+                        Ok(CLIMessage::ControlRequest(req)) => {
+                            if req.message_type == "control_request" {
+                                self.handle_control_request(&callbacks, req).await;
                             }
                         }
-
-                        // Forward all non-control messages to stdout
-                        let has_finished =
-                            callbacks.on_non_control(line).await.unwrap_or_else(|e| {
-                                tracing::warn!("Error handling non-control message: {}", e);
-                                false
-                            });
-                        if has_finished {
-                            break;
+                        Ok(CLIMessage::ControlResponse(resp)) => {
+                            tracing::debug!("Received control response: {:?}", resp.response);
+                        }
+                        Ok(CLIMessage::System {
+                            subtype: Some(ref s),
+                            session_id: Some(ref sid),
+                        }) if s == "init" => {
+                            if let Err(e) = callbacks.on_session_init(sid.clone()).await {
+                                tracing::error!("Failed to register session: {}", e);
+                            }
+                        }
+                        Ok(CLIMessage::System { .. }) | Ok(CLIMessage::Other(_)) | Err(_) => {
+                            let has_finished =
+                                callbacks.on_non_control(line).await.unwrap_or_else(|e| {
+                                    tracing::warn!("Error handling non-control message: {}", e);
+                                    false
+                                });
+                            if has_finished {
+                                break;
+                            }
                         }
                     }
                 }
@@ -108,7 +98,6 @@ impl ProtocolPeer {
         Ok(())
     }
 
-    /// Handle incoming control request from CLI
     async fn handle_control_request(
         &self,
         callbacks: &Arc<dyn ProtocolCallbacks>,
@@ -148,55 +137,25 @@ impl ProtocolPeer {
         }
     }
 
-    pub async fn send_permission_result(
-        &self,
-        request_id: String,
-        result: PermissionResult,
-    ) -> Result<(), ExecutorError> {
-        let response = ControlResponseType::Success {
-            request_id,
-            response: Some(serde_json::to_value(result)?),
-        };
-
-        let message = ControlResponseMessage {
-            message_type: "control_response".to_string(),
-            response,
-        };
-
-        self.send_json(&message).await
-    }
-
     pub async fn send_hook_response(
         &self,
         request_id: String,
         hook_output: serde_json::Value,
     ) -> Result<(), ExecutorError> {
-        let response = ControlResponseType::Success {
+        self.send_json(&ControlResponseMessage::new(ControlResponseType::Success {
             request_id,
             response: Some(hook_output),
-        };
-
-        let message = ControlResponseMessage {
-            message_type: "control_response".to_string(),
-            response,
-        };
-
-        self.send_json(&message).await
+        }))
+        .await
     }
 
     /// Send error response to CLI
     async fn send_error(&self, request_id: String, error: String) -> Result<(), ExecutorError> {
-        let response = ControlResponseType::Error {
+        self.send_json(&ControlResponseMessage::new(ControlResponseType::Error {
             request_id,
             error: Some(error),
-        };
-
-        let message = ControlResponseMessage {
-            message_type: "control_response".to_string(),
-            response,
-        };
-
-        self.send_json(&message).await
+        }))
+        .await
     }
 
     /// Send JSON message to stdin
@@ -210,20 +169,6 @@ impl ProtocolPeer {
         Ok(())
     }
 
-    /// Initialize control protocol with the CLI
-    /// Registers a hook callback for PreToolUse events to enable approval flow
-    pub async fn initialize(&self, hooks: Option<serde_json::Value>) -> Result<(), ExecutorError> {
-        use uuid::Uuid;
-        let init_request = SDKControlRequestMessage {
-            message_type: "control_request".to_string(),
-            request_id: format!("init_{}", Uuid::new_v4()),
-            request: SDKControlRequestType::Initialize { hooks },
-        };
-        self.send_json(&init_request).await?;
-        Ok(())
-    }
-
-    /// Send user message (initial prompt)
     pub async fn send_user_message(&self, content: String) -> Result<(), ExecutorError> {
         let message = serde_json::json!({
             "type": "user",
@@ -235,15 +180,18 @@ impl ProtocolPeer {
         self.send_json(&message).await
     }
 
-    /// Send a control request to change permission mode
+    pub async fn initialize(&self, hooks: Option<serde_json::Value>) -> Result<(), ExecutorError> {
+        self.send_json(&SDKControlRequestMessage::new(
+            SDKControlRequestType::Initialize { hooks },
+        ))
+        .await
+    }
+
     pub async fn set_permission_mode(&self, mode: PermissionMode) -> Result<(), ExecutorError> {
-        use uuid::Uuid;
-        let mode_request = SDKControlRequestMessage {
-            message_type: "control_request".to_string(),
-            request_id: format!("set_mode_{}", Uuid::new_v4()),
-            request: SDKControlRequestType::SetPermissionMode { mode },
-        };
-        self.send_json(&mode_request).await
+        self.send_json(&SDKControlRequestMessage::new(
+            SDKControlRequestType::SetPermissionMode { mode },
+        ))
+        .await
     }
 }
 

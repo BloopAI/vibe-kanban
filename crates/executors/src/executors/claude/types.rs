@@ -5,6 +5,22 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+/// Top-level message types from CLI stdout
+#[derive(Debug, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum CLIMessage {
+    ControlRequest(ControlRequestMessage),
+    ControlResponse(ControlResponseMessage),
+    System {
+        #[serde(default)]
+        subtype: Option<String>,
+        #[serde(default)]
+        session_id: Option<String>,
+    },
+    #[serde(untagged)]
+    Other(serde_json::Value),
+}
+
 /// Control request from CLI to SDK (incoming)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ControlRequestMessage {
@@ -18,17 +34,37 @@ pub struct ControlRequestMessage {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SDKControlRequestMessage {
     #[serde(rename = "type")]
-    pub message_type: String, // "control_request"
+    message_type: String, // Always "control_request"
     pub request_id: String,
     pub request: SDKControlRequestType,
+}
+
+impl SDKControlRequestMessage {
+    pub fn new(request: SDKControlRequestType) -> Self {
+        use uuid::Uuid;
+        Self {
+            message_type: "control_request".to_string(),
+            request_id: Uuid::new_v4().to_string(),
+            request,
+        }
+    }
 }
 
 /// Control response from SDK to CLI (outgoing)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ControlResponseMessage {
     #[serde(rename = "type")]
-    pub message_type: String, // "control_response"
+    message_type: String, // Always "control_response"
     pub response: ControlResponseType,
+}
+
+impl ControlResponseMessage {
+    pub fn new(response: ControlResponseType) -> Self {
+        Self {
+            message_type: "control_response".to_string(),
+            response,
+        }
+    }
 }
 
 /// Types of control requests
@@ -39,7 +75,7 @@ pub enum ControlRequestType {
         tool_name: String,
         input: Value,
         #[serde(skip_serializing_if = "Option::is_none")]
-        permission_suggestions: Option<Vec<PermissionUpdate>>,
+        permission_suggestions: Option<Value>,
     },
     HookCallback {
         #[serde(rename = "callback_id")]
@@ -76,34 +112,6 @@ pub enum SDKControlRequestType {
         #[serde(skip_serializing_if = "Option::is_none")]
         hooks: Option<Value>,
     },
-}
-
-/// Result of permission check
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "behavior", rename_all = "lowercase")]
-pub enum PermissionResult {
-    Allow {
-        #[serde(rename = "updatedInput")]
-        updated_input: Value,
-        #[serde(rename = "updatedPermissions", skip_serializing_if = "Option::is_none")]
-        updated_permissions: Option<Vec<PermissionUpdate>>,
-    },
-    Deny {
-        message: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        interrupt: Option<bool>,
-    },
-}
-
-/// Permission update operation
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PermissionUpdate {
-    #[serde(rename = "type")]
-    pub update_type: String, // "setMode", "addRules", etc.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub mode: Option<String>, // "bypassPermissions", "plan", "default", "acceptEdits"
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub destination: Option<String>, // "session", "userSettings", "projectSettings", "localSettings"
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
