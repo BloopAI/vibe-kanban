@@ -81,6 +81,7 @@ pub enum CodingAgent {
     #[serde(rename = "CURSOR_AGENT", alias = "CURSOR")]
     #[strum(serialize = "CURSOR_AGENT")]
     #[strum_discriminants(serde(rename = "CURSOR_AGENT", alias = "CURSOR"))]
+    #[strum_discriminants(strum(serialize = "CURSOR_AGENT", serialize = "CURSOR"))]
     Cursor,
     QwenCode,
     Copilot,
@@ -205,5 +206,28 @@ impl AppendPrompt {
             AppendPrompt(Some(value)) => format!("{prompt}{value}"),
             AppendPrompt(None) => prompt.to_string(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use super::*;
+
+    #[test]
+    fn test_cursor_agent_deserialization() {
+        // Test that CURSOR_AGENT is accepted
+        let result = BaseCodingAgent::from_str("CURSOR_AGENT");
+        assert!(result.is_ok(), "CURSOR_AGENT should be valid");
+        assert_eq!(result.unwrap(), BaseCodingAgent::Cursor);
+
+        // Test that legacy CURSOR is still accepted for backwards compatibility
+        let result = BaseCodingAgent::from_str("CURSOR");
+        assert!(
+            result.is_ok(),
+            "CURSOR should be valid for backwards compatibility"
+        );
+        assert_eq!(result.unwrap(), BaseCodingAgent::Cursor);
     }
 }
