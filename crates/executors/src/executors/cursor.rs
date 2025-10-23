@@ -1,5 +1,5 @@
 use core::str;
-use std::{path::Path, process::Stdio, sync::Arc, time::Duration};
+use std::{collections::HashMap, path::Path, process::Stdio, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
 use command_group::AsyncCommandGroup;
@@ -615,6 +615,12 @@ pub enum CursorToolCall {
         #[serde(default)]
         result: Option<serde_json::Value>,
     },
+    #[serde(rename = "semSearchToolCall")]
+    SemSearch {
+        args: CursorSemSearchArgs,
+        #[serde(default)]
+        result: Option<serde_json::Value>,
+    },
     #[serde(rename = "writeToolCall")]
     Write {
         args: CursorWriteArgs,
@@ -631,7 +637,7 @@ pub enum CursorToolCall {
     Edit {
         args: CursorEditArgs,
         #[serde(default)]
-        result: Option<serde_json::Value>,
+        result: Option<CursorEditResult>,
     },
     #[serde(rename = "deleteToolCall")]
     Delete {
@@ -666,6 +672,7 @@ impl CursorToolCall {
             CursorToolCall::LS { .. } => "ls",
             CursorToolCall::Glob { .. } => "glob",
             CursorToolCall::Grep { .. } => "grep",
+            CursorToolCall::SemSearch { .. } => "semsearch",
             CursorToolCall::Write { .. } => "write",
             CursorToolCall::Read { .. } => "read",
             CursorToolCall::Edit { .. } => "edit",
@@ -697,7 +704,7 @@ impl CursorToolCall {
                     format!("`{path}`"),
                 )
             }
-            CursorToolCall::Edit { args, .. } => {
+            CursorToolCall::Edit { args, result, .. } => {
                 let path = make_path_relative(&args.path, worktree_path);
                 let mut changes = vec![];
 
@@ -732,6 +739,19 @@ impl CursorToolCall {
                     });
                 }
 
+                if changes.is_empty()
+                    && let Some(CursorEditResult::Success(CursorEditSuccessResult {
+                        diff_string: Some(diff_string),
+                        ..
+                    })) = &result
+                {
+                    let hunks = extract_unified_diff_hunks(diff_string);
+                    changes.push(FileChange::Edit {
+                        unified_diff: concatenate_diff_hunks(&path, &hunks),
+                        has_line_numbers: false,
+                    });
+                }
+
                 (
                     ActionType::FileEdit {
                         path: path.clone(),
@@ -745,7 +765,7 @@ impl CursorToolCall {
                 (
                     ActionType::FileEdit {
                         path: path.clone(),
-                        changes: vec![],
+                        changes: vec![FileChange::Delete],
                     },
                     format!("`{path}`"),
                 )
@@ -767,6 +787,15 @@ impl CursorToolCall {
                         query: pattern.clone(),
                     },
                     format!("`{pattern}`"),
+                )
+            }
+            CursorToolCall::SemSearch { args, .. } => {
+                let query = &args.query;
+                (
+                    ActionType::Search {
+                        query: query.clone(),
+                    },
+                    format!("`{query}`"),
                 )
             }
             CursorToolCall::Glob { args, .. } => {
@@ -978,7 +1007,7 @@ pub struct CursorLsArgs {
 pub struct CursorGlobArgs {
     #[serde(default, alias = "globPattern", alias = "glob_pattern")]
     pub glob_pattern: Option<String>,
-    #[serde(default)]
+    #[serde(default, alias = "targetDirectory")]
     pub path: Option<String>,
     #[serde(default, alias = "target_directory")]
     pub target_directory: Option<String>,
@@ -1001,6 +1030,15 @@ pub struct CursorGrepArgs {
     pub head_limit: Option<u64>,
     #[serde(default)]
     pub r#type: Option<String>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+pub struct CursorSemSearchArgs {
+    pub query: String,
+    #[serde(default, alias = "targetDirectories")]
+    pub target_directories: Option<Vec<String>>,
+    #[serde(default)]
+    pub explanation: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
@@ -1034,6 +1072,32 @@ pub struct CursorEditArgs {
     pub str_replace: Option<CursorStrReplace>,
     #[serde(default, rename = "multiStrReplace")]
     pub multi_str_replace: Option<CursorMultiStrReplace>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum CursorEditResult {
+    Success(CursorEditSuccessResult),
+    #[serde(untagged)]
+    Unknown {
+        #[serde(flatten)]
+        data: HashMap<String, serde_json::Value>,
+    },
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+pub struct CursorEditSuccessResult {
+    pub path: String,
+    #[serde(default, rename = "resultForModel")]
+    pub result_for_model: Option<String>,
+    #[serde(default, rename = "linesAdded")]
+    pub lines_added: Option<u64>,
+    #[serde(default, rename = "linesRemoved")]
+    pub lines_removed: Option<u64>,
+    #[serde(default, rename = "diffString")]
+    pub diff_string: Option<String>,
+    #[serde(default, rename = "afterFullFileContent")]
+    pub after_full_file_content: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
