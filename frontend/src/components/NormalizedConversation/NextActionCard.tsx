@@ -161,8 +161,9 @@ export function NextActionCard({
               onClick={handleTryAgain}
               disabled={!attempt?.task_id}
               className="text-sm"
+              aria-label={t('attempt.tryAgain')}
             >
-              Try Again
+              {t('attempt.tryAgain')}
             </Button>
           )}
 
@@ -259,7 +260,7 @@ export function NextActionCard({
                 </TooltipTrigger>
                 <TooltipContent>
                   {!projectHasDevScript
-                    ? 'To start the dev server, add a dev script to this project'
+                    ? t('attempt.devScriptMissingTooltip')
                     : runningDevServer
                       ? t('attempt.pauseDev')
                       : t('attempt.startDev')}

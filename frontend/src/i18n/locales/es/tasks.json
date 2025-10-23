@@ -40,7 +40,9 @@
     "stopDev": "Stop Dev",
     "stopping": "Stopping...",
     "viewDevLogs": "View dev server logs",
-    "viewHistory": "View attempt history"
+    "viewHistory": "View attempt history",
+    "tryAgain": "Try Again",
+    "devScriptMissingTooltip": "To start the dev server, add a dev script to this project"
   },
   "attemptHeaderActions": {
     "diffs": "Diffs",

@@ -178,7 +178,9 @@
     "createSubtask": "Create Subtask",
     "preview": "Preview",
     "diffs": "Diffs",
-    "gitActions": "Git Actions"
+    "gitActions": "Git Actions",
+    "tryAgain": "Try Again",
+    "devScriptMissingTooltip": "To start the dev server, add a dev script to this project"
   },
   "git": {
     "labels": {
