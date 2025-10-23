@@ -108,7 +108,9 @@ export const FileSearchTextarea = forwardRef<
         const filteredTags = tags.filter((tag) =>
           tag.tag_name.toLowerCase().includes(searchQuery.toLowerCase())
         );
-        results.push(...filteredTags.map((tag) => ({ type: 'tag' as const, tag })));
+        results.push(
+          ...filteredTags.map((tag) => ({ type: 'tag' as const, tag }))
+        );
 
         // Then fetch files (if projectId is available)
         if (projectId) {
