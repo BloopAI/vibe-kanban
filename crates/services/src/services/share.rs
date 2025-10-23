@@ -255,12 +255,13 @@ impl Drop for RemoteSyncHandleInner {
 
 pub(super) fn convert_remote_task(
     task: &RemoteSharedTask,
+    project_id: Uuid,
     last_event_seq: Option<i64>,
 ) -> SharedTaskInput {
     SharedTaskInput {
         id: task.id,
         organization_id: task.organization_id.clone(),
-        project_id: task.project_id,
+        project_id,
         title: task.title.clone(),
         description: task.description.clone(),
         status: status::from_remote(&task.status),

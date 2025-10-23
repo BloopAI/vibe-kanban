@@ -1,12 +1,19 @@
 use db::{
     DBService,
-    models::shared_task::{SharedActivityCursor, SharedTask},
+    models::{
+        project::Project,
+        shared_task::{SharedActivityCursor, SharedTask},
+    },
 };
 use remote::{
     activity::{ActivityEvent, ActivityResponse},
-    db::tasks::SharedTask as RemoteSharedTask,
+    db::{
+        projects::ProjectMetadata,
+        tasks::{SharedTask as RemoteSharedTask, SharedTaskActivityPayload},
+    },
 };
 use reqwest::Client as HttpClient;
+use uuid::Uuid;
 
 use super::{ShareConfig, ShareError, convert_remote_task};
 use crate::services::clerk::ClerkSession;
@@ -30,9 +37,46 @@ impl ActivityProcessor {
 
     pub async fn process_event(&self, event: ActivityEvent) -> Result<(), ShareError> {
         if let Some(payload) = &event.payload {
-            let remote_task: RemoteSharedTask = serde_json::from_value(payload.clone())?;
-            let input = convert_remote_task(&remote_task, Some(event.seq));
-            SharedTask::upsert(&self.db.pool, input).await?;
+            match serde_json::from_value::<SharedTaskActivityPayload>(payload.clone()) {
+                Ok(envelope) => {
+                    let SharedTaskActivityPayload { task, project } = envelope;
+                    if let Some(project_id) =
+                        self.resolve_project_id(task.id, Some(&project)).await?
+                    {
+                        let input = convert_remote_task(&task, project_id, Some(event.seq));
+                        SharedTask::upsert(&self.db.pool, input).await?;
+                    } else {
+                        tracing::warn!(
+                            task_id = %task.id,
+                            repo_id = project.github_repository_id,
+                            owner = %project.owner,
+                            name = %project.name,
+                            "skipping shared task; project not found locally"
+                        );
+                    }
+                }
+                Err(error) => match serde_json::from_value::<RemoteSharedTask>(payload.clone()) {
+                    Ok(task) => {
+                        if let Some(project_id) = self.resolve_project_id(task.id, None).await? {
+                            let input = convert_remote_task(&task, project_id, Some(event.seq));
+                            SharedTask::upsert(&self.db.pool, input).await?;
+                        } else {
+                            tracing::warn!(
+                                ?error,
+                                task_id = %task.id,
+                                "shared task payload missing metadata; project unresolved"
+                            );
+                        }
+                    }
+                    Err(_) => {
+                        tracing::warn!(
+                            ?error,
+                            event_id = %event.event_id,
+                            "unrecognized shared task payload; skipping"
+                        );
+                    }
+                },
+            }
         } else {
             tracing::warn!(event_id = %event.event_id, "received activity event with empty payload");
         }
@@ -94,5 +138,25 @@ impl ActivityProcessor {
         let resp = resp.error_for_status().map_err(ShareError::Transport)?;
         let resp_body = resp.json::<ActivityResponse>().await?;
         Ok(resp_body.data)
+    }
+
+    async fn resolve_project_id(
+        &self,
+        task_id: Uuid,
+        metadata: Option<&ProjectMetadata>,
+    ) -> Result<Option<Uuid>, ShareError> {
+        if let Some(existing) = SharedTask::find_by_id(&self.db.pool, task_id).await? {
+            return Ok(Some(existing.project_id));
+        }
+
+        if let Some(meta) = metadata {
+            if let Some(project) =
+                Project::find_by_github_repo_id(&self.db.pool, meta.github_repository_id).await?
+            {
+                return Ok(Some(project.id));
+            }
+        }
+
+        Ok(None)
     }
 }

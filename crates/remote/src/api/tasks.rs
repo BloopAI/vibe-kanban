@@ -1,9 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::db::{
-    projects::ProjectMetadata,
-    tasks::TaskStatus,
-};
+use crate::db::{projects::ProjectMetadata, tasks::TaskStatus};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateSharedTaskRequest {

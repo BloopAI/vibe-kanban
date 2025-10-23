@@ -152,7 +152,7 @@ impl SharePublisher {
         task: &Task,
         remote_task: &RemoteSharedTask,
     ) -> Result<(), ShareError> {
-        let input = convert_remote_task(remote_task, None);
+        let input = convert_remote_task(remote_task, task.project_id, None);
         SharedTask::upsert(&self.db.pool, input).await?;
         Task::set_shared_task_id(&self.db.pool, task.id, Some(remote_task.id)).await?;
         Ok(())

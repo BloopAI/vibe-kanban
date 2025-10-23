@@ -9,16 +9,14 @@ use uuid::Uuid;
 use crate::{
     AppState,
     api::tasks::{
-        CreateSharedTaskRequest,
-        TransferSharedTaskAssignmentRequest,
-        UpdateSharedTaskRequest,
+        CreateSharedTaskRequest, TransferSharedTaskAssignmentRequest, UpdateSharedTaskRequest,
     },
     auth::RequestContext,
     db::{
         identity::{IdentityError, IdentityRepository},
         tasks::{
-            CreateSharedTaskData, SharedTaskError, SharedTaskRepository, TransferTaskAssignmentData,
-            UpdateSharedTaskData,
+            CreateSharedTaskData, SharedTaskError, SharedTaskRepository,
+            TransferTaskAssignmentData, UpdateSharedTaskData,
         },
     },
 };

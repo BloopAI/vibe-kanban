@@ -442,13 +442,8 @@ impl LocalContainerService {
                 }
 
                 if Self::should_finalize(&ctx) {
-                    Self::finalize_task(
-                        &db,
-                        &config,
-                        container.share_publisher().cloned(),
-                        &ctx,
-                    )
-                    .await;
+                    Self::finalize_task(&db, &config, container.share_publisher().cloned(), &ctx)
+                        .await;
                     // After finalization, check if a queued follow-up exists and start it
                     if let Err(e) = container.try_consume_queued_followup(&ctx).await {
                         tracing::error!(

@@ -18,8 +18,8 @@ use crate::services::{
     analytics::AnalyticsContext,
     clerk::ClerkSessionStore,
     config::Config,
-    github_service::{GitHubRepoInfo, GitHubService, GitHubServiceError},
     git::GitService,
+    github_service::{GitHubRepoInfo, GitHubService, GitHubServiceError},
     share::SharePublisher,
 };
 

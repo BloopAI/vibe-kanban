@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use super::{
     Tx,
-    projects::{CreateProjectData, ProjectError, ProjectMetadata, ProjectRepository},
+    projects::{CreateProjectData, Project, ProjectError, ProjectMetadata, ProjectRepository},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
@@ -34,6 +34,12 @@ pub struct SharedTask {
     pub shared_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SharedTaskActivityPayload {
+    pub task: SharedTask,
+    pub project: ProjectMetadata,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -175,11 +181,7 @@ impl<'a> SharedTaskRepository<'a> {
         .fetch_one(&mut *tx)
         .await?;
 
-        let payload = serde_json::to_value(&task).map_err(|e| {
-            SharedTaskError::Conflict(format!("could not serialize task snapshot: {e}"))
-        })?;
-
-        insert_activity(&mut tx, &task, "task.created", payload).await?;
+        insert_activity(&mut tx, &task, &project, "task.created").await?;
         tx.commit().await.map_err(SharedTaskError::from)?;
         Ok(task)
     }
@@ -229,11 +231,13 @@ impl<'a> SharedTaskRepository<'a> {
         .await?
         .ok_or_else(|| SharedTaskError::Conflict("task version mismatch".to_string()))?;
 
-        let payload = serde_json::to_value(&task).map_err(|e| {
-            SharedTaskError::Conflict(format!("could not serialize task snapshot: {e}"))
-        })?;
+        let project = ProjectRepository::find_by_id(&mut tx, task.project_id, organization_id)
+            .await?
+            .ok_or_else(|| {
+                SharedTaskError::Conflict("project not found for shared task".to_string())
+            })?;
 
-        insert_activity(&mut tx, &task, "task.updated", payload).await?;
+        insert_activity(&mut tx, &task, &project, "task.updated").await?;
 
         tx.commit().await.map_err(SharedTaskError::from)?;
         Ok(task)
@@ -284,22 +288,44 @@ impl<'a> SharedTaskRepository<'a> {
             SharedTaskError::Conflict("task version or previous assignee mismatch".to_string())
         })?;
 
-        let payload = serde_json::to_value(&task).map_err(|e| {
-            SharedTaskError::Conflict(format!("could not serialize task snapshot: {e}"))
-        })?;
+        let project = ProjectRepository::find_by_id(&mut tx, task.project_id, organization_id)
+            .await?
+            .ok_or_else(|| {
+                SharedTaskError::Conflict("project not found for shared task".to_string())
+            })?;
 
-        insert_activity(&mut tx, &task, "task.assignment_transferred", payload).await?;
+        insert_activity(&mut tx, &task, &project, "task.assignment_transferred").await?;
         tx.commit().await.map_err(SharedTaskError::from)?;
         Ok(task)
     }
 }
 
+fn project_metadata_from_project(project: &Project) -> ProjectMetadata {
+    ProjectMetadata {
+        github_repository_id: project.github_repository_id,
+        owner: project.owner.clone(),
+        name: project.name.clone(),
+    }
+}
+
+fn build_activity_payload(task: &SharedTask, project: &Project) -> Result<Value, SharedTaskError> {
+    let envelope = SharedTaskActivityPayload {
+        task: task.clone(),
+        project: project_metadata_from_project(project),
+    };
+
+    serde_json::to_value(envelope)
+        .map_err(|e| SharedTaskError::Conflict(format!("could not serialize task snapshot: {e}")))
+}
+
 async fn insert_activity(
     tx: &mut Tx<'_>,
     task: &SharedTask,
+    project: &Project,
     event_type: &str,
-    payload: Value,
 ) -> Result<(), SharedTaskError> {
+    let payload = build_activity_payload(task, project)?;
+
     sqlx::query!(
         r#"
         INSERT INTO activity (
@@ -308,7 +334,7 @@ async fn insert_activity(
             event_type,
             payload
         )
-        VALUES ($1, $2, $3, $4) 
+        VALUES ($1, $2, $3, $4)
         "#,
         task.organization_id,
         task.assignee_user_id,
