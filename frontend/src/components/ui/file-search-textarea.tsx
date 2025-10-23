@@ -83,19 +83,16 @@ export const FileSearchTextarea = forwardRef<
       try {
         const results: SearchResultItem[] = [];
 
-        // Fetch all tags and filter client-side (show all if empty query)
+        // Fetch all tags and filter client-side
         const tags = await tagsApi.list();
-        const filteredTags =
-          searchQuery.length === 0
-            ? tags
-            : tags.filter((tag) =>
-                tag.tag_name.toLowerCase().includes(searchQuery.toLowerCase())
-              );
+        const filteredTags = tags.filter((tag) =>
+          tag.tag_name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
         results.push(
           ...filteredTags.map((tag) => ({ type: 'tag' as const, tag }))
         );
 
-        // Then fetch files (if projectId is available and query has content)
+        // Fetch files (if projectId is available and query has content)
         if (projectId && searchQuery.length > 0) {
           const fileResults = await projectsApi.searchFiles(
             projectId,
