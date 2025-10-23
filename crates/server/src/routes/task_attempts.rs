@@ -648,9 +648,12 @@ pub async fn merge_task_attempt(
     )
     .await?;
     Task::update_status(pool, ctx.task.id, TaskStatus::Done).await?;
+
+    // Try broadcast update to other users in organization
     if let Some(publisher) = deployment.share_publisher() {
+        let acting_session = session.require()?;
         if let Err(err) = publisher
-            .update_shared_task_by_id(ctx.task.id, session.as_ref())
+            .update_shared_task_by_id(ctx.task.id, Some(acting_session))
             .await
         {
             tracing::warn!(
@@ -1461,9 +1464,12 @@ pub async fn attach_existing_pr(
         // If PR is merged, mark task as done
         if matches!(pr_info.status, MergeStatus::Merged) {
             Task::update_status(pool, task.id, TaskStatus::Done).await?;
+
+            // Try broadcast update to other users in organization
             if let Some(publisher) = deployment.share_publisher() {
+                let acting_session = session.require()?;
                 if let Err(err) = publisher
-                    .update_shared_task_by_id(task.id, session.as_ref())
+                    .update_shared_task_by_id(task.id, Some(acting_session))
                     .await
                 {
                     tracing::warn!(

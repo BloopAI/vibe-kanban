@@ -14,10 +14,7 @@ use uuid::Uuid;
 
 use super::{ShareConfig, ShareError, convert_remote_task, status};
 use crate::services::{
-    clerk::{ClerkSession, ClerkSessionStore},
-    config::Config,
-    git::GitService,
-    github_service::GitHubService,
+    clerk::ClerkSession, config::Config, git::GitService, github_service::GitHubService,
 };
 
 #[derive(Clone)]
@@ -27,14 +24,12 @@ pub struct SharePublisher {
     client: HttpClient,
     config: ShareConfig,
     user_config: Arc<RwLock<Config>>,
-    sessions: ClerkSessionStore,
 }
 
 impl SharePublisher {
     pub fn new(
         db: DBService,
         git: GitService,
-        sessions: ClerkSessionStore,
         user_config: Arc<RwLock<Config>>,
     ) -> Result<Self, ShareError> {
         let config =
@@ -51,25 +46,14 @@ impl SharePublisher {
             config,
             user_config,
             client,
-            sessions,
         })
     }
 
-    async fn resolve_session(
-        &self,
-        provided: Option<&ClerkSession>,
-    ) -> Result<ClerkSession, ShareError> {
-        if let Some(session) = provided
-            && !session.is_expired()
-        {
-            return Ok(session.clone());
+    fn resolve_session(&self, provided: Option<&ClerkSession>) -> Result<ClerkSession, ShareError> {
+        match provided {
+            Some(session) if !session.is_expired() => Ok(session.clone()),
+            _ => Err(ShareError::MissingAuth),
         }
-
-        if let Some(active) = self.sessions.active().await {
-            return Ok(active);
-        }
-
-        Err(ShareError::MissingAuth)
     }
 
     pub async fn share_task(
@@ -77,7 +61,7 @@ impl SharePublisher {
         task_id: Uuid,
         session: Option<&ClerkSession>,
     ) -> Result<Uuid, ShareError> {
-        let session = self.resolve_session(session).await?;
+        let session = self.resolve_session(session)?;
         let task = Task::find_by_id(&self.db.pool, task_id)
             .await?
             .ok_or(ShareError::TaskNotFound(task_id))?;
@@ -113,11 +97,12 @@ impl SharePublisher {
         task: &Task,
         session: Option<&ClerkSession>,
     ) -> Result<(), ShareError> {
+        // early exit if task has not been shared
         let Some(shared_task_id) = task.shared_task_id else {
             return Ok(());
         };
 
-        let session = self.resolve_session(session).await?;
+        let session = self.resolve_session(session)?;
         let payload = UpdateSharedTaskRequest {
             title: Some(task.title.clone()),
             description: task.description.clone(),

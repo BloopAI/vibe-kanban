@@ -120,12 +120,7 @@ impl Deployment for LocalDeployment {
             Err(err) => return Err(DeploymentError::Other(err.into())),
         };
         let share_publisher = if clerk_auth.is_some() {
-            match SharePublisher::new(
-                db.clone(),
-                git.clone(),
-                clerk_sessions.clone(),
-                config.clone(),
-            ) {
+            match SharePublisher::new(db.clone(), git.clone(), config.clone()) {
                 Ok(publisher) => {
                     // start remote server sync communication
                     RemoteSync::spawn_if_configured(db.clone(), clerk_sessions.clone());

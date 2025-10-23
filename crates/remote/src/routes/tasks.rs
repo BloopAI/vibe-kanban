@@ -70,11 +70,29 @@ pub async fn update_shared_task(
     Json(payload): Json<UpdateSharedTaskRequest>,
 ) -> Response {
     let repo = SharedTaskRepository::new(state.pool());
+    let existing = match repo.find_by_id(&ctx.organization.id, task_id).await {
+        Ok(Some(task)) => task,
+        Ok(None) => {
+            return task_error_response(SharedTaskError::NotFound, "shared task not found");
+        }
+        Err(error) => {
+            return task_error_response(error, "failed to load shared task");
+        }
+    };
+
+    if existing.assignee_user_id.as_deref() != Some(&ctx.user.id) {
+        return task_error_response(
+            SharedTaskError::Forbidden,
+            "acting user is not the task assignee",
+        );
+    }
+
     let data = UpdateSharedTaskData {
         title: payload.title,
         description: payload.description,
         status: payload.status,
         version: payload.version,
+        acting_user_id: ctx.user.id.clone(),
     };
 
     match repo.update(&ctx.organization.id, task_id, data).await {
@@ -121,6 +139,10 @@ fn task_error_response(error: SharedTaskError, context: &str) -> Response {
         SharedTaskError::NotFound => (
             StatusCode::NOT_FOUND,
             Json(json!({ "error": "task not found" })),
+        ),
+        SharedTaskError::Forbidden => (
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "only the assignee can modify this task" })),
         ),
         SharedTaskError::Conflict(message) => {
             (StatusCode::CONFLICT, Json(json!({ "error": message })))

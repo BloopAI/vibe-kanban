@@ -16,9 +16,7 @@ use tracing::{debug, error, info, warn};
 
 use crate::services::{
     analytics::AnalyticsContext,
-    clerk::ClerkSessionStore,
     config::Config,
-    git::GitService,
     github_service::{GitHubRepoInfo, GitHubService, GitHubServiceError},
     share::SharePublisher,
 };
@@ -41,7 +39,7 @@ pub struct PrMonitorService {
     config: Arc<RwLock<Config>>,
     poll_interval: Duration,
     analytics: Option<AnalyticsContext>,
-    sessions: ClerkSessionStore,
+    publisher: Option<SharePublisher>,
 }
 
 impl PrMonitorService {
@@ -49,14 +47,14 @@ impl PrMonitorService {
         db: DBService,
         config: Arc<RwLock<Config>>,
         analytics: Option<AnalyticsContext>,
-        sessions: ClerkSessionStore,
+        publisher: Option<SharePublisher>,
     ) -> tokio::task::JoinHandle<()> {
         let service = Self {
             db,
             config,
             poll_interval: Duration::from_secs(60), // Check every minute
             analytics,
-            sessions,
+            publisher,
         };
         tokio::spawn(async move {
             service.start().await;
@@ -163,14 +161,10 @@ impl PrMonitorService {
                     );
                 }
 
-                if let Ok(publisher) = SharePublisher::new(
-                    self.db.clone(),
-                    GitService::new(),
-                    self.sessions.clone(),
-                    self.config.clone(),
-                ) && let Err(err) = publisher
-                    .update_shared_task_by_id(task_attempt.task_id, None)
-                    .await
+                if let Some(publisher) = &self.publisher
+                    && let Err(err) = publisher
+                        .update_shared_task_by_id(task_attempt.task_id, None)
+                        .await
                 {
                     tracing::warn!(
                         ?err,

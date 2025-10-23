@@ -249,12 +249,14 @@ pub async fn update_task(
         TaskImage::associate_many_dedup(&deployment.db().pool, task.id, image_ids).await?;
     }
 
+    // If task has been shared, broadcast update
     if task.shared_task_id.is_some() {
         let Some(publisher) = deployment.share_publisher() else {
             return Err(ShareError::MissingConfig("share publisher unavailable").into());
         };
+        let acting_session = session.require()?;
         publisher
-            .update_shared_task(&task, session.as_ref())
+            .update_shared_task(&task, Some(acting_session))
             .await?;
     }
 
@@ -382,7 +384,8 @@ pub async fn share_task(
     let Some(publisher) = deployment.share_publisher() else {
         return Err(ShareError::MissingConfig("share publisher unavailable").into());
     };
-    let shared_task_id = publisher.share_task(task.id, session.as_ref()).await?;
+    let acting_session = session.require()?;
+    let shared_task_id = publisher.share_task(task.id, Some(acting_session)).await?;
 
     Ok(ResponseJson(ApiResponse::success(ShareTaskResponse {
         shared_task_id,

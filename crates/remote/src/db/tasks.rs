@@ -56,6 +56,7 @@ pub struct UpdateSharedTaskData {
     pub description: Option<String>,
     pub status: Option<TaskStatus>,
     pub version: Option<i64>,
+    pub acting_user_id: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -68,6 +69,7 @@ pub struct TransferTaskAssignmentData {
 #[derive(Debug)]
 pub enum SharedTaskError {
     NotFound,
+    Forbidden,
     Conflict(String),
     Database(sqlx::Error),
     Serialization(serde_json::Error),
@@ -99,6 +101,40 @@ pub struct SharedTaskRepository<'a> {
 impl<'a> SharedTaskRepository<'a> {
     pub fn new(pool: &'a PgPool) -> Self {
         Self { pool }
+    }
+
+    pub async fn find_by_id(
+        &self,
+        organization_id: &str,
+        task_id: Uuid,
+    ) -> Result<Option<SharedTask>, SharedTaskError> {
+        let task = sqlx::query_as!(
+            SharedTask,
+            r#"
+            SELECT
+                id                  AS "id!",
+                organization_id     AS "organization_id!",
+                project_id          AS "project_id!",
+                creator_user_id     AS "creator_user_id?",
+                assignee_user_id    AS "assignee_user_id?",
+                title               AS "title!",
+                description         AS "description?",
+                status              AS "status!: TaskStatus",
+                version             AS "version!",
+                shared_at           AS "shared_at?",
+                created_at          AS "created_at!",
+                updated_at          AS "updated_at!"
+            FROM shared_tasks
+            WHERE id = $1
+              AND organization_id = $2
+            "#,
+            task_id,
+            organization_id
+        )
+        .fetch_optional(self.pool)
+        .await?;
+
+        Ok(task)
     }
 
     pub async fn create(
@@ -206,6 +242,7 @@ impl<'a> SharedTaskRepository<'a> {
         WHERE t.id = $1
           AND t.organization_id = $6
           AND t.version = COALESCE($5, t.version)
+          AND t.assignee_user_id = $7
         RETURNING
             t.id                AS "id!",
             t.organization_id   AS "organization_id!",
@@ -225,7 +262,8 @@ impl<'a> SharedTaskRepository<'a> {
             data.description,
             data.status as Option<TaskStatus>,
             data.version,
-            organization_id
+            organization_id,
+            &data.acting_user_id
         )
         .fetch_optional(&mut *tx)
         .await?
