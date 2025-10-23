@@ -7,6 +7,7 @@
     "createNewAttempt": "Create new attempt",
     "createSubtask": "Create subtask",
     "duplicate": "Duplicate",
+    "gitActions": "Gitアクション",
     "openInIde": "Open attempt in IDE",
     "task": "Task",
     "viewProcesses": "View processes"
@@ -23,6 +24,7 @@
     "copied": "Copied!",
     "createSubtask": "Create Subtask",
     "diffs": "Diffs",
+    "gitActions": "Gitアクション",
     "labels": {
       "agent": "エージェント",
       "attempt": "試行",
@@ -112,6 +114,10 @@
     "pr": {
       "number": "PR #{{number}}",
       "open": "Open PR #{{number}}"
+    },
+    "actions": {
+      "title": "Gitアクション",
+      "prMerged": "PR #{{number}} は既にマージされています"
     },
     "states": {
       "createPr": "PRを作成",

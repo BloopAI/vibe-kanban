@@ -7,6 +7,7 @@
     "createNewAttempt": "Create new attempt",
     "createSubtask": "Create subtask",
     "duplicate": "Duplicate",
+    "gitActions": "Git 작업",
     "openInIde": "Open attempt in IDE",
     "task": "Task",
     "viewProcesses": "View processes"
@@ -23,6 +24,7 @@
     "copied": "Copied!",
     "createSubtask": "Create Subtask",
     "diffs": "Diffs",
+    "gitActions": "Git 작업",
     "labels": {
       "agent": "에이전트",
       "attempt": "시도",
@@ -112,6 +114,10 @@
     "pr": {
       "number": "PR #{{number}}",
       "open": "Open PR #{{number}}"
+    },
+    "actions": {
+      "title": "Git 작업",
+      "prMerged": "PR #{{number}}은(는) 이미 병합되었습니다"
     },
     "states": {
       "createPr": "PR 생성",
