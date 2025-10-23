@@ -79,7 +79,9 @@ export const TagEditDialog = NiceModal.create<TagEditDialogProps>(({ tag }) => {
       modal.resolve('saved' as TagEditResult);
       modal.hide();
     } catch (err: any) {
-      setError(err.message || t('settings.general.tags.dialog.errors.saveFailed'));
+      setError(
+        err.message || t('settings.general.tags.dialog.errors.saveFailed')
+      );
     } finally {
       setSaving(false);
     }
@@ -106,15 +108,24 @@ export const TagEditDialog = NiceModal.create<TagEditDialogProps>(({ tag }) => {
     <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>{isEditMode ? t('settings.general.tags.dialog.editTitle') : t('settings.general.tags.dialog.createTitle')}</DialogTitle>
+          <DialogTitle>
+            {isEditMode
+              ? t('settings.general.tags.dialog.editTitle')
+              : t('settings.general.tags.dialog.createTitle')}
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div>
             <Label htmlFor="tag-name">
-              {t('settings.general.tags.dialog.tagName.label')} <span className="text-destructive">{t('settings.general.tags.dialog.tagName.required')}</span>
+              {t('settings.general.tags.dialog.tagName.label')}{' '}
+              <span className="text-destructive">
+                {t('settings.general.tags.dialog.tagName.required')}
+              </span>
             </Label>
             <p className="text-xs text-muted-foreground mb-1.5">
-              {t('settings.general.tags.dialog.tagName.hint', { tagName: formData.tag_name || 'tag_name' })}
+              {t('settings.general.tags.dialog.tagName.hint', {
+                tagName: formData.tag_name || 'tag_name',
+              })}
             </p>
             <Input
               id="tag-name"
@@ -132,7 +143,9 @@ export const TagEditDialog = NiceModal.create<TagEditDialogProps>(({ tag }) => {
                   setTagNameError(null);
                 }
               }}
-              placeholder={t('settings.general.tags.dialog.tagName.placeholder')}
+              placeholder={t(
+                'settings.general.tags.dialog.tagName.placeholder'
+              )}
               disabled={saving}
               autoFocus
               aria-invalid={!!tagNameError}
@@ -144,10 +157,15 @@ export const TagEditDialog = NiceModal.create<TagEditDialogProps>(({ tag }) => {
           </div>
           <div>
             <Label htmlFor="tag-content">
-              {t('settings.general.tags.dialog.content.label')} <span className="text-destructive">{t('settings.general.tags.dialog.content.required')}</span>
+              {t('settings.general.tags.dialog.content.label')}{' '}
+              <span className="text-destructive">
+                {t('settings.general.tags.dialog.content.required')}
+              </span>
             </Label>
             <p className="text-xs text-muted-foreground mb-1.5">
-              {t('settings.general.tags.dialog.content.hint', { tagName: formData.tag_name || 'tag_name' })}
+              {t('settings.general.tags.dialog.content.hint', {
+                tagName: formData.tag_name || 'tag_name',
+              })}
             </p>
             <Textarea
               id="tag-content"
@@ -156,7 +174,9 @@ export const TagEditDialog = NiceModal.create<TagEditDialogProps>(({ tag }) => {
                 const value = e.target.value;
                 setFormData({ ...formData, content: value });
               }}
-              placeholder={t('settings.general.tags.dialog.content.placeholder')}
+              placeholder={t(
+                'settings.general.tags.dialog.content.placeholder'
+              )}
               rows={6}
               disabled={saving}
             />
@@ -172,7 +192,9 @@ export const TagEditDialog = NiceModal.create<TagEditDialogProps>(({ tag }) => {
             disabled={saving || !!tagNameError || !formData.content.trim()}
           >
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isEditMode ? t('settings.general.tags.dialog.buttons.update') : t('settings.general.tags.dialog.buttons.create')}
+            {isEditMode
+              ? t('settings.general.tags.dialog.buttons.update')
+              : t('settings.general.tags.dialog.buttons.create')}
           </Button>
         </DialogFooter>
       </DialogContent>

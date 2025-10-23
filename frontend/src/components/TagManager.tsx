@@ -47,7 +47,11 @@ export function TagManager() {
   const handleDelete = useCallback(
     async (tag: Tag) => {
       if (
-        !confirm(t('settings.general.tags.manager.deleteConfirm', { tagName: tag.tag_name }))
+        !confirm(
+          t('settings.general.tags.manager.deleteConfirm', {
+            tagName: tag.tag_name,
+          })
+        )
       ) {
         return;
       }
@@ -73,7 +77,9 @@ export function TagManager() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">{t('settings.general.tags.manager.title')}</h3>
+        <h3 className="text-lg font-semibold">
+          {t('settings.general.tags.manager.title')}
+        </h3>
         <Button onClick={() => handleOpenDialog()} size="sm">
           <Plus className="h-4 w-4 mr-2" />
           {t('settings.general.tags.manager.addTag')}
@@ -93,7 +99,9 @@ export function TagManager() {
                   <th className="text-left p-2 text-sm font-medium">
                     {t('settings.general.tags.manager.table.tagName')}
                   </th>
-                  <th className="text-left p-2 text-sm font-medium">{t('settings.general.tags.manager.table.content')}</th>
+                  <th className="text-left p-2 text-sm font-medium">
+                    {t('settings.general.tags.manager.table.content')}
+                  </th>
                   <th className="text-right p-2 text-sm font-medium">
                     {t('settings.general.tags.manager.table.actions')}
                   </th>
@@ -123,7 +131,9 @@ export function TagManager() {
                           size="icon"
                           className="h-7 w-7"
                           onClick={() => handleOpenDialog(tag)}
-                          title={t('settings.general.tags.manager.actions.editTag')}
+                          title={t(
+                            'settings.general.tags.manager.actions.editTag'
+                          )}
                         >
                           <Edit2 className="h-3 w-3" />
                         </Button>
@@ -132,7 +142,9 @@ export function TagManager() {
                           size="icon"
                           className="h-7 w-7"
                           onClick={() => handleDelete(tag)}
-                          title={t('settings.general.tags.manager.actions.deleteTag')}
+                          title={t(
+                            'settings.general.tags.manager.actions.deleteTag'
+                          )}
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>
