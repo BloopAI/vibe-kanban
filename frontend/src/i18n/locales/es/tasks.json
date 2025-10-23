@@ -7,6 +7,7 @@
     "createNewAttempt": "Create new attempt",
     "createSubtask": "Create subtask",
     "duplicate": "Duplicate",
+    "gitActions": "Acciones de Git",
     "openInIde": "Open attempt in IDE",
     "task": "Task",
     "viewProcesses": "View processes"
@@ -23,6 +24,7 @@
     "copied": "Copied!",
     "createSubtask": "Create Subtask",
     "diffs": "Diffs",
+    "gitActions": "Acciones de Git",
     "labels": {
       "agent": "Agente",
       "attempt": "Intento",
@@ -112,6 +114,10 @@
     "pr": {
       "number": "PR #{{number}}",
       "open": "Open PR #{{number}}"
+    },
+    "actions": {
+      "title": "Acciones de Git",
+      "prMerged": "PR #{{number}} ya está fusionado"
     },
     "states": {
       "createPr": "Crear PR",
