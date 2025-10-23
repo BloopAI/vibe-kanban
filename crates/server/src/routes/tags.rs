@@ -1,6 +1,9 @@
 use axum::{
-    Extension, Json, Router, extract::{Query, State}, middleware::from_fn_with_state,
-    response::Json as ResponseJson, routing::get,
+    Extension, Json, Router,
+    extract::{Query, State},
+    middleware::from_fn_with_state,
+    response::Json as ResponseJson,
+    routing::get,
 };
 use db::models::tag::{CreateTag, Tag, UpdateTag};
 use deployment::Deployment;

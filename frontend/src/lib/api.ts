@@ -677,8 +677,9 @@ export const githubApi = {
 // Task Tags APIs (all tags are global)
 export const tagsApi = {
   list: async (params?: TagSearchParams): Promise<Tag[]> => {
-    const queryParam =
-      params?.search ? `?search=${encodeURIComponent(params.search)}` : '';
+    const queryParam = params?.search
+      ? `?search=${encodeURIComponent(params.search)}`
+      : '';
     const response = await makeRequest(`/api/tags${queryParam}`);
     return handleApiResponse<Tag[]>(response);
   },

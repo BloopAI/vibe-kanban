@@ -54,6 +54,13 @@ export const TagEditDialog = NiceModal.create<TagEditDialogProps>(({ tag }) => {
       return;
     }
 
+    if (formData.tag_name.includes(' ')) {
+      setError(
+        'Tag name cannot contain spaces. Use underscores instead (e.g., my_tag)'
+      );
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
