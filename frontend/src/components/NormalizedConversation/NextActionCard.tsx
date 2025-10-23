@@ -67,7 +67,6 @@ export function NextActionCard({
   } = useDevServer(attemptId);
 
   const projectHasDevScript = Boolean(project?.dev_script);
-  const canShowStartStop = runningDevServer || projectHasDevScript;
 
   const handleCopy = useCallback(async () => {
     if (!containerRef) return;
@@ -231,9 +230,9 @@ export function NextActionCard({
                 </TooltipContent>
               </Tooltip>
 
-              {canShowStartStop && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-block">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -241,7 +240,8 @@ export function NextActionCard({
                       onClick={runningDevServer ? () => stop() : () => start()}
                       disabled={
                         (runningDevServer ? isStopping : isStarting) ||
-                        !attemptId
+                        !attemptId ||
+                        !projectHasDevScript
                       }
                       aria-label={
                         runningDevServer
@@ -255,14 +255,16 @@ export function NextActionCard({
                         <Play className="h-3.5 w-3.5" />
                       )}
                     </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {runningDevServer
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {!projectHasDevScript
+                    ? 'To start the dev server, add a dev script to this project'
+                    : runningDevServer
                       ? t('attempt.pauseDev')
                       : t('attempt.startDev')}
-                  </TooltipContent>
-                </Tooltip>
-              )}
+                </TooltipContent>
+              </Tooltip>
 
               {latestDevServerProcess && (
                 <Tooltip>
