@@ -430,7 +430,6 @@ function GitOperations({
                 mergeInfo.hasOpenPR ||
                 merging ||
                 hasConflictsCalculated ||
-                Boolean((branchStatus.commits_behind ?? 0) > 0) ||
                 isAttemptRunning ||
                 ((branchStatus.commits_ahead ?? 0) === 0 &&
                   !pushSuccess &&
@@ -449,7 +448,6 @@ function GitOperations({
               onClick={handlePRButtonClick}
               disabled={
                 pushing ||
-                Boolean((branchStatus.commits_behind ?? 0) > 0) ||
                 isAttemptRunning ||
                 hasConflictsCalculated ||
                 (mergeInfo.hasOpenPR &&
@@ -473,8 +471,7 @@ function GitOperations({
               disabled={
                 rebasing ||
                 isAttemptRunning ||
-                hasConflictsCalculated ||
-                (branchStatus.commits_behind ?? 0) === 0
+                hasConflictsCalculated
               }
               variant="outline"
               size="xs"
