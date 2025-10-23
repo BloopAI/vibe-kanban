@@ -553,6 +553,13 @@ impl GitService {
             .unwrap_or_default()
     }
 
+    /// Normalize line endings to LF for consistent diff comparison.
+    /// Converts CRLF (\r\n) to LF (\n) to prevent false diffs when comparing
+    /// repository content (LF) with working tree files (CRLF on Windows).
+    fn normalize_line_endings(content: String) -> String {
+        content.replace("\r\n", "\n")
+    }
+
     /// Helper function to convert blob to string content
     fn blob_to_string(blob: &git2::Blob) -> Option<String> {
         if blob.is_binary() {
@@ -560,7 +567,7 @@ impl GitService {
         } else {
             std::str::from_utf8(blob.content())
                 .ok()
-                .map(|s| s.to_string())
+                .map(|s| Self::normalize_line_endings(s.to_string()))
         }
     }
 
@@ -594,9 +601,9 @@ impl GitService {
             return None;
         }
 
-        // UTF-8 validation
+        // UTF-8 validation and line ending normalization
         match String::from_utf8(bytes) {
-            Ok(content) => Some(content),
+            Ok(content) => Some(Self::normalize_line_endings(content)),
             Err(e) => {
                 tracing::debug!("File is not valid UTF-8: {:?}: {}", abs_path, e);
                 None
