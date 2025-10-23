@@ -155,6 +155,8 @@ impl StandardCodingAgentExecutor for Cursor {
 
             let mut current_assistant_message_buffer = String::new();
             let mut current_assistant_message_index: Option<usize> = None;
+            let mut current_thinking_message_buffer = String::new();
+            let mut current_thinking_message_index: Option<usize> = None;
 
             let worktree_str = current_dir.to_string_lossy().to_string();
 
@@ -195,10 +197,15 @@ impl StandardCodingAgentExecutor for Cursor {
                 }
 
                 let is_assistant_message = matches!(cursor_json, CursorJson::Assistant { .. });
+                let is_thinking_message = matches!(cursor_json, CursorJson::Thinking { .. });
                 if !is_assistant_message && current_assistant_message_index.is_some() {
                     // flush
                     current_assistant_message_index = None;
                     current_assistant_message_buffer.clear();
+                }
+                if !is_thinking_message && current_thinking_message_index.is_some() {
+                    current_thinking_message_index = None;
+                    current_thinking_message_buffer.clear();
                 }
 
                 match &cursor_json {
@@ -238,6 +245,27 @@ impl StandardCodingAgentExecutor for Cursor {
                                     replace_entry,
                                 ));
                             };
+                        }
+                    }
+                    CursorJson::Thinking { text, .. } => {
+                        if let Some(chunk) = text
+                            && !chunk.is_empty()
+                        {
+                            current_thinking_message_buffer.push_str(chunk);
+                            let entry = NormalizedEntry {
+                                timestamp: None,
+                                entry_type: NormalizedEntryType::Thinking,
+                                content: current_thinking_message_buffer.clone(),
+                                metadata: None,
+                            };
+                            if let Some(id) = current_thinking_message_index {
+                                msg_store.push_patch(ConversationPatch::replace(id, entry));
+                            } else {
+                                let id = entry_index_provider.next();
+                                current_thinking_message_index = Some(id);
+                                msg_store
+                                    .push_patch(ConversationPatch::add_normalized_entry(id, entry));
+                            }
                         }
                     }
 
@@ -486,6 +514,15 @@ pub enum CursorJson {
         #[serde(default)]
         session_id: Option<String>,
     },
+    #[serde(rename = "thinking")]
+    Thinking {
+        #[serde(default)]
+        subtype: Option<String>,
+        #[serde(default)]
+        text: Option<String>,
+        #[serde(default)]
+        session_id: Option<String>,
+    },
     #[serde(rename = "tool_call")]
     ToolCall {
         #[serde(default)]
@@ -517,6 +554,7 @@ impl CursorJson {
             CursorJson::System { session_id, .. } => session_id.clone(),
             CursorJson::User { session_id, .. } => session_id.clone(),
             CursorJson::Assistant { session_id, .. } => session_id.clone(),
+            CursorJson::Thinking { session_id, .. } => session_id.clone(),
             CursorJson::ToolCall { session_id, .. } => session_id.clone(),
             CursorJson::Result { .. } => None,
             CursorJson::Unknown => None,
