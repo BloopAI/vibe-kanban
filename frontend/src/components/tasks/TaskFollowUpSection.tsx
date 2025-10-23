@@ -481,8 +481,8 @@ export function TaskFollowUpSection({
                   isQueued
                     ? 'Type your follow-up… It will auto-send when ready.'
                     : reviewMarkdown || conflictResolutionInstructions
-                      ? '(Optional) Add additional instructions... Type @ to search files.'
-                      : 'Continue working on this task attempt... Type @ to search files.'
+                      ? '(Optional) Add additional instructions... Type @ to insert tags or search files.'
+                      : 'Continue working on this task attempt... Type @ to insert tags or search files.'
                 }
                 value={followUpMessage}
                 onChange={(value) => {

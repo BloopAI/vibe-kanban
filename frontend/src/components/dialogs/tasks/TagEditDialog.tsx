@@ -88,6 +88,12 @@ export const TagEditDialog = NiceModal.create<TagEditDialogProps>(({ tag }) => {
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
+      // Reset form data when dialog closes
+      setFormData({
+        tag_name: '',
+        content: '',
+      });
+      setError(null);
       handleCancel();
     }
   };

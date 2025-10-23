@@ -28,6 +28,7 @@ import {
   TaskAttempt,
   TaskRelationships,
   Tag,
+  TagSearchParams,
   TaskWithAttemptStatus,
   UpdateProject,
   UpdateTask,
@@ -675,8 +676,10 @@ export const githubApi = {
 
 // Task Tags APIs (all tags are global)
 export const tagsApi = {
-  list: async (): Promise<Tag[]> => {
-    const response = await makeRequest('/api/tags');
+  list: async (params?: TagSearchParams): Promise<Tag[]> => {
+    const queryParam =
+      params?.search ? `?search=${encodeURIComponent(params.search)}` : '';
+    const response = await makeRequest(`/api/tags${queryParam}`);
     return handleApiResponse<Tag[]>(response);
   },
 

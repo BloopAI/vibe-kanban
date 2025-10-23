@@ -28,6 +28,7 @@ fn generate_types_content() -> String {
         db::models::tag::Tag::decl(),
         db::models::tag::CreateTag::decl(),
         db::models::tag::UpdateTag::decl(),
+        server::routes::tags::TagSearchParams::decl(),
         db::models::task::TaskStatus::decl(),
         db::models::task::Task::decl(),
         db::models::task::TaskWithAttemptStatus::decl(),

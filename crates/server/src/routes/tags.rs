@@ -1,17 +1,33 @@
 use axum::{
-    Extension, Json, Router, extract::State, middleware::from_fn_with_state,
+    Extension, Json, Router, extract::{Query, State}, middleware::from_fn_with_state,
     response::Json as ResponseJson, routing::get,
 };
 use db::models::tag::{CreateTag, Tag, UpdateTag};
 use deployment::Deployment;
+use serde::Deserialize;
+use ts_rs::TS;
 use utils::response::ApiResponse;
 
 use crate::{DeploymentImpl, error::ApiError, middleware::load_tag_middleware};
 
+#[derive(Deserialize, TS)]
+pub struct TagSearchParams {
+    #[serde(default)]
+    pub search: Option<String>,
+}
+
 pub async fn get_tags(
     State(deployment): State<DeploymentImpl>,
+    Query(params): Query<TagSearchParams>,
 ) -> Result<ResponseJson<ApiResponse<Vec<Tag>>>, ApiError> {
-    let tags = Tag::find_all(&deployment.db().pool).await?;
+    let mut tags = Tag::find_all(&deployment.db().pool).await?;
+
+    // Filter by search query if provided
+    if let Some(search_query) = params.search {
+        let search_lower = search_query.to_lowercase();
+        tags.retain(|tag| tag.tag_name.to_lowercase().contains(&search_lower));
+    }
+
     Ok(ResponseJson(ApiResponse::success(tags)))
 }
 

@@ -81,13 +81,10 @@ export const FileSearchTextarea = forwardRef<
       try {
         const results: SearchResultItem[] = [];
 
-        // Fetch tags first (they appear at the top)
-        const tags = await tagsApi.list();
-        const filteredTags = tags.filter((tag) =>
-          tag.tag_name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
+        // Fetch tags with backend search
+        const tags = await tagsApi.list({ search: searchQuery });
         results.push(
-          ...filteredTags.map((tag) => ({ type: 'tag' as const, tag }))
+          ...tags.map((tag) => ({ type: 'tag' as const, tag }))
         );
 
         // Then fetch files (if projectId is available)

@@ -40,6 +40,8 @@ export type CreateTag = { tag_name: string, content: string | null, };
 
 export type UpdateTag = { tag_name: string | null, content: string | null, };
 
+export type TagSearchParams = { search: string | null, };
+
 export type TaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelled";
 
 export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_task_attempt: string | null, created_at: string, updated_at: string, };
