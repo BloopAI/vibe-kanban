@@ -468,11 +468,7 @@ function GitOperations({
 
             <Button
               onClick={handleRebaseDialogOpen}
-              disabled={
-                rebasing ||
-                isAttemptRunning ||
-                hasConflictsCalculated
-              }
+              disabled={rebasing || isAttemptRunning || hasConflictsCalculated}
               variant="outline"
               size="xs"
               className="border-warning text-warning hover:bg-warning gap-1 shrink-0"
