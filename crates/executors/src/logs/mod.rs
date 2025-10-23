@@ -67,6 +67,7 @@ pub enum NormalizedEntryType {
     Loading,
     NextAction {
         failed: bool,
+        execution_processes: usize,
     },
 }
 

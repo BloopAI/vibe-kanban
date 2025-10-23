@@ -793,6 +793,7 @@ function DisplayConversationEntry({
           attemptId={taskAttempt?.id}
           containerRef={taskAttempt?.container_ref}
           failed={entry.entry_type.failed}
+          execution_processes={entry.entry_type.execution_processes}
           task={task}
         />
       </div>

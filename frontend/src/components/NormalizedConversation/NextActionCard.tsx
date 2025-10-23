@@ -32,6 +32,7 @@ type NextActionCardProps = {
   attemptId?: string;
   containerRef?: string | null;
   failed: boolean;
+  execution_processes: number;
   task?: any;
 };
 
@@ -39,6 +40,7 @@ export function NextActionCard({
   attemptId,
   containerRef,
   failed,
+  execution_processes,
   task,
 }: NextActionCardProps) {
   const { t } = useTranslation('tasks');
@@ -117,7 +119,7 @@ export function NextActionCard({
   const editorName = getIdeName(config?.editor?.editor_type);
 
   // Necessary to prevent this component being displayed beyond fold within Virtualised List
-  if (!failed && fileCount === 0) {
+  if ((!failed || execution_processes > 2) && fileCount === 0) {
     return <div className="h-24"></div>;
   }
 
@@ -154,7 +156,7 @@ export function NextActionCard({
           <div className="flex-1" />
 
           {/* Try Again button */}
-          {failed && (
+          {failed && execution_processes <= 2 && (
             <Button
               variant="destructive"
               size="sm"

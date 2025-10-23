@@ -63,12 +63,16 @@ const loadingPatch: PatchTypeWithKey = {
   executionProcessId: '',
 };
 
-const nextActionPatch: (failed: boolean) => PatchTypeWithKey = (failed) => ({
+const nextActionPatch: (
+  failed: boolean,
+  execution_processes: number
+) => PatchTypeWithKey = (failed, execution_processes) => ({
   type: 'NORMALIZED_ENTRY',
   content: {
     entry_type: {
       type: 'next_action',
       failed: failed,
+      execution_processes: execution_processes,
     },
     content: '',
     timestamp: null,
@@ -398,7 +402,12 @@ export const useConversationHistory = ({
 
     // Emit the next action bar if no process running
     if (!hasRunningProcess && !hasPendingApproval) {
-      allEntries.push(nextActionPatch(lastProcessFailedOrKilled));
+      allEntries.push(
+        nextActionPatch(
+          lastProcessFailedOrKilled,
+          Object.keys(executionProcessState).length
+        )
+      );
     }
 
     return allEntries;
