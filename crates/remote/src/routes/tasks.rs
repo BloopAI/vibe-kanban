@@ -10,15 +10,15 @@ use uuid::Uuid;
 use crate::{
     AppState,
     api::tasks::{
-        CreateSharedTaskRequest, SharedTaskResponse, TransferSharedTaskAssignmentRequest,
+        AssignSharedTaskRequest, CreateSharedTaskRequest, SharedTaskResponse,
         UpdateSharedTaskRequest,
     },
     auth::RequestContext,
     db::{
         identity::{IdentityError, IdentityRepository},
         tasks::{
-            CreateSharedTaskData, SharedTaskError, SharedTaskRepository,
-            TransferTaskAssignmentData, UpdateSharedTaskData,
+            AssignTaskData, CreateSharedTaskData, SharedTaskError, SharedTaskRepository,
+            UpdateSharedTaskData,
         },
     },
 };
@@ -101,14 +101,31 @@ pub async fn update_shared_task(
     }
 }
 
-pub async fn transfer_task_assignment(
+pub async fn assign_task(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(task_id): Path<Uuid>,
-    Json(payload): Json<TransferSharedTaskAssignmentRequest>,
+    Json(payload): Json<AssignSharedTaskRequest>,
 ) -> Response {
     let repo = SharedTaskRepository::new(state.pool());
     let identity_repo = IdentityRepository::new(state.pool(), state.clerk());
+
+    let existing = match repo.find_by_id(&ctx.organization.id, task_id).await {
+        Ok(Some(task)) => task,
+        Ok(None) => {
+            return task_error_response(SharedTaskError::NotFound, "shared task not found");
+        }
+        Err(error) => {
+            return task_error_response(error, "failed to load shared task");
+        }
+    };
+
+    if existing.assignee_user_id.as_deref() != Some(&ctx.user.id) {
+        return task_error_response(
+            SharedTaskError::Forbidden,
+            "acting user is not the task assignee",
+        );
+    }
 
     if let Some(assignee) = payload.new_assignee_user_id.as_ref()
         && assignee != &ctx.user.id
@@ -119,16 +136,13 @@ pub async fn transfer_task_assignment(
         return identity_error_response(err, "assignee not found or inactive");
     }
 
-    let data = TransferTaskAssignmentData {
+    let data = AssignTaskData {
         new_assignee_user_id: payload.new_assignee_user_id,
-        previous_assignee_user_id: payload.previous_assignee_user_id,
+        previous_assignee_user_id: Some(ctx.user.id.clone()),
         version: payload.version,
     };
 
-    match repo
-        .transfer_task_assignment(&ctx.organization.id, task_id, data)
-        .await
-    {
+    match repo.assign_task(&ctx.organization.id, task_id, data).await {
         Ok(task) => (StatusCode::OK, Json(SharedTaskResponse { task })).into_response(),
         Err(error) => task_error_response(error, "failed to transfer task assignment"),
     }

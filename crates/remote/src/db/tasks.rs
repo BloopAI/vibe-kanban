@@ -60,7 +60,7 @@ pub struct UpdateSharedTaskData {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct TransferTaskAssignmentData {
+pub struct AssignTaskData {
     pub new_assignee_user_id: Option<String>,
     pub previous_assignee_user_id: Option<String>,
     pub version: Option<i64>,
@@ -281,11 +281,11 @@ impl<'a> SharedTaskRepository<'a> {
         Ok(task)
     }
 
-    pub async fn transfer_task_assignment(
+    pub async fn assign_task(
         &self,
         organization_id: &str,
         task_id: Uuid,
-        data: TransferTaskAssignmentData,
+        data: AssignTaskData,
     ) -> Result<SharedTask, SharedTaskError> {
         let mut tx = self.pool.begin().await.map_err(SharedTaskError::from)?;
 

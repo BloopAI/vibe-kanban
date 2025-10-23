@@ -62,6 +62,10 @@ export {
   ViewProcessesDialog,
   type ViewProcessesDialogProps,
 } from './tasks/ViewProcessesDialog';
+export {
+  TransferAssignmentDialog,
+  type TransferAssignmentDialogProps,
+} from './tasks/TransferAssignmentDialog';
 
 // Settings dialogs
 export {

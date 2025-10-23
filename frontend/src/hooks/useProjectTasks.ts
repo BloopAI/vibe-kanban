@@ -1,15 +1,11 @@
 import { useCallback, useMemo } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
-import type { TaskWithAttemptStatus } from 'shared/types';
+import type { SharedTask, TaskWithAttemptStatus } from 'shared/types';
 
-type SharedTaskRecord = {
-  id: string;
-  organization_id: string;
-  project_id: string;
-  title: string;
-  description: string | null;
-  status: TaskWithAttemptStatus['status'];
-  assignee_user_id: string | null;
+export type SharedTaskRecord = Omit<
+  SharedTask,
+  'version' | 'last_event_seq'
+> & {
   version: number;
   last_event_seq: number | null;
   created_at: string | Date;
@@ -24,6 +20,7 @@ type TasksState = {
 interface UseProjectTasksResult {
   tasks: TaskWithAttemptStatus[];
   tasksById: Record<string, TaskWithAttemptStatus>;
+  sharedTasksById: Record<string, SharedTaskRecord>;
   isLoading: boolean;
   isConnected: boolean;
   error: string | null;
@@ -83,7 +80,7 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
 
   const isLoading = !data && !error; // until first snapshot
 
-  return { tasks, tasksById, isLoading, isConnected, error };
+  return { tasks, tasksById, sharedTasksById, isLoading, isConnected, error };
 };
 
 function convertSharedTask(task: SharedTaskRecord): TaskWithAttemptStatus {

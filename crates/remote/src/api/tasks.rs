@@ -22,9 +22,8 @@ pub struct UpdateSharedTaskRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TransferSharedTaskAssignmentRequest {
+pub struct AssignSharedTaskRequest {
     pub new_assignee_user_id: Option<String>,
-    pub previous_assignee_user_id: Option<String>,
     pub version: Option<i64>,
 }
 

@@ -147,6 +147,7 @@ export function ProjectTasks() {
   const {
     tasks,
     tasksById,
+    sharedTasksById,
     isLoading,
     error: streamError,
   } = useProjectTasks(projectId || '');
@@ -652,6 +653,7 @@ export function ProjectTasks() {
       <div className="w-full h-full overflow-x-auto overflow-y-auto overscroll-x-contain touch-pan-y">
         <TaskKanbanBoard
           groupedTasks={groupedFilteredTasks}
+          sharedTasksById={sharedTasksById}
           onDragEnd={handleDragEnd}
           onViewTaskDetails={handleViewTaskDetails}
           selectedTask={selectedTask || undefined}
@@ -660,6 +662,20 @@ export function ProjectTasks() {
       </div>
     );
 
+  const getSharedTask = useCallback(
+    (task: Task | null | undefined) => {
+      if (!task) return undefined;
+      if (task.executor === 'shared') {
+        return sharedTasksById[task.id];
+      }
+      if (task.shared_task_id) {
+        return sharedTasksById[task.shared_task_id];
+      }
+      return undefined;
+    },
+    [sharedTasksById]
+  );
+
   const rightHeader = selectedTask ? (
     <NewCardHeader
       className="shrink-0"
@@ -667,6 +683,7 @@ export function ProjectTasks() {
         isTaskView ? (
           <TaskPanelHeaderActions
             task={selectedTask}
+            sharedTask={getSharedTask(selectedTask)}
             onClose={() =>
               navigate(`/projects/${projectId}/tasks`, { replace: true })
             }
@@ -676,6 +693,7 @@ export function ProjectTasks() {
             mode={mode}
             onModeChange={setMode}
             task={selectedTask}
+            sharedTask={getSharedTask(selectedTask)}
             attempt={attempt ?? null}
             onClose={() =>
               navigate(`/projects/${projectId}/tasks`, { replace: true })

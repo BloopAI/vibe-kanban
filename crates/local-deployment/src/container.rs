@@ -76,6 +76,7 @@ pub struct LocalContainerService {
 }
 
 impl LocalContainerService {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         db: DBService,
         msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,

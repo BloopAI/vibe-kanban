@@ -5,7 +5,10 @@ use db::{
     models::{project::Project, shared_task::SharedTask, task::Task},
 };
 use remote::{
-    api::tasks::{CreateSharedTaskRequest, SharedTaskResponse, UpdateSharedTaskRequest},
+    api::tasks::{
+        AssignSharedTaskRequest, CreateSharedTaskRequest, SharedTaskResponse,
+        UpdateSharedTaskRequest,
+    },
     db::{projects::ProjectMetadata, tasks::SharedTask as RemoteSharedTask},
 };
 use reqwest::{Client as HttpClient, StatusCode};
@@ -131,6 +134,28 @@ impl SharePublisher {
         self.update_shared_task(&task, session).await
     }
 
+    pub async fn assign_shared_task(
+        &self,
+        shared_task: &SharedTask,
+        session: Option<&ClerkSession>,
+        new_assignee_user_id: Option<String>,
+        version: Option<i64>,
+    ) -> Result<SharedTask, ShareError> {
+        let session = self.resolve_session(session)?;
+        let payload = AssignSharedTaskRequest {
+            new_assignee_user_id,
+            version,
+        };
+
+        let remote_task = RemoteTaskClient::new(&self.client, &self.config)
+            .assign_task(&session, shared_task.id, &payload)
+            .await?;
+
+        let input = convert_remote_task(&remote_task, shared_task.project_id, None);
+        let record = SharedTask::upsert(&self.db.pool, input).await?;
+        Ok(record)
+    }
+
     async fn sync_shared_task(
         &self,
         task: &Task,
@@ -222,6 +247,24 @@ impl<'a> RemoteTaskClient<'a> {
         let response = self
             .http
             .patch(self.config.update_task_endpoint(task_id)?)
+            .bearer_auth(session.bearer())
+            .json(payload)
+            .send()
+            .await
+            .map_err(ShareError::Transport)?;
+
+        Self::parse_response(response).await
+    }
+
+    async fn assign_task(
+        &self,
+        session: &ClerkSession,
+        task_id: Uuid,
+        payload: &AssignSharedTaskRequest,
+    ) -> Result<RemoteSharedTask, ShareError> {
+        let response = self
+            .http
+            .post(self.config.assign_endpoint(task_id)?)
             .bearer_auth(session.bearer())
             .json(payload)
             .send()

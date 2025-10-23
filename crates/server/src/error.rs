@@ -57,6 +57,8 @@ pub enum ApiError {
     Unauthorized,
     #[error("Conflict: {0}")]
     Conflict(String),
+    #[error("Forbidden: {0}")]
+    Forbidden(String),
 }
 
 impl From<Git2Error> for ApiError {
@@ -117,6 +119,7 @@ impl IntoResponse for ApiError {
             ApiError::Multipart(_) => (StatusCode::BAD_REQUEST, "MultipartError"),
             ApiError::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized"),
             ApiError::Conflict(_) => (StatusCode::CONFLICT, "ConflictError"),
+            ApiError::Forbidden(_) => (StatusCode::FORBIDDEN, "ForbiddenError"),
         };
 
         let error_message = match &self {
@@ -142,6 +145,7 @@ impl IntoResponse for ApiError {
             ApiError::Multipart(_) => "Failed to upload file. Please ensure the file is valid and try again.".to_string(),
             ApiError::Unauthorized => "Unauthorized. Please sign in again.".to_string(),
             ApiError::Conflict(msg) => msg.clone(),
+            ApiError::Forbidden(msg) => msg.clone(),
             ApiError::Drafts(drafts_err) => match drafts_err {
                 DraftsServiceError::Conflict(msg) => msg.clone(),
                 DraftsServiceError::Database(_) => format!("{}: {}", error_type, drafts_err),
