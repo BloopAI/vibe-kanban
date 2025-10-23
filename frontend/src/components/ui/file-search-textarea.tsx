@@ -69,21 +69,46 @@ export const FileSearchTextarea = forwardRef<
 
   // Search for both tags and files when query changes
   useEffect(() => {
+    // Special case: empty query after @ shows ALL tags (no files)
+    if (searchQuery.length === 0 && atSymbolPosition !== -1) {
+      const fetchAllTags = async () => {
+        setIsLoading(true);
+        try {
+          const tags = await tagsApi.list();
+          const results = tags.map((tag) => ({ type: 'tag' as const, tag }));
+          setSearchResults(results);
+          setShowDropdown(results.length > 0);
+          setSelectedIndex(-1);
+        } catch (error) {
+          console.error('Failed to fetch tags:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchAllTags();
+      return;
+    }
+
+    // No @ context, hide dropdown
     if (searchQuery.length < 1) {
       setSearchResults([]);
       setShowDropdown(false);
       return;
     }
 
+    // Normal case: search both tags and files with query
     const searchBoth = async () => {
       setIsLoading(true);
 
       try {
         const results: SearchResultItem[] = [];
 
-        // Fetch tags with backend search
-        const tags = await tagsApi.list({ search: searchQuery });
-        results.push(...tags.map((tag) => ({ type: 'tag' as const, tag })));
+        // Fetch all tags and filter client-side
+        const tags = await tagsApi.list();
+        const filteredTags = tags.filter((tag) =>
+          tag.tag_name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+        results.push(...filteredTags.map((tag) => ({ type: 'tag' as const, tag })));
 
         // Then fetch files (if projectId is available)
         if (projectId) {
@@ -117,7 +142,7 @@ export const FileSearchTextarea = forwardRef<
 
     const debounceTimer = setTimeout(searchBoth, 300);
     return () => clearTimeout(debounceTimer);
-  }, [searchQuery, projectId]);
+  }, [searchQuery, projectId, atSymbolPosition]);
 
   const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     if (!onPasteFiles) return;
