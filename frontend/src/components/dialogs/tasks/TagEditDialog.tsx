@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,6 +25,7 @@ export type TagEditResult = 'saved' | 'canceled';
 
 export const TagEditDialog = NiceModal.create<TagEditDialogProps>(({ tag }) => {
   const modal = useModal();
+  const { t } = useTranslation('settings');
   const [formData, setFormData] = useState({
     tag_name: '',
     content: '',
@@ -52,7 +54,7 @@ export const TagEditDialog = NiceModal.create<TagEditDialogProps>(({ tag }) => {
 
   const handleSave = async () => {
     if (!formData.tag_name.trim()) {
-      setError('Tag name is required');
+      setError(t('settings.general.tags.dialog.errors.nameRequired'));
       return;
     }
 
@@ -77,7 +79,7 @@ export const TagEditDialog = NiceModal.create<TagEditDialogProps>(({ tag }) => {
       modal.resolve('saved' as TagEditResult);
       modal.hide();
     } catch (err: any) {
-      setError(err.message || 'Failed to save tag');
+      setError(err.message || t('settings.general.tags.dialog.errors.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -104,16 +106,15 @@ export const TagEditDialog = NiceModal.create<TagEditDialogProps>(({ tag }) => {
     <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>{isEditMode ? 'Edit Tag' : 'Create Tag'}</DialogTitle>
+          <DialogTitle>{isEditMode ? t('settings.general.tags.dialog.editTitle') : t('settings.general.tags.dialog.createTitle')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div>
             <Label htmlFor="tag-name">
-              Tag Name <span className="text-destructive">*</span>
+              {t('settings.general.tags.dialog.tagName.label')} <span className="text-destructive">{t('settings.general.tags.dialog.tagName.required')}</span>
             </Label>
             <p className="text-xs text-muted-foreground mb-1.5">
-              Use this name with @ in task descriptions: @
-              {formData.tag_name || 'tag_name'}
+              {t('settings.general.tags.dialog.tagName.hint', { tagName: formData.tag_name || 'tag_name' })}
             </p>
             <Input
               id="tag-name"
@@ -125,13 +126,13 @@ export const TagEditDialog = NiceModal.create<TagEditDialogProps>(({ tag }) => {
                 // Validate in real-time for spaces
                 if (value.includes(' ')) {
                   setTagNameError(
-                    'Tag name cannot contain spaces. Use underscores instead (e.g., my_tag)'
+                    t('settings.general.tags.dialog.tagName.error')
                   );
                 } else {
                   setTagNameError(null);
                 }
               }}
-              placeholder="e.g., bug_fix, test_plan, api_docs"
+              placeholder={t('settings.general.tags.dialog.tagName.placeholder')}
               disabled={saving}
               autoFocus
               aria-invalid={!!tagNameError}
@@ -143,11 +144,10 @@ export const TagEditDialog = NiceModal.create<TagEditDialogProps>(({ tag }) => {
           </div>
           <div>
             <Label htmlFor="tag-content">
-              Content <span className="text-destructive">*</span>
+              {t('settings.general.tags.dialog.content.label')} <span className="text-destructive">{t('settings.general.tags.dialog.content.required')}</span>
             </Label>
             <p className="text-xs text-muted-foreground mb-1.5">
-              Text that will be inserted when you use @
-              {formData.tag_name || 'tag_name'} in task descriptions
+              {t('settings.general.tags.dialog.content.hint', { tagName: formData.tag_name || 'tag_name' })}
             </p>
             <Textarea
               id="tag-content"
@@ -156,7 +156,7 @@ export const TagEditDialog = NiceModal.create<TagEditDialogProps>(({ tag }) => {
                 const value = e.target.value;
                 setFormData({ ...formData, content: value });
               }}
-              placeholder="Enter the text that will be inserted when you use this tag"
+              placeholder={t('settings.general.tags.dialog.content.placeholder')}
               rows={6}
               disabled={saving}
             />
@@ -165,14 +165,14 @@ export const TagEditDialog = NiceModal.create<TagEditDialogProps>(({ tag }) => {
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={handleCancel} disabled={saving}>
-            Cancel
+            {t('settings.general.tags.dialog.buttons.cancel')}
           </Button>
           <Button
             onClick={handleSave}
             disabled={saving || !!tagNameError || !formData.content.trim()}
           >
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isEditMode ? 'Update' : 'Create'}
+            {isEditMode ? t('settings.general.tags.dialog.buttons.update') : t('settings.general.tags.dialog.buttons.create')}
           </Button>
         </DialogFooter>
       </DialogContent>

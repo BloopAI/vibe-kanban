@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
 import { tagsApi } from '@/lib/api';
@@ -6,6 +7,7 @@ import { showTagEdit } from '@/lib/modals';
 import type { Tag } from 'shared/types';
 
 export function TagManager() {
+  const { t } = useTranslation('settings');
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -45,7 +47,7 @@ export function TagManager() {
   const handleDelete = useCallback(
     async (tag: Tag) => {
       if (
-        !confirm(`Are you sure you want to delete the tag "${tag.tag_name}"?`)
+        !confirm(t('settings.general.tags.manager.deleteConfirm', { tagName: tag.tag_name }))
       ) {
         return;
       }
@@ -57,7 +59,7 @@ export function TagManager() {
         console.error('Failed to delete tag:', err);
       }
     },
-    [fetchTags]
+    [fetchTags, t]
   );
 
   if (loading) {
@@ -71,17 +73,16 @@ export function TagManager() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">Task Tags</h3>
+        <h3 className="text-lg font-semibold">{t('settings.general.tags.manager.title')}</h3>
         <Button onClick={() => handleOpenDialog()} size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          Add Tag
+          {t('settings.general.tags.manager.addTag')}
         </Button>
       </div>
 
       {tags.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
-          No tags yet. Create reusable text snippets for common task
-          descriptions. Use @tag_name in any task.
+          {t('settings.general.tags.manager.noTags')}
         </div>
       ) : (
         <div className="border rounded-lg overflow-hidden">
@@ -90,11 +91,11 @@ export function TagManager() {
               <thead className="border-b bg-muted/50 sticky top-0">
                 <tr>
                   <th className="text-left p-2 text-sm font-medium">
-                    Tag Name
+                    {t('settings.general.tags.manager.table.tagName')}
                   </th>
-                  <th className="text-left p-2 text-sm font-medium">Content</th>
+                  <th className="text-left p-2 text-sm font-medium">{t('settings.general.tags.manager.table.content')}</th>
                   <th className="text-right p-2 text-sm font-medium">
-                    Actions
+                    {t('settings.general.tags.manager.table.actions')}
                   </th>
                 </tr>
               </thead>
@@ -122,7 +123,7 @@ export function TagManager() {
                           size="icon"
                           className="h-7 w-7"
                           onClick={() => handleOpenDialog(tag)}
-                          title="Edit tag"
+                          title={t('settings.general.tags.manager.actions.editTag')}
                         >
                           <Edit2 className="h-3 w-3" />
                         </Button>
@@ -131,7 +132,7 @@ export function TagManager() {
                           size="icon"
                           className="h-7 w-7"
                           onClick={() => handleDelete(tag)}
-                          title="Delete tag"
+                          title={t('settings.general.tags.manager.actions.deleteTag')}
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>
