@@ -85,11 +85,12 @@ export const FileSearchTextarea = forwardRef<
 
         // Fetch all tags and filter client-side (show all if empty query)
         const tags = await tagsApi.list();
-        const filteredTags = searchQuery.length === 0
-          ? tags
-          : tags.filter((tag) =>
-              tag.tag_name.toLowerCase().includes(searchQuery.toLowerCase())
-            );
+        const filteredTags =
+          searchQuery.length === 0
+            ? tags
+            : tags.filter((tag) =>
+                tag.tag_name.toLowerCase().includes(searchQuery.toLowerCase())
+              );
         results.push(
           ...filteredTags.map((tag) => ({ type: 'tag' as const, tag }))
         );
