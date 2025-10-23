@@ -36,10 +36,6 @@ jobs:
       new_version: ${{ steps.version.outputs.new_version }}
       branch_suffix: ${{ steps.branch.outputs.suffix }}
     steps:
-
-      - name: Setup Node
-        uses: ./.github/actions/setup-node
-
       - name: Cache cargo-edit
         uses: actions/cache@v3
         id: cache-cargo-edit
@@ -55,6 +51,9 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           ssh-key: ${{ secrets.DEPLOY_KEY }}
+
+      - name: setup node
+        uses: ./.github/actions/setup-node
 
       - name: Generate branch suffix
         id: branch
