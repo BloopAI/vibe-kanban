@@ -30,6 +30,7 @@ export const TagEditDialog = NiceModal.create<TagEditDialogProps>(({ tag }) => {
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tagNameError, setTagNameError] = useState<string | null>(null);
 
   const isEditMode = Boolean(tag);
 
@@ -51,13 +52,6 @@ export const TagEditDialog = NiceModal.create<TagEditDialogProps>(({ tag }) => {
   const handleSave = async () => {
     if (!formData.tag_name.trim()) {
       setError('Tag name is required');
-      return;
-    }
-
-    if (formData.tag_name.includes(' ')) {
-      setError(
-        'Tag name cannot contain spaces. Use underscores instead (e.g., my_tag)'
-      );
       return;
     }
 
@@ -125,13 +119,28 @@ export const TagEditDialog = NiceModal.create<TagEditDialogProps>(({ tag }) => {
             <Input
               id="tag-name"
               value={formData.tag_name}
-              onChange={(e) =>
-                setFormData({ ...formData, tag_name: e.target.value })
-              }
+              onChange={(e) => {
+                const value = e.target.value;
+                setFormData({ ...formData, tag_name: value });
+
+                // Validate in real-time
+                if (value.includes(' ')) {
+                  setTagNameError(
+                    'Tag name cannot contain spaces. Use underscores instead (e.g., my_tag)'
+                  );
+                } else {
+                  setTagNameError(null);
+                }
+              }}
               placeholder="e.g., bug_fix, test_plan, api_docs"
               disabled={saving}
               autoFocus
+              aria-invalid={!!tagNameError}
+              className={tagNameError ? 'border-destructive' : undefined}
             />
+            {tagNameError && (
+              <p className="text-sm text-destructive">{tagNameError}</p>
+            )}
           </div>
           <div>
             <Label htmlFor="tag-content">Content</Label>
@@ -156,7 +165,7 @@ export const TagEditDialog = NiceModal.create<TagEditDialogProps>(({ tag }) => {
           <Button variant="outline" onClick={handleCancel} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={saving}>
+          <Button onClick={handleSave} disabled={saving || !!tagNameError}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isEditMode ? 'Update' : 'Create'}
           </Button>
