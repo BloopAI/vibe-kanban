@@ -1,12 +1,22 @@
 import { useEffect, useRef, useState, forwardRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
-import { projectsApi } from '@/lib/api';
+import { projectsApi, tagsApi } from '@/lib/api';
+import { Tag as TagIcon, FileText } from 'lucide-react';
 
-import type { SearchResult } from 'shared/types';
+import type { SearchResult, Tag } from 'shared/types';
 
 interface FileSearchResult extends SearchResult {
   name: string;
+}
+
+// Unified result type for both tags and files
+interface SearchResultItem {
+  type: 'tag' | 'file';
+  // For tags
+  tag?: Tag;
+  // For files
+  file?: FileSearchResult;
 }
 
 interface FileSearchTextareaProps {
@@ -45,7 +55,7 @@ export const FileSearchTextarea = forwardRef<
   ref
 ) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<FileSearchResult[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchResultItem[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
 
@@ -57,37 +67,64 @@ export const FileSearchTextarea = forwardRef<
     (ref as React.RefObject<HTMLTextAreaElement>) || internalRef;
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Search for files when query changes
+  // Search for both tags and files when query changes
   useEffect(() => {
-    if (!searchQuery || !projectId || searchQuery.length < 1) {
+    // No @ context, hide dropdown
+    if (atSymbolPosition === -1) {
       setSearchResults([]);
       setShowDropdown(false);
       return;
     }
 
-    const searchFiles = async () => {
+    // Normal case: search both tags and files with query
+    const searchBoth = async () => {
       setIsLoading(true);
 
       try {
-        const result = await projectsApi.searchFiles(projectId, searchQuery);
-        // Transform SearchResult to FileSearchResult by adding name field
-        const fileResults: FileSearchResult[] = result.map((item) => ({
-          ...item,
-          name: item.path.split('/').pop() || item.path,
-        }));
-        setSearchResults(fileResults);
-        setShowDropdown(true);
+        const results: SearchResultItem[] = [];
+
+        // Fetch all tags and filter client-side
+        const tags = await tagsApi.list();
+        const filteredTags = tags.filter((tag) =>
+          tag.tag_name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+        results.push(
+          ...filteredTags.map((tag) => ({ type: 'tag' as const, tag }))
+        );
+
+        // Fetch files (if projectId is available and query has content)
+        if (projectId && searchQuery.length > 0) {
+          const fileResults = await projectsApi.searchFiles(
+            projectId,
+            searchQuery
+          );
+          const fileSearchResults: FileSearchResult[] = fileResults.map(
+            (item) => ({
+              ...item,
+              name: item.path.split('/').pop() || item.path,
+            })
+          );
+          results.push(
+            ...fileSearchResults.map((file) => ({
+              type: 'file' as const,
+              file,
+            }))
+          );
+        }
+
+        setSearchResults(results);
+        setShowDropdown(results.length > 0);
         setSelectedIndex(-1);
       } catch (error) {
-        console.error('Failed to search files:', error);
+        console.error('Failed to search:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    const debounceTimer = setTimeout(searchFiles, 300);
+    const debounceTimer = setTimeout(searchBoth, 300);
     return () => clearTimeout(debounceTimer);
-  }, [searchQuery, projectId]);
+  }, [searchQuery, projectId, atSymbolPosition]);
 
   const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     if (!onPasteFiles) return;
@@ -146,16 +183,27 @@ export const FileSearchTextarea = forwardRef<
     setAtSymbolPosition(-1);
   };
 
-  // Handle keyboard navigation
-
-  // Select a file and insert it into the text
-  const selectFile = (file: FileSearchResult) => {
+  // Select a result item (either tag or file) and insert it
+  const selectResult = (result: SearchResultItem) => {
     if (atSymbolPosition === -1) return;
 
     const beforeAt = value.slice(0, atSymbolPosition);
     const afterQuery = value.slice(atSymbolPosition + 1 + searchQuery.length);
-    const newValue = beforeAt + file.path + afterQuery;
 
+    let insertText = '';
+    let newCursorPos = atSymbolPosition;
+
+    if (result.type === 'tag' && result.tag) {
+      // Insert tag content
+      insertText = result.tag.content || '';
+      newCursorPos = atSymbolPosition + insertText.length;
+    } else if (result.type === 'file' && result.file) {
+      // Insert file path (keep @ for files)
+      insertText = result.file.path;
+      newCursorPos = atSymbolPosition + insertText.length;
+    }
+
+    const newValue = beforeAt + insertText + afterQuery;
     onChange(newValue);
     setShowDropdown(false);
     setSearchQuery('');
@@ -164,19 +212,18 @@ export const FileSearchTextarea = forwardRef<
     // Focus back to textarea
     setTimeout(() => {
       if (textareaRef.current) {
-        const newCursorPos = atSymbolPosition + file.path.length;
         textareaRef.current.focus();
         textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
       }
     }, 0);
   };
 
-  // Calculate dropdown position relative to textarea (simpler, more stable approach)
+  // Calculate dropdown position relative to textarea
   const getDropdownPosition = () => {
     if (!textareaRef.current) return { top: 0, left: 0, maxHeight: 240 };
 
     const textareaRect = textareaRef.current.getBoundingClientRect();
-    const dropdownWidth = 256; // min-w-64 = 256px
+    const dropdownWidth = 320; // Wider for tag content preview
     const maxDropdownHeight = 320;
     const minDropdownHeight = 120;
 
@@ -260,7 +307,7 @@ export const FileSearchTextarea = forwardRef<
         case 'Enter':
           if (selectedIndex >= 0) {
             e.preventDefault();
-            selectFile(searchResults[selectedIndex]);
+            selectResult(searchResults[selectedIndex]);
             return;
           }
           break;
@@ -283,6 +330,10 @@ export const FileSearchTextarea = forwardRef<
     // Propagate event to parent component for additional handling
     onKeyDown?.(e);
   };
+
+  // Group results by type for rendering
+  const tagResults = searchResults.filter((r) => r.type === 'tag');
+  const fileResults = searchResults.filter((r) => r.type === 'file');
 
   return (
     <div
@@ -307,11 +358,12 @@ export const FileSearchTextarea = forwardRef<
         createPortal(
           <div
             ref={dropdownRef}
-            className="fixed bg-background border border-border rounded-md shadow-lg overflow-y-auto min-w-64"
+            className="fixed bg-background border border-border rounded-md shadow-lg overflow-y-auto"
             style={{
               top: dropdownPosition.top,
               left: dropdownPosition.left,
               maxHeight: dropdownPosition.maxHeight,
+              minWidth: '320px',
               zIndex: 10000, // Higher than dialog z-[9999]
             }}
           >
@@ -321,34 +373,81 @@ export const FileSearchTextarea = forwardRef<
               </div>
             ) : searchResults.length === 0 ? (
               <div className="p-2 text-sm text-muted-foreground">
-                No files found
+                No tags or files found
               </div>
             ) : (
               <div className="py-1">
-                {searchResults.map((file, index) => (
-                  <div
-                    key={file.path}
-                    className={`px-3 py-2 cursor-pointer text-sm ${
-                      index === selectedIndex
-                        ? 'bg-muted text-foreground'
-                        : 'hover:bg-muted'
-                    }`}
-                    onClick={() => selectFile(file)}
-                    aria-selected={index === selectedIndex}
-                    role="option"
-                  >
-                    <div className="font-medium truncate">{file.name}</div>
-                    <div
-                      className={`text-xs truncate ${
-                        index === selectedIndex
-                          ? 'text-muted-foreground'
-                          : 'text-muted-foreground'
-                      }`}
-                    >
-                      {file.path}
+                {/* Tags Section */}
+                {tagResults.length > 0 && (
+                  <>
+                    <div className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase">
+                      Tags
                     </div>
-                  </div>
-                ))}
+                    {tagResults.map((result) => {
+                      const index = searchResults.indexOf(result);
+                      const tag = result.tag!;
+                      return (
+                        <div
+                          key={`tag-${tag.id}`}
+                          className={`px-3 py-2 cursor-pointer text-sm ${
+                            index === selectedIndex
+                              ? 'bg-muted text-foreground'
+                              : 'hover:bg-muted'
+                          }`}
+                          onClick={() => selectResult(result)}
+                          aria-selected={index === selectedIndex}
+                          role="option"
+                        >
+                          <div className="flex items-center gap-2 font-medium">
+                            <TagIcon className="h-3.5 w-3.5 text-blue-600" />
+                            <span>@{tag.tag_name}</span>
+                          </div>
+                          {tag.content && (
+                            <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                              {tag.content.slice(0, 60)}
+                              {tag.content.length > 60 ? '...' : ''}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
+
+                {/* Files Section */}
+                {fileResults.length > 0 && (
+                  <>
+                    {tagResults.length > 0 && <div className="border-t my-1" />}
+                    <div className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase">
+                      Files
+                    </div>
+                    {fileResults.map((result) => {
+                      const index = searchResults.indexOf(result);
+                      const file = result.file!;
+                      return (
+                        <div
+                          key={`file-${file.path}`}
+                          className={`px-3 py-2 cursor-pointer text-sm ${
+                            index === selectedIndex
+                              ? 'bg-muted text-foreground'
+                              : 'hover:bg-muted'
+                          }`}
+                          onClick={() => selectResult(result)}
+                          aria-selected={index === selectedIndex}
+                          role="option"
+                        >
+                          <div className="flex items-center gap-2 font-medium truncate">
+                            <FileText className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                            <span>{file.name}</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground truncate">
+                            {file.path}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
               </div>
             )}
           </div>,

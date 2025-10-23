@@ -12,7 +12,7 @@ import {
   CreateTask,
   CreateAndStartTaskRequest,
   CreateTaskAttemptBody,
-  CreateTaskTemplate,
+  CreateTag,
   DeviceFlowStartResponse,
   DevicePollStatus,
   DirectoryListResponse,
@@ -27,11 +27,12 @@ import {
   Task,
   TaskAttempt,
   TaskRelationships,
-  TaskTemplate,
+  Tag,
+  TagSearchParams,
   TaskWithAttemptStatus,
   UpdateProject,
   UpdateTask,
-  UpdateTaskTemplate,
+  UpdateTag,
   UserSystemInfo,
   GitHubServiceError,
   UpdateRetryFollowUpDraftRequest,
@@ -673,51 +674,39 @@ export const githubApi = {
   },
 };
 
-// Task Templates APIs
-export const templatesApi = {
-  list: async (): Promise<TaskTemplate[]> => {
-    const response = await makeRequest('/api/templates');
-    return handleApiResponse<TaskTemplate[]>(response);
+// Task Tags APIs (all tags are global)
+export const tagsApi = {
+  list: async (params?: TagSearchParams): Promise<Tag[]> => {
+    const queryParam = params?.search
+      ? `?search=${encodeURIComponent(params.search)}`
+      : '';
+    const response = await makeRequest(`/api/tags${queryParam}`);
+    return handleApiResponse<Tag[]>(response);
   },
 
-  listGlobal: async (): Promise<TaskTemplate[]> => {
-    const response = await makeRequest('/api/templates?global=true');
-    return handleApiResponse<TaskTemplate[]>(response);
+  get: async (tagId: string): Promise<Tag> => {
+    const response = await makeRequest(`/api/tags/${tagId}`);
+    return handleApiResponse<Tag>(response);
   },
 
-  listByProject: async (projectId: string): Promise<TaskTemplate[]> => {
-    const response = await makeRequest(
-      `/api/templates?project_id=${projectId}`
-    );
-    return handleApiResponse<TaskTemplate[]>(response);
-  },
-
-  get: async (templateId: string): Promise<TaskTemplate> => {
-    const response = await makeRequest(`/api/templates/${templateId}`);
-    return handleApiResponse<TaskTemplate>(response);
-  },
-
-  create: async (data: CreateTaskTemplate): Promise<TaskTemplate> => {
-    const response = await makeRequest('/api/templates', {
+  create: async (data: CreateTag): Promise<Tag> => {
+    const response = await makeRequest('/api/tags', {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    return handleApiResponse<TaskTemplate>(response);
+    return handleApiResponse<Tag>(response);
   },
 
-  update: async (
-    templateId: string,
-    data: UpdateTaskTemplate
-  ): Promise<TaskTemplate> => {
-    const response = await makeRequest(`/api/templates/${templateId}`, {
+  update: async (tagId: string, data: UpdateTag): Promise<Tag> => {
+    const response = await makeRequest(`/api/tags/${tagId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
-    return handleApiResponse<TaskTemplate>(response);
+    return handleApiResponse<Tag>(response);
   },
 
-  delete: async (templateId: string): Promise<void> => {
-    const response = await makeRequest(`/api/templates/${templateId}`, {
+  delete: async (tagId: string): Promise<void> => {
+    const response = await makeRequest(`/api/tags/${tagId}`, {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);

@@ -119,8 +119,51 @@
         }
       },
       "taskTemplates": {
-        "title": "Plantillas de Tareas",
-        "description": "Gestiona las plantillas globales que se pueden usar en todos los proyectos."
+        "title": "Etiquetas",
+        "description": "Crea fragmentos de texto reutilizables que se pueden insertar en descripciones de tareas usando @nombre_etiqueta."
+      },
+      "tags": {
+        "manager": {
+          "title": "Etiquetas de Tareas",
+          "addTag": "Agregar Etiqueta",
+          "noTags": "Aún no hay etiquetas. Crea fragmentos de texto reutilizables para descripciones de tareas comunes. Usa @nombre_etiqueta en cualquier tarea.",
+          "table": {
+            "tagName": "Nombre de Etiqueta",
+            "content": "Contenido",
+            "actions": "Acciones"
+          },
+          "actions": {
+            "editTag": "Editar etiqueta",
+            "deleteTag": "Eliminar etiqueta"
+          },
+          "deleteConfirm": "¿Estás seguro de que deseas eliminar la etiqueta \"{{tagName}}\"?"
+        },
+        "dialog": {
+          "createTitle": "Crear Etiqueta",
+          "editTitle": "Editar Etiqueta",
+          "tagName": {
+            "label": "Nombre de Etiqueta",
+            "required": "*",
+            "hint": "Usa este nombre con @ en descripciones de tareas: @{{tagName}}",
+            "placeholder": "ej., corrección_error, plan_prueba, docs_api",
+            "error": "El nombre de la etiqueta no puede contener espacios. Usa guiones bajos en su lugar (ej., mi_etiqueta)"
+          },
+          "content": {
+            "label": "Contenido",
+            "required": "*",
+            "hint": "Texto que se insertará cuando uses @{{tagName}} en descripciones de tareas",
+            "placeholder": "Ingresa el texto que se insertará cuando uses esta etiqueta"
+          },
+          "errors": {
+            "nameRequired": "El nombre de la etiqueta es obligatorio",
+            "saveFailed": "Error al guardar la etiqueta"
+          },
+          "buttons": {
+            "cancel": "Cancelar",
+            "create": "Crear",
+            "update": "Actualizar"
+          }
+        }
       },
       "safety": {
         "title": "Avisos legales y de seguridad",

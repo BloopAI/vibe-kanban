@@ -119,8 +119,51 @@
         }
       },
       "taskTemplates": {
-        "title": "작업 템플릿",
-        "description": "모든 프로젝트에서 사용할 수 있는 전역 작업 템플릿을 관리하세요."
+        "title": "태그",
+        "description": "@tag_name을 사용하여 작업 설명에 삽입할 수 있는 재사용 가능한 텍스트 스니펫을 만드세요."
+      },
+      "tags": {
+        "manager": {
+          "title": "작업 태그",
+          "addTag": "태그 추가",
+          "noTags": "아직 태그가 없습니다. 일반적인 작업 설명을 위한 재사용 가능한 텍스트 스니펫을 만드세요. @tag_name을 사용하세요.",
+          "table": {
+            "tagName": "태그 이름",
+            "content": "내용",
+            "actions": "작업"
+          },
+          "actions": {
+            "editTag": "태그 편집",
+            "deleteTag": "태그 삭제"
+          },
+          "deleteConfirm": "태그 \"{{tagName}}\"를 삭제하시겠습니까?"
+        },
+        "dialog": {
+          "createTitle": "태그 생성",
+          "editTitle": "태그 편집",
+          "tagName": {
+            "label": "태그 이름",
+            "required": "*",
+            "hint": "작업 설명에서 @와 함께 사용: @{{tagName}}",
+            "placeholder": "예: bug_fix, test_plan, api_docs",
+            "error": "태그 이름에는 공백을 포함할 수 없습니다. 밑줄을 사용하세요 (예: my_tag)"
+          },
+          "content": {
+            "label": "내용",
+            "required": "*",
+            "hint": "작업 설명에서 @{{tagName}}을 사용할 때 삽입될 텍스트",
+            "placeholder": "이 태그를 사용할 때 삽입될 텍스트를 입력하세요"
+          },
+          "errors": {
+            "nameRequired": "태그 이름은 필수입니다",
+            "saveFailed": "태그 저장에 실패했습니다"
+          },
+          "buttons": {
+            "cancel": "취소",
+            "create": "생성",
+            "update": "업데이트"
+          }
+        }
       },
       "safety": {
         "title": "안전 및 면책 조항",

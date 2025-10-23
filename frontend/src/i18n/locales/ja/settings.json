@@ -119,8 +119,51 @@
         }
       },
       "taskTemplates": {
-        "title": "タスクテンプレート",
-        "description": "すべてのプロジェクトで使用できるグローバルタスクテンプレートを管理します。"
+        "title": "タグ",
+        "description": "@tag_nameを使用してタスクの説明に挿入できる再利用可能なテキストスニペットを作成します。"
+      },
+      "tags": {
+        "manager": {
+          "title": "タスクタグ",
+          "addTag": "タグを追加",
+          "noTags": "タグはまだありません。タスクの説明によく使うテキストスニペットを作成してください。@tag_nameで使用できます。",
+          "table": {
+            "tagName": "タグ名",
+            "content": "内容",
+            "actions": "操作"
+          },
+          "actions": {
+            "editTag": "タグを編集",
+            "deleteTag": "タグを削除"
+          },
+          "deleteConfirm": "タグ「{{tagName}}」を削除してもよろしいですか？"
+        },
+        "dialog": {
+          "createTitle": "タグを作成",
+          "editTitle": "タグを編集",
+          "tagName": {
+            "label": "タグ名",
+            "required": "*",
+            "hint": "タスクの説明で@を付けて使用します：@{{tagName}}",
+            "placeholder": "例：bug_fix、test_plan、api_docs",
+            "error": "タグ名にスペースを含めることはできません。アンダースコアを使用してください（例：my_tag）"
+          },
+          "content": {
+            "label": "内容",
+            "required": "*",
+            "hint": "タスクの説明で@{{tagName}}を使用すると挿入されるテキスト",
+            "placeholder": "このタグを使用するときに挿入されるテキストを入力してください"
+          },
+          "errors": {
+            "nameRequired": "タグ名は必須です",
+            "saveFailed": "タグの保存に失敗しました"
+          },
+          "buttons": {
+            "cancel": "キャンセル",
+            "create": "作成",
+            "update": "更新"
+          }
+        }
       },
       "safety": {
         "title": "安全性と免責事項",

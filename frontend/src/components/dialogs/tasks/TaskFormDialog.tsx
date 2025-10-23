@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Globe2, Settings2, ChevronRight } from 'lucide-react';
+import { Settings2, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   ImageUploadSection,
@@ -21,14 +21,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { templatesApi, imagesApi, projectsApi, attemptsApi } from '@/lib/api';
+import { imagesApi, projectsApi, attemptsApi } from '@/lib/api';
 import { useTaskMutations } from '@/hooks/useTaskMutations';
 import { useUserSystem } from '@/components/config-provider';
 import { ExecutorProfileSelector } from '@/components/settings';
 import BranchSelector from '@/components/tasks/BranchSelector';
 import type {
   TaskStatus,
-  TaskTemplate,
   ImageResponse,
   GitBranch,
   ExecutorProfileId,
@@ -48,8 +47,7 @@ interface Task {
 
 export interface TaskFormDialogProps {
   task?: Task | null; // Optional for create mode
-  projectId?: string; // For file search functionality
-  initialTemplate?: TaskTemplate | null; // For pre-filling from template
+  projectId?: string; // For file search and tag functionality
   initialTask?: Task | null; // For duplicating an existing task
   initialBaseBranch?: string; // For pre-selecting base branch in spinoff
   parentTaskAttemptId?: string; // For linking to parent task attempt
@@ -59,7 +57,6 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
   ({
     task,
     projectId,
-    initialTemplate,
     initialTask,
     initialBaseBranch,
     parentTaskAttemptId,
@@ -73,8 +70,6 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
     const [status, setStatus] = useState<TaskStatus>('todo');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSubmittingAndStart, setIsSubmittingAndStart] = useState(false);
-    const [templates, setTemplates] = useState<TaskTemplate[]>([]);
-    const [selectedTemplate, setSelectedTemplate] = useState<string>('');
     const [showDiscardWarning, setShowDiscardWarning] = useState(false);
     const [images, setImages] = useState<ImageResponse[]>([]);
     const [newlyUploadedImageIds, setNewlyUploadedImageIds] = useState<
@@ -149,48 +144,27 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
         setTitle(initialTask.title);
         setDescription(initialTask.description || '');
         setStatus('todo'); // Always start duplicated tasks as 'todo'
-        setSelectedTemplate('');
         setImages([]);
         setNewlyUploadedImageIds([]);
-      } else if (initialTemplate) {
-        // Create mode with template - pre-fill from template
-        setTitle(initialTemplate.title);
-        setDescription(initialTemplate.description || '');
-        setStatus('todo');
-        setSelectedTemplate('');
       } else {
         // Create mode - reset to defaults
         setTitle('');
         setDescription('');
         setStatus('todo');
-        setSelectedTemplate('');
         setImages([]);
         setNewlyUploadedImageIds([]);
         setSelectedBranch('');
         setSelectedExecutorProfile(system.config?.executor_profile || null);
         setQuickstartExpanded(false);
       }
-    }, [
-      task,
-      initialTask,
-      initialTemplate,
-      modal.visible,
-      system.config?.executor_profile,
-    ]);
+    }, [task, initialTask, modal.visible, system.config?.executor_profile]);
 
-    // Fetch templates and branches when dialog opens in create mode
+    // Fetch branches when dialog opens in create mode
     useEffect(() => {
       if (modal.visible && !isEditMode && projectId) {
-        // Fetch templates and branches
-        Promise.all([
-          templatesApi.listByProject(projectId),
-          templatesApi.listGlobal(),
-          projectsApi.getBranches(projectId),
-        ])
-          .then(([projectTemplates, globalTemplates, projectBranches]) => {
-            // Combine templates with project templates first
-            setTemplates([...projectTemplates, ...globalTemplates]);
-
+        projectsApi
+          .getBranches(projectId)
+          .then((projectBranches) => {
             // Set branches and default to initialBaseBranch if provided, otherwise current branch
             setBranches(projectBranches);
 
@@ -255,22 +229,6 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
         setSelectedExecutorProfile(system.config.executor_profile);
       }
     }, [system.config?.executor_profile]);
-
-    // Handle template selection
-    const handleTemplateChange = (templateId: string) => {
-      setSelectedTemplate(templateId);
-      if (templateId === 'none') {
-        // Clear the form when "No template" is selected
-        setTitle('');
-        setDescription('');
-      } else if (templateId) {
-        const template = templates.find((t) => t.id === templateId);
-        if (template) {
-          setTitle(template.title);
-          setDescription(template.description || '');
-        }
-      }
-    };
 
     // Handle image upload success by inserting markdown into description
     const handleImageUploaded = useCallback((image: ImageResponse) => {
@@ -550,7 +508,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                   onChange={setDescription}
                   rows={3}
                   maxRows={8}
-                  placeholder="Add more details (optional). Type @ to search files."
+                  placeholder="Add more details (optional). Type @ to insert tags or search files."
                   className="mt-1.5"
                   disabled={isSubmitting || isSubmittingAndStart}
                   projectId={projectId}
@@ -572,54 +530,6 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                 collapsible={true}
                 defaultExpanded={false}
               />
-
-              {!isEditMode && templates.length > 0 && (
-                <div className="pt-2">
-                  <details className="group">
-                    <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors list-none flex items-center gap-2">
-                      <svg
-                        className="h-3 w-3 transition-transform group-open:rotate-90"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      Use a template
-                    </summary>
-                    <div className="mt-3 space-y-2">
-                      <p className="text-xs text-muted-foreground">
-                        Templates help you quickly create tasks with predefined
-                        content.
-                      </p>
-                      <Select
-                        value={selectedTemplate}
-                        onValueChange={handleTemplateChange}
-                      >
-                        <SelectTrigger id="task-template" className="w-full">
-                          <SelectValue placeholder="Choose a template to prefill this form" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">No template</SelectItem>
-                          {templates.map((template) => (
-                            <SelectItem key={template.id} value={template.id}>
-                              <div className="flex items-center gap-2">
-                                {template.project_id === null && (
-                                  <Globe2 className="h-3 w-3 text-muted-foreground" />
-                                )}
-                                <span>{template.template_name}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </details>
-                </div>
-              )}
 
               {isEditMode && (
                 <div className="pt-2">

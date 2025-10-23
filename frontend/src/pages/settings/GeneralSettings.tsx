@@ -40,7 +40,7 @@ import { getLanguageOptions } from '@/i18n/languages';
 import { toPrettyCase } from '@/utils/string';
 import { useTheme } from '@/components/theme-provider';
 import { useUserSystem } from '@/components/config-provider';
-import { TaskTemplateManager } from '@/components/TaskTemplateManager';
+import { TagManager } from '@/components/TagManager';
 import NiceModal from '@ebay/nice-modal-react';
 
 export function GeneralSettings() {
@@ -765,7 +765,7 @@ export function GeneralSettings() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <TaskTemplateManager isGlobal={true} />
+          <TagManager />
         </CardContent>
       </Card>
 

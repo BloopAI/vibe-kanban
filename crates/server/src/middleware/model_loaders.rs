@@ -5,8 +5,8 @@ use axum::{
     response::Response,
 };
 use db::models::{
-    execution_process::ExecutionProcess, project::Project, task::Task, task_attempt::TaskAttempt,
-    task_template::TaskTemplate,
+    execution_process::ExecutionProcess, project::Project, tag::Tag, task::Task,
+    task_attempt::TaskAttempt,
 };
 use deployment::Deployment;
 use uuid::Uuid;
@@ -176,29 +176,29 @@ pub async fn load_execution_process_middleware(
 //     Ok(next.run(request).await)
 // }
 
-// Middleware that loads and injects TaskTemplate based on the template_id path parameter
-pub async fn load_task_template_middleware(
+// Middleware that loads and injects Tag based on the tag_id path parameter
+pub async fn load_tag_middleware(
     State(deployment): State<DeploymentImpl>,
-    Path(template_id): Path<Uuid>,
+    Path(tag_id): Path<Uuid>,
     request: axum::extract::Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
-    // Load the task template from the database
-    let task_template = match TaskTemplate::find_by_id(&deployment.db().pool, template_id).await {
-        Ok(Some(template)) => template,
+    // Load the tag from the database
+    let tag = match Tag::find_by_id(&deployment.db().pool, tag_id).await {
+        Ok(Some(tag)) => tag,
         Ok(None) => {
-            tracing::warn!("TaskTemplate {} not found", template_id);
+            tracing::warn!("Tag {} not found", tag_id);
             return Err(StatusCode::NOT_FOUND);
         }
         Err(e) => {
-            tracing::error!("Failed to fetch task template {}: {}", template_id, e);
+            tracing::error!("Failed to fetch tag {}: {}", tag_id, e);
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };
 
-    // Insert the task template as an extension
+    // Insert the tag as an extension
     let mut request = request;
-    request.extensions_mut().insert(task_template);
+    request.extensions_mut().insert(tag);
 
     // Continue with the next middleware/handler
     Ok(next.run(request).await)

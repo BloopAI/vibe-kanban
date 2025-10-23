@@ -1,87 +1,69 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
-import { templatesApi } from '@/lib/api';
-import { showTaskTemplateEdit } from '@/lib/modals';
-import type { TaskTemplate } from 'shared/types';
+import { tagsApi } from '@/lib/api';
+import { showTagEdit } from '@/lib/modals';
+import type { Tag } from 'shared/types';
 
-interface TaskTemplateManagerProps {
-  projectId?: string;
-  isGlobal?: boolean;
-}
-
-export function TaskTemplateManager({
-  projectId,
-  isGlobal = false,
-}: TaskTemplateManagerProps) {
-  const [templates, setTemplates] = useState<TaskTemplate[]>([]);
+export function TagManager() {
+  const { t } = useTranslation('settings');
+  const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchTemplates = useCallback(async () => {
+  const fetchTags = useCallback(async () => {
     setLoading(true);
     try {
-      const data = isGlobal
-        ? await templatesApi.listGlobal()
-        : projectId
-          ? await templatesApi.listByProject(projectId)
-          : [];
-
-      // Filter to show only templates for this specific scope
-      const filtered = data.filter((template) =>
-        isGlobal
-          ? template.project_id === null
-          : template.project_id === projectId
-      );
-
-      setTemplates(filtered);
+      const data = await tagsApi.list();
+      setTags(data);
     } catch (err) {
-      console.error('Failed to fetch templates:', err);
+      console.error('Failed to fetch tags:', err);
     } finally {
       setLoading(false);
     }
-  }, [isGlobal, projectId]);
+  }, []);
 
   useEffect(() => {
-    fetchTemplates();
-  }, [fetchTemplates]);
+    fetchTags();
+  }, [fetchTags]);
 
   const handleOpenDialog = useCallback(
-    async (template?: TaskTemplate) => {
+    async (tag?: Tag) => {
       try {
-        const result = await showTaskTemplateEdit({
-          template: template || null,
-          projectId,
-          isGlobal,
+        const result = await showTagEdit({
+          tag: tag || null,
         });
 
         if (result === 'saved') {
-          await fetchTemplates();
+          await fetchTags();
         }
       } catch (error) {
         // User cancelled - do nothing
       }
     },
-    [projectId, isGlobal, fetchTemplates]
+    [fetchTags]
   );
 
   const handleDelete = useCallback(
-    async (template: TaskTemplate) => {
+    async (tag: Tag) => {
       if (
         !confirm(
-          `Are you sure you want to delete the template "${template.template_name}"?`
+          t('settings.general.tags.manager.deleteConfirm', {
+            tagName: tag.tag_name,
+          })
         )
       ) {
         return;
       }
 
       try {
-        await templatesApi.delete(template.id);
-        await fetchTemplates();
+        await tagsApi.delete(tag.id);
+        await fetchTags();
       } catch (err) {
-        console.error('Failed to delete template:', err);
+        console.error('Failed to delete tag:', err);
       }
     },
-    [fetchTemplates]
+    [fetchTags, t]
   );
 
   if (loading) {
@@ -96,17 +78,17 @@ export function TaskTemplateManager({
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold">
-          {isGlobal ? 'Global Task Templates' : 'Project Task Templates'}
+          {t('settings.general.tags.manager.title')}
         </h3>
         <Button onClick={() => handleOpenDialog()} size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          Add Template
+          {t('settings.general.tags.manager.addTag')}
         </Button>
       </div>
 
-      {templates.length === 0 ? (
+      {tags.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
-          No templates yet. Create your first template to get started.
+          {t('settings.general.tags.manager.noTags')}
         </div>
       ) : (
         <div className="border rounded-lg overflow-hidden">
@@ -115,33 +97,29 @@ export function TaskTemplateManager({
               <thead className="border-b bg-muted/50 sticky top-0">
                 <tr>
                   <th className="text-left p-2 text-sm font-medium">
-                    Template Name
+                    {t('settings.general.tags.manager.table.tagName')}
                   </th>
-                  <th className="text-left p-2 text-sm font-medium">Title</th>
                   <th className="text-left p-2 text-sm font-medium">
-                    Description
+                    {t('settings.general.tags.manager.table.content')}
                   </th>
                   <th className="text-right p-2 text-sm font-medium">
-                    Actions
+                    {t('settings.general.tags.manager.table.actions')}
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {templates.map((template) => (
+                {tags.map((tag) => (
                   <tr
-                    key={template.id}
+                    key={tag.id}
                     className="border-b hover:bg-muted/30 transition-colors"
                   >
-                    <td className="p-2 text-sm font-medium">
-                      {template.template_name}
-                    </td>
-                    <td className="p-2 text-sm">{template.title}</td>
+                    <td className="p-2 text-sm font-medium">@{tag.tag_name}</td>
                     <td className="p-2 text-sm">
                       <div
-                        className="max-w-[200px] truncate"
-                        title={template.description || ''}
+                        className="max-w-[400px] truncate"
+                        title={tag.content || ''}
                       >
-                        {template.description || (
+                        {tag.content || (
                           <span className="text-muted-foreground">-</span>
                         )}
                       </div>
@@ -152,8 +130,10 @@ export function TaskTemplateManager({
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"
-                          onClick={() => handleOpenDialog(template)}
-                          title="Edit template"
+                          onClick={() => handleOpenDialog(tag)}
+                          title={t(
+                            'settings.general.tags.manager.actions.editTag'
+                          )}
                         >
                           <Edit2 className="h-3 w-3" />
                         </Button>
@@ -161,8 +141,10 @@ export function TaskTemplateManager({
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"
-                          onClick={() => handleDelete(template)}
-                          title="Delete template"
+                          onClick={() => handleDelete(tag)}
+                          title={t(
+                            'settings.general.tags.manager.actions.deleteTag'
+                          )}
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>

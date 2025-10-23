@@ -147,7 +147,7 @@ function DenyReasonForm({
         ref={inputRef}
         value={value}
         onChange={onChange}
-        placeholder="Let the agent know why this request was denied... Type @ to search files."
+        placeholder="Let the agent know why this request was denied... Type @ to insert tags or search files."
         disabled={isResponding}
         className="w-full bg-transparent border px-3 py-2 text-sm resize-none min-h-[80px] focus-visible:outline-none"
         projectId={projectId}

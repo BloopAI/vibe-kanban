@@ -119,8 +119,51 @@
         }
       },
       "taskTemplates": {
-        "title": "Task Templates",
-        "description": "Manage global task templates that can be used across all projects."
+        "title": "Tags",
+        "description": "Create reusable text snippets that can be inserted into task descriptions using @tag_name."
+      },
+      "tags": {
+        "manager": {
+          "title": "Task Tags",
+          "addTag": "Add Tag",
+          "noTags": "No tags yet. Create reusable text snippets for common task descriptions. Use @tag_name in any task.",
+          "table": {
+            "tagName": "Tag Name",
+            "content": "Content",
+            "actions": "Actions"
+          },
+          "actions": {
+            "editTag": "Edit tag",
+            "deleteTag": "Delete tag"
+          },
+          "deleteConfirm": "Are you sure you want to delete the tag \"{{tagName}}\"?"
+        },
+        "dialog": {
+          "createTitle": "Create Tag",
+          "editTitle": "Edit Tag",
+          "tagName": {
+            "label": "Tag Name",
+            "required": "*",
+            "hint": "Use this name with @ in task descriptions: @{{tagName}}",
+            "placeholder": "e.g., bug_fix, test_plan, api_docs",
+            "error": "Tag name cannot contain spaces. Use underscores instead (e.g., my_tag)"
+          },
+          "content": {
+            "label": "Content",
+            "required": "*",
+            "hint": "Text that will be inserted when you use @{{tagName}} in task descriptions",
+            "placeholder": "Enter the text that will be inserted when you use this tag"
+          },
+          "errors": {
+            "nameRequired": "Tag name is required",
+            "saveFailed": "Failed to save tag"
+          },
+          "buttons": {
+            "cancel": "Cancel",
+            "create": "Create",
+            "update": "Update"
+          }
+        }
       },
       "safety": {
         "title": "Safety & Disclaimers",
