@@ -38,7 +38,7 @@ export const TagEditDialog = NiceModal.create<TagEditDialogProps>(({ tag }) => {
     if (tag) {
       setFormData({
         tag_name: tag.tag_name,
-        content: tag.content || '',
+        content: tag.content,
       });
     } else {
       setFormData({
@@ -47,6 +47,7 @@ export const TagEditDialog = NiceModal.create<TagEditDialogProps>(({ tag }) => {
       });
     }
     setError(null);
+    setTagNameError(null);
   }, [tag]);
 
   const handleSave = async () => {
@@ -62,13 +63,13 @@ export const TagEditDialog = NiceModal.create<TagEditDialogProps>(({ tag }) => {
       if (isEditMode && tag) {
         const updateData: UpdateTag = {
           tag_name: formData.tag_name,
-          content: formData.content || null,
+          content: formData.content || null, // null means "don't update"
         };
         await tagsApi.update(tag.id, updateData);
       } else {
         const createData: CreateTag = {
           tag_name: formData.tag_name,
-          content: formData.content || null,
+          content: formData.content,
         };
         await tagsApi.create(createData);
       }
@@ -107,14 +108,12 @@ export const TagEditDialog = NiceModal.create<TagEditDialogProps>(({ tag }) => {
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div>
-            <Label htmlFor="tag-name">Tag Name</Label>
+            <Label htmlFor="tag-name">
+              Tag Name <span className="text-destructive">*</span>
+            </Label>
             <p className="text-xs text-muted-foreground mb-1.5">
               Use this name with @ in task descriptions: @
               {formData.tag_name || 'tag_name'}
-            </p>
-            <p className="text-xs text-muted-foreground mb-1.5">
-              Tip: Use lowercase with underscores for easier typing (e.g.,
-              bug_fix instead of "Bug Fix")
             </p>
             <Input
               id="tag-name"
@@ -123,7 +122,7 @@ export const TagEditDialog = NiceModal.create<TagEditDialogProps>(({ tag }) => {
                 const value = e.target.value;
                 setFormData({ ...formData, tag_name: value });
 
-                // Validate in real-time
+                // Validate in real-time for spaces
                 if (value.includes(' ')) {
                   setTagNameError(
                     'Tag name cannot contain spaces. Use underscores instead (e.g., my_tag)'
@@ -143,7 +142,9 @@ export const TagEditDialog = NiceModal.create<TagEditDialogProps>(({ tag }) => {
             )}
           </div>
           <div>
-            <Label htmlFor="tag-content">Content</Label>
+            <Label htmlFor="tag-content">
+              Content <span className="text-destructive">*</span>
+            </Label>
             <p className="text-xs text-muted-foreground mb-1.5">
               Text that will be inserted when you use @
               {formData.tag_name || 'tag_name'} in task descriptions
@@ -151,9 +152,10 @@ export const TagEditDialog = NiceModal.create<TagEditDialogProps>(({ tag }) => {
             <Textarea
               id="tag-content"
               value={formData.content}
-              onChange={(e) =>
-                setFormData({ ...formData, content: e.target.value })
-              }
+              onChange={(e) => {
+                const value = e.target.value;
+                setFormData({ ...formData, content: value });
+              }}
               placeholder="Enter the text that will be inserted when you use this tag"
               rows={6}
               disabled={saving}
@@ -165,7 +167,10 @@ export const TagEditDialog = NiceModal.create<TagEditDialogProps>(({ tag }) => {
           <Button variant="outline" onClick={handleCancel} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={saving || !!tagNameError}>
+          <Button
+            onClick={handleSave}
+            disabled={saving || !!tagNameError || !formData.content.trim()}
+          >
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isEditMode ? 'Update' : 'Create'}
           </Button>

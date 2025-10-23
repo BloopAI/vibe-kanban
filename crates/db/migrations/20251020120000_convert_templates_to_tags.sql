@@ -9,6 +9,8 @@ CREATE TABLE tags (
     updated_at    TEXT NOT NULL DEFAULT (datetime('now', 'subsec'))
 );
 
+-- Only migrate templates that have non-empty descriptions
+-- Templates with empty/null descriptions are skipped
 INSERT INTO tags (id, tag_name, content, created_at, updated_at)
 SELECT
     id,
@@ -16,7 +18,8 @@ SELECT
     description,
     created_at,
     updated_at
-FROM task_templates;
+FROM task_templates
+WHERE description IS NOT NULL AND description != '';
 
 DROP INDEX idx_task_templates_project_id;
 DROP INDEX idx_task_templates_unique_name_project;

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\", tag_name, content, created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tags\n               WHERE id = $1",
+  "query": "SELECT id as \"id!: Uuid\", tag_name, content as \"content!\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tags\n               ORDER BY tag_name ASC",
   "describe": {
     "columns": [
       {
@@ -14,7 +14,7 @@
         "type_info": "Text"
       },
       {
-        "name": "content",
+        "name": "content!",
         "ordinal": 2,
         "type_info": "Text"
       },
@@ -30,15 +30,15 @@
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 0
     },
     "nullable": [
       true,
       false,
-      true,
+      false,
       false,
       false
     ]
   },
-  "hash": "6dd8967b37b45a75b94f38fdd74a9724b09c2a0da75824057326709ff300bd53"
+  "hash": "73aee4cb95294087554eafaf3126556df244f4b6639d5a188f0badb6739c1a70"
 }
