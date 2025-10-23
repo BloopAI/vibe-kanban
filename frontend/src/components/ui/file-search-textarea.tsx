@@ -69,28 +69,8 @@ export const FileSearchTextarea = forwardRef<
 
   // Search for both tags and files when query changes
   useEffect(() => {
-    // Special case: empty query after @ shows ALL tags (no files)
-    if (searchQuery.length === 0 && atSymbolPosition !== -1) {
-      const fetchAllTags = async () => {
-        setIsLoading(true);
-        try {
-          const tags = await tagsApi.list();
-          const results = tags.map((tag) => ({ type: 'tag' as const, tag }));
-          setSearchResults(results);
-          setShowDropdown(results.length > 0);
-          setSelectedIndex(-1);
-        } catch (error) {
-          console.error('Failed to fetch tags:', error);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      fetchAllTags();
-      return;
-    }
-
     // No @ context, hide dropdown
-    if (searchQuery.length < 1) {
+    if (atSymbolPosition === -1) {
       setSearchResults([]);
       setShowDropdown(false);
       return;
@@ -103,17 +83,19 @@ export const FileSearchTextarea = forwardRef<
       try {
         const results: SearchResultItem[] = [];
 
-        // Fetch all tags and filter client-side
+        // Fetch all tags and filter client-side (show all if empty query)
         const tags = await tagsApi.list();
-        const filteredTags = tags.filter((tag) =>
-          tag.tag_name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
+        const filteredTags = searchQuery.length === 0
+          ? tags
+          : tags.filter((tag) =>
+              tag.tag_name.toLowerCase().includes(searchQuery.toLowerCase())
+            );
         results.push(
           ...filteredTags.map((tag) => ({ type: 'tag' as const, tag }))
         );
 
-        // Then fetch files (if projectId is available)
-        if (projectId) {
+        // Then fetch files (if projectId is available and query has content)
+        if (projectId && searchQuery.length > 0) {
           const fileResults = await projectsApi.searchFiles(
             projectId,
             searchQuery
