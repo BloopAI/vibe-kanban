@@ -116,30 +116,6 @@ export function RetryEditorInline({
     }
   };
 
-  // Safety net: if server provided a draft but local message is empty, force-apply once
-  useEffect(() => {
-    if (!isRetryLoaded || !draft) return;
-    const serverPrompt = draft.prompt || '';
-    if (message === '' && serverPrompt !== '') {
-      setMessage(serverPrompt);
-      if (import.meta.env.DEV) {
-        // One-shot debug to validate hydration ordering in dev
-        console.debug('[retry/hydrate] applied server prompt fallback', {
-          attemptId,
-          processId: executionProcessId,
-          len: serverPrompt.length,
-        });
-      }
-    }
-  }, [
-    attemptId,
-    draft,
-    executionProcessId,
-    isRetryLoaded,
-    message,
-    setMessage,
-  ]);
-
   const onSend = async () => {
     if (!canSend) return;
     setSendError(null);

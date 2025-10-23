@@ -19,18 +19,31 @@ export function useDraftEditor({ draft, taskId }: Args) {
 
   const localDirtyRef = useRef<boolean>(false);
   const imagesDirtyRef = useRef<boolean>(false);
+  const [isMessageDirty, setIsMessageDirty] = useState(false);
+  const lastServerPromptRef = useRef<string>('');
 
   // Sync message with server when not locally dirty
   useEffect(() => {
     if (!draft) return;
     const serverPrompt = draft.prompt || '';
+    const lastAppliedPrompt = lastServerPromptRef.current;
+
     if (!localDirtyRef.current) {
-      setMessageInner(serverPrompt);
-    } else if (serverPrompt === message) {
+      if (serverPrompt !== lastAppliedPrompt) {
+        lastServerPromptRef.current = serverPrompt;
+        setMessageInner(serverPrompt);
+        setIsMessageDirty(false);
+      }
+      return;
+    }
+
+    if (serverPrompt === message) {
       // When server catches up to local text, clear dirty
       localDirtyRef.current = false;
+      lastServerPromptRef.current = serverPrompt;
+      setIsMessageDirty(false);
     }
-  }, [draft, message]);
+  }, [draft?.prompt, message]);
 
   // Fetch images for task via react-query and map to the draft's image_ids
   const serverIds = (draft?.image_ids ?? []).filter(Boolean);
@@ -52,6 +65,7 @@ export function useDraftEditor({ draft, taskId }: Args) {
 
   const setMessage = (v: React.SetStateAction<string>) => {
     localDirtyRef.current = true;
+    setIsMessageDirty(true);
     if (typeof v === 'function') {
       setMessageInner((prev) => v(prev));
     } else {
@@ -84,5 +98,6 @@ export function useDraftEditor({ draft, taskId }: Args) {
     newlyUploadedImageIds,
     handleImageUploaded,
     clearImagesAndUploads,
+    isMessageDirty,
   } as const;
 }
