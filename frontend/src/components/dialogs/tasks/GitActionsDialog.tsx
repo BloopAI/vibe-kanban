@@ -125,8 +125,15 @@ export const GitActionsDialog = NiceModal.create<GitActionsDialogProps>(
         .finally(() => setLoadingBranches(false));
     }, [effectiveProjectId]);
 
+    useEffect(() => {
+      if (!modal.visible) {
+        setGitError(null);
+      }
+    }, [modal.visible, attemptId]);
+
     const handleOpenChange = (open: boolean) => {
       if (!open) {
+        setGitError(null);
         modal.hide();
       }
     };
