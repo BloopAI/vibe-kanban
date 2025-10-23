@@ -3,7 +3,7 @@
 
 CREATE TABLE tags (
     id            BLOB PRIMARY KEY,
-    tag_name      TEXT NOT NULL CHECK(tag_name NOT GLOB '*[[:space:]]*'),
+    tag_name      TEXT NOT NULL CHECK(INSTR(tag_name, ' ') = 0),
     content       TEXT NOT NULL CHECK(content != ''),
     created_at    TEXT NOT NULL DEFAULT (datetime('now', 'subsec')),
     updated_at    TEXT NOT NULL DEFAULT (datetime('now', 'subsec'))
