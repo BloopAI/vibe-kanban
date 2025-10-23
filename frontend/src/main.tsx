@@ -35,6 +35,7 @@ import {
   ProjectEditorSelectionDialog,
   RestoreLogsDialog,
   ViewProcessesDialog,
+  GitActionsDialog,
 } from './components/dialogs';
 import { CreateAttemptDialog } from './components/dialogs/tasks/CreateAttemptDialog';
 
@@ -61,6 +62,7 @@ NiceModal.register('project-editor-selection', ProjectEditorSelectionDialog);
 NiceModal.register('restore-logs', RestoreLogsDialog);
 NiceModal.register('view-processes', ViewProcessesDialog);
 NiceModal.register('create-attempt', CreateAttemptDialog);
+NiceModal.register('git-actions', GitActionsDialog);
 
 import {
   useLocation,

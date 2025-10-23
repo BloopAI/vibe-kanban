@@ -81,6 +81,16 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
     });
   };
 
+  const handleGitActions = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!attempt?.id || !task) return;
+    NiceModal.show('git-actions', {
+      attemptId: attempt.id,
+      task,
+      projectId,
+    });
+  };
+
   return (
     <>
       <DropdownMenu>
@@ -117,6 +127,12 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
                 onClick={handleCreateSubtask}
               >
                 {t('actionsMenu.createSubtask')}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!attempt?.id || !task}
+                onClick={handleGitActions}
+              >
+                {t('actionsMenu.gitActions')}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
             </>

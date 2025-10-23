@@ -41,6 +41,7 @@ interface GitOperationsProps {
   isAttemptRunning: boolean;
   setError: (error: string | null) => void;
   selectedBranch: string | null;
+  layout?: 'horizontal' | 'vertical';
 }
 
 export type GitOperationsInputs = Omit<GitOperationsProps, 'selectedAttempt'>;
@@ -54,6 +55,7 @@ function GitOperations({
   isAttemptRunning,
   setError,
   selectedBranch,
+  layout = 'horizontal',
 }: GitOperationsProps) {
   const { t } = useTranslation('tasks');
 
@@ -268,9 +270,23 @@ function GitOperations({
     return null;
   }
 
+  const isVertical = layout === 'vertical';
+
+  const containerClasses = isVertical
+    ? 'grid grid-cols-1 items-start gap-3 overflow-hidden'
+    : 'grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 overflow-hidden';
+
+  const settingsBtnClasses = isVertical
+    ? 'inline-flex h-5 w-5 p-0 hover:bg-muted'
+    : 'hidden md:inline-flex h-5 w-5 p-0 hover:bg-muted';
+
+  const actionsClasses = isVertical
+    ? 'flex flex-wrap items-center gap-2'
+    : 'shrink-0 flex flex-wrap items-center gap-2 overflow-y-hidden overflow-x-visible max-h-8';
+
   return (
     <div className="w-full border-b py-2">
-      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 overflow-hidden">
+      <div className={containerClasses}>
         {/* Left: Branch flow */}
         <div className="flex items-center gap-2 min-w-0 shrink-0 overflow-hidden">
           {/* Task branch chip */}
@@ -319,7 +335,7 @@ function GitOperations({
                     size="xs"
                     onClick={handleChangeTargetBranchDialogOpen}
                     disabled={isAttemptRunning || hasConflictsCalculated}
-                    className="hidden md:inline-flex h-5 w-5 p-0 hover:bg-muted"
+                    className={settingsBtnClasses}
                     aria-label={t('branches.changeTarget.dialog.title')}
                   >
                     <Settings className="h-3.5 w-3.5" />
@@ -421,9 +437,9 @@ function GitOperations({
           })()}
         </div>
 
-        {/* Right: Actions (compact, right-aligned) */}
+        {/* Right: Actions */}
         {branchStatus && (
-          <div className="shrink-0 flex flex-wrap items-center gap-2 overflow-y-hidden overflow-x-visible max-h-8">
+          <div className={actionsClasses}>
             <Button
               onClick={handleMergeClick}
               disabled={

@@ -177,7 +177,8 @@
     "viewHistory": "View attempt history",
     "createSubtask": "Create Subtask",
     "preview": "Preview",
-    "diffs": "Diffs"
+    "diffs": "Diffs",
+    "gitActions": "Git Actions"
   },
   "git": {
     "labels": {
@@ -215,6 +216,10 @@
     "pr": {
       "open": "Open PR #{{number}}",
       "number": "PR #{{number}}"
+    },
+    "actions": {
+      "title": "Git Actions",
+      "prMerged": "PR #{{number}} is already merged"
     }
   },
   "createAttemptDialog": {
@@ -240,6 +245,7 @@
     "viewProcesses": "View processes",
     "createNewAttempt": "Create new attempt",
     "createSubtask": "Create subtask",
+    "gitActions": "Git actions",
     "task": "Task",
     "duplicate": "Duplicate"
   },

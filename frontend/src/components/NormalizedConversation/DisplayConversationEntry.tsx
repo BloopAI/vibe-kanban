@@ -39,6 +39,7 @@ type Props = {
   diffDeletable?: boolean;
   executionProcessId?: string;
   taskAttempt?: TaskAttempt;
+  task?: any;
 };
 
 type FileEditAction = Extract<ActionType, { action: 'file_edit' }>;
@@ -608,6 +609,7 @@ function DisplayConversationEntry({
   expansionKey,
   executionProcessId,
   taskAttempt,
+  task,
 }: Props) {
   const { t } = useTranslation('common');
   const isNormalizedEntry = (
@@ -791,6 +793,7 @@ function DisplayConversationEntry({
           attemptId={taskAttempt?.id}
           containerRef={taskAttempt?.container_ref}
           failed={entry.entry_type.failed}
+          task={task}
         />
       </div>
     );

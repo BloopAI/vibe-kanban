@@ -61,6 +61,10 @@ export {
   ViewProcessesDialog,
   type ViewProcessesDialogProps,
 } from './tasks/ViewProcessesDialog';
+export {
+  GitActionsDialog,
+  type GitActionsDialogProps,
+} from './tasks/GitActionsDialog';
 
 // Settings dialogs
 export {

@@ -16,15 +16,17 @@ import {
   useConversationHistory,
 } from '@/hooks/useConversationHistory';
 import { Loader2 } from 'lucide-react';
-import { TaskAttempt } from 'shared/types';
+import { TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
 import { ApprovalFormProvider } from '@/contexts/ApprovalFormContext';
 
 interface VirtualizedListProps {
   attempt: TaskAttempt;
+  task?: TaskWithAttemptStatus;
 }
 
 interface MessageListContext {
   attempt: TaskAttempt;
+  task?: TaskWithAttemptStatus;
 }
 
 const INITIAL_TOP_ITEM = { index: 'LAST' as const, align: 'end' as const };
@@ -45,6 +47,7 @@ const ItemContent: VirtuosoMessageListProps<
   MessageListContext
 >['ItemContent'] = ({ data, context }) => {
   const attempt = context?.attempt;
+  const task = context?.task;
 
   if (data.type === 'STDOUT') {
     return <p>{data.content}</p>;
@@ -59,6 +62,7 @@ const ItemContent: VirtuosoMessageListProps<
         entry={data.content}
         executionProcessId={data.executionProcessId}
         taskAttempt={attempt}
+        task={task}
       />
     );
   }
@@ -71,7 +75,7 @@ const computeItemKey: VirtuosoMessageListProps<
   MessageListContext
 >['computeItemKey'] = ({ data }) => `l-${data.patchKey}`;
 
-const VirtualizedList = ({ attempt }: VirtualizedListProps) => {
+const VirtualizedList = ({ attempt, task }: VirtualizedListProps) => {
   const [channelData, setChannelData] =
     useState<DataWithScrollModifier<PatchTypeWithKey> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -105,7 +109,10 @@ const VirtualizedList = ({ attempt }: VirtualizedListProps) => {
   useConversationHistory({ attempt, onEntriesUpdated });
 
   const messageListRef = useRef<VirtuosoMessageListMethods | null>(null);
-  const messageListContext = useMemo(() => ({ attempt }), [attempt]);
+  const messageListContext = useMemo(
+    () => ({ attempt, task }),
+    [attempt, task]
+  );
 
   return (
     <ApprovalFormProvider>

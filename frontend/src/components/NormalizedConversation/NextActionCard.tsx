@@ -1,6 +1,14 @@
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Play, Pause, Terminal, FileDiff, Copy, Check } from 'lucide-react';
+import {
+  Play,
+  Pause,
+  Terminal,
+  FileDiff,
+  Copy,
+  Check,
+  GitBranch,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import NiceModal from '@ebay/nice-modal-react';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
@@ -24,12 +32,14 @@ type NextActionCardProps = {
   attemptId?: string;
   containerRef?: string | null;
   failed: boolean;
+  task?: any;
 };
 
 export function NextActionCard({
   attemptId,
   containerRef,
   failed,
+  task,
 }: NextActionCardProps) {
   const { t } = useTranslation('tasks');
   const { config } = useUserSystem();
@@ -95,6 +105,15 @@ export function NextActionCard({
       latestAttempt: attemptId,
     });
   }, [attempt?.task_id, attemptId]);
+
+  const handleGitActions = useCallback(() => {
+    if (!attemptId) return;
+    NiceModal.show('git-actions', {
+      attemptId,
+      task,
+      projectId: project?.id,
+    });
+  }, [attemptId, task, project?.id]);
 
   const editorName = getIdeName(config?.editor?.editor_type);
 
@@ -262,6 +281,22 @@ export function NextActionCard({
                   <TooltipContent>{t('attempt.viewDevLogs')}</TooltipContent>
                 </Tooltip>
               )}
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={handleGitActions}
+                    disabled={!attemptId}
+                    aria-label={t('attempt.gitActions')}
+                  >
+                    <GitBranch className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t('attempt.gitActions')}</TooltipContent>
+              </Tooltip>
             </div>
           )}
         </div>
