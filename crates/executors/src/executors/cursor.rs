@@ -32,7 +32,7 @@ use crate::{
 mod mcp;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
-pub struct Cursor {
+pub struct CursorAgent {
     #[serde(default)]
     pub append_prompt: AppendPrompt,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -45,7 +45,7 @@ pub struct Cursor {
     pub cmd: CmdOverrides,
 }
 
-impl Cursor {
+impl CursorAgent {
     fn build_command_builder(&self) -> CommandBuilder {
         let mut builder =
             CommandBuilder::new("cursor-agent").params(["-p", "--output-format=stream-json"]);
@@ -63,7 +63,7 @@ impl Cursor {
 }
 
 #[async_trait]
-impl StandardCodingAgentExecutor for Cursor {
+impl StandardCodingAgentExecutor for CursorAgent {
     async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
         mcp::ensure_mcp_server_trust(self, current_dir).await;
 
@@ -1182,7 +1182,7 @@ mod tests {
     #[tokio::test]
     async fn test_cursor_streaming_patch_generation() {
         // Avoid relying on feature flag in tests; construct with a dummy command
-        let executor = Cursor {
+        let executor = CursorAgent {
             // No command field needed anymore
             append_prompt: AppendPrompt::default(),
             force: None,
