@@ -34,7 +34,7 @@ pub struct AssignSharedTaskResponse {
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     Router::new()
         .route(
-            "/shared-tasks/:shared_task_id/assign",
+            "/shared-tasks/{shared_task_id}/assign",
             post(assign_shared_task),
         )
         .layer(axum::middleware::from_fn_with_state(
