@@ -2,6 +2,7 @@ use axum::{
     Json,
     extract::{Extension, Path, State},
     http::StatusCode,
+    response::{IntoResponse, Response},
 };
 use serde_json::json;
 use uuid::Uuid;
@@ -9,7 +10,8 @@ use uuid::Uuid;
 use crate::{
     AppState,
     api::tasks::{
-        CreateSharedTaskRequest, TransferSharedTaskAssignmentRequest, UpdateSharedTaskRequest,
+        CreateSharedTaskRequest, SharedTaskResponse, TransferSharedTaskAssignmentRequest,
+        UpdateSharedTaskRequest,
     },
     auth::RequestContext,
     db::{
@@ -25,7 +27,7 @@ pub async fn create_shared_task(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateSharedTaskRequest>,
-) -> (StatusCode, Json<serde_json::Value>) {
+) -> Response {
     let repo = SharedTaskRepository::new(state.pool());
     let identity_repo = IdentityRepository::new(state.pool(), state.clerk());
     let CreateSharedTaskRequest {
@@ -35,6 +37,7 @@ pub async fn create_shared_task(
         assignee_user_id,
     } = payload;
 
+    // Check that assignee exists and is an active member of the organization
     if let Some(assignee) = &assignee_user_id
         && assignee != &ctx.user.id
         && let Err(err) = identity_repo
@@ -55,7 +58,7 @@ pub async fn create_shared_task(
     dbg!("Received create_shared_task request:", &data);
 
     match repo.create(&ctx.organization.id, data).await {
-        Ok(task) => (StatusCode::CREATED, Json(json!({ "task": task }))),
+        Ok(task) => (StatusCode::CREATED, Json(SharedTaskResponse { task })).into_response(),
         Err(error) => task_error_response(error, "failed to create shared task"),
     }
 }
@@ -65,7 +68,7 @@ pub async fn update_shared_task(
     Extension(ctx): Extension<RequestContext>,
     Path(task_id): Path<Uuid>,
     Json(payload): Json<UpdateSharedTaskRequest>,
-) -> (StatusCode, Json<serde_json::Value>) {
+) -> Response {
     let repo = SharedTaskRepository::new(state.pool());
     let data = UpdateSharedTaskData {
         title: payload.title,
@@ -75,7 +78,7 @@ pub async fn update_shared_task(
     };
 
     match repo.update(&ctx.organization.id, task_id, data).await {
-        Ok(task) => (StatusCode::OK, Json(json!({ "task": task }))),
+        Ok(task) => (StatusCode::OK, Json(SharedTaskResponse { task })).into_response(),
         Err(error) => task_error_response(error, "failed to update shared task"),
     }
 }
@@ -85,7 +88,7 @@ pub async fn transfer_task_assignment(
     Extension(ctx): Extension<RequestContext>,
     Path(task_id): Path<Uuid>,
     Json(payload): Json<TransferSharedTaskAssignmentRequest>,
-) -> (StatusCode, Json<serde_json::Value>) {
+) -> Response {
     let repo = SharedTaskRepository::new(state.pool());
     let identity_repo = IdentityRepository::new(state.pool(), state.clerk());
 
@@ -108,15 +111,12 @@ pub async fn transfer_task_assignment(
         .transfer_task_assignment(&ctx.organization.id, task_id, data)
         .await
     {
-        Ok(task) => (StatusCode::OK, Json(json!({ "task": task }))),
+        Ok(task) => (StatusCode::OK, Json(SharedTaskResponse { task })).into_response(),
         Err(error) => task_error_response(error, "failed to transfer task assignment"),
     }
 }
 
-fn task_error_response(
-    error: SharedTaskError,
-    context: &str,
-) -> (StatusCode, Json<serde_json::Value>) {
+fn task_error_response(error: SharedTaskError, context: &str) -> Response {
     match error {
         SharedTaskError::NotFound => (
             StatusCode::NOT_FOUND,
@@ -124,6 +124,13 @@ fn task_error_response(
         ),
         SharedTaskError::Conflict(message) => {
             (StatusCode::CONFLICT, Json(json!({ "error": message })))
+        }
+        SharedTaskError::Serialization(err) => {
+            tracing::error!(?err, "{context}", context = context);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "failed to serialize shared task" })),
+            )
         }
         SharedTaskError::Database(err) => {
             tracing::error!(?err, "{context}", context = context);
@@ -133,12 +140,10 @@ fn task_error_response(
             )
         }
     }
+    .into_response()
 }
 
-fn identity_error_response(
-    error: IdentityError,
-    message: &str,
-) -> (StatusCode, Json<serde_json::Value>) {
+fn identity_error_response(error: IdentityError, message: &str) -> Response {
     match error {
         IdentityError::Clerk(err) => {
             tracing::debug!(?err, "clerk refused identity lookup");
@@ -152,4 +157,5 @@ fn identity_error_response(
             )
         }
     }
+    .into_response()
 }

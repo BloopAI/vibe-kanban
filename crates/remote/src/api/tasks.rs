@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-use crate::db::{projects::ProjectMetadata, tasks::TaskStatus};
+use crate::db::{
+    projects::ProjectMetadata,
+    tasks::{SharedTask, TaskStatus},
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateSharedTaskRequest {
@@ -23,4 +26,9 @@ pub struct TransferSharedTaskAssignmentRequest {
     pub new_assignee_user_id: Option<String>,
     pub previous_assignee_user_id: Option<String>,
     pub version: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SharedTaskResponse {
+    pub task: SharedTask,
 }

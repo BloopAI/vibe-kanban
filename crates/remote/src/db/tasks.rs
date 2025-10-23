@@ -1,6 +1,5 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -71,6 +70,7 @@ pub enum SharedTaskError {
     NotFound,
     Conflict(String),
     Database(sqlx::Error),
+    Serialization(serde_json::Error),
 }
 
 impl From<sqlx::Error> for SharedTaskError {
@@ -300,31 +300,17 @@ impl<'a> SharedTaskRepository<'a> {
     }
 }
 
-fn project_metadata_from_project(project: &Project) -> ProjectMetadata {
-    ProjectMetadata {
-        github_repository_id: project.github_repository_id,
-        owner: project.owner.clone(),
-        name: project.name.clone(),
-    }
-}
-
-fn build_activity_payload(task: &SharedTask, project: &Project) -> Result<Value, SharedTaskError> {
-    let envelope = SharedTaskActivityPayload {
-        task: task.clone(),
-        project: project_metadata_from_project(project),
-    };
-
-    serde_json::to_value(envelope)
-        .map_err(|e| SharedTaskError::Conflict(format!("could not serialize task snapshot: {e}")))
-}
-
 async fn insert_activity(
     tx: &mut Tx<'_>,
     task: &SharedTask,
     project: &Project,
     event_type: &str,
 ) -> Result<(), SharedTaskError> {
-    let payload = build_activity_payload(task, project)?;
+    let payload = SharedTaskActivityPayload {
+        task: task.clone(),
+        project: project.metadata(),
+    };
+    let value = serde_json::to_value(payload).map_err(SharedTaskError::Serialization)?;
 
     sqlx::query!(
         r#"
@@ -339,7 +325,7 @@ async fn insert_activity(
         task.organization_id,
         task.assignee_user_id,
         event_type,
-        payload
+        value
     )
     .execute(&mut **tx)
     .await

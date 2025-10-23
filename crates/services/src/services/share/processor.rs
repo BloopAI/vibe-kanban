@@ -7,10 +7,7 @@ use db::{
 };
 use remote::{
     activity::{ActivityEvent, ActivityResponse},
-    db::{
-        projects::ProjectMetadata,
-        tasks::{SharedTask as RemoteSharedTask, SharedTaskActivityPayload},
-    },
+    db::{projects::ProjectMetadata, tasks::SharedTaskActivityPayload},
 };
 use reqwest::Client as HttpClient;
 use uuid::Uuid;
@@ -38,11 +35,8 @@ impl ActivityProcessor {
     pub async fn process_event(&self, event: ActivityEvent) -> Result<(), ShareError> {
         if let Some(payload) = &event.payload {
             match serde_json::from_value::<SharedTaskActivityPayload>(payload.clone()) {
-                Ok(envelope) => {
-                    let SharedTaskActivityPayload { task, project } = envelope;
-                    if let Some(project_id) =
-                        self.resolve_project_id(task.id, Some(&project)).await?
-                    {
+                Ok(SharedTaskActivityPayload { task, project }) => {
+                    if let Some(project_id) = self.resolve_project_id(task.id, &project).await? {
                         let input = convert_remote_task(&task, project_id, Some(event.seq));
                         SharedTask::upsert(&self.db.pool, input).await?;
                     } else {
@@ -55,27 +49,13 @@ impl ActivityProcessor {
                         );
                     }
                 }
-                Err(error) => match serde_json::from_value::<RemoteSharedTask>(payload.clone()) {
-                    Ok(task) => {
-                        if let Some(project_id) = self.resolve_project_id(task.id, None).await? {
-                            let input = convert_remote_task(&task, project_id, Some(event.seq));
-                            SharedTask::upsert(&self.db.pool, input).await?;
-                        } else {
-                            tracing::warn!(
-                                ?error,
-                                task_id = %task.id,
-                                "shared task payload missing metadata; project unresolved"
-                            );
-                        }
-                    }
-                    Err(_) => {
-                        tracing::warn!(
-                            ?error,
-                            event_id = %event.event_id,
-                            "unrecognized shared task payload; skipping"
-                        );
-                    }
-                },
+                Err(error) => {
+                    tracing::warn!(
+                        ?error,
+                        event_id = %event.event_id,
+                        "unrecognized shared task payload; skipping"
+                    );
+                }
             }
         } else {
             tracing::warn!(event_id = %event.event_id, "received activity event with empty payload");
@@ -143,18 +123,16 @@ impl ActivityProcessor {
     async fn resolve_project_id(
         &self,
         task_id: Uuid,
-        metadata: Option<&ProjectMetadata>,
+        metadata: &ProjectMetadata,
     ) -> Result<Option<Uuid>, ShareError> {
         if let Some(existing) = SharedTask::find_by_id(&self.db.pool, task_id).await? {
             return Ok(Some(existing.project_id));
         }
 
-        if let Some(meta) = metadata {
-            if let Some(project) =
-                Project::find_by_github_repo_id(&self.db.pool, meta.github_repository_id).await?
-            {
-                return Ok(Some(project.id));
-            }
+        if let Some(project) =
+            Project::find_by_github_repo_id(&self.db.pool, metadata.github_repository_id).await?
+        {
+            return Ok(Some(project.id));
         }
 
         Ok(None)

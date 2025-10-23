@@ -42,7 +42,6 @@ use serde_json::json;
 use services::services::{
     analytics::AnalyticsContext,
     approvals::{Approvals, executor_approvals::ExecutorApprovalBridge},
-    clerk::ClerkSessionStore,
     config::Config,
     container::{ContainerError, ContainerRef, ContainerService},
     diff_stream::{self, DiffStreamHandle},
@@ -74,7 +73,6 @@ pub struct LocalContainerService {
     analytics: Option<AnalyticsContext>,
     approvals: Approvals,
     publisher: Option<SharePublisher>,
-    clerk_sessions: ClerkSessionStore,
 }
 
 impl LocalContainerService {
@@ -87,7 +85,6 @@ impl LocalContainerService {
         analytics: Option<AnalyticsContext>,
         approvals: Approvals,
         publisher: Option<SharePublisher>,
-        clerk_sessions: ClerkSessionStore,
     ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
 
@@ -101,7 +98,6 @@ impl LocalContainerService {
             analytics,
             approvals,
             publisher,
-            clerk_sessions,
         }
     }
 
@@ -139,19 +135,19 @@ impl LocalContainerService {
     async fn finalize_task(
         db: &DBService,
         config: &Arc<RwLock<Config>>,
-        share: Option<SharePublisher>,
+        share: &Option<SharePublisher>,
         ctx: &ExecutionContext,
     ) {
         match Task::update_status(&db.pool, ctx.task.id, TaskStatus::InReview).await {
             Ok(_) => {
-                if let Some(publisher) = share {
-                    if let Err(err) = publisher.update_shared_task_by_id(ctx.task.id, None).await {
-                        tracing::warn!(
-                            ?err,
-                            "Failed to propagate shared task update for {}",
-                            ctx.task.id
-                        );
-                    }
+                if let Some(publisher) = share
+                    && let Err(err) = publisher.update_shared_task_by_id(ctx.task.id, None).await
+                {
+                    tracing::warn!(
+                        ?err,
+                        "Failed to propagate shared task update for {}",
+                        ctx.task.id
+                    );
                 }
             }
             Err(e) => {
@@ -329,6 +325,7 @@ impl LocalContainerService {
         let config = self.config.clone();
         let container = self.clone();
         let analytics = self.analytics.clone();
+        let publisher = self.publisher.clone();
 
         let mut process_exit_rx = self.spawn_os_exit_watcher(exec_id);
 
@@ -431,19 +428,12 @@ impl LocalContainerService {
                         );
 
                         // Manually finalize task since we're bypassing normal execution flow
-                        Self::finalize_task(
-                            &db,
-                            &config,
-                            container.share_publisher().cloned(),
-                            &ctx,
-                        )
-                        .await;
+                        Self::finalize_task(&db, &config, &publisher, &ctx).await;
                     }
                 }
 
                 if Self::should_finalize(&ctx) {
-                    Self::finalize_task(&db, &config, container.share_publisher().cloned(), &ctx)
-                        .await;
+                    Self::finalize_task(&db, &config, &publisher, &ctx).await;
                     // After finalization, check if a queued follow-up exists and start it
                     if let Err(e) = container.try_consume_queued_followup(&ctx).await {
                         tracing::error!(
@@ -697,10 +687,6 @@ impl ContainerService for LocalContainerService {
         self.config.read().await.git_branch_prefix.clone()
     }
 
-    fn clerk_sessions(&self) -> &ClerkSessionStore {
-        &self.clerk_sessions
-    }
-
     fn task_attempt_to_current_dir(&self, task_attempt: &TaskAttempt) -> PathBuf {
         PathBuf::from(task_attempt.container_ref.clone().unwrap_or_default())
     }
@@ -923,16 +909,15 @@ impl ContainerService for LocalContainerService {
         {
             match Task::update_status(&self.db.pool, ctx.task.id, TaskStatus::InReview).await {
                 Ok(_) => {
-                    if let Some(publisher) = self.share_publisher() {
-                        if let Err(err) =
+                    if let Some(publisher) = self.share_publisher()
+                        && let Err(err) =
                             publisher.update_shared_task_by_id(ctx.task.id, None).await
-                        {
-                            tracing::warn!(
-                                ?err,
-                                "Failed to propagate shared task update for {}",
-                                ctx.task.id
-                            );
-                        }
+                    {
+                        tracing::warn!(
+                            ?err,
+                            "Failed to propagate shared task update for {}",
+                            ctx.task.id
+                        );
                     }
                 }
                 Err(e) => {

@@ -33,11 +33,11 @@ impl ShareConfig {
     }
 
     pub fn update_task_endpoint(&self, task_id: Uuid) -> Result<Url, url::ParseError> {
-        self.api_base.join(&format!("/v1/tasks/{}", task_id))
+        self.api_base.join(&format!("/v1/tasks/{task_id}"))
     }
 
     pub fn assign_endpoint(&self, task_id: Uuid) -> Result<Url, url::ParseError> {
-        self.api_base.join(&format!("/v1/tasks/{}/assign", task_id))
+        self.api_base.join(&format!("/v1/tasks/{task_id}/assign"))
     }
 
     pub fn websocket_endpoint(&self, cursor: Option<i64>) -> Result<Url, url::ParseError> {

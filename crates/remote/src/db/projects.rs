@@ -14,6 +14,16 @@ pub struct Project {
     pub created_at: DateTime<Utc>,
 }
 
+impl Project {
+    pub(crate) fn metadata(&self) -> ProjectMetadata {
+        ProjectMetadata {
+            github_repository_id: self.github_repository_id,
+            owner: self.owner.clone(),
+            name: self.name.clone(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct CreateProjectData {
     pub organization_id: String,

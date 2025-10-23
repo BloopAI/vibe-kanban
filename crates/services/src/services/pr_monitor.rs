@@ -168,17 +168,15 @@ impl PrMonitorService {
                     GitService::new(),
                     self.sessions.clone(),
                     self.config.clone(),
-                ) {
-                    if let Err(err) = publisher
-                        .update_shared_task_by_id(task_attempt.task_id, None)
-                        .await
-                    {
-                        tracing::warn!(
-                            ?err,
-                            "Failed to propagate shared task update for {}",
-                            task_attempt.task_id
-                        );
-                    }
+                ) && let Err(err) = publisher
+                    .update_shared_task_by_id(task_attempt.task_id, None)
+                    .await
+                {
+                    tracing::warn!(
+                        ?err,
+                        "Failed to propagate shared task update for {}",
+                        task_attempt.task_id
+                    );
                 }
             }
         }

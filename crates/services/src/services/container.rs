@@ -41,7 +41,6 @@ use utils::{
 use uuid::Uuid;
 
 use crate::services::{
-    clerk::ClerkSessionStore,
     git::{GitService, GitServiceError},
     image::ImageService,
     share::SharePublisher,
@@ -112,8 +111,6 @@ pub trait ContainerService {
     fn git(&self) -> &GitService;
 
     fn share_publisher(&self) -> Option<&SharePublisher>;
-
-    fn clerk_sessions(&self) -> &ClerkSessionStore;
 
     fn task_attempt_to_current_dir(&self, task_attempt: &TaskAttempt) -> PathBuf;
 
@@ -591,14 +588,14 @@ pub trait ContainerService {
         {
             Task::update_status(&self.db().pool, task.id, TaskStatus::InProgress).await?;
 
-            if let Some(publisher) = self.share_publisher() {
-                if let Err(err) = publisher.update_shared_task_by_id(task.id, None).await {
-                    tracing::warn!(
-                        ?err,
-                        "Failed to propagate shared task update for {}",
-                        task.id
-                    );
-                }
+            if let Some(publisher) = self.share_publisher()
+                && let Err(err) = publisher.update_shared_task_by_id(task.id, None).await
+            {
+                tracing::warn!(
+                    ?err,
+                    "Failed to propagate shared task update for {}",
+                    task.id
+                );
             }
         }
         // Create new execution process record

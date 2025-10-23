@@ -5,11 +5,10 @@ use db::{
     models::{project::Project, shared_task::SharedTask, task::Task},
 };
 use remote::{
-    api::tasks::{CreateSharedTaskRequest, UpdateSharedTaskRequest},
+    api::tasks::{CreateSharedTaskRequest, SharedTaskResponse, UpdateSharedTaskRequest},
     db::{projects::ProjectMetadata, tasks::SharedTask as RemoteSharedTask},
 };
 use reqwest::{Client as HttpClient, StatusCode};
-use serde::Deserialize;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
@@ -60,10 +59,10 @@ impl SharePublisher {
         &self,
         provided: Option<&ClerkSession>,
     ) -> Result<ClerkSession, ShareError> {
-        if let Some(session) = provided {
-            if !session.is_expired() {
-                return Ok(session.clone());
-            }
+        if let Some(session) = provided
+            && !session.is_expired()
+        {
+            return Ok(session.clone());
         }
 
         if let Some(active) = self.sessions.active().await {
@@ -172,21 +171,21 @@ impl SharePublisher {
         }
 
         // 2) Fetch missing GitHub repository ID
-        if metadata.needs_repo_id_enrichment() {
-            if let (Some(owner), Some(name)) = (
+        if metadata.needs_repo_id_enrichment()
+            && let (Some(owner), Some(name)) = (
                 metadata.github_repo_owner.clone(),
                 metadata.github_repo_name.clone(),
-            ) {
-                let token = {
-                    let cfg = self.user_config.read().await;
-                    cfg.github.token()
-                }
-                .ok_or(ShareError::MissingGitHubToken)?;
-
-                let github = GitHubService::new(&token)?;
-                let id = github.fetch_repository_id(&owner, &name).await?;
-                metadata.github_repo_id = Some(id);
+            )
+        {
+            let token = {
+                let cfg = self.user_config.read().await;
+                cfg.github.token()
             }
+            .ok_or(ShareError::MissingGitHubToken)?;
+
+            let github = GitHubService::new(&token)?;
+            let id = github.fetch_repository_id(&owner, &name).await?;
+            metadata.github_repo_id = Some(id);
         }
 
         // 3) Update project if metadata changed
@@ -258,15 +257,9 @@ impl<'a> RemoteTaskClient<'a> {
         }
 
         let response = response.error_for_status().map_err(ShareError::Transport)?;
-        let envelope: TaskResponseEnvelope =
-            response.json().await.map_err(ShareError::Transport)?;
+        let envelope: SharedTaskResponse = response.json().await.map_err(ShareError::Transport)?;
         Ok(envelope.task)
     }
-}
-
-#[derive(Debug, Deserialize)]
-struct TaskResponseEnvelope {
-    task: RemoteSharedTask,
 }
 
 fn project_metadata_for_remote(project: &Project) -> Result<ProjectMetadata, ShareError> {

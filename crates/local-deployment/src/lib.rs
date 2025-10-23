@@ -158,7 +158,6 @@ impl Deployment for LocalDeployment {
             analytics_ctx,
             approvals.clone(),
             share_publisher.clone(),
-            clerk_sessions.clone(),
         );
         container.spawn_worktree_cleanup().await;
 

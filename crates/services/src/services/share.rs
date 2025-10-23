@@ -65,7 +65,6 @@ pub enum ShareError {
 pub struct RemoteSync {
     db: DBService,
     processor: ActivityProcessor,
-    remote_client: Option<Arc<WsClient>>,
     config: ShareConfig,
     sessions: ClerkSessionStore,
 }
@@ -81,7 +80,6 @@ impl RemoteSync {
             let sync = Self {
                 db,
                 processor,
-                remote_client: None,
                 config,
                 sessions,
             };
@@ -99,7 +97,7 @@ impl RemoteSync {
         }
     }
 
-    pub async fn run(mut self, shutdown_rx: oneshot::Receiver<()>) -> Result<(), ShareError> {
+    pub async fn run(self, shutdown_rx: oneshot::Receiver<()>) -> Result<(), ShareError> {
         let session = self.sessions.wait_for_active().await;
         let org_id = session.org_id.clone().ok_or(ShareError::MissingAuth)?;
 
@@ -114,21 +112,14 @@ impl RemoteSync {
 
         let ws_url = self.config.websocket_endpoint(last_seq)?;
         let remote = spawn_shared_remote(self.processor.clone(), &self.sessions, ws_url).await?;
-        self.remote_client = Some(remote);
 
         let _ = shutdown_rx.await;
         tracing::info!("shutdown signal received for remote sync");
 
-        self.request_shutdown().await;
-        Ok(())
-    }
-
-    async fn request_shutdown(&mut self) {
-        if let Some(client) = self.remote_client.take()
-            && let Err(err) = client.shutdown()
-        {
+        if let Err(err) = remote.shutdown() {
             tracing::warn!(?err, "failed to request websocket shutdown");
         }
+        Ok(())
     }
 }
 
@@ -142,12 +133,13 @@ impl WsHandler for SharedWsHandler {
         if let WsMessage::Text(txt) = msg {
             match serde_json::from_str::<ServerMessage>(&txt) {
                 Ok(ServerMessage::Activity(event)) => {
+                    let seq = event.seq;
                     self.processor
-                        .process_event(event.clone())
+                        .process_event(event)
                         .await
                         .map_err(|err| WsError::Handler(Box::new(err)))?;
 
-                    tracing::debug!(seq = event.seq, "processed remote activity");
+                    tracing::debug!(seq, "processed remote activity");
                 }
                 Ok(ServerMessage::Error { message }) => {
                     tracing::warn!(?message, "received WS error message");
@@ -170,7 +162,7 @@ async fn spawn_shared_remote(
     processor: ActivityProcessor,
     sessions: &ClerkSessionStore,
     url: Url,
-) -> Result<Arc<WsClient>, ShareError> {
+) -> Result<WsClient, ShareError> {
     let session_source = sessions.clone();
     let ws_config = WsConfig {
         url,
@@ -188,9 +180,9 @@ async fn spawn_shared_remote(
     };
 
     let handler = SharedWsHandler { processor };
-    let client = Arc::new(run_ws_client(handler, ws_config).await?);
-
-    Ok(client)
+    run_ws_client(handler, ws_config)
+        .await
+        .map_err(ShareError::from)
 }
 
 fn build_ws_headers(session: &ClerkSession) -> WsResult<Vec<(HeaderName, HeaderValue)>> {
