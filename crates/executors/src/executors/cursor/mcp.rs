@@ -4,10 +4,10 @@ use sha2::{Digest, Sha256};
 use tokio::fs;
 use tracing::warn;
 
-use super::Cursor;
+use super::CursorAgent;
 use crate::executors::{CodingAgent, ExecutorError, StandardCodingAgentExecutor};
 
-pub async fn ensure_mcp_server_trust(cursor: &Cursor, current_dir: &Path) {
+pub async fn ensure_mcp_server_trust(cursor: &CursorAgent, current_dir: &Path) {
     if let Err(err) = ensure_mcp_server_trust_impl(cursor, current_dir).await {
         tracing::warn!(
             error = %err,
@@ -17,7 +17,7 @@ pub async fn ensure_mcp_server_trust(cursor: &Cursor, current_dir: &Path) {
 }
 
 async fn ensure_mcp_server_trust_impl(
-    cursor: &Cursor,
+    cursor: &CursorAgent,
     current_dir: &Path,
 ) -> Result<(), ExecutorError> {
     let current_dir =
@@ -166,7 +166,7 @@ fn compute_cursor_approval_id(
     Some(format!("{server_name}-{}", &hex[..16]))
 }
 
-fn default_cursor_mcp_servers(cursor: &Cursor) -> serde_json::Value {
-    let mcpc = CodingAgent::Cursor(cursor.clone()).get_mcp_config();
+fn default_cursor_mcp_servers(cursor: &CursorAgent) -> serde_json::Value {
+    let mcpc = CodingAgent::CursorAgent(cursor.clone()).get_mcp_config();
     serde_json::json!({ "mcpServers": mcpc.preconfigured })
 }
