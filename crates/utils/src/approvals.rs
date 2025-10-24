@@ -4,7 +4,6 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 pub const APPROVAL_TIMEOUT_SECONDS: i64 = 3600; // 1 hour
-pub const EXIT_PLAN_MODE_TOOL_NAME: &str = "ExitPlanMode";
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct ApprovalRequest {
