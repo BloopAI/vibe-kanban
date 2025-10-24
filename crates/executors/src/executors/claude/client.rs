@@ -53,7 +53,7 @@ impl ClaudeAgentClient {
     }
     async fn set_latest_unhandled_tool_use_id(&self, tool_use_id: String) {
         if self.latest_unhandled_tool_use_id.lock().await.is_some() {
-            tracing::error!(
+            tracing::warn!(
                 "Overwriting unhandled tool_use_id: {} with new tool_use_id: {}",
                 self.latest_unhandled_tool_use_id
                     .lock()
@@ -106,8 +106,7 @@ impl ProtocolCallbacks for ClaudeAgentClient {
 
             self.log_writer
                 .log_raw(&format!(
-                    "[AUTO-APPROVE] Tool: {} Input: {}",
-                    tool_name, input_str
+                    "[AUTO-APPROVE] Tool: {tool_name} Input: {input_str}",
                 ))
                 .await?;
             Ok(PermissionResult::Allow {
@@ -120,7 +119,7 @@ impl ProtocolCallbacks for ClaudeAgentClient {
                 ExecutorError::Io(std::io::Error::other("Approval service not available"))
             })?;
             let latest_tool_use_id = {
-                let guard = self.latest_unhandled_tool_use_id.lock().await;
+                let guard = self.latest_unhandled_tool_use_id.lock().await.take();
                 guard.clone()
             };
             match approval_service
@@ -229,7 +228,7 @@ impl ProtocolCallbacks for ClaudeAgentClient {
         if let Ok(value) = serde_json::from_str::<serde_json::Value>(line)
             && value.get("type").and_then(|t| t.as_str()) == Some("result")
         {
-            tracing::info!("Detected result message, task complete");
+            tracing::debug!("Detected result message, task complete");
             return Ok(true);
         }
 

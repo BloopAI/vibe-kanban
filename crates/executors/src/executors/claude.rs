@@ -86,12 +86,11 @@ impl ClaudeCode {
 
         let plan = self.plan.unwrap_or(false);
         let approvals = self.approvals.unwrap_or(false);
-        builder = builder.extend_params(["--input-format=stream-json"]);
         if plan && approvals {
             tracing::warn!("Both plan and approvals are enabled. Plan will take precedence.");
         }
         if plan || approvals {
-            // Enable bypass at startup, otherwise we cannot change to it after approvals
+            // Enable bypass at startup, otherwise we cannot change to it after exiting plan mode
             builder = builder.extend_params(["--permission-prompt-tool=stdio"]);
             builder = builder.extend_params([format!(
                 "--permission-mode={}",
@@ -107,6 +106,7 @@ impl ClaudeCode {
         builder = builder.extend_params([
             "--verbose",
             "--output-format=stream-json",
+            "--input-format=stream-json",
             "--include-partial-messages",
         ]);
 

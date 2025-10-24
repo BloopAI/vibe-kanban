@@ -73,9 +73,7 @@ impl ProtocolPeer {
                             };
                             self.handle_control_request(&callbacks, msg).await;
                         }
-                        Ok(CLIMessage::ControlResponse { response }) => {
-                            tracing::debug!("Received control response: {:?}", response);
-                        }
+                        Ok(CLIMessage::ControlResponse { .. }) => {}
                         Ok(CLIMessage::System {
                             subtype: Some(ref s),
                             session_id: Some(ref sid),
@@ -187,7 +185,6 @@ impl ProtocolPeer {
     /// Send JSON message to stdin
     async fn send_json<T: serde::Serialize>(&self, message: &T) -> Result<(), ExecutorError> {
         let json = serde_json::to_string(message)?;
-        tracing::debug!("Sending to CLI stdin: {}", json);
         let mut stdin = self.stdin.lock().await;
         stdin.write_all(json.as_bytes()).await?;
         stdin.write_all(b"\n").await?;
