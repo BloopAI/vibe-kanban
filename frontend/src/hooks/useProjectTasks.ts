@@ -32,9 +32,7 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
 
   const tasksById = data?.tasks ?? {};
   const tasks = Object.values(tasksById).sort(
-    (a, b) =>
-      new Date(b.created_at as unknown as string).getTime() -
-      new Date(a.created_at as unknown as string).getTime()
+    (a, b) => (b.position || 0) - (a.position || 0)
   );
   const isLoading = !data && !error; // until first snapshot
 

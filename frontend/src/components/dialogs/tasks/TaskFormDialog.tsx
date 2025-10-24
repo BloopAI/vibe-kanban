@@ -289,6 +289,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                 description: description,
                 status,
                 parent_task_attempt: parentTaskAttemptId || null,
+                position: null, // Don't change position when editing
                 image_ids: imageIds || null,
               },
             },

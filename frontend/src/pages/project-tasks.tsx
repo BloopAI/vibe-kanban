@@ -12,6 +12,7 @@ import { FeatureShowcaseModal } from '@/components/showcase/FeatureShowcaseModal
 import { showcases } from '@/config/showcases';
 import { useShowcaseTrigger } from '@/hooks/useShowcaseTrigger';
 import { usePostHog } from 'posthog-js/react';
+import { arrayMove } from '@dnd-kit/sortable';
 
 import { useSearch } from '@/contexts/search-context';
 import { useProject } from '@/contexts/project-context';
@@ -143,6 +144,12 @@ export function ProjectTasks() {
     }
   }, [projectId]);
   const { query: searchQuery, focusInput } = useSearch();
+
+  // Optimistic updates: required to prevent snap-back when using async API calls
+  // @dnd-kit needs the items array to update immediately for smooth drop animations
+  const [optimisticPositions, setOptimisticPositions] = useState<
+    Record<string, { status: Task['status']; position: number }>
+  >({});
 
   const {
     tasks,
@@ -292,17 +299,42 @@ export function ProjectTasks() {
     { scope: Scope.KANBAN }
   );
 
+  // Merge WebSocket tasks with optimistic position updates
+  const tasksWithOptimisticUpdates = useMemo(() => {
+    return tasks.map((task) => {
+      const optimistic = optimisticPositions[task.id];
+      if (optimistic) {
+        return {
+          ...task,
+          status: optimistic.status,
+          position: optimistic.position,
+        };
+      }
+      return task;
+    });
+  }, [tasks, optimisticPositions]);
+
+  // Create optimistic tasksById map for lookups
+  const tasksByIdWithOptimistic = useMemo(() => {
+    const result: Record<string, Task> = {};
+    tasksWithOptimisticUpdates.forEach((task) => {
+      result[task.id] = task;
+    });
+    return result;
+  }, [tasksWithOptimisticUpdates]);
+
+  // Memoize filtered tasks based on search query
   const filteredTasks = useMemo(() => {
     if (!searchQuery.trim()) {
-      return tasks;
+      return tasksWithOptimisticUpdates;
     }
     const query = searchQuery.toLowerCase();
-    return tasks.filter(
+    return tasksWithOptimisticUpdates.filter(
       (task) =>
         task.title.toLowerCase().includes(query) ||
         (task.description && task.description.toLowerCase().includes(query))
     );
-  }, [tasks, searchQuery]);
+  }, [tasksWithOptimisticUpdates, searchQuery]);
 
   const groupedFilteredTasks = useMemo(() => {
     const groups: Record<string, Task[]> = {};
@@ -569,26 +601,113 @@ export function ProjectTasks() {
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
       const { active, over } = event;
-      if (!over || !active.data.current) return;
+      if (!over) return;
 
-      const draggedTaskId = active.id as string;
-      const newStatus = over.id as Task['status'];
-      const task = tasksById[draggedTaskId];
-      if (!task || task.status === newStatus) return;
+      const draggedId = active.id as string;
+      const overId = over.id as string;
+      const draggedTask = tasksByIdWithOptimistic[draggedId];
+      if (!draggedTask) return;
+
+      // Determine target status (either from the task we dropped on, or the column header)
+      const overTask = tasksByIdWithOptimistic[overId];
+      const newStatus = overTask?.status || (overId as Task['status']);
+
+      // Get all tasks in destination column, sorted by position DESC (highest first)
+      const columnTasks = Object.values(tasksByIdWithOptimistic)
+        .filter((t) => t.status === newStatus)
+        .sort((a, b) => b.position - a.position);
+
+      // Find indices in the current order
+      const oldIndex = columnTasks.findIndex((t) => t.id === draggedId);
+      const newIndex = columnTasks.findIndex((t) => t.id === overId);
+
+      // If dropped on column header (not a task), add to bottom
+      if (newIndex === -1) {
+        const lastTask = columnTasks[columnTasks.length - 1];
+        const newPosition = lastTask
+          ? lastTask.position - 1000
+          : Date.now() / 1000;
+
+        // Apply optimistic update immediately
+        setOptimisticPositions((prev) => ({
+          ...prev,
+          [draggedId]: { status: newStatus, position: newPosition },
+        }));
+
+        try {
+          await tasksApi.update(draggedId, {
+            title: draggedTask.title,
+            description: draggedTask.description,
+            status: newStatus,
+            position: newPosition,
+            parent_task_attempt: draggedTask.parent_task_attempt,
+            image_ids: null,
+          });
+        } catch (err) {
+          console.error('Failed to update task:', err);
+        } finally {
+          // Clear optimistic update (WebSocket will have the correct data)
+          setOptimisticPositions((prev) => {
+            const updated = { ...prev };
+            delete updated[draggedId];
+            return updated;
+          });
+        }
+        return;
+      }
+
+      // If nothing changed, don't update
+      if (draggedTask.status === newStatus && oldIndex === newIndex) {
+        return;
+      }
+
+      // Use arrayMove to get the new order (handles all edge cases correctly)
+      const reordered = arrayMove(columnTasks, oldIndex, newIndex);
+
+      // Calculate position based on neighbors in the new order
+      const taskAbove = reordered[newIndex - 1];
+      const taskBelow = reordered[newIndex + 1];
+
+      let newPosition: number;
+      if (!taskAbove) {
+        // At top
+        newPosition = (taskBelow?.position || Date.now() / 1000) + 1000;
+      } else if (!taskBelow) {
+        // At bottom
+        newPosition = taskAbove.position - 1000;
+      } else {
+        // Between two tasks
+        newPosition = (taskAbove.position + taskBelow.position) / 2;
+      }
+
+      // Apply optimistic update IMMEDIATELY (synchronously) before API call
+      // This prevents the snap-back animation when DragOverlay completes
+      setOptimisticPositions((prev) => ({
+        ...prev,
+        [draggedId]: { status: newStatus, position: newPosition },
+      }));
 
       try {
-        await tasksApi.update(draggedTaskId, {
-          title: task.title,
-          description: task.description,
+        await tasksApi.update(draggedId, {
+          title: draggedTask.title,
+          description: draggedTask.description,
           status: newStatus,
-          parent_task_attempt: task.parent_task_attempt,
+          position: newPosition,
+          parent_task_attempt: draggedTask.parent_task_attempt,
           image_ids: null,
         });
       } catch (err) {
-        console.error('Failed to update task status:', err);
+        console.error('Failed to update task:', err);
+      } finally {
+        // Clear optimistic update (WebSocket will have the correct data)
+        setOptimisticPositions((prev) => {
+          const updated = { ...prev };
+          delete updated[draggedId];
+          return updated;
+        });
       }
     },
-    [tasksById]
+    [tasksByIdWithOptimistic]
   );
 
   const isInitialTasksLoad = isLoading && tasks.length === 0;
@@ -652,6 +771,7 @@ export function ProjectTasks() {
       <div className="w-full h-full overflow-x-auto overflow-y-auto overscroll-x-contain touch-pan-y">
         <TaskKanbanBoard
           groupedTasks={groupedFilteredTasks}
+          tasksById={tasksByIdWithOptimistic}
           onDragEnd={handleDragEnd}
           onViewTaskDetails={handleViewTaskDetails}
           selectedTask={selectedTask || undefined}
