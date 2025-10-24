@@ -169,10 +169,13 @@ pub async fn create_task_attempt(
     )
     .await?;
 
-    let execution_process = deployment
+    if let Err(err) = deployment
         .container()
         .start_attempt(&task_attempt, executor_profile_id.clone())
-        .await?;
+        .await
+    {
+        tracing::error!("Failed to start task attempt: {}", err);
+    }
 
     deployment
         .track_if_analytics_allowed(
@@ -186,7 +189,7 @@ pub async fn create_task_attempt(
         )
         .await;
 
-    tracing::info!("Started execution process {}", execution_process.id);
+    tracing::info!("Created attempt for task {}", task.id);
 
     Ok(ResponseJson(ApiResponse::success(task_attempt)))
 }
@@ -845,7 +848,7 @@ pub async fn open_task_attempt_in_editor(
         config.editor.with_override(editor_type_str)
     };
 
-    match editor_config.open_file(&path.to_string_lossy()) {
+    match editor_config.open_file(&path.to_string_lossy()).await {
         Ok(_) => {
             tracing::info!(
                 "Opened editor for task attempt {} at path: {}",

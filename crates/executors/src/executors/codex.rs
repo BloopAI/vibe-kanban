@@ -21,7 +21,7 @@ use serde_json::Value;
 use strum_macros::AsRefStr;
 use tokio::process::Command;
 use ts_rs::TS;
-use workspace_utils::{msg_store::MsgStore, shell::get_shell_command};
+use workspace_utils::msg_store::MsgStore;
 
 use self::{
     client::{AppServerClient, LogWriter},
@@ -31,7 +31,7 @@ use self::{
 };
 use crate::{
     approvals::ExecutorApprovalService,
-    command::{CmdOverrides, CommandBuilder, apply_overrides},
+    command::{CmdOverrides, CommandBuilder, CommandParts, apply_overrides},
     executors::{
         AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
         codex::{jsonrpc::ExitSignalSender, normalize_logs::Error},
@@ -142,8 +142,8 @@ impl StandardCodingAgentExecutor for Codex {
     }
 
     async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
-        let command = self.build_command_builder().build_initial();
-        self.spawn(current_dir, prompt, command, None).await
+        let command_parts = self.build_command_builder().build_initial()?;
+        self.spawn(current_dir, prompt, command_parts, None).await
     }
 
     async fn spawn_follow_up(
@@ -152,8 +152,8 @@ impl StandardCodingAgentExecutor for Codex {
         prompt: &str,
         session_id: &str,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let command = self.build_command_builder().build_follow_up(&[]);
-        self.spawn(current_dir, prompt, command, Some(session_id))
+        let command_parts = self.build_command_builder().build_follow_up(&[])?;
+        self.spawn(current_dir, prompt, command_parts, Some(session_id))
             .await
     }
 
@@ -247,21 +247,20 @@ impl Codex {
         &self,
         current_dir: &Path,
         prompt: &str,
-        command: String,
+        command_parts: CommandParts,
         resume_session: Option<&str>,
     ) -> Result<SpawnedChild, ExecutorError> {
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
-        let (shell_cmd, shell_arg) = get_shell_command();
+        let (program_path, args) = command_parts.into_resolved().await?;
 
-        let mut process = Command::new(shell_cmd);
+        let mut process = Command::new(program_path);
         process
             .kill_on_drop(true)
             .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .current_dir(current_dir)
-            .arg(shell_arg)
-            .arg(&command)
+            .args(&args)
             .env("NODE_NO_WARNINGS", "1")
             .env("NO_COLOR", "1")
             .env("RUST_LOG", "error");
