@@ -15,7 +15,7 @@ use workspace_utils::msg_store::MsgStore;
 use crate::{
     approvals::ExecutorApprovalService,
     executors::{
-        amp::Amp, claude::ClaudeCode, codex::Codex, copilot::Copilot, cursor::Cursor,
+        amp::Amp, claude::ClaudeCode, codex::Codex, copilot::Copilot, cursor::Cursor, droid::Droid,
         gemini::Gemini, opencode::Opencode, qwen::QwenCode,
     },
     mcp_config::McpConfig,
@@ -27,6 +27,7 @@ pub mod claude;
 pub mod codex;
 pub mod copilot;
 pub mod cursor;
+pub mod droid;
 pub mod gemini;
 pub mod opencode;
 pub mod qwen;
@@ -81,6 +82,7 @@ pub enum CodingAgent {
     Cursor,
     QwenCode,
     Copilot,
+    Droid,
 }
 
 impl CodingAgent {
@@ -111,6 +113,14 @@ impl CodingAgent {
                 self.preconfigured_mcp(),
                 false,
             ),
+            Self::Droid(_) => McpConfig::new(
+                vec!["mcpServers".to_string()],
+                serde_json::json!({
+                    "mcpServers": {}
+                }),
+                self.preconfigured_mcp(),
+                false,
+            ),
             _ => McpConfig::new(
                 vec!["mcpServers".to_string()],
                 serde_json::json!({
@@ -133,7 +143,7 @@ impl CodingAgent {
             Self::Codex(_) => vec![BaseAgentCapability::SessionFork],
             Self::Gemini(_) => vec![BaseAgentCapability::SessionFork],
             Self::QwenCode(_) => vec![BaseAgentCapability::SessionFork],
-            Self::Opencode(_) | Self::Cursor(_) | Self::Copilot(_) => vec![],
+            Self::Opencode(_) | Self::Cursor(_) | Self::Copilot(_) | Self::Droid(_) => vec![],
         }
     }
 }

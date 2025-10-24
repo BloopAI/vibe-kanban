@@ -1,0 +1,181 @@
+---
+source: crates/executors/tests/droid_snapshots.rs
+expression: snapshot
+---
+final_state:
+  tool_map: {}
+  model_reported: true
+events:
+  - AddEntry:
+      timestamp: ~
+      entry_type:
+        type: system_message
+      content: "model: gpt-5-codex"
+      metadata: ~
+  - AddEntry:
+      timestamp: "1760962903699"
+      entry_type:
+        type: user_message
+      content: create random.txt with a single sentence
+      metadata: ~
+  - AddToolCall:
+      tool_call_id: call_KieOKRNN6UAhPNI6ACkjJTrS
+      entry:
+        timestamp: "1760962914213"
+        entry_type:
+          type: tool_use
+          tool_name: LS
+          action_type:
+            action: file_read
+            path: "."
+          status:
+            status: created
+        content: "`.`"
+        metadata:
+          directory_path: "."
+          ignorePatterns:
+            - ".git"
+            - node_modules
+            - vendor
+            - tmp
+            - __pycache__
+          toolCallId: call_KieOKRNN6UAhPNI6ACkjJTrS
+  - UpdateToolCall:
+      tool_call_id: call_KieOKRNN6UAhPNI6ACkjJTrS
+      entry:
+        timestamp: "1760962914235"
+        entry_type:
+          type: tool_use
+          tool_name: LS
+          action_type:
+            action: file_read
+            path: "."
+          status:
+            status: success
+        content: "`.`"
+        metadata: ~
+  - AddToolCall:
+      tool_call_id: call_sVOzJJ2NFxqj415lDanupmuz
+      entry:
+        timestamp: "1760962924169"
+        entry_type:
+          type: tool_use
+          tool_name: Glob
+          action_type:
+            action: search
+            query: "README.md, readme.md, docs/**, *.md"
+          status:
+            status: created
+        content: "`README.md, readme.md, docs/**, *.md`"
+        metadata:
+          folder: /Users/tempuser/projects/aws
+          patterns:
+            - README.md
+            - readme.md
+            - docs/**
+            - "*.md"
+          toolCallId: call_sVOzJJ2NFxqj415lDanupmuz
+  - UpdateToolCall:
+      tool_call_id: call_sVOzJJ2NFxqj415lDanupmuz
+      entry:
+        timestamp: "1760962924242"
+        entry_type:
+          type: tool_use
+          tool_name: Glob
+          action_type:
+            action: search
+            query: "README.md, readme.md, docs/**, *.md"
+          status:
+            status: success
+        content: "`README.md, readme.md, docs/**, *.md`"
+        metadata: ~
+  - AddToolCall:
+      tool_call_id: call_sNK1Fd9RCpgD7o6ItsgxKUWw
+      entry:
+        timestamp: "1760962931744"
+        entry_type:
+          type: tool_use
+          tool_name: TodoWrite
+          action_type:
+            action: todo_management
+            todos:
+              - content: Create random.txt with a single sentence
+                status: in_progress
+                priority: medium
+            operation: update
+          status:
+            status: created
+        content: TODO list updated
+        metadata:
+          todos:
+            - id: create-random-txt
+              content: Create random.txt with a single sentence
+              status: in_progress
+              priority: medium
+          toolCallId: call_sNK1Fd9RCpgD7o6ItsgxKUWw
+  - UpdateToolCall:
+      tool_call_id: call_sNK1Fd9RCpgD7o6ItsgxKUWw
+      entry:
+        timestamp: "1760962931747"
+        entry_type:
+          type: tool_use
+          tool_name: TodoWrite
+          action_type:
+            action: todo_management
+            todos:
+              - content: Create random.txt with a single sentence
+                status: in_progress
+                priority: medium
+            operation: update
+          status:
+            status: success
+        content: TODO list updated
+        metadata: ~
+  - AddToolCall:
+      tool_call_id: call_4ReFFWqaXZ4EgWF9wRuMtOqS
+      entry:
+        timestamp: "1760962946088"
+        entry_type:
+          type: tool_use
+          tool_name: Execute
+          action_type:
+            action: command_run
+            command: "echo \"This is a single sentence.\" > /Users/tempuser/projects/aws/random.txt"
+            result: ~
+          status:
+            status: created
+        content: "`echo \"This is a single sentence.\" > /Users/tempuser/projects/aws/random.txt`"
+        metadata:
+          command: "echo \"This is a single sentence.\" > /Users/tempuser/projects/aws/random.txt"
+          riskLevel:
+            value: medium
+            reason: Creates a new file in the project directory with specified content.
+          toolCallId: call_4ReFFWqaXZ4EgWF9wRuMtOqS
+  - UpdateToolCall:
+      tool_call_id: call_4ReFFWqaXZ4EgWF9wRuMtOqS
+      entry:
+        timestamp: "1760962946094"
+        entry_type:
+          type: tool_use
+          tool_name: Execute
+          action_type:
+            action: command_run
+            command: "echo \"This is a single sentence.\" > /Users/tempuser/projects/aws/random.txt"
+            result: ~
+          status:
+            status: failed
+        content: "`echo \"This is a single sentence.\" > /Users/tempuser/projects/aws/random.txt`"
+        metadata: ~
+  - AddEntry:
+      timestamp: "1760962946095"
+      entry_type:
+        type: assistant_message
+      content: "Exec ended early: insufficient permission to proceed. Re-run with --auto medium or --auto high. For destructive commands, use --skip-permissions-unsafe."
+      metadata: ~
+  - AddEntry:
+      timestamp: "1760962946111"
+      entry_type:
+        type: error_message
+      content: "Exec ended early: insufficient permission to proceed. Re-run with --auto medium or --auto high. For destructive commands, use --skip-permissions-unsafe."
+      metadata: ~
+event_count: 12

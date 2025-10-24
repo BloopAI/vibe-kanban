@@ -1,0 +1,27 @@
+---
+source: crates/executors/tests/droid_snapshots.rs
+expression: snapshot
+---
+final_state:
+  tool_map: {}
+  model_reported: true
+events:
+  - AddEntry:
+      timestamp: ~
+      entry_type:
+        type: system_message
+      content: "model: gpt-5-codex"
+      metadata: ~
+  - AddEntry:
+      timestamp: "1760806427595"
+      entry_type:
+        type: user_message
+      content: hello world
+      metadata: ~
+  - AddEntry:
+      timestamp: "1760806437677"
+      entry_type:
+        type: assistant_message
+      content: "# Hello world!"
+      metadata: ~
+event_count: 3

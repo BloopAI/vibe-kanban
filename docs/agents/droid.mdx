@@ -1,0 +1,71 @@
+---
+title: "Factory Droid"
+description: "Set up Factory AI's Droid coding agent"
+icon: https://www.vibekanban.com/images/logos/factory-ai-logo-light.png
+---
+
+<Steps>
+<Step title="Install Droid CLI">
+  <Tabs>
+  <Tab title="macOS / Linux">
+  ```bash
+  curl -fsSL https://app.factory.ai/cli | sh
+  ```
+  </Tab>
+
+  <Tab title="Windows">
+  ```powershell
+  irm https://app.factory.ai/cli/windows | iex
+  ```
+  </Tab>
+  </Tabs>
+
+  For the latest installation instructions and platform-specific guidance, visit the [Factory AI CLI documentation](https://factory.ai/product/cli).
+</Step>
+
+<Step title="Authenticate with Factory AI">
+  To use Droid in Vibe Kanban, you must first authenticate:
+
+  1. Run `droid` to launch the interactive CLI
+  2. Use the `/login` command within Droid to authenticate
+
+  Alternatively, generate an API key from [Factory Settings](https://app.factory.ai/settings/api-keys) and set it as an environment variable:
+
+  ```bash
+  export FACTORY_API_KEY=fk-...
+  ```
+
+  For detailed authentication instructions, see the [Factory AI documentation](https://docs.factory.ai/factory-cli/getting-started/overview).
+</Step>
+
+<Step title="Start Vibe Kanban">
+  Once authenticated, launch Vibe Kanban:
+
+  ```bash
+  npx vibe-kanban
+  ```
+
+  You can now select Factory Droid when creating task attempts.
+</Step>
+</Steps>
+
+## Configuration Options
+
+Droid supports several configuration options in Vibe Kanban:
+
+- **Autonomy Level**: Controls permission level for file and system operations
+  - `normal`: Read-only mode – safe for reviewing planned changes without execution
+  - `low`: Basic file creation/editing while blocking system changes
+  - `medium`: Development operations with recoverable side effects
+  - `high`: Production operations with security implications or major side effects
+  - `skip-permissions-unsafe`: Bypasses all permission checks (use only in isolated environments) (default)
+
+- **Model**: Specify which model to use
+
+- **Reasoning Effort**: Control the reasoning depth
+  - `off`: Minimal reasoning
+  - `low`: Light reasoning
+  - `medium`: Balanced reasoning
+  - `high`: Deep reasoning for complex tasks
+
+These options can be configured when creating agent configurations in Vibe Kanban.

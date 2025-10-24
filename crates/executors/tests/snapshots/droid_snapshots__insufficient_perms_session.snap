@@ -1,0 +1,140 @@
+---
+source: crates/executors/tests/droid_snapshots.rs
+expression: snapshot
+---
+final_state:
+  tool_map: {}
+  model_reported: true
+events:
+  - AddEntry:
+      timestamp: ~
+      entry_type:
+        type: system_message
+      content: "model: gpt-5-codex"
+      metadata: ~
+  - AddEntry:
+      timestamp: "1760806536533"
+      entry_type:
+        type: user_message
+      content: "create a text file called 'a.txt' with the character 'a' inside"
+      metadata: ~
+  - AddToolCall:
+      tool_call_id: call_WaiIpWDOVLcWkCDEJKogOzrl
+      entry:
+        timestamp: "1760806545519"
+        entry_type:
+          type: tool_use
+          tool_name: Read
+          action_type:
+            action: file_read
+            path: /Users/tempuser/projects/vibe-kanban/README.md
+          status:
+            status: created
+        content: "`/Users/tempuser/projects/vibe-kanban/README.md`"
+        metadata:
+          file_path: /Users/tempuser/projects/vibe-kanban/README.md
+          toolCallId: call_WaiIpWDOVLcWkCDEJKogOzrl
+  - UpdateToolCall:
+      tool_call_id: call_WaiIpWDOVLcWkCDEJKogOzrl
+      entry:
+        timestamp: "1760806545524"
+        entry_type:
+          type: tool_use
+          tool_name: Read
+          action_type:
+            action: file_read
+            path: /Users/tempuser/projects/vibe-kanban/README.md
+          status:
+            status: success
+        content: "`/Users/tempuser/projects/vibe-kanban/README.md`"
+        metadata: ~
+  - AddToolCall:
+      tool_call_id: call_ULikm3YyJS9DBwHRcEck7ejc
+      entry:
+        timestamp: "1760806551942"
+        entry_type:
+          type: tool_use
+          tool_name: TodoWrite
+          action_type:
+            action: todo_management
+            todos:
+              - content: "Create text file a.txt containing single character 'a'"
+                status: in_progress
+                priority: medium
+            operation: update
+          status:
+            status: created
+        content: TODO list updated
+        metadata:
+          todos:
+            - id: todo-1
+              content: "Create text file a.txt containing single character 'a'"
+              status: in_progress
+              priority: medium
+          toolCallId: call_ULikm3YyJS9DBwHRcEck7ejc
+  - UpdateToolCall:
+      tool_call_id: call_ULikm3YyJS9DBwHRcEck7ejc
+      entry:
+        timestamp: "1760806551946"
+        entry_type:
+          type: tool_use
+          tool_name: TodoWrite
+          action_type:
+            action: todo_management
+            todos:
+              - content: "Create text file a.txt containing single character 'a'"
+                status: in_progress
+                priority: medium
+            operation: update
+          status:
+            status: success
+        content: TODO list updated
+        metadata: ~
+  - AddToolCall:
+      tool_call_id: call_W4t4W4TDhrZFiM9DxVox21PW
+      entry:
+        timestamp: "1760806562636"
+        entry_type:
+          type: tool_use
+          tool_name: Execute
+          action_type:
+            action: command_run
+            command: "printf 'a' > \"/Users/tempuser/projects/vibe-kanban/a.txt\""
+            result: ~
+          status:
+            status: created
+        content: "`printf 'a' > \"/Users/tempuser/projects/vibe-kanban/a.txt\"`"
+        metadata:
+          command: "printf 'a' > \"/Users/tempuser/projects/vibe-kanban/a.txt\""
+          riskLevel:
+            value: medium
+            reason: Command creates/overwrites a file in the repository.
+          toolCallId: call_W4t4W4TDhrZFiM9DxVox21PW
+  - UpdateToolCall:
+      tool_call_id: call_W4t4W4TDhrZFiM9DxVox21PW
+      entry:
+        timestamp: "1760806562640"
+        entry_type:
+          type: tool_use
+          tool_name: Execute
+          action_type:
+            action: command_run
+            command: "printf 'a' > \"/Users/tempuser/projects/vibe-kanban/a.txt\""
+            result: ~
+          status:
+            status: failed
+        content: "`printf 'a' > \"/Users/tempuser/projects/vibe-kanban/a.txt\"`"
+        metadata: ~
+  - AddEntry:
+      timestamp: "1760806562640"
+      entry_type:
+        type: assistant_message
+      content: "Exec ended early: insufficient permission to proceed. Re-run with --auto medium or --auto high. For destructive commands, use --skip-permissions-unsafe."
+      metadata: ~
+  - AddEntry:
+      timestamp: "1760806562644"
+      entry_type:
+        type: error_message
+      content: "Exec ended early: insufficient permission to proceed. Re-run with --auto medium or --auto high. For destructive commands, use --skip-permissions-unsafe."
+      metadata: ~
+event_count: 10

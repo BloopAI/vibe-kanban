@@ -37,6 +37,7 @@
               "agents/amp",
               "agents/cursor-cli",
               "agents/opencode",
+              "agents/droid",
               "agents/ccr",
               "agents/qwen-code"
             ]

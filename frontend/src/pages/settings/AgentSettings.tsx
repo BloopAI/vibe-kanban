@@ -53,6 +53,10 @@ export function AgentSettings() {
     useState<string>('DEFAULT');
   const [localParsedProfiles, setLocalParsedProfiles] = useState<any>(null);
   const [isDirty, setIsDirty] = useState(false);
+  const selectedExecutorPayload =
+    localParsedProfiles?.executors?.[selectedExecutorType]?.[
+      selectedConfiguration
+    ]?.[selectedExecutorType] || null;
 
   // Sync server state to local state when not dirty
   useEffect(() => {
@@ -505,16 +509,11 @@ export function AgentSettings() {
                 </div>
               </div>
 
-              {localParsedProfiles.executors[selectedExecutorType]?.[
-                selectedConfiguration
-              ]?.[selectedExecutorType] && (
+              {selectedExecutorPayload && (
                 <ExecutorConfigForm
+                  key={`${selectedExecutorType}:${selectedConfiguration}`}
                   executor={selectedExecutorType as any}
-                  value={
-                    localParsedProfiles.executors[selectedExecutorType][
-                      selectedConfiguration
-                    ][selectedExecutorType] || {}
-                  }
+                  value={selectedExecutorPayload}
                   onChange={(formData) =>
                     handleExecutorConfigChange(
                       selectedExecutorType,
