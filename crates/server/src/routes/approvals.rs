@@ -2,56 +2,12 @@ use axum::{
     Json, Router,
     extract::{Path, State},
     http::StatusCode,
-    routing::{get, post},
+    routing::post,
 };
 use deployment::Deployment;
-use utils::approvals::{
-    ApprovalPendingInfo, ApprovalRequest, ApprovalResponse, ApprovalStatus, CreateApprovalRequest,
-};
+use utils::approvals::{ApprovalResponse, ApprovalStatus};
 
 use crate::DeploymentImpl;
-
-pub async fn create_approval(
-    State(deployment): State<DeploymentImpl>,
-    Json(request): Json<CreateApprovalRequest>,
-) -> Result<Json<ApprovalRequest>, StatusCode> {
-    let service = deployment.approvals();
-
-    match service
-        .create_from_session(&deployment.db().pool, request)
-        .await
-    {
-        Ok(approval) => {
-            deployment
-                .track_if_analytics_allowed(
-                    "approval_created",
-                    serde_json::json!({
-                        "approval_id": approval.id,
-                        "tool_name": &approval.tool_name,
-                        "execution_process_id": approval.execution_process_id.to_string(),
-                    }),
-                )
-                .await;
-
-            Ok(Json(approval))
-        }
-        Err(e) => {
-            tracing::error!("Failed to create approval: {:?}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
-        }
-    }
-}
-
-pub async fn get_approval_status(
-    State(deployment): State<DeploymentImpl>,
-    Path(id): Path<String>,
-) -> Result<Json<ApprovalStatus>, StatusCode> {
-    let service = deployment.approvals();
-    match service.status(&id).await {
-        Some(status) => Ok(Json(status)),
-        None => Err(StatusCode::NOT_FOUND),
-    }
-}
 
 pub async fn respond_to_approval(
     State(deployment): State<DeploymentImpl>,
@@ -83,18 +39,6 @@ pub async fn respond_to_approval(
     }
 }
 
-pub async fn get_pending_approvals(
-    State(deployment): State<DeploymentImpl>,
-) -> Json<Vec<ApprovalPendingInfo>> {
-    let service = deployment.approvals();
-    let approvals = service.pending().await;
-    Json(approvals)
-}
-
 pub fn router() -> Router<DeploymentImpl> {
-    Router::new()
-        .route("/approvals/create", post(create_approval))
-        .route("/approvals/{id}/status", get(get_approval_status))
-        .route("/approvals/{id}/respond", post(respond_to_approval))
-        .route("/approvals/pending", get(get_pending_approvals))
+    Router::new().route("/approvals/{id}/respond", post(respond_to_approval))
 }
