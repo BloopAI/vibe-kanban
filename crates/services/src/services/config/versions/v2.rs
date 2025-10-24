@@ -6,7 +6,7 @@ use strum_macros::EnumString;
 use ts_rs::TS;
 use utils::{assets::SoundAssets, cache_dir};
 
-use crate::services::config::versions::v1;
+use crate::services::config::{errors::OpenEditorError, versions::v1};
 
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
 pub struct Config {
@@ -335,22 +335,26 @@ impl EditorConfig {
         }
     }
 
-    pub fn open_file(&self, path: &str) -> Result<(), std::io::Error> {
+    pub fn open_file(&self, path: &str) -> Result<(), OpenEditorError> {
         let mut command = self.get_command();
 
         if command.is_empty() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                "No editor command configured",
-            ));
+            return Err(OpenEditorError::InvalidConfig {
+                message: "No editor command configured".to_string(),
+            });
         }
 
-        if cfg!(windows) {
-            command[0] =
-                utils::shell::resolve_executable_path(&command[0]).ok_or(std::io::Error::new(
-                    std::io::ErrorKind::NotFound,
-                    format!("Editor command '{}' not found", command[0]),
-                ))?;
+        let cli_command = &command[0];
+        let resolved_cli_path = utils::shell::resolve_executable_path(cli_command);
+
+        if let Some(resolved_cli_path) = resolved_cli_path {
+            // Particularly important for windows
+            command[0] = resolved_cli_path;
+        } else {
+            return Err(OpenEditorError::IdeCliNotFound {
+                editor_type: self.editor_type.clone(),
+                cli_command: cli_command.clone(),
+            });
         }
 
         let mut cmd = std::process::Command::new(&command[0]);
@@ -358,7 +362,9 @@ impl EditorConfig {
             cmd.arg(arg);
         }
         cmd.arg(path);
-        cmd.spawn()?;
+        cmd.spawn().map_err(|e| OpenEditorError::Io {
+            message: e.to_string(),
+        })?;
         Ok(())
     }
 
