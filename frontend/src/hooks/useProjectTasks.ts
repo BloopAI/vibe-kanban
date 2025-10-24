@@ -20,6 +20,7 @@ type TasksState = {
 interface UseProjectTasksResult {
   tasks: TaskWithAttemptStatus[];
   tasksById: Record<string, TaskWithAttemptStatus>;
+  sharedTasks: SharedTaskRecord[];
   sharedTasksById: Record<string, SharedTaskRecord>;
   isLoading: boolean;
   isConnected: boolean;
@@ -49,26 +50,7 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
   const sharedTasksById = data?.shared_tasks ?? {};
 
   const { tasks, tasksById } = useMemo(() => {
-    const merged: Record<string, TaskWithAttemptStatus> = {
-      ...localTasksById,
-    };
-
-    const claimedSharedTaskIds = new Set(
-      Object.values(localTasksById)
-        .map((task) => task.shared_task_id)
-        .filter((id): id is string => Boolean(id))
-    );
-
-    Object.values(sharedTasksById).forEach((sharedTask: SharedTaskRecord) => {
-      if (sharedTask.project_id !== projectId) {
-        return;
-      }
-      if (claimedSharedTaskIds.has(sharedTask.id)) {
-        return;
-      }
-      merged[sharedTask.id] = convertSharedTask(sharedTask);
-    });
-
+    const merged: Record<string, TaskWithAttemptStatus> = { ...localTasksById };
     const sorted = Object.values(merged).sort(
       (a, b) =>
         new Date(b.created_at as string).getTime() -
@@ -76,34 +58,25 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
     );
 
     return { tasks: sorted, tasksById: merged };
-  }, [localTasksById, sharedTasksById, projectId]);
+  }, [localTasksById]);
+
+  const sharedTasks = useMemo(() => {
+    return Object.values(sharedTasksById).sort(
+      (a, b) =>
+        new Date(b.created_at as string).getTime() -
+        new Date(a.created_at as string).getTime()
+    );
+  }, [sharedTasksById]);
 
   const isLoading = !data && !error; // until first snapshot
 
-  return { tasks, tasksById, sharedTasksById, isLoading, isConnected, error };
-};
-
-function convertSharedTask(task: SharedTaskRecord): TaskWithAttemptStatus {
   return {
-    id: task.id,
-    project_id: task.project_id,
-    title: task.title,
-    description: task.description ?? null,
-    status: task.status,
-    parent_task_attempt: null,
-    shared_task_id: null,
-    created_at: toIsoString(task.created_at),
-    updated_at: toIsoString(task.updated_at),
-    has_in_progress_attempt: false,
-    has_merged_attempt: false,
-    last_attempt_failed: false,
-    executor: 'shared',
+    tasks,
+    tasksById,
+    sharedTasks,
+    sharedTasksById,
+    isLoading,
+    isConnected,
+    error,
   };
-}
-
-function toIsoString(value: Date | string): string {
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-  return new Date(value).toISOString();
-}
+};

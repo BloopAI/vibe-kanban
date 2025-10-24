@@ -52,11 +52,9 @@ function TaskKanbanBoard({
                 isOpen={selectedTask?.id === task.id}
                 sharedTask={
                   sharedTasksById
-                    ? task.executor === 'shared'
-                      ? sharedTasksById[task.id]
-                      : task.shared_task_id
-                        ? sharedTasksById[task.shared_task_id]
-                        : undefined
+                    ? task.shared_task_id
+                      ? sharedTasksById[task.shared_task_id]
+                      : sharedTasksById[task.id]
                     : undefined
                 }
               />

@@ -166,14 +166,12 @@ impl From<ShareError> for ApiError {
     fn from(err: ShareError) -> Self {
         match err {
             ShareError::Database(db_err) => ApiError::Database(db_err),
-            ShareError::AlreadyShared(task_id) => {
-                ApiError::Conflict(format!("Task {task_id} is already shared"))
+            ShareError::AlreadyShared(_) => ApiError::Conflict(format!("Task already shared")),
+            ShareError::TaskNotFound(_) => {
+                ApiError::Conflict(format!("Task not found for sharing"))
             }
-            ShareError::TaskNotFound(task_id) => {
-                ApiError::Conflict(format!("Task {task_id} not found for sharing"))
-            }
-            ShareError::ProjectNotFound(project_id) => {
-                ApiError::Conflict(format!("Project {project_id} not found for sharing"))
+            ShareError::ProjectNotFound(_) => {
+                ApiError::Conflict(format!("Project not found for sharing"))
             }
             ShareError::MissingProjectMetadata(project_id) => {
                 tracing::warn!(

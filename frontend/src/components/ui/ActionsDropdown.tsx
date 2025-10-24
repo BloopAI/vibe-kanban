@@ -95,15 +95,14 @@ export function ActionsDropdown({
     NiceModal.show('share-task', { task });
   };
 
-  const handleTransferAssignment = (e: React.MouseEvent) => {
+  const handleReassign = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!sharedTask) return;
-    NiceModal.show('transfer-shared-task', { sharedTask });
+    NiceModal.show('reassign-shared-task', { sharedTask });
   };
 
-  const canTransfer =
+  const canReassign =
     Boolean(task) &&
-    task?.executor === 'shared' &&
     Boolean(sharedTask) &&
     sharedTask?.assignee_user_id === userId;
 
@@ -155,8 +154,8 @@ export function ActionsDropdown({
                 {t('actionsMenu.share')}
               </DropdownMenuItem>
               <DropdownMenuItem
-                disabled={!canTransfer}
-                onClick={handleTransferAssignment}
+                disabled={!canReassign}
+                onClick={handleReassign}
               >
                 Transfer assignment
               </DropdownMenuItem>

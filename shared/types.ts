@@ -90,6 +90,8 @@ export type AssignSharedTaskRequest = { new_assignee_user_id: string | null, ver
 
 export type AssignSharedTaskResponse = { shared_task: SharedTask, };
 
+export type ShareTaskResponse = { shared_task_id: string, };
+
 export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id: ExecutorProfileId, base_branch: string, };
 
 export type CreateGitHubPrRequest = { title: string, body: string | null, target_branch: string | null, };

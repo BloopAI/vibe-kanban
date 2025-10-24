@@ -448,7 +448,7 @@ export const tasksApi = {
     };
 
     const response = await makeRequest(
-      `/api/shared-tasks/${sharedTaskId}/transfer`,
+      `/api/shared-tasks/${sharedTaskId}/assign`,
       {
         method: 'POST',
         body: JSON.stringify(payload),

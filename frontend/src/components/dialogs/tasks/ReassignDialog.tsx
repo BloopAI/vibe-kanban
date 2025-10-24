@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import {
   Dialog,
@@ -21,8 +21,9 @@ import { Loader2 } from 'lucide-react';
 import { tasksApi } from '@/lib/api';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import { useOrganization, useAuth } from '@clerk/clerk-react';
+import type { OrganizationMembershipResource } from '@clerk/types';
 
-export interface TransferAssignmentDialogProps {
+export interface ReassignDialogProps {
   sharedTask: SharedTaskRecord;
 }
 
@@ -31,10 +32,35 @@ type MemberOption = {
   label: string;
 };
 
-const UNASSIGNED_VALUE = '__unassigned__';
+const buildMemberLabel = (
+  membership: OrganizationMembershipResource
+): string => {
+  const data = membership.publicUserData;
+  if (!data) {
+    return 'Member';
+  }
 
-export const TransferAssignmentDialog =
-  NiceModal.create<TransferAssignmentDialogProps>(({ sharedTask }) => {
+  const combinedName = [data.firstName, data.lastName]
+    .filter((part): part is string => Boolean(part && part.trim().length > 0))
+    .join(' ')
+    .trim();
+  if (combinedName.length > 0) {
+    return combinedName;
+  }
+
+  if (data.identifier && data.identifier.trim().length > 0) {
+    return data.identifier;
+  }
+
+  if (data.userId && data.userId.trim().length > 0) {
+    return data.userId;
+  }
+
+  return 'Member';
+};
+
+export const ReassignDialog = NiceModal.create<ReassignDialogProps>(
+  ({ sharedTask }) => {
     const modal = useModal();
     const { organization } = useOrganization();
     const { userId } = useAuth();
@@ -42,8 +68,8 @@ export const TransferAssignmentDialog =
     const [memberOptions, setMemberOptions] = useState<MemberOption[]>([]);
     const [membersLoading, setMembersLoading] = useState(false);
     const [membersError, setMembersError] = useState<string | null>(null);
-    const [selection, setSelection] = useState<string | null>(
-      sharedTask.assignee_user_id
+    const [selection, setSelection] = useState<string | undefined>(
+      sharedTask.assignee_user_id ?? undefined
     );
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -55,11 +81,10 @@ export const TransferAssignmentDialog =
         return;
       }
 
-      let cancelled = false;
       const loadMembers = async () => {
         if (!organization) {
           setMembersError(
-            'Organization context is required to transfer tasks.'
+            'Organization context is required to reassign tasks.'
           );
           setMembersLoading(false);
           return;
@@ -67,80 +92,47 @@ export const TransferAssignmentDialog =
 
         setMembersLoading(true);
         setMembersError(null);
+
         try {
-          const memberships = await organization.getMembershipList({
-            limit: 200,
-          });
-
-          if (cancelled) return;
-
-          const mapped: MemberOption[] = memberships
-            .map((membership) => {
+          const memberships = await organization.getMemberships();
+          const mapped: MemberOption[] = memberships.data
+            .map((membership: OrganizationMembershipResource) => {
               const memberUserId = membership.publicUserData?.userId;
               if (!memberUserId) {
                 return null;
               }
 
-              const firstName = membership.publicUserData?.firstName ?? '';
-              const lastName = membership.publicUserData?.lastName ?? '';
-              const identifier =
-                membership.publicUserData?.identifier ?? memberUserId;
-              const fullName = `${firstName} ${lastName}`.trim();
-
               return {
                 userId: memberUserId,
-                label: fullName.length > 0 ? fullName : identifier,
+                label: buildMemberLabel(membership),
               };
             })
-            .filter((member): member is MemberOption => Boolean(member));
+            .filter((member): member is MemberOption => Boolean(member))
+            .sort((a, b) =>
+              a.label.localeCompare(b.label, undefined, {
+                sensitivity: 'base',
+              })
+            );
 
           setMemberOptions(mapped);
         } catch (error) {
-          if (cancelled) return;
           setMembersError('Failed to load organization members.');
         } finally {
-          if (!cancelled) {
-            setMembersLoading(false);
-          }
+          setMembersLoading(false);
         }
       };
 
       loadMembers();
-
-      return () => {
-        cancelled = true;
-      };
+      return;
     }, [modal.visible, organization]);
 
     useEffect(() => {
       if (!modal.visible) {
         return;
       }
-      setSelection(sharedTask.assignee_user_id);
+      setSelection(sharedTask.assignee_user_id ?? undefined);
       setSubmitError(null);
     }, [modal.visible, sharedTask.assignee_user_id]);
-
-    const currentAssigneeLabel = useMemo(() => {
-      if (!sharedTask.assignee_user_id) {
-        return 'Unassigned';
-      }
-
-      const currentMember = memberOptions.find(
-        (member) => member.userId === sharedTask.assignee_user_id
-      );
-
-      if (currentMember) {
-        return currentMember.userId === userId
-          ? `${currentMember.label} (you)`
-          : currentMember.label;
-      }
-
-      if (sharedTask.assignee_user_id === userId) {
-        return 'You';
-      }
-
-      return sharedTask.assignee_user_id;
-    }, [memberOptions, sharedTask.assignee_user_id, userId]);
 
     const handleClose = () => {
       modal.resolve(null);
@@ -149,6 +141,11 @@ export const TransferAssignmentDialog =
 
     const handleConfirm = async () => {
       if (isSubmitting) {
+        return;
+      }
+
+      if (!selection) {
+        setSubmitError('Select an assignee before reassigning.');
         return;
       }
 
@@ -168,11 +165,11 @@ export const TransferAssignmentDialog =
             : undefined;
 
         if (status === 401 || status === 403) {
-          setSubmitError('Only the current assignee can transfer this task.');
+          setSubmitError('Only the current assignee can reassign this task.');
         } else if (status === 409) {
           setSubmitError('The task assignment changed. Refresh and try again.');
         } else {
-          setSubmitError('Failed to transfer the assignment. Try again.');
+          setSubmitError('Failed to reassign. Try again.');
         }
       } finally {
         setIsSubmitting(false);
@@ -184,7 +181,8 @@ export const TransferAssignmentDialog =
       !isSubmitting &&
       !membersLoading &&
       !membersError &&
-      (selection ?? null) !== (sharedTask.assignee_user_id ?? null);
+      selection !== undefined &&
+      selection !== (sharedTask.assignee_user_id ?? undefined);
 
     return (
       <Dialog
@@ -197,33 +195,25 @@ export const TransferAssignmentDialog =
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Transfer assignment</DialogTitle>
+            <DialogTitle>Reassign</DialogTitle>
             <DialogDescription>
-              Move this shared task to another organization member or clear the
-              assignee.
+              Reassign this task to another organization member.{' '}
             </DialogDescription>
           </DialogHeader>
 
           {!isCurrentAssignee && (
             <Alert variant="destructive">
-              You must be the current assignee to transfer this task.
+              You must be the current assignee to reassign this task.
             </Alert>
           )}
 
           {membersError && <Alert variant="destructive">{membersError}</Alert>}
 
           <div className="space-y-3">
-            <div className="text-sm text-muted-foreground">
-              Current assignee: {currentAssigneeLabel}
-            </div>
             <Select
               disabled={!isCurrentAssignee || membersLoading}
-              value={selection ?? UNASSIGNED_VALUE}
+              value={selection}
               onValueChange={(value) => {
-                if (value === UNASSIGNED_VALUE) {
-                  setSelection(null);
-                  return;
-                }
                 setSelection(value);
               }}
             >
@@ -235,7 +225,6 @@ export const TransferAssignmentDialog =
                 />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={UNASSIGNED_VALUE}>Unassigned</SelectItem>
                 {memberOptions.map((member) => (
                   <SelectItem key={member.userId} value={member.userId}>
                     {member.userId === userId
@@ -267,14 +256,15 @@ export const TransferAssignmentDialog =
               {isSubmitting ? (
                 <span className="flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Transferring...
+                  Reassigning...
                 </span>
               ) : (
-                'Transfer'
+                'Reassign'
               )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     );
-  });
+  }
+);

@@ -76,6 +76,7 @@
     "@rjsf/utils": "6.0.0-beta.11",
     "@rjsf/validator-ajv8": "6.0.0-beta.11",
     "@tailwindcss/container-queries": "^0.1.1",
+    "@clerk/types": "^4.95.1",
     "@types/lodash": "^4.17.20",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",

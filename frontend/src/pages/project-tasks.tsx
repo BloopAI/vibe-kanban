@@ -592,6 +592,17 @@ export function ProjectTasks() {
     [tasksById]
   );
 
+  const getSharedTask = useCallback(
+    (task: Task | null | undefined) => {
+      if (!task) return undefined;
+      if (task.shared_task_id) {
+        return sharedTasksById[task.shared_task_id];
+      }
+      return sharedTasksById[task.id];
+    },
+    [sharedTasksById]
+  );
+
   const isInitialTasksLoad = isLoading && tasks.length === 0;
 
   if (projectError) {
@@ -661,20 +672,6 @@ export function ProjectTasks() {
         />
       </div>
     );
-
-  const getSharedTask = useCallback(
-    (task: Task | null | undefined) => {
-      if (!task) return undefined;
-      if (task.executor === 'shared') {
-        return sharedTasksById[task.id];
-      }
-      if (task.shared_task_id) {
-        return sharedTasksById[task.shared_task_id];
-      }
-      return undefined;
-    },
-    [sharedTasksById]
-  );
 
   const rightHeader = selectedTask ? (
     <NewCardHeader
