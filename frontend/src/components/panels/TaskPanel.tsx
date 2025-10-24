@@ -1,14 +1,16 @@
 import { useTranslation } from 'react-i18next';
 import { useProject } from '@/contexts/project-context';
 import { useTaskAttempts } from '@/hooks/useTaskAttempts';
+import { useTaskAttempt } from '@/hooks/useTaskAttempt';
 import { useNavigateWithSearch } from '@/hooks';
 import { paths } from '@/lib/paths';
-import type { TaskWithAttemptStatus } from 'shared/types';
+import type { TaskWithAttemptStatus, TaskAttempt } from 'shared/types';
 import { NewCardContent } from '../ui/new-card';
 import { Button } from '../ui/button';
 import { PlusIcon } from 'lucide-react';
 import NiceModal from '@ebay/nice-modal-react';
 import MarkdownRenderer from '@/components/ui/markdown-renderer';
+import { DataTable, type ColumnDef } from '@/components/ui/table';
 
 interface TaskPanelProps {
   task: TaskWithAttemptStatus | null;
@@ -24,6 +26,10 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
     isLoading: isAttemptsLoading,
     isError: isAttemptsError,
   } = useTaskAttempts(task?.id);
+
+  const { data: parentAttempt, isLoading: isParentLoading } = useTaskAttempt(
+    task?.parent_task_attempt || undefined
+  );
 
   const formatTimeAgo = (iso: string) => {
     const d = new Date(iso);
@@ -71,6 +77,27 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
   const titleContent = `# ${task.title || 'Task'}`;
   const descriptionContent = task.description || '';
 
+  const attemptColumns: ColumnDef<TaskAttempt>[] = [
+    {
+      id: 'executor',
+      header: '',
+      accessor: (attempt) => attempt.executor || 'Base Agent',
+      className: 'pr-4',
+    },
+    {
+      id: 'branch',
+      header: '',
+      accessor: (attempt) => attempt.branch || '—',
+      className: 'pr-4',
+    },
+    {
+      id: 'time',
+      header: '',
+      accessor: (attempt) => formatTimeAgo(attempt.created_at),
+      className: 'pr-0 text-right',
+    },
+  ];
+
   return (
     <>
       <NewCardContent>
@@ -82,82 +109,66 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
             )}
           </div>
 
-          <div className="mt-6 flex-shrink-0">
-            {isAttemptsLoading && (
+          <div className="mt-6 flex-shrink-0 space-y-4">
+            {task.parent_task_attempt && (
+              <DataTable
+                data={parentAttempt ? [parentAttempt] : []}
+                columns={attemptColumns}
+                keyExtractor={(attempt) => attempt.id}
+                onRowClick={(attempt) => {
+                  if (projectId) {
+                    navigate(
+                      paths.attempt(projectId, attempt.task_id, attempt.id)
+                    );
+                  }
+                }}
+                isLoading={isParentLoading}
+                headerContent="Parent Attempt"
+              />
+            )}
+
+            {isAttemptsLoading ? (
               <div className="text-muted-foreground">
                 {t('taskPanel.loadingAttempts')}
               </div>
-            )}
-            {isAttemptsError && (
+            ) : isAttemptsError ? (
               <div className="text-destructive">
                 {t('taskPanel.errorLoadingAttempts')}
               </div>
-            )}
-            {!isAttemptsLoading && !isAttemptsError && (
-              <table className="w-full text-sm">
-                <thead className="uppercase text-muted-foreground">
-                  <tr>
-                    <th colSpan={3}>
-                      <div className="w-full flex text-left">
-                        <span className="flex-1">
-                          {t('taskPanel.attemptsCount', {
-                            count: displayedAttempts.length,
-                          })}
-                        </span>
-                        <span>
-                          <Button
-                            variant="icon"
-                            onClick={() =>
-                              NiceModal.show('create-attempt', {
-                                taskId: task.id,
-                                latestAttempt,
-                              })
-                            }
-                          >
-                            <PlusIcon size={16} />
-                          </Button>
-                        </span>
-                      </div>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {displayedAttempts.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={3}
-                        className="py-2 text-muted-foreground border-t"
+            ) : (
+              <DataTable
+                data={displayedAttempts}
+                columns={attemptColumns}
+                keyExtractor={(attempt) => attempt.id}
+                onRowClick={(attempt) => {
+                  if (projectId && task.id) {
+                    navigate(paths.attempt(projectId, task.id, attempt.id));
+                  }
+                }}
+                emptyState={t('taskPanel.noAttempts')}
+                headerContent={
+                  <div className="w-full flex text-left">
+                    <span className="flex-1">
+                      {t('taskPanel.attemptsCount', {
+                        count: displayedAttempts.length,
+                      })}
+                    </span>
+                    <span>
+                      <Button
+                        variant="icon"
+                        onClick={() =>
+                          NiceModal.show('create-attempt', {
+                            taskId: task.id,
+                            latestAttempt,
+                          })
+                        }
                       >
-                        {t('taskPanel.noAttempts')}
-                      </td>
-                    </tr>
-                  ) : (
-                    displayedAttempts.map((attempt) => (
-                      <tr
-                        key={attempt.id}
-                        className="border-t cursor-pointer hover:bg-muted"
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => {
-                          if (projectId && task.id && attempt.id) {
-                            navigate(
-                              paths.attempt(projectId, task.id, attempt.id)
-                            );
-                          }
-                        }}
-                      >
-                        <td className="py-2 pr-4">
-                          {attempt.executor || 'Base Agent'}
-                        </td>
-                        <td className="py-2 pr-4">{attempt.branch || '—'}</td>
-                        <td className="py-2 pr-0 text-right">
-                          {formatTimeAgo(attempt.created_at)}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                        <PlusIcon size={16} />
+                      </Button>
+                    </span>
+                  </div>
+                }
+              />
             )}
           </div>
         </div>

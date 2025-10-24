@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigateWithSearch } from '@/hooks';
 import { tasksApi } from '@/lib/api';
 import { paths } from '@/lib/paths';
+import { taskChildrenKeys } from '@/hooks/useTaskChildren';
 import type {
   CreateTask,
   CreateAndStartTaskRequest,
@@ -25,6 +26,12 @@ export function useTaskMutations(projectId?: string) {
     mutationFn: (data: CreateTask) => tasksApi.create(data),
     onSuccess: (createdTask: Task) => {
       invalidateQueries();
+      // Invalidate parent's children cache if this is a subtask
+      if (createdTask.parent_task_attempt) {
+        queryClient.invalidateQueries({
+          queryKey: taskChildrenKeys.byAttempt(createdTask.parent_task_attempt),
+        });
+      }
       if (projectId) {
         navigate(`${paths.task(projectId, createdTask.id)}/attempts/latest`);
       }
@@ -39,6 +46,14 @@ export function useTaskMutations(projectId?: string) {
       tasksApi.createAndStart(data),
     onSuccess: (createdTask: TaskWithAttemptStatus) => {
       invalidateQueries();
+      // Invalidate parent's children cache if this is a subtask
+      if ((createdTask as any).parent_task_attempt) {
+        queryClient.invalidateQueries({
+          queryKey: taskChildrenKeys.byAttempt(
+            (createdTask as any).parent_task_attempt
+          ),
+        });
+      }
       if (projectId) {
         navigate(`${paths.task(projectId, createdTask.id)}/attempts/latest`);
       }
@@ -65,6 +80,8 @@ export function useTaskMutations(projectId?: string) {
       invalidateQueries(taskId);
       // Remove single-task cache entry to avoid stale data flashes
       queryClient.removeQueries({ queryKey: ['task', taskId], exact: true });
+      // Invalidate all task children caches (safe approach since we don't know parent)
+      queryClient.invalidateQueries({ queryKey: taskChildrenKeys.all });
     },
     onError: (err) => {
       console.error('Failed to delete task:', err);

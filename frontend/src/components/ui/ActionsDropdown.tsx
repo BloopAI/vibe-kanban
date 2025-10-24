@@ -14,6 +14,8 @@ import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import NiceModal from '@ebay/nice-modal-react';
 import { useProject } from '@/contexts/project-context';
 import { openTaskForm } from '@/lib/openTaskForm';
+import { ViewRelatedTasksDialog } from '@/components/dialogs/tasks/ViewRelatedTasksDialog';
+import { useNavigate } from 'react-router-dom';
 
 interface ActionsDropdownProps {
   task?: TaskWithAttemptStatus | null;
@@ -24,21 +26,25 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
   const { t } = useTranslation('tasks');
   const { projectId } = useProject();
   const openInEditor = useOpenInEditor(attempt?.id);
+  const navigate = useNavigate();
 
   const hasAttemptActions = Boolean(attempt);
   const hasTaskActions = Boolean(task);
 
-  const handleEdit = () => {
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!projectId || !task) return;
     openTaskForm({ projectId, task });
   };
 
-  const handleDuplicate = () => {
+  const handleDuplicate = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!projectId || !task) return;
     openTaskForm({ projectId, initialTask: task });
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!projectId || !task) return;
     try {
       await NiceModal.show('delete-task-confirmation', {
@@ -60,6 +66,21 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
     e.stopPropagation();
     if (!attempt?.id) return;
     NiceModal.show('view-processes', { attemptId: attempt.id });
+  };
+
+  const handleViewRelatedTasks = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!attempt?.id || !projectId) return;
+    NiceModal.show(ViewRelatedTasksDialog, {
+      attemptId: attempt.id,
+      projectId,
+      attempt,
+      onNavigateToTask: (taskId: string) => {
+        if (projectId) {
+          navigate(`/projects/${projectId}/tasks/${taskId}`);
+        }
+      },
+    });
   };
 
   const handleCreateNewAttempt = (e: React.MouseEvent) => {
@@ -98,6 +119,8 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
           <Button
             variant="icon"
             aria-label="Actions"
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
             <MoreHorizontal className="h-4 w-4" />
@@ -118,6 +141,12 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
                 onClick={handleViewProcesses}
               >
                 {t('actionsMenu.viewProcesses')}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!attempt?.id}
+                onClick={handleViewRelatedTasks}
+              >
+                {t('actionsMenu.viewRelatedTasks')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleCreateNewAttempt}>
                 {t('actionsMenu.createNewAttempt')}
