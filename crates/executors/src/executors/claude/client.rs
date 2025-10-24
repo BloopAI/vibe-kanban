@@ -9,7 +9,7 @@ use super::{
     types::PermissionMode,
 };
 use crate::{
-    approvals::ExecutorApprovalService,
+    approvals::{ExecutorApprovalError, ExecutorApprovalService},
     executors::{
         ExecutorError,
         claude::{
@@ -75,10 +75,7 @@ impl ClaudeAgentClient {
         }
 
         if let Some(approvals) = self.approvals.as_ref() {
-            approvals
-                .register_session(&session_id)
-                .await
-                .map_err(|err| ExecutorError::Io(std::io::Error::other(err.to_string())))?;
+            approvals.register_session(&session_id).await?;
         }
 
         Ok(())
@@ -100,24 +97,16 @@ impl ProtocolCallbacks for ClaudeAgentClient {
         _permission_suggestions: Option<Vec<PermissionUpdate>>,
     ) -> Result<PermissionResult, ExecutorError> {
         if self.auto_approve {
-            // Auto-approve mode
-            let input_str =
-                serde_json::to_string(&input).unwrap_or_else(|_| "<invalid json>".to_string());
-
-            self.log_writer
-                .log_raw(&format!(
-                    "[AUTO-APPROVE] Tool: {tool_name} Input: {input_str}",
-                ))
-                .await?;
             Ok(PermissionResult::Allow {
                 updated_input: input,
                 updated_permissions: None,
             })
         } else {
             // Use approval service
-            let approval_service = self.approvals.as_ref().ok_or_else(|| {
-                ExecutorError::Io(std::io::Error::other("Approval service not available"))
-            })?;
+            let approval_service = self
+                .approvals
+                .as_ref()
+                .ok_or(ExecutorApprovalError::ServiceUnavailable)?;
             let latest_tool_use_id = {
                 let guard = self.latest_unhandled_tool_use_id.lock().await.take();
                 guard.clone()
@@ -153,7 +142,7 @@ impl ProtocolCallbacks for ClaudeAgentClient {
                             }
                         }
                         ApprovalStatus::Denied { reason } => {
-                            let message = reason.unwrap_or_else(|| "Denied by user".to_string());
+                            let message = reason.unwrap_or("Denied by user".to_string());
                             Ok(PermissionResult::Deny {
                                 message,
                                 interrupt: Some(false),
@@ -170,7 +159,7 @@ impl ProtocolCallbacks for ClaudeAgentClient {
                     }
                 }
                 Err(e) => {
-                    tracing::error!("Tool approval request failed: {}", e);
+                    tracing::error!("Tool approval request failed: {e}");
                     Ok(PermissionResult::Deny {
                         message: "Tool approval request failed".to_string(),
                         interrupt: Some(false),

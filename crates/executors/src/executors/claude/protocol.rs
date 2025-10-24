@@ -78,6 +78,9 @@ impl ProtocolPeer {
                             subtype: Some(ref s),
                             session_id: Some(ref sid),
                         }) if s == "init" => {
+                            // first forward non-control message
+                            let _ = callbacks.on_non_control(line).await;
+                            // then register session
                             if let Err(e) = callbacks.on_session_init(sid.clone()).await {
                                 tracing::error!("Failed to register session: {}", e);
                             }
@@ -125,13 +128,13 @@ impl ProtocolPeer {
                             .send_hook_response(request_id, serde_json::to_value(result).unwrap())
                             .await
                         {
-                            tracing::error!("Failed to send permission result: {}", e);
+                            tracing::error!("Failed to send permission result: {e}");
                         }
                     }
                     Err(e) => {
-                        tracing::error!("Error in on_can_use_tool: {}", e);
+                        tracing::error!("Error in on_can_use_tool: {e}");
                         if let Err(e2) = self.send_error(request_id, e.to_string()).await {
-                            tracing::error!("Failed to send error response: {}", e2);
+                            tracing::error!("Failed to send error response: {e2}");
                         }
                     }
                 }
@@ -147,13 +150,13 @@ impl ProtocolPeer {
                 {
                     Ok(hook_output) => {
                         if let Err(e) = self.send_hook_response(request_id, hook_output).await {
-                            tracing::error!("Failed to send hook callback result: {}", e);
+                            tracing::error!("Failed to send hook callback result: {e}");
                         }
                     }
                     Err(e) => {
-                        tracing::error!("Error in on_hook_callback: {}", e);
+                        tracing::error!("Error in on_hook_callback: {e}");
                         if let Err(e2) = self.send_error(request_id, e.to_string()).await {
-                            tracing::error!("Failed to send error response: {}", e2);
+                            tracing::error!("Failed to send error response: {e2}");
                         }
                     }
                 }
