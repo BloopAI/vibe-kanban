@@ -725,7 +725,7 @@ export function ProjectTasks() {
         <TaskPanel task={selectedTask} />
       ) : (
         <TaskAttemptPanel attempt={attempt} task={selectedTask}>
-          {({ logs, followUp }) => (
+          {({ logs, notice, followUp }) => (
             <>
               {gitError && (
                 <div className="mx-4 mt-4 p-3 bg-red-50 border border-red-200 rounded">
@@ -733,6 +733,12 @@ export function ProjectTasks() {
                 </div>
               )}
               <div className="flex-1 min-h-0 flex flex-col">{logs}</div>
+
+              {notice ? (
+                <div className="shrink-0">
+                  <div className="mx-auto w-full max-w-[50rem]">{notice}</div>
+                </div>
+              ) : null}
 
               <div className="shrink-0 border-t">
                 <div className="mx-auto w-full max-w-[50rem]">

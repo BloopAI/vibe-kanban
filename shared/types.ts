@@ -64,7 +64,13 @@ export type UserSystemInfo = { config: Config, analytics_user_id: string, enviro
 /**
  * Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["SESSION_FORK"] })
  */
-capabilities: { [key in string]?: Array<BaseAgentCapability> }, executors: { [key in BaseCodingAgent]?: ExecutorConfig }, };
+capabilities: { [key in string]?: Array<BaseAgentCapability> }, 
+/**
+ * Documentation information for each executor
+ */
+executor_docs: { [key in BaseCodingAgent]?: ExecutorDocumentation }, executors: { [key in BaseCodingAgent]?: ExecutorConfig }, };
+
+export type ExecutorDocumentation = { url: string, display_name: string, };
 
 export type Environment = { os_type: string, os_version: string, os_architecture: string, bitness: string, };
 
@@ -248,6 +254,8 @@ conflict_op: ConflictOp | null,
  */
 conflicted_files: Array<string>, };
 
+export enum FollowupErrorData { AGENT_NEEDS_INSTALLATION = "AGENT_NEEDS_INSTALLATION" }
+
 export type ConflictOp = "rebase" | "merge" | "cherry_pick" | "revert";
 
 export type TaskAttempt = { id: string, task_id: string, container_ref: string | null, branch: string, target_branch: string, executor: string, worktree_deleted: boolean, setup_completed_at: string | null, created_at: string, updated_at: string, };
@@ -266,7 +274,7 @@ after_head_commit: string | null, status: ExecutionProcessStatus, exit_code: big
  * history view (due to restore/trimming). Hidden from logs/timeline;
  * still listed in the Processes tab.
  */
-dropped: boolean, started_at: string, completed_at: string | null, created_at: string, updated_at: string, };
+dropped: boolean, agent_not_installed: boolean, started_at: string, completed_at: string | null, created_at: string, updated_at: string, };
 
 export enum ExecutionProcessStatus { running = "running", completed = "completed", failed = "failed", killed = "killed" }
 

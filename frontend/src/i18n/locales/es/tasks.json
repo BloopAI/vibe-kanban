@@ -275,5 +275,13 @@
       "next": "Siguiente",
       "finish": "Finalizar"
     }
+  },
+  "agentInstallNotice": {
+    "title": "{{agentName}} no está instalado",
+    "subtitle": "Instala {{agentName}} antes de enviar más instrucciones.",
+    "info": "Vibe Kanban necesita que este agente esté instalado y autenticado para ejecutar tareas en tu nombre.",
+    "cta": "Abre la guía de instalación de {{agentName}}",
+    "instructionsFallback": "Las instrucciones de instalación para {{agentName}} estarán disponibles pronto. Consulta la documentación oficial de {{agentName}} para completar la configuración.",
+    "footer": "Una vez completada la instalación, puedes reenviar tus instrucciones o iniciar un nuevo intento."
   }
 }

@@ -1,14 +1,19 @@
+import type { ReactNode } from 'react';
 import type { TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
 import VirtualizedList from '@/components/logs/VirtualizedList';
 import { TaskFollowUpSection } from '@/components/tasks/TaskFollowUpSection';
+import { AgentInstallNotice } from '@/components/tasks/TaskDetails/AgentInstallNotice';
 import { EntriesProvider } from '@/contexts/EntriesContext';
 import { RetryUiProvider } from '@/contexts/RetryUiContext';
-import type { ReactNode } from 'react';
 
 interface TaskAttemptPanelProps {
   attempt: TaskAttempt | undefined;
   task: TaskWithAttemptStatus | null;
-  children: (sections: { logs: ReactNode; followUp: ReactNode }) => ReactNode;
+  children: (sections: {
+    logs: ReactNode;
+    notice: ReactNode;
+    followUp: ReactNode;
+  }) => ReactNode;
 }
 
 const TaskAttemptPanel = ({
@@ -31,6 +36,7 @@ const TaskAttemptPanel = ({
           logs: (
             <VirtualizedList key={attempt.id} attempt={attempt} task={task} />
           ),
+          notice: <AgentInstallNotice attemptId={attempt.id} />,
           followUp: (
             <TaskFollowUpSection
               task={task}

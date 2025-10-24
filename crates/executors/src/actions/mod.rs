@@ -26,6 +26,16 @@ pub enum ExecutorActionType {
     ScriptRequest,
 }
 
+impl ExecutorActionType {
+    pub fn is_coding_agent(&self) -> bool {
+        matches!(
+            self,
+            ExecutorActionType::CodingAgentInitialRequest(_)
+                | ExecutorActionType::CodingAgentFollowUpRequest(_)
+        )
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct ExecutorAction {
     pub typ: ExecutorActionType,

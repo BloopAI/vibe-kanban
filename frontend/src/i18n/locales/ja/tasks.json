@@ -275,5 +275,13 @@
       "next": "次へ",
       "finish": "完了"
     }
+  },
+  "agentInstallNotice": {
+    "title": "{{agentName}} がインストールされていません",
+    "subtitle": "さらに指示を送信する前に {{agentName}} をインストールしてください。",
+    "info": "Vibe Kanban が代理でタスクを実行するには、このエージェントのインストールと認証が必要です。",
+    "cta": "{{agentName}} のインストールガイドを開く",
+    "instructionsFallback": "{{agentName}} のインストール手順は近日公開予定です。セットアップを完了するには {{agentName}} の公式ドキュメントを確認してください。",
+    "footer": "インストールが完了したら、指示を再送信するか新しい試行を開始できます。"
   }
 }
