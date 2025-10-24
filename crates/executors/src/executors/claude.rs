@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 use ts_rs::TS;
 use workspace_utils::{
-    approvals::{APPROVAL_TIMEOUT_SECONDS, ApprovalStatus},
+    approvals::ApprovalStatus,
     diff::{concatenate_diff_hunks, create_unified_diff, create_unified_diff_hunk},
     log_msg::LogMsg,
     msg_store::MsgStore,
@@ -116,21 +116,20 @@ impl ClaudeCode {
     pub fn permission_mode(&self) -> PermissionMode {
         if self.plan.unwrap_or(false) {
             PermissionMode::Plan
+        } else if self.approvals.unwrap_or(false) {
+            PermissionMode::Default
         } else {
             PermissionMode::BypassPermissions
         }
     }
 
     pub fn get_hooks(&self) -> Option<serde_json::Value> {
-        let timeout = APPROVAL_TIMEOUT_SECONDS + 10; // Add 10s buffer
-
         if self.plan.unwrap_or(false) {
             Some(serde_json::json!({
                 "PreToolUse": [
                     {
                         "matcher": "^ExitPlanMode$",
                         "hookCallbackIds": ["tool_approval"],
-                        "timeout": timeout
                     }
                 ]
             }))
@@ -140,7 +139,6 @@ impl ClaudeCode {
                     {
                         "matcher": "^(?!(Glob|Grep|NotebookRead|Read|Task|TodoWrite)$).*",
                         "hookCallbackIds": ["tool_approval"],
-                        "timeout": timeout
                     }
                 ]
             }))
@@ -1460,7 +1458,7 @@ pub enum ClaudeJson {
     },
     #[serde(rename = "approval_response")]
     ApprovalResponse {
-        call_id: String,
+        call_id: Option<String>,
         tool_name: String,
         approval_status: ApprovalStatus,
     },

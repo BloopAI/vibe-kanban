@@ -1,7 +1,6 @@
 use std::sync::{Arc, OnceLock};
 
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 use workspace_utils::approvals::ApprovalStatus;
 
@@ -11,7 +10,17 @@ use super::{
 };
 use crate::{
     approvals::ExecutorApprovalService,
-    executors::{ExecutorError, codex::client::LogWriter},
+    executors::{
+        ExecutorError,
+        claude::{
+            ClaudeJson,
+            types::{
+                PermissionResult, PermissionUpdate, PermissionUpdateDestination,
+                PermissionUpdateType,
+            },
+        },
+        codex::client::LogWriter,
+    },
 };
 
 const EXIT_PLAN_MODE_NAME: &str = "ExitPlanMode";
@@ -23,6 +32,7 @@ pub struct ClaudeAgentClient {
     approvals: Option<Arc<dyn ExecutorApprovalService>>,
     auto_approve: bool, // true when approvals is None
     session_id: Mutex<Option<String>>,
+    latest_unhandled_tool_use_id: Mutex<Option<String>>,
 }
 
 impl ClaudeAgentClient {
@@ -38,7 +48,23 @@ impl ClaudeAgentClient {
             approvals,
             auto_approve,
             session_id: Mutex::new(None),
+            latest_unhandled_tool_use_id: Mutex::new(None),
         })
+    }
+    async fn set_latest_unhandled_tool_use_id(&self, tool_use_id: String) {
+        if self.latest_unhandled_tool_use_id.lock().await.is_some() {
+            tracing::error!(
+                "Overwriting unhandled tool_use_id: {} with new tool_use_id: {}",
+                self.latest_unhandled_tool_use_id
+                    .lock()
+                    .await
+                    .as_ref()
+                    .unwrap(),
+                tool_use_id
+            );
+        }
+        let mut guard = self.latest_unhandled_tool_use_id.lock().await;
+        guard.replace(tool_use_id);
     }
 
     /// Register the session with the approval service
@@ -64,62 +90,105 @@ impl ClaudeAgentClient {
     }
 }
 
-/// Approval message for logging to output stream
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "snake_case")]
-pub struct Approval {
-    #[serde(rename = "type")]
-    message_type: String,
-    pub call_id: String,
-    pub tool_name: String,
-    pub approval_status: ApprovalStatus,
-}
-
-impl Approval {
-    pub fn approval_response(
-        call_id: String,
+#[async_trait]
+impl ProtocolCallbacks for ClaudeAgentClient {
+    async fn on_can_use_tool(
+        &self,
+        _peer: &ProtocolPeer,
         tool_name: String,
-        approval_status: ApprovalStatus,
-    ) -> Self {
-        Self {
-            message_type: "approval_response".to_string(),
-            call_id,
-            tool_name,
-            approval_status,
+        input: serde_json::Value,
+        _permission_suggestions: Option<Vec<PermissionUpdate>>,
+    ) -> Result<PermissionResult, ExecutorError> {
+        if self.auto_approve {
+            // Auto-approve mode
+            let input_str =
+                serde_json::to_string(&input).unwrap_or_else(|_| "<invalid json>".to_string());
+
+            self.log_writer
+                .log_raw(&format!(
+                    "[AUTO-APPROVE] Tool: {} Input: {}",
+                    tool_name, input_str
+                ))
+                .await?;
+            Ok(PermissionResult::Allow {
+                updated_input: input,
+                updated_permissions: None,
+            })
+        } else {
+            // Use approval service
+            let approval_service = self.approvals.as_ref().ok_or_else(|| {
+                ExecutorError::Io(std::io::Error::other("Approval service not available"))
+            })?;
+            let latest_tool_use_id = {
+                let guard = self.latest_unhandled_tool_use_id.lock().await;
+                guard.clone()
+            };
+            match approval_service
+                .request_tool_approval(&tool_name, input.clone(), latest_tool_use_id.as_deref())
+                .await
+            {
+                Ok(status) => {
+                    self.log_writer
+                        .log_raw(&serde_json::to_string(&ClaudeJson::ApprovalResponse {
+                            call_id: latest_tool_use_id.clone(),
+                            tool_name: tool_name.clone(),
+                            approval_status: status.clone(),
+                        })?)
+                        .await?;
+                    match status {
+                        ApprovalStatus::Approved => {
+                            if tool_name == EXIT_PLAN_MODE_NAME {
+                                Ok(PermissionResult::Allow {
+                                    updated_input: input,
+                                    updated_permissions: Some(vec![PermissionUpdate {
+                                        update_type: PermissionUpdateType::SetMode,
+                                        mode: Some(PermissionMode::BypassPermissions),
+                                        destination: PermissionUpdateDestination::Session,
+                                    }]),
+                                })
+                            } else {
+                                Ok(PermissionResult::Allow {
+                                    updated_input: input,
+                                    updated_permissions: None,
+                                })
+                            }
+                        }
+                        ApprovalStatus::Denied { reason } => {
+                            let message = reason.unwrap_or_else(|| "Denied by user".to_string());
+                            Ok(PermissionResult::Deny {
+                                message,
+                                interrupt: Some(false),
+                            })
+                        }
+                        ApprovalStatus::TimedOut => Ok(PermissionResult::Deny {
+                            message: "Approval request timed out".to_string(),
+                            interrupt: Some(false),
+                        }),
+                        ApprovalStatus::Pending => Ok(PermissionResult::Deny {
+                            message: "Approval still pending (unexpected)".to_string(),
+                            interrupt: Some(false),
+                        }),
+                    }
+                }
+                Err(e) => {
+                    tracing::error!("Tool approval request failed: {}", e);
+                    Ok(PermissionResult::Deny {
+                        message: "Tool approval request failed".to_string(),
+                        interrupt: Some(false),
+                    })
+                }
+            }
         }
     }
 
-    pub fn raw(&self) -> String {
-        serde_json::to_string(self).unwrap_or_default()
-    }
-}
-
-#[async_trait]
-impl ProtocolCallbacks for ClaudeAgentClient {
     async fn on_hook_callback(
         &self,
-        peer: &ProtocolPeer,
+        _peer: &ProtocolPeer,
         _callback_id: String,
-        input: serde_json::Value,
+        _input: serde_json::Value,
         tool_use_id: Option<String>,
     ) -> Result<serde_json::Value, ExecutorError> {
-        // Hook callback provides tool_use_id for approval matching
-        let tool_name = input
-            .get("tool_name")
-            .and_then(|v| v.as_str())
-            .unwrap_or("unknown")
-            .to_string();
-
-        let tool_input = input
-            .get("tool_input")
-            .cloned()
-            .unwrap_or(serde_json::Value::Null);
-        let tool_use_id = tool_use_id.unwrap_or("unknown_tool_use_id".to_string());
-
         if self.auto_approve {
-            self.log_writer
-                .log_raw(&format!("[AUTO-APPROVE via hook] Tool: {tool_name}"))
-                .await?;
             Ok(serde_json::json!({
                 "hookSpecificOutput": {
                     "hookEventName": "PreToolUse",
@@ -128,78 +197,23 @@ impl ProtocolCallbacks for ClaudeAgentClient {
                 }
             }))
         } else {
-            // Use approval service with real tool_use_id
-            let approval_service = self.approvals.as_ref().ok_or_else(|| {
-                ExecutorError::Io(std::io::Error::other("Approval service not available"))
-            })?;
-
-            tracing::debug!(
-                "Requesting approval for tool: {} with tool_use_id: {}",
-                tool_name,
-                tool_use_id
-            );
-
-            let status = approval_service
-                .request_tool_approval(&tool_name, tool_input.clone(), &tool_use_id)
-                .await?;
-
-            // Log approval response for UI
-            self.log_writer
-                .log_raw(
-                    &Approval::approval_response(
-                        tool_use_id.clone(),
-                        tool_name.clone(),
-                        status.clone(),
-                    )
-                    .raw(),
-                )
-                .await?;
-
-            match status {
-                ApprovalStatus::Approved => {
-                    if tool_name == EXIT_PLAN_MODE_NAME {
-                        if let Err(e) = peer
-                            .set_permission_mode(PermissionMode::BypassPermissions)
-                            .await
-                        {
-                            tracing::warn!("Failed to set permission mode: {}", e);
-                        } else {
-                            tracing::debug!("Exited plan mode");
-                        }
-                    }
-                    Ok(serde_json::json!({
-                        "hookSpecificOutput": {
-                            "hookEventName": "PreToolUse",
-                            "permissionDecision": "allow"
-                        }
-                    }))
-                }
-                ApprovalStatus::Denied { reason } => {
-                    let message = reason.unwrap_or_else(|| "Denied by user".to_string());
-
-                    Ok(serde_json::json!({
-                        "hookSpecificOutput": {
-                            "hookEventName": "PreToolUse",
-                            "permissionDecision": "deny",
-                            "permissionDecisionReason": message
-                        }
-                    }))
-                }
-                ApprovalStatus::TimedOut => Ok(serde_json::json!({
-                    "hookSpecificOutput": {
-                        "hookEventName": "PreToolUse",
-                        "permissionDecision": "deny",
-                        "permissionDecisionReason": "Approval request timed out"
-                    }
-                })),
-                ApprovalStatus::Pending => Ok(serde_json::json!({
-                    "hookSpecificOutput": {
-                        "hookEventName": "PreToolUse",
-                        "permissionDecision": "deny",
-                        "permissionDecisionReason": "Approval still pending (unexpected)"
-                    }
-                })),
+            // Hook callbacks is only used to store tool_use_id for later approval request
+            // Both hook callback and can_use_tool are needed.
+            // - Hook callbacks have a constant 60s timeout, so cannot be used for long approvals
+            // - can_use_tool does not provide tool_use_id, so cannot be used alone
+            // Together they allow matching approval requests to tool uses.
+            // This works because `ask` decision in hook callback triggers a can_use_tool request
+            // https://docs.claude.com/en/api/agent-sdk/permissions#permission-flow-diagram
+            if let Some(tool_use_id) = tool_use_id.clone() {
+                self.set_latest_unhandled_tool_use_id(tool_use_id).await;
             }
+            return Ok(serde_json::json!({
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "ask",
+                    "permissionDecisionReason": "Forwarding to canusetool service"
+                }
+            }));
         }
     }
 

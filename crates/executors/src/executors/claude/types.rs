@@ -80,7 +80,7 @@ pub enum ControlRequestType {
         tool_name: String,
         input: Value,
         #[serde(skip_serializing_if = "Option::is_none")]
-        permission_suggestions: Option<Value>,
+        permission_suggestions: Option<Vec<PermissionUpdate>>,
     },
     HookCallback {
         #[serde(rename = "callback_id")]
@@ -89,6 +89,52 @@ pub enum ControlRequestType {
         #[serde(skip_serializing_if = "Option::is_none")]
         tool_use_id: Option<String>,
     },
+}
+
+/// Result of permission check
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "behavior", rename_all = "camelCase")]
+pub enum PermissionResult {
+    Allow {
+        #[serde(rename = "updatedInput")]
+        updated_input: Value,
+        #[serde(skip_serializing_if = "Option::is_none", rename = "updatedPermissions")]
+        updated_permissions: Option<Vec<PermissionUpdate>>,
+    },
+    Deny {
+        message: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        interrupt: Option<bool>,
+    },
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum PermissionUpdateType {
+    SetMode,
+    AddRules,
+    RemoveRules,
+    ClearRules,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum PermissionUpdateDestination {
+    Session,
+    UserSettings,
+    ProjectSettings,
+    LocalSettings,
+}
+
+/// Permission update operation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PermissionUpdate {
+    #[serde(rename = "type")]
+    pub update_type: PermissionUpdateType,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mode: Option<PermissionMode>,
+    pub destination: PermissionUpdateDestination,
 }
 
 /// Control response from SDK to CLI

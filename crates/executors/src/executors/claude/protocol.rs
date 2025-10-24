@@ -13,7 +13,7 @@ use super::types::{
 };
 use crate::executors::{
     ExecutorError,
-    claude::types::{PermissionMode, SDKControlRequestType},
+    claude::types::{PermissionMode, PermissionResult, PermissionUpdate, SDKControlRequestType},
 };
 
 /// Handles bidirectional control protocol communication
@@ -113,27 +113,28 @@ impl ProtocolPeer {
         let request_id = request.request_id.clone();
 
         match request.request {
-            ControlRequestType::CanUseTool { tool_name, .. } => {
-                tracing::warn!(
-                    "on_can_use_tool callback is not implemented. Tool: {}",
-                    tool_name
-                );
+            ControlRequestType::CanUseTool {
+                tool_name,
+                input,
+                permission_suggestions,
+            } => {
+                match callbacks
+                    .on_can_use_tool(self, tool_name, input, permission_suggestions)
+                    .await
                 {
-                    if let Err(e) = self
-                        .send_json(&serde_json::json!({
-                            "type": "control_response",
-                            "response": {
-                            "subtype": "success",
-                            "request_id": request_id,
-                            "response": {
-                            "behavior": "deny",
-                            "message": "Tool use blocked"
-                            }
-                          }
-                        }))
-                        .await
-                    {
-                        tracing::error!("Failed to send CanUseTool response: {}", e);
+                    Ok(result) => {
+                        if let Err(e) = self
+                            .send_hook_response(request_id, serde_json::to_value(result).unwrap())
+                            .await
+                        {
+                            tracing::error!("Failed to send permission result: {}", e);
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!("Error in on_can_use_tool: {}", e);
+                        if let Err(e2) = self.send_error(request_id, e.to_string()).await {
+                            tracing::error!("Failed to send error response: {}", e2);
+                        }
                     }
                 }
             }
@@ -232,6 +233,14 @@ pub trait ProtocolCallbacks: Send + Sync {
         input: serde_json::Value,
         tool_use_id: Option<String>,
     ) -> Result<serde_json::Value, ExecutorError>;
+
+    async fn on_can_use_tool(
+        &self,
+        peer: &ProtocolPeer,
+        tool_name: String,
+        input: serde_json::Value,
+        suggestions: Option<Vec<PermissionUpdate>>,
+    ) -> Result<PermissionResult, ExecutorError>;
 
     /// Called when session is initialized (from system init message)
     async fn on_session_init(&self, session_id: String) -> Result<(), ExecutorError>;
