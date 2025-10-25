@@ -267,8 +267,8 @@ impl From<v1::SoundFile> for SoundFile {
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct EditorConfig {
-    editor_type: EditorType,
-    custom_command: Option<String>,
+    pub editor_type: EditorType,
+    pub custom_command: Option<String>,
 }
 
 impl From<v1::EditorConfig> for EditorConfig {

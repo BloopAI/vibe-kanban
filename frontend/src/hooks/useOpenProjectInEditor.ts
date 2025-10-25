@@ -12,7 +12,12 @@ export function useOpenProjectInEditor(
       if (!project) return;
 
       try {
-        await projectsApi.openEditor(project.id, editorType);
+        const response = await projectsApi.openEditor(project.id, editorType);
+
+        // If a URL is returned, open it in a new window/tab
+        if (response.url) {
+          window.open(response.url, '_blank');
+        }
       } catch (err) {
         console.error('Failed to open project in editor:', err);
         if (!editorType) {

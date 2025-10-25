@@ -491,6 +491,59 @@ export function GeneralSettings() {
               </p>
             </div>
           )}
+
+          {draft?.editor.editor_type === EditorType.VS_CODE && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="remote-ssh-host">
+                  Remote SSH Host (Optional)
+                </Label>
+                <Input
+                  id="remote-ssh-host"
+                  placeholder="e.g., hostname or IP address"
+                  value={draft?.editor.remote_ssh_host || ''}
+                  onChange={(e) =>
+                    updateDraft({
+                      editor: {
+                        ...draft!.editor,
+                        remote_ssh_host: e.target.value || null,
+                      },
+                    })
+                  }
+                />
+                <p className="text-sm text-muted-foreground">
+                  Set this if Vibe Kanban is running on a remote server. When
+                  set, clicking "Open in VSCode" will generate a URL to open
+                  VSCode via SSH instead of spawning a local command.
+                </p>
+              </div>
+
+              {draft?.editor.remote_ssh_host && (
+                <div className="space-y-2">
+                  <Label htmlFor="remote-ssh-user">
+                    Remote SSH User (Optional)
+                  </Label>
+                  <Input
+                    id="remote-ssh-user"
+                    placeholder="e.g., username"
+                    value={draft?.editor.remote_ssh_user || ''}
+                    onChange={(e) =>
+                      updateDraft({
+                        editor: {
+                          ...draft!.editor,
+                          remote_ssh_user: e.target.value || null,
+                        },
+                      })
+                    }
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    SSH username for the remote connection. If not set, VSCode
+                    will use your SSH config or prompt you.
+                  </p>
+                </div>
+              )}
+            </>
+          )}
         </CardContent>
       </Card>
 
