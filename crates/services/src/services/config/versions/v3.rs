@@ -157,11 +157,14 @@ impl EditorConfig {
             };
 
             if let Some(scheme) = url_scheme {
-                let user_part = self.remote_ssh_user
+                let user_part = self
+                    .remote_ssh_user
                     .as_ref()
-                    .map(|u| format!("{}@", u))
+                    .map(|u| format!("{u}@"))
                     .unwrap_or_default();
-                let url = format!("{}://vscode-remote/ssh-remote+{}{}{}", scheme, user_part, remote_host, path);
+                let url = format!(
+                    "{scheme}://vscode-remote/ssh-remote+{user_part}{remote_host}{path}"
+                );
                 return Ok(Some(url));
             }
         }

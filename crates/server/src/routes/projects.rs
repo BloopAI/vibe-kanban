@@ -302,7 +302,9 @@ pub async fn open_project_in_editor(
                 )
                 .await;
 
-            Ok(ResponseJson(ApiResponse::success(OpenEditorResponse { url })))
+            Ok(ResponseJson(ApiResponse::success(OpenEditorResponse {
+                url,
+            })))
         }
         Err(e) => {
             tracing::error!("Failed to open editor for project {}: {}", project.id, e);

@@ -870,7 +870,9 @@ pub async fn open_task_attempt_in_editor(
                 )
                 .await;
 
-            Ok(ResponseJson(ApiResponse::success(OpenEditorResponse { url })))
+            Ok(ResponseJson(ApiResponse::success(OpenEditorResponse {
+                url,
+            })))
         }
         Err(e) => {
             tracing::error!(
