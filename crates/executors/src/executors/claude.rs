@@ -27,6 +27,7 @@ use crate::{
         stderr_processor::normalize_stderr_logs,
         utils::{EntryIndexProvider, patch::ConversationPatch},
     },
+    stdout_dup::duplicate_stdout,
 };
 
 static BACKEND_PORT: OnceCell<u16> = OnceCell::const_new();
@@ -162,7 +163,46 @@ impl StandardCodingAgentExecutor for ClaudeCode {
             stdin.shutdown().await?;
         }
 
-        Ok(child.into())
+        // Create exit_signal channel to monitor for successful completion
+        let (exit_signal_tx, exit_signal_rx) = tokio::sync::oneshot::channel();
+
+        // Duplicate stdout to monitor for result messages
+        let mut stdout_stream = duplicate_stdout(&mut child)?;
+
+        // Spawn task to watch for completion
+        tokio::spawn(async move {
+            let mut buffer = String::new();
+
+            while let Some(chunk_result) = stdout_stream.next().await {
+                if let Ok(chunk) = chunk_result {
+                    buffer.push_str(&chunk);
+
+                    // Process complete lines
+                    while let Some(newline_pos) = buffer.find('\n') {
+                        let line = buffer.drain(..=newline_pos).collect::<String>();
+                        let line = line.trim();
+
+                        if line.is_empty() {
+                            continue;
+                        }
+
+                        // Check if this is a result message
+                        if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {
+                            if json.get("type").and_then(|v| v.as_str()) == Some("result") {
+                                // Found result message - signal completion
+                                let _ = exit_signal_tx.send(());
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        Ok(SpawnedChild {
+            child,
+            exit_signal: Some(exit_signal_rx),
+        })
     }
 
     async fn spawn_follow_up(
@@ -208,7 +248,46 @@ impl StandardCodingAgentExecutor for ClaudeCode {
             stdin.shutdown().await?;
         }
 
-        Ok(child.into())
+        // Create exit_signal channel to monitor for successful completion
+        let (exit_signal_tx, exit_signal_rx) = tokio::sync::oneshot::channel();
+
+        // Duplicate stdout to monitor for result messages
+        let mut stdout_stream = duplicate_stdout(&mut child)?;
+
+        // Spawn task to watch for completion
+        tokio::spawn(async move {
+            let mut buffer = String::new();
+
+            while let Some(chunk_result) = stdout_stream.next().await {
+                if let Ok(chunk) = chunk_result {
+                    buffer.push_str(&chunk);
+
+                    // Process complete lines
+                    while let Some(newline_pos) = buffer.find('\n') {
+                        let line = buffer.drain(..=newline_pos).collect::<String>();
+                        let line = line.trim();
+
+                        if line.is_empty() {
+                            continue;
+                        }
+
+                        // Check if this is a result message
+                        if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {
+                            if json.get("type").and_then(|v| v.as_str()) == Some("result") {
+                                // Found result message - signal completion
+                                let _ = exit_signal_tx.send(());
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        Ok(SpawnedChild {
+            child,
+            exit_signal: Some(exit_signal_rx),
+        })
     }
 
     fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &Path) {
