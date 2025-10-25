@@ -83,7 +83,7 @@ fn generate_types_content() -> String {
         executors::executors::codex::ReasoningEffort::decl(),
         executors::executors::codex::ReasoningSummary::decl(),
         executors::executors::codex::ReasoningSummaryFormat::decl(),
-        executors::executors::cursor::Cursor::decl(),
+        executors::executors::cursor::CursorAgent::decl(),
         executors::executors::copilot::Copilot::decl(),
         executors::executors::opencode::Opencode::decl(),
         executors::executors::qwen::QwenCode::decl(),
@@ -180,8 +180,8 @@ fn generate_schemas() -> Result<HashMap<&'static str, String>, serde_json::Error
             generate_json_schema::<executors::executors::codex::Codex>()?,
         ),
         (
-            "cursor",
-            generate_json_schema::<executors::executors::cursor::Cursor>()?,
+            "cursor_agent",
+            generate_json_schema::<executors::executors::cursor::CursorAgent>()?,
         ),
         (
             "opencode",
