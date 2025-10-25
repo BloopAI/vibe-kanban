@@ -16,7 +16,7 @@ use crate::{
     approvals::ExecutorApprovalService,
     executors::{
         amp::Amp, claude::ClaudeCode, codex::Codex, copilot::Copilot, cursor::Cursor,
-        gemini::Gemini, opencode::Opencode, qwen::QwenCode,
+        gemini::Gemini, opencode::Opencode, qwen::QwenCode, warp::Warp,
     },
     mcp_config::McpConfig,
 };
@@ -30,6 +30,7 @@ pub mod cursor;
 pub mod gemini;
 pub mod opencode;
 pub mod qwen;
+pub mod warp;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -81,6 +82,7 @@ pub enum CodingAgent {
     Cursor,
     QwenCode,
     Copilot,
+    Warp,
 }
 
 impl CodingAgent {
@@ -133,7 +135,7 @@ impl CodingAgent {
             Self::Codex(_) => vec![BaseAgentCapability::SessionFork],
             Self::Gemini(_) => vec![BaseAgentCapability::SessionFork],
             Self::QwenCode(_) => vec![BaseAgentCapability::SessionFork],
-            Self::Opencode(_) | Self::Cursor(_) | Self::Copilot(_) => vec![],
+            Self::Opencode(_) | Self::Cursor(_) | Self::Copilot(_) | Self::Warp(_) => vec![],
         }
     }
 }
