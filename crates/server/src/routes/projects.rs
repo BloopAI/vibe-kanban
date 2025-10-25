@@ -264,11 +264,16 @@ pub struct OpenEditorRequest {
     editor_type: Option<String>,
 }
 
+#[derive(Debug, serde::Serialize, ts_rs::TS)]
+pub struct OpenEditorResponse {
+    pub url: Option<String>,
+}
+
 pub async fn open_project_in_editor(
     Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<Option<OpenEditorRequest>>,
-) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
+) -> Result<ResponseJson<ApiResponse<OpenEditorResponse>>, StatusCode> {
     let path = project.git_repo_path.to_string_lossy();
 
     let editor_config = {
@@ -278,8 +283,13 @@ pub async fn open_project_in_editor(
     };
 
     match editor_config.open_file(&path) {
-        Ok(_) => {
-            tracing::info!("Opened editor for project {} at path: {}", project.id, path);
+        Ok(url) => {
+            tracing::info!(
+                "Opened editor for project {} at path: {}{}",
+                project.id,
+                path,
+                if url.is_some() { " (remote mode)" } else { "" }
+            );
 
             deployment
                 .track_if_analytics_allowed(
@@ -287,11 +297,12 @@ pub async fn open_project_in_editor(
                     serde_json::json!({
                         "project_id": project.id.to_string(),
                         "editor_type": payload.as_ref().and_then(|req| req.editor_type.as_ref()),
+                        "remote_mode": url.is_some(),
                     }),
                 )
                 .await;
 
-            Ok(ResponseJson(ApiResponse::success(())))
+            Ok(ResponseJson(ApiResponse::success(OpenEditorResponse { url })))
         }
         Err(e) => {
             tracing::error!("Failed to open editor for project {}: {}", project.id, e);

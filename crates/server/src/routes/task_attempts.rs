@@ -823,11 +823,16 @@ pub struct OpenEditorRequest {
     file_path: Option<String>,
 }
 
+#[derive(Debug, Serialize, TS)]
+pub struct OpenEditorResponse {
+    pub url: Option<String>,
+}
+
 pub async fn open_task_attempt_in_editor(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<Option<OpenEditorRequest>>,
-) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<OpenEditorResponse>>, ApiError> {
     // Get the task attempt to access the worktree path
     let base_path_buf = ensure_worktree_path(&deployment, &task_attempt).await?;
     let base_path = base_path_buf.as_path();
@@ -846,11 +851,12 @@ pub async fn open_task_attempt_in_editor(
     };
 
     match editor_config.open_file(&path.to_string_lossy()) {
-        Ok(_) => {
+        Ok(url) => {
             tracing::info!(
-                "Opened editor for task attempt {} at path: {}",
+                "Opened editor for task attempt {} at path: {}{}",
                 task_attempt.id,
-                path.display()
+                path.display(),
+                if url.is_some() { " (remote mode)" } else { "" }
             );
 
             deployment
@@ -859,11 +865,12 @@ pub async fn open_task_attempt_in_editor(
                     serde_json::json!({
                         "attempt_id": task_attempt.id.to_string(),
                         "editor_type": payload.as_ref().and_then(|req| req.editor_type.as_ref()),
+                        "remote_mode": url.is_some(),
                     }),
                 )
                 .await;
 
-            Ok(ResponseJson(ApiResponse::success(())))
+            Ok(ResponseJson(ApiResponse::success(OpenEditorResponse { url })))
         }
         Err(e) => {
             tracing::error!(
