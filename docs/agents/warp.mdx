@@ -1,0 +1,131 @@
+---
+title: "Warp"
+description: "Set up the Warp AI agent"
+icon: https://www.vibekanban.com/images/logos/warp-logo.svg
+---
+
+The Warp AI agent provides intelligent coding assistance through Warp's command-line interface. The CLI command varies by operating system and installation method.
+
+## Installation
+
+The Warp CLI command depends on your platform and how you installed Warp.
+
+<Tabs>
+<Tab title="Linux">
+  <Tabs>
+  <Tab title="Standalone">
+    The standalone Linux installation uses `warp-cli`:
+
+    ```bash
+    warp-cli --version
+    ```
+
+    If not installed, follow the [Warp installation guide](https://docs.warp.dev/developers/cli).
+  </Tab>
+
+  <Tab title="Bundled with Warp Terminal">
+    If you installed the full Warp Terminal on Linux, use `warp-terminal`:
+
+    ```bash
+    warp-terminal --version
+    ```
+  </Tab>
+  </Tabs>
+</Tab>
+
+<Tab title="macOS">
+  macOS uses `warp` for both standalone and bundled installations:
+
+  ```bash
+  warp --version
+  ```
+
+  If not installed, install via Homebrew or download from [warp.dev](https://www.warp.dev).
+</Tab>
+
+<Tab title="Windows">
+  Windows bundled installations use `warp`:
+
+  ```bash
+  warp --version
+  ```
+
+  Download Warp from [warp.dev](https://www.warp.dev) if not already installed.
+
+  <Note>
+  Windows standalone CLI is not currently available.
+  </Note>
+</Tab>
+</Tabs>
+
+## Authentication
+
+Set your Warp API key as an environment variable:
+
+```bash
+export WARP_API_KEY=your_api_key_here
+```
+
+For more details on obtaining and configuring your API key, see the [Warp CLI documentation](https://docs.warp.dev/developers/cli).
+
+## Start Vibe Kanban
+
+Once Warp is installed and authenticated, launch Vibe Kanban:
+
+```bash
+npx vibe-kanban
+```
+
+You can now select Warp when creating task attempts.
+
+## Custom Command Configuration
+
+Vibe Kanban automatically detects the correct command for your platform:
+- **Linux**: `warp-cli` (standalone)
+- **macOS**: `warp`
+- **Windows**: `warp`
+
+If you use a different installation method or need to override the default, configure it in **Settings → Agents**:
+
+```json profiles.json
+{
+  "executors": {
+    "WARP": {
+      "DEFAULT": {
+        "WARP": {
+          "cmd": {
+            "base_command_override": "warp-terminal"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+<Accordion title="Platform-specific commands">
+  | OS | Installation Method | CLI Command | CLI Command (Preview) |
+  |---|---|---|---|
+  | macOS | Standalone | `warp` | `warp-preview` |
+  | macOS | Bundled | `warp` | `warp-preview` |
+  | Linux | Standalone | `warp-cli` | `warp-cli-preview` |
+  | Linux | Bundled | `warp-terminal` | `warp-terminal-preview` |
+  | Windows | Standalone | N/A | N/A |
+  | Windows | Bundled | `warp` | `warp-preview` |
+</Accordion>
+
+<Tip>
+For preview builds, override with the `-preview` variant: `warp-cli-preview`, `warp-preview`, or `warp-terminal-preview`.
+</Tip>
+
+## Related Configuration
+
+<CardGroup cols={2}>
+<Card title="Agent Profiles & Configuration" icon="gear" href="/configuration-customisation/agent-configurations">
+  Configure custom Warp variants with different settings
+</Card>
+
+<Card title="MCP Server Configuration" icon="server" href="/integrations/mcp-server-configuration">
+  Configure MCP servers for Warp
+</Card>
+</CardGroup>

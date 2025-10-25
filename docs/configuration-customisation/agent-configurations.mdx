@@ -164,6 +164,24 @@ The profiles configuration uses a JSON structure with an `executors` object cont
 
   [View full documentation →](https://qwenlm.github.io/qwen-code-docs/en/cli/index)
 </Tab>
+
+<Tab title="WARP">
+  <ParamField path="base_command_override" type="string">
+  Override the default command for your platform. Options: `"warp"`, `"warp-cli"`, `"warp-terminal"`, or preview variants with `-preview` suffix.
+  </ParamField>
+
+  <Info>
+  Vibe Kanban automatically uses the correct command for your platform (Linux: `warp-cli`, macOS/Windows: `warp`). Override only if using a different installation method.
+  </Info>
+
+  **Platform-specific commands:**
+  - **Linux Standalone**: `warp-cli` (default)
+  - **Linux Bundled**: `warp-terminal` (requires override)
+  - **macOS**: `warp` (default for both standalone and bundled)
+  - **Windows**: `warp` (default)
+
+  [View full CLI reference →](https://docs.warp.dev/developers/cli)
+</Tab>
 </Tabs>
 
 ### Universal Options

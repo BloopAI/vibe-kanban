@@ -38,7 +38,8 @@
               "agents/cursor-cli",
               "agents/opencode",
               "agents/ccr",
-              "agents/qwen-code"
+              "agents/qwen-code",
+              "agents/warp"
             ]
           }
         ]
