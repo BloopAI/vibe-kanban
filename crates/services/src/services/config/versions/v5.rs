@@ -1,6 +1,7 @@
 use anyhow::Error;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
+#[allow(unused_imports)]
 pub use v4::{EditorConfig, EditorType, GitHubConfig, NotificationConfig, SoundFile, ThemeMode};
 
 use crate::services::config::versions::v4::{self, ProfileVariantLabel};

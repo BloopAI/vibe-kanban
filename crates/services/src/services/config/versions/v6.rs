@@ -5,7 +5,8 @@ use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utils;
-pub use v5::{EditorConfig, EditorType, GitHubConfig, NotificationConfig, SoundFile, ThemeMode};
+#[allow(unused_imports)]
+pub use v5::{EditorConfig, GitHubConfig, NotificationConfig, SoundFile, ThemeMode};
 
 use crate::services::config::versions::v5;
 
