@@ -492,7 +492,9 @@ export function GeneralSettings() {
             </div>
           )}
 
-          {draft?.editor.editor_type === EditorType.VS_CODE && (
+          {(draft?.editor.editor_type === EditorType.VS_CODE ||
+            draft?.editor.editor_type === EditorType.CURSOR ||
+            draft?.editor.editor_type === EditorType.WINDSURF) && (
             <>
               <div className="space-y-2">
                 <Label htmlFor="remote-ssh-host">
@@ -513,8 +515,8 @@ export function GeneralSettings() {
                 />
                 <p className="text-sm text-muted-foreground">
                   Set this if Vibe Kanban is running on a remote server. When
-                  set, clicking "Open in VSCode" will generate a URL to open
-                  VSCode via SSH instead of spawning a local command.
+                  set, clicking "Open in Editor" will generate a URL to open
+                  your editor via SSH instead of spawning a local command.
                 </p>
               </div>
 

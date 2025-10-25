@@ -148,13 +148,20 @@ impl EditorConfig {
     pub fn open_file(&self, path: &str) -> Result<Option<String>, std::io::Error> {
         // Check if remote mode is enabled
         if let Some(remote_host) = &self.remote_ssh_host {
-            // Only VSCode supports remote SSH via URL scheme for now
-            if matches!(self.editor_type, EditorType::VsCode) {
+            // VSCode-based editors (VSCode, Cursor, Windsurf) support remote SSH via URL
+            let url_scheme = match self.editor_type {
+                EditorType::VsCode => Some("vscode"),
+                EditorType::Cursor => Some("cursor"),
+                EditorType::Windsurf => Some("windsurf"),
+                _ => None, // Other editors fall back to local mode
+            };
+
+            if let Some(scheme) = url_scheme {
                 let user_part = self.remote_ssh_user
                     .as_ref()
                     .map(|u| format!("{}@", u))
                     .unwrap_or_default();
-                let url = format!("vscode://vscode-remote/ssh-remote+{}{}{}", user_part, remote_host, path);
+                let url = format!("{}://vscode-remote/ssh-remote+{}{}{}", scheme, user_part, remote_host, path);
                 return Ok(Some(url));
             }
         }
