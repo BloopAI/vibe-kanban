@@ -26,6 +26,7 @@ AI coding agents are increasingly writing the world's code and human engineers n
 - Quickly review work and start dev servers
 - Track the status of tasks that your coding agents are working on
 - Centralise configuration of coding agent MCP configs
+- Open projects remotely via SSH when running Vibe Kanban on a remote server
 
 You can watch a video overview [here](https://youtu.be/TFT3KnZOOAk).
 
@@ -119,3 +120,20 @@ By default, Vibe Kanban uses Bloop AI's GitHub OAuth app for authentication. To 
    ```bash
    GITHUB_CLIENT_ID=your_client_id_here pnpm run build
    ```
+
+### Remote Deployment
+
+When running Vibe Kanban on a remote server (e.g., via systemctl, Docker, or cloud hosting), you can configure your editor to open projects via SSH:
+
+1. **Access via tunnel**: Use Cloudflare Tunnel, ngrok, or similar to expose the web UI
+2. **Configure remote SSH** in Settings → Editor Integration:
+   - Set **Remote SSH Host** to your server hostname or IP
+   - Set **Remote SSH User** to your SSH username (optional)
+3. **Prerequisites**:
+   - SSH access from your local machine to the remote server
+   - SSH keys configured (passwordless authentication)
+   - VSCode Remote-SSH extension (or equivalent for Cursor/Windsurf)
+
+When configured, the "Open in VSCode" buttons will generate URLs like `vscode://vscode-remote/ssh-remote+user@host/path` that open your local editor and connect to the remote server.
+
+See the [documentation](https://vibekanban.com/docs/configuration-customisation/global-settings#remote-ssh-configuration) for detailed setup instructions.
