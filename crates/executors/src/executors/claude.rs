@@ -187,12 +187,12 @@ impl StandardCodingAgentExecutor for ClaudeCode {
                         }
 
                         // Check if this is a result message
-                        if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {
-                            if json.get("type").and_then(|v| v.as_str()) == Some("result") {
-                                // Found result message - signal completion
-                                let _ = exit_signal_tx.send(());
-                                return;
-                            }
+                        if let Ok(json) = serde_json::from_str::<serde_json::Value>(line)
+                            && json.get("type").and_then(|v| v.as_str()) == Some("result")
+                        {
+                            // Found result message - signal completion
+                            let _ = exit_signal_tx.send(());
+                            return;
                         }
                     }
                 }
@@ -272,12 +272,12 @@ impl StandardCodingAgentExecutor for ClaudeCode {
                         }
 
                         // Check if this is a result message
-                        if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {
-                            if json.get("type").and_then(|v| v.as_str()) == Some("result") {
-                                // Found result message - signal completion
-                                let _ = exit_signal_tx.send(());
-                                return;
-                            }
+                        if let Ok(json) = serde_json::from_str::<serde_json::Value>(line)
+                            && json.get("type").and_then(|v| v.as_str()) == Some("result")
+                        {
+                            // Found result message - signal completion
+                            let _ = exit_signal_tx.send(());
+                            return;
                         }
                     }
                 }
