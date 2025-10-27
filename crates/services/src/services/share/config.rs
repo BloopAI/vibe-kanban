@@ -41,7 +41,7 @@ impl ShareConfig {
     }
 
     pub fn websocket_endpoint(&self, cursor: Option<i64>) -> Result<Url, url::ParseError> {
-        let mut url = self.websocket_base.join("v1/ws")?;
+        let mut url = self.websocket_base.join("/v1/ws")?;
         if let Some(c) = cursor {
             url.query_pairs_mut().append_pair("cursor", &c.to_string());
         }
