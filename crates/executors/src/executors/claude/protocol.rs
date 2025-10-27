@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use async_trait::async_trait;
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     process::{ChildStdin, ChildStdout},
@@ -13,7 +12,10 @@ use super::types::{
 };
 use crate::executors::{
     ExecutorError,
-    claude::types::{PermissionMode, PermissionResult, PermissionUpdate, SDKControlRequestType},
+    claude::{
+        client::ClaudeAgentClient,
+        types::{PermissionMode, SDKControlRequestType},
+    },
 };
 
 /// Handles bidirectional control protocol communication
@@ -23,18 +25,14 @@ pub struct ProtocolPeer {
 }
 
 impl ProtocolPeer {
-    pub fn spawn(
-        stdin: ChildStdin,
-        stdout: ChildStdout,
-        callbacks: Arc<dyn ProtocolCallbacks>,
-    ) -> Self {
+    pub fn spawn(stdin: ChildStdin, stdout: ChildStdout, client: Arc<ClaudeAgentClient>) -> Self {
         let peer = Self {
             stdin: Arc::new(Mutex::new(stdin)),
         };
 
         let reader_peer = peer.clone();
         tokio::spawn(async move {
-            if let Err(e) = reader_peer.read_loop(stdout, callbacks).await {
+            if let Err(e) = reader_peer.read_loop(stdout, client).await {
                 tracing::error!("Protocol reader loop error: {}", e);
             }
         });
@@ -45,7 +43,7 @@ impl ProtocolPeer {
     async fn read_loop(
         &self,
         stdout: ChildStdout,
-        callbacks: Arc<dyn ProtocolCallbacks>,
+        client: Arc<ClaudeAgentClient>,
     ) -> Result<(), ExecutorError> {
         let mut reader = BufReader::new(stdout);
         let mut buffer = String::new();
@@ -65,16 +63,16 @@ impl ProtocolPeer {
                             request_id,
                             request,
                         }) => {
-                            self.handle_control_request(&callbacks, request_id, request)
+                            self.handle_control_request(&client, request_id, request)
                                 .await;
                         }
                         Ok(CLIMessage::ControlResponse { .. }) => {}
                         Ok(CLIMessage::Result(_)) => {
-                            callbacks.on_non_control(line).await?;
+                            client.on_non_control(line).await?;
                             break;
                         }
                         _ => {
-                            callbacks.on_non_control(line).await?;
+                            client.on_non_control(line).await?;
                         }
                     }
                 }
@@ -89,7 +87,7 @@ impl ProtocolPeer {
 
     async fn handle_control_request(
         &self,
-        callbacks: &Arc<dyn ProtocolCallbacks>,
+        client: &Arc<ClaudeAgentClient>,
         request_id: String,
         request: ControlRequestType,
     ) {
@@ -99,8 +97,8 @@ impl ProtocolPeer {
                 input,
                 permission_suggestions,
             } => {
-                match callbacks
-                    .on_can_use_tool(self, tool_name, input, permission_suggestions)
+                match client
+                    .on_can_use_tool(tool_name, input, permission_suggestions)
                     .await
                 {
                     Ok(result) => {
@@ -124,8 +122,8 @@ impl ProtocolPeer {
                 input,
                 tool_use_id,
             } => {
-                match callbacks
-                    .on_hook_callback(self, callback_id, input, tool_use_id)
+                match client
+                    .on_hook_callback(callback_id, input, tool_use_id)
                     .await
                 {
                     Ok(hook_output) => {
@@ -199,29 +197,4 @@ impl ProtocolPeer {
         ))
         .await
     }
-}
-
-/// Callbacks for control protocol events
-#[async_trait]
-pub trait ProtocolCallbacks: Send + Sync {
-    /// Called when CLI sends hook callback (for PreToolUse hooks)
-    /// Returns hook output JSON (not PermissionResult)
-    async fn on_hook_callback(
-        &self,
-        peer: &ProtocolPeer,
-        callback_id: String,
-        input: serde_json::Value,
-        tool_use_id: Option<String>,
-    ) -> Result<serde_json::Value, ExecutorError>;
-
-    async fn on_can_use_tool(
-        &self,
-        peer: &ProtocolPeer,
-        tool_name: String,
-        input: serde_json::Value,
-        suggestions: Option<Vec<PermissionUpdate>>,
-    ) -> Result<PermissionResult, ExecutorError>;
-    /// Called for non-control messages (regular Claude output)
-    /// Returns true if the task is complete and the read loop should exit
-    async fn on_non_control(&self, line: &str) -> Result<(), ExecutorError>;
 }

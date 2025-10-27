@@ -236,7 +236,6 @@ impl ClaudeCode {
             let log_writer = LogWriter::new(new_stdout);
             let client = ClaudeAgentClient::new(log_writer.clone(), approvals_clone);
             let protocol_peer = ProtocolPeer::spawn(child_stdin, child_stdout, client.clone());
-            client.connect(protocol_peer.clone());
 
             // Initialize control protocol
             if let Err(e) = protocol_peer.initialize(hooks).await {

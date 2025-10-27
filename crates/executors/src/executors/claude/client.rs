@@ -1,13 +1,9 @@
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 
-use async_trait::async_trait;
 use tokio::sync::Mutex;
 use workspace_utils::approvals::ApprovalStatus;
 
-use super::{
-    protocol::{ProtocolCallbacks, ProtocolPeer},
-    types::PermissionMode,
-};
+use super::types::PermissionMode;
 use crate::{
     approvals::{ExecutorApprovalError, ExecutorApprovalService},
     executors::{
@@ -27,7 +23,6 @@ const EXIT_PLAN_MODE_NAME: &str = "ExitPlanMode";
 
 /// Claude Agent client with control protocol support
 pub struct ClaudeAgentClient {
-    protocol: OnceLock<ProtocolPeer>,
     log_writer: LogWriter,
     approvals: Option<Arc<dyn ExecutorApprovalService>>,
     auto_approve: bool, // true when approvals is None
@@ -42,7 +37,6 @@ impl ClaudeAgentClient {
     ) -> Arc<Self> {
         let auto_approve = approvals.is_none();
         Arc::new(Self {
-            protocol: OnceLock::new(),
             log_writer,
             approvals,
             auto_approve,
@@ -63,11 +57,6 @@ impl ClaudeAgentClient {
         }
         let mut guard = self.latest_unhandled_tool_use_id.lock().await;
         guard.replace(tool_use_id);
-    }
-
-    /// Connect the protocol peer
-    pub fn connect(&self, peer: ProtocolPeer) {
-        let _ = self.protocol.set(peer);
     }
 
     async fn handle_approval(
@@ -138,13 +127,9 @@ impl ClaudeAgentClient {
             }
         }
     }
-}
 
-#[async_trait]
-impl ProtocolCallbacks for ClaudeAgentClient {
-    async fn on_can_use_tool(
+    pub async fn on_can_use_tool(
         &self,
-        _peer: &ProtocolPeer,
         tool_name: String,
         input: serde_json::Value,
         _permission_suggestions: Option<Vec<PermissionUpdate>>,
@@ -179,9 +164,8 @@ impl ProtocolCallbacks for ClaudeAgentClient {
         }
     }
 
-    async fn on_hook_callback(
+    pub async fn on_hook_callback(
         &self,
-        _peer: &ProtocolPeer,
         _callback_id: String,
         _input: serde_json::Value,
         tool_use_id: Option<String>,
@@ -205,17 +189,17 @@ impl ProtocolCallbacks for ClaudeAgentClient {
             if let Some(tool_use_id) = tool_use_id.clone() {
                 self.set_latest_unhandled_tool_use_id(tool_use_id).await;
             }
-            return Ok(serde_json::json!({
+            Ok(serde_json::json!({
                 "hookSpecificOutput": {
                     "hookEventName": "PreToolUse",
                     "permissionDecision": "ask",
                     "permissionDecisionReason": "Forwarding to canusetool service"
                 }
-            }));
+            }))
         }
     }
 
-    async fn on_non_control(&self, line: &str) -> Result<(), ExecutorError> {
+    pub async fn on_non_control(&self, line: &str) -> Result<(), ExecutorError> {
         // Forward all non-control messages to stdout
         self.log_writer.log_raw(line).await
     }
