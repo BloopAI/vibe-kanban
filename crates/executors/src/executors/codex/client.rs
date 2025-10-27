@@ -223,7 +223,7 @@ impl AppServerClient {
             .approvals
             .as_ref()
             .ok_or(ExecutorApprovalError::ServiceUnavailable)?
-            .request_tool_approval(tool_name, tool_input, Some(tool_call_id))
+            .request_tool_approval(tool_name, tool_input, tool_call_id)
             .await?)
     }
 

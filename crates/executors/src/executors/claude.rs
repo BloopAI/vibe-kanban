@@ -1458,7 +1458,7 @@ pub enum ClaudeJson {
     },
     #[serde(rename = "approval_response")]
     ApprovalResponse {
-        call_id: Option<String>,
+        call_id: String,
         tool_name: String,
         approval_status: ApprovalStatus,
     },

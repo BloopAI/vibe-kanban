@@ -34,7 +34,7 @@ pub trait ExecutorApprovalService: Send + Sync {
         &self,
         tool_name: &str,
         tool_input: Value,
-        tool_call_id: Option<&str>,
+        tool_call_id: &str,
     ) -> Result<ApprovalStatus, ExecutorApprovalError>;
 }
 
@@ -51,7 +51,7 @@ impl ExecutorApprovalService for NoopExecutorApprovalService {
         &self,
         _tool_name: &str,
         _tool_input: Value,
-        _tool_call_id: Option<&str>,
+        _tool_call_id: &str,
     ) -> Result<ApprovalStatus, ExecutorApprovalError> {
         Ok(ApprovalStatus::Approved)
     }

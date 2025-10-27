@@ -85,6 +85,75 @@ impl ClaudeAgentClient {
     pub fn connect(&self, peer: ProtocolPeer) {
         let _ = self.protocol.set(peer);
     }
+
+    async fn handle_approval(
+        &self,
+        tool_use_id: String,
+        tool_name: String,
+        tool_input: serde_json::Value,
+    ) -> Result<PermissionResult, ExecutorError> {
+        // Use approval service to request tool approval
+        let approval_service = self
+            .approvals
+            .as_ref()
+            .ok_or(ExecutorApprovalError::ServiceUnavailable)?;
+        let status = approval_service
+            .request_tool_approval(&tool_name, tool_input.clone(), &tool_use_id)
+            .await;
+        match status {
+            Ok(status) => {
+                // Log the approval response so we it appears in the executor logs
+                self.log_writer
+                    .log_raw(&serde_json::to_string(&ClaudeJson::ApprovalResponse {
+                        call_id: tool_use_id.clone(),
+                        tool_name: tool_name.clone(),
+                        approval_status: status.clone(),
+                    })?)
+                    .await?;
+                match status {
+                    ApprovalStatus::Approved => {
+                        if tool_name == EXIT_PLAN_MODE_NAME {
+                            Ok(PermissionResult::Allow {
+                                updated_input: tool_input,
+                                updated_permissions: Some(vec![PermissionUpdate {
+                                    update_type: PermissionUpdateType::SetMode,
+                                    mode: Some(PermissionMode::BypassPermissions),
+                                    destination: PermissionUpdateDestination::Session,
+                                }]),
+                            })
+                        } else {
+                            Ok(PermissionResult::Allow {
+                                updated_input: tool_input,
+                                updated_permissions: None,
+                            })
+                        }
+                    }
+                    ApprovalStatus::Denied { reason } => {
+                        let message = reason.unwrap_or("Denied by user".to_string());
+                        Ok(PermissionResult::Deny {
+                            message,
+                            interrupt: Some(false),
+                        })
+                    }
+                    ApprovalStatus::TimedOut => Ok(PermissionResult::Deny {
+                        message: "Approval request timed out".to_string(),
+                        interrupt: Some(false),
+                    }),
+                    ApprovalStatus::Pending => Ok(PermissionResult::Deny {
+                        message: "Approval still pending (unexpected)".to_string(),
+                        interrupt: Some(false),
+                    }),
+                }
+            }
+            Err(e) => {
+                tracing::error!("Tool approval request failed: {e}");
+                Ok(PermissionResult::Deny {
+                    message: "Tool approval request failed".to_string(),
+                    interrupt: Some(false),
+                })
+            }
+        }
+    }
 }
 
 #[async_trait]
@@ -102,69 +171,26 @@ impl ProtocolCallbacks for ClaudeAgentClient {
                 updated_permissions: None,
             })
         } else {
-            // Use approval service
-            let approval_service = self
-                .approvals
-                .as_ref()
-                .ok_or(ExecutorApprovalError::ServiceUnavailable)?;
             let latest_tool_use_id = {
                 let guard = self.latest_unhandled_tool_use_id.lock().await.take();
                 guard.clone()
             };
-            match approval_service
-                .request_tool_approval(&tool_name, input.clone(), latest_tool_use_id.as_deref())
-                .await
-            {
-                Ok(status) => {
-                    self.log_writer
-                        .log_raw(&serde_json::to_string(&ClaudeJson::ApprovalResponse {
-                            call_id: latest_tool_use_id.clone(),
-                            tool_name: tool_name.clone(),
-                            approval_status: status.clone(),
-                        })?)
-                        .await?;
-                    match status {
-                        ApprovalStatus::Approved => {
-                            if tool_name == EXIT_PLAN_MODE_NAME {
-                                Ok(PermissionResult::Allow {
-                                    updated_input: input,
-                                    updated_permissions: Some(vec![PermissionUpdate {
-                                        update_type: PermissionUpdateType::SetMode,
-                                        mode: Some(PermissionMode::BypassPermissions),
-                                        destination: PermissionUpdateDestination::Session,
-                                    }]),
-                                })
-                            } else {
-                                Ok(PermissionResult::Allow {
-                                    updated_input: input,
-                                    updated_permissions: None,
-                                })
-                            }
-                        }
-                        ApprovalStatus::Denied { reason } => {
-                            let message = reason.unwrap_or("Denied by user".to_string());
-                            Ok(PermissionResult::Deny {
-                                message,
-                                interrupt: Some(false),
-                            })
-                        }
-                        ApprovalStatus::TimedOut => Ok(PermissionResult::Deny {
-                            message: "Approval request timed out".to_string(),
-                            interrupt: Some(false),
-                        }),
-                        ApprovalStatus::Pending => Ok(PermissionResult::Deny {
-                            message: "Approval still pending (unexpected)".to_string(),
-                            interrupt: Some(false),
-                        }),
-                    }
-                }
-                Err(e) => {
-                    tracing::error!("Tool approval request failed: {e}");
-                    Ok(PermissionResult::Deny {
-                        message: "Tool approval request failed".to_string(),
-                        interrupt: Some(false),
-                    })
-                }
+
+            if let Some(latest_tool_use_id) = latest_tool_use_id {
+                self.handle_approval(latest_tool_use_id, tool_name, input)
+                    .await
+            } else {
+                // Auto approve tools with no matching tool_use_id.
+                // This rare edge case happens if a tool call triggers no hook callback,
+                // so no tool_use_id is available to match the approval request to.
+                tracing::warn!(
+                    "No unhandled tool_use_id available for tool '{}', cannot request approval",
+                    tool_name
+                );
+                Ok(PermissionResult::Allow {
+                    updated_input: input,
+                    updated_permissions: None,
+                })
             }
         }
     }
