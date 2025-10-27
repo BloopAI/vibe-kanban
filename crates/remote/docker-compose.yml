@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   remote-db:
     image: postgres:16-alpine
@@ -31,7 +29,7 @@ services:
       SERVER_ACTIVITY_CHANNEL: activity
       CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:?set in .env.remote}
       CLERK_ISSUER: ${CLERK_ISSUER:?set in .env.remote}
-      CLERK_API_URL: ${CLERK_API_URL:-https://api.clerk.com}
+      CLERK_API_URL: ${CLERK_API_URL:-https://api.clerk.com/v1/}
     ports:
       - "8081:8081"
     restart: unless-stopped

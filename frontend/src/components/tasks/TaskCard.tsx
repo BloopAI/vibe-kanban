@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useNavigateWithSearch } from '@/hooks';
 import { paths } from '@/lib/paths';
 import { attemptsApi } from '@/lib/api';
+import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 
 type Task = TaskWithAttemptStatus;
 
@@ -17,6 +18,7 @@ interface TaskCardProps {
   onViewDetails: (task: Task) => void;
   isOpen?: boolean;
   projectId: string;
+  sharedTask?: SharedTaskRecord;
 }
 
 export function TaskCard({
@@ -26,6 +28,7 @@ export function TaskCard({
   onViewDetails,
   isOpen,
   projectId,
+  sharedTask,
 }: TaskCardProps) {
   const navigate = useNavigateWithSearch();
   const [isNavigatingToParent, setIsNavigatingToParent] = useState(false);
@@ -81,6 +84,11 @@ export function TaskCard({
       onClick={handleClick}
       isOpen={isOpen}
       forwardedRef={localRef}
+      className={
+        sharedTask
+          ? 'relative overflow-hidden pl-5 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-card-foreground before:content-[""]'
+          : undefined
+      }
     >
       <div className="flex flex-1 gap-2 items-center min-w-0">
         <h4 className="flex-1 min-w-0 line-clamp-2 font-light text-sm">
@@ -113,7 +121,7 @@ export function TaskCard({
             </Button>
           )}
           {/* Actions Menu */}
-          <ActionsDropdown task={task} />
+          <ActionsDropdown task={task} sharedTask={sharedTask} />
         </div>
       </div>
       {task.description && (

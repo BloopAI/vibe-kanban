@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -48,6 +48,18 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
       setShareComplete(true);
     },
   });
+  const { reset: resetShareMutation } = shareMutation;
+
+  useEffect(() => {
+    if (!modal.visible) {
+      return;
+    }
+
+    resetShareMutation();
+    setShareComplete(false);
+    setShareError(null);
+    setShouldRedirectToSignIn(false);
+  }, [modal.visible, task.id, resetShareMutation]);
 
   const handleClose = () => {
     modal.resolve(shareComplete);

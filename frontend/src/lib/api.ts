@@ -31,6 +31,7 @@ import {
   Tag,
   TagSearchParams,
   TaskWithAttemptStatus,
+  AssignSharedTaskResponse,
   UpdateProject,
   UpdateTask,
   UpdateTag,
@@ -445,6 +446,26 @@ export const tasksApi = {
       method: 'POST',
     });
     return handleApiResponse<ShareTaskResponse>(response);
+  },
+
+  transferAssignment: async (
+    sharedTaskId: string,
+    data: { new_assignee_user_id: string | null; version?: number | null }
+  ): Promise<AssignSharedTaskResponse> => {
+    const payload = {
+      new_assignee_user_id: data.new_assignee_user_id,
+      version: data.version ?? null,
+    };
+
+    const response = await makeRequest(
+      `/api/shared-tasks/${sharedTaskId}/assign`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    );
+
+    return handleApiResponse<AssignSharedTaskResponse>(response);
   },
 };
 

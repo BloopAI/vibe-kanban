@@ -66,6 +66,10 @@ export {
   GitActionsDialog,
   type GitActionsDialogProps,
 } from './tasks/GitActionsDialog';
+export {
+  ReassignDialog,
+  type ReassignDialogProps,
+} from './tasks/ReassignDialog';
 
 // Settings dialogs
 export {
