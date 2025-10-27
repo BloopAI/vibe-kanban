@@ -77,14 +77,17 @@ impl RemoteSync {
         if let Some(config) = ShareConfig::from_env() {
             tracing::info!(api = %config.api_base, "starting shared task synchronizer");
             let processor = ActivityProcessor::new(db.clone(), config.clone());
+            dbg!("spawning remote sync task");
             let sync = Self {
                 db,
                 processor,
                 config,
                 sessions,
             };
+            dbg!("remote sync task initialized");
             let (shutdown_tx, shutdown_rx) = oneshot::channel();
             let join = tokio::spawn(async move {
+                dbg!("remote sync task running");
                 if let Err(e) = sync.run(shutdown_rx).await {
                     tracing::error!(?e, "remote sync terminated unexpectedly");
                 }
@@ -98,8 +101,11 @@ impl RemoteSync {
     }
 
     pub async fn run(self, shutdown_rx: oneshot::Receiver<()>) -> Result<(), ShareError> {
+        dbg!("starting remote sync task");
         let session = self.sessions.wait_for_active().await;
+        dbg!("obtained active clerk session");
         let org_id = session.org_id.clone().ok_or(ShareError::MissingAuth)?;
+        dbg!("organization id:", &org_id);
 
         let mut last_seq = SharedActivityCursor::get(&self.db.pool, org_id.clone())
             .await?
@@ -109,6 +115,8 @@ impl RemoteSync {
             .catch_up(&session, last_seq)
             .await
             .unwrap_or(last_seq);
+
+        dbg!(&last_seq);
 
         let ws_url = self.config.websocket_endpoint(last_seq)?;
         let remote = spawn_shared_remote(self.processor.clone(), &self.sessions, ws_url).await?;

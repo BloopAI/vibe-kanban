@@ -74,6 +74,7 @@ export type KanbanCardProps = Pick<Feature, 'id' | 'name'> & {
   forwardedRef?: Ref<HTMLDivElement>;
   onKeyDown?: (e: KeyboardEvent) => void;
   isOpen?: boolean;
+  dragDisabled?: boolean;
 };
 
 export const KanbanCard = ({
@@ -88,11 +89,13 @@ export const KanbanCard = ({
   forwardedRef,
   onKeyDown,
   isOpen,
+  dragDisabled = false,
 }: KanbanCardProps) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id,
       data: { index, parent },
+      disabled: dragDisabled,
     });
 
   // Combine DnD ref and forwarded ref

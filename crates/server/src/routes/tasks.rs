@@ -10,7 +10,7 @@ use axum::{
     http::StatusCode,
     middleware::from_fn_with_state,
     response::{IntoResponse, Json as ResponseJson},
-    routing::{get, post},
+    routing::{get, post, put},
 };
 use db::models::{
     image::TaskImage,
@@ -403,8 +403,19 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         share_route
     };
 
+    let update_route = Router::new().route("/", put(update_task));
+    let update_router = if deployment.clerk_auth().is_some() {
+        update_route.layer(from_fn_with_state(
+            deployment.clone(),
+            require_clerk_session,
+        ))
+    } else {
+        update_route
+    };
+
     let task_id_router = Router::new()
-        .route("/", get(get_task).put(update_task).delete(delete_task))
+        .route("/", get(get_task).delete(delete_task))
+        .merge(update_router)
         .merge(share_router)
         .layer(from_fn_with_state(deployment.clone(), load_task_middleware));
 

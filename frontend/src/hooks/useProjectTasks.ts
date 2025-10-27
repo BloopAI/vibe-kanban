@@ -1,6 +1,10 @@
 import { useCallback, useMemo } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
-import type { SharedTask, TaskWithAttemptStatus } from 'shared/types';
+import type {
+  SharedTask,
+  TaskStatus,
+  TaskWithAttemptStatus,
+} from 'shared/types';
 
 export type SharedTaskRecord = Omit<
   SharedTask,
@@ -17,11 +21,12 @@ type TasksState = {
   shared_tasks: Record<string, SharedTaskRecord>;
 };
 
-interface UseProjectTasksResult {
+export interface UseProjectTasksResult {
   tasks: TaskWithAttemptStatus[];
   tasksById: Record<string, TaskWithAttemptStatus>;
-  sharedTasks: SharedTaskRecord[];
+  tasksByStatus: Record<TaskStatus, TaskWithAttemptStatus[]>;
   sharedTasksById: Record<string, SharedTaskRecord>;
+  sharedOnlyByStatus: Record<TaskStatus, SharedTaskRecord[]>;
   isLoading: boolean;
   isConnected: boolean;
   error: string | null;
@@ -49,32 +54,82 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
   const localTasksById = data?.tasks ?? {};
   const sharedTasksById = data?.shared_tasks ?? {};
 
-  const { tasks, tasksById } = useMemo(() => {
+  const { tasks, tasksById, tasksByStatus } = useMemo(() => {
     const merged: Record<string, TaskWithAttemptStatus> = { ...localTasksById };
+    const byStatus: Record<TaskStatus, TaskWithAttemptStatus[]> = {
+      todo: [],
+      inprogress: [],
+      inreview: [],
+      done: [],
+      cancelled: [],
+    };
+
+    Object.values(merged).forEach((task) => {
+      byStatus[task.status]?.push(task);
+    });
+
     const sorted = Object.values(merged).sort(
       (a, b) =>
         new Date(b.created_at as string).getTime() -
         new Date(a.created_at as string).getTime()
     );
 
-    return { tasks: sorted, tasksById: merged };
+    (Object.values(byStatus) as TaskWithAttemptStatus[][]).forEach((list) => {
+      list.sort(
+        (a, b) =>
+          new Date(b.created_at as string).getTime() -
+          new Date(a.created_at as string).getTime()
+      );
+    });
+
+    return { tasks: sorted, tasksById: merged, tasksByStatus: byStatus };
   }, [localTasksById]);
 
-  const sharedTasks = useMemo(() => {
-    return Object.values(sharedTasksById).sort(
-      (a, b) =>
-        new Date(b.created_at as string).getTime() -
-        new Date(a.created_at as string).getTime()
+  const sharedOnlyByStatus = useMemo(() => {
+    const grouped: Record<TaskStatus, SharedTaskRecord[]> = {
+      todo: [],
+      inprogress: [],
+      inreview: [],
+      done: [],
+      cancelled: [],
+    };
+
+    const referencedSharedIds = new Set(
+      Object.values(localTasksById)
+        .map((task) => task.shared_task_id)
+        .filter((id): id is string => Boolean(id))
     );
-  }, [sharedTasksById]);
+
+    Object.values(sharedTasksById).forEach((sharedTask) => {
+      const hasLocal =
+        Boolean(localTasksById[sharedTask.id]) ||
+        referencedSharedIds.has(sharedTask.id);
+
+      if (hasLocal) {
+        return;
+      }
+      grouped[sharedTask.status]?.push(sharedTask);
+    });
+
+    (Object.values(grouped) as SharedTaskRecord[][]).forEach((list) => {
+      list.sort(
+        (a, b) =>
+          new Date(b.created_at as string).getTime() -
+          new Date(a.created_at as string).getTime()
+      );
+    });
+
+    return grouped;
+  }, [localTasksById, sharedTasksById]);
 
   const isLoading = !data && !error; // until first snapshot
 
   return {
     tasks,
     tasksById,
-    sharedTasks,
+    tasksByStatus,
     sharedTasksById,
+    sharedOnlyByStatus,
     isLoading,
     isConnected,
     error,
