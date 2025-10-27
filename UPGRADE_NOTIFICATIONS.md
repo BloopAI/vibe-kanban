@@ -4,6 +4,8 @@
 
 This implementation adds webhook-based upgrade notifications to Vibe Kanban, enabling users running the application on remote servers to receive notifications via Slack, Discord, Pushover, Telegram, or custom webhooks when a new version is available.
 
+**User Documentation:** See [docs/configuration-customisation/webhook-notifications.mdx](./docs/configuration-customisation/webhook-notifications.mdx) for complete user-facing documentation.
+
 ## Features Implemented
 
 ### 1. Multi-Platform Webhook Support
@@ -273,6 +275,12 @@ To test the implementation:
 ### Frontend
 - `frontend/src/components/settings/WebhookConfigurationSection.tsx` (new)
 - `frontend/src/pages/settings/GeneralSettings.tsx`
+
+### Documentation
+- `docs/configuration-customisation/webhook-notifications.mdx` (new) - Complete webhook setup guide
+- `docs/configuration-customisation/global-settings.mdx` - Updated with webhook notifications section
+- `docs/docs.json` - Added webhook-notifications page to navigation
+- `README.md` - Added webhook notifications to feature list
 
 ## Future Enhancements
 

@@ -39,7 +39,45 @@ Link your GitHub account by providing a Personal Access Token (PAT) to enable:
 
 ## Notifications
 
-Toggle sound effects and push notifications to stay informed about task status changes.
+Configure how Vibe Kanban notifies you about important events:
+
+### Local Notifications
+Toggle sound effects and push notifications to stay informed about task status changes on your local machine.
+
+### Webhook Notifications (Remote Server Support)
+For users running Vibe Kanban on remote servers, webhook notifications enable external notification delivery when the application is upgraded to a new version.
+
+**Supported Platforms:**
+- **Slack** - Send notifications to Slack channels via incoming webhooks
+- **Discord** - Post updates to Discord channels via webhook URLs
+- **Pushover** - Receive push notifications on mobile devices
+- **Telegram** - Send messages via Telegram bot API
+- **Generic** - Connect to any custom webhook endpoint
+
+**Setup:**
+1. Navigate to **Settings → Webhook Notifications**
+2. Toggle "Notify on Upgrades" to enable upgrade notifications
+3. Click "Add Webhook" to configure a notification endpoint
+4. Select your provider and enter the required credentials:
+   - **Slack/Discord**: Paste the webhook URL from your workspace
+   - **Pushover**: Enter your API token and user key
+   - **Telegram**: Provide the bot token URL and chat ID
+   - **Generic**: Enter your custom webhook endpoint URL
+5. Enable the webhook and save your settings
+
+<Tip>
+You can configure multiple webhooks to receive notifications across different platforms simultaneously.
+</Tip>
+
+<Card title="Webhook Setup Guides" icon="webhook">
+  **Slack:** Create an [Incoming Webhook](https://api.slack.com/messaging/webhooks) in your workspace settings
+
+  **Discord:** Generate a webhook in Server Settings → Integrations → Webhooks
+
+  **Pushover:** Register an [application](https://pushover.net/apps/build) to get your API token
+
+  **Telegram:** Create a bot with [@BotFather](https://t.me/botfather) and get your chat ID
+</Card>
 
 ## Telemetry
 
