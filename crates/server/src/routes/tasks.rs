@@ -21,8 +21,9 @@ use deployment::Deployment;
 use executors::profile::ExecutorProfileId;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use serde::{Deserialize, Serialize};
-use services::services::container::{
-    ContainerService, WorktreeCleanupData, cleanup_worktrees_direct,
+use services::services::{
+    container::{ContainerService, WorktreeCleanupData, cleanup_worktrees_direct},
+    share::ShareError,
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
@@ -250,10 +251,14 @@ pub async fn update_task(
         TaskImage::associate_many_dedup(&deployment.db().pool, task.id, image_ids).await?;
     }
 
+    // If task has been shared, broadcast update
     if task.shared_task_id.is_some() {
-        let publisher = deployment.share_publisher()?;
+        let Some(publisher) = deployment.share_publisher() else {
+            return Err(ShareError::MissingConfig("share publisher unavailable").into());
+        };
+        let acting_session = session.require()?;
         publisher
-            .update_shared_task(&task, session.as_ref())
+            .update_shared_task(&task, Some(acting_session))
             .await?;
     }
 
@@ -378,8 +383,11 @@ pub async fn share_task(
     State(deployment): State<DeploymentImpl>,
     session: ClerkSessionMaybe,
 ) -> Result<ResponseJson<ApiResponse<ShareTaskResponse>>, ApiError> {
-    let publisher = deployment.share_publisher_with_metadata()?;
-    let shared_task_id = publisher.share_task(task.id, session.as_ref()).await?;
+    let Some(publisher) = deployment.share_publisher() else {
+        return Err(ShareError::MissingConfig("share publisher unavailable").into());
+    };
+    let acting_session = session.require()?;
+    let shared_task_id = publisher.share_task(task.id, Some(acting_session)).await?;
 
     Ok(ResponseJson(ApiResponse::success(ShareTaskResponse {
         shared_task_id,

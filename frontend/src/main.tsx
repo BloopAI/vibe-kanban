@@ -38,6 +38,7 @@ import {
   ViewProcessesDialog,
   GitActionsDialog,
   ShareDialog,
+  ReassignDialog,
 } from './components/dialogs';
 import { CreateAttemptDialog } from './components/dialogs/tasks/CreateAttemptDialog';
 import { EditBranchNameDialog } from './components/dialogs/tasks/EditBranchNameDialog';
@@ -68,6 +69,7 @@ NiceModal.register('create-attempt', CreateAttemptDialog);
 NiceModal.register('git-actions', GitActionsDialog);
 NiceModal.register('edit-branch-name-dialog', EditBranchNameDialog);
 NiceModal.register('share-task', ShareDialog);
+NiceModal.register('reassign-shared-task', ReassignDialog);
 
 import {
   useLocation,

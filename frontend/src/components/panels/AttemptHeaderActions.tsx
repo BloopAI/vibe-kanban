@@ -13,6 +13,7 @@ import type { TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
 import { ActionsDropdown } from '../ui/ActionsDropdown';
 import { usePostHog } from 'posthog-js/react';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 
 interface AttemptHeaderActionsProps {
   onClose: () => void;
@@ -20,6 +21,7 @@ interface AttemptHeaderActionsProps {
   onModeChange?: (mode: LayoutMode) => void;
   task: TaskWithAttemptStatus;
   attempt?: TaskAttempt | null;
+  sharedTask?: SharedTaskRecord;
 }
 
 export const AttemptHeaderActions = ({
@@ -28,6 +30,7 @@ export const AttemptHeaderActions = ({
   onModeChange,
   task,
   attempt,
+  sharedTask,
 }: AttemptHeaderActionsProps) => {
   const { t } = useTranslation('tasks');
   const posthog = usePostHog();
@@ -106,7 +109,7 @@ export const AttemptHeaderActions = ({
       {typeof mode !== 'undefined' && onModeChange && isXL && (
         <div className="h-4 w-px bg-border" />
       )}
-      <ActionsDropdown task={task} attempt={attempt} />
+      <ActionsDropdown task={task} attempt={attempt} sharedTask={sharedTask} />
       <Button variant="icon" aria-label="Close" onClick={onClose}>
         <X size={16} />
       </Button>
