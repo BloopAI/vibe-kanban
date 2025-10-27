@@ -43,8 +43,10 @@ impl Executable for ScriptRequest {
         let mut command = Command::new(shell_cmd);
         command
             .kill_on_drop(true)
+            .stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
+            .env("COMPOSE_INTERACTIVE_NO_CLI", "1")
             .arg(shell_arg)
             .arg(&self.script)
             .current_dir(current_dir);
