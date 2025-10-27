@@ -2,7 +2,6 @@ pub mod executor_approvals;
 
 use std::{collections::HashMap, sync::Arc, time::Duration as StdDuration};
 
-use chrono::{DateTime, Utc};
 use dashmap::DashMap;
 use db::models::{
     execution_process::ExecutionProcess,
@@ -32,8 +31,6 @@ struct PendingApproval {
     entry: NormalizedEntry,
     execution_process_id: Uuid,
     tool_name: String,
-    requested_at: DateTime<Utc>,
-    timeout_at: DateTime<Utc>,
     response_tx: oneshot::Sender<ApprovalStatus>,
 }
 
@@ -109,8 +106,6 @@ impl Approvals {
                         entry: matching_tool,
                         execution_process_id: request.execution_process_id,
                         tool_name: request.tool_name.clone(),
-                        requested_at: request.created_at,
-                        timeout_at: request.timeout_at,
                         response_tx: tx,
                     },
                 );

@@ -16,23 +16,9 @@ pub enum CLIMessage {
     ControlResponse {
         response: ControlResponseType,
     },
-    System {
-        #[serde(default)]
-        subtype: Option<String>,
-        #[serde(default)]
-        session_id: Option<String>,
-    },
+    Result(serde_json::Value),
     #[serde(untagged)]
     Other(serde_json::Value),
-}
-
-/// Control request from CLI to SDK (incoming)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ControlRequestMessage {
-    #[serde(rename = "type")]
-    pub message_type: String, // "control_request"
-    pub request_id: String,
-    pub request: ControlRequestType,
 }
 
 /// Control request from SDK to CLI (outgoing)

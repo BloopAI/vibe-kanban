@@ -31,7 +31,6 @@ pub struct ClaudeAgentClient {
     log_writer: LogWriter,
     approvals: Option<Arc<dyn ExecutorApprovalService>>,
     auto_approve: bool, // true when approvals is None
-    session_id: Mutex<Option<String>>,
     latest_unhandled_tool_use_id: Mutex<Option<String>>,
 }
 
@@ -47,7 +46,6 @@ impl ClaudeAgentClient {
             log_writer,
             approvals,
             auto_approve,
-            session_id: Mutex::new(None),
             latest_unhandled_tool_use_id: Mutex::new(None),
         })
     }
@@ -65,20 +63,6 @@ impl ClaudeAgentClient {
         }
         let mut guard = self.latest_unhandled_tool_use_id.lock().await;
         guard.replace(tool_use_id);
-    }
-
-    /// Register the session with the approval service
-    pub async fn register_session(&self, session_id: String) -> Result<(), ExecutorError> {
-        {
-            let mut guard = self.session_id.lock().await;
-            guard.replace(session_id.clone());
-        }
-
-        if let Some(approvals) = self.approvals.as_ref() {
-            approvals.register_session(&session_id).await?;
-        }
-
-        Ok(())
     }
 
     /// Connect the protocol peer
@@ -231,22 +215,8 @@ impl ProtocolCallbacks for ClaudeAgentClient {
         }
     }
 
-    async fn on_session_init(&self, session_id: String) -> Result<(), ExecutorError> {
-        self.register_session(session_id).await
-    }
-
-    async fn on_non_control(&self, line: &str) -> Result<bool, ExecutorError> {
+    async fn on_non_control(&self, line: &str) -> Result<(), ExecutorError> {
         // Forward all non-control messages to stdout
-        self.log_writer.log_raw(line).await?;
-
-        // Check for result message indicating task completion
-        if let Ok(value) = serde_json::from_str::<serde_json::Value>(line)
-            && value.get("type").and_then(|t| t.as_str()) == Some("result")
-        {
-            tracing::debug!("Detected result message, task complete");
-            return Ok(true);
-        }
-
-        Ok(false)
+        self.log_writer.log_raw(line).await
     }
 }

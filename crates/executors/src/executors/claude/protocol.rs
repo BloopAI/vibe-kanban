@@ -8,8 +8,8 @@ use tokio::{
 };
 
 use super::types::{
-    CLIMessage, ControlRequestMessage, ControlRequestType, ControlResponseMessage,
-    ControlResponseType, SDKControlRequestMessage,
+    CLIMessage, ControlRequestType, ControlResponseMessage, ControlResponseType,
+    SDKControlRequestMessage,
 };
 use crate::executors::{
     ExecutorError,
@@ -65,35 +65,16 @@ impl ProtocolPeer {
                             request_id,
                             request,
                         }) => {
-                            // Construct ControlRequestMessage for handle_control_request
-                            let msg = ControlRequestMessage {
-                                message_type: "control_request".to_string(),
-                                request_id,
-                                request,
-                            };
-                            self.handle_control_request(&callbacks, msg).await;
+                            self.handle_control_request(&callbacks, request_id, request)
+                                .await;
                         }
                         Ok(CLIMessage::ControlResponse { .. }) => {}
-                        Ok(CLIMessage::System {
-                            subtype: Some(ref s),
-                            session_id: Some(ref sid),
-                        }) if s == "init" => {
-                            // first forward non-control message
-                            let _ = callbacks.on_non_control(line).await;
-                            // then register session
-                            if let Err(e) = callbacks.on_session_init(sid.clone()).await {
-                                tracing::error!("Failed to register session: {}", e);
-                            }
+                        Ok(CLIMessage::Result(_)) => {
+                            callbacks.on_non_control(line).await?;
+                            break;
                         }
-                        Ok(CLIMessage::System { .. }) | Ok(CLIMessage::Other(_)) | Err(_) => {
-                            let has_finished =
-                                callbacks.on_non_control(line).await.unwrap_or_else(|e| {
-                                    tracing::warn!("Error handling non-control message: {}", e);
-                                    false
-                                });
-                            if has_finished {
-                                break;
-                            }
+                        _ => {
+                            callbacks.on_non_control(line).await?;
                         }
                     }
                 }
@@ -109,11 +90,10 @@ impl ProtocolPeer {
     async fn handle_control_request(
         &self,
         callbacks: &Arc<dyn ProtocolCallbacks>,
-        request: ControlRequestMessage,
+        request_id: String,
+        request: ControlRequestType,
     ) {
-        let request_id = request.request_id.clone();
-
-        match request.request {
+        match request {
             ControlRequestType::CanUseTool {
                 tool_name,
                 input,
@@ -241,11 +221,7 @@ pub trait ProtocolCallbacks: Send + Sync {
         input: serde_json::Value,
         suggestions: Option<Vec<PermissionUpdate>>,
     ) -> Result<PermissionResult, ExecutorError>;
-
-    /// Called when session is initialized (from system init message)
-    async fn on_session_init(&self, session_id: String) -> Result<(), ExecutorError>;
-
     /// Called for non-control messages (regular Claude output)
     /// Returns true if the task is complete and the read loop should exit
-    async fn on_non_control(&self, line: &str) -> Result<bool, ExecutorError>;
+    async fn on_non_control(&self, line: &str) -> Result<(), ExecutorError>;
 }
