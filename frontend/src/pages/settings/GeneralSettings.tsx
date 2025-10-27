@@ -42,6 +42,10 @@ import { useTheme } from '@/components/theme-provider';
 import { useUserSystem } from '@/components/config-provider';
 import { TagManager } from '@/components/TagManager';
 import NiceModal from '@ebay/nice-modal-react';
+import {
+  WebhookConfigurationSection,
+  WebhookConfig,
+} from '@/components/settings/WebhookConfigurationSection';
 
 export function GeneralSettings() {
   const { t } = useTranslation(['settings', 'common']);
@@ -728,6 +732,30 @@ export function GeneralSettings() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Webhook Notifications Configuration */}
+      {draft?.notifications && (
+        <WebhookConfigurationSection
+          upgradeNotificationsEnabled={draft.notifications.upgrade_notifications_enabled ?? true}
+          webhooks={draft.notifications.webhooks ?? []}
+          onUpgradeNotificationsChange={(enabled) =>
+            updateDraft({
+              notifications: {
+                ...draft.notifications,
+                upgrade_notifications_enabled: enabled,
+              },
+            })
+          }
+          onWebhooksChange={(webhooks) =>
+            updateDraft({
+              notifications: {
+                ...draft.notifications,
+                webhooks,
+              },
+            })
+          }
+        />
+      )}
 
       <Card>
         <CardHeader>

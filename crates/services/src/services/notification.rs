@@ -4,11 +4,12 @@ use db::models::execution_process::{ExecutionContext, ExecutionProcessStatus};
 use utils;
 
 use crate::services::config::SoundFile;
+use crate::services::config::NotificationConfig;
+use crate::services::webhook_notification::WebhookNotificationService;
 
 /// Service for handling cross-platform notifications including sound alerts and push notifications
 #[derive(Debug, Clone)]
 pub struct NotificationService {}
-use crate::services::config::NotificationConfig;
 
 /// Cache for WSL root path from PowerShell
 static WSL_ROOT_PATH_CACHE: OnceLock<Option<String>> = OnceLock::new();
@@ -45,6 +46,31 @@ impl NotificationService {
         Self::notify(config, &title, &message).await;
     }
 
+    /// Send notification for app upgrade/update
+    pub async fn notify_upgrade(
+        config: NotificationConfig,
+        old_version: &str,
+        new_version: &str,
+    ) {
+        if !config.upgrade_notifications_enabled {
+            return;
+        }
+
+        let title = "Vibe Kanban Updated";
+        let message = format!(
+            "🎉 Vibe Kanban has been upgraded!\n\nVersion: {} → {}\n\nCheck the release notes for new features and improvements.",
+            old_version, new_version
+        );
+
+        // Send OS-level notifications (sound + push)
+        Self::notify(config.clone(), title, &message).await;
+
+        // Send webhook notifications if configured
+        if !config.webhooks.is_empty() {
+            WebhookNotificationService::notify_all(&config.webhooks, title, &message).await;
+        }
+    }
+
     /// Send both sound and push notifications if enabled
     pub async fn notify(config: NotificationConfig, title: &str, message: &str) {
         if config.sound_enabled {
@@ -53,6 +79,11 @@ impl NotificationService {
 
         if config.push_enabled {
             Self::send_push_notification(title, message).await;
+        }
+
+        // Also send webhook notifications if any are configured
+        if !config.webhooks.is_empty() {
+            WebhookNotificationService::notify_all(&config.webhooks, title, message).await;
         }
     }
 
