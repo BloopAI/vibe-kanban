@@ -3,9 +3,10 @@ use std::sync::OnceLock;
 use db::models::execution_process::{ExecutionContext, ExecutionProcessStatus};
 use utils;
 
-use crate::services::config::SoundFile;
-use crate::services::config::NotificationConfig;
-use crate::services::webhook_notification::WebhookNotificationService;
+use crate::services::{
+    config::{NotificationConfig, SoundFile},
+    webhook_notification::WebhookNotificationService,
+};
 
 /// Service for handling cross-platform notifications including sound alerts and push notifications
 #[derive(Debug, Clone)]
