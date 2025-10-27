@@ -78,22 +78,19 @@ fn extract_token(headers: &axum::http::HeaderMap, uri: &Uri) -> Option<String> {
     if let Some(Authorization(bearer)) = headers.typed_get::<Authorization<Bearer>>() {
         return Some(bearer.token().to_owned());
     }
-    if let Some(header) = headers.get("X-Clerk-Token") {
-        if let Ok(value) = header.to_str() {
-            let trimmed = value.trim();
-            if !trimmed.is_empty() {
-                return Some(trimmed.to_owned());
-            }
+    if let Some(header) = headers.get("X-Clerk-Token")
+        && let Ok(value) = header.to_str()
+    {
+        let trimmed = value.trim();
+        if !trimmed.is_empty() {
+            return Some(trimmed.to_owned());
         }
     }
     query_token(uri)
 }
 
 fn query_token(uri: &Uri) -> Option<String> {
-    let Some(query) = uri.query() else {
-        return None;
-    };
-
+    let query = uri.query()?;
     form_urlencoded::parse(query.as_bytes()).find_map(|(key, value)| match key.as_ref() {
         "token" | "clerk_token" => {
             let trimmed = value.trim();

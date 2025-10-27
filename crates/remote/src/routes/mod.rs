@@ -15,10 +15,7 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/activity", get(activity::get_activity_stream))
         .route("/v1/tasks", post(tasks::create_shared_task))
         .route("/v1/tasks/{task_id}", patch(tasks::update_shared_task))
-        .route(
-            "/v1/tasks/{task_id}/assign",
-            post(tasks::transfer_task_assignment),
-        );
+        .route("/v1/tasks/{task_id}/assign", post(tasks::assign_task));
 
     Router::<AppState>::new()
         .merge(api)

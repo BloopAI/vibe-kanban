@@ -14,16 +14,24 @@ import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import NiceModal from '@ebay/nice-modal-react';
 import { useProject } from '@/contexts/project-context';
 import { openTaskForm } from '@/lib/openTaskForm';
+import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
+import { useAuth } from '@clerk/clerk-react';
 
 interface ActionsDropdownProps {
   task?: TaskWithAttemptStatus | null;
   attempt?: TaskAttempt | null;
+  sharedTask?: SharedTaskRecord;
 }
 
-export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
+export function ActionsDropdown({
+  task,
+  attempt,
+  sharedTask,
+}: ActionsDropdownProps) {
   const { t } = useTranslation('tasks');
   const { projectId } = useProject();
   const openInEditor = useOpenInEditor(attempt?.id);
+  const { userId } = useAuth();
 
   const hasAttemptActions = Boolean(attempt);
   const hasTaskActions = Boolean(task);
@@ -97,6 +105,17 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
     NiceModal.show('share-task', { task });
   };
 
+  const handleReassign = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!sharedTask) return;
+    NiceModal.show('reassign-shared-task', { sharedTask });
+  };
+
+  const canReassign =
+    Boolean(task) &&
+    Boolean(sharedTask) &&
+    sharedTask?.assignee_user_id === userId;
+
   return (
     <>
       <DropdownMenu>
@@ -149,6 +168,12 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
               <DropdownMenuLabel>{t('actionsMenu.task')}</DropdownMenuLabel>
               <DropdownMenuItem disabled={!task} onClick={handleShare}>
                 {t('actionsMenu.share')}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!canReassign}
+                onClick={handleReassign}
+              >
+                Reassign
               </DropdownMenuItem>
               <DropdownMenuItem disabled={!projectId} onClick={handleEdit}>
                 {t('common:buttons.edit')}

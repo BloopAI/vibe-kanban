@@ -250,7 +250,7 @@
     "createSubtask": "Create subtask",
     "gitActions": "Git actions",
     "task": "Task",
-    "share": "Share task",
+    "share": "Share",
     "duplicate": "Duplicate"
   },
   "shareDialog": {

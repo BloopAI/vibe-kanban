@@ -43,12 +43,12 @@ CREATE TABLE IF NOT EXISTS projects (
     owner                TEXT NOT NULL,
     name                 TEXT NOT NULL,
     created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (organization_id, github_repository_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_projects_org_owner_name
     ON projects (organization_id, owner, name);
+
 
 CREATE TABLE IF NOT EXISTS shared_tasks (
     id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),

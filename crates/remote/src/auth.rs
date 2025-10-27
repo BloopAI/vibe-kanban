@@ -48,8 +48,6 @@ impl ClerkService {
 
     pub async fn get_user(&self, user_id: &str) -> Result<ClerkUser, ClerkServiceError> {
         let url = self.endpoint(&format!("users/{user_id}"))?;
-        dbg!(&self.secret_key);
-        dbg!(&url);
         let response = self
             .client
             .get(url)

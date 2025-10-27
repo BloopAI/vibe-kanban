@@ -3,6 +3,7 @@ import { KanbanCard } from '@/components/ui/shadcn-io/kanban';
 import { CheckCircle, Loader2, XCircle } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { ActionsDropdown } from '@/components/ui/ActionsDropdown';
+import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 
 type Task = TaskWithAttemptStatus;
 
@@ -12,6 +13,7 @@ interface TaskCardProps {
   status: string;
   onViewDetails: (task: Task) => void;
   isOpen?: boolean;
+  sharedTask?: SharedTaskRecord;
 }
 
 export function TaskCard({
@@ -20,6 +22,7 @@ export function TaskCard({
   status,
   onViewDetails,
   isOpen,
+  sharedTask,
 }: TaskCardProps) {
   const handleClick = useCallback(() => {
     onViewDetails(task);
@@ -49,6 +52,11 @@ export function TaskCard({
       onClick={handleClick}
       isOpen={isOpen}
       forwardedRef={localRef}
+      className={
+        sharedTask
+          ? 'relative overflow-hidden pl-5 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-card-foreground before:content-[""]'
+          : undefined
+      }
     >
       <div className="flex flex-1 gap-2 items-center min-w-0">
         <h4 className="flex-1 min-w-0 line-clamp-2 font-light text-sm">
@@ -73,7 +81,7 @@ export function TaskCard({
             onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
-            <ActionsDropdown task={task} />
+            <ActionsDropdown task={task} sharedTask={sharedTask} />
           </div>
         </div>
       </div>

@@ -1,32 +1,32 @@
 mod config;
 mod processor;
 mod publisher;
+mod status;
 
 use std::sync::{Arc, Mutex as StdMutex};
 
 use async_trait::async_trait;
 use axum::http::{HeaderName, HeaderValue, header::AUTHORIZATION};
-use config::RemoteSyncConfig;
+use config::ShareConfig;
 use db::{
     DBService,
-    models::{
-        shared_task::{SharedActivityCursor, SharedTaskInput},
-        task::TaskStatus,
-    },
+    models::shared_task::{SharedActivityCursor, SharedTaskInput},
 };
 use processor::ActivityProcessor;
-pub use publisher::ShareTaskPublisher;
-use remote::{
-    ServerMessage,
-    db::tasks::{SharedTask as RemoteSharedTask, TaskStatus as RemoteTaskStatus},
-};
+pub use publisher::SharePublisher;
+use remote::{ServerMessage, db::tasks::SharedTask as RemoteSharedTask};
 use thiserror::Error;
 use tokio::{sync::oneshot, task::JoinHandle};
 use tokio_tungstenite::tungstenite::Message as WsMessage;
+use url::Url;
 use utils::ws::{WsClient, WsConfig, WsError, WsHandler, WsResult, run_ws_client};
 use uuid::Uuid;
 
-use crate::services::clerk::{ClerkSession, ClerkSessionStore};
+use crate::services::{
+    clerk::{ClerkSession, ClerkSessionStore},
+    git::GitServiceError,
+    github_service::GitHubServiceError,
+};
 
 #[derive(Debug, Error)]
 pub enum ShareError {
@@ -50,6 +50,14 @@ pub enum ShareError {
     MissingProjectMetadata(Uuid),
     #[error("invalid response from remote share service")]
     InvalidResponse,
+    #[error("task {0} is already shared")]
+    AlreadyShared(Uuid),
+    #[error("GitHub token is required to fetch repository ID")]
+    MissingGitHubToken,
+    #[error(transparent)]
+    Git(#[from] GitServiceError),
+    #[error(transparent)]
+    GitHub(#[from] GitHubServiceError),
     #[error("share authentication missing or expired")]
     MissingAuth,
 }
@@ -57,8 +65,7 @@ pub enum ShareError {
 pub struct RemoteSync {
     db: DBService,
     processor: ActivityProcessor,
-    remote_client: Option<Arc<WsClient>>,
-    config: RemoteSyncConfig,
+    config: ShareConfig,
     sessions: ClerkSessionStore,
 }
 
@@ -67,13 +74,12 @@ impl RemoteSync {
         db: DBService,
         sessions: ClerkSessionStore,
     ) -> Option<RemoteSyncHandle> {
-        if let Some(config) = RemoteSyncConfig::from_env() {
+        if let Some(config) = ShareConfig::from_env() {
             tracing::info!(api = %config.api_base, "starting shared task synchronizer");
             let processor = ActivityProcessor::new(db.clone(), config.clone());
             let sync = Self {
                 db,
                 processor,
-                remote_client: None,
                 config,
                 sessions,
             };
@@ -91,7 +97,7 @@ impl RemoteSync {
         }
     }
 
-    pub async fn run(mut self, shutdown_rx: oneshot::Receiver<()>) -> Result<(), ShareError> {
+    pub async fn run(self, shutdown_rx: oneshot::Receiver<()>) -> Result<(), ShareError> {
         let session = self.sessions.wait_for_active().await;
         let org_id = session.org_id.clone().ok_or(ShareError::MissingAuth)?;
 
@@ -104,23 +110,16 @@ impl RemoteSync {
             .await
             .unwrap_or(last_seq);
 
-        let ws_url = self.config.websocket_endpoint(last_seq);
-        let remote = spawn_shared_remote(self.processor.clone(), &self.sessions, &ws_url).await?;
-        self.remote_client = Some(remote);
+        let ws_url = self.config.websocket_endpoint(last_seq)?;
+        let remote = spawn_shared_remote(self.processor.clone(), &self.sessions, ws_url).await?;
 
         let _ = shutdown_rx.await;
         tracing::info!("shutdown signal received for remote sync");
 
-        self.request_shutdown().await;
-        Ok(())
-    }
-
-    async fn request_shutdown(&mut self) {
-        if let Some(client) = self.remote_client.take()
-            && let Err(err) = client.shutdown()
-        {
+        if let Err(err) = remote.shutdown() {
             tracing::warn!(?err, "failed to request websocket shutdown");
         }
+        Ok(())
     }
 }
 
@@ -134,12 +133,13 @@ impl WsHandler for SharedWsHandler {
         if let WsMessage::Text(txt) = msg {
             match serde_json::from_str::<ServerMessage>(&txt) {
                 Ok(ServerMessage::Activity(event)) => {
+                    let seq = event.seq;
                     self.processor
-                        .process_event(event.clone())
+                        .process_event(event)
                         .await
                         .map_err(|err| WsError::Handler(Box::new(err)))?;
 
-                    tracing::debug!(seq = event.seq, "processed remote activity");
+                    tracing::debug!(seq, "processed remote activity");
                 }
                 Ok(ServerMessage::Error { message }) => {
                     tracing::warn!(?message, "received WS error message");
@@ -161,11 +161,11 @@ impl WsHandler for SharedWsHandler {
 async fn spawn_shared_remote(
     processor: ActivityProcessor,
     sessions: &ClerkSessionStore,
-    url: &str,
-) -> Result<Arc<WsClient>, ShareError> {
+    url: Url,
+) -> Result<WsClient, ShareError> {
     let session_source = sessions.clone();
     let ws_config = WsConfig {
-        url: url.to_string(),
+        url,
         autoreconnect: true,
         reconnect_base_delay: std::time::Duration::from_secs(1),
         reconnect_max_delay: std::time::Duration::from_secs(30),
@@ -180,9 +180,9 @@ async fn spawn_shared_remote(
     };
 
     let handler = SharedWsHandler { processor };
-    let client = Arc::new(run_ws_client(handler, ws_config).await?);
-
-    Ok(client)
+    run_ws_client(handler, ws_config)
+        .await
+        .map_err(ShareError::from)
 }
 
 fn build_ws_headers(session: &ClerkSession) -> WsResult<Vec<(HeaderName, HeaderValue)>> {
@@ -245,38 +245,22 @@ impl Drop for RemoteSyncHandleInner {
     }
 }
 
-fn convert_remote_task(task: &RemoteSharedTask, last_event_seq: Option<i64>) -> SharedTaskInput {
+pub(super) fn convert_remote_task(
+    task: &RemoteSharedTask,
+    project_id: Uuid,
+    last_event_seq: Option<i64>,
+) -> SharedTaskInput {
     SharedTaskInput {
         id: task.id,
         organization_id: task.organization_id.clone(),
-        project_id: task.project_id,
+        project_id,
         title: task.title.clone(),
         description: task.description.clone(),
-        status: convert_remote_status(&task.status),
+        status: status::from_remote(&task.status),
         assignee_user_id: task.assignee_user_id.clone(),
         version: task.version,
         last_event_seq,
         created_at: task.created_at,
         updated_at: task.updated_at,
-    }
-}
-
-fn convert_remote_status(status: &RemoteTaskStatus) -> TaskStatus {
-    match status {
-        RemoteTaskStatus::Todo => TaskStatus::Todo,
-        RemoteTaskStatus::InProgress => TaskStatus::InProgress,
-        RemoteTaskStatus::InReview => TaskStatus::InReview,
-        RemoteTaskStatus::Done => TaskStatus::Done,
-        RemoteTaskStatus::Cancelled => TaskStatus::Cancelled,
-    }
-}
-
-fn convert_local_status(status: &TaskStatus) -> RemoteTaskStatus {
-    match status {
-        TaskStatus::Todo => RemoteTaskStatus::Todo,
-        TaskStatus::InProgress => RemoteTaskStatus::InProgress,
-        TaskStatus::InReview => RemoteTaskStatus::InReview,
-        TaskStatus::Done => RemoteTaskStatus::Done,
-        TaskStatus::Cancelled => RemoteTaskStatus::Cancelled,
     }
 }

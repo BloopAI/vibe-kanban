@@ -38,6 +38,7 @@ import {
   ViewProcessesDialog,
   GitActionsDialog,
   ShareDialog,
+  ReassignDialog,
 } from './components/dialogs';
 import { CreateAttemptDialog } from './components/dialogs/tasks/CreateAttemptDialog';
 
@@ -66,6 +67,7 @@ NiceModal.register('view-processes', ViewProcessesDialog);
 NiceModal.register('create-attempt', CreateAttemptDialog);
 NiceModal.register('git-actions', GitActionsDialog);
 NiceModal.register('share-task', ShareDialog);
+NiceModal.register('reassign-shared-task', ReassignDialog);
 
 import {
   useLocation,
