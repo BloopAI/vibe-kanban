@@ -8,63 +8,87 @@ import {
 } from '@/components/ui/shadcn-io/kanban';
 import { TaskCard } from './TaskCard';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
-// import { useParams } from 'react-router-dom';
-
 import { statusBoardColors, statusLabels } from '@/utils/status-labels';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
+import { SharedTaskCard } from './SharedTaskCard';
 
-type Task = TaskWithAttemptStatus;
+export type KanbanColumnItem =
+  | {
+      type: 'task';
+      task: TaskWithAttemptStatus;
+      sharedTask?: SharedTaskRecord;
+    }
+  | {
+      type: 'shared';
+      task: SharedTaskRecord;
+    };
+
+export type KanbanColumns = Record<TaskStatus, KanbanColumnItem[]>;
 
 interface TaskKanbanBoardProps {
-  groupedTasks: Record<TaskStatus, Task[]>;
-  sharedTasksById?: Record<string, SharedTaskRecord>;
+  columns: KanbanColumns;
   onDragEnd: (event: DragEndEvent) => void;
-  onViewTaskDetails: (task: Task) => void;
-  selectedTask?: Task;
+  onViewTaskDetails: (task: TaskWithAttemptStatus) => void;
+  onViewSharedTask?: (task: SharedTaskRecord) => void;
+  selectedTaskId?: string;
+  selectedSharedTaskId?: string | null;
   onCreateTask?: () => void;
   projectId: string;
 }
 
 function TaskKanbanBoard({
-  groupedTasks,
-  sharedTasksById,
+  columns,
   onDragEnd,
   onViewTaskDetails,
-  selectedTask,
+  onViewSharedTask,
+  selectedTaskId,
+  selectedSharedTaskId,
   onCreateTask,
   projectId,
 }: TaskKanbanBoardProps) {
   return (
     <KanbanProvider onDragEnd={onDragEnd}>
-      {Object.entries(groupedTasks).map(([status, statusTasks]) => (
-        <KanbanBoard key={status} id={status as TaskStatus}>
-          <KanbanHeader
-            name={statusLabels[status as TaskStatus]}
-            color={statusBoardColors[status as TaskStatus]}
-            onAddTask={onCreateTask}
-          />
-          <KanbanCards>
-            {statusTasks.map((task, index) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                index={index}
-                status={status}
-                onViewDetails={onViewTaskDetails}
-                isOpen={selectedTask?.id === task.id}
-                projectId={projectId}
-                sharedTask={
-                  sharedTasksById
-                    ? task.shared_task_id
-                      ? sharedTasksById[task.shared_task_id]
-                      : sharedTasksById[task.id]
-                    : undefined
+      {Object.entries(columns).map(([status, items]) => {
+        const statusKey = status as TaskStatus;
+        return (
+          <KanbanBoard key={status} id={statusKey}>
+            <KanbanHeader
+              name={statusLabels[statusKey]}
+              color={statusBoardColors[statusKey]}
+              onAddTask={onCreateTask}
+            />
+            <KanbanCards>
+              {items.map((item, index) => {
+                if (item.type === 'task') {
+                  return (
+                    <TaskCard
+                      key={item.task.id}
+                      task={item.task}
+                      index={index}
+                      status={statusKey}
+                      onViewDetails={onViewTaskDetails}
+                      isOpen={selectedTaskId === item.task.id}
+                      projectId={projectId}
+                      sharedTask={item.sharedTask}
+                    />
+                  );
                 }
-              />
-            ))}
-          </KanbanCards>
-        </KanbanBoard>
-      ))}
+
+                return (
+                  <SharedTaskCard
+                    key={`shared-${item.task.id}`}
+                    task={item.task}
+                    index={index}
+                    status={statusKey}
+                    isSelected={selectedSharedTaskId === item.task.id}
+                    onViewDetails={onViewSharedTask}
+                  />
+                );
+              })}
+            </KanbanCards>
+          </KanbanBoard>
+        );
+      })}
     </KanbanProvider>
   );
 }
