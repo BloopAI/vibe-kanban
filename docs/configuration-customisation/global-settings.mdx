@@ -45,18 +45,18 @@ Configure how Vibe Kanban notifies you about important events:
 Toggle sound effects and push notifications to stay informed about task status changes on your local machine.
 
 ### Webhook Notifications (Remote Server Support)
-For users running Vibe Kanban on remote servers, webhook notifications enable external notification delivery when the application is upgraded to a new version.
+For users running Vibe Kanban on remote servers, webhook notifications enable external notification delivery when tasks complete, fail, or are cancelled.
 
 **Supported Platforms:**
-- **Slack** - Send notifications to Slack channels via incoming webhooks
-- **Discord** - Post updates to Discord channels via webhook URLs
+- **Slack** - Send task completion notifications to Slack channels
+- **Discord** - Post task updates to Discord channels
 - **Pushover** - Receive push notifications on mobile devices
-- **Telegram** - Send messages via Telegram bot API
+- **Telegram** - Send task notifications via Telegram bot
 - **Generic** - Connect to any custom webhook endpoint
 
 **Setup:**
 1. Navigate to **Settings → Webhook Notifications**
-2. Toggle "Notify on Upgrades" to enable upgrade notifications
+2. Toggle "Enable Webhook Notifications" to receive task completion alerts
 3. Click "Add Webhook" to configure a notification endpoint
 4. Select your provider and enter the required credentials:
    - **Slack/Discord**: Paste the webhook URL from your workspace
@@ -66,17 +66,11 @@ For users running Vibe Kanban on remote servers, webhook notifications enable ex
 5. Enable the webhook and save your settings
 
 <Tip>
-You can configure multiple webhooks to receive notifications across different platforms simultaneously.
+You can configure multiple webhooks to receive task notifications across different platforms simultaneously.
 </Tip>
 
-<Card title="Webhook Setup Guides" icon="webhook">
-  **Slack:** Create an [Incoming Webhook](https://api.slack.com/messaging/webhooks) in your workspace settings
-
-  **Discord:** Generate a webhook in Server Settings → Integrations → Webhooks
-
-  **Pushover:** Register an [application](https://pushover.net/apps/build) to get your API token
-
-  **Telegram:** Create a bot with [@BotFather](https://t.me/botfather) and get your chat ID
+<Card title="Webhook Setup Guides" icon="webhook" href="/configuration-customisation/webhook-notifications">
+  Complete guide to setting up webhook notifications for Slack, Discord, Pushover, Telegram, and custom endpoints
 </Card>
 
 ## Telemetry

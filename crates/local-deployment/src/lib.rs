@@ -16,7 +16,6 @@ use services::services::{
     filesystem::FilesystemService,
     git::GitService,
     image::ImageService,
-    notification::NotificationService,
 };
 use tokio::sync::RwLock;
 use utils::{assets::config_path, msg_store::MsgStore};
@@ -57,36 +56,19 @@ impl Deployment for LocalDeployment {
         }
 
         // Check if app version has changed and set release notes flag
-        let upgrade_info = {
+        {
             let current_version = utils::version::APP_VERSION;
             let stored_version = raw_config.last_app_version.as_deref();
 
             if stored_version != Some(current_version) {
                 // Show release notes only if this is an upgrade (not first install)
-                let is_upgrade = stored_version.is_some();
-                raw_config.show_release_notes = is_upgrade;
-
-                // Store the old version for notification
-                let old_version = stored_version.map(|s| s.to_string());
+                raw_config.show_release_notes = stored_version.is_some();
                 raw_config.last_app_version = Some(current_version.to_string());
-
-                // Return both upgrade flag and old version for notification
-                is_upgrade.then(|| (old_version.unwrap_or_else(|| "unknown".to_string()), current_version.to_string()))
-            } else {
-                None
             }
-        };
+        }
 
         // Always save config (may have been migrated or version updated)
         save_config_to_file(&raw_config, &config_path()).await?;
-
-        // Send upgrade notification if this was an upgrade
-        if let Some((old_version, new_version)) = upgrade_info {
-            let notification_config = raw_config.notifications.clone();
-            tokio::spawn(async move {
-                NotificationService::notify_upgrade(notification_config, &old_version, &new_version).await;
-            });
-        }
 
         let config = Arc::new(RwLock::new(raw_config));
         let user_id = generate_user_id();

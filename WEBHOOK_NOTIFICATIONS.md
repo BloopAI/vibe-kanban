@@ -1,14 +1,14 @@
-# Upgrade Notification Mechanism Implementation
+# Webhook Notifications for Task Completions - Implementation
 
 ## Overview
 
-This implementation adds webhook-based upgrade notifications to Vibe Kanban, enabling users running the application on remote servers to receive notifications via Slack, Discord, Pushover, Telegram, or custom webhooks when a new version is available.
+This implementation adds webhook-based notifications for task completions in Vibe Kanban, enabling users running the application on remote servers to receive alerts via Slack, Discord, Pushover, Telegram, or custom webhooks when tasks finish execution.
 
 **User Documentation:** See [docs/configuration-customisation/webhook-notifications.mdx](./docs/configuration-customisation/webhook-notifications.mdx) for complete user-facing documentation.
 
 ## Features Implemented
 
-### 1. Multi-Platform Webhook Support
+###1. Multi-Platform Webhook Support
 - **Slack**: Rich message formatting with blocks
 - **Discord**: Embed messages with color coding
 - **Pushover**: Push notifications with priority levels
@@ -17,20 +17,22 @@ This implementation adds webhook-based upgrade notifications to Vibe Kanban, ena
 
 ### 2. Configuration System (v8)
 - Backward-compatible config migration from v7 to v8
-- New `upgrade_notifications_enabled` flag
+- New `webhook_notifications_enabled` flag to enable/disable webhook notifications
 - Support for multiple webhook configurations
 - Per-webhook enable/disable controls
 
-### 3. Automatic Upgrade Detection
-- Detects version changes on application startup
-- Compares `APP_VERSION` from Cargo.toml with stored version
-- Triggers notifications only for upgrades (not first installs)
-- Maintains release notes dialog functionality
+### 3. Task Completion Notifications
+- Integrates with existing notification system (`notify_execution_halted`)
+- Sends webhooks when tasks:
+  - Complete successfully ✅
+  - Fail with errors ❌
+  - Are cancelled by user 🛑
+- Webhooks only sent if `webhook_notifications_enabled` is true
 
 ### 4. User Interface
 - Dedicated webhook configuration section in Settings
 - Provider-specific input fields (Pushover user key, Telegram chat ID)
-- Enable/disable toggle for upgrade notifications
+- Enable/disable toggle for webhook notifications
 - Add/remove/configure multiple webhooks
 - Provider-specific placeholders and helper text
 
@@ -44,8 +46,8 @@ pub struct NotificationConfig {
     pub sound_enabled: bool,
     pub push_enabled: bool,
     pub sound_file: SoundFile,
-    pub upgrade_notifications_enabled: bool,
-    pub webhooks: Vec<WebhookConfig>,
+    pub webhook_notifications_enabled: bool,  // New field
+    pub webhooks: Vec<WebhookConfig>,         // New field
 }
 
 pub struct WebhookConfig {
@@ -66,7 +68,7 @@ pub enum WebhookProvider {
 ```
 
 #### 2. Webhook Notification Service (`crates/services/src/services/webhook_notification.rs`)
-- Async HTTP client using `reqwest`
+- Async HTTP client using `reqwest` (already in dependencies)
 - Provider-specific payload formatting
 - Error handling and logging
 - Concurrent notification sending
@@ -79,24 +81,16 @@ Key methods:
 - `send_telegram()`: Telegram bot API
 - `send_generic()`: Generic JSON POST
 
-#### 3. Enhanced Notification Service (`crates/services/src/services/notification.rs`)
-Added `notify_upgrade()` method:
-- Checks if upgrade notifications are enabled
-- Formats upgrade message with version info
-- Sends OS-level notifications (sound + push)
-- Triggers webhook notifications
-
-#### 4. Startup Integration (`crates/local-deployment/src/lib.rs`)
-- Version comparison logic enhanced
-- Spawns async notification task on upgrade
-- Non-blocking notification sending
-- Maintains config save atomicity
+#### 3. Notification Service Integration (`crates/services/src/services/notification.rs`)
+- Modified `notify()` method to check `webhook_notifications_enabled` flag
+- Calls `WebhookNotificationService::notify_all()` when conditions are met
+- Respects existing notification flow (sound, push, then webhooks)
 
 ### Frontend Components
 
 #### 1. Webhook Configuration Section (`frontend/src/components/settings/WebhookConfigurationSection.tsx`)
 Reusable component featuring:
-- Upgrade notifications toggle
+- Webhook notifications toggle
 - Add/remove webhook endpoints
 - Provider selection dropdown
 - URL input with provider-specific placeholders
@@ -112,35 +106,35 @@ Reusable component featuring:
 
 ## Webhook Payload Formats
 
-### Slack
+### Task Completion (Slack)
 ```json
 {
-  "text": "Vibe Kanban Updated",
+  "text": "Task Complete: Implement user authentication",
   "blocks": [
     {
       "type": "header",
       "text": {
         "type": "plain_text",
-        "text": "Vibe Kanban Updated"
+        "text": "Task Complete: Implement user authentication"
       }
     },
     {
       "type": "section",
       "text": {
         "type": "mrkdwn",
-        "text": "Version: 0.0.110 → 0.0.111..."
+        "text": "✅ 'Implement user authentication' completed successfully\nBranch: \"feature/auth\"\nExecutor: Claude Code"
       }
     }
   ]
 }
 ```
 
-### Discord
+### Task Completion (Discord)
 ```json
 {
   "embeds": [{
-    "title": "Vibe Kanban Updated",
-    "description": "Version: 0.0.110 → 0.0.111...",
+    "title": "Task Complete: Implement user authentication",
+    "description": "✅ 'Implement user authentication' completed successfully...",
     "color": 5814783,
     "footer": {
       "text": "Vibe Kanban"
@@ -149,31 +143,11 @@ Reusable component featuring:
 }
 ```
 
-### Pushover
+### Task Completion (Generic)
 ```json
 {
-  "token": "APP_API_TOKEN",
-  "user": "USER_KEY",
-  "title": "Vibe Kanban Updated",
-  "message": "Version: 0.0.110 → 0.0.111...",
-  "priority": 0
-}
-```
-
-### Telegram
-```json
-{
-  "chat_id": "CHAT_ID",
-  "text": "*Vibe Kanban Updated*\n\nVersion: 0.0.110 → 0.0.111...",
-  "parse_mode": "Markdown"
-}
-```
-
-### Generic
-```json
-{
-  "title": "Vibe Kanban Updated",
-  "message": "Version: 0.0.110 → 0.0.111...",
+  "title": "Task Complete: Implement user authentication",
+  "message": "✅ 'Implement user authentication' completed successfully\nBranch: \"feature/auth\"\nExecutor: Claude Code",
   "timestamp": "2025-01-27T12:00:00Z"
 }
 ```
@@ -189,7 +163,7 @@ impl From<v7::NotificationConfig> for NotificationConfig {
             sound_enabled: old.sound_enabled,
             push_enabled: old.push_enabled,
             sound_file: old.sound_file,
-            upgrade_notifications_enabled: true, // Enabled by default
+            webhook_notifications_enabled: true, // Enabled by default
             webhooks: vec![], // Start with no webhooks
         }
     }
@@ -200,11 +174,12 @@ impl From<v7::NotificationConfig> for NotificationConfig {
 
 ### Setting up Slack Webhook
 1. Go to Settings → Webhook Notifications
-2. Click "Add Webhook"
-3. Select "Slack" as the provider
-4. Create an Incoming Webhook in your Slack workspace: https://api.slack.com/messaging/webhooks
-5. Paste the webhook URL (e.g., `https://hooks.slack.com/services/T00/B00/XXX`)
-6. Enable the webhook and save settings
+2. Toggle "Enable Webhook Notifications"
+3. Click "Add Webhook"
+4. Select "Slack" as the provider
+5. Create an Incoming Webhook in your Slack workspace: https://api.slack.com/messaging/webhooks
+6. Paste the webhook URL
+7. Enable the webhook and save settings
 
 ### Setting up Discord Webhook
 1. In your Discord server, go to Server Settings → Integrations → Webhooks
@@ -227,39 +202,24 @@ impl From<v7::NotificationConfig> for NotificationConfig {
 5. Enter the full URL: `https://api.telegram.org/bot<TOKEN>/sendMessage`
 6. Enter your chat ID in the "Telegram Chat ID" field
 
-### Setting up Generic Webhook
-1. Any endpoint that accepts POST requests with JSON
-2. Will receive the standard payload format (see above)
-
 ## Testing
 
 To test the implementation:
 
-1. **Type Generation**:
-   ```bash
-   npm run generate-types
-   ```
-
-2. **Backend Check**:
+1. **Backend Check**:
    ```bash
    npm run backend:check
    ```
 
-3. **Frontend Check**:
+2. **Frontend Check**:
    ```bash
    npm run frontend:check
    ```
 
-4. **Full Build**:
-   ```bash
-   npm run dev
-   ```
-
-5. **Manual Testing**:
+3. **Manual Testing**:
    - Configure a webhook in Settings
-   - Simulate an upgrade by modifying `Cargo.toml` version
-   - Restart the application
-   - Verify notification is received
+   - Run a task with a coding agent
+   - Verify notification is received when task completes/fails
 
 ## Files Changed
 
@@ -292,8 +252,7 @@ Potential improvements for future iterations:
 4. **Retry Logic**: Implement exponential backoff for failed notifications
 5. **More Providers**: Support for Microsoft Teams, Mattermost, etc.
 6. **Notification Templates**: Customizable message templates
-7. **Conditional Notifications**: Filter by update type (major/minor/patch)
-8. **Webhook Health Checks**: Periodic webhook endpoint validation
+7. **Conditional Notifications**: Filter by task status or executor type
 
 ## Security Considerations
 

@@ -736,13 +736,13 @@ export function GeneralSettings() {
       {/* Webhook Notifications Configuration */}
       {draft?.notifications && (
         <WebhookConfigurationSection
-          upgradeNotificationsEnabled={draft.notifications.upgrade_notifications_enabled ?? true}
+          webhookNotificationsEnabled={draft.notifications.webhook_notifications_enabled ?? true}
           webhooks={draft.notifications.webhooks ?? []}
-          onUpgradeNotificationsChange={(enabled) =>
+          onWebhookNotificationsChange={(enabled) =>
             updateDraft({
               notifications: {
                 ...draft.notifications,
-                upgrade_notifications_enabled: enabled,
+                webhook_notifications_enabled: enabled,
               },
             })
           }

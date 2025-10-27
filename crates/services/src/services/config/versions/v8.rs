@@ -64,9 +64,9 @@ pub struct NotificationConfig {
     pub sound_enabled: bool,
     pub push_enabled: bool,
     pub sound_file: SoundFile,
-    /// Enable notifications for app upgrades
+    /// Enable webhook notifications for task completions (for remote server deployments)
     #[serde(default)]
-    pub upgrade_notifications_enabled: bool,
+    pub webhook_notifications_enabled: bool,
     /// Webhook configurations (can have multiple)
     #[serde(default)]
     pub webhooks: Vec<WebhookConfig>,
@@ -78,7 +78,7 @@ impl From<v7::NotificationConfig> for NotificationConfig {
             sound_enabled: old.sound_enabled,
             push_enabled: old.push_enabled,
             sound_file: old.sound_file,
-            upgrade_notifications_enabled: true, // Enable by default
+            webhook_notifications_enabled: true, // Enable by default
             webhooks: vec![],
         }
     }
@@ -90,7 +90,7 @@ impl Default for NotificationConfig {
             sound_enabled: true,
             push_enabled: true,
             sound_file: SoundFile::CowMooing,
-            upgrade_notifications_enabled: true,
+            webhook_notifications_enabled: true,
             webhooks: vec![],
         }
     }

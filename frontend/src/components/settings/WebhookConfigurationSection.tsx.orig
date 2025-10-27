@@ -91,12 +91,12 @@ export function WebhookConfigurationSection({
         <CardDescription>
           {t(
             'settings.general.webhooks.description',
-            'Configure webhook notifications for task completions on remote server deployments'
+            'Configure webhook notifications for upgrades and remote server deployments'
           )}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Webhook Notifications Toggle */}
+        {/* Upgrade Notifications Toggle */}
         <div className="flex items-center space-x-2">
           <Checkbox
             id="webhook-notifications"
@@ -106,14 +106,14 @@ export function WebhookConfigurationSection({
           <div className="space-y-0.5">
             <Label htmlFor="webhook-notifications" className="cursor-pointer">
               {t(
-                'settings.general.webhooks.taskNotifications.label',
-                'Enable Webhook Notifications'
+                'settings.general.webhooks.upgradeNotifications.label',
+                'Notify on Upgrades'
               )}
             </Label>
             <p className="text-sm text-muted-foreground">
               {t(
-                'settings.general.webhooks.taskNotifications.helper',
-                'Send webhook notifications when tasks complete (for remote server deployments)'
+                'settings.general.webhooks.upgradeNotifications.helper',
+                'Receive notifications when Vibe Kanban is upgraded to a new version'
               )}
             </p>
           </div>
@@ -288,7 +288,7 @@ export function WebhookConfigurationSection({
         <p className="text-xs text-muted-foreground">
           {t(
             'settings.general.webhooks.helper',
-            'Webhooks will receive notifications when tasks complete. Configure your webhook endpoints above.'
+            'Webhooks will receive notifications for app upgrades. Configure your webhook endpoints above.'
           )}
         </p>
       </CardContent>

@@ -26,7 +26,7 @@ AI coding agents are increasingly writing the world's code and human engineers n
 - Quickly review work and start dev servers
 - Track the status of tasks that your coding agents are working on
 - Centralise configuration of coding agent MCP configs
-- Receive webhook notifications for upgrades (Slack, Discord, Pushover, Telegram)
+- Receive webhook notifications for task completions on remote servers (Slack, Discord, Pushover, Telegram)
 
 You can watch a video overview [here](https://youtu.be/TFT3KnZOOAk).
 

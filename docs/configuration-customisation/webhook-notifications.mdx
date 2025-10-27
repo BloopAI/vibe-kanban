@@ -1,10 +1,10 @@
 ---
 title: "Webhook Notifications"
-description: "Configure webhook notifications for remote server deployments and upgrade alerts"
+description: "Configure webhook notifications for task completions on remote server deployments"
 sidebarTitle: "Webhook Notifications"
 ---
 
-Webhook notifications allow you to receive alerts about Vibe Kanban events through external services like Slack, Discord, Pushover, Telegram, or custom webhook endpoints. This is especially useful when running Vibe Kanban on remote servers where desktop notifications aren't accessible.
+Webhook notifications allow you to receive alerts when coding tasks complete through external services like Slack, Discord, Pushover, Telegram, or custom webhook endpoints. This is especially useful when running Vibe Kanban on remote servers where desktop notifications aren't accessible.
 
 ## Overview
 
@@ -13,7 +13,8 @@ Webhook notifications allow you to receive alerts about Vibe Kanban events throu
 </Frame>
 
 Webhook notifications currently support:
-- **Upgrade Notifications**: Get alerted when Vibe Kanban is updated to a new version
+- **Task Completions**: Get alerted when tasks succeed, fail, or are cancelled
+- **Remote Server Deployments**: Stay informed even when running Vibe Kanban headlessly
 
 ## Supported Platforms
 
@@ -30,13 +31,11 @@ Send rich-formatted notifications to Slack channels using Incoming Webhooks.
 
 <Accordion title="Example Slack notification">
 ```
-📢 Vibe Kanban Updated
+📢 Task Complete: Implement user authentication
 
-🎉 Vibe Kanban has been upgraded!
-
-Version: 0.0.110 → 0.0.111
-
-Check the release notes for new features and improvements.
+✅ 'Implement user authentication' completed successfully
+Branch: "feature/auth"
+Executor: Claude Code
 ```
 </Accordion>
 
@@ -104,19 +103,19 @@ Connect to any custom webhook endpoint that accepts POST requests with JSON payl
 **Payload Format:**
 ```json
 {
-  "title": "Vibe Kanban Updated",
-  "message": "🎉 Vibe Kanban has been upgraded!\n\nVersion: 0.0.110 → 0.0.111\n\nCheck the release notes for new features and improvements.",
+  "title": "Task Complete: Implement user authentication",
+  "message": "✅ 'Implement user authentication' completed successfully\nBranch: \"feature/auth\"\nExecutor: Claude Code",
   "timestamp": "2025-01-27T12:00:00Z"
 }
 ```
 
 ## Configuration
 
-### Enabling Upgrade Notifications
+### Enabling Webhook Notifications
 
 1. Navigate to **Settings** (⚙️ icon in sidebar)
 2. Scroll to **Webhook Notifications** section
-3. Toggle **Notify on Upgrades** to enable notifications
+3. Toggle **Enable Webhook Notifications** to receive task completion alerts
 
 ### Adding a Webhook
 
@@ -141,40 +140,44 @@ You can configure multiple webhooks to receive notifications across different pl
 Use the **Configure** button on each webhook to expand and edit its settings. Click **Hide** to collapse the configuration panel.
 </Tip>
 
-### Testing Your Webhook
-
-To verify your webhook is working correctly:
-
-1. Configure and enable your webhook in Settings
-2. Save your settings
-3. Simulate an upgrade by updating Vibe Kanban to a new version
-4. Check your notification channel for the upgrade alert
-
-<Warning>
-Make sure your webhook URLs are kept secure. Anyone with access to these URLs can send notifications to your channels.
-</Warning>
-
 ## Use Cases
 
 ### Remote Server Deployments
-When running Vibe Kanban on a remote server (VPS, cloud instance, etc.), webhook notifications ensure you're informed of upgrades even when you're not logged into the server.
+When running Vibe Kanban on a remote server (VPS, cloud instance, etc.), webhook notifications ensure you're informed when tasks complete, even when you're not logged into the server.
 
 ### Team Notifications
-Configure a webhook to a shared Slack or Discord channel to keep your entire team informed when Vibe Kanban is upgraded.
+Configure a webhook to a shared Slack or Discord channel to keep your entire team informed when tasks finish.
 
 ### Mobile Alerts
-Use Pushover or Telegram to receive instant notifications on your mobile device, regardless of where you are.
+Use Pushover or Telegram to receive instant notifications on your mobile device when long-running tasks complete.
 
 ### Integration with Custom Systems
 Use the Generic webhook provider to integrate with your own notification systems, logging platforms, or automation workflows.
+
+## Notification Types
+
+Vibe Kanban sends webhook notifications for the following task events:
+
+### ✅ Task Completed Successfully
+Sent when a coding agent successfully completes a task.
+
+### ❌ Task Failed
+Sent when a task execution fails or encounters errors.
+
+### 🛑 Task Cancelled
+Sent when a task is manually stopped by the user.
+
+<Note>
+Webhook notifications are only sent when the **Enable Webhook Notifications** toggle is turned on in Settings.
+</Note>
 
 ## Troubleshooting
 
 ### Notifications Not Being Received
 
 **Check the following:**
+- Webhook notifications toggle is enabled
 - Webhook is enabled (checkbox is checked)
-- Upgrade notifications toggle is enabled
 - Webhook URL is correct
 - For Pushover: Both API token and user key are provided
 - For Telegram: Both bot token URL and chat ID are provided
@@ -222,11 +225,10 @@ Webhook URLs and API tokens are sensitive credentials that should be protected.
 ## Future Enhancements
 
 Potential future features for webhook notifications:
-- Task completion notifications
-- Error and failure alerts
 - Custom notification templates
-- Notification filtering and rules
+- Notification filtering by task status or executor
 - Webhook health monitoring
+- Retry logic for failed deliveries
 - More platform integrations (Microsoft Teams, Mattermost, etc.)
 
 <Card title="Have a feature request?" icon="lightbulb" href="https://github.com/BloopAI/vibe-kanban/discussions">
