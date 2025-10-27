@@ -173,7 +173,7 @@ impl WebhookNotificationService {
             .as_ref()
             .ok_or("Telegram chat ID not configured")?;
 
-        let full_message = format!("*{}*\n\n{}", title, message);
+        let full_message = format!("*{title}*\n\n{message}");
 
         let payload = json!({
             "chat_id": chat_id,
