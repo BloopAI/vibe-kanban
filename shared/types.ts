@@ -322,7 +322,7 @@ export type PatchType = { "type": "NORMALIZED_ENTRY", "content": NormalizedEntry
 
 export type ApprovalStatus = { "status": "pending" } | { "status": "approved" } | { "status": "denied", reason?: string, } | { "status": "timed_out" };
 
-export type CreateApprovalRequest = { tool_name: string, tool_input: JsonValue, session_id: string, tool_call_id: string | null, };
+export type CreateApprovalRequest = { tool_name: string, tool_input: JsonValue, tool_call_id: string, };
 
 export type ApprovalResponse = { execution_process_id: string, status: ApprovalStatus, };
 
