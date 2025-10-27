@@ -72,9 +72,11 @@ impl ClerkConfig {
             .parse()
             .map_err(|_| ConfigError::InvalidVar("CLERK_ISSUER"))?;
         let api_url = env::var("CLERK_API_URL")
-            .unwrap_or_else(|_| "https://api.clerk.com".to_string())
+            .unwrap_or_else(|_| "https://api.clerk.com/v1/".to_string())
             .parse()
             .map_err(|_| ConfigError::InvalidVar("CLERK_API_URL"))?;
+
+        dbg!(&api_url);
         Ok(Self {
             secret_key,
             issuer,

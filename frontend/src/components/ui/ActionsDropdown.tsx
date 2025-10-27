@@ -157,7 +157,7 @@ export function ActionsDropdown({
                 disabled={!canReassign}
                 onClick={handleReassign}
               >
-                Transfer assignment
+                Reassign
               </DropdownMenuItem>
               <DropdownMenuItem disabled={!projectId} onClick={handleEdit}>
                 {t('common:buttons.edit')}
