@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { useAuth } from '@clerk/clerk-react';
 import {
   type DragEndEvent,
   KanbanBoard,
@@ -14,14 +15,14 @@ import { SharedTaskCard } from './SharedTaskCard';
 
 export type KanbanColumnItem =
   | {
-      type: 'task';
-      task: TaskWithAttemptStatus;
-      sharedTask?: SharedTaskRecord;
-    }
+    type: 'task';
+    task: TaskWithAttemptStatus;
+    sharedTask?: SharedTaskRecord;
+  }
   | {
-      type: 'shared';
-      task: SharedTaskRecord;
-    };
+    type: 'shared';
+    task: SharedTaskRecord;
+  };
 
 export type KanbanColumns = Record<TaskStatus, KanbanColumnItem[]>;
 
@@ -46,6 +47,8 @@ function TaskKanbanBoard({
   onCreateTask,
   projectId,
 }: TaskKanbanBoardProps) {
+  const { userId } = useAuth();
+
   return (
     <KanbanProvider onDragEnd={onDragEnd}>
       {Object.entries(columns).map(([status, items]) => {
@@ -59,7 +62,13 @@ function TaskKanbanBoard({
             />
             <KanbanCards>
               {items.map((item, index) => {
-                if (item.type === 'task') {
+                const isOwnTask =
+                  item.type === 'task' &&
+                  (!item.sharedTask?.assignee_user_id ||
+                    !userId ||
+                    item.sharedTask?.assignee_user_id === userId);
+
+                if (isOwnTask) {
                   return (
                     <TaskCard
                       key={item.task.id}
@@ -74,10 +83,14 @@ function TaskKanbanBoard({
                   );
                 }
 
+                const sharedTask = item.type === 'shared'
+                  ? item.task
+                  : item.sharedTask!;
+
                 return (
                   <SharedTaskCard
                     key={`shared-${item.task.id}`}
-                    task={item.task}
+                    task={sharedTask}
                     index={index}
                     status={statusKey}
                     isSelected={selectedSharedTaskId === item.task.id}
