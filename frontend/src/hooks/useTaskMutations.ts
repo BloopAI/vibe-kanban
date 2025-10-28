@@ -90,10 +90,21 @@ export function useTaskMutations(projectId?: string) {
     },
   });
 
+  const unshareSharedTask = useMutation({
+    mutationFn: (sharedTaskId: string) => tasksApi.unshare(sharedTaskId),
+    onSuccess: () => {
+      invalidateQueries();
+    },
+    onError: (err) => {
+      console.error('Failed to unshare task:', err);
+    },
+  });
+
   return {
     createTask,
     createAndStart,
     updateTask,
     deleteTask,
+    stopShareTask: unshareSharedTask,
   };
 }

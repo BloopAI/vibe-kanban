@@ -10,15 +10,15 @@ use uuid::Uuid;
 use crate::{
     AppState,
     api::tasks::{
-        AssignSharedTaskRequest, CreateSharedTaskRequest, SharedTaskResponse,
-        UpdateSharedTaskRequest,
+        AssignSharedTaskRequest, CreateSharedTaskRequest, DeleteSharedTaskRequest,
+        SharedTaskResponse, UpdateSharedTaskRequest,
     },
     auth::RequestContext,
     db::{
         identity::{IdentityError, IdentityRepository},
         tasks::{
-            AssignTaskData, CreateSharedTaskData, SharedTaskError, SharedTaskRepository,
-            UpdateSharedTaskData,
+            AssignTaskData, CreateSharedTaskData, DeleteTaskData, SharedTaskError,
+            SharedTaskRepository, UpdateSharedTaskData,
         },
     },
 };
@@ -145,6 +145,44 @@ pub async fn assign_task(
     match repo.assign_task(&ctx.organization.id, task_id, data).await {
         Ok(task) => (StatusCode::OK, Json(SharedTaskResponse { task })).into_response(),
         Err(error) => task_error_response(error, "failed to transfer task assignment"),
+    }
+}
+
+pub async fn delete_shared_task(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(task_id): Path<Uuid>,
+    payload: Option<Json<DeleteSharedTaskRequest>>,
+) -> Response {
+    let repo = SharedTaskRepository::new(state.pool());
+
+    let existing = match repo.find_by_id(&ctx.organization.id, task_id).await {
+        Ok(Some(task)) => task,
+        Ok(None) => {
+            return task_error_response(SharedTaskError::NotFound, "shared task not found");
+        }
+        Err(error) => {
+            return task_error_response(error, "failed to load shared task");
+        }
+    };
+
+    if existing.assignee_user_id.as_deref() != Some(&ctx.user.id) {
+        return task_error_response(
+            SharedTaskError::Forbidden,
+            "acting user is not the task assignee",
+        );
+    }
+
+    let version = payload.as_ref().and_then(|body| body.0.version);
+
+    let data = DeleteTaskData {
+        acting_user_id: ctx.user.id.clone(),
+        version,
+    };
+
+    match repo.delete_task(&ctx.organization.id, task_id, data).await {
+        Ok(task) => (StatusCode::OK, Json(SharedTaskResponse { task })).into_response(),
+        Err(error) => task_error_response(error, "failed to delete shared task"),
     }
 }
 

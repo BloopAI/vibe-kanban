@@ -3,6 +3,7 @@ use db::{
     models::{
         project::Project,
         shared_task::{SharedActivityCursor, SharedTask},
+        task::Task,
     },
 };
 use remote::{
@@ -35,42 +36,9 @@ impl ActivityProcessor {
     }
 
     pub async fn process_event(&self, event: ActivityEvent) -> Result<(), ShareError> {
-        if let Some(payload) = &event.payload {
-            match serde_json::from_value::<SharedTaskActivityPayload>(payload.clone()) {
-                Ok(SharedTaskActivityPayload { task, project }) => {
-                    if let Some(project_id) = self.resolve_project_id(task.id, &project).await? {
-                        let input = convert_remote_task(&task, project_id, Some(event.seq));
-                        let shared_task = SharedTask::upsert(&self.db.pool, input).await?;
-
-                        let current_session = self.sessions.active().await;
-                        let current_user_id = current_session.as_ref().map(|s| s.user_id.as_str());
-                        sync_local_task_for_shared_task(
-                            &self.db.pool,
-                            &shared_task,
-                            current_user_id,
-                            task.creator_user_id.as_deref(),
-                        )
-                        .await?;
-                    } else {
-                        tracing::warn!(
-                            task_id = %task.id,
-                            repo_id = project.github_repository_id,
-                            owner = %project.owner,
-                            name = %project.name,
-                            "skipping shared task; project not found locally"
-                        );
-                    }
-                }
-                Err(error) => {
-                    tracing::warn!(
-                        ?error,
-                        event_id = %event.event_id,
-                        "unrecognized shared task payload; skipping"
-                    );
-                }
-            }
-        } else {
-            tracing::warn!(event_id = %event.event_id, "received activity event with empty payload");
+        match event.event_type.as_str() {
+            "task.deleted" => self.process_deleted_task_event(&event).await?,
+            _ => self.process_upsert_event(&event).await?,
         }
 
         SharedActivityCursor::upsert(&self.db.pool, event.organization_id, event.seq).await?;
@@ -148,5 +116,78 @@ impl ActivityProcessor {
         }
 
         Ok(None)
+    }
+
+    async fn process_upsert_event(&self, event: &ActivityEvent) -> Result<(), ShareError> {
+        let Some(payload) = &event.payload else {
+            tracing::warn!(event_id = %event.event_id, "received activity event with empty payload");
+            return Ok(());
+        };
+
+        match serde_json::from_value::<SharedTaskActivityPayload>(payload.clone()) {
+            Ok(SharedTaskActivityPayload { task, project }) => {
+                if let Some(project_id) = self.resolve_project_id(task.id, &project).await? {
+                    let input = convert_remote_task(&task, project_id, Some(event.seq));
+                    let shared_task = SharedTask::upsert(&self.db.pool, input).await?;
+
+                    let current_session = self.sessions.active().await;
+                    let current_user_id = current_session.as_ref().map(|s| s.user_id.as_str());
+                    sync_local_task_for_shared_task(
+                        &self.db.pool,
+                        &shared_task,
+                        current_user_id,
+                        task.creator_user_id.as_deref(),
+                    )
+                    .await?;
+                } else {
+                    tracing::warn!(
+                        task_id = %task.id,
+                        repo_id = project.github_repository_id,
+                        owner = %project.owner,
+                        name = %project.name,
+                        "skipping shared task; project not found locally"
+                    );
+                }
+            }
+            Err(error) => {
+                tracing::warn!(
+                    ?error,
+                    event_id = %event.event_id,
+                    "unrecognized shared task payload; skipping"
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn process_deleted_task_event(&self, event: &ActivityEvent) -> Result<(), ShareError> {
+        let Some(payload) = &event.payload else {
+            tracing::warn!(
+                event_id = %event.event_id,
+                "received delete event without payload; skipping"
+            );
+            return Ok(());
+        };
+
+        let SharedTaskActivityPayload { task, .. } =
+            match serde_json::from_value::<SharedTaskActivityPayload>(payload.clone()) {
+                Ok(payload) => payload,
+                Err(error) => {
+                    tracing::warn!(
+                        ?error,
+                        event_id = %event.event_id,
+                        "failed to parse deleted task payload; skipping"
+                    );
+                    return Ok(());
+                }
+            };
+
+        if let Some(local_task) = Task::find_by_shared_task_id(&self.db.pool, task.id).await? {
+            Task::set_shared_task_id(&self.db.pool, local_task.id, None).await?;
+        }
+
+        SharedTask::remove(&self.db.pool, task.id).await?;
+        Ok(())
     }
 }
