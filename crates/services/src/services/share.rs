@@ -281,6 +281,7 @@ pub(super) async fn sync_local_task_for_shared_task(
     pool: &SqlitePool,
     shared_task: &SharedTask,
     current_user_id: Option<&str>,
+    creator_user_id: Option<&str>,
 ) -> Result<(), ShareError> {
     if let Some(task) = Task::find_by_shared_task_id(pool, shared_task.id).await? {
         debug_assert_eq!(task.shared_task_id, Some(shared_task.id));
@@ -312,6 +313,17 @@ pub(super) async fn sync_local_task_for_shared_task(
     };
 
     if !assignee_is_current_user {
+        return Ok(());
+    }
+
+    let creator_is_current_user = match (creator_user_id, current_user_id) {
+        (Some(creator), Some(current)) => creator == current,
+        _ => false,
+    };
+
+    if creator_is_current_user {
+        // Current user created the shared task but has no corresponding local shared-task record.
+        // This can happen if a share acivity event is received before the task sharing operation completes.
         return Ok(());
     }
 
