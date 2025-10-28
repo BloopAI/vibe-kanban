@@ -9,8 +9,7 @@ use axum::{
     routing::{get, post},
 };
 use db::models::project::{
-    CreateProject, Project, ProjectError, ProjectRemoteMetadata, SearchMatchType, SearchResult,
-    UpdateProject,
+    CreateProject, Project, ProjectError, SearchMatchType, SearchResult, UpdateProject,
 };
 use deployment::Deployment;
 use ignore::WalkBuilder;
@@ -18,62 +17,12 @@ use services::services::{
     file_ranker::FileRanker,
     file_search_cache::{CacheError, SearchMode, SearchQuery},
     git::GitBranch,
-    github_service::GitHubService,
+    metadata::compute_remote_metadata,
 };
 use utils::{path::expand_tilde, response::ApiResponse};
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError, middleware::load_project_middleware};
-
-async fn compute_remote_metadata(
-    deployment: &DeploymentImpl,
-    repo_path: &Path,
-) -> ProjectRemoteMetadata {
-    let mut metadata = match deployment.git().get_remote_metadata(repo_path) {
-        Ok(metadata) => metadata,
-        Err(error) => {
-            tracing::warn!(
-                "Failed to read git remotes for project '{}': {}",
-                repo_path.display(),
-                error
-            );
-            ProjectRemoteMetadata::default()
-        }
-    };
-
-    if metadata.has_remote
-        && metadata.github_repo_owner.is_some()
-        && metadata.github_repo_name.is_some()
-    {
-        let github_token = {
-            let config = deployment.config().read().await;
-            config.github.token()
-        };
-
-        if let Some(token) = github_token {
-            match GitHubService::new(&token) {
-                Ok(github_service) => {
-                    let owner = metadata.github_repo_owner.clone().unwrap();
-                    let repo = metadata.github_repo_name.clone().unwrap();
-                    match github_service.fetch_repository_id(&owner, &repo).await {
-                        Ok(id) => metadata.github_repo_id = Some(id),
-                        Err(err) => {
-                            tracing::warn!(
-                                "Failed to fetch repository id for {owner}/{repo}: {}",
-                                err
-                            );
-                        }
-                    }
-                }
-                Err(err) => {
-                    tracing::warn!("Failed to construct GitHub client: {}", err);
-                }
-            }
-        }
-    }
-
-    metadata
-}
 
 pub async fn get_projects(
     State(deployment): State<DeploymentImpl>,
@@ -185,7 +134,8 @@ pub async fn create_project(
         }
     }
 
-    let remote_metadata = compute_remote_metadata(&deployment, &path).await;
+    let remote_metadata =
+        compute_remote_metadata(deployment.git(), deployment.config(), &path).await;
 
     match Project::create(
         &deployment.db().pool,
@@ -266,7 +216,8 @@ pub async fn update_project(
         existing_project.git_repo_path
     };
 
-    let remote_metadata = compute_remote_metadata(&deployment, &git_repo_path).await;
+    let remote_metadata =
+        compute_remote_metadata(deployment.git(), deployment.config(), &git_repo_path).await;
 
     match Project::update(
         &deployment.db().pool,
