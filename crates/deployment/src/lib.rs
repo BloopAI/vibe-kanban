@@ -30,6 +30,7 @@ use services::services::{
     filesystem_watcher::FilesystemWatcherError,
     git::{GitService, GitServiceError},
     image::{ImageError, ImageService},
+    metadata::compute_remote_metadata,
     pr_monitor::PrMonitorService,
     share::SharePublisher,
     worktree_manager::WorktreeError,
@@ -374,5 +375,40 @@ pub trait Deployment: Clone + Send + Sync + 'static {
             .history_plus_stream()
             .map_ok(|m| m.to_sse_event())
             .boxed()
+    }
+
+    /// Refresh remote metadata for all projects
+    async fn refresh_remote_metadata(&self) {
+        let projects = match Project::find_all(&self.db().pool).await {
+            Ok(projects) => projects,
+            Err(err) => {
+                tracing::warn!("Failed to load projects for remote metadata refresh: {err}");
+                return;
+            }
+        };
+
+        for project in projects {
+            let repo_path = project.git_repo_path.clone();
+            let metadata =
+                compute_remote_metadata(self.git(), self.config(), repo_path.as_path()).await;
+
+            if let Err(err) =
+                Project::update_remote_metadata(&self.db().pool, project.id, &metadata).await
+            {
+                tracing::warn!(
+                    "Failed to update remote metadata for project '{}' ({}): {err}",
+                    project.name,
+                    repo_path.display()
+                );
+            }
+        }
+    }
+
+    /// Spawn background task to refresh remote metadata for all projects
+    fn refresh_remote_metadata_background(&self) {
+        let d = self.clone();
+        tokio::spawn(async move {
+            d.refresh_remote_metadata().await;
+        });
     }
 }

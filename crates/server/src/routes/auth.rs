@@ -88,6 +88,10 @@ async fn device_poll(
         config.github_login_acknowledged = true; // Also acknowledge the GitHub login step
         save_config_to_file(&config.clone(), &config_path).await?;
     }
+
+    // Refresh remote metadata for all projects
+    deployment.refresh_remote_metadata_background();
+
     let _ = deployment.update_sentry_scope().await;
     let props = serde_json::json!({
         "username": user_info.username,
