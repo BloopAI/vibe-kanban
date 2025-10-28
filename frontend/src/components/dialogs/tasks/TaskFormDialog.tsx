@@ -6,7 +6,7 @@ import {
   useLayoutEffect,
 } from 'react';
 import type { ReactNode } from 'react';
-import { Settings2, ArrowDown, Plus, Play, Image } from 'lucide-react';
+import { Settings2, ArrowDown, Plus, Image, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   ImageUploadSection,
@@ -18,9 +18,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { TaskDialog, TaskDialogContent } from './TaskDialog';
 import { Input } from '@/components/ui/input';
 import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -143,7 +145,6 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
     const [description, setDescription] = useState('');
     const [status, setStatus] = useState<TaskStatus>('todo');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isSubmittingAndStart, setIsSubmittingAndStart] = useState(false);
     const [showDiscardWarning, setShowDiscardWarning] = useState(false);
     const [images, setImages] = useState<ImageResponse[]>([]);
     const [newlyUploadedImageIds, setNewlyUploadedImageIds] = useState<
@@ -154,10 +155,11 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
     const [selectedExecutorProfile, setSelectedExecutorProfile] =
       useState<ExecutorProfileId | null>(null);
     const [showImageUpload, setShowImageUpload] = useState(false);
-    const [shouldStart, setShouldStart] = useState(true);
+    const [autoStart, setAutoStart] = useState(true);
     const imageUploadRef = useRef<ImageUploadSectionHandle>(null);
-    const [isTextareaFocused, setIsTextareaFocused] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isDraggingFile, setIsDraggingFile] = useState(false);
+    const dragCounterRef = useRef(0);
 
     const isEditMode = Boolean(task);
 
@@ -346,47 +348,18 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       return defaultKey ?? keys[0];
     };
 
-    // Create combined agent+config options for the flattened selector
-    const getAgentConfigOptions = () => {
+    // Get available agents
+    const getAgentOptions = () => {
       if (!profiles) return [];
-
-      const options: Array<{
-        id: string;
-        label: string;
-        executorProfile: ExecutorProfileId;
-      }> = [];
-
-      Object.entries(profiles).forEach(([agentKey, configs]) => {
-        const agent = agentKey as BaseCodingAgent;
-
-        if (Object.keys(configs).length === 0) {
-          // Agent with no variants - just default
-          options.push({
-            id: `${agent}:default`,
-            label: agent,
-            executorProfile: { executor: agent, variant: null },
-          });
-        } else {
-          // Agent with variants
-          Object.keys(configs).forEach((variant) => {
-            options.push({
-              id: `${agent}:${variant}`,
-              label: `${agent} (${variant})`,
-              executorProfile: { executor: agent, variant },
-            });
-          });
-        }
-      });
-
-      return options.sort((a, b) => a.label.localeCompare(b.label));
+      return Object.keys(profiles).sort() as BaseCodingAgent[];
     };
 
-    // Get the current agent config option ID for the Select value
-    const getCurrentAgentConfigId = () => {
-      if (!selectedExecutorProfile) return '';
-      // Use normalized variant key for consistent matching
-      const variantKey = getVariantKeyForId(selectedExecutorProfile);
-      return `${selectedExecutorProfile.executor}:${variantKey}`;
+    // Get configuration variants for the selected agent
+    const getConfigOptions = (agent: BaseCodingAgent | null) => {
+      if (!agent || !profiles) return [];
+      const configs = profiles[agent];
+      if (!configs || Object.keys(configs).length === 0) return [];
+      return Object.keys(configs).sort();
     };
 
     // Handle image upload success by inserting markdown into description
@@ -438,8 +411,54 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       []
     );
 
+    // Drag and drop handlers
+    const handleDragEnter = useCallback((e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Check if dragging files
+      if (e.dataTransfer.types.includes('Files')) {
+        dragCounterRef.current++;
+        if (dragCounterRef.current === 1) {
+          setIsDraggingFile(true);
+        }
+      }
+    }, []);
+
+    const handleDragLeave = useCallback((e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      dragCounterRef.current--;
+      if (dragCounterRef.current === 0) {
+        setIsDraggingFile(false);
+      }
+    }, []);
+
+    const handleDragOver = useCallback((e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+    }, []);
+
+    const handleDrop = useCallback((e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      dragCounterRef.current = 0;
+      setIsDraggingFile(false);
+
+      const files = Array.from(e.dataTransfer.files).filter((file) =>
+        file.type.startsWith('image/')
+      );
+
+      if (files.length > 0) {
+        setShowImageUpload(true);
+        void imageUploadRef.current?.addFiles(files);
+      }
+    }, []);
+
     const handleSubmit = useCallback(async () => {
-      if (!title.trim() || !projectId || isSubmitting || isSubmittingAndStart) {
+      if (!title.trim() || !projectId || isSubmitting) {
         return;
       }
 
@@ -449,6 +468,9 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
 
         if (isEditMode) {
           // In edit mode, send all current image IDs (existing + newly uploaded)
+          // The backend replaces all image associations with this list, so:
+          // - Deleted images are not included → backend removes those associations
+          // - Newly uploaded images are included → backend adds those associations
           imageIds =
             images.length > 0 ? images.map((img) => img.id) : undefined;
         } else {
@@ -513,7 +535,6 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       createTask,
       updateTask,
       isSubmitting,
-      isSubmittingAndStart,
       parentTaskAttemptId,
     ]);
 
@@ -522,13 +543,12 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
         !title.trim() ||
         !projectId ||
         isEditMode ||
-        isSubmitting ||
-        isSubmittingAndStart
+        isSubmitting
       ) {
         return;
       }
 
-      setIsSubmittingAndStart(true);
+      setIsSubmitting(true);
       try {
         const imageIds =
           newlyUploadedImageIds.length > 0 ? newlyUploadedImageIds : undefined;
@@ -568,7 +588,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       } catch (error) {
         // Error already handled by mutation onError
       } finally {
-        setIsSubmittingAndStart(false);
+        setIsSubmitting(false);
       }
     }, [
       title,
@@ -582,7 +602,6 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       selectedBranch,
       system.config?.executor_profile,
       isSubmitting,
-      isSubmittingAndStart,
       parentTaskAttemptId,
     ]);
 
@@ -594,65 +613,59 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
 
     // Handle keyboard shortcuts
     const primaryAction = useCallback(() => {
-      if (isSubmitting || isSubmittingAndStart || !title.trim()) return;
+      if (isSubmitting || !title.trim()) return;
       if (isEditMode) {
         void handleSubmit();
         return;
       }
-      if (shouldStart) {
+      if (autoStart) {
         void handleCreateAndStart();
       } else {
         void handleSubmit();
       }
     }, [
       isSubmitting,
-      isSubmittingAndStart,
       title,
       isEditMode,
-      shouldStart,
+      autoStart,
       handleSubmit,
       handleCreateAndStart,
     ]);
 
     const alternateAction = useCallback(() => {
-      if (isSubmitting || isSubmittingAndStart || !title.trim()) return;
+      if (isSubmitting || !title.trim()) return;
       if (isEditMode) {
         void handleSubmit();
         return;
       }
       // Alternate = opposite of primary in create mode
-      if (shouldStart) {
+      if (autoStart) {
         void handleSubmit(); // create only
       } else {
         void handleCreateAndStart(); // create and start
       }
     }, [
       isSubmitting,
-      isSubmittingAndStart,
       title,
       isEditMode,
-      shouldStart,
+      autoStart,
       handleSubmit,
       handleCreateAndStart,
     ]);
 
     const shortcutsEnabled =
-      modal.visible &&
-      !isSubmitting &&
-      !isSubmittingAndStart &&
-      !!title.trim() &&
-      isTextareaFocused;
+      modal.visible && !isSubmitting && !!title.trim();
 
     useKeySubmitTask(primaryAction, {
       enabled: shortcutsEnabled,
       scope: Scope.DIALOG,
-      enableOnFormTags: ['textarea', 'TEXTAREA'],
+      enableOnFormTags: ['input', 'INPUT', 'textarea', 'TEXTAREA'],
       preventDefault: true,
     });
     useKeySubmitTaskAlt(alternateAction, {
       enabled: shortcutsEnabled,
       scope: Scope.DIALOG,
-      enableOnFormTags: ['textarea', 'TEXTAREA'],
+      enableOnFormTags: ['input', 'INPUT', 'textarea', 'TEXTAREA'],
       preventDefault: true,
     });
 
@@ -666,11 +679,10 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       }
     };
 
-    // Agent selector component similar to BranchSelector
+    // Agent selector component
     const AgentSelector = ({ className = '' }: { className?: string }) => {
-      const agentOptions = getAgentConfigOptions();
-      const currentId = getCurrentAgentConfigId();
-      const selectedOption = agentOptions.find((opt) => opt.id === currentId);
+      const agents = getAgentOptions();
+      const selectedAgent = selectedExecutorProfile?.executor;
 
       return (
         <DropdownMenu>
@@ -679,34 +691,36 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
               variant="outline"
               size="sm"
               className={`w-full justify-between text-xs ${className}`}
-              disabled={isSubmitting || isSubmittingAndStart}
+              disabled={isSubmitting}
             >
               <div className="flex items-center gap-1.5 w-full">
-                <Settings2 className="h-3 w-3" />
-                <span className="truncate">
-                  {selectedOption?.label || 'Agent'}
-                </span>
+                <Bot className="h-3 w-3" />
+                <span className="truncate">{selectedAgent || 'Agent'}</span>
               </div>
               <ArrowDown className="h-3 w-3" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-60">
-            {agentOptions.length === 0 ? (
+            {agents.length === 0 ? (
               <div className="p-2 text-sm text-muted-foreground text-center">
                 No agents available
               </div>
             ) : (
-              agentOptions.map((option) => (
+              agents.map((agent) => (
                 <DropdownMenuItem
-                  key={option.id}
-                  onClick={() =>
-                    setSelectedExecutorProfile(option.executorProfile)
-                  }
-                  className={
-                    selectedOption?.id === option.id ? 'bg-accent' : ''
-                  }
+                  key={agent}
+                  onClick={() => {
+                    const configs = profiles?.[agent];
+                    const hasVariants =
+                      configs && Object.keys(configs).length > 0;
+                    setSelectedExecutorProfile({
+                      executor: agent,
+                      variant: hasVariants ? Object.keys(configs)[0] : null,
+                    });
+                  }}
+                  className={selectedAgent === agent ? 'bg-accent' : ''}
                 >
-                  {option.label}
+                  {agent}
                 </DropdownMenuItem>
               ))
             )}
@@ -715,99 +729,88 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       );
     };
 
-    // Single action button with segmented control
-    const CreateActionButton = () => {
-      const mode = shouldStart ? 'start' : 'create';
-      const isLoading = shouldStart ? isSubmittingAndStart : isSubmitting;
-      const isDisabled = isSubmitting || isSubmittingAndStart || !title.trim();
+    // Configuration selector component
+    const ConfigSelector = ({ className = '' }: { className?: string }) => {
+      const selectedAgent = selectedExecutorProfile?.executor;
+      const configOptions = getConfigOptions(selectedAgent || null);
+      const selectedVariant = selectedExecutorProfile?.variant;
 
-      const handleSegmentClick = (newMode: 'create' | 'start') => {
-        if (isDisabled) return;
-
-        if (newMode === mode) {
-          // Second click on same mode - execute action
-          if (newMode === 'start') {
-            handleCreateAndStart();
-          } else {
-            handleSubmit();
-          }
-        } else {
-          // First click - just change mode
-          setShouldStart(newMode === 'start');
-        }
-      };
+      if (configOptions.length === 0) return null;
 
       return (
-        <div className="flex flex-col gap-3">
-          {/* Segmented Control Button */}
-          <div className="relative border border-input bg-background p-1 flex min-w-[180px]">
-            {/* Sliding Background/Highlight */}
-            <div
-              className={`absolute top-1 bottom-1 w-[calc(50%-2px)] bg-primary border border-primary  transition-all duration-200 ease-out ${
-                shouldStart ? 'right-1' : 'left-1'
-              }`}
-            />
-
-            {/* Create Segment */}
-            <button
-              type="button"
-              onClick={() => handleSegmentClick('create')}
-              disabled={isDisabled}
-              className={`relative z-20 flex-1 py-2 px-4 text-sm font-medium transition-colors duration-200 rounded-sm ${
-                isDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
-              } ${
-                !shouldStart
-                  ? 'text-primary-foreground'
-                  : 'text-foreground hover:text-primary'
-              }`}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className={`w-full justify-between text-xs ${className}`}
+              disabled={isSubmitting}
             >
-              <div className="flex items-center justify-center gap-1.5">
-                <Plus className="h-3 w-3" />
-                {!shouldStart && isLoading ? 'Creating...' : 'Create'}
+              <div className="flex items-center gap-1.5 w-full">
+                <Settings2 className="h-3 w-3" />
+                <span className="truncate">{selectedVariant || 'Config'}</span>
               </div>
-            </button>
-
-            {/* Start Segment */}
-            <button
-              type="button"
-              onClick={() => handleSegmentClick('start')}
-              disabled={isDisabled}
-              className={`relative z-20 flex-1 py-2 px-4 text-sm font-medium transition-colors duration-200 rounded-sm ${
-                isDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
-              } ${
-                shouldStart
-                  ? 'text-primary-foreground'
-                  : 'text-foreground hover:text-primary'
-              }`}
-            >
-              <div className="flex items-center justify-center gap-1.5">
-                <Play className="h-3 w-3 fill-current" />
-                {shouldStart && isLoading ? 'Starting...' : 'Start'}
-              </div>
-            </button>
-          </div>
-        </div>
+              <ArrowDown className="h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-60">
+            {configOptions.map((variant) => (
+              <DropdownMenuItem
+                key={variant}
+                onClick={() => {
+                  if (selectedAgent) {
+                    setSelectedExecutorProfile({
+                      executor: selectedAgent,
+                      variant,
+                    });
+                  }
+                }}
+                className={selectedVariant === variant ? 'bg-accent' : ''}
+              >
+                {variant}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       );
     };
 
     return (
       <>
-        <Dialog
+        <TaskDialog
           open={modal.visible}
           onOpenChange={handleDialogOpenChange}
           className="w-full max-w-[min(90vw,40rem)] max-h-[min(95vh,50rem)]"
         >
-          <DialogContent className="h-full overflow-hidden flex flex-col gap-0 p-4 pb-0">
-            <div className="flex-1 overflow-y-auto space-y-4 px-0">
+          <TaskDialogContent
+            className="h-full overflow-hidden flex flex-col gap-0 px-4 pb-4 relative"
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+          >
+            {/* Drag overlay */}
+            {isDraggingFile && (
+              <div className="absolute inset-0 z-50 bg-primary/95 border-2 border-dashed border-primary-foreground/50 rounded-lg flex items-center justify-center pointer-events-none">
+                <div className="text-center">
+                  <Image className="h-12 w-12 mx-auto mb-2 text-primary-foreground" />
+                  <p className="text-lg font-medium text-primary-foreground">
+                    Drop images here
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex-1 overflow-y-auto space-y-1 pb-3">
               {/* Title Input */}
-              <div>
+              <div className="pr-8 pt-3">
                 <Input
                   id="task-title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Task title"
                   className="text-lg font-medium border-none shadow-none px-0 placeholder:text-muted-foreground/60 focus-visible:ring-0"
-                  disabled={isSubmitting || isSubmittingAndStart}
+                  disabled={isSubmitting}
                   autoFocus
                 />
               </div>
@@ -821,11 +824,9 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                   maxRows={30}
                   placeholder="Add more details (optional). Type @ to search files."
                   className="border-none shadow-none px-0 resize-none placeholder:text-muted-foreground/60 focus-visible:ring-0"
-                  disabled={isSubmitting || isSubmittingAndStart}
+                  disabled={isSubmitting}
                   projectId={projectId}
                   onPasteFiles={handlePasteImages}
-                  onFocus={() => setIsTextareaFocused(true)}
-                  onBlur={() => setIsTextareaFocused(false)}
                 />
               </div>
 
@@ -838,8 +839,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                   onUpload={imagesApi.upload}
                   onDelete={imagesApi.delete}
                   onImageUploaded={handleImageUploaded}
-                  disabled={isSubmitting || isSubmittingAndStart}
-                  readOnly={isEditMode}
+                  disabled={isSubmitting}
                   collapsible={false}
                   defaultExpanded={true}
                   hideDropZone={true}
@@ -855,7 +855,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                   <Select
                     value={status}
                     onValueChange={(value) => setStatus(value as TaskStatus)}
-                    disabled={isSubmitting || isSubmittingAndStart}
+                    disabled={isSubmitting}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -870,13 +870,37 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                   </Select>
                 </div>
               )}
+
+              {/* Agent, Config & Branch Selectors Row (Create Mode, AutoStart Only) */}
+              {!isEditMode && (
+                <div
+                  className={`flex items-center gap-2 h-9 transition-opacity duration-200 ${
+                    autoStart ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                  }`}
+                >
+                  {profiles && <AgentSelector className="h-9 flex-1" />}
+                  {profiles && <ConfigSelector className="h-9 flex-1" />}
+                  {branches.length > 0 && (
+                    <BranchSelector
+                      branches={branches}
+                      selectedBranch={selectedBranch}
+                      onBranchSelect={setSelectedBranch}
+                      placeholder="Branch"
+                      className={`h-9 flex-1 text-xs ${
+                        isSubmitting
+                          ? 'opacity-50 cursor-not-allowed'
+                          : ''
+                      }`}
+                    />
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Bottom Action Bar */}
-            <div className="border-t pt-4 px-0 flex items-center justify-between gap-3">
-              {/* Left Side - Paperclip, Agent & Branch Selectors */}
+            <div className="border-t pt-3 flex items-center justify-between gap-3">
+              {/* Left Side - Image Attach Button */}
               <div className="flex items-center gap-2">
-                {/* Image Attach Button */}
                 <Button
                   variant="outline"
                   size="sm"
@@ -895,39 +919,27 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                   onChange={handleFileInputChange}
                   className="hidden"
                 />
-
-                {/* Agent & Branch Selectors with Fade Transition */}
-                <div
-                  className={`transition-all duration-300 ease-out ${
-                    !isEditMode && shouldStart
-                      ? 'opacity-100 max-w-80 overflow-visible'
-                      : 'opacity-0 max-w-0 overflow-hidden'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    {/* Combined Agent Selector */}
-                    {profiles && <AgentSelector className="h-9 w-32" />}
-
-                    {/* Branch Selector */}
-                    {branches.length > 0 && (
-                      <BranchSelector
-                        branches={branches}
-                        selectedBranch={selectedBranch}
-                        onBranchSelect={setSelectedBranch}
-                        placeholder="Branch"
-                        className={`h-9 w-32 text-xs ${
-                          isSubmitting || isSubmittingAndStart
-                            ? 'opacity-50 cursor-not-allowed'
-                            : ''
-                        }`}
-                      />
-                    )}
-                  </div>
-                </div>
               </div>
 
-              {/* Right Side - Action Buttons */}
-              <div className="flex items-center gap-2">
+              {/* Right Side - AutoStart Switch & Action Button */}
+              <div className="flex items-center gap-3">
+                {!isEditMode && (
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="autostart-switch"
+                      checked={autoStart}
+                      onCheckedChange={setAutoStart}
+                      disabled={isSubmitting}
+                    />
+                    <Label
+                      htmlFor="autostart-switch"
+                      className="text-sm cursor-pointer"
+                    >
+                      start
+                    </Label>
+                  </div>
+                )}
+
                 {isEditMode ? (
                   <Button
                     onClick={handleSubmit}
@@ -936,12 +948,20 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                     {isSubmitting ? 'Updating...' : 'Update Task'}
                   </Button>
                 ) : (
-                  <CreateActionButton />
+                  <Button
+                    onClick={autoStart ? handleCreateAndStart : handleSubmit}
+                    disabled={isSubmitting || !title.trim()}
+                  >
+                    <>
+                        <Plus className="h-4 w-4 mr-1.5" />
+                        {isSubmitting ? 'Creating...' : 'Create'}
+                      </>
+                  </Button>
                 )}
               </div>
             </div>
-          </DialogContent>
-        </Dialog>
+          </TaskDialogContent>
+        </TaskDialog>
 
         {/* Discard Warning Dialog */}
         <Dialog open={showDiscardWarning} onOpenChange={setShowDiscardWarning}>
