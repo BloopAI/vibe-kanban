@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        UPDATE shared_tasks AS t\n        SET assignee_user_id = $2,\n            version = t.version + 1,\n            updated_at = NOW()\n        WHERE t.id = $1\n          AND t.organization_id = $5\n          AND t.version = COALESCE($4, t.version)\n          AND ($3::text IS NULL OR t.assignee_user_id = $3::text)\n        RETURNING\n            t.id                AS \"id!\",\n            t.organization_id   AS \"organization_id!\",\n            t.project_id        AS \"project_id!\",\n            t.creator_user_id   AS \"creator_user_id?\",\n            t.assignee_user_id  AS \"assignee_user_id?\",\n            t.title             AS \"title!\",\n            t.description       AS \"description?\",\n            t.status            AS \"status!: TaskStatus\",\n            t.version           AS \"version!\",\n            t.shared_at         AS \"shared_at?\",\n            t.created_at        AS \"created_at!\",\n            t.updated_at        AS \"updated_at!\"\n        ",
+  "query": "\n            SELECT\n                id                  AS \"id!\",\n                organization_id     AS \"organization_id!\",\n                project_id          AS \"project_id!\",\n                creator_user_id     AS \"creator_user_id?\",\n                assignee_user_id    AS \"assignee_user_id?\",\n                deleted_by_user_id  AS \"deleted_by_user_id?\",\n                title               AS \"title!\",\n                description         AS \"description?\",\n                status              AS \"status!: TaskStatus\",\n                version             AS \"version!\",\n                deleted_at          AS \"deleted_at?\",\n                shared_at           AS \"shared_at?\",\n                created_at          AS \"created_at!\",\n                updated_at          AS \"updated_at!\"\n            FROM shared_tasks\n            WHERE id = $1\n              AND organization_id = $2\n              AND deleted_at IS NULL\n            ",
   "describe": {
     "columns": [
       {
@@ -30,16 +30,21 @@
       },
       {
         "ordinal": 5,
-        "name": "title!",
+        "name": "deleted_by_user_id?",
         "type_info": "Text"
       },
       {
         "ordinal": 6,
-        "name": "description?",
+        "name": "title!",
         "type_info": "Text"
       },
       {
         "ordinal": 7,
+        "name": "description?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
         "name": "status!: TaskStatus",
         "type_info": {
           "Custom": {
@@ -57,22 +62,27 @@
         }
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "version!",
         "type_info": "Int8"
       },
       {
-        "ordinal": 9,
-        "name": "shared_at?",
-        "type_info": "Timestamptz"
-      },
-      {
         "ordinal": 10,
-        "name": "created_at!",
+        "name": "deleted_at?",
         "type_info": "Timestamptz"
       },
       {
         "ordinal": 11,
+        "name": "shared_at?",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 13,
         "name": "updated_at!",
         "type_info": "Timestamptz"
       }
@@ -80,9 +90,6 @@
     "parameters": {
       "Left": [
         "Uuid",
-        "Text",
-        "Text",
-        "Int8",
         "Text"
       ]
     },
@@ -92,14 +99,16 @@
       false,
       true,
       true,
+      true,
       false,
       true,
       false,
       false,
+      true,
       true,
       false,
       false
     ]
   },
-  "hash": "7e961b25777b7fec878e4e8a7ef500fa472b7b4ac4201fafbad1ac01eb07e549"
+  "hash": "57d67b5f739361f245360eda283f7703cc9cd8153070da11e5723ecb4464106b"
 }

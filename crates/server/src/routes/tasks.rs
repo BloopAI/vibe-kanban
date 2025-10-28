@@ -10,7 +10,7 @@ use axum::{
     http::StatusCode,
     middleware::from_fn_with_state,
     response::{IntoResponse, Json as ResponseJson},
-    routing::{get, post, put},
+    routing::{delete, get, post, put},
 };
 use db::models::{
     image::TaskImage,
@@ -266,6 +266,7 @@ pub async fn update_task(
 pub async fn delete_task(
     Extension(task): Extension<Task>,
     State(deployment): State<DeploymentImpl>,
+    session: ClerkSessionMaybe,
 ) -> Result<(StatusCode, ResponseJson<ApiResponse<()>>), ApiError> {
     // Validate no running execution processes
     if deployment
@@ -303,6 +304,16 @@ pub async fn delete_task(
                 })
         })
         .collect();
+
+    if let Some(shared_task_id) = task.shared_task_id {
+        let Some(publisher) = deployment.share_publisher() else {
+            return Err(ShareError::MissingConfig("share publisher unavailable").into());
+        };
+        let acting_session = session.require()?;
+        publisher
+            .delete_shared_task(shared_task_id, Some(acting_session))
+            .await?;
+    }
 
     // Use a transaction to ensure atomicity: either all operations succeed or all are rolled back
     let mut tx = deployment.db().pool.begin().await?;
@@ -393,30 +404,22 @@ pub async fn share_task(
 }
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
-    let share_route = Router::new().route("/share", post(share_task));
-    let share_router = if deployment.clerk_auth().is_some() {
-        share_route.layer(from_fn_with_state(
+    let task_actions_router = Router::new()
+        .route("/", put(update_task))
+        .route("/", delete(delete_task))
+        .route("/share", post(share_task));
+    let task_actions_router = if deployment.clerk_auth().is_some() {
+        task_actions_router.layer(from_fn_with_state(
             deployment.clone(),
             require_clerk_session,
         ))
     } else {
-        share_route
-    };
-
-    let update_route = Router::new().route("/", put(update_task));
-    let update_router = if deployment.clerk_auth().is_some() {
-        update_route.layer(from_fn_with_state(
-            deployment.clone(),
-            require_clerk_session,
-        ))
-    } else {
-        update_route
+        task_actions_router
     };
 
     let task_id_router = Router::new()
-        .route("/", get(get_task).delete(delete_task))
-        .merge(update_router)
-        .merge(share_router)
+        .route("/", get(get_task))
+        .merge(task_actions_router)
         .layer(from_fn_with_state(deployment.clone(), load_task_middleware));
 
     let inner = Router::new()

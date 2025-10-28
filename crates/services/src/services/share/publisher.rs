@@ -6,8 +6,8 @@ use db::{
 };
 use remote::{
     api::tasks::{
-        AssignSharedTaskRequest, CreateSharedTaskRequest, SharedTaskResponse,
-        UpdateSharedTaskRequest,
+        AssignSharedTaskRequest, CreateSharedTaskRequest, DeleteSharedTaskRequest,
+        SharedTaskResponse, UpdateSharedTaskRequest,
     },
     db::{projects::ProjectMetadata, tasks::SharedTask as RemoteSharedTask},
 };
@@ -156,6 +156,34 @@ impl SharePublisher {
         Ok(record)
     }
 
+    pub async fn delete_shared_task(
+        &self,
+        shared_task_id: Uuid,
+        session: Option<&ClerkSession>,
+    ) -> Result<(), ShareError> {
+        let shared_task = SharedTask::find_by_id(&self.db.pool, shared_task_id)
+            .await?
+            .ok_or(ShareError::TaskNotFound(shared_task_id))?;
+
+        let session = self.resolve_session(session)?;
+        let payload = DeleteSharedTaskRequest {
+            version: Some(shared_task.version),
+        };
+
+        RemoteTaskClient::new(&self.client, &self.config)
+            .delete_task(&session, shared_task.id, &payload)
+            .await?;
+
+        if let Some(local_task) =
+            Task::find_by_shared_task_id(&self.db.pool, shared_task.id).await?
+        {
+            Task::set_shared_task_id(&self.db.pool, local_task.id, None).await?;
+        }
+
+        SharedTask::remove(&self.db.pool, shared_task.id).await?;
+        Ok(())
+    }
+
     async fn sync_shared_task(
         &self,
         task: &Task,
@@ -265,6 +293,24 @@ impl<'a> RemoteTaskClient<'a> {
         let response = self
             .http
             .post(self.config.assign_endpoint(task_id)?)
+            .bearer_auth(session.bearer())
+            .json(payload)
+            .send()
+            .await
+            .map_err(ShareError::Transport)?;
+
+        Self::parse_response(response).await
+    }
+
+    async fn delete_task(
+        &self,
+        session: &ClerkSession,
+        task_id: Uuid,
+        payload: &DeleteSharedTaskRequest,
+    ) -> Result<RemoteSharedTask, ShareError> {
+        let response = self
+            .http
+            .delete(self.config.delete_task_endpoint(task_id)?)
             .bearer_auth(session.bearer())
             .json(payload)
             .send()
