@@ -10,11 +10,15 @@ use axum::http::{HeaderName, HeaderValue, header::AUTHORIZATION};
 use config::ShareConfig;
 use db::{
     DBService,
-    models::shared_task::{SharedActivityCursor, SharedTaskInput},
+    models::{
+        shared_task::{SharedActivityCursor, SharedTask, SharedTaskInput},
+        task::{CreateTask, Task},
+    },
 };
 use processor::ActivityProcessor;
 pub use publisher::SharePublisher;
 use remote::{ServerMessage, db::tasks::SharedTask as RemoteSharedTask};
+use sqlx::SqlitePool;
 use thiserror::Error;
 use tokio::{sync::oneshot, task::JoinHandle};
 use tokio_tungstenite::tungstenite::Message as WsMessage;
@@ -76,7 +80,7 @@ impl RemoteSync {
     ) -> Option<RemoteSyncHandle> {
         if let Some(config) = ShareConfig::from_env() {
             tracing::info!(api = %config.api_base, "starting shared task synchronizer");
-            let processor = ActivityProcessor::new(db.clone(), config.clone());
+            let processor = ActivityProcessor::new(db.clone(), config.clone(), sessions.clone());
             dbg!("spawning remote sync task");
             let sync = Self {
                 db,
@@ -271,4 +275,59 @@ pub(super) fn convert_remote_task(
         created_at: task.created_at,
         updated_at: task.updated_at,
     }
+}
+
+pub(super) async fn sync_local_task_for_shared_task(
+    pool: &SqlitePool,
+    shared_task: &SharedTask,
+    current_user_id: Option<&str>,
+) -> Result<(), ShareError> {
+    if let Some(task) = Task::find_by_shared_task_id(pool, shared_task.id).await? {
+        debug_assert_eq!(task.shared_task_id, Some(shared_task.id));
+
+        let needs_update = task.title != shared_task.title
+            || task.description != shared_task.description
+            || task.status != shared_task.status;
+
+        if needs_update {
+            Task::update(
+                pool,
+                task.id,
+                shared_task.project_id,
+                shared_task.title.clone(),
+                shared_task.description.clone(),
+                shared_task.status.clone(),
+                task.parent_task_attempt,
+            )
+            .await?;
+        }
+
+        return Ok(());
+    }
+
+    let assignee_is_current_user = match (shared_task.assignee_user_id.as_deref(), current_user_id)
+    {
+        (Some(assignee), Some(current)) => assignee == current,
+        _ => false,
+    };
+
+    if !assignee_is_current_user {
+        return Ok(());
+    }
+
+    // Current user owns the shared task but has no local record; create and link one.
+    let create = CreateTask::from_title_description(
+        shared_task.project_id,
+        shared_task.title.clone(),
+        shared_task.description.clone(),
+    );
+    let task_id = Uuid::new_v4();
+    let task = Task::create(pool, &create, task_id).await?;
+    Task::set_shared_task_id(pool, task.id, Some(shared_task.id)).await?;
+
+    if task.status != shared_task.status {
+        Task::update_status(pool, task.id, shared_task.status.clone()).await?;
+    }
+
+    Ok(())
 }

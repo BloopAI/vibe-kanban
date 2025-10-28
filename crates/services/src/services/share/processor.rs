@@ -12,8 +12,8 @@ use remote::{
 use reqwest::Client as HttpClient;
 use uuid::Uuid;
 
-use super::{ShareConfig, ShareError, convert_remote_task};
-use crate::services::clerk::ClerkSession;
+use super::{ShareConfig, ShareError, convert_remote_task, sync_local_task_for_shared_task};
+use crate::services::clerk::{ClerkSession, ClerkSessionStore};
 
 /// Processor for handling activity events and synchronizing shared tasks.
 #[derive(Clone)]
@@ -21,14 +21,16 @@ pub(super) struct ActivityProcessor {
     db: DBService,
     config: ShareConfig,
     client: HttpClient,
+    sessions: ClerkSessionStore,
 }
 
 impl ActivityProcessor {
-    pub fn new(db: DBService, config: ShareConfig) -> Self {
+    pub fn new(db: DBService, config: ShareConfig, sessions: ClerkSessionStore) -> Self {
         Self {
             db,
             config,
             client: HttpClient::new(),
+            sessions,
         }
     }
 
@@ -38,7 +40,16 @@ impl ActivityProcessor {
                 Ok(SharedTaskActivityPayload { task, project }) => {
                     if let Some(project_id) = self.resolve_project_id(task.id, &project).await? {
                         let input = convert_remote_task(&task, project_id, Some(event.seq));
-                        SharedTask::upsert(&self.db.pool, input).await?;
+                        let shared_task = SharedTask::upsert(&self.db.pool, input).await?;
+
+                        let current_session = self.sessions.active().await;
+                        let current_user_id = current_session.as_ref().map(|s| s.user_id.as_str());
+                        sync_local_task_for_shared_task(
+                            &self.db.pool,
+                            &shared_task,
+                            current_user_id,
+                        )
+                        .await?;
                     } else {
                         tracing::warn!(
                             task_id = %task.id,
