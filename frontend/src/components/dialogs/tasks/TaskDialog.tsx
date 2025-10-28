@@ -9,10 +9,15 @@ interface TaskDialogProps {
   onOpenChange?: (open: boolean) => void;
   children: React.ReactNode;
   className?: string;
+  uncloseable?: boolean;
+  ariaLabel?: string;
 }
 
 const TaskDialog = React.forwardRef<HTMLDivElement, TaskDialogProps>(
-  ({ className, open, onOpenChange, children }, ref) => {
+  (
+    { className, open, onOpenChange, children, uncloseable, ariaLabel },
+    ref
+  ) => {
     const { enableScope, disableScope } = useHotkeysContext();
 
     React.useEffect(() => {
@@ -34,6 +39,8 @@ const TaskDialog = React.forwardRef<HTMLDivElement, TaskDialogProps>(
 
     useKeyExit(
       (e) => {
+        if (uncloseable) return;
+
         const activeElement = document.activeElement as HTMLElement;
         if (
           activeElement &&
@@ -56,13 +63,20 @@ const TaskDialog = React.forwardRef<HTMLDivElement, TaskDialogProps>(
     if (!open) return null;
 
     return (
-      <div className="fixed inset-0 z-[9999] flex items-start justify-center p-4 overflow-y-auto">
+      <div
+        className="fixed inset-0 z-[9999] flex items-start justify-center p-4 overflow-y-auto"
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => e.preventDefault()}
+      >
         <div
           className="fixed inset-0 bg-black/50"
-          onClick={() => onOpenChange?.(false)}
+          onClick={() => !uncloseable && onOpenChange?.(false)}
         />
         <div
           ref={ref}
+          role="dialog"
+          aria-modal="true"
+          aria-label={ariaLabel}
           className={cn(
             'relative z-[9999] w-full max-w-lg bg-primary shadow-lg duration-200 sm:rounded-lg my-8',
             className
@@ -71,6 +85,7 @@ const TaskDialog = React.forwardRef<HTMLDivElement, TaskDialogProps>(
           <button
             className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10"
             onClick={() => onOpenChange?.(false)}
+            aria-label="Close dialog"
           >
             <X className="h-4 w-4" />
             <span className="sr-only">Close</span>

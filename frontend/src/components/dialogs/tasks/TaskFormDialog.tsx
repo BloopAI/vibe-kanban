@@ -1,11 +1,4 @@
-import {
-  useState,
-  useEffect,
-  useCallback,
-  useRef,
-  useLayoutEffect,
-} from 'react';
-import type { ReactNode } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Settings2, ArrowDown, Plus, Image, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -49,67 +42,6 @@ import type {
 } from 'shared/types';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useKeySubmitTask, useKeySubmitTaskAlt, Scope } from '@/keyboard';
-
-// Fixed Collapse component that doesn't remount and animates properly in both directions
-function Collapse({
-  open,
-  children,
-  className = '',
-}: {
-  open: boolean;
-  children: ReactNode;
-  className?: string;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const mounted = useRef(false);
-
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
-    const onEnd = (e: TransitionEvent) => {
-      if (e.propertyName !== 'height') return;
-      if (open) {
-        // Allow natural growth after expand completes
-        el.style.height = 'auto';
-      }
-      el.removeEventListener('transitionend', onEnd);
-    };
-
-    // First render: set height without animating to avoid flashes
-    if (!mounted.current) {
-      el.style.height = open ? 'auto' : '0px';
-      mounted.current = true;
-      return;
-    }
-
-    // For expand: from 0 → scrollHeight; then set to 'auto' on end
-    // For collapse: from current scrollHeight → 0
-    const start = open ? 0 : el.scrollHeight;
-    const end = open ? el.scrollHeight : 0;
-
-    // Set starting height
-    el.style.height = `${start}px`;
-    // Force reflow so the browser picks up the starting value
-    el.getBoundingClientRect();
-    // Animate to target height
-    el.style.height = `${end}px`;
-    el.addEventListener('transitionend', onEnd);
-
-    return () => el.removeEventListener('transitionend', onEnd);
-  }, [open]);
-
-  return (
-    <div
-      ref={ref}
-      className={`overflow-hidden transition-[height,opacity] duration-300 ease-out ${
-        open ? 'opacity-100' : 'opacity-0'
-      } ${className}`}
-    >
-      {children}
-    </div>
-  );
-}
 
 interface Task {
   id: string;
@@ -181,23 +113,20 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
 
     // Warn on browser/tab close if there are unsaved changes
     useEffect(() => {
-      if (!modal.visible) return; // dialog closed → nothing to do
+      if (!modal.visible || isSubmitting) return;
 
-      // always re-evaluate latest fields via hasUnsavedChanges()
       const handleBeforeUnload = (e: BeforeUnloadEvent) => {
         if (hasUnsavedChanges()) {
           e.preventDefault();
-          // Chrome / Edge still require returnValue to be set
           e.returnValue = '';
           return '';
         }
-        // nothing returned → no prompt
       };
 
       window.addEventListener('beforeunload', handleBeforeUnload);
       return () =>
         window.removeEventListener('beforeunload', handleBeforeUnload);
-    }, [modal.visible, hasUnsavedChanges]); // hasUnsavedChanges is memoised with title/descr deps
+    }, [modal.visible, hasUnsavedChanges, isSubmitting]);
 
     useEffect(() => {
       if (task) {
@@ -210,7 +139,12 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
         if (modal.visible) {
           imagesApi
             .getTaskImages(task.id)
-            .then((taskImages) => setImages(taskImages))
+            .then((taskImages) => {
+              setImages(taskImages);
+              if (taskImages.length > 0) {
+                setShowImageUpload(true);
+              }
+            })
             .catch((err) => {
               console.error('Failed to load task images:', err);
               setImages([]);
@@ -292,75 +226,12 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       branches,
     ]);
 
-    // Set default executor from config and ensure it matches available options
+    // Set default executor from config
     useEffect(() => {
-      if (system.config?.executor_profile && profiles) {
-        const configProfile = system.config.executor_profile;
-
-        // Generate options to find matching one
-        const options: Array<{
-          id: string;
-          executorProfile: ExecutorProfileId;
-        }> = [];
-
-        Object.entries(profiles).forEach(([agentKey, configs]) => {
-          const agent = agentKey as BaseCodingAgent;
-
-          if (Object.keys(configs).length === 0) {
-            options.push({
-              id: `${agent}:default`,
-              executorProfile: { executor: agent, variant: null },
-            });
-          } else {
-            Object.keys(configs).forEach((variant) => {
-              options.push({
-                id: `${agent}:${variant}`,
-                executorProfile: { executor: agent, variant },
-              });
-            });
-          }
-        });
-
-        // Find matching option using normalized variant key
-        const expectedId = `${configProfile.executor}:${getVariantKeyForId(configProfile)}`;
-        const matchingOption = options.find((opt) => opt.id === expectedId);
-
-        if (matchingOption) {
-          setSelectedExecutorProfile(matchingOption.executorProfile);
-        } else {
-          // Fallback: set the config profile anyway
-          setSelectedExecutorProfile(configProfile);
-        }
+      if (system.config?.executor_profile) {
+        setSelectedExecutorProfile(system.config.executor_profile);
       }
-    }, [system.config?.executor_profile, profiles]);
-
-    // Helper to normalize variant keys for consistent ID generation
-    const getVariantKeyForId = (profile: ExecutorProfileId): string => {
-      const agent = profile.executor;
-      const configs = profiles?.[agent];
-      // No variants → use our sentinel 'default'
-      if (!configs || Object.keys(configs).length === 0) return 'default';
-      // Explicit variant provided → use it as-is
-      if (profile.variant) return profile.variant;
-      // No explicit variant, but variants exist → prefer 'DEFAULT' if present, else first key
-      const keys = Object.keys(configs);
-      const defaultKey = keys.find((k) => k.toUpperCase() === 'DEFAULT');
-      return defaultKey ?? keys[0];
-    };
-
-    // Get available agents
-    const getAgentOptions = () => {
-      if (!profiles) return [];
-      return Object.keys(profiles).sort() as BaseCodingAgent[];
-    };
-
-    // Get configuration variants for the selected agent
-    const getConfigOptions = (agent: BaseCodingAgent | null) => {
-      if (!agent || !profiles) return [];
-      const configs = profiles[agent];
-      if (!configs || Object.keys(configs).length === 0) return [];
-      return Object.keys(configs).sort();
-    };
+    }, [system.config?.executor_profile]);
 
     // Handle image upload success by inserting markdown into description
     const handleImageUploaded = useCallback((image: ImageResponse) => {
@@ -429,7 +300,9 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       e.preventDefault();
       e.stopPropagation();
 
-      dragCounterRef.current--;
+      if (dragCounterRef.current > 0) {
+        dragCounterRef.current--;
+      }
       if (dragCounterRef.current === 0) {
         setIsDraggingFile(false);
       }
@@ -539,12 +412,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
     ]);
 
     const handleCreateAndStart = useCallback(async () => {
-      if (
-        !title.trim() ||
-        !projectId ||
-        isEditMode ||
-        isSubmitting
-      ) {
+      if (!title.trim() || !projectId || isEditMode || isSubmitting) {
         return;
       }
 
@@ -654,7 +522,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
     ]);
 
     const shortcutsEnabled =
-      modal.visible && !isSubmitting && !!title.trim();
+      modal.visible && !isSubmitting && !!title.trim() && !showDiscardWarning;
 
     useKeySubmitTask(primaryAction, {
       enabled: shortcutsEnabled,
@@ -681,7 +549,8 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
 
     // Agent selector component
     const AgentSelector = ({ className = '' }: { className?: string }) => {
-      const agents = getAgentOptions();
+      if (!profiles) return null;
+      const agents = Object.keys(profiles).sort() as BaseCodingAgent[];
       const selectedAgent = selectedExecutorProfile?.executor;
 
       return (
@@ -692,6 +561,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
               size="sm"
               className={`w-full justify-between text-xs ${className}`}
               disabled={isSubmitting}
+              aria-label="Select agent"
             >
               <div className="flex items-center gap-1.5 w-full">
                 <Bot className="h-3 w-3" />
@@ -710,12 +580,9 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                 <DropdownMenuItem
                   key={agent}
                   onClick={() => {
-                    const configs = profiles?.[agent];
-                    const hasVariants =
-                      configs && Object.keys(configs).length > 0;
                     setSelectedExecutorProfile({
                       executor: agent,
-                      variant: hasVariants ? Object.keys(configs)[0] : null,
+                      variant: null,
                     });
                   }}
                   className={selectedAgent === agent ? 'bg-accent' : ''}
@@ -732,10 +599,13 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
     // Configuration selector component
     const ConfigSelector = ({ className = '' }: { className?: string }) => {
       const selectedAgent = selectedExecutorProfile?.executor;
-      const configOptions = getConfigOptions(selectedAgent || null);
-      const selectedVariant = selectedExecutorProfile?.variant;
+      if (!selectedAgent || !profiles) return null;
 
-      if (configOptions.length === 0) return null;
+      const configs = profiles[selectedAgent];
+      if (!configs || Object.keys(configs).length === 0) return null;
+
+      const configOptions = Object.keys(configs).sort();
+      const selectedVariant = selectedExecutorProfile?.variant || 'DEFAULT';
 
       return (
         <DropdownMenu>
@@ -745,10 +615,11 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
               size="sm"
               className={`w-full justify-between text-xs ${className}`}
               disabled={isSubmitting}
+              aria-label="Select configuration"
             >
               <div className="flex items-center gap-1.5 w-full">
                 <Settings2 className="h-3 w-3" />
-                <span className="truncate">{selectedVariant || 'Config'}</span>
+                <span className="truncate">{selectedVariant}</span>
               </div>
               <ArrowDown className="h-3 w-3" />
             </Button>
@@ -758,14 +629,17 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
               <DropdownMenuItem
                 key={variant}
                 onClick={() => {
-                  if (selectedAgent) {
-                    setSelectedExecutorProfile({
-                      executor: selectedAgent,
-                      variant,
-                    });
-                  }
+                  setSelectedExecutorProfile({
+                    executor: selectedAgent,
+                    variant: variant === 'DEFAULT' ? null : variant,
+                  });
                 }}
-                className={selectedVariant === variant ? 'bg-accent' : ''}
+                className={
+                  (variant === 'DEFAULT' ? null : variant) ===
+                  selectedExecutorProfile?.variant
+                    ? 'bg-accent'
+                    : ''
+                }
               >
                 {variant}
               </DropdownMenuItem>
@@ -781,6 +655,8 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
           open={modal.visible}
           onOpenChange={handleDialogOpenChange}
           className="w-full max-w-[min(90vw,40rem)] max-h-[min(95vh,50rem)]"
+          uncloseable={showDiscardWarning}
+          ariaLabel={isEditMode ? 'Edit task' : 'Create new task'}
         >
           <TaskDialogContent
             className="h-full overflow-hidden flex flex-col gap-0 px-4 pb-4 relative"
@@ -831,7 +707,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
               </div>
 
               {/* Image Upload Section */}
-              <Collapse open={showImageUpload}>
+              {showImageUpload && (
                 <ImageUploadSection
                   ref={imageUploadRef}
                   images={images}
@@ -844,7 +720,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                   defaultExpanded={true}
                   hideDropZone={true}
                 />
-              </Collapse>
+              )}
 
               {/* Status Selector (Edit Mode Only) */}
               {isEditMode && (
@@ -887,9 +763,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                       onBranchSelect={setSelectedBranch}
                       placeholder="Branch"
                       className={`h-9 flex-1 text-xs ${
-                        isSubmitting
-                          ? 'opacity-50 cursor-not-allowed'
-                          : ''
+                        isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
                       }`}
                     />
                   )}
@@ -906,6 +780,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                   size="sm"
                   onClick={handleFileSelect}
                   className="h-9 w-9 p-0 rounded-none"
+                  aria-label="Attach image"
                 >
                   <Image className="h-4 w-4" />
                 </Button>
@@ -935,7 +810,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                       htmlFor="autostart-switch"
                       className="text-sm cursor-pointer"
                     >
-                      start
+                      Start
                     </Label>
                   </div>
                 )}
@@ -950,12 +825,15 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                 ) : (
                   <Button
                     onClick={autoStart ? handleCreateAndStart : handleSubmit}
-                    disabled={isSubmitting || !title.trim()}
+                    disabled={
+                      isSubmitting ||
+                      !title.trim() ||
+                      (autoStart &&
+                        (!selectedExecutorProfile || !selectedBranch))
+                    }
                   >
-                    <>
-                        <Plus className="h-4 w-4 mr-1.5" />
-                        {isSubmitting ? 'Creating...' : 'Create'}
-                      </>
+                    <Plus className="h-4 w-4 mr-1.5" />
+                    {isSubmitting ? 'Creating...' : 'Create'}
                   </Button>
                 )}
               </div>
