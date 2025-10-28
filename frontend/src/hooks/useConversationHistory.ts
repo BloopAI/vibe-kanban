@@ -45,7 +45,7 @@ interface UseConversationHistoryParams {
   onEntriesUpdated: OnEntriesUpdated;
 }
 
-interface UseConversationHistoryResult {}
+interface UseConversationHistoryResult { }
 
 const MIN_INITIAL_ENTRIES = 10;
 const REMAINING_BATCH_SIZE = 50;
@@ -105,7 +105,12 @@ export const useConversationHistory = ({
 
   // Keep executionProcesses up to date
   useEffect(() => {
-    executionProcesses.current = executionProcessesRaw;
+    executionProcesses.current = executionProcessesRaw.filter(
+      (ep) =>
+        ep.run_reason === 'setupscript' ||
+        ep.run_reason === 'cleanupscript' ||
+        ep.run_reason === 'codingagent'
+    );
   }, [executionProcessesRaw]);
 
   const loadEntriesForHistoricExecutionProcess = (
@@ -214,9 +219,9 @@ export const useConversationHistory = ({
       .filter(
         (p) =>
           p.executionProcess.executor_action.typ.type ===
-            'CodingAgentFollowUpRequest' ||
+          'CodingAgentFollowUpRequest' ||
           p.executionProcess.executor_action.typ.type ===
-            'CodingAgentInitialRequest'
+          'CodingAgentInitialRequest'
       )
       .sort(
         (a, b) =>
@@ -249,9 +254,9 @@ export const useConversationHistory = ({
         const entries: PatchTypeWithKey[] = [];
         if (
           p.executionProcess.executor_action.typ.type ===
-            'CodingAgentInitialRequest' ||
+          'CodingAgentInitialRequest' ||
           p.executionProcess.executor_action.typ.type ===
-            'CodingAgentFollowUpRequest'
+          'CodingAgentFollowUpRequest'
         ) {
           // New user message
           const userNormalizedEntry: NormalizedEntry = {
@@ -354,9 +359,9 @@ export const useConversationHistory = ({
             executionProcess?.status === 'running'
               ? null
               : {
-                  type: 'exit_code',
-                  code: exitCode,
-                };
+                type: 'exit_code',
+                code: exitCode,
+              };
 
           const toolStatus: ToolStatus =
             executionProcess?.status === ExecutionProcessStatus.running
