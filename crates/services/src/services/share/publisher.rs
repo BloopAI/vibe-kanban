@@ -17,7 +17,7 @@ use uuid::Uuid;
 
 use super::{ShareConfig, ShareError, convert_remote_task, status};
 use crate::services::{
-    clerk::ClerkSession, config::Config, git::GitService, github_service::GitHubService,
+    clerk::ClerkSession, config::Config, git::GitService, metadata::compute_remote_metadata,
 };
 
 #[derive(Clone)]
@@ -169,37 +169,28 @@ impl SharePublisher {
 
     /// Check and populate missing project metadata needed for sharing tasks.
     async fn ensure_project_metadata(&self, mut project: Project) -> Result<Project, ShareError> {
-        let mut metadata = project.metadata();
-        let original = metadata.clone();
+        let repo_path = project.git_repo_path.as_path();
+        let metadata = compute_remote_metadata(&self.git, &self.user_config, repo_path).await;
 
-        // 1) Fetch missing git remote info
-        if metadata.needs_git_enrichment() {
-            let new = self
-                .git
-                .get_remote_metadata(project.git_repo_path.as_path())?;
-            metadata = new;
+        if !metadata.has_remote {
+            tracing::warn!(
+                "Project '{}' has no git remote configured at {}",
+                project.name,
+                repo_path.display()
+            );
+            return Err(ShareError::MissingProjectMetadata(project.id));
         }
 
-        // 2) Fetch missing GitHub repository ID
-        if metadata.needs_repo_id_enrichment()
-            && let (Some(owner), Some(name)) = (
-                metadata.github_repo_owner.clone(),
-                metadata.github_repo_name.clone(),
-            )
-        {
-            let token = {
-                let cfg = self.user_config.read().await;
-                cfg.github.token()
-            }
-            .ok_or(ShareError::MissingGitHubToken)?;
-
-            let github = GitHubService::new(&token)?;
-            let id = github.fetch_repository_id(&owner, &name).await?;
-            metadata.github_repo_id = Some(id);
+        if metadata.github_repo_id.is_none() {
+            tracing::warn!(
+                "Project '{}' has a remote, but not a GitHub repo ID (non-GitHub remote?)",
+                project.name
+            );
+            return Err(ShareError::MissingProjectMetadata(project.id));
         }
 
-        // 3) Update project if metadata changed
-        if metadata != original {
+        // metadata differs from store, persist the update
+        if metadata != project.metadata() {
             Project::update_remote_metadata(&self.db.pool, project.id, &metadata).await?;
             project.has_remote = metadata.has_remote;
             project.github_repo_owner = metadata.github_repo_owner.clone();
