@@ -11,8 +11,8 @@ import { useTaskMutations } from '@/hooks/useTaskMutations';
 import { useUserSystem } from '@/components/config-provider';
 import { useDragAndDropUpload } from '@/hooks/useDragAndDropUpload';
 import { useTaskBranches } from '@/hooks/useTaskBranches';
-import { useTaskImages } from '@/hooks/useTaskImages';
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
+import { imagesApi } from '@/lib/api';
 import { useTaskFormKeyboardShortcuts } from '@/hooks/useTaskFormKeyboardShortcuts';
 import {
   useTaskFormStore,
@@ -61,6 +61,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       status,
       isSubmitting,
       showDiscardWarning,
+      setImages,
       setShowImageUpload,
       setDiscardWarning,
       init,
@@ -75,18 +76,20 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       parentTaskAttemptId,
     });
 
-    // Sync fetched branch to store
-    useEffect(() => {
-      if (fetchedBranch) {
-        useTaskFormStore.getState().setSelectedBranch(fetchedBranch);
-      }
-    }, [fetchedBranch]);
-
     // Image loading for edit mode
-    const { resetImages } = useTaskImages({
-      taskId: task?.id,
-      modalVisible: modal.visible,
-    });
+    useEffect(() => {
+      if (!task?.id || !modal.visible) return;
+
+      imagesApi
+        .getTaskImages(task.id)
+        .then((imgs) => {
+          setImages(imgs);
+          setShowImageUpload(imgs.length > 0);
+        })
+        .catch(() => {
+          setImages([]);
+        });
+    }, [task?.id, modal.visible, setImages, setShowImageUpload]);
 
     // Initialize form state
     useEffect(() => {
@@ -97,6 +100,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
           title: task.title,
           description: task.description || '',
           status: task.status,
+          selectedBranch: fetchedBranch,
         });
       } else if (initialTask) {
         init({
@@ -104,11 +108,12 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
           description: initialTask.description || '',
           status: 'todo',
           selectedExecutorProfile: system.config?.executor_profile || null,
+          selectedBranch: fetchedBranch,
         });
-        resetImages();
       } else {
         init({
           selectedExecutorProfile: system.config?.executor_profile || null,
+          selectedBranch: fetchedBranch,
         });
       }
     }, [
@@ -116,8 +121,8 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       initialTask,
       modal.visible,
       system.config?.executor_profile,
+      fetchedBranch,
       init,
-      resetImages,
     ]);
 
     // Drag & drop

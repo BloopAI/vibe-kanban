@@ -77,6 +77,7 @@ export function ActionsRow({
               checked={autoStart}
               onCheckedChange={setAutoStart}
               disabled={isSubmitting}
+              aria-label="Start"
             />
             <Label
               htmlFor="autostart-switch"

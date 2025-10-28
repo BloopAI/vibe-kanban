@@ -19,7 +19,7 @@ export function DiscardWarningDialog({
 }: DiscardWarningDialogProps) {
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onContinue()}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] z-[10000]">
         <DialogHeader>
           <DialogTitle>Discard unsaved changes?</DialogTitle>
         </DialogHeader>
