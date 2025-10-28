@@ -1,4 +1,11 @@
-import { useCallback, useRef } from 'react';
+import {
+  useCallback,
+  useRef,
+  forwardRef,
+  useImperativeHandle,
+  useState,
+  useEffect,
+} from 'react';
 import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
 import {
   ImageUploadSection,
@@ -8,17 +15,20 @@ import { imagesApi } from '@/lib/api';
 import { useTaskFormStore } from '@/stores/useTaskFormStore';
 import type { ImageResponse } from 'shared/types';
 
+export interface DescriptionRowHandle {
+  addFiles: (files: File[]) => void;
+}
+
 interface DescriptionRowProps {
   projectId?: string;
   disabled?: boolean;
   onPasteFiles?: (files: File[]) => void;
 }
 
-export function DescriptionRow({
-  projectId,
-  disabled,
-  onPasteFiles,
-}: DescriptionRowProps) {
+export const DescriptionRow = forwardRef<
+  DescriptionRowHandle,
+  DescriptionRowProps
+>(({ projectId, disabled, onPasteFiles }, ref) => {
   const description = useTaskFormStore((s) => s.description);
   const setDescription = useTaskFormStore((s) => s.setDescription);
   const images = useTaskFormStore((s) => s.images);
@@ -30,6 +40,26 @@ export function DescriptionRow({
   );
 
   const imageUploadRef = useRef<ImageUploadSectionHandle>(null);
+  const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
+
+  useImperativeHandle(ref, () => ({
+    addFiles: (files: File[]) => {
+      if (imageUploadRef.current) {
+        imageUploadRef.current.addFiles(files);
+      } else {
+        // Queue files to be added when ImageUploadSection mounts
+        setPendingFiles(files);
+      }
+    },
+  }));
+
+  // Apply pending files when ImageUploadSection becomes available
+  useEffect(() => {
+    if (pendingFiles && imageUploadRef.current) {
+      imageUploadRef.current.addFiles(pendingFiles);
+      setPendingFiles(null);
+    }
+  }, [pendingFiles, showImageUpload]);
 
   const handleImageUploaded = useCallback(
     (image: ImageResponse) => {
@@ -67,7 +97,7 @@ export function DescriptionRow({
           value={description}
           onChange={setDescription}
           rows={4}
-          maxRows={30}
+          maxRows={35}
           placeholder="Add more details (optional). Type @ to search files."
           className="border-none shadow-none px-0 resize-none placeholder:text-muted-foreground/60 focus-visible:ring-0"
           disabled={disabled}
@@ -92,4 +122,4 @@ export function DescriptionRow({
       )}
     </>
   );
-}
+});

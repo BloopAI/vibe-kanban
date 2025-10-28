@@ -1,5 +1,5 @@
 import NiceModal from '@ebay/nice-modal-react';
-import type { TaskFormDialogProps } from '@/components/dialogs/tasks/TaskFormDialog';
+import type { TaskFormDialogProps } from '@/components/dialogs/tasks/TaskForm/TaskFormDialog';
 
 /**
  * Open the task form dialog programmatically

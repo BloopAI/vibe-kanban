@@ -1,9 +1,9 @@
-import { useEffect, useCallback } from 'react';
-import { TaskDialog, TaskDialogContent } from './TaskDialog';
+import { useEffect, useCallback, useRef } from 'react';
+import { TaskDialog, TaskDialogContent } from '../TaskDialog';
 import { DragOverlay } from '@/components/tasks/DragOverlay';
 import { DiscardWarningDialog } from './DiscardWarningDialog';
 import { TitleRow } from './rows/TitleRow';
-import { DescriptionRow } from './rows/DescriptionRow';
+import { DescriptionRow, type DescriptionRowHandle } from './rows/DescriptionRow';
 import { CreateModeDropdownsRow } from './rows/CreateModeDropdownsRow';
 import { EditModeStatusRow } from './rows/EditModeStatusRow';
 import { ActionsRow } from './rows/ActionsRow';
@@ -53,6 +53,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
     const { system, profiles } = useUserSystem();
 
     const mode = task ? 'edit' : 'create';
+    const descriptionRowRef = useRef<DescriptionRowHandle>(null);
 
     const {
       title,
@@ -121,8 +122,9 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
 
     // Drag & drop
     const handleFiles = useCallback(
-      (_files: File[]) => {
+      (files: File[]) => {
         setShowImageUpload(true);
+        descriptionRowRef.current?.addFiles(files);
       },
       [setShowImageUpload]
     );
@@ -208,6 +210,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
             <div className="flex-1 overflow-y-auto space-y-1 pb-3">
               <TitleRow disabled={isSubmitting} autoFocus />
               <DescriptionRow
+                ref={descriptionRowRef}
                 projectId={projectId}
                 disabled={isSubmitting}
                 onPasteFiles={handleFiles}
