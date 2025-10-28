@@ -15,7 +15,9 @@ use reqwest::{Client as HttpClient, StatusCode};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use super::{ShareConfig, ShareError, convert_remote_task, status};
+use super::{
+    ShareConfig, ShareError, convert_remote_task, status, sync_local_task_for_shared_task,
+};
 use crate::services::{
     clerk::ClerkSession, config::Config, git::GitService, github_service::GitHubService,
 };
@@ -153,6 +155,8 @@ impl SharePublisher {
 
         let input = convert_remote_task(&remote_task, shared_task.project_id, None);
         let record = SharedTask::upsert(&self.db.pool, input).await?;
+        sync_local_task_for_shared_task(&self.db.pool, &record, Some(session.user_id.as_str()))
+            .await?;
         Ok(record)
     }
 
