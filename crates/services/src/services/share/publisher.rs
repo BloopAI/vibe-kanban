@@ -155,8 +155,6 @@ impl SharePublisher {
 
         let input = convert_remote_task(&remote_task, shared_task.project_id, None);
         let record = SharedTask::upsert(&self.db.pool, input).await?;
-        sync_local_task_for_shared_task(&self.db.pool, &record, Some(session.user_id.as_str()))
-            .await?;
         Ok(record)
     }
 
