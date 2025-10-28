@@ -36,6 +36,10 @@ impl ShareConfig {
         self.api_base.join(&format!("/v1/tasks/{task_id}"))
     }
 
+    pub fn delete_task_endpoint(&self, task_id: Uuid) -> Result<Url, url::ParseError> {
+        self.api_base.join(&format!("/v1/tasks/{task_id}"))
+    }
+
     pub fn assign_endpoint(&self, task_id: Uuid) -> Result<Url, url::ParseError> {
         self.api_base.join(&format!("/v1/tasks/{task_id}/assign"))
     }

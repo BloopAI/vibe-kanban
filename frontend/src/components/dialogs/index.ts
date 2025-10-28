@@ -66,6 +66,10 @@ export {
   ReassignDialog,
   type ReassignDialogProps,
 } from './tasks/ReassignDialog';
+export {
+  StopShareTaskDialog,
+  type StopShareTaskDialogProps,
+} from './tasks/StopShareTaskDialog';
 
 // Settings dialogs
 export {

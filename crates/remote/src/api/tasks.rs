@@ -28,6 +28,11 @@ pub struct AssignSharedTaskRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeleteSharedTaskRequest {
+    pub version: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SharedTaskResponse {
     pub task: SharedTask,
 }

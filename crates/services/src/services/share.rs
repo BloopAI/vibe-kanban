@@ -81,17 +81,14 @@ impl RemoteSync {
         if let Some(config) = ShareConfig::from_env() {
             tracing::info!(api = %config.api_base, "starting shared task synchronizer");
             let processor = ActivityProcessor::new(db.clone(), config.clone(), sessions.clone());
-            dbg!("spawning remote sync task");
             let sync = Self {
                 db,
                 processor,
                 config,
                 sessions,
             };
-            dbg!("remote sync task initialized");
             let (shutdown_tx, shutdown_rx) = oneshot::channel();
             let join = tokio::spawn(async move {
-                dbg!("remote sync task running");
                 if let Err(e) = sync.run(shutdown_rx).await {
                     tracing::error!(?e, "remote sync terminated unexpectedly");
                 }
@@ -105,11 +102,8 @@ impl RemoteSync {
     }
 
     pub async fn run(self, shutdown_rx: oneshot::Receiver<()>) -> Result<(), ShareError> {
-        dbg!("starting remote sync task");
         let session = self.sessions.wait_for_active().await;
-        dbg!("obtained active clerk session");
         let org_id = session.org_id.clone().ok_or(ShareError::MissingAuth)?;
-        dbg!("organization id:", &org_id);
 
         let mut last_seq = SharedActivityCursor::get(&self.db.pool, org_id.clone())
             .await?
@@ -119,8 +113,6 @@ impl RemoteSync {
             .catch_up(&session, last_seq)
             .await
             .unwrap_or(last_seq);
-
-        dbg!(&last_seq);
 
         let ws_url = self.config.websocket_endpoint(last_seq)?;
         let remote = spawn_shared_remote(self.processor.clone(), &self.sessions, ws_url).await?;
@@ -286,7 +278,8 @@ pub(super) async fn sync_local_task_for_shared_task(
     if let Some(task) = Task::find_by_shared_task_id(pool, shared_task.id).await? {
         debug_assert_eq!(task.shared_task_id, Some(shared_task.id));
 
-        let needs_update = task.title != shared_task.title
+        let needs_update = task.project_id != shared_task.project_id
+            || task.title != shared_task.title
             || task.description != shared_task.description
             || task.status != shared_task.status;
 
@@ -328,18 +321,15 @@ pub(super) async fn sync_local_task_for_shared_task(
     }
 
     // Current user owns the shared task but has no local record; create and link one.
-    let create = CreateTask::from_title_description(
+    let create = CreateTask::from_shared_task(
         shared_task.project_id,
         shared_task.title.clone(),
         shared_task.description.clone(),
+        shared_task.status.clone(),
+        shared_task.id,
     );
     let task_id = Uuid::new_v4();
-    let task = Task::create(pool, &create, task_id).await?;
-    Task::set_shared_task_id(pool, task.id, Some(shared_task.id)).await?;
-
-    if task.status != shared_task.status {
-        Task::update_status(pool, task.id, shared_task.status.clone()).await?;
-    }
+    Task::create(pool, &create, task_id).await?;
 
     Ok(())
 }
