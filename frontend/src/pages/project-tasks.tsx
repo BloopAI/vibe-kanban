@@ -80,7 +80,7 @@ const TASK_STATUSES = [
 ] as const;
 
 const normalizeStatus = (status: string): TaskStatus =>
-  (status.toLowerCase() as TaskStatus);
+  status.toLowerCase() as TaskStatus;
 
 function DiffsPanelContainer({
   attempt,
@@ -391,13 +391,7 @@ export function ProjectTasks() {
     });
 
     return columns;
-  }, [
-    hasSearch,
-    normalizedSearch,
-    tasks,
-    sharedOnlyByStatus,
-    sharedTasksById,
-  ]);
+  }, [hasSearch, normalizedSearch, tasks, sharedOnlyByStatus, sharedTasksById]);
 
   const visibleTasksByStatus = useMemo(() => {
     const map: Record<TaskStatus, Task[]> = {

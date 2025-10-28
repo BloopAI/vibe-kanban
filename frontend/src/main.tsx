@@ -39,6 +39,7 @@ import {
   GitActionsDialog,
   ShareDialog,
   ReassignDialog,
+  StopShareTaskDialog,
 } from './components/dialogs';
 import { CreateAttemptDialog } from './components/dialogs/tasks/CreateAttemptDialog';
 
@@ -68,6 +69,7 @@ NiceModal.register('create-attempt', CreateAttemptDialog);
 NiceModal.register('git-actions', GitActionsDialog);
 NiceModal.register('share-task', ShareDialog);
 NiceModal.register('reassign-shared-task', ReassignDialog);
+NiceModal.register('stop-share-shared-task', StopShareTaskDialog);
 
 import {
   useLocation,

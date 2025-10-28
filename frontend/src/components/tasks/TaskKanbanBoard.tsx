@@ -15,14 +15,14 @@ import { SharedTaskCard } from './SharedTaskCard';
 
 export type KanbanColumnItem =
   | {
-    type: 'task';
-    task: TaskWithAttemptStatus;
-    sharedTask?: SharedTaskRecord;
-  }
+      type: 'task';
+      task: TaskWithAttemptStatus;
+      sharedTask?: SharedTaskRecord;
+    }
   | {
-    type: 'shared';
-    task: SharedTaskRecord;
-  };
+      type: 'shared';
+      task: SharedTaskRecord;
+    };
 
 export type KanbanColumns = Record<TaskStatus, KanbanColumnItem[]>;
 
@@ -83,9 +83,8 @@ function TaskKanbanBoard({
                   );
                 }
 
-                const sharedTask = item.type === 'shared'
-                  ? item.task
-                  : item.sharedTask!;
+                const sharedTask =
+                  item.type === 'shared' ? item.task : item.sharedTask!;
 
                 return (
                   <SharedTaskCard

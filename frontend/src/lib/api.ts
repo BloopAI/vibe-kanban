@@ -467,6 +467,13 @@ export const tasksApi = {
 
     return handleApiResponse<AssignSharedTaskResponse>(response);
   },
+
+  unshare: async (sharedTaskId: string): Promise<void> => {
+    const response = await makeRequest(`/api/shared-tasks/${sharedTaskId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
 };
 
 // Task Attempts APIs

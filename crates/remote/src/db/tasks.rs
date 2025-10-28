@@ -26,10 +26,12 @@ pub struct SharedTask {
     pub project_id: Uuid,
     pub creator_user_id: Option<String>,
     pub assignee_user_id: Option<String>,
+    pub deleted_by_user_id: Option<String>,
     pub title: String,
     pub description: Option<String>,
     pub status: TaskStatus,
     pub version: i64,
+    pub deleted_at: Option<DateTime<Utc>>,
     pub shared_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -63,6 +65,12 @@ pub struct UpdateSharedTaskData {
 pub struct AssignTaskData {
     pub new_assignee_user_id: Option<String>,
     pub previous_assignee_user_id: Option<String>,
+    pub version: Option<i64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct DeleteTaskData {
+    pub acting_user_id: String,
     pub version: Option<i64>,
 }
 
@@ -117,16 +125,19 @@ impl<'a> SharedTaskRepository<'a> {
                 project_id          AS "project_id!",
                 creator_user_id     AS "creator_user_id?",
                 assignee_user_id    AS "assignee_user_id?",
+                deleted_by_user_id  AS "deleted_by_user_id?",
                 title               AS "title!",
                 description         AS "description?",
                 status              AS "status!: TaskStatus",
                 version             AS "version!",
+                deleted_at          AS "deleted_at?",
                 shared_at           AS "shared_at?",
                 created_at          AS "created_at!",
                 updated_at          AS "updated_at!"
             FROM shared_tasks
             WHERE id = $1
               AND organization_id = $2
+              AND deleted_at IS NULL
             "#,
             task_id,
             organization_id
@@ -199,10 +210,12 @@ impl<'a> SharedTaskRepository<'a> {
                       project_id         AS "project_id!",
                       creator_user_id    AS "creator_user_id?",
                       assignee_user_id   AS "assignee_user_id?",
+                      deleted_by_user_id AS "deleted_by_user_id?",
                       title              AS "title!",
                       description        AS "description?",
                       status             AS "status!: TaskStatus",
                       version            AS "version!",
+                      deleted_at         AS "deleted_at?",
                       shared_at          AS "shared_at?",
                       created_at         AS "created_at!",
                       updated_at         AS "updated_at!"
@@ -243,16 +256,19 @@ impl<'a> SharedTaskRepository<'a> {
           AND t.organization_id = $6
           AND t.version = COALESCE($5, t.version)
           AND t.assignee_user_id = $7
+          AND t.deleted_at IS NULL
         RETURNING
             t.id                AS "id!",
             t.organization_id   AS "organization_id!",
             t.project_id        AS "project_id!",
             t.creator_user_id   AS "creator_user_id?",
             t.assignee_user_id  AS "assignee_user_id?",
+            t.deleted_by_user_id AS "deleted_by_user_id?",
             t.title             AS "title!",
             t.description       AS "description?",
             t.status            AS "status!: TaskStatus",
             t.version           AS "version!",
+            t.deleted_at        AS "deleted_at?",
             t.shared_at         AS "shared_at?",
             t.created_at        AS "created_at!",
             t.updated_at        AS "updated_at!"
@@ -300,16 +316,19 @@ impl<'a> SharedTaskRepository<'a> {
           AND t.organization_id = $5
           AND t.version = COALESCE($4, t.version)
           AND ($3::text IS NULL OR t.assignee_user_id = $3::text)
+          AND t.deleted_at IS NULL
         RETURNING
             t.id                AS "id!",
             t.organization_id   AS "organization_id!",
             t.project_id        AS "project_id!",
             t.creator_user_id   AS "creator_user_id?",
             t.assignee_user_id  AS "assignee_user_id?",
+            t.deleted_by_user_id AS "deleted_by_user_id?",
             t.title             AS "title!",
             t.description       AS "description?",
             t.status            AS "status!: TaskStatus",
             t.version           AS "version!",
+            t.deleted_at        AS "deleted_at?",
             t.shared_at         AS "shared_at?",
             t.created_at        AS "created_at!",
             t.updated_at        AS "updated_at!"
@@ -333,6 +352,66 @@ impl<'a> SharedTaskRepository<'a> {
             })?;
 
         insert_activity(&mut tx, &task, &project, "task.assignment_transferred").await?;
+        tx.commit().await.map_err(SharedTaskError::from)?;
+        Ok(task)
+    }
+
+    pub async fn delete_task(
+        &self,
+        organization_id: &str,
+        task_id: Uuid,
+        data: DeleteTaskData,
+    ) -> Result<SharedTask, SharedTaskError> {
+        let mut tx = self.pool.begin().await.map_err(SharedTaskError::from)?;
+
+        let task = sqlx::query_as!(
+            SharedTask,
+            r#"
+        UPDATE shared_tasks AS t
+        SET deleted_at = NOW(),
+            deleted_by_user_id = $4,
+            version = t.version + 1,
+            updated_at = NOW()
+        WHERE t.id = $1
+          AND t.organization_id = $2
+          AND t.version = COALESCE($3, t.version)
+          AND t.assignee_user_id = $4
+          AND t.deleted_at IS NULL
+        RETURNING
+            t.id                AS "id!",
+            t.organization_id   AS "organization_id!",
+            t.project_id        AS "project_id!",
+            t.creator_user_id   AS "creator_user_id?",
+            t.assignee_user_id  AS "assignee_user_id?",
+            t.deleted_by_user_id AS "deleted_by_user_id?",
+            t.title             AS "title!",
+            t.description       AS "description?",
+            t.status            AS "status!: TaskStatus",
+            t.version           AS "version!",
+            t.deleted_at        AS "deleted_at?",
+            t.shared_at         AS "shared_at?",
+            t.created_at        AS "created_at!",
+            t.updated_at        AS "updated_at!"
+        "#,
+            task_id,
+            organization_id,
+            data.version,
+            data.acting_user_id
+        )
+        .fetch_optional(&mut *tx)
+        .await?
+        .ok_or_else(|| {
+            SharedTaskError::Conflict("task version mismatch or user not authorized".to_string())
+        })?;
+
+        let project = ProjectRepository::find_by_id(&mut tx, task.project_id, organization_id)
+            .await?
+            .ok_or_else(|| {
+                SharedTaskError::Conflict("project not found for shared task".to_string())
+            })?;
+
+        insert_activity(&mut tx, &task, &project, "task.deleted").await?;
+
         tx.commit().await.map_err(SharedTaskError::from)?;
         Ok(task)
     }

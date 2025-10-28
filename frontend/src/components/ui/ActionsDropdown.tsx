@@ -38,6 +38,7 @@ export function ActionsDropdown({
 
   const hasAttemptActions = Boolean(attempt);
   const hasTaskActions = Boolean(task);
+  const isShared = Boolean(sharedTask);
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -122,7 +123,7 @@ export function ActionsDropdown({
 
   const handleShare = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!task) return;
+    if (!task || isShared) return;
     NiceModal.show('share-task', { task });
   };
 
@@ -132,10 +133,18 @@ export function ActionsDropdown({
     NiceModal.show('reassign-shared-task', { sharedTask });
   };
 
+  const handleStopShare = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!sharedTask) return;
+    NiceModal.show('stop-share-shared-task', { sharedTask });
+  };
+
   const canReassign =
     Boolean(task) &&
     Boolean(sharedTask) &&
     sharedTask?.assignee_user_id === userId;
+  const canStopShare =
+    Boolean(sharedTask) && sharedTask?.assignee_user_id === userId;
 
   return (
     <>
@@ -195,15 +204,26 @@ export function ActionsDropdown({
           {hasTaskActions && (
             <>
               <DropdownMenuLabel>{t('actionsMenu.task')}</DropdownMenuLabel>
-              <DropdownMenuItem disabled={!task} onClick={handleShare}>
+              <DropdownMenuItem
+                disabled={!task || isShared}
+                onClick={handleShare}
+              >
                 {t('actionsMenu.share')}
               </DropdownMenuItem>
               <DropdownMenuItem
                 disabled={!canReassign}
                 onClick={handleReassign}
               >
-                Reassign
+                {t('actionsMenu.reassign')}
               </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!canStopShare}
+                onClick={handleStopShare}
+                className="text-destructive"
+              >
+                {t('actionsMenu.stopShare')}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem disabled={!projectId} onClick={handleEdit}>
                 {t('common:buttons.edit')}
               </DropdownMenuItem>

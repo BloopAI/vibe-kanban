@@ -266,7 +266,17 @@
     "gitActions": "Git actions",
     "task": "Task",
     "share": "Share",
+    "reassign": "Reassign",
+    "stopShare": "Stop share",
     "duplicate": "Duplicate"
+  },
+  "stopShareDialog": {
+    "title": "Stop Sharing Task",
+    "description": "Stop sharing \"{{title}}\" with your organization?",
+    "warning": "Stop sharing removes the shared task from your organization, but keeps your local task.",
+    "confirm": "Stop share task",
+    "inProgress": "Stop sharing...",
+    "genericError": "Failed to stop sharing task. Please try again."
   },
   "shareDialog": {
     "title": "Share Task",
