@@ -48,6 +48,7 @@ impl ActivityProcessor {
                             &self.db.pool,
                             &shared_task,
                             current_user_id,
+                            task.creator_user_id.as_deref(),
                         )
                         .await?;
                     } else {

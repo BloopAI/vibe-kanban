@@ -15,9 +15,7 @@ use reqwest::{Client as HttpClient, StatusCode};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use super::{
-    ShareConfig, ShareError, convert_remote_task, status, sync_local_task_for_shared_task,
-};
+use super::{ShareConfig, ShareError, convert_remote_task, status};
 use crate::services::{
     clerk::ClerkSession, config::Config, git::GitService, github_service::GitHubService,
 };
