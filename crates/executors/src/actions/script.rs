@@ -46,7 +46,6 @@ impl Executable for ScriptRequest {
             .stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
-            .env("COMPOSE_INTERACTIVE_NO_CLI", "1")
             .arg(shell_arg)
             .arg(&self.script)
             .current_dir(current_dir);
