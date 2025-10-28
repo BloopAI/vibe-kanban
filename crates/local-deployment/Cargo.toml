@@ -37,3 +37,7 @@ async-stream = "0.3"
 json-patch = "2.0"
 tokio = { workspace = true }
 tokio-stream = { version = "0.1.17", features = ["sync"] }
+
+# lock mac-notification-sys on v0.6.6 until the macOS linker fix is released/
+# https://github.com/h4llow3En/mac-notification-sys/blame/7798ad033f3422b0fc9cdd25c17d3c400f4b7ef0/build.rs#L26
+mac-notification-sys = "=0.6.6"
