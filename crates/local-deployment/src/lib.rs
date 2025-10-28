@@ -111,6 +111,11 @@ impl Deployment for LocalDeployment {
 
         let approvals = Approvals::new(msg_stores.clone());
 
+        let has_github_token = {
+            let cfg = config.read().await;
+            cfg.github.token().is_some()
+        };
+
         let clerk_sessions = ClerkSessionStore::new();
         let clerk_auth = match ClerkPublicConfig::from_env() {
             Ok(public_config) => Some(Arc::new(public_config.build_auth()?)),
@@ -164,7 +169,7 @@ impl Deployment for LocalDeployment {
         let drafts = DraftsService::new(db.clone(), image.clone());
         let file_search_cache = Arc::new(FileSearchCache::new());
 
-        Ok(Self {
+        let deployment = Self {
             config,
             user_id,
             db,
@@ -183,7 +188,13 @@ impl Deployment for LocalDeployment {
             _share_sync: share_sync_handle,
             clerk_sessions,
             clerk_auth,
-        })
+        };
+
+        if has_github_token {
+            deployment.refresh_remote_metadata_background();
+        }
+
+        Ok(deployment)
     }
 
     fn user_id(&self) -> &str {
