@@ -127,7 +127,12 @@ impl Deployment for LocalDeployment {
         };
         let mut share_sync_handle = None;
         let share_publisher = if clerk_auth.is_some() {
-            match SharePublisher::new(db.clone(), git.clone(), config.clone()) {
+            match SharePublisher::new(
+                db.clone(),
+                git.clone(),
+                config.clone(),
+                clerk_sessions.clone(),
+            ) {
                 Ok(publisher) => {
                     // start remote server sync communication
                     share_sync_handle =

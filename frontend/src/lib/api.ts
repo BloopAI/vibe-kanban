@@ -121,6 +121,28 @@ async function getClerkToken(): Promise<string | null> {
   }
 }
 
+export async function refreshClerkSession(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  const clerk = window.Clerk;
+
+  if (!clerk?.session) {
+    await maybeClearClerkSession();
+    return;
+  }
+
+  try {
+    const token = await clerk.session.getToken({ skipCache: true });
+
+    if (token) {
+      await registerClerkSession(token);
+    } else {
+      await maybeClearClerkSession();
+    }
+  } catch (error) {
+    console.warn('Failed to refresh Clerk session token', error);
+  }
+}
+
 async function registerClerkSession(token: string): Promise<void> {
   if (!token) return;
 
