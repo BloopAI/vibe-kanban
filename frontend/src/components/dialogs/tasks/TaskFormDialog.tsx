@@ -30,7 +30,12 @@ import { AgentSelector } from '@/components/tasks/AgentSelector';
 import { ConfigSelector } from '@/components/tasks/ConfigSelector';
 import { useTaskMutations } from '@/hooks/useTaskMutations';
 import { useUserSystem } from '@/components/config-provider';
-import { imagesApi, projectsApi, attemptsApi } from '@/lib/api';
+import { imagesApi } from '@/lib/api';
+import {
+  useProjectBranches,
+  useTaskAttempt,
+  useImageUpload,
+} from '@/hooks';
 import { useKeySubmitTask, useKeySubmitTaskAlt, Scope } from '@/keyboard';
 import { cn } from '@/lib/utils';
 import type {
@@ -152,6 +157,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
     const { createTask, createAndStart, updateTask } =
       useTaskMutations(projectId);
     const { system, profiles } = useUserSystem();
+    const { upload, deleteImage } = useImageUpload();
     const mode = task ? 'edit' : 'create';
 
     const init = (initialState: State): State => {
@@ -185,74 +191,41 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
     const dragCounterRef = useRef(0);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Fetch branches in create mode
+    const { data: projectBranches } = useProjectBranches(
+      mode === 'create' ? projectId : undefined
+    );
+    const { data: parentAttempt } = useTaskAttempt(
+      mode === 'create' && !initialBaseBranch ? parentTaskAttemptId : undefined
+    );
+
+    // Set branches when loaded
     useEffect(() => {
-      if (!modal.visible || mode === 'edit' || !projectId) return;
+      if (!projectBranches) return;
+      dispatch({ type: 'set_branches', payload: projectBranches });
 
-      let cancelled = false;
-      projectsApi
-        .getBranches(projectId)
-        .then((projectBranches) => {
-          if (cancelled) return;
-          dispatch({ type: 'set_branches', payload: projectBranches });
-
-          if (
-            initialBaseBranch &&
-            projectBranches.some((b) => b.name === initialBaseBranch)
-          ) {
-            dispatch({ type: 'set_branch', payload: initialBaseBranch });
-          } else {
-            const currentBranch = projectBranches.find((b) => b.is_current);
-            const defaultBranch = currentBranch || projectBranches[0];
-            if (defaultBranch) {
-              dispatch({ type: 'set_branch', payload: defaultBranch.name });
-            }
-          }
-        })
-        .catch(console.error);
-
-      return () => {
-        cancelled = true;
-      };
-    }, [modal.visible, mode, projectId, initialBaseBranch]);
-
-    // Fetch parent base branch when parentTaskAttemptId is provided
-    useEffect(() => {
       if (
-        !modal.visible ||
-        mode === 'edit' ||
-        !parentTaskAttemptId ||
-        initialBaseBranch ||
-        state.branches.length === 0
+        initialBaseBranch &&
+        projectBranches.some((b) => b.name === initialBaseBranch)
       ) {
-        return;
+        dispatch({ type: 'set_branch', payload: initialBaseBranch });
+      } else {
+        const currentBranch = projectBranches.find((b) => b.is_current);
+        const defaultBranch = currentBranch || projectBranches[0];
+        if (defaultBranch) {
+          dispatch({ type: 'set_branch', payload: defaultBranch.name });
+        }
       }
+    }, [projectBranches, initialBaseBranch]);
 
-      let cancelled = false;
-      attemptsApi
-        .get(parentTaskAttemptId)
-        .then((attempt) => {
-          if (cancelled) return;
-          const parentBranch = attempt.branch || attempt.target_branch;
-          if (
-            parentBranch &&
-            state.branches.some((b) => b.name === parentBranch)
-          ) {
-            dispatch({ type: 'set_branch', payload: parentBranch });
-          }
-        })
-        .catch(() => {});
+    // Set branch from parent attempt when loaded
+    useEffect(() => {
+      if (!parentAttempt || !state.branches.length) return;
 
-      return () => {
-        cancelled = true;
-      };
-    }, [
-      modal.visible,
-      mode,
-      parentTaskAttemptId,
-      initialBaseBranch,
-      state.branches,
-    ]);
+      const parentBranch = parentAttempt.branch || parentAttempt.target_branch;
+      if (parentBranch && state.branches.some((b) => b.name === parentBranch)) {
+        dispatch({ type: 'set_branch', payload: parentBranch });
+      }
+    }, [parentAttempt, state.branches]);
 
     // Load images for edit mode
     useEffect(() => {
@@ -633,8 +606,8 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                   onImagesChange={(imgs) =>
                     dispatch({ type: 'set_images', payload: imgs })
                   }
-                  onUpload={imagesApi.upload}
-                  onDelete={imagesApi.delete}
+                  onUpload={upload}
+                  onDelete={deleteImage}
                   onImageUploaded={(img) => {
                     const markdownText = `![${img.original_name}](${img.file_path})`;
                     const newDescription =
