@@ -65,7 +65,9 @@ const BranchRow = memo(function BranchRow({
       className={classes.trim()}
     >
       <div className="flex items-center justify-between w-full gap-2">
-        <span className={`${nameClass} truncate flex-1 min-w-0`}>{branch.name}</span>
+        <span className={`${nameClass} truncate flex-1 min-w-0`}>
+          {branch.name}
+        </span>
         <div className="flex gap-1 flex-shrink-0">
           {branch.is_current && (
             <span className="text-xs bg-background px-1 rounded">
