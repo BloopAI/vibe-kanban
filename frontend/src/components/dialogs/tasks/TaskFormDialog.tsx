@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef, useReducer, forwardRef, useImperativeHandle, useState } from 'react';
+import { useEffect, useCallback, useRef, useReducer, useState } from 'react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { Plus, Image as ImageIcon } from 'lucide-react';
 import { TaskDialog } from './TaskDialog';
@@ -127,7 +127,8 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
     const mode = task ? 'edit' : 'create';
 
     const [state, dispatch] = useReducer(reducer, initialState);
-    const descriptionRowRef = useRef<DescriptionRowHandle>(null);
+    const imageUploadRef = useRef<ImageUploadSectionHandle>(null);
+    const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
     const dragCounterRef = useRef(0);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -279,14 +280,30 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
 
       if (files.length > 0) {
         dispatch({ type: 'set_show_upload', payload: true });
-        descriptionRowRef.current?.addFiles(files);
+        if (imageUploadRef.current) {
+          imageUploadRef.current.addFiles(files);
+        } else {
+          setPendingFiles(files);
+        }
       }
     }, [state.isSubmitting]);
 
     const handleFiles = useCallback((files: File[]) => {
       dispatch({ type: 'set_show_upload', payload: true });
-      descriptionRowRef.current?.addFiles(files);
+      if (imageUploadRef.current) {
+        imageUploadRef.current.addFiles(files);
+      } else {
+        setPendingFiles(files);
+      }
     }, []);
+
+    // Apply pending files when ImageUploadSection becomes available
+    useEffect(() => {
+      if (pendingFiles && imageUploadRef.current) {
+        imageUploadRef.current.addFiles(pendingFiles);
+        setPendingFiles(null);
+      }
+    }, [pendingFiles, state.showImageUpload]);
 
     // Unsaved changes detection
     const hasUnsavedChanges = useCallback(() => {
@@ -494,29 +511,46 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                 />
               </div>
 
-              {/* Description + Images */}
-              <DescriptionRow
-                ref={descriptionRowRef}
-                projectId={projectId}
-                disabled={state.isSubmitting}
-                description={state.description}
-                images={state.images}
-                showImageUpload={state.showImageUpload}
-                onDescriptionChange={(desc) => dispatch({ type: 'set_description', payload: desc })}
-                onImagesChange={(imgs) => dispatch({ type: 'set_images', payload: imgs })}
-                onImageUploaded={(img) => {
-                  const markdownText = `![${img.original_name}](${img.file_path})`;
-                  const newDescription =
-                    state.description.trim() === ''
-                      ? markdownText
-                      : state.description + ' ' + markdownText;
-                  dispatch({ type: 'set_description', payload: newDescription });
-                  dispatch({ type: 'set_images', payload: [...state.images, img] });
-                  dispatch({ type: 'set_show_upload', payload: true });
-                  dispatch({ type: 'add_uploaded_id', payload: img.id });
-                }}
-                onPasteFiles={handleFiles}
-              />
+              {/* Description */}
+              <div>
+                <FileSearchTextarea
+                  value={state.description}
+                  onChange={(desc) => dispatch({ type: 'set_description', payload: desc })}
+                  rows={4}
+                  maxRows={35}
+                  placeholder="Add more details (optional). Type @ to search files."
+                  className="border-none shadow-none px-0 resize-none placeholder:text-muted-foreground/60 focus-visible:ring-0"
+                  disabled={state.isSubmitting}
+                  projectId={projectId}
+                  onPasteFiles={handleFiles}
+                />
+              </div>
+
+              {/* Images */}
+              {state.showImageUpload && (
+                <ImageUploadSection
+                  ref={imageUploadRef}
+                  images={state.images}
+                  onImagesChange={(imgs) => dispatch({ type: 'set_images', payload: imgs })}
+                  onUpload={imagesApi.upload}
+                  onDelete={imagesApi.delete}
+                  onImageUploaded={(img) => {
+                    const markdownText = `![${img.original_name}](${img.file_path})`;
+                    const newDescription =
+                      state.description.trim() === ''
+                        ? markdownText
+                        : state.description + ' ' + markdownText;
+                    dispatch({ type: 'set_description', payload: newDescription });
+                    dispatch({ type: 'set_images', payload: [...state.images, img] });
+                    dispatch({ type: 'set_show_upload', payload: true });
+                    dispatch({ type: 'add_uploaded_id', payload: img.id });
+                  }}
+                  disabled={state.isSubmitting}
+                  collapsible={false}
+                  defaultExpanded={true}
+                  hideDropZone={true}
+                />
+              )}
 
               {/* Create mode dropdowns */}
               {mode === 'create' && (
@@ -686,77 +720,5 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
   }
 );
 
-interface DescriptionRowHandle {
-  addFiles: (files: File[]) => void;
-}
-
-interface DescriptionRowProps {
-  projectId?: string;
-  disabled?: boolean;
-  description: string;
-  images: ImageResponse[];
-  showImageUpload: boolean;
-  onDescriptionChange: (desc: string) => void;
-  onImagesChange: (imgs: ImageResponse[]) => void;
-  onImageUploaded: (img: ImageResponse) => void;
-  onPasteFiles?: (files: File[]) => void;
-}
-
-const DescriptionRow = forwardRef<DescriptionRowHandle, DescriptionRowProps>(
-  ({ projectId, disabled, description, images, showImageUpload, onDescriptionChange, onImagesChange, onImageUploaded, onPasteFiles }, ref) => {
-    const imageUploadRef = useRef<ImageUploadSectionHandle>(null);
-    const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
-
-    useImperativeHandle(ref, () => ({
-      addFiles: (files: File[]) => {
-        if (imageUploadRef.current) {
-          imageUploadRef.current.addFiles(files);
-        } else {
-          setPendingFiles(files);
-        }
-      },
-    }));
-
-    useEffect(() => {
-      if (pendingFiles && imageUploadRef.current) {
-        imageUploadRef.current.addFiles(pendingFiles);
-        setPendingFiles(null);
-      }
-    }, [pendingFiles, showImageUpload]);
-
-    return (
-      <>
-        <div>
-          <FileSearchTextarea
-            value={description}
-            onChange={onDescriptionChange}
-            rows={4}
-            maxRows={35}
-            placeholder="Add more details (optional). Type @ to search files."
-            className="border-none shadow-none px-0 resize-none placeholder:text-muted-foreground/60 focus-visible:ring-0"
-            disabled={disabled}
-            projectId={projectId}
-            onPasteFiles={onPasteFiles}
-          />
-        </div>
-
-        {showImageUpload && (
-          <ImageUploadSection
-            ref={imageUploadRef}
-            images={images}
-            onImagesChange={onImagesChange}
-            onUpload={imagesApi.upload}
-            onDelete={imagesApi.delete}
-            onImageUploaded={onImageUploaded}
-            disabled={disabled}
-            collapsible={false}
-            defaultExpanded={true}
-            hideDropZone={true}
-          />
-        )}
-      </>
-    );
-  }
-);
 
 
