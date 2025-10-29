@@ -73,7 +73,6 @@ type State = {
 };
 
 type Action =
-  | { type: 'init'; payload: Partial<State> }
   | { type: 'set_title'; payload: string }
   | { type: 'set_description'; payload: string }
   | { type: 'set_status'; payload: TaskStatus }
@@ -89,9 +88,8 @@ type Action =
   | { type: 'reset' };
 
 function reducer(state: State, action: Action): State {
+  console.log('ACTION: ', action);
   switch (action.type) {
-    case 'init':
-      return { ...initialState, ...action.payload };
     case 'set_title':
       return { ...state, title: action.payload };
     case 'set_description':
@@ -155,7 +153,32 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
     const { system, profiles } = useUserSystem();
     const mode = task ? 'edit' : 'create';
 
-    const [state, dispatch] = useReducer(reducer, initialState);
+    const init = (initialState: State): State => {
+      // Initialize state based on props
+      if (task) {
+        return {
+          ...initialState,
+          title: task.title,
+          description: task.description || '',
+          status: task.status,
+        };
+      } else if (initialTask) {
+        return {
+          ...initialState,
+          title: initialTask.title,
+          description: initialTask.description || '',
+          status: 'todo',
+          selectedExecutorProfile: system.config?.executor_profile || null,
+        };
+      } else {
+        return {
+          ...initialState,
+          selectedExecutorProfile: system.config?.executor_profile || null,
+        };
+      }
+    };
+
+    const [state, dispatch] = useReducer(reducer, initialState, init);
     const imageUploadRef = useRef<ImageUploadSectionHandle>(null);
     const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
     const dragCounterRef = useRef(0);
@@ -244,42 +267,6 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
           dispatch({ type: 'set_images', payload: [] });
         });
     }, [task?.id, modal.visible]);
-
-    // Initialize form state
-    useEffect(() => {
-      if (!modal.visible) return;
-
-      if (task) {
-        dispatch({
-          type: 'init',
-          payload: {
-            title: task.title,
-            description: task.description || '',
-            status: task.status,
-            selectedBranch: state.selectedBranch,
-          },
-        });
-      } else if (initialTask) {
-        dispatch({
-          type: 'init',
-          payload: {
-            title: initialTask.title,
-            description: initialTask.description || '',
-            status: 'todo',
-            selectedExecutorProfile: system.config?.executor_profile || null,
-            selectedBranch: state.selectedBranch,
-          },
-        });
-      } else {
-        dispatch({
-          type: 'init',
-          payload: {
-            selectedExecutorProfile: system.config?.executor_profile || null,
-            selectedBranch: state.selectedBranch,
-          },
-        });
-      }
-    }, [task, initialTask, modal.visible, system.config?.executor_profile]);
 
     // Drag & drop handlers
     const [isDraggingFile, setIsDraggingFile] = useState(false);
@@ -386,7 +373,6 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       const handleBeforeUnload = (e: BeforeUnloadEvent) => {
         if (hasUnsavedChanges()) {
           e.preventDefault();
-          e.returnValue = '';
           return '';
         }
       };
@@ -563,6 +549,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
     // Dialog close handling
     const handleDialogClose = (open: boolean) => {
       if (!open && hasUnsavedChanges()) {
+        // attempting to close the dialog
         dispatch({ type: 'set_discard', payload: true });
       } else if (!open) {
         modal.hide();
@@ -699,20 +686,18 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                       />
                     </>
                   )}
-                  {state.branches.length > 0 && (
-                    <BranchSelector
-                      branches={state.branches}
-                      selectedBranch={state.selectedBranch}
-                      onBranchSelect={(branch) =>
-                        dispatch({ type: 'set_branch', payload: branch })
-                      }
-                      placeholder="Branch"
-                      className={cn(
-                        'h-9 flex-1 text-xs',
-                        state.isSubmitting && 'opacity-50 cursor-not-allowed'
-                      )}
-                    />
-                  )}
+                  <BranchSelector
+                    branches={state.branches}
+                    selectedBranch={state.selectedBranch}
+                    onBranchSelect={(branch) =>
+                      dispatch({ type: 'set_branch', payload: branch })
+                    }
+                    placeholder="Branch"
+                    className={cn(
+                      'h-9 flex-1 text-xs',
+                      state.isSubmitting && 'opacity-50 cursor-not-allowed'
+                    )}
+                  />
                 </div>
               )}
 
