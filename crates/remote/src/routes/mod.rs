@@ -13,6 +13,7 @@ pub fn router(state: AppState) -> Router {
     let api = Router::<AppState>::new()
         .route("/health", get(health))
         .route("/v1/activity", get(activity::get_activity_stream))
+        .route("/v1/tasks/bulk", get(tasks::bulk_shared_tasks))
         .route("/v1/tasks", post(tasks::create_shared_task))
         .route("/v1/tasks/{task_id}", patch(tasks::update_shared_task))
         .route("/v1/tasks/{task_id}", delete(tasks::delete_shared_task))

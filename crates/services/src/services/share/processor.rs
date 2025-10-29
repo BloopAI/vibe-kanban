@@ -1,13 +1,16 @@
+use std::collections::HashSet;
+
 use db::{
     DBService,
     models::{
         project::Project,
-        shared_task::{SharedActivityCursor, SharedTask},
+        shared_task::{SharedActivityCursor, SharedTask, SharedTaskInput},
         task::Task,
     },
 };
 use remote::{
     activity::{ActivityEvent, ActivityResponse},
+    api::tasks::BulkSharedTasksResponse,
     db::{projects::ProjectMetadata, tasks::SharedTaskActivityPayload},
 };
 use reqwest::Client as HttpClient;
@@ -16,9 +19,14 @@ use uuid::Uuid;
 use super::{ShareConfig, ShareError, convert_remote_task, sync_local_task_for_shared_task};
 use crate::services::clerk::{ClerkSession, ClerkSessionStore};
 
+struct PreparedBulkTask {
+    input: SharedTaskInput,
+    creator_user_id: Option<String>,
+}
+
 /// Processor for handling activity events and synchronizing shared tasks.
 #[derive(Clone)]
-pub(super) struct ActivityProcessor {
+pub struct ActivityProcessor {
     db: DBService,
     config: ShareConfig,
     client: HttpClient,
@@ -45,25 +53,42 @@ impl ActivityProcessor {
         Ok(())
     }
 
-    /// Fetch and process activity events until caught up.
+    /// Fetch and process activity events until caught up, falling back to bulk syncs when needed.
     pub async fn catch_up(
         &self,
         session: &ClerkSession,
         mut last_seq: Option<i64>,
     ) -> Result<Option<i64>, ShareError> {
+        if last_seq.is_none() {
+            last_seq = self.bulk_sync(session).await?;
+        }
+
         loop {
             let events = self.fetch_activity(session, last_seq).await?;
             if events.is_empty() {
                 break;
             }
-            for ev in events.iter() {
+
+            // Perform a bulk sync if we've fallen too far behind
+            if let Some(prev_seq) = last_seq
+                && let Some(newest) = events.last()
+                && newest.seq.saturating_sub(prev_seq) > self.config.bulk_sync_threshold as i64
+            {
+                last_seq = self.bulk_sync(session).await?;
+                continue;
+            }
+
+            let page_len = events.len();
+            for ev in events {
                 self.process_event(ev.clone()).await?;
                 last_seq = Some(ev.seq);
             }
-            if events.len() < (self.config.activity_page_limit as usize) {
+
+            if page_len < (self.config.activity_page_limit as usize) {
                 break;
             }
         }
+
         Ok(last_seq)
     }
 
@@ -189,5 +214,123 @@ impl ActivityProcessor {
 
         SharedTask::remove(&self.db.pool, task.id).await?;
         Ok(())
+    }
+
+    async fn bulk_sync(&self, session: &ClerkSession) -> Result<Option<i64>, ShareError> {
+        let org_id = session.org_id.clone().ok_or(ShareError::MissingAuth)?;
+
+        let snapshot = self.fetch_bulk_snapshot(session).await?;
+        let latest_seq = snapshot.latest_seq;
+
+        let mut keep_ids = HashSet::new();
+        let mut replacements = Vec::new();
+
+        for payload in snapshot.tasks {
+            match self
+                .resolve_project_id(payload.task.id, &payload.project)
+                .await?
+            {
+                Some(project_id) => {
+                    keep_ids.insert(payload.task.id);
+                    let input = convert_remote_task(&payload.task, project_id, latest_seq);
+                    replacements.push(PreparedBulkTask {
+                        input,
+                        creator_user_id: payload.task.creator_user_id.clone(),
+                    });
+                }
+                None => {
+                    tracing::warn!(
+                        task_id = %payload.task.id,
+                        repo_id = payload.project.github_repository_id,
+                        owner = %payload.project.owner,
+                        name = %payload.project.name,
+                        "skipping shared task during bulk sync; project not found locally"
+                    );
+                }
+            }
+        }
+
+        let mut stale: HashSet<Uuid> = SharedTask::list_by_organization(&self.db.pool, &org_id)
+            .await?
+            .into_iter()
+            .filter_map(|task| {
+                if keep_ids.contains(&task.id) {
+                    None
+                } else {
+                    Some(task.id)
+                }
+            })
+            .collect();
+
+        for deleted in snapshot.deleted_task_ids {
+            if !keep_ids.contains(&deleted) {
+                stale.insert(deleted);
+            }
+        }
+
+        let stale_vec: Vec<Uuid> = stale.into_iter().collect();
+        self.remove_stale_tasks(&stale_vec).await?;
+
+        let current_session = self.sessions.active().await;
+        let current_user_id = current_session.as_ref().map(|s| s.user_id.as_str());
+
+        for PreparedBulkTask {
+            input,
+            creator_user_id,
+        } in replacements
+        {
+            let shared_task = SharedTask::upsert(&self.db.pool, input).await?;
+            sync_local_task_for_shared_task(
+                &self.db.pool,
+                &shared_task,
+                current_user_id,
+                creator_user_id.as_deref(),
+            )
+            .await?;
+        }
+
+        if let Some(seq) = latest_seq {
+            SharedActivityCursor::upsert(&self.db.pool, org_id, seq).await?;
+        }
+
+        Ok(latest_seq)
+    }
+
+    async fn remove_stale_tasks(&self, ids: &[Uuid]) -> Result<(), ShareError> {
+        if ids.is_empty() {
+            return Ok(());
+        }
+
+        for id in ids {
+            if let Some(local_task) = Task::find_by_shared_task_id(&self.db.pool, *id).await? {
+                Task::set_shared_task_id(&self.db.pool, local_task.id, None).await?;
+            }
+        }
+
+        SharedTask::remove_many(&self.db.pool, ids).await?;
+        Ok(())
+    }
+
+    async fn fetch_bulk_snapshot(
+        &self,
+        session: &ClerkSession,
+    ) -> Result<BulkSharedTasksResponse, ShareError> {
+        let url = self.config.bulk_tasks_endpoint()?;
+
+        let resp = self
+            .client
+            .get(url)
+            .bearer_auth(session.bearer())
+            .send()
+            .await
+            .map_err(ShareError::Transport)?;
+
+        if resp.status() == reqwest::StatusCode::UNAUTHORIZED {
+            return Err(ShareError::MissingAuth);
+        }
+
+        let resp = resp.error_for_status().map_err(ShareError::Transport)?;
+        let body = resp.json::<BulkSharedTasksResponse>().await?;
+        Ok(body)
     }
 }
