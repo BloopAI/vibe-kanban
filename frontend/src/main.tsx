@@ -42,6 +42,7 @@ import {
   StopShareTaskDialog,
 } from './components/dialogs';
 import { CreateAttemptDialog } from './components/dialogs/tasks/CreateAttemptDialog';
+import { ClerkSessionRefresher } from './components/ClerkSessionRefresher';
 
 // Register modals
 NiceModal.register('github-login', GitHubLoginDialog);
@@ -137,6 +138,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           >
             <ClickToComponent />
             <VibeKanbanWebCompanion />
+            <ClerkSessionRefresher />
             <App />
             {/* <ReactQueryDevtools initialIsOpen={false} /> */}
           </Sentry.ErrorBoundary>
