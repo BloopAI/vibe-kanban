@@ -33,7 +33,7 @@ export {
 export {
   TaskFormDialog,
   type TaskFormDialogProps,
-} from './tasks/TaskForm/TaskFormDialog';
+} from './tasks/TaskFormDialog';
 
 export { CreatePRDialog } from './tasks/CreatePRDialog';
 export {
