@@ -101,6 +101,7 @@ jobs:
           cd ..
 
           cargo set-version --workspace "$new_version"
+          cargo generate-lockfile
 
           echo "New version: $new_version"
           echo "new_version=$new_version" >> $GITHUB_OUTPUT
@@ -110,7 +111,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add package.json pnpm-lock.yaml npx-cli/package.json frontend/package.json 
+          git add package.json pnpm-lock.yaml npx-cli/package.json frontend/package.json Cargo.lock
           git add $(find . -name Cargo.toml) 
           git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
           git tag -a ${{ steps.version.outputs.new_tag }} -m "Release ${{ steps.version.outputs.new_tag }}"
