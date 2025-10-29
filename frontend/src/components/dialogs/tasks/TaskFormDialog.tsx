@@ -157,6 +157,13 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
     const { upload, deleteImage } = useImageUpload();
     const mode = task ? 'edit' : 'create';
 
+    const reset = (initialState: State): State => {
+      return {
+        ...initialState,
+        selectedExecutorProfile: system.config?.executor_profile || null,
+      };
+    };
+
     const init = (initialState: State): State => {
       // Initialize state based on props
       if (task) {
@@ -175,10 +182,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
           selectedExecutorProfile: system.config?.executor_profile || null,
         };
       } else {
-        return {
-          ...initialState,
-          selectedExecutorProfile: system.config?.executor_profile || null,
-        };
+        return reset(initialState);
       }
     };
 
@@ -471,7 +475,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
 
     const handleDiscardChanges = () => {
       dispatch({ type: 'set_discard', payload: false });
-      dispatch({ type: 'reset', payload: init(initialState) });
+      dispatch({ type: 'reset', payload: reset(initialState) });
       modal.hide();
     };
 
