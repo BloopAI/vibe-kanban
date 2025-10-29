@@ -10,8 +10,8 @@ use uuid::Uuid;
 use crate::{
     AppState,
     api::tasks::{
-        AssignSharedTaskRequest, CreateSharedTaskRequest, DeleteSharedTaskRequest,
-        SharedTaskResponse, UpdateSharedTaskRequest,
+        AssignSharedTaskRequest, BulkSharedTasksResponse, CreateSharedTaskRequest,
+        DeleteSharedTaskRequest, SharedTaskResponse, UpdateSharedTaskRequest,
     },
     auth::RequestContext,
     db::{
@@ -22,6 +22,35 @@ use crate::{
         },
     },
 };
+
+pub async fn bulk_shared_tasks(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+) -> Response {
+    let repo = SharedTaskRepository::new(state.pool());
+    match repo.bulk_fetch(&ctx.organization.id).await {
+        Ok(snapshot) => (
+            StatusCode::OK,
+            Json(BulkSharedTasksResponse {
+                tasks: snapshot.tasks,
+                deleted_task_ids: snapshot.deleted_task_ids,
+                latest_seq: snapshot.latest_seq,
+            }),
+        )
+            .into_response(),
+        Err(error) => match error {
+            SharedTaskError::Database(err) => {
+                tracing::error!(?err, "failed to load shared task snapshot");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "error": "failed to load shared tasks" })),
+                )
+                    .into_response()
+            }
+            other => task_error_response(other, "failed to load shared tasks"),
+        },
+    }
+}
 
 pub async fn create_shared_task(
     State(state): State<AppState>,

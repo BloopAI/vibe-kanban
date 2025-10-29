@@ -2,8 +2,15 @@ use serde::{Deserialize, Serialize};
 
 use crate::db::{
     projects::ProjectMetadata,
-    tasks::{SharedTask, TaskStatus},
+    tasks::{SharedTask, SharedTaskActivityPayload, TaskStatus},
 };
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BulkSharedTasksResponse {
+    pub tasks: Vec<SharedTaskActivityPayload>,
+    pub deleted_task_ids: Vec<uuid::Uuid>,
+    pub latest_seq: Option<i64>,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateSharedTaskRequest {

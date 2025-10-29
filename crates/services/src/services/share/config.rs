@@ -3,12 +3,14 @@ use utils::ws::derive_ws_url;
 use uuid::Uuid;
 
 const DEFAULT_ACTIVITY_LIMIT: u32 = 200;
+const DEFAULT_BULK_SYNC_THRESHOLD: u32 = 500;
 
 #[derive(Clone)]
 pub struct ShareConfig {
     pub api_base: Url,
     pub websocket_base: Url,
     pub activity_page_limit: u32,
+    pub bulk_sync_threshold: u32,
 }
 
 impl ShareConfig {
@@ -21,6 +23,7 @@ impl ShareConfig {
             api_base,
             websocket_base,
             activity_page_limit: DEFAULT_ACTIVITY_LIMIT,
+            bulk_sync_threshold: DEFAULT_BULK_SYNC_THRESHOLD,
         })
     }
 
@@ -30,6 +33,10 @@ impl ShareConfig {
 
     pub fn create_task_endpoint(&self) -> Result<Url, url::ParseError> {
         self.api_base.join("/v1/tasks")
+    }
+
+    pub fn bulk_tasks_endpoint(&self) -> Result<Url, url::ParseError> {
+        self.api_base.join("/v1/tasks/bulk")
     }
 
     pub fn update_task_endpoint(&self, task_id: Uuid) -> Result<Url, url::ParseError> {
