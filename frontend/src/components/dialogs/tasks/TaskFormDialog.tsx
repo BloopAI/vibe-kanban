@@ -590,22 +590,22 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
               </div>
             )}
 
-            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-1 pb-3">
-              {/* Title */}
-              <div className="pr-8 pt-3">
-                <Input
-                  id="task-title"
-                  value={state.title}
-                  onChange={(e) =>
-                    dispatch({ type: 'set_title', payload: e.target.value })
-                  }
-                  placeholder={t('taskFormDialog.titlePlaceholder')}
-                  className="text-lg font-medium border-none shadow-none px-0 placeholder:text-muted-foreground/60 focus-visible:ring-0"
-                  disabled={state.isSubmitting}
-                  autoFocus
-                />
-              </div>
+            {/* Title */}
+            <div className="flex-none pr-8 pt-3">
+              <Input
+                id="task-title"
+                value={state.title}
+                onChange={(e) =>
+                  dispatch({ type: 'set_title', payload: e.target.value })
+                }
+                placeholder={t('taskFormDialog.titlePlaceholder')}
+                className="text-lg font-medium border-none shadow-none px-0 placeholder:text-muted-foreground/60 focus-visible:ring-0"
+                disabled={state.isSubmitting}
+                autoFocus
+              />
+            </div>
 
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-1 pb-3">
               {/* Description */}
               <div>
                 <FileSearchTextarea
@@ -620,6 +620,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                   disabled={state.isSubmitting}
                   projectId={projectId}
                   onPasteFiles={handleFiles}
+                  disableScroll={true}
                 />
               </div>
 
@@ -702,7 +703,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
             {mode === 'create' && (
               <div
                 className={cn(
-                  'flex items-center gap-2 h-9 py-2 mb-2 transition-opacity duration-200',
+                  'flex items-center gap-2 h-9 py-2 my-2 transition-opacity duration-200',
                   state.autoStart
                     ? 'opacity-100'
                     : 'opacity-0 pointer-events-none'

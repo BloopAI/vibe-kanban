@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { projectsApi, tagsApi } from '@/lib/api';
 import { Tag as TagIcon, FileText } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 import type { SearchResult, Tag } from 'shared/types';
 
@@ -32,6 +33,7 @@ interface FileSearchTextareaProps {
   onPasteFiles?: (files: File[]) => void;
   onFocus?: (e: React.FocusEvent<HTMLTextAreaElement>) => void;
   onBlur?: (e: React.FocusEvent<HTMLTextAreaElement>) => void;
+  disableScroll?: boolean;
 }
 
 export const FileSearchTextarea = forwardRef<
@@ -51,6 +53,7 @@ export const FileSearchTextarea = forwardRef<
     onPasteFiles,
     onFocus,
     onBlur,
+    disableScroll = false,
   },
   ref
 ) {
@@ -352,6 +355,7 @@ export const FileSearchTextarea = forwardRef<
         onPaste={handlePaste}
         onFocus={onFocus}
         onBlur={onBlur}
+        disableInternalScroll={disableScroll}
       />
 
       {showDropdown &&
