@@ -155,7 +155,7 @@ impl ActivityProcessor {
                     let input = convert_remote_task(&task, project_id, Some(event.seq));
                     let shared_task = SharedTask::upsert(&self.db.pool, input).await?;
 
-                    let current_session = self.sessions.active().await;
+                    let current_session = self.sessions.last().await;
                     let current_user_id = current_session.as_ref().map(|s| s.user_id.as_str());
                     sync_local_task_for_shared_task(
                         &self.db.pool,
@@ -271,7 +271,7 @@ impl ActivityProcessor {
         let stale_vec: Vec<Uuid> = stale.into_iter().collect();
         self.remove_stale_tasks(&stale_vec).await?;
 
-        let current_session = self.sessions.active().await;
+        let current_session = self.sessions.last().await;
         let current_user_id = current_session.as_ref().map(|s| s.user_id.as_str());
 
         for PreparedBulkTask {

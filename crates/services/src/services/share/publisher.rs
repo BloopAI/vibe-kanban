@@ -13,6 +13,7 @@ use remote::{
 };
 use reqwest::{Client as HttpClient, StatusCode};
 use tokio::sync::RwLock;
+use utils::clerk::ClerkSessionStore;
 use uuid::Uuid;
 
 use super::{ShareConfig, ShareError, convert_remote_task, status};
@@ -27,6 +28,7 @@ pub struct SharePublisher {
     client: HttpClient,
     config: ShareConfig,
     user_config: Arc<RwLock<Config>>,
+    sessions: ClerkSessionStore,
 }
 
 impl SharePublisher {
@@ -34,6 +36,7 @@ impl SharePublisher {
         db: DBService,
         git: GitService,
         user_config: Arc<RwLock<Config>>,
+        sessions: ClerkSessionStore,
     ) -> Result<Self, ShareError> {
         let config =
             ShareConfig::from_env().ok_or(ShareError::MissingConfig("share not configured"))?;
@@ -49,13 +52,22 @@ impl SharePublisher {
             config,
             user_config,
             client,
+            sessions,
         })
     }
 
-    fn resolve_session(&self, provided: Option<&ClerkSession>) -> Result<ClerkSession, ShareError> {
-        match provided {
-            Some(session) if !session.is_expired() => Ok(session.clone()),
-            _ => Err(ShareError::MissingAuth),
+    async fn resolve_session(
+        &self,
+        provided: Option<&ClerkSession>,
+    ) -> Result<ClerkSession, ShareError> {
+        if let Some(session) = provided.filter(|session| !session.is_expired()) {
+            return Ok(session.clone());
+        }
+        // The 5-second timeout is an arbitrary choice attempting to balance responsiveness with giving
+        // enough time for session token refresh. It may need tuning based on real-world results.
+        match tokio::time::timeout(Duration::from_secs(5), self.sessions.wait_for_active()).await {
+            Ok(session) => Ok(session),
+            Err(_) => Err(ShareError::MissingAuth),
         }
     }
 
@@ -64,7 +76,7 @@ impl SharePublisher {
         task_id: Uuid,
         session: Option<&ClerkSession>,
     ) -> Result<Uuid, ShareError> {
-        let session = self.resolve_session(session)?;
+        let session = self.resolve_session(session).await?;
         let task = Task::find_by_id(&self.db.pool, task_id)
             .await?
             .ok_or(ShareError::TaskNotFound(task_id))?;
@@ -105,7 +117,7 @@ impl SharePublisher {
             return Ok(());
         };
 
-        let session = self.resolve_session(session)?;
+        let session = self.resolve_session(session).await?;
         let payload = UpdateSharedTaskRequest {
             title: Some(task.title.clone()),
             description: task.description.clone(),
@@ -141,7 +153,7 @@ impl SharePublisher {
         new_assignee_user_id: Option<String>,
         version: Option<i64>,
     ) -> Result<SharedTask, ShareError> {
-        let session = self.resolve_session(session)?;
+        let session = self.resolve_session(session).await?;
         let payload = AssignSharedTaskRequest {
             new_assignee_user_id,
             version,
@@ -165,7 +177,7 @@ impl SharePublisher {
             .await?
             .ok_or(ShareError::TaskNotFound(shared_task_id))?;
 
-        let session = self.resolve_session(session)?;
+        let session = self.resolve_session(session).await?;
         let payload = DeleteSharedTaskRequest {
             version: Some(shared_task.version),
         };
