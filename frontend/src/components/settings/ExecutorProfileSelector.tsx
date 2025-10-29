@@ -1,9 +1,6 @@
 import { AgentSelector } from '@/components/tasks/AgentSelector';
 import { ConfigSelector } from '@/components/tasks/ConfigSelector';
-import type {
-  ExecutorConfig,
-  ExecutorProfileId,
-} from 'shared/types';
+import type { ExecutorConfig, ExecutorProfileId } from 'shared/types';
 
 type Props = {
   profiles: Record<string, ExecutorConfig> | null;
@@ -11,7 +8,6 @@ type Props = {
   onProfileSelect: (profile: ExecutorProfileId) => void;
   disabled?: boolean;
   showLabel?: boolean;
-  showVariantSelector?: boolean;
 };
 
 function ExecutorProfileSelector({
@@ -20,7 +16,6 @@ function ExecutorProfileSelector({
   onProfileSelect,
   disabled = false,
   showLabel = true,
-  showVariantSelector = true,
 }: Props) {
   if (!profiles) {
     return null;
@@ -35,15 +30,13 @@ function ExecutorProfileSelector({
         disabled={disabled}
         showLabel={showLabel}
       />
-      {showVariantSelector && (
-        <ConfigSelector
-          profiles={profiles}
-          selectedExecutorProfile={selectedProfile}
-          onChange={onProfileSelect}
-          disabled={disabled}
-          showLabel={showLabel}
-        />
-      )}
+      <ConfigSelector
+        profiles={profiles}
+        selectedExecutorProfile={selectedProfile}
+        onChange={onProfileSelect}
+        disabled={disabled}
+        showLabel={showLabel}
+      />
     </div>
   );
 }
