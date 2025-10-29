@@ -101,7 +101,6 @@ jobs:
           cd ..
 
           cargo set-version --workspace "$new_version"
-          cargo generate-lockfile
 
           echo "New version: $new_version"
           echo "new_version=$new_version" >> $GITHUB_OUTPUT
