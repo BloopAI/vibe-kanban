@@ -88,7 +88,6 @@ type Action =
   | { type: 'reset' };
 
 function reducer(state: State, action: Action): State {
-  console.log('ACTION: ', action);
   switch (action.type) {
     case 'set_title':
       return { ...state, title: action.payload };
