@@ -567,12 +567,12 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
         <TaskDialog
           open={modal.visible}
           onOpenChange={handleDialogClose}
-          className="w-full max-w-[min(90vw,40rem)] max-h-[min(95vh,50rem)]"
+          className="w-full max-w-[min(90vw,40rem)] max-h-[min(95vh,50rem)] flex flex-col overflow-hidden"
           uncloseable={state.showDiscardWarning}
           ariaLabel={mode === 'edit' ? 'Edit task' : 'Create new task'}
         >
           <div
-            className="h-full overflow-hidden flex flex-col gap-0 px-4 pb-4 relative"
+            className="h-full flex flex-col gap-0 px-4 pb-4 relative min-h-0"
             onDragEnter={handleDragEnter}
             onDragLeave={handleDragLeave}
             onDragOver={handleDragOver}
@@ -590,7 +590,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
               </div>
             )}
 
-            <div className="flex-1 overflow-y-auto space-y-1 pb-3">
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-1 pb-3">
               {/* Title */}
               <div className="pr-8 pt-3">
                 <Input
@@ -657,49 +657,6 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                 />
               )}
 
-              {/* Create mode dropdowns */}
-              {mode === 'create' && (
-                <div
-                  className={cn(
-                    'flex items-center gap-2 h-9 transition-opacity duration-200',
-                    state.autoStart
-                      ? 'opacity-100'
-                      : 'opacity-0 pointer-events-none'
-                  )}
-                >
-                  <AgentSelector
-                    profiles={profiles}
-                    selectedExecutorProfile={state.selectedExecutorProfile}
-                    onChange={(profile) =>
-                      dispatch({ type: 'set_profile', payload: profile })
-                    }
-                    disabled={state.isSubmitting}
-                    className="flex-1 min-w-0"
-                  />
-                  <ConfigSelector
-                    profiles={profiles}
-                    selectedExecutorProfile={state.selectedExecutorProfile}
-                    onChange={(profile) =>
-                      dispatch({ type: 'set_profile', payload: profile })
-                    }
-                    disabled={state.isSubmitting}
-                    className="flex-1 min-w-0"
-                  />
-                  <BranchSelector
-                    branches={state.branches}
-                    selectedBranch={state.selectedBranch}
-                    onBranchSelect={(branch) =>
-                      dispatch({ type: 'set_branch', payload: branch })
-                    }
-                    placeholder="Branch"
-                    className={cn(
-                      'h-9 flex-1 min-w-0 text-xs',
-                      state.isSubmitting && 'opacity-50 cursor-not-allowed'
-                    )}
-                  />
-                </div>
-              )}
-
               {/* Edit mode status */}
               {mode === 'edit' && (
                 <div className="space-y-2">
@@ -720,16 +677,69 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="todo">{t('taskFormDialog.statusOptions.todo')}</SelectItem>
-                      <SelectItem value="inprogress">{t('taskFormDialog.statusOptions.inprogress')}</SelectItem>
-                      <SelectItem value="inreview">{t('taskFormDialog.statusOptions.inreview')}</SelectItem>
-                      <SelectItem value="done">{t('taskFormDialog.statusOptions.done')}</SelectItem>
-                      <SelectItem value="cancelled">{t('taskFormDialog.statusOptions.cancelled')}</SelectItem>
+                      <SelectItem value="todo">
+                        {t('taskFormDialog.statusOptions.todo')}
+                      </SelectItem>
+                      <SelectItem value="inprogress">
+                        {t('taskFormDialog.statusOptions.inprogress')}
+                      </SelectItem>
+                      <SelectItem value="inreview">
+                        {t('taskFormDialog.statusOptions.inreview')}
+                      </SelectItem>
+                      <SelectItem value="done">
+                        {t('taskFormDialog.statusOptions.done')}
+                      </SelectItem>
+                      <SelectItem value="cancelled">
+                        {t('taskFormDialog.statusOptions.cancelled')}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               )}
             </div>
+
+            {/* Create mode dropdowns */}
+            {mode === 'create' && (
+              <div
+                className={cn(
+                  'flex items-center gap-2 h-9 py-2 mb-2 transition-opacity duration-200',
+                  state.autoStart
+                    ? 'opacity-100'
+                    : 'opacity-0 pointer-events-none'
+                )}
+              >
+                <AgentSelector
+                  profiles={profiles}
+                  selectedExecutorProfile={state.selectedExecutorProfile}
+                  onChange={(profile) =>
+                    dispatch({ type: 'set_profile', payload: profile })
+                  }
+                  disabled={state.isSubmitting}
+                  className="flex-1 min-w-0"
+                />
+                <ConfigSelector
+                  profiles={profiles}
+                  selectedExecutorProfile={state.selectedExecutorProfile}
+                  onChange={(profile) =>
+                    dispatch({ type: 'set_profile', payload: profile })
+                  }
+                  disabled={state.isSubmitting}
+                  className="flex-1 min-w-0"
+                />
+                <BranchSelector
+                  branches={state.branches}
+                  selectedBranch={state.selectedBranch}
+                  onBranchSelect={(branch) =>
+                    dispatch({ type: 'set_branch', payload: branch })
+                  }
+                  placeholder="Branch"
+                  className={cn(
+                    'h-9 flex-1 min-w-0 text-xs',
+                    state.isSubmitting && 'opacity-50 cursor-not-allowed'
+                  )}
+                />
+              </div>
+            )}
 
             {/* Actions */}
             <div className="border-t pt-3 flex items-center justify-between gap-3">
@@ -784,7 +794,9 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                     onClick={submit}
                     disabled={state.isSubmitting || !state.title.trim()}
                   >
-                    {state.isSubmitting ? t('taskFormDialog.updating') : t('taskFormDialog.updateTask')}
+                    {state.isSubmitting
+                      ? t('taskFormDialog.updating')
+                      : t('taskFormDialog.updateTask')}
                   </Button>
                 ) : (
                   <Button
@@ -819,7 +831,9 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
         >
           <DialogContent className="sm:max-w-[425px] z-[10000]">
             <DialogHeader>
-              <DialogTitle>{t('taskFormDialog.discardDialog.title')}</DialogTitle>
+              <DialogTitle>
+                {t('taskFormDialog.discardDialog.title')}
+              </DialogTitle>
             </DialogHeader>
             <div className="py-4">
               <p className="text-sm text-muted-foreground">
