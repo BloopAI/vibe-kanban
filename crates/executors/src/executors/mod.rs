@@ -79,6 +79,7 @@ pub enum CodingAgent {
     Codex,
     Opencode,
     #[serde(alias = "CURSOR")]
+    #[strum_discriminants(serde(alias = "CURSOR"))]
     #[strum_discriminants(strum(serialize = "CURSOR", serialize = "CURSOR_AGENT"))]
     CursorAgent,
     QwenCode,
@@ -226,6 +227,16 @@ mod tests {
             result.is_ok(),
             "CURSOR should be valid for backwards compatibility"
         );
+        assert_eq!(result.unwrap(), BaseCodingAgent::CursorAgent);
+
+        // Test serde deserialization for CURSOR_AGENT
+        let result: Result<BaseCodingAgent, _> = serde_json::from_str(r#""CURSOR_AGENT""#);
+        assert!(result.is_ok(), "CURSOR_AGENT should deserialize via serde");
+        assert_eq!(result.unwrap(), BaseCodingAgent::CursorAgent);
+
+        // Test serde deserialization for legacy CURSOR
+        let result: Result<BaseCodingAgent, _> = serde_json::from_str(r#""CURSOR""#);
+        assert!(result.is_ok(), "CURSOR should deserialize via serde");
         assert_eq!(result.unwrap(), BaseCodingAgent::CursorAgent);
     }
 }
