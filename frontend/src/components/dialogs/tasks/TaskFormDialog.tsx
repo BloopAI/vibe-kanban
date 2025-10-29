@@ -796,7 +796,11 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                     }
                   >
                     <Plus className="h-4 w-4 mr-1.5" />
-                    {state.isSubmitting ? 'Creating...' : 'Create'}
+                    {state.isSubmitting
+                      ? state.autoStart
+                        ? 'Starting...'
+                        : 'Creating...'
+                      : 'Create'}
                   </Button>
                 )}
               </div>
