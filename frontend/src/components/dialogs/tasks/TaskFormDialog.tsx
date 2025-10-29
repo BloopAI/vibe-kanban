@@ -614,7 +614,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                   onChange={(desc) =>
                     dispatch({ type: 'set_description', payload: desc })
                   }
-                  rows={4}
+                  rows={20}
                   maxRows={35}
                   placeholder={t('taskFormDialog.descriptionPlaceholder')}
                   className="border-none shadow-none px-0 resize-none placeholder:text-muted-foreground/60 focus-visible:ring-0"
