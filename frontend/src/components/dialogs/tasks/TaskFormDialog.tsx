@@ -27,8 +27,7 @@ import {
   type ImageUploadSectionHandle,
 } from '@/components/ui/ImageUploadSection';
 import BranchSelector from '@/components/tasks/BranchSelector';
-import { AgentSelector } from '@/components/tasks/AgentSelector';
-import { ConfigSelector } from '@/components/tasks/ConfigSelector';
+import { ExecutorProfileSelector } from '@/components/settings';
 import { useTaskMutations } from '@/hooks/useTaskMutations';
 import { useUserSystem } from '@/components/config-provider';
 import { imagesApi } from '@/lib/api';
@@ -624,23 +623,16 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                     : 'opacity-0 pointer-events-none'
                 )}
               >
-                <AgentSelector
+                <ExecutorProfileSelector
                   profiles={profiles}
-                  selectedExecutorProfile={state.selectedExecutorProfile}
-                  onChange={(profile) =>
+                  selectedProfile={state.selectedExecutorProfile}
+                  onProfileSelect={(profile) =>
                     dispatch({ type: 'set_profile', payload: profile })
                   }
                   disabled={state.isSubmitting}
-                  className="flex-1 min-w-0"
-                />
-                <ConfigSelector
-                  profiles={profiles}
-                  selectedExecutorProfile={state.selectedExecutorProfile}
-                  onChange={(profile) =>
-                    dispatch({ type: 'set_profile', payload: profile })
-                  }
-                  disabled={state.isSubmitting}
-                  className="flex-1 min-w-0"
+                  showLabel={false}
+                  className="flex items-center gap-2 flex-row flex-[2] min-w-0"
+                  itemClassName="flex-1 min-w-0"
                 />
                 <BranchSelector
                   branches={state.branches}
