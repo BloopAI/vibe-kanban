@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, SqlitePool};
+use sqlx::{FromRow, QueryBuilder, Sqlite, SqlitePool, Transaction};
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -58,6 +58,35 @@ impl SharedTask {
             FROM shared_tasks
             ORDER BY updated_at DESC
             "#
+        )
+        .fetch_all(pool)
+        .await
+    }
+
+    pub async fn list_by_organization(
+        pool: &SqlitePool,
+        organization_id: &str,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            SharedTask,
+            r#"
+            SELECT
+                id                         AS "id!: Uuid",
+                organization_id            AS "organization_id!: String",
+                project_id                 AS "project_id!: Uuid",
+                title                      AS title,
+                description                AS description,
+                status                     AS "status!: TaskStatus",
+                assignee_user_id           AS "assignee_user_id: String",
+                version                    AS "version!: i64",
+                last_event_seq             AS "last_event_seq: i64",
+                created_at                 AS "created_at!: DateTime<Utc>",
+                updated_at                 AS "updated_at!: DateTime<Utc>"
+            FROM shared_tasks
+            WHERE organization_id = $1
+            ORDER BY updated_at DESC
+            "#,
+            organization_id
         )
         .fetch_all(pool)
         .await
@@ -185,6 +214,67 @@ impl SharedTask {
         Ok(())
     }
 
+    pub async fn remove_many(pool: &SqlitePool, ids: &[Uuid]) -> Result<(), sqlx::Error> {
+        if ids.is_empty() {
+            return Ok(());
+        }
+
+        let mut builder = QueryBuilder::<Sqlite>::new("DELETE FROM shared_tasks WHERE id IN (");
+        {
+            let mut separated = builder.separated(", ");
+            for id in ids {
+                separated.push_bind(id);
+            }
+        }
+        builder.push(")");
+        builder.build().execute(pool).await?;
+        Ok(())
+    }
+
+    pub async fn replace_for_organization(
+        pool: &SqlitePool,
+        organization_id: &str,
+        tasks: &[SharedTaskInput],
+    ) -> Result<(), sqlx::Error> {
+        let mut tx = pool.begin().await?;
+
+        sqlx::query!(
+            "DELETE FROM shared_tasks WHERE organization_id = $1",
+            organization_id
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        bulk_upsert(&mut tx, tasks).await?;
+        tx.commit().await?;
+        Ok(())
+    }
+
+    pub async fn replace_for_projects(
+        pool: &SqlitePool,
+        project_ids: &[Uuid],
+        tasks: &[SharedTaskInput],
+    ) -> Result<(), sqlx::Error> {
+        let mut tx = pool.begin().await?;
+
+        if !project_ids.is_empty() {
+            let mut builder =
+                QueryBuilder::<Sqlite>::new("DELETE FROM shared_tasks WHERE project_id IN (");
+            {
+                let mut separated = builder.separated(", ");
+                for project_id in project_ids {
+                    separated.push_bind(project_id);
+                }
+            }
+            builder.push(")");
+            builder.build().execute(&mut *tx).await?;
+        }
+
+        bulk_upsert(&mut tx, tasks).await?;
+        tx.commit().await?;
+        Ok(())
+    }
+
     pub async fn find_by_rowid(pool: &SqlitePool, rowid: i64) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             SharedTask,
@@ -209,6 +299,67 @@ impl SharedTask {
         .fetch_optional(pool)
         .await
     }
+}
+
+async fn bulk_upsert(
+    tx: &mut Transaction<'_, Sqlite>,
+    tasks: &[SharedTaskInput],
+) -> Result<(), sqlx::Error> {
+    if tasks.is_empty() {
+        return Ok(());
+    }
+
+    let mut builder = QueryBuilder::<Sqlite>::new(
+        "INSERT INTO shared_tasks (
+            id,
+            organization_id,
+            project_id,
+            title,
+            description,
+            status,
+            assignee_user_id,
+            version,
+            last_event_seq,
+            created_at,
+            updated_at
+        ) VALUES ",
+    );
+
+    {
+        let mut separated = builder.separated(", ");
+        for task in tasks {
+            separated.push("(");
+            separated.push_bind(task.id);
+            separated.push_bind(&task.organization_id);
+            separated.push_bind(task.project_id);
+            separated.push_bind(&task.title);
+            separated.push_bind(&task.description);
+            separated.push_bind(task.status.clone());
+            separated.push_bind(&task.assignee_user_id);
+            separated.push_bind(task.version);
+            separated.push_bind(task.last_event_seq);
+            separated.push_bind(task.created_at);
+            separated.push_bind(task.updated_at);
+            separated.push(")");
+        }
+    }
+
+    builder.push(
+        " ON CONFLICT(id) DO UPDATE SET
+            organization_id  = excluded.organization_id,
+            project_id       = excluded.project_id,
+            title            = excluded.title,
+            description      = excluded.description,
+            status           = excluded.status,
+            assignee_user_id = excluded.assignee_user_id,
+            version          = excluded.version,
+            last_event_seq   = excluded.last_event_seq,
+            created_at       = excluded.created_at,
+            updated_at       = excluded.updated_at",
+    );
+
+    builder.build().execute(&mut **tx).await?;
+    Ok(())
 }
 
 #[derive(Debug, Clone, FromRow)]
