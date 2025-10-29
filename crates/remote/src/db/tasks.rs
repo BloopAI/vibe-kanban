@@ -8,6 +8,12 @@ use super::{
     projects::{CreateProjectData, Project, ProjectError, ProjectMetadata, ProjectRepository},
 };
 
+pub struct BulkFetchResult {
+    pub tasks: Vec<SharedTaskActivityPayload>,
+    pub deleted_task_ids: Vec<Uuid>,
+    pub latest_seq: Option<i64>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
 #[serde(rename_all = "kebab-case")]
 #[sqlx(type_name = "task_status", rename_all = "kebab-case")]
@@ -233,6 +239,104 @@ impl<'a> SharedTaskRepository<'a> {
         insert_activity(&mut tx, &task, &project, "task.created").await?;
         tx.commit().await.map_err(SharedTaskError::from)?;
         Ok(task)
+    }
+
+    pub async fn bulk_fetch(
+        &self,
+        organization_id: &str,
+    ) -> Result<BulkFetchResult, SharedTaskError> {
+        let rows = sqlx::query!(
+            r#"
+            SELECT
+                st.id                     AS "id!: Uuid",
+                st.organization_id        AS "organization_id!",
+                st.project_id             AS "project_id!: Uuid",
+                st.creator_user_id        AS "creator_user_id?",
+                st.assignee_user_id       AS "assignee_user_id?",
+                st.deleted_by_user_id     AS "deleted_by_user_id?",
+                st.title                  AS "title!",
+                st.description            AS "description?",
+                st.status                 AS "status!: TaskStatus",
+                st.version                AS "version!",
+                st.deleted_at             AS "deleted_at?",
+                st.shared_at              AS "shared_at?",
+                st.created_at             AS "created_at!",
+                st.updated_at             AS "updated_at!",
+                p.github_repository_id    AS "project_github_repository_id!",
+                p.owner                   AS "project_owner!",
+                p.name                    AS "project_name!"
+            FROM shared_tasks st
+            JOIN projects p ON st.project_id = p.id
+            WHERE st.organization_id = $1
+              AND st.deleted_at IS NULL
+            ORDER BY st.updated_at DESC
+            "#,
+            organization_id
+        )
+        .fetch_all(self.pool)
+        .await?;
+
+        let tasks = rows
+            .into_iter()
+            .map(|row| {
+                let task = SharedTask {
+                    id: row.id,
+                    organization_id: row.organization_id,
+                    project_id: row.project_id,
+                    creator_user_id: row.creator_user_id,
+                    assignee_user_id: row.assignee_user_id,
+                    deleted_by_user_id: row.deleted_by_user_id,
+                    title: row.title,
+                    description: row.description,
+                    status: row.status,
+                    version: row.version,
+                    deleted_at: row.deleted_at,
+                    shared_at: row.shared_at,
+                    created_at: row.created_at,
+                    updated_at: row.updated_at,
+                };
+
+                let project = ProjectMetadata {
+                    github_repository_id: row.project_github_repository_id,
+                    owner: row.project_owner,
+                    name: row.project_name,
+                };
+
+                SharedTaskActivityPayload { task, project }
+            })
+            .collect();
+
+        let deleted_rows = sqlx::query!(
+            r#"
+            SELECT st.id AS "id!: Uuid"
+            FROM shared_tasks st
+            JOIN projects p ON st.project_id = p.id
+            WHERE st.organization_id = $1
+              AND st.deleted_at IS NOT NULL
+            "#,
+            organization_id
+        )
+        .fetch_all(self.pool)
+        .await?;
+
+        let deleted_task_ids = deleted_rows.into_iter().map(|row| row.id).collect();
+
+        let latest_seq = sqlx::query_scalar!(
+            r#"
+            SELECT MAX(seq)
+            FROM activity
+            WHERE organization_id = $1
+            "#,
+            organization_id
+        )
+        .fetch_one(self.pool)
+        .await?;
+
+        Ok(BulkFetchResult {
+            tasks,
+            deleted_task_ids,
+            latest_seq,
+        })
     }
 
     pub async fn update(
