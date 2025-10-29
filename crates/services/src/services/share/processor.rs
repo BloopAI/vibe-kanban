@@ -150,9 +150,14 @@ impl ActivityProcessor {
         };
 
         match serde_json::from_value::<SharedTaskActivityPayload>(payload.clone()) {
-            Ok(SharedTaskActivityPayload { task, project }) => {
+            Ok(SharedTaskActivityPayload {
+                task,
+                project,
+                user,
+            }) => {
                 if let Some(project_id) = self.resolve_project_id(task.id, &project).await? {
-                    let input = convert_remote_task(&task, project_id, Some(event.seq));
+                    let input =
+                        convert_remote_task(&task, user.as_ref(), project_id, Some(event.seq));
                     let shared_task = SharedTask::upsert(&self.db.pool, input).await?;
 
                     let current_session = self.sessions.last().await;
@@ -232,7 +237,12 @@ impl ActivityProcessor {
             {
                 Some(project_id) => {
                     keep_ids.insert(payload.task.id);
-                    let input = convert_remote_task(&payload.task, project_id, latest_seq);
+                    let input = convert_remote_task(
+                        &payload.task,
+                        payload.user.as_ref(),
+                        project_id,
+                        latest_seq,
+                    );
                     replacements.push(PreparedBulkTask {
                         input,
                         creator_user_id: payload.task.creator_user_id.clone(),

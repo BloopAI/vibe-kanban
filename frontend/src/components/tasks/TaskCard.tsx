@@ -4,6 +4,7 @@ import { CheckCircle, Loader2, XCircle } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { ActionsDropdown } from '@/components/ui/ActionsDropdown';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
+import { UserAvatar } from './UserAvatar';
 
 type Task = TaskWithAttemptStatus;
 
@@ -58,40 +59,52 @@ export function TaskCard({
           : undefined
       }
     >
-      <div className="flex flex-1 gap-2 items-center min-w-0">
-        <h4 className="flex-1 min-w-0 line-clamp-2 font-light text-sm">
-          {task.title}
-        </h4>
-        <div className="flex items-center space-x-1">
-          {/* In Progress Spinner */}
-          {task.has_in_progress_attempt && (
-            <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
-          )}
-          {/* Merged Indicator */}
-          {task.has_merged_attempt && (
-            <CheckCircle className="h-3 w-3 text-green-500" />
-          )}
-          {/* Failed Indicator */}
-          {task.last_attempt_failed && !task.has_merged_attempt && (
-            <XCircle className="h-3 w-3 text-destructive" />
-          )}
-          {/* Actions Menu */}
-          <div
-            onPointerDown={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <ActionsDropdown task={task} sharedTask={sharedTask} />
+      <div className="flex gap-3">
+        {sharedTask ? (
+          <UserAvatar
+            firstName={sharedTask.assignee_first_name ?? undefined}
+            lastName={sharedTask.assignee_last_name ?? undefined}
+            username={sharedTask.assignee_username ?? undefined}
+            className="self-center"
+          />
+        ) : null}
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <h4 className="flex-1 min-w-0 line-clamp-2 font-light text-sm">
+              {task.title}
+            </h4>
+            <div className="flex items-center gap-2">
+              {/* In Progress Spinner */}
+              {task.has_in_progress_attempt && (
+                <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
+              )}
+              {/* Merged Indicator */}
+              {task.has_merged_attempt && (
+                <CheckCircle className="h-3 w-3 text-green-500" />
+              )}
+              {/* Failed Indicator */}
+              {task.last_attempt_failed && !task.has_merged_attempt && (
+                <XCircle className="h-3 w-3 text-destructive" />
+              )}
+              {/* Actions Menu */}
+              <div
+                onPointerDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <ActionsDropdown task={task} sharedTask={sharedTask} />
+              </div>
+            </div>
           </div>
+          {task.description && (
+            <p className="text-sm text-secondary-foreground break-words">
+              {task.description.length > 130
+                ? `${task.description.substring(0, 130)}...`
+                : task.description}
+            </p>
+          )}
         </div>
       </div>
-      {task.description && (
-        <p className="flex-1 text-sm text-secondary-foreground break-words">
-          {task.description.length > 130
-            ? `${task.description.substring(0, 130)}...`
-            : task.description}
-        </p>
-      )}
     </KanbanCard>
   );
 }

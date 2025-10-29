@@ -9,7 +9,7 @@ use remote::{
         AssignSharedTaskRequest, CreateSharedTaskRequest, DeleteSharedTaskRequest,
         SharedTaskResponse, UpdateSharedTaskRequest,
     },
-    db::{projects::ProjectMetadata, tasks::SharedTask as RemoteSharedTask},
+    db::projects::ProjectMetadata,
 };
 use reqwest::{Client as HttpClient, StatusCode};
 use tokio::sync::RwLock;
@@ -103,8 +103,7 @@ impl SharePublisher {
             .await?;
 
         self.sync_shared_task(&task, &remote_task).await?;
-
-        Ok(remote_task.id)
+        Ok(remote_task.task.id)
     }
 
     pub async fn update_shared_task(
@@ -159,11 +158,14 @@ impl SharePublisher {
             version,
         };
 
-        let remote_task = RemoteTaskClient::new(&self.client, &self.config)
+        let SharedTaskResponse {
+            task: remote_task,
+            user,
+        } = RemoteTaskClient::new(&self.client, &self.config)
             .assign_task(&session, shared_task.id, &payload)
             .await?;
 
-        let input = convert_remote_task(&remote_task, shared_task.project_id, None);
+        let input = convert_remote_task(&remote_task, user.as_ref(), shared_task.project_id, None);
         let record = SharedTask::upsert(&self.db.pool, input).await?;
         Ok(record)
     }
@@ -199,9 +201,14 @@ impl SharePublisher {
     async fn sync_shared_task(
         &self,
         task: &Task,
-        remote_task: &RemoteSharedTask,
+        remote_task: &SharedTaskResponse,
     ) -> Result<(), ShareError> {
-        let input = convert_remote_task(remote_task, task.project_id, None);
+        let SharedTaskResponse {
+            task: remote_task,
+            user,
+        } = remote_task;
+
+        let input = convert_remote_task(remote_task, user.as_ref(), task.project_id, None);
         SharedTask::upsert(&self.db.pool, input).await?;
         Task::set_shared_task_id(&self.db.pool, task.id, Some(remote_task.id)).await?;
         Ok(())
@@ -256,7 +263,7 @@ impl<'a> RemoteTaskClient<'a> {
         &self,
         session: &ClerkSession,
         payload: &CreateSharedTaskRequest,
-    ) -> Result<RemoteSharedTask, ShareError> {
+    ) -> Result<SharedTaskResponse, ShareError> {
         let response = self
             .http
             .post(self.config.create_task_endpoint()?)
@@ -274,7 +281,7 @@ impl<'a> RemoteTaskClient<'a> {
         session: &ClerkSession,
         task_id: Uuid,
         payload: &UpdateSharedTaskRequest,
-    ) -> Result<RemoteSharedTask, ShareError> {
+    ) -> Result<SharedTaskResponse, ShareError> {
         let response = self
             .http
             .patch(self.config.update_task_endpoint(task_id)?)
@@ -292,7 +299,7 @@ impl<'a> RemoteTaskClient<'a> {
         session: &ClerkSession,
         task_id: Uuid,
         payload: &AssignSharedTaskRequest,
-    ) -> Result<RemoteSharedTask, ShareError> {
+    ) -> Result<SharedTaskResponse, ShareError> {
         let response = self
             .http
             .post(self.config.assign_endpoint(task_id)?)
@@ -310,7 +317,7 @@ impl<'a> RemoteTaskClient<'a> {
         session: &ClerkSession,
         task_id: Uuid,
         payload: &DeleteSharedTaskRequest,
-    ) -> Result<RemoteSharedTask, ShareError> {
+    ) -> Result<SharedTaskResponse, ShareError> {
         let response = self
             .http
             .delete(self.config.delete_task_endpoint(task_id)?)
@@ -323,7 +330,7 @@ impl<'a> RemoteTaskClient<'a> {
         Self::parse_response(response).await
     }
 
-    async fn parse_response(response: reqwest::Response) -> Result<RemoteSharedTask, ShareError> {
+    async fn parse_response(response: reqwest::Response) -> Result<SharedTaskResponse, ShareError> {
         if response.status() == StatusCode::UNAUTHORIZED {
             return Err(ShareError::MissingAuth);
         }
@@ -335,7 +342,7 @@ impl<'a> RemoteTaskClient<'a> {
 
         let response = response.error_for_status().map_err(ShareError::Transport)?;
         let envelope: SharedTaskResponse = response.json().await.map_err(ShareError::Transport)?;
-        Ok(envelope.task)
+        Ok(envelope)
     }
 }
 

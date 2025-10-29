@@ -7,6 +7,7 @@ use tower_http::cors::CorsLayer;
 use crate::{AppState, auth::require_clerk_session};
 
 pub mod activity;
+mod error;
 mod tasks;
 
 pub fn router(state: AppState) -> Router {

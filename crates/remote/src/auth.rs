@@ -22,7 +22,9 @@ pub struct ClerkService {
 pub struct ClerkUser {
     pub id: String,
     pub email: String,
-    pub display_name: String,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
+    pub username: Option<String>,
 }
 
 #[derive(Debug, Error)]
@@ -101,15 +103,12 @@ impl TryFrom<UserResponse> for ClerkUser {
                 ))
             })?;
 
-        let display_name = value
-            .username
-            .or_else(|| compose_name(&value.first_name, &value.last_name))
-            .unwrap_or_else(|| email.clone());
-
         Ok(Self {
             id: value.id,
             email,
-            display_name,
+            first_name: value.first_name,
+            last_name: value.last_name,
+            username: value.username,
         })
     }
 }
@@ -125,13 +124,4 @@ fn resolve_primary_email(
     }
 
     addresses.first().map(|addr| addr.email_address.clone())
-}
-
-fn compose_name(first_name: &Option<String>, last_name: &Option<String>) -> Option<String> {
-    match (first_name.as_deref(), last_name.as_deref()) {
-        (Some(first), Some(last)) => Some(format!("{first} {last}")),
-        (Some(first), None) => Some(first.to_string()),
-        (None, Some(last)) => Some(last.to_string()),
-        (None, None) => None,
-    }
 }
