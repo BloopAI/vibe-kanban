@@ -7,6 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Label } from '@/components/ui/label';
 import type { ExecutorProfileId } from 'shared/types';
 
 interface ConfigSelectorProps {
@@ -15,6 +16,7 @@ interface ConfigSelectorProps {
   onChange: (profile: ExecutorProfileId) => void;
   disabled?: boolean;
   className?: string;
+  showLabel?: boolean;
 }
 
 export const ConfigSelector = React.memo<ConfigSelectorProps>(
@@ -24,6 +26,7 @@ export const ConfigSelector = React.memo<ConfigSelectorProps>(
     onChange,
     disabled,
     className = '',
+    showLabel = false,
   }) => {
     const selectedAgent = selectedExecutorProfile?.executor;
     const configs = selectedAgent && profiles ? profiles[selectedAgent] : null;
@@ -39,44 +42,51 @@ export const ConfigSelector = React.memo<ConfigSelectorProps>(
     if (!configs || Object.keys(configs).length === 0) return null;
 
     return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className={`w-full justify-between text-xs ${className}`}
-            disabled={disabled}
-            aria-label="Select configuration"
-          >
-            <div className="flex items-center gap-1.5 w-full">
-              <Settings2 className="h-3 w-3" />
-              <span className="truncate">{selectedVariant}</span>
-            </div>
-            <ArrowDown className="h-3 w-3" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-60">
-          {configOptions.map((variant) => (
-            <DropdownMenuItem
-              key={variant}
-              onClick={() => {
-                onChange({
-                  executor: selectedAgent,
-                  variant: variant === 'DEFAULT' ? null : variant,
-                });
-              }}
-              className={
-                (variant === 'DEFAULT' ? null : variant) ===
-                selectedExecutorProfile?.variant
-                  ? 'bg-accent'
-                  : ''
-              }
+      <div className="flex-1">
+        {showLabel && (
+          <Label htmlFor="executor-variant" className="text-sm font-medium">
+            Configuration
+          </Label>
+        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className={`w-full justify-between text-xs ${showLabel ? 'mt-1.5' : ''} ${className}`}
+              disabled={disabled}
+              aria-label="Select configuration"
             >
-              {variant}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+              <div className="flex items-center gap-1.5 w-full">
+                <Settings2 className="h-3 w-3" />
+                <span className="truncate">{selectedVariant}</span>
+              </div>
+              <ArrowDown className="h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-60">
+            {configOptions.map((variant) => (
+              <DropdownMenuItem
+                key={variant}
+                onClick={() => {
+                  onChange({
+                    executor: selectedAgent,
+                    variant: variant === 'DEFAULT' ? null : variant,
+                  });
+                }}
+                className={
+                  (variant === 'DEFAULT' ? null : variant) ===
+                  selectedExecutorProfile?.variant
+                    ? 'bg-accent'
+                    : ''
+                }
+              >
+                {variant}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     );
   }
 );
