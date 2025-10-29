@@ -66,7 +66,7 @@ impl ClerkSession {
     }
 
     pub fn is_expired(&self) -> bool {
-        let safety_margin = chrono::Duration::seconds(30);
+        let safety_margin = chrono::Duration::seconds(5);
         self.expires_at <= Utc::now() + safety_margin
     }
 }
@@ -205,7 +205,12 @@ impl ClerkSessionStore {
         self.inner.write().await.take();
     }
 
-    pub async fn active(&self) -> Option<ClerkSession> {
+    pub async fn last(&self) -> Option<ClerkSession> {
+        let guard = self.inner.read().await;
+        guard.clone()
+    }
+
+    async fn active(&self) -> Option<ClerkSession> {
         let guard = self.inner.read().await;
         guard
             .as_ref()
