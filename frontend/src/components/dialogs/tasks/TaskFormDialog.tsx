@@ -665,28 +665,24 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                       : 'opacity-0 pointer-events-none'
                   )}
                 >
-                  {profiles && (
-                    <>
-                      <AgentSelector
-                        profiles={profiles}
-                        selectedExecutorProfile={state.selectedExecutorProfile}
-                        onChange={(profile) =>
-                          dispatch({ type: 'set_profile', payload: profile })
-                        }
-                        disabled={state.isSubmitting}
-                        className="flex-1 min-w-0"
-                      />
-                      <ConfigSelector
-                        profiles={profiles}
-                        selectedExecutorProfile={state.selectedExecutorProfile}
-                        onChange={(profile) =>
-                          dispatch({ type: 'set_profile', payload: profile })
-                        }
-                        disabled={state.isSubmitting}
-                        className="flex-1 min-w-0"
-                      />
-                    </>
-                  )}
+                  <AgentSelector
+                    profiles={profiles}
+                    selectedExecutorProfile={state.selectedExecutorProfile}
+                    onChange={(profile) =>
+                      dispatch({ type: 'set_profile', payload: profile })
+                    }
+                    disabled={state.isSubmitting}
+                    className="flex-1 min-w-0"
+                  />
+                  <ConfigSelector
+                    profiles={profiles}
+                    selectedExecutorProfile={state.selectedExecutorProfile}
+                    onChange={(profile) =>
+                      dispatch({ type: 'set_profile', payload: profile })
+                    }
+                    disabled={state.isSubmitting}
+                    className="flex-1 min-w-0"
+                  />
                   <BranchSelector
                     branches={state.branches}
                     selectedBranch={state.selectedBranch}
