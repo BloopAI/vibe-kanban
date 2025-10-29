@@ -25,14 +25,14 @@ export const AgentSelector = React.memo<AgentSelectorProps>(
     disabled,
     className = '',
   }) => {
-    if (!profiles) return null;
-
     const agents = React.useMemo(
-      () => Object.keys(profiles).sort() as BaseCodingAgent[],
+      () => profiles ? Object.keys(profiles).sort() as BaseCodingAgent[] : [],
       [profiles]
     );
 
     const selectedAgent = selectedExecutorProfile?.executor;
+
+    if (!profiles) return null;
 
     return (
       <DropdownMenu>

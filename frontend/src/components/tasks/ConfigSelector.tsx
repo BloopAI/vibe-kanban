@@ -26,17 +26,17 @@ export const ConfigSelector = React.memo<ConfigSelectorProps>(
     className = '',
   }) => {
     const selectedAgent = selectedExecutorProfile?.executor;
-    if (!selectedAgent || !profiles) return null;
-
-    const configs = profiles[selectedAgent];
-    if (!configs || Object.keys(configs).length === 0) return null;
+    const configs = selectedAgent && profiles ? profiles[selectedAgent] : null;
 
     const configOptions = React.useMemo(
-      () => Object.keys(configs).sort(),
+      () => configs ? Object.keys(configs).sort() : [],
       [configs]
     );
 
     const selectedVariant = selectedExecutorProfile?.variant || 'DEFAULT';
+
+    if (!selectedAgent || !profiles) return null;
+    if (!configs || Object.keys(configs).length === 0) return null;
 
     return (
       <DropdownMenu>
