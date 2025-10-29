@@ -674,6 +674,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                           dispatch({ type: 'set_profile', payload: profile })
                         }
                         disabled={state.isSubmitting}
+                        className="flex-1 min-w-0"
                       />
                       <ConfigSelector
                         profiles={profiles}
@@ -682,6 +683,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                           dispatch({ type: 'set_profile', payload: profile })
                         }
                         disabled={state.isSubmitting}
+                        className="flex-1 min-w-0"
                       />
                     </>
                   )}
@@ -693,7 +695,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                     }
                     placeholder="Branch"
                     className={cn(
-                      'h-9 flex-1 text-xs',
+                      'h-9 flex-1 min-w-0 text-xs',
                       state.isSubmitting && 'opacity-50 cursor-not-allowed'
                     )}
                   />
