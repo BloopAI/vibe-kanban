@@ -86,7 +86,7 @@ type Action =
   | { type: 'set_submitting'; payload: boolean }
   | { type: 'set_discard'; payload: boolean }
   | { type: 'set_branches'; payload: GitBranch[] }
-  | { type: 'reset' };
+  | { type: 'reset'; payload: State };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -118,7 +118,7 @@ function reducer(state: State, action: Action): State {
     case 'set_branches':
       return { ...state, branches: action.payload };
     case 'reset':
-      return initialState;
+      return action.payload;
     default:
       return state;
   }
@@ -559,6 +559,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
 
     const handleDiscardChanges = () => {
       dispatch({ type: 'set_discard', payload: false });
+      dispatch({ type: 'reset', payload: init(initialState) });
       modal.hide();
     };
 
