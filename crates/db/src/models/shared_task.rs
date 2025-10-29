@@ -329,7 +329,7 @@ async fn bulk_upsert(
         let mut separated = builder.separated(", ");
         for task in tasks {
             separated.push("(");
-            separated.push_bind(task.id);
+            separated.push_bind_unseparated(task.id);
             separated.push_bind(&task.organization_id);
             separated.push_bind(task.project_id);
             separated.push_bind(&task.title);
@@ -340,7 +340,7 @@ async fn bulk_upsert(
             separated.push_bind(task.last_event_seq);
             separated.push_bind(task.created_at);
             separated.push_bind(task.updated_at);
-            separated.push(")");
+            separated.push_unseparated(")");
         }
     }
 
