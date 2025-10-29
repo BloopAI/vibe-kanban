@@ -1,6 +1,11 @@
 import { Settings2, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import type { ExecutorProfileId } from 'shared/types';
 
@@ -26,7 +31,13 @@ export function ConfigSelector({
   const configOptions = configs ? Object.keys(configs).sort() : [];
   const selectedVariant = selectedExecutorProfile?.variant || 'DEFAULT';
 
-  if (!selectedAgent || !profiles || !configs || Object.keys(configs).length === 0) return null;
+  if (
+    !selectedAgent ||
+    !profiles ||
+    !configs ||
+    Object.keys(configs).length === 0
+  )
+    return null;
 
   return (
     <div className="flex-1">
@@ -62,7 +73,8 @@ export function ConfigSelector({
                 });
               }}
               className={
-                (variant === 'DEFAULT' ? null : variant) === selectedExecutorProfile?.variant
+                (variant === 'DEFAULT' ? null : variant) ===
+                selectedExecutorProfile?.variant
                   ? 'bg-accent'
                   : ''
               }

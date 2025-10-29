@@ -1,6 +1,11 @@
 import { Bot, ArrowDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import type { ExecutorProfileId, BaseCodingAgent } from 'shared/types';
 
@@ -21,7 +26,9 @@ export function AgentSelector({
   className = '',
   showLabel = false,
 }: AgentSelectorProps) {
-  const agents = profiles ? (Object.keys(profiles).sort() as BaseCodingAgent[]) : [];
+  const agents = profiles
+    ? (Object.keys(profiles).sort() as BaseCodingAgent[])
+    : [];
   const selectedAgent = selectedExecutorProfile?.executor;
 
   if (!profiles) return null;

@@ -6,10 +6,24 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
-import { ImageUploadSection, type ImageUploadSectionHandle } from '@/components/ui/ImageUploadSection';
+import {
+  ImageUploadSection,
+  type ImageUploadSectionHandle,
+} from '@/components/ui/ImageUploadSection';
 import BranchSelector from '@/components/tasks/BranchSelector';
 import { AgentSelector } from '@/components/tasks/AgentSelector';
 import { ConfigSelector } from '@/components/tasks/ConfigSelector';
@@ -18,7 +32,12 @@ import { useUserSystem } from '@/components/config-provider';
 import { imagesApi, projectsApi, attemptsApi } from '@/lib/api';
 import { useKeySubmitTask, useKeySubmitTaskAlt, Scope } from '@/keyboard';
 import { cn } from '@/lib/utils';
-import type { TaskStatus, ExecutorProfileId, ImageResponse, GitBranch } from 'shared/types';
+import type {
+  TaskStatus,
+  ExecutorProfileId,
+  ImageResponse,
+  GitBranch,
+} from 'shared/types';
 
 interface Task {
   id: string;
@@ -88,7 +107,10 @@ function reducer(state: State, action: Action): State {
     case 'set_images':
       return { ...state, images: action.payload };
     case 'add_uploaded_id':
-      return { ...state, newlyUploadedImageIds: [...state.newlyUploadedImageIds, action.payload] };
+      return {
+        ...state,
+        newlyUploadedImageIds: [...state.newlyUploadedImageIds, action.payload],
+      };
     case 'set_show_upload':
       return { ...state, showImageUpload: action.payload };
     case 'set_submitting':
@@ -120,9 +142,16 @@ const initialState: State = {
 };
 
 export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
-  ({ task, projectId, initialTask, initialBaseBranch, parentTaskAttemptId }) => {
+  ({
+    task,
+    projectId,
+    initialTask,
+    initialBaseBranch,
+    parentTaskAttemptId,
+  }) => {
     const modal = useModal();
-    const { createTask, createAndStart, updateTask } = useTaskMutations(projectId);
+    const { createTask, createAndStart, updateTask } =
+      useTaskMutations(projectId);
     const { system, profiles } = useUserSystem();
     const mode = task ? 'edit' : 'create';
 
@@ -143,7 +172,10 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
           if (cancelled) return;
           dispatch({ type: 'set_branches', payload: projectBranches });
 
-          if (initialBaseBranch && projectBranches.some((b) => b.name === initialBaseBranch)) {
+          if (
+            initialBaseBranch &&
+            projectBranches.some((b) => b.name === initialBaseBranch)
+          ) {
             dispatch({ type: 'set_branch', payload: initialBaseBranch });
           } else {
             const currentBranch = projectBranches.find((b) => b.is_current);
@@ -162,7 +194,13 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
 
     // Fetch parent base branch when parentTaskAttemptId is provided
     useEffect(() => {
-      if (!modal.visible || mode === 'edit' || !parentTaskAttemptId || initialBaseBranch || state.branches.length === 0) {
+      if (
+        !modal.visible ||
+        mode === 'edit' ||
+        !parentTaskAttemptId ||
+        initialBaseBranch ||
+        state.branches.length === 0
+      ) {
         return;
       }
 
@@ -172,7 +210,10 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
         .then((attempt) => {
           if (cancelled) return;
           const parentBranch = attempt.branch || attempt.target_branch;
-          if (parentBranch && state.branches.some((b) => b.name === parentBranch)) {
+          if (
+            parentBranch &&
+            state.branches.some((b) => b.name === parentBranch)
+          ) {
             dispatch({ type: 'set_branch', payload: parentBranch });
           }
         })
@@ -181,7 +222,13 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       return () => {
         cancelled = true;
       };
-    }, [modal.visible, mode, parentTaskAttemptId, initialBaseBranch, state.branches]);
+    }, [
+      modal.visible,
+      mode,
+      parentTaskAttemptId,
+      initialBaseBranch,
+      state.branches,
+    ]);
 
     // Load images for edit mode
     useEffect(() => {
@@ -237,56 +284,68 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
     // Drag & drop handlers
     const [isDraggingFile, setIsDraggingFile] = useState(false);
 
-    const handleDragEnter = useCallback((e: React.DragEvent) => {
-      if (state.isSubmitting) return;
-      e.preventDefault();
-      e.stopPropagation();
-      if (e.dataTransfer.types.includes('Files')) {
-        dragCounterRef.current++;
-        if (dragCounterRef.current === 1) {
-          setIsDraggingFile(true);
+    const handleDragEnter = useCallback(
+      (e: React.DragEvent) => {
+        if (state.isSubmitting) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.dataTransfer.types.includes('Files')) {
+          dragCounterRef.current++;
+          if (dragCounterRef.current === 1) {
+            setIsDraggingFile(true);
+          }
         }
-      }
-    }, [state.isSubmitting]);
+      },
+      [state.isSubmitting]
+    );
 
-    const handleDragLeave = useCallback((e: React.DragEvent) => {
-      if (state.isSubmitting) return;
-      e.preventDefault();
-      e.stopPropagation();
-      if (dragCounterRef.current > 0) {
-        dragCounterRef.current--;
-      }
-      if (dragCounterRef.current === 0) {
+    const handleDragLeave = useCallback(
+      (e: React.DragEvent) => {
+        if (state.isSubmitting) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (dragCounterRef.current > 0) {
+          dragCounterRef.current--;
+        }
+        if (dragCounterRef.current === 0) {
+          setIsDraggingFile(false);
+        }
+      },
+      [state.isSubmitting]
+    );
+
+    const handleDragOver = useCallback(
+      (e: React.DragEvent) => {
+        if (state.isSubmitting) return;
+        e.preventDefault();
+        e.stopPropagation();
+      },
+      [state.isSubmitting]
+    );
+
+    const handleDrop = useCallback(
+      (e: React.DragEvent) => {
+        if (state.isSubmitting) return;
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounterRef.current = 0;
         setIsDraggingFile(false);
-      }
-    }, [state.isSubmitting]);
 
-    const handleDragOver = useCallback((e: React.DragEvent) => {
-      if (state.isSubmitting) return;
-      e.preventDefault();
-      e.stopPropagation();
-    }, [state.isSubmitting]);
+        const files = Array.from(e.dataTransfer.files).filter((file) =>
+          file.type.startsWith('image/')
+        );
 
-    const handleDrop = useCallback((e: React.DragEvent) => {
-      if (state.isSubmitting) return;
-      e.preventDefault();
-      e.stopPropagation();
-      dragCounterRef.current = 0;
-      setIsDraggingFile(false);
-
-      const files = Array.from(e.dataTransfer.files).filter((file) =>
-        file.type.startsWith('image/')
-      );
-
-      if (files.length > 0) {
-        dispatch({ type: 'set_show_upload', payload: true });
-        if (imageUploadRef.current) {
-          imageUploadRef.current.addFiles(files);
-        } else {
-          setPendingFiles(files);
+        if (files.length > 0) {
+          dispatch({ type: 'set_show_upload', payload: true });
+          if (imageUploadRef.current) {
+            imageUploadRef.current.addFiles(files);
+          } else {
+            setPendingFiles(files);
+          }
         }
-      }
-    }, [state.isSubmitting]);
+      },
+      [state.isSubmitting]
+    );
 
     const handleFiles = useCallback((files: File[]) => {
       dispatch({ type: 'set_show_upload', payload: true });
@@ -312,7 +371,8 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       } else if (task) {
         return (
           state.title.trim() !== task.title.trim() ||
-          (state.description || '').trim() !== (task.description || '').trim() ||
+          (state.description || '').trim() !==
+            (task.description || '').trim() ||
           state.status !== task.status
         );
       }
@@ -332,7 +392,8 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       };
 
       window.addEventListener('beforeunload', handleBeforeUnload);
-      return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+      return () =>
+        window.removeEventListener('beforeunload', handleBeforeUnload);
     }, [modal.visible, state.isSubmitting, hasUnsavedChanges]);
 
     // Submission handlers
@@ -379,21 +440,39 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       } finally {
         dispatch({ type: 'set_submitting', payload: false });
       }
-    }, [state, projectId, mode, task, parentTaskAttemptId, createTask, updateTask, modal]);
+    }, [
+      state,
+      projectId,
+      mode,
+      task,
+      parentTaskAttemptId,
+      createTask,
+      updateTask,
+      modal,
+    ]);
 
     const handleCreateAndStart = useCallback(async () => {
-      if (!state.title.trim() || !projectId || mode === 'edit' || state.isSubmitting) return;
+      if (
+        !state.title.trim() ||
+        !projectId ||
+        mode === 'edit' ||
+        state.isSubmitting
+      )
+        return;
 
       dispatch({ type: 'set_submitting', payload: true });
       try {
-        const finalProfile = state.selectedExecutorProfile || system.config?.executor_profile;
+        const finalProfile =
+          state.selectedExecutorProfile || system.config?.executor_profile;
         if (!finalProfile || !state.selectedBranch) {
           console.warn('Missing executor profile or branch for Create & Start');
           return;
         }
 
         const imageIds =
-          state.newlyUploadedImageIds.length > 0 ? state.newlyUploadedImageIds : undefined;
+          state.newlyUploadedImageIds.length > 0
+            ? state.newlyUploadedImageIds
+            : undefined;
 
         await createAndStart.mutateAsync(
           {
@@ -412,7 +491,15 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       } finally {
         dispatch({ type: 'set_submitting', payload: false });
       }
-    }, [state, projectId, mode, parentTaskAttemptId, createAndStart, system.config, modal]);
+    }, [
+      state,
+      projectId,
+      mode,
+      parentTaskAttemptId,
+      createAndStart,
+      system.config,
+      modal,
+    ]);
 
     // Keyboard shortcuts
     const primaryAction = useCallback(() => {
@@ -425,7 +512,14 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       } else {
         void submit();
       }
-    }, [state.isSubmitting, state.title, state.autoStart, mode, submit, handleCreateAndStart]);
+    }, [
+      state.isSubmitting,
+      state.title,
+      state.autoStart,
+      mode,
+      submit,
+      handleCreateAndStart,
+    ]);
 
     const alternateAction = useCallback(() => {
       if (state.isSubmitting || !state.title.trim()) return;
@@ -437,9 +531,20 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
       } else {
         void handleCreateAndStart();
       }
-    }, [state.isSubmitting, state.title, state.autoStart, mode, submit, handleCreateAndStart]);
+    }, [
+      state.isSubmitting,
+      state.title,
+      state.autoStart,
+      mode,
+      submit,
+      handleCreateAndStart,
+    ]);
 
-    const shortcutsEnabled = modal.visible && !state.isSubmitting && !!state.title.trim() && !state.showDiscardWarning;
+    const shortcutsEnabled =
+      modal.visible &&
+      !state.isSubmitting &&
+      !!state.title.trim() &&
+      !state.showDiscardWarning;
 
     useKeySubmitTask(primaryAction, {
       enabled: shortcutsEnabled,
@@ -503,7 +608,9 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                 <Input
                   id="task-title"
                   value={state.title}
-                  onChange={(e) => dispatch({ type: 'set_title', payload: e.target.value })}
+                  onChange={(e) =>
+                    dispatch({ type: 'set_title', payload: e.target.value })
+                  }
                   placeholder="Task title"
                   className="text-lg font-medium border-none shadow-none px-0 placeholder:text-muted-foreground/60 focus-visible:ring-0"
                   disabled={state.isSubmitting}
@@ -515,7 +622,9 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
               <div>
                 <FileSearchTextarea
                   value={state.description}
-                  onChange={(desc) => dispatch({ type: 'set_description', payload: desc })}
+                  onChange={(desc) =>
+                    dispatch({ type: 'set_description', payload: desc })
+                  }
                   rows={4}
                   maxRows={35}
                   placeholder="Add more details (optional). Type @ to search files."
@@ -531,7 +640,9 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                 <ImageUploadSection
                   ref={imageUploadRef}
                   images={state.images}
-                  onImagesChange={(imgs) => dispatch({ type: 'set_images', payload: imgs })}
+                  onImagesChange={(imgs) =>
+                    dispatch({ type: 'set_images', payload: imgs })
+                  }
                   onUpload={imagesApi.upload}
                   onDelete={imagesApi.delete}
                   onImageUploaded={(img) => {
@@ -540,8 +651,14 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                       state.description.trim() === ''
                         ? markdownText
                         : state.description + ' ' + markdownText;
-                    dispatch({ type: 'set_description', payload: newDescription });
-                    dispatch({ type: 'set_images', payload: [...state.images, img] });
+                    dispatch({
+                      type: 'set_description',
+                      payload: newDescription,
+                    });
+                    dispatch({
+                      type: 'set_images',
+                      payload: [...state.images, img],
+                    });
                     dispatch({ type: 'set_show_upload', payload: true });
                     dispatch({ type: 'add_uploaded_id', payload: img.id });
                   }}
@@ -557,7 +674,9 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                 <div
                   className={cn(
                     'flex items-center gap-2 h-9 transition-opacity duration-200',
-                    state.autoStart ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                    state.autoStart
+                      ? 'opacity-100'
+                      : 'opacity-0 pointer-events-none'
                   )}
                 >
                   {profiles && (
@@ -565,13 +684,17 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                       <AgentSelector
                         profiles={profiles}
                         selectedExecutorProfile={state.selectedExecutorProfile}
-                        onChange={(profile) => dispatch({ type: 'set_profile', payload: profile })}
+                        onChange={(profile) =>
+                          dispatch({ type: 'set_profile', payload: profile })
+                        }
                         disabled={state.isSubmitting}
                       />
                       <ConfigSelector
                         profiles={profiles}
                         selectedExecutorProfile={state.selectedExecutorProfile}
-                        onChange={(profile) => dispatch({ type: 'set_profile', payload: profile })}
+                        onChange={(profile) =>
+                          dispatch({ type: 'set_profile', payload: profile })
+                        }
                         disabled={state.isSubmitting}
                       />
                     </>
@@ -580,7 +703,9 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                     <BranchSelector
                       branches={state.branches}
                       selectedBranch={state.selectedBranch}
-                      onBranchSelect={(branch) => dispatch({ type: 'set_branch', payload: branch })}
+                      onBranchSelect={(branch) =>
+                        dispatch({ type: 'set_branch', payload: branch })
+                      }
                       placeholder="Branch"
                       className={cn(
                         'h-9 flex-1 text-xs',
@@ -599,7 +724,12 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                   </Label>
                   <Select
                     value={state.status}
-                    onValueChange={(value) => dispatch({ type: 'set_status', payload: value as TaskStatus })}
+                    onValueChange={(value) =>
+                      dispatch({
+                        type: 'set_status',
+                        payload: value as TaskStatus,
+                      })
+                    }
                     disabled={state.isSubmitting}
                   >
                     <SelectTrigger>
@@ -650,7 +780,9 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                     <Switch
                       id="autostart-switch"
                       checked={state.autoStart}
-                      onCheckedChange={(checked) => dispatch({ type: 'set_auto_start', payload: checked })}
+                      onCheckedChange={(checked) =>
+                        dispatch({ type: 'set_auto_start', payload: checked })
+                      }
                       disabled={state.isSubmitting}
                       aria-label="Start"
                     />
@@ -676,7 +808,9 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                     disabled={
                       state.isSubmitting ||
                       !state.title.trim() ||
-                      (state.autoStart && (!state.selectedExecutorProfile || !state.selectedBranch))
+                      (state.autoStart &&
+                        (!state.selectedExecutorProfile ||
+                          !state.selectedBranch))
                     }
                   >
                     <Plus className="h-4 w-4 mr-1.5" />
@@ -691,7 +825,9 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
         {/* Discard warning dialog */}
         <Dialog
           open={state.showDiscardWarning}
-          onOpenChange={(o) => !o && dispatch({ type: 'set_discard', payload: false })}
+          onOpenChange={(o) =>
+            !o && dispatch({ type: 'set_discard', payload: false })
+          }
         >
           <DialogContent className="sm:max-w-[425px] z-[10000]">
             <DialogHeader>
@@ -705,7 +841,9 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
             <div className="flex justify-end gap-2">
               <Button
                 variant="outline"
-                onClick={() => dispatch({ type: 'set_discard', payload: false })}
+                onClick={() =>
+                  dispatch({ type: 'set_discard', payload: false })
+                }
               >
                 Continue Editing
               </Button>
@@ -719,6 +857,3 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
     );
   }
 );
-
-
-
