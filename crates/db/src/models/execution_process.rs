@@ -279,10 +279,11 @@ impl ExecutionProcess {
         let row = sqlx::query!(
             r#"SELECT es.session_id
                FROM execution_processes ep
-               JOIN executor_sessions es ON ep.id = es.execution_process_id  
+               JOIN executor_sessions es ON ep.id = es.execution_process_id
                WHERE ep.task_attempt_id = $1
                  AND ep.run_reason = 'codingagent'
                  AND ep.dropped = FALSE
+                 AND ep.status = 'running'
                  AND es.session_id IS NOT NULL
                ORDER BY ep.created_at DESC
                LIMIT 1"#,
