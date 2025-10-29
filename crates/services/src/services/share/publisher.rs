@@ -63,6 +63,8 @@ impl SharePublisher {
         if let Some(session) = provided.filter(|session| !session.is_expired()) {
             return Ok(session.clone());
         }
+        // The 5-second timeout is an arbitrary choice attempting to balance responsiveness with giving
+        // enough time for session token refresh. It may need tuning based on real-world results.
         match tokio::time::timeout(Duration::from_secs(5), self.sessions.wait_for_active()).await {
             Ok(session) => Ok(session),
             Err(_) => Err(ShareError::MissingAuth),
