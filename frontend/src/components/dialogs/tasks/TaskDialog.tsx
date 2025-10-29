@@ -78,7 +78,7 @@ const TaskDialog = React.forwardRef<HTMLDivElement, TaskDialogProps>(
           aria-modal="true"
           aria-label={ariaLabel}
           className={cn(
-            'relative z-[9999] w-full max-w-lg bg-primary shadow-lg duration-200 sm:rounded-lg my-8',
+            'relative z-[9999] w-full max-w-lg bg-primary shadow-lg duration-200 rounded-lg my-8',
             className
           )}
         >
