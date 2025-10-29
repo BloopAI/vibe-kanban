@@ -31,11 +31,7 @@ import { ConfigSelector } from '@/components/tasks/ConfigSelector';
 import { useTaskMutations } from '@/hooks/useTaskMutations';
 import { useUserSystem } from '@/components/config-provider';
 import { imagesApi } from '@/lib/api';
-import {
-  useProjectBranches,
-  useTaskAttempt,
-  useImageUpload,
-} from '@/hooks';
+import { useProjectBranches, useTaskAttempt, useImageUpload } from '@/hooks';
 import { useKeySubmitTask, useKeySubmitTaskAlt, Scope } from '@/keyboard';
 import { cn } from '@/lib/utils';
 import type {
@@ -753,6 +749,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
                         dispatch({ type: 'set_auto_start', payload: checked })
                       }
                       disabled={state.isSubmitting}
+                      className="data-[state=checked]:bg-gray-900 dark:data-[state=checked]:bg-gray-100"
                       aria-label={t('taskFormDialog.startLabel')}
                     />
                     <Label
