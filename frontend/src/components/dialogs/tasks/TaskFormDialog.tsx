@@ -2,13 +2,13 @@ import {
   useEffect,
   useCallback,
   useRef,
-  useReducer,
   useState,
   useMemo,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useDropzone } from 'react-dropzone';
+import { useForm } from '@tanstack/react-form';
 import { Plus, Image as ImageIcon } from 'lucide-react';
 import { TaskDialog } from './TaskDialog';
 import { Input } from '@/components/ui/input';
@@ -39,7 +39,6 @@ import {
 } from '@/hooks';
 import {
   useKeySubmitTask,
-  useKeySubmitTaskAlt,
   useKeyExit,
   Scope,
 } from '@/keyboard';
@@ -72,77 +71,12 @@ export type TaskFormDialogProps =
       initialBaseBranch: string;
     };
 
-type State = {
+type TaskFormValues = {
   title: string;
   description: string;
   status: TaskStatus;
-  autoStart: boolean;
-  selectedExecutorProfile: ExecutorProfileId | null;
-  selectedBranch: string;
-  images: ImageResponse[];
-  showImageUpload: boolean;
-  newlyUploadedImageIds: string[];
-  isSubmitting: boolean;
-  showDiscardWarning: boolean;
-};
-
-type Action =
-  | { type: 'set_title'; payload: string }
-  | { type: 'set_description'; payload: string }
-  | { type: 'set_status'; payload: TaskStatus }
-  | { type: 'set_auto_start'; payload: boolean }
-  | { type: 'set_profile'; payload: ExecutorProfileId | null }
-  | { type: 'set_branch'; payload: string }
-  | { type: 'set_images'; payload: ImageResponse[] }
-  | { type: 'add_uploaded_id'; payload: string }
-  | { type: 'set_show_upload'; payload: boolean }
-  | { type: 'set_submitting'; payload: boolean }
-  | { type: 'set_discard'; payload: boolean };
-
-function reducer(state: State, action: Action): State {
-  switch (action.type) {
-    case 'set_title':
-      return { ...state, title: action.payload };
-    case 'set_description':
-      return { ...state, description: action.payload };
-    case 'set_status':
-      return { ...state, status: action.payload };
-    case 'set_auto_start':
-      return { ...state, autoStart: action.payload };
-    case 'set_profile':
-      return { ...state, selectedExecutorProfile: action.payload };
-    case 'set_branch':
-      return { ...state, selectedBranch: action.payload };
-    case 'set_images':
-      return { ...state, images: action.payload };
-    case 'add_uploaded_id':
-      return {
-        ...state,
-        newlyUploadedImageIds: [...state.newlyUploadedImageIds, action.payload],
-      };
-    case 'set_show_upload':
-      return { ...state, showImageUpload: action.payload };
-    case 'set_submitting':
-      return { ...state, isSubmitting: action.payload };
-    case 'set_discard':
-      return { ...state, showDiscardWarning: action.payload };
-    default:
-      return state;
-  }
-}
-
-const initialState: State = {
-  title: '',
-  description: '',
-  status: 'todo',
-  autoStart: true,
-  selectedExecutorProfile: null,
-  selectedBranch: '',
-  images: [],
-  showImageUpload: false,
-  newlyUploadedImageIds: [],
-  isSubmitting: false,
-  showDiscardWarning: false,
+  executorProfileId: ExecutorProfileId | null;
+  branch: string;
 };
 
 export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
@@ -155,37 +89,15 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
   const { upload, deleteImage } = useImageUpload();
   const { enableScope, disableScope } = useHotkeysContext();
 
-  const reset = (initialState: State): State => {
-    return {
-      ...initialState,
-      selectedExecutorProfile: system.config?.executor_profile || null,
-    };
-  };
+  // Local UI state
+  const [autoStart, setAutoStart] = useState(true);
+  const [showImageUpload, setShowImageUpload] = useState(false);
+  const [images, setImages] = useState<ImageResponse[]>([]);
+  const [newlyUploadedImageIds, setNewlyUploadedImageIds] = useState<string[]>(
+    []
+  );
+  const [showDiscardWarning, setShowDiscardWarning] = useState(false);
 
-  const init = (initialState: State): State => {
-    switch (mode) {
-      case 'edit':
-        return {
-          ...initialState,
-          title: props.task.title,
-          description: props.task.description || '',
-          status: props.task.status,
-        };
-      case 'duplicate':
-        return {
-          ...initialState,
-          title: props.initialTask.title,
-          description: props.initialTask.description || '',
-          status: 'todo',
-          selectedExecutorProfile: system.config?.executor_profile || null,
-        };
-      case 'subtask':
-      case 'create':
-        return reset(initialState);
-    }
-  };
-
-  const [state, dispatch] = useReducer(reducer, initialState, init);
   const imageUploadRef = useRef<ImageUploadSectionHandle>(null);
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -226,22 +138,144 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
     return currentBranch?.name || branches[0]?.name || '';
   }, [branches, props, parentAttempt]);
 
-  // Update state when default branch changes
+  // Get default form values based on mode
+  const getDefaultValues = useCallback((): TaskFormValues => {
+    const baseProfile = system.config?.executor_profile || null;
+
+    switch (mode) {
+      case 'edit':
+        return {
+          title: props.task.title,
+          description: props.task.description || '',
+          status: props.task.status,
+          executorProfileId: baseProfile,
+          branch: defaultBranch || '',
+        };
+
+      case 'duplicate':
+        return {
+          title: props.initialTask.title,
+          description: props.initialTask.description || '',
+          status: 'todo',
+          executorProfileId: baseProfile,
+          branch: defaultBranch || '',
+        };
+
+      case 'subtask':
+      case 'create':
+      default:
+        return {
+          title: '',
+          description: '',
+          status: 'todo',
+          executorProfileId: baseProfile,
+          branch: defaultBranch || '',
+        };
+    }
+  }, [mode, props, system.config?.executor_profile, defaultBranch]);
+
+  // Form submission handler
+  const handleSubmit = useCallback(
+    async ({ value }: { value: TaskFormValues }) => {
+      const imageIds =
+        mode === 'edit'
+          ? images.length > 0
+            ? images.map((img) => img.id)
+            : undefined
+          : newlyUploadedImageIds.length > 0
+            ? newlyUploadedImageIds
+            : undefined;
+
+      if (mode === 'edit') {
+        await updateTask.mutateAsync(
+          {
+            taskId: props.task.id,
+            data: {
+              title: value.title,
+              description: value.description,
+              status: value.status,
+              parent_task_attempt: null,
+              image_ids: imageIds || null,
+            },
+          },
+          { onSuccess: () => modal.remove() }
+        );
+      } else if (autoStart) {
+        const finalProfile = value.executorProfileId || system.config?.executor_profile;
+        if (!finalProfile || !value.branch) {
+          console.warn('Missing executor profile or branch for Create & Start');
+          return;
+        }
+
+        await createAndStart.mutateAsync(
+          {
+            task: {
+              project_id: projectId,
+              title: value.title,
+              description: value.description,
+              parent_task_attempt:
+                mode === 'subtask' ? props.parentTaskAttemptId : null,
+              image_ids: imageIds || null,
+            },
+            executor_profile_id: finalProfile,
+            base_branch: value.branch,
+          },
+          { onSuccess: () => modal.remove() }
+        );
+      } else {
+        await createTask.mutateAsync(
+          {
+            project_id: projectId,
+            title: value.title,
+            description: value.description,
+            parent_task_attempt:
+              mode === 'subtask' ? props.parentTaskAttemptId : null,
+            image_ids: imageIds || null,
+          },
+          { onSuccess: () => modal.remove() }
+        );
+      }
+    },
+    [
+      mode,
+      props,
+      autoStart,
+      images,
+      newlyUploadedImageIds,
+      updateTask,
+      createAndStart,
+      createTask,
+      system.config,
+      modal,
+      projectId,
+    ]
+  );
+
+  // Initialize TanStack Form
+  const form = useForm({
+    defaultValues: getDefaultValues(),
+    onSubmit: handleSubmit,
+  });
+
+  // Update branch when default branch changes
   useEffect(() => {
     if (!defaultBranch) return;
-    dispatch({ type: 'set_branch', payload: defaultBranch });
-  }, [defaultBranch]);
+    if (mode !== 'edit') {
+      form.setFieldValue('branch', defaultBranch);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultBranch, mode]);
 
   // Load images for edit mode
   useEffect(() => {
     if (!taskImages) return;
-    dispatch({ type: 'set_images', payload: taskImages });
-    dispatch({ type: 'set_show_upload', payload: taskImages.length > 0 });
+    setImages(taskImages);
+    setShowImageUpload(taskImages.length > 0);
   }, [taskImages]);
 
   // Drag & drop with react-dropzone
   const handleFiles = useCallback((files: File[]) => {
-    dispatch({ type: 'set_show_upload', payload: true });
+    setShowImageUpload(true);
     if (imageUploadRef.current) {
       imageUploadRef.current.addFiles(files);
     } else {
@@ -252,7 +286,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: handleFiles,
     accept: { 'image/*': [] },
-    disabled: state.isSubmitting,
+    disabled: form.state.isSubmitting,
     noClick: true,
     noKeyboard: true,
   });
@@ -263,24 +297,33 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
       imageUploadRef.current.addFiles(pendingFiles);
       setPendingFiles(null);
     }
-  }, [pendingFiles, state.showImageUpload]);
+  }, [pendingFiles, showImageUpload]);
+
+  // Image upload callback
+  const handleImageUploaded = useCallback(
+    (img: ImageResponse) => {
+      const markdownText = `![${img.original_name}](${img.file_path})`;
+      form.setFieldValue('description', (prev) =>
+        prev.trim() === '' ? markdownText : `${prev} ${markdownText}`
+      );
+      setImages((prev) => [...prev, img]);
+      setNewlyUploadedImageIds((prev) => [...prev, img.id]);
+      setShowImageUpload(true);
+    },
+    [form]
+  );
 
   // Unsaved changes detection
   const hasUnsavedChanges = useCallback(() => {
-    if (mode === 'edit') {
-      return (
-        state.title.trim() !== props.task.title.trim() ||
-        (state.description || '').trim() !==
-          (props.task.description || '').trim() ||
-        state.status !== props.task.status
-      );
-    }
-    return state.title.trim() !== '' || state.description.trim() !== '';
-  }, [props, state.title, state.description, state.status]);
+    if (form.state.isDirty) return true;
+    if (newlyUploadedImageIds.length > 0) return true;
+    if (images.length > 0 && mode !== 'edit') return true;
+    return false;
+  }, [form.state.isDirty, newlyUploadedImageIds, images, mode]);
 
   // beforeunload listener
   useEffect(() => {
-    if (!modal.visible || state.isSubmitting) return;
+    if (!modal.visible || form.state.isSubmitting) return;
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (hasUnsavedChanges()) {
@@ -291,145 +334,21 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [modal.visible, state.isSubmitting, hasUnsavedChanges]);
-
-  // Submission handlers
-  const submit = useCallback(async () => {
-    if (!state.title.trim() || state.isSubmitting) return;
-
-    dispatch({ type: 'set_submitting', payload: true });
-    try {
-      const imageIds =
-        mode === 'edit'
-          ? state.images.length > 0
-            ? state.images.map((img) => img.id)
-            : undefined
-          : state.newlyUploadedImageIds.length > 0
-            ? state.newlyUploadedImageIds
-            : undefined;
-
-      if (mode === 'edit') {
-        await updateTask.mutateAsync(
-          {
-            taskId: props.task.id,
-            data: {
-              title: state.title,
-              description: state.description,
-              status: state.status,
-              parent_task_attempt: null,
-              image_ids: imageIds || null,
-            },
-          },
-          { onSuccess: () => modal.remove() }
-        );
-      } else {
-        await createTask.mutateAsync(
-          {
-            project_id: projectId,
-            title: state.title,
-            description: state.description,
-            parent_task_attempt:
-              mode === 'subtask' ? props.parentTaskAttemptId : null,
-            image_ids: imageIds || null,
-          },
-          { onSuccess: () => modal.remove() }
-        );
-      }
-    } finally {
-      dispatch({ type: 'set_submitting', payload: false });
-    }
-  }, [state, props, createTask, updateTask, modal]);
-
-  const handleCreateAndStart = useCallback(async () => {
-    if (!state.title.trim() || mode === 'edit' || state.isSubmitting) return;
-
-    dispatch({ type: 'set_submitting', payload: true });
-    try {
-      const finalProfile =
-        state.selectedExecutorProfile || system.config?.executor_profile;
-      if (!finalProfile || !state.selectedBranch) {
-        console.warn('Missing executor profile or branch for Create & Start');
-        return;
-      }
-
-      const imageIds =
-        state.newlyUploadedImageIds.length > 0
-          ? state.newlyUploadedImageIds
-          : undefined;
-
-      await createAndStart.mutateAsync(
-        {
-          task: {
-            project_id: projectId,
-            title: state.title,
-            description: state.description,
-            parent_task_attempt:
-              mode === 'subtask' ? props.parentTaskAttemptId : null,
-            image_ids: imageIds || null,
-          },
-          executor_profile_id: finalProfile,
-          base_branch: state.selectedBranch,
-        },
-        { onSuccess: () => modal.remove() }
-      );
-    } finally {
-      dispatch({ type: 'set_submitting', payload: false });
-    }
-  }, [state, props, createAndStart, system.config, modal]);
+  }, [modal.visible, form.state.isSubmitting, hasUnsavedChanges]);
 
   // Keyboard shortcuts
   const primaryAction = useCallback(() => {
-    if (state.isSubmitting || !state.title.trim()) return;
-
-    if (mode === 'edit') {
-      void submit();
-    } else if (state.autoStart) {
-      void handleCreateAndStart();
-    } else {
-      void submit();
-    }
-  }, [
-    state.isSubmitting,
-    state.title,
-    state.autoStart,
-    mode,
-    submit,
-    handleCreateAndStart,
-  ]);
-
-  const alternateAction = useCallback(() => {
-    if (state.isSubmitting || !state.title.trim()) return;
-
-    if (mode === 'edit') {
-      void submit();
-    } else if (state.autoStart) {
-      void submit();
-    } else {
-      void handleCreateAndStart();
-    }
-  }, [
-    state.isSubmitting,
-    state.title,
-    state.autoStart,
-    mode,
-    submit,
-    handleCreateAndStart,
-  ]);
+    if (form.state.isSubmitting || !form.state.canSubmit) return;
+    void form.handleSubmit();
+  }, [form]);
 
   const shortcutsEnabled =
     modal.visible &&
-    !state.isSubmitting &&
-    !!state.title.trim() &&
-    !state.showDiscardWarning;
+    !form.state.isSubmitting &&
+    form.state.canSubmit &&
+    !showDiscardWarning;
 
   useKeySubmitTask(primaryAction, {
-    enabled: shortcutsEnabled,
-    scope: Scope.DIALOG,
-    enableOnFormTags: ['input', 'INPUT', 'textarea', 'TEXTAREA'],
-    preventDefault: true,
-  });
-
-  useKeySubmitTaskAlt(alternateAction, {
     enabled: shortcutsEnabled,
     scope: Scope.DIALOG,
     enableOnFormTags: ['input', 'INPUT', 'textarea', 'TEXTAREA'],
@@ -439,34 +358,38 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
   // Dialog close handling
   const handleDialogClose = (open: boolean) => {
     if (!open && hasUnsavedChanges()) {
-      dispatch({ type: 'set_discard', payload: true });
+      setShowDiscardWarning(true);
     } else if (!open) {
       modal.remove();
     }
   };
 
   const handleDiscardChanges = () => {
+    form.reset();
+    setImages([]);
+    setNewlyUploadedImageIds([]);
+    setShowDiscardWarning(false);
     modal.remove();
   };
 
   const handleContinueEditing = () => {
-    dispatch({ type: 'set_discard', payload: false });
+    setShowDiscardWarning(false);
   };
 
   // Manage CONFIRMATION scope when warning is shown
   useEffect(() => {
-    if (state.showDiscardWarning) {
+    if (showDiscardWarning) {
       disableScope(Scope.DIALOG);
       enableScope(Scope.CONFIRMATION);
     } else {
       disableScope(Scope.CONFIRMATION);
       enableScope(Scope.DIALOG);
     }
-  }, [state.showDiscardWarning, enableScope, disableScope]);
+  }, [showDiscardWarning, enableScope, disableScope]);
 
   useKeyExit(handleContinueEditing, {
     scope: Scope.CONFIRMATION,
-    when: () => modal.visible && state.showDiscardWarning,
+    when: () => modal.visible && showDiscardWarning,
   });
 
   return (
@@ -475,7 +398,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
         open={modal.visible}
         onOpenChange={handleDialogClose}
         className="w-full max-w-[min(90vw,40rem)] max-h-[min(95vh,50rem)] flex flex-col overflow-hidden"
-        uncloseable={state.showDiscardWarning}
+        uncloseable={showDiscardWarning}
         ariaLabel={mode === 'edit' ? 'Edit task' : 'Create new task'}
       >
         <div
@@ -497,66 +420,60 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
 
           {/* Title */}
           <div className="flex-none pr-8 pt-3">
-            <Input
-              id="task-title"
-              value={state.title}
-              onChange={(e) =>
-                dispatch({ type: 'set_title', payload: e.target.value })
-              }
-              placeholder={t('taskFormDialog.titlePlaceholder')}
-              className="text-lg font-medium border-none shadow-none px-0 placeholder:text-muted-foreground/60 focus-visible:ring-0"
-              disabled={state.isSubmitting}
-              autoFocus
-            />
+            <form.Field
+              name="title"
+              validators={{
+                onChange: ({ value }) =>
+                  value.trim() ? undefined : 'Title is required',
+              }}
+            >
+              {(field) => (
+                <Input
+                  id="task-title"
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  onBlur={field.handleBlur}
+                  placeholder={t('taskFormDialog.titlePlaceholder')}
+                  className="text-lg font-medium border-none shadow-none px-0 placeholder:text-muted-foreground/60 focus-visible:ring-0"
+                  disabled={form.state.isSubmitting}
+                  autoFocus
+                />
+              )}
+            </form.Field>
           </div>
 
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-1 pb-3">
             {/* Description */}
             <div>
-              <FileSearchTextarea
-                value={state.description}
-                onChange={(desc) =>
-                  dispatch({ type: 'set_description', payload: desc })
-                }
-                rows={20}
-                maxRows={35}
-                placeholder={t('taskFormDialog.descriptionPlaceholder')}
-                className="border-none shadow-none px-0 resize-none placeholder:text-muted-foreground/60 focus-visible:ring-0 text-md font-normal"
-                disabled={state.isSubmitting}
-                projectId={projectId}
-                onPasteFiles={handleFiles}
-                disableScroll={true}
-              />
+              <form.Field name="description">
+                {(field) => (
+                  <FileSearchTextarea
+                    value={field.state.value}
+                    onChange={(desc) => field.handleChange(desc)}
+                    onBlur={field.handleBlur}
+                    rows={20}
+                    maxRows={35}
+                    placeholder={t('taskFormDialog.descriptionPlaceholder')}
+                    className="border-none shadow-none px-0 resize-none placeholder:text-muted-foreground/60 focus-visible:ring-0 text-md font-normal"
+                    disabled={form.state.isSubmitting}
+                    projectId={projectId}
+                    onPasteFiles={handleFiles}
+                    disableScroll={true}
+                  />
+                )}
+              </form.Field>
             </div>
 
             {/* Images */}
-            {state.showImageUpload && (
+            {showImageUpload && (
               <ImageUploadSection
                 ref={imageUploadRef}
-                images={state.images}
-                onImagesChange={(imgs) =>
-                  dispatch({ type: 'set_images', payload: imgs })
-                }
+                images={images}
+                onImagesChange={setImages}
                 onUpload={upload}
                 onDelete={deleteImage}
-                onImageUploaded={(img) => {
-                  const markdownText = `![${img.original_name}](${img.file_path})`;
-                  const newDescription =
-                    state.description.trim() === ''
-                      ? markdownText
-                      : state.description + ' ' + markdownText;
-                  dispatch({
-                    type: 'set_description',
-                    payload: newDescription,
-                  });
-                  dispatch({
-                    type: 'set_images',
-                    payload: [...state.images, img],
-                  });
-                  dispatch({ type: 'set_show_upload', payload: true });
-                  dispatch({ type: 'add_uploaded_id', payload: img.id });
-                }}
-                disabled={state.isSubmitting}
+                onImageUploaded={handleImageUploaded}
+                disabled={form.state.isSubmitting}
                 collapsible={false}
                 defaultExpanded={true}
                 hideDropZone={true}
@@ -565,42 +482,43 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
 
             {/* Edit mode status */}
             {mode === 'edit' && (
-              <div className="space-y-2">
-                <Label htmlFor="task-status" className="text-sm font-medium">
-                  {t('taskFormDialog.statusLabel')}
-                </Label>
-                <Select
-                  value={state.status}
-                  onValueChange={(value) =>
-                    dispatch({
-                      type: 'set_status',
-                      payload: value as TaskStatus,
-                    })
-                  }
-                  disabled={state.isSubmitting}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todo">
-                      {t('taskFormDialog.statusOptions.todo')}
-                    </SelectItem>
-                    <SelectItem value="inprogress">
-                      {t('taskFormDialog.statusOptions.inprogress')}
-                    </SelectItem>
-                    <SelectItem value="inreview">
-                      {t('taskFormDialog.statusOptions.inreview')}
-                    </SelectItem>
-                    <SelectItem value="done">
-                      {t('taskFormDialog.statusOptions.done')}
-                    </SelectItem>
-                    <SelectItem value="cancelled">
-                      {t('taskFormDialog.statusOptions.cancelled')}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <form.Field name="status">
+                {(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor="task-status" className="text-sm font-medium">
+                      {t('taskFormDialog.statusLabel')}
+                    </Label>
+                    <Select
+                      value={field.state.value}
+                      onValueChange={(value) =>
+                        field.handleChange(value as TaskStatus)
+                      }
+                      disabled={form.state.isSubmitting}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todo">
+                          {t('taskFormDialog.statusOptions.todo')}
+                        </SelectItem>
+                        <SelectItem value="inprogress">
+                          {t('taskFormDialog.statusOptions.inprogress')}
+                        </SelectItem>
+                        <SelectItem value="inreview">
+                          {t('taskFormDialog.statusOptions.inreview')}
+                        </SelectItem>
+                        <SelectItem value="done">
+                          {t('taskFormDialog.statusOptions.done')}
+                        </SelectItem>
+                        <SelectItem value="cancelled">
+                          {t('taskFormDialog.statusOptions.cancelled')}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </form.Field>
             )}
           </div>
 
@@ -609,34 +527,36 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
             <div
               className={cn(
                 'flex items-center gap-2 h-9 py-2 my-2 transition-opacity duration-200',
-                state.autoStart
-                  ? 'opacity-100'
-                  : 'opacity-0 pointer-events-none'
+                autoStart ? 'opacity-100' : 'opacity-0 pointer-events-none'
               )}
             >
-              <ExecutorProfileSelector
-                profiles={profiles}
-                selectedProfile={state.selectedExecutorProfile}
-                onProfileSelect={(profile) =>
-                  dispatch({ type: 'set_profile', payload: profile })
-                }
-                disabled={state.isSubmitting}
-                showLabel={false}
-                className="flex items-center gap-2 flex-row flex-[2] min-w-0"
-                itemClassName="flex-1 min-w-0"
-              />
-              <BranchSelector
-                branches={branches}
-                selectedBranch={state.selectedBranch}
-                onBranchSelect={(branch) =>
-                  dispatch({ type: 'set_branch', payload: branch })
-                }
-                placeholder="Branch"
-                className={cn(
-                  'h-9 flex-1 min-w-0 text-xs',
-                  state.isSubmitting && 'opacity-50 cursor-not-allowed'
+              <form.Field name="executorProfileId">
+                {(field) => (
+                  <ExecutorProfileSelector
+                    profiles={profiles}
+                    selectedProfile={field.state.value}
+                    onProfileSelect={(profile) => field.handleChange(profile)}
+                    disabled={form.state.isSubmitting || !autoStart}
+                    showLabel={false}
+                    className="flex items-center gap-2 flex-row flex-[2] min-w-0"
+                    itemClassName="flex-1 min-w-0"
+                  />
                 )}
-              />
+              </form.Field>
+              <form.Field name="branch">
+                {(field) => (
+                  <BranchSelector
+                    branches={branches}
+                    selectedBranch={field.state.value}
+                    onBranchSelect={(branch) => field.handleChange(branch)}
+                    placeholder="Branch"
+                    className={cn(
+                      'h-9 flex-1 min-w-0 text-xs',
+                      form.state.isSubmitting && 'opacity-50 cursor-not-allowed'
+                    )}
+                  />
+                )}
+              </form.Field>
             </div>
           )}
 
@@ -672,11 +592,9 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
                 <div className="flex items-center gap-2">
                   <Switch
                     id="autostart-switch"
-                    checked={state.autoStart}
-                    onCheckedChange={(checked) =>
-                      dispatch({ type: 'set_auto_start', payload: checked })
-                    }
-                    disabled={state.isSubmitting}
+                    checked={autoStart}
+                    onCheckedChange={setAutoStart}
+                    disabled={form.state.isSubmitting}
                     className="data-[state=checked]:bg-gray-900 dark:data-[state=checked]:bg-gray-100"
                     aria-label={t('taskFormDialog.startLabel')}
                   />
@@ -689,44 +607,50 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
                 </div>
               )}
 
-              {mode === 'edit' ? (
-                <Button
-                  onClick={submit}
-                  disabled={state.isSubmitting || !state.title.trim()}
-                >
-                  {state.isSubmitting
-                    ? t('taskFormDialog.updating')
-                    : t('taskFormDialog.updateTask')}
-                </Button>
-              ) : (
-                <Button
-                  onClick={state.autoStart ? handleCreateAndStart : submit}
-                  disabled={
-                    state.isSubmitting ||
-                    !state.title.trim() ||
-                    (state.autoStart &&
-                      (!state.selectedExecutorProfile || !state.selectedBranch))
-                  }
-                >
-                  <Plus className="h-4 w-4 mr-1.5" />
-                  {state.isSubmitting
-                    ? state.autoStart
-                      ? t('taskFormDialog.starting')
-                      : t('taskFormDialog.creating')
-                    : t('taskFormDialog.create')}
-                </Button>
-              )}
+              <form.Subscribe
+                selector={(state) => ({
+                  canSubmit: state.canSubmit,
+                  isSubmitting: state.isSubmitting,
+                  values: state.values,
+                })}
+              >
+                {(state) => {
+                  const isDisabled =
+                    !state.canSubmit ||
+                    !state.values.title.trim() ||
+                    (mode !== 'edit' &&
+                      autoStart &&
+                      (!state.values.executorProfileId || !state.values.branch));
+
+                  return mode === 'edit' ? (
+                    <Button onClick={() => form.handleSubmit()} disabled={isDisabled}>
+                      {state.isSubmitting
+                        ? t('taskFormDialog.updating')
+                        : t('taskFormDialog.updateTask')}
+                    </Button>
+                  ) : (
+                    <Button onClick={() => form.handleSubmit()} disabled={isDisabled}>
+                      <Plus className="h-4 w-4 mr-1.5" />
+                      {state.isSubmitting
+                        ? autoStart
+                          ? t('taskFormDialog.starting')
+                          : t('taskFormDialog.creating')
+                        : t('taskFormDialog.create')}
+                    </Button>
+                  );
+                }}
+              </form.Subscribe>
             </div>
           </div>
         </div>
       </TaskDialog>
 
       {/* Discard warning dialog - rendered inline without scope management */}
-      {state.showDiscardWarning && (
+      {showDiscardWarning && (
         <div className="fixed inset-0 z-[10000] flex items-start justify-center p-4 overflow-y-auto">
           <div
             className="fixed inset-0 bg-black/50"
-            onClick={() => dispatch({ type: 'set_discard', payload: false })}
+            onClick={() => setShowDiscardWarning(false)}
           />
           <div className="relative z-[10000] grid w-full max-w-lg gap-4 bg-primary p-6 shadow-lg duration-200 sm:rounded-lg my-8">
             <div className="flex flex-col space-y-1.5 text-center sm:text-left">
