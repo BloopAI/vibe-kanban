@@ -267,8 +267,12 @@ impl From<v1::SoundFile> for SoundFile {
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct EditorConfig {
-    pub editor_type: EditorType,
-    pub custom_command: Option<String>,
+    editor_type: EditorType,
+    custom_command: Option<String>,
+    #[serde(default)]
+    remote_ssh_host: Option<String>,
+    #[serde(default)]
+    remote_ssh_user: Option<String>,
 }
 
 impl From<v1::EditorConfig> for EditorConfig {
@@ -276,6 +280,8 @@ impl From<v1::EditorConfig> for EditorConfig {
         Self {
             editor_type: EditorType::from(old.editor_type), // Now SCREAMING_SNAKE_CASE
             custom_command: old.custom_command,
+            remote_ssh_host: None,
+            remote_ssh_user: None,
         }
     }
 }
@@ -312,6 +318,8 @@ impl Default for EditorConfig {
         Self {
             editor_type: EditorType::VsCode,
             custom_command: None,
+            remote_ssh_host: None,
+            remote_ssh_user: None,
         }
     }
 }
@@ -369,6 +377,8 @@ impl EditorConfig {
             EditorConfig {
                 editor_type,
                 custom_command: self.custom_command.clone(),
+                remote_ssh_host: self.remote_ssh_host.clone(),
+                remote_ssh_user: self.remote_ssh_user.clone(),
             }
         } else {
             self.clone()

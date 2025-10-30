@@ -3,8 +3,7 @@ use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
 use serde::{Deserialize, Serialize};
 use strum_macros::EnumString;
 use ts_rs::TS;
-#[allow(unused_imports)]
-pub use v6::{EditorConfig, GitHubConfig, NotificationConfig, SoundFile, UiLanguage};
+pub use v6::{EditorConfig, EditorType, GitHubConfig, NotificationConfig, SoundFile, UiLanguage};
 
 use crate::services::config::versions::v6;
 
