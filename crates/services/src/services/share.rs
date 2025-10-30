@@ -154,7 +154,7 @@ impl RemoteSync {
 
             let ws_url = self.config.websocket_endpoint(last_seq)?;
             let (close_tx, close_rx) = oneshot::channel();
-            let remote = match spawn_shared_remote(
+            let ws_connection = match spawn_shared_remote(
                 self.processor.clone(),
                 &self.sessions,
                 ws_url,
@@ -182,7 +182,7 @@ impl RemoteSync {
             tokio::select! {
                 _ = &mut shutdown_rx => {
                     tracing::info!("shutdown signal received for remote sync");
-                    if let Err(err) = remote.shutdown() {
+                    if let Err(err) = ws_connection.close() {
                         tracing::warn!(?err, "failed to request websocket shutdown");
                     }
                     break;
@@ -196,7 +196,7 @@ impl RemoteSync {
                             tracing::warn!("remote sync websocket close signal dropped");
                         }
                     }
-                    if let Err(err) = remote.shutdown() {
+                    if let Err(err) = ws_connection.close() {
                         tracing::debug!(?err, "websocket already closed when shutting down");
                     }
                     tokio::select! {

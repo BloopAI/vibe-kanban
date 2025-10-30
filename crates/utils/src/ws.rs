@@ -60,7 +60,7 @@ pub struct WsConfig {
 
 pub struct WsClient {
     msg_tx: mpsc::UnboundedSender<Message>,
-    shutdown: watch::Sender<()>,
+    cancelation_token: watch::Sender<()>,
 }
 
 impl WsClient {
@@ -70,8 +70,8 @@ impl WsClient {
             .map_err(|e| WsError::Send(format!("WebSocket send error: {e}")))
     }
 
-    pub fn shutdown(&self) -> WsResult<()> {
-        self.shutdown
+    pub fn close(&self) -> WsResult<()> {
+        self.cancelation_token
             .send(())
             .map_err(|_| WsError::ShutdownChannelClosed)
     }
@@ -84,7 +84,7 @@ where
     H: WsHandler,
 {
     let (msg_tx, mut msg_rx) = mpsc::unbounded_channel();
-    let (shutdown_tx, shutdown_rx) = watch::channel(());
+    let (cancel_tx, cancel_rx) = watch::channel(());
     let task_tx = msg_tx.clone();
 
     tokio::spawn(async move {
@@ -105,7 +105,7 @@ where
 
                 let ping_task = if let Some(interval) = config.ping_interval {
                     let mut intv = tokio::time::interval(interval);
-                    let mut shutdown_rx2 = shutdown_rx.clone();
+                    let mut cancel_rx2 = cancel_rx.clone();
                     let ping_tx2 = task_tx.clone();
                     Some(tokio::spawn(async move {
                         loop {
@@ -113,7 +113,7 @@ where
                                 _ = intv.tick() => {
                                     if ping_tx2.send(Message::Ping(Vec::new().into())).is_err() { break; }
                                 }
-                                _ = shutdown_rx2.changed() => { break; }
+                                _ = cancel_rx2.changed() => { break; }
                             }
                         }
                     }))
@@ -122,7 +122,7 @@ where
                 };
 
                 loop {
-                    let mut shutdown_rx2 = shutdown_rx.clone();
+                    let mut cancel_rx2 = cancel_rx.clone();
                     tokio::select! {
                         maybe = msg_rx.recv() => {
                             match maybe {
@@ -158,7 +158,7 @@ where
                             }
                         }
 
-                        _ = shutdown_rx2.changed() => {
+                        _ = cancel_rx2.changed() => {
                             tracing::debug!("WebSocket shutdown requested");
                             break;
                         }
@@ -187,7 +187,7 @@ where
 
     Ok(WsClient {
         msg_tx,
-        shutdown: shutdown_tx,
+        cancelation_token: cancel_tx,
     })
 }
 
