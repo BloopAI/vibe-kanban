@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 use uuid::Uuid;
 
 use super::Tx;
@@ -37,16 +38,12 @@ pub struct ProjectMetadata {
     pub name: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum ProjectError {
+    #[error("project conflict: {0}")]
     Conflict(String),
-    Database(sqlx::Error),
-}
-
-impl From<sqlx::Error> for ProjectError {
-    fn from(error: sqlx::Error) -> Self {
-        Self::Database(error)
-    }
+    #[error(transparent)]
+    Database(#[from] sqlx::Error),
 }
 
 pub struct ProjectRepository;

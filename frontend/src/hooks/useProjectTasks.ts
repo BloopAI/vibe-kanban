@@ -14,6 +14,9 @@ export type SharedTaskRecord = Omit<
   last_event_seq: number | null;
   created_at: string | Date;
   updated_at: string | Date;
+  assignee_first_name?: string | null;
+  assignee_last_name?: string | null;
+  assignee_username?: string | null;
 };
 
 type TasksState = {

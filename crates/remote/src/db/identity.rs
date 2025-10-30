@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use thiserror::Error;
 
+use super::Tx;
 use crate::auth::{ClerkService, ClerkServiceError, ClerkUser};
 
 #[derive(Debug, Error)]
@@ -25,9 +26,19 @@ pub struct Organization {
 pub struct User {
     pub id: String,
     pub email: String,
-    pub display_name: String,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
+    pub username: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserData {
+    pub id: String,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
+    pub username: Option<String>,
 }
 
 pub struct IdentityRepository<'a> {
@@ -93,22 +104,28 @@ async fn upsert_user(pool: &PgPool, user: &ClerkUser) -> Result<User, sqlx::Erro
     sqlx::query_as!(
         User,
         r#"
-        INSERT INTO users (id, email, display_name)
-        VALUES ($1, $2, $3)
+        INSERT INTO users (id, email, first_name, last_name, username)
+        VALUES ($1, $2, $3, $4, $5)
         ON CONFLICT (id) DO UPDATE
         SET email = EXCLUDED.email,
-            display_name = EXCLUDED.display_name,
+            first_name = EXCLUDED.first_name,
+            last_name = EXCLUDED.last_name,
+            username = EXCLUDED.username,
             updated_at = NOW()
         RETURNING
             id           AS "id!",
             email        AS "email!",
-            display_name AS "display_name!",
+            first_name   AS "first_name?",
+            last_name    AS "last_name?",
+            username     AS "username?",
             created_at   AS "created_at!",
             updated_at   AS "updated_at!"
         "#,
         user.id,
         user.email,
-        user.display_name
+        user.first_name.as_deref(),
+        user.last_name.as_deref(),
+        user.username.as_deref()
     )
     .fetch_one(pool)
     .await
@@ -132,4 +149,30 @@ async fn ensure_member_metadata(
     .await?;
 
     Ok(())
+}
+
+pub async fn fetch_user(tx: &mut Tx<'_>, user_id: &str) -> Result<Option<UserData>, IdentityError> {
+    sqlx::query!(
+        r#"
+        SELECT
+            id         AS "id!",
+            first_name AS "first_name?",
+            last_name  AS "last_name?",
+            username   AS "username?"
+        FROM users
+        WHERE id = $1
+        "#,
+        user_id
+    )
+    .fetch_optional(&mut **tx)
+    .await
+    .map_err(IdentityError::from)
+    .map(|row_opt| {
+        row_opt.map(|row| UserData {
+            id: row.id,
+            first_name: row.first_name,
+            last_name: row.last_name,
+            username: row.username,
+        })
+    })
 }
