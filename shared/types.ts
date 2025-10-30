@@ -505,3 +505,7 @@ Analyze the changes in this branch and write:
    - At the end, include a note: "This PR was written using [Vibe Kanban](https://vibekanban.com)"
 
 Use \`gh pr edit\` to update the PR.`;
+
+export type SlashCommand = { id: string, name: string, description: string, category: CommandCategory, examples: Array<string> | null, source: string, namespace: string | null, };
+
+export type CommandCategory = "global" | "project";

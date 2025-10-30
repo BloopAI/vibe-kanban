@@ -53,6 +53,8 @@ sha2 = "0.10"
 fst = "0.4"
 secrecy = "0.10.3"
 moka = { version = "0.12", features = ["future"] }
+gray_matter = { version = "0.2", features = ["yaml"] }
+walkdir = "2.5.0"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 security-framework = "2"

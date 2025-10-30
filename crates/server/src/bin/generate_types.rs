@@ -200,6 +200,8 @@ fn generate_types_content() -> String {
         executors::logs::ToolResultValueType::decl(),
         executors::logs::ToolStatus::decl(),
         executors::logs::utils::patch::PatchType::decl(),
+        db::models::commands::SlashCommand::decl(),
+        db::models::commands::CommandCategory::decl(),
         serde_json::Value::decl(),
     ];
 
