@@ -17,6 +17,7 @@ use db::models::{
     task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
     task_attempt::{CreateTaskAttempt, TaskAttempt},
 };
+use db::models::executor_session::ExecutorSession;
 use deployment::Deployment;
 use executors::profile::ExecutorProfileId;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
@@ -99,6 +100,32 @@ pub async fn get_task(
     State(_deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<Task>>, ApiError> {
     Ok(ResponseJson(ApiResponse::success(task)))
+}
+
+#[derive(Debug, Serialize)]
+pub struct TaskAttemptWithNotes {
+    pub attempt: TaskAttempt,
+    pub latest_summary: Option<String>,
+}
+
+pub async fn get_task_attempts_with_notes(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<TaskAttemptWithNotes>>>>, ApiError> {
+    let pool = &deployment.db().pool;
+    let attempts = TaskAttempt::fetch_all(pool, Some(task.id)).await?;
+    // For each attempt, load the latest executor_session summary if present
+    let mut out: Vec<TaskAttemptWithNotes> = Vec::with_capacity(attempts.len());
+    for attempt in attempts {
+        // Fetch all sessions and take latest non-empty summary
+        let sessions = ExecutorSession::find_by_task_attempt_id(pool, attempt.id).await.unwrap_or_default();
+        let latest_summary = sessions
+            .into_iter()
+            .filter_map(|s| s.summary)
+            .last();
+        out.push(TaskAttemptWithNotes { attempt, latest_summary });
+    }
+    Ok(ResponseJson(ApiResponse::success(out)))
 }
 
 pub async fn create_task(
@@ -357,6 +384,7 @@ pub async fn delete_task(
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_id_router = Router::new()
         .route("/", get(get_task).put(update_task).delete(delete_task))
+        .route("/attempts-with-notes", get(get_task_attempts_with_notes))
         .layer(from_fn_with_state(deployment.clone(), load_task_middleware));
 
     let inner = Router::new()

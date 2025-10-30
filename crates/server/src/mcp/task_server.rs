@@ -227,11 +227,26 @@ pub struct DeleteTaskResponse {
 pub struct GetTaskRequest {
     #[schemars(description = "The ID of the task to retrieve")]
     pub task_id: Uuid,
+    #[schemars(description = "If true, include attempts and latest notes summaries")] 
+    pub include_attempts: Option<bool>,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct AttemptNotesSummary {
+    pub attempt_id: String,
+    pub created_at: String,
+    pub updated_at: String,
+    pub executor: String,
+    pub branch: String,
+    pub target_branch: String,
+    pub latest_summary: Option<String>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct GetTaskResponse {
     pub task: TaskDetails,
+    #[schemars(description = "Optional list of attempts with latest note summaries")]
+    pub attempts: Option<Vec<AttemptNotesSummary>>,
 }
 
 #[derive(Debug, Clone)]
@@ -573,7 +588,7 @@ impl TaskServer {
     )]
     async fn get_task(
         &self,
-        Parameters(GetTaskRequest { task_id }): Parameters<GetTaskRequest>,
+        Parameters(GetTaskRequest { task_id, include_attempts }): Parameters<GetTaskRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         let url = self.url(&format!("/api/tasks/{}", task_id));
         let task: Task = match self.send_json(self.client.get(&url)).await {
@@ -581,8 +596,38 @@ impl TaskServer {
             Err(e) => return Ok(e),
         };
 
-        let details = TaskDetails::from_task(task);
-        let response = GetTaskResponse { task: details };
+        let details = TaskDetails::from_task(task.clone());
+
+        let attempts = if include_attempts.unwrap_or(false) {
+            let aurl = self.url(&format!("/api/tasks/{}/attempts-with-notes", task.id));
+            let items: Vec<serde_json::Value> = match self.send_json(self.client.get(&aurl)).await {
+                Ok(v) => v,
+                Err(e) => return Ok(e),
+            };
+            let mapped: Vec<AttemptNotesSummary> = items
+                .into_iter()
+                .filter_map(|v| {
+                    // Expect shape: { attempt: TaskAttempt, latest_summary: Option<String> }
+                    let attempt = v.get("attempt")?;
+                    Some(AttemptNotesSummary {
+                        attempt_id: attempt.get("id")?.as_str()?.to_string(),
+                        created_at: attempt.get("created_at")?.as_str()?.to_string(),
+                        updated_at: attempt.get("updated_at")?.as_str()?.to_string(),
+                        executor: attempt.get("executor")?.as_str()?.to_string(),
+                        branch: attempt.get("branch")?.as_str()?.to_string(),
+                        target_branch: attempt.get("target_branch")?.as_str()?.to_string(),
+                        latest_summary: v
+                            .get("latest_summary")
+                            .and_then(|s| s.as_str().map(|s| s.to_string())),
+                    })
+                })
+                .collect();
+            Some(mapped)
+        } else {
+            None
+        };
+
+        let response = GetTaskResponse { task: details, attempts };
 
         TaskServer::success(&response)
     }
