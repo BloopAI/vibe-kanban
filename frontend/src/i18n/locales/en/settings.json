@@ -58,7 +58,20 @@
         },
         "customCommand": {
           "label": "Custom Editor Command",
+          "placeholder": "e.g., code, subl, vim",
           "helper": "Enter the command to launch your custom editor. This will be used to open files."
+        },
+        "remoteSsh": {
+          "host": {
+            "label": "Remote SSH Host (Optional)",
+            "placeholder": "e.g., hostname or IP address",
+            "helper": "Set this if Vibe Kanban is running on a remote server. When set, clicking \"Open in Editor\" will generate a URL to open your editor via SSH instead of spawning a local command."
+          },
+          "user": {
+            "label": "Remote SSH User (Optional)",
+            "placeholder": "e.g., username",
+            "helper": "SSH username for the remote connection. If not set, VS Code will use your SSH config or prompt you."
+          }
         }
       },
       "github": {
@@ -71,6 +84,7 @@
         "or": "OR",
         "pat": {
           "label": "Personal Access Token",
+          "placeholder": "ghp_xxxxxxxxxxxxxxxxxxxx",
           "helper": "GitHub Personal Access Token with 'repo' permissions. Use this if OAuth permissions are insufficient for private repositories and organisation owned repositories.",
           "createTokenLink": "Create token here"
         }

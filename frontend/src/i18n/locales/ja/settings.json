@@ -58,7 +58,20 @@
         },
         "customCommand": {
           "label": "カスタムエディターコマンド",
+          "placeholder": "例: code, subl, vim",
           "helper": "カスタムエディターを起動するコマンドを入力してください。ファイルを開くために使用されます。"
+        },
+        "remoteSsh": {
+          "host": {
+            "label": "リモートSSHホスト（オプション）",
+            "placeholder": "例: ホスト名またはIPアドレス",
+            "helper": "Vibe Kanbanがリモートサーバーで実行されている場合に設定してください。設定すると、「エディターで開く」をクリックしたときに、ローカルコマンドを実行する代わりにSSH経由でエディターを開くURLが生成されます。"
+          },
+          "user": {
+            "label": "リモートSSHユーザー（オプション）",
+            "placeholder": "例: ユーザー名",
+            "helper": "リモート接続のSSHユーザー名。設定されていない場合、VS CodeはSSH設定を使用するか、入力を求めます。"
+          }
         }
       },
       "github": {
@@ -71,6 +84,7 @@
         "or": "または",
         "pat": {
           "label": "個人用アクセストークン",
+          "placeholder": "ghp_xxxxxxxxxxxxxxxxxxxx",
           "helper": "「repo」権限を持つGitHub個人用アクセストークン。OAuthの権限がプライベートリポジトリや組織所有のリポジトリに対して不十分な場合に使用してください。",
           "createTokenLink": "ここでトークンを作成"
         }

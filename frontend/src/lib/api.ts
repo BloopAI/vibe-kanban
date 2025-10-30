@@ -236,7 +236,10 @@ export const projectsApi = {
     return handleApiResponse<void>(response);
   },
 
-  openEditor: async (id: string, editorType?: EditorType): Promise<OpenEditorResponse> => {
+  openEditor: async (
+    id: string,
+    editorType?: EditorType
+  ): Promise<OpenEditorResponse> => {
     const requestBody: any = {};
     if (editorType) requestBody.editor_type = editorType;
 

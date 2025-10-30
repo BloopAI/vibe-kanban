@@ -374,7 +374,8 @@ export function GeneralSettings() {
                           className="w-full h-10 px-2 flex items-center justify-between"
                         >
                           <span className="text-sm truncate flex-1 text-left">
-                            {currentProfileVariant?.variant || 'DEFAULT'}
+                            {currentProfileVariant?.variant ||
+                              t('settings.general.taskExecution.defaultLabel')}
                           </span>
                           <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
                         </Button>
@@ -475,7 +476,9 @@ export function GeneralSettings() {
               </Label>
               <Input
                 id="custom-command"
-                placeholder="e.g., code, subl, vim"
+                placeholder={t(
+                  'settings.general.editor.customCommand.placeholder'
+                )}
                 value={draft?.editor.custom_command || ''}
                 onChange={(e) =>
                   updateDraft({
@@ -498,11 +501,13 @@ export function GeneralSettings() {
             <>
               <div className="space-y-2">
                 <Label htmlFor="remote-ssh-host">
-                  Remote SSH Host (Optional)
+                  {t('settings.general.editor.remoteSsh.host.label')}
                 </Label>
                 <Input
                   id="remote-ssh-host"
-                  placeholder="e.g., hostname or IP address"
+                  placeholder={t(
+                    'settings.general.editor.remoteSsh.host.placeholder'
+                  )}
                   value={draft?.editor.remote_ssh_host || ''}
                   onChange={(e) =>
                     updateDraft({
@@ -514,20 +519,20 @@ export function GeneralSettings() {
                   }
                 />
                 <p className="text-sm text-muted-foreground">
-                  Set this if Vibe Kanban is running on a remote server. When
-                  set, clicking "Open in Editor" will generate a URL to open
-                  your editor via SSH instead of spawning a local command.
+                  {t('settings.general.editor.remoteSsh.host.helper')}
                 </p>
               </div>
 
               {draft?.editor.remote_ssh_host && (
                 <div className="space-y-2">
                   <Label htmlFor="remote-ssh-user">
-                    Remote SSH User (Optional)
+                    {t('settings.general.editor.remoteSsh.user.label')}
                   </Label>
                   <Input
                     id="remote-ssh-user"
-                    placeholder="e.g., username"
+                    placeholder={t(
+                      'settings.general.editor.remoteSsh.user.placeholder'
+                    )}
                     value={draft?.editor.remote_ssh_user || ''}
                     onChange={(e) =>
                       updateDraft({
@@ -539,8 +544,7 @@ export function GeneralSettings() {
                     }
                   />
                   <p className="text-sm text-muted-foreground">
-                    SSH username for the remote connection. If not set, VSCode
-                    will use your SSH config or prompt you.
+                    {t('settings.general.editor.remoteSsh.user.helper')}
                   </p>
                 </div>
               )}
@@ -605,7 +609,7 @@ export function GeneralSettings() {
             <Input
               id="github-token"
               type="password"
-              placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+              placeholder={t('settings.general.github.pat.placeholder')}
               value={draft?.github.pat || ''}
               onChange={(e) =>
                 updateDraft({

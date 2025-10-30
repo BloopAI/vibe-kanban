@@ -58,7 +58,20 @@
         },
         "customCommand": {
           "label": "사용자 정의 에디터 명령",
+          "placeholder": "예: code, subl, vim",
           "helper": "사용자 정의 에디터를 실행하는 명령을 입력하세요. 파일을 여는 데 사용됩니다."
+        },
+        "remoteSsh": {
+          "host": {
+            "label": "원격 SSH 호스트 (선택사항)",
+            "placeholder": "예: 호스트 이름 또는 IP 주소",
+            "helper": "Vibe Kanban이 원격 서버에서 실행 중인 경우 설정하세요. 설정하면 \"에디터에서 열기\"를 클릭할 때 로컬 명령을 실행하는 대신 SSH를 통해 에디터를 여는 URL이 생성됩니다."
+          },
+          "user": {
+            "label": "원격 SSH 사용자 (선택사항)",
+            "placeholder": "예: 사용자 이름",
+            "helper": "원격 연결을 위한 SSH 사용자 이름입니다. 설정하지 않으면 VS Code가 SSH 설정을 사용하거나 입력을 요청합니다."
+          }
         }
       },
       "github": {
@@ -71,6 +84,7 @@
         "or": "또는",
         "pat": {
           "label": "개인 액세스 토큰",
+          "placeholder": "ghp_xxxxxxxxxxxxxxxxxxxx",
           "helper": "'repo' 권한이 있는 GitHub 개인 액세스 토큰입니다. OAuth 권한이 비공개 저장소 및 조직 소유 저장소에 충분하지 않은 경우 사용하세요.",
           "createTokenLink": "여기에서 토큰 생성"
         }
