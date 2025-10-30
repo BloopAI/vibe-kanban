@@ -3,12 +3,14 @@ use std::sync::OnceLock;
 use db::models::execution_process::{ExecutionContext, ExecutionProcessStatus};
 use utils;
 
-use crate::services::config::SoundFile;
+use crate::services::{
+    config::{NotificationConfig, SoundFile},
+    webhook_notification::WebhookNotificationService,
+};
 
 /// Service for handling cross-platform notifications including sound alerts and push notifications
 #[derive(Debug, Clone)]
 pub struct NotificationService {}
-use crate::services::config::NotificationConfig;
 
 /// Cache for WSL root path from PowerShell
 static WSL_ROOT_PATH_CACHE: OnceLock<Option<String>> = OnceLock::new();
@@ -53,6 +55,11 @@ impl NotificationService {
 
         if config.push_enabled {
             Self::send_push_notification(title, message).await;
+        }
+
+        // Send webhook notifications if enabled and webhooks are configured
+        if config.webhook_notifications_enabled && !config.webhooks.is_empty() {
+            WebhookNotificationService::notify_all(&config.webhooks, title, message).await;
         }
     }
 

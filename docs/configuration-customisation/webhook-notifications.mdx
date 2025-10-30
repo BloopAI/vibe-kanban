@@ -1,0 +1,236 @@
+---
+title: "Webhook Notifications"
+description: "Configure webhook notifications for task completions on remote server deployments"
+sidebarTitle: "Webhook Notifications"
+---
+
+Webhook notifications allow you to receive alerts when coding tasks complete through external services like Slack, Discord, Pushover, Telegram, or custom webhook endpoints. This is especially useful when running Vibe Kanban on remote servers where desktop notifications aren't accessible.
+
+## Overview
+
+<Frame>
+<img src="/images/webhook-notifications-settings.png" alt="Webhook notifications configuration interface" />
+</Frame>
+
+Webhook notifications currently support:
+- **Task Completions**: Get alerted when tasks succeed, fail, or are cancelled
+- **Remote Server Deployments**: Stay informed even when running Vibe Kanban headlessly
+
+## Supported Platforms
+
+### Slack
+Send rich-formatted notifications to Slack channels using Incoming Webhooks.
+
+**Setup:**
+1. In your Slack workspace, go to **Settings & administration** → **Manage apps**
+2. Search for "Incoming Webhooks" and add to your workspace
+3. Create a new webhook and select the target channel
+4. Copy the webhook URL (e.g., `https://hooks.slack.com/services/T00/B00/XXX`)
+5. In Vibe Kanban **Settings → Webhook Notifications**, add a new webhook
+6. Select **Slack** as the provider and paste the webhook URL
+
+<Accordion title="Example Slack notification">
+```
+📢 Task Complete: Implement user authentication
+
+✅ 'Implement user authentication' completed successfully
+Branch: "feature/auth"
+Executor: Claude Code
+```
+</Accordion>
+
+### Discord
+Post notifications to Discord channels using Discord's webhook system.
+
+**Setup:**
+1. Open your Discord server and go to **Server Settings** → **Integrations**
+2. Click **Create Webhook** or **View Webhooks**
+3. Select the target channel and copy the webhook URL
+4. In Vibe Kanban **Settings → Webhook Notifications**, add a new webhook
+5. Select **Discord** as the provider and paste the webhook URL
+
+<Tip>
+Discord webhooks support rich embeds with colored borders and structured content.
+</Tip>
+
+### Pushover
+Receive push notifications on your mobile devices (iOS/Android) via Pushover.
+
+**Setup:**
+1. Sign up for [Pushover](https://pushover.net) and install the mobile app
+2. Create a new application at [Pushover Apps](https://pushover.net/apps/build)
+3. Note your **API Token** (from the app) and **User Key** (from your account)
+4. In Vibe Kanban **Settings → Webhook Notifications**, add a new webhook
+5. Select **Pushover** as the provider
+6. Enter the API token in the **Webhook URL** field
+7. Enter your user key in the **Pushover User Key** field
+
+<Note>
+Pushover requires both an API token (from your application) and a user key (from your account) to send notifications.
+</Note>
+
+### Telegram
+Send messages to Telegram chats using the Telegram Bot API.
+
+**Setup:**
+1. Open Telegram and search for [@BotFather](https://t.me/botfather)
+2. Send `/newbot` and follow the prompts to create a bot
+3. Copy the bot token (e.g., `110201543:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw`)
+4. Start a chat with your bot and send a message
+5. Get your chat ID by visiting: `https://api.telegram.org/bot<TOKEN>/getUpdates`
+6. In Vibe Kanban **Settings → Webhook Notifications**, add a new webhook
+7. Select **Telegram** as the provider
+8. Enter the full URL: `https://api.telegram.org/bot<TOKEN>/sendMessage`
+9. Enter your chat ID in the **Telegram Chat ID** field
+
+<Accordion title="Finding your Telegram Chat ID">
+To find your chat ID:
+1. Send a message to your bot
+2. Visit `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates` in your browser
+3. Look for `"chat":{"id":123456789}` in the response
+4. The number after `"id":` is your chat ID
+</Accordion>
+
+### Generic Webhook
+Connect to any custom webhook endpoint that accepts POST requests with JSON payloads.
+
+**Setup:**
+1. Deploy your webhook endpoint that accepts POST requests
+2. In Vibe Kanban **Settings → Webhook Notifications**, add a new webhook
+3. Select **Generic** as the provider
+4. Enter your webhook URL
+
+**Payload Format:**
+```json
+{
+  "title": "Task Complete: Implement user authentication",
+  "message": "✅ 'Implement user authentication' completed successfully\nBranch: \"feature/auth\"\nExecutor: Claude Code",
+  "timestamp": "2025-01-27T12:00:00Z"
+}
+```
+
+## Configuration
+
+### Enabling Webhook Notifications
+
+1. Navigate to **Settings** (⚙️ icon in sidebar)
+2. Scroll to **Webhook Notifications** section
+3. Toggle **Enable Webhook Notifications** to receive task completion alerts
+
+### Adding a Webhook
+
+1. Click **Add Webhook** in the Webhook Notifications section
+2. Select your provider from the dropdown
+3. Enter the required credentials:
+   - **Webhook URL** (required for all providers)
+   - **Pushover User Key** (required for Pushover)
+   - **Telegram Chat ID** (required for Telegram)
+4. Click the checkbox to enable the webhook
+5. Click **Save** at the bottom of the settings page
+
+### Managing Multiple Webhooks
+
+You can configure multiple webhooks to receive notifications across different platforms:
+
+- Add webhooks for different teams (e.g., one for Slack, one for Discord)
+- Configure backup notification channels
+- Enable/disable individual webhooks without deleting them
+
+<Tip>
+Use the **Configure** button on each webhook to expand and edit its settings. Click **Hide** to collapse the configuration panel.
+</Tip>
+
+## Use Cases
+
+### Remote Server Deployments
+When running Vibe Kanban on a remote server (VPS, cloud instance, etc.), webhook notifications ensure you're informed when tasks complete, even when you're not logged into the server.
+
+### Team Notifications
+Configure a webhook to a shared Slack or Discord channel to keep your entire team informed when tasks finish.
+
+### Mobile Alerts
+Use Pushover or Telegram to receive instant notifications on your mobile device when long-running tasks complete.
+
+### Integration with Custom Systems
+Use the Generic webhook provider to integrate with your own notification systems, logging platforms, or automation workflows.
+
+## Notification Types
+
+Vibe Kanban sends webhook notifications for the following task events:
+
+### ✅ Task Completed Successfully
+Sent when a coding agent successfully completes a task.
+
+### ❌ Task Failed
+Sent when a task execution fails or encounters errors.
+
+### 🛑 Task Cancelled
+Sent when a task is manually stopped by the user.
+
+<Note>
+Webhook notifications are only sent when the **Enable Webhook Notifications** toggle is turned on in Settings.
+</Note>
+
+## Troubleshooting
+
+### Notifications Not Being Received
+
+**Check the following:**
+- Webhook notifications toggle is enabled
+- Webhook is enabled (checkbox is checked)
+- Webhook URL is correct
+- For Pushover: Both API token and user key are provided
+- For Telegram: Both bot token URL and chat ID are provided
+
+**Verify webhook endpoint:**
+- Test your webhook URL independently using curl or Postman
+- Check for any firewall rules blocking outbound HTTPS requests
+- Review Vibe Kanban logs for error messages
+
+### Provider-Specific Issues
+
+**Slack:**
+- Ensure the webhook URL starts with `https://hooks.slack.com/services/`
+- Verify the webhook hasn't been revoked in Slack settings
+- Check channel permissions
+
+**Discord:**
+- Confirm the webhook URL format: `https://discord.com/api/webhooks/`
+- Verify the webhook hasn't been deleted in Discord server settings
+
+**Pushover:**
+- Validate your API token and user key
+- Check your Pushover subscription status
+- Ensure you've installed the Pushover mobile app
+
+**Telegram:**
+- Verify your bot token is correct
+- Make sure you've started a conversation with your bot
+- Confirm the chat ID is correct (positive for private chats, negative for groups)
+
+## Security Considerations
+
+<Warning>
+Webhook URLs and API tokens are sensitive credentials that should be protected.
+</Warning>
+
+**Best Practices:**
+- Store webhook URLs securely in the Vibe Kanban config file
+- Don't commit webhook URLs to version control
+- Rotate webhook URLs periodically
+- Use HTTPS endpoints only
+- Monitor webhook usage for unauthorized activity
+- Consider using separate webhooks for different security contexts
+
+## Future Enhancements
+
+Potential future features for webhook notifications:
+- Custom notification templates
+- Notification filtering by task status or executor
+- Webhook health monitoring
+- Retry logic for failed deliveries
+- More platform integrations (Microsoft Teams, Mattermost, etc.)
+
+<Card title="Have a feature request?" icon="lightbulb" href="https://github.com/BloopAI/vibe-kanban/discussions">
+  Share your ideas on GitHub Discussions
+</Card>
