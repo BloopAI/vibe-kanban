@@ -598,6 +598,7 @@ impl TaskServer {
 
         let details = TaskDetails::from_task(task.clone());
 
+        // Conditionally include attempts when requested
         let attempts = if include_attempts.unwrap_or(false) {
             let aurl = self.url(&format!("/api/tasks/{}/attempts-with-notes", task.id));
             let items: Vec<serde_json::Value> = match self.send_json(self.client.get(&aurl)).await {
@@ -607,7 +608,6 @@ impl TaskServer {
             let mapped: Vec<AttemptNotesSummary> = items
                 .into_iter()
                 .filter_map(|v| {
-                    // Expect shape: { attempt: TaskAttempt, latest_summary: Option<String> }
                     let attempt = v.get("attempt")?;
                     Some(AttemptNotesSummary {
                         attempt_id: attempt.get("id")?.as_str()?.to_string(),
