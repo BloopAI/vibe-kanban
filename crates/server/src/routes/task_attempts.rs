@@ -212,12 +212,28 @@ pub async fn run_agent_setup(
     Json(payload): Json<RunAgentSetupRequest>,
 ) -> Result<ResponseJson<ApiResponse<RunAgentSetupResponse>>, ApiError> {
     let executor_profile_id = payload.executor_profile_id;
-
-    let _ = ensure_worktree_path(&deployment, &task_attempt).await?;
-
     let config = ExecutorConfigs::get_cached();
     let coding_agent = config.get_coding_agent_or_default(&executor_profile_id);
-    let executor_action = coding_agent.get_setup_script().await?;
+    let latest_process = ExecutionProcess::find_latest_by_task_attempt_and_run_reason(
+        &deployment.db().pool,
+        task_attempt.id,
+        &ExecutionProcessRunReason::CodingAgent,
+    )
+    .await?;
+
+    let executor_action = if let Some(latest_process) = latest_process {
+        let latest_action = latest_process
+            .executor_action()
+            .map_err(|e| ApiError::TaskAttempt(TaskAttemptError::ValidationError(e.to_string())))?;
+        coding_agent
+            .get_setup_script()
+            .await?
+            .append_action(latest_action.to_owned())
+    } else {
+        coding_agent.get_setup_script().await?
+    };
+
+    let _ = ensure_worktree_path(&deployment, &task_attempt).await?;
 
     let execution_process = deployment
         .container()
