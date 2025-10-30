@@ -1,9 +1,7 @@
-use std::str::FromStr;
-
 use anyhow::Error;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
-pub use v2::{EditorType, GitHubConfig, NotificationConfig, SoundFile, ThemeMode};
+pub use v2::{EditorConfig, EditorType, GitHubConfig, NotificationConfig, SoundFile, ThemeMode};
 
 use crate::services::config::versions::v2;
 
@@ -43,7 +41,7 @@ impl Config {
             github_login_acknowledged: old_config.github_login_acknowledged,
             telemetry_acknowledged: false,
             notifications: old_config.notifications,
-            editor: EditorConfig::from(old_config.editor),
+            editor: old_config.editor,
             github: old_config.github,
             analytics_enabled: old_config.analytics_enabled,
             workspace_dir: old_config.workspace_dir,
@@ -87,127 +85,6 @@ impl Default for Config {
             github: GitHubConfig::default(),
             analytics_enabled: None,
             workspace_dir: None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct EditorConfig {
-    pub editor_type: EditorType,
-    pub custom_command: Option<String>,
-    #[serde(default)]
-    pub remote_ssh_host: Option<String>,
-    #[serde(default)]
-    pub remote_ssh_user: Option<String>,
-}
-
-impl From<v2::EditorConfig> for EditorConfig {
-    fn from(old: v2::EditorConfig) -> Self {
-        Self {
-            editor_type: old.editor_type,
-            custom_command: old.custom_command,
-            remote_ssh_host: None,
-            remote_ssh_user: None,
-        }
-    }
-}
-
-impl Default for EditorConfig {
-    fn default() -> Self {
-        Self {
-            editor_type: EditorType::VsCode,
-            custom_command: None,
-            remote_ssh_host: None,
-            remote_ssh_user: None,
-        }
-    }
-}
-
-impl EditorConfig {
-    pub fn get_command(&self) -> Vec<String> {
-        match &self.editor_type {
-            EditorType::VsCode => vec!["code".to_string()],
-            EditorType::Cursor => vec!["cursor".to_string()],
-            EditorType::Windsurf => vec!["windsurf".to_string()],
-            EditorType::IntelliJ => vec!["idea".to_string()],
-            EditorType::Zed => vec!["zed".to_string()],
-            EditorType::Xcode => vec!["xed".to_string()],
-            EditorType::Custom => {
-                if let Some(custom) = &self.custom_command {
-                    custom.split_whitespace().map(|s| s.to_string()).collect()
-                } else {
-                    vec!["code".to_string()] // fallback to VSCode
-                }
-            }
-        }
-    }
-
-    /// Opens a file in the configured editor.
-    /// Returns Ok(Some(url)) if a URL should be opened (remote mode)
-    /// Returns Ok(None) if the command was spawned successfully (local mode)
-    pub fn open_file(&self, path: &str) -> Result<Option<String>, std::io::Error> {
-        // Check if remote mode is enabled
-        if let Some(remote_host) = &self.remote_ssh_host {
-            // VSCode-based editors (VSCode, Cursor, Windsurf) support remote SSH via URL
-            let url_scheme = match self.editor_type {
-                EditorType::VsCode => Some("vscode"),
-                EditorType::Cursor => Some("cursor"),
-                EditorType::Windsurf => Some("windsurf"),
-                _ => None, // Other editors fall back to local mode
-            };
-
-            if let Some(scheme) = url_scheme {
-                let user_part = self
-                    .remote_ssh_user
-                    .as_ref()
-                    .map(|u| format!("{u}@"))
-                    .unwrap_or_default();
-                let url = format!(
-                    "{scheme}://vscode-remote/ssh-remote+{user_part}{remote_host}{path}"
-                );
-                return Ok(Some(url));
-            }
-        }
-
-        // Local mode: spawn the editor command
-        let mut command = self.get_command();
-
-        if command.is_empty() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                "No editor command configured",
-            ));
-        }
-
-        if cfg!(windows) {
-            command[0] =
-                utils::shell::resolve_executable_path(&command[0]).ok_or(std::io::Error::new(
-                    std::io::ErrorKind::NotFound,
-                    format!("Editor command '{}' not found", command[0]),
-                ))?;
-        }
-
-        let mut cmd = std::process::Command::new(&command[0]);
-        for arg in &command[1..] {
-            cmd.arg(arg);
-        }
-        cmd.arg(path);
-        cmd.spawn()?;
-        Ok(None)
-    }
-
-    pub fn with_override(&self, editor_type_str: Option<&str>) -> Self {
-        if let Some(editor_type_str) = editor_type_str {
-            let editor_type =
-                EditorType::from_str(editor_type_str).unwrap_or(self.editor_type.clone());
-            EditorConfig {
-                editor_type,
-                custom_command: self.custom_command.clone(),
-                remote_ssh_host: self.remote_ssh_host.clone(),
-                remote_ssh_user: self.remote_ssh_user.clone(),
-            }
-        } else {
-            self.clone()
         }
     }
 }
