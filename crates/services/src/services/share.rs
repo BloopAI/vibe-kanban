@@ -3,7 +3,11 @@ mod processor;
 mod publisher;
 mod status;
 
-use std::sync::{Arc, Mutex as StdMutex};
+use std::{
+    io,
+    sync::{Arc, Mutex as StdMutex},
+    time::Duration,
+};
 
 use async_trait::async_trait;
 use axum::http::{HeaderName, HeaderValue, header::AUTHORIZATION};
@@ -20,7 +24,7 @@ pub use publisher::SharePublisher;
 use remote::{ServerMessage, db::tasks::SharedTask as RemoteSharedTask};
 use sqlx::SqlitePool;
 use thiserror::Error;
-use tokio::{sync::oneshot, task::JoinHandle};
+use tokio::{sync::oneshot, task::JoinHandle, time::sleep};
 use tokio_tungstenite::tungstenite::Message as WsMessage;
 use url::Url;
 use utils::ws::{WsClient, WsConfig, WsError, WsHandler, WsResult, run_ws_client};
@@ -66,6 +70,38 @@ pub enum ShareError {
     MissingAuth,
 }
 
+const WS_BACKOFF_BASE_DELAY: Duration = Duration::from_secs(1);
+const WS_BACKOFF_MAX_DELAY: Duration = Duration::from_secs(30);
+
+// Maximum delay between catching up and establishing a WebSocket connection.
+// When syncing, we first catch up on missed events via REST API calls, then open a WebSocket
+// connection to receive live updates. If the WebSocket connection takes too long to establish,
+// we restart the process from catching up again to avoid missing events.
+const MAX_DELAY_BETWEEN_CATCHUP_AND_WS: Duration = Duration::from_secs(120);
+
+struct Backoff {
+    current: Duration,
+}
+
+impl Backoff {
+    fn new() -> Self {
+        Self {
+            current: WS_BACKOFF_BASE_DELAY,
+        }
+    }
+
+    fn reset(&mut self) {
+        self.current = WS_BACKOFF_BASE_DELAY;
+    }
+
+    async fn wait(&mut self) {
+        let wait = self.current;
+        sleep(wait).await;
+        let doubled = wait.checked_mul(2).unwrap_or(WS_BACKOFF_MAX_DELAY);
+        self.current = std::cmp::min(doubled, WS_BACKOFF_MAX_DELAY);
+    }
+}
+
 pub struct RemoteSync {
     db: DBService,
     processor: ActivityProcessor,
@@ -101,27 +137,78 @@ impl RemoteSync {
         }
     }
 
-    pub async fn run(self, shutdown_rx: oneshot::Receiver<()>) -> Result<(), ShareError> {
-        let session = self.sessions.wait_for_active().await;
-        let org_id = session.org_id.clone().ok_or(ShareError::MissingAuth)?;
+    pub async fn run(self, mut shutdown_rx: oneshot::Receiver<()>) -> Result<(), ShareError> {
+        let mut backoff = Backoff::new();
+        loop {
+            let session = self.sessions.wait_for_active().await;
+            let org_id = session.org_id.clone().ok_or(ShareError::MissingAuth)?;
 
-        let mut last_seq = SharedActivityCursor::get(&self.db.pool, org_id.clone())
-            .await?
-            .map(|cursor| cursor.last_seq);
-        last_seq = self
-            .processor
-            .catch_up(&session, last_seq)
+            let mut last_seq = SharedActivityCursor::get(&self.db.pool, org_id.clone())
+                .await?
+                .map(|cursor| cursor.last_seq);
+            last_seq = self
+                .processor
+                .catch_up(&session, last_seq)
+                .await
+                .unwrap_or(last_seq);
+
+            let ws_url = self.config.websocket_endpoint(last_seq)?;
+            let (close_tx, close_rx) = oneshot::channel();
+            let ws_connection = match spawn_shared_remote(
+                self.processor.clone(),
+                &self.sessions,
+                ws_url,
+                close_tx,
+            )
             .await
-            .unwrap_or(last_seq);
+            {
+                Ok(remote) => {
+                    backoff.reset();
+                    remote
+                }
+                Err(err) => {
+                    tracing::error!(?err, "failed to start remote sync websocket; retrying soon");
+                    tokio::select! {
+                        _ = &mut shutdown_rx => {
+                            tracing::info!("shutdown received while waiting to retry remote sync");
+                            return Ok(());
+                        }
+                        _ = backoff.wait() => {}
+                    }
+                    continue;
+                }
+            };
 
-        let ws_url = self.config.websocket_endpoint(last_seq)?;
-        let remote = spawn_shared_remote(self.processor.clone(), &self.sessions, ws_url).await?;
-
-        let _ = shutdown_rx.await;
-        tracing::info!("shutdown signal received for remote sync");
-
-        if let Err(err) = remote.shutdown() {
-            tracing::warn!(?err, "failed to request websocket shutdown");
+            tokio::select! {
+                _ = &mut shutdown_rx => {
+                    tracing::info!("shutdown signal received for remote sync");
+                    if let Err(err) = ws_connection.close() {
+                        tracing::warn!(?err, "failed to request websocket shutdown");
+                    }
+                    break;
+                }
+                res = close_rx => {
+                    match res {
+                        Ok(()) => {
+                            tracing::info!("remote sync websocket closed; scheduling catch-up and reconnect");
+                        }
+                        Err(_) => {
+                            tracing::warn!("remote sync websocket close signal dropped");
+                        }
+                    }
+                    if let Err(err) = ws_connection.close() {
+                        tracing::debug!(?err, "websocket already closed when shutting down");
+                    }
+                    tokio::select! {
+                        _ = &mut shutdown_rx => {
+                            tracing::info!("shutdown received during websocket retry backoff");
+                            return Ok(());
+                        }
+                        _ = backoff.wait() => {}
+                    }
+                    continue;
+                }
+            }
         }
         Ok(())
     }
@@ -129,6 +216,7 @@ impl RemoteSync {
 
 struct SharedWsHandler {
     processor: ActivityProcessor,
+    close_tx: Option<oneshot::Sender<()>>,
 }
 
 #[async_trait]
@@ -147,6 +235,11 @@ impl WsHandler for SharedWsHandler {
                 }
                 Ok(ServerMessage::Error { message }) => {
                     tracing::warn!(?message, "received WS error message");
+                    // Remote sends this error when client has lagged too far behind.
+                    // Return Err will trigger the `on_close` handler.
+                    return Err(WsError::Handler(Box::new(io::Error::other(format!(
+                        "remote websocket error: {message}"
+                    )))));
                 }
                 Err(err) => {
                     tracing::error!(raw = %txt, ?err, "unable to parse WS message");
@@ -158,6 +251,9 @@ impl WsHandler for SharedWsHandler {
 
     async fn on_close(&mut self) -> Result<(), WsError> {
         tracing::info!("WebSocket closed, handler cleanup if needed");
+        if let Some(tx) = self.close_tx.take() {
+            let _ = tx.send(());
+        }
         Ok(())
     }
 }
@@ -166,24 +262,32 @@ async fn spawn_shared_remote(
     processor: ActivityProcessor,
     sessions: &ClerkSessionStore,
     url: Url,
+    close_tx: oneshot::Sender<()>,
 ) -> Result<WsClient, ShareError> {
     let session_source = sessions.clone();
     let ws_config = WsConfig {
         url,
-        autoreconnect: true,
-        reconnect_base_delay: std::time::Duration::from_secs(1),
-        reconnect_max_delay: std::time::Duration::from_secs(30),
         ping_interval: Some(std::time::Duration::from_secs(30)),
         header_factory: Some(Arc::new(move || {
             let session_source = session_source.clone();
             Box::pin(async move {
-                let session = session_source.wait_for_active().await;
-                build_ws_headers(&session)
+                match tokio::time::timeout(
+                    MAX_DELAY_BETWEEN_CATCHUP_AND_WS,
+                    session_source.wait_for_active(),
+                )
+                .await
+                {
+                    Ok(session) => build_ws_headers(&session),
+                    Err(_) => Err(WsError::MissingAuth),
+                }
             })
         })),
     };
 
-    let handler = SharedWsHandler { processor };
+    let handler = SharedWsHandler {
+        processor,
+        close_tx: Some(close_tx),
+    };
     run_ws_client(handler, ws_config)
         .await
         .map_err(ShareError::from)
