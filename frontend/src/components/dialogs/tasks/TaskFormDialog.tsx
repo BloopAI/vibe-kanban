@@ -66,11 +66,11 @@ export type TaskFormDialogProps =
   | { mode: 'edit'; projectId: string; task: Task }
   | { mode: 'duplicate'; projectId: string; initialTask: Task }
   | {
-    mode: 'subtask';
-    projectId: string;
-    parentTaskAttemptId: string;
-    initialBaseBranch: string;
-  };
+      mode: 'subtask';
+      projectId: string;
+      parentTaskAttemptId: string;
+      initialBaseBranch: string;
+    };
 
 type State = {
   title: string;
@@ -203,16 +203,21 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
 
   const defaultBranch = useMemo(() => {
     if (!branches.length) return '';
-    const canFindBranch = (branch: string) => branches.some(b => b.name === branch);
+    const canFindBranch = (branch: string) =>
+      branches.some((b) => b.name === branch);
     // initialBaseBranch prop (for subtask mode)
     if (mode === 'subtask') {
       if (canFindBranch(props.initialBaseBranch)) {
         return props.initialBaseBranch;
       }
-      console.warn("subtask initialBaseBranch doesn't match a stored branch: ", props.initialBaseBranch);
+      console.warn(
+        "subtask initialBaseBranch doesn't match a stored branch: ",
+        props.initialBaseBranch
+      );
       // parent attempt branch
-      const parentBranch = parentAttempt?.branch || parentAttempt?.target_branch;
-      if (parentBranch && canFindBranch(parentBranch)) { 
+      const parentBranch =
+        parentAttempt?.branch || parentAttempt?.target_branch;
+      if (parentBranch && canFindBranch(parentBranch)) {
         return parentBranch;
       }
     }
@@ -266,7 +271,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
       return (
         state.title.trim() !== props.task.title.trim() ||
         (state.description || '').trim() !==
-        (props.task.description || '').trim() ||
+          (props.task.description || '').trim() ||
         state.status !== props.task.status
       );
     }
@@ -285,8 +290,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
-    return () =>
-      window.removeEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [modal.visible, state.isSubmitting, hasUnsavedChanges]);
 
   // Submission handlers
@@ -337,12 +341,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
   }, [state, props, createTask, updateTask, modal]);
 
   const handleCreateAndStart = useCallback(async () => {
-    if (
-      !state.title.trim() ||
-      mode === 'edit' ||
-      state.isSubmitting
-    )
-      return;
+    if (!state.title.trim() || mode === 'edit' || state.isSubmitting) return;
 
     dispatch({ type: 'set_submitting', payload: true });
     try {
@@ -706,8 +705,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
                     state.isSubmitting ||
                     !state.title.trim() ||
                     (state.autoStart &&
-                      (!state.selectedExecutorProfile ||
-                        !state.selectedBranch))
+                      (!state.selectedExecutorProfile || !state.selectedBranch))
                   }
                 >
                   <Plus className="h-4 w-4 mr-1.5" />
@@ -754,5 +752,4 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
       )}
     </>
   );
-}
-);
+});
