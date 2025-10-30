@@ -51,5 +51,24 @@
     "reconnecting": "재연결 중",
     "saving": "저장 중...",
     "success": "성공"
+  },
+  "errors": {
+    "cannotOpenEditor": {
+      "title": "편집기를 열 수 없습니다"
+    },
+    "ideCli": {
+      "missing": {
+        "summary": "IDE CLI 명령 '{{cmd}}'을(를) PATH에서 찾을 수 없습니다."
+      },
+      "instructions": {
+        "VS_CODE": "'{{cmd}}' 명령을 설치하려면:\n1. Visual Studio Code를 다운로드, 설치 및 실행\n2. 명령 팔레트 열기(Mac에서 ⌘ + ⇧ + P, Windows/Linux에서 Ctrl + Shift + P)\n3. 'shell command'를 입력하여 'Shell Command: Install '{{cmd}}' command in PATH' 찾기\n4. 명령을 실행하고 터미널을 재시작",
+        "CURSOR": "'{{cmd}}' 명령을 설치하려면:\n1. Cursor를 다운로드, 설치 및 실행\n2. 명령 팔레트 열기(Mac에서 ⌘ + ⇧ + P, Windows/Linux에서 Ctrl + Shift + P)\n3. 'shell command'를 입력하여 'Shell Command: Install '{{cmd}}' command in PATH' 찾기\n4. 명령을 실행하고 터미널을 재시작",
+        "WINDSURF": "'{{cmd}}' 명령을 설치하려면:\n1. Windsurf를 다운로드, 설치 및 실행\n2. 명령 팔레트 열기(Mac에서 ⌘ + ⇧ + P, Windows/Linux에서 Ctrl + Shift + P)\n3. 'shell command'를 입력하여 'Shell Command: Install '{{cmd}}' command in PATH' 찾기\n4. 명령을 실행하고 터미널을 재시작",
+        "ZED": "'{{cmd}}' 명령을 설치하려면:\n1. https://zed.dev 에서 Zed를 다운로드하고 설치\n2. CLI는 https://zed.dev/features#cli 에 문서화되어 있습니다\n3. 플랫폼에 맞는 지침을 따르세요",
+        "INTELLI_J": "'{{cmd}}' 명령을 설치하려면:\n1. IntelliJ IDEA를 다운로드하고 설치\n2. https://www.jetbrains.com/help/idea/working-with-the-ide-features-from-command-line.html 의 지침을 따르세요\n3. 명령줄 런처는 설치 중에 설정되어야 합니다",
+        "XCODE": "'{{cmd}}' 명령을 설치하려면:\n1. Mac App Store에서 Xcode 설치\n2. '{{cmd}}' 명령은 설치 후 자동으로 사용 가능해야 합니다\n3. 그렇지 않은 경우: sudo xcode-select --install 실행",
+        "CUSTOM": "사용자 정의 명령 '{{cmd}}'을(를) PATH에서 찾을 수 없습니다.\n명령이 설치되어 있고 시스템 PATH에서 사용 가능한지 확인하세요."
+      }
+    }
   }
 }

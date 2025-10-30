@@ -845,37 +845,25 @@ pub async fn open_task_attempt_in_editor(
         config.editor.with_override(editor_type_str)
     };
 
-    match editor_config.open_file(&path.to_string_lossy()) {
-        Ok(_) => {
-            tracing::info!(
-                "Opened editor for task attempt {} at path: {}",
-                task_attempt.id,
-                path.display()
-            );
+    editor_config.open_file(&path.to_string_lossy())?;
 
-            deployment
-                .track_if_analytics_allowed(
-                    "task_attempt_editor_opened",
-                    serde_json::json!({
-                        "attempt_id": task_attempt.id.to_string(),
-                        "editor_type": payload.as_ref().and_then(|req| req.editor_type.as_ref()),
-                    }),
-                )
-                .await;
+    tracing::info!(
+        "Opened editor for task attempt {} at path: {}",
+        task_attempt.id,
+        path.display()
+    );
 
-            Ok(ResponseJson(ApiResponse::success(())))
-        }
-        Err(e) => {
-            tracing::error!(
-                "Failed to open editor for attempt {}: {}",
-                task_attempt.id,
-                e
-            );
-            Err(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
-                format!("Failed to open editor: {}", e),
-            )))
-        }
-    }
+    deployment
+        .track_if_analytics_allowed(
+            "task_attempt_editor_opened",
+            serde_json::json!({
+                "attempt_id": task_attempt.id.to_string(),
+                "editor_type": payload.as_ref().and_then(|req| req.editor_type.as_ref()),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(())))
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]

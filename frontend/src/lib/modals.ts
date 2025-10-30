@@ -5,6 +5,7 @@ import type {
   TagEditResult,
   ProjectFormDialogProps,
   ProjectFormDialogResult,
+  ErrorDialogProps,
 } from '@/components/dialogs';
 
 /**
@@ -54,6 +55,18 @@ export function showProjectForm(
   return showModal<ProjectFormDialogResult>(
     'project-form',
     props as Record<string, unknown>
+  );
+}
+
+/**
+ * Show error dialog
+ * @param props - Props for error dialog
+ * @returns Promise that resolves when the dialog is closed
+ */
+export function showError(props: ErrorDialogProps): Promise<void> {
+  return showModal<void>(
+    'error-dialog',
+    props as unknown as Record<string, unknown>
   );
 }
 
