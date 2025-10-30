@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useRef, useReducer, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { useDropzone } from 'react-dropzone';
 import { Plus, Image as ImageIcon } from 'lucide-react';
 import { TaskDialog } from './TaskDialog';
 import { Input } from '@/components/ui/input';
@@ -184,7 +185,6 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
     const [state, dispatch] = useReducer(reducer, initialState, init);
     const imageUploadRef = useRef<ImageUploadSectionHandle>(null);
     const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
-    const dragCounterRef = useRef(0);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const { data: projectBranches } = useProjectBranches(
@@ -238,72 +238,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
         });
     }, [task?.id, modal.visible]);
 
-    // Drag & drop handlers
-    const [isDraggingFile, setIsDraggingFile] = useState(false);
-
-    const handleDragEnter = useCallback(
-      (e: React.DragEvent) => {
-        if (state.isSubmitting) return;
-        e.preventDefault();
-        e.stopPropagation();
-        if (e.dataTransfer.types.includes('Files')) {
-          dragCounterRef.current++;
-          if (dragCounterRef.current === 1) {
-            setIsDraggingFile(true);
-          }
-        }
-      },
-      [state.isSubmitting]
-    );
-
-    const handleDragLeave = useCallback(
-      (e: React.DragEvent) => {
-        if (state.isSubmitting) return;
-        e.preventDefault();
-        e.stopPropagation();
-        if (dragCounterRef.current > 0) {
-          dragCounterRef.current--;
-        }
-        if (dragCounterRef.current === 0) {
-          setIsDraggingFile(false);
-        }
-      },
-      [state.isSubmitting]
-    );
-
-    const handleDragOver = useCallback(
-      (e: React.DragEvent) => {
-        if (state.isSubmitting) return;
-        e.preventDefault();
-        e.stopPropagation();
-      },
-      [state.isSubmitting]
-    );
-
-    const handleDrop = useCallback(
-      (e: React.DragEvent) => {
-        if (state.isSubmitting) return;
-        e.preventDefault();
-        e.stopPropagation();
-        dragCounterRef.current = 0;
-        setIsDraggingFile(false);
-
-        const files = Array.from(e.dataTransfer.files).filter((file) =>
-          file.type.startsWith('image/')
-        );
-
-        if (files.length > 0) {
-          dispatch({ type: 'set_show_upload', payload: true });
-          if (imageUploadRef.current) {
-            imageUploadRef.current.addFiles(files);
-          } else {
-            setPendingFiles(files);
-          }
-        }
-      },
-      [state.isSubmitting]
-    );
-
+    // Drag & drop with react-dropzone
     const handleFiles = useCallback((files: File[]) => {
       dispatch({ type: 'set_show_upload', payload: true });
       if (imageUploadRef.current) {
@@ -312,6 +247,14 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
         setPendingFiles(files);
       }
     }, []);
+
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+      onDrop: handleFiles,
+      accept: { 'image/*': [] },
+      disabled: state.isSubmitting,
+      noClick: true,
+      noKeyboard: true,
+    });
 
     // Apply pending files when ImageUploadSection becomes available
     useEffect(() => {
@@ -542,14 +485,12 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
           ariaLabel={mode === 'edit' ? 'Edit task' : 'Create new task'}
         >
           <div
+            {...getRootProps()}
             className="h-full flex flex-col gap-0 px-4 pb-4 relative min-h-0"
-            onDragEnter={handleDragEnter}
-            onDragLeave={handleDragLeave}
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
           >
+            <input {...getInputProps()} />
             {/* Drag overlay */}
-            {isDraggingFile && (
+            {isDragActive && (
               <div className="absolute inset-0 z-50 bg-primary/95 border-2 border-dashed border-primary-foreground/50 rounded-lg flex items-center justify-center pointer-events-none">
                 <div className="text-center">
                   <ImageIcon className="h-12 w-12 mx-auto mb-2 text-primary-foreground" />
