@@ -47,6 +47,8 @@ import {
   RebaseTaskAttemptRequest,
   ChangeTargetBranchRequest,
   ChangeTargetBranchResponse,
+  RunAgentSetupRequest,
+  RunAgentSetupResponse,
 } from 'shared/types';
 
 // Re-export types for convenience
@@ -384,6 +386,20 @@ export const attemptsApi = {
       }
     );
     return handleApiResponse<void>(response);
+  },
+
+  runAgentSetup: async (
+    attemptId: string,
+    data: RunAgentSetupRequest
+  ): Promise<RunAgentSetupResponse> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/run-agent-setup`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse<RunAgentSetupResponse>(response);
   },
 
   getDraft: async (

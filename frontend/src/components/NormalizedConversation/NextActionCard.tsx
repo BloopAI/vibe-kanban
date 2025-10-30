@@ -8,6 +8,7 @@ import {
   Copy,
   Check,
   GitBranch,
+  Settings,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import NiceModal from '@ebay/nice-modal-react';
@@ -21,6 +22,7 @@ import { getIdeName } from '@/components/ide/IdeIcon';
 import { useProject } from '@/contexts/project-context';
 import { useQuery } from '@tanstack/react-query';
 import { attemptsApi } from '@/lib/api';
+import { BaseAgentCapability, type BaseCodingAgent } from 'shared/types';
 import {
   Tooltip,
   TooltipContent,
@@ -34,6 +36,7 @@ type NextActionCardProps = {
   failed: boolean;
   execution_processes: number;
   task?: any;
+  needsSetup?: boolean;
 };
 
 export function NextActionCard({
@@ -42,6 +45,7 @@ export function NextActionCard({
   failed,
   execution_processes,
   task,
+  needsSetup,
 }: NextActionCardProps) {
   const { t } = useTranslation('tasks');
   const { config } = useUserSystem();
@@ -54,6 +58,7 @@ export function NextActionCard({
     queryFn: () => attemptsApi.get(attemptId!),
     enabled: !!attemptId && failed,
   });
+  const { capabilities } = useUserSystem();
 
   const openInEditor = useOpenInEditor(attemptId);
   const { fileCount, added, deleted, error } = useDiffSummary(
@@ -116,6 +121,27 @@ export function NextActionCard({
     });
   }, [attemptId, task, project?.id]);
 
+  const handleRunSetup = useCallback(async () => {
+    if (!attemptId || !attempt) return;
+    try {
+      await attemptsApi.runAgentSetup(attemptId, {
+        executor_profile_id: {
+          executor: attempt.executor as BaseCodingAgent,
+          variant: null,
+        },
+      });
+    } catch (error) {
+      console.error('Failed to run setup:', error);
+    }
+  }, [attemptId, attempt]);
+
+  const canAutoSetup = !!(
+    attempt?.executor &&
+    capabilities?.[attempt.executor]?.includes(BaseAgentCapability.SETUP_SCRIPT)
+  );
+
+  const setupHelpText = canAutoSetup ? t('attempt.setupHelpText') : null;
+
   const editorName = getIdeName(config?.editor?.editor_type);
 
   // Necessary to prevent this component being displayed beyond fold within Virtualised List
@@ -133,8 +159,19 @@ export function NextActionCard({
             {t('attempt.labels.summaryAndActions')}
           </span>
         </div>
+
+        {/* Display setup help text when setup is needed */}
+        {needsSetup && setupHelpText && (
+          <div
+            className={`border-x border-t ${failed ? 'border-destructive' : 'border-foreground'} px-3 py-2 flex items-start gap-2`}
+          >
+            <Settings className="h-4 w-4 mt-0.5 flex-shrink-0" />
+            <span className="text-sm">{setupHelpText}</span>
+          </div>
+        )}
+
         <div
-          className={`border px-3 py-2 flex items-center gap-3 min-w-0 ${failed ? 'border-destructive' : 'border-foreground'}`}
+          className={`border px-3 py-2 flex items-center gap-3 min-w-0 ${failed ? 'border-destructive' : 'border-foreground'} ${needsSetup && setupHelpText ? 'border-t-0' : ''}`}
         >
           {/* Left: Diff summary */}
           {!error && (
@@ -155,19 +192,32 @@ export function NextActionCard({
 
           <div className="flex-1" />
 
-          {/* Try Again button */}
-          {failed && execution_processes <= 2 && (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleTryAgain}
-              disabled={!attempt?.task_id}
-              className="text-sm"
-              aria-label={t('attempt.tryAgain')}
-            >
-              {t('attempt.tryAgain')}
-            </Button>
-          )}
+          {/* Run Setup or Try Again button */}
+          {failed &&
+            execution_processes <= 2 &&
+            (needsSetup ? (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleRunSetup}
+                disabled={!attempt}
+                className="text-sm"
+                aria-label={t('attempt.runSetup')}
+              >
+                {t('attempt.runSetup')}
+              </Button>
+            ) : (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleTryAgain}
+                disabled={!attempt?.task_id}
+                className="text-sm"
+                aria-label={t('attempt.tryAgain')}
+              >
+                {t('attempt.tryAgain')}
+              </Button>
+            ))}
 
           {/* Right: Icon buttons */}
           {fileCount > 0 && (

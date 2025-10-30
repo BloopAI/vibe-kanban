@@ -27,6 +27,7 @@ use executors::{
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     },
     executors::{ExecutorError, StandardCodingAgentExecutor},
+    logs::{ErrorType, NormalizedEntry, NormalizedEntryType, utils::ConversationPatch},
     profile::{ExecutorConfigs, ExecutorProfileId, to_default_variant},
 };
 use futures::{StreamExt, future};
@@ -326,9 +327,13 @@ pub trait ContainerService {
             };
 
             // Create temporary store and populate
+            // Include JsonPatch messages (already normalized) and Stdout/Stderr (need normalization)
             let temp_store = Arc::new(MsgStore::new());
             for msg in raw_messages {
-                if matches!(msg, LogMsg::Stdout(_) | LogMsg::Stderr(_)) {
+                if matches!(
+                    msg,
+                    LogMsg::Stdout(_) | LogMsg::Stderr(_) | LogMsg::JsonPatch(_)
+                ) {
                     temp_store.push(msg);
                 }
             }
@@ -652,65 +657,73 @@ pub trait ContainerService {
                     update_error
                 );
             }
+            Task::update_status(&self.db().pool, task.id, TaskStatus::InReview).await?;
 
-            // Persist the error to process stderr logs
+            // Emit stderr error message
             let log_message = LogMsg::Stderr(format!("Failed to start execution: {start_error}"));
-            if let Ok(json_line) = serde_json::to_string(&log_message)
-                && let Err(err) = ExecutionProcessLogs::append_log_line(
+            if let Ok(json_line) = serde_json::to_string(&log_message) {
+                let _ = ExecutionProcessLogs::append_log_line(
                     &self.db().pool,
                     execution_process.id,
                     &format!("{json_line}\n"),
                 )
-                .await
-            {
-                tracing::error!(
-                    "Failed to write to process log table {}: {}",
-                    execution_process.id,
-                    err
-                );
+                .await;
             }
+
+            // Emit NextAction with failure context for coding agent requests
+            match &start_error {
+                ContainerError::ExecutorError(ExecutorError::ExecutableNotFound { program }) => {
+                    let help_text =
+                        format!("The required executable `{}` is not installed.", program);
+                    let error_message = NormalizedEntry {
+                        timestamp: None,
+                        entry_type: NormalizedEntryType::ErrorMessage {
+                            error_type: ErrorType::SetupRequired,
+                        },
+                        content: help_text,
+                        metadata: None,
+                    };
+                    let patch = ConversationPatch::add_normalized_entry(2, error_message);
+                    if let Ok(json_line) =
+                        serde_json::to_string::<LogMsg>(&LogMsg::JsonPatch(patch))
+                    {
+                        let _ = ExecutionProcessLogs::append_log_line(
+                            &self.db().pool,
+                            execution_process.id,
+                            &format!("{json_line}\n"),
+                        )
+                        .await;
+                    }
+                }
+                _ => {}
+            };
 
             return Err(start_error);
         }
 
         // Start processing normalised logs for executor requests and follow ups
-        match executor_action.typ() {
-            ExecutorActionType::CodingAgentInitialRequest(request) => {
-                if let Some(msg_store) = self.get_msg_store_by_id(&execution_process.id).await {
-                    if let Some(executor) =
-                        ExecutorConfigs::get_cached().get_coding_agent(&request.executor_profile_id)
-                    {
-                        executor.normalize_logs(
-                            msg_store,
-                            &self.task_attempt_to_current_dir(task_attempt),
-                        );
-                    } else {
-                        tracing::error!(
-                            "Failed to resolve profile '{:?}' for normalization",
-                            request.executor_profile_id
-                        );
-                    }
+        if let Some(msg_store) = self.get_msg_store_by_id(&execution_process.id).await
+            && let Some(executor_profile_id) = match executor_action.typ() {
+                ExecutorActionType::CodingAgentInitialRequest(request) => {
+                    Some(&request.executor_profile_id)
                 }
-            }
-            ExecutorActionType::CodingAgentFollowUpRequest(request) => {
-                if let Some(msg_store) = self.get_msg_store_by_id(&execution_process.id).await {
-                    if let Some(executor) =
-                        ExecutorConfigs::get_cached().get_coding_agent(&request.executor_profile_id)
-                    {
-                        executor.normalize_logs(
-                            msg_store,
-                            &self.task_attempt_to_current_dir(task_attempt),
-                        );
-                    } else {
-                        tracing::error!(
-                            "Failed to resolve profile '{:?}' for normalization",
-                            request.get_executor_profile_id()
-                        );
-                    }
+                ExecutorActionType::CodingAgentFollowUpRequest(request) => {
+                    Some(&request.executor_profile_id)
                 }
+                _ => None,
             }
-            _ => {}
-        };
+        {
+            if let Some(executor) =
+                ExecutorConfigs::get_cached().get_coding_agent(&executor_profile_id)
+            {
+                executor.normalize_logs(msg_store, &self.task_attempt_to_current_dir(task_attempt));
+            } else {
+                tracing::error!(
+                    "Failed to resolve profile '{:?}' for normalization",
+                    executor_profile_id
+                );
+            }
+        }
 
         self.spawn_stream_raw_logs_to_db(&execution_process.id);
         Ok(execution_process)

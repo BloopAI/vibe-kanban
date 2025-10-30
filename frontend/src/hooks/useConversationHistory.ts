@@ -65,14 +65,23 @@ const loadingPatch: PatchTypeWithKey = {
 
 const nextActionPatch: (
   failed: boolean,
-  execution_processes: number
-) => PatchTypeWithKey = (failed, execution_processes) => ({
+  execution_processes: number,
+  needs_setup: boolean,
+  setup_help_text?: string
+) => PatchTypeWithKey = (
+  failed,
+  execution_processes,
+  needs_setup,
+  setup_help_text
+) => ({
   type: 'NORMALIZED_ENTRY',
   content: {
     entry_type: {
       type: 'next_action',
       failed: failed,
       execution_processes: execution_processes,
+      needs_setup: needs_setup,
+      setup_help_text: setup_help_text ?? null,
     },
     content: '',
     timestamp: null,
@@ -240,6 +249,8 @@ export const useConversationHistory = ({
     let hasPendingApproval = false;
     let hasRunningProcess = false;
     let lastProcessFailedOrKilled = false;
+    let needsSetup = false;
+    let setupHelpText: string | undefined;
 
     // Create user messages + tool calls for setup/cleanup scripts
     const allEntries = Object.values(executionProcessState)
@@ -410,7 +421,9 @@ export const useConversationHistory = ({
       allEntries.push(
         nextActionPatch(
           lastProcessFailedOrKilled,
-          Object.keys(executionProcessState).length
+          Object.keys(executionProcessState).length,
+          needsSetup,
+          setupHelpText
         )
       );
     }
