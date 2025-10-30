@@ -15,6 +15,9 @@ pub struct SharedTask {
     pub description: Option<String>,
     pub status: TaskStatus,
     pub assignee_user_id: Option<String>,
+    pub assignee_first_name: Option<String>,
+    pub assignee_last_name: Option<String>,
+    pub assignee_username: Option<String>,
     pub version: i64,
     pub last_event_seq: Option<i64>,
     #[ts(type = "Date")]
@@ -32,6 +35,9 @@ pub struct SharedTaskInput {
     pub description: Option<String>,
     pub status: TaskStatus,
     pub assignee_user_id: Option<String>,
+    pub assignee_first_name: Option<String>,
+    pub assignee_last_name: Option<String>,
+    pub assignee_username: Option<String>,
     pub version: i64,
     pub last_event_seq: Option<i64>,
     pub created_at: DateTime<Utc>,
@@ -51,6 +57,9 @@ impl SharedTask {
                 description                AS description,
                 status                     AS "status!: TaskStatus",
                 assignee_user_id           AS "assignee_user_id: String",
+                assignee_first_name        AS "assignee_first_name: String",
+                assignee_last_name         AS "assignee_last_name: String",
+                assignee_username          AS "assignee_username: String",
                 version                    AS "version!: i64",
                 last_event_seq             AS "last_event_seq: i64",
                 created_at                 AS "created_at!: DateTime<Utc>",
@@ -78,6 +87,9 @@ impl SharedTask {
                 description                AS description,
                 status                     AS "status!: TaskStatus",
                 assignee_user_id           AS "assignee_user_id: String",
+                assignee_first_name        AS "assignee_first_name: String",
+                assignee_last_name         AS "assignee_last_name: String",
+                assignee_username          AS "assignee_username: String",
                 version                    AS "version!: i64",
                 last_event_seq             AS "last_event_seq: i64",
                 created_at                 AS "created_at!: DateTime<Utc>",
@@ -107,6 +119,9 @@ impl SharedTask {
                 description                AS description,
                 status                     AS "status!: TaskStatus",
                 assignee_user_id           AS "assignee_user_id: String",
+                assignee_first_name        AS "assignee_first_name: String",
+                assignee_last_name         AS "assignee_last_name: String",
+                assignee_username          AS "assignee_username: String",
                 version                    AS "version!: i64",
                 last_event_seq             AS "last_event_seq: i64",
                 created_at                 AS "created_at!: DateTime<Utc>",
@@ -134,13 +149,16 @@ impl SharedTask {
                 description,
                 status,
                 assignee_user_id,
+                assignee_first_name,
+                assignee_last_name,
+                assignee_username,
                 version,
                 last_event_seq,
                 created_at,
                 updated_at
             )
             VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
             )
             ON CONFLICT(id) DO UPDATE SET
                 organization_id     = excluded.organization_id,
@@ -149,6 +167,9 @@ impl SharedTask {
                 description         = excluded.description,
                 status              = excluded.status,
                 assignee_user_id    = excluded.assignee_user_id,
+                assignee_first_name = excluded.assignee_first_name,
+                assignee_last_name  = excluded.assignee_last_name,
+                assignee_username   = excluded.assignee_username,
                 version             = excluded.version,
                 last_event_seq      = excluded.last_event_seq,
                 created_at          = excluded.created_at,
@@ -161,6 +182,9 @@ impl SharedTask {
                 description                AS description,
                 status                     AS "status!: TaskStatus",
                 assignee_user_id           AS "assignee_user_id: String",
+                assignee_first_name        AS "assignee_first_name: String",
+                assignee_last_name         AS "assignee_last_name: String",
+                assignee_username          AS "assignee_username: String",
                 version                    AS "version!: i64",
                 last_event_seq             AS "last_event_seq: i64",
                 created_at                 AS "created_at!: DateTime<Utc>",
@@ -173,6 +197,9 @@ impl SharedTask {
             data.description,
             status,
             data.assignee_user_id,
+            data.assignee_first_name,
+            data.assignee_last_name,
+            data.assignee_username,
             data.version,
             data.last_event_seq,
             data.created_at,
@@ -194,6 +221,9 @@ impl SharedTask {
                 description                AS description,
                 status                     AS "status!: TaskStatus",
                 assignee_user_id           AS "assignee_user_id: String",
+                assignee_first_name        AS "assignee_first_name: String",
+                assignee_last_name         AS "assignee_last_name: String",
+                assignee_username          AS "assignee_username: String",
                 version                    AS "version!: i64",
                 last_event_seq             AS "last_event_seq: i64",
                 created_at                 AS "created_at!: DateTime<Utc>",
@@ -287,6 +317,9 @@ impl SharedTask {
                 description                AS description,
                 status                     AS "status!: TaskStatus",
                 assignee_user_id           AS "assignee_user_id: String",
+                assignee_first_name        AS "assignee_first_name: String",
+                assignee_last_name         AS "assignee_last_name: String",
+                assignee_username          AS "assignee_username: String",
                 version                    AS "version!: i64",
                 last_event_seq             AS "last_event_seq: i64",
                 created_at                 AS "created_at!: DateTime<Utc>",
@@ -318,6 +351,9 @@ async fn bulk_upsert(
             description,
             status,
             assignee_user_id,
+            assignee_first_name,
+            assignee_last_name,
+            assignee_username,
             version,
             last_event_seq,
             created_at,
@@ -336,6 +372,9 @@ async fn bulk_upsert(
             separated.push_bind(&task.description);
             separated.push_bind(task.status.clone());
             separated.push_bind(&task.assignee_user_id);
+            separated.push_bind(&task.assignee_first_name);
+            separated.push_bind(&task.assignee_last_name);
+            separated.push_bind(&task.assignee_username);
             separated.push_bind(task.version);
             separated.push_bind(task.last_event_seq);
             separated.push_bind(task.created_at);
@@ -352,6 +391,9 @@ async fn bulk_upsert(
             description      = excluded.description,
             status           = excluded.status,
             assignee_user_id = excluded.assignee_user_id,
+            assignee_first_name = excluded.assignee_first_name,
+            assignee_last_name  = excluded.assignee_last_name,
+            assignee_username   = excluded.assignee_username,
             version          = excluded.version,
             last_event_seq   = excluded.last_event_seq,
             created_at       = excluded.created_at,
