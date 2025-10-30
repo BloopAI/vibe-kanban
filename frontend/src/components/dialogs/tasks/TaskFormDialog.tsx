@@ -241,6 +241,13 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
         });
     }, [task?.id, modal.visible]);
 
+    // Reset form state when dialog opens or task changes
+    useEffect(() => {
+      if (modal.visible) {
+        dispatch({ type: 'reset', payload: init(initialState) });
+      }
+    }, [modal.visible, task?.id, initialTask?.id]);
+
     // Drag & drop with react-dropzone
     const handleFiles = useCallback((files: File[]) => {
       dispatch({ type: 'set_show_upload', payload: true });
