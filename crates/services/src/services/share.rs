@@ -267,10 +267,6 @@ async fn spawn_shared_remote(
     let session_source = sessions.clone();
     let ws_config = WsConfig {
         url,
-        autoreconnect: false,
-        // unused since autoreconnect is false
-        reconnect_base_delay: WS_BACKOFF_BASE_DELAY,
-        reconnect_max_delay: WS_BACKOFF_MAX_DELAY,
         ping_interval: Some(std::time::Duration::from_secs(30)),
         header_factory: Some(Arc::new(move || {
             let session_source = session_source.clone();
