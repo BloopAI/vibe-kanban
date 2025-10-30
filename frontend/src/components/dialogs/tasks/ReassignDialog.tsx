@@ -228,7 +228,7 @@ export const ReassignDialog = NiceModal.create<ReassignDialogProps>(
                 {memberOptions.map((member) => (
                   <SelectItem key={member.userId} value={member.userId}>
                     {member.userId === userId
-                      ? `${member.label} (you)`
+                      ? `${member.label}`
                       : member.label}
                   </SelectItem>
                 ))}

@@ -21,7 +21,10 @@ use db::{
 };
 use processor::ActivityProcessor;
 pub use publisher::SharePublisher;
-use remote::{ServerMessage, db::tasks::SharedTask as RemoteSharedTask};
+use remote::{
+    ServerMessage,
+    db::{identity::UserData as RemoteUserData, tasks::SharedTask as RemoteSharedTask},
+};
 use sqlx::SqlitePool;
 use thiserror::Error;
 use tokio::{sync::oneshot, task::JoinHandle, time::sleep};
@@ -355,6 +358,7 @@ impl Drop for RemoteSyncHandleInner {
 
 pub(super) fn convert_remote_task(
     task: &RemoteSharedTask,
+    user: Option<&RemoteUserData>,
     project_id: Uuid,
     last_event_seq: Option<i64>,
 ) -> SharedTaskInput {
@@ -366,6 +370,9 @@ pub(super) fn convert_remote_task(
         description: task.description.clone(),
         status: status::from_remote(&task.status),
         assignee_user_id: task.assignee_user_id.clone(),
+        assignee_first_name: user.and_then(|u| u.first_name.clone()),
+        assignee_last_name: user.and_then(|u| u.last_name.clone()),
+        assignee_username: user.and_then(|u| u.username.clone()),
         version: task.version,
         last_event_seq,
         created_at: task.created_at,
