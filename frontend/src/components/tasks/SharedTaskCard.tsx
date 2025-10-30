@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { KanbanCard } from '@/components/ui/shadcn-io/kanban';
-import { Users } from 'lucide-react';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
+import { UserAvatar } from './UserAvatar';
 
 interface SharedTaskCardProps {
   task: SharedTaskRecord;
@@ -48,9 +48,13 @@ export function SharedTaskCard({
       dragDisabled
       className="relative overflow-hidden pl-5 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-muted-foreground before:content-['']"
     >
-      <div className="flex items-start gap-2">
-        <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
-        <div className="min-w-0 font-light flex-1 space-y-1">
+      <div className="flex items-center gap-3">
+        <UserAvatar
+          firstName={task.assignee_first_name ?? undefined}
+          lastName={task.assignee_last_name ?? undefined}
+          username={task.assignee_username ?? undefined}
+        />
+        <div className="flex min-w-0 flex-1 flex-col gap-1 font-light">
           <h4 className="text-sm text-muted-foreground line-clamp-2">
             {task.title}
           </h4>

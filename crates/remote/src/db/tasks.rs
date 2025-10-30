@@ -1,10 +1,12 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use thiserror::Error;
 use uuid::Uuid;
 
 use super::{
     Tx,
+    identity::{IdentityError, UserData, fetch_user},
     projects::{CreateProjectData, Project, ProjectError, ProjectMetadata, ProjectRepository},
 };
 
@@ -23,6 +25,18 @@ pub enum TaskStatus {
     InReview,
     Done,
     Cancelled,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SharedTaskWithUser {
+    pub task: SharedTask,
+    pub user: Option<UserData>,
+}
+
+impl SharedTaskWithUser {
+    pub fn new(task: SharedTask, user: Option<UserData>) -> Self {
+        Self { task, user }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
@@ -47,6 +61,7 @@ pub struct SharedTask {
 pub struct SharedTaskActivityPayload {
     pub task: SharedTask,
     pub project: ProjectMetadata,
+    pub user: Option<UserData>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -80,32 +95,22 @@ pub struct DeleteTaskData {
     pub version: Option<i64>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum SharedTaskError {
+    #[error("shared task not found")]
     NotFound,
+    #[error("operation forbidden")]
     Forbidden,
+    #[error("shared task conflict: {0}")]
     Conflict(String),
-    Database(sqlx::Error),
-    Serialization(serde_json::Error),
-}
-
-impl From<sqlx::Error> for SharedTaskError {
-    fn from(error: sqlx::Error) -> Self {
-        if matches!(error, sqlx::Error::RowNotFound) {
-            Self::NotFound
-        } else {
-            Self::Database(error)
-        }
-    }
-}
-
-impl From<ProjectError> for SharedTaskError {
-    fn from(error: ProjectError) -> Self {
-        match error {
-            ProjectError::Conflict(message) => SharedTaskError::Conflict(message),
-            ProjectError::Database(err) => SharedTaskError::Database(err),
-        }
-    }
+    #[error(transparent)]
+    Project(#[from] ProjectError),
+    #[error(transparent)]
+    Identity(#[from] IdentityError),
+    #[error("database error: {0}")]
+    Database(#[from] sqlx::Error),
+    #[error(transparent)]
+    Serialization(#[from] serde_json::Error),
 }
 
 pub struct SharedTaskRepository<'a> {
@@ -158,7 +163,7 @@ impl<'a> SharedTaskRepository<'a> {
         &self,
         organization_id: &str,
         data: CreateSharedTaskData,
-    ) -> Result<SharedTask, SharedTaskError> {
+    ) -> Result<SharedTaskWithUser, SharedTaskError> {
         let mut tx = self.pool.begin().await.map_err(SharedTaskError::from)?;
 
         dbg!("Received create_shared_task request:", &data);
@@ -236,9 +241,14 @@ impl<'a> SharedTaskRepository<'a> {
         .fetch_one(&mut *tx)
         .await?;
 
-        insert_activity(&mut tx, &task, &project, "task.created").await?;
+        let user = match assignee_user_id.as_deref() {
+            Some(user_id) => fetch_user(&mut tx, user_id).await?,
+            None => None,
+        };
+
+        insert_activity(&mut tx, &task, &project, user.as_ref(), "task.created").await?;
         tx.commit().await.map_err(SharedTaskError::from)?;
-        Ok(task)
+        Ok(SharedTaskWithUser::new(task, user))
     }
 
     pub async fn bulk_fetch(
@@ -269,9 +279,14 @@ impl<'a> SharedTaskRepository<'a> {
                 st.updated_at             AS "updated_at!",
                 p.github_repository_id    AS "project_github_repository_id!",
                 p.owner                   AS "project_owner!",
-                p.name                    AS "project_name!"
+                p.name                    AS "project_name!",
+                u.id                      AS "user_id?",
+                u.first_name              AS "user_first_name?",
+                u.last_name               AS "user_last_name?",
+                u.username                AS "user_username?"
             FROM shared_tasks st
             JOIN projects p ON st.project_id = p.id
+            LEFT JOIN users u ON st.assignee_user_id = u.id
             WHERE st.organization_id = $1
               AND st.deleted_at IS NULL
             ORDER BY st.updated_at DESC
@@ -307,7 +322,18 @@ impl<'a> SharedTaskRepository<'a> {
                     name: row.project_name,
                 };
 
-                SharedTaskActivityPayload { task, project }
+                let user = row.user_id.map(|id| UserData {
+                    id,
+                    first_name: row.user_first_name,
+                    last_name: row.user_last_name,
+                    username: row.user_username,
+                });
+
+                SharedTaskActivityPayload {
+                    task,
+                    user,
+                    project,
+                }
             })
             .collect();
 
@@ -351,7 +377,7 @@ impl<'a> SharedTaskRepository<'a> {
         organization_id: &str,
         task_id: Uuid,
         data: UpdateSharedTaskData,
-    ) -> Result<SharedTask, SharedTaskError> {
+    ) -> Result<SharedTaskWithUser, SharedTaskError> {
         let mut tx = self.pool.begin().await.map_err(SharedTaskError::from)?;
 
         let task = sqlx::query_as!(
@@ -402,10 +428,14 @@ impl<'a> SharedTaskRepository<'a> {
                 SharedTaskError::Conflict("project not found for shared task".to_string())
             })?;
 
-        insert_activity(&mut tx, &task, &project, "task.updated").await?;
+        let user = match task.assignee_user_id.as_deref() {
+            Some(user_id) => fetch_user(&mut tx, user_id).await?,
+            None => None,
+        };
 
+        insert_activity(&mut tx, &task, &project, user.as_ref(), "task.updated").await?;
         tx.commit().await.map_err(SharedTaskError::from)?;
-        Ok(task)
+        Ok(SharedTaskWithUser::new(task, user))
     }
 
     pub async fn assign_task(
@@ -413,7 +443,7 @@ impl<'a> SharedTaskRepository<'a> {
         organization_id: &str,
         task_id: Uuid,
         data: AssignTaskData,
-    ) -> Result<SharedTask, SharedTaskError> {
+    ) -> Result<SharedTaskWithUser, SharedTaskError> {
         let mut tx = self.pool.begin().await.map_err(SharedTaskError::from)?;
 
         let task = sqlx::query_as!(
@@ -448,7 +478,7 @@ impl<'a> SharedTaskRepository<'a> {
             data.new_assignee_user_id,
             data.previous_assignee_user_id,
             data.version,
-            organization_id
+            organization_id,
         )
         .fetch_optional(&mut *tx)
         .await?
@@ -462,9 +492,14 @@ impl<'a> SharedTaskRepository<'a> {
                 SharedTaskError::Conflict("project not found for shared task".to_string())
             })?;
 
-        insert_activity(&mut tx, &task, &project, "task.assignment_transferred").await?;
+        let user = match data.new_assignee_user_id.as_deref() {
+            Some(user_id) => fetch_user(&mut tx, user_id).await?,
+            None => None,
+        };
+
+        insert_activity(&mut tx, &task, &project, user.as_ref(), "task.reassigned").await?;
         tx.commit().await.map_err(SharedTaskError::from)?;
-        Ok(task)
+        Ok(SharedTaskWithUser::new(task, user))
     }
 
     pub async fn delete_task(
@@ -472,7 +507,7 @@ impl<'a> SharedTaskRepository<'a> {
         organization_id: &str,
         task_id: Uuid,
         data: DeleteTaskData,
-    ) -> Result<SharedTask, SharedTaskError> {
+    ) -> Result<SharedTaskWithUser, SharedTaskError> {
         let mut tx = self.pool.begin().await.map_err(SharedTaskError::from)?;
 
         let task = sqlx::query_as!(
@@ -521,10 +556,9 @@ impl<'a> SharedTaskRepository<'a> {
                 SharedTaskError::Conflict("project not found for shared task".to_string())
             })?;
 
-        insert_activity(&mut tx, &task, &project, "task.deleted").await?;
-
+        insert_activity(&mut tx, &task, &project, None, "task.deleted").await?;
         tx.commit().await.map_err(SharedTaskError::from)?;
-        Ok(task)
+        Ok(SharedTaskWithUser::new(task, None))
     }
 }
 
@@ -532,11 +566,13 @@ async fn insert_activity(
     tx: &mut Tx<'_>,
     task: &SharedTask,
     project: &Project,
+    user: Option<&UserData>,
     event_type: &str,
 ) -> Result<(), SharedTaskError> {
     let payload = SharedTaskActivityPayload {
         task: task.clone(),
         project: project.metadata(),
+        user: user.cloned(),
     };
     let value = serde_json::to_value(payload).map_err(SharedTaskError::Serialization)?;
 

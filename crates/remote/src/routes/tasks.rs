@@ -7,6 +7,7 @@ use axum::{
 use serde_json::json;
 use uuid::Uuid;
 
+use super::error::{identity_error_response, task_error_response};
 use crate::{
     AppState,
     api::tasks::{
@@ -15,7 +16,7 @@ use crate::{
     },
     auth::RequestContext,
     db::{
-        identity::{IdentityError, IdentityRepository},
+        identity::IdentityRepository,
         tasks::{
             AssignTaskData, CreateSharedTaskData, DeleteTaskData, SharedTaskError,
             SharedTaskRepository, UpdateSharedTaskData,
@@ -66,9 +67,7 @@ pub async fn create_shared_task(
         assignee_user_id,
     } = payload;
 
-    // Check that assignee exists and is an active member of the organization
-    if let Some(assignee) = &assignee_user_id
-        && assignee != &ctx.user.id
+    if let Some(assignee) = assignee_user_id.as_ref()
         && let Err(err) = identity_repo
             .ensure_user(&ctx.organization.id, assignee)
             .await
@@ -87,7 +86,7 @@ pub async fn create_shared_task(
     dbg!("Received create_shared_task request:", &data);
 
     match repo.create(&ctx.organization.id, data).await {
-        Ok(task) => (StatusCode::CREATED, Json(SharedTaskResponse { task })).into_response(),
+        Ok(task) => (StatusCode::CREATED, Json(SharedTaskResponse::from(task))).into_response(),
         Err(error) => task_error_response(error, "failed to create shared task"),
     }
 }
@@ -125,7 +124,7 @@ pub async fn update_shared_task(
     };
 
     match repo.update(&ctx.organization.id, task_id, data).await {
-        Ok(task) => (StatusCode::OK, Json(SharedTaskResponse { task })).into_response(),
+        Ok(task) => (StatusCode::OK, Json(SharedTaskResponse::from(task))).into_response(),
         Err(error) => task_error_response(error, "failed to update shared task"),
     }
 }
@@ -157,7 +156,6 @@ pub async fn assign_task(
     }
 
     if let Some(assignee) = payload.new_assignee_user_id.as_ref()
-        && assignee != &ctx.user.id
         && let Err(err) = identity_repo
             .ensure_user(&ctx.organization.id, assignee)
             .await
@@ -172,7 +170,7 @@ pub async fn assign_task(
     };
 
     match repo.assign_task(&ctx.organization.id, task_id, data).await {
-        Ok(task) => (StatusCode::OK, Json(SharedTaskResponse { task })).into_response(),
+        Ok(task) => (StatusCode::OK, Json(SharedTaskResponse::from(task))).into_response(),
         Err(error) => task_error_response(error, "failed to transfer task assignment"),
     }
 }
@@ -210,55 +208,7 @@ pub async fn delete_shared_task(
     };
 
     match repo.delete_task(&ctx.organization.id, task_id, data).await {
-        Ok(task) => (StatusCode::OK, Json(SharedTaskResponse { task })).into_response(),
+        Ok(task) => (StatusCode::OK, Json(SharedTaskResponse::from(task))).into_response(),
         Err(error) => task_error_response(error, "failed to delete shared task"),
     }
-}
-
-fn task_error_response(error: SharedTaskError, context: &str) -> Response {
-    match error {
-        SharedTaskError::NotFound => (
-            StatusCode::NOT_FOUND,
-            Json(json!({ "error": "task not found" })),
-        ),
-        SharedTaskError::Forbidden => (
-            StatusCode::FORBIDDEN,
-            Json(json!({ "error": "only the assignee can modify this task" })),
-        ),
-        SharedTaskError::Conflict(message) => {
-            (StatusCode::CONFLICT, Json(json!({ "error": message })))
-        }
-        SharedTaskError::Serialization(err) => {
-            tracing::error!(?err, "{context}", context = context);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": "failed to serialize shared task" })),
-            )
-        }
-        SharedTaskError::Database(err) => {
-            tracing::error!(?err, "{context}", context = context);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": "internal server error" })),
-            )
-        }
-    }
-    .into_response()
-}
-
-fn identity_error_response(error: IdentityError, message: &str) -> Response {
-    match error {
-        IdentityError::Clerk(err) => {
-            tracing::debug!(?err, "clerk refused identity lookup");
-            (StatusCode::BAD_REQUEST, Json(json!({ "error": message })))
-        }
-        IdentityError::Database(err) => {
-            tracing::error!(?err, "identity sync failed");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": "internal server error" })),
-            )
-        }
-    }
-    .into_response()
 }

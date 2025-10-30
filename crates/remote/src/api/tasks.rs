@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
 
 use crate::db::{
+    identity::UserData,
     projects::ProjectMetadata,
-    tasks::{SharedTask, SharedTaskActivityPayload, TaskStatus},
+    tasks::{SharedTask, SharedTaskActivityPayload, SharedTaskWithUser, TaskStatus},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -42,4 +43,14 @@ pub struct DeleteSharedTaskRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SharedTaskResponse {
     pub task: SharedTask,
+    pub user: Option<UserData>,
+}
+
+impl From<SharedTaskWithUser> for SharedTaskResponse {
+    fn from(v: SharedTaskWithUser) -> Self {
+        Self {
+            task: v.task,
+            user: v.user,
+        }
+    }
 }
