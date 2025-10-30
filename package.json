@@ -29,20 +29,11 @@
     "prepack": "npm run build:npx"
   },
   "devDependencies": {
-    "@tailwindcss/container-queries": "^0.1.1",
     "concurrently": "^8.2.2",
     "vite": "^6.3.5"
   },
   "engines": {
     "node": ">=18",
     "pnpm": ">=8"
-  },
-  "dependencies": {
-    "@dnd-kit/utilities": "^3.2.2",
-    "@ebay/nice-modal-react": "^1.2.13",
-    "@radix-ui/react-toggle-group": "^1.1.11",
-    "framer-motion": "^12.23.22",
-    "lodash": "^4.17.21",
-    "react-resizable-panels": "^3.0.6"
   }
 }
