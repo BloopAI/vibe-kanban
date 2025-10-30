@@ -39,6 +39,9 @@ pub enum WsError {
 
     #[error("failed to prepare websocket headers: {0}")]
     Header(String),
+
+    #[error("share authentication missing or expired")]
+    MissingAuth,
 }
 
 pub type WsResult<T> = std::result::Result<T, WsError>;
@@ -87,7 +90,7 @@ where
     H: WsHandler,
 {
     let (msg_tx, mut msg_rx) = mpsc::unbounded_channel();
-    let (shutdown_tx, mut shutdown_rx) = watch::channel(());
+    let (shutdown_tx, shutdown_rx) = watch::channel(());
     let task_tx = msg_tx.clone();
 
     tokio::spawn(async move {
@@ -129,6 +132,7 @@ where
                     };
 
                     loop {
+                        let mut shutdown_rx2 = shutdown_rx.clone();
                         tokio::select! {
                             maybe = msg_rx.recv() => {
                                 match maybe {
@@ -164,7 +168,7 @@ where
                                 }
                             }
 
-                            _ = shutdown_rx.changed() => {
+                            _ = shutdown_rx2.changed() => {
                                 tracing::debug!("WebSocket shutdown requested");
                                 break;
                             }
