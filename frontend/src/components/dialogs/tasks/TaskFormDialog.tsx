@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useCallback,
-  useRef,
-  useState,
-  useMemo,
-} from 'react';
+import { useEffect, useCallback, useRef, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useDropzone } from 'react-dropzone';
@@ -37,11 +31,7 @@ import {
   useTaskImages,
   useImageUpload,
 } from '@/hooks';
-import {
-  useKeySubmitTask,
-  useKeyExit,
-  Scope,
-} from '@/keyboard';
+import { useKeySubmitTask, useKeyExit, Scope } from '@/keyboard';
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { cn } from '@/lib/utils';
 import type {
@@ -201,7 +191,8 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
           { onSuccess: () => modal.remove() }
         );
       } else if (autoStart) {
-        const finalProfile = value.executorProfileId || system.config?.executor_profile;
+        const finalProfile =
+          value.executorProfileId || system.config?.executor_profile;
         if (!finalProfile || !value.branch) {
           console.warn('Missing executor profile or branch for Create & Start');
           return;
@@ -485,7 +476,10 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
               <form.Field name="status">
                 {(field) => (
                   <div className="space-y-2">
-                    <Label htmlFor="task-status" className="text-sm font-medium">
+                    <Label
+                      htmlFor="task-status"
+                      className="text-sm font-medium"
+                    >
                       {t('taskFormDialog.statusLabel')}
                     </Label>
                     <Select
@@ -620,16 +614,23 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
                     !state.values.title.trim() ||
                     (mode !== 'edit' &&
                       autoStart &&
-                      (!state.values.executorProfileId || !state.values.branch));
+                      (!state.values.executorProfileId ||
+                        !state.values.branch));
 
                   return mode === 'edit' ? (
-                    <Button onClick={() => form.handleSubmit()} disabled={isDisabled}>
+                    <Button
+                      onClick={() => form.handleSubmit()}
+                      disabled={isDisabled}
+                    >
                       {state.isSubmitting
                         ? t('taskFormDialog.updating')
                         : t('taskFormDialog.updateTask')}
                     </Button>
                   ) : (
-                    <Button onClick={() => form.handleSubmit()} disabled={isDisabled}>
+                    <Button
+                      onClick={() => form.handleSubmit()}
+                      disabled={isDisabled}
+                    >
                       <Plus className="h-4 w-4 mr-1.5" />
                       {state.isSubmitting
                         ? autoStart
