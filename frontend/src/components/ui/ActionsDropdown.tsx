@@ -43,13 +43,13 @@ export function ActionsDropdown({
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!projectId || !task) return;
-    openTaskForm({ projectId, task });
+    openTaskForm({ mode: 'edit', projectId, task });
   };
 
   const handleDuplicate = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!projectId || !task) return;
-    openTaskForm({ projectId, initialTask: task });
+    openTaskForm({ mode: 'duplicate', projectId, initialTask: task });
   };
 
   const handleDelete = async (e: React.MouseEvent) => {
@@ -103,10 +103,13 @@ export function ActionsDropdown({
   const handleCreateSubtask = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!projectId || !attempt) return;
+    const baseBranch = attempt.branch || attempt.target_branch;
+    if (!baseBranch) return;
     openTaskForm({
+      mode: 'subtask',
       projectId,
       parentTaskAttemptId: attempt.id,
-      initialBaseBranch: attempt.branch || attempt.target_branch,
+      initialBaseBranch: baseBranch,
     });
   };
 

@@ -167,7 +167,7 @@ export function ProjectTasks() {
 
   const handleCreateTask = useCallback(() => {
     if (projectId) {
-      openTaskForm({ projectId });
+      openTaskForm({ mode: 'create', projectId });
     }
   }, [projectId]);
   const { query: searchQuery, focusInput } = useSearch();

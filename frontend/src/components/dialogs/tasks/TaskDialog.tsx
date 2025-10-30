@@ -57,6 +57,7 @@ const TaskDialog = React.forwardRef<HTMLDivElement, TaskDialogProps>(
       {
         scope: Scope.DIALOG,
         when: () => !!open,
+        enableOnFormTags: ['input', 'INPUT', 'textarea', 'TEXTAREA'],
       }
     );
 

@@ -3,6 +3,7 @@ export { useAttemptExecution } from './useAttemptExecution';
 export { useOpenInEditor } from './useOpenInEditor';
 export { useProjectBranches } from './useProjectBranches';
 export { useTaskAttempt } from './useTaskAttempt';
+export { useTaskImages } from './useTaskImages';
 export { useImageUpload } from './useImageUpload';
 export { useDevServer } from './useDevServer';
 export { useRebase } from './useRebase';
