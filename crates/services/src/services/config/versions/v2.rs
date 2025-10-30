@@ -1,4 +1,4 @@
-use std::{path::PathBuf, str::FromStr};
+use std::{io, path::PathBuf, process::Command, str::FromStr};
 
 use anyhow::Error;
 use serde::{Deserialize, Serialize};
@@ -343,29 +343,58 @@ impl EditorConfig {
         }
     }
 
-    pub fn open_file(&self, path: &str) -> Result<(), std::io::Error> {
-        let mut command = self.get_command();
+    pub fn open_file(&self, path: &str) -> Result<Option<String>, io::Error> {
+        if let Some(url) = self.remote_url(path) {
+            return Ok(Some(url));
+        }
+        self.spawn_local(path)?;
+        Ok(None)
+    }
 
+    fn remote_url(&self, path: &str) -> Option<String> {
+        let remote_host = self.remote_ssh_host.as_ref()?;
+        let scheme = match self.editor_type {
+            EditorType::VsCode => "vscode",
+            EditorType::Cursor => "cursor",
+            EditorType::Windsurf => "windsurf",
+            _ => return None,
+        };
+        let user_part = self
+            .remote_ssh_user
+            .as_ref()
+            .map(|u| format!("{u}@"))
+            .unwrap_or_default();
+        Some(format!(
+            "{scheme}://vscode-remote/ssh-remote+{user_part}{remote_host}{path}"
+        ))
+    }
+
+    fn spawn_local(&self, path: &str) -> Result<(), io::Error> {
+        let command = self.get_command();
         if command.is_empty() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
                 "No editor command configured",
             ));
         }
 
-        if cfg!(windows) {
-            command[0] =
-                utils::shell::resolve_executable_path(&command[0]).ok_or(std::io::Error::new(
-                    std::io::ErrorKind::NotFound,
+        // Resolve the executable path without mutating the vector.
+        let executable = {
+            #[cfg(windows)]
+            {
+                utils::shell::resolve_executable_path(&command[0]).ok_or(io::Error::new(
+                    io::ErrorKind::NotFound,
                     format!("Editor command '{}' not found", command[0]),
-                ))?;
-        }
+                ))?
+            }
+            #[cfg(not(windows))]
+            {
+                command[0].clone()
+            }
+        };
 
-        let mut cmd = std::process::Command::new(&command[0]);
-        for arg in &command[1..] {
-            cmd.arg(arg);
-        }
-        cmd.arg(path);
+        let mut cmd = Command::new(executable);
+        cmd.args(&command[1..]).arg(path);
         cmd.spawn()?;
         Ok(())
     }
