@@ -245,6 +245,11 @@ impl<'a> SharedTaskRepository<'a> {
         &self,
         organization_id: &str,
     ) -> Result<BulkFetchResult, SharedTaskError> {
+        let mut tx = self.pool.begin().await?;
+        sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+            .execute(&mut *tx)
+            .await?;
+
         let rows = sqlx::query!(
             r#"
             SELECT
@@ -273,7 +278,7 @@ impl<'a> SharedTaskRepository<'a> {
             "#,
             organization_id
         )
-        .fetch_all(self.pool)
+        .fetch_all(&mut *tx)
         .await?;
 
         let tasks = rows
@@ -316,7 +321,7 @@ impl<'a> SharedTaskRepository<'a> {
             "#,
             organization_id
         )
-        .fetch_all(self.pool)
+        .fetch_all(&mut *tx)
         .await?;
 
         let deleted_task_ids = deleted_rows.into_iter().map(|row| row.id).collect();
@@ -329,8 +334,10 @@ impl<'a> SharedTaskRepository<'a> {
             "#,
             organization_id
         )
-        .fetch_one(self.pool)
+        .fetch_one(&mut *tx)
         .await?;
+
+        tx.commit().await?;
 
         Ok(BulkFetchResult {
             tasks,
