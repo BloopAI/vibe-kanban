@@ -12,6 +12,7 @@ import { FeatureShowcaseModal } from '@/components/showcase/FeatureShowcaseModal
 import { showcases } from '@/config/showcases';
 import { useShowcaseTrigger } from '@/hooks/useShowcaseTrigger';
 import { usePostHog } from 'posthog-js/react';
+import { TagFilter } from '@/components/TagFilter';
 
 import { useSearch } from '@/contexts/search-context';
 import { useProject } from '@/contexts/project-context';
@@ -143,6 +144,9 @@ export function ProjectTasks() {
     }
   }, [projectId]);
   const { query: searchQuery, focusInput } = useSearch();
+
+  // Tag filtering state
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
   const {
     tasks,
@@ -293,16 +297,27 @@ export function ProjectTasks() {
   );
 
   const filteredTasks = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return tasks;
+    let result = tasks;
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(
+        (task) =>
+          task.title.toLowerCase().includes(query) ||
+          (task.description && task.description.toLowerCase().includes(query))
+      );
     }
-    const query = searchQuery.toLowerCase();
-    return tasks.filter(
-      (task) =>
-        task.title.toLowerCase().includes(query) ||
-        (task.description && task.description.toLowerCase().includes(query))
-    );
-  }, [tasks, searchQuery]);
+
+    // Apply tag filter
+    if (selectedTagIds.length > 0) {
+      result = result.filter((task) =>
+        task.tags.some((tag) => selectedTagIds.includes(tag.id))
+      );
+    }
+
+    return result;
+  }, [tasks, searchQuery, selectedTagIds]);
 
   const groupedFilteredTasks = useMemo(() => {
     const groups: Record<string, Task[]> = {};
@@ -649,14 +664,22 @@ export function ProjectTasks() {
         </Card>
       </div>
     ) : (
-      <div className="w-full h-full overflow-x-auto overflow-y-auto overscroll-x-contain touch-pan-y">
-        <TaskKanbanBoard
-          groupedTasks={groupedFilteredTasks}
-          onDragEnd={handleDragEnd}
-          onViewTaskDetails={handleViewTaskDetails}
-          selectedTask={selectedTask || undefined}
-          onCreateTask={handleCreateNewTask}
-        />
+      <div className="w-full h-full flex flex-col">
+        <div className="shrink-0 px-4 py-2 border-b bg-background">
+          <TagFilter
+            selectedTagIds={selectedTagIds}
+            onTagsChange={setSelectedTagIds}
+          />
+        </div>
+        <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto overscroll-x-contain touch-pan-y">
+          <TaskKanbanBoard
+            groupedTasks={groupedFilteredTasks}
+            onDragEnd={handleDragEnd}
+            onViewTaskDetails={handleViewTaskDetails}
+            selectedTask={selectedTask || undefined}
+            onCreateTask={handleCreateNewTask}
+          />
+        </div>
       </div>
     );
 

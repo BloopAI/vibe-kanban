@@ -3,6 +3,7 @@ import { KanbanCard } from '@/components/ui/shadcn-io/kanban';
 import { CheckCircle, Loader2, XCircle } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { ActionsDropdown } from '@/components/ui/ActionsDropdown';
+import { Badge } from '@/components/ui/badge';
 
 type Task = TaskWithAttemptStatus;
 
@@ -83,6 +84,19 @@ export function TaskCard({
             ? `${task.description.substring(0, 130)}...`
             : task.description}
         </p>
+      )}
+      {task.tags && task.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-2">
+          {task.tags.map((tag) => (
+            <Badge
+              key={tag.id}
+              variant="secondary"
+              className="text-xs px-1.5 py-0"
+            >
+              {tag.tag_name}
+            </Badge>
+          ))}
+        </div>
       )}
     </KanbanCard>
   );
