@@ -1,5 +1,8 @@
 use axum::extract::ws::{Message, WebSocket};
+use chrono::{Duration as ChronoDuration, Utc};
 use futures::{SinkExt, StreamExt};
+use thiserror::Error;
+use tokio::time::{self, Duration as TokioDuration, MissedTickBehavior};
 use tokio_stream::wrappers::BroadcastStream;
 
 use super::{
@@ -7,13 +10,22 @@ use super::{
     message::{ClientMessage, ServerMessage},
 };
 use crate::{
-    AppState, activity::ActivityEvent, auth::RequestContext, db::activity::ActivityRepository,
+    AppState,
+    activity::ActivityEvent,
+    auth::{ClerkAuth, ClerkAuthError, ClerkIdentity, RequestContext},
+    db::activity::ActivityRepository,
 };
+
+/// Allow a short grace window for clients to refresh tokens without immediate disconnects.
+const TOKEN_EXPIRY_GRACE_SECS: i64 = 120;
+/// Interval between websocket auth refresh checks.
+const AUTH_CHECK_INTERVAL_SECS: u64 = 30;
 
 pub async fn handle(
     socket: WebSocket,
     state: AppState,
     ctx: RequestContext,
+    initial_identity: ClerkIdentity,
     params: WsQueryParams,
 ) {
     let config = state.config();
@@ -21,6 +33,16 @@ pub async fn handle(
     let receiver = state.broker().subscribe();
     let mut activity_stream = BroadcastStream::new(receiver);
     let org_id = ctx.organization.id.clone();
+    let mut auth_state = WsAuthState::new(
+        state.auth().clone(),
+        ctx.user.id.clone(),
+        org_id.clone(),
+        initial_identity,
+        ChronoDuration::seconds(TOKEN_EXPIRY_GRACE_SECS),
+    );
+    let mut auth_check_interval =
+        time::interval(TokioDuration::from_secs(AUTH_CHECK_INTERVAL_SECS));
+    auth_check_interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
 
     let (mut sender, mut inbound) = socket.split();
 
@@ -64,17 +86,44 @@ pub async fn handle(
                         if matches!(msg, Message::Close(_)) {
                             break;
                         }
-                        if let Message::Text(text) = msg
-                             && let Err(error) = handle_inbound_message(&text).await {
-                                tracing::debug!(?error, "invalid inbound message");
+                        if let Message::Text(text) = msg {
+                            match serde_json::from_str::<ClientMessage>(&text) {
+                                Ok(ClientMessage::Ack { cursor: _ }) => {
+                                    // No-op for now;
+                                }
+                                Ok(ClientMessage::AuthToken { token }) => {
+                                    auth_state.store_token(token);
+                                }
+                                Err(error) => {
+                                    tracing::debug!(?error, "invalid inbound message");
+                                }
                             }
-
+                        }
                     }
                     Some(Err(error)) => {
                         tracing::debug!(?error, "websocket receive error");
                         break;
                     }
                     None => break,
+                }
+            }
+
+            _ = auth_check_interval.tick() => {
+                match auth_state.verify().await {
+                    Ok(()) => {}
+                    Err(AuthVerifyError::Expired(identity)) => {
+                        tracing::info!(
+                            session_id = %identity.session_id,
+                            user_id = %identity.user_id,
+                            "closing websocket due to expired token"
+                        );
+                        let _ = send_error(&mut sender, "authorization expired").await;
+                        let _ = sender.send(Message::Close(None)).await;
+                        break;
+                    }
+                    Err(error) => {
+                        tracing::warn!("websocket auth token refresh error: {error}");
+                    }
                 }
             }
         }
@@ -121,12 +170,104 @@ async fn send_error(
     }
 }
 
-async fn handle_inbound_message(payload: &str) -> Result<(), serde_json::Error> {
-    let message: ClientMessage = serde_json::from_str(payload)?;
-    match message {
-        ClientMessage::Ack { cursor: _ } => {
-            // No-op for now;
+struct WsAuthState {
+    auth: ClerkAuth,
+    expected_user_id: String,
+    expected_org_id: String,
+    latest_identity: ClerkIdentity,
+    expiry_grace: ChronoDuration,
+    pending_token: Option<String>,
+}
+
+impl WsAuthState {
+    fn new(
+        auth: ClerkAuth,
+        expected_user_id: String,
+        expected_org_id: String,
+        initial_identity: ClerkIdentity,
+        expiry_grace: ChronoDuration,
+    ) -> Self {
+        Self {
+            auth,
+            expected_user_id,
+            expected_org_id,
+            latest_identity: initial_identity,
+            expiry_grace,
+            pending_token: None,
         }
     }
-    Ok(())
+
+    fn store_token(&mut self, token: String) {
+        self.pending_token = Some(token);
+    }
+
+    async fn verify(&mut self) -> Result<(), AuthVerifyError> {
+        if let Some(token) = self.pending_token.take() {
+            let identity = self.verify_token(&token).await?;
+            self.latest_identity = identity;
+        }
+
+        if self.is_expired() {
+            return Err(AuthVerifyError::Expired(self.latest_identity.clone()));
+        }
+
+        Ok(())
+    }
+
+    fn is_expired(&self) -> bool {
+        Utc::now() > self.latest_identity.expires_at + self.expiry_grace
+    }
+
+    async fn verify_token(&self, token: &str) -> Result<ClerkIdentity, AuthRefreshError> {
+        let identity = self
+            .auth
+            .verify(token)
+            .await
+            .map_err(AuthRefreshError::Verify)?;
+
+        if identity.user_id != self.expected_user_id {
+            return Err(AuthRefreshError::UserMismatch {
+                expected: self.expected_user_id.clone(),
+                received: identity.user_id,
+            });
+        }
+
+        let org_matches_expected = identity
+            .org_id
+            .as_deref()
+            .map(|org| org == self.expected_org_id)
+            .unwrap_or(false);
+
+        if !org_matches_expected {
+            return Err(AuthRefreshError::OrgMismatch {
+                expected: self.expected_org_id.clone(),
+                received: identity.org_id,
+            });
+        }
+
+        Ok(identity)
+    }
+}
+
+#[derive(Debug, Error)]
+enum AuthRefreshError {
+    #[error("failed to verify refreshed token: {0}")]
+    Verify(ClerkAuthError),
+    #[error("received token for unexpected user: expected {expected}, received {received}")]
+    UserMismatch { expected: String, received: String },
+    #[error(
+        "received token for unexpected organization: expected {expected}, received {received:?}"
+    )]
+    OrgMismatch {
+        expected: String,
+        received: Option<String>,
+    },
+}
+
+#[derive(Debug, Error)]
+enum AuthVerifyError {
+    #[error(transparent)]
+    Refresh(#[from] AuthRefreshError),
+    #[error("authorization expired")]
+    Expired(ClerkIdentity),
 }

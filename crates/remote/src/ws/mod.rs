@@ -6,7 +6,10 @@ use axum::{
 };
 use serde::Deserialize;
 
-use crate::{AppState, auth::RequestContext};
+use crate::{
+    AppState,
+    auth::{ClerkIdentity, RequestContext},
+};
 
 pub mod message;
 mod session;
@@ -24,7 +27,8 @@ async fn upgrade(
     ws: WebSocketUpgrade,
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
+    Extension(identity): Extension<ClerkIdentity>,
     Query(params): Query<WsQueryParams>,
 ) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| session::handle(socket, state, ctx, params))
+    ws.on_upgrade(move |socket| session::handle(socket, state, ctx, identity, params))
 }
