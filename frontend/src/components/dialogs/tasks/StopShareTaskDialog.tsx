@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -24,39 +24,66 @@ const StopShareTaskDialog = NiceModal.create<StopShareTaskDialogProps>(
     const { t } = useTranslation('tasks');
     const { stopShareTask } = useTaskMutations(sharedTask.project_id);
     const [error, setError] = useState<string | null>(null);
+    const isProgrammaticCloseRef = useRef(false);
+    const didConfirmRef = useRef(false);
 
-    const close = () => {
+    const getReadableError = (err: unknown) =>
+      err instanceof Error && err.message
+        ? err.message
+        : t('stopShareDialog.genericError');
+
+    const requestClose = (didConfirm: boolean) => {
       if (stopShareTask.isPending) {
         return;
       }
-      stopShareTask.reset();
+      isProgrammaticCloseRef.current = true;
+      didConfirmRef.current = didConfirm;
       modal.hide();
     };
 
     const handleCancel = () => {
-      close();
-      modal.reject();
+      requestClose(false);
     };
 
     const handleConfirm = async () => {
       setError(null);
       try {
         await stopShareTask.mutateAsync(sharedTask.id);
-        modal.resolve();
-        close();
+        requestClose(true);
       } catch (err: unknown) {
-        const message =
-          err instanceof Error
-            ? err.message
-            : t('stopShareDialog.genericError');
-        setError(message);
+        setError(getReadableError(err));
       }
     };
 
     return (
       <Dialog
         open={modal.visible}
-        onOpenChange={(open) => !open && handleCancel()}
+        onOpenChange={(open) => {
+          if (open) {
+            stopShareTask.reset();
+            setError(null);
+            isProgrammaticCloseRef.current = false;
+            didConfirmRef.current = false;
+            return;
+          }
+
+          if (stopShareTask.isPending) {
+            return;
+          }
+
+          const shouldResolve =
+            isProgrammaticCloseRef.current && didConfirmRef.current;
+
+          isProgrammaticCloseRef.current = false;
+          didConfirmRef.current = false;
+          stopShareTask.reset();
+
+          if (shouldResolve) {
+            modal.resolve();
+          } else {
+            modal.reject();
+          }
+        }}
       >
         <DialogContent>
           <DialogHeader>

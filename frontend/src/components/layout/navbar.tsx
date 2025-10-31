@@ -190,8 +190,11 @@ export function Navbar() {
                   afterLeaveOrganizationUrl="/"
                   appearance={{
                     elements: {
-                      organizationSwitcherTrigger: `${navButtonClass} gap-2`,
+                      organizationSwitcherTrigger: `${navButtonClass} gap-2 text-foreground`,
                       organizationSwitcherTriggerIcon: 'text-muted-foreground',
+                      organizationPreviewMainIdentifier: 'text-foreground',
+                      organizationPreviewSecondaryIdentifier:
+                        'text-muted-foreground',
                     },
                   }}
                 />
