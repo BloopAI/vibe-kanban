@@ -402,8 +402,8 @@ pub async fn share_task(
     let props = serde_json::json!({
         "task_id": task.id,
         "shared_task_id": shared_task_id,
-        "user_id": analytics_session.user_id,
-        "organization_id": analytics_session.org_id,
+        "clerk_user_id": analytics_session.user_id,
+        "clerk_org_id": analytics_session.org_id,
     });
     deployment
         .track_if_analytics_allowed("start_sharing_task", props)
