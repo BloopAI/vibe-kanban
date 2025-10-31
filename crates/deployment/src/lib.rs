@@ -32,7 +32,7 @@ use services::services::{
     image::{ImageError, ImageService},
     metadata::compute_remote_metadata,
     pr_monitor::PrMonitorService,
-    share::SharePublisher,
+    share::{SharePublisher, link_shared_tasks_to_project},
     worktree_manager::WorktreeError,
 };
 use sqlx::{Error as SqlxError, types::Uuid};
@@ -391,6 +391,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
             let repo_path = project.git_repo_path.clone();
             let metadata =
                 compute_remote_metadata(self.git(), self.config(), repo_path.as_path()).await;
+            let github_repo_id_changed = metadata.github_repo_id != project.github_repo_id;
 
             if let Err(err) =
                 Project::update_remote_metadata(&self.db().pool, project.id, &metadata).await
@@ -399,6 +400,24 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                     "Failed to update remote metadata for project '{}' ({}): {err}",
                     project.name,
                     repo_path.display()
+                );
+                continue;
+            }
+
+            if github_repo_id_changed
+                && let Some(repo_id) = metadata.github_repo_id
+                && let Err(err) = link_shared_tasks_to_project(
+                    &self.db().pool,
+                    self.clerk_sessions(),
+                    project.id,
+                    repo_id,
+                )
+                .await
+            {
+                tracing::warn!(
+                    project_id = %project.id,
+                    repo_id,
+                    "failed to link shared tasks after metadata refresh: {err}"
                 );
             }
         }
