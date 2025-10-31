@@ -35,6 +35,7 @@ fn generate_types_content() -> String {
         db::models::task::TaskRelationships::decl(),
         db::models::task::CreateTask::decl(),
         db::models::task::UpdateTask::decl(),
+        db::models::task::TaskPriority::decl(),
         db::models::image::Image::decl(),
         db::models::image::CreateImage::decl(),
         utils::response::ApiResponse::<()>::decl(),

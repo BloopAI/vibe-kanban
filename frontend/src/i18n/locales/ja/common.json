@@ -51,5 +51,6 @@
     "reconnecting": "再接続中",
     "saving": "保存中...",
     "success": "成功"
-  }
+  },
+  "priority": "優先度"
 }

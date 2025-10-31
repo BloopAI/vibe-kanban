@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\", project_id as \"project_id!: Uuid\", title, description, status as \"status!: TaskStatus\", parent_task_attempt as \"parent_task_attempt: Uuid\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tasks \n               WHERE id = $1",
+  "query": "INSERT INTO tasks (id, project_id, title, description, status, parent_task_attempt, priority)\n               VALUES ($1, $2, $3, $4, $5, $6, $7)\n               RETURNING id as \"id!: Uuid\", project_id as \"project_id!: Uuid\", title, description, status as \"status!: TaskStatus\", parent_task_attempt as \"parent_task_attempt: Uuid\", priority as \"priority!: TaskPriority\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -34,18 +34,23 @@
         "type_info": "Blob"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "priority!: TaskPriority",
         "ordinal": 6,
         "type_info": "Text"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "created_at!: DateTime<Utc>",
         "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 8,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 7
     },
     "nullable": [
       true,
@@ -55,8 +60,9 @@
       false,
       true,
       false,
+      false,
       false
     ]
   },
-  "hash": "2188432c66e9010684b6bb670d19abd77695b05d1dd84ef3102930bc0fe6404f"
+  "hash": "839d5534dd2d1e4b05e54d502db16187bb1b3b7a0ae9663aaec412ab367ffc1b"
 }

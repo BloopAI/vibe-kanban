@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { KanbanCard } from '@/components/ui/shadcn-io/kanban';
 import { CheckCircle, Loader2, XCircle } from 'lucide-react';
-import type { TaskWithAttemptStatus } from 'shared/types';
+import { TaskPriority, type TaskWithAttemptStatus } from 'shared/types';
 import { ActionsDropdown } from '@/components/ui/ActionsDropdown';
 
 type Task = TaskWithAttemptStatus;
@@ -39,6 +39,10 @@ export function TaskCard({
     });
   }, [isOpen]);
 
+  // Priority-based border styling
+  const priorityBorderClass =
+    task.priority === TaskPriority.HIGH ? 'border-l-4 border-l-black' : '';
+
   return (
     <KanbanCard
       key={task.id}
@@ -49,11 +53,14 @@ export function TaskCard({
       onClick={handleClick}
       isOpen={isOpen}
       forwardedRef={localRef}
+      className={priorityBorderClass}
     >
       <div className="flex flex-1 gap-2 items-center min-w-0">
-        <h4 className="flex-1 min-w-0 line-clamp-2 font-light text-sm">
-          {task.title}
-        </h4>
+        <div className="flex flex-1 min-w-0 items-center gap-2">
+          <h4 className="flex-1 min-w-0 line-clamp-2 font-light text-sm">
+            {task.title}
+          </h4>
+        </div>
         <div className="flex items-center space-x-1">
           {/* In Progress Spinner */}
           {task.has_in_progress_attempt && (

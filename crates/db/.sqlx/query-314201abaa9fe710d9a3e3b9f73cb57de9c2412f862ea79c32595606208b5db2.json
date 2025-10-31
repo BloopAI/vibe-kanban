@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\", project_id as \"project_id!: Uuid\", title, description, status as \"status!: TaskStatus\", parent_task_attempt as \"parent_task_attempt: Uuid\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tasks \n               WHERE rowid = $1",
+  "query": "SELECT id as \"id!: Uuid\", project_id as \"project_id!: Uuid\", title, description, status as \"status!: TaskStatus\", parent_task_attempt as \"parent_task_attempt: Uuid\", priority as \"priority!: TaskPriority\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tasks\n               WHERE parent_task_attempt = $1\n               ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -34,13 +34,18 @@
         "type_info": "Blob"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "priority!: TaskPriority",
         "ordinal": 6,
         "type_info": "Text"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "created_at!: DateTime<Utc>",
         "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 8,
         "type_info": "Text"
       }
     ],
@@ -55,8 +60,9 @@
       false,
       true,
       false,
+      false,
       false
     ]
   },
-  "hash": "8cc087f95fb55426ee6481bdd0f74b2083ceaf6c5cf82456a7d83c18323c5cec"
+  "hash": "314201abaa9fe710d9a3e3b9f73cb57de9c2412f862ea79c32595606208b5db2"
 }

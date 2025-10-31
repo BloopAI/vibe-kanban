@@ -51,5 +51,6 @@
     "reconnecting": "재연결 중",
     "saving": "저장 중...",
     "success": "성공"
-  }
+  },
+  "priority": "우선순위"
 }

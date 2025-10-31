@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
-import type { TaskWithAttemptStatus } from 'shared/types';
+import { TaskPriority, type TaskWithAttemptStatus } from 'shared/types';
 
 type TasksState = {
   tasks: Record<string, TaskWithAttemptStatus>;
@@ -31,11 +31,19 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
   );
 
   const tasksById = data?.tasks ?? {};
-  const tasks = Object.values(tasksById).sort(
-    (a, b) =>
+  const tasks = Object.values(tasksById).sort((a, b) => {
+    if (a.priority !== b.priority) {
+      return (
+        Object.values(TaskPriority).indexOf(a.priority) -
+        Object.values(TaskPriority).indexOf(b.priority)
+      );
+    }
+
+    return (
       new Date(b.created_at as unknown as string).getTime() -
       new Date(a.created_at as unknown as string).getTime()
-  );
+    );
+  });
   const isLoading = !data && !error; // until first snapshot
 
   return { tasks, tasksById, isLoading, isConnected, error };

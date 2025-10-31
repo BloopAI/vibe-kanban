@@ -129,6 +129,7 @@ export function NoServerContent({
         title: COMPANION_INSTALL_TASK_TITLE,
         description: COMPANION_INSTALL_TASK_DESCRIPTION,
         parent_task_attempt: null,
+        priority: null,
         image_ids: null,
       },
       executor_profile_id: config.executor_profile,
