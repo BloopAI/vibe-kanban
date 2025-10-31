@@ -22,7 +22,7 @@ use db::{
 use processor::ActivityProcessor;
 pub use publisher::SharePublisher;
 use remote::{
-    ServerMessage,
+    ClientMessage, ServerMessage,
     db::{identity::UserData as RemoteUserData, tasks::SharedTask as RemoteSharedTask},
 };
 use sqlx::SqlitePool;
@@ -81,6 +81,8 @@ const WS_BACKOFF_MAX_DELAY: Duration = Duration::from_secs(30);
 // connection to receive live updates. If the WebSocket connection takes too long to establish,
 // we restart the process from catching up again to avoid missing events.
 const MAX_DELAY_BETWEEN_CATCHUP_AND_WS: Duration = Duration::from_secs(120);
+/// Interval between sending auth token refresh messages over the WebSocket.
+const WS_AUTH_REFRESH_INTERVAL: Duration = Duration::from_secs(30);
 
 struct Backoff {
     current: Duration,
@@ -291,9 +293,13 @@ async fn spawn_shared_remote(
         processor,
         close_tx: Some(close_tx),
     };
-    run_ws_client(handler, ws_config)
+    let client = run_ws_client(handler, ws_config)
         .await
-        .map_err(ShareError::from)
+        .map_err(ShareError::from)?;
+
+    spawn_auth_token_refresh(client.clone(), sessions.clone());
+
+    Ok(client)
 }
 
 fn build_ws_headers(session: &ClerkSession) -> WsResult<Vec<(HeaderName, HeaderValue)>> {
@@ -302,6 +308,60 @@ fn build_ws_headers(session: &ClerkSession) -> WsResult<Vec<(HeaderName, HeaderV
     let header = HeaderValue::from_str(&value).map_err(|err| WsError::Header(err.to_string()))?;
     headers.push((AUTHORIZATION, header));
     Ok(headers)
+}
+
+fn spawn_auth_token_refresh(client: WsClient, sessions: ClerkSessionStore) {
+    tokio::spawn(async move {
+        let result: WsResult<()> = async {
+            let close_rx = client.subscribe_close();
+            loop {
+                let session_fut = sessions.wait_for_active();
+                tokio::pin!(session_fut);
+
+                let mut close_rx2 = close_rx.clone();
+                let session = tokio::select! {
+                    _ = close_rx2.changed() => break,
+                    session = session_fut => session,
+                };
+
+                let message = ClientMessage::AuthToken {
+                    token: session.bearer().to_owned(),
+                };
+                let payload = serde_json::to_string(&message)
+                    .map_err(|err| WsError::Handler(Box::new(err)))?;
+                client.send(WsMessage::Text(payload.into()))?;
+                tracing::debug!(
+                    session_id = %session.session_id,
+                    expires_at = %session.expires_at,
+                    "sent websocket auth token refresh",
+                );
+
+                let mut close_rx2 = close_rx.clone();
+                tokio::select! {
+                    _ = close_rx2.changed() => break,
+                    _ = sleep(WS_AUTH_REFRESH_INTERVAL) => {}
+                }
+            }
+            Ok(())
+        }
+        .await;
+
+        match result {
+            Ok(()) => tracing::debug!("websocket auth token refresh loop completed"),
+            Err(WsError::Send(error)) => {
+                tracing::debug!(
+                    %error,
+                    "websocket auth token refresh loop stopped after send failure",
+                );
+            }
+            Err(WsError::ShutdownChannelClosed) => {
+                tracing::debug!("websocket auth token refresh loop stopped after shutdown");
+            }
+            Err(err) => {
+                tracing::warn!(?err, "websocket auth token refresh loop exited with error");
+            }
+        }
+    });
 }
 
 #[derive(Clone)]
