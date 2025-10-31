@@ -250,6 +250,8 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
   });
 
   const isSubmitting = useStore(form.store, (state) => state.isSubmitting);
+  const isDirty = useStore(form.store, (state) => state.isDirty);
+  const canSubmit = useStore(form.store, (state) => state.canSubmit);
 
   // Update branch when default branch changes
   useEffect(() => {
@@ -280,7 +282,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: handleFiles,
     accept: { 'image/*': [] },
-    disabled: form.state.isSubmitting,
+    disabled: isSubmitting,
     noClick: true,
     noKeyboard: true,
   });
@@ -309,15 +311,15 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
 
   // Unsaved changes detection
   const hasUnsavedChanges = useCallback(() => {
-    if (form.state.isDirty) return true;
+    if (isDirty) return true;
     if (newlyUploadedImageIds.length > 0) return true;
     if (images.length > 0 && mode !== 'edit') return true;
     return false;
-  }, [form.state.isDirty, newlyUploadedImageIds, images, mode]);
+  }, [isDirty, newlyUploadedImageIds, images, mode]);
 
   // beforeunload listener
   useEffect(() => {
-    if (!modal.visible || form.state.isSubmitting) return;
+    if (!modal.visible || isSubmitting) return;
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (hasUnsavedChanges()) {
@@ -328,19 +330,16 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [modal.visible, form.state.isSubmitting, hasUnsavedChanges]);
+  }, [modal.visible, isSubmitting, hasUnsavedChanges]);
 
   // Keyboard shortcuts
   const primaryAction = useCallback(() => {
-    if (form.state.isSubmitting || !form.state.canSubmit) return;
+    if (isSubmitting || !canSubmit) return;
     void form.handleSubmit();
-  }, [form]);
+  }, [form, isSubmitting, canSubmit]);
 
   const shortcutsEnabled =
-    modal.visible &&
-    !form.state.isSubmitting &&
-    form.state.canSubmit &&
-    !showDiscardWarning;
+    modal.visible && !isSubmitting && canSubmit && !showDiscardWarning;
 
   useKeySubmitTask(primaryAction, {
     enabled: shortcutsEnabled,
@@ -425,7 +424,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
                   onBlur={field.handleBlur}
                   placeholder={t('taskFormDialog.titlePlaceholder')}
                   className="text-lg font-medium border-none shadow-none px-0 placeholder:text-muted-foreground/60 focus-visible:ring-0"
-                  disabled={form.state.isSubmitting}
+                  disabled={isSubmitting}
                   autoFocus
                 />
               )}
