@@ -83,6 +83,7 @@ export function Navbar() {
     [registerInputRef]
   );
   const { t } = useTranslation(['tasks']);
+  // Navbar is global, but the share tasks toggle only makes sense on the tasks route
   const isTasksRoute = /^\/projects\/[^/]+\/tasks/.test(location.pathname);
   const showSharedTasks = searchParams.get('shared') !== 'off';
 
