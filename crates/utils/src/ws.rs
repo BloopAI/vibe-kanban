@@ -58,6 +58,7 @@ pub struct WsConfig {
     pub header_factory: Option<HeaderFactory>,
 }
 
+#[derive(Clone)]
 pub struct WsClient {
     msg_tx: mpsc::UnboundedSender<Message>,
     cancelation_token: watch::Sender<()>,
@@ -74,6 +75,10 @@ impl WsClient {
         self.cancelation_token
             .send(())
             .map_err(|_| WsError::ShutdownChannelClosed)
+    }
+
+    pub fn subscribe_close(&self) -> watch::Receiver<()> {
+        self.cancelation_token.subscribe()
     }
 }
 
