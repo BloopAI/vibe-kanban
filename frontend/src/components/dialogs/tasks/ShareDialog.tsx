@@ -34,36 +34,42 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
   } = useUserSystem();
 
   const [shareError, setShareError] = useState<string | null>(null);
-  const [shareComplete, setShareComplete] = useState(false);
   const [shouldRedirectToSignIn, setShouldRedirectToSignIn] = useState(false);
-  const isGitHubConnected = Boolean(
-    config?.github?.username &&
-      config?.github?.oauth_token &&
-      !githubTokenInvalid
-  );
+
+  const isGitHubConnected =
+    Boolean(config?.github?.username && config?.github?.oauth_token) &&
+    !githubTokenInvalid;
 
   const shareMutation = useMutation({
+    mutationKey: ['tasks', 'share', task.id],
     mutationFn: () => tasksApi.share(task.id),
-    onSuccess: () => {
-      setShareComplete(true);
-    },
   });
-  const { reset: resetShareMutation } = shareMutation;
 
   useEffect(() => {
-    if (!modal.visible) {
-      return;
-    }
-
-    resetShareMutation();
-    setShareComplete(false);
+    shareMutation.reset();
     setShareError(null);
     setShouldRedirectToSignIn(false);
-  }, [modal.visible, task.id, resetShareMutation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [task.id, shareMutation.reset]);
 
   const handleClose = () => {
-    modal.resolve(shareComplete);
+    modal.resolve(shareMutation.isSuccess);
     modal.hide();
+  };
+
+  const getStatus = (err: unknown) =>
+    err && typeof err === 'object' && 'status' in err
+      ? (err as { status?: number }).status
+      : undefined;
+
+  const getReadableError = (err: unknown) => {
+    const status = getStatus(err);
+    if (status === 401) {
+      return err instanceof Error && err.message
+        ? err.message
+        : t('shareDialog.githubRequired.description');
+    }
+    return err instanceof Error ? err.message : t('shareDialog.genericError');
   };
 
   const handleShare = async () => {
@@ -71,12 +77,7 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
     try {
       await shareMutation.mutateAsync();
     } catch (err) {
-      const status =
-        err && typeof err === 'object' && 'status' in err
-          ? (err as { status?: number }).status
-          : undefined;
-
-      if (status === 401 && !isGitHubConnected) {
+      if (getStatus(err) === 401 && !isGitHubConnected) {
         try {
           const success = await NiceModal.show('github-login');
           if (success) {
@@ -86,19 +87,10 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
             return;
           }
         } catch {
-          // Swallow cancellation errors
+          /* user canceled */
         }
       }
-
-      const message =
-        status === 401
-          ? err instanceof Error && err.message
-            ? err.message
-            : t('shareDialog.githubRequired.description')
-          : err instanceof Error
-            ? err.message
-            : t('shareDialog.genericError');
-      setShareError(message);
+      setShareError(getReadableError(err));
     }
   };
 
@@ -119,7 +111,11 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
     <Dialog
       open={modal.visible}
       onOpenChange={(open) => {
-        if (!open) {
+        if (open) {
+          shareMutation.reset();
+          setShareError(null);
+          setShouldRedirectToSignIn(false);
+        } else {
           handleClose();
         }
       }}
@@ -163,7 +159,7 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
         </SignedOut>
 
         <SignedIn>
-          {shareComplete ? (
+          {shareMutation.isSuccess ? (
             <Alert
               variant="default"
               className="border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200"
@@ -208,12 +204,12 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
 
         <DialogFooter className="flex sm:flex-row sm:justify-end gap-2">
           <Button variant="outline" onClick={handleClose}>
-            {shareComplete
+            {shareMutation.isSuccess
               ? t('shareDialog.closeButton')
               : t('shareDialog.cancel')}
           </Button>
           <SignedIn>
-            {!shareComplete && (
+            {!shareMutation.isSuccess && (
               <Button
                 onClick={handleShare}
                 disabled={isShareDisabled}
