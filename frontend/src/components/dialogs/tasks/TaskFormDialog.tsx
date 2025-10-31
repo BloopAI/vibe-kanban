@@ -127,7 +127,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
     // current branch or first branch
     const currentBranch = branches.find((b) => b.is_current);
     return currentBranch?.name || branches[0]?.name || '';
-  }, [branches, props, parentAttempt]);
+  }, [branches, props, parentAttempt, mode]);
 
   // Get default form values based on mode
   const getDefaultValues = useCallback((): TaskFormValues => {
