@@ -733,29 +733,26 @@ pub trait ContainerService {
         let action = ctx.execution_process.executor_action()?;
         let next_action = if let Some(next_action) = action.next_action() {
             next_action
-        } else if matches!(
-            ctx.execution_process.run_reason,
-            ExecutionProcessRunReason::SetupScript
-        ) {
-            return Err(ContainerError::Other(anyhow::anyhow!(
-                "No next action configured for SetupScript"
-            )));
         } else {
             tracing::debug!("No next action configured");
             return Ok(());
         };
 
         // Determine the run reason of the next action
-        let next_run_reason = match ctx.execution_process.run_reason {
-            ExecutionProcessRunReason::SetupScript => ExecutionProcessRunReason::CodingAgent,
-            ExecutionProcessRunReason::CodingAgent => ExecutionProcessRunReason::CleanupScript,
-            _ => {
-                tracing::warn!(
-                    "Unexpected run reason: {:?}, defaulting to current reason",
-                    ctx.execution_process.run_reason
-                );
-                ctx.execution_process.run_reason.clone()
+        let next_run_reason = match (action.typ(), next_action.typ()) {
+            (ExecutorActionType::ScriptRequest(_), ExecutorActionType::ScriptRequest(_)) => {
+                ExecutionProcessRunReason::SetupScript
             }
+            (
+                ExecutorActionType::CodingAgentInitialRequest(_)
+                | ExecutorActionType::CodingAgentFollowUpRequest(_),
+                ExecutorActionType::ScriptRequest(_),
+            ) => ExecutionProcessRunReason::CleanupScript,
+            (
+                _,
+                ExecutorActionType::CodingAgentFollowUpRequest(_)
+                | ExecutorActionType::CodingAgentInitialRequest(_),
+            ) => ExecutionProcessRunReason::CodingAgent,
         };
 
         self.start_execution(&ctx.task_attempt, next_action, &next_run_reason)
