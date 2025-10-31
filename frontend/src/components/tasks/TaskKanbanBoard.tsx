@@ -20,6 +20,7 @@ interface TaskKanbanBoardProps {
   onViewTaskDetails: (task: Task) => void;
   selectedTask?: Task;
   onCreateTask?: () => void;
+  projectId: string;
 }
 
 function TaskKanbanBoard({
@@ -28,6 +29,7 @@ function TaskKanbanBoard({
   onViewTaskDetails,
   selectedTask,
   onCreateTask,
+  projectId,
 }: TaskKanbanBoardProps) {
   return (
     <KanbanProvider onDragEnd={onDragEnd}>
@@ -47,6 +49,7 @@ function TaskKanbanBoard({
                 status={status}
                 onViewDetails={onViewTaskDetails}
                 isOpen={selectedTask?.id === task.id}
+                projectId={projectId}
               />
             ))}
           </KanbanCards>
