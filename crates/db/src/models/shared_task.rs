@@ -320,8 +320,6 @@ impl SharedTask {
         github_repo_id: i64,
         project_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
-        let mut tx = pool.begin().await?;
-
         let tasks = sqlx::query_as!(
             SharedTask,
             r#"
@@ -350,10 +348,9 @@ impl SharedTask {
             github_repo_id,
             project_id
         )
-        .fetch_all(&mut *tx)
+        .fetch_all(pool)
         .await?;
 
-        tx.commit().await?;
         Ok(tasks)
     }
 
