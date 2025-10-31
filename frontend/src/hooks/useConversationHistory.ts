@@ -573,8 +573,12 @@ export const useConversationHistory = ({
     if (!activeProcess) return;
 
     if (!displayedExecutionProcesses.current[activeProcess.id]) {
+      const runningOrInitial =
+        Object.keys(displayedExecutionProcesses.current).length > 1
+          ? 'running'
+          : 'initial';
       ensureProcessVisible(activeProcess);
-      emitEntries(displayedExecutionProcesses.current, 'running', false);
+      emitEntries(displayedExecutionProcesses.current, runningOrInitial, false);
     }
 
     if (
