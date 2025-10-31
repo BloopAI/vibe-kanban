@@ -239,11 +239,16 @@ export default function DiffCard({
     if (!selectedAttempt?.id) return;
     try {
       const openPath = newName || oldName;
-      await attemptsApi.openEditor(
+      const response = await attemptsApi.openEditor(
         selectedAttempt.id,
         undefined,
         openPath || undefined
       );
+
+      // If a URL is returned, open it in a new window/tab
+      if (response.url) {
+        window.open(response.url, '_blank');
+      }
     } catch (err) {
       console.error('Failed to open file in IDE:', err);
     }
