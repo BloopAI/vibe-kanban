@@ -252,7 +252,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
   useEffect(() => {
     if (!defaultBranch) return;
     if (mode !== 'edit') {
-      form.setFieldValue('branch', defaultBranch);
+      form.setFieldValue('branch', defaultBranch, { dontUpdateMeta: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultBranch, mode]);
