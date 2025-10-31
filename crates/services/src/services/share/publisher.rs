@@ -16,7 +16,7 @@ use tokio::sync::RwLock;
 use utils::clerk::ClerkSessionStore;
 use uuid::Uuid;
 
-use super::{ShareConfig, ShareError, convert_remote_task, status};
+use super::{ShareConfig, ShareError, convert_remote_task, link_shared_tasks_to_project, status};
 use crate::services::{
     clerk::ClerkSession, config::Config, git::GitService, metadata::compute_remote_metadata,
 };
@@ -165,7 +165,13 @@ impl SharePublisher {
             .assign_task(&session, shared_task.id, &payload)
             .await?;
 
-        let input = convert_remote_task(&remote_task, user.as_ref(), shared_task.project_id, None);
+        let input = convert_remote_task(
+            &remote_task,
+            user.as_ref(),
+            shared_task.project_id,
+            shared_task.github_repo_id,
+            None,
+        );
         let record = SharedTask::upsert(&self.db.pool, input).await?;
         Ok(record)
     }
@@ -208,7 +214,17 @@ impl SharePublisher {
             user,
         } = remote_task;
 
-        let input = convert_remote_task(remote_task, user.as_ref(), task.project_id, None);
+        let project = Project::find_by_id(&self.db.pool, task.project_id)
+            .await?
+            .ok_or(ShareError::ProjectNotFound(task.project_id))?;
+
+        let input = convert_remote_task(
+            remote_task,
+            user.as_ref(),
+            Some(task.project_id),
+            project.github_repo_id,
+            None,
+        );
         SharedTask::upsert(&self.db.pool, input).await?;
         Task::set_shared_task_id(&self.db.pool, task.id, Some(remote_task.id)).await?;
         Ok(())
@@ -243,6 +259,18 @@ impl SharePublisher {
             project.github_repo_owner = metadata.github_repo_owner.clone();
             project.github_repo_name = metadata.github_repo_name.clone();
             project.github_repo_id = metadata.github_repo_id;
+
+            if let Some(repo_id) = project.github_repo_id
+                && let Err(err) =
+                    link_shared_tasks_to_project(&self.db.pool, &self.sessions, project.id, repo_id)
+                        .await
+            {
+                tracing::warn!(
+                    project_id = %project.id,
+                    repo_id,
+                    "failed to link shared tasks after publisher metadata update: {err}"
+                );
+            }
         }
 
         Ok(project)

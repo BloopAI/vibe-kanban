@@ -16,7 +16,10 @@ use remote::{
 use reqwest::Client as HttpClient;
 use uuid::Uuid;
 
-use super::{ShareConfig, ShareError, convert_remote_task, sync_local_task_for_shared_task};
+use super::{
+    GithubProjectLinkingCache, ShareConfig, ShareError, convert_remote_task,
+    sync_local_task_for_shared_task,
+};
 use crate::services::clerk::{ClerkSession, ClerkSessionStore};
 
 struct PreparedBulkTask {
@@ -130,8 +133,10 @@ impl ActivityProcessor {
         task_id: Uuid,
         metadata: &ProjectMetadata,
     ) -> Result<Option<Uuid>, ShareError> {
-        if let Some(existing) = SharedTask::find_by_id(&self.db.pool, task_id).await? {
-            return Ok(Some(existing.project_id));
+        if let Some(existing) = SharedTask::find_by_id(&self.db.pool, task_id).await?
+            && let Some(project_id) = existing.project_id
+        {
+            return Ok(Some(project_id));
         }
 
         if let Some(project) =
@@ -155,29 +160,38 @@ impl ActivityProcessor {
                 project,
                 user,
             }) => {
-                if let Some(project_id) = self.resolve_project_id(task.id, &project).await? {
-                    let input =
-                        convert_remote_task(&task, user.as_ref(), project_id, Some(event.seq));
-                    let shared_task = SharedTask::upsert(&self.db.pool, input).await?;
-
-                    let current_session = self.sessions.last().await;
-                    let current_user_id = current_session.as_ref().map(|s| s.user_id.as_str());
-                    sync_local_task_for_shared_task(
-                        &self.db.pool,
-                        &shared_task,
-                        current_user_id,
-                        task.creator_user_id.as_deref(),
-                    )
-                    .await?;
-                } else {
-                    tracing::warn!(
+                let project_id = self.resolve_project_id(task.id, &project).await?;
+                if project_id.is_none() {
+                    GithubProjectLinkingCache::needs_linking(project.github_repository_id);
+                }
+                if project_id.is_none() {
+                    tracing::debug!(
                         task_id = %task.id,
                         repo_id = project.github_repository_id,
                         owner = %project.owner,
                         name = %project.name,
-                        "skipping shared task; project not found locally"
+                        "stored shared task without local project; awaiting metadata link"
                     );
                 }
+
+                let input = convert_remote_task(
+                    &task,
+                    user.as_ref(),
+                    project_id,
+                    Some(project.github_repository_id),
+                    Some(event.seq),
+                );
+                let shared_task = SharedTask::upsert(&self.db.pool, input).await?;
+
+                let current_session = self.sessions.last().await;
+                let current_user_id = current_session.as_ref().map(|s| s.user_id.as_str());
+                sync_local_task_for_shared_task(
+                    &self.db.pool,
+                    &shared_task,
+                    current_user_id,
+                    task.creator_user_id.as_deref(),
+                )
+                .await?;
             }
             Err(error) => {
                 tracing::warn!(
@@ -231,33 +245,33 @@ impl ActivityProcessor {
         let mut replacements = Vec::new();
 
         for payload in snapshot.tasks {
-            match self
+            let project_id = self
                 .resolve_project_id(payload.task.id, &payload.project)
-                .await?
-            {
-                Some(project_id) => {
-                    keep_ids.insert(payload.task.id);
-                    let input = convert_remote_task(
-                        &payload.task,
-                        payload.user.as_ref(),
-                        project_id,
-                        latest_seq,
-                    );
-                    replacements.push(PreparedBulkTask {
-                        input,
-                        creator_user_id: payload.task.creator_user_id.clone(),
-                    });
-                }
-                None => {
-                    tracing::warn!(
-                        task_id = %payload.task.id,
-                        repo_id = payload.project.github_repository_id,
-                        owner = %payload.project.owner,
-                        name = %payload.project.name,
-                        "skipping shared task during bulk sync; project not found locally"
-                    );
-                }
+                .await?;
+
+            if project_id.is_none() {
+                GithubProjectLinkingCache::needs_linking(payload.project.github_repository_id);
+                tracing::debug!(
+                    task_id = %payload.task.id,
+                    repo_id = payload.project.github_repository_id,
+                    owner = %payload.project.owner,
+                    name = %payload.project.name,
+                    "storing shared task during bulk sync without local project"
+                );
             }
+
+            keep_ids.insert(payload.task.id);
+            let input = convert_remote_task(
+                &payload.task,
+                payload.user.as_ref(),
+                project_id,
+                Some(payload.project.github_repository_id),
+                latest_seq,
+            );
+            replacements.push(PreparedBulkTask {
+                input,
+                creator_user_id: payload.task.creator_user_id.clone(),
+            });
         }
 
         let mut stale: HashSet<Uuid> = SharedTask::list_by_organization(&self.db.pool, &org_id)

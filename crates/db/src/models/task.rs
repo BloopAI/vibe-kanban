@@ -7,11 +7,14 @@ use uuid::Uuid;
 
 use super::{project::Project, task_attempt::TaskAttempt};
 
-#[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS, EnumString, Display)]
+#[derive(
+    Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS, EnumString, Display, Default,
+)]
 #[sqlx(type_name = "task_status", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "kebab_case")]
 pub enum TaskStatus {
+    #[default]
     Todo,
     InProgress,
     InReview,
@@ -272,17 +275,19 @@ ORDER BY t.created_at DESC"#,
         data: &CreateTask,
         task_id: Uuid,
     ) -> Result<Self, sqlx::Error> {
+        let status = data.status.clone().unwrap_or_default();
         sqlx::query_as!(
             Task,
-            r#"INSERT INTO tasks (id, project_id, title, description, status, parent_task_attempt) 
-               VALUES ($1, $2, $3, $4, $5, $6) 
+            r#"INSERT INTO tasks (id, project_id, title, description, status, parent_task_attempt, shared_task_id) 
+               VALUES ($1, $2, $3, $4, $5, $6, $7) 
                RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             task_id,
             data.project_id,
             data.title,
             data.description,
-            TaskStatus::Todo as TaskStatus,
-            data.parent_task_attempt
+            status,
+            data.parent_task_attempt,
+            data.shared_task_id
         )
         .fetch_one(pool)
         .await
@@ -312,6 +317,59 @@ ORDER BY t.created_at DESC"#,
         )
         .fetch_one(pool)
         .await
+    }
+
+    pub async fn sync_from_shared_task(
+        pool: &SqlitePool,
+        shared_task_id: Uuid,
+        project_id: Uuid,
+        title: String,
+        description: Option<String>,
+        status: TaskStatus,
+        create_task_if_not_exists: bool,
+    ) -> Result<bool, sqlx::Error> {
+        let new_task_id = Uuid::new_v4();
+
+        let result = sqlx::query!(
+            r#"
+            INSERT INTO tasks (
+                id,
+                project_id,
+                title,
+                description,
+                status,
+                shared_task_id
+            )
+            SELECT
+                $1,
+                $2,
+                $3,
+                $4,
+                $5,
+                $6
+            WHERE $7
+               OR EXISTS (
+                    SELECT 1 FROM tasks WHERE shared_task_id = $6
+               )
+            ON CONFLICT(shared_task_id) WHERE shared_task_id IS NOT NULL DO UPDATE SET
+                project_id = excluded.project_id,
+                title = excluded.title,
+                description = excluded.description,
+                status = excluded.status,
+                updated_at = datetime('now', 'subsec')
+            "#,
+            new_task_id,
+            project_id,
+            title,
+            description,
+            status,
+            shared_task_id,
+            create_task_if_not_exists
+        )
+        .execute(pool)
+        .await?;
+
+        Ok(result.rows_affected() > 0)
     }
 
     pub async fn update_status(

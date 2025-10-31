@@ -4,6 +4,7 @@ mod publisher;
 mod status;
 
 use std::{
+    collections::HashSet,
     io,
     sync::{Arc, Mutex as StdMutex},
     time::Duration,
@@ -16,9 +17,10 @@ use db::{
     DBService,
     models::{
         shared_task::{SharedActivityCursor, SharedTask, SharedTaskInput},
-        task::{CreateTask, Task},
+        task::Task,
     },
 };
+use once_cell::sync::Lazy;
 use processor::ActivityProcessor;
 pub use publisher::SharePublisher;
 use remote::{
@@ -359,13 +361,15 @@ impl Drop for RemoteSyncHandleInner {
 pub(super) fn convert_remote_task(
     task: &RemoteSharedTask,
     user: Option<&RemoteUserData>,
-    project_id: Uuid,
+    project_id: Option<Uuid>,
+    github_repo_id: Option<i64>,
     last_event_seq: Option<i64>,
 ) -> SharedTaskInput {
     SharedTaskInput {
         id: task.id,
         organization_id: task.organization_id.clone(),
         project_id,
+        github_repo_id,
         title: task.title.clone(),
         description: task.description.clone(),
         status: status::from_remote(&task.status),
@@ -386,61 +390,94 @@ pub(super) async fn sync_local_task_for_shared_task(
     current_user_id: Option<&str>,
     creator_user_id: Option<&str>,
 ) -> Result<(), ShareError> {
-    if let Some(task) = Task::find_by_shared_task_id(pool, shared_task.id).await? {
-        debug_assert_eq!(task.shared_task_id, Some(shared_task.id));
-
-        let needs_update = task.project_id != shared_task.project_id
-            || task.title != shared_task.title
-            || task.description != shared_task.description
-            || task.status != shared_task.status;
-
-        if needs_update {
-            Task::update(
-                pool,
-                task.id,
-                shared_task.project_id,
-                shared_task.title.clone(),
-                shared_task.description.clone(),
-                shared_task.status.clone(),
-                task.parent_task_attempt,
-            )
-            .await?;
-        }
-
-        return Ok(());
-    }
-
-    let assignee_is_current_user = match (shared_task.assignee_user_id.as_deref(), current_user_id)
-    {
-        (Some(assignee), Some(current)) => assignee == current,
-        _ => false,
+    let project_id = match shared_task.project_id {
+        Some(project_id) => project_id,
+        None => return Ok(()),
     };
 
-    if !assignee_is_current_user {
-        return Ok(());
-    }
+    let create_task_if_not_exists = {
+        let assignee_is_current_user = matches!(
+            (shared_task.assignee_user_id.as_deref(), current_user_id),
+            (Some(assignee), Some(current)) if assignee == current
+        );
+        let creator_is_current_user = matches!((creator_user_id, current_user_id), (Some(creator), Some(current)) if creator == current);
 
-    let creator_is_current_user = match (creator_user_id, current_user_id) {
-        (Some(creator), Some(current)) => creator == current,
-        _ => false,
+        assignee_is_current_user && !creator_is_current_user
     };
 
-    if creator_is_current_user {
-        // Current user created the shared task but has no corresponding local shared-task record.
-        // This can happen if a share acivity event is received before the task sharing operation completes.
-        return Ok(());
-    }
-
-    // Current user owns the shared task but has no local record; create and link one.
-    let create = CreateTask::from_shared_task(
-        shared_task.project_id,
+    Task::sync_from_shared_task(
+        pool,
+        shared_task.id,
+        project_id,
         shared_task.title.clone(),
         shared_task.description.clone(),
         shared_task.status.clone(),
-        shared_task.id,
-    );
-    let task_id = Uuid::new_v4();
-    Task::create(pool, &create, task_id).await?;
+        create_task_if_not_exists,
+    )
+    .await?;
 
     Ok(())
+}
+
+pub async fn link_shared_tasks_to_project(
+    pool: &SqlitePool,
+    sessions: &ClerkSessionStore,
+    project_id: Uuid,
+    github_repo_id: i64,
+) -> Result<(), ShareError> {
+    if GithubProjectLinkingCache::already_linked(github_repo_id) {
+        return Ok(());
+    }
+
+    let linked_tasks =
+        SharedTask::link_to_project_by_repo_id(pool, github_repo_id, project_id).await?;
+
+    if linked_tasks.is_empty() {
+        GithubProjectLinkingCache::cache_as_linked(github_repo_id);
+        return Ok(());
+    }
+
+    let current_user_id = sessions.last().await.as_ref().map(|s| s.user_id.clone());
+
+    for task in linked_tasks {
+        sync_local_task_for_shared_task(pool, &task, current_user_id.as_deref(), None).await?;
+    }
+
+    GithubProjectLinkingCache::cache_as_linked(github_repo_id);
+
+    Ok(())
+}
+
+// Cache of GitHub repository IDs that have already been linked to local projects to avoid redundant linking operations.
+pub(super) struct GithubProjectLinkingCache;
+
+impl GithubProjectLinkingCache {
+    fn instance() -> &'static StdMutex<HashSet<i64>> {
+        static CACHE: Lazy<StdMutex<HashSet<i64>>> = Lazy::new(|| StdMutex::new(HashSet::new()));
+        &CACHE
+    }
+
+    // Not linked to a local project yet.
+    pub(super) fn needs_linking(github_repository_id: i64) {
+        Self::instance()
+            .lock()
+            .unwrap()
+            .remove(&github_repository_id);
+    }
+
+    // Linked to a local project.
+    pub(super) fn cache_as_linked(github_repository_id: i64) {
+        Self::instance()
+            .lock()
+            .unwrap()
+            .insert(github_repository_id);
+    }
+
+    // Check if already linked to a local project.
+    pub(super) fn already_linked(github_repository_id: i64) -> bool {
+        Self::instance()
+            .lock()
+            .unwrap()
+            .contains(&github_repository_id)
+    }
 }
