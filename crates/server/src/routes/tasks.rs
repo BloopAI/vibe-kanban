@@ -396,7 +396,18 @@ pub async fn share_task(
         return Err(ShareError::MissingConfig("share publisher unavailable").into());
     };
     let acting_session = session.require()?;
+    let analytics_session = acting_session.clone();
     let shared_task_id = publisher.share_task(task.id, Some(acting_session)).await?;
+
+    let props = serde_json::json!({
+        "task_id": task.id,
+        "shared_task_id": shared_task_id,
+        "clerk_user_id": analytics_session.user_id,
+        "clerk_org_id": analytics_session.org_id,
+    });
+    deployment
+        .track_if_analytics_allowed("start_sharing_task", props)
+        .await;
 
     Ok(ResponseJson(ApiResponse::success(ShareTaskResponse {
         shared_task_id,

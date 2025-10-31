@@ -44,7 +44,6 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         ))
 }
 
-#[allow(clippy::too_many_arguments)]
 pub async fn assign_shared_task(
     Path(shared_task_id): Path<Uuid>,
     State(deployment): State<DeploymentImpl>,
@@ -56,7 +55,9 @@ pub async fn assign_shared_task(
     };
 
     let acting_session = session.require()?;
-    let Some(org_id) = acting_session.org_id.clone() else {
+    let user_id = acting_session.user_id.clone();
+    let org_id = acting_session.org_id.clone();
+    let Some(org_id) = org_id.clone() else {
         return Err(ApiError::Forbidden("organization context required".into()));
     };
 
@@ -85,6 +86,15 @@ pub async fn assign_shared_task(
         )
         .await?;
 
+    let props = serde_json::json!({
+        "shared_task_id": shared_task_id,
+        "clerk_user_id": user_id,
+        "clerk_org_id": org_id,
+    });
+    deployment
+        .track_if_analytics_allowed("reassign_shared_task", props)
+        .await;
+
     Ok(ResponseJson(ApiResponse::success(
         AssignSharedTaskResponse {
             shared_task: updated_shared_task,
@@ -102,7 +112,9 @@ pub async fn delete_shared_task(
     };
 
     let acting_session = session.require()?;
-    let Some(org_id) = acting_session.org_id.clone() else {
+    let user_id = acting_session.user_id.clone();
+    let org_id = acting_session.org_id.clone();
+    let Some(org_id) = org_id.clone() else {
         return Err(ApiError::Forbidden("organization context required".into()));
     };
 
@@ -125,6 +137,15 @@ pub async fn delete_shared_task(
     publisher
         .delete_shared_task(shared_task_id, Some(acting_session))
         .await?;
+
+    let props = serde_json::json!({
+        "shared_task_id": shared_task_id,
+        "clerk_user_id": user_id,
+        "clerk_org_id": org_id,
+    });
+    deployment
+        .track_if_analytics_allowed("stop_sharing_task", props)
+        .await;
 
     Ok(ResponseJson(ApiResponse::success(())))
 }
