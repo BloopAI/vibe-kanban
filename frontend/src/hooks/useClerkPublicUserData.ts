@@ -86,7 +86,7 @@ export const useClerkPublicUserData = (
         return null;
       }
     },
-    staleTime: 1000 * 60, // 1 minute cache
+    staleTime: 10 * 1000 * 60,
   });
 
   return {
