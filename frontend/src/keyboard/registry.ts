@@ -1,6 +1,7 @@
 export enum Scope {
   GLOBAL = 'global',
   DIALOG = 'dialog',
+  CONFIRMATION = 'confirmation',
   KANBAN = 'kanban',
   PROJECTS = 'projects',
   SETTINGS = 'settings',
@@ -42,6 +43,13 @@ export interface KeyBinding {
 
 export const keyBindings: KeyBinding[] = [
   // Exit/Close actions
+  {
+    action: Action.EXIT,
+    keys: 'esc',
+    scopes: [Scope.CONFIRMATION],
+    description: 'Close confirmation dialog',
+    group: 'Dialog',
+  },
   {
     action: Action.EXIT,
     keys: 'esc',
