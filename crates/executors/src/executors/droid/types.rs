@@ -134,7 +134,8 @@ pub enum DroidJson {
         session_id: String,
     },
     ToolResult {
-        id: String,
+        #[serde(default)]
+        id: Option<String>,
         #[serde(rename = "messageId")]
         message_id: String,
         #[serde(rename = "toolId")]

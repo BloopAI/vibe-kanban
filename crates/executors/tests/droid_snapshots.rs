@@ -57,6 +57,22 @@ fn test_edits_and_execution_session() {
 }
 
 #[test]
+fn test_edits_and_execution_with_and_without_ids_produce_same_result() {
+    // Test that both the original (with ids) and no-ids variant produce identical results
+    let fixtures = vec![
+        "tests/droid_snapshots/fixtures/edits-and-execution.jsonl",
+        "tests/droid_snapshots/fixtures/edits-and-execution-no-ids.jsonl",
+    ];
+
+    insta::allow_duplicates! {
+        for fixture in fixtures {
+            let snapshot = process_jsonl_file(fixture);
+            insta::assert_yaml_snapshot!("edits_and_execution_same_result", snapshot);
+        }
+    }
+}
+
+#[test]
 fn test_glob_permission_denied_session() {
     let snapshot = process_jsonl_file("tests/droid_snapshots/fixtures/glob.jsonl");
     insta::assert_yaml_snapshot!(snapshot);

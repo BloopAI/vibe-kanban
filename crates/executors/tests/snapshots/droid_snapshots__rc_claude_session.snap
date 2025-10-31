@@ -5,6 +5,7 @@ expression: snapshot
 log_event_converter:
   tool_map: {}
   model_reported: true
+  pending_fifo: []
 events:
   - AddEntry:
       timestamp: ~

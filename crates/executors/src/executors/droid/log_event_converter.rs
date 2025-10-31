@@ -1,4 +1,7 @@
-use std::{collections::HashMap, path::Path};
+use std::{
+    collections::{HashMap, VecDeque},
+    path::Path,
+};
 
 use serde_json::Value;
 use workspace_utils::{
@@ -16,6 +19,7 @@ use crate::logs::{
 pub struct LogEventConverter {
     pub tool_map: HashMap<String, PendingToolCall>,
     pub model_reported: bool,
+    pub pending_fifo: VecDeque<String>,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -91,6 +95,7 @@ impl LogEventConverter {
                         content: content.clone(),
                     },
                 );
+                self.pending_fifo.push_back(id.clone());
 
                 Some(LogEvent::AddToolCall {
                     tool_call_id: id.clone(),
@@ -112,32 +117,65 @@ impl LogEventConverter {
                 payload,
                 ..
             } => {
-                if let Some(call) = self.tool_map.remove(id) {
-                    let status = if *is_error {
-                        ToolStatus::Failed
-                    } else {
-                        ToolStatus::Success
-                    };
-
-                    let updated_action_type =
-                        compute_updated_action_type(&call, payload, *is_error, worktree_path);
-
-                    Some(LogEvent::UpdateToolCall {
-                        tool_call_id: id.clone(),
-                        entry: NormalizedEntry {
-                            timestamp: None,
-                            entry_type: NormalizedEntryType::ToolUse {
-                                tool_name: call.tool_name,
-                                action_type: updated_action_type,
-                                status,
-                            },
-                            content: call.content,
-                            metadata: None,
-                        },
-                    })
+                // Resolve id: prefer explicit, else FIFO
+                let resolved_id = if let Some(explicit) = id.as_ref() {
+                    Some(explicit.clone())
                 } else {
-                    // Tool result either received before called, or duplicated
-                    tracing::error!("Failed to match tool result with tool call for id: {}", id);
+                    // FIFO fallback: pop until we find a key still pending
+                    loop {
+                        if let Some(next_id) = self.pending_fifo.pop_front() {
+                            if self.tool_map.contains_key(&next_id) {
+                                break Some(next_id);
+                            }
+                        } else {
+                            break None;
+                        }
+                    }
+                };
+
+                if let Some(tool_call_id) = resolved_id {
+                    // If explicit id was provided, remove it from the FIFO queue as cleanup
+                    if id.is_some() {
+                        if let Some(pos) = self.pending_fifo.iter().position(|x| x == &tool_call_id)
+                        {
+                            self.pending_fifo.remove(pos);
+                        }
+                    }
+
+                    if let Some(call) = self.tool_map.remove(&tool_call_id) {
+                        let status = if *is_error {
+                            ToolStatus::Failed
+                        } else {
+                            ToolStatus::Success
+                        };
+
+                        let updated_action_type =
+                            compute_updated_action_type(&call, payload, *is_error, worktree_path);
+
+                        Some(LogEvent::UpdateToolCall {
+                            tool_call_id: tool_call_id.clone(),
+                            entry: NormalizedEntry {
+                                timestamp: None,
+                                entry_type: NormalizedEntryType::ToolUse {
+                                    tool_name: call.tool_name,
+                                    action_type: updated_action_type,
+                                    status,
+                                },
+                                content: call.content,
+                                metadata: None,
+                            },
+                        })
+                    } else {
+                        tracing::error!(
+                            "Failed to match tool result with tool call for id: {}",
+                            tool_call_id
+                        );
+                        None
+                    }
+                } else {
+                    tracing::error!(
+                        "Failed to match tool result: no id provided and no pending tool calls"
+                    );
                     None
                 }
             }
