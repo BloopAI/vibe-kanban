@@ -19,6 +19,16 @@ impl SlashCommandService {
         Self
     }
 
+    /// Generate a unique, collision-resistant command ID based on the file path
+    fn generate_command_id(source_path: &Path) -> String {
+        use std::hash::{Hash, Hasher};
+        use std::collections::hash_map::DefaultHasher;
+
+        let mut hasher = DefaultHasher::new();
+        source_path.hash(&mut hasher);
+        format!("cmd-{:x}", hasher.finish())
+    }
+
     pub async fn get_commands(&self) -> Result<Vec<SlashCommand>, std::io::Error> {
         let (global_path, project_path) = Self::get_default_paths().await;
         let mut commands = Vec::new();
@@ -141,12 +151,8 @@ impl SlashCommandService {
         // Create simple description without namespace info (since it's in the name now)
         let description = frontmatter.description.unwrap_or_else(|| "No description".to_string());
 
-        // Create enhanced ID with namespace
-        let id = if let Some(ns) = namespace {
-            format!("{}-{}-{}", category as u8, ns, filename)
-        } else {
-            format!("{}-{}", category as u8, filename)
-        };
+        // Generate unique ID based on file path to prevent collisions
+        let id = Self::generate_command_id(path);
 
         Ok(SlashCommand {
             id,
@@ -178,18 +184,27 @@ impl SlashCommandService {
     }
 }
 
-// Simple validation for security
+// Secure validation using path canonicalization
 fn validate_command_path(path: &Path) -> Result<(), std::io::Error> {
-    let path_str = path.to_string_lossy();
+    // Get canonical absolute path (resolves symlinks, relative paths, etc.)
+    let canonical_path = path.canonicalize()
+        .map_err(|_| std::io::Error::new(
+            std::io::ErrorKind::PermissionDenied,
+            "Invalid command path"
+        ))?;
 
-    // Check for directory traversal attempts
-    if path_str.contains("..") {
-        return Err(std::io::Error::new(std::io::ErrorKind::PermissionDenied, "Path traversal not allowed"));
-    }
+    // Define allowed base paths
+    let allowed_paths = [
+        dirs::home_dir().unwrap_or_else(|| PathBuf::from("~")).join(".claude/commands"),
+        std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")).join(".claude/commands"),
+    ];
 
-    // Ensure we're only accessing command files
-    if !path_str.contains("/.claude/commands/") {
-        return Err(std::io::Error::new(std::io::ErrorKind::PermissionDenied, "Access denied"));
+    // Check if canonical path is within allowed paths
+    if !allowed_paths.iter().any(|base| canonical_path.starts_with(base)) {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::PermissionDenied,
+            "Access denied: path outside of allowed command directories"
+        ));
     }
 
     Ok(())
