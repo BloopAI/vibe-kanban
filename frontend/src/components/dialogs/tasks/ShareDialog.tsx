@@ -164,7 +164,10 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
 
         <SignedIn>
           {shareComplete ? (
-            <Alert variant="default" className="bg-green-50 border-green-200">
+            <Alert
+              variant="default"
+              className="border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200"
+            >
               {t('shareDialog.success')}
             </Alert>
           ) : (
