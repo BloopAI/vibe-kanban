@@ -39,7 +39,7 @@ pub mod qwen;
 pub enum BaseAgentCapability {
     SessionFork,
     /// Agent requires a setup script before it can run (e.g., login, installation)
-    SetupScript,
+    SetupHelper,
 }
 
 #[derive(Debug, Error)]
@@ -64,10 +64,8 @@ pub enum ExecutorError {
     CommandBuild(#[from] CommandBuildError),
     #[error("Executable `{program}` not found in PATH")]
     ExecutableNotFound { program: String },
-    #[error("Executor requires prerequisite action to run")]
-    NeedsAction { action: ExecutorAction },
-    #[error("Setup script not supported")]
-    SetupScriptNotSupported,
+    #[error("Setup helper not supported")]
+    SetupHelperNotSupported,
 }
 
 #[enum_dispatch]
@@ -149,7 +147,7 @@ impl CodingAgent {
             Self::Codex(_) => vec![BaseAgentCapability::SessionFork],
             Self::Gemini(_) => vec![BaseAgentCapability::SessionFork],
             Self::QwenCode(_) => vec![BaseAgentCapability::SessionFork],
-            Self::CursorAgent(_) => vec![BaseAgentCapability::SetupScript],
+            Self::CursorAgent(_) => vec![BaseAgentCapability::SetupHelper],
             Self::Opencode(_) | Self::Copilot(_) => vec![],
         }
     }
@@ -172,8 +170,8 @@ pub trait StandardCodingAgentExecutor {
     // MCP configuration methods
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf>;
 
-    async fn get_setup_script(&self) -> Result<ExecutorAction, ExecutorError> {
-        Err(ExecutorError::SetupScriptNotSupported)
+    async fn get_setup_helper_action(&self) -> Result<ExecutorAction, ExecutorError> {
+        Err(ExecutorError::SetupHelperNotSupported)
     }
 
     async fn check_availability(&self) -> bool {

@@ -137,7 +137,7 @@ export function NextActionCard({
 
   const canAutoSetup = !!(
     attempt?.executor &&
-    capabilities?.[attempt.executor]?.includes(BaseAgentCapability.SETUP_SCRIPT)
+    capabilities?.[attempt.executor]?.includes(BaseAgentCapability.SETUP_HELPER)
   );
 
   const setupHelpText = canAutoSetup ? t('attempt.setupHelpText') : null;

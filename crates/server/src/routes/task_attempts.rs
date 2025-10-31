@@ -226,11 +226,11 @@ pub async fn run_agent_setup(
             .executor_action()
             .map_err(|e| ApiError::TaskAttempt(TaskAttemptError::ValidationError(e.to_string())))?;
         coding_agent
-            .get_setup_script()
+            .get_setup_helper_action()
             .await?
             .append_action(latest_action.to_owned())
     } else {
-        coding_agent.get_setup_script().await?
+        coding_agent.get_setup_helper_action().await?
     };
 
     let _ = ensure_worktree_path(&deployment, &task_attempt).await?;

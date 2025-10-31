@@ -478,7 +478,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
     async fn check_availability(&self) -> bool {
         resolve_executable_path("cursor-agent").await.is_some()
     }
-    async fn get_setup_script(&self) -> Result<ExecutorAction, ExecutorError> {
+    async fn get_setup_helper_action(&self) -> Result<ExecutorAction, ExecutorError> {
         let base_command = self.build_command_builder().base;
 
         #[cfg(any(target_os = "macos", target_os = "linux"))]
