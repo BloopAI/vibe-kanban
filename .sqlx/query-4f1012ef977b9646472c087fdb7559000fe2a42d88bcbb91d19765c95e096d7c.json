@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT t.id as \"id!: Uuid\", t.tag_name, t.content as \"content!\", t.created_at as \"created_at!: DateTime<Utc>\", t.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM tags t\n               JOIN task_tags tt ON t.id = tt.tag_id\n               WHERE tt.task_id = $1\n               ORDER BY t.tag_name ASC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "tag_name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "content!",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 4,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "4f1012ef977b9646472c087fdb7559000fe2a42d88bcbb91d19765c95e096d7c"
+}

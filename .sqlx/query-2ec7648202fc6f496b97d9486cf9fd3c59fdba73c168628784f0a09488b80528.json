@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT \n                execution_id as \"execution_id!: Uuid\",\n                logs,\n                byte_size,\n                inserted_at as \"inserted_at!: DateTime<Utc>\"\n               FROM execution_process_logs \n               WHERE execution_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "execution_id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "logs",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "byte_size",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "inserted_at!: DateTime<Utc>",
+        "ordinal": 3,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "2ec7648202fc6f496b97d9486cf9fd3c59fdba73c168628784f0a09488b80528"
+}

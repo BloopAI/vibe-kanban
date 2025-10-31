@@ -85,6 +85,7 @@ impl CreateTask {
             description,
             parent_task_attempt: None,
             image_ids: None,
+            tag_ids: None,
         }
     }
 }
@@ -170,7 +171,7 @@ ORDER BY t.created_at DESC"#,
 
         // Fetch all tags for these tasks in one query
         let tag_records = if !task_ids.is_empty() {
-            let task_ids_blob: Vec<Vec<u8>> = task_ids.iter().map(|id| id.as_bytes().to_vec()).collect();
+            let task_ids_json = serde_json::to_string(&task_ids).unwrap();
 
             sqlx::query!(
                 r#"SELECT
@@ -184,7 +185,7 @@ ORDER BY t.created_at DESC"#,
                 JOIN tags t ON tt.tag_id = t.id
                 WHERE tt.task_id IN (SELECT value FROM json_each(?))
                 ORDER BY t.tag_name ASC"#,
-                serde_json::to_string(&task_ids).unwrap()
+                task_ids_json
             )
             .fetch_all(pool)
             .await?
