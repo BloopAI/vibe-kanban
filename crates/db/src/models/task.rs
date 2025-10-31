@@ -113,6 +113,15 @@ impl CreateTask {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct SyncTask {
+    pub shared_task_id: Uuid,
+    pub project_id: Uuid,
+    pub title: String,
+    pub description: Option<String>,
+    pub status: TaskStatus,
+}
+
 #[derive(Debug, Serialize, Deserialize, TS)]
 pub struct UpdateTask {
     pub title: Option<String>,
@@ -321,12 +330,8 @@ ORDER BY t.created_at DESC"#,
 
     pub async fn sync_from_shared_task(
         pool: &SqlitePool,
-        shared_task_id: Uuid,
-        project_id: Uuid,
-        title: String,
-        description: Option<String>,
-        status: TaskStatus,
-        create_task_if_not_exists: bool,
+        data: SyncTask,
+        create_if_not_exists: bool,
     ) -> Result<bool, sqlx::Error> {
         let new_task_id = Uuid::new_v4();
 
@@ -359,12 +364,12 @@ ORDER BY t.created_at DESC"#,
                 updated_at = datetime('now', 'subsec')
             "#,
             new_task_id,
-            project_id,
-            title,
-            description,
-            status,
-            shared_task_id,
-            create_task_if_not_exists
+            data.project_id,
+            data.title,
+            data.description,
+            data.status,
+            data.shared_task_id,
+            create_if_not_exists
         )
         .execute(pool)
         .await?;

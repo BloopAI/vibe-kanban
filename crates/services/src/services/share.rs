@@ -16,7 +16,7 @@ use db::{
     DBService,
     models::{
         shared_task::{SharedActivityCursor, SharedTask, SharedTaskInput},
-        task::Task,
+        task::{SyncTask, Task},
     },
 };
 use processor::ActivityProcessor;
@@ -405,11 +405,13 @@ pub(super) async fn sync_local_task_for_shared_task(
 
     Task::sync_from_shared_task(
         pool,
-        shared_task.id,
-        project_id,
-        shared_task.title.clone(),
-        shared_task.description.clone(),
-        shared_task.status.clone(),
+        SyncTask {
+            shared_task_id: shared_task.id,
+            project_id,
+            title: shared_task.title.clone(),
+            description: shared_task.description.clone(),
+            status: shared_task.status.clone(),
+        },
         create_task_if_not_exists,
     )
     .await?;
