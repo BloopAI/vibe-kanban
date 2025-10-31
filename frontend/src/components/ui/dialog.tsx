@@ -78,7 +78,14 @@ const Dialog = React.forwardRef<
       {
         scope: Scope.DIALOG,
         when: () => !!open,
-        enableOnFormTags: ['input', 'INPUT', 'textarea', 'TEXTAREA', 'select', 'SELECT'],
+        enableOnFormTags: [
+          'input',
+          'INPUT',
+          'textarea',
+          'TEXTAREA',
+          'select',
+          'SELECT',
+        ],
         enableOnContentEditable: true,
         preventDefault: true,
       }
@@ -157,7 +164,8 @@ const Dialog = React.forwardRef<
         </div>
       </div>
     );
-});
+  }
+);
 Dialog.displayName = 'Dialog';
 
 const DialogHeader = ({
