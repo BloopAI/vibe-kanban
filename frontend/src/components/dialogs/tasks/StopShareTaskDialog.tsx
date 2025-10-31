@@ -22,7 +22,9 @@ const StopShareTaskDialog = NiceModal.create<StopShareTaskDialogProps>(
   ({ sharedTask }) => {
     const modal = useModal();
     const { t } = useTranslation('tasks');
-    const { stopShareTask } = useTaskMutations(sharedTask.project_id);
+    const { stopShareTask } = useTaskMutations(
+      sharedTask.project_id ?? undefined
+    );
     const [error, setError] = useState<string | null>(null);
     const isProgrammaticCloseRef = useRef(false);
     const didConfirmRef = useRef(false);
