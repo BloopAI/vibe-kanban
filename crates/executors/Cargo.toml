@@ -32,6 +32,7 @@ enum_dispatch = "0.3.13"
 futures-io = "0.3.31"
 tokio-stream = { version = "0.1.17", features = ["io-util"] }
 futures = "0.3.31"
+async-stream = "0.3"
 bon = "3.6"
 fork_stream = "0.1.0"
 os_pipe = "1.2"
@@ -48,3 +49,6 @@ codex-app-server-protocol = { git = "https://github.com/openai/codex.git", packa
 codex-mcp-types = { git = "https://github.com/openai/codex.git", package = "mcp-types", rev = "488ec061bf4d36916b8f477c700ea4fde4162a7a" }
 sha2 = "0.10"
 derivative = "2.2.0"
+
+[dev-dependencies]
+insta = { version = "1.40", features = ["yaml"] }

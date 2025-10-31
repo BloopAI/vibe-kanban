@@ -131,6 +131,13 @@
           "model": "claude-sonnet-4"
         }
       }
+    },
+    "DROID": {
+      "DEFAULT": {
+        "DROID": {
+          "autonomy": "skip-permissions-unsafe"
+        }
+      }
     }
   }
 }
