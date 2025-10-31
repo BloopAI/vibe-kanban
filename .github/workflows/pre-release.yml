@@ -36,14 +36,6 @@ jobs:
       new_version: ${{ steps.version.outputs.new_version }}
       branch_suffix: ${{ steps.branch.outputs.suffix }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          ssh-key: ${{ secrets.DEPLOY_KEY }}
-
-      - name: Setup Node
-        uses: ./.github/actions/setup-node
-
       - name: Cache cargo-edit
         uses: actions/cache@v3
         id: cache-cargo-edit
@@ -54,6 +46,14 @@ jobs:
       - name: Install cargo-edit
         if: steps.cache-cargo-edit.outputs.cache-hit != 'true'
         run: cargo install cargo-edit
+      
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ssh-key: ${{ secrets.DEPLOY_KEY }}
+
+      - name: setup node
+        uses: ./.github/actions/setup-node
 
       - name: Generate branch suffix
         id: branch
@@ -110,7 +110,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add package.json pnpm-lock.yaml npx-cli/package.json frontend/package.json 
+          git add package.json pnpm-lock.yaml npx-cli/package.json frontend/package.json Cargo.lock
           git add $(find . -name Cargo.toml) 
           git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
           git tag -a ${{ steps.version.outputs.new_tag }} -m "Release ${{ steps.version.outputs.new_tag }}"

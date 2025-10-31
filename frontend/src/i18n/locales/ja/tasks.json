@@ -75,6 +75,7 @@
     "collapseAll": "Collapse all diffs",
     "errorLoadingDiff": "Failed to load diff: {{error}}",
     "expandAll": "Expand all diffs",
+    "ignoreWhitespace": "空白の変更を無視",
     "filesChanged_one": "{{count}} file changed",
     "filesChanged_other": "{{count}} files changed",
     "noChanges": "No changes have been made yet",

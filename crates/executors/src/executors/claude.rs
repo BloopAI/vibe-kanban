@@ -1,5 +1,8 @@
-#[cfg(unix)]
-use std::os::unix::fs::PermissionsExt;
+// SDK submodules
+pub mod client;
+pub mod protocol;
+pub mod types;
+
 use std::{collections::HashMap, path::Path, process::Stdio, sync::Arc};
 
 use async_trait::async_trait;
@@ -7,41 +10,32 @@ use command_group::AsyncCommandGroup;
 use futures::StreamExt;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use tokio::{io::AsyncWriteExt, process::Command, sync::OnceCell};
+use tokio::process::Command;
 use ts_rs::TS;
 use workspace_utils::{
-    approvals::APPROVAL_TIMEOUT_SECONDS,
+    approvals::ApprovalStatus,
     diff::{concatenate_diff_hunks, create_unified_diff, create_unified_diff_hunk},
     log_msg::LogMsg,
     msg_store::MsgStore,
     path::make_path_relative,
-    port_file::read_port_file,
     shell::get_shell_command,
 };
 
+use self::{client::ClaudeAgentClient, protocol::ProtocolPeer, types::PermissionMode};
 use crate::{
+    approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuilder, apply_overrides},
-    executors::{AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
+    executors::{
+        AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
+        codex::client::LogWriter,
+    },
     logs::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryType, TodoItem, ToolStatus,
         stderr_processor::normalize_stderr_logs,
         utils::{EntryIndexProvider, patch::ConversationPatch},
     },
+    stdout_dup::create_stdout_pipe_writer,
 };
-
-static BACKEND_PORT: OnceCell<u16> = OnceCell::const_new();
-async fn get_backend_port() -> std::io::Result<u16> {
-    BACKEND_PORT
-        .get_or_try_init(|| async { read_port_file("vibe-kanban").await })
-        .await
-        .copied()
-}
-
-const CONFIRM_HOOK_SCRIPT: &str = include_str!("./hooks/confirm.py");
-
-/// Natural language marker we add in our Python hook to denote user feedback
-/// This marker is added by our confirm.py hook script and is robust to Claude Code format changes
-const USER_FEEDBACK_MARKER: &str = "User feedback: ";
 
 fn base_command(claude_code_router: bool) -> &'static str {
     if claude_code_router {
@@ -51,7 +45,10 @@ fn base_command(claude_code_router: bool) -> &'static str {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
+use derivative::Derivative;
+
+#[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
+#[derivative(Debug, PartialEq)]
 pub struct ClaudeCode {
     #[serde(default)]
     pub append_prompt: AppendPrompt,
@@ -67,6 +64,11 @@ pub struct ClaudeCode {
     pub dangerously_skip_permissions: Option<bool>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
+
+    #[serde(skip)]
+    #[ts(skip)]
+    #[derivative(Debug = "ignore", PartialEq = "ignore")]
+    approvals_service: Option<Arc<dyn ExecutorApprovalService>>,
 }
 
 impl ClaudeCode {
@@ -87,30 +89,14 @@ impl ClaudeCode {
         if plan && approvals {
             tracing::warn!("Both plan and approvals are enabled. Plan will take precedence.");
         }
-
-        if plan {
-            builder = builder.extend_params(["--permission-mode=plan"]);
-        }
-
         if plan || approvals {
-            match settings_json(plan).await {
-                // TODO: Avoid quoting
-                Ok(settings) => match shlex::try_quote(&settings) {
-                    Ok(quoted) => {
-                        builder = builder.extend_params(["--settings", &quoted]);
-                    }
-                    Err(e) => {
-                        tracing::error!("Failed to quote approvals JSON for --settings: {e}");
-                    }
-                },
-                Err(e) => {
-                    tracing::error!(
-                        "Failed to generate approvals JSON. Not running approvals: {e}"
-                    );
-                }
-            }
+            // Enable bypass at startup, otherwise we cannot change to it after exiting plan mode
+            builder = builder.extend_params(["--permission-prompt-tool=stdio"]);
+            builder = builder.extend_params([format!(
+                "--permission-mode={}",
+                PermissionMode::BypassPermissions
+            )]);
         }
-
         if self.dangerously_skip_permissions.unwrap_or(false) {
             builder = builder.extend_params(["--dangerously-skip-permissions"]);
         }
@@ -120,49 +106,58 @@ impl ClaudeCode {
         builder = builder.extend_params([
             "--verbose",
             "--output-format=stream-json",
+            "--input-format=stream-json",
             "--include-partial-messages",
         ]);
 
         apply_overrides(builder, &self.cmd)
     }
+
+    pub fn permission_mode(&self) -> PermissionMode {
+        if self.plan.unwrap_or(false) {
+            PermissionMode::Plan
+        } else if self.approvals.unwrap_or(false) {
+            PermissionMode::Default
+        } else {
+            PermissionMode::BypassPermissions
+        }
+    }
+
+    pub fn get_hooks(&self) -> Option<serde_json::Value> {
+        if self.plan.unwrap_or(false) {
+            Some(serde_json::json!({
+                "PreToolUse": [
+                    {
+                        "matcher": "^ExitPlanMode$",
+                        "hookCallbackIds": ["tool_approval"],
+                    }
+                ]
+            }))
+        } else if self.approvals.unwrap_or(false) {
+            Some(serde_json::json!({
+                "PreToolUse": [
+                    {
+                        "matcher": "^(?!(Glob|Grep|NotebookRead|Read|Task|TodoWrite)$).*",
+                        "hookCallbackIds": ["tool_approval"],
+                    }
+                ]
+            }))
+        } else {
+            None
+        }
+    }
 }
 
 #[async_trait]
 impl StandardCodingAgentExecutor for ClaudeCode {
+    fn use_approvals(&mut self, approvals: Arc<dyn ExecutorApprovalService>) {
+        self.approvals_service = Some(approvals);
+    }
+
     async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
-        let (shell_cmd, shell_arg) = get_shell_command();
         let command_builder = self.build_command_builder().await;
-        let mut base_command = command_builder.build_initial();
-
-        if self.plan.unwrap_or(false) {
-            base_command = create_watchkill_script(&base_command);
-        }
-
-        if self.approvals.unwrap_or(false) || self.plan.unwrap_or(false) {
-            write_python_hook(current_dir).await?
-        }
-
-        let combined_prompt = self.append_prompt.combine_prompt(prompt);
-
-        let mut command = Command::new(shell_cmd);
-        command
-            .kill_on_drop(true)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .current_dir(current_dir)
-            .arg(shell_arg)
-            .arg(&base_command);
-
-        let mut child = command.group_spawn()?;
-
-        // Feed the prompt in, then close the pipe so Claude sees EOF
-        if let Some(mut stdin) = child.inner().stdin.take() {
-            stdin.write_all(combined_prompt.as_bytes()).await?;
-            stdin.shutdown().await?;
-        }
-
-        Ok(child.into())
+        let base_command = command_builder.build_initial();
+        self.spawn_internal(current_dir, prompt, base_command).await
     }
 
     async fn spawn_follow_up(
@@ -171,44 +166,13 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         prompt: &str,
         session_id: &str,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let (shell_cmd, shell_arg) = get_shell_command();
         let command_builder = self.build_command_builder().await;
-        // Build follow-up command with --resume {session_id}
-        let mut base_command = command_builder.build_follow_up(&[
+        let base_command = command_builder.build_follow_up(&[
             "--fork-session".to_string(),
             "--resume".to_string(),
             session_id.to_string(),
         ]);
-
-        if self.plan.unwrap_or(false) {
-            base_command = create_watchkill_script(&base_command);
-        }
-
-        if self.approvals.unwrap_or(false) || self.plan.unwrap_or(false) {
-            write_python_hook(current_dir).await?
-        }
-
-        let combined_prompt = self.append_prompt.combine_prompt(prompt);
-
-        let mut command = Command::new(shell_cmd);
-        command
-            .kill_on_drop(true)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .current_dir(current_dir)
-            .arg(shell_arg)
-            .arg(&base_command);
-
-        let mut child = command.group_spawn()?;
-
-        // Feed the followup prompt in, then close the pipe
-        if let Some(mut stdin) = child.inner().stdin.take() {
-            stdin.write_all(combined_prompt.as_bytes()).await?;
-            stdin.shutdown().await?;
-        }
-
-        Ok(child.into())
+        self.spawn_internal(current_dir, prompt, base_command).await
     }
 
     fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &Path) {
@@ -232,116 +196,74 @@ impl StandardCodingAgentExecutor for ClaudeCode {
     }
 }
 
-async fn write_python_hook(current_dir: &Path) -> Result<(), ExecutorError> {
-    let hooks_dir = current_dir.join(".claude").join("hooks");
-    tokio::fs::create_dir_all(&hooks_dir).await?;
-    let hook_path = hooks_dir.join("confirm.py");
+impl ClaudeCode {
+    async fn spawn_internal(
+        &self,
+        current_dir: &Path,
+        prompt: &str,
+        base_command: String,
+    ) -> Result<SpawnedChild, ExecutorError> {
+        let (shell_cmd, shell_arg) = get_shell_command();
+        let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
-    let mut file = tokio::fs::File::create(&hook_path).await?;
-    file.write_all(CONFIRM_HOOK_SCRIPT.as_bytes()).await?;
-    file.flush().await?;
+        let mut command = Command::new(shell_cmd);
+        command
+            .kill_on_drop(true)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .current_dir(current_dir)
+            .arg(shell_arg)
+            .arg(&base_command);
 
-    // TODO: Handle Windows permissioning
-    #[cfg(unix)]
-    {
-        let perm = std::fs::Permissions::from_mode(0o755);
-        tokio::fs::set_permissions(&hook_path, perm).await?;
+        let mut child = command.group_spawn()?;
+        let child_stdout = child.inner().stdout.take().ok_or_else(|| {
+            ExecutorError::Io(std::io::Error::other("Claude Code missing stdout"))
+        })?;
+        let child_stdin =
+            child.inner().stdin.take().ok_or_else(|| {
+                ExecutorError::Io(std::io::Error::other("Claude Code missing stdin"))
+            })?;
+
+        let new_stdout = create_stdout_pipe_writer(&mut child)?;
+        let permission_mode = self.permission_mode();
+        let hooks = self.get_hooks();
+
+        // Spawn task to handle the SDK client with control protocol
+        let prompt_clone = combined_prompt.clone();
+        let approvals_clone = self.approvals_service.clone();
+        tokio::spawn(async move {
+            let log_writer = LogWriter::new(new_stdout);
+            let client = ClaudeAgentClient::new(log_writer.clone(), approvals_clone);
+            let protocol_peer = ProtocolPeer::spawn(child_stdin, child_stdout, client.clone());
+
+            // Initialize control protocol
+            if let Err(e) = protocol_peer.initialize(hooks).await {
+                tracing::error!("Failed to initialize control protocol: {e}");
+                let _ = log_writer
+                    .log_raw(&format!("Error: Failed to initialize - {e}"))
+                    .await;
+                return;
+            }
+
+            if let Err(e) = protocol_peer.set_permission_mode(permission_mode).await {
+                tracing::warn!("Failed to set permission mode to {permission_mode}: {e}");
+            }
+
+            // Send user message
+            if let Err(e) = protocol_peer.send_user_message(prompt_clone).await {
+                tracing::error!("Failed to send prompt: {e}");
+                let _ = log_writer
+                    .log_raw(&format!("Error: Failed to send prompt - {e}"))
+                    .await;
+            }
+        });
+
+        Ok(SpawnedChild {
+            child,
+            exit_signal: None,
+        })
     }
-
-    // ignore the confirm.py script
-    let gitignore_path = hooks_dir.join(".gitignore");
-    if !tokio::fs::try_exists(&gitignore_path).await? {
-        let mut gitignore_file = tokio::fs::File::create(&gitignore_path).await?;
-        gitignore_file
-            .write_all(b"confirm.py\n.gitignore\n")
-            .await?;
-        gitignore_file.flush().await?;
-    }
-
-    Ok(())
-}
-
-// Configure settings json
-async fn settings_json(plan: bool) -> Result<String, std::io::Error> {
-    let backend_port = get_backend_port().await?;
-    let backend_timeout = APPROVAL_TIMEOUT_SECONDS + 5; // add buffer
-
-    let matcher = if plan {
-        "^ExitPlanMode$"
-    } else {
-        "^(?!(Glob|Grep|NotebookRead|Read|Task|TodoWrite)$).*"
-    };
-
-    Ok(serde_json::json!({
-        "hooks": {
-            "PreToolUse": [
-                {
-                    "matcher": matcher,
-                    "hooks": [
-                        {
-                            "type": "command",
-                            "command": format!("$CLAUDE_PROJECT_DIR/.claude/hooks/confirm.py --timeout-seconds {backend_timeout} --poll-interval 5 --backend-port {backend_port} --feedback-marker '{USER_FEEDBACK_MARKER}'"),
-                            "timeout": backend_timeout + 10
-                       }
-                    ]
-                }
-            ]
-        }
-    })
-    .to_string())
-}
-
-fn create_watchkill_script(command: &str) -> String {
-    // Hack: we concatenate so that Claude doesn't trigger the watchkill when reading this file
-    // during development, since it contains the stop phrase
-    let claude_plan_stop_indicator = concat!("Approval ", "request timed out");
-    let cmd = shlex::try_quote(command).unwrap().to_string();
-
-    format!(
-        r#"#!/usr/bin/env bash
-set -euo pipefail
-
-word="{claude_plan_stop_indicator}"
-
-exit_code=0
-while IFS= read -r line; do
-    printf '%s\n' "$line"
-    if [[ $line == *"$word"* ]]; then
-        exit 0
-    fi
-done < <(bash -lc {cmd} <&0 2>&1)
-
-exit_code=${{PIPESTATUS[0]}}
-exit "$exit_code"
-"#
-    )
-}
-
-/// Extract user denial reason from tool result error messages
-/// Our confirm.py hook prefixes user feedback with "User feedback: " for easy extraction
-/// Supports both string content and Claude's array format: [{"type":"text","text":"..."}]
-fn extract_denial_reason(content: &serde_json::Value) -> Option<String> {
-    // First try to parse as string
-    let content_str = if let Some(s) = content.as_str() {
-        s.to_string()
-    } else if let Ok(items) =
-        serde_json::from_value::<Vec<ClaudeToolResultTextItem>>(content.clone())
-    {
-        // Handle array format: [{"type":"text","text":"..."}]
-        items
-            .into_iter()
-            .map(|item| item.text)
-            .collect::<Vec<_>>()
-            .join("\n")
-    } else {
-        // Try to serialize the value as a string
-        content.to_string()
-    };
-
-    content_str
-        .split_once(USER_FEEDBACK_MARKER)
-        .map(|(_, rest)| rest.trim().to_string())
-        .filter(|s| !s.is_empty())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -491,6 +413,7 @@ impl ClaudeLogProcessor {
             ClaudeJson::ToolResult { session_id, .. } => session_id.clone(),
             ClaudeJson::StreamEvent { session_id, .. } => session_id.clone(),
             ClaudeJson::Result { session_id, .. } => session_id.clone(),
+            ClaudeJson::ApprovalResponse { .. } => None,
             ClaudeJson::Unknown { .. } => None,
         }
     }
@@ -580,11 +503,21 @@ impl ClaudeLogProcessor {
                     serde_json::to_value(content_item).unwrap_or(serde_json::Value::Null),
                 ),
             }),
-            ClaudeContentItem::ToolUse { tool_data, .. } => {
+            ClaudeContentItem::ToolUse { tool_data, id } => {
                 let name = tool_data.get_name();
                 let action_type = Self::extract_action_type(tool_data, worktree_path);
                 let content =
                     Self::generate_concise_content(tool_data, &action_type, worktree_path);
+
+                // Create metadata with tool_call_id for approval matching
+                let mut metadata =
+                    serde_json::to_value(content_item).unwrap_or(serde_json::Value::Null);
+                if let Some(obj) = metadata.as_object_mut() {
+                    obj.insert(
+                        "tool_call_id".to_string(),
+                        serde_json::Value::String(id.clone()),
+                    );
+                }
 
                 Some(NormalizedEntry {
                     timestamp: None,
@@ -594,9 +527,7 @@ impl ClaudeLogProcessor {
                         status: ToolStatus::Created,
                     },
                     content,
-                    metadata: Some(
-                        serde_json::to_value(content_item).unwrap_or(serde_json::Value::Null),
-                    ),
+                    metadata: Some(metadata),
                 })
             }
             ClaudeContentItem::ToolResult { .. } => {
@@ -837,6 +768,17 @@ impl ClaudeLogProcessor {
                                 &action_type,
                                 worktree_path,
                             );
+
+                            // Create metadata with tool_call_id for approval matching
+                            let mut metadata =
+                                serde_json::to_value(item).unwrap_or(serde_json::Value::Null);
+                            if let Some(obj) = metadata.as_object_mut() {
+                                obj.insert(
+                                    "tool_call_id".to_string(),
+                                    serde_json::Value::String(id.clone()),
+                                );
+                            }
+
                             let entry = NormalizedEntry {
                                 timestamp: None,
                                 entry_type: NormalizedEntryType::ToolUse {
@@ -845,9 +787,7 @@ impl ClaudeLogProcessor {
                                     status: ToolStatus::Created,
                                 },
                                 content: content_text.clone(),
-                                metadata: Some(
-                                    serde_json::to_value(item).unwrap_or(serde_json::Value::Null),
-                                ),
+                                metadata: Some(metadata),
                             };
                             let is_new = entry_index.is_none();
                             let id_num = entry_index.unwrap_or_else(|| entry_index_provider.next());
@@ -930,7 +870,7 @@ impl ClaudeLogProcessor {
                     {
                         let is_command = matches!(info.tool_data, ClaudeToolData::Bash { .. });
 
-                        let display_tool_name = if is_command {
+                        let _display_tool_name = if is_command {
                             info.tool_name.clone()
                         } else {
                             let raw_name = info.tool_data.get_name().to_string();
@@ -1048,24 +988,8 @@ impl ClaudeLogProcessor {
                             };
                             patches.push(ConversationPatch::replace(info.entry_index, entry));
                         }
-
-                        if is_error.unwrap_or(false)
-                            && let Some(denial_reason) = extract_denial_reason(content)
-                        {
-                            let user_feedback = NormalizedEntry {
-                                timestamp: None,
-                                entry_type: NormalizedEntryType::UserFeedback {
-                                    denied_tool: display_tool_name.clone(),
-                                },
-                                content: denial_reason,
-                                metadata: None,
-                            };
-                            let feedback_index = entry_index_provider.next();
-                            patches.push(ConversationPatch::add_normalized_entry(
-                                feedback_index,
-                                user_feedback,
-                            ));
-                        }
+                        // Note: With control protocol, denials are handled via protocol messages
+                        // rather than error content parsing
                     }
                 }
             }
@@ -1162,6 +1086,40 @@ impl ClaudeLogProcessor {
                             serde_json::to_value(claude_json).unwrap_or(serde_json::Value::Null),
                         ),
                     };
+                    let idx = entry_index_provider.next();
+                    patches.push(ConversationPatch::add_normalized_entry(idx, entry));
+                }
+            }
+            ClaudeJson::ApprovalResponse {
+                call_id: _,
+                tool_name,
+                approval_status,
+            } => {
+                // Convert denials and timeouts to visible entries (matching Codex behavior)
+                let entry_opt = match approval_status {
+                    ApprovalStatus::Pending => None,
+                    ApprovalStatus::Approved => None,
+                    ApprovalStatus::Denied { reason } => Some(NormalizedEntry {
+                        timestamp: None,
+                        entry_type: NormalizedEntryType::UserFeedback {
+                            denied_tool: tool_name.clone(),
+                        },
+                        content: reason
+                            .as_ref()
+                            .map(|s| s.trim().to_string())
+                            .filter(|s| !s.is_empty())
+                            .unwrap_or_else(|| "User denied this tool use request".to_string()),
+                        metadata: None,
+                    }),
+                    ApprovalStatus::TimedOut => Some(NormalizedEntry {
+                        timestamp: None,
+                        entry_type: NormalizedEntryType::ErrorMessage,
+                        content: format!("Approval timed out for tool {tool_name}"),
+                        metadata: None,
+                    }),
+                };
+
+                if let Some(entry) = entry_opt {
                     let idx = entry_index_provider.next();
                     patches.push(ConversationPatch::add_normalized_entry(idx, entry));
                 }
@@ -1434,7 +1392,7 @@ impl StreamingContentState {
 }
 
 // Data structures for parsing Claude's JSON output format
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum ClaudeJson {
     #[serde(rename = "system")]
@@ -1496,6 +1454,12 @@ pub enum ClaudeJson {
         num_turns: Option<u32>,
         #[serde(default, alias = "sessionId")]
         session_id: Option<String>,
+    },
+    #[serde(rename = "approval_response")]
+    ApprovalResponse {
+        call_id: String,
+        tool_name: String,
+        approval_status: ApprovalStatus,
     },
     // Catch-all for unknown message types
     #[serde(untagged)]
@@ -2006,6 +1970,7 @@ mod tests {
                 base_command_override: None,
                 additional_params: None,
             },
+            approvals_service: None,
         };
         let msg_store = Arc::new(MsgStore::new());
         let current_dir = std::path::PathBuf::from("/tmp/test-worktree");

@@ -105,7 +105,12 @@ export const useConversationHistory = ({
 
   // Keep executionProcesses up to date
   useEffect(() => {
-    executionProcesses.current = executionProcessesRaw;
+    executionProcesses.current = executionProcessesRaw.filter(
+      (ep) =>
+        ep.run_reason === 'setupscript' ||
+        ep.run_reason === 'cleanupscript' ||
+        ep.run_reason === 'codingagent'
+    );
   }, [executionProcessesRaw]);
 
   const loadEntriesForHistoricExecutionProcess = (

@@ -227,7 +227,7 @@ impl ExecutorConfigs {
                 Self::merge_with_defaults(defaults, user_overrides)
             }
             Err(e) => {
-                tracing::warn!(
+                tracing::error!(
                     "Failed to parse user profiles.json: {}, using defaults only",
                     e
                 );

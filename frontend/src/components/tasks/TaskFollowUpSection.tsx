@@ -451,8 +451,10 @@ export function TaskFollowUpSection({
 
             {/* Review comments preview */}
             {reviewMarkdown && (
-              <div className="text-sm mb-4">
-                <div className="whitespace-pre-wrap">{reviewMarkdown}</div>
+              <div className="mb-4">
+                <div className="text-sm whitespace-pre-wrap break-words max-h-[40vh] overflow-y-auto rounded-md border bg-muted p-3">
+                  {reviewMarkdown}
+                </div>
               </div>
             )}
 

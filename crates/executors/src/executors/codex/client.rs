@@ -235,12 +235,6 @@ impl AppServerClient {
             let mut guard = self.conversation_id.lock().await;
             guard.replace(*conversation_id);
         }
-        if let Some(approvals) = self.approvals.as_ref() {
-            approvals
-                .register_session(&conversation_id.to_string())
-                .await
-                .map_err(|err| ExecutorError::Io(io::Error::other(err.to_string())))?;
-        }
         self.flush_pending_feedback().await;
         Ok(())
     }

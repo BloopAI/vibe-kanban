@@ -91,6 +91,7 @@
       "inline": "Inline view",
       "split": "Split view"
     },
+    "ignoreWhitespace": "Ignore whitespace changes",
     "errorLoadingDiff": "Failed to load diff: {{error}}",
     "expandAll": "Expand all diffs",
     "collapseAll": "Collapse all diffs",

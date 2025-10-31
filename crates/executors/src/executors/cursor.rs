@@ -1,5 +1,5 @@
 use core::str;
-use std::{path::Path, process::Stdio, sync::Arc, time::Duration};
+use std::{collections::HashMap, path::Path, process::Stdio, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
 use command_group::AsyncCommandGroup;
@@ -32,7 +32,7 @@ use crate::{
 mod mcp;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
-pub struct Cursor {
+pub struct CursorAgent {
     #[serde(default)]
     pub append_prompt: AppendPrompt,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -45,7 +45,7 @@ pub struct Cursor {
     pub cmd: CmdOverrides,
 }
 
-impl Cursor {
+impl CursorAgent {
     fn build_command_builder(&self) -> CommandBuilder {
         let mut builder =
             CommandBuilder::new("cursor-agent").params(["-p", "--output-format=stream-json"]);
@@ -63,7 +63,7 @@ impl Cursor {
 }
 
 #[async_trait]
-impl StandardCodingAgentExecutor for Cursor {
+impl StandardCodingAgentExecutor for CursorAgent {
     async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
         mcp::ensure_mcp_server_trust(self, current_dir).await;
 
@@ -155,6 +155,8 @@ impl StandardCodingAgentExecutor for Cursor {
 
             let mut current_assistant_message_buffer = String::new();
             let mut current_assistant_message_index: Option<usize> = None;
+            let mut current_thinking_message_buffer = String::new();
+            let mut current_thinking_message_index: Option<usize> = None;
 
             let worktree_str = current_dir.to_string_lossy().to_string();
 
@@ -176,7 +178,7 @@ impl StandardCodingAgentExecutor for Cursor {
 
                         // Provide a useful sign-in message if needed
                         let line = if line == "Press any key to sign in..." {
-                            "Please sign in to Cursor CLI using `cursor-agent login` or set the CURSOR_API_KEY environment variable.".to_string()
+                            "Please sign in to Cursor Agent CLI using `cursor-agent login` or set the CURSOR_API_KEY environment variable.".to_string()
                         } else {
                             line
                         };
@@ -195,10 +197,15 @@ impl StandardCodingAgentExecutor for Cursor {
                 }
 
                 let is_assistant_message = matches!(cursor_json, CursorJson::Assistant { .. });
+                let is_thinking_message = matches!(cursor_json, CursorJson::Thinking { .. });
                 if !is_assistant_message && current_assistant_message_index.is_some() {
                     // flush
                     current_assistant_message_index = None;
                     current_assistant_message_buffer.clear();
+                }
+                if !is_thinking_message && current_thinking_message_index.is_some() {
+                    current_thinking_message_index = None;
+                    current_thinking_message_buffer.clear();
                 }
 
                 match &cursor_json {
@@ -238,6 +245,27 @@ impl StandardCodingAgentExecutor for Cursor {
                                     replace_entry,
                                 ));
                             };
+                        }
+                    }
+                    CursorJson::Thinking { text, .. } => {
+                        if let Some(chunk) = text
+                            && !chunk.is_empty()
+                        {
+                            current_thinking_message_buffer.push_str(chunk);
+                            let entry = NormalizedEntry {
+                                timestamp: None,
+                                entry_type: NormalizedEntryType::Thinking,
+                                content: current_thinking_message_buffer.clone(),
+                                metadata: None,
+                            };
+                            if let Some(id) = current_thinking_message_index {
+                                msg_store.push_patch(ConversationPatch::replace(id, entry));
+                            } else {
+                                let id = entry_index_provider.next();
+                                current_thinking_message_index = Some(id);
+                                msg_store
+                                    .push_patch(ConversationPatch::add_normalized_entry(id, entry));
+                            }
                         }
                     }
 
@@ -486,6 +514,15 @@ pub enum CursorJson {
         #[serde(default)]
         session_id: Option<String>,
     },
+    #[serde(rename = "thinking")]
+    Thinking {
+        #[serde(default)]
+        subtype: Option<String>,
+        #[serde(default)]
+        text: Option<String>,
+        #[serde(default)]
+        session_id: Option<String>,
+    },
     #[serde(rename = "tool_call")]
     ToolCall {
         #[serde(default)]
@@ -517,6 +554,7 @@ impl CursorJson {
             CursorJson::System { session_id, .. } => session_id.clone(),
             CursorJson::User { session_id, .. } => session_id.clone(),
             CursorJson::Assistant { session_id, .. } => session_id.clone(),
+            CursorJson::Thinking { session_id, .. } => session_id.clone(),
             CursorJson::ToolCall { session_id, .. } => session_id.clone(),
             CursorJson::Result { .. } => None,
             CursorJson::Unknown => None,
@@ -577,6 +615,12 @@ pub enum CursorToolCall {
         #[serde(default)]
         result: Option<serde_json::Value>,
     },
+    #[serde(rename = "semSearchToolCall")]
+    SemSearch {
+        args: CursorSemSearchArgs,
+        #[serde(default)]
+        result: Option<serde_json::Value>,
+    },
     #[serde(rename = "writeToolCall")]
     Write {
         args: CursorWriteArgs,
@@ -593,7 +637,7 @@ pub enum CursorToolCall {
     Edit {
         args: CursorEditArgs,
         #[serde(default)]
-        result: Option<serde_json::Value>,
+        result: Option<CursorEditResult>,
     },
     #[serde(rename = "deleteToolCall")]
     Delete {
@@ -628,6 +672,7 @@ impl CursorToolCall {
             CursorToolCall::LS { .. } => "ls",
             CursorToolCall::Glob { .. } => "glob",
             CursorToolCall::Grep { .. } => "grep",
+            CursorToolCall::SemSearch { .. } => "semsearch",
             CursorToolCall::Write { .. } => "write",
             CursorToolCall::Read { .. } => "read",
             CursorToolCall::Edit { .. } => "edit",
@@ -659,7 +704,7 @@ impl CursorToolCall {
                     format!("`{path}`"),
                 )
             }
-            CursorToolCall::Edit { args, .. } => {
+            CursorToolCall::Edit { args, result, .. } => {
                 let path = make_path_relative(&args.path, worktree_path);
                 let mut changes = vec![];
 
@@ -694,6 +739,19 @@ impl CursorToolCall {
                     });
                 }
 
+                if changes.is_empty()
+                    && let Some(CursorEditResult::Success(CursorEditSuccessResult {
+                        diff_string: Some(diff_string),
+                        ..
+                    })) = &result
+                {
+                    let hunks = extract_unified_diff_hunks(diff_string);
+                    changes.push(FileChange::Edit {
+                        unified_diff: concatenate_diff_hunks(&path, &hunks),
+                        has_line_numbers: false,
+                    });
+                }
+
                 (
                     ActionType::FileEdit {
                         path: path.clone(),
@@ -707,7 +765,7 @@ impl CursorToolCall {
                 (
                     ActionType::FileEdit {
                         path: path.clone(),
-                        changes: vec![],
+                        changes: vec![FileChange::Delete],
                     },
                     format!("`{path}`"),
                 )
@@ -729,6 +787,15 @@ impl CursorToolCall {
                         query: pattern.clone(),
                     },
                     format!("`{pattern}`"),
+                )
+            }
+            CursorToolCall::SemSearch { args, .. } => {
+                let query = &args.query;
+                (
+                    ActionType::Search {
+                        query: query.clone(),
+                    },
+                    format!("`{query}`"),
                 )
             }
             CursorToolCall::Glob { args, .. } => {
@@ -940,7 +1007,7 @@ pub struct CursorLsArgs {
 pub struct CursorGlobArgs {
     #[serde(default, alias = "globPattern", alias = "glob_pattern")]
     pub glob_pattern: Option<String>,
-    #[serde(default)]
+    #[serde(default, alias = "targetDirectory")]
     pub path: Option<String>,
     #[serde(default, alias = "target_directory")]
     pub target_directory: Option<String>,
@@ -963,6 +1030,15 @@ pub struct CursorGrepArgs {
     pub head_limit: Option<u64>,
     #[serde(default)]
     pub r#type: Option<String>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+pub struct CursorSemSearchArgs {
+    pub query: String,
+    #[serde(default, alias = "targetDirectories")]
+    pub target_directories: Option<Vec<String>>,
+    #[serde(default)]
+    pub explanation: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
@@ -996,6 +1072,32 @@ pub struct CursorEditArgs {
     pub str_replace: Option<CursorStrReplace>,
     #[serde(default, rename = "multiStrReplace")]
     pub multi_str_replace: Option<CursorMultiStrReplace>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum CursorEditResult {
+    Success(CursorEditSuccessResult),
+    #[serde(untagged)]
+    Unknown {
+        #[serde(flatten)]
+        data: HashMap<String, serde_json::Value>,
+    },
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+pub struct CursorEditSuccessResult {
+    pub path: String,
+    #[serde(default, rename = "resultForModel")]
+    pub result_for_model: Option<String>,
+    #[serde(default, rename = "linesAdded")]
+    pub lines_added: Option<u64>,
+    #[serde(default, rename = "linesRemoved")]
+    pub lines_removed: Option<u64>,
+    #[serde(default, rename = "diffString")]
+    pub diff_string: Option<String>,
+    #[serde(default, rename = "afterFullFileContent")]
+    pub after_full_file_content: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
@@ -1080,7 +1182,7 @@ mod tests {
     #[tokio::test]
     async fn test_cursor_streaming_patch_generation() {
         // Avoid relying on feature flag in tests; construct with a dummy command
-        let executor = Cursor {
+        let executor = CursorAgent {
             // No command field needed anymore
             append_prompt: AppendPrompt::default(),
             force: None,

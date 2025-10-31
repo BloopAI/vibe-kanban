@@ -26,9 +26,6 @@ impl ExecutorApprovalError {
 /// Abstraction for executor approval backends.
 #[async_trait]
 pub trait ExecutorApprovalService: Send + Sync {
-    /// Registers the session identifier associated with subsequent approval requests.
-    async fn register_session(&self, session_id: &str) -> Result<(), ExecutorApprovalError>;
-
     /// Requests approval for a tool invocation and waits for the final decision.
     async fn request_tool_approval(
         &self,
@@ -43,10 +40,6 @@ pub struct NoopExecutorApprovalService;
 
 #[async_trait]
 impl ExecutorApprovalService for NoopExecutorApprovalService {
-    async fn register_session(&self, _session_id: &str) -> Result<(), ExecutorApprovalError> {
-        Ok(())
-    }
-
     async fn request_tool_approval(
         &self,
         _tool_name: &str,

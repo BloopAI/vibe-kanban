@@ -6,6 +6,8 @@ type State = {
   mode: DiffViewMode;
   setMode: (mode: DiffViewMode) => void;
   toggle: () => void;
+  ignoreWhitespace: boolean;
+  setIgnoreWhitespace: (value: boolean) => void;
 };
 
 export const useDiffViewStore = create<State>((set) => ({
@@ -13,6 +15,10 @@ export const useDiffViewStore = create<State>((set) => ({
   setMode: (mode) => set({ mode }),
   toggle: () =>
     set((s) => ({ mode: s.mode === 'unified' ? 'split' : 'unified' })),
+  ignoreWhitespace: true,
+  setIgnoreWhitespace: (value) => set({ ignoreWhitespace: value }),
 }));
 
 export const useDiffViewMode = () => useDiffViewStore((s) => s.mode);
+export const useIgnoreWhitespaceDiff = () =>
+  useDiffViewStore((s) => s.ignoreWhitespace);

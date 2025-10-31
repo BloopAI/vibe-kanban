@@ -43,6 +43,7 @@ impl Executable for ScriptRequest {
         let mut command = Command::new(shell_cmd);
         command
             .kill_on_drop(true)
+            .stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .arg(shell_arg)

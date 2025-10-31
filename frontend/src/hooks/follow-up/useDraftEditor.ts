@@ -20,6 +20,8 @@ export function useDraftEditor({ draft, taskId }: Args) {
   const localDirtyRef = useRef<boolean>(false);
   const imagesDirtyRef = useRef<boolean>(false);
 
+  const isMessageLocallyDirty = useCallback(() => localDirtyRef.current, []);
+
   // Sync message with server when not locally dirty
   useEffect(() => {
     if (!draft) return;
@@ -84,5 +86,6 @@ export function useDraftEditor({ draft, taskId }: Args) {
     newlyUploadedImageIds,
     handleImageUploaded,
     clearImagesAndUploads,
+    isMessageLocallyDirty,
   } as const;
 }
