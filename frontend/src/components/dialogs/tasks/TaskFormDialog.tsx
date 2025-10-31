@@ -403,7 +403,6 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
         onOpenChange={handleDialogClose}
         className="w-full max-w-[min(90vw,40rem)] max-h-[min(95vh,50rem)] flex flex-col overflow-hidden p-0"
         uncloseable={showDiscardWarning}
-        singleEscClose={true}
       >
         <div
           {...getRootProps()}
