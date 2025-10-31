@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useCallback } from 'react';
 import { siDiscord } from 'simple-icons';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -35,6 +35,8 @@ import {
   SignOutButton,
   UserButton,
 } from '@clerk/clerk-react';
+import { useTranslation } from 'react-i18next';
+import { Switch } from '@/components/ui/switch';
 
 const INTERNAL_NAV = [{ label: 'Projects', icon: FolderOpen, to: '/projects' }];
 
@@ -58,6 +60,7 @@ const EXTERNAL_LINKS = [
 
 export function Navbar() {
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { projectId, project } = useProject();
   const { query, setQuery, active, clear, registerInputRef } = useSearch();
   const handleOpenInEditor = useOpenProjectInEditor(project || null);
@@ -74,6 +77,23 @@ export function Navbar() {
       registerInputRef(node);
     },
     [registerInputRef]
+  );
+  const { t } = useTranslation(['tasks']);
+  // Navbar is global, but the share tasks toggle only makes sense on the tasks route
+  const isTasksRoute = /^\/projects\/[^/]+\/tasks/.test(location.pathname);
+  const showSharedTasks = searchParams.get('shared') !== 'off';
+
+  const handleSharedToggle = useCallback(
+    (checked: boolean) => {
+      const params = new URLSearchParams(searchParams);
+      if (checked) {
+        params.delete('shared');
+      } else {
+        params.set('shared', 'off');
+      }
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams]
   );
 
   const handleCreateTask = () => {
@@ -122,15 +142,24 @@ export function Navbar() {
             </a>
           </div>
 
-          <SearchBar
-            ref={setSearchBarRef}
-            className="hidden sm:flex"
-            value={query}
-            onChange={setQuery}
-            disabled={!active}
-            onClear={clear}
-            project={project || null}
-          />
+          <div className="hidden sm:flex items-center gap-2">
+            <SearchBar
+              ref={setSearchBarRef}
+              className="shrink-0"
+              value={query}
+              onChange={setQuery}
+              disabled={!active}
+              onClear={clear}
+              project={project || null}
+            />
+            {isTasksRoute && active ? (
+              <Switch
+                checked={showSharedTasks}
+                onCheckedChange={handleSharedToggle}
+                aria-label={t('tasks:filters.sharedToggleAria')}
+              />
+            ) : null}
+          </div>
 
           <div className="flex-1 flex items-center justify-end gap-2">
             <SignedOut>

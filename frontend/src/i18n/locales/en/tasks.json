@@ -8,6 +8,9 @@
   "actions": {
     "addTask": "Add task"
   },
+  "filters": {
+    "sharedToggleAria": "Toggle shared tasks"
+  },
   "rebase": {
     "common": {
       "action": "Rebase",

@@ -55,6 +55,7 @@ import TaskAttemptPanel from '@/components/panels/TaskAttemptPanel';
 import TaskPanel from '@/components/panels/TaskPanel';
 import SharedTaskPanel from '@/components/panels/SharedTaskPanel';
 import TodoPanel from '@/components/tasks/TodoPanel';
+import { useAuth } from '@clerk/clerk-react';
 import { NewCard, NewCardHeader } from '@/components/ui/new-card';
 import {
   Breadcrumb,
@@ -135,6 +136,7 @@ export function ProjectTasks() {
   const [selectedSharedTaskId, setSelectedSharedTaskId] = useState<
     string | null
   >(null);
+  const { userId } = useAuth();
 
   const {
     projectId,
@@ -322,6 +324,17 @@ export function ProjectTasks() {
 
   const hasSearch = Boolean(searchQuery.trim());
   const normalizedSearch = searchQuery.trim().toLowerCase();
+  const showSharedTasks = searchParams.get('shared') !== 'off';
+
+  useEffect(() => {
+    if (showSharedTasks) return;
+    if (!selectedSharedTaskId) return;
+    const sharedTask = sharedTasksById[selectedSharedTaskId];
+    if (sharedTask && sharedTask.assignee_user_id === userId) {
+      return;
+    }
+    setSelectedSharedTaskId(null);
+  }, [selectedSharedTaskId, sharedTasksById, showSharedTasks, userId]);
 
   const kanbanColumns = useMemo(() => {
     const columns: Record<TaskStatus, KanbanColumnItem[]> = {
@@ -347,18 +360,29 @@ export function ProjectTasks() {
 
     tasks.forEach((task) => {
       const statusKey = normalizeStatus(task.status);
+      const sharedTask = task.shared_task_id
+        ? sharedTasksById[task.shared_task_id]
+        : sharedTasksById[task.id];
 
-      if (matchesSearch(task.title, task.description)) {
-        const sharedTask = task.shared_task_id
-          ? sharedTasksById[task.shared_task_id]
-          : sharedTasksById[task.id];
-
-        columns[statusKey].push({
-          type: 'task',
-          task,
-          sharedTask,
-        });
+      if (!matchesSearch(task.title, task.description)) {
+        return;
       }
+
+      const isSharedAssignedElsewhere =
+        !showSharedTasks &&
+        !!sharedTask &&
+        !!sharedTask.assignee_user_id &&
+        sharedTask.assignee_user_id !== userId;
+
+      if (isSharedAssignedElsewhere) {
+        return;
+      }
+
+      columns[statusKey].push({
+        type: 'task',
+        task,
+        sharedTask,
+      });
     });
 
     (
@@ -368,12 +392,18 @@ export function ProjectTasks() {
         columns[status] = [];
       }
       items.forEach((sharedTask) => {
-        if (matchesSearch(sharedTask.title, sharedTask.description)) {
-          columns[status].push({
-            type: 'shared',
-            task: sharedTask,
-          });
+        if (!matchesSearch(sharedTask.title, sharedTask.description)) {
+          return;
         }
+        const shouldIncludeShared =
+          showSharedTasks || sharedTask.assignee_user_id === userId;
+        if (!shouldIncludeShared) {
+          return;
+        }
+        columns[status].push({
+          type: 'shared',
+          task: sharedTask,
+        });
       });
     });
 
@@ -391,7 +421,15 @@ export function ProjectTasks() {
     });
 
     return columns;
-  }, [hasSearch, normalizedSearch, tasks, sharedOnlyByStatus, sharedTasksById]);
+  }, [
+    hasSearch,
+    normalizedSearch,
+    tasks,
+    sharedOnlyByStatus,
+    sharedTasksById,
+    showSharedTasks,
+    userId,
+  ]);
 
   const visibleTasksByStatus = useMemo(() => {
     const map: Record<TaskStatus, Task[]> = {
@@ -725,10 +763,14 @@ export function ProjectTasks() {
     [sharedTasksById]
   );
 
-  const hasSharedTasks = useMemo(
-    () => Object.values(sharedOnlyByStatus).some((items) => items.length > 0),
-    [sharedOnlyByStatus]
-  );
+  const hasSharedTasks = useMemo(() => {
+    return Object.values(kanbanColumns).some((items) =>
+      items.some((item) => {
+        if (item.type === 'shared') return true;
+        return Boolean(item.sharedTask);
+      })
+    );
+  }, [kanbanColumns]);
 
   const isInitialTasksLoad = isLoading && tasks.length === 0;
 
