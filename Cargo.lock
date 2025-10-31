@@ -1306,6 +1306,7 @@ dependencies = [
  "ts-rs 11.0.1",
  "utils",
  "uuid",
+ "winsplit",
  "xdg",
 ]
 
@@ -5246,7 +5247,6 @@ dependencies = [
  "futures-util",
  "git2",
  "json-patch",
- "lazy_static",
  "libc",
  "open",
  "regex",
@@ -5265,6 +5265,8 @@ dependencies = [
  "ts-rs 11.0.1",
  "uuid",
  "which",
+ "windows-sys 0.61.2",
+ "winreg",
 ]
 
 [[package]]
@@ -5927,10 +5929,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "winreg"
+version = "0.55.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb5a765337c50e9ec252c2069be9bf91c7df47afb103b642ba3a53bf8101be97"
+dependencies = [
+ "cfg-if",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
 name = "winsafe"
 version = "0.0.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d135d17ab770252ad95e9a872d365cf3090e3be864a34ab46f48555993efc904"
+
+[[package]]
+name = "winsplit"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3ab703352da6a72f35c39a533526393725640575bb211f61987a2748323ad956"
 
 [[package]]
 name = "wit-bindgen"

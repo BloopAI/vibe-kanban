@@ -18,13 +18,12 @@ use workspace_utils::{
     log_msg::LogMsg,
     msg_store::MsgStore,
     path::make_path_relative,
-    shell::get_shell_command,
 };
 
 use self::{client::ClaudeAgentClient, protocol::ProtocolPeer, types::PermissionMode};
 use crate::{
     approvals::ExecutorApprovalService,
-    command::{CmdOverrides, CommandBuilder, apply_overrides},
+    command::{CmdOverrides, CommandBuilder, CommandParts, apply_overrides},
     executors::{
         AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
         codex::client::LogWriter,
@@ -156,8 +155,9 @@ impl StandardCodingAgentExecutor for ClaudeCode {
 
     async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
         let command_builder = self.build_command_builder().await;
-        let base_command = command_builder.build_initial();
-        self.spawn_internal(current_dir, prompt, base_command).await
+        let command_parts = command_builder.build_initial()?;
+        self.spawn_internal(current_dir, prompt, command_parts)
+            .await
     }
 
     async fn spawn_follow_up(
@@ -167,12 +167,13 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         session_id: &str,
     ) -> Result<SpawnedChild, ExecutorError> {
         let command_builder = self.build_command_builder().await;
-        let base_command = command_builder.build_follow_up(&[
+        let command_parts = command_builder.build_follow_up(&[
             "--fork-session".to_string(),
             "--resume".to_string(),
             session_id.to_string(),
-        ]);
-        self.spawn_internal(current_dir, prompt, base_command).await
+        ])?;
+        self.spawn_internal(current_dir, prompt, command_parts)
+            .await
     }
 
     fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &Path) {
@@ -201,20 +202,19 @@ impl ClaudeCode {
         &self,
         current_dir: &Path,
         prompt: &str,
-        base_command: String,
+        command_parts: CommandParts,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let (shell_cmd, shell_arg) = get_shell_command();
+        let (program_path, args) = command_parts.into_resolved().await?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
-        let mut command = Command::new(shell_cmd);
+        let mut command = Command::new(program_path);
         command
             .kill_on_drop(true)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(current_dir)
-            .arg(shell_arg)
-            .arg(&base_command);
+            .args(&args);
 
         let mut child = command.group_spawn()?;
         let child_stdout = child.inner().stdout.take().ok_or_else(|| {

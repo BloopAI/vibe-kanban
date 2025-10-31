@@ -18,9 +18,7 @@ use tokio::{
 };
 use ts_rs::TS;
 use uuid::Uuid;
-use workspace_utils::{
-    msg_store::MsgStore, path::get_vibe_kanban_temp_dir, shell::get_shell_command,
-};
+use workspace_utils::{msg_store::MsgStore, path::get_vibe_kanban_temp_dir};
 
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
@@ -97,23 +95,22 @@ impl Copilot {
 #[async_trait]
 impl StandardCodingAgentExecutor for Copilot {
     async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
-        let (shell_cmd, shell_arg) = get_shell_command();
         let log_dir = Self::create_temp_log_dir(current_dir).await?;
-        let copilot_command = self
+        let command_parts = self
             .build_command_builder(&log_dir.to_string_lossy())
-            .build_initial();
+            .build_initial()?;
+        let (program_path, args) = command_parts.into_resolved().await?;
 
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
-        let mut command = Command::new(shell_cmd);
+        let mut command = Command::new(program_path);
         command
             .kill_on_drop(true)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(current_dir)
-            .arg(shell_arg)
-            .arg(copilot_command)
+            .args(&args)
             .env("NODE_NO_WARNINGS", "1");
 
         let mut child = command.group_spawn()?;
@@ -136,15 +133,15 @@ impl StandardCodingAgentExecutor for Copilot {
         prompt: &str,
         session_id: &str,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let (shell_cmd, shell_arg) = get_shell_command();
         let log_dir = Self::create_temp_log_dir(current_dir).await?;
-        let copilot_command = self
+        let command_parts = self
             .build_command_builder(&log_dir.to_string_lossy())
-            .build_follow_up(&["--resume".to_string(), session_id.to_string()]);
+            .build_follow_up(&["--resume".to_string(), session_id.to_string()])?;
+        let (program_path, args) = command_parts.into_resolved().await?;
 
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
-        let mut command = Command::new(shell_cmd);
+        let mut command = Command::new(program_path);
 
         command
             .kill_on_drop(true)
@@ -152,8 +149,7 @@ impl StandardCodingAgentExecutor for Copilot {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(current_dir)
-            .arg(shell_arg)
-            .arg(copilot_command)
+            .args(&args)
             .env("NODE_NO_WARNINGS", "1");
 
         let mut child = command.group_spawn()?;

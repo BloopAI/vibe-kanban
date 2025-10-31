@@ -15,7 +15,7 @@ use workspace_utils::{
     },
     msg_store::MsgStore,
     path::make_path_relative,
-    shell::{get_shell_command, resolve_executable_path},
+    shell::resolve_executable_path,
 };
 
 use crate::{
@@ -67,20 +67,19 @@ impl StandardCodingAgentExecutor for CursorAgent {
     async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
         mcp::ensure_mcp_server_trust(self, current_dir).await;
 
-        let (shell_cmd, shell_arg) = get_shell_command();
-        let agent_cmd = self.build_command_builder().build_initial();
+        let command_parts = self.build_command_builder().build_initial()?;
+        let (executable_path, args) = command_parts.into_resolved().await?;
 
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
-        let mut command = Command::new(shell_cmd);
+        let mut command = Command::new(executable_path);
         command
             .kill_on_drop(true)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(current_dir)
-            .arg(shell_arg)
-            .arg(&agent_cmd);
+            .args(&args);
 
         let mut child = command.group_spawn()?;
 
@@ -100,22 +99,21 @@ impl StandardCodingAgentExecutor for CursorAgent {
     ) -> Result<SpawnedChild, ExecutorError> {
         mcp::ensure_mcp_server_trust(self, current_dir).await;
 
-        let (shell_cmd, shell_arg) = get_shell_command();
-        let agent_cmd = self
+        let command_parts = self
             .build_command_builder()
-            .build_follow_up(&["--resume".to_string(), session_id.to_string()]);
+            .build_follow_up(&["--resume".to_string(), session_id.to_string()])?;
+        let (executable_path, args) = command_parts.into_resolved().await?;
 
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
-        let mut command = Command::new(shell_cmd);
+        let mut command = Command::new(executable_path);
         command
             .kill_on_drop(true)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(current_dir)
-            .arg(shell_arg)
-            .arg(&agent_cmd);
+            .args(&args);
 
         let mut child = command.group_spawn()?;
 
@@ -445,7 +443,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
     }
 
     async fn check_availability(&self) -> bool {
-        resolve_executable_path("cursor-agent").is_some()
+        resolve_executable_path("cursor-agent").await.is_some()
     }
 }
 

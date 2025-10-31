@@ -14,6 +14,7 @@ use workspace_utils::msg_store::MsgStore;
 
 use crate::{
     approvals::ExecutorApprovalService,
+    command::CommandBuildError,
     executors::{
         amp::Amp, claude::ClaudeCode, codex::Codex, copilot::Copilot, cursor::CursorAgent,
         gemini::Gemini, opencode::Opencode, qwen::QwenCode,
@@ -55,6 +56,10 @@ pub enum ExecutorError {
     TomlDeserialize(#[from] toml::de::Error),
     #[error(transparent)]
     ExecutorApprovalError(#[from] crate::approvals::ExecutorApprovalError),
+    #[error(transparent)]
+    CommandBuild(#[from] CommandBuildError),
+    #[error("Executable `{program}` not found in PATH")]
+    ExecutableNotFound { program: String },
 }
 
 #[enum_dispatch]
