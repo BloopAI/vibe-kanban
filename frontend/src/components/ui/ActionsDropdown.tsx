@@ -112,6 +112,15 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
     });
   };
 
+  const handleEditBranchName = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!attempt?.id) return;
+    NiceModal.show('edit-branch-name-dialog', {
+      attemptId: attempt.id,
+      currentBranchName: attempt.branch,
+    });
+  };
+
   return (
     <>
       <DropdownMenu>
@@ -162,6 +171,12 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
                 onClick={handleGitActions}
               >
                 {t('actionsMenu.gitActions')}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!attempt?.id}
+                onClick={handleEditBranchName}
+              >
+                {t('actionsMenu.editBranchName')}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
             </>

@@ -404,6 +404,22 @@ impl TaskAttempt {
         Ok(())
     }
 
+    pub async fn update_branch_name(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+        new_branch_name: &str,
+    ) -> Result<(), TaskAttemptError> {
+        sqlx::query!(
+            "UPDATE task_attempts SET branch = $1, updated_at = datetime('now') WHERE id = $2",
+            new_branch_name,
+            attempt_id,
+        )
+        .execute(pool)
+        .await?;
+
+        Ok(())
+    }
+
     pub async fn resolve_container_ref(
         pool: &SqlitePool,
         container_ref: &str,

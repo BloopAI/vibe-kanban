@@ -1506,6 +1506,25 @@ impl GitService {
         }
     }
 
+    pub fn rename_local_branch(
+        &self,
+        worktree_path: &Path,
+        old_branch_name: &str,
+        new_branch_name: &str,
+    ) -> Result<(), GitServiceError> {
+        let repo = self.open_repo(worktree_path)?;
+        
+        let mut branch = repo
+            .find_branch(old_branch_name, BranchType::Local)
+            .map_err(|_| GitServiceError::BranchNotFound(old_branch_name.to_string()))?;
+        
+        branch.rename(new_branch_name, false)?;
+        
+        repo.set_head(&format!("refs/heads/{}", new_branch_name))?;
+        
+        Ok(())
+    }
+
     /// Return true if a rebase is currently in progress in this worktree.
     pub fn is_rebase_in_progress(&self, worktree_path: &Path) -> Result<bool, GitServiceError> {
         let git = GitCli::new();

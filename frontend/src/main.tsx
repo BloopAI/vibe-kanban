@@ -38,6 +38,7 @@ import {
   GitActionsDialog,
 } from './components/dialogs';
 import { CreateAttemptDialog } from './components/dialogs/tasks/CreateAttemptDialog';
+import { EditBranchNameDialog } from './components/dialogs/tasks/EditBranchNameDialog';
 
 // Register modals
 NiceModal.register('github-login', GitHubLoginDialog);
@@ -63,6 +64,7 @@ NiceModal.register('restore-logs', RestoreLogsDialog);
 NiceModal.register('view-processes', ViewProcessesDialog);
 NiceModal.register('create-attempt', CreateAttemptDialog);
 NiceModal.register('git-actions', GitActionsDialog);
+NiceModal.register('edit-branch-name-dialog', EditBranchNameDialog);
 
 import {
   useLocation,
