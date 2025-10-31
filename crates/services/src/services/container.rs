@@ -671,33 +671,28 @@ pub trait ContainerService {
             }
 
             // Emit NextAction with failure context for coding agent requests
-            match &start_error {
-                ContainerError::ExecutorError(ExecutorError::ExecutableNotFound { program }) => {
-                    let help_text =
-                        format!("The required executable `{}` is not installed.", program);
-                    let error_message = NormalizedEntry {
-                        timestamp: None,
-                        entry_type: NormalizedEntryType::ErrorMessage {
-                            error_type: ErrorType::SetupRequired,
-                        },
-                        content: help_text,
-                        metadata: None,
-                    };
-                    let patch = ConversationPatch::add_normalized_entry(2, error_message);
-                    if let Ok(json_line) =
-                        serde_json::to_string::<LogMsg>(&LogMsg::JsonPatch(patch))
-                    {
-                        let _ = ExecutionProcessLogs::append_log_line(
-                            &self.db().pool,
-                            execution_process.id,
-                            &format!("{json_line}\n"),
-                        )
-                        .await;
-                    }
+            if let ContainerError::ExecutorError(ExecutorError::ExecutableNotFound { program }) =
+                &start_error
+            {
+                let help_text = format!("The required executable `{program}` is not installed.");
+                let error_message = NormalizedEntry {
+                    timestamp: None,
+                    entry_type: NormalizedEntryType::ErrorMessage {
+                        error_type: ErrorType::SetupRequired,
+                    },
+                    content: help_text,
+                    metadata: None,
+                };
+                let patch = ConversationPatch::add_normalized_entry(2, error_message);
+                if let Ok(json_line) = serde_json::to_string::<LogMsg>(&LogMsg::JsonPatch(patch)) {
+                    let _ = ExecutionProcessLogs::append_log_line(
+                        &self.db().pool,
+                        execution_process.id,
+                        &format!("{json_line}\n"),
+                    )
+                    .await;
                 }
-                _ => {}
             };
-
             return Err(start_error);
         }
 
@@ -714,7 +709,7 @@ pub trait ContainerService {
             }
         {
             if let Some(executor) =
-                ExecutorConfigs::get_cached().get_coding_agent(&executor_profile_id)
+                ExecutorConfigs::get_cached().get_coding_agent(executor_profile_id)
             {
                 executor.normalize_logs(msg_store, &self.task_attempt_to_current_dir(task_attempt));
             } else {

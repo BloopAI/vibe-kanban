@@ -45,7 +45,7 @@ interface UseConversationHistoryParams {
   onEntriesUpdated: OnEntriesUpdated;
 }
 
-interface UseConversationHistoryResult { }
+interface UseConversationHistoryResult {}
 
 const MIN_INITIAL_ENTRIES = 10;
 const REMAINING_BATCH_SIZE = 50;
@@ -68,7 +68,12 @@ const nextActionPatch: (
   execution_processes: number,
   needs_setup: boolean,
   setup_help_text?: string
-) => PatchTypeWithKey = (failed, execution_processes, needs_setup, setup_help_text) => ({
+) => PatchTypeWithKey = (
+  failed,
+  execution_processes,
+  needs_setup,
+  setup_help_text
+) => ({
   type: 'NORMALIZED_ENTRY',
   content: {
     entry_type: {
@@ -223,9 +228,9 @@ export const useConversationHistory = ({
       .filter(
         (p) =>
           p.executionProcess.executor_action.typ.type ===
-          'CodingAgentFollowUpRequest' ||
+            'CodingAgentFollowUpRequest' ||
           p.executionProcess.executor_action.typ.type ===
-          'CodingAgentInitialRequest'
+            'CodingAgentInitialRequest'
       )
       .sort(
         (a, b) =>
@@ -260,9 +265,9 @@ export const useConversationHistory = ({
         const entries: PatchTypeWithKey[] = [];
         if (
           p.executionProcess.executor_action.typ.type ===
-          'CodingAgentInitialRequest' ||
+            'CodingAgentInitialRequest' ||
           p.executionProcess.executor_action.typ.type ===
-          'CodingAgentFollowUpRequest'
+            'CodingAgentFollowUpRequest'
         ) {
           // New user message
           const userNormalizedEntry: NormalizedEntry = {
@@ -327,7 +332,10 @@ export const useConversationHistory = ({
             // Check if this failed process has a SetupRequired entry
             const hasSetupRequired = entriesExcludingUser.some((entry) => {
               if (entry.type !== 'NORMALIZED_ENTRY') return false;
-              if (entry.content.entry_type.type === 'error_message' && entry.content.entry_type.error_type.type === 'setup_required') {
+              if (
+                entry.content.entry_type.type === 'error_message' &&
+                entry.content.entry_type.error_type.type === 'setup_required'
+              ) {
                 setupHelpText = entry.content.content;
                 return true;
               }
@@ -379,9 +387,9 @@ export const useConversationHistory = ({
             executionProcess?.status === 'running'
               ? null
               : {
-                type: 'exit_code',
-                code: exitCode,
-              };
+                  type: 'exit_code',
+                  code: exitCode,
+                };
 
           const toolStatus: ToolStatus =
             executionProcess?.status === ExecutionProcessStatus.running
