@@ -44,6 +44,8 @@
     "viewDevLogs": "View dev server logs",
     "viewHistory": "View attempt history",
     "tryAgain": "Try Again",
+    "runSetup": "설정 실행",
+    "setupHelpText": "이 시도를 계속하려면 설정이 필요합니다. '설정 실행'을 클릭하여 에이전트를 자동으로 구성하세요.",
     "devScriptMissingTooltip": "To start the dev server, add a dev script to this project"
   },
   "attemptHeaderActions": {
