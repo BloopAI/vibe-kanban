@@ -25,8 +25,8 @@ use crate::{
         opencode::share_bridge::Bridge as ShareBridge,
     },
     logs::{
-        ActionType, FileChange, NormalizedEntry, NormalizedEntryType, TodoItem, ToolStatus,
-        utils::EntryIndexProvider,
+        ActionType, ErrorType, FileChange, NormalizedEntry, NormalizedEntryType, TodoItem,
+        ToolStatus, utils::EntryIndexProvider,
     },
     stdout_dup,
 };
@@ -323,7 +323,9 @@ impl Opencode {
             if line.starts_with("ERROR") || LogUtils::is_error_line(&line) {
                 let entry = NormalizedEntry {
                     timestamp: None,
-                    entry_type: NormalizedEntryType::ErrorMessage,
+                    entry_type: NormalizedEntryType::ErrorMessage {
+                        error_type: ErrorType::Other,
+                    },
                     content: line.clone(),
                     metadata: None,
                 };

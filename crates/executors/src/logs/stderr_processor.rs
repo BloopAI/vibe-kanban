@@ -13,7 +13,9 @@ use std::{sync::Arc, time::Duration};
 use futures::StreamExt;
 use workspace_utils::msg_store::MsgStore;
 
-use super::{NormalizedEntry, NormalizedEntryType, plain_text_processor::PlainTextLogProcessor};
+use super::{
+    ErrorType, NormalizedEntry, NormalizedEntryType, plain_text_processor::PlainTextLogProcessor,
+};
 use crate::logs::utils::EntryIndexProvider;
 
 /// Standard stderr log normalizer that uses PlainTextLogProcessor to stream error logs.
@@ -41,7 +43,9 @@ pub fn normalize_stderr_logs(msg_store: Arc<MsgStore>, entry_index_provider: Ent
         let mut processor = PlainTextLogProcessor::builder()
             .normalized_entry_producer(Box::new(|content: String| NormalizedEntry {
                 timestamp: None,
-                entry_type: NormalizedEntryType::ErrorMessage,
+                entry_type: NormalizedEntryType::ErrorMessage {
+                    error_type: ErrorType::Other,
+                },
                 content: strip_ansi_escapes::strip_str(&content),
                 metadata: None,
             }))

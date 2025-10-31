@@ -793,6 +793,7 @@ function DisplayConversationEntry({
           failed={entry.entry_type.failed}
           execution_processes={entry.entry_type.execution_processes}
           task={task}
+          needsSetup={entry.entry_type.needs_setup}
         />
       </div>
     );

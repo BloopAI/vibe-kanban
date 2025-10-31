@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Pencil } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useProcessRetry } from '@/hooks/useProcessRetry';
-import { TaskAttempt, type BaseAgentCapability } from 'shared/types';
+import { TaskAttempt, BaseAgentCapability } from 'shared/types';
 import { useUserSystem } from '@/components/config-provider';
 import { useDraftStream } from '@/hooks/follow-up/useDraftStream';
 import { RetryEditorInline } from './RetryEditorInline';
@@ -28,7 +28,7 @@ const UserMessage = ({
   const canFork = !!(
     taskAttempt?.executor &&
     capabilities?.[taskAttempt.executor]?.includes(
-      'SESSION_FORK' as BaseAgentCapability
+      BaseAgentCapability.SESSION_FORK
     )
   );
 

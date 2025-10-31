@@ -37,7 +37,7 @@ use crate::{
     approvals::ToolCallMetadata,
     executors::codex::session::SessionHandler,
     logs::{
-        ActionType, CommandExitStatus, CommandRunResult, FileChange, NormalizedEntry,
+        ActionType, CommandExitStatus, CommandRunResult, ErrorType, FileChange, NormalizedEntry,
         NormalizedEntryType, TodoItem, ToolResult, ToolResultValueType, ToolStatus,
         stderr_processor::normalize_stderr_logs,
         utils::{ConversationPatch, EntryIndexProvider},
@@ -671,7 +671,9 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                         &entry_index,
                         NormalizedEntry {
                             timestamp: None,
-                            entry_type: NormalizedEntryType::ErrorMessage,
+                            entry_type: NormalizedEntryType::ErrorMessage {
+                                error_type: ErrorType::Other,
+                            },
                             content: format!("Stream error: {message}"),
                             metadata: None,
                         },
@@ -952,7 +954,9 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                         &entry_index,
                         NormalizedEntry {
                             timestamp: None,
-                            entry_type: NormalizedEntryType::ErrorMessage,
+                            entry_type: NormalizedEntryType::ErrorMessage {
+                                error_type: ErrorType::Other,
+                            },
                             content: message,
                             metadata: None,
                         },
@@ -1077,7 +1081,9 @@ impl ToNormalizedEntry for Error {
     fn to_normalized_entry(&self) -> NormalizedEntry {
         NormalizedEntry {
             timestamp: None,
-            entry_type: NormalizedEntryType::ErrorMessage,
+            entry_type: NormalizedEntryType::ErrorMessage {
+                error_type: ErrorType::Other,
+            },
             content: match self {
                 Error::LaunchError { error } => error.clone(),
             },
@@ -1148,7 +1154,9 @@ impl ToNormalizedEntryOpt for Approval {
             }),
             ApprovalStatus::TimedOut => Some(NormalizedEntry {
                 timestamp: None,
-                entry_type: NormalizedEntryType::ErrorMessage,
+                entry_type: NormalizedEntryType::ErrorMessage {
+                    error_type: ErrorType::Other,
+                },
                 content: format!("Approval timed out for tool {tool_name}"),
                 metadata: None,
             }),

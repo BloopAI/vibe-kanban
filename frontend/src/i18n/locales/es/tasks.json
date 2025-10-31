@@ -44,6 +44,8 @@
     "viewDevLogs": "View dev server logs",
     "viewHistory": "View attempt history",
     "tryAgain": "Try Again",
+    "runSetup": "Ejecutar Configuración",
+    "setupHelpText": "Este intento necesita configuración antes de poder continuar. Haz clic en 'Ejecutar Configuración' para configurar automáticamente el agente.",
     "devScriptMissingTooltip": "To start the dev server, add a dev script to this project"
   },
   "attemptHeaderActions": {

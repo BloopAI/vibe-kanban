@@ -181,6 +181,8 @@
     "diffs": "Diffs",
     "gitActions": "Git Actions",
     "tryAgain": "Try Again",
+    "runSetup": "Run Setup",
+    "setupHelpText": "This attempt needs setup before it can continue. Click 'Run Setup' to automatically configure the agent.",
     "devScriptMissingTooltip": "To start the dev server, add a dev script to this project"
   },
   "git": {

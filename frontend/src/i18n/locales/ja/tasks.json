@@ -44,6 +44,8 @@
     "viewDevLogs": "View dev server logs",
     "viewHistory": "View attempt history",
     "tryAgain": "Try Again",
+    "runSetup": "セットアップを実行",
+    "setupHelpText": "この試行を続行する前にセットアップが必要です。「セットアップを実行」をクリックしてエージェントを自動的に設定します。",
     "devScriptMissingTooltip": "To start the dev server, add a dev script to this project"
   },
   "attemptHeaderActions": {
