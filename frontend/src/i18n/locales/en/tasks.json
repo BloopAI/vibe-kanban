@@ -250,7 +250,7 @@
   "stopShareDialog": {
     "title": "Stop Sharing Task",
     "description": "Stop sharing \"{{title}}\" with your organization?",
-    "warning": "Stop sharing stop sharing the task with your organization, but keeps your local task.",
+    "warning": "Stop sharings stop sharing the task with your organization, but keeps your local task.",
     "confirm": "Stop share task",
     "inProgress": "Stop sharing...",
     "genericError": "Failed to stop sharing task. Please try again."
