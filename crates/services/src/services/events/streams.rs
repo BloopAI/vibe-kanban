@@ -71,7 +71,9 @@ impl EventService {
                                                 serde_json::from_value::<SharedTask>(
                                                     op.value.clone(),
                                                 )
-                                                && shared_task.project_id == project_id
+                                                && shared_task
+                                                    .project_id
+                                                    .is_some_and(|id| id == project_id)
                                             {
                                                 return Some(Ok(LogMsg::JsonPatch(patch)));
                                             }
@@ -81,7 +83,9 @@ impl EventService {
                                                 serde_json::from_value::<SharedTask>(
                                                     op.value.clone(),
                                                 )
-                                                && shared_task.project_id == project_id
+                                                && shared_task
+                                                    .project_id
+                                                    .is_some_and(|id| id == project_id)
                                             {
                                                 return Some(Ok(LogMsg::JsonPatch(patch)));
                                             }
@@ -148,7 +152,10 @@ impl EventService {
                                             }
                                         }
                                         RecordTypes::SharedTask(shared_task) => {
-                                            if shared_task.project_id == project_id {
+                                            if shared_task
+                                                .project_id
+                                                .is_some_and(|id| id == project_id)
+                                            {
                                                 return Some(Ok(LogMsg::JsonPatch(patch)));
                                             }
                                         }
