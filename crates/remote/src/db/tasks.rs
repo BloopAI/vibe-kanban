@@ -578,13 +578,22 @@ async fn insert_activity(
 
     sqlx::query!(
         r#"
+        WITH next AS (
+            INSERT INTO organization_activity_counters AS counters (organization_id, last_seq)
+            VALUES ($1, 1)
+            ON CONFLICT (organization_id)
+            DO UPDATE SET last_seq = counters.last_seq + 1
+            RETURNING last_seq
+        )
         INSERT INTO activity (
             organization_id,
+            seq,
             assignee_user_id,
             event_type,
             payload
         )
-        VALUES ($1, $2, $3, $4)
+        SELECT $1, next.last_seq, $2, $3, $4
+        FROM next
         "#,
         task.organization_id,
         task.assignee_user_id,
