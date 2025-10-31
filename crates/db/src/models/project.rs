@@ -395,7 +395,7 @@ impl Project {
                SET has_remote = $2,
                    github_repo_owner = $3,
                    github_repo_name = $4,
-                   github_repo_id = $5
+                   github_repo_id = COALESCE($5, github_repo_id)
                WHERE id = $1"#,
             id,
             metadata.has_remote,
