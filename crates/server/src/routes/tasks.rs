@@ -34,15 +34,32 @@ use crate::{DeploymentImpl, error::ApiError, middleware::load_task_middleware};
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TaskQuery {
     pub project_id: Uuid,
+    #[serde(default)]
+    pub tag_ids: Option<String>, // Comma-separated tag IDs for filtering
 }
 
 pub async fn get_tasks(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<TaskQuery>,
 ) -> Result<ResponseJson<ApiResponse<Vec<TaskWithAttemptStatus>>>, ApiError> {
-    let tasks =
+    let mut tasks =
         Task::find_by_project_id_with_attempt_status(&deployment.db().pool, query.project_id)
             .await?;
+
+    // Filter by tags if tag_ids are provided
+    if let Some(tag_ids_str) = query.tag_ids {
+        let tag_ids: Vec<Uuid> = tag_ids_str
+            .split(',')
+            .filter_map(|id| id.trim().parse::<Uuid>().ok())
+            .collect();
+
+        if !tag_ids.is_empty() {
+            tasks.retain(|task| {
+                // Keep tasks that have at least one of the specified tags
+                task.tags.iter().any(|tag| tag_ids.contains(&tag.id))
+            });
+        }
+    }
 
     Ok(ResponseJson(ApiResponse::success(tasks)))
 }
@@ -119,6 +136,10 @@ pub async fn create_task(
         TaskImage::associate_many_dedup(&deployment.db().pool, task.id, image_ids).await?;
     }
 
+    if let Some(tag_ids) = &payload.tag_ids {
+        Task::set_tags(&deployment.db().pool, task.id, tag_ids.clone()).await?;
+    }
+
     deployment
         .track_if_analytics_allowed(
             "task_created",
@@ -127,6 +148,7 @@ pub async fn create_task(
             "project_id": payload.project_id,
             "has_description": task.description.is_some(),
             "has_images": payload.image_ids.is_some(),
+            "has_tags": payload.tag_ids.is_some(),
             }),
         )
         .await;
@@ -152,6 +174,10 @@ pub async fn create_task_and_start(
         TaskImage::associate_many(&deployment.db().pool, task.id, image_ids).await?;
     }
 
+    if let Some(tag_ids) = &payload.task.tag_ids {
+        Task::set_tags(&deployment.db().pool, task.id, tag_ids.clone()).await?;
+    }
+
     deployment
         .track_if_analytics_allowed(
             "task_created",
@@ -160,6 +186,7 @@ pub async fn create_task_and_start(
                 "project_id": task.project_id,
                 "has_description": task.description.is_some(),
                 "has_images": payload.task.image_ids.is_some(),
+                "has_tags": payload.task.tag_ids.is_some(),
             }),
         )
         .await;
@@ -200,6 +227,8 @@ pub async fn create_task_and_start(
         .await?
         .ok_or(ApiError::Database(SqlxError::RowNotFound))?;
 
+    let tags = Task::find_tags_for_task(&deployment.db().pool, task.id).await?;
+
     tracing::info!("Started execution process {}", execution_process.id);
     Ok(ResponseJson(ApiResponse::success(TaskWithAttemptStatus {
         task,
@@ -207,6 +236,7 @@ pub async fn create_task_and_start(
         has_merged_attempt: false,
         last_attempt_failed: false,
         executor: task_attempt.executor,
+        tags,
     })))
 }
 
@@ -241,6 +271,10 @@ pub async fn update_task(
     if let Some(image_ids) = &payload.image_ids {
         TaskImage::delete_by_task_id(&deployment.db().pool, task.id).await?;
         TaskImage::associate_many_dedup(&deployment.db().pool, task.id, image_ids).await?;
+    }
+
+    if let Some(tag_ids) = &payload.tag_ids {
+        Task::set_tags(&deployment.db().pool, task.id, tag_ids.clone()).await?;
     }
 
     Ok(ResponseJson(ApiResponse::success(task)))

@@ -5,7 +5,7 @@ use strum_macros::{Display, EnumString};
 use ts_rs::TS;
 use uuid::Uuid;
 
-use super::{project::Project, task_attempt::TaskAttempt};
+use super::{project::Project, tag::Tag, task_attempt::TaskAttempt};
 
 #[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS, EnumString, Display)]
 #[sqlx(type_name = "task_status", rename_all = "lowercase")]
@@ -40,6 +40,7 @@ pub struct TaskWithAttemptStatus {
     pub has_merged_attempt: bool,
     pub last_attempt_failed: bool,
     pub executor: String,
+    pub tags: Vec<Tag>,
 }
 
 impl std::ops::Deref for TaskWithAttemptStatus {
@@ -69,6 +70,7 @@ pub struct CreateTask {
     pub description: Option<String>,
     pub parent_task_attempt: Option<Uuid>,
     pub image_ids: Option<Vec<Uuid>>,
+    pub tag_ids: Option<Vec<Uuid>>,
 }
 
 impl CreateTask {
@@ -94,6 +96,7 @@ pub struct UpdateTask {
     pub status: Option<TaskStatus>,
     pub parent_task_attempt: Option<Uuid>,
     pub image_ids: Option<Vec<Uuid>>,
+    pub tag_ids: Option<Vec<Uuid>>,
 }
 
 impl Task {
@@ -134,7 +137,7 @@ impl Task {
        AND ep.run_reason IN ('setupscript','cleanupscript','codingagent')
      LIMIT 1
   ) THEN 1 ELSE 0 END            AS "has_in_progress_attempt!: i64",
-  
+
   CASE WHEN (
     SELECT ep.status
       FROM task_attempts ta
@@ -162,23 +165,66 @@ ORDER BY t.created_at DESC"#,
         .fetch_all(pool)
         .await?;
 
+        // Collect task IDs to fetch tags
+        let task_ids: Vec<Uuid> = records.iter().map(|rec| rec.id).collect();
+
+        // Fetch all tags for these tasks in one query
+        let tag_records = if !task_ids.is_empty() {
+            let task_ids_blob: Vec<Vec<u8>> = task_ids.iter().map(|id| id.as_bytes().to_vec()).collect();
+
+            sqlx::query!(
+                r#"SELECT
+                    tt.task_id as "task_id!: Uuid",
+                    t.id as "tag_id!: Uuid",
+                    t.tag_name,
+                    t.content as "content!",
+                    t.created_at as "created_at!: DateTime<Utc>",
+                    t.updated_at as "updated_at!: DateTime<Utc>"
+                FROM task_tags tt
+                JOIN tags t ON tt.tag_id = t.id
+                WHERE tt.task_id IN (SELECT value FROM json_each(?))
+                ORDER BY t.tag_name ASC"#,
+                serde_json::to_string(&task_ids).unwrap()
+            )
+            .fetch_all(pool)
+            .await?
+        } else {
+            vec![]
+        };
+
+        // Group tags by task_id
+        let mut tags_by_task: std::collections::HashMap<Uuid, Vec<Tag>> = std::collections::HashMap::new();
+        for tag_rec in tag_records {
+            tags_by_task.entry(tag_rec.task_id).or_default().push(Tag {
+                id: tag_rec.tag_id,
+                tag_name: tag_rec.tag_name,
+                content: tag_rec.content,
+                created_at: tag_rec.created_at,
+                updated_at: tag_rec.updated_at,
+            });
+        }
+
         let tasks = records
             .into_iter()
-            .map(|rec| TaskWithAttemptStatus {
-                task: Task {
-                    id: rec.id,
-                    project_id: rec.project_id,
-                    title: rec.title,
-                    description: rec.description,
-                    status: rec.status,
-                    parent_task_attempt: rec.parent_task_attempt,
-                    created_at: rec.created_at,
-                    updated_at: rec.updated_at,
-                },
-                has_in_progress_attempt: rec.has_in_progress_attempt != 0,
-                has_merged_attempt: false, // TODO use merges table
-                last_attempt_failed: rec.last_attempt_failed != 0,
-                executor: rec.executor,
+            .map(|rec| {
+                let tags = tags_by_task.get(&rec.id).cloned().unwrap_or_default();
+                TaskWithAttemptStatus {
+                    task: Task {
+                        id: rec.id,
+                        project_id: rec.project_id,
+                        title: rec.title,
+                        description: rec.description,
+                        status: rec.status,
+                        parent_task_attempt: rec.parent_task_attempt,
+                        created_at: rec.created_at,
+                        updated_at: rec.updated_at,
+                    },
+                    has_in_progress_attempt: rec.has_in_progress_attempt != 0,
+                    has_merged_attempt: false, // TODO use merges table
+                    last_attempt_failed: rec.last_attempt_failed != 0,
+                    executor: rec.executor,
+                    tags,
+                }
             })
             .collect();
 
@@ -379,5 +425,66 @@ ORDER BY t.created_at DESC"#,
             current_attempt: task_attempt.clone(),
             children,
         })
+    }
+
+    // Tag management methods
+    pub async fn find_tags_for_task(pool: &SqlitePool, task_id: Uuid) -> Result<Vec<Tag>, sqlx::Error> {
+        sqlx::query_as!(
+            Tag,
+            r#"SELECT t.id as "id!: Uuid", t.tag_name, t.content as "content!", t.created_at as "created_at!: DateTime<Utc>", t.updated_at as "updated_at!: DateTime<Utc>"
+               FROM tags t
+               JOIN task_tags tt ON t.id = tt.tag_id
+               WHERE tt.task_id = $1
+               ORDER BY t.tag_name ASC"#,
+            task_id
+        )
+        .fetch_all(pool)
+        .await
+    }
+
+    pub async fn add_tag(pool: &SqlitePool, task_id: Uuid, tag_id: Uuid) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "INSERT OR IGNORE INTO task_tags (task_id, tag_id) VALUES ($1, $2)",
+            task_id,
+            tag_id
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn remove_tag(pool: &SqlitePool, task_id: Uuid, tag_id: Uuid) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "DELETE FROM task_tags WHERE task_id = $1 AND tag_id = $2",
+            task_id,
+            tag_id
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn set_tags(pool: &SqlitePool, task_id: Uuid, tag_ids: Vec<Uuid>) -> Result<(), sqlx::Error> {
+        // Start a transaction
+        let mut tx = pool.begin().await?;
+
+        // Remove all existing tags
+        sqlx::query!("DELETE FROM task_tags WHERE task_id = $1", task_id)
+            .execute(&mut *tx)
+            .await?;
+
+        // Add new tags
+        for tag_id in tag_ids {
+            sqlx::query!(
+                "INSERT INTO task_tags (task_id, tag_id) VALUES ($1, $2)",
+                task_id,
+                tag_id
+            )
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        tx.commit().await?;
+        Ok(())
     }
 }
