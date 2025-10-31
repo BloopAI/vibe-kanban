@@ -415,7 +415,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
           <div className="flex-none pr-8 pt-3">
             <form.Field
               name="title"
-              validators={{ onChange: z.string().min(1) }}
+              validators={{ onChange: z.string().trim().min(1) }}
             >
               {(field) => (
                 <Input
