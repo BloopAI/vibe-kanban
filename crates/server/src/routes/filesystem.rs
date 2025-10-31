@@ -80,7 +80,13 @@ pub async fn get_slash_commands(
         Ok(commands) => {
             let json_commands: Vec<serde_json::Value> = commands
                 .into_iter()
-                .map(|cmd| serde_json::to_value(cmd).unwrap_or_default())
+                .filter_map(|cmd| match serde_json::to_value(cmd) {
+                    Ok(value) => Some(value),
+                    Err(e) => {
+                        tracing::error!("Failed to serialize slash command: {}", e);
+                        None
+                    }
+                })
                 .collect();
             Ok(ResponseJson(ApiResponse::success(json_commands)))
         }

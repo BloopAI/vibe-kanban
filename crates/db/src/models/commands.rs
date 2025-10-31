@@ -15,9 +15,10 @@ pub struct SlashCommand {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, TS)]
 #[ts(export)]
+#[repr(u8)]
 pub enum CommandCategory {
     #[ts(rename = "global")]
-    Global,
+    Global = 0,
     #[ts(rename = "project")]
-    Project,
+    Project = 1,
 }
