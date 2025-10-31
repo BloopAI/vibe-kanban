@@ -132,7 +132,7 @@ When running Vibe Kanban on a remote server (e.g., via systemctl, Docker, or clo
 3. **Prerequisites**:
    - SSH access from your local machine to the remote server
    - SSH keys configured (passwordless authentication)
-   - VSCode Remote-SSH extension (or equivalent for Cursor/Windsurf)
+   - VSCode Remote-SSH extension
 
 When configured, the "Open in VSCode" buttons will generate URLs like `vscode://vscode-remote/ssh-remote+user@host/path` that open your local editor and connect to the remote server.
 
