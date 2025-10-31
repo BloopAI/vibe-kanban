@@ -251,16 +251,6 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
 
   const isSubmitting = useStore(form.store, (state) => state.isSubmitting);
 
-  // Validators
-  const titleValidator = z.string().trim().min(1);
-  const executorProfileValidator = ({
-    value,
-  }: {
-    value: ExecutorProfileId | null;
-  }) => (autoStart && !value ? 'Executor profile required' : undefined);
-  const branchValidator = ({ value }: { value: string }) =>
-    autoStart && !value ? 'Branch required' : undefined;
-
   // Update branch when default branch changes
   useEffect(() => {
     if (!defaultBranch) return;
@@ -425,10 +415,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
           <div className="flex-none pr-8 pt-3">
             <form.Field
               name="title"
-              validators={{
-                onMount: titleValidator,
-                onChange: titleValidator,
-              }}
+              validators={{ onChange: z.string().min(1) }}
             >
               {(field) => (
                 <Input
@@ -536,13 +523,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
                 autoStart ? 'opacity-100' : 'opacity-0 pointer-events-none'
               )}
             >
-              <form.Field
-                name="executorProfileId"
-                validators={{
-                  onMount: executorProfileValidator,
-                  onChange: executorProfileValidator,
-                }}
-              >
+              <form.Field name="executorProfileId">
                 {(field) => (
                   <ExecutorProfileSelector
                     profiles={profiles}
@@ -555,13 +536,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
                   />
                 )}
               </form.Field>
-              <form.Field
-                name="branch"
-                validators={{
-                  onMount: branchValidator,
-                  onChange: branchValidator,
-                }}
-              >
+              <form.Field name="branch">
                 {(field) => (
                   <BranchSelector
                     branches={branches}
@@ -629,13 +604,22 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
                 selector={(state) => ({
                   canSubmit: state.canSubmit,
                   isSubmitting: state.isSubmitting,
+                  values: state.values,
                 })}
               >
-                {(state) =>
-                  mode === 'edit' ? (
+                {(state) => {
+                  const isDisabled =
+                    !state.canSubmit ||
+                    !state.values.title.trim() ||
+                    (mode !== 'edit' &&
+                      autoStart &&
+                      (!state.values.executorProfileId ||
+                        !state.values.branch));
+
+                  return mode === 'edit' ? (
                     <Button
                       onClick={() => form.handleSubmit()}
-                      disabled={!state.canSubmit}
+                      disabled={isDisabled}
                     >
                       {state.isSubmitting
                         ? t('taskFormDialog.updating')
@@ -644,7 +628,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
                   ) : (
                     <Button
                       onClick={() => form.handleSubmit()}
-                      disabled={!state.canSubmit}
+                      disabled={isDisabled}
                     >
                       <Plus className="h-4 w-4 mr-1.5" />
                       {state.isSubmitting
@@ -653,8 +637,8 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
                           : t('taskFormDialog.creating')
                         : t('taskFormDialog.create')}
                     </Button>
-                  )
-                }
+                  );
+                }}
               </form.Subscribe>
             </div>
           </div>
