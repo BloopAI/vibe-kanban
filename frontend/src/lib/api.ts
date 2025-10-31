@@ -333,7 +333,7 @@ export const tasksApi = {
     return handleApiResponse<ShareTaskResponse>(response);
   },
 
-  transferAssignment: async (
+  reassign: async (
     sharedTaskId: string,
     data: { new_assignee_user_id: string | null; version?: number | null }
   ): Promise<AssignSharedTaskResponse> => {

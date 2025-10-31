@@ -287,7 +287,7 @@
   "stopShareDialog": {
     "title": "Stop Sharing Task",
     "description": "Stop sharing \"{{title}}\" with your organization?",
-    "warning": "Stop sharing removes the shared task from your organization, but keeps your local task.",
+    "warning": "Stop sharings stop sharing the task with your organization, but keeps your local task.",
     "confirm": "Stop share task",
     "inProgress": "Stop sharing...",
     "genericError": "Failed to stop sharing task. Please try again."
@@ -297,7 +297,7 @@
     "description": "Share \"{{title}}\" with your organization?",
     "success": "Task shared successfully.",
     "genericError": "Failed to share task. Please try again.",
-    "loadingSystem": "Loading account status…",
+    "loadingSystem": "Loading account status...",
     "loginRequired": {
       "title": "Sign in to continue",
       "description": "You need to sign in before you can share tasks. We will redirect you to the sign-in page.",
@@ -305,14 +305,14 @@
     },
     "githubRequired": {
       "title": "Connect GitHub",
-      "description": "Connect your GitHub account so we can publish shared tasks for you.",
+      "description": "Connect your GitHub account to share tasks. This project must have a remote repository on GitHub.",
       "action": "Connect GitHub"
     },
     "confirmationTitle": "Confirm sharing",
     "confirmationBody": "Sharing will publish this task to your shared workspace.",
     "cancel": "Cancel",
     "confirm": "Share task",
-    "inProgress": "Sharing…",
+    "inProgress": "Sharing...",
     "closeButton": "Close"
   },
   "showcases": {
