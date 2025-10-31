@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use shlex::Quoter;
 use thiserror::Error;
 use ts_rs::TS;
 use workspace_utils::shell::resolve_executable_path;
