@@ -37,16 +37,6 @@ impl CommandParts {
             .ok_or(ExecutorError::ExecutableNotFound { program })?;
         Ok((executable, args))
     }
-
-    pub fn to_shell_string(&self) -> Result<String, CommandBuildError> {
-        let quoter = Quoter::new().allow_nul(true);
-        let mut words: Vec<&str> = Vec::with_capacity(1 + self.args.len());
-        words.push(self.program.as_str());
-        for arg in &self.args {
-            words.push(arg.as_str());
-        }
-        quoter.join(words).map_err(CommandBuildError::QuoteError)
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, Default)]
