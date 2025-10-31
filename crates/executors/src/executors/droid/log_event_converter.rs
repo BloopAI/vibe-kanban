@@ -135,11 +135,8 @@ impl LogEventConverter {
 
                 if let Some(tool_call_id) = resolved_id {
                     // If explicit id was provided, remove it from the FIFO queue as cleanup
-                    if id.is_some() {
-                        if let Some(pos) = self.pending_fifo.iter().position(|x| x == &tool_call_id)
-                        {
-                            self.pending_fifo.remove(pos);
-                        }
+                    if id.is_some() && let Some(pos) = self.pending_fifo.iter().position(|x| x == &tool_call_id) {
+                        self.pending_fifo.remove(pos);
                     }
 
                     if let Some(call) = self.tool_map.remove(&tool_call_id) {
