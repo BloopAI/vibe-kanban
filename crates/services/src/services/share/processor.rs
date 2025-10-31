@@ -16,10 +16,7 @@ use remote::{
 use reqwest::Client as HttpClient;
 use uuid::Uuid;
 
-use super::{
-    GithubProjectLinkingCache, ShareConfig, ShareError, convert_remote_task,
-    sync_local_task_for_shared_task,
-};
+use super::{ShareConfig, ShareError, convert_remote_task, sync_local_task_for_shared_task};
 use crate::services::clerk::{ClerkSession, ClerkSessionStore};
 
 struct PreparedBulkTask {
@@ -162,9 +159,6 @@ impl ActivityProcessor {
             }) => {
                 let project_id = self.resolve_project_id(task.id, &project).await?;
                 if project_id.is_none() {
-                    GithubProjectLinkingCache::needs_linking(project.github_repository_id);
-                }
-                if project_id.is_none() {
                     tracing::debug!(
                         task_id = %task.id,
                         repo_id = project.github_repository_id,
@@ -250,7 +244,6 @@ impl ActivityProcessor {
                 .await?;
 
             if project_id.is_none() {
-                GithubProjectLinkingCache::needs_linking(payload.project.github_repository_id);
                 tracing::debug!(
                     task_id = %payload.task.id,
                     repo_id = payload.project.github_repository_id,

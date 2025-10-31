@@ -254,13 +254,17 @@ impl SharePublisher {
 
         // metadata differs from store, persist the update
         if metadata != project.metadata() {
+            let github_repo_id_changed = metadata.github_repo_id != project.github_repo_id;
             Project::update_remote_metadata(&self.db.pool, project.id, &metadata).await?;
             project.has_remote = metadata.has_remote;
             project.github_repo_owner = metadata.github_repo_owner.clone();
             project.github_repo_name = metadata.github_repo_name.clone();
-            project.github_repo_id = metadata.github_repo_id;
+            if let Some(repo_id) = metadata.github_repo_id {
+                project.github_repo_id = Some(repo_id);
+            }
 
-            if let Some(repo_id) = project.github_repo_id
+            if github_repo_id_changed
+                && let Some(repo_id) = metadata.github_repo_id
                 && let Err(err) =
                     link_shared_tasks_to_project(&self.db.pool, &self.sessions, project.id, repo_id)
                         .await

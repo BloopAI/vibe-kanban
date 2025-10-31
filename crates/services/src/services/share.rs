@@ -4,7 +4,6 @@ mod publisher;
 mod status;
 
 use std::{
-    collections::HashSet,
     io,
     sync::{Arc, Mutex as StdMutex},
     time::Duration,
@@ -20,7 +19,6 @@ use db::{
         task::Task,
     },
 };
-use once_cell::sync::Lazy;
 use processor::ActivityProcessor;
 pub use publisher::SharePublisher;
 use remote::{
@@ -425,15 +423,10 @@ pub async fn link_shared_tasks_to_project(
     project_id: Uuid,
     github_repo_id: i64,
 ) -> Result<(), ShareError> {
-    if GithubProjectLinkingCache::already_linked(github_repo_id) {
-        return Ok(());
-    }
-
     let linked_tasks =
         SharedTask::link_to_project_by_repo_id(pool, github_repo_id, project_id).await?;
 
     if linked_tasks.is_empty() {
-        GithubProjectLinkingCache::cache_as_linked(github_repo_id);
         return Ok(());
     }
 
@@ -443,41 +436,5 @@ pub async fn link_shared_tasks_to_project(
         sync_local_task_for_shared_task(pool, &task, current_user_id.as_deref(), None).await?;
     }
 
-    GithubProjectLinkingCache::cache_as_linked(github_repo_id);
-
     Ok(())
-}
-
-// Cache of GitHub repository IDs that have already been linked to local projects to avoid redundant linking operations.
-pub(super) struct GithubProjectLinkingCache;
-
-impl GithubProjectLinkingCache {
-    fn instance() -> &'static StdMutex<HashSet<i64>> {
-        static CACHE: Lazy<StdMutex<HashSet<i64>>> = Lazy::new(|| StdMutex::new(HashSet::new()));
-        &CACHE
-    }
-
-    // Not linked to a local project yet.
-    pub(super) fn needs_linking(github_repository_id: i64) {
-        Self::instance()
-            .lock()
-            .unwrap()
-            .remove(&github_repository_id);
-    }
-
-    // Linked to a local project.
-    pub(super) fn cache_as_linked(github_repository_id: i64) {
-        Self::instance()
-            .lock()
-            .unwrap()
-            .insert(github_repository_id);
-    }
-
-    // Check if already linked to a local project.
-    pub(super) fn already_linked(github_repository_id: i64) -> bool {
-        Self::instance()
-            .lock()
-            .unwrap()
-            .contains(&github_repository_id)
-    }
 }
