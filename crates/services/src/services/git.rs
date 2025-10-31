@@ -1513,15 +1513,15 @@ impl GitService {
         new_branch_name: &str,
     ) -> Result<(), GitServiceError> {
         let repo = self.open_repo(worktree_path)?;
-        
+
         let mut branch = repo
             .find_branch(old_branch_name, BranchType::Local)
             .map_err(|_| GitServiceError::BranchNotFound(old_branch_name.to_string()))?;
-        
+
         branch.rename(new_branch_name, false)?;
-        
-        repo.set_head(&format!("refs/heads/{}", new_branch_name))?;
-        
+
+        repo.set_head(&format!("refs/heads/{new_branch_name}"))?;
+
         Ok(())
     }
 

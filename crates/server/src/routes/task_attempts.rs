@@ -1157,35 +1157,35 @@ pub async fn rename_branch(
     Json(payload): Json<RenameBranchRequest>,
 ) -> Result<ResponseJson<ApiResponse<RenameBranchResponse>>, ApiError> {
     let new_branch_name = payload.new_branch_name.trim();
-    
+
     if new_branch_name.is_empty() {
         return Ok(ResponseJson(ApiResponse::error(
             "Branch name cannot be empty",
         )));
     }
-    
+
     if new_branch_name == task_attempt.branch {
         return Ok(ResponseJson(ApiResponse::success(RenameBranchResponse {
             branch: task_attempt.branch.clone(),
         })));
     }
-    
+
     if !git2::Branch::name_is_valid(new_branch_name)? {
         return Ok(ResponseJson(ApiResponse::error(
             "Invalid branch name format",
         )));
     }
-    
+
     let pool = &deployment.db().pool;
     let task = task_attempt
         .parent_task(pool)
         .await?
         .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
-    
+
     let project = Project::find_by_id(pool, task.project_id)
         .await?
         .ok_or(ApiError::Project(ProjectError::ProjectNotFound))?;
-    
+
     if deployment
         .git()
         .check_branch_exists(&project.git_repo_path, new_branch_name)?
@@ -1194,34 +1194,30 @@ pub async fn rename_branch(
             "A branch with this name already exists",
         )));
     }
-    
+
     let worktree_path_buf = ensure_worktree_path(&deployment, &task_attempt).await?;
     let worktree_path = worktree_path_buf.as_path();
-    
+
     if deployment.git().is_rebase_in_progress(worktree_path)? {
         return Ok(ResponseJson(ApiResponse::error(
             "Cannot rename branch while rebase is in progress. Please complete or abort the rebase first.",
         )));
     }
-    
-    if let Some(merge) = Merge::find_latest_by_task_attempt_id(pool, task_attempt.id).await? {
-        if let Merge::Pr(pr_merge) = merge {
-            if matches!(pr_merge.pr_info.status, MergeStatus::Open) {
+
+    if let Some(merge) = Merge::find_latest_by_task_attempt_id(pool, task_attempt.id).await?
+        && let Merge::Pr(pr_merge) = merge
+            && matches!(pr_merge.pr_info.status, MergeStatus::Open) {
                 return Ok(ResponseJson(ApiResponse::error(
                     "Cannot rename branch with an open pull request. Please close the PR first or create a new attempt.",
                 )));
             }
-        }
-    }
-    
-    deployment.git().rename_local_branch(
-        worktree_path,
-        &task_attempt.branch,
-        new_branch_name,
-    )?;
-    
+
+    deployment
+        .git()
+        .rename_local_branch(worktree_path, &task_attempt.branch, new_branch_name)?;
+
     TaskAttempt::update_branch_name(pool, task_attempt.id, new_branch_name).await?;
-    
+
     deployment
         .track_if_analytics_allowed(
             "task_attempt_branch_renamed",
@@ -1232,7 +1228,7 @@ pub async fn rename_branch(
             }),
         )
         .await;
-    
+
     Ok(ResponseJson(ApiResponse::success(RenameBranchResponse {
         branch: new_branch_name.to_string(),
     })))
