@@ -2,9 +2,9 @@ import { useEffect, useCallback, useRef, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useDropzone } from 'react-dropzone';
-import { useForm } from '@tanstack/react-form';
+import { useForm, useStore } from '@tanstack/react-form';
 import { Plus, Image as ImageIcon } from 'lucide-react';
-import { TaskDialog } from './TaskDialog';
+import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -39,6 +39,7 @@ import type {
   ExecutorProfileId,
   ImageResponse,
 } from 'shared/types';
+import { z } from 'zod';
 
 interface Task {
   id: string;
@@ -248,6 +249,8 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
     onSubmit: handleSubmit,
   });
 
+  const isSubmitting = useStore(form.store, (state) => state.isSubmitting);
+
   // Update branch when default branch changes
   useEffect(() => {
     if (!defaultBranch) return;
@@ -385,12 +388,12 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
 
   return (
     <>
-      <TaskDialog
+      <Dialog
         open={modal.visible}
         onOpenChange={handleDialogClose}
-        className="w-full max-w-[min(90vw,40rem)] max-h-[min(95vh,50rem)] flex flex-col overflow-hidden"
+        className="w-full max-w-[min(90vw,40rem)] max-h-[min(95vh,50rem)] flex flex-col overflow-hidden p-0"
         uncloseable={showDiscardWarning}
-        ariaLabel={mode === 'edit' ? 'Edit task' : 'Create new task'}
+        singleEscClose={true}
       >
         <div
           {...getRootProps()}
@@ -413,10 +416,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
           <div className="flex-none pr-8 pt-3">
             <form.Field
               name="title"
-              validators={{
-                onChange: ({ value }) =>
-                  value.trim() ? undefined : 'Title is required',
-              }}
+              validators={{ onChange: z.string().min(1) }}
             >
               {(field) => (
                 <Input
@@ -446,7 +446,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
                     maxRows={35}
                     placeholder={t('taskFormDialog.descriptionPlaceholder')}
                     className="border-none shadow-none px-0 resize-none placeholder:text-muted-foreground/60 focus-visible:ring-0 text-md font-normal"
-                    disabled={form.state.isSubmitting}
+                    disabled={isSubmitting}
                     projectId={projectId}
                     onPasteFiles={handleFiles}
                     disableScroll={true}
@@ -464,7 +464,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
                 onUpload={upload}
                 onDelete={deleteImage}
                 onImageUploaded={handleImageUploaded}
-                disabled={form.state.isSubmitting}
+                disabled={isSubmitting}
                 collapsible={false}
                 defaultExpanded={true}
                 hideDropZone={true}
@@ -487,7 +487,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
                       onValueChange={(value) =>
                         field.handleChange(value as TaskStatus)
                       }
-                      disabled={form.state.isSubmitting}
+                      disabled={isSubmitting}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -530,7 +530,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
                     profiles={profiles}
                     selectedProfile={field.state.value}
                     onProfileSelect={(profile) => field.handleChange(profile)}
-                    disabled={form.state.isSubmitting || !autoStart}
+                    disabled={isSubmitting || !autoStart}
                     showLabel={false}
                     className="flex items-center gap-2 flex-row flex-[2] min-w-0"
                     itemClassName="flex-1 min-w-0"
@@ -546,7 +546,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
                     placeholder="Branch"
                     className={cn(
                       'h-9 flex-1 min-w-0 text-xs',
-                      form.state.isSubmitting && 'opacity-50 cursor-not-allowed'
+                      isSubmitting && 'opacity-50 cursor-not-allowed'
                     )}
                   />
                 )}
@@ -588,7 +588,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
                     id="autostart-switch"
                     checked={autoStart}
                     onCheckedChange={setAutoStart}
-                    disabled={form.state.isSubmitting}
+                    disabled={isSubmitting}
                     className="data-[state=checked]:bg-gray-900 dark:data-[state=checked]:bg-gray-100"
                     aria-label={t('taskFormDialog.startLabel')}
                   />
@@ -644,7 +644,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
             </div>
           </div>
         </div>
-      </TaskDialog>
+      </Dialog>
 
       {/* Discard warning dialog - rendered inline without scope management */}
       {showDiscardWarning && (
