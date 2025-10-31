@@ -274,7 +274,7 @@ pub async fn open_project_in_editor(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<Option<OpenEditorRequest>>,
 ) -> Result<ResponseJson<ApiResponse<OpenEditorResponse>>, StatusCode> {
-    let path = project.git_repo_path.to_string_lossy();
+    let path = project.git_repo_path;
 
     let editor_config = {
         let config = deployment.config().read().await;
@@ -287,7 +287,7 @@ pub async fn open_project_in_editor(
             tracing::info!(
                 "Opened editor for project {} at path: {}{}",
                 project.id,
-                path,
+                path.to_string_lossy(),
                 if url.is_some() { " (remote mode)" } else { "" }
             );
 

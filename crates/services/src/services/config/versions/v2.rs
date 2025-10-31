@@ -1,4 +1,9 @@
-use std::{io, path::PathBuf, process::Command, str::FromStr};
+use std::{
+    io,
+    path::{Path, PathBuf},
+    process::Command,
+    str::FromStr,
+};
 
 use anyhow::Error;
 use serde::{Deserialize, Serialize};
@@ -343,7 +348,7 @@ impl EditorConfig {
         }
     }
 
-    pub fn open_file(&self, path: &str) -> Result<Option<String>, io::Error> {
+    pub fn open_file(&self, path: &Path) -> Result<Option<String>, io::Error> {
         if let Some(url) = self.remote_url(path) {
             return Ok(Some(url));
         }
@@ -351,7 +356,7 @@ impl EditorConfig {
         Ok(None)
     }
 
-    fn remote_url(&self, path: &str) -> Option<String> {
+    fn remote_url(&self, path: &Path) -> Option<String> {
         let remote_host = self.remote_ssh_host.as_ref()?;
         let scheme = match self.editor_type {
             EditorType::VsCode => "vscode",
@@ -364,12 +369,15 @@ impl EditorConfig {
             .as_ref()
             .map(|u| format!("{u}@"))
             .unwrap_or_default();
+        // files must contain a line and column number
+        let line_col = if path.is_file() { ":1:1" } else { "" };
+        let path = path.to_string_lossy();
         Some(format!(
-            "{scheme}://vscode-remote/ssh-remote+{user_part}{remote_host}{path}"
+            "{scheme}://vscode-remote/ssh-remote+{user_part}{remote_host}{path}{line_col}"
         ))
     }
 
-    fn spawn_local(&self, path: &str) -> Result<(), io::Error> {
+    fn spawn_local(&self, path: &Path) -> Result<(), io::Error> {
         let command = self.get_command();
         if command.is_empty() {
             return Err(io::Error::new(
