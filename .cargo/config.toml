@@ -3,8 +3,28 @@
 [target.x86_64-apple-darwin.env]
 MACOSX_DEPLOYMENT_TARGET = "10.12"
 
+[target.x86_64-apple-darwin]
+rustflags = [
+    "-C", "link-arg=-framework",
+    "-C", "link-arg=AppKit",
+    "-C", "link-arg=-framework",
+    "-C", "link-arg=ApplicationServices",
+    "-C", "link-arg=-framework",
+    "-C", "link-arg=Foundation",
+]
+
 [target.aarch64-apple-darwin.env]
 MACOSX_DEPLOYMENT_TARGET = "11.0"
+
+[target.aarch64-apple-darwin]
+rustflags = [
+    "-C", "link-arg=-framework",
+    "-C", "link-arg=AppKit",
+    "-C", "link-arg=-framework",
+    "-C", "link-arg=ApplicationServices",
+    "-C", "link-arg=-framework",
+    "-C", "link-arg=Foundation",
+]
 
 [target.x86_64-pc-windows-msvc]
 rustflags = ["-C", "link-arg=/DEBUG:FASTLINK"]
