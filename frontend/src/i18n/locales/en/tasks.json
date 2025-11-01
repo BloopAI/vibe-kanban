@@ -38,6 +38,16 @@
         "action": "Change Branch",
         "inProgress": "Changing..."
       }
+    },
+    "rename": {
+      "dialog": {
+        "title": "Rename branch",
+        "description": "Enter a new name for the task attempt branch.",
+        "label": "Branch name",
+        "placeholder": "Enter new branch name",
+        "action": "Rename Branch",
+        "inProgress": "Renaming..."
+      }
     }
   },
   "preview": {

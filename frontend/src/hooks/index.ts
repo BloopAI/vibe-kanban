@@ -4,6 +4,7 @@ export { useOpenInEditor } from './useOpenInEditor';
 export { useDevServer } from './useDevServer';
 export { useRebase } from './useRebase';
 export { useChangeTargetBranch } from './useChangeTargetBranch';
+export { useRenameBranch } from './useRenameBranch';
 export { useMerge } from './useMerge';
 export { usePush } from './usePush';
 export { useAttemptConflicts } from './useAttemptConflicts';

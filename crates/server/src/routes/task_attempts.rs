@@ -1098,6 +1098,73 @@ pub async fn change_target_branch(
     )))
 }
 
+#[derive(serde::Deserialize, Debug, TS)]
+pub struct RenameBranchRequest {
+    pub new_branch_name: String,
+}
+
+#[derive(serde::Serialize, Debug, TS)]
+pub struct RenameBranchResponse {
+    pub new_branch_name: String,
+}
+
+#[axum::debug_handler]
+pub async fn rename_branch(
+    Extension(task_attempt): Extension<TaskAttempt>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<RenameBranchRequest>,
+) -> Result<ResponseJson<ApiResponse<RenameBranchResponse>>, ApiError> {
+    let new_branch_name = payload.new_branch_name;
+    let old_branch_name = task_attempt.branch.clone();
+
+    let task = task_attempt
+        .parent_task(&deployment.db().pool)
+        .await?
+        .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
+    let project = Project::find_by_id(&deployment.db().pool, task.project_id)
+        .await?
+        .ok_or(ApiError::Project(ProjectError::ProjectNotFound))?;
+
+    // Perform the git branch rename operation
+    deployment
+        .git()
+        .rename_branch(&project.git_repo_path, &old_branch_name, &new_branch_name)
+        .map_err(|e| {
+            tracing::error!(
+                "Failed to rename branch '{}' to '{}': {}",
+                old_branch_name,
+                new_branch_name,
+                e
+            );
+            ApiError::GitService(e)
+        })?;
+
+    // Update the database with the new branch name
+    TaskAttempt::update_branch(
+        &deployment.db().pool,
+        task_attempt.id,
+        &new_branch_name,
+    )
+    .await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "task_attempt_branch_renamed",
+            serde_json::json!({
+                "attempt_id": task_attempt.id.to_string(),
+                "old_branch": old_branch_name,
+                "new_branch": new_branch_name.clone(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(
+        RenameBranchResponse {
+            new_branch_name,
+        },
+    )))
+}
+
 #[axum::debug_handler]
 pub async fn rebase_task_attempt(
     Extension(task_attempt): Extension<TaskAttempt>,
@@ -1497,6 +1564,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/children", get(get_task_attempt_children))
         .route("/stop", post(stop_task_attempt_execution))
         .route("/change-target-branch", post(change_target_branch))
+        .route("/rename-branch", post(rename_branch))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_task_attempt_middleware,

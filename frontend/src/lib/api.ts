@@ -531,6 +531,20 @@ export const attemptsApi = {
     return handleApiResponse<ChangeTargetBranchResponse>(response);
   },
 
+  rename_branch: async (
+    attemptId: string,
+    data: { new_branch_name: string }
+  ): Promise<{ new_branch_name: string }> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/rename-branch`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse<{ new_branch_name: string }>(response);
+  },
+
   abortConflicts: async (attemptId: string): Promise<void> => {
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/conflicts/abort`,

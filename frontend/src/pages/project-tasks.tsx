@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { AlertTriangle, Plus } from 'lucide-react';
+import { AlertTriangle, Plus, Pencil } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { tasksApi } from '@/lib/api';
 import type { GitBranch } from 'shared/types';
@@ -18,7 +18,9 @@ import { useProject } from '@/contexts/project-context';
 import { useTaskAttempts } from '@/hooks/useTaskAttempts';
 import { useTaskAttempt } from '@/hooks/useTaskAttempt';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { useBranchStatus, useAttemptExecution } from '@/hooks';
+import { useBranchStatus, useAttemptExecution, useRenameBranch } from '@/hooks';
+import NiceModal from '@ebay/nice-modal-react';
+import { RenameBranchDialog } from '@/components/dialogs/tasks/RenameBranchDialog';
 import { projectsApi } from '@/lib/api';
 import { paths } from '@/lib/paths';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
@@ -217,6 +219,28 @@ export function ProjectTasks() {
   const { data: branchStatus } = useBranchStatus(attempt?.id);
   const [branches, setBranches] = useState<GitBranch[]>([]);
   const [gitError, setGitError] = useState<string | null>(null);
+
+  const renameBranchMutation = useRenameBranch(attempt?.id, projectId, undefined, (err) => {
+    console.error('Failed to rename branch:', err);
+    setGitError('Failed to rename branch');
+  });
+
+  const handleRenameBranch = useCallback(async () => {
+    if (!attempt) return;
+
+    const result = await NiceModal.show(RenameBranchDialog, {
+      currentBranchName: attempt.branch,
+      isRenamingBranch: renameBranchMutation.isPending,
+    });
+
+    if (result.action === 'confirmed' && result.newBranchName) {
+      try {
+        await renameBranchMutation.mutateAsync(result.newBranchName);
+      } catch (error) {
+        console.error('Branch rename failed:', error);
+      }
+    }
+  }, [attempt, renameBranchMutation]);
 
   useEffect(() => {
     if (!projectId) return;
@@ -707,8 +731,17 @@ export function ProjectTasks() {
               <>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>
-                    {attempt?.branch || 'Task Attempt'}
+                  <BreadcrumbPage className="flex items-center gap-1">
+                    <span>{attempt?.branch || 'Task Attempt'}</span>
+                    {attempt && (
+                      <button
+                        onClick={handleRenameBranch}
+                        className="ml-1 p-0.5 hover:bg-accent rounded transition-colors"
+                        aria-label="Rename branch"
+                      >
+                        <Pencil className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                      </button>
+                    )}
                   </BreadcrumbPage>
                 </BreadcrumbItem>
               </>

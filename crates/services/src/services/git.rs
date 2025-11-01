@@ -1203,6 +1203,19 @@ impl GitService {
         Ok(())
     }
 
+    /// Rename a local branch
+    pub fn rename_branch(
+        &self,
+        repo_path: &Path,
+        old_branch_name: &str,
+        new_branch_name: &str,
+    ) -> Result<(), GitServiceError> {
+        let git = GitCli::new();
+        git.git(repo_path, ["branch", "-m", old_branch_name, new_branch_name])
+            .map_err(|e| GitServiceError::InvalidRepository(format!("git branch -m failed: {e}")))?;
+        Ok(())
+    }
+
     /// Checkout a local branch in the given working tree
     pub fn checkout_branch(
         &self,
