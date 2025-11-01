@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { DirectoryPicker } from '@/components/directory-picker';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,7 @@ import { useScriptPlaceholders } from '@/hooks/useScriptPlaceholders';
 import { CopyFilesField } from './copy-files-field';
 // Removed collapsible sections for simplicity; show fields always in edit mode
 import { fileSystemApi } from '@/lib/api';
-import { showFolderPicker } from '@/lib/modals';
+import { DialogHeader } from '@/components/ui/dialog';
 import { DirectoryEntry } from 'shared/types';
 import { generateProjectNameFromPath } from '@/utils/string';
 
@@ -98,6 +99,52 @@ export function ProjectFormFields({
       setLoading(false);
     }
   };
+
+  const renderDirectoryPickerModal = (
+    title: string,
+    description: string,
+    submitLabel: string = 'Select Path'
+  ) => (
+    <DirectoryPicker.Content>
+      <DialogHeader>
+        <DirectoryPicker.Title>{title}</DirectoryPicker.Title>
+        <DirectoryPicker.Description>{description}</DirectoryPicker.Description>
+      </DialogHeader>
+
+      <div className="flex-1 flex flex-col space-y-4 overflow-hidden">
+        <div className="space-y-2">
+          <div className="text-sm font-medium">Enter path manually:</div>
+          <div className="flex space-x-2 min-w-0">
+            <DirectoryPicker.PathInput className="flex-1 min-w-0" />
+            <DirectoryPicker.GoButton>Go</DirectoryPicker.GoButton>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <div className="text-sm font-medium">Search current directory:</div>
+          <DirectoryPicker.Search />
+        </div>
+
+        <DirectoryPicker.Toolbar>
+          <DirectoryPicker.HomeButton />
+          <DirectoryPicker.UpButton />
+          <DirectoryPicker.CurrentPath />
+          <DirectoryPicker.SelectCurrent>
+            Select Current
+          </DirectoryPicker.SelectCurrent>
+        </DirectoryPicker.Toolbar>
+
+        <DirectoryPicker.View>
+          <DirectoryPicker.List />
+        </DirectoryPicker.View>
+      </div>
+
+      <DirectoryPicker.Footer>
+        <DirectoryPicker.Cancel>Cancel</DirectoryPicker.Cancel>
+        <DirectoryPicker.Submit>{submitLabel}</DirectoryPicker.Submit>
+      </DirectoryPicker.Footer>
+    </DirectoryPicker.Content>
+  );
 
   return (
     <>
@@ -240,35 +287,43 @@ export function ProjectFormFields({
                 )}
 
                 {/* Browse for repository card */}
-                <div
-                  className="p-4 border border-dashed cursor-pointer hover:shadow-md transition-shadow rounded-lg bg-card"
-                  onClick={async () => {
+                <DirectoryPicker.Root
+                  onResolveChildren={fileSystemApi.list}
+                  canSelectEntry={(entry) =>
+                    entry.is_directory && entry.is_git_repo
+                  }
+                  onOpen={() => setError('')}
+                  onSubmit={(selectedPath) => {
                     setError('');
-                    const selectedPath = await showFolderPicker({
-                      title: 'Select Git Repository',
-                      description: 'Choose an existing git repository',
-                    });
-                    if (selectedPath) {
-                      const projectName =
-                        generateProjectNameFromPath(selectedPath);
-                      if (onCreateProject) {
-                        onCreateProject(selectedPath, projectName);
-                      }
-                    }
+                    const projectName =
+                      generateProjectNameFromPath(selectedPath);
+                    onCreateProject?.(selectedPath, projectName);
                   }}
                 >
-                  <div className="flex items-start gap-3">
-                    <Search className="h-5 w-5 mt-0.5 flex-shrink-0 text-muted-foreground" />
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium text-foreground">
-                        Search all repos
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        Browse and select any repository on your system
+                  <DirectoryPicker.Trigger asChild>
+                    <div className="p-4 border border-dashed cursor-pointer hover:shadow-md transition-shadow rounded-lg bg-card">
+                      <div className="flex items-start gap-3">
+                        <Search className="h-5 w-5 mt-0.5 flex-shrink-0 text-muted-foreground" />
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-foreground">
+                            Search all repos
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Browse and select any repository on your system
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </div>
+                  </DirectoryPicker.Trigger>
+                  <DirectoryPicker.Portal>
+                    <DirectoryPicker.Overlay />
+                    {renderDirectoryPickerModal(
+                      'Select Git Repository',
+                      'Choose an existing git repository',
+                      'Select Repository'
+                    )}
+                  </DirectoryPicker.Portal>
+                </DirectoryPicker.Root>
               </>
             )}
           </>
@@ -327,33 +382,38 @@ export function ProjectFormFields({
 
             <div className="space-y-2">
               <Label htmlFor="parent-path">Parent Directory</Label>
-              <div className="flex space-x-2">
-                <Input
-                  id="parent-path"
-                  type="text"
-                  value={parentPath}
-                  onChange={(e) => setParentPath(e.target.value)}
-                  placeholder="Current Directory"
-                  className="flex-1 placeholder:text-secondary-foreground placeholder:opacity-100"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={async () => {
-                    const selectedPath = await showFolderPicker({
-                      title: 'Select Parent Directory',
-                      description: 'Choose where to create the new repository',
-                      value: parentPath,
-                    });
-                    if (selectedPath) {
-                      setParentPath(selectedPath);
-                    }
-                  }}
-                >
-                  <Folder className="h-4 w-4" />
-                </Button>
-              </div>
+              <DirectoryPicker.Root
+                value={parentPath}
+                onValueChange={setParentPath}
+                startPath={parentPath || undefined}
+                onResolveChildren={fileSystemApi.list}
+                canSelectEntry={(entry) => entry.is_directory}
+                onOpen={() => setError('')}
+                onSubmit={(selectedPath) => setParentPath(selectedPath)}
+              >
+                <div className="flex space-x-2">
+                  <Input
+                    id="parent-path"
+                    type="text"
+                    value={parentPath}
+                    onChange={(e) => setParentPath(e.target.value)}
+                    placeholder="Current Directory"
+                    className="flex-1 placeholder:text-secondary-foreground placeholder:opacity-100"
+                  />
+                  <DirectoryPicker.Trigger asChild>
+                    <Button type="button" variant="ghost" size="icon">
+                      <Folder className="h-4 w-4" />
+                    </Button>
+                  </DirectoryPicker.Trigger>
+                </div>
+                <DirectoryPicker.Portal>
+                  <DirectoryPicker.Overlay />
+                  {renderDirectoryPickerModal(
+                    'Select Parent Directory',
+                    'Choose where to create the new repository'
+                  )}
+                </DirectoryPicker.Portal>
+              </DirectoryPicker.Root>
               <p className="text-xs text-muted-foreground">
                 Leave empty to use your current working directory, or specify a
                 custom path.
@@ -367,33 +427,42 @@ export function ProjectFormFields({
         <>
           <div className="space-y-2">
             <Label htmlFor="git-repo-path">Git Repository Path</Label>
-            <div className="flex space-x-2">
-              <Input
-                id="git-repo-path"
-                type="text"
-                value={gitRepoPath}
-                onChange={(e) => handleGitRepoPathChange(e.target.value)}
-                placeholder="/path/to/your/existing/repo"
-                required
-                className="flex-1"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={async () => {
-                  const selectedPath = await showFolderPicker({
-                    title: 'Select Git Repository',
-                    description: 'Choose an existing git repository',
-                    value: gitRepoPath,
-                  });
-                  if (selectedPath) {
-                    handleGitRepoPathChange(selectedPath);
-                  }
-                }}
-              >
-                <Folder className="h-4 w-4" />
-              </Button>
-            </div>
+            <DirectoryPicker.Root
+              value={gitRepoPath}
+              onValueChange={handleGitRepoPathChange}
+              startPath={gitRepoPath || undefined}
+              onResolveChildren={fileSystemApi.list}
+              canSelectEntry={(entry) =>
+                entry.is_directory && entry.is_git_repo
+              }
+              onOpen={() => setError('')}
+              onSubmit={(selectedPath) => handleGitRepoPathChange(selectedPath)}
+            >
+              <div className="flex space-x-2">
+                <Input
+                  id="git-repo-path"
+                  type="text"
+                  value={gitRepoPath}
+                  onChange={(e) => handleGitRepoPathChange(e.target.value)}
+                  placeholder="/path/to/your/existing/repo"
+                  required
+                  className="flex-1"
+                />
+                <DirectoryPicker.Trigger asChild>
+                  <Button type="button" variant="outline">
+                    <Folder className="h-4 w-4" />
+                  </Button>
+                </DirectoryPicker.Trigger>
+              </div>
+              <DirectoryPicker.Portal>
+                <DirectoryPicker.Overlay />
+                {renderDirectoryPickerModal(
+                  'Select Git Repository',
+                  'Choose an existing git repository',
+                  'Select Repository'
+                )}
+              </DirectoryPicker.Portal>
+            </DirectoryPicker.Root>
           </div>
 
           <div className="space-y-2">
