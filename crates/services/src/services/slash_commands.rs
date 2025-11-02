@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 use serde::Deserialize;
-use db::models::commands::{SlashCommand, CommandCategory};
+use db::models::commands::{SlashCommand, InternalSlashCommand, CommandCategory};
 
 #[derive(Debug, Deserialize, Default)]
 struct FrontMatter {
@@ -30,31 +30,34 @@ impl SlashCommandService {
     }
 
     pub async fn get_commands(&self) -> Result<Vec<SlashCommand>, std::io::Error> {
-        let (global_path, project_path) = Self::get_default_paths().await;
-        let mut commands = Vec::new();
+        let (global_path, project_path) = Self::get_default_paths().await?;
+        let mut internal_commands = Vec::new();
 
         tracing::info!("Scanning for slash commands - global: {:?}, project: {:?}", global_path, project_path);
 
         // Scan global commands directory recursively
         if global_path.exists() {
             tracing::info!("Scanning global commands directory: {}", global_path.display());
-            commands.extend(self.scan_directory_recursive(&global_path, &global_path, CommandCategory::Global).await?);
+            internal_commands.extend(self.scan_directory_recursive(&global_path, &global_path, CommandCategory::Global).await?);
         }
 
         // Scan project commands directory recursively
         if project_path.exists() && project_path != global_path {
             tracing::info!("Scanning project commands directory: {}", project_path.display());
-            commands.extend(self.scan_directory_recursive(&project_path, &project_path, CommandCategory::Project).await?);
+            internal_commands.extend(self.scan_directory_recursive(&project_path, &project_path, CommandCategory::Project).await?);
         }
 
         // Sort commands by name
-        commands.sort_by(|a, b| a.name.cmp(&b.name));
+        internal_commands.sort_by(|a, b| a.name.cmp(&b.name));
+
+        // Convert to public SlashCommand (without source field)
+        let commands: Vec<SlashCommand> = internal_commands.into_iter().map(Into::into).collect();
 
         tracing::info!("Found {} total commands", commands.len());
         Ok(commands)
     }
 
-    async fn scan_directory_recursive(&self, dir_path: &Path, base_path: &Path, category: CommandCategory) -> Result<Vec<SlashCommand>, std::io::Error> {
+    async fn scan_directory_recursive(&self, dir_path: &Path, base_path: &Path, category: CommandCategory) -> Result<Vec<InternalSlashCommand>, std::io::Error> {
         let mut commands = Vec::new();
         tracing::info!("Scanning directory: {}", dir_path.display());
 
@@ -98,7 +101,7 @@ impl SlashCommandService {
         Ok(commands)
     }
 
-    async fn parse_command_file(&self, path: &Path, namespace: Option<&str>, category: CommandCategory) -> Result<SlashCommand, std::io::Error> {
+    async fn parse_command_file(&self, path: &Path, namespace: Option<&str>, category: CommandCategory) -> Result<InternalSlashCommand, std::io::Error> {
         // Basic security check
         if !path.exists() || !path.is_file() {
             return Err(std::io::Error::new(std::io::ErrorKind::NotFound, "Command file not found"));
@@ -154,7 +157,7 @@ impl SlashCommandService {
         // Generate unique ID based on file path to prevent collisions
         let id = Self::generate_command_id(path);
 
-        Ok(SlashCommand {
+        Ok(InternalSlashCommand {
             id,
             name,
             description,
@@ -174,13 +177,15 @@ impl SlashCommandService {
     }
 
     async fn get_default_paths() -> (PathBuf, PathBuf) {
-        let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("~"));
+        let home_dir = dirs::home_dir()
+            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "Home directory not found"))?;
         let global_commands_path = home_dir.join(".claude/commands");
 
-        let project_root = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        let project_root = std::env::current_dir()
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to get current directory: {}", e)))?;
         let project_commands_path = project_root.join(".claude/commands");
 
-        (global_commands_path, project_commands_path)
+        Ok((global_commands_path, project_commands_path))
     }
 }
 
@@ -193,10 +198,15 @@ fn validate_command_path(path: &Path) -> Result<(), std::io::Error> {
             "Invalid command path"
         ))?;
 
-    // Define allowed base paths
+    // Define allowed base paths with proper error handling
+    let home_dir = dirs::home_dir()
+        .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "Home directory not found"))?;
+    let current_dir = std::env::current_dir()
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("Failed to get current directory: {}", e)))?;
+
     let allowed_paths = [
-        dirs::home_dir().unwrap_or_else(|| PathBuf::from("~")).join(".claude/commands"),
-        std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")).join(".claude/commands"),
+        home_dir.join(".claude/commands"),
+        current_dir.join(".claude/commands"),
     ];
 
     // Check if canonical path is within allowed paths

@@ -74,22 +74,10 @@ pub async fn list_git_repos(
 
 pub async fn get_slash_commands(
     State(_deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<Vec<serde_json::Value>>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<Vec<db::models::commands::SlashCommand>>>, ApiError> {
     let service = SlashCommandService::new();
     match service.get_commands().await {
-        Ok(commands) => {
-            let json_commands: Vec<serde_json::Value> = commands
-                .into_iter()
-                .filter_map(|cmd| match serde_json::to_value(cmd) {
-                    Ok(value) => Some(value),
-                    Err(e) => {
-                        tracing::error!("Failed to serialize slash command: {}", e);
-                        None
-                    }
-                })
-                .collect();
-            Ok(ResponseJson(ApiResponse::success(json_commands)))
-        }
+        Ok(commands) => Ok(ResponseJson(ApiResponse::success(commands))),
         Err(e) => {
             tracing::error!("Failed to load slash commands: {}", e);
             Err(ApiError::Io(e))
