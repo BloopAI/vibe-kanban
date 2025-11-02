@@ -326,4 +326,8 @@ export type CreateApprovalRequest = { tool_name: string, tool_input: JsonValue, 
 
 export type ApprovalResponse = { execution_process_id: string, status: ApprovalStatus, };
 
+export type SlashCommand = { id: string, name: string, description: string, category: CommandCategory, examples: Array<string> | null, source: string, namespace: string | null, };
+
+export type CommandCategory = "global" | "project";
+
 export type JsonValue = number | string | boolean | Array<JsonValue> | { [key in string]?: JsonValue } | null;
