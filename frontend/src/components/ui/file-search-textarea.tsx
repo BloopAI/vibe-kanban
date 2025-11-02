@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, forwardRef } from 'react';
+import { useEffect, useRef, useState, forwardRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { projectsApi, tagsApi } from '@/lib/api';
-import { Tag as TagIcon, FileText } from 'lucide-react';
+import { Tag as TagIcon, FileText, AlertTriangle } from 'lucide-react';
 
 import type { SearchResult, Tag, SlashCommand } from 'shared/types';
 
@@ -69,6 +70,7 @@ export const FileSearchTextarea = forwardRef<
   const [selectedSlashIndex, setSelectedSlashIndex] = useState(0);
   const [slashPosition, setSlashPosition] = useState(-1);
   const [isLoadingCommands, setIsLoadingCommands] = useState(false);
+  const [slashCommandError, setSlashCommandError] = useState<string | null>(null);
 
   const internalRef = useRef<HTMLTextAreaElement>(null);
   const textareaRef =
@@ -85,14 +87,25 @@ const slashDropdownRef = useRef<HTMLDivElement>(null);
 
   const loadSlashCommands = async () => {
     setIsLoadingCommands(true);
+    setSlashCommandError(null);
     try {
       const response = await fetch('/api/filesystem/slash-commands');
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
       const result = await response.json();
       if (result.success) {
         setCommands(result.data || []);
+      } else {
+        throw new Error(result.message || 'Failed to load slash commands');
       }
     } catch (error) {
       console.error('Failed to load slash commands:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setSlashCommandError(`Unable to load slash commands: ${errorMessage}`);
+      setCommands([]); // Clear commands on error
     } finally {
       setIsLoadingCommands(false);
     }
@@ -198,10 +211,8 @@ const slashDropdownRef = useRef<HTMLDivElement>(null);
 
     if (lastSlashIndex !== -1) {
       // Check if it's at start of line or after space/newline
-      const startOfLineCheck = textBeforeCursor.slice(0, lastSlashIndex);
-      const isValidSlashPosition = startOfLineCheck.trimEnd().endsWith('\n') ||
-                                 startOfLineCheck.trimEnd() === '' ||
-                                 startOfLineCheck.endsWith(' ');
+      const prevChar = textBeforeCursor[lastSlashIndex - 1];
+      const isValidSlashPosition = lastSlashIndex === 0 || prevChar === ' ' || prevChar === '\n';
 
       if (isValidSlashPosition) {
         const textAfterSlash = textBeforeCursor.slice(lastSlashIndex + 1);
@@ -379,15 +390,17 @@ const slashDropdownRef = useRef<HTMLDivElement>(null);
 
   const dropdownPosition = getDropdownPosition();
 
-  // Filter slash commands based on search query
-  const filteredSlashCommands = commands.filter(cmd => {
+  // Filter slash commands based on search query - optimized with useMemo
+  const allFilteredSlashCommands = useMemo(() => commands.filter(cmd => {
     const query = slashSearchQuery.toLowerCase();
     const nameWithoutSlash = cmd.name.substring(1).toLowerCase(); // Remove leading "/" for comparison
 
     // For slash commands, ONLY use prefix matching on command name (after removing "/")
     // No description or example matching for slash commands - this is for command discovery, not content search
     return nameWithoutSlash.startsWith(query);
-  }).slice(0, 50); // Limit to max 50 items to prevent extremely long dropdowns
+  }), [commands, slashSearchQuery]);
+
+  const filteredSlashCommands = allFilteredSlashCommands.slice(0, 50); // Limit to max 50 items to prevent extremely long dropdowns
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Handle slash command navigation first
@@ -597,6 +610,35 @@ const slashDropdownRef = useRef<HTMLDivElement>(null);
           document.body
         )}
 
+      {/* SLASH COMMAND ERROR ALERT */}
+      {showSlashDropdown && slashCommandError && !disabled &&
+        createPortal(
+          <div
+            className="fixed bg-background border border-border rounded-md shadow-lg z-50 p-4"
+            style={{
+              top: dropdownPosition.top,
+              left: dropdownPosition.left,
+              minWidth: '320px',
+              maxWidth: '400px',
+            }}
+          >
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription className="text-sm">
+                {slashCommandError}
+                <button
+                  onClick={() => loadSlashCommands()}
+                  className="ml-2 text-xs underline hover:no-underline"
+                  type="button"
+                >
+                  Retry
+                </button>
+              </AlertDescription>
+            </Alert>
+          </div>,
+          document.body
+        )}
+
       {/* SLASH COMMAND DROPDOWN */}
       {showSlashDropdown && !disabled &&
         createPortal(
@@ -617,7 +659,12 @@ const slashDropdownRef = useRef<HTMLDivElement>(null);
               </div>
             ) : filteredSlashCommands.length === 0 ? (
               <div className="p-4 text-sm text-muted-foreground text-center">
-                {slashSearchQuery.trim() ? `No commands found for "${slashSearchQuery}"` : 'No commands available'}
+                {slashCommandError
+                  ? 'Commands unavailable due to error'
+                  : slashSearchQuery.trim()
+                    ? `No commands found for "${slashSearchQuery}"`
+                    : 'No commands available'
+                }
               </div>
             ) : (
               <div role="listbox" className="py-1">
@@ -648,11 +695,7 @@ const slashDropdownRef = useRef<HTMLDivElement>(null);
                     )}
                   </div>
                 ))}
-                {commands.filter(cmd => {
-                  const query = slashSearchQuery.toLowerCase();
-                  const nameWithoutSlash = cmd.name.substring(1).toLowerCase();
-                  return nameWithoutSlash.startsWith(query);
-                }).length > 50 && (
+                {allFilteredSlashCommands.length > 50 && (
                   <div className="px-3 py-2 text-xs text-muted-foreground border-t border-border">
                     More commands available, keep typing to narrow down...
                   </div>
