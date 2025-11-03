@@ -11,7 +11,7 @@ use std::{
 
 use async_trait::async_trait;
 use axum::http::{HeaderName, HeaderValue, header::AUTHORIZATION};
-use config::ShareConfig;
+pub use config::ShareConfig;
 use db::{
     DBService,
     models::{
@@ -110,31 +110,27 @@ pub struct RemoteSync {
 }
 
 impl RemoteSync {
-    pub fn spawn_if_configured(
+    pub fn spawn(
         db: DBService,
+        config: ShareConfig,
         sessions: ClerkSessionStore,
-    ) -> Option<RemoteSyncHandle> {
-        if let Some(config) = ShareConfig::from_env() {
-            tracing::info!(api = %config.api_base, "starting shared task synchronizer");
-            let processor = ActivityProcessor::new(db.clone(), config.clone(), sessions.clone());
-            let sync = Self {
-                db,
-                processor,
-                config,
-                sessions,
-            };
-            let (shutdown_tx, shutdown_rx) = oneshot::channel();
-            let join = tokio::spawn(async move {
-                if let Err(e) = sync.run(shutdown_rx).await {
-                    tracing::error!(?e, "remote sync terminated unexpectedly");
-                }
-            });
+    ) -> RemoteSyncHandle {
+        tracing::info!(api = %config.api_base, "starting shared task synchronizer");
+        let processor = ActivityProcessor::new(db.clone(), config.clone(), sessions.clone());
+        let sync = Self {
+            db,
+            processor,
+            config,
+            sessions,
+        };
+        let (shutdown_tx, shutdown_rx) = oneshot::channel();
+        let join = tokio::spawn(async move {
+            if let Err(e) = sync.run(shutdown_rx).await {
+                tracing::error!(?e, "remote sync terminated unexpectedly");
+            }
+        });
 
-            Some(RemoteSyncHandle::new(shutdown_tx, join))
-        } else {
-            tracing::warn!("remote sync not configured; skipping");
-            None
-        }
+        RemoteSyncHandle::new(shutdown_tx, join)
     }
 
     pub async fn run(self, mut shutdown_rx: oneshot::Receiver<()>) -> Result<(), ShareError> {

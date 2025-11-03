@@ -12,13 +12,13 @@ use remote::{
     db::projects::ProjectMetadata,
 };
 use reqwest::{Client as HttpClient, StatusCode};
-use tokio::sync::RwLock;
 use utils::clerk::ClerkSessionStore;
 use uuid::Uuid;
 
 use super::{ShareConfig, ShareError, convert_remote_task, link_shared_tasks_to_project, status};
 use crate::services::{
-    clerk::ClerkSession, config::Config, git::GitService, metadata::compute_remote_metadata,
+    clerk::ClerkSession, git::GitService, metadata::compute_remote_metadata,
+    token::GitHubTokenProvider,
 };
 
 #[derive(Clone)]
@@ -27,20 +27,18 @@ pub struct SharePublisher {
     git: GitService,
     client: HttpClient,
     config: ShareConfig,
-    user_config: Arc<RwLock<Config>>,
     sessions: ClerkSessionStore,
+    github_tokens: Arc<GitHubTokenProvider>,
 }
 
 impl SharePublisher {
     pub fn new(
         db: DBService,
         git: GitService,
-        user_config: Arc<RwLock<Config>>,
+        config: ShareConfig,
         sessions: ClerkSessionStore,
+        github_tokens: Arc<GitHubTokenProvider>,
     ) -> Result<Self, ShareError> {
-        let config =
-            ShareConfig::from_env().ok_or(ShareError::MissingConfig("share not configured"))?;
-
         let client = HttpClient::builder()
             .timeout(Duration::from_secs(30))
             .build()
@@ -50,9 +48,9 @@ impl SharePublisher {
             db,
             git,
             config,
-            user_config,
             client,
             sessions,
+            github_tokens,
         })
     }
 
@@ -233,7 +231,7 @@ impl SharePublisher {
     /// Check and populate missing project metadata needed for sharing tasks.
     async fn ensure_project_metadata(&self, mut project: Project) -> Result<Project, ShareError> {
         let repo_path = project.git_repo_path.as_path();
-        let metadata = compute_remote_metadata(&self.git, &self.user_config, repo_path).await;
+        let metadata = compute_remote_metadata(&self.git, &self.github_tokens, repo_path).await;
 
         if !metadata.has_remote {
             tracing::warn!(

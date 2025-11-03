@@ -41,7 +41,6 @@ import { toPrettyCase } from '@/utils/string';
 import { useTheme } from '@/components/theme-provider';
 import { useUserSystem } from '@/components/config-provider';
 import { TagManager } from '@/components/TagManager';
-import NiceModal from '@ebay/nice-modal-react';
 
 export function GeneralSettings() {
   const { t } = useTranslation(['settings', 'common']);
@@ -591,16 +590,7 @@ export function GeneralSettings() {
                 </DropdownMenu>
               </div>
             </div>
-          ) : (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                {t('settings.general.github.helper')}
-              </p>
-              <Button onClick={() => NiceModal.show('github-login')}>
-                {t('settings.general.github.connectButton')}
-              </Button>
-            </div>
-          )}
+          ) : null}
 
           <div className="space-y-2">
             <Label htmlFor="github-token">

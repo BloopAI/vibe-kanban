@@ -1,14 +1,18 @@
-use std::{path::Path, sync::Arc};
+use std::path::Path;
 
 use db::models::project::ProjectRemoteMetadata;
-use tokio::sync::RwLock;
+use secrecy::ExposeSecret;
 
-use crate::services::{config::Config, git::GitService, github_service::GitHubService};
+use crate::services::{
+    git::GitService,
+    github_service::{GitHubService, GitHubServiceError},
+    token::{GitHubTokenError, GitHubTokenProvider, GitHubTokenSource},
+};
 
 /// Compute remote metadata for a given repository path, including GitHub repo ID enrichment
 pub async fn compute_remote_metadata(
     git: &GitService,
-    user_config: &Arc<RwLock<Config>>,
+    token_provider: &GitHubTokenProvider,
     repo_path: &Path,
 ) -> ProjectRemoteMetadata {
     let mut metadata = match git.get_remote_metadata(repo_path) {
@@ -32,22 +36,43 @@ pub async fn compute_remote_metadata(
         return metadata;
     };
 
-    let token = {
-        let cfg = user_config.read().await;
-        cfg.github.token()
+    let token = match token_provider.access_token().await {
+        Ok(token) => token,
+        Err(
+            GitHubTokenError::RemoteNotConfigured
+            | GitHubTokenError::MissingClerkSession
+            | GitHubTokenError::NotLinked,
+        ) => {
+            tracing::debug!("Skipping GitHub repo ID enrichment: no session-backed token");
+            return metadata;
+        }
+        Err(err) => {
+            tracing::warn!(
+                ?err,
+                "Failed to acquire GitHub token for metadata enrichment"
+            );
+            return metadata;
+        }
     };
 
-    let Some(token) = token else {
-        tracing::debug!("Skipping GitHub repo ID enrichment: missing token");
-        return metadata;
+    let client = match GitHubService::new(token.token.expose_secret()) {
+        Ok(client) => client,
+        Err(err) => {
+            tracing::warn!("Failed to construct GitHub client: {err}");
+            return metadata;
+        }
     };
 
-    match GitHubService::new(&token) {
-        Ok(gh) => match gh.fetch_repository_id(owner, name).await {
-            Ok(id) => metadata.github_repo_id = Some(id),
-            Err(err) => tracing::warn!("Failed to fetch repository id for {owner}/{name}: {err}"),
-        },
-        Err(err) => tracing::warn!("Failed to construct GitHub client: {err}"),
+    match client.fetch_repository_id(owner, name).await {
+        Ok(id) => metadata.github_repo_id = Some(id),
+        Err(err) => {
+            if matches!(err, GitHubServiceError::TokenInvalid)
+                && matches!(token.source, GitHubTokenSource::ClerkOAuth)
+            {
+                token_provider.invalidate().await;
+            }
+            tracing::warn!("Failed to fetch repository id for {owner}/{name}: {err}");
+        }
     }
 
     metadata

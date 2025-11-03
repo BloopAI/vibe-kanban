@@ -19,7 +19,6 @@ use serde_json::Value;
 use services::services::{
     analytics::{AnalyticsContext, AnalyticsService},
     approvals::Approvals,
-    auth::{AuthError, AuthService},
     clerk::{ClerkAuth, ClerkAuthError, ClerkSessionStore},
     config::{Config, ConfigError},
     container::{ContainerError, ContainerService},
@@ -33,6 +32,7 @@ use services::services::{
     metadata::compute_remote_metadata,
     pr_monitor::PrMonitorService,
     share::{SharePublisher, link_shared_tasks_to_project},
+    token::GitHubTokenProvider,
     worktree_manager::WorktreeError,
 };
 use sqlx::{Error as SqlxError, types::Uuid};
@@ -58,8 +58,6 @@ pub enum DeploymentError {
     Container(#[from] ContainerError),
     #[error(transparent)]
     Executor(#[from] ExecutorError),
-    #[error(transparent)]
-    Auth(#[from] AuthError),
     #[error(transparent)]
     Image(#[from] ImageError),
     #[error(transparent)]
@@ -92,8 +90,6 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     fn container(&self) -> &impl ContainerService;
 
-    fn auth(&self) -> &AuthService;
-
     fn git(&self) -> &GitService;
 
     fn image(&self) -> &ImageService;
@@ -109,6 +105,8 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     fn approvals(&self) -> &Approvals;
 
     fn drafts(&self) -> &DraftsService;
+
+    fn token_provider(&self) -> Arc<GitHubTokenProvider>;
 
     fn clerk_sessions(&self) -> &ClerkSessionStore;
 
@@ -128,7 +126,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     async fn spawn_pr_monitor_service(&self) -> tokio::task::JoinHandle<()> {
         let db = self.db().clone();
-        let config = self.config().clone();
+        let tokens = self.token_provider();
         let analytics = self
             .analytics()
             .as_ref()
@@ -137,7 +135,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                 analytics_service: analytics_service.clone(),
             });
         let publisher = self.share_publisher().clone();
-        PrMonitorService::spawn(db, config, analytics, publisher).await
+        PrMonitorService::spawn(db, tokens, analytics, publisher).await
     }
 
     async fn track_if_analytics_allowed(&self, event_name: &str, properties: Value) {
@@ -390,7 +388,8 @@ pub trait Deployment: Clone + Send + Sync + 'static {
         for project in projects {
             let repo_path = project.git_repo_path.clone();
             let metadata =
-                compute_remote_metadata(self.git(), self.config(), repo_path.as_path()).await;
+                compute_remote_metadata(self.git(), &self.token_provider(), repo_path.as_path())
+                    .await;
             let github_repo_id_changed = metadata.github_repo_id != project.github_repo_id;
 
             if let Err(err) =

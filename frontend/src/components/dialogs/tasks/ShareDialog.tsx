@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -9,12 +9,15 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
-import { Loader } from '@/components/ui/loader';
 import { tasksApi } from '@/lib/api';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useTranslation } from 'react-i18next';
 import { useUserSystem } from '@/components/config-provider';
-import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/clerk-react';
+import {
+  SignedIn,
+  SignedOut,
+  useClerk,
+} from '@clerk/clerk-react';
 import { Loader2, LogIn } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { useMutation } from '@tanstack/react-query';
@@ -26,29 +29,26 @@ export interface ShareDialogProps {
 const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
   const modal = useModal();
   const { t } = useTranslation('tasks');
-  const {
-    config,
-    githubTokenInvalid,
-    reloadSystem,
-    loading: systemLoading,
-  } = useUserSystem();
+  const { loading: systemLoading } = useUserSystem();
 
   const [shareError, setShareError] = useState<string | null>(null);
-  const [shouldRedirectToSignIn, setShouldRedirectToSignIn] = useState(false);
-
-  const isGitHubConnected =
-    Boolean(config?.github?.username && config?.github?.oauth_token) &&
-    !githubTokenInvalid;
 
   const shareMutation = useMutation({
     mutationKey: ['tasks', 'share', task.id],
     mutationFn: () => tasksApi.share(task.id),
   });
 
+  const { redirectToSignUp } = useClerk();
+
+  const redirectToClerkSignUp = useCallback(() => {
+    const redirectUrl =
+      typeof window !== 'undefined' ? window.location.href : undefined;
+    void redirectToSignUp({ redirectUrl });
+  }, [redirectToSignUp]);
+
   useEffect(() => {
     shareMutation.reset();
     setShareError(null);
-    setShouldRedirectToSignIn(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task.id, shareMutation.reset]);
 
@@ -67,7 +67,7 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
     if (status === 401) {
       return err instanceof Error && err.message
         ? err.message
-        : t('shareDialog.githubRequired.description');
+        : t('shareDialog.loginRequired.description');
     }
     return err instanceof Error ? err.message : t('shareDialog.genericError');
   };
@@ -77,31 +77,11 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
     try {
       await shareMutation.mutateAsync();
     } catch (err) {
-      if (getStatus(err) === 401 && !isGitHubConnected) {
-        try {
-          const success = await NiceModal.show('github-login');
-          if (success) {
-            shareMutation.reset();
-            await reloadSystem();
-            await shareMutation.mutateAsync();
-            return;
-          }
-        } catch {
-          /* user canceled */
-        }
+      if (getStatus(err) === 401) {
+        redirectToClerkSignUp();
+        return;
       }
       setShareError(getReadableError(err));
-    }
-  };
-
-  const handleGitHubConnect = async () => {
-    try {
-      const success = await NiceModal.show('github-login');
-      if (success) {
-        await reloadSystem();
-      }
-    } catch {
-      // Swallow cancellation errors
     }
   };
 
@@ -114,7 +94,6 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
         if (open) {
           shareMutation.reset();
           setShareError(null);
-          setShouldRedirectToSignIn(false);
         } else {
           handleClose();
         }
@@ -129,33 +108,25 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
         </DialogHeader>
 
         <SignedOut>
-          {shouldRedirectToSignIn ? (
-            <RedirectToSignIn
-              redirectUrl={
-                typeof window !== 'undefined' ? window.location.href : undefined
-              }
-            />
-          ) : (
-            <Alert variant="default" className="flex items-start gap-3">
-              <LogIn className="h-5 w-5 mt-0.5 text-muted-foreground" />
-              <div className="space-y-2">
-                <div className="font-medium">
-                  {t('shareDialog.loginRequired.title')}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {t('shareDialog.loginRequired.description')}
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShouldRedirectToSignIn(true)}
-                  className="mt-1"
-                >
-                  {t('shareDialog.loginRequired.action')}
-                </Button>
+          <Alert variant="default" className="flex items-start gap-3">
+            <LogIn className="h-5 w-5 mt-0.5 text-muted-foreground" />
+            <div className="space-y-2">
+              <div className="font-medium">
+                {t('shareDialog.loginRequired.title')}
               </div>
-            </Alert>
-          )}
+              <p className="text-sm text-muted-foreground">
+                {t('shareDialog.loginRequired.description')}
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={redirectToClerkSignUp}
+                className="mt-1"
+              >
+                {t('shareDialog.loginRequired.action')}
+              </Button>
+            </div>
+          </Alert>
         </SignedOut>
 
         <SignedIn>
@@ -169,35 +140,6 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
           ) : (
             <>
               {shareError && <Alert variant="destructive">{shareError}</Alert>}
-
-              {systemLoading ? (
-                <div className="py-6 flex justify-center">
-                  <Loader message={t('shareDialog.loadingSystem')} />
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {!isGitHubConnected && (
-                    <Alert variant="default" className="flex items-start gap-3">
-                      <div className="space-y-2">
-                        <div className="font-medium">
-                          {t('shareDialog.githubRequired.title')}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {t('shareDialog.githubRequired.description')}
-                        </p>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleGitHubConnect}
-                          className="mt-1"
-                        >
-                          {t('shareDialog.githubRequired.action')}
-                        </Button>
-                      </div>
-                    </Alert>
-                  )}
-                </div>
-              )}
             </>
           )}
         </SignedIn>

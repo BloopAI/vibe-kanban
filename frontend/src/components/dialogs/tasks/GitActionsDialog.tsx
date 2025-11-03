@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ExternalLink, GitPullRequest } from 'lucide-react';
+import { ExternalLink, GitPullRequest, LogIn } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -20,6 +20,9 @@ import type {
   TaskWithAttemptStatus,
 } from 'shared/types';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { Alert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { useClerk, useAuth } from '@clerk/clerk-react';
 
 export interface GitActionsDialogProps {
   attemptId: string;
@@ -107,6 +110,13 @@ export const GitActionsDialog = NiceModal.create<GitActionsDialogProps>(
     const modal = useModal();
     const { t } = useTranslation('tasks');
     const { project } = useProject();
+    const { isSignedIn, isLoaded } = useAuth();
+    const { redirectToSignIn } = useClerk();
+    const redirectToClerkSignIn = useCallback(() => {
+      const redirectUrl =
+        typeof window !== 'undefined' ? window.location.href : undefined;
+      void redirectToSignIn({ redirectUrl });
+    }, [redirectToSignIn]);
 
     const effectiveProjectId = providedProjectId ?? project?.id;
     const { data: attempt } = useTaskAttempt(attemptId);
@@ -139,7 +149,11 @@ export const GitActionsDialog = NiceModal.create<GitActionsDialogProps>(
     };
 
     const isLoading =
-      !attempt || !effectiveProjectId || loadingBranches || !task;
+      !attempt ||
+      !effectiveProjectId ||
+      loadingBranches ||
+      !task ||
+      !isLoaded;
 
     return (
       <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
@@ -151,6 +165,24 @@ export const GitActionsDialog = NiceModal.create<GitActionsDialogProps>(
           {isLoading ? (
             <div className="py-8">
               <Loader size={24} />
+            </div>
+          ) : !isSignedIn ? (
+            <div className="py-6 space-y-4">
+              <Alert variant="default" className="flex items-start gap-3">
+                <LogIn className="h-5 w-5 mt-0.5 text-muted-foreground" />
+                <div className="space-y-1">
+                  <div className="font-medium">
+                    {t('shareDialog.loginRequired.title')}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {t('shareDialog.loginRequired.description')}
+                  </p>
+                </div>
+              </Alert>
+              <Button onClick={redirectToClerkSignIn} className="gap-2">
+                <LogIn className="h-4 w-4" />
+                {t('shareDialog.loginRequired.action')}
+              </Button>
             </div>
           ) : (
             <ExecutionProcessesProvider key={attempt.id} attemptId={attempt.id}>

@@ -1,17 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
 import { useOrganization } from '@clerk/clerk-react';
-import type {
-  OrganizationMembershipResource,
-  PublicUserData,
-} from '@clerk/types';
+import type { PublicUserData } from '@clerk/types';
 
 export type PublicUserSummary = Pick<
   PublicUserData,
   'firstName' | 'lastName' | 'identifier' | 'imageUrl' | 'hasImage'
 >;
 
+type MembershipWithPublicData = {
+  publicUserData?: PublicUserData | null;
+};
+
 const findMemberById = (
-  members: OrganizationMembershipResource[],
+  members: MembershipWithPublicData[],
   userId: string
 ): PublicUserData | null => {
   for (const member of members) {

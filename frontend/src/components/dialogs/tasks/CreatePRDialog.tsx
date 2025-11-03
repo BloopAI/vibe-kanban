@@ -24,8 +24,12 @@ import {
 import { projectsApi } from '@/lib/api.ts';
 import { Loader2 } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { useClerk } from '@clerk/clerk-react';
 const CreatePrDialog = NiceModal.create(() => {
   const modal = useModal();
+  const { redirectToSignUp } = useClerk();
+  const getRedirectUrl = () =>
+    typeof window !== 'undefined' ? window.location.href : undefined;
   const data = modal.args as
     | { attempt: TaskAttempt; task: TaskWithAttemptStatus; projectId: string }
     | undefined;
@@ -94,11 +98,7 @@ const CreatePrDialog = NiceModal.create(() => {
         modal.hide();
         switch (result.error) {
           case GitHubServiceError.TOKEN_INVALID: {
-            const authSuccess = await NiceModal.show('github-login');
-            if (authSuccess) {
-              modal.show();
-              await handleConfirmCreatePR();
-            }
+            void redirectToSignUp({ redirectUrl: getRedirectUrl() });
             return;
           }
           case GitHubServiceError.INSUFFICIENT_PERMISSIONS: {

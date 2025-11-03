@@ -4365,6 +4365,7 @@ dependencies = [
  "rmcp",
  "rust-embed",
  "schemars 1.0.4",
+ "secrecy",
  "sentry",
  "serde",
  "serde_json",

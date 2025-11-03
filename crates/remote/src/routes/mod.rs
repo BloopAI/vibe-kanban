@@ -8,6 +8,7 @@ use crate::{AppState, auth::require_clerk_session};
 
 pub mod activity;
 mod error;
+mod oauth;
 mod tasks;
 
 pub fn router(state: AppState) -> Router {
@@ -18,7 +19,8 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/tasks", post(tasks::create_shared_task))
         .route("/v1/tasks/{task_id}", patch(tasks::update_shared_task))
         .route("/v1/tasks/{task_id}", delete(tasks::delete_shared_task))
-        .route("/v1/tasks/{task_id}/assign", post(tasks::assign_task));
+        .route("/v1/tasks/{task_id}/assign", post(tasks::assign_task))
+        .route("/v1/oauth/github/token", get(oauth::github_token));
 
     Router::<AppState>::new()
         .merge(api)
