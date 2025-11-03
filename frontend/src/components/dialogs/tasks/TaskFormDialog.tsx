@@ -79,7 +79,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
   const { t } = useTranslation(['tasks', 'common']);
   const { createTask, createAndStart, updateTask } =
     useTaskMutations(projectId);
-  const { system, profiles } = useUserSystem();
+  const { system, profiles, loading: userSystemLoading } = useUserSystem();
   const { upload, deleteImage } = useImageUpload();
   const { enableScope, disableScope } = useHotkeysContext();
 
@@ -92,7 +92,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
   const imageUploadRef = useRef<ImageUploadSectionHandle>(null);
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
 
-  const { data: branches, isLoading: branchesIsLoading } =
+  const { data: branches, isLoading: branchesLoading } =
     useProjectBranches(projectId);
   const { data: taskImages } = useTaskImages(
     editMode ? props.task.id : undefined
@@ -340,7 +340,8 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
     when: () => modal.visible && showDiscardWarning,
   });
 
-  if (branchesIsLoading) return <p>Loading...</p>;
+  const loading = branchesLoading || userSystemLoading;
+  if (loading) return <></>;
 
   return (
     <>
