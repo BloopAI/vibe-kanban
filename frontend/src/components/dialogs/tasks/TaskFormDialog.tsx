@@ -30,9 +30,13 @@ import {
 } from '@/components/ui/ImageUploadSection';
 import BranchSelector from '@/components/tasks/BranchSelector';
 import { ExecutorProfileSelector } from '@/components/settings';
-import { useTaskMutations } from '@/hooks/useTaskMutations';
 import { useUserSystem } from '@/components/config-provider';
-import { useProjectBranches, useTaskImages, useImageUpload } from '@/hooks';
+import {
+  useProjectBranches,
+  useTaskImages,
+  useImageUpload,
+  useTaskMutations,
+} from '@/hooks';
 import { useKeySubmitTask, useKeyExit, Scope } from '@/keyboard';
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { cn } from '@/lib/utils';

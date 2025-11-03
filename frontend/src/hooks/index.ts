@@ -5,6 +5,7 @@ export { useProjectBranches } from './useProjectBranches';
 export { useTaskAttempt } from './useTaskAttempt';
 export { useTaskImages } from './useTaskImages';
 export { useImageUpload } from './useImageUpload';
+export { useTaskMutations } from './useTaskMutations';
 export { useDevServer } from './useDevServer';
 export { useRebase } from './useRebase';
 export { useChangeTargetBranch } from './useChangeTargetBranch';
