@@ -38,6 +38,7 @@ import { useTranslation } from 'react-i18next';
 import { Switch } from '@/components/ui/switch';
 import NiceModal from '@ebay/nice-modal-react';
 import { OrganizationSwitcherDialog } from '@/components/dialogs';
+import { OrgMemberAvatars } from '@/components/OrgMemberAvatars';
 
 const INTERNAL_NAV = [{ label: 'Projects', icon: FolderOpen, to: '/projects' }];
 
@@ -159,6 +160,7 @@ export function Navbar() {
           </div>
 
           <div className="flex-1 flex items-center justify-end gap-2">
+            <OrgMemberAvatars className="mx-1" />
             {projectId && (
               <>
                 <OpenInIdeButton onClick={handleOpenInIDE} />
