@@ -42,6 +42,9 @@ const OrganizationSwitcherDialog =
           <div ref={wrapperRef}>
             <OrganizationSwitcher
               hidePersonal
+              afterCreateOrganizationUrl="/"
+              afterSelectOrganizationUrl="/"
+              afterLeaveOrganizationUrl="/"
               organizationProfileMode="modal"
               createOrganizationMode="modal"
               appearance={{
