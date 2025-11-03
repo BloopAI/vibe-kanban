@@ -117,7 +117,7 @@ fn generate_types_content() -> String {
         executors::logs::FileChange::decl(),
         executors::logs::ActionType::decl(),
         executors::logs::TodoItem::decl(),
-        executors::logs::ErrorType::decl(),
+        executors::logs::NormalizedEntryError::decl(),
         executors::logs::ToolResult::decl(),
         executors::logs::ToolResultValueType::decl(),
         executors::logs::ToolStatus::decl(),

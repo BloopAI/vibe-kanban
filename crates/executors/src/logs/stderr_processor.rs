@@ -14,7 +14,8 @@ use futures::StreamExt;
 use workspace_utils::msg_store::MsgStore;
 
 use super::{
-    ErrorType, NormalizedEntry, NormalizedEntryType, plain_text_processor::PlainTextLogProcessor,
+    NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
+    plain_text_processor::PlainTextLogProcessor,
 };
 use crate::logs::utils::EntryIndexProvider;
 
@@ -44,7 +45,7 @@ pub fn normalize_stderr_logs(msg_store: Arc<MsgStore>, entry_index_provider: Ent
             .normalized_entry_producer(Box::new(|content: String| NormalizedEntry {
                 timestamp: None,
                 entry_type: NormalizedEntryType::ErrorMessage {
-                    error_type: ErrorType::Other,
+                    error_type: NormalizedEntryError::Other,
                 },
                 content: strip_ansi_escapes::strip_str(&content),
                 metadata: None,

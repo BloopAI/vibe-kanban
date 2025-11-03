@@ -49,7 +49,7 @@ pub struct NormalizedConversation {
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
-pub enum ErrorType {
+pub enum NormalizedEntryError {
     SetupRequired,
     Other,
 }
@@ -70,7 +70,7 @@ pub enum NormalizedEntryType {
     },
     SystemMessage,
     ErrorMessage {
-        error_type: ErrorType,
+        error_type: NormalizedEntryError,
     },
     Thinking,
     Loading,

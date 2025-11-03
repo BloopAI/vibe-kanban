@@ -26,8 +26,8 @@ use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
     executors::{AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
     logs::{
-        ActionType, ErrorType, FileChange, NormalizedEntry, NormalizedEntryType, TodoItem,
-        ToolStatus,
+        ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
+        TodoItem, ToolStatus,
         plain_text_processor::PlainTextLogProcessor,
         utils::{ConversationPatch, EntryIndexProvider},
     },
@@ -146,7 +146,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
                     NormalizedEntry {
                         timestamp: None,
                         entry_type: NormalizedEntryType::ErrorMessage {
-                            error_type: ErrorType::Other,
+                            error_type: NormalizedEntryError::Other,
                         },
                         content,
                         metadata: None,
@@ -162,7 +162,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
                     let error_message = NormalizedEntry {
                         timestamp: None,
                         entry_type: NormalizedEntryType::ErrorMessage {
-                            error_type: ErrorType::SetupRequired,
+                            error_type: NormalizedEntryError::SetupRequired,
                         },
                         content: content.to_string(),
                         metadata: None,

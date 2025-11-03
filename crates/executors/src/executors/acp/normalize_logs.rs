@@ -15,7 +15,7 @@ use workspace_utils::msg_store::MsgStore;
 pub use super::AcpAgentHarness;
 use super::AcpEvent;
 use crate::logs::{
-    ActionType, ErrorType, FileChange, NormalizedEntry, NormalizedEntryType, ToolResult,
+    ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType, ToolResult,
     ToolResultValueType, ToolStatus as LogToolStatus,
     stderr_processor::normalize_stderr_logs,
     utils::{ConversationPatch, EntryIndexProvider},
@@ -52,7 +52,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                         let entry = NormalizedEntry {
                             timestamp: None,
                             entry_type: NormalizedEntryType::ErrorMessage {
-                                error_type: ErrorType::Other,
+                                error_type: NormalizedEntryError::Other,
                             },
                             content: msg,
                             metadata: None,

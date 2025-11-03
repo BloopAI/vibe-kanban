@@ -27,7 +27,7 @@ use executors::{
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     },
     executors::{ExecutorError, StandardCodingAgentExecutor},
-    logs::{ErrorType, NormalizedEntry, NormalizedEntryType, utils::ConversationPatch},
+    logs::{NormalizedEntry, NormalizedEntryError, NormalizedEntryType, utils::ConversationPatch},
     profile::{ExecutorConfigs, ExecutorProfileId, to_default_variant},
 };
 use futures::{StreamExt, future};
@@ -678,7 +678,7 @@ pub trait ContainerService {
                 let error_message = NormalizedEntry {
                     timestamp: None,
                     entry_type: NormalizedEntryType::ErrorMessage {
-                        error_type: ErrorType::SetupRequired,
+                        error_type: NormalizedEntryError::SetupRequired,
                     },
                     content: help_text,
                     metadata: None,

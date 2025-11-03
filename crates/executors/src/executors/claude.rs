@@ -29,8 +29,8 @@ use crate::{
         codex::client::LogWriter,
     },
     logs::{
-        ActionType, ErrorType, FileChange, NormalizedEntry, NormalizedEntryType, TodoItem,
-        ToolStatus,
+        ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
+        TodoItem, ToolStatus,
         stderr_processor::normalize_stderr_logs,
         utils::{EntryIndexProvider, patch::ConversationPatch},
     },
@@ -428,7 +428,7 @@ impl ClaudeLogProcessor {
                 );
                 Some(NormalizedEntry {
                     timestamp: None,
-                    entry_type: NormalizedEntryType::ErrorMessage { error_type: ErrorType::Other,
+                    entry_type: NormalizedEntryType::ErrorMessage { error_type: NormalizedEntryError::Other,
                     },
                     content: "Claude Code + ANTHROPIC_API_KEY detected. Usage will be billed via Anthropic pay-as-you-go instead of your Claude subscription.".to_string(),
                     metadata: None,
@@ -1082,7 +1082,7 @@ impl ClaudeLogProcessor {
                     let entry = NormalizedEntry {
                         timestamp: None,
                         entry_type: NormalizedEntryType::ErrorMessage {
-                            error_type: ErrorType::Other,
+                            error_type: NormalizedEntryError::Other,
                         },
                         content: serde_json::to_string(claude_json)
                             .unwrap_or_else(|_| "error".to_string()),
@@ -1118,7 +1118,7 @@ impl ClaudeLogProcessor {
                     ApprovalStatus::TimedOut => Some(NormalizedEntry {
                         timestamp: None,
                         entry_type: NormalizedEntryType::ErrorMessage {
-                            error_type: ErrorType::Other,
+                            error_type: NormalizedEntryError::Other,
                         },
                         content: format!("Approval timed out for tool {tool_name}"),
                         metadata: None,
@@ -2245,7 +2245,7 @@ mod tests {
         assert!(matches!(
             entries[0].entry_type,
             NormalizedEntryType::ErrorMessage {
-                error_type: ErrorType::Other,
+                error_type: NormalizedEntryError::Other,
             },
         ));
         assert_eq!(
