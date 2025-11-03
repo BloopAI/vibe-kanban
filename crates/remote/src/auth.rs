@@ -88,13 +88,18 @@ impl ClerkService {
         }
 
         let response = response.error_for_status()?;
-        let body: Vec<ClerkOrganizationMembership> = response.json().await?;
-        if body.len() == membership_limit {
-            return Err(ClerkServiceError::InvalidResponse(format!(
+        let body: MembershipResponse = response.json().await?;
+
+        if body.data.len() == membership_limit {
+            Err(ClerkServiceError::InvalidResponse(format!(
                 "User {user_id} has more than {membership_limit} memberships",
-            )));
+            )))
         } else {
-            Ok(body)
+            Ok(body
+                .data
+                .into_iter()
+                .map(|record| record.organization)
+                .collect())
         }
     }
 
@@ -119,6 +124,16 @@ struct UserResponse {
 struct UserEmailAddress {
     id: String,
     email_address: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct MembershipResponse {
+    data: Vec<MembershipRecord>,
+}
+
+#[derive(Debug, Deserialize)]
+struct MembershipRecord {
+    organization: ClerkOrganizationMembership,
 }
 
 #[derive(Debug, Deserialize)]
