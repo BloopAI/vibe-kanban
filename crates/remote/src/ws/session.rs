@@ -25,7 +25,6 @@ pub async fn handle(
     socket: WebSocket,
     state: AppState,
     ctx: RequestContext,
-    initial_identity: ClerkIdentity,
     params: WsQueryParams,
 ) {
     let config = state.config();
@@ -37,7 +36,7 @@ pub async fn handle(
         state.auth().clone(),
         ctx.user.id.clone(),
         org_id.clone(),
-        initial_identity,
+        ctx.identity.clone(),
         ChronoDuration::seconds(TOKEN_EXPIRY_GRACE_SECS),
     );
     let mut auth_check_interval =
