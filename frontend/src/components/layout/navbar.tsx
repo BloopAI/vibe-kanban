@@ -1,7 +1,7 @@
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useCallback } from 'react';
 import { siDiscord } from 'simple-icons';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,8 +32,8 @@ import {
   SignedIn,
   SignedOut,
   SignInButton,
-  SignOutButton,
   UserButton,
+  useClerk,
 } from '@clerk/clerk-react';
 import { useTranslation } from 'react-i18next';
 import { Switch } from '@/components/ui/switch';
@@ -65,12 +65,7 @@ export function Navbar() {
   const { query, setQuery, active, clear, registerInputRef } = useSearch();
   const handleOpenInEditor = useOpenProjectInEditor(project || null);
   const { data: onlineCount } = useDiscordOnlineCount();
-  const navButtonClass = buttonVariants({ variant: 'ghost', size: 'sm' });
-  const navButtonTightClass = buttonVariants({
-    variant: 'ghost',
-    size: 'sm',
-    className: 'px-2',
-  });
+  const { signOut } = useClerk();
 
   const setSearchBarRef = useCallback(
     (node: HTMLInputElement | null) => {
@@ -162,44 +157,6 @@ export function Navbar() {
           </div>
 
           <div className="flex-1 flex items-center justify-end gap-2">
-            <SignedOut>
-              <SignInButton mode="modal">
-                <button className={navButtonClass}>Sign In</button>
-              </SignInButton>
-            </SignedOut>
-
-            <SignedIn>
-              <div className="flex items-center gap-1">
-                <OrganizationSwitcher
-                  hidePersonal
-                  afterCreateOrganizationUrl="/"
-                  afterSelectOrganizationUrl="/"
-                  afterLeaveOrganizationUrl="/"
-                  appearance={{
-                    elements: {
-                      organizationSwitcherTrigger: `${navButtonClass} gap-2 text-foreground`,
-                      organizationSwitcherTriggerIcon: 'text-muted-foreground',
-                      organizationPreviewMainIdentifier: 'text-foreground',
-                      organizationPreviewSecondaryIdentifier:
-                        'text-muted-foreground',
-                    },
-                  }}
-                />
-                <UserButton
-                  appearance={{
-                    elements: {
-                      userButtonTrigger:
-                        'rounded-full border border-input hover:bg-accent transition-colors p-0 h-6 w-6',
-                      avatarBox: 'h-6 w-6',
-                    },
-                  }}
-                />
-                <SignOutButton>
-                  <button className={navButtonTightClass}>Sign Out</button>
-                </SignOutButton>
-              </div>
-            </SignedIn>
-
             {projectId && (
               <>
                 <OpenInIdeButton onClick={handleOpenInIDE} />
@@ -271,6 +228,51 @@ export function Navbar() {
                     </DropdownMenuItem>
                   );
                 })}
+
+                <DropdownMenuSeparator />
+
+                <SignedOut>
+                  <DropdownMenuItem asChild>
+                    <SignInButton mode="modal">
+                      <button className="w-full">Sign in</button>
+                    </SignInButton>
+                  </DropdownMenuItem>
+                </SignedOut>
+
+                <SignedIn>
+                  <DropdownMenuItem asChild>
+                    <UserButton
+                      appearance={{
+                        elements: {
+                          userButtonTrigger: 'w-full justify-start',
+                          userButtonBox: 'flex-row-reverse justify-end gap-2',
+                        },
+                      }}
+                    />
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem asChild>
+                    <OrganizationSwitcher
+                      hidePersonal
+                      afterCreateOrganizationUrl="/"
+                      afterSelectOrganizationUrl="/"
+                      afterLeaveOrganizationUrl="/"
+                      organizationProfileMode="modal"
+                      createOrganizationMode="modal"
+                      appearance={{
+                        elements: {
+                          organizationSwitcherTrigger: 'w-full justify-start',
+                        },
+                      }}
+                    >
+                      <button className="w-full">Organization</button>
+                    </OrganizationSwitcher>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem onSelect={() => signOut()}>
+                    Sign out
+                  </DropdownMenuItem>
+                </SignedIn>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
