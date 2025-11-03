@@ -80,6 +80,8 @@ export function Navbar() {
   // Navbar is global, but the share tasks toggle only makes sense on the tasks route
   const isTasksRoute = /^\/projects\/[^/]+\/tasks/.test(location.pathname);
   const showSharedTasks = searchParams.get('shared') !== 'off';
+  const shouldShowSharedToggle = isTasksRoute && active;
+  const shouldShowOrgMembers = !isTasksRoute || showSharedTasks;
 
   const handleSharedToggle = useCallback(
     (checked: boolean) => {
@@ -150,17 +152,19 @@ export function Navbar() {
               onClear={clear}
               project={project || null}
             />
-            {isTasksRoute && active ? (
+          </div>
+
+          <div className="flex-1 flex items-center justify-end gap-2">
+            {shouldShowSharedToggle ? (
               <Switch
                 checked={showSharedTasks}
                 onCheckedChange={handleSharedToggle}
                 aria-label={t('tasks:filters.sharedToggleAria')}
               />
             ) : null}
-          </div>
-
-          <div className="flex-1 flex items-center justify-end gap-2">
-            <OrgMemberAvatars className="mx-1" />
+            {shouldShowOrgMembers ? (
+              <OrgMemberAvatars className="mx-1" />
+            ) : null}
             {projectId && (
               <>
                 <OpenInIdeButton onClick={handleOpenInIDE} />
