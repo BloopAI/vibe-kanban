@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { PlusIcon } from 'lucide-react';
 import { openTaskForm } from '@/lib/openTaskForm';
-import { useTaskChildren } from '@/hooks/useTaskChildren';
+import { useTaskRelationships } from '@/hooks/useTaskChildren';
 import { DataTable, type ColumnDef } from '@/components/ui/table/DataTable';
 import type { Task, TaskAttempt } from 'shared/types';
 
@@ -26,11 +26,20 @@ export const ViewRelatedTasksDialog =
       const modal = useModal();
       const { t } = useTranslation('tasks');
       const {
-        data: children = [],
+        data: relationships,
         isLoading,
         isError,
         refetch,
-      } = useTaskChildren(attemptId);
+      } = useTaskRelationships(attemptId);
+
+      // Combine parent and children into a single list of related tasks
+      const relatedTasks: Task[] = [];
+      if (relationships?.parent_task) {
+        relatedTasks.push(relationships.parent_task);
+      }
+      if (relationships?.children) {
+        relatedTasks.push(...relationships.children);
+      }
 
       const taskColumns: ColumnDef<Task>[] = [
         {
@@ -124,7 +133,7 @@ export const ViewRelatedTasksDialog =
 
               {!isError && (
                 <DataTable
-                  data={children}
+                  data={relatedTasks}
                   columns={taskColumns}
                   keyExtractor={(task) => task.id}
                   onRowClick={(task) => handleClickTask(task.id)}
@@ -134,7 +143,7 @@ export const ViewRelatedTasksDialog =
                     <div className="w-full flex text-left">
                       <span className="flex-1">
                         {t('viewRelatedTasksDialog.tasksCount', {
-                          count: children.length,
+                          count: relatedTasks.length,
                         })}
                       </span>
                       <span>
