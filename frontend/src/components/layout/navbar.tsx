@@ -97,7 +97,7 @@ export function Navbar() {
   const isTasksRoute = /^\/projects\/[^/]+\/tasks/.test(location.pathname);
   const showSharedTasks = searchParams.get('shared') !== 'off';
   const shouldShowSharedToggle = isTasksRoute && active;
-  const shouldShowOrgMembers = !isTasksRoute || showSharedTasks;
+  const shouldShowOrgMembers = isTasksRoute && active && showSharedTasks;
 
   const handleSharedToggle = useCallback(
     (checked: boolean) => {
@@ -171,33 +171,35 @@ export function Navbar() {
           </div>
 
           <div className="flex flex-1 items-center justify-end gap-1">
-            {shouldShowSharedToggle || shouldShowOrgMembers ? (
-              <>
-                <div className="flex items-center gap-4">
-                  {shouldShowOrgMembers ? <OrgMemberAvatars /> : null}
+            <SignedIn>
+              {shouldShowSharedToggle || shouldShowOrgMembers ? (
+                <>
+                  <div className="flex items-center gap-4">
+                    {shouldShowOrgMembers ? <OrgMemberAvatars /> : null}
 
-                  {shouldShowSharedToggle ? (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div>
-                            <Switch
-                              checked={showSharedTasks}
-                              onCheckedChange={handleSharedToggle}
-                              aria-label={t('tasks:filters.sharedToggleAria')}
-                            />
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom">
-                          {t('tasks:filters.sharedToggleTooltip')}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  ) : null}
-                </div>
-                <NavDivider />
-              </>
-            ) : null}
+                    {shouldShowSharedToggle ? (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div>
+                              <Switch
+                                checked={showSharedTasks}
+                                onCheckedChange={handleSharedToggle}
+                                aria-label={t('tasks:filters.sharedToggleAria')}
+                              />
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom">
+                            {t('tasks:filters.sharedToggleTooltip')}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : null}
+                  </div>
+                  <NavDivider />
+                </>
+              ) : null}
+            </SignedIn>
 
             {projectId ? (
               <>
