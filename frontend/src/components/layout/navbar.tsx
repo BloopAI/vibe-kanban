@@ -32,7 +32,6 @@ import {
   SignedIn,
   SignedOut,
   SignInButton,
-  UserButton,
   useClerk,
 } from '@clerk/clerk-react';
 import { useTranslation } from 'react-i18next';
@@ -65,7 +64,7 @@ export function Navbar() {
   const { query, setQuery, active, clear, registerInputRef } = useSearch();
   const handleOpenInEditor = useOpenProjectInEditor(project || null);
   const { data: onlineCount } = useDiscordOnlineCount();
-  const { signOut } = useClerk();
+  const { signOut, openUserProfile } = useClerk();
 
   const setSearchBarRef = useCallback(
     (node: HTMLInputElement | null) => {
@@ -240,15 +239,8 @@ export function Navbar() {
                 </SignedOut>
 
                 <SignedIn>
-                  <DropdownMenuItem asChild>
-                    <UserButton
-                      appearance={{
-                        elements: {
-                          userButtonTrigger: 'w-full justify-start',
-                          userButtonBox: 'flex-row-reverse justify-end gap-2',
-                        },
-                      }}
-                    />
+                  <DropdownMenuItem onSelect={() => openUserProfile()}>
+                    Profile
                   </DropdownMenuItem>
 
                   <DropdownMenuItem asChild>
@@ -261,12 +253,14 @@ export function Navbar() {
                       createOrganizationMode="modal"
                       appearance={{
                         elements: {
-                          organizationSwitcherTrigger: 'w-full justify-start',
+                          rootBox: 'w-full',
+                          organizationSwitcherTrigger:
+                            'w-full justify-start px-2 py-1.5 text-sm font-normal hover:bg-transparent',
+                          organizationSwitcherTriggerIcon: 'hidden',
+                          organizationPreviewAvatarBox: 'hidden',
                         },
                       }}
-                    >
-                      <button className="w-full">Organization</button>
-                    </OrganizationSwitcher>
+                    />
                   </DropdownMenuItem>
 
                   <DropdownMenuItem onSelect={() => signOut()}>
