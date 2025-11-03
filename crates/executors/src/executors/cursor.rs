@@ -19,10 +19,6 @@ use workspace_utils::{
 };
 
 use crate::{
-    actions::{
-        ExecutorAction, ExecutorActionType,
-        script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
-    },
     command::{CmdOverrides, CommandBuilder, apply_overrides},
     executors::{AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
     logs::{
@@ -51,9 +47,13 @@ pub struct CursorAgent {
 }
 
 impl CursorAgent {
+    pub fn base_command() -> &'static str {
+        "cursor-agent"
+    }
+
     fn build_command_builder(&self) -> CommandBuilder {
         let mut builder =
-            CommandBuilder::new("cursor-agent").params(["-p", "--output-format=stream-json"]);
+            CommandBuilder::new(Self::base_command()).params(["-p", "--output-format=stream-json"]);
 
         if self.force.unwrap_or(false) {
             builder = builder.extend_params(["--force"]);
@@ -478,72 +478,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
     async fn check_availability(&self) -> bool {
         resolve_executable_path("cursor-agent").await.is_some()
     }
-    async fn get_setup_helper_action(&self) -> Result<ExecutorAction, ExecutorError> {
-        let base_command = self.build_command_builder().base;
-
-        #[cfg(any(target_os = "macos", target_os = "linux"))]
-        {
-            // First action: Install
-            let install_script = format!(
-                r#"#!/bin/bash
-set -e
-if ! command -v {base_command} &> /dev/null; then
-    echo "Installing Cursor CLI..."
-    curl https://cursor.com/install -fsS | bash
-    echo "Installation complete!"
-else
-    echo "Cursor CLI already installed"
-fi
-"#
-            );
-
-            let install_request = ScriptRequest {
-                script: install_script,
-                language: ScriptRequestLanguage::Bash,
-                context: ScriptContext::SetupScript,
-            };
-
-            // Second action (chained): Login
-            let login_script = format!("{base_command} login");
-            let login_request = ScriptRequest {
-                script: login_script,
-                language: ScriptRequestLanguage::Bash,
-                context: ScriptContext::SetupScript,
-            };
-
-            // Chain them: install → login
-            Ok(ExecutorAction::new(
-                ExecutorActionType::ScriptRequest(install_request),
-                Some(Box::new(ExecutorAction::new(
-                    ExecutorActionType::ScriptRequest(login_request),
-                    None,
-                ))),
-            ))
-        }
-
-        #[cfg(target_os = "windows")]
-        {
-            let script = r#"@echo off
-echo Error: Cursor CLI is not available for Windows.
-echo Please use macOS or Linux.
-exit /b 1
-"#
-            .to_string();
-
-            let request = ScriptRequest {
-                script,
-                language: ScriptRequestLanguage::Bash,
-                context: ScriptContext::SetupScript,
-            };
-
-            Ok(ExecutorAction::new(
-                ExecutorActionType::ScriptRequest(request),
-                None,
-            ))
-        }
-    }
 }
-
 /* ===========================
 Typed Cursor JSON structures
 =========================== */

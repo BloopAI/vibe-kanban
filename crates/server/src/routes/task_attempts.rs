@@ -1,3 +1,4 @@
+pub mod cursor_setup;
 pub mod drafts;
 pub mod util;
 
@@ -27,7 +28,7 @@ use executors::{
         coding_agent_follow_up::CodingAgentFollowUpRequest,
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     },
-    executors::StandardCodingAgentExecutor,
+    executors::{CodingAgent, ExecutorError},
     profile::{ExecutorConfigs, ExecutorProfileId},
 };
 use git2::BranchType;
@@ -148,9 +149,7 @@ pub struct RunAgentSetupRequest {
 }
 
 #[derive(Debug, Serialize, TS)]
-pub struct RunAgentSetupResponse {
-    pub execution_process: ExecutionProcess,
-}
+pub struct RunAgentSetupResponse {}
 
 #[axum::debug_handler]
 pub async fn create_task_attempt(
@@ -214,35 +213,13 @@ pub async fn run_agent_setup(
     let executor_profile_id = payload.executor_profile_id;
     let config = ExecutorConfigs::get_cached();
     let coding_agent = config.get_coding_agent_or_default(&executor_profile_id);
-    let latest_process = ExecutionProcess::find_latest_by_task_attempt_and_run_reason(
-        &deployment.db().pool,
-        task_attempt.id,
-        &ExecutionProcessRunReason::CodingAgent,
-    )
-    .await?;
+    match coding_agent {
+        CodingAgent::CursorAgent(_) => {
+            cursor_setup::run_cursor_setup(&deployment, &task_attempt).await?;
+        }
+        _ => return Err(ApiError::Executor(ExecutorError::SetupHelperNotSupported)),
+    }
 
-    let executor_action = if let Some(latest_process) = latest_process {
-        let latest_action = latest_process
-            .executor_action()
-            .map_err(|e| ApiError::TaskAttempt(TaskAttemptError::ValidationError(e.to_string())))?;
-        coding_agent
-            .get_setup_helper_action()
-            .await?
-            .append_action(latest_action.to_owned())
-    } else {
-        coding_agent.get_setup_helper_action().await?
-    };
-
-    let _ = ensure_worktree_path(&deployment, &task_attempt).await?;
-
-    let execution_process = deployment
-        .container()
-        .start_execution(
-            &task_attempt,
-            &executor_action,
-            &ExecutionProcessRunReason::SetupScript,
-        )
-        .await?;
     deployment
         .track_if_analytics_allowed(
             "agent_setup_script_executed",
@@ -253,9 +230,7 @@ pub async fn run_agent_setup(
         )
         .await;
 
-    Ok(ResponseJson(ApiResponse::success(RunAgentSetupResponse {
-        execution_process,
-    })))
+    Ok(ResponseJson(ApiResponse::success(RunAgentSetupResponse {})))
 }
 
 #[derive(Debug, Deserialize, TS)]
