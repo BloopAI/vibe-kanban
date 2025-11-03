@@ -36,6 +36,12 @@ import {
 } from '@clerk/clerk-react';
 import { useTranslation } from 'react-i18next';
 import { Switch } from '@/components/ui/switch';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import NiceModal from '@ebay/nice-modal-react';
 import { OrganizationSwitcherDialog } from '@/components/dialogs';
 import { OrgMemberAvatars } from '@/components/OrgMemberAvatars';
@@ -59,6 +65,16 @@ const EXTERNAL_LINKS = [
     href: 'https://discord.gg/AC4nwVtJM3',
   },
 ];
+
+function NavDivider() {
+  return (
+    <div
+      className="mx-2 h-6 w-px bg-border/60"
+      role="separator"
+      aria-orientation="vertical"
+    />
+  );
+}
 
 export function Navbar() {
   const location = useLocation();
@@ -154,116 +170,153 @@ export function Navbar() {
             />
           </div>
 
-          <div className="flex-1 flex items-center justify-end gap-2">
-            {shouldShowSharedToggle ? (
-              <Switch
-                checked={showSharedTasks}
-                onCheckedChange={handleSharedToggle}
-                aria-label={t('tasks:filters.sharedToggleAria')}
-              />
-            ) : null}
-            {shouldShowOrgMembers ? (
-              <OrgMemberAvatars className="mx-1" />
-            ) : null}
-            {projectId && (
+          <div className="flex flex-1 items-center justify-end gap-1">
+            {shouldShowSharedToggle || shouldShowOrgMembers ? (
               <>
-                <OpenInIdeButton onClick={handleOpenInIDE} />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleCreateTask}
-                  aria-label="Create new task"
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-4">
+                  {shouldShowOrgMembers ? <OrgMemberAvatars /> : null}
+
+                  {shouldShowSharedToggle ? (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div>
+                            <Switch
+                              checked={showSharedTasks}
+                              onCheckedChange={handleSharedToggle}
+                              aria-label={t('tasks:filters.sharedToggleAria')}
+                            />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom">
+                          {t('tasks:filters.sharedToggleTooltip')}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ) : null}
+                </div>
+                <NavDivider />
               </>
-            )}
-            <Button variant="ghost" size="icon" asChild aria-label="Settings">
-              <Link
-                to={
-                  projectId
-                    ? `/settings/projects?projectId=${projectId}`
-                    : '/settings'
-                }
-              >
-                <Settings className="h-4 w-4" />
-              </Link>
-            </Button>
+            ) : null}
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Main navigation"
-                >
-                  <Menu className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-
-              <DropdownMenuContent align="end">
-                {INTERNAL_NAV.map((item) => {
-                  const active = location.pathname.startsWith(item.to);
-                  const Icon = item.icon;
-                  return (
-                    <DropdownMenuItem
-                      key={item.to}
-                      asChild
-                      className={active ? 'bg-accent' : ''}
-                    >
-                      <Link to={item.to}>
-                        <Icon className="mr-2 h-4 w-4" />
-                        {item.label}
-                      </Link>
-                    </DropdownMenuItem>
-                  );
-                })}
-
-                <DropdownMenuSeparator />
-
-                {EXTERNAL_LINKS.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <DropdownMenuItem key={item.href} asChild>
-                      <a
-                        href={item.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Icon className="mr-2 h-4 w-4" />
-                        {item.label}
-                      </a>
-                    </DropdownMenuItem>
-                  );
-                })}
-
-                <DropdownMenuSeparator />
-
-                <SignedOut>
-                  <DropdownMenuItem asChild>
-                    <SignInButton mode="modal">
-                      <button className="w-full">Sign in</button>
-                    </SignInButton>
-                  </DropdownMenuItem>
-                </SignedOut>
-
-                <SignedIn>
-                  <DropdownMenuItem onSelect={() => openUserProfile()}>
-                    Profile
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    onSelect={() => NiceModal.show(OrganizationSwitcherDialog)}
+            {projectId ? (
+              <>
+                <div className="flex items-center gap-1">
+                  <OpenInIdeButton
+                    onClick={handleOpenInIDE}
+                    className="h-9 w-9"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9"
+                    onClick={handleCreateTask}
+                    aria-label="Create new task"
                   >
-                    {organization?.name ?? 'Organization'}
-                  </DropdownMenuItem>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                <NavDivider />
+              </>
+            ) : null}
 
-                  <DropdownMenuItem onSelect={() => signOut()}>
-                    Sign out
-                  </DropdownMenuItem>
-                </SignedIn>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9"
+                asChild
+                aria-label="Settings"
+              >
+                <Link
+                  to={
+                    projectId
+                      ? `/settings/projects?projectId=${projectId}`
+                      : '/settings'
+                  }
+                >
+                  <Settings className="h-4 w-4" />
+                </Link>
+              </Button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9"
+                    aria-label="Main navigation"
+                  >
+                    <Menu className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+
+                <DropdownMenuContent align="end">
+                  {INTERNAL_NAV.map((item) => {
+                    const active = location.pathname.startsWith(item.to);
+                    const Icon = item.icon;
+                    return (
+                      <DropdownMenuItem
+                        key={item.to}
+                        asChild
+                        className={active ? 'bg-accent' : ''}
+                      >
+                        <Link to={item.to}>
+                          <Icon className="mr-2 h-4 w-4" />
+                          {item.label}
+                        </Link>
+                      </DropdownMenuItem>
+                    );
+                  })}
+
+                  <DropdownMenuSeparator />
+
+                  {EXTERNAL_LINKS.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <DropdownMenuItem key={item.href} asChild>
+                        <a
+                          href={item.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Icon className="mr-2 h-4 w-4" />
+                          {item.label}
+                        </a>
+                      </DropdownMenuItem>
+                    );
+                  })}
+
+                  <DropdownMenuSeparator />
+
+                  <SignedOut>
+                    <DropdownMenuItem asChild>
+                      <SignInButton mode="modal">
+                        <button className="w-full">Sign in</button>
+                      </SignInButton>
+                    </DropdownMenuItem>
+                  </SignedOut>
+
+                  <SignedIn>
+                    <DropdownMenuItem onSelect={() => openUserProfile()}>
+                      Profile
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                      onSelect={() =>
+                        NiceModal.show(OrganizationSwitcherDialog)
+                      }
+                    >
+                      {organization?.name ?? 'Organization'}
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem onSelect={() => signOut()}>
+                      Sign out
+                    </DropdownMenuItem>
+                  </SignedIn>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
       </div>

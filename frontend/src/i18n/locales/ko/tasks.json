@@ -2,6 +2,10 @@
   "actions": {
     "addTask": "작업 추가"
   },
+  "filters": {
+    "sharedToggleAria": "공유 작업 전환",
+    "sharedToggleTooltip": "공유 콘텐츠 표시/숨기기"
+  },
   "actionsMenu": {
     "attempt": "Attempt",
     "createNewAttempt": "Create new attempt",

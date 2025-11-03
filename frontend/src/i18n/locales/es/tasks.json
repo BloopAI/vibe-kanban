@@ -2,6 +2,10 @@
   "actions": {
     "addTask": "Agregar tarea"
   },
+  "filters": {
+    "sharedToggleAria": "Alternar tareas compartidas",
+    "sharedToggleTooltip": "Mostrar/ocultar contenido compartido"
+  },
   "actionsMenu": {
     "attempt": "Attempt",
     "createNewAttempt": "Create new attempt",
