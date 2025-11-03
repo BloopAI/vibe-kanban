@@ -77,7 +77,7 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
       attempt,
       onNavigateToTask: (taskId: string) => {
         if (projectId) {
-          navigate(`/projects/${projectId}/tasks/${taskId}`);
+          navigate(`/projects/${projectId}/tasks/${taskId}/attempts/latest`);
         }
       },
     });
