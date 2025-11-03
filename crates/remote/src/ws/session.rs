@@ -122,7 +122,13 @@ pub async fn handle(
                         break;
                     }
                     Err(error) => {
-                        tracing::warn!("websocket auth token refresh error: {error}");
+                        tracing::info!(
+                            ?error,
+                            "closing websocket due to auth verification error"
+                        );
+                        let _ = send_error(&mut sender, "authorization error").await;
+                        let _ = sender.send(Message::Close(None)).await;
+                        break;
                     }
                 }
             }
