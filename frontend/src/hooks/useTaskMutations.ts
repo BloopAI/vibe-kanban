@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigateWithSearch } from '@/hooks';
 import { tasksApi } from '@/lib/api';
 import { paths } from '@/lib/paths';
-import { taskRelationshipsKeys } from '@/hooks/useTaskChildren';
+import { taskRelationshipsKeys } from '@/hooks/useTaskRelationships';
 import type {
   CreateTask,
   CreateAndStartTaskRequest,
