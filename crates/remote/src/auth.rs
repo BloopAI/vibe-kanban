@@ -68,6 +68,36 @@ impl ClerkService {
         body.try_into()
     }
 
+    pub async fn get_user_memberships(
+        &self,
+        user_id: &str,
+    ) -> Result<Vec<ClerkOrganizationMembership>, ClerkServiceError> {
+        let membership_limit = 100;
+        let url = self.endpoint(&format!(
+            "users/{user_id}/organization_memberships?limit={membership_limit}"
+        ))?;
+        let response = self
+            .client
+            .get(url)
+            .bearer_auth(&self.secret_key)
+            .send()
+            .await?;
+
+        if response.status() == StatusCode::NOT_FOUND {
+            return Err(ClerkServiceError::NotFound(user_id.to_string()));
+        }
+
+        let response = response.error_for_status()?;
+        let body: Vec<ClerkOrganizationMembership> = response.json().await?;
+        if body.len() == membership_limit {
+            return Err(ClerkServiceError::InvalidResponse(format!(
+                "User {user_id} has more than {membership_limit} memberships",
+            )));
+        } else {
+            Ok(body)
+        }
+    }
+
     fn endpoint(&self, path: &str) -> Result<Url, ClerkServiceError> {
         self.api_url
             .join(path)
@@ -89,6 +119,12 @@ struct UserResponse {
 struct UserEmailAddress {
     id: String,
     email_address: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ClerkOrganizationMembership {
+    pub id: String,
+    pub slug: Option<String>,
 }
 
 impl TryFrom<UserResponse> for ClerkUser {
