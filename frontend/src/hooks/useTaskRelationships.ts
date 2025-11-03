@@ -8,9 +8,6 @@ export const taskRelationshipsKeys = {
     ['taskRelationships', attemptId] as const,
 };
 
-// Keep the old export for backwards compatibility during migration
-export const taskChildrenKeys = taskRelationshipsKeys;
-
 type Options = {
   enabled?: boolean;
   refetchInterval?: number | false;
@@ -33,6 +30,3 @@ export function useTaskRelationships(attemptId?: string, opts?: Options) {
     retry: opts?.retry ?? 2,
   });
 }
-
-// Keep the old export for backwards compatibility during migration
-export const useTaskChildren = useTaskRelationships;
