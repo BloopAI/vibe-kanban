@@ -78,7 +78,6 @@ impl<'a> IdentityRepository<'a> {
                 "User {user_id} is not a member of organization {organization_id}"
             ))));
         }
-        // Create or update user record
         let record = upsert_user(self.pool, &user).await?;
         ensure_member_metadata(self.pool, organization_id, &record.id).await?;
         Ok(record)
