@@ -68,6 +68,17 @@ impl<'a> IdentityRepository<'a> {
         user_id: &str,
     ) -> Result<User, IdentityError> {
         let user = self.clerk.get_user(user_id).await?;
+        // Check if user is a member of the organization
+        let memberships = self.clerk.get_user_memberships(user_id).await?;
+        let is_member = memberships
+            .iter()
+            .any(|membership| membership.id == organization_id);
+        if !is_member {
+            return Err(IdentityError::Clerk(ClerkServiceError::NotFound(format!(
+                "User {user_id} is not a member of organization {organization_id}"
+            ))));
+        }
+        // Create or update user record
         let record = upsert_user(self.pool, &user).await?;
         ensure_member_metadata(self.pool, organization_id, &record.id).await?;
         Ok(record)
