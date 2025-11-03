@@ -140,7 +140,9 @@ export function NextActionCard({
     capabilities?.[attempt.executor]?.includes(BaseAgentCapability.SETUP_HELPER)
   );
 
-  const setupHelpText = canAutoSetup ? t('attempt.setupHelpText') : null;
+  const setupHelpText = canAutoSetup
+    ? t('attempt.setupHelpText', { agent: attempt?.executor })
+    : null;
 
   const editorName = getIdeName(config?.editor?.editor_type);
 
