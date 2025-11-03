@@ -243,25 +243,23 @@ export function Navbar() {
                     Profile
                   </DropdownMenuItem>
 
-                  <DropdownMenuItem asChild>
-                    <OrganizationSwitcher
-                      hidePersonal
-                      afterCreateOrganizationUrl="/"
-                      afterSelectOrganizationUrl="/"
-                      afterLeaveOrganizationUrl="/"
-                      organizationProfileMode="modal"
-                      createOrganizationMode="modal"
-                      appearance={{
-                        elements: {
-                          rootBox: 'w-full',
-                          organizationSwitcherTrigger:
-                            'w-full justify-start px-2 py-1.5 text-sm font-normal hover:bg-transparent',
-                          organizationSwitcherTriggerIcon: 'hidden',
-                          organizationPreviewAvatarBox: 'hidden',
-                        },
-                      }}
-                    />
-                  </DropdownMenuItem>
+                  <OrganizationSwitcher
+                    hidePersonal
+                    afterCreateOrganizationUrl="/"
+                    afterSelectOrganizationUrl="/"
+                    afterLeaveOrganizationUrl="/"
+                    organizationProfileMode="modal"
+                    createOrganizationMode="modal"
+                    appearance={{
+                      elements: {
+                        rootBox: 'w-full',
+                        organizationSwitcherTrigger:
+                          'relative flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+                        organizationSwitcherTriggerIcon: 'hidden',
+                        organizationPreviewAvatarBox: 'hidden',
+                      },
+                    }}
+                  />
 
                   <DropdownMenuItem onSelect={() => signOut()}>
                     Sign out
