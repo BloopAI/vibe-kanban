@@ -147,7 +147,10 @@ export function NextActionCard({
   const editorName = getIdeName(config?.editor?.editor_type);
 
   // Necessary to prevent this component being displayed beyond fold within Virtualised List
-  if ((!failed || execution_processes > 2) && fileCount === 0) {
+  if (
+    (!failed || (execution_processes > 2 && !needsSetup)) &&
+    fileCount === 0
+  ) {
     return <div className="h-24"></div>;
   }
 
@@ -196,7 +199,6 @@ export function NextActionCard({
 
           {/* Run Setup or Try Again button */}
           {failed &&
-            execution_processes <= 2 &&
             (needsSetup ? (
               <Button
                 variant="default"
@@ -209,16 +211,18 @@ export function NextActionCard({
                 {t('attempt.runSetup')}
               </Button>
             ) : (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleTryAgain}
-                disabled={!attempt?.task_id}
-                className="text-sm"
-                aria-label={t('attempt.tryAgain')}
-              >
-                {t('attempt.tryAgain')}
-              </Button>
+              execution_processes <= 2 && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleTryAgain}
+                  disabled={!attempt?.task_id}
+                  className="text-sm"
+                  aria-label={t('attempt.tryAgain')}
+                >
+                  {t('attempt.tryAgain')}
+                </Button>
+              )
             ))}
 
           {/* Right: Icon buttons */}
