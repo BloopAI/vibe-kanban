@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ExternalLink, GitPullRequest, LogIn } from 'lucide-react';
+import { ExternalLink, GitPullRequest } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -20,9 +20,8 @@ import type {
   TaskWithAttemptStatus,
 } from 'shared/types';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
-import { Alert } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
-import { useClerk, useAuth } from '@clerk/clerk-react';
+import { useAuth } from '@clerk/clerk-react';
+import { LoginRequiredPrompt } from '@/components/dialogs/shared/LoginRequiredPrompt';
 
 export interface GitActionsDialogProps {
   attemptId: string;
@@ -55,9 +54,9 @@ function GitActionsDialogContent({
     (m) => m.type === 'pr' && m.pr_info?.status === 'merged'
   );
 
-  if (mergedPR && mergedPR.type === 'pr') {
-    return (
-      <div className="space-y-4 py-4">
+  return (
+    <div className="space-y-4">
+      {mergedPR && mergedPR.type === 'pr' && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>
             {t('git.actions.prMerged', {
@@ -79,12 +78,7 @@ function GitActionsDialogContent({
             </a>
           )}
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
+      )}
       {gitError && (
         <div className="p-3 bg-red-50 border border-red-200 rounded text-destructive text-sm">
           {gitError}
@@ -111,12 +105,6 @@ export const GitActionsDialog = NiceModal.create<GitActionsDialogProps>(
     const { t } = useTranslation('tasks');
     const { project } = useProject();
     const { isSignedIn, isLoaded } = useAuth();
-    const { redirectToSignIn } = useClerk();
-    const redirectToClerkSignIn = useCallback(() => {
-      const redirectUrl =
-        typeof window !== 'undefined' ? window.location.href : undefined;
-      void redirectToSignIn({ redirectUrl });
-    }, [redirectToSignIn]);
 
     const effectiveProjectId = providedProjectId ?? project?.id;
     const { data: attempt } = useTaskAttempt(attemptId);
@@ -167,22 +155,15 @@ export const GitActionsDialog = NiceModal.create<GitActionsDialogProps>(
               <Loader size={24} />
             </div>
           ) : !isSignedIn ? (
-            <div className="py-6 space-y-4">
-              <Alert variant="default" className="flex items-start gap-3">
-                <LogIn className="h-5 w-5 mt-0.5 text-muted-foreground" />
-                <div className="space-y-1">
-                  <div className="font-medium">
-                    {t('shareDialog.loginRequired.title')}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {t('shareDialog.loginRequired.description')}
-                  </p>
-                </div>
-              </Alert>
-              <Button onClick={redirectToClerkSignIn} className="gap-2">
-                <LogIn className="h-4 w-4" />
-                {t('shareDialog.loginRequired.action')}
-              </Button>
+            <div className="py-6">
+              <LoginRequiredPrompt
+                mode="signIn"
+                buttonVariant="default"
+                buttonSize="default"
+                title={t('git.actions.loginRequired.title')}
+                description={t('git.actions.loginRequired.description')}
+                actionLabel={t('git.actions.loginRequired.action')}
+              />
             </div>
           ) : (
             <ExecutionProcessesProvider key={attempt.id} attemptId={attempt.id}>

@@ -65,6 +65,22 @@ async fn set_clerk_session(
     let session = ClerkSession::from_parts(token.to_string(), identity);
     deployment.clerk_sessions().set(session.clone()).await;
 
+    let mut identify_props = serde_json::json!({
+        "clerk_user_id": session.user_id.clone(),
+    });
+    if let Some(props) = identify_props.as_object_mut() {
+        if let Some(org_id) = &session.org_id {
+            props.insert("clerk_org_id".to_string(), serde_json::json!(org_id));
+        }
+        if let Some(org_slug) = &session.org_slug {
+            props.insert("clerk_org_slug".to_string(), serde_json::json!(org_slug));
+        }
+    }
+
+    deployment
+        .track_if_analytics_allowed("$identify", identify_props)
+        .await;
+
     let response = ClerkSessionResponse {
         user_id: session.user_id.clone(),
         organization_id: session.org_id.clone(),

@@ -13,14 +13,11 @@ import { tasksApi } from '@/lib/api';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useTranslation } from 'react-i18next';
 import { useUserSystem } from '@/components/config-provider';
-import {
-  SignedIn,
-  SignedOut,
-  useClerk,
-} from '@clerk/clerk-react';
-import { Loader2, LogIn } from 'lucide-react';
+import { SignedIn, SignedOut, useClerk } from '@clerk/clerk-react';
+import { Loader2 } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { useMutation } from '@tanstack/react-query';
+import { LoginRequiredPrompt } from '@/components/dialogs/shared/LoginRequiredPrompt';
 
 export interface ShareDialogProps {
   task: TaskWithAttemptStatus;
@@ -108,25 +105,12 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
         </DialogHeader>
 
         <SignedOut>
-          <Alert variant="default" className="flex items-start gap-3">
-            <LogIn className="h-5 w-5 mt-0.5 text-muted-foreground" />
-            <div className="space-y-2">
-              <div className="font-medium">
-                {t('shareDialog.loginRequired.title')}
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {t('shareDialog.loginRequired.description')}
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={redirectToClerkSignUp}
-                className="mt-1"
-              >
-                {t('shareDialog.loginRequired.action')}
-              </Button>
-            </div>
-          </Alert>
+          <LoginRequiredPrompt
+            mode="signUp"
+            buttonVariant="outline"
+            buttonSize="sm"
+            buttonClassName="mt-1"
+          />
         </SignedOut>
 
         <SignedIn>

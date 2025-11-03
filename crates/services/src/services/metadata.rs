@@ -6,7 +6,7 @@ use secrecy::ExposeSecret;
 use crate::services::{
     git::GitService,
     github_service::{GitHubService, GitHubServiceError},
-    token::{GitHubTokenError, GitHubTokenProvider, GitHubTokenSource},
+    token::{GitHubTokenProvider, GitHubTokenSource},
 };
 
 /// Compute remote metadata for a given repository path, including GitHub repo ID enrichment
@@ -38,19 +38,15 @@ pub async fn compute_remote_metadata(
 
     let token = match token_provider.access_token().await {
         Ok(token) => token,
-        Err(
-            GitHubTokenError::RemoteNotConfigured
-            | GitHubTokenError::MissingClerkSession
-            | GitHubTokenError::NotLinked,
-        ) => {
-            tracing::debug!("Skipping GitHub repo ID enrichment: no session-backed token");
-            return metadata;
-        }
         Err(err) => {
-            tracing::warn!(
-                ?err,
-                "Failed to acquire GitHub token for metadata enrichment"
-            );
+            if err.is_missing_token() {
+                tracing::debug!("Skipping GitHub repo ID enrichment: no session-backed token");
+            } else {
+                tracing::warn!(
+                    ?err,
+                    "Failed to acquire GitHub token for metadata enrichment"
+                );
+            }
             return metadata;
         }
     };

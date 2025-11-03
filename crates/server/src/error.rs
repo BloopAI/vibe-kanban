@@ -13,7 +13,7 @@ use git2::Error as Git2Error;
 use services::services::{
     config::ConfigError, container::ContainerError, drafts::DraftsServiceError,
     git::GitServiceError, github_service::GitHubServiceError, image::ImageError, share::ShareError,
-    worktree_manager::WorktreeError,
+    token::GitHubTokenError, worktree_manager::WorktreeError,
 };
 use thiserror::Error;
 use utils::response::ApiResponse;
@@ -208,6 +208,18 @@ impl From<ShareError> for ApiError {
             ShareError::Git(err) => ApiError::GitService(err),
             ShareError::GitHub(err) => ApiError::GitHubService(err),
             ShareError::MissingAuth => ApiError::Unauthorized,
+        }
+    }
+}
+
+impl From<GitHubTokenError> for ApiError {
+    fn from(err: GitHubTokenError) -> Self {
+        if err.is_missing_token() {
+            tracing::warn!(?err, "GitHub token missing or not configured");
+            ApiError::Unauthorized
+        } else {
+            tracing::error!(?err, "Failed to acquire GitHub access token");
+            ApiError::GitHubService(GitHubServiceError::TokenInvalid)
         }
     }
 }

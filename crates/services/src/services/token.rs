@@ -44,6 +44,15 @@ pub enum GitHubTokenError {
     Http(#[from] reqwest::Error),
 }
 
+impl GitHubTokenError {
+    pub fn is_missing_token(&self) -> bool {
+        matches!(
+            self,
+            Self::RemoteNotConfigured | Self::MissingClerkSession | Self::NotLinked
+        )
+    }
+}
+
 #[derive(Clone)]
 pub struct GitHubTokenProvider {
     client: Client,

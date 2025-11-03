@@ -94,7 +94,7 @@ impl PrMonitorService {
         for pr_merge in open_prs {
             match self.check_pr_status(&pr_merge).await {
                 Err(PrMonitorError::NoGitHubToken) => {
-                    warn!("No GitHub token configured, cannot check PR status");
+                    warn!("No GitHub token, cannot check PR status");
                 }
                 Err(e) => {
                     error!(
@@ -110,19 +110,15 @@ impl PrMonitorService {
 
     /// Check the status of a specific PR
     async fn check_pr_status(&self, pr_merge: &PrMerge) -> Result<(), PrMonitorError> {
-        let token = match self.tokens.access_token().await {
-            Ok(token) => token,
-            Err(
-                GitHubTokenError::RemoteNotConfigured
-                | GitHubTokenError::MissingClerkSession
-                | GitHubTokenError::NotLinked,
-            ) => return Err(PrMonitorError::NoGitHubToken),
-            Err(err) => return Err(PrMonitorError::GitHubToken(err)),
-        };
+        let token = self.tokens.access_token().await.map_err(|err| {
+            if err.is_missing_token() {
+                PrMonitorError::NoGitHubToken
+            } else {
+                PrMonitorError::GitHubToken(err)
+            }
+        })?;
 
-        let token_source = token.source.clone();
         let github_service = GitHubService::new(token.token.expose_secret())?;
-
         let repo_info = GitHubRepoInfo::from_remote_url(&pr_merge.pr_info.url)?;
 
         let pr_status = match github_service
@@ -132,7 +128,7 @@ impl PrMonitorService {
             Ok(status) => status,
             Err(err) => {
                 if matches!(err, GitHubServiceError::TokenInvalid)
-                    && matches!(token_source, GitHubTokenSource::ClerkOAuth)
+                    && matches!(token.source.clone(), GitHubTokenSource::ClerkOAuth)
                 {
                     self.tokens.invalidate().await;
                 }
