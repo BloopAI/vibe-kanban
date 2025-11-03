@@ -10,6 +10,10 @@ export {
   ProvidePatDialog,
   type ProvidePatDialogProps,
 } from './auth/ProvidePatDialog';
+export {
+  OrganizationSwitcherDialog,
+  type OrganizationSwitcherDialogProps,
+} from './auth/OrganizationSwitcherDialog';
 
 // Project-related dialogs
 export {

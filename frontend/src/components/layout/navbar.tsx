@@ -28,14 +28,16 @@ import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
 import { useDiscordOnlineCount } from '@/hooks/useDiscordOnlineCount';
 
 import {
-  OrganizationSwitcher,
   SignedIn,
   SignedOut,
   SignInButton,
   useClerk,
+  useOrganization,
 } from '@clerk/clerk-react';
 import { useTranslation } from 'react-i18next';
 import { Switch } from '@/components/ui/switch';
+import NiceModal from '@ebay/nice-modal-react';
+import { OrganizationSwitcherDialog } from '@/components/dialogs';
 
 const INTERNAL_NAV = [{ label: 'Projects', icon: FolderOpen, to: '/projects' }];
 
@@ -65,6 +67,7 @@ export function Navbar() {
   const handleOpenInEditor = useOpenProjectInEditor(project || null);
   const { data: onlineCount } = useDiscordOnlineCount();
   const { signOut, openUserProfile } = useClerk();
+  const { organization } = useOrganization();
 
   const setSearchBarRef = useCallback(
     (node: HTMLInputElement | null) => {
@@ -243,23 +246,11 @@ export function Navbar() {
                     Profile
                   </DropdownMenuItem>
 
-                  <OrganizationSwitcher
-                    hidePersonal
-                    afterCreateOrganizationUrl="/"
-                    afterSelectOrganizationUrl="/"
-                    afterLeaveOrganizationUrl="/"
-                    organizationProfileMode="modal"
-                    createOrganizationMode="modal"
-                    appearance={{
-                      elements: {
-                        rootBox: 'w-full',
-                        organizationSwitcherTrigger:
-                          'relative flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
-                        organizationSwitcherTriggerIcon: 'hidden',
-                        organizationPreviewAvatarBox: 'hidden',
-                      },
-                    }}
-                  />
+                  <DropdownMenuItem
+                    onSelect={() => NiceModal.show(OrganizationSwitcherDialog)}
+                  >
+                    {organization?.name ?? 'Organization'}
+                  </DropdownMenuItem>
 
                   <DropdownMenuItem onSelect={() => signOut()}>
                     Sign out
