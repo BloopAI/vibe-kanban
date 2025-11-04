@@ -4,6 +4,7 @@ use anyhow::Context;
 use serde::Deserialize;
 use sqlx::{PgPool, postgres::PgListener};
 use tokio::time::sleep;
+use tracing::instrument;
 
 use crate::{activity::ActivityBroker, db::activity::ActivityRepository};
 
@@ -22,6 +23,11 @@ impl ActivityListener {
         }
     }
 
+    #[instrument(
+        name = "activity.listener",
+        skip(self),
+        fields(channel = %self.channel)
+    )]
     pub async fn run(self) {
         let mut backoff = Duration::from_secs(1);
         let max_backoff = Duration::from_secs(30);
@@ -36,7 +42,7 @@ impl ActivityListener {
                     backoff = Duration::from_secs(1);
                 }
                 Err(error) => {
-                    tracing::error!(?error, "activity listener error; retrying");
+                    tracing::error!(?error, ?backoff, "activity listener error; retrying");
                     sleep(backoff).await;
                     backoff = (backoff * 2).min(max_backoff);
                 }
@@ -45,6 +51,11 @@ impl ActivityListener {
     }
 }
 
+#[instrument(
+    name = "activity.listen_loop",
+    skip(pool, broker),
+    fields(channel = %channel)
+)]
 async fn listen_loop(pool: &PgPool, broker: &ActivityBroker, channel: &str) -> anyhow::Result<()> {
     let mut listener = PgListener::connect_with(pool)
         .await
@@ -63,7 +74,7 @@ async fn listen_loop(pool: &PgPool, broker: &ActivityBroker, channel: &str) -> a
         let payload: NotificationEnvelope = serde_json::from_str(notification.payload())
             .with_context(|| format!("invalid notification payload: {}", notification.payload()))?;
 
-        dbg!("Received notification from DB");
+        tracing::trace!(%payload.seq, org_id = %payload.organization_id, "received activity notification");
 
         let event = match ActivityRepository::new(pool)
             .fetch_by_seq(&payload.organization_id, payload.seq)

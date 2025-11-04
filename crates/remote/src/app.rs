@@ -1,6 +1,7 @@
 use std::net::SocketAddr;
 
 use anyhow::Context;
+use tracing::instrument;
 
 use crate::{
     AppState,
@@ -13,6 +14,11 @@ use crate::{
 pub struct Server;
 
 impl Server {
+    #[instrument(
+        name = "remote_server",
+        skip(config),
+        fields(listen_addr = %config.listen_addr, activity_channel = %config.activity_channel)
+    )]
     pub async fn run(config: RemoteServerConfig) -> anyhow::Result<()> {
         let pool = db::create_pool(&config.database_url)
             .await
