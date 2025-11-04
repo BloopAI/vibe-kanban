@@ -48,12 +48,6 @@ export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
       },
     });
 
-    console.log('[CreateAttemptDialog] Props:', {
-      taskId,
-      latestAttempt,
-      parentTaskAttemptId,
-    });
-
     const [userSelectedProfile, setUserSelectedProfile] =
       useState<ExecutorProfileId | null>(null);
     const [userSelectedBranch, setUserSelectedBranch] = useState<string | null>(
@@ -99,20 +93,10 @@ export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
       const hasParent = Boolean(parentTaskAttemptId);
       setIsLoadingParent(hasParent);
       if (hasParent && parentTaskAttemptId) {
-        console.log(
-          '[CreateAttemptDialog] Fetching parent attempt:',
-          parentTaskAttemptId
-        );
         attemptsApi
           .get(parentTaskAttemptId)
           .then((attempt) => {
-            if (alive) {
-              console.log('[CreateAttemptDialog] Parent attempt loaded:', {
-                id: attempt.id,
-                target_branch: attempt.target_branch,
-              });
-              setParentAttempt(attempt);
-            }
+            if (alive) setParentAttempt(attempt);
           })
           .catch((err) => {
             console.error('Failed to load parent attempt:', err);
@@ -121,7 +105,6 @@ export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
             if (alive) setIsLoadingParent(false);
           });
       } else {
-        console.log('[CreateAttemptDialog] No parent attempt to fetch');
         setParentAttempt(null);
         setIsLoadingParent(false);
       }
@@ -146,32 +129,16 @@ export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
     }, [branches]);
 
     const defaultBranch: string | null = useMemo(() => {
-      const computed =
-        parentAttempt?.target_branch ??
+      return (
+        parentAttempt?.branch ??
         latestAttempt?.target_branch ??
         currentBranchName ??
-        null;
-      console.log('[CreateAttemptDialog] defaultBranch computed:', {
-        parentAttemptBranch: parentAttempt?.target_branch,
-        latestAttemptBranch: latestAttempt?.target_branch,
-        currentBranchName,
-        computed,
-      });
-      return computed;
-    }, [
-      parentAttempt?.target_branch,
-      latestAttempt?.target_branch,
-      currentBranchName,
-    ]);
+        null
+      );
+    }, [parentAttempt?.branch, latestAttempt?.target_branch, currentBranchName]);
 
     const effectiveProfile = userSelectedProfile ?? defaultProfile;
     const effectiveBranch = userSelectedBranch ?? defaultBranch;
-
-    console.log('[CreateAttemptDialog] Effective values:', {
-      userSelectedBranch,
-      defaultBranch,
-      effectiveBranch,
-    });
 
     const isLoading = isLoadingBranches || isLoadingParent;
     const canCreate = Boolean(
