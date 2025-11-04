@@ -3681,6 +3681,8 @@ dependencies = [
  "futures",
  "reqwest",
  "secrecy",
+ "sentry",
+ "sentry-tracing",
  "serde",
  "serde_json",
  "sqlx",

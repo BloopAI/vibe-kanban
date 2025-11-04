@@ -8,7 +8,7 @@ use axum::{
 use axum_extra::headers::{Authorization, HeaderMapExt, authorization::Bearer};
 
 use crate::{
-    AppState,
+    AppState, configure_user_scope,
     db::identity::{IdentityError, IdentityRepository, Organization, User},
 };
 
@@ -72,6 +72,13 @@ pub async fn require_clerk_session(
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
     };
+
+    let _scope_guard = sentry::Hub::current().push_scope();
+    configure_user_scope(
+        &user.id,
+        user.username.as_deref(),
+        Some(user.email.as_str()),
+    );
 
     req.extensions_mut().insert(identity.clone());
     req.extensions_mut()
