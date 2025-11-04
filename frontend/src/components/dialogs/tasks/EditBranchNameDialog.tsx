@@ -103,9 +103,9 @@ export const EditBranchNameDialog = NiceModal.create<EditBranchNameDialogProps>(
                   setError(null);
                 }}
                 onKeyDown={(e) => {
-                if (e.key === 'Enter' && !renameMutation.isPending) {
-                handleConfirm();
-                }
+                  if (e.key === 'Enter' && !renameMutation.isPending) {
+                    handleConfirm();
+                  }
                 }}
                 placeholder="e.g., feature/my-branch"
                 disabled={renameMutation.isPending}
@@ -116,19 +116,19 @@ export const EditBranchNameDialog = NiceModal.create<EditBranchNameDialogProps>(
           </div>
 
           <DialogFooter>
-          <Button
-          variant="outline"
-          onClick={handleCancel}
-          disabled={renameMutation.isPending}
-          >
-          {t('common:buttons.cancel')}
-          </Button>
-          <Button
-          onClick={handleConfirm}
-          disabled={renameMutation.isPending || !branchName.trim()}
-          >
-          {renameMutation.isPending ? 'Renaming...' : 'Rename Branch'}
-          </Button>
+            <Button
+              variant="outline"
+              onClick={handleCancel}
+              disabled={renameMutation.isPending}
+            >
+              {t('common:buttons.cancel')}
+            </Button>
+            <Button
+              onClick={handleConfirm}
+              disabled={renameMutation.isPending || !branchName.trim()}
+            >
+              {renameMutation.isPending ? 'Renaming...' : 'Rename Branch'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
