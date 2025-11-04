@@ -19,7 +19,7 @@ use serde_json::Value;
 use services::services::{
     analytics::{AnalyticsContext, AnalyticsService},
     approvals::Approvals,
-    clerk::{ClerkAuth, ClerkAuthError, ClerkSessionStore},
+    clerk::{ClerkService, ClerkServiceError, ClerkSessionStore},
     config::{Config, ConfigError},
     container::{ContainerError, ContainerService},
     drafts::DraftsService,
@@ -69,7 +69,7 @@ pub enum DeploymentError {
     #[error(transparent)]
     Config(#[from] ConfigError),
     #[error(transparent)]
-    ClerkAuth(#[from] ClerkAuthError),
+    Clerk(#[from] ClerkServiceError),
     #[error(transparent)]
     Other(#[from] AnyhowError),
 }
@@ -110,7 +110,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     fn clerk_sessions(&self) -> &ClerkSessionStore;
 
-    fn clerk_auth(&self) -> Option<Arc<ClerkAuth>>;
+    fn clerk_service(&self) -> Option<Arc<ClerkService>>;
 
     fn share_publisher(&self) -> Option<SharePublisher>;
 

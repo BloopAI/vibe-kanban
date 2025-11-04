@@ -182,22 +182,6 @@ export function GeneralSettings() {
     updateAndSaveConfig({ onboarding_acknowledged: false });
   };
 
-  const isAuthenticated = !!(
-    config?.github?.username && config?.github?.oauth_token
-  );
-
-  const handleLogout = useCallback(async () => {
-    if (!config) return;
-    updateAndSaveConfig({
-      github: {
-        ...config.github,
-        oauth_token: null,
-        username: null,
-        primary_email: null,
-      },
-    });
-  }, [config, updateAndSaveConfig]);
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -558,40 +542,11 @@ export function GeneralSettings() {
             <Key className="h-5 w-5" />
             {t('settings.general.github.title')}
           </CardTitle>
+          <CardDescription>
+            {t('settings.general.github.helper')}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {isAuthenticated ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div>
-                  <p className="font-medium">
-                    {t('settings.general.github.connected', {
-                      username: config.github.username,
-                    })}
-                  </p>
-                  {config.github.primary_email && (
-                    <p className="text-sm text-muted-foreground">
-                      {config.github.primary_email}
-                    </p>
-                  )}
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      {t('settings.general.github.manage')}{' '}
-                      <ChevronDown className="ml-1 h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={handleLogout}>
-                      {t('settings.general.github.disconnect')}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-          ) : null}
-
           <div className="space-y-2">
             <Label htmlFor="github-token">
               {t('settings.general.github.pat.label')}

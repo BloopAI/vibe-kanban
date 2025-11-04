@@ -7,7 +7,7 @@ use executors::profile::ExecutorConfigs;
 use services::services::{
     analytics::{AnalyticsConfig, AnalyticsContext, AnalyticsService, generate_user_id},
     approvals::Approvals,
-    clerk::{ClerkAuth, ClerkPublicConfig, ClerkPublicConfigError, ClerkSessionStore},
+    clerk::{ClerkPublicConfig, ClerkPublicConfigError, ClerkService, ClerkSessionStore},
     config::{Config, load_config_from_file, save_config_to_file},
     container::ContainerService,
     drafts::DraftsService,
@@ -45,7 +45,7 @@ pub struct LocalDeployment {
     share_publisher: Option<SharePublisher>,
     _share_sync: Option<RemoteSyncHandle>,
     clerk_sessions: ClerkSessionStore,
-    clerk_auth: Option<Arc<ClerkAuth>>,
+    clerk_service: Option<Arc<ClerkService>>,
     token_provider: Arc<GitHubTokenProvider>,
 }
 
@@ -115,10 +115,13 @@ impl Deployment for LocalDeployment {
             cfg.github.token().is_some()
         };
 
-        let share_config = ShareConfig::from_env();
         let clerk_sessions = ClerkSessionStore::new();
-        let clerk_auth = match ClerkPublicConfig::from_env() {
-            Ok(public_config) => Some(Arc::new(public_config.build_auth()?)),
+        let share_config = ShareConfig::from_env();
+        let clerk_service = match ClerkPublicConfig::from_env() {
+            Ok(public_config) => {
+                let remote_api_base = share_config.as_ref().map(|sc| sc.api_base.clone());
+                Some(Arc::new(public_config.build_auth(remote_api_base)?))
+            }
             Err(ClerkPublicConfigError::MissingEnv(_)) => {
                 tracing::error!("CLERK_ISSUER not set; remote features disabled");
                 None
@@ -133,7 +136,7 @@ impl Deployment for LocalDeployment {
         ));
 
         let (share_publisher, share_sync_handle) = if let (Some(_), Some(sc)) =
-            (clerk_auth.as_ref(), share_config)
+            (clerk_service.as_ref(), share_config.clone())
         {
             let share_publisher = match SharePublisher::new(
                 db.clone(),
@@ -198,7 +201,7 @@ impl Deployment for LocalDeployment {
             share_publisher,
             _share_sync: share_sync_handle,
             clerk_sessions,
-            clerk_auth,
+            clerk_service,
             token_provider,
         };
 
@@ -277,7 +280,7 @@ impl Deployment for LocalDeployment {
         &self.clerk_sessions
     }
 
-    fn clerk_auth(&self) -> Option<Arc<ClerkAuth>> {
-        self.clerk_auth.clone()
+    fn clerk_service(&self) -> Option<Arc<ClerkService>> {
+        self.clerk_service.clone()
     }
 }

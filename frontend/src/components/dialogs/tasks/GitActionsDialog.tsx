@@ -137,11 +137,7 @@ export const GitActionsDialog = NiceModal.create<GitActionsDialogProps>(
     };
 
     const isLoading =
-      !attempt ||
-      !effectiveProjectId ||
-      loadingBranches ||
-      !task ||
-      !isLoaded;
+      !attempt || !effectiveProjectId || loadingBranches || !task || !isLoaded;
 
     return (
       <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
