@@ -9,7 +9,8 @@
     "addTask": "Add task"
   },
   "filters": {
-    "sharedToggleAria": "Toggle shared tasks"
+    "sharedToggleAria": "Toggle shared tasks",
+    "sharedToggleTooltip": "Show/hide shared content"
   },
   "rebase": {
     "common": {

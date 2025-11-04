@@ -2,6 +2,10 @@
   "actions": {
     "addTask": "タスクを追加"
   },
+  "filters": {
+    "sharedToggleAria": "共有タスクを切り替える",
+    "sharedToggleTooltip": "共有コンテンツを表示/非表示"
+  },
   "actionsMenu": {
     "attempt": "Attempt",
     "createNewAttempt": "Create new attempt",
