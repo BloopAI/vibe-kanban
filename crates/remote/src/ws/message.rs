@@ -7,6 +7,8 @@ use crate::activity::ActivityEvent;
 pub enum ClientMessage {
     #[serde(rename = "ack")]
     Ack { cursor: i64 },
+    #[serde(rename = "auth-token")]
+    AuthToken { token: String },
 }
 
 #[derive(Debug, Serialize, Deserialize)]

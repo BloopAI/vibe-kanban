@@ -6,6 +6,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use axum_extra::headers::{Authorization, HeaderMapExt, authorization::Bearer};
+use utils::clerk::ClerkIdentity;
 
 use crate::{
     AppState, configure_user_scope,
@@ -16,6 +17,7 @@ use crate::{
 pub struct RequestContext {
     pub organization: Organization,
     pub user: User,
+    pub identity: ClerkIdentity,
 }
 
 pub async fn require_clerk_session(
@@ -80,9 +82,11 @@ pub async fn require_clerk_session(
         Some(user.email.as_str()),
     );
 
-    req.extensions_mut().insert(identity.clone());
-    req.extensions_mut()
-        .insert(RequestContext { organization, user });
+    req.extensions_mut().insert(RequestContext {
+        organization,
+        user,
+        identity,
+    });
 
     next.run(req).await
 }
