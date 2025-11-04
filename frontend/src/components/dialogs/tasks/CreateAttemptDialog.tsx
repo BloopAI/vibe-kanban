@@ -86,10 +86,7 @@ export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
       projectsApi
         .getBranches(projectId)
         .then((result) => {
-          if (alive) {
-            console.log('[CreateAttemptDialog] Branches loaded:', result);
-            setBranches(result);
-          }
+          if (alive) setBranches(result);
         })
         .catch((err) => {
           console.error('Failed to load branches:', err);
@@ -159,31 +156,20 @@ export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
     }, [latestAttempt?.executor, config?.executor_profile]);
 
     const currentBranchName: string | null = useMemo(() => {
-      const current = branches.find((b) => b.is_current)?.name ?? null;
-      console.log('[CreateAttemptDialog] currentBranchName computed:', {
-        branches,
-        current,
-      });
-      return current;
+      return branches.find((b) => b.is_current)?.name ?? null;
     }, [branches]);
 
     const defaultBranch: string | null = useMemo(() => {
-      const computed =
+      return (
         parentAttempt?.branch ??
-        latestAttempt?.target_branch ??
         currentBranchName ??
-        null;
-      console.log('[CreateAttemptDialog] defaultBranch computed:', {
-        parentAttemptBranch: parentAttempt?.branch,
-        latestAttemptTargetBranch: latestAttempt?.target_branch,
-        currentBranchName,
-        computed,
-      });
-      return computed;
+        latestAttempt?.target_branch ??
+        null
+      );
     }, [
       parentAttempt?.branch,
-      latestAttempt?.target_branch,
       currentBranchName,
+      latestAttempt?.target_branch,
     ]);
 
     const effectiveProfile = userSelectedProfile ?? defaultProfile;
