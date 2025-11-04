@@ -160,6 +160,7 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
                           NiceModal.show('create-attempt', {
                             taskId: task.id,
                             latestAttempt,
+                            parentTaskAttemptId: task.parent_task_attempt,
                           })
                         }
                       >

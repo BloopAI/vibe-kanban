@@ -16,7 +16,7 @@ import { useAttemptCreation } from '@/hooks/useAttemptCreation';
 import { useNavigateWithSearch } from '@/hooks';
 import { useProject } from '@/contexts/project-context';
 import { useUserSystem } from '@/components/config-provider';
-import { projectsApi } from '@/lib/api';
+import { projectsApi, attemptsApi } from '@/lib/api';
 import { paths } from '@/lib/paths';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import type {
@@ -29,10 +29,11 @@ import type {
 export interface CreateAttemptDialogProps {
   taskId: string;
   latestAttempt?: TaskAttempt | null;
+  parentTaskAttemptId?: string | null;
 }
 
 export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
-  ({ taskId, latestAttempt }) => {
+  ({ taskId, latestAttempt, parentTaskAttemptId }) => {
     const modal = useModal();
     const navigate = useNavigateWithSearch();
     const { projectId } = useProject();
@@ -52,6 +53,9 @@ export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
     const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
     const [branches, setBranches] = useState<GitBranch[]>([]);
     const [isLoadingBranches, setIsLoadingBranches] = useState(false);
+    const [parentAttempt, setParentAttempt] = useState<TaskAttempt | null>(
+      null
+    );
 
     useEffect(() => {
       if (modal.visible && projectId) {
@@ -71,9 +75,33 @@ export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
     }, [modal.visible, projectId]);
 
     useEffect(() => {
+      if (!modal.visible || !parentTaskAttemptId) {
+        setParentAttempt(null);
+        return;
+      }
+
+      let cancelled = false;
+      attemptsApi
+        .get(parentTaskAttemptId)
+        .then((attempt) => {
+          if (!cancelled) {
+            setParentAttempt(attempt);
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to load parent attempt:', err);
+        });
+
+      return () => {
+        cancelled = true;
+      };
+    }, [modal.visible, parentTaskAttemptId]);
+
+    useEffect(() => {
       if (!modal.visible) {
         setSelectedProfile(null);
         setSelectedBranch(null);
+        setParentAttempt(null);
       }
     }, [modal.visible]);
 
@@ -96,6 +124,7 @@ export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
       setSelectedBranch((prev) => {
         if (prev) return prev;
         return (
+          parentAttempt?.target_branch ??
           latestAttempt?.target_branch ??
           branches.find((b) => b.is_current)?.name ??
           null
@@ -103,6 +132,7 @@ export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
       });
     }, [
       modal.visible,
+      parentAttempt?.target_branch,
       latestAttempt?.executor,
       latestAttempt?.target_branch,
       config?.executor_profile,
