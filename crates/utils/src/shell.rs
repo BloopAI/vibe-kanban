@@ -5,7 +5,6 @@ use std::{
     env::{join_paths, split_paths},
     ffi::{OsStr, OsString},
     path::{Path, PathBuf},
-    time::Duration,
 };
 
 use crate::tokio::block_on;
@@ -117,6 +116,8 @@ async fn which(executable: &str) -> Option<PathBuf> {
 
 #[cfg(not(windows))]
 async fn get_fresh_path() -> Option<String> {
+    use std::time::Duration;
+
     use tokio::process::Command;
 
     async fn run(shell: &Path, login: bool) -> Option<String> {

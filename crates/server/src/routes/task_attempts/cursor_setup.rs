@@ -3,9 +3,11 @@ use db::models::{
     task_attempt::{TaskAttempt, TaskAttemptError},
 };
 use deployment::Deployment;
+use executors::actions::ExecutorAction;
+#[cfg(unix)]
 use executors::{
     actions::{
-        ExecutorAction, ExecutorActionType,
+        ExecutorActionType,
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     },
     executors::cursor::CursorAgent,
@@ -50,7 +52,7 @@ pub async fn run_cursor_setup(
 }
 
 async fn get_setup_helper_action() -> Result<ExecutorAction, ApiError> {
-    #[cfg(not(windows))]
+    #[cfg(unix)]
     {
         let base_command = CursorAgent::base_command();
         // First action: Install
@@ -91,9 +93,9 @@ fi
         ))
     }
 
-    #[cfg(windows)]
+    #[cfg(not(unix))]
     {
         use executors::executors::ExecutorError::SetupHelperNotSupported;
-        Err(ApiError::Executor(ExecutorError::SetupHelperNotSupported))
+        Err(ApiError::Executor(SetupHelperNotSupported))
     }
 }
