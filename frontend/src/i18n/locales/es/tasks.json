@@ -7,11 +7,22 @@
     "createNewAttempt": "Create new attempt",
     "createSubtask": "Create subtask",
     "duplicate": "Duplicate",
+    "editBranchName": "Editar nombre de rama",
     "gitActions": "Acciones de Git",
     "openInIde": "Open attempt in IDE",
     "task": "Task",
     "viewProcesses": "View processes",
     "viewRelatedTasks": "View related tasks"
+  },
+  "editBranchName": {
+    "dialog": {
+      "title": "Editar nombre de rama",
+      "description": "Ingrese un nuevo nombre para la rama. No se puede renombrar si existe un PR abierto.",
+      "branchNameLabel": "Nombre de rama",
+      "placeholder": "ej., feature/mi-rama",
+      "renaming": "Renombrando...",
+      "action": "Renombrar rama"
+    }
   },
   "attempt": {
     "actions": {

@@ -7,11 +7,22 @@
     "createNewAttempt": "Create new attempt",
     "createSubtask": "Create subtask",
     "duplicate": "Duplicate",
+    "editBranchName": "ブランチ名を編集",
     "gitActions": "Gitアクション",
     "openInIde": "Open attempt in IDE",
     "task": "Task",
     "viewProcesses": "View processes",
     "viewRelatedTasks": "View related tasks"
+  },
+  "editBranchName": {
+    "dialog": {
+      "title": "ブランチ名を編集",
+      "description": "ブランチの新しい名前を入力してください。オープンなPRが存在する場合は名前を変更できません。",
+      "branchNameLabel": "ブランチ名",
+      "placeholder": "例: feature/my-branch",
+      "renaming": "名前を変更中...",
+      "action": "ブランチ名を変更"
+    }
   },
   "attempt": {
     "actions": {

@@ -7,11 +7,22 @@
     "createNewAttempt": "Create new attempt",
     "createSubtask": "Create subtask",
     "duplicate": "Duplicate",
+    "editBranchName": "브랜치 이름 편집",
     "gitActions": "Git 작업",
     "openInIde": "Open attempt in IDE",
     "task": "Task",
     "viewProcesses": "View processes",
     "viewRelatedTasks": "View related tasks"
+  },
+  "editBranchName": {
+    "dialog": {
+      "title": "브랜치 이름 편집",
+      "description": "브랜치의 새 이름을 입력하세요. 열려있는 PR이 있으면 이름을 변경할 수 없습니다.",
+      "branchNameLabel": "브랜치 이름",
+      "placeholder": "예: feature/my-branch",
+      "renaming": "이름 변경 중...",
+      "action": "브랜치 이름 변경"
+    }
   },
   "attempt": {
     "actions": {
