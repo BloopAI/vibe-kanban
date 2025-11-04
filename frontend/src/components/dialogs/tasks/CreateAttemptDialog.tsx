@@ -135,7 +135,11 @@ export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
         currentBranchName ??
         null
       );
-    }, [parentAttempt?.branch, latestAttempt?.target_branch, currentBranchName]);
+    }, [
+      parentAttempt?.branch,
+      latestAttempt?.target_branch,
+      currentBranchName,
+    ]);
 
     const effectiveProfile = userSelectedProfile ?? defaultProfile;
     const effectiveBranch = userSelectedBranch ?? defaultBranch;
