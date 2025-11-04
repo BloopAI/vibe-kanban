@@ -12,6 +12,8 @@ chrono = { version = "0.4", features = ["serde"] }
 futures = "0.3"
 reqwest = { version = "0.12", features = ["json"] }
 secrecy = "0.10.3"
+sentry = { version = "0.41.0", features = ["anyhow", "backtrace", "panic", "debug-images"] }
+sentry-tracing = { version = "0.41.0", features = ["backtrace"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sqlx = { version = "0.8.6", default-features = false, features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json", "macros", "migrate"] }
