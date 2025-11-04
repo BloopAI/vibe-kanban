@@ -1241,7 +1241,6 @@ pub async fn rename_branch(
         .track_if_analytics_allowed(
             "task_attempt_branch_renamed",
             serde_json::json!({
-                "attempt_id": task_attempt.id.to_string(),
                 "updated_children": updated_children_count,
             }),
         )
