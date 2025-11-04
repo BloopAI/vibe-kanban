@@ -102,7 +102,7 @@ async fn set_clerk_session(
     }
 
     if let Some(identity) = user_identity.as_ref() {
-        if let Err(err) = sync_clerk_identity(&deployment, identity).await {
+        if let Err(err) = sync_user_identity(&deployment, identity).await {
             tracing::error!(?err, "failed to sync Clerk identity after login");
         } else if let Err(err) = deployment.update_sentry_scope().await {
             tracing::warn!(?err, "failed to update Sentry scope after Clerk login");
@@ -123,7 +123,8 @@ async fn set_clerk_session(
     Ok(ResponseJson(ApiResponse::success(response)))
 }
 
-async fn sync_clerk_identity(
+/// Synchronize the user identity from Clerk with the local deployment config.
+async fn sync_user_identity(
     deployment: &DeploymentImpl,
     identity: &UserIdentity,
 ) -> Result<(), ConfigError> {
