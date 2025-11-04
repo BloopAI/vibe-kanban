@@ -57,12 +57,18 @@ export const EditBranchNameDialog = NiceModal.create<EditBranchNameDialogProps>(
         setError(null);
         await attemptsApi.renameBranch(attemptId, trimmedName);
 
-        await queryClient.invalidateQueries({
-          queryKey: ['attempt', attemptId],
-        });
-        await queryClient.invalidateQueries({
-          queryKey: ['branchStatus', attemptId],
-        });
+        await Promise.all([
+          // Main query key used by DiffsPanel and project-tasks.tsx
+          queryClient.invalidateQueries({ queryKey: ['taskAttempt', attemptId] }),
+          // Legacy key for backward compatibility (NextActionCard, etc.)
+          queryClient.invalidateQueries({ queryKey: ['attempt', attemptId] }),
+          // Branch-specific data
+          queryClient.invalidateQueries({ queryKey: ['attemptBranch', attemptId] }),
+          // Git operations panel data
+          queryClient.invalidateQueries({ queryKey: ['branchStatus', attemptId] }),
+          // List of attempts (shows branch names in task panel)
+          queryClient.invalidateQueries({ queryKey: ['taskAttempts'] }),
+        ]);
 
         modal.resolve({
           action: 'confirmed',
