@@ -82,34 +82,34 @@ export const EditBranchNameDialog = NiceModal.create<EditBranchNameDialogProps>(
       <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-          <DialogTitle>{t('editBranchName.dialog.title')}</DialogTitle>
-          <DialogDescription>
-          {t('editBranchName.dialog.description')}
-          </DialogDescription>
+            <DialogTitle>{t('editBranchName.dialog.title')}</DialogTitle>
+            <DialogDescription>
+              {t('editBranchName.dialog.description')}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
-            <label htmlFor="branch-name" className="text-sm font-medium">
-            {t('editBranchName.dialog.branchNameLabel')}
-          </label>
-          <Input
-            id="branch-name"
-          type="text"
-          value={branchName}
-          onChange={(e) => {
-            setBranchName(e.target.value);
-          setError(null);
-          }}
-          onKeyDown={(e) => {
-          if (e.key === 'Enter' && !renameMutation.isPending) {
-          handleConfirm();
-          }
-          }}
-          placeholder={t('editBranchName.dialog.placeholder')}
-          disabled={renameMutation.isPending}
-          autoFocus
-          />
+              <label htmlFor="branch-name" className="text-sm font-medium">
+                {t('editBranchName.dialog.branchNameLabel')}
+              </label>
+              <Input
+                id="branch-name"
+                type="text"
+                value={branchName}
+                onChange={(e) => {
+                  setBranchName(e.target.value);
+                  setError(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !renameMutation.isPending) {
+                    handleConfirm();
+                  }
+                }}
+                placeholder={t('editBranchName.dialog.placeholder')}
+                disabled={renameMutation.isPending}
+                autoFocus
+              />
               {error && <p className="text-sm text-destructive">{error}</p>}
             </div>
           </div>
