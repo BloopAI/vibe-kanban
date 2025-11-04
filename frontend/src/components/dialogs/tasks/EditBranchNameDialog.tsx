@@ -11,8 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
-import { attemptsApi } from '@/lib/api';
-import { useQueryClient } from '@tanstack/react-query';
+import { useRenameBranch } from '@/hooks/useRenameBranch';
 
 export interface EditBranchNameDialogProps {
   attemptId: string;
@@ -28,12 +27,24 @@ export const EditBranchNameDialog = NiceModal.create<EditBranchNameDialogProps>(
   ({ attemptId, currentBranchName }) => {
     const modal = useModal();
     const { t } = useTranslation(['tasks', 'common']);
-    const queryClient = useQueryClient();
     const [branchName, setBranchName] = useState<string>(currentBranchName);
-    const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const handleConfirm = async () => {
+    const renameMutation = useRenameBranch(
+      attemptId,
+      (newBranch) => {
+        modal.resolve({
+          action: 'confirmed',
+          branchName: newBranch,
+        } as EditBranchNameDialogResult);
+        modal.hide();
+      },
+      (err: any) => {
+        setError(err?.message || 'Failed to rename branch');
+      }
+    );
+
+    const handleConfirm = () => {
       const trimmedName = branchName.trim();
 
       if (!trimmedName) {
@@ -52,39 +63,8 @@ export const EditBranchNameDialog = NiceModal.create<EditBranchNameDialogProps>(
         return;
       }
 
-      try {
-        setIsLoading(true);
-        setError(null);
-        await attemptsApi.renameBranch(attemptId, trimmedName);
-
-        await Promise.all([
-          // Main query key used by DiffsPanel and project-tasks.tsx
-          queryClient.invalidateQueries({
-            queryKey: ['taskAttempt', attemptId],
-          }),
-          // Legacy key for backward compatibility (NextActionCard, etc.)
-          queryClient.invalidateQueries({ queryKey: ['attempt', attemptId] }),
-          // Branch-specific data
-          queryClient.invalidateQueries({
-            queryKey: ['attemptBranch', attemptId],
-          }),
-          // Git operations panel data
-          queryClient.invalidateQueries({
-            queryKey: ['branchStatus', attemptId],
-          }),
-          // List of attempts (shows branch names in task panel)
-          queryClient.invalidateQueries({ queryKey: ['taskAttempts'] }),
-        ]);
-
-        modal.resolve({
-          action: 'confirmed',
-          branchName: trimmedName,
-        } as EditBranchNameDialogResult);
-        modal.hide();
-      } catch (err: any) {
-        setError(err.message || 'Failed to rename branch');
-        setIsLoading(false);
-      }
+      setError(null);
+      renameMutation.mutate(trimmedName);
     };
 
     const handleCancel = () => {
@@ -123,12 +103,12 @@ export const EditBranchNameDialog = NiceModal.create<EditBranchNameDialogProps>(
                   setError(null);
                 }}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !isLoading) {
-                    handleConfirm();
-                  }
+                if (e.key === 'Enter' && !renameMutation.isPending) {
+                handleConfirm();
+                }
                 }}
                 placeholder="e.g., feature/my-branch"
-                disabled={isLoading}
+                disabled={renameMutation.isPending}
                 autoFocus
               />
               {error && <p className="text-sm text-destructive">{error}</p>}
@@ -136,19 +116,19 @@ export const EditBranchNameDialog = NiceModal.create<EditBranchNameDialogProps>(
           </div>
 
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={handleCancel}
-              disabled={isLoading}
-            >
-              {t('common:buttons.cancel')}
-            </Button>
-            <Button
-              onClick={handleConfirm}
-              disabled={isLoading || !branchName.trim()}
-            >
-              {isLoading ? 'Renaming...' : 'Rename Branch'}
-            </Button>
+          <Button
+          variant="outline"
+          onClick={handleCancel}
+          disabled={renameMutation.isPending}
+          >
+          {t('common:buttons.cancel')}
+          </Button>
+          <Button
+          onClick={handleConfirm}
+          disabled={renameMutation.isPending || !branchName.trim()}
+          >
+          {renameMutation.isPending ? 'Renaming...' : 'Rename Branch'}
+          </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
