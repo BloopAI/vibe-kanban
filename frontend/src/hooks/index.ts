@@ -9,3 +9,4 @@ export { useMerge } from './useMerge';
 export { usePush } from './usePush';
 export { useAttemptConflicts } from './useAttemptConflicts';
 export { useNavigateWithSearch } from './useNavigateWithSearch';
+export { useGitOperations } from './useGitOperations';
