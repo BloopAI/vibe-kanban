@@ -69,7 +69,7 @@ export const useClerkPublicUserData = (
 
         const memberships = await orgWithOptionalGetter.getMemberships();
         const publicData = findMemberById(
-          memberships.data ?? [],
+          (memberships.data ?? []) as OrganizationMembershipResource[],
           effectiveUserId
         );
         if (!publicData) {
