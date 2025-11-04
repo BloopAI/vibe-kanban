@@ -1242,8 +1242,6 @@ pub async fn rename_branch(
             "task_attempt_branch_renamed",
             serde_json::json!({
                 "attempt_id": task_attempt.id.to_string(),
-                "old_branch": old_branch,
-                "new_branch": new_branch_name,
                 "updated_children": updated_children_count,
             }),
         )

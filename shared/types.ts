@@ -86,6 +86,10 @@ export type ChangeTargetBranchRequest = { new_target_branch: string, };
 
 export type ChangeTargetBranchResponse = { new_target_branch: string, status: [number, number], };
 
+export type RenameBranchRequest = { new_branch_name: string, };
+
+export type RenameBranchResponse = { branch: string, };
+
 export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id: ExecutorProfileId, base_branch: string, };
 
 export type CreateGitHubPrRequest = { title: string, body: string | null, target_branch: string | null, };
