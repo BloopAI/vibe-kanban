@@ -50,8 +50,9 @@ ALTER TABLE projects
 ALTER TABLE projects
     ADD COLUMN github_repo_id INTEGER;
 
+-- Avoid a foreign key here so shared_task_id values persist even if shared_tasks is cleared.
 ALTER TABLE tasks
-    ADD COLUMN shared_task_id BLOB REFERENCES shared_tasks(id) ON DELETE SET NULL;
+    ADD COLUMN shared_task_id BLOB;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_tasks_shared_task_unique
     ON tasks(shared_task_id)
