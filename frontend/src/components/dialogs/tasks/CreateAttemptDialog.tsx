@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -48,104 +48,113 @@ export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
       },
     });
 
-    const [selectedProfile, setSelectedProfile] =
+    const [userSelectedProfile, setUserSelectedProfile] =
       useState<ExecutorProfileId | null>(null);
-    const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
-    const [branches, setBranches] = useState<GitBranch[]>([]);
-    const [isLoadingBranches, setIsLoadingBranches] = useState(false);
-    const [parentAttempt, setParentAttempt] = useState<TaskAttempt | null>(
+    const [userSelectedBranch, setUserSelectedBranch] = useState<string | null>(
       null
     );
 
-    useEffect(() => {
-      if (modal.visible && projectId) {
-        setIsLoadingBranches(true);
-        projectsApi
-          .getBranches(projectId)
-          .then((result) => {
-            setBranches(result);
-          })
-          .catch((err) => {
-            console.error('Failed to load branches:', err);
-          })
-          .finally(() => {
-            setIsLoadingBranches(false);
-          });
-      }
-    }, [modal.visible, projectId]);
+    const [branches, setBranches] = useState<GitBranch[]>([]);
+    const [isLoadingBranches, setIsLoadingBranches] = useState(false);
 
-    useEffect(() => {
-      if (!modal.visible || !parentTaskAttemptId) {
-        setParentAttempt(null);
-        return;
-      }
-
-      let cancelled = false;
-      attemptsApi
-        .get(parentTaskAttemptId)
-        .then((attempt) => {
-          if (!cancelled) {
-            setParentAttempt(attempt);
-          }
-        })
-        .catch((err) => {
-          console.error('Failed to load parent attempt:', err);
-        });
-
-      return () => {
-        cancelled = true;
-      };
-    }, [modal.visible, parentTaskAttemptId]);
+    const [parentAttempt, setParentAttempt] = useState<TaskAttempt | null>(
+      null
+    );
+    const [isLoadingParent, setIsLoadingParent] = useState(false);
 
     useEffect(() => {
       if (!modal.visible) {
-        setSelectedProfile(null);
-        setSelectedBranch(null);
+        setUserSelectedProfile(null);
+        setUserSelectedBranch(null);
+        setBranches([]);
+        setIsLoadingBranches(false);
         setParentAttempt(null);
+        setIsLoadingParent(false);
+        return;
       }
-    }, [modal.visible]);
 
-    useEffect(() => {
-      if (!modal.visible) return;
+      if (!projectId) return;
 
-      setSelectedProfile((prev) => {
-        if (prev) return prev;
+      let alive = true;
 
-        const fromAttempt: ExecutorProfileId | null = latestAttempt?.executor
-          ? {
-              executor: latestAttempt.executor as BaseCodingAgent,
-              variant: null,
-            }
-          : null;
+      setIsLoadingBranches(true);
+      projectsApi
+        .getBranches(projectId)
+        .then((result) => {
+          if (alive) setBranches(result);
+        })
+        .catch((err) => {
+          console.error('Failed to load branches:', err);
+        })
+        .finally(() => {
+          if (alive) setIsLoadingBranches(false);
+        });
 
-        return fromAttempt ?? config?.executor_profile ?? null;
-      });
+      const hasParent = Boolean(parentTaskAttemptId);
+      setIsLoadingParent(hasParent);
+      if (hasParent && parentTaskAttemptId) {
+        attemptsApi
+          .get(parentTaskAttemptId)
+          .then((attempt) => {
+            if (alive) setParentAttempt(attempt);
+          })
+          .catch((err) => {
+            console.error('Failed to load parent attempt:', err);
+          })
+          .finally(() => {
+            if (alive) setIsLoadingParent(false);
+          });
+      } else {
+        setParentAttempt(null);
+        setIsLoadingParent(false);
+      }
 
-      setSelectedBranch((prev) => {
-        if (prev) return prev;
-        return (
-          parentAttempt?.target_branch ??
-          latestAttempt?.target_branch ??
-          branches.find((b) => b.is_current)?.name ??
-          null
-        );
-      });
+      return () => {
+        alive = false;
+      };
+    }, [modal.visible, projectId, parentTaskAttemptId]);
+
+    const defaultProfile: ExecutorProfileId | null = useMemo(() => {
+      if (latestAttempt?.executor) {
+        return {
+          executor: latestAttempt.executor as BaseCodingAgent,
+          variant: null,
+        };
+      }
+      return config?.executor_profile ?? null;
+    }, [latestAttempt?.executor, config?.executor_profile]);
+
+    const currentBranchName: string | null = useMemo(() => {
+      return branches.find((b) => b.is_current)?.name ?? null;
+    }, [branches]);
+
+    const defaultBranch: string | null = useMemo(() => {
+      return (
+        parentAttempt?.target_branch ??
+        latestAttempt?.target_branch ??
+        currentBranchName ??
+        null
+      );
     }, [
-      modal.visible,
       parentAttempt?.target_branch,
-      latestAttempt?.executor,
       latestAttempt?.target_branch,
-      config?.executor_profile,
-      branches,
+      currentBranchName,
     ]);
 
-    const handleCreate = async () => {
-      if (!selectedProfile || !selectedBranch) return;
+    const effectiveProfile = userSelectedProfile ?? defaultProfile;
+    const effectiveBranch = userSelectedBranch ?? defaultBranch;
 
+    const isLoading = isLoadingBranches || isLoadingParent;
+    const canCreate = Boolean(
+      effectiveProfile && effectiveBranch && !isCreating && !isLoading
+    );
+
+    const handleCreate = async () => {
+      if (!effectiveProfile || !effectiveBranch) return;
       try {
         await createAttempt({
-          profile: selectedProfile,
-          baseBranch: selectedBranch,
+          profile: effectiveProfile,
+          baseBranch: effectiveBranch,
         });
         modal.hide();
       } catch (err) {
@@ -153,12 +162,8 @@ export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
       }
     };
 
-    const canCreate = selectedProfile && selectedBranch && !isCreating;
-
     const handleOpenChange = (open: boolean) => {
-      if (!open) {
-        modal.hide();
-      }
+      if (!open) modal.hide();
     };
 
     return (
@@ -176,8 +181,8 @@ export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
               <div className="space-y-2">
                 <ExecutorProfileSelector
                   profiles={profiles}
-                  selectedProfile={selectedProfile}
-                  onProfileSelect={setSelectedProfile}
+                  selectedProfile={effectiveProfile}
+                  onProfileSelect={setUserSelectedProfile}
                   showLabel={true}
                 />
               </div>
@@ -190,8 +195,8 @@ export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
               </Label>
               <BranchSelector
                 branches={branches}
-                selectedBranch={selectedBranch}
-                onBranchSelect={setSelectedBranch}
+                selectedBranch={effectiveBranch}
+                onBranchSelect={setUserSelectedBranch}
                 placeholder={
                   isLoadingBranches
                     ? t('createAttemptDialog.loadingBranches')
