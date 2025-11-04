@@ -1206,11 +1206,12 @@ pub async fn rename_branch(
 
     if let Some(merge) = Merge::find_latest_by_task_attempt_id(pool, task_attempt.id).await?
         && let Merge::Pr(pr_merge) = merge
-            && matches!(pr_merge.pr_info.status, MergeStatus::Open) {
-                return Ok(ResponseJson(ApiResponse::error(
-                    "Cannot rename branch with an open pull request. Please close the PR first or create a new attempt.",
-                )));
-            }
+        && matches!(pr_merge.pr_info.status, MergeStatus::Open)
+    {
+        return Ok(ResponseJson(ApiResponse::error(
+            "Cannot rename branch with an open pull request. Please close the PR first or create a new attempt.",
+        )));
+    }
 
     deployment
         .git()
