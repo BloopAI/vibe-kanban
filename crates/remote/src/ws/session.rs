@@ -2,8 +2,9 @@ use axum::extract::ws::{Message, WebSocket};
 use chrono::{Duration as ChronoDuration, Utc};
 use futures::{SinkExt, StreamExt};
 use thiserror::Error;
-use tokio::time::{self, Duration as TokioDuration, MissedTickBehavior};
+use tokio::time::{self, MissedTickBehavior};
 use tokio_stream::wrappers::BroadcastStream;
+use utils::ws::{WS_AUTH_REFRESH_INTERVAL, WS_TOKEN_EXPIRY_GRACE};
 
 use super::{
     WsQueryParams,
@@ -15,11 +16,6 @@ use crate::{
     auth::{ClerkAuth, ClerkAuthError, ClerkIdentity, RequestContext},
     db::activity::ActivityRepository,
 };
-
-/// Allow a short grace window for clients to refresh tokens without immediate disconnects.
-const TOKEN_EXPIRY_GRACE_SECS: i64 = 120;
-/// Interval between websocket auth refresh checks.
-const AUTH_CHECK_INTERVAL_SECS: u64 = 30;
 
 pub async fn handle(
     socket: WebSocket,
@@ -37,10 +33,10 @@ pub async fn handle(
         ctx.user.id.clone(),
         org_id.clone(),
         ctx.identity.clone(),
-        ChronoDuration::seconds(TOKEN_EXPIRY_GRACE_SECS),
+        ChronoDuration::from_std(WS_TOKEN_EXPIRY_GRACE)
+            .expect("websocket token grace fits within chrono duration range"),
     );
-    let mut auth_check_interval =
-        time::interval(TokioDuration::from_secs(AUTH_CHECK_INTERVAL_SECS));
+    let mut auth_check_interval = time::interval(WS_AUTH_REFRESH_INTERVAL);
     auth_check_interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
 
     let (mut sender, mut inbound) = socket.split();

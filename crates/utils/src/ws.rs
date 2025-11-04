@@ -11,6 +11,13 @@ use tokio_tungstenite::{
 };
 use url::Url;
 
+/// Interval between authentication refresh probes for websocket connections.
+pub const WS_AUTH_REFRESH_INTERVAL: Duration = Duration::from_secs(30);
+/// Grace period to tolerate expired tokens while a websocket client refreshes its session.
+pub const WS_TOKEN_EXPIRY_GRACE: Duration = Duration::from_secs(120);
+/// Maximum time allowed between REST catch-up and websocket connection establishment.
+pub const WS_MAX_DELAY_BETWEEN_CATCHUP_AND_WS: Duration = WS_TOKEN_EXPIRY_GRACE;
+
 pub type HeaderFuture = BoxFuture<'static, WsResult<Vec<(HeaderName, HeaderValue)>>>;
 pub type HeaderFactory = Arc<dyn Fn() -> HeaderFuture + Send + Sync>;
 

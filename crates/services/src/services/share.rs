@@ -30,7 +30,10 @@ use thiserror::Error;
 use tokio::{sync::oneshot, task::JoinHandle, time::sleep};
 use tokio_tungstenite::tungstenite::Message as WsMessage;
 use url::Url;
-use utils::ws::{WsClient, WsConfig, WsError, WsHandler, WsResult, run_ws_client};
+use utils::ws::{
+    WS_AUTH_REFRESH_INTERVAL, WS_MAX_DELAY_BETWEEN_CATCHUP_AND_WS, WsClient, WsConfig, WsError,
+    WsHandler, WsResult, run_ws_client,
+};
 use uuid::Uuid;
 
 use crate::services::{
@@ -75,14 +78,6 @@ pub enum ShareError {
 
 const WS_BACKOFF_BASE_DELAY: Duration = Duration::from_secs(1);
 const WS_BACKOFF_MAX_DELAY: Duration = Duration::from_secs(30);
-
-// Maximum delay between catching up and establishing a WebSocket connection.
-// When syncing, we first catch up on missed events via REST API calls, then open a WebSocket
-// connection to receive live updates. If the WebSocket connection takes too long to establish,
-// we restart the process from catching up again to avoid missing events.
-const MAX_DELAY_BETWEEN_CATCHUP_AND_WS: Duration = Duration::from_secs(120);
-/// Interval between sending auth token refresh messages over the WebSocket.
-const WS_AUTH_REFRESH_INTERVAL: Duration = Duration::from_secs(30);
 
 struct Backoff {
     current: Duration,
@@ -277,7 +272,7 @@ async fn spawn_shared_remote(
             let session_source = session_source.clone();
             Box::pin(async move {
                 match tokio::time::timeout(
-                    MAX_DELAY_BETWEEN_CATCHUP_AND_WS,
+                    WS_MAX_DELAY_BETWEEN_CATCHUP_AND_WS,
                     session_source.wait_for_active(),
                 )
                 .await
