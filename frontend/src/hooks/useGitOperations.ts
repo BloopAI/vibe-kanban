@@ -3,7 +3,7 @@ import { useMerge } from './useMerge';
 import { usePush } from './usePush';
 import { useChangeTargetBranch } from './useChangeTargetBranch';
 import { useGitOperationsError } from '@/contexts/GitOperationsContext';
-import { Err } from '@/lib/api';
+import { Result } from '@/lib/api';
 import type { GitOperationError } from 'shared/types';
 
 export function useGitOperations(
@@ -16,12 +16,15 @@ export function useGitOperations(
     attemptId,
     projectId,
     () => setError(null),
-    (err: Err<GitOperationError>) => {
-      const data = err?.error;
-      const isConflict =
-        data?.type === 'merge_conflicts' || data?.type === 'rebase_in_progress';
-      if (!isConflict) {
-        setError(err.message || 'Failed to rebase');
+    (err: Result<void, GitOperationError>) => {
+      if (!err.success) {
+        const data = err?.error;
+        const isConflict =
+          data?.type === 'merge_conflicts' ||
+          data?.type === 'rebase_in_progress';
+        if (!isConflict) {
+          setError(err.message || 'Failed to rebase');
+        }
       }
     }
   );
