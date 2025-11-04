@@ -64,8 +64,6 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
 
-  const latestAttempt = displayedAttempts[0] ?? null;
-
   if (!task) {
     return (
       <div className="text-muted-foreground">
@@ -159,8 +157,6 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
                         onClick={() =>
                           NiceModal.show('create-attempt', {
                             taskId: task.id,
-                            latestAttempt,
-                            parentTaskAttemptId: task.parent_task_attempt,
                           })
                         }
                       >
