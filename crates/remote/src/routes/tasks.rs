@@ -5,6 +5,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use serde_json::json;
+use tracing::instrument;
 use uuid::Uuid;
 
 use super::error::{identity_error_response, task_error_response};
@@ -24,6 +25,11 @@ use crate::{
     },
 };
 
+#[instrument(
+    name = "tasks.bulk_shared_tasks",
+    skip(state, ctx),
+    fields(org_id = %ctx.organization.id, user_id = %ctx.user.id)
+)]
 pub async fn bulk_shared_tasks(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
@@ -53,6 +59,11 @@ pub async fn bulk_shared_tasks(
     }
 }
 
+#[instrument(
+    name = "tasks.create_shared_task",
+    skip(state, ctx, payload),
+    fields(org_id = %ctx.organization.id, user_id = %ctx.user.id)
+)]
 pub async fn create_shared_task(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
@@ -83,14 +94,17 @@ pub async fn create_shared_task(
         assignee_user_id,
     };
 
-    dbg!("Received create_shared_task request:", &data);
-
     match repo.create(&ctx.organization.id, data).await {
         Ok(task) => (StatusCode::CREATED, Json(SharedTaskResponse::from(task))).into_response(),
         Err(error) => task_error_response(error, "failed to create shared task"),
     }
 }
 
+#[instrument(
+    name = "tasks.update_shared_task",
+    skip(state, ctx, payload),
+    fields(org_id = %ctx.organization.id, user_id = %ctx.user.id, task_id = %task_id)
+)]
 pub async fn update_shared_task(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
@@ -129,6 +143,11 @@ pub async fn update_shared_task(
     }
 }
 
+#[instrument(
+    name = "tasks.assign_shared_task",
+    skip(state, ctx, payload),
+    fields(org_id = %ctx.organization.id, user_id = %ctx.user.id, task_id = %task_id)
+)]
 pub async fn assign_task(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
@@ -175,6 +194,11 @@ pub async fn assign_task(
     }
 }
 
+#[instrument(
+    name = "tasks.delete_shared_task",
+    skip(state, ctx, payload),
+    fields(org_id = %ctx.organization.id, user_id = %ctx.user.id, task_id = %task_id)
+)]
 pub async fn delete_shared_task(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,

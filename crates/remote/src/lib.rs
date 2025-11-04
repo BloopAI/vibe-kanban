@@ -14,7 +14,12 @@ pub use app::Server;
 use sentry_tracing::{EventFilter, SentryLayer};
 pub use state::AppState;
 use tracing::Level;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_error::ErrorLayer;
+use tracing_subscriber::{
+    fmt::{self, format::FmtSpan},
+    layer::{Layer as _, SubscriberExt},
+    util::SubscriberInitExt,
+};
 pub use ws::message::{ClientMessage, ServerMessage};
 
 static INIT_GUARD: OnceLock<sentry::ClientInitGuard> = OnceLock::new();
@@ -25,10 +30,25 @@ pub fn init_tracing() {
     }
 
     let env_filter = env::var("RUST_LOG").unwrap_or_else(|_| "info,sqlx=warn".to_string());
-    let fmt_layer = tracing_subscriber::fmt::layer().with_target(false);
+    let fmt_layer = match env::var("TRACING_FORMAT")
+        .ok()
+        .map(|value| value.to_ascii_lowercase())
+        .as_deref()
+    {
+        Some("json") => fmt::layer()
+            .json()
+            .with_target(false)
+            .with_span_events(FmtSpan::CLOSE)
+            .boxed(),
+        _ => fmt::layer()
+            .with_target(false)
+            .with_span_events(FmtSpan::CLOSE)
+            .boxed(),
+    };
 
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::new(env_filter))
+        .with(ErrorLayer::default())
         .with(fmt_layer)
         .with(sentry_layer())
         .init();

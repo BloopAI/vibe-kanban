@@ -5,10 +5,16 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use secrecy::ExposeSecret;
+use tracing::instrument;
 
 use super::error::clerk_token_error_response;
 use crate::{AppState, api::oauth::GitHubTokenResponse, auth::RequestContext};
 
+#[instrument(
+    name = "oauth.github_token",
+    skip(state, ctx),
+    fields(user_id = %ctx.user.id, org_id = %ctx.organization.id)
+)]
 pub async fn github_token(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,

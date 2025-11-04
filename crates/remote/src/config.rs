@@ -76,7 +76,6 @@ impl ClerkConfig {
             .parse()
             .map_err(|_| ConfigError::InvalidVar("CLERK_API_URL"))?;
 
-        dbg!(&api_url);
         Ok(Self {
             secret_key,
             issuer,
