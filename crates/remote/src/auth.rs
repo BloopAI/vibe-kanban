@@ -7,7 +7,7 @@ use reqwest::{Client, StatusCode, Url};
 use secrecy::ExposeSecret;
 use serde::Deserialize;
 use thiserror::Error;
-pub use utils::clerk::ClerkAuth;
+pub use utils::clerk::{ClerkAuth, ClerkAuthError, ClerkIdentity};
 
 use crate::config::ClerkConfig;
 
