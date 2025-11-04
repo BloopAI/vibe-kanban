@@ -40,7 +40,6 @@ ignore = "0.4"
 git2 = "0.18"
 mime_guess = "2.0"
 rust-embed = "8.2"
-octocrab = "0.44"
 axum-extra = { version = "0.9", features = ["typed-header"] }
 url = "2.5"
 
