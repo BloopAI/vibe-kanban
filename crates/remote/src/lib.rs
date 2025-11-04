@@ -30,21 +30,11 @@ pub fn init_tracing() {
     }
 
     let env_filter = env::var("RUST_LOG").unwrap_or_else(|_| "info,sqlx=warn".to_string());
-    let fmt_layer = match env::var("TRACING_FORMAT")
-        .ok()
-        .map(|value| value.to_ascii_lowercase())
-        .as_deref()
-    {
-        Some("json") => fmt::layer()
-            .json()
-            .with_target(false)
-            .with_span_events(FmtSpan::CLOSE)
-            .boxed(),
-        _ => fmt::layer()
-            .with_target(false)
-            .with_span_events(FmtSpan::CLOSE)
-            .boxed(),
-    };
+    let fmt_layer = fmt::layer()
+        .json()
+        .with_target(false)
+        .with_span_events(FmtSpan::CLOSE)
+        .boxed();
 
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::new(env_filter))
