@@ -25,6 +25,10 @@ import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext
 import { ClickedElementsProvider } from '@/contexts/ClickedElementsProvider';
 import { ReviewProvider } from '@/contexts/ReviewProvider';
 import {
+  GitOperationsProvider,
+  useGitOperationsError,
+} from '@/contexts/GitOperationsContext';
+import {
   useKeyCreate,
   useKeyExit,
   useKeyFocusSearch,
@@ -83,20 +87,30 @@ const TASK_STATUSES = [
 const normalizeStatus = (status: string): TaskStatus =>
   status.toLowerCase() as TaskStatus;
 
+function GitErrorBanner() {
+  const { error: gitError } = useGitOperationsError();
+
+  if (!gitError) return null;
+
+  return (
+    <div className="mx-4 mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded">
+      <div className="text-destructive text-sm">{gitError}</div>
+    </div>
+  );
+}
+
 function DiffsPanelContainer({
   attempt,
   selectedTask,
   projectId,
   branchStatus,
   branches,
-  setGitError,
 }: {
   attempt: any;
   selectedTask: any;
   projectId: string;
   branchStatus: any;
   branches: GitBranch[];
-  setGitError: (error: string | null) => void;
 }) {
   const { isAttemptRunning } = useAttemptExecution(attempt?.id);
 
@@ -111,7 +125,6 @@ function DiffsPanelContainer({
               branchStatus: branchStatus ?? null,
               branches,
               isAttemptRunning,
-              setError: setGitError,
               selectedBranch: branchStatus?.target_branch_name ?? null,
             }
           : undefined
@@ -246,7 +259,6 @@ export function ProjectTasks() {
 
   const { data: branchStatus } = useBranchStatus(attempt?.id);
   const [branches, setBranches] = useState<GitBranch[]>([]);
-  const [gitError, setGitError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!projectId) return;
@@ -945,11 +957,7 @@ export function ProjectTasks() {
         <TaskAttemptPanel attempt={attempt} task={selectedTask}>
           {({ logs, followUp }) => (
             <>
-              {gitError && (
-                <div className="mx-4 mt-4 p-3 bg-red-50 border border-red-200 rounded">
-                  <div className="text-destructive text-sm">{gitError}</div>
-                </div>
-              )}
+              <GitErrorBanner />
               <div className="flex-1 min-h-0 flex flex-col">{logs}</div>
 
               <div className="shrink-0 border-t">
@@ -983,7 +991,6 @@ export function ProjectTasks() {
             projectId={projectId!}
             branchStatus={branchStatus}
             branches={branches}
-            setGitError={setGitError}
           />
         )}
       </div>
@@ -995,6 +1002,7 @@ export function ProjectTasks() {
 
   const attemptArea =
     attempt && selectedTask ? (
+      <GitOperationsProvider attemptId={attempt.id}>
       <ClickedElementsProvider attempt={attempt}>
         <ReviewProvider key={attempt.id}>
           <ExecutionProcessesProvider key={attempt.id} attemptId={attempt.id}>
@@ -1010,6 +1018,7 @@ export function ProjectTasks() {
           </ExecutionProcessesProvider>
         </ReviewProvider>
       </ClickedElementsProvider>
+      </GitOperationsProvider>
     ) : (
       <TasksLayout
         kanban={kanbanContent}
