@@ -41,7 +41,6 @@ import { toPrettyCase } from '@/utils/string';
 import { useTheme } from '@/components/theme-provider';
 import { useUserSystem } from '@/components/config-provider';
 import { TagManager } from '@/components/TagManager';
-import NiceModal from '@ebay/nice-modal-react';
 
 export function GeneralSettings() {
   const { t } = useTranslation(['settings', 'common']);
@@ -182,22 +181,6 @@ export function GeneralSettings() {
     if (!config) return;
     updateAndSaveConfig({ onboarding_acknowledged: false });
   };
-
-  const isAuthenticated = !!(
-    config?.github?.username && config?.github?.oauth_token
-  );
-
-  const handleLogout = useCallback(async () => {
-    if (!config) return;
-    updateAndSaveConfig({
-      github: {
-        ...config.github,
-        oauth_token: null,
-        username: null,
-        primary_email: null,
-      },
-    });
-  }, [config, updateAndSaveConfig]);
 
   if (loading) {
     return (
@@ -559,49 +542,11 @@ export function GeneralSettings() {
             <Key className="h-5 w-5" />
             {t('settings.general.github.title')}
           </CardTitle>
+          <CardDescription>
+            {t('settings.general.github.helper')}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {isAuthenticated ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div>
-                  <p className="font-medium">
-                    {t('settings.general.github.connected', {
-                      username: config.github.username,
-                    })}
-                  </p>
-                  {config.github.primary_email && (
-                    <p className="text-sm text-muted-foreground">
-                      {config.github.primary_email}
-                    </p>
-                  )}
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      {t('settings.general.github.manage')}{' '}
-                      <ChevronDown className="ml-1 h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={handleLogout}>
-                      {t('settings.general.github.disconnect')}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                {t('settings.general.github.helper')}
-              </p>
-              <Button onClick={() => NiceModal.show('github-login')}>
-                {t('settings.general.github.connectButton')}
-              </Button>
-            </div>
-          )}
-
           <div className="space-y-2">
             <Label htmlFor="github-token">
               {t('settings.general.github.pat.label')}

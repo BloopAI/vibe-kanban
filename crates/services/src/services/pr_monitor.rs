@@ -8,23 +8,26 @@ use db::{
         task_attempt::{TaskAttempt, TaskAttemptError},
     },
 };
+use secrecy::ExposeSecret;
 use serde_json::json;
 use sqlx::error::Error as SqlxError;
 use thiserror::Error;
-use tokio::{sync::RwLock, time::interval};
+use tokio::time::interval;
 use tracing::{debug, error, info, warn};
 
 use crate::services::{
     analytics::AnalyticsContext,
-    config::Config,
     github_service::{GitHubRepoInfo, GitHubService, GitHubServiceError},
     share::SharePublisher,
+    token::{GitHubTokenError, GitHubTokenProvider, GitHubTokenSource},
 };
 
 #[derive(Debug, Error)]
 enum PrMonitorError {
     #[error("No GitHub token configured")]
     NoGitHubToken,
+    #[error(transparent)]
+    GitHubToken(#[from] GitHubTokenError),
     #[error(transparent)]
     GitHubServiceError(#[from] GitHubServiceError),
     #[error(transparent)]
@@ -36,7 +39,7 @@ enum PrMonitorError {
 /// Service to monitor GitHub PRs and update task status when they are merged
 pub struct PrMonitorService {
     db: DBService,
-    config: Arc<RwLock<Config>>,
+    tokens: Arc<GitHubTokenProvider>,
     poll_interval: Duration,
     analytics: Option<AnalyticsContext>,
     publisher: Option<SharePublisher>,
@@ -45,13 +48,13 @@ pub struct PrMonitorService {
 impl PrMonitorService {
     pub async fn spawn(
         db: DBService,
-        config: Arc<RwLock<Config>>,
+        tokens: Arc<GitHubTokenProvider>,
         analytics: Option<AnalyticsContext>,
         publisher: Option<SharePublisher>,
     ) -> tokio::task::JoinHandle<()> {
         let service = Self {
             db,
-            config,
+            tokens,
             poll_interval: Duration::from_secs(60), // Check every minute
             analytics,
             publisher,
@@ -91,7 +94,7 @@ impl PrMonitorService {
         for pr_merge in open_prs {
             match self.check_pr_status(&pr_merge).await {
                 Err(PrMonitorError::NoGitHubToken) => {
-                    warn!("No GitHub token configured, cannot check PR status");
+                    warn!("No GitHub token, cannot check PR status");
                 }
                 Err(e) => {
                     error!(
@@ -107,16 +110,31 @@ impl PrMonitorService {
 
     /// Check the status of a specific PR
     async fn check_pr_status(&self, pr_merge: &PrMerge) -> Result<(), PrMonitorError> {
-        let github_config = self.config.read().await.github.clone();
-        let github_token = github_config.token().ok_or(PrMonitorError::NoGitHubToken)?;
+        let token = self.tokens.access_token().await.map_err(|err| {
+            if err.is_missing_token() {
+                PrMonitorError::NoGitHubToken
+            } else {
+                PrMonitorError::GitHubToken(err)
+            }
+        })?;
 
-        let github_service = GitHubService::new(&github_token)?;
-
+        let github_service = GitHubService::new(token.token.expose_secret())?;
         let repo_info = GitHubRepoInfo::from_remote_url(&pr_merge.pr_info.url)?;
 
-        let pr_status = github_service
+        let pr_status = match github_service
             .update_pr_status(&repo_info, pr_merge.pr_info.number)
-            .await?;
+            .await
+        {
+            Ok(status) => status,
+            Err(err) => {
+                if matches!(err, GitHubServiceError::TokenInvalid)
+                    && matches!(token.source.clone(), GitHubTokenSource::ClerkOAuth)
+                {
+                    self.tokens.invalidate().await;
+                }
+                return Err(PrMonitorError::from(err));
+            }
+        };
 
         debug!(
             "PR #{} status: {:?} (was open)",

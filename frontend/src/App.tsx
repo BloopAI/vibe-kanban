@@ -78,11 +78,6 @@ function AppContent() {
       await updateAndSaveConfig({ disclaimer_acknowledged: true });
     };
 
-    const handleGitHubLoginComplete = async () => {
-      if (cancelled) return;
-      await updateAndSaveConfig({ github_login_acknowledged: true });
-    };
-
     const handleTelemetryOptIn = async (analyticsEnabled: boolean) => {
       if (cancelled) return;
       await updateAndSaveConfig({
@@ -110,12 +105,6 @@ function AppContent() {
           await NiceModal.show('onboarding');
         await handleOnboardingComplete(onboardingResult);
         await NiceModal.hide('onboarding');
-      }
-
-      if (!config.github_login_acknowledged) {
-        await NiceModal.show('github-login');
-        await handleGitHubLoginComplete();
-        await NiceModal.hide('github-login');
       }
 
       if (!config.telemetry_acknowledged) {

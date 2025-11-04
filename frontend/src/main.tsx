@@ -15,7 +15,6 @@ import { PostHogProvider } from 'posthog-js/react';
 import './types/modals';
 // Import and register modals
 import {
-  GitHubLoginDialog,
   CreatePRDialog,
   ConfirmDialog,
   DisclaimerDialog,
@@ -46,7 +45,6 @@ import { EditBranchNameDialog } from './components/dialogs/tasks/EditBranchNameD
 import { ClerkSessionRefresher } from './components/ClerkSessionRefresher';
 
 // Register modals
-NiceModal.register('github-login', GitHubLoginDialog);
 NiceModal.register('create-pr', CreatePRDialog);
 NiceModal.register('confirm', ConfirmDialog);
 NiceModal.register('disclaimer', DisclaimerDialog);

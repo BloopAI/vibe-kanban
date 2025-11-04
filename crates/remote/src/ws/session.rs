@@ -4,6 +4,7 @@ use futures::{SinkExt, StreamExt};
 use thiserror::Error;
 use tokio::time::{self, MissedTickBehavior};
 use tokio_stream::wrappers::BroadcastStream;
+use tracing::instrument;
 use utils::ws::{WS_AUTH_REFRESH_INTERVAL, WS_TOKEN_EXPIRY_GRACE};
 
 use super::{
@@ -17,6 +18,11 @@ use crate::{
     db::activity::ActivityRepository,
 };
 
+#[instrument(
+    name = "ws.session",
+    skip(socket, state, ctx, params),
+    fields(org_id = %ctx.organization.id, user_id = %ctx.user.id, session_id = %ctx.identity.session_id)
+)]
 pub async fn handle(
     socket: WebSocket,
     state: AppState,
@@ -52,7 +58,7 @@ pub async fn handle(
         }
     }
 
-    dbg!("Starting websocket session for org:", &org_id);
+    tracing::debug!(%org_id, "starting websocket session");
 
     loop {
         tokio::select! {
@@ -135,7 +141,11 @@ async fn send_activity(
     sender: &mut futures::stream::SplitSink<WebSocket, Message>,
     event: &ActivityEvent,
 ) -> Result<(), ()> {
-    dbg!("Sending activity event:", event.event_type.as_str());
+    tracing::trace!(
+        event_type = %event.event_type.as_str(),
+        org_id = %event.organization_id,
+        "sending activity event"
+    );
 
     match serde_json::to_string(&ServerMessage::Activity(event.clone())) {
         Ok(json) => sender

@@ -166,8 +166,6 @@ impl<'a> SharedTaskRepository<'a> {
     ) -> Result<SharedTaskWithUser, SharedTaskError> {
         let mut tx = self.pool.begin().await.map_err(SharedTaskError::from)?;
 
-        dbg!("Received create_shared_task request:", &data);
-
         let CreateSharedTaskData {
             project,
             title,

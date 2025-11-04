@@ -32,11 +32,13 @@ use executors::{
     profile::{ExecutorConfigs, ExecutorProfileId},
 };
 use git2::BranchType;
+use secrecy::ExposeSecret;
 use serde::{Deserialize, Serialize};
 use services::services::{
     container::ContainerService,
     git::{ConflictOp, WorktreeResetOptions},
     github_service::{CreatePrRequest, GitHubService, GitHubServiceError},
+    token::GitHubTokenSource,
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
@@ -729,19 +731,29 @@ pub async fn push_task_attempt_branch(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
-    let github_config = deployment.config().read().await.github.clone();
-    let Some(github_token) = github_config.token() else {
-        return Err(GitHubServiceError::TokenInvalid.into());
-    };
+    let token_provider = deployment.token_provider();
+    let github_token = token_provider.access_token().await.map_err(|err| {
+        tracing::error!(?err, "Failed to acquire GitHub access token");
+        GitHubServiceError::TokenInvalid
+    })?;
 
-    let github_service = GitHubService::new(&github_token)?;
-    github_service.check_token().await?;
+    let github_service = GitHubService::new(github_token.token.expose_secret())?;
+    if let Err(err) = github_service.check_token().await {
+        if matches!(github_token.source, GitHubTokenSource::ClerkOAuth)
+            && matches!(err, GitHubServiceError::TokenInvalid)
+        {
+            token_provider.invalidate().await;
+        }
+        return Err(err.into());
+    }
 
     let ws_path = ensure_worktree_path(&deployment, &task_attempt).await?;
 
-    deployment
-        .git()
-        .push_to_github(&ws_path, &task_attempt.branch, &github_token)?;
+    deployment.git().push_to_github(
+        &ws_path,
+        &task_attempt.branch,
+        github_token.token.expose_secret(),
+    )?;
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
@@ -750,14 +762,20 @@ pub async fn create_github_pr(
     State(deployment): State<DeploymentImpl>,
     Json(request): Json<CreateGitHubPrRequest>,
 ) -> Result<ResponseJson<ApiResponse<String, GitHubServiceError>>, ApiError> {
-    let github_config = deployment.config().read().await.github.clone();
-    let Some(github_token) = github_config.token() else {
-        return Ok(ResponseJson(ApiResponse::error_with_data(
-            GitHubServiceError::TokenInvalid,
-        )));
+    let token_provider = deployment.token_provider();
+    let github_token = match token_provider.access_token().await {
+        Ok(token) => token,
+        Err(err) => {
+            tracing::error!(?err, "Failed to acquire GitHub access token");
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                GitHubServiceError::TokenInvalid,
+            )));
+        }
     };
+
+    let github_config = deployment.config().read().await.github.clone();
     // Create GitHub service instance
-    let github_service = GitHubService::new(&github_token)?;
+    let github_service = GitHubService::new(github_token.token.expose_secret())?;
     // Get the task attempt to access the stored target branch
     let target_branch = request.target_branch.unwrap_or_else(|| {
         // Use the stored target branch from the task attempt as the default
@@ -784,14 +802,19 @@ pub async fn create_github_pr(
     let workspace_path = ensure_worktree_path(&deployment, &task_attempt).await?;
 
     // Push the branch to GitHub first
-    if let Err(e) =
-        deployment
-            .git()
-            .push_to_github(&workspace_path, &task_attempt.branch, &github_token)
-    {
+    if let Err(e) = deployment.git().push_to_github(
+        &workspace_path,
+        &task_attempt.branch,
+        github_token.token.expose_secret(),
+    ) {
         tracing::error!("Failed to push branch to GitHub: {}", e);
         let gh_e = GitHubServiceError::from(e);
         if gh_e.is_api_data() {
+            if matches!(github_token.source, GitHubTokenSource::ClerkOAuth)
+                && matches!(gh_e, GitHubServiceError::TokenInvalid)
+            {
+                token_provider.invalidate().await;
+            }
             return Ok(ResponseJson(ApiResponse::error_with_data(gh_e)));
         } else {
             return Ok(ResponseJson(ApiResponse::error(
@@ -869,6 +892,11 @@ pub async fn create_github_pr(
                 task_attempt.id,
                 e
             );
+            if matches!(github_token.source, GitHubTokenSource::ClerkOAuth)
+                && matches!(e, GitHubServiceError::TokenInvalid)
+            {
+                token_provider.invalidate().await;
+            }
             if e.is_api_data() {
                 Ok(ResponseJson(ApiResponse::error_with_data(e)))
             } else {
@@ -1031,16 +1059,23 @@ pub async fn get_task_attempt_branch_status(
             (Some(a), Some(b))
         }
         BranchType::Remote => {
-            let github_config = deployment.config().read().await.github.clone();
-            let token = github_config
-                .token()
-                .ok_or(ApiError::GitHubService(GitHubServiceError::TokenInvalid))?;
+            let token = deployment
+                .token_provider()
+                .access_token()
+                .await
+                .map_err(|err| {
+                    tracing::warn!(
+                        ?err,
+                        "Failed to acquire GitHub token while computing branch status"
+                    );
+                    ApiError::from(err)
+                })?;
             let (remote_commits_ahead, remote_commits_behind) =
                 deployment.git().get_remote_branch_status(
                     &ctx.project.git_repo_path,
                     &task_attempt.branch,
                     Some(&task_attempt.target_branch),
-                    token,
+                    token.token.expose_secret().to_string(),
                 )?;
             (Some(remote_commits_ahead), Some(remote_commits_behind))
         }
@@ -1056,16 +1091,23 @@ pub async fn get_task_attempt_branch_status(
     })) = merges.first()
     {
         // check remote status if the attempt has an open PR
-        let github_config = deployment.config().read().await.github.clone();
-        let token = github_config
-            .token()
-            .ok_or(ApiError::GitHubService(GitHubServiceError::TokenInvalid))?;
+        let token = deployment
+            .token_provider()
+            .access_token()
+            .await
+            .map_err(|err| {
+                tracing::warn!(
+                    ?err,
+                    "Failed to acquire GitHub token while computing remote branch status"
+                );
+                ApiError::from(err)
+            })?;
         let (remote_commits_ahead, remote_commits_behind) =
             deployment.git().get_remote_branch_status(
                 &ctx.project.git_repo_path,
                 &task_attempt.branch,
                 None,
-                token,
+                token.token.expose_secret().to_string(),
             )?;
         (Some(remote_commits_ahead), Some(remote_commits_behind))
     } else {
@@ -1284,7 +1326,14 @@ pub async fn rebase_task_attempt(
     let new_base_branch = payload
         .new_base_branch
         .unwrap_or(task_attempt.target_branch.clone());
-    let github_config = deployment.config().read().await.github.clone();
+
+    let github_token = match deployment.token_provider().access_token().await {
+        Ok(token) => Some(token),
+        Err(err) => {
+            tracing::warn!(?err, "Failed to acquire GitHub access token");
+            None
+        }
+    };
 
     let pool = &deployment.db().pool;
 
@@ -1325,7 +1374,9 @@ pub async fn rebase_task_attempt(
         &new_base_branch,
         &old_base_branch,
         &task_attempt.branch.clone(),
-        github_config.token(),
+        github_token
+            .as_ref()
+            .map(|token| token.token.expose_secret().to_string()),
     );
     if let Err(e) = result {
         use services::services::git::GitServiceError;
@@ -1577,10 +1628,14 @@ pub async fn attach_existing_pr(
     }
 
     // Get GitHub token
-    let github_config = deployment.config().read().await.github.clone();
-    let Some(github_token) = github_config.token() else {
-        return Err(ApiError::GitHubService(GitHubServiceError::TokenInvalid));
-    };
+    let token_provider = deployment.token_provider();
+    let github_token = token_provider.access_token().await.map_err(|err| {
+        tracing::warn!(
+            ?err,
+            "Failed to acquire GitHub token while attaching existing PR"
+        );
+        ApiError::from(err)
+    })?;
 
     // Get project and repo info
     let Some(task) = task_attempt.parent_task(pool).await? else {
@@ -1590,15 +1645,26 @@ pub async fn attach_existing_pr(
         return Err(ApiError::Project(ProjectError::ProjectNotFound));
     };
 
-    let github_service = GitHubService::new(&github_token)?;
+    let github_service = GitHubService::new(github_token.token.expose_secret())?;
     let repo_info = deployment
         .git()
         .get_github_repo_info(&project.git_repo_path)?;
 
     // List all PRs for branch (open, closed, and merged)
-    let prs = github_service
+    let prs = match github_service
         .list_all_prs_for_branch(&repo_info, &task_attempt.branch)
-        .await?;
+        .await
+    {
+        Ok(prs) => prs,
+        Err(err) => {
+            if matches!(github_token.source, GitHubTokenSource::ClerkOAuth)
+                && matches!(err, GitHubServiceError::TokenInvalid)
+            {
+                token_provider.invalidate().await;
+            }
+            return Err(err.into());
+        }
+    };
 
     // Take the first PR (prefer open, but also accept merged/closed)
     if let Some(pr_info) = prs.into_iter().next() {

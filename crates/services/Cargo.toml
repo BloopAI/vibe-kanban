@@ -43,7 +43,6 @@ base64 = "0.22"
 thiserror = { workspace = true }
 futures = "0.3.31"
 tokio-stream = "0.1.17"
-secrecy = "0.10.3"
 strum_macros = "0.27.2"
 strum = "0.27.2"
 notify = "8.2.0"
@@ -54,4 +53,5 @@ dashmap = "6.1"
 once_cell = "1.20"
 sha2 = "0.10"
 fst = "0.4"
+secrecy = "0.10.3"
 moka = { version = "0.12", features = ["future"] }

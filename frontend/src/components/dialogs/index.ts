@@ -5,7 +5,6 @@ export { PrivacyOptInDialog } from './global/PrivacyOptInDialog';
 export { ReleaseNotesDialog } from './global/ReleaseNotesDialog';
 
 // Authentication dialogs
-export { GitHubLoginDialog } from './auth/GitHubLoginDialog';
 export {
   ProvidePatDialog,
   type ProvidePatDialogProps,

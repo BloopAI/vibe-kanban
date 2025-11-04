@@ -4,8 +4,8 @@ use std::time::Duration;
 
 pub use middleware::{RequestContext, require_clerk_session};
 use reqwest::{Client, StatusCode, Url};
-use secrecy::ExposeSecret;
-use serde::Deserialize;
+use secrecy::{ExposeSecret, SecretString};
+use serde::{Deserialize, Deserializer};
 use thiserror::Error;
 pub use utils::clerk::{ClerkAuth, ClerkAuthError, ClerkIdentity};
 
@@ -33,6 +33,8 @@ pub enum ClerkServiceError {
     NotFound(String),
     #[error("unexpected response: {0}")]
     InvalidResponse(String),
+    #[error("no OAuth access token available for provider `{0}`")]
+    OAuthTokenUnavailable(String),
     #[error(transparent)]
     Http(#[from] reqwest::Error),
 }
@@ -56,8 +58,6 @@ impl ClerkService {
             .bearer_auth(&self.secret_key)
             .send()
             .await?;
-
-        dbg!(&response.status());
 
         if response.status() == StatusCode::NOT_FOUND {
             return Err(ClerkServiceError::NotFound(user_id.to_string()));
@@ -103,11 +103,51 @@ impl ClerkService {
         }
     }
 
+    pub async fn get_oauth_access_token(
+        &self,
+        user_id: &str,
+        provider: &str,
+    ) -> Result<OAuthAccessToken, ClerkServiceError> {
+        let url = self.endpoint(&format!("users/{user_id}/oauth_access_tokens/{provider}"))?;
+        let response = self
+            .client
+            .get(url)
+            .bearer_auth(&self.secret_key)
+            .send()
+            .await?;
+
+        if response.status() == StatusCode::NOT_FOUND {
+            return Err(ClerkServiceError::NotFound(format!("{user_id}/{provider}")));
+        }
+
+        let response = response.error_for_status()?;
+        let body: Vec<OAuthAccessToken> = response.json().await?;
+        body.into_iter()
+            .max_by_key(|token| token.expires_at.unwrap_or_default())
+            .ok_or_else(|| ClerkServiceError::OAuthTokenUnavailable(provider.to_owned()))
+    }
+
     fn endpoint(&self, path: &str) -> Result<Url, ClerkServiceError> {
         self.api_url
             .join(path)
             .map_err(|err| ClerkServiceError::InvalidResponse(err.to_string()))
     }
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct OAuthAccessToken {
+    #[serde(deserialize_with = "deserialize_secret_string")]
+    pub token: SecretString,
+    pub expires_at: Option<i64>,
+    pub scopes: Option<Vec<String>>,
+}
+
+fn deserialize_secret_string<'de, D>(deserializer: D) -> Result<SecretString, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = String::deserialize(deserializer)?;
+    Ok(SecretString::new(value.into()))
 }
 
 #[derive(Debug, Deserialize)]

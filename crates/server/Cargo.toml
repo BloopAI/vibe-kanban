@@ -30,6 +30,7 @@ ts-rs = { workspace = true }
 nix = { version = "0.29", features = ["signal", "process"] }
 rmcp = { version = "0.5.0", features = ["server", "transport-io"] }
 schemars = { workspace = true }
+secrecy = "0.10.3"
 sentry = { version = "0.41.0", features = ["anyhow", "backtrace", "panic", "debug-images"] }
 reqwest = { version = "0.12", features = ["json"] }
 strip-ansi-escapes = "0.2.1"
@@ -40,7 +41,6 @@ ignore = "0.4"
 git2 = "0.18"
 mime_guess = "2.0"
 rust-embed = "8.2"
-octocrab = "0.44"
 axum-extra = { version = "0.9", features = ["typed-header"] }
 url = "2.5"
 

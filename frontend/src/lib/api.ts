@@ -4,7 +4,6 @@ import {
   ApprovalStatus,
   ApiResponse,
   BranchStatus,
-  CheckTokenResponse,
   Config,
   CommitInfo,
   CreateFollowUpAttempt,
@@ -13,8 +12,6 @@ import {
   CreateAndStartTaskRequest,
   CreateTaskAttemptBody,
   CreateTag,
-  DeviceFlowStartResponse,
-  DevicePollStatus,
   DirectoryListResponse,
   DirectoryEntry,
   EditorType,
@@ -724,26 +721,6 @@ export const configApi = {
       body: JSON.stringify(config),
     });
     return handleApiResponse<Config>(response);
-  },
-};
-
-// GitHub Device Auth APIs
-export const githubAuthApi = {
-  checkGithubToken: async (): Promise<CheckTokenResponse> => {
-    const response = await makeRequest('/api/auth/github/check');
-    return handleApiResponse<CheckTokenResponse>(response);
-  },
-  start: async (): Promise<DeviceFlowStartResponse> => {
-    const response = await makeRequest('/api/auth/github/device/start', {
-      method: 'POST',
-    });
-    return handleApiResponse<DeviceFlowStartResponse>(response);
-  },
-  poll: async (): Promise<DevicePollStatus> => {
-    const response = await makeRequest('/api/auth/github/device/poll', {
-      method: 'POST',
-    });
-    return handleApiResponse<DevicePollStatus>(response);
   },
 };
 

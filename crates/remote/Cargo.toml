@@ -22,6 +22,7 @@ tokio-stream = { version = "0.1.17", features = ["sync"] }
 tower-http = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+tracing-error = "0.2"
 thiserror = { workspace = true }
 utils = { path = "../utils" }
 uuid = { version = "1", features = ["serde", "v4"] }

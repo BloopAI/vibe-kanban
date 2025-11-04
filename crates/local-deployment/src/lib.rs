@@ -7,8 +7,7 @@ use executors::profile::ExecutorConfigs;
 use services::services::{
     analytics::{AnalyticsConfig, AnalyticsContext, AnalyticsService, generate_user_id},
     approvals::Approvals,
-    auth::AuthService,
-    clerk::{ClerkAuth, ClerkPublicConfig, ClerkPublicConfigError, ClerkSessionStore},
+    clerk::{ClerkPublicConfig, ClerkPublicConfigError, ClerkService, ClerkSessionStore},
     config::{Config, load_config_from_file, save_config_to_file},
     container::ContainerService,
     drafts::DraftsService,
@@ -17,7 +16,8 @@ use services::services::{
     filesystem::FilesystemService,
     git::GitService,
     image::ImageService,
-    share::{RemoteSync, RemoteSyncHandle, SharePublisher},
+    share::{RemoteSync, RemoteSyncHandle, ShareConfig, SharePublisher},
+    token::GitHubTokenProvider,
 };
 use tokio::sync::RwLock;
 use utils::{assets::config_path, msg_store::MsgStore};
@@ -36,7 +36,6 @@ pub struct LocalDeployment {
     msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
     container: LocalContainerService,
     git: GitService,
-    auth: AuthService,
     image: ImageService,
     filesystem: FilesystemService,
     events: EventService,
@@ -46,7 +45,8 @@ pub struct LocalDeployment {
     share_publisher: Option<SharePublisher>,
     _share_sync: Option<RemoteSyncHandle>,
     clerk_sessions: ClerkSessionStore,
-    clerk_auth: Option<Arc<ClerkAuth>>,
+    clerk_service: Option<Arc<ClerkService>>,
+    token_provider: Arc<GitHubTokenProvider>,
 }
 
 #[async_trait]
@@ -81,7 +81,6 @@ impl Deployment for LocalDeployment {
         let analytics = AnalyticsConfig::new().map(AnalyticsService::new);
         let git = GitService::new();
         let msg_stores = Arc::new(RwLock::new(HashMap::new()));
-        let auth = AuthService::new();
         let filesystem = FilesystemService::new();
 
         // Create shared components for EventService
@@ -117,38 +116,49 @@ impl Deployment for LocalDeployment {
         };
 
         let clerk_sessions = ClerkSessionStore::new();
-        let clerk_auth = match ClerkPublicConfig::from_env() {
-            Ok(public_config) => Some(Arc::new(public_config.build_auth()?)),
+        let share_config = ShareConfig::from_env();
+        let clerk_service = match ClerkPublicConfig::from_env() {
+            Ok(public_config) => {
+                let remote_api_base = share_config.as_ref().map(|sc| sc.api_base.clone());
+                Some(Arc::new(public_config.build_auth(remote_api_base)?))
+            }
             Err(ClerkPublicConfigError::MissingEnv(_)) => {
-                tracing::error!("CLERK_ISSUER not set; share features disabled");
+                tracing::error!("CLERK_ISSUER not set; remote features disabled");
                 None
             }
             Err(err) => return Err(DeploymentError::Other(err.into())),
         };
-        let mut share_sync_handle = None;
-        let share_publisher = if clerk_auth.is_some() {
-            match SharePublisher::new(
+
+        let token_provider = Arc::new(GitHubTokenProvider::new(
+            config.clone(),
+            share_config.as_ref().map(|sc| sc.api_base.clone()),
+            clerk_sessions.clone(),
+        ));
+
+        let (share_publisher, share_sync_handle) = if let (Some(_), Some(sc)) =
+            (clerk_service.as_ref(), share_config.clone())
+        {
+            let share_publisher = match SharePublisher::new(
                 db.clone(),
                 git.clone(),
-                config.clone(),
+                sc.clone(),
                 clerk_sessions.clone(),
+                token_provider.clone(),
             ) {
-                Ok(publisher) => {
-                    // start remote server sync communication
-                    share_sync_handle =
-                        RemoteSync::spawn_if_configured(db.clone(), clerk_sessions.clone());
-                    Some(publisher)
-                }
+                Ok(publisher) => Some(publisher),
                 Err(err) => {
                     tracing::error!(
-                        "Failed to initialize SharePublisher; disabling share feature: {}",
-                        err
+                        ?err,
+                        "Failed to initialize SharePublisher; disabling share feature"
                     );
                     None
                 }
-            }
+            };
+
+            let share_sync_handle = Some(RemoteSync::spawn(db.clone(), sc, clerk_sessions.clone()));
+            (share_publisher, share_sync_handle)
         } else {
-            None
+            (None, None)
         };
 
         // We need to make analytics accessible to the ContainerService
@@ -182,7 +192,6 @@ impl Deployment for LocalDeployment {
             msg_stores,
             container,
             git,
-            auth,
             image,
             filesystem,
             events,
@@ -192,7 +201,8 @@ impl Deployment for LocalDeployment {
             share_publisher,
             _share_sync: share_sync_handle,
             clerk_sessions,
-            clerk_auth,
+            clerk_service,
+            token_provider,
         };
 
         if has_github_token {
@@ -224,9 +234,6 @@ impl Deployment for LocalDeployment {
 
     fn container(&self) -> &impl ContainerService {
         &self.container
-    }
-    fn auth(&self) -> &AuthService {
-        &self.auth
     }
 
     fn git(&self) -> &GitService {
@@ -265,11 +272,15 @@ impl Deployment for LocalDeployment {
         self.share_publisher.clone()
     }
 
+    fn token_provider(&self) -> Arc<GitHubTokenProvider> {
+        self.token_provider.clone()
+    }
+
     fn clerk_sessions(&self) -> &ClerkSessionStore {
         &self.clerk_sessions
     }
 
-    fn clerk_auth(&self) -> Option<Arc<ClerkAuth>> {
-        self.clerk_auth.clone()
+    fn clerk_service(&self) -> Option<Arc<ClerkService>> {
+        self.clerk_service.clone()
     }
 }
