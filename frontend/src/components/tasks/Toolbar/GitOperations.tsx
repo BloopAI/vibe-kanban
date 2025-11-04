@@ -265,11 +265,6 @@ function GitOperations({
     });
   };
 
-  // Hide entire panel only if PR is merged
-  if (mergeInfo.hasMergedPR) {
-    return null;
-  }
-
   const isVertical = layout === 'vertical';
 
   const containerClasses = isVertical
@@ -443,6 +438,7 @@ function GitOperations({
             <Button
               onClick={handleMergeClick}
               disabled={
+                mergeInfo.hasMergedPR ||
                 mergeInfo.hasOpenPR ||
                 merging ||
                 hasConflictsCalculated ||
@@ -463,6 +459,7 @@ function GitOperations({
             <Button
               onClick={handlePRButtonClick}
               disabled={
+                mergeInfo.hasMergedPR ||
                 pushing ||
                 isAttemptRunning ||
                 hasConflictsCalculated ||
@@ -484,7 +481,12 @@ function GitOperations({
 
             <Button
               onClick={handleRebaseDialogOpen}
-              disabled={rebasing || isAttemptRunning || hasConflictsCalculated}
+              disabled={
+                mergeInfo.hasMergedPR ||
+                rebasing ||
+                isAttemptRunning ||
+                hasConflictsCalculated
+              }
               variant="outline"
               size="xs"
               className="border-warning text-warning hover:bg-warning gap-1 shrink-0"

@@ -80,12 +80,12 @@
         "connectButton": "Connect GitHub Account",
         "manage": "Manage",
         "disconnect": "Disconnect",
-        "helper": "Connect your GitHub account to access private repositories and enable advanced Git operations.",
+        "helper": "Vibe Kanban uses a GitHub OAuth App by default. Optionally add a personal access token if you need extra permissions for private or organization repositories.",
         "or": "OR",
         "pat": {
           "label": "Personal Access Token",
           "placeholder": "ghp_xxxxxxxxxxxxxxxxxxxx",
-          "helper": "GitHub Personal Access Token with 'repo' permissions. Use this if OAuth permissions are insufficient for private repositories and organisation owned repositories.",
+          "helper": "Optional: provide a GitHub personal access token with 'repo' scope when the OAuth app does not grant enough access.",
           "createTokenLink": "Create token here"
         }
       },

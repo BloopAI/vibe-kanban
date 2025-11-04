@@ -6,6 +6,7 @@ use axum::{
 };
 use serde::Deserialize;
 use serde_json::json;
+use tracing::instrument;
 
 use crate::{
     AppState, activity::ActivityResponse, auth::RequestContext, db::activity::ActivityRepository,
@@ -19,6 +20,11 @@ pub struct ActivityQuery {
     pub limit: Option<i64>,
 }
 
+#[instrument(
+    name = "activity.get_activity_stream",
+    skip(state, ctx, params),
+    fields(org_id = %ctx.organization.id, user_id = %ctx.user.id )
+)]
 pub(super) async fn get_activity_stream(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
@@ -29,12 +35,10 @@ pub(super) async fn get_activity_stream(
         .limit
         .unwrap_or(config.activity_default_limit)
         .clamp(1, config.activity_max_limit);
-    let repo = ActivityRepository::new(state.pool());
+    let after = params.after;
 
-    match repo
-        .fetch_since(&ctx.organization.id, params.after, limit)
-        .await
-    {
+    let repo = ActivityRepository::new(state.pool());
+    match repo.fetch_since(&ctx.organization.id, after, limit).await {
         Ok(events) => (StatusCode::OK, Json(ActivityResponse { data: events })).into_response(),
         Err(error) => {
             tracing::error!(?error, "failed to load activity stream");

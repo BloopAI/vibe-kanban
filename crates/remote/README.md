@@ -9,7 +9,7 @@ Create a `.env.remote` file in the repository root:
 ```env
 CLERK_SECRET_KEY=sk_live_...
 CLERK_ISSUER=https://<tenant>.clerk.accounts.dev
-CLERK_API_URL=https://api.clerk.com
+CLERK_API_URL=https://api.clerk.com/v1/
 ```
 
 ## Run the stack locally 

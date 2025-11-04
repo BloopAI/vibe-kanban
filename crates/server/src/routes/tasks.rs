@@ -421,7 +421,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/", put(update_task))
         .route("/", delete(delete_task))
         .route("/share", post(share_task));
-    let task_actions_router = if deployment.clerk_auth().is_some() {
+    let task_actions_router = if deployment.clerk_service().is_some() {
         task_actions_router.layer(from_fn_with_state(
             deployment.clone(),
             require_clerk_session,

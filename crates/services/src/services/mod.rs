@@ -1,6 +1,5 @@
 pub mod analytics;
 pub mod approvals;
-pub mod auth;
 pub mod clerk;
 pub mod config;
 pub mod container;
@@ -19,4 +18,5 @@ pub mod metadata;
 pub mod notification;
 pub mod pr_monitor;
 pub mod share;
+pub mod token;
 pub mod worktree_manager;

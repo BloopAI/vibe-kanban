@@ -9,12 +9,6 @@ fn main() {
     if let Ok(api_endpoint) = std::env::var("POSTHOG_API_ENDPOINT") {
         println!("cargo:rustc-env=POSTHOG_API_ENDPOINT={}", api_endpoint);
     }
-    if let Ok(api_key) = std::env::var("GITHUB_APP_ID") {
-        println!("cargo:rustc-env=GITHUB_APP_ID={}", api_key);
-    }
-    if let Ok(api_endpoint) = std::env::var("GITHUB_APP_CLIENT_ID") {
-        println!("cargo:rustc-env=GITHUB_APP_CLIENT_ID={}", api_endpoint);
-    }
 
     // Create frontend/dist directory if it doesn't exist
     let dist_path = Path::new("../../frontend/dist");

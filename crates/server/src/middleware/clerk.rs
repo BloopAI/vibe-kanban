@@ -49,7 +49,7 @@ pub async fn require_clerk_session(
     mut req: Request<Body>,
     next: Next,
 ) -> Response {
-    let Some(auth) = deployment.clerk_auth() else {
+    let Some(auth) = deployment.clerk_service() else {
         warn!("Clerk authentication is not configured; rejecting request");
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
