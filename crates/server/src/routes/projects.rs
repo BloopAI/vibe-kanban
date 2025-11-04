@@ -282,7 +282,7 @@ pub async fn open_project_in_editor(
         config.editor.with_override(editor_type_str)
     };
 
-    match editor_config.open_file(&path) {
+    match editor_config.open_file(&path).await {
         Ok(url) => {
             tracing::info!(
                 "Opened editor for project {} at path: {}{}",

@@ -1,7 +1,6 @@
 use std::{
     io,
     path::{Path, PathBuf},
-    process::Command,
     str::FromStr,
 };
 
@@ -348,11 +347,11 @@ impl EditorConfig {
         }
     }
 
-    pub fn open_file(&self, path: &Path) -> Result<Option<String>, io::Error> {
+    pub async fn open_file(&self, path: &Path) -> Result<Option<String>, io::Error> {
         if let Some(url) = self.remote_url(path) {
             return Ok(Some(url));
         }
-        self.spawn_local(path)?;
+        self.spawn_local(path).await?;
         Ok(None)
     }
 
@@ -377,7 +376,7 @@ impl EditorConfig {
         ))
     }
 
-    fn spawn_local(&self, path: &Path) -> Result<(), io::Error> {
+    pub async fn spawn_local(&self, path: &Path) -> io::Result<()> {
         let command = self.get_command();
         if command.is_empty() {
             return Err(io::Error::new(
@@ -386,14 +385,17 @@ impl EditorConfig {
             ));
         }
 
-        // Resolve the executable path without mutating the vector.
         let executable = {
             #[cfg(windows)]
             {
-                utils::shell::resolve_executable_path(&command[0]).ok_or(io::Error::new(
-                    io::ErrorKind::NotFound,
-                    format!("Editor command '{}' not found", command[0]),
-                ))?
+                utils::shell::resolve_executable_path(&command[0])
+                    .await
+                    .ok_or_else(|| {
+                        io::Error::new(
+                            io::ErrorKind::NotFound,
+                            format!("Editor command '{}' not found", command[0]),
+                        )
+                    })?
             }
             #[cfg(not(windows))]
             {
@@ -401,7 +403,7 @@ impl EditorConfig {
             }
         };
 
-        let mut cmd = Command::new(executable);
+        let mut cmd = std::process::Command::new(executable);
         cmd.args(&command[1..]).arg(path);
         cmd.spawn()?;
         Ok(())
