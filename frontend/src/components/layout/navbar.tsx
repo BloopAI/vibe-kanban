@@ -17,6 +17,10 @@ import {
   MessageCircle,
   Menu,
   Plus,
+  User,
+  Building2,
+  LogOut,
+  LogIn,
 } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { SearchBar } from '@/components/search-bar';
@@ -44,7 +48,6 @@ import {
 } from '@/components/ui/tooltip';
 import NiceModal from '@ebay/nice-modal-react';
 import { OrganizationSwitcherDialog } from '@/components/dialogs';
-import { OrgMemberAvatars } from '@/components/OrgMemberAvatars';
 
 const INTERNAL_NAV = [{ label: 'Projects', icon: FolderOpen, to: '/projects' }];
 
@@ -97,7 +100,6 @@ export function Navbar() {
   const isTasksRoute = /^\/projects\/[^/]+\/tasks/.test(location.pathname);
   const showSharedTasks = searchParams.get('shared') !== 'off';
   const shouldShowSharedToggle = isTasksRoute && active;
-  const shouldShowOrgMembers = isTasksRoute && active && showSharedTasks;
 
   const handleSharedToggle = useCallback(
     (checked: boolean) => {
@@ -172,29 +174,25 @@ export function Navbar() {
 
           <div className="flex flex-1 items-center justify-end gap-1">
             <SignedIn>
-              {shouldShowSharedToggle || shouldShowOrgMembers ? (
+              {shouldShowSharedToggle ? (
                 <>
                   <div className="flex items-center gap-4">
-                    {shouldShowOrgMembers ? <OrgMemberAvatars /> : null}
-
-                    {shouldShowSharedToggle ? (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div>
-                              <Switch
-                                checked={showSharedTasks}
-                                onCheckedChange={handleSharedToggle}
-                                aria-label={t('tasks:filters.sharedToggleAria')}
-                              />
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent side="bottom">
-                            {t('tasks:filters.sharedToggleTooltip')}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    ) : null}
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div>
+                            <Switch
+                              checked={showSharedTasks}
+                              onCheckedChange={handleSharedToggle}
+                              aria-label={t('tasks:filters.sharedToggleAria')}
+                            />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom">
+                          {t('tasks:filters.sharedToggleTooltip')}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                   <NavDivider />
                 </>
@@ -294,14 +292,18 @@ export function Navbar() {
                   <SignedOut>
                     <DropdownMenuItem asChild>
                       <SignInButton mode="modal">
-                        <button className="w-full">Sign in</button>
+                        <button className="w-full">
+                          <LogIn className="mr-2 h-4 w-4" />
+                          Sign in
+                        </button>
                       </SignInButton>
                     </DropdownMenuItem>
                   </SignedOut>
 
                   <SignedIn>
                     <DropdownMenuItem onSelect={() => openUserProfile()}>
-                      Profile
+                      <User className="mr-2 h-4 w-4" />
+                      Account
                     </DropdownMenuItem>
 
                     <DropdownMenuItem
@@ -309,10 +311,12 @@ export function Navbar() {
                         NiceModal.show(OrganizationSwitcherDialog)
                       }
                     >
+                      <Building2 className="mr-2 h-4 w-4" />
                       {organization?.name ?? 'Organization'}
                     </DropdownMenuItem>
 
                     <DropdownMenuItem onSelect={() => signOut()}>
+                      <LogOut className="mr-2 h-4 w-4" />
                       Sign out
                     </DropdownMenuItem>
                   </SignedIn>
