@@ -1218,17 +1218,16 @@ pub async fn rename_branch(
         .rename_local_branch(worktree_path, &task_attempt.branch, new_branch_name)?;
 
     let old_branch = task_attempt.branch.clone();
-    
+
     TaskAttempt::update_branch_name(pool, task_attempt.id, new_branch_name).await?;
 
-    let updated_children_count =
-        TaskAttempt::update_target_branch_for_children_of_attempt(
-            pool,
-            task_attempt.id,
-            &old_branch,
-            new_branch_name,
-        )
-        .await?;
+    let updated_children_count = TaskAttempt::update_target_branch_for_children_of_attempt(
+        pool,
+        task_attempt.id,
+        &old_branch,
+        new_branch_name,
+    )
+    .await?;
 
     if updated_children_count > 0 {
         tracing::info!(
