@@ -1217,15 +1217,35 @@ pub async fn rename_branch(
         .git()
         .rename_local_branch(worktree_path, &task_attempt.branch, new_branch_name)?;
 
+    let old_branch = task_attempt.branch.clone();
+    
     TaskAttempt::update_branch_name(pool, task_attempt.id, new_branch_name).await?;
+
+    let updated_children_count =
+        TaskAttempt::update_target_branch_for_children_of_attempt(
+            pool,
+            task_attempt.id,
+            &old_branch,
+            new_branch_name,
+        )
+        .await?;
+
+    if updated_children_count > 0 {
+        tracing::info!(
+            "Updated {} child task attempts to target new branch '{}'",
+            updated_children_count,
+            new_branch_name
+        );
+    }
 
     deployment
         .track_if_analytics_allowed(
             "task_attempt_branch_renamed",
             serde_json::json!({
                 "attempt_id": task_attempt.id.to_string(),
-                "old_branch": task_attempt.branch,
+                "old_branch": old_branch,
                 "new_branch": new_branch_name,
+                "updated_children": updated_children_count,
             }),
         )
         .await;
