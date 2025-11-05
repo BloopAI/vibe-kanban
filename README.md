@@ -15,6 +15,10 @@
   <a href="https://deepwiki.com/BloopAI/vibe-kanban"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
 </p>
 
+<p align="center">
+  <a href="https://jobs.polymer.co/vibe-kanban?source=github"><strong>We're hiring!</strong></a>
+</p>
+
 ![](frontend/public/vibe-kanban-screenshot-overview.png)
 
 ## Overview
