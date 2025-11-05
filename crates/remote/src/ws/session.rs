@@ -87,7 +87,7 @@ pub async fn handle(
                                     &org_id,
                                     prev_seq,
                                     state.broker(),
-                                    config.activity_catchup_limit,
+                                    config.activity_catchup_batch_size,
                                     WS_BULK_SYNC_THRESHOLD as i64,
                                     "gap",
                                 ).await {
@@ -123,7 +123,7 @@ pub async fn handle(
                             &org_id,
                             prev_seq,
                             state.broker(),
-                            config.activity_catchup_limit,
+                            config.activity_catchup_batch_size,
                             WS_BULK_SYNC_THRESHOLD as i64,
                             "lag",
                         )

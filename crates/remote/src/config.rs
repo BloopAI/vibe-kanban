@@ -10,7 +10,7 @@ const DEFAULT_ACTIVITY_DEFAULT_LIMIT: i64 = 200;
 const DEFAULT_ACTIVITY_MAX_LIMIT: i64 = 500;
 const DEFAULT_ACTIVITY_BROADCAST_SHARDS: usize = 16;
 const DEFAULT_ACTIVITY_BROADCAST_CAPACITY: usize = 512;
-const DEFAULT_ACTIVITY_CATCHUP_LIMIT: i64 = 100;
+const DEFAULT_ACTIVITY_CATCHUP_BATCH_SIZE: i64 = 100;
 
 #[derive(Debug, Clone)]
 pub struct RemoteServerConfig {
@@ -21,7 +21,7 @@ pub struct RemoteServerConfig {
     pub activity_max_limit: i64,
     pub activity_broadcast_shards: usize,
     pub activity_broadcast_capacity: usize,
-    pub activity_catchup_limit: i64,
+    pub activity_catchup_batch_size: i64,
     pub clerk: ClerkConfig,
 }
 
@@ -64,11 +64,11 @@ impl RemoteServerConfig {
         }
         .max(1);
 
-        let activity_catchup_limit = match env::var("SERVER_ACTIVITY_CATCHUP_LIMIT") {
+        let activity_catchup_batch_size = match env::var("SERVER_ACTIVITY_CATCHUP_BATCH_SIZE") {
             Ok(value) => value
                 .parse::<i64>()
-                .map_err(|_| ConfigError::InvalidVar("SERVER_ACTIVITY_CATCHUP_LIMIT"))?,
-            Err(_) => DEFAULT_ACTIVITY_CATCHUP_LIMIT,
+                .map_err(|_| ConfigError::InvalidVar("SERVER_ACTIVITY_CATCHUP_BATCH_SIZE"))?,
+            Err(_) => DEFAULT_ACTIVITY_CATCHUP_BATCH_SIZE,
         }
         .max(1);
 
@@ -82,7 +82,7 @@ impl RemoteServerConfig {
             activity_max_limit,
             activity_broadcast_shards,
             activity_broadcast_capacity,
-            activity_catchup_limit,
+            activity_catchup_batch_size,
             clerk,
         })
     }
