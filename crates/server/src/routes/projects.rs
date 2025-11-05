@@ -18,6 +18,7 @@ use services::services::{
     file_search_cache::{CacheError, SearchMode, SearchQuery},
     git::GitBranch,
     metadata::compute_remote_metadata,
+    share::link_shared_tasks_to_project,
 };
 use utils::{path::expand_tilde, response::ApiResponse};
 use uuid::Uuid;
@@ -167,6 +168,18 @@ pub async fn create_project(
                     }),
                 )
                 .await;
+
+            if let Some(_) = deployment.share_publisher()
+                && let Some(github_repo_id) = remote_metadata.github_repo_id
+            {
+                link_shared_tasks_to_project(
+                    &deployment.db().pool,
+                    &deployment.clerk_sessions(),
+                    id,
+                    github_repo_id,
+                )
+                .await?;
+            }
 
             Ok(ResponseJson(ApiResponse::success(project)))
         }
