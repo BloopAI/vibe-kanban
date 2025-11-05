@@ -103,11 +103,11 @@ export function FeatureShowcaseModal({
             className="fixed inset-0 bg-black/50 z-[9998]"
           />
           <motion.div
-            initial={{ opacity: 0, y: 100 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 100 }}
+            initial={{ opacity: 0, y: 'calc(-50% + 100px)' }}
+            animate={{ opacity: 1, y: '-50%' }}
+            exit={{ opacity: 0, y: 'calc(-50% + 100px)' }}
             transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}
-            className="fixed bottom-4 left-0 right-0 mx-4 w-auto xl:bottom-8 xl:left-0 xl:right-0 xl:mx-auto xl:w-full xl:max-w-[min(66.66vw,calc((100svh-20rem)*1.6))] bg-card border border-border rounded-lg shadow-2xl overflow-hidden z-[9999]"
+            className="fixed top-1/2 left-0 right-0 mx-4 w-auto xl:left-0 xl:right-0 xl:mx-auto xl:w-full xl:max-w-[min(66.66vw,calc((100svh-20rem)*1.6))] bg-card border border-border rounded-lg shadow-2xl overflow-hidden z-[9999]"
           >
             <AnimatePresence mode="wait">
               <motion.div
