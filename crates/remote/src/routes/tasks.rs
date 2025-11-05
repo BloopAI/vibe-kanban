@@ -19,8 +19,8 @@ use crate::{
     db::{
         identity::IdentityRepository,
         tasks::{
-            AssignTaskData, CreateSharedTaskData, DeleteTaskData, MAX_SHARED_TASK_TEXT_BYTES,
-            SharedTaskError, SharedTaskRepository, UpdateSharedTaskData,
+            AssignTaskData, CreateSharedTaskData, DeleteTaskData, SharedTaskError,
+            SharedTaskRepository, UpdateSharedTaskData, ensure_text_size,
         },
     },
 };
@@ -78,11 +78,8 @@ pub async fn create_shared_task(
         assignee_user_id,
     } = payload;
 
-    if shared_task_text_exceeds_limit(&title, description.as_deref()) {
-        return task_error_response(
-            SharedTaskError::PayloadTooLarge,
-            "shared task payload too large",
-        );
+    if let Err(error) = ensure_text_size(&title, description.as_deref()) {
+        return task_error_response(error, "shared task payload too large");
     }
 
     if let Some(assignee) = assignee_user_id.as_ref()
@@ -146,11 +143,8 @@ pub async fn update_shared_task(
     let next_title = title.as_deref().unwrap_or(existing.title.as_str());
     let next_description = description.as_deref().or(existing.description.as_deref());
 
-    if shared_task_text_exceeds_limit(next_title, next_description) {
-        return task_error_response(
-            SharedTaskError::PayloadTooLarge,
-            "shared task payload too large",
-        );
+    if let Err(error) = ensure_text_size(next_title, next_description) {
+        return task_error_response(error, "shared task payload too large");
     }
 
     let data = UpdateSharedTaskData {
@@ -259,9 +253,4 @@ pub async fn delete_shared_task(
         Ok(task) => (StatusCode::OK, Json(SharedTaskResponse::from(task))).into_response(),
         Err(error) => task_error_response(error, "failed to delete shared task"),
     }
-}
-
-fn shared_task_text_exceeds_limit(title: &str, description: Option<&str>) -> bool {
-    let total = title.len() + description.map(|value| value.len()).unwrap_or(0);
-    total > MAX_SHARED_TASK_TEXT_BYTES
 }
