@@ -5,7 +5,10 @@
       "-y",
       "vibe-kanban@latest",
       "--mcp"
-    ]
+    ],
+    "env": {
+      "VK_MCP_CONTEXT_JSON": "${VK_MCP_CONTEXT_JSON}"
+    }
   },
   "context7": {
     "type": "http",
@@ -41,4 +44,3 @@
     }
   }
 }
-

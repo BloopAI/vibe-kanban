@@ -20,8 +20,8 @@ pub mod stream_lines;
 pub mod text;
 pub mod tokio;
 pub mod version;
-pub mod ws;
 pub mod vk_mcp_context;
+pub mod ws;
 
 /// Cache for WSL2 detection result
 static WSL2_CACHE: OnceLock<bool> = OnceLock::new();

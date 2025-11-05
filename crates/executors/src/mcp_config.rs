@@ -161,20 +161,53 @@ fn adapt_gemini(servers: ServerMap, meta: Option<Value>) -> Value {
 }
 
 fn adapt_cursor(servers: ServerMap, meta: Option<Value>) -> Value {
-    let servers = transform_http_servers(servers, |mut s| {
-        let url = s
-            .remove("url")
-            .unwrap_or_else(|| Value::String(String::new()));
-        let headers = s
-            .remove("headers")
-            .unwrap_or_else(|| Value::Object(Default::default()));
-        Map::from_iter([("url".to_string(), url), ("headers".to_string(), headers)])
+    let mut servers = transform_http_servers(servers, |mut s| {
+        Map::from_iter([
+            (
+                "url".to_string(),
+                s.remove("url")
+                    .unwrap_or_else(|| Value::String(String::new())),
+            ),
+            (
+                "headers".to_string(),
+                s.remove("headers")
+                    .unwrap_or_else(|| Value::Object(Map::new())),
+            ),
+        ])
     });
+
+    // {"env": {"API_KEY": "${API_KEY}"}}-> {"env": {"API_KEY": "${env:API_KEY}"}}
+    for value in servers.values_mut() {
+        if let Value::Object(server) = value
+            && is_stdio(server)
+            && let Some(Value::Object(env)) = server.get_mut("env")
+        {
+            for slot in env.values_mut() {
+                if let Value::String(current) = slot {
+                    *current = current.replace("${", "${env:");
+                }
+            }
+        }
+    }
+
     attach_meta(servers, meta)
 }
 
 fn adapt_codex(mut servers: ServerMap, mut meta: Option<Value>) -> Value {
     servers.retain(|_, v| v.as_object().map(is_stdio).unwrap_or(false));
+
+    // {"env": {"API_KEY": "${API_KEY}"}}-> {"env_vars": ["API_KEY"]}
+    for value in servers.values_mut() {
+        if let Value::Object(server) = value
+            && let Some(Value::Object(env)) = server.remove("env")
+        {
+            let env_vars = env
+                .iter()
+                .map(|(k, _)| Value::String(k.clone()))
+                .collect::<Vec<Value>>();
+            server.insert("env_vars".to_string(), Value::Array(env_vars));
+        }
+    }
 
     if let Some(Value::Object(ref mut m)) = meta {
         m.retain(|k, _| servers.contains_key(k));
@@ -237,11 +270,29 @@ fn adapt_opencode(servers: ServerMap, meta: Option<Value>) -> Value {
                     }
                 }
             }
+            let mut environment = Map::new();
+            if let Some(env) = s.remove("env").and_then(|v| v.as_object().cloned()) {
+                for (key, value) in env {
+                    match value {
+                        Value::String(inner) if inner == format!("${{{key}}}") => {
+                            environment
+                                .insert(key.clone(), Value::String(format!("{{env:{key}}}")));
+                        }
+                        other => {
+                            environment.insert(key.clone(), other);
+                        }
+                    }
+                }
+            }
 
             let mut new_map = Map::new();
             new_map.insert("type".to_string(), Value::String("local".to_string()));
             new_map.insert("command".to_string(), Value::Array(cmd_vec));
             new_map.insert("enabled".to_string(), Value::Bool(true));
+
+            if !environment.is_empty() {
+                new_map.insert("environment".to_string(), Value::Object(environment));
+            }
             *s = new_map;
         }
     }
@@ -258,6 +309,16 @@ fn adapt_copilot(mut servers: ServerMap, meta: Option<Value>) -> Value {
                 "tools".to_string(),
                 Value::Array(vec![Value::String("*".to_string())]),
             );
+        }
+        // {"env": {"API_KEY": "${API_KEY}"}}-> {"env": {"API_KEY": "${env:API_KEY}"}}
+        if let Value::Object(s) = value
+            && let Some(Value::Object(env)) = s.get_mut("env")
+        {
+            for slot in env.values_mut() {
+                if let Value::String(current) = slot {
+                    *current = current.replace("${", "${env:");
+                }
+            }
         }
     }
     attach_meta(servers, meta)
