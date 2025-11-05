@@ -174,7 +174,7 @@ pub async fn create_project(
             {
                 link_shared_tasks_to_project(
                     &deployment.db().pool,
-                    &deployment.clerk_sessions(),
+                    deployment.clerk_sessions(),
                     id,
                     github_repo_id,
                 )
