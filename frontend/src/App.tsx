@@ -102,10 +102,10 @@ function AppContent() {
       }
 
       // 4) Login prompt - only if signed out
-      if (!isSignedIn && !config.login_prompt_acknowledged) {
+      if (!isSignedIn && !config.login_acknowledged) {
         await NiceModal.show('login-prompt');
         if (!cancelled) {
-          await updateAndSaveConfig({ login_prompt_acknowledged: true });
+          await updateAndSaveConfig({ login_acknowledged: true });
         }
         await NiceModal.hide('login-prompt');
         return;
