@@ -11,6 +11,8 @@
     "createNewAttempt": "Create new attempt",
     "createSubtask": "Create subtask",
     "share": "작업 공유",
+    "reassign": "재할당",
+    "stopShare": "공유 중지",
     "duplicate": "Duplicate",
     "editBranchName": "브랜치 이름 편집",
     "gitActions": "Git 작업",
@@ -65,6 +67,14 @@
     "setupHelpText": "{{agent}}이(가) 올바르게 설정되지 않았습니다. '설정 실행'을 클릭하여 설치하고 로그인하세요.",
     "devScriptMissingTooltip": "To start the dev server, add a dev script to this project"
   },
+  "stopShareDialog": {
+    "title": "작업 공유 중지",
+    "description": "\"{{title}}\" 작업의 공유를 조직에서 중지하시겠습니까?",
+    "warning": "작업 공유는 중지되지만 로컬 작업은 유지됩니다.",
+    "confirm": "작업 공유 중지",
+    "inProgress": "공유 중지 중…",
+    "genericError": "작업 공유를 중지하지 못했습니다. 다시 시도해 주세요."
+  },
   "shareDialog": {
     "title": "작업 공유",
     "description": "\"{{title}}\" 작업을 조직과 공유하시겠습니까?",
@@ -87,6 +97,13 @@
     "confirm": "작업 공유",
     "inProgress": "공유 중…",
     "closeButton": "닫기"
+  },
+  "createPrDialog": {
+    "loginRequired": {
+      "title": "Pull Request를 만들려면 로그인하세요",
+      "description": "이 작업에 대해 풀 리퀘스트를 열기 전에 로그인해야 합니다. 로그인 페이지로 이동합니다.",
+      "action": "로그인"
+    }
   },
   "attemptHeaderActions": {
     "diffs": "Diffs",
@@ -161,7 +178,12 @@
     },
     "actions": {
       "title": "Git 작업",
-      "prMerged": "PR #{{number}}은(는) 이미 병합되었습니다"
+      "prMerged": "PR #{{number}}은(는) 이미 병합되었습니다",
+      "loginRequired": {
+        "title": "Git 작업을 관리하려면 로그인하세요",
+        "description": "이 작업에서 브랜치를 푸시하고 변경 사항을 병합하거나 풀 리퀘스트를 만들려면 Vibe Kanban에 로그인하세요.",
+        "action": "로그인"
+      }
     },
     "states": {
       "createPr": "PR 생성",
