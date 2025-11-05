@@ -319,5 +319,27 @@
       "next": "次へ",
       "finish": "完了"
     }
+  },
+  "loginPrompt": {
+    "title": "Vibe Kanbanにサインイン",
+    "description": "チームコラボレーション機能をアンロック",
+    "features": {
+      "pullRequests": {
+        "title": "プルリクエストを作成",
+        "description": "GitHubに直接変更をプッシュ"
+      },
+      "shareTasks": {
+        "title": "チームとタスクを共有",
+        "description": "一緒に作業で協力"
+      },
+      "trackProgress": {
+        "title": "他の人の作業を確認",
+        "description": "チームの進捗をリアルタイムで追跡"
+      }
+    },
+    "buttons": {
+      "skip": "今はスキップ",
+      "signIn": "サインイン"
+    }
   }
 }
