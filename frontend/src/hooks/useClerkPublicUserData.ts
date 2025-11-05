@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { useOrganization } from '@clerk/clerk-react';
-import type { PublicUserData } from '@clerk/types';
+import type {
+  OrganizationMembershipResource,
+  PublicUserData,
+} from '@clerk/types';
 
 export type PublicUserSummary = Pick<
   PublicUserData,
