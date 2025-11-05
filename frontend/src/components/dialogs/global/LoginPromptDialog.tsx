@@ -7,10 +7,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { LogIn } from 'lucide-react';
+import { LogIn, GitPullRequest, Users, Eye } from 'lucide-react';
 import { useClerk } from '@clerk/clerk-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
-import { LoginRequiredPrompt } from '@/components/dialogs/shared/LoginRequiredPrompt';
 
 const LoginPromptDialog = NiceModal.create(() => {
   const modal = useModal();
@@ -38,28 +37,54 @@ const LoginPromptDialog = NiceModal.create(() => {
         }
       }}
     >
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <LogIn className="h-6 w-6 text-primary text-primary-foreground" />
-            <DialogTitle>Sign in to unlock more</DialogTitle>
+            <LogIn className="h-6 w-6 text-primary" />
+            <DialogTitle>Sign in to Vibe Kanban</DialogTitle>
           </div>
           <DialogDescription className="text-left pt-2">
-            Connect your account to access collaboration features
+            Unlock team collaboration features
           </DialogDescription>
         </DialogHeader>
 
-        <LoginRequiredPrompt
-          mode="signUp"
-          onAction={handleSignIn}
-          title="Why sign in?"
-          description="Sign in to create GitHub pull requests, share tasks with your team, and get visibility on what your team is working on."
-          actionLabel="Sign in"
-        />
+        <div className="space-y-3 py-4">
+          <div className="flex items-start gap-3">
+            <GitPullRequest className="h-5 w-5 mt-0.5 text-muted-foreground" />
+            <div>
+              <p className="text-sm font-medium">Create pull requests</p>
+              <p className="text-xs text-muted-foreground">
+                Push changes directly to GitHub
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <Users className="h-5 w-5 mt-0.5 text-muted-foreground" />
+            <div>
+              <p className="text-sm font-medium">Share tasks with your team</p>
+              <p className="text-xs text-muted-foreground">
+                Collaborate on work together
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <Eye className="h-5 w-5 mt-0.5 text-muted-foreground" />
+            <div>
+              <p className="text-sm font-medium">See what others are doing</p>
+              <p className="text-xs text-muted-foreground">
+                Track team progress in real-time
+              </p>
+            </div>
+          </div>
+        </div>
 
-        <DialogFooter>
+        <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="ghost" onClick={handleSkip}>
             Skip for now
+          </Button>
+          <Button onClick={handleSignIn}>
+            <LogIn className="h-4 w-4 mr-2" />
+            Sign in
           </Button>
         </DialogFooter>
       </DialogContent>
