@@ -7,6 +7,7 @@ import { ProjectTasks } from '@/pages/project-tasks';
 import { FullAttemptLogsPage } from '@/pages/full-attempt-logs';
 import { NormalLayout } from '@/components/layout/NormalLayout';
 import { usePostHog } from 'posthog-js/react';
+import { useAuth } from '@clerk/clerk-react';
 
 import {
   AgentSettings,
@@ -39,6 +40,7 @@ function AppContent() {
   const { config, analyticsUserId, updateAndSaveConfig, loading } =
     useUserSystem();
   const posthog = usePostHog();
+  const { isSignedIn } = useAuth();
 
   // Handle opt-in/opt-out and user identification when config loads
   useEffect(() => {
@@ -112,6 +114,12 @@ function AppContent() {
           await NiceModal.show('privacy-opt-in');
         await handleTelemetryOptIn(analyticsEnabled);
         await NiceModal.hide('privacy-opt-in');
+      }
+
+      if (!isSignedIn && !config.login_prompt_acknowledged) {
+        await NiceModal.show('login-prompt');
+        await updateAndSaveConfig({ login_prompt_acknowledged: true });
+        await NiceModal.hide('login-prompt');
       }
 
       if (config.show_release_notes) {
