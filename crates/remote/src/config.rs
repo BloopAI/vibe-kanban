@@ -48,28 +48,22 @@ impl RemoteServerConfig {
         let activity_default_limit = DEFAULT_ACTIVITY_DEFAULT_LIMIT;
         let activity_max_limit = DEFAULT_ACTIVITY_MAX_LIMIT;
 
-        let activity_broadcast_shards = match env::var("SERVER_ACTIVITY_BROADCAST_SHARDS") {
-            Ok(value) => value
-                .parse::<usize>()
-                .map_err(|_| ConfigError::InvalidVar("SERVER_ACTIVITY_BROADCAST_SHARDS"))?,
-            Err(_) => DEFAULT_ACTIVITY_BROADCAST_SHARDS,
-        }
+        let activity_broadcast_shards = get_numeric_env_var(
+            "SERVER_ACTIVITY_BROADCAST_SHARDS",
+            DEFAULT_ACTIVITY_BROADCAST_SHARDS,
+        )?
         .max(1);
 
-        let activity_broadcast_capacity = match env::var("SERVER_ACTIVITY_BROADCAST_CAPACITY") {
-            Ok(value) => value
-                .parse::<usize>()
-                .map_err(|_| ConfigError::InvalidVar("SERVER_ACTIVITY_BROADCAST_CAPACITY"))?,
-            Err(_) => DEFAULT_ACTIVITY_BROADCAST_CAPACITY,
-        }
+        let activity_broadcast_capacity = get_numeric_env_var(
+            "SERVER_ACTIVITY_BROADCAST_CAPACITY",
+            DEFAULT_ACTIVITY_BROADCAST_CAPACITY,
+        )?
         .max(1);
 
-        let activity_catchup_batch_size = match env::var("SERVER_ACTIVITY_CATCHUP_BATCH_SIZE") {
-            Ok(value) => value
-                .parse::<i64>()
-                .map_err(|_| ConfigError::InvalidVar("SERVER_ACTIVITY_CATCHUP_BATCH_SIZE"))?,
-            Err(_) => DEFAULT_ACTIVITY_CATCHUP_BATCH_SIZE,
-        }
+        let activity_catchup_batch_size = get_numeric_env_var(
+            "SERVER_ACTIVITY_CATCHUP_BATCH_SIZE",
+            DEFAULT_ACTIVITY_CATCHUP_BATCH_SIZE,
+        )?
         .max(1);
 
         let clerk = ClerkConfig::from_env()?;
@@ -85,6 +79,18 @@ impl RemoteServerConfig {
             activity_catchup_batch_size,
             clerk,
         })
+    }
+}
+
+fn get_numeric_env_var<T: std::str::FromStr>(
+    var_name: &'static str,
+    default: T,
+) -> Result<T, ConfigError> {
+    match env::var(var_name) {
+        Ok(value) => value
+            .parse::<T>()
+            .map_err(|_| ConfigError::InvalidVar(var_name)),
+        Err(_) => Ok(default),
     }
 }
 
