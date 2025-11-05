@@ -11,6 +11,8 @@
     "createNewAttempt": "Create new attempt",
     "createSubtask": "Create subtask",
     "share": "Compartir tarea",
+    "reassign": "Reasignar",
+    "stopShare": "Dejar de compartir",
     "duplicate": "Duplicate",
     "gitActions": "Acciones de Git",
     "openInIde": "Open attempt in IDE",
@@ -54,6 +56,14 @@
     "setupHelpText": "{{agent}} no está configurado correctamente. Haz clic en 'Ejecutar Configuración' para instalarlo e iniciar sesión.",
     "devScriptMissingTooltip": "To start the dev server, add a dev script to this project"
   },
+  "stopShareDialog": {
+    "title": "Detener uso compartido de la tarea",
+    "description": "¿Detener el uso compartido de \"{{title}}\" con tu organización?",
+    "warning": "Detiene el uso compartido de la tarea con tu organización, pero mantiene tu tarea local.",
+    "confirm": "Dejar de compartir tarea",
+    "inProgress": "Deteniendo el uso compartido...",
+    "genericError": "No se pudo dejar de compartir la tarea. Inténtalo de nuevo."
+  },
   "shareDialog": {
     "title": "Compartir tarea",
     "description": "¿Compartir \"{{title}}\" con tu organización?",
@@ -76,6 +86,13 @@
     "confirm": "Compartir tarea",
     "inProgress": "Compartiendo…",
     "closeButton": "Cerrar"
+  },
+  "createPrDialog": {
+    "loginRequired": {
+      "title": "Inicia sesión para crear un pull request",
+      "description": "Debes iniciar sesión antes de poder abrir un pull request para esta tarea. Te llevaremos a la página de inicio de sesión.",
+      "action": "Iniciar sesión"
+    }
   },
   "attemptHeaderActions": {
     "diffs": "Diffs",
@@ -150,7 +167,12 @@
     },
     "actions": {
       "title": "Acciones de Git",
-      "prMerged": "PR #{{number}} ya está fusionado"
+      "prMerged": "PR #{{number}} ya está fusionado",
+      "loginRequired": {
+        "title": "Inicia sesión para gestionar acciones de Git",
+        "description": "Inicia sesión en Vibe Kanban para enviar ramas, fusionar cambios o abrir pull requests para esta tarea.",
+        "action": "Iniciar sesión"
+      }
     },
     "states": {
       "createPr": "Crear PR",
