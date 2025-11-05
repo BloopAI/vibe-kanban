@@ -5,14 +5,11 @@ import ProcessLogsViewer, {
 } from '../ProcessLogsViewer';
 import { ExecutionProcess } from 'shared/types';
 import { Card } from '@/components/ui/card';
-import { useState, useEffect } from 'react';
-
-const DEV_SERVER_LOGS_OPEN_KEY = 'dev-server-logs-open';
 
 interface DevServerLogsViewProps {
   latestDevServerProcess: ExecutionProcess | undefined;
-  showLogs?: boolean;
-  onToggle?: () => void;
+  showLogs: boolean;
+  onToggle: () => void;
   height?: string;
   showToggleText?: boolean;
   logs?: Array<{ type: 'STDOUT' | 'STDERR'; content: string }>;
@@ -21,36 +18,18 @@ interface DevServerLogsViewProps {
 
 export function DevServerLogsView({
   latestDevServerProcess,
-  showLogs: externalShowLogs,
-  onToggle: externalOnToggle,
+  showLogs,
+  onToggle,
   height = 'h-60',
   showToggleText = true,
   logs,
   error,
 }: DevServerLogsViewProps) {
   const { t } = useTranslation('tasks');
-  const [internalShowLogs, setInternalShowLogs] = useState(() => {
-    const stored = localStorage.getItem(DEV_SERVER_LOGS_OPEN_KEY);
-    return stored === null ? true : stored === 'true';
-  });
-
-  useEffect(() => {
-    localStorage.setItem(DEV_SERVER_LOGS_OPEN_KEY, String(internalShowLogs));
-  }, [internalShowLogs]);
 
   if (!latestDevServerProcess) {
     return null;
   }
-
-  const isControlled = externalShowLogs !== undefined;
-  const showLogs = isControlled ? externalShowLogs : internalShowLogs;
-  const handleToggle = () => {
-    if (isControlled && externalOnToggle) {
-      externalOnToggle();
-    } else {
-      setInternalShowLogs(!internalShowLogs);
-    }
-  };
 
   return (
     <details
@@ -58,7 +37,7 @@ export function DevServerLogsView({
       open={showLogs}
       onToggle={(e) => {
         if (e.currentTarget.open !== showLogs) {
-          handleToggle();
+          onToggle();
         }
       }}
     >
