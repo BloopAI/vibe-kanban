@@ -23,6 +23,12 @@ pub(crate) fn task_error_response(error: SharedTaskError, context: &str) -> Resp
         SharedTaskError::Conflict(message) => {
             (StatusCode::CONFLICT, Json(json!({ "error": message })))
         }
+        SharedTaskError::PayloadTooLarge => (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "error": "title and description cannot exceed 50 KiB combined"
+            })),
+        ),
         SharedTaskError::Project(ProjectError::Conflict(message)) => {
             (StatusCode::CONFLICT, Json(json!({ "error": message })))
         }

@@ -1,11 +1,12 @@
 use axum::extract::ws::{Message, WebSocket};
 use chrono::{Duration as ChronoDuration, Utc};
 use futures::{SinkExt, StreamExt};
+use sqlx::PgPool;
 use thiserror::Error;
 use tokio::time::{self, MissedTickBehavior};
-use tokio_stream::wrappers::BroadcastStream;
+use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
 use tracing::instrument;
-use utils::ws::{WS_AUTH_REFRESH_INTERVAL, WS_TOKEN_EXPIRY_GRACE};
+use utils::ws::{WS_AUTH_REFRESH_INTERVAL, WS_BULK_SYNC_THRESHOLD, WS_TOKEN_EXPIRY_GRACE};
 
 use super::{
     WsQueryParams,
@@ -13,7 +14,7 @@ use super::{
 };
 use crate::{
     AppState,
-    activity::ActivityEvent,
+    activity::{ActivityBroker, ActivityEvent, ActivityStream},
     auth::{ClerkAuth, ClerkAuthError, ClerkIdentity, RequestContext},
     db::activity::ActivityRepository,
 };
@@ -31,9 +32,8 @@ pub async fn handle(
 ) {
     let config = state.config();
     let pool = state.pool().clone();
-    let receiver = state.broker().subscribe();
-    let mut activity_stream = BroadcastStream::new(receiver);
     let org_id = ctx.organization.id.clone();
+    let mut last_sent_seq = params.cursor;
     let mut auth_state = WsAuthState::new(
         state.auth().clone(),
         ctx.user.id.clone(),
@@ -47,6 +47,8 @@ pub async fn handle(
 
     let (mut sender, mut inbound) = socket.split();
 
+    let mut activity_stream = state.broker().subscribe(&org_id);
+
     if let Ok(history) = ActivityRepository::new(&pool)
         .fetch_since(&org_id, params.cursor, config.activity_default_limit)
         .await
@@ -55,6 +57,7 @@ pub async fn handle(
             if send_activity(&mut sender, &event).await.is_err() {
                 return;
             }
+            last_sent_seq = Some(event.seq);
         }
     }
 
@@ -66,16 +69,73 @@ pub async fn handle(
                 match maybe_activity {
                     Some(Ok(event)) => {
                         tracing::info!(?event, "received activity event");
-                        if event.organization_id.as_str() == org_id.as_str()
-                            && send_activity(&mut sender, &event).await.is_err() {
-                                break;
+                        assert_eq!(event.organization_id, org_id, "activity stream emitted cross-org event");
+                        if let Some(prev_seq) = last_sent_seq {
+                            if prev_seq >= event.seq {
+                                continue;
                             }
-
+                            if event.seq > prev_seq + 1 {
+                                tracing::warn!(
+                                    expected_next = prev_seq + 1,
+                                    actual = event.seq,
+                                    org_id = %org_id,
+                                    "activity stream skipped sequence; running catch-up"
+                                );
+                                match activity_stream_catch_up(
+                                    &mut sender,
+                                    &pool,
+                                    &org_id,
+                                    prev_seq,
+                                    state.broker(),
+                                    config.activity_catchup_batch_size,
+                                    WS_BULK_SYNC_THRESHOLD as i64,
+                                    "gap",
+                                ).await {
+                                    Ok((seq, stream)) => {
+                                        last_sent_seq = Some(seq);
+                                        activity_stream = stream;
+                                    }
+                                    // error handled within activity_stream_catch_up
+                                    Err(()) => break,
+                                }
+                                continue;
+                            }
+                        }
+                        if send_activity(&mut sender, &event).await.is_err() {
+                            break;
+                        }
+                        last_sent_seq = Some(event.seq);
                     }
-                    Some(Err(error)) => {
-                        tracing::warn!(?error, "activity stream lagged");
-                        let _ = send_error(&mut sender, "activity backlog dropped").await;
-                        break;
+                    Some(Err(BroadcastStreamRecvError::Lagged(skipped))) => {
+                        tracing::warn!(skipped, org_id = %org_id, "activity stream lagged");
+                        let Some(prev_seq) = last_sent_seq else {
+                            tracing::info!(
+                                org_id = %org_id,
+                                "activity stream lagged without baseline; forcing bulk sync"
+                            );
+                            let _ = send_error(&mut sender, "activity backlog dropped").await;
+                            break;
+                        };
+
+                        match activity_stream_catch_up(
+                            &mut sender,
+                            &pool,
+                            &org_id,
+                            prev_seq,
+                            state.broker(),
+                            config.activity_catchup_batch_size,
+                            WS_BULK_SYNC_THRESHOLD as i64,
+                            "lag",
+                        )
+                        .await
+                        {
+                            Ok((seq, stream)) => {
+                                last_sent_seq = Some(seq);
+                                activity_stream = stream;
+                            }
+                            // error handled within activity_stream_catch_up
+                            Err(()) => break,
+                        }
                     }
                     None => break,
                 }
@@ -281,4 +341,127 @@ enum AuthVerifyError {
     Refresh(#[from] AuthRefreshError),
     #[error("authorization expired")]
     Expired(ClerkIdentity),
+}
+
+/// Catch up activity events from the database since last_seq up to the latest event in the broker.
+/// Returns the new last sent seq and a corresponding activity stream.
+#[allow(clippy::too_many_arguments)]
+async fn activity_stream_catch_up(
+    sender: &mut futures::stream::SplitSink<WebSocket, Message>,
+    pool: &PgPool,
+    organization_id: &str,
+    last_seq: i64,
+    broker: &ActivityBroker,
+    batch_size: i64,
+    bulk_limit: i64,
+    reason: &'static str,
+) -> Result<(i64, ActivityStream), ()> {
+    let mut activity_stream = broker.subscribe(organization_id);
+
+    let event = match activity_stream.next().await {
+        Some(Ok(event)) => event,
+        Some(Err(_)) | None => {
+            let _ = send_error(sender, "activity backlog dropped").await;
+            return Err(());
+        }
+    };
+    let target_seq = event.seq;
+
+    if target_seq <= last_seq {
+        return Ok((last_seq, activity_stream));
+    }
+
+    let bulk_limit = bulk_limit.max(1);
+    let diff = target_seq - last_seq;
+    if diff > bulk_limit {
+        tracing::info!(
+            org_id = %organization_id,
+            threshold = bulk_limit,
+            reason,
+            "activity catch up exceeded threshold; forcing bulk sync"
+        );
+        let _ = send_error(sender, "activity backlog dropped").await;
+        return Err(());
+    }
+
+    let catch_up_result = catch_up_from_db(
+        sender,
+        pool,
+        organization_id,
+        last_seq,
+        target_seq,
+        batch_size.max(1),
+    )
+    .await;
+
+    match catch_up_result {
+        Ok(seq) => Ok((seq, activity_stream)),
+        Err(CatchUpError::Stale) => {
+            let _ = send_error(sender, "activity backlog dropped").await;
+            Err(())
+        }
+        Err(CatchUpError::Send) => Err(()),
+        Err(CatchUpError::Database(error)) => {
+            tracing::error!(
+                ?error,
+                org_id = %organization_id,
+                reason,
+                "failed to catch up activity backlog"
+            );
+            let _ = send_error(sender, "failed to load activity stream").await;
+            Err(())
+        }
+    }
+}
+
+/// helper to catch up activity events from the database up to and including target_seq.
+async fn catch_up_from_db(
+    sender: &mut futures::stream::SplitSink<WebSocket, Message>,
+    pool: &PgPool,
+    organization_id: &str,
+    last_seq: i64,
+    target_seq: i64,
+    batch_size: i64,
+) -> Result<i64, CatchUpError> {
+    let limit = batch_size.max(1);
+    let repo = ActivityRepository::new(pool);
+    let mut cursor = last_seq;
+
+    if target_seq <= cursor {
+        return Ok(cursor);
+    }
+
+    let mut remaining = target_seq - cursor;
+
+    while remaining > 0 {
+        let fetch_limit = remaining.min(limit);
+        let events = repo
+            .fetch_since(organization_id, Some(cursor), fetch_limit)
+            .await
+            .map_err(CatchUpError::Database)?;
+
+        if events.is_empty() {
+            return Err(CatchUpError::Stale);
+        }
+
+        for event in events {
+            if send_activity(sender, &event).await.is_err() {
+                return Err(CatchUpError::Send);
+            }
+            cursor = event.seq;
+            if cursor >= target_seq {
+                return Ok(cursor);
+            }
+        }
+
+        remaining = target_seq - cursor;
+    }
+
+    Ok(cursor)
+}
+
+enum CatchUpError {
+    Send,
+    Database(sqlx::Error),
+    Stale,
 }

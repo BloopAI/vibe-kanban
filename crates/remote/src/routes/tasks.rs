@@ -19,8 +19,8 @@ use crate::{
     db::{
         identity::IdentityRepository,
         tasks::{
-            AssignTaskData, CreateSharedTaskData, DeleteTaskData, SharedTaskError,
-            SharedTaskRepository, UpdateSharedTaskData,
+            AssignTaskData, CreateSharedTaskData, DeleteTaskData, MAX_SHARED_TASK_TEXT_BYTES,
+            SharedTaskError, SharedTaskRepository, UpdateSharedTaskData,
         },
     },
 };
@@ -78,6 +78,13 @@ pub async fn create_shared_task(
         assignee_user_id,
     } = payload;
 
+    if shared_task_text_exceeds_limit(&title, description.as_deref()) {
+        return task_error_response(
+            SharedTaskError::PayloadTooLarge,
+            "shared task payload too large",
+        );
+    }
+
     if let Some(assignee) = assignee_user_id.as_ref()
         && let Err(err) = identity_repo
             .ensure_user(&ctx.organization.id, assignee)
@@ -129,11 +136,28 @@ pub async fn update_shared_task(
         );
     }
 
+    let UpdateSharedTaskRequest {
+        title,
+        description,
+        status,
+        version,
+    } = payload;
+
+    let next_title = title.as_deref().unwrap_or(existing.title.as_str());
+    let next_description = description.as_deref().or(existing.description.as_deref());
+
+    if shared_task_text_exceeds_limit(next_title, next_description) {
+        return task_error_response(
+            SharedTaskError::PayloadTooLarge,
+            "shared task payload too large",
+        );
+    }
+
     let data = UpdateSharedTaskData {
-        title: payload.title,
-        description: payload.description,
-        status: payload.status,
-        version: payload.version,
+        title,
+        description,
+        status,
+        version,
         acting_user_id: ctx.user.id.clone(),
     };
 
@@ -235,4 +259,9 @@ pub async fn delete_shared_task(
         Ok(task) => (StatusCode::OK, Json(SharedTaskResponse::from(task))).into_response(),
         Err(error) => task_error_response(error, "failed to delete shared task"),
     }
+}
+
+fn shared_task_text_exceeds_limit(title: &str, description: Option<&str>) -> bool {
+    let total = title.len() + description.map(|value| value.len()).unwrap_or(0);
+    total > MAX_SHARED_TASK_TEXT_BYTES
 }

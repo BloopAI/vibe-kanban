@@ -16,6 +16,8 @@ pub struct BulkFetchResult {
     pub latest_seq: Option<i64>,
 }
 
+pub const MAX_SHARED_TASK_TEXT_BYTES: usize = 50 * 1024;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
 #[serde(rename_all = "kebab-case")]
 #[sqlx(type_name = "task_status", rename_all = "kebab-case")]
@@ -103,6 +105,8 @@ pub enum SharedTaskError {
     Forbidden,
     #[error("shared task conflict: {0}")]
     Conflict(String),
+    #[error("shared task title and description are too large")]
+    PayloadTooLarge,
     #[error(transparent)]
     Project(#[from] ProjectError),
     #[error(transparent)]
@@ -173,6 +177,8 @@ impl<'a> SharedTaskRepository<'a> {
             creator_user_id,
             assignee_user_id,
         } = data;
+
+        ensure_text_size(&title, description.as_deref())?;
 
         let project = match ProjectRepository::find_by_github_repo_id(
             &mut tx,
@@ -420,6 +426,8 @@ impl<'a> SharedTaskRepository<'a> {
         .await?
         .ok_or_else(|| SharedTaskError::Conflict("task version mismatch".to_string()))?;
 
+        ensure_text_size(&task.title, task.description.as_deref())?;
+
         let project = ProjectRepository::find_by_id(&mut tx, task.project_id, organization_id)
             .await?
             .ok_or_else(|| {
@@ -558,6 +566,16 @@ impl<'a> SharedTaskRepository<'a> {
         tx.commit().await.map_err(SharedTaskError::from)?;
         Ok(SharedTaskWithUser::new(task, None))
     }
+}
+
+fn ensure_text_size(title: &str, description: Option<&str>) -> Result<(), SharedTaskError> {
+    let total = title.len() + description.map(|value| value.len()).unwrap_or(0);
+
+    if total > MAX_SHARED_TASK_TEXT_BYTES {
+        return Err(SharedTaskError::PayloadTooLarge);
+    }
+
+    Ok(())
 }
 
 async fn insert_activity(

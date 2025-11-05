@@ -1,9 +1,8 @@
 use url::Url;
-use utils::ws::derive_ws_url;
+use utils::ws::{WS_BULK_SYNC_THRESHOLD, derive_ws_url};
 use uuid::Uuid;
 
 const DEFAULT_ACTIVITY_LIMIT: u32 = 200;
-const DEFAULT_BULK_SYNC_THRESHOLD: u32 = 500;
 
 #[derive(Clone)]
 pub struct ShareConfig {
@@ -23,7 +22,7 @@ impl ShareConfig {
             api_base,
             websocket_base,
             activity_page_limit: DEFAULT_ACTIVITY_LIMIT,
-            bulk_sync_threshold: DEFAULT_BULK_SYNC_THRESHOLD,
+            bulk_sync_threshold: WS_BULK_SYNC_THRESHOLD,
         })
     }
 
