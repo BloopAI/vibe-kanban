@@ -86,6 +86,7 @@ function RightWorkArea({
   const [innerSizes] = useState<SplitSizes>(() =>
     loadSizes(STORAGE_KEYS.ATTEMPT_AUX, DEFAULT_ATTEMPT_AUX)
   );
+  const [attemptSize, setAttemptSize] = useState<number>(innerSizes[0]);
 
   return (
     <div className="h-full min-h-0 flex flex-col">
@@ -104,6 +105,7 @@ function RightWorkArea({
             onLayout={(layout) => {
               if (layout.length === 2) {
                 saveSizes(STORAGE_KEYS.ATTEMPT_AUX, [layout[0], layout[1]]);
+                setAttemptSize(layout[0]);
               }
             }}
           >
@@ -123,7 +125,9 @@ function RightWorkArea({
 
             <PanelResizeHandle
               id="handle-aa"
-              className="relative z-30 w-1 bg-border cursor-col-resize group touch-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+              className={`relative z-30 bg-border cursor-col-resize group touch-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1 focus-visible:ring-offset-background transition-all ${
+                attemptSize < 5 ? 'w-6' : 'w-1'
+              }`}
               aria-label="Resize panels"
               role="separator"
               aria-orientation="vertical"
@@ -176,6 +180,7 @@ function DesktopSimple({
   const [outerSizes] = useState<SplitSizes>(() =>
     loadSizes(STORAGE_KEYS.KANBAN_ATTEMPT, DEFAULT_KANBAN_ATTEMPT)
   );
+  const [kanbanSize, setKanbanSize] = useState<number>(outerSizes[0]);
 
   // When preview/diffs is open, hide Kanban entirely and render only RightWorkArea
   if (mode !== null) {
@@ -197,6 +202,7 @@ function DesktopSimple({
       onLayout={(layout) => {
         if (layout.length === 2) {
           saveSizes(STORAGE_KEYS.KANBAN_ATTEMPT, [layout[0], layout[1]]);
+          setKanbanSize(layout[0]);
         }
       }}
     >
@@ -216,7 +222,9 @@ function DesktopSimple({
 
       <PanelResizeHandle
         id="handle-kr"
-        className="relative z-30 w-1 bg-border cursor-col-resize group touch-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+        className={`relative z-30 bg-border cursor-col-resize group touch-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1 focus-visible:ring-offset-background transition-all ${
+          kanbanSize < 5 ? 'w-6' : 'w-1'
+        }`}
         aria-label="Resize panels"
         role="separator"
         aria-orientation="vertical"
