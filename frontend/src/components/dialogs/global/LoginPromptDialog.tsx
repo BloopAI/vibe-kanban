@@ -40,7 +40,7 @@ const LoginPromptDialog = NiceModal.create(() => {
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <LogIn className="h-6 w-6 text-primary" />
+            <LogIn className="h-6 w-6 text-primary-foreground" />
             <DialogTitle>Sign in to Vibe Kanban</DialogTitle>
           </div>
           <DialogDescription className="text-left pt-2">
