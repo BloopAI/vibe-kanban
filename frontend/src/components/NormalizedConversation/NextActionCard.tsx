@@ -176,7 +176,7 @@ export function NextActionCard({
         )}
 
         <div
-          className={`border px-3 py-2 flex items-center gap-3 min-w-0 ${failed ? 'border-destructive' : 'border-foreground'} ${needsSetup && setupHelpText ? 'border-t-0' : ''}`}
+          className={`border px-3 py-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3 min-w-0 ${failed ? 'border-destructive' : 'border-foreground'} ${needsSetup && setupHelpText ? 'border-t-0' : ''}`}
         >
           {/* Left: Diff summary */}
           {!error && (
@@ -195,8 +195,6 @@ export function NextActionCard({
             </button>
           )}
 
-          <div className="flex-1" />
-
           {/* Run Setup or Try Again button */}
           {failed &&
             (needsSetup ? (
@@ -205,7 +203,7 @@ export function NextActionCard({
                 size="sm"
                 onClick={handleRunSetup}
                 disabled={!attempt}
-                className="text-sm"
+                className="text-sm w-full sm:w-auto"
                 aria-label={t('attempt.runSetup')}
               >
                 {t('attempt.runSetup')}
@@ -217,7 +215,7 @@ export function NextActionCard({
                   size="sm"
                   onClick={handleTryAgain}
                   disabled={!attempt?.task_id}
-                  className="text-sm"
+                  className="text-sm w-full sm:w-auto"
                   aria-label={t('attempt.tryAgain')}
                 >
                   {t('attempt.tryAgain')}
@@ -227,7 +225,7 @@ export function NextActionCard({
 
           {/* Right: Icon buttons */}
           {fileCount > 0 && (
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center gap-1 shrink-0 sm:ml-auto">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
