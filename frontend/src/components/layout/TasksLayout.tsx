@@ -1,6 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
 import { AnimatePresence, motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
 
 export type LayoutMode = 'preview' | 'diffs' | null;
 
@@ -126,9 +127,13 @@ function RightWorkArea({
 
             <PanelResizeHandle
               id="handle-aa"
-              className={`relative z-30 bg-border cursor-col-resize group touch-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1 focus-visible:ring-offset-background transition-all ${
+              className={cn(
+                'relative z-30 bg-border cursor-col-resize group touch-none',
+                'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60',
+                'focus-visible:ring-offset-1 focus-visible:ring-offset-background',
+                'transition-all',
                 isAttemptCollapsed ? 'w-6' : 'w-1'
-              }`}
+              )}
               aria-label="Resize panels"
               role="separator"
               aria-orientation="vertical"
@@ -224,9 +229,13 @@ function DesktopSimple({
 
       <PanelResizeHandle
         id="handle-kr"
-        className={`relative z-30 bg-border cursor-col-resize group touch-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1 focus-visible:ring-offset-background transition-all ${
+        className={cn(
+          'relative z-30 bg-border cursor-col-resize group touch-none',
+          'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60',
+          'focus-visible:ring-offset-1 focus-visible:ring-offset-background',
+          'transition-all',
           isKanbanCollapsed ? 'w-6' : 'w-1'
-        }`}
+        )}
         aria-label="Resize panels"
         role="separator"
         aria-orientation="vertical"
