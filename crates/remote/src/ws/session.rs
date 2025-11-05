@@ -14,7 +14,7 @@ use super::{
 };
 use crate::{
     AppState,
-    activity::ActivityEvent,
+    activity::{ActivityBroker, ActivityEvent, ActivityStream},
     auth::{ClerkAuth, ClerkAuthError, ClerkIdentity, RequestContext},
     db::activity::ActivityRepository,
 };
@@ -47,7 +47,7 @@ pub async fn handle(
 
     let (mut sender, mut inbound) = socket.split();
 
-    let mut activity_stream = state.broker().subscribe(&org_id).peekable();
+    let mut activity_stream = state.broker().subscribe(&org_id);
 
     if let Ok(history) = ActivityRepository::new(&pool)
         .fetch_since(&org_id, params.cursor, config.activity_default_limit)
@@ -81,19 +81,19 @@ pub async fn handle(
                                     org_id = %org_id,
                                     "activity stream skipped sequence; running catch-up"
                                 );
-                                activity_stream = state.broker().subscribe(&org_id).peekable();
                                 match activity_stream_catch_up(
                                     &mut sender,
                                     &pool,
                                     &org_id,
                                     prev_seq,
-                                    event.seq,
+                                    state.broker(),
                                     config.activity_catchup_limit,
                                     WS_BULK_SYNC_THRESHOLD as i64,
                                     "gap",
                                 ).await {
-                                    Ok(seq) => {
+                                    Ok((seq, stream)) => {
                                         last_sent_seq = Some(seq);
+                                        activity_stream = stream;
                                     }
                                     // error handled within activity_stream_catch_up
                                     Err(()) => break,
@@ -117,31 +117,21 @@ pub async fn handle(
                             break;
                         };
 
-                        activity_stream = state.broker().subscribe(&org_id).peekable();
-                        let target_seq = match Pin::new(&mut activity_stream).peek().await {
-                            Some(Ok(next_event)) => {
-                                next_event.seq
-                            }
-                            Some(Err(_)) | None => {
-                                let _ = send_error(&mut sender, "activity backlog dropped").await;
-                                break;
-                            }
-                        };
-
                         match activity_stream_catch_up(
                             &mut sender,
                             &pool,
                             &org_id,
                             prev_seq,
-                            target_seq,
+                            state.broker(),
                             config.activity_catchup_limit,
                             WS_BULK_SYNC_THRESHOLD as i64,
                             "lag",
                         )
                         .await
                         {
-                            Ok(seq) => {
+                            Ok((seq, stream)) => {
                                 last_sent_seq = Some(seq);
+                                activity_stream = stream;
                             }
                             // error handled within activity_stream_catch_up
                             Err(()) => break,
@@ -353,18 +343,32 @@ enum AuthVerifyError {
     Expired(ClerkIdentity),
 }
 
+/// Catch up activity events from the database since last_seq up to the latest event in the broker.
+/// Returns the new last sent seq and a corresponding activity stream.
+#[allow(clippy::too_many_arguments)]
 async fn activity_stream_catch_up(
     sender: &mut futures::stream::SplitSink<WebSocket, Message>,
     pool: &PgPool,
     organization_id: &str,
     last_seq: i64,
-    target_seq: i64,
-    catchup_limit: i64,
+    broker: &ActivityBroker,
+    batch_size: i64,
     bulk_limit: i64,
     reason: &'static str,
-) -> Result<i64, ()> {
+) -> Result<(i64, ActivityStream), ()> {
+    let mut activity_stream = broker.subscribe(organization_id);
+
+    let event = match activity_stream.next().await {
+        Some(Ok(event)) => event,
+        Some(Err(_)) | None => {
+            let _ = send_error(sender, "activity backlog dropped").await;
+            return Err(());
+        }
+    };
+    let target_seq = event.seq;
+
     if target_seq <= last_seq {
-        return Ok(last_seq);
+        return Ok((last_seq, activity_stream));
     }
 
     let bulk_limit = bulk_limit.max(1);
@@ -386,12 +390,12 @@ async fn activity_stream_catch_up(
         organization_id,
         last_seq,
         target_seq,
-        catchup_limit.max(1),
+        batch_size.max(1),
     )
     .await;
 
     match catch_up_result {
-        Ok(seq) => Ok(seq),
+        Ok(seq) => Ok((seq, activity_stream)),
         Err(CatchUpError::Stale) => {
             let _ = send_error(sender, "activity backlog dropped").await;
             Err(())
@@ -410,16 +414,16 @@ async fn activity_stream_catch_up(
     }
 }
 
-/// Batch-replay dropped activity directly from Postgres before rejoining the broadcast loop.
+/// helper to catch up activity events from the database up to and including target_seq.
 async fn catch_up_from_db(
     sender: &mut futures::stream::SplitSink<WebSocket, Message>,
     pool: &PgPool,
     organization_id: &str,
     last_seq: i64,
     target_seq: i64,
-    batch_limit: i64,
+    batch_size: i64,
 ) -> Result<i64, CatchUpError> {
-    let limit = batch_limit.max(1);
+    let limit = batch_size.max(1);
     let repo = ActivityRepository::new(pool);
     let mut cursor = last_seq;
 
