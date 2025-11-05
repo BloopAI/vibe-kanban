@@ -68,7 +68,7 @@ pub async fn handle(
             maybe_activity = activity_stream.next() => {
                 match maybe_activity {
                     Some(Ok(event)) => {
-                        tracing::info!(?event, "received activity event");
+                        tracing::trace!(?event, "received activity event");
                         assert_eq!(event.organization_id, org_id, "activity stream emitted cross-org event");
                         if let Some(prev_seq) = last_sent_seq {
                             if prev_seq >= event.seq {

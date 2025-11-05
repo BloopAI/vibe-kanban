@@ -568,7 +568,10 @@ impl<'a> SharedTaskRepository<'a> {
     }
 }
 
-fn ensure_text_size(title: &str, description: Option<&str>) -> Result<(), SharedTaskError> {
+pub(crate) fn ensure_text_size(
+    title: &str,
+    description: Option<&str>,
+) -> Result<(), SharedTaskError> {
     let total = title.len() + description.map(|value| value.len()).unwrap_or(0);
 
     if total > MAX_SHARED_TASK_TEXT_BYTES {
