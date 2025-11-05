@@ -17,6 +17,8 @@ pub const WS_AUTH_REFRESH_INTERVAL: Duration = Duration::from_secs(30);
 pub const WS_TOKEN_EXPIRY_GRACE: Duration = Duration::from_secs(120);
 /// Maximum time allowed between REST catch-up and websocket connection establishment.
 pub const WS_MAX_DELAY_BETWEEN_CATCHUP_AND_WS: Duration = WS_TOKEN_EXPIRY_GRACE;
+/// Maximum backlog accepted before forcing clients to do a full bulk sync.
+pub const WS_BULK_SYNC_THRESHOLD: u32 = 500;
 
 pub type HeaderFuture = BoxFuture<'static, WsResult<Vec<(HeaderName, HeaderValue)>>>;
 pub type HeaderFactory = Arc<dyn Fn() -> HeaderFuture + Send + Sync>;

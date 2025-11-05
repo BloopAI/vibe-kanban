@@ -28,7 +28,10 @@ impl Server {
             .await
             .context("failed to run database migrations")?;
 
-        let broker = ActivityBroker::default();
+        let broker = ActivityBroker::new(
+            config.activity_broadcast_shards,
+            config.activity_broadcast_capacity,
+        );
         let auth = ClerkAuth::new(config.clerk.get_issuer().clone())?;
         let clerk = ClerkService::new(&config.clerk)?;
         let state = AppState::new(pool.clone(), broker.clone(), config.clone(), auth, clerk);

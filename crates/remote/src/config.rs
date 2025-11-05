@@ -8,6 +8,9 @@ use thiserror::Error;
 const DEFAULT_ACTIVITY_DEFAULT_LIMIT: i64 = 200;
 // Max activity items that can be requested in a single query
 const DEFAULT_ACTIVITY_MAX_LIMIT: i64 = 500;
+const DEFAULT_ACTIVITY_BROADCAST_SHARDS: usize = 16;
+const DEFAULT_ACTIVITY_BROADCAST_CAPACITY: usize = 512;
+const DEFAULT_ACTIVITY_CATCHUP_LIMIT: i64 = 100;
 
 #[derive(Debug, Clone)]
 pub struct RemoteServerConfig {
@@ -16,6 +19,9 @@ pub struct RemoteServerConfig {
     pub activity_channel: String,
     pub activity_default_limit: i64,
     pub activity_max_limit: i64,
+    pub activity_broadcast_shards: usize,
+    pub activity_broadcast_capacity: usize,
+    pub activity_catchup_limit: i64,
     pub clerk: ClerkConfig,
 }
 
@@ -42,6 +48,30 @@ impl RemoteServerConfig {
         let activity_default_limit = DEFAULT_ACTIVITY_DEFAULT_LIMIT;
         let activity_max_limit = DEFAULT_ACTIVITY_MAX_LIMIT;
 
+        let activity_broadcast_shards = match env::var("SERVER_ACTIVITY_BROADCAST_SHARDS") {
+            Ok(value) => value
+                .parse::<usize>()
+                .map_err(|_| ConfigError::InvalidVar("SERVER_ACTIVITY_BROADCAST_SHARDS"))?,
+            Err(_) => DEFAULT_ACTIVITY_BROADCAST_SHARDS,
+        }
+        .max(1);
+
+        let activity_broadcast_capacity = match env::var("SERVER_ACTIVITY_BROADCAST_CAPACITY") {
+            Ok(value) => value
+                .parse::<usize>()
+                .map_err(|_| ConfigError::InvalidVar("SERVER_ACTIVITY_BROADCAST_CAPACITY"))?,
+            Err(_) => DEFAULT_ACTIVITY_BROADCAST_CAPACITY,
+        }
+        .max(1);
+
+        let activity_catchup_limit = match env::var("SERVER_ACTIVITY_CATCHUP_LIMIT") {
+            Ok(value) => value
+                .parse::<i64>()
+                .map_err(|_| ConfigError::InvalidVar("SERVER_ACTIVITY_CATCHUP_LIMIT"))?,
+            Err(_) => DEFAULT_ACTIVITY_CATCHUP_LIMIT,
+        }
+        .max(1);
+
         let clerk = ClerkConfig::from_env()?;
 
         Ok(Self {
@@ -50,6 +80,9 @@ impl RemoteServerConfig {
             activity_channel,
             activity_default_limit,
             activity_max_limit,
+            activity_broadcast_shards,
+            activity_broadcast_capacity,
+            activity_catchup_limit,
             clerk,
         })
     }
