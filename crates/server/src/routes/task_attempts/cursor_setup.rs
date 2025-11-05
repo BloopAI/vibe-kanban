@@ -13,6 +13,7 @@ use executors::{
     executors::cursor::CursorAgent,
 };
 use services::services::container::ContainerService;
+use utils::shell::get_shell_config_file;
 
 use crate::{error::ApiError, routes::task_attempts::ensure_worktree_path};
 
@@ -55,7 +56,14 @@ async fn get_setup_helper_action() -> Result<ExecutorAction, ApiError> {
     #[cfg(unix)]
     {
         let base_command = CursorAgent::base_command();
-        // First action: Install
+        let config_file = get_shell_config_file().ok_or_else(|| {
+            ApiError::TaskAttempt(TaskAttemptError::ValidationError(
+                "Could not determine shell config file path".to_string(),
+            ))
+        })?;
+        let config_file_str = config_file.to_string_lossy();
+
+        // Install script with PATH setup
         let install_script = format!(
             r#"#!/bin/bash
 set -e
@@ -66,6 +74,9 @@ if ! command -v {base_command} &> /dev/null; then
 else
     echo "Cursor CLI already installed"
 fi
+
+echo "Setting up PATH..."
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> "{config_file_str}"
 "#
         );
 
@@ -76,7 +87,13 @@ fi
         };
 
         // Second action (chained): Login
-        let login_script = format!("{base_command} login");
+        let login_script = format!(
+            r#"#!/bin/bash
+set -e
+source "{config_file_str}"
+{base_command} login
+"#
+        );
         let login_request = ScriptRequest {
             script: login_script,
             language: ScriptRequestLanguage::Bash,

@@ -4032,7 +4032,10 @@ dependencies = [
  "local-deployment",
  "mime_guess",
  "nix 0.29.0",
+<<<<<<< HEAD
  "octocrab",
+=======
+>>>>>>> 38a731e68 (Perfect! Here's what I implemented:)
  "openssl-sys",
  "os_info",
  "regex",
@@ -5243,6 +5246,7 @@ dependencies = [
  "bytes",
  "chrono",
  "directories",
+ "dirs 5.0.1",
  "futures",
  "futures-util",
  "git2",

@@ -32,6 +32,7 @@ shellexpand = "3.1.1"
 which = "8.0.0"
 similar = "2"
 git2 = "0.18"
+dirs = "5.0"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55"

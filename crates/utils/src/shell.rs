@@ -9,6 +9,31 @@ use std::{
 
 use crate::tokio::block_on;
 
+/// Returns the shell config file path for the current user's shell.
+///
+/// Detects the shell from the SHELL environment variable and returns:
+/// - `~/.zshrc` for zsh
+/// - `~/.bashrc` for bash (or if detection fails)
+/// - None if the home directory cannot be determined
+#[cfg(not(windows))]
+pub fn get_shell_config_file() -> Option<PathBuf> {
+    let home = dirs::home_dir()?;
+
+    let shell_name = std::env::var("SHELL").ok().and_then(|shell| {
+        let path = Path::new(&shell);
+        path.file_name()
+            .and_then(OsStr::to_str)
+            .map(|s| s.to_string())
+    });
+
+    let config_file = match shell_name.as_deref() {
+        Some("zsh") => home.join(".zshrc"),
+        _ => home.join(".bashrc"),
+    };
+
+    Some(config_file)
+}
+
 /// Returns the appropriate shell command and argument for the current platform.
 ///
 /// Returns (shell_program, shell_arg) where:
