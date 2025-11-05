@@ -1,6 +1,7 @@
 // Global app dialogs
 export { DisclaimerDialog } from './global/DisclaimerDialog';
 export { OnboardingDialog } from './global/OnboardingDialog';
+export { LoginPromptDialog } from './global/LoginPromptDialog';
 export { PrivacyOptInDialog } from './global/PrivacyOptInDialog';
 export { ReleaseNotesDialog } from './global/ReleaseNotesDialog';
 

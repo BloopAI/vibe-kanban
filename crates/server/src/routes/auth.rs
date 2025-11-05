@@ -80,6 +80,9 @@ async fn set_clerk_session(
     let session = ClerkSession::from_parts(token.clone(), identity.clone());
     deployment.clerk_sessions().set(session.clone()).await;
 
+    // Refresh remote metadata for all projects on Clerk session change
+    deployment.refresh_remote_metadata_background();
+
     let mut identify_props = serde_json::json!({
         "clerk_user_id": session.user_id.clone(),
     });

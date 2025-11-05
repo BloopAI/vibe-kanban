@@ -31,13 +31,15 @@ use services::services::{
     image::{ImageError, ImageService},
     metadata::compute_remote_metadata,
     pr_monitor::PrMonitorService,
-    share::{SharePublisher, link_shared_tasks_to_project},
+    share::{
+        RemoteSync, RemoteSyncHandle, ShareConfig, SharePublisher, link_shared_tasks_to_project,
+    },
     token::GitHubTokenProvider,
     worktree_manager::WorktreeError,
 };
 use sqlx::{Error as SqlxError, types::Uuid};
 use thiserror::Error;
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 use utils::{msg_store::MsgStore, sentry as sentry_utils};
 
 #[derive(Debug, Error)]
@@ -113,6 +115,36 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     fn clerk_service(&self) -> Option<Arc<ClerkService>>;
 
     fn share_publisher(&self) -> Option<SharePublisher>;
+
+    fn share_sync_handle(&self) -> &Arc<Mutex<Option<RemoteSyncHandle>>>;
+
+    fn spawn_remote_sync(&self, config: ShareConfig) {
+        let deployment = self.clone();
+        let handle_slot = self.share_sync_handle().clone();
+        tokio::spawn(async move {
+            tracing::info!("Waiting for authentication before starting shared task sync");
+            let session = deployment.clerk_sessions().wait_for_active().await;
+            if session.org_id.is_none() {
+                tracing::warn!(
+                    "Skipping shared task sync startup: Clerk session missing organization"
+                );
+                return;
+            }
+
+            tracing::info!("Refreshing project metadata prior to shared task sync");
+            deployment.refresh_remote_metadata().await;
+
+            let remote_sync_handle = RemoteSync::spawn(
+                deployment.db().clone(),
+                config,
+                deployment.clerk_sessions().clone(),
+            );
+            {
+                let mut guard = handle_slot.lock().await;
+                *guard = Some(remote_sync_handle);
+            }
+        });
+    }
 
     async fn update_sentry_scope(&self) -> Result<(), DeploymentError> {
         let user_id = self.user_id();

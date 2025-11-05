@@ -352,5 +352,27 @@
       "next": "Next",
       "finish": "Finish"
     }
+  },
+  "loginPrompt": {
+    "title": "Sign in to Vibe Kanban",
+    "description": "Unlock team collaboration features",
+    "features": {
+      "pullRequests": {
+        "title": "Create pull requests",
+        "description": "Push changes directly to GitHub"
+      },
+      "shareTasks": {
+        "title": "Share tasks with your team",
+        "description": "Collaborate on work together"
+      },
+      "trackProgress": {
+        "title": "See what others are doing",
+        "description": "Track team progress in real-time"
+      }
+    },
+    "buttons": {
+      "skip": "Skip for now",
+      "signIn": "Sign in"
+    }
   }
 }
