@@ -38,6 +38,8 @@ Make sure you have authenticated with your favourite coding agent. A full list o
 npx vibe-kanban
 ```
 
+**No API keys required** for basic local development! See [API_KEY_REQUIREMENTS.md](API_KEY_REQUIREMENTS.md) for optional features like task sharing and analytics.
+
 ## Documentation
 
 Please head to the [website](https://vibekanban.com/docs) for the latest documentation and user guides.
@@ -77,6 +79,8 @@ pnpm run dev
 
 This will start the backend. A blank DB will be copied from the `dev_assets_seed` folder.
 
+**Note**: You may see warnings about missing `CLERK_PUBLISHABLE_KEY` or other optional environment variables. These are for advanced features (task sharing, analytics) and can be safely ignored for local development. See [API_KEY_REQUIREMENTS.md](API_KEY_REQUIREMENTS.md) for details.
+
 ### Building the frontend
 
 To build just the frontend:
@@ -95,12 +99,17 @@ pnpm build
 
 ### Environment Variables
 
+**All environment variables are optional for local development.** See [API_KEY_REQUIREMENTS.md](API_KEY_REQUIREMENTS.md) for a comprehensive guide.
+
 The following environment variables can be configured at build time or runtime:
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `POSTHOG_API_KEY` | Build-time | Empty | PostHog analytics API key (disables analytics if empty) |
 | `POSTHOG_API_ENDPOINT` | Build-time | Empty | PostHog analytics endpoint (disables analytics if empty) |
+| `VITE_CLERK_PUBLISHABLE_KEY` | Frontend build-time | Empty | Clerk authentication for task sharing (optional) |
+| `CLERK_ISSUER` | Backend build-time | Empty | Clerk issuer URL for task sharing (optional) |
+| `VK_SHARED_API_BASE` | Backend build-time | Empty | Remote API base for task sharing (optional) |
 | `BACKEND_PORT` | Runtime | `0` (auto-assign) | Backend server port |
 | `FRONTEND_PORT` | Runtime | `3000` | Frontend development server port |
 | `HOST` | Runtime | `127.0.0.1` | Backend server host |

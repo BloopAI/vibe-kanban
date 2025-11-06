@@ -19,6 +19,8 @@ Before installing Vibe Kanban, ensure you have:
 - **Node.js**: Latest LTS version recommended
 - **Coding agent authentication**: Authenticate with your preferred coding agents outside of Vibe Kanban
 
+**No API keys required!** All core features work without any API keys or environment variables. Optional features like task sharing and analytics can be configured later.
+
 ## Safety Notice
 
 <Warning>
@@ -69,3 +71,15 @@ Agents can still perform system-level actions, so review their work and keep bac
 <Tip>
 To use a fixed port, specify the `PORT` environment variable: `PORT=8080 npx vibe-kanban`
 </Tip>
+
+## Troubleshooting
+
+### Clerk Authentication Warning
+
+If you see a warning about `CLERK_PUBLISHABLE_KEY` not being set, this is expected and safe to ignore. This key is only needed for **task sharing** features, which allow you to share tasks with team members. All other features work without it.
+
+To enable task sharing, see the [API Key Requirements documentation](https://github.com/BloopAI/vibe-kanban/blob/main/API_KEY_REQUIREMENTS.md) for setup instructions.
+
+### Other Console Warnings
+
+Console warnings about missing `POSTHOG_API_KEY` or similar environment variables are also safe to ignore. These are for optional analytics and advanced features.
