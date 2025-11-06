@@ -2,10 +2,17 @@
   "actions": {
     "addTask": "タスクを追加"
   },
+  "filters": {
+    "sharedToggleAria": "共有タスクを切り替える",
+    "sharedToggleTooltip": "共有コンテンツを表示/非表示"
+  },
   "actionsMenu": {
     "attempt": "Attempt",
     "createNewAttempt": "Create new attempt",
     "createSubtask": "Create subtask",
+    "share": "タスクを共有",
+    "reassign": "再割り当て",
+    "stopShare": "共有を停止",
     "duplicate": "Duplicate",
     "editBranchName": "ブランチ名を編集",
     "gitActions": "Gitアクション",
@@ -59,6 +66,44 @@
     "runSetup": "セットアップを実行",
     "setupHelpText": "{{agent}}が正しく設定されていません。「セットアップを実行」をクリックしてインストールとログインを行ってください。",
     "devScriptMissingTooltip": "To start the dev server, add a dev script to this project"
+  },
+  "stopShareDialog": {
+    "title": "タスクの共有を停止",
+    "description": "「{{title}}」の共有を組織向けに停止しますか？",
+    "warning": "組織との共有は停止しますが、ローカルのタスクは保持されます。",
+    "confirm": "共有を停止",
+    "inProgress": "共有を停止中…",
+    "genericError": "タスクの共有を停止できませんでした。もう一度お試しください。"
+  },
+  "shareDialog": {
+    "title": "タスクを共有",
+    "description": "「{{title}}」を組織と共有しますか？",
+    "success": "タスクの共有に成功しました。",
+    "genericError": "タスクを共有できませんでした。もう一度お試しください。",
+    "loadingSystem": "アカウント状態を読み込み中…",
+    "loginRequired": {
+      "title": "続行するにはサインインしてください",
+      "description": "タスクを共有する前にサインインが必要です。サインインページへリダイレクトします。",
+      "action": "サインインへ移動"
+    },
+    "githubRequired": {
+      "title": "GitHub を接続",
+      "description": "共有タスクを公開できるよう、GitHub アカウントを接続してください。",
+      "action": "GitHub を接続"
+    },
+    "confirmationTitle": "共有を確認",
+    "confirmationBody": "共有すると、このタスクが共有ワークスペースに公開されます。",
+    "cancel": "キャンセル",
+    "confirm": "タスクを共有",
+    "inProgress": "共有中…",
+    "closeButton": "閉じる"
+  },
+  "createPrDialog": {
+    "loginRequired": {
+      "title": "プルリクエストを作成するにはサインインしてください",
+      "description": "このタスクでプルリクエストを開く前にサインインが必要です。サインインページに移動します。",
+      "action": "サインイン"
+    }
   },
   "attemptHeaderActions": {
     "diffs": "Diffs",
@@ -133,7 +178,12 @@
     },
     "actions": {
       "title": "Gitアクション",
-      "prMerged": "PR #{{number}} は既にマージされています"
+      "prMerged": "PR #{{number}} は既にマージされています",
+      "loginRequired": {
+        "title": "Git アクションを管理するにはサインインしてください",
+        "description": "このタスクでブランチのプッシュ、変更のマージ、プルリクエストの作成を行うには Vibe Kanban にサインインしてください。",
+        "action": "サインイン"
+      }
     },
     "states": {
       "createPr": "PRを作成",
@@ -301,6 +351,28 @@
       "previous": "前へ",
       "next": "次へ",
       "finish": "完了"
+    }
+  },
+  "loginPrompt": {
+    "title": "Vibe Kanbanにサインイン",
+    "description": "チームコラボレーション機能をアンロック",
+    "features": {
+      "pullRequests": {
+        "title": "プルリクエストを作成",
+        "description": "GitHubに直接変更をプッシュ"
+      },
+      "shareTasks": {
+        "title": "チームとタスクを共有",
+        "description": "一緒に作業で協力"
+      },
+      "trackProgress": {
+        "title": "他の人の作業を確認",
+        "description": "チームの進捗をリアルタイムで追跡"
+      }
+    },
+    "buttons": {
+      "skip": "今はスキップ",
+      "signIn": "サインイン"
     }
   }
 }

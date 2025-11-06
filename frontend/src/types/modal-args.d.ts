@@ -1,13 +1,19 @@
-import { TaskAttempt } from 'shared/types';
+import { TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
+import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 
 // Extend nice-modal-react to provide type safety for modal arguments
 declare module '@ebay/nice-modal-react' {
   interface ModalArgs {
-    'github-login': void;
     'create-pr': {
       attempt: TaskAttempt;
-      task: any; // Will be properly typed when we have the full task type
+      task: TaskWithAttemptStatus;
       projectId: string;
+    };
+    'share-task': {
+      task: TaskWithAttemptStatus;
+    };
+    'transfer-shared-task': {
+      sharedTask: SharedTaskRecord;
     };
   }
 }

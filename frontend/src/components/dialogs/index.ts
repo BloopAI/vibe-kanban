@@ -1,15 +1,19 @@
 // Global app dialogs
 export { DisclaimerDialog } from './global/DisclaimerDialog';
 export { OnboardingDialog } from './global/OnboardingDialog';
+export { LoginPromptDialog } from './global/LoginPromptDialog';
 export { PrivacyOptInDialog } from './global/PrivacyOptInDialog';
 export { ReleaseNotesDialog } from './global/ReleaseNotesDialog';
 
 // Authentication dialogs
-export { GitHubLoginDialog } from './auth/GitHubLoginDialog';
 export {
   ProvidePatDialog,
   type ProvidePatDialogProps,
 } from './auth/ProvidePatDialog';
+export {
+  OrganizationSwitcherDialog,
+  type OrganizationSwitcherDialogProps,
+} from './auth/OrganizationSwitcherDialog';
 
 // Project-related dialogs
 export {
@@ -37,6 +41,7 @@ export {
   DeleteTaskConfirmationDialog,
   type DeleteTaskConfirmationDialogProps,
 } from './tasks/DeleteTaskConfirmationDialog';
+export { ShareDialog, type ShareDialogProps } from './tasks/ShareDialog';
 export {
   TagEditDialog,
   type TagEditDialogProps,
@@ -65,6 +70,14 @@ export {
   GitActionsDialog,
   type GitActionsDialogProps,
 } from './tasks/GitActionsDialog';
+export {
+  ReassignDialog,
+  type ReassignDialogProps,
+} from './tasks/ReassignDialog';
+export {
+  StopShareTaskDialog,
+  type StopShareTaskDialogProps,
+} from './tasks/StopShareTaskDialog';
 
 // Settings dialogs
 export {

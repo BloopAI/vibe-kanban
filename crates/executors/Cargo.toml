@@ -12,19 +12,16 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 tracing = { workspace = true }
 toml = "0.8"
-tracing-subscriber = { workspace = true }
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
 ts-rs = { workspace = true }
 schemars = { workspace = true }
 dirs = "5.0"
 xdg = "3.0"
-async-trait = "0.1"
-rust-embed = "8.2"
+async-trait = { workspace = true } 
 directories = "6.0.0"
 command-group = { version = "5.0", features = ["with-tokio"] }
 regex = "1.11.1"
-sentry-tracing = { version = "0.41.0", features = ["backtrace"] }
 lazy_static = "1.4"
 json-patch = "2.0"
 thiserror = { workspace = true }
@@ -48,6 +45,7 @@ codex-app-server-protocol = { git = "https://github.com/openai/codex.git", packa
 codex-mcp-types = { git = "https://github.com/openai/codex.git", package = "mcp-types", rev = "488ec061bf4d36916b8f477c700ea4fde4162a7a" }
 sha2 = "0.10"
 derivative = "2.2.0"
+icu_provider = { version = "2.1.1", default-features = false, features = ["sync"] }
 
 [target.'cfg(windows)'.dependencies]
 winsplit = "0.1.0"

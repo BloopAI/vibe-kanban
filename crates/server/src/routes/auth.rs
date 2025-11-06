@@ -1,120 +1,164 @@
 use axum::{
     Router,
-    extract::{Request, State},
+    extract::{Json, Request, State},
     http::StatusCode,
     middleware::{Next, from_fn_with_state},
     response::{Json as ResponseJson, Response},
-    routing::{get, post},
+    routing::post,
 };
+use chrono::{DateTime, Utc};
 use deployment::Deployment;
-use octocrab::auth::Continue;
 use serde::{Deserialize, Serialize};
 use services::services::{
-    auth::{AuthError, DeviceFlowStartResponse},
-    config::save_config_to_file,
-    github_service::{GitHubService, GitHubServiceError},
+    clerk::{ClerkServiceError, ClerkSession, UserIdentity},
+    config::{ConfigError, save_config_to_file},
 };
-use utils::response::ApiResponse;
+use utils::{assets::config_path, response::ApiResponse};
 
 use crate::{DeploymentImpl, error::ApiError};
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     Router::new()
-        .route("/auth/github/device/start", post(device_start))
-        .route("/auth/github/device/poll", post(device_poll))
-        .route("/auth/github/check", get(github_check_token))
+        .route(
+            "/auth/clerk/session",
+            post(set_clerk_session).delete(clear_clerk_session),
+        )
         .layer(from_fn_with_state(
             deployment.clone(),
             sentry_user_context_middleware,
         ))
 }
 
-/// POST /auth/github/device/start
-async fn device_start(
+#[derive(Debug, Deserialize)]
+struct ClerkSessionRequest {
+    token: String,
+}
+
+#[derive(Debug, Serialize)]
+struct ClerkSessionResponse {
+    user_id: String,
+    organization_id: Option<String>,
+    session_id: String,
+    expires_at: DateTime<Utc>,
+}
+
+async fn set_clerk_session(
     State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<DeviceFlowStartResponse>>, ApiError> {
-    let device_start_response = deployment.auth().device_start().await?;
-    Ok(ResponseJson(ApiResponse::success(device_start_response)))
-}
-
-#[derive(Serialize, Deserialize, ts_rs::TS)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-#[ts(use_ts_enum)]
-pub enum DevicePollStatus {
-    SlowDown,
-    AuthorizationPending,
-    Success,
-}
-
-#[derive(Serialize, Deserialize, ts_rs::TS)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-#[ts(use_ts_enum)]
-pub enum CheckTokenResponse {
-    Valid,
-    Invalid,
-}
-
-/// POST /auth/github/device/poll
-async fn device_poll(
-    State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<DevicePollStatus>>, ApiError> {
-    let user_info = match deployment.auth().device_poll().await {
-        Ok(info) => info,
-        Err(AuthError::Pending(Continue::SlowDown)) => {
-            return Ok(ResponseJson(ApiResponse::success(
-                DevicePollStatus::SlowDown,
-            )));
-        }
-        Err(AuthError::Pending(Continue::AuthorizationPending)) => {
-            return Ok(ResponseJson(ApiResponse::success(
-                DevicePollStatus::AuthorizationPending,
-            )));
-        }
-        Err(e) => return Err(e.into()),
+    Json(payload): Json<ClerkSessionRequest>,
+) -> Result<ResponseJson<ApiResponse<ClerkSessionResponse>>, ApiError> {
+    let Some(auth) = deployment.clerk_service() else {
+        return Err(ApiError::Conflict(
+            "Clerk authentication is not configured".to_string(),
+        ));
     };
-    // Save to config
-    {
-        let config_path = utils::assets::config_path();
-        let mut config = deployment.config().write().await;
-        config.github.username = Some(user_info.username.clone());
-        config.github.primary_email = user_info.primary_email.clone();
-        config.github.oauth_token = Some(user_info.token.to_string());
-        config.github_login_acknowledged = true; // Also acknowledge the GitHub login step
-        save_config_to_file(&config.clone(), &config_path).await?;
+
+    let token = payload.token.trim().to_owned();
+    if token.is_empty() {
+        return Err(ApiError::Unauthorized);
     }
-    let _ = deployment.update_sentry_scope().await;
-    let props = serde_json::json!({
-        "username": user_info.username,
-        "email": user_info.primary_email,
+
+    let identity = match auth.verify(&token).await {
+        Ok(identity) => identity,
+        Err(err) => {
+            tracing::warn!(?err, "failed to verify Clerk session during registration");
+            return Err(ApiError::Unauthorized);
+        }
+    };
+
+    let user_identity = match auth.identify(&token).await {
+        Ok(identity) => Some(identity),
+        Err(ClerkServiceError::RemoteNotConfigured) => None,
+        Err(err) => {
+            tracing::warn!(
+                ?err,
+                "failed to fetch remote identity during Clerk session registration"
+            );
+            None
+        }
+    };
+
+    let session = ClerkSession::from_parts(token.clone(), identity.clone());
+    deployment.clerk_sessions().set(session.clone()).await;
+
+    // Refresh remote metadata for all projects on Clerk session change
+    deployment.refresh_remote_metadata_background();
+
+    let mut identify_props = serde_json::json!({
+        "clerk_user_id": session.user_id.clone(),
     });
+    if let Some(props) = identify_props.as_object_mut() {
+        if let Some(org_id) = &session.org_id {
+            props.insert("clerk_org_id".to_string(), serde_json::json!(org_id));
+        }
+        if let Some(org_slug) = &session.org_slug {
+            props.insert("clerk_org_slug".to_string(), serde_json::json!(org_slug));
+        }
+        if let Some(identity) = &user_identity {
+            props.insert(
+                "email".to_string(),
+                serde_json::json!(identity.email.clone()),
+            );
+            if let Some(username) = &identity.username {
+                props.insert("username".to_string(), serde_json::json!(username));
+            }
+        }
+    }
+
+    if let Some(identity) = user_identity.as_ref() {
+        if let Err(err) = sync_user_identity(&deployment, identity).await {
+            tracing::error!(?err, "failed to sync Clerk identity after login");
+        } else if let Err(err) = deployment.update_sentry_scope().await {
+            tracing::warn!(?err, "failed to update Sentry scope after Clerk login");
+        }
+    }
+
     deployment
-        .track_if_analytics_allowed("$identify", props)
+        .track_if_analytics_allowed("$identify", identify_props)
         .await;
-    Ok(ResponseJson(ApiResponse::success(
-        DevicePollStatus::Success,
-    )))
+
+    let response = ClerkSessionResponse {
+        user_id: session.user_id.clone(),
+        organization_id: session.org_id.clone(),
+        session_id: session.session_id.clone(),
+        expires_at: session.expires_at,
+    };
+
+    Ok(ResponseJson(ApiResponse::success(response)))
 }
 
-/// GET /auth/github/check
-async fn github_check_token(
-    State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<CheckTokenResponse>>, ApiError> {
-    let gh_config = deployment.config().read().await.github.clone();
-    let Some(token) = gh_config.token() else {
-        return Ok(ResponseJson(ApiResponse::success(
-            CheckTokenResponse::Invalid,
-        )));
-    };
-    let gh = GitHubService::new(&token)?;
-    match gh.check_token().await {
-        Ok(()) => Ok(ResponseJson(ApiResponse::success(
-            CheckTokenResponse::Valid,
-        ))),
-        Err(GitHubServiceError::TokenInvalid) => Ok(ResponseJson(ApiResponse::success(
-            CheckTokenResponse::Invalid,
-        ))),
-        Err(e) => Err(e.into()),
+/// Synchronize the user identity from Clerk with the local deployment config.
+async fn sync_user_identity(
+    deployment: &DeploymentImpl,
+    identity: &UserIdentity,
+) -> Result<(), ConfigError> {
+    let mut config = deployment.config().write().await;
+    let mut updated = false;
+
+    if config.github.username != identity.username {
+        config.github.username = identity.username.clone();
+        updated = true;
     }
+
+    if config.github.primary_email.as_deref() != Some(identity.email.as_str()) {
+        config.github.primary_email = Some(identity.email.clone());
+        updated = true;
+    }
+
+    if updated {
+        let snapshot = config.clone();
+        drop(config);
+        let config_path = config_path();
+        save_config_to_file(&snapshot, &config_path).await?;
+    } else {
+        drop(config);
+    }
+
+    Ok(())
+}
+
+async fn clear_clerk_session(State(deployment): State<DeploymentImpl>) -> StatusCode {
+    deployment.clerk_sessions().clear().await;
+    StatusCode::NO_CONTENT
 }
 
 /// Middleware to set Sentry user context for every request

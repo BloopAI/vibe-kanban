@@ -4,7 +4,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card.tsx';
-import { Badge } from '@/components/ui/badge.tsx';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -88,7 +87,6 @@ function ProjectCard({
         <div className="flex items-start justify-between">
           <CardTitle className="text-lg">{project.name}</CardTitle>
           <div className="flex items-center gap-2">
-            <Badge variant="secondary">Active</Badge>
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">

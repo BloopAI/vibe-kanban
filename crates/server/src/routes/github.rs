@@ -7,6 +7,7 @@ use axum::{
     response::Json as ResponseJson,
     routing::{get, post},
 };
+use secrecy::ExposeSecret;
 use serde::Deserialize;
 use ts_rs::TS;
 use uuid::Uuid;
@@ -15,14 +16,15 @@ use crate::{
     app_state::AppState,
     models::{
         ApiResponse,
-        project::{CreateProject, Project},
+        project::{CreateProject, Project, ProjectRemoteMetadata},
     },
     services::{
         GitHubServiceError,
         git_service::GitService,
-        github_service::{GitHubService, RepositoryInfo},
+        github_service::{GitHubRepoInfo, GitHubService, RepositoryInfo},
     },
 };
+use services::services::token::GitHubTokenSource;
 
 #[derive(Debug, Deserialize, TS)]
 pub struct CreateProjectFromGitHub {
@@ -46,22 +48,21 @@ pub async fn list_repositories(
 ) -> Result<ResponseJson<ApiResponse<Vec<RepositoryInfo>>>, StatusCode> {
     let page = params.page.unwrap_or(1);
 
-    // Get GitHub configuration
-    let github_config = {
-        let config = app_state.get_config().read().await;
-        config.github.clone()
+    let token_provider = app_state.token_provider();
+    let github_token = match token_provider.access_token().await {
+        Ok(token) => token,
+        Err(err) => {
+            if err.is_missing_token() {
+                return Ok(ResponseJson(ApiResponse::error(
+                    "GitHub token not configured. Please authenticate with GitHub first.",
+                )));
+            }
+            tracing::error!("Failed to acquire GitHub access token: {}", err);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
     };
 
-    // Check if GitHub is configured
-    if github_config.token.is_none() {
-        return Ok(ResponseJson(ApiResponse::error(
-            "GitHub token not configured. Please authenticate with GitHub first.",
-        )));
-    }
-
-    // Create GitHub service with token
-    let github_token = github_config.token.as_deref().unwrap();
-    let github_service = match GitHubService::new(github_token) {
+    let github_service = match GitHubService::new(github_token.token.expose_secret()) {
         Ok(service) => service,
         Err(e) => {
             tracing::error!("Failed to create GitHub service: {}", e);
@@ -79,9 +80,14 @@ pub async fn list_repositories(
             );
             Ok(ResponseJson(ApiResponse::success(repositories)))
         }
-        Err(GitHubServiceError::TokenInvalid) => Ok(ResponseJson(ApiResponse::error(
-            "GitHub token is invalid or expired. Please re-authenticate with GitHub.",
-        ))),
+        Err(GitHubServiceError::TokenInvalid) => {
+            if matches!(github_token.source, GitHubTokenSource::ClerkOAuth) {
+                token_provider.invalidate().await;
+            }
+            Ok(ResponseJson(ApiResponse::error(
+                "GitHub token is invalid or expired. Please re-authenticate with GitHub.",
+            )))
+        }
         Err(e) => {
             tracing::error!("Failed to list GitHub repositories: {}", e);
             Ok(ResponseJson(ApiResponse::error(&format!(
@@ -133,14 +139,27 @@ pub async fn create_project_from_github(
         }
     }
 
-    // Get GitHub token
-    let github_token = {
-        let config = app_state.get_config().read().await;
-        config.github.token.clone()
+    let token_provider = app_state.token_provider();
+    let github_token = match token_provider.access_token().await {
+        Ok(token) => Some(token),
+        Err(err) => {
+            if err.is_missing_token() {
+                None
+            } else {
+                tracing::error!("Failed to acquire GitHub access token: {}", err);
+                return Err(StatusCode::INTERNAL_SERVER_ERROR);
+            }
+        }
     };
 
     // Clone the repository
-    match GitService::clone_repository(&payload.clone_url, &target_path, github_token.as_deref()) {
+    match GitService::clone_repository(
+        &payload.clone_url,
+        &target_path,
+        github_token
+            .as_ref()
+            .map(|token| token.token.expose_secret()),
+    ) {
         Ok(_) => {
             tracing::info!(
                 "Successfully cloned repository {} to {}",
@@ -169,8 +188,36 @@ pub async fn create_project_from_github(
         cleanup_script: payload.cleanup_script,
     };
 
+    let mut remote_metadata = ProjectRemoteMetadata {
+        has_remote: true,
+        github_repo_owner: None,
+        github_repo_name: None,
+        github_repo_id: Some(payload.repository_id),
+    };
+
+    match GitHubRepoInfo::from_remote_url(&payload.clone_url) {
+        Ok(info) => {
+            remote_metadata.github_repo_owner = Some(info.owner);
+            remote_metadata.github_repo_name = Some(info.repo_name);
+        }
+        Err(err) => {
+            tracing::warn!(
+                "Failed to derive repo owner/name from clone url '{}': {}",
+                payload.clone_url,
+                err
+            );
+        }
+    }
+
     let project_id = Uuid::new_v4();
-    match Project::create(&app_state.db_pool, &project_data, project_id).await {
+    match Project::create(
+        &app_state.db_pool,
+        &project_data,
+        project_id,
+        Some(&remote_metadata),
+    )
+    .await
+    {
         Ok(project) => {
             // Track project creation event
             app_state

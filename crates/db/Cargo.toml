@@ -6,22 +6,15 @@ edition = "2024"
 [dependencies]
 utils = { path = "../utils" }
 executors = { path = "../executors" }
-tokio = { workspace = true }
-tokio-util = { version = "0.7", features = ["io"] }
 thiserror = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
 sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "sqlite", "sqlite-preupdate-hook", "chrono", "uuid"] }
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
 ts-rs = { workspace = true }
-async-trait = "0.1"
-regex = "1.11.1"
-sentry-tracing = { version = "0.41.0", features = ["backtrace"] }
-futures-util = "0.3"
 strum = "0.27.2"
 strum_macros = "0.27.2"
 

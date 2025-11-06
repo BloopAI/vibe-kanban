@@ -48,6 +48,7 @@ use services::services::{
     git::{Commit, DiffTarget, GitService},
     image::ImageService,
     notification::NotificationService,
+    share::SharePublisher,
     worktree_manager::WorktreeManager,
 };
 use tokio::{sync::RwLock, task::JoinHandle};
@@ -71,9 +72,11 @@ pub struct LocalContainerService {
     image_service: ImageService,
     analytics: Option<AnalyticsContext>,
     approvals: Approvals,
+    publisher: Option<SharePublisher>,
 }
 
 impl LocalContainerService {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         db: DBService,
         msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
@@ -82,6 +85,7 @@ impl LocalContainerService {
         image_service: ImageService,
         analytics: Option<AnalyticsContext>,
         approvals: Approvals,
+        publisher: Option<SharePublisher>,
     ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
 
@@ -94,6 +98,7 @@ impl LocalContainerService {
             image_service,
             analytics,
             approvals,
+            publisher,
         }
     }
 
@@ -128,9 +133,27 @@ impl LocalContainerService {
     }
 
     /// Finalize task execution by updating status to InReview and sending notifications
-    async fn finalize_task(db: &DBService, config: &Arc<RwLock<Config>>, ctx: &ExecutionContext) {
-        if let Err(e) = Task::update_status(&db.pool, ctx.task.id, TaskStatus::InReview).await {
-            tracing::error!("Failed to update task status to InReview: {e}");
+    async fn finalize_task(
+        db: &DBService,
+        config: &Arc<RwLock<Config>>,
+        share: &Option<SharePublisher>,
+        ctx: &ExecutionContext,
+    ) {
+        match Task::update_status(&db.pool, ctx.task.id, TaskStatus::InReview).await {
+            Ok(_) => {
+                if let Some(publisher) = share
+                    && let Err(err) = publisher.update_shared_task_by_id(ctx.task.id, None).await
+                {
+                    tracing::warn!(
+                        ?err,
+                        "Failed to propagate shared task update for {}",
+                        ctx.task.id
+                    );
+                }
+            }
+            Err(e) => {
+                tracing::error!("Failed to update task status to InReview: {e}");
+            }
         }
         let notify_cfg = config.read().await.notifications.clone();
         NotificationService::notify_execution_halted(notify_cfg, ctx).await;
@@ -303,6 +326,7 @@ impl LocalContainerService {
         let config = self.config.clone();
         let container = self.clone();
         let analytics = self.analytics.clone();
+        let publisher = self.publisher.clone();
 
         let mut process_exit_rx = self.spawn_os_exit_watcher(exec_id);
 
@@ -405,12 +429,12 @@ impl LocalContainerService {
                         );
 
                         // Manually finalize task since we're bypassing normal execution flow
-                        Self::finalize_task(&db, &config, &ctx).await;
+                        Self::finalize_task(&db, &config, &publisher, &ctx).await;
                     }
                 }
 
                 if Self::should_finalize(&ctx) {
-                    Self::finalize_task(&db, &config, &ctx).await;
+                    Self::finalize_task(&db, &config, &publisher, &ctx).await;
                     // After finalization, check if a queued follow-up exists and start it
                     if let Err(e) = container.try_consume_queued_followup(&ctx).await {
                         tracing::error!(
@@ -656,6 +680,10 @@ impl ContainerService for LocalContainerService {
         &self.git
     }
 
+    fn share_publisher(&self) -> Option<&SharePublisher> {
+        self.publisher.as_ref()
+    }
+
     async fn git_branch_prefix(&self) -> String {
         self.config.read().await.git_branch_prefix.clone()
     }
@@ -881,10 +909,24 @@ impl ContainerService for LocalContainerService {
                 ctx.execution_process.run_reason,
                 ExecutionProcessRunReason::DevServer
             )
-            && let Err(e) =
-                Task::update_status(&self.db.pool, ctx.task.id, TaskStatus::InReview).await
         {
-            tracing::error!("Failed to update task status to InReview: {e}");
+            match Task::update_status(&self.db.pool, ctx.task.id, TaskStatus::InReview).await {
+                Ok(_) => {
+                    if let Some(publisher) = self.share_publisher()
+                        && let Err(err) =
+                            publisher.update_shared_task_by_id(ctx.task.id, None).await
+                    {
+                        tracing::warn!(
+                            ?err,
+                            "Failed to propagate shared task update for {}",
+                            ctx.task.id
+                        );
+                    }
+                }
+                Err(e) => {
+                    tracing::error!("Failed to update task status to InReview: {e}");
+                }
+            }
         }
 
         tracing::debug!(

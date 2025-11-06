@@ -11,9 +11,9 @@ use deployment::DeploymentError;
 use executors::executors::ExecutorError;
 use git2::Error as Git2Error;
 use services::services::{
-    auth::AuthError, config::ConfigError, container::ContainerError, drafts::DraftsServiceError,
-    git::GitServiceError, github_service::GitHubServiceError, image::ImageError,
-    worktree_manager::WorktreeError,
+    config::ConfigError, container::ContainerError, drafts::DraftsServiceError,
+    git::GitServiceError, github_service::GitHubServiceError, image::ImageError, share::ShareError,
+    token::GitHubTokenError, worktree_manager::WorktreeError,
 };
 use thiserror::Error;
 use utils::response::ApiResponse;
@@ -31,8 +31,6 @@ pub enum ApiError {
     GitService(#[from] GitServiceError),
     #[error(transparent)]
     GitHubService(#[from] GitHubServiceError),
-    #[error(transparent)]
-    Auth(#[from] AuthError),
     #[error(transparent)]
     Deployment(#[from] DeploymentError),
     #[error(transparent)]
@@ -53,8 +51,12 @@ pub enum ApiError {
     Multipart(#[from] MultipartError),
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
+    #[error("Unauthorized")]
+    Unauthorized,
     #[error("Conflict: {0}")]
     Conflict(String),
+    #[error("Forbidden: {0}")]
+    Forbidden(String),
 }
 
 impl From<Git2Error> for ApiError {
@@ -85,7 +87,6 @@ impl IntoResponse for ApiError {
                 _ => (StatusCode::INTERNAL_SERVER_ERROR, "GitServiceError"),
             },
             ApiError::GitHubService(_) => (StatusCode::INTERNAL_SERVER_ERROR, "GitHubServiceError"),
-            ApiError::Auth(_) => (StatusCode::INTERNAL_SERVER_ERROR, "AuthError"),
             ApiError::Deployment(_) => (StatusCode::INTERNAL_SERVER_ERROR, "DeploymentError"),
             ApiError::Container(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ContainerError"),
             ApiError::Executor(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ExecutorError"),
@@ -113,7 +114,9 @@ impl IntoResponse for ApiError {
             },
             ApiError::Io(_) => (StatusCode::INTERNAL_SERVER_ERROR, "IoError"),
             ApiError::Multipart(_) => (StatusCode::BAD_REQUEST, "MultipartError"),
+            ApiError::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized"),
             ApiError::Conflict(_) => (StatusCode::CONFLICT, "ConflictError"),
+            ApiError::Forbidden(_) => (StatusCode::FORBIDDEN, "ForbiddenError"),
         };
 
         let error_message = match &self {
@@ -137,7 +140,9 @@ impl IntoResponse for ApiError {
                 _ => format!("{}: {}", error_type, self),
             },
             ApiError::Multipart(_) => "Failed to upload file. Please ensure the file is valid and try again.".to_string(),
+            ApiError::Unauthorized => "Unauthorized. Please sign in again.".to_string(),
             ApiError::Conflict(msg) => msg.clone(),
+            ApiError::Forbidden(msg) => msg.clone(),
             ApiError::Drafts(drafts_err) => match drafts_err {
                 DraftsServiceError::Conflict(msg) => msg.clone(),
                 DraftsServiceError::Database(_) => format!("{}: {}", error_type, drafts_err),
@@ -151,5 +156,70 @@ impl IntoResponse for ApiError {
         };
         let response = ApiResponse::<()>::error(&error_message);
         (status_code, Json(response)).into_response()
+    }
+}
+
+impl From<ShareError> for ApiError {
+    fn from(err: ShareError) -> Self {
+        match err {
+            ShareError::Database(db_err) => ApiError::Database(db_err),
+            ShareError::AlreadyShared(_) => ApiError::Conflict("Task already shared".to_string()),
+            ShareError::TaskNotFound(_) => {
+                ApiError::Conflict("Task not found for sharing".to_string())
+            }
+            ShareError::ProjectNotFound(_) => {
+                ApiError::Conflict("Project not found for sharing".to_string())
+            }
+            ShareError::MissingProjectMetadata(project_id) => {
+                tracing::warn!(
+                    %project_id,
+                    "project missing GitHub metadata required for sharing"
+                );
+                ApiError::Conflict(
+                    "This project needs a linked GitHub repository before tasks can be shared. Open the project settings, connect GitHub, and try again."
+                        .to_string(),
+                )
+            }
+            ShareError::MissingConfig(reason) => {
+                ApiError::Conflict(format!("Share service not configured: {reason}"))
+            }
+            ShareError::Transport(err) => {
+                tracing::error!(?err, "share task transport error");
+                ApiError::Conflict("Failed to share task with remote service".to_string())
+            }
+            ShareError::Serialization(err) => {
+                tracing::error!(?err, "share task serialization error");
+                ApiError::Conflict("Failed to parse remote share response".to_string())
+            }
+            ShareError::Url(err) => {
+                tracing::error!(?err, "share task URL error");
+                ApiError::Conflict("Share service URL is invalid".to_string())
+            }
+            ShareError::WebSocket(err) => {
+                tracing::error!(?err, "share task websocket error");
+                ApiError::Conflict("Unexpected websocket error during sharing".to_string())
+            }
+            ShareError::InvalidResponse => ApiError::Conflict(
+                "Remote share service returned an unexpected response".to_string(),
+            ),
+            ShareError::MissingGitHubToken => ApiError::Conflict(
+                "GitHub token is required to fetch repository metadata for sharing".to_string(),
+            ),
+            ShareError::Git(err) => ApiError::GitService(err),
+            ShareError::GitHub(err) => ApiError::GitHubService(err),
+            ShareError::MissingAuth => ApiError::Unauthorized,
+        }
+    }
+}
+
+impl From<GitHubTokenError> for ApiError {
+    fn from(err: GitHubTokenError) -> Self {
+        if err.is_missing_token() {
+            tracing::warn!(?err, "GitHub token missing or not configured");
+            ApiError::Unauthorized
+        } else {
+            tracing::error!(?err, "Failed to acquire GitHub access token");
+            ApiError::GitHubService(GitHubServiceError::TokenInvalid)
+        }
     }
 }

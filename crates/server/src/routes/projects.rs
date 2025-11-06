@@ -17,6 +17,8 @@ use services::services::{
     file_ranker::FileRanker,
     file_search_cache::{CacheError, SearchMode, SearchQuery},
     git::GitBranch,
+    metadata::compute_remote_metadata,
+    share::link_shared_tasks_to_project,
 };
 use utils::{path::expand_tilde, response::ApiResponse};
 use uuid::Uuid;
@@ -133,6 +135,9 @@ pub async fn create_project(
         }
     }
 
+    let remote_metadata =
+        compute_remote_metadata(deployment.git(), &deployment.token_provider(), &path).await;
+
     match Project::create(
         &deployment.db().pool,
         &CreateProject {
@@ -145,6 +150,7 @@ pub async fn create_project(
             copy_files,
         },
         id,
+        Some(&remote_metadata),
     )
     .await
     {
@@ -162,6 +168,18 @@ pub async fn create_project(
                     }),
                 )
                 .await;
+
+            if let Some(_) = deployment.share_publisher()
+                && let Some(github_repo_id) = remote_metadata.github_repo_id
+            {
+                link_shared_tasks_to_project(
+                    &deployment.db().pool,
+                    deployment.clerk_sessions(),
+                    id,
+                    github_repo_id,
+                )
+                .await?;
+            }
 
             Ok(ResponseJson(ApiResponse::success(project)))
         }
@@ -211,6 +229,13 @@ pub async fn update_project(
         existing_project.git_repo_path
     };
 
+    let remote_metadata = compute_remote_metadata(
+        deployment.git(),
+        &deployment.token_provider(),
+        &git_repo_path,
+    )
+    .await;
+
     match Project::update(
         &deployment.db().pool,
         existing_project.id,
@@ -220,6 +245,7 @@ pub async fn update_project(
         dev_script,
         cleanup_script,
         copy_files,
+        &remote_metadata,
     )
     .await
     {

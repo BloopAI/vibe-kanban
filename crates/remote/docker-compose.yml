@@ -1,0 +1,38 @@
+services:
+  remote-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: remote
+      POSTGRES_USER: remote
+      POSTGRES_PASSWORD: remote
+    volumes:
+      - remote-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U remote -d remote"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    ports:
+      - "5432:5432"
+
+  remote-server:
+    build:
+      context: ../..
+      dockerfile: crates/remote/Dockerfile
+    depends_on:
+      remote-db:
+        condition: service_healthy
+    environment:
+      SERVER_DATABASE_URL: postgres://remote:remote@remote-db:5432/remote
+      SERVER_LISTEN_ADDR: 0.0.0.0:8081
+      SERVER_ACTIVITY_CHANNEL: activity
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:?set in .env.remote}
+      CLERK_ISSUER: ${CLERK_ISSUER:?set in .env.remote}
+      CLERK_API_URL: ${CLERK_API_URL:-https://api.clerk.com/v1/}
+    ports:
+      - "8081:8081"
+    restart: unless-stopped
+
+volumes:
+  remote-db-data:

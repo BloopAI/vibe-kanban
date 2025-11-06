@@ -4,7 +4,6 @@ import {
   ApprovalStatus,
   ApiResponse,
   BranchStatus,
-  CheckTokenResponse,
   Config,
   CommitInfo,
   CreateFollowUpAttempt,
@@ -13,8 +12,6 @@ import {
   CreateAndStartTaskRequest,
   CreateTaskAttemptBody,
   CreateTag,
-  DeviceFlowStartResponse,
-  DevicePollStatus,
   DirectoryListResponse,
   DirectoryEntry,
   EditorType,
@@ -24,12 +21,14 @@ import {
   CreateProject,
   RepositoryInfo,
   SearchResult,
+  ShareTaskResponse,
   Task,
   TaskAttempt,
   TaskRelationships,
   Tag,
   TagSearchParams,
   TaskWithAttemptStatus,
+  AssignSharedTaskResponse,
   UpdateProject,
   UpdateTask,
   UpdateTag,
@@ -52,6 +51,7 @@ import {
   RunAgentSetupRequest,
   RunAgentSetupResponse,
 } from 'shared/types';
+import { buildClerkAuthHeaders } from './clerk';
 
 // Re-export types for convenience
 export type { RepositoryInfo } from 'shared/types';
@@ -78,14 +78,16 @@ class ApiError<E = unknown> extends Error {
 }
 
 const makeRequest = async (url: string, options: RequestInit = {}) => {
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(options.headers || {}),
-  };
+  const headers = new Headers(options.headers ?? {});
+  if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  const headersWithAuth = await buildClerkAuthHeaders(headers);
 
   return fetch(url, {
     ...options,
-    headers,
+    headers: headersWithAuth,
   });
 };
 
@@ -316,6 +318,40 @@ export const tasksApi = {
 
   delete: async (taskId: string): Promise<void> => {
     const response = await makeRequest(`/api/tasks/${taskId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  share: async (taskId: string): Promise<ShareTaskResponse> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/share`, {
+      method: 'POST',
+    });
+    return handleApiResponse<ShareTaskResponse>(response);
+  },
+
+  reassign: async (
+    sharedTaskId: string,
+    data: { new_assignee_user_id: string | null; version?: number | null }
+  ): Promise<AssignSharedTaskResponse> => {
+    const payload = {
+      new_assignee_user_id: data.new_assignee_user_id,
+      version: data.version ?? null,
+    };
+
+    const response = await makeRequest(
+      `/api/shared-tasks/${sharedTaskId}/assign`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    );
+
+    return handleApiResponse<AssignSharedTaskResponse>(response);
+  },
+
+  unshare: async (sharedTaskId: string): Promise<void> => {
+    const response = await makeRequest(`/api/shared-tasks/${sharedTaskId}`, {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
@@ -688,26 +724,6 @@ export const configApi = {
   },
 };
 
-// GitHub Device Auth APIs
-export const githubAuthApi = {
-  checkGithubToken: async (): Promise<CheckTokenResponse> => {
-    const response = await makeRequest('/api/auth/github/check');
-    return handleApiResponse<CheckTokenResponse>(response);
-  },
-  start: async (): Promise<DeviceFlowStartResponse> => {
-    const response = await makeRequest('/api/auth/github/device/start', {
-      method: 'POST',
-    });
-    return handleApiResponse<DeviceFlowStartResponse>(response);
-  },
-  poll: async (): Promise<DevicePollStatus> => {
-    const response = await makeRequest('/api/auth/github/device/poll', {
-      method: 'POST',
-    });
-    return handleApiResponse<DevicePollStatus>(response);
-  },
-};
-
 // GitHub APIs (only available in cloud mode)
 export const githubApi = {
   listRepositories: async (page: number = 1): Promise<RepositoryInfo[]> => {
@@ -813,10 +829,13 @@ export const imagesApi = {
     const formData = new FormData();
     formData.append('image', file);
 
+    const headers = await buildClerkAuthHeaders();
+
     const response = await fetch('/api/images/upload', {
       method: 'POST',
       body: formData,
       credentials: 'include',
+      headers,
     });
 
     if (!response.ok) {
@@ -835,10 +854,13 @@ export const imagesApi = {
     const formData = new FormData();
     formData.append('image', file);
 
+    const headers = await buildClerkAuthHeaders();
+
     const response = await fetch(`/api/images/task/${taskId}/upload`, {
       method: 'POST',
       body: formData,
       credentials: 'include',
+      headers,
     });
 
     if (!response.ok) {

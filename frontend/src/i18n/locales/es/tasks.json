@@ -2,10 +2,17 @@
   "actions": {
     "addTask": "Agregar tarea"
   },
+  "filters": {
+    "sharedToggleAria": "Alternar tareas compartidas",
+    "sharedToggleTooltip": "Mostrar/ocultar contenido compartido"
+  },
   "actionsMenu": {
     "attempt": "Attempt",
     "createNewAttempt": "Create new attempt",
     "createSubtask": "Create subtask",
+    "share": "Compartir tarea",
+    "reassign": "Reasignar",
+    "stopShare": "Dejar de compartir",
     "duplicate": "Duplicate",
     "editBranchName": "Editar nombre de rama",
     "gitActions": "Acciones de Git",
@@ -59,6 +66,44 @@
     "runSetup": "Ejecutar Configuración",
     "setupHelpText": "{{agent}} no está configurado correctamente. Haz clic en 'Ejecutar Configuración' para instalarlo e iniciar sesión.",
     "devScriptMissingTooltip": "To start the dev server, add a dev script to this project"
+  },
+  "stopShareDialog": {
+    "title": "Detener uso compartido de la tarea",
+    "description": "¿Detener el uso compartido de \"{{title}}\" con tu organización?",
+    "warning": "Detiene el uso compartido de la tarea con tu organización, pero mantiene tu tarea local.",
+    "confirm": "Dejar de compartir tarea",
+    "inProgress": "Deteniendo el uso compartido...",
+    "genericError": "No se pudo dejar de compartir la tarea. Inténtalo de nuevo."
+  },
+  "shareDialog": {
+    "title": "Compartir tarea",
+    "description": "¿Compartir \"{{title}}\" con tu organización?",
+    "success": "Tarea compartida correctamente.",
+    "genericError": "No se pudo compartir la tarea. Inténtalo de nuevo.",
+    "loadingSystem": "Cargando estado de cuenta…",
+    "loginRequired": {
+      "title": "Inicia sesión para continuar",
+      "description": "Debes iniciar sesión antes de poder compartir tareas. Te redirigiremos a la página de inicio de sesión.",
+      "action": "Ir a iniciar sesión"
+    },
+    "githubRequired": {
+      "title": "Conecta GitHub",
+      "description": "Conecta tu cuenta de GitHub para que podamos publicar tareas compartidas por ti.",
+      "action": "Conectar GitHub"
+    },
+    "confirmationTitle": "Confirma el uso compartido",
+    "confirmationBody": "Compartir publicará esta tarea en tu espacio de trabajo compartido.",
+    "cancel": "Cancelar",
+    "confirm": "Compartir tarea",
+    "inProgress": "Compartiendo…",
+    "closeButton": "Cerrar"
+  },
+  "createPrDialog": {
+    "loginRequired": {
+      "title": "Inicia sesión para crear un pull request",
+      "description": "Debes iniciar sesión antes de poder abrir un pull request para esta tarea. Te llevaremos a la página de inicio de sesión.",
+      "action": "Iniciar sesión"
+    }
   },
   "attemptHeaderActions": {
     "diffs": "Diffs",
@@ -133,7 +178,12 @@
     },
     "actions": {
       "title": "Acciones de Git",
-      "prMerged": "PR #{{number}} ya está fusionado"
+      "prMerged": "PR #{{number}} ya está fusionado",
+      "loginRequired": {
+        "title": "Inicia sesión para gestionar acciones de Git",
+        "description": "Inicia sesión en Vibe Kanban para enviar ramas, fusionar cambios o abrir pull requests para esta tarea.",
+        "action": "Iniciar sesión"
+      }
     },
     "states": {
       "createPr": "Crear PR",
@@ -301,6 +351,28 @@
       "previous": "Anterior",
       "next": "Siguiente",
       "finish": "Finalizar"
+    }
+  },
+  "loginPrompt": {
+    "title": "Iniciar sesión en Vibe Kanban",
+    "description": "Desbloquea funciones de colaboración en equipo",
+    "features": {
+      "pullRequests": {
+        "title": "Crear pull requests",
+        "description": "Enviar cambios directamente a GitHub"
+      },
+      "shareTasks": {
+        "title": "Compartir tareas con tu equipo",
+        "description": "Colaborar en el trabajo juntos"
+      },
+      "trackProgress": {
+        "title": "Ver lo que otros están haciendo",
+        "description": "Seguir el progreso del equipo en tiempo real"
+      }
+    },
+    "buttons": {
+      "skip": "Omitir por ahora",
+      "signIn": "Iniciar sesión"
     }
   }
 }

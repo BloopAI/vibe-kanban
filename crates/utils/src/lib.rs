@@ -5,6 +5,7 @@ use directories::ProjectDirs;
 pub mod approvals;
 pub mod assets;
 pub mod browser;
+pub mod clerk;
 pub mod diff;
 pub mod git;
 pub mod log_msg;
@@ -19,6 +20,7 @@ pub mod stream_lines;
 pub mod text;
 pub mod tokio;
 pub mod version;
+pub mod ws;
 
 /// Cache for WSL2 detection result
 static WSL2_CACHE: OnceLock<bool> = OnceLock::new();

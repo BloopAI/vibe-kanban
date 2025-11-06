@@ -1,6 +1,6 @@
 pub mod analytics;
 pub mod approvals;
-pub mod auth;
+pub mod clerk;
 pub mod config;
 pub mod container;
 pub mod diff_stream;
@@ -14,6 +14,9 @@ pub mod git;
 pub mod git_cli;
 pub mod github_service;
 pub mod image;
+pub mod metadata;
 pub mod notification;
 pub mod pr_monitor;
+pub mod share;
+pub mod token;
 pub mod worktree_manager;

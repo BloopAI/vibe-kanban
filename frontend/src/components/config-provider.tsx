@@ -12,10 +12,9 @@ import {
   type Environment,
   type UserSystemInfo,
   type BaseAgentCapability,
-  CheckTokenResponse,
 } from 'shared/types';
 import type { ExecutorConfig } from 'shared/types';
-import { configApi, githubAuthApi } from '../lib/api';
+import { configApi } from '../lib/api';
 import { updateLanguageFromConfig } from '../i18n/config';
 
 interface UserSystemState {
@@ -50,7 +49,6 @@ interface UserSystemContextType {
 
   // State
   loading: boolean;
-  githubTokenInvalid: boolean;
 }
 
 const UserSystemContext = createContext<UserSystemContextType | undefined>(
@@ -75,7 +73,6 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
   > | null>(null);
   const [analyticsUserId, setAnalyticsUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [githubTokenInvalid, setGithubTokenInvalid] = useState(false);
 
   useEffect(() => {
     const loadUserSystem = async () => {
@@ -109,27 +106,6 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       updateLanguageFromConfig(config.language);
     }
   }, [config?.language]);
-
-  // Check GitHub token validity after config loads
-  useEffect(() => {
-    if (loading) return;
-    const checkToken = async () => {
-      const valid = await githubAuthApi.checkGithubToken();
-      if (valid === undefined) {
-        // Network/server error: do not update githubTokenInvalid
-        return;
-      }
-      switch (valid) {
-        case CheckTokenResponse.VALID:
-          setGithubTokenInvalid(false);
-          break;
-        case CheckTokenResponse.INVALID:
-          setGithubTokenInvalid(true);
-          break;
-      }
-    };
-    checkToken();
-  }, [loading]);
 
   const updateConfig = useCallback((updates: Partial<Config>) => {
     setConfig((prev) => (prev ? { ...prev, ...updates } : null));
@@ -168,6 +144,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
   );
 
   const reloadSystem = useCallback(async () => {
+    setLoading(true);
     try {
       const userSystemInfo: UserSystemInfo = await configApi.getConfig();
       setConfig(userSystemInfo.config);
@@ -184,6 +161,8 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       );
     } catch (err) {
       console.error('Error reloading user system:', err);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -204,7 +183,6 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       setCapabilities,
       reloadSystem,
       loading,
-      githubTokenInvalid,
     }),
     [
       config,
@@ -217,7 +195,6 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       updateAndSaveConfig,
       reloadSystem,
       loading,
-      githubTokenInvalid,
     ]
   );
 

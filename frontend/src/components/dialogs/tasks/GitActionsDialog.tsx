@@ -20,6 +20,8 @@ import type {
   TaskWithAttemptStatus,
 } from 'shared/types';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { useAuth } from '@clerk/clerk-react';
+import { LoginRequiredPrompt } from '@/components/dialogs/shared/LoginRequiredPrompt';
 
 export interface GitActionsDialogProps {
   attemptId: string;
@@ -52,9 +54,9 @@ function GitActionsDialogContent({
     (m) => m.type === 'pr' && m.pr_info?.status === 'merged'
   );
 
-  if (mergedPR && mergedPR.type === 'pr') {
-    return (
-      <div className="space-y-4 py-4">
+  return (
+    <div className="space-y-4">
+      {mergedPR && mergedPR.type === 'pr' && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>
             {t('git.actions.prMerged', {
@@ -76,12 +78,7 @@ function GitActionsDialogContent({
             </a>
           )}
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
+      )}
       {gitError && (
         <div className="p-3 bg-red-50 border border-red-200 rounded text-destructive text-sm">
           {gitError}
@@ -107,6 +104,7 @@ export const GitActionsDialog = NiceModal.create<GitActionsDialogProps>(
     const modal = useModal();
     const { t } = useTranslation('tasks');
     const { project } = useProject();
+    const { isSignedIn, isLoaded } = useAuth();
 
     const effectiveProjectId = providedProjectId ?? project?.id;
     const { data: attempt } = useTaskAttempt(attemptId);
@@ -139,7 +137,7 @@ export const GitActionsDialog = NiceModal.create<GitActionsDialogProps>(
     };
 
     const isLoading =
-      !attempt || !effectiveProjectId || loadingBranches || !task;
+      !attempt || !effectiveProjectId || loadingBranches || !task || !isLoaded;
 
     return (
       <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
@@ -151,6 +149,17 @@ export const GitActionsDialog = NiceModal.create<GitActionsDialogProps>(
           {isLoading ? (
             <div className="py-8">
               <Loader size={24} />
+            </div>
+          ) : !isSignedIn ? (
+            <div className="py-6">
+              <LoginRequiredPrompt
+                mode="signIn"
+                buttonVariant="default"
+                buttonSize="default"
+                title={t('git.actions.loginRequired.title')}
+                description={t('git.actions.loginRequired.description')}
+                actionLabel={t('git.actions.loginRequired.action')}
+              />
             </div>
           ) : (
             <ExecutionProcessesProvider key={attempt.id} attemptId={attempt.id}>

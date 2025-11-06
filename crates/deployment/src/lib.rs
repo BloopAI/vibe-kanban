@@ -7,7 +7,7 @@ use db::{
     DBService,
     models::{
         execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
-        project::{CreateProject, Project},
+        project::{CreateProject, Project, ProjectRemoteMetadata},
         task::{Task, TaskStatus},
         task_attempt::{TaskAttempt, TaskAttemptError},
     },
@@ -19,7 +19,7 @@ use serde_json::Value;
 use services::services::{
     analytics::{AnalyticsContext, AnalyticsService},
     approvals::Approvals,
-    auth::{AuthError, AuthService},
+    clerk::{ClerkService, ClerkServiceError, ClerkSessionStore},
     config::{Config, ConfigError},
     container::{ContainerError, ContainerService},
     drafts::DraftsService,
@@ -29,12 +29,17 @@ use services::services::{
     filesystem_watcher::FilesystemWatcherError,
     git::{GitService, GitServiceError},
     image::{ImageError, ImageService},
+    metadata::compute_remote_metadata,
     pr_monitor::PrMonitorService,
+    share::{
+        RemoteSync, RemoteSyncHandle, ShareConfig, SharePublisher, link_shared_tasks_to_project,
+    },
+    token::GitHubTokenProvider,
     worktree_manager::WorktreeError,
 };
 use sqlx::{Error as SqlxError, types::Uuid};
 use thiserror::Error;
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 use utils::{msg_store::MsgStore, sentry as sentry_utils};
 
 #[derive(Debug, Error)]
@@ -56,8 +61,6 @@ pub enum DeploymentError {
     #[error(transparent)]
     Executor(#[from] ExecutorError),
     #[error(transparent)]
-    Auth(#[from] AuthError),
-    #[error(transparent)]
     Image(#[from] ImageError),
     #[error(transparent)]
     Filesystem(#[from] FilesystemError),
@@ -67,6 +70,8 @@ pub enum DeploymentError {
     Event(#[from] EventError),
     #[error(transparent)]
     Config(#[from] ConfigError),
+    #[error(transparent)]
+    Clerk(#[from] ClerkServiceError),
     #[error(transparent)]
     Other(#[from] AnyhowError),
 }
@@ -87,8 +92,6 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     fn container(&self) -> &impl ContainerService;
 
-    fn auth(&self) -> &AuthService;
-
     fn git(&self) -> &GitService;
 
     fn image(&self) -> &ImageService;
@@ -105,6 +108,44 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     fn drafts(&self) -> &DraftsService;
 
+    fn token_provider(&self) -> Arc<GitHubTokenProvider>;
+
+    fn clerk_sessions(&self) -> &ClerkSessionStore;
+
+    fn clerk_service(&self) -> Option<Arc<ClerkService>>;
+
+    fn share_publisher(&self) -> Option<SharePublisher>;
+
+    fn share_sync_handle(&self) -> &Arc<Mutex<Option<RemoteSyncHandle>>>;
+
+    fn spawn_remote_sync(&self, config: ShareConfig) {
+        let deployment = self.clone();
+        let handle_slot = self.share_sync_handle().clone();
+        tokio::spawn(async move {
+            tracing::info!("Waiting for authentication before starting shared task sync");
+            let session = deployment.clerk_sessions().wait_for_active().await;
+            if session.org_id.is_none() {
+                tracing::warn!(
+                    "Skipping shared task sync startup: Clerk session missing organization"
+                );
+                return;
+            }
+
+            tracing::info!("Refreshing project metadata prior to shared task sync");
+            deployment.refresh_remote_metadata().await;
+
+            let remote_sync_handle = RemoteSync::spawn(
+                deployment.db().clone(),
+                config,
+                deployment.clerk_sessions().clone(),
+            );
+            {
+                let mut guard = handle_slot.lock().await;
+                *guard = Some(remote_sync_handle);
+            }
+        });
+    }
+
     async fn update_sentry_scope(&self) -> Result<(), DeploymentError> {
         let user_id = self.user_id();
         let config = self.config().read().await;
@@ -117,7 +158,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     async fn spawn_pr_monitor_service(&self) -> tokio::task::JoinHandle<()> {
         let db = self.db().clone();
-        let config = self.config().clone();
+        let tokens = self.token_provider();
         let analytics = self
             .analytics()
             .as_ref()
@@ -125,7 +166,8 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                 user_id: self.user_id().to_string(),
                 analytics_service: analytics_service.clone(),
             });
-        PrMonitorService::spawn(db, config, analytics).await
+        let publisher = self.share_publisher().clone();
+        PrMonitorService::spawn(db, tokens, analytics, publisher).await
     }
 
     async fn track_if_analytics_allowed(&self, event_name: &str, properties: Value) {
@@ -190,13 +232,27 @@ pub trait Deployment: Clone + Send + Sync + 'static {
             ) && let Ok(Some(task_attempt)) =
                 TaskAttempt::find_by_id(&self.db().pool, process.task_attempt_id).await
                 && let Ok(Some(task)) = task_attempt.parent_task(&self.db().pool).await
-                && let Err(e) =
-                    Task::update_status(&self.db().pool, task.id, TaskStatus::InReview).await
             {
-                tracing::error!(
-                    "Failed to update task status to InReview for orphaned attempt: {}",
-                    e
-                );
+                match Task::update_status(&self.db().pool, task.id, TaskStatus::InReview).await {
+                    Ok(_) => {
+                        if let Some(publisher) = self.share_publisher()
+                            && let Err(err) =
+                                publisher.update_shared_task_by_id(task.id, None).await
+                        {
+                            tracing::warn!(
+                                ?err,
+                                "Failed to propagate shared task update for {}",
+                                task.id
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!(
+                            "Failed to update task status to InReview for orphaned attempt: {}",
+                            e
+                        );
+                    }
+                }
             }
         }
         Ok(())
@@ -288,7 +344,26 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
                     // Create project (ignore individual failures)
                     let project_id = Uuid::new_v4();
-                    match Project::create(&self.db().pool, &create_data, project_id).await {
+                    let remote_metadata = self
+                        .git()
+                        .get_remote_metadata(&repo.path)
+                        .unwrap_or_else(|error| {
+                            tracing::warn!(
+                                "Failed to read git remotes for auto-created project '{}': {}",
+                                create_data.git_repo_path,
+                                error
+                            );
+                            ProjectRemoteMetadata::default()
+                        });
+
+                    match Project::create(
+                        &self.db().pool,
+                        &create_data,
+                        project_id,
+                        Some(&remote_metadata),
+                    )
+                    .await
+                    {
                         Ok(project) => {
                             tracing::info!(
                                 "Auto-created project '{}' from {}",
@@ -330,5 +405,60 @@ pub trait Deployment: Clone + Send + Sync + 'static {
             .history_plus_stream()
             .map_ok(|m| m.to_sse_event())
             .boxed()
+    }
+
+    /// Refresh remote metadata for all projects
+    async fn refresh_remote_metadata(&self) {
+        let projects = match Project::find_all(&self.db().pool).await {
+            Ok(projects) => projects,
+            Err(err) => {
+                tracing::warn!("Failed to load projects for remote metadata refresh: {err}");
+                return;
+            }
+        };
+
+        for project in projects {
+            let repo_path = project.git_repo_path.clone();
+            let metadata =
+                compute_remote_metadata(self.git(), &self.token_provider(), repo_path.as_path())
+                    .await;
+            let github_repo_id_changed = metadata.github_repo_id != project.github_repo_id;
+
+            if let Err(err) =
+                Project::update_remote_metadata(&self.db().pool, project.id, &metadata).await
+            {
+                tracing::warn!(
+                    "Failed to update remote metadata for project '{}' ({}): {err}",
+                    project.name,
+                    repo_path.display()
+                );
+                continue;
+            }
+
+            if github_repo_id_changed
+                && let Some(repo_id) = metadata.github_repo_id
+                && let Err(err) = link_shared_tasks_to_project(
+                    &self.db().pool,
+                    self.clerk_sessions(),
+                    project.id,
+                    repo_id,
+                )
+                .await
+            {
+                tracing::warn!(
+                    project_id = %project.id,
+                    repo_id,
+                    "failed to link shared tasks after metadata refresh: {err}"
+                );
+            }
+        }
+    }
+
+    /// Spawn background task to refresh remote metadata for all projects
+    fn refresh_remote_metadata_background(&self) {
+        let d = self.clone();
+        tokio::spawn(async move {
+            d.refresh_remote_metadata().await;
+        });
     }
 }
