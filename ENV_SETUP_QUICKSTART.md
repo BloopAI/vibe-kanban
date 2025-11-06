@@ -1,21 +1,29 @@
 # Environment Setup Quick Reference
 
-## TL;DR - No Setup Needed! 🎉
+## TL;DR - Quick Setup! 🎉
 
-**Vibe Kanban works out of the box** with just a coding agent authenticated. No API keys or environment variables required for core features!
+**Vibe Kanban works out of the box** with minimal setup:
 
 ```bash
+# 1. Install dependencies
 pnpm i
+
+# 2. Create .env files (prevents console warnings)
+pnpm run setup:env
+
+# 3. Start dev server
 pnpm run dev
 ```
 
-## If You See Warnings...
+The `.env` files will be created with empty values - **no API keys required** for core features!
+
+## If You Skip Setup...
 
 ### "Missing CLERK_PUBLISHABLE_KEY"
 
 ✅ **Safe to ignore** - This is for optional task sharing features.
 
-Want to enable it? See [Option 3 below](#option-3-enable-all-features).
+To suppress the warning: Run `pnpm run setup:env` to create empty .env files.
 
 ### "POSTHOG_API_KEY not set"
 
@@ -36,7 +44,12 @@ This creates:
 - `.env` (backend build-time variables)
 - `frontend/.env` (frontend variables)
 
-Both files start empty/commented out since all variables are optional.
+**Key variables are uncommented with empty values** to:
+- ✅ Prevent console warnings
+- ✅ Show what can be configured
+- ✅ Work out of the box (empty = disabled)
+
+Simply fill in values to enable features!
 
 ### Option 2: Manual Setup
 
@@ -57,12 +70,17 @@ If you want task sharing, analytics, etc.:
 
 2. **Edit `frontend/.env` to enable task sharing:**
    ```env
+   # Change from:
+   VITE_CLERK_PUBLISHABLE_KEY=
+
+   # To:
    VITE_CLERK_PUBLISHABLE_KEY=pk_test_YOUR_KEY_HERE
    ```
    Get your key at: https://dashboard.clerk.com
 
 3. **Edit `.env` for backend features:**
    ```env
+   # Change from empty to actual values:
    CLERK_ISSUER=https://your-tenant.clerk.accounts.dev
    VK_SHARED_API_BASE=https://your-remote-api.com
    ```
@@ -107,10 +125,11 @@ Variables for React/Vite frontend:
 
 ```bash
 pnpm i
+pnpm run setup:env  # Creates .env files (optional but recommended)
 pnpm run dev
 ```
 
-**Done!** Ignore any warnings.
+**Done!** No warnings, everything works.
 
 ### "I want to share tasks with my team"
 
