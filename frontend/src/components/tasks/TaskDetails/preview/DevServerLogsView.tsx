@@ -52,9 +52,7 @@ export function DevServerLogsView({
             <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
             {showToggleText && (
               <span>
-                {showLogs
-                  ? t('preview.logs.hide')
-                  : t('preview.logs.show')}
+                {showLogs ? t('preview.logs.hide') : t('preview.logs.show')}
               </span>
             )}
           </div>
