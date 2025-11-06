@@ -5,34 +5,10 @@ use std::{
     env::{join_paths, split_paths},
     ffi::{OsStr, OsString},
     path::{Path, PathBuf},
+    process::Stdio,
 };
 
 use crate::tokio::block_on;
-
-/// Returns the shell config file path for the current user's shell.
-///
-/// Detects the shell from the SHELL environment variable and returns:
-/// - `~/.zshrc` for zsh
-/// - `~/.bashrc` for bash (or if detection fails)
-/// - None if the home directory cannot be determined
-#[cfg(not(windows))]
-pub fn get_shell_config_file() -> Option<PathBuf> {
-    let home = dirs::home_dir()?;
-
-    let shell_name = std::env::var("SHELL").ok().and_then(|shell| {
-        let path = Path::new(&shell);
-        path.file_name()
-            .and_then(OsStr::to_str)
-            .map(|s| s.to_string())
-    });
-
-    let config_file = match shell_name.as_deref() {
-        Some("zsh") => home.join(".zshrc"),
-        _ => home.join(".bashrc"),
-    };
-
-    Some(config_file)
-}
 
 /// Returns the appropriate shell command and argument for the current platform.
 ///
@@ -43,21 +19,7 @@ pub fn get_shell_command() -> (String, &'static str) {
     if cfg!(windows) {
         ("cmd".into(), "/C")
     } else {
-        // Prefer SHELL env var if set and valid
-        if let Ok(shell) = std::env::var("SHELL") {
-            let path = Path::new(&shell);
-            if path.is_absolute() && path.is_file() {
-                return (shell, "-c");
-            }
-        }
-        // Prefer zsh or bash if available, fallback to sh
-        if std::path::Path::new("/bin/zsh").exists() {
-            ("zsh".into(), "-c")
-        } else if std::path::Path::new("/bin/bash").exists() {
-            ("bash".into(), "-c")
-        } else {
-            ("sh".into(), "-c")
-        }
+        UnixShell::current_shell().get_shell_command()
     }
 }
 
@@ -139,20 +101,106 @@ async fn which(executable: &str) -> Option<PathBuf> {
         .and_then(|result| result.ok())
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum UnixShell {
+    Zsh,
+    Bash,
+    Sh,
+    Other(String),
+}
+
+impl UnixShell {
+    pub fn path(&self) -> PathBuf {
+        match self {
+            UnixShell::Zsh => PathBuf::from("/bin/zsh"),
+            UnixShell::Bash => PathBuf::from("/bin/bash"),
+            UnixShell::Sh => PathBuf::from("/bin/sh"),
+            UnixShell::Other(path) => PathBuf::from(path),
+        }
+    }
+    pub fn login(&self) -> bool {
+        match self {
+            UnixShell::Zsh => true,
+            UnixShell::Bash => true,
+            UnixShell::Sh => false,
+            UnixShell::Other(_) => false,
+        }
+    }
+    pub fn config_file(&self) -> Option<PathBuf> {
+        let home = dirs::home_dir()?;
+        let config_file = match self {
+            UnixShell::Zsh => Some(home.join(".zshrc")),
+            UnixShell::Bash => Some(home.join(".bashrc")),
+            UnixShell::Sh => None,
+            UnixShell::Other(_) => None,
+        };
+        if let Some(config_file) = config_file
+            && config_file.is_file()
+        {
+            Some(config_file)
+        } else {
+            None
+        }
+    }
+
+    pub fn source_command(&self) -> Option<String> {
+        if let Some(source_file) = self.config_file()
+            && let Ok(escaped_source_file) =
+                shlex::try_quote(source_file.to_string_lossy().as_ref())
+        {
+            Some(format!("source {escaped_source_file}"))
+        } else {
+            None
+        }
+    }
+    pub fn current_shell() -> UnixShell {
+        if let Ok(shell) = std::env::var("SHELL")
+            && let Some(shell) = UnixShell::from_path(Path::new(&shell))
+        {
+            return shell;
+        }
+        UnixShell::Sh
+    }
+    pub fn from_path(path: &Path) -> Option<UnixShell> {
+        if path.is_absolute() && path.is_file() {
+            if path.file_name() == Some(OsStr::new("zsh")) {
+                Some(UnixShell::Zsh)
+            } else if path.file_name() == Some(OsStr::new("bash")) {
+                Some(UnixShell::Bash)
+            } else if path.file_name() == Some(OsStr::new("sh")) {
+                Some(UnixShell::Sh)
+            } else {
+                Some(UnixShell::Other(path.to_string_lossy().into_owned()))
+            }
+        } else {
+            None
+        }
+    }
+    pub fn get_shell_command(&self) -> (String, &'static str) {
+        (self.path().to_string_lossy().into_owned(), "-c")
+    }
+}
+
 #[cfg(not(windows))]
 async fn get_fresh_path() -> Option<String> {
     use std::time::Duration;
 
     use tokio::process::Command;
 
-    async fn run(shell: &Path, login: bool) -> Option<String> {
-        let mut cmd = Command::new(shell);
-        if login {
+    async fn run(shell: &UnixShell) -> Option<String> {
+        let mut cmd = Command::new(shell.path());
+        if shell.login() {
             cmd.arg("-l");
         }
-        cmd.arg("-c")
-            .arg("printf '%s' \"$PATH\"")
-            .env("TERM", "dumb")
+        if let Some(source_command) = shell.source_command() {
+            cmd.arg("-c")
+                .arg(format!("{source_command}; printf '%s' \"$PATH\""));
+        } else {
+            cmd.arg("-c").arg("printf '%s' \"$PATH\"");
+        }
+        cmd.env("TERM", "dumb")
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
             .kill_on_drop(true);
 
         const PATH_REFRESH_COMMAND_TIMEOUT: Duration = Duration::from_secs(5);
@@ -167,7 +215,7 @@ async fn get_fresh_path() -> Option<String> {
             Ok(Ok(output)) => output,
             Ok(Err(err)) => {
                 tracing::debug!(
-                    shell = %shell.display(),
+                    shell = %shell.path().display(),
                     ?err,
                     "Failed to retrieve PATH from login shell"
                 );
@@ -175,7 +223,7 @@ async fn get_fresh_path() -> Option<String> {
             }
             Err(_) => {
                 tracing::warn!(
-                    shell = %shell.display(),
+                    shell = %shell.path().display(),
                     timeout_secs = PATH_REFRESH_COMMAND_TIMEOUT.as_secs(),
                     "Timed out retrieving PATH from login shell"
                 );
@@ -192,33 +240,15 @@ async fn get_fresh_path() -> Option<String> {
 
     let mut paths = Vec::new();
 
-    let shells = vec![
-        (PathBuf::from("/bin/zsh"), true),
-        (PathBuf::from("/bin/bash"), true),
-        (PathBuf::from("/bin/sh"), false),
-    ];
-
-    let mut current_shell_name = None;
-    if let Ok(shell) = std::env::var("SHELL") {
-        let path = Path::new(&shell);
-        if path.is_absolute() && path.is_file() {
-            current_shell_name = path.file_name().and_then(OsStr::to_str).map(String::from);
-            if let Some(path) = run(path, true).await {
-                paths.push(path);
-            }
-        }
+    let current_shell = UnixShell::current_shell();
+    if let Some(path) = run(&current_shell).await {
+        paths.push(path);
     }
 
-    for (shell_path, login) in shells {
-        if !shell_path.exists() {
-            continue;
-        }
-        let shell_name = shell_path
-            .file_name()
-            .and_then(OsStr::to_str)
-            .map(String::from);
-        if current_shell_name != shell_name
-            && let Some(path) = run(&shell_path, login).await
+    let shells = vec![UnixShell::Zsh, UnixShell::Bash, UnixShell::Sh];
+    for shell in shells {
+        if !(shell == current_shell)
+            && let Some(path) = run(&shell).await
         {
             paths.push(path);
         }

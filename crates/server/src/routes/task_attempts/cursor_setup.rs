@@ -13,7 +13,8 @@ use executors::{
     executors::cursor::CursorAgent,
 };
 use services::services::container::ContainerService;
-use utils::shell::get_shell_config_file;
+use shlex::try_quote;
+use utils::shell::UnixShell;
 
 use crate::{error::ApiError, routes::task_attempts::ensure_worktree_path};
 
@@ -56,15 +57,9 @@ async fn get_setup_helper_action() -> Result<ExecutorAction, ApiError> {
     #[cfg(unix)]
     {
         let base_command = CursorAgent::base_command();
-        let config_file = get_shell_config_file().ok_or_else(|| {
-            ApiError::TaskAttempt(TaskAttemptError::ValidationError(
-                "Could not determine shell config file path".to_string(),
-            ))
-        })?;
-        let config_file_str = config_file.to_string_lossy();
 
         // Install script with PATH setup
-        let install_script = format!(
+        let mut install_script = format!(
             r#"#!/bin/bash
 set -e
 if ! command -v {base_command} &> /dev/null; then
@@ -73,24 +68,30 @@ if ! command -v {base_command} &> /dev/null; then
     echo "Installation complete!"
 else
     echo "Cursor CLI already installed"
-fi
-
-echo "Setting up PATH..."
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> "{config_file_str}"
-"#
+fi"#
         );
+        let shell = UnixShell::current_shell();
+        if let Some(config_file) = shell.config_file()
+            && let Ok(config_file_str) = try_quote(config_file.to_string_lossy().as_ref())
+        {
+            install_script.push_str(&format!(
+                r#"
+            echo "Setting up PATH..."
+            echo 'export PATH="$HOME/.local/bin:$PATH"' >> {config_file_str}
+            "#
+            ));
+        }
 
         let install_request = ScriptRequest {
             script: install_script,
             language: ScriptRequestLanguage::Bash,
             context: ScriptContext::SetupScript,
         };
-
         // Second action (chained): Login
         let login_script = format!(
             r#"#!/bin/bash
 set -e
-source "{config_file_str}"
+export PATH="$HOME/.local/bin:$PATH"
 {base_command} login
 "#
         );

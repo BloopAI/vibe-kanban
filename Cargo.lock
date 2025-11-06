@@ -4032,10 +4032,7 @@ dependencies = [
  "local-deployment",
  "mime_guess",
  "nix 0.29.0",
-<<<<<<< HEAD
  "octocrab",
-=======
->>>>>>> 38a731e68 (Perfect! Here's what I implemented:)
  "openssl-sys",
  "os_info",
  "regex",
@@ -4046,6 +4043,7 @@ dependencies = [
  "serde",
  "serde_json",
  "services",
+ "shlex",
  "sqlx",
  "strip-ansi-escapes",
  "tempfile",
@@ -5260,6 +5258,7 @@ dependencies = [
  "serde",
  "serde_json",
  "shellexpand",
+ "shlex",
  "similar",
  "tokio",
  "tokio-stream",
