@@ -1074,7 +1074,7 @@ checksum = "2a2330da5de22e8a3cb63252ce2abb30116bf5265e89c0e01bc17015ce30a476"
 
 [[package]]
 name = "db"
-version = "0.0.115"
+version = "0.0.116"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1103,7 +1103,7 @@ dependencies = [
 
 [[package]]
 name = "deployment"
-version = "0.0.115"
+version = "0.0.116"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1454,7 +1454,7 @@ dependencies = [
 
 [[package]]
 name = "executors"
-version = "0.0.115"
+version = "0.0.116"
 dependencies = [
  "agent-client-protocol",
  "async-trait",
@@ -2668,7 +2668,7 @@ dependencies = [
 
 [[package]]
 name = "local-deployment"
-version = "0.0.115"
+version = "0.0.116"
 dependencies = [
  "anyhow",
  "async-stream",
@@ -2683,6 +2683,7 @@ dependencies = [
  "nix 0.29.0",
  "notify",
  "notify-debouncer-full",
+ "openssl-sys",
  "reqwest",
  "sentry",
  "serde_json",
@@ -3188,6 +3189,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d05e27ee213611ffe7d6348b942e8f942b37114c00cc03cec254295a4a17852e"
 
 [[package]]
+name = "openssl-src"
+version = "300.5.4+3.5.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a507b3792995dae9b0df8a1c1e3771e8418b7c2d9f0baeba32e6fe8b06c7cb72"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "openssl-sys"
 version = "0.9.110"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3195,6 +3205,7 @@ checksum = "0a9f0075ba3c21b09f8e8b2026584b1d18d49388648f2fbbf3c97ea8deced8e2"
 dependencies = [
  "cc",
  "libc",
+ "openssl-src",
  "pkg-config",
  "vcpkg",
 ]
@@ -3673,7 +3684,7 @@ checksum = "7a2d987857b319362043e95f5353c0535c1f58eec5336fdfcf626430af7def58"
 
 [[package]]
 name = "remote"
-version = "0.0.1"
+version = "0.0.116"
 dependencies = [
  "anyhow",
  "axum 0.8.6",
@@ -4345,7 +4356,7 @@ dependencies = [
 
 [[package]]
 name = "server"
-version = "0.0.115"
+version = "0.0.116"
 dependencies = [
  "anyhow",
  "axum 0.8.6",
@@ -4361,6 +4372,7 @@ dependencies = [
  "local-deployment",
  "mime_guess",
  "nix 0.29.0",
+ "openssl-sys",
  "os_info",
  "reqwest",
  "rmcp",
@@ -4386,7 +4398,7 @@ dependencies = [
 
 [[package]]
 name = "services"
-version = "0.0.115"
+version = "0.0.116"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4412,6 +4424,7 @@ dependencies = [
  "notify-rust",
  "octocrab",
  "once_cell",
+ "openssl-sys",
  "os_info",
  "regex",
  "remote",
@@ -5591,7 +5604,7 @@ checksum = "b6c140620e7ffbb22c2dee59cafe6084a59b5ffc27a8859a5f0d494b5d52b6be"
 
 [[package]]
 name = "utils"
-version = "0.0.115"
+version = "0.0.116"
 dependencies = [
  "async-stream",
  "async-trait",
