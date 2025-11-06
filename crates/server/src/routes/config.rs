@@ -6,7 +6,7 @@ use axum::{
     extract::{Path, Query, State},
     http,
     response::{Json as ResponseJson, Response},
-    routing::{get, put},
+    routing::{get, post, put},
 };
 use deployment::{Deployment, DeploymentError};
 use executors::{
@@ -16,7 +16,10 @@ use executors::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use services::services::config::{Config, ConfigError, SoundFile, save_config_to_file};
+use services::services::{
+    config::{Config, ConfigError, SoundFile, save_config_to_file},
+    gh_cli_setup::{ensure_gh_cli_authenticated, ensure_gh_cli_installed},
+};
 use tokio::fs;
 use ts_rs::TS;
 use utils::{assets::config_path, response::ApiResponse};
@@ -30,6 +33,7 @@ pub fn router() -> Router<DeploymentImpl> {
         .route("/sounds/{sound}", get(get_sound))
         .route("/mcp-config", get(get_mcp_servers).post(update_mcp_servers))
         .route("/profiles", get(get_profiles).put(update_profiles))
+        .route("/setup-gh-cli", post(setup_gh_cli))
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -439,5 +443,33 @@ async fn update_profiles(
             "Invalid executor profiles format: {}",
             e
         ))),
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct GhSetupResponse {
+    pub success: bool,
+    pub message: String,
+}
+
+async fn setup_gh_cli(
+    State(_deployment): State<DeploymentImpl>,
+) -> ResponseJson<ApiResponse<GhSetupResponse>> {
+    if let Err(e) = ensure_gh_cli_installed().await {
+        return ResponseJson(ApiResponse::success(GhSetupResponse {
+            success: false,
+            message: e,
+        }));
+    }
+
+    match ensure_gh_cli_authenticated().await {
+        Ok(_) => ResponseJson(ApiResponse::success(GhSetupResponse {
+            success: true,
+            message: "GitHub CLI is authenticated successfully.".to_string(),
+        })),
+        Err(e) => ResponseJson(ApiResponse::success(GhSetupResponse {
+            success: false,
+            message: e,
+        })),
     }
 }

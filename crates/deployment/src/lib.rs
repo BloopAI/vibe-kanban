@@ -158,7 +158,6 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     async fn spawn_pr_monitor_service(&self) -> tokio::task::JoinHandle<()> {
         let db = self.db().clone();
-        let tokens = self.token_provider();
         let analytics = self
             .analytics()
             .as_ref()
@@ -167,7 +166,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                 analytics_service: analytics_service.clone(),
             });
         let publisher = self.share_publisher().clone();
-        PrMonitorService::spawn(db, tokens, analytics, publisher).await
+        PrMonitorService::spawn(db, analytics, publisher).await
     }
 
     async fn track_if_analytics_allowed(&self, event_name: &str, properties: Value) {

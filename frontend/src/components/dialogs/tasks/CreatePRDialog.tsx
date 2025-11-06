@@ -14,7 +14,6 @@ import { Alert } from '@/components/ui/alert';
 import BranchSelector from '@/components/tasks/BranchSelector';
 import { useCallback, useEffect, useState } from 'react';
 import { attemptsApi } from '@/lib/api.ts';
-import { useTranslation } from 'react-i18next';
 
 import {
   GitBranch,
@@ -25,13 +24,11 @@ import {
 import { projectsApi } from '@/lib/api.ts';
 import { Loader2 } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
-import { useAuth, useClerk } from '@clerk/clerk-react';
-import { LoginRequiredPrompt } from '@/components/dialogs/shared/LoginRequiredPrompt';
+import { useAuth } from '@clerk/clerk-react';
+import { GhCliSetupDialog } from '@/components/dialogs/auth/GhCliSetupDialog';
 const CreatePrDialog = NiceModal.create(() => {
   const modal = useModal();
-  const { redirectToSignUp } = useClerk();
-  const { isSignedIn, isLoaded } = useAuth();
-  const { t } = useTranslation('tasks');
+  const { isLoaded } = useAuth();
   const data = modal.args as
     | { attempt: TaskAttempt; task: TaskWithAttemptStatus; projectId: string }
     | undefined;
@@ -45,16 +42,6 @@ const CreatePrDialog = NiceModal.create(() => {
 
   useEffect(() => {
     if (!modal.visible || !data || !isLoaded) {
-      return;
-    }
-
-    if (!isSignedIn) {
-      setBranches([]);
-      setBranchesLoading(false);
-      setPrTitle('');
-      setPrBody('');
-      setPrBaseBranch('');
-      setError(null);
       return;
     }
 
@@ -84,10 +71,10 @@ const CreatePrDialog = NiceModal.create(() => {
     }
 
     setError(null); // Reset error when opening
-  }, [modal.visible, data, isSignedIn, isLoaded]);
+  }, [modal.visible, data, isLoaded]);
 
   const handleConfirmCreatePR = useCallback(async () => {
-    if (!data?.projectId || !data?.attempt.id || !isSignedIn) return;
+    if (!data?.projectId || !data?.attempt.id) return;
 
     setError(null);
     setCreatingPR(true);
@@ -109,33 +96,24 @@ const CreatePrDialog = NiceModal.create(() => {
     } else {
       setCreatingPR(false);
       if (result.error) {
-        modal.hide();
+        // Show error message based on the error type
         switch (result.error) {
-          case GitHubServiceError.TOKEN_INVALID: {
-            const redirectUrl =
-              typeof window !== 'undefined' ? window.location.href : undefined;
-            void redirectToSignUp({ redirectUrl });
-            return;
-          }
-          case GitHubServiceError.INSUFFICIENT_PERMISSIONS: {
-            const patProvided = await NiceModal.show('provide-pat');
-            if (patProvided) {
-              modal.show();
-              await handleConfirmCreatePR();
-            }
-            return;
-          }
-          case GitHubServiceError.REPO_NOT_FOUND_OR_NO_ACCESS: {
-            const patProvided = await NiceModal.show('provide-pat', {
-              errorMessage:
-                'Your token does not have access to this repository, or the repository does not exist. Please check the repository URL and/or provide a Personal Access Token with access.',
-            });
-            if (patProvided) {
-              modal.show();
-              await handleConfirmCreatePR();
-            }
-            return;
-          }
+          case GitHubServiceError.TOKEN_INVALID:
+            NiceModal.show(GhCliSetupDialog);
+            setError(null);
+            break;
+          case GitHubServiceError.INSUFFICIENT_PERMISSIONS:
+            setError(
+              'Insufficient permissions. Please ensure the GitHub CLI has the necessary permissions.'
+            );
+            break;
+          case GitHubServiceError.REPO_NOT_FOUND_OR_NO_ACCESS:
+            setError(
+              'Repository not found or no access. Please check your repository access and ensure you are authenticated.'
+            );
+            break;
+          default:
+            setError(result.message || 'Failed to create GitHub PR');
         }
       } else if (result.message) {
         setError(result.message);
@@ -143,15 +121,7 @@ const CreatePrDialog = NiceModal.create(() => {
         setError('Failed to create GitHub PR');
       }
     }
-  }, [
-    data,
-    prBaseBranch,
-    prBody,
-    prTitle,
-    modal,
-    isSignedIn,
-    redirectToSignUp,
-  ]);
+  }, [data, prBaseBranch, prBody, prTitle, modal]);
 
   const handleCancelCreatePR = useCallback(() => {
     modal.hide();
@@ -178,7 +148,7 @@ const CreatePrDialog = NiceModal.create(() => {
             <div className="flex justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-          ) : isSignedIn ? (
+          ) : (
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="pr-title">Title</Label>
@@ -217,38 +187,25 @@ const CreatePrDialog = NiceModal.create(() => {
               </div>
               {error && <Alert variant="destructive">{error}</Alert>}
             </div>
-          ) : (
-            <div className="py-6">
-              <LoginRequiredPrompt
-                mode="signIn"
-                buttonVariant="default"
-                buttonSize="default"
-                title={t('createPrDialog.loginRequired.title')}
-                description={t('createPrDialog.loginRequired.description')}
-                actionLabel={t('createPrDialog.loginRequired.action')}
-              />
-            </div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={handleCancelCreatePR}>
               Cancel
             </Button>
-            {isSignedIn && (
-              <Button
-                onClick={handleConfirmCreatePR}
-                disabled={creatingPR || !prTitle.trim()}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                {creatingPR ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  'Create PR'
-                )}
-              </Button>
-            )}
+            <Button
+              onClick={handleConfirmCreatePR}
+              disabled={creatingPR || !prTitle.trim()}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {creatingPR ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                'Create PR'
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

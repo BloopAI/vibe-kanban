@@ -50,6 +50,7 @@ import {
   RenameBranchResponse,
   RunAgentSetupRequest,
   RunAgentSetupResponse,
+  GhSetupResponse,
 } from 'shared/types';
 import { buildClerkAuthHeaders } from './clerk';
 
@@ -721,6 +722,12 @@ export const configApi = {
       body: JSON.stringify(config),
     });
     return handleApiResponse<Config>(response);
+  },
+  setupGitHubCli: async (): Promise<GhSetupResponse> => {
+    const response = await makeRequest('/api/setup-gh-cli', {
+      method: 'POST',
+    });
+    return handleApiResponse<GhSetupResponse>(response);
   },
 };
 

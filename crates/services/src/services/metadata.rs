@@ -1,7 +1,6 @@
 use std::path::Path;
 
 use db::models::project::ProjectRemoteMetadata;
-use secrecy::ExposeSecret;
 
 use crate::services::{
     git::GitService,
@@ -51,7 +50,7 @@ pub async fn compute_remote_metadata(
         }
     };
 
-    let client = match GitHubService::new(token.token.expose_secret()) {
+    let client = match GitHubService::new() {
         Ok(client) => client,
         Err(err) => {
             tracing::warn!("Failed to construct GitHub client: {err}");
