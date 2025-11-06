@@ -49,7 +49,9 @@ export function DevServerLogsView({
             </span>
           </div>
           <div className="flex items-center text-sm">
-            <ChevronDown className="h-4 w-4 mr-1 transition-transform group-open:rotate-180" />
+            <ChevronDown
+              className={`h-4 w-4 mr-1 ${showToggleText ? 'transition-transform' : ''} ${showLogs ? '' : 'rotate-180'}`}
+            />
             {showToggleText
               ? showLogs
                 ? t('preview.logs.hide')
