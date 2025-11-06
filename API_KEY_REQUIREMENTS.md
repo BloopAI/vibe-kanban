@@ -201,11 +201,19 @@ If you want to enable task sharing:
 
 1. Create a Clerk account at https://clerk.com
 2. Get your publishable key from https://dashboard.clerk.com
-3. Create `frontend/.env` file:
+3. Set up environment files:
+   ```bash
+   # Quick setup
+   pnpm run setup:env
+
+   # Or manually
+   cp frontend/.env.example frontend/.env
+   ```
+4. Edit `frontend/.env` and set:
    ```env
    VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
    ```
-4. Restart dev server: `pnpm run dev`
+5. Restart dev server: `pnpm run dev`
 
 ---
 
@@ -229,14 +237,38 @@ If you want to enable task sharing:
 # 1. Install dependencies
 pnpm i
 
-# 2. Authenticate with a coding agent (example with Claude Code)
+# 2. (Optional) Set up environment files
+pnpm run setup:env
+# This creates .env and frontend/.env from example templates
+
+# 3. Authenticate with a coding agent (example with Claude Code)
 npx @anthropic-ai/claude-code
 
-# 3. Start Vibe Kanban
+# 4. Start Vibe Kanban
 pnpm run dev
 ```
 
 That's it! No API keys needed for local development.
+
+### Environment File Setup
+
+The project includes `.env.example` templates for easy configuration:
+
+- **Root `.env.example`** → `.env` (backend build-time variables)
+- **`frontend/.env.example`** → `frontend/.env` (frontend variables)
+
+**Quick setup:**
+```bash
+pnpm run setup:env
+```
+
+**Manual setup:**
+```bash
+cp .env.example .env
+cp frontend/.env.example frontend/.env
+```
+
+Then edit the `.env` files to configure optional features.
 
 ### With Task Sharing (Optional)
 

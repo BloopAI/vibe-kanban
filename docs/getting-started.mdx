@@ -78,7 +78,19 @@ To use a fixed port, specify the `PORT` environment variable: `PORT=8080 npx vib
 
 If you see a warning about `CLERK_PUBLISHABLE_KEY` not being set, this is expected and safe to ignore. This key is only needed for **task sharing** features, which allow you to share tasks with team members. All other features work without it.
 
-To enable task sharing, see the [API Key Requirements documentation](https://github.com/BloopAI/vibe-kanban/blob/main/API_KEY_REQUIREMENTS.md) for setup instructions.
+To enable task sharing:
+
+1. Create environment files from templates:
+   ```bash
+   pnpm run setup:env
+   ```
+2. Get your Clerk publishable key from [Clerk Dashboard](https://dashboard.clerk.com)
+3. Add it to `frontend/.env`:
+   ```env
+   VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
+   ```
+
+See the [API Key Requirements documentation](https://github.com/BloopAI/vibe-kanban/blob/main/API_KEY_REQUIREMENTS.md) for complete setup instructions.
 
 ### Other Console Warnings
 
