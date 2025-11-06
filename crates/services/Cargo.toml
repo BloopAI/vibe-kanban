@@ -30,6 +30,7 @@ tempfile = "3.21"
 async-trait = { workspace = true } 
 rust-embed = "8.2"
 ignore = "0.4"
+openssl-sys = { workspace = true }
 regex = "1.11.1"
 notify-rust = "4.11"
 octocrab = "0.44"
