@@ -1,10 +1,9 @@
 import { useTranslation } from 'react-i18next';
-import { Terminal, ChevronUp } from 'lucide-react';
+import { Terminal, ChevronDown } from 'lucide-react';
 import ProcessLogsViewer, {
   ProcessLogsViewerContent,
 } from '../ProcessLogsViewer';
 import { ExecutionProcess } from 'shared/types';
-import { Card } from '@/components/ui/card';
 
 interface DevServerLogsViewProps {
   latestDevServerProcess: ExecutionProcess | undefined;
@@ -42,27 +41,26 @@ export function DevServerLogsView({
       }}
     >
       <summary className="list-none cursor-pointer">
-        <Card className="bg-muted/50 px-3 py-2 border-b flex items-center justify-between">
+        <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/50">
           <div className="flex items-center gap-2">
             <Terminal className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium text-foreground">
               {t('preview.logs.title')}
             </span>
           </div>
-          <ChevronUp
-            aria-hidden
-            className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180"
-          />
-        </Card>
+          <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+        </div>
       </summary>
 
-      <div className={height}>
-        {logs ? (
-          <ProcessLogsViewerContent logs={logs} error={error ?? null} />
-        ) : (
-          <ProcessLogsViewer processId={latestDevServerProcess.id} />
-        )}
-      </div>
+      {showLogs && (
+        <div className={height}>
+          {logs ? (
+            <ProcessLogsViewerContent logs={logs} error={error ?? null} />
+          ) : (
+            <ProcessLogsViewer processId={latestDevServerProcess.id} />
+          )}
+        </div>
+      )}
     </details>
   );
 }
