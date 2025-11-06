@@ -48,13 +48,13 @@ export function DevServerLogsView({
               {t('preview.logs.title')}
             </span>
           </div>
-          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-            <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
-            {showToggleText && (
-              <span>
-                {showLogs ? t('preview.logs.hide') : t('preview.logs.show')}
-              </span>
-            )}
+          <div className="flex items-center text-sm">
+            <ChevronDown className="h-4 w-4 mr-1 transition-transform group-open:rotate-180" />
+            {showToggleText
+              ? showLogs
+                ? t('preview.logs.hide')
+                : t('preview.logs.show')
+              : t('preview.logs.hide')}
           </div>
         </div>
       </summary>
