@@ -81,7 +81,7 @@ function GitActionsDialogContent({
         </div>
       )}
       {gitError && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded text-destructive text-sm">
+        <div className="p-3 bg-destructive/10 border border-destructive/20 rounded text-destructive text-sm">
           {gitError}
         </div>
       )}
