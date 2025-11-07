@@ -1,6 +1,5 @@
 use std::env;
 
-use reqwest::Url;
 use secrecy::SecretString;
 use thiserror::Error;
 
@@ -22,7 +21,7 @@ pub struct RemoteServerConfig {
     pub activity_broadcast_shards: usize,
     pub activity_broadcast_capacity: usize,
     pub activity_catchup_batch_size: i64,
-    pub clerk: ClerkConfig,
+    pub auth: AuthConfig,
 }
 
 #[derive(Debug, Error)]
@@ -66,7 +65,7 @@ impl RemoteServerConfig {
         )?
         .max(1);
 
-        let clerk = ClerkConfig::from_env()?;
+        let auth = AuthConfig::from_env()?;
 
         Ok(Self {
             database_url,
@@ -77,7 +76,7 @@ impl RemoteServerConfig {
             activity_broadcast_shards,
             activity_broadcast_capacity,
             activity_catchup_batch_size,
-            clerk,
+            auth,
         })
     }
 }
@@ -95,42 +94,41 @@ fn get_numeric_env_var<T: std::str::FromStr>(
 }
 
 #[derive(Debug, Clone)]
-pub struct ClerkConfig {
-    secret_key: SecretString,
-    issuer: Url,
-    api_url: Url,
+pub struct AuthConfig {
+    github_client_id: String,
+    github_client_secret: SecretString,
+    jwt_secret: SecretString,
 }
 
-impl ClerkConfig {
+impl AuthConfig {
     fn from_env() -> Result<Self, ConfigError> {
-        let secret_key = env::var("CLERK_SECRET_KEY")
-            .map_err(|_| ConfigError::MissingVar("CLERK_SECRET_KEY"))
-            .map(|s| SecretString::new(s.into()))?;
-        let issuer = env::var("CLERK_ISSUER")
-            .map_err(|_| ConfigError::MissingVar("CLERK_ISSUER"))?
-            .parse()
-            .map_err(|_| ConfigError::InvalidVar("CLERK_ISSUER"))?;
-        let api_url = env::var("CLERK_API_URL")
-            .unwrap_or_else(|_| "https://api.clerk.com/v1/".to_string())
-            .parse()
-            .map_err(|_| ConfigError::InvalidVar("CLERK_API_URL"))?;
+        let github_client_id = env::var("GITHUB_OAUTH_CLIENT_ID")
+            .map_err(|_| ConfigError::MissingVar("GITHUB_OAUTH_CLIENT_ID"))?;
+
+        let github_client_secret = env::var("GITHUB_OAUTH_CLIENT_SECRET")
+            .map_err(|_| ConfigError::MissingVar("GITHUB_OAUTH_CLIENT_SECRET"))
+            .map(|value| SecretString::new(value.into()))?;
+
+        let jwt_secret = env::var("REMOTE_JWT_SECRET")
+            .map_err(|_| ConfigError::MissingVar("REMOTE_JWT_SECRET"))
+            .map(|value| SecretString::new(value.into()))?;
 
         Ok(Self {
-            secret_key,
-            issuer,
-            api_url,
+            github_client_id,
+            github_client_secret,
+            jwt_secret,
         })
     }
 
-    pub(crate) fn get_secret_key(&self) -> &SecretString {
-        &self.secret_key
+    pub fn github_client_id(&self) -> &str {
+        &self.github_client_id
     }
 
-    pub(crate) fn get_issuer(&self) -> &Url {
-        &self.issuer
+    pub fn github_client_secret(&self) -> &SecretString {
+        &self.github_client_secret
     }
 
-    pub(crate) fn get_api_url(&self) -> &Url {
-        &self.api_url
+    pub fn jwt_secret(&self) -> &SecretString {
+        &self.jwt_secret
     }
 }

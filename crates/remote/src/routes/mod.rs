@@ -11,7 +11,7 @@ use tower_http::{
 };
 use tracing::{Level, field};
 
-use crate::{AppState, auth::require_clerk_session};
+use crate::{AppState, auth::require_session};
 
 pub mod activity;
 mod error;
@@ -40,8 +40,12 @@ pub fn router(state: AppState) -> Router {
         .on_response(DefaultOnResponse::new().level(Level::INFO))
         .on_failure(DefaultOnFailure::new().level(Level::ERROR));
 
-    let api = Router::<AppState>::new()
+    let public = Router::<AppState>::new()
         .route("/health", get(health))
+        .route("/oauth/device/init", post(oauth::device_init))
+        .route("/oauth/device/poll", post(oauth::device_poll));
+
+    let protected = Router::<AppState>::new()
         .route("/v1/activity", get(activity::get_activity_stream))
         .route("/v1/identity", get(identity::get_identity))
         .route("/v1/tasks/bulk", get(tasks::bulk_shared_tasks))
@@ -49,15 +53,17 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/tasks/{task_id}", patch(tasks::update_shared_task))
         .route("/v1/tasks/{task_id}", delete(tasks::delete_shared_task))
         .route("/v1/tasks/{task_id}/assign", post(tasks::assign_task))
-        .route("/v1/oauth/github/token", get(oauth::github_token));
-
-    Router::<AppState>::new()
-        .merge(api)
+        .route("/v1/oauth/github/token", get(oauth::github_token))
+        .route("/profile", get(oauth::profile))
         .merge(crate::ws::router())
         .layer(middleware::from_fn_with_state(
             state.clone(),
-            require_clerk_session,
-        ))
+            require_session,
+        ));
+
+    Router::<AppState>::new()
+        .merge(public)
+        .merge(protected)
         .layer(CorsLayer::permissive())
         .layer(trace_layer)
         .layer(PropagateRequestIdLayer::new(HeaderName::from_static(

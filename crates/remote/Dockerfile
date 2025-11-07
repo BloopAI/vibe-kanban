@@ -6,6 +6,7 @@ FROM rust:1.89-slim-bookworm AS builder
 ARG APP_NAME
 
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+ENV SQLX_OFFLINE=true
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends pkg-config libssl-dev ca-certificates \
@@ -17,6 +18,7 @@ COPY Cargo.toml Cargo.lock ./
 COPY crates crates
 COPY shared shared
 COPY assets assets
+COPY .sqlx .sqlx
 
 RUN mkdir -p /app/bin
 

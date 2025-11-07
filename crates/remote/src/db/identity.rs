@@ -1,15 +1,14 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{PgPool, query_as, query_scalar};
 use thiserror::Error;
 
 use super::Tx;
-use crate::auth::{ClerkService, ClerkServiceError, ClerkUser};
 
 #[derive(Debug, Error)]
 pub enum IdentityError {
-    #[error(transparent)]
-    Clerk(#[from] ClerkServiceError),
+    #[error("identity record not found")]
+    NotFound,
     #[error(transparent)]
     Database(#[from] sqlx::Error),
 }
@@ -41,46 +40,118 @@ pub struct UserData {
     pub username: Option<String>,
 }
 
+#[derive(Debug, Clone)]
+pub struct UpsertUser<'a> {
+    pub id: &'a str,
+    pub email: &'a str,
+    pub first_name: Option<&'a str>,
+    pub last_name: Option<&'a str>,
+    pub username: Option<&'a str>,
+}
+
 pub struct IdentityRepository<'a> {
     pool: &'a PgPool,
-    clerk: &'a ClerkService,
 }
 
 impl<'a> IdentityRepository<'a> {
-    pub fn new(pool: &'a PgPool, clerk: &'a ClerkService) -> Self {
-        Self { pool, clerk }
+    pub fn new(pool: &'a PgPool) -> Self {
+        Self { pool }
     }
 
-    pub async fn ensure_organization(
+    pub async fn upsert_user(&self, user: UpsertUser<'_>) -> Result<User, IdentityError> {
+        upsert_user(self.pool, &user)
+            .await
+            .map_err(IdentityError::from)
+    }
+
+    pub async fn ensure_personal_organization(
         &self,
         organization_id: &str,
-        slug: Option<&str>,
+        slug: &str,
     ) -> Result<Organization, IdentityError> {
-        let slug = slug.unwrap_or(organization_id);
         upsert_organization(self.pool, organization_id, slug)
             .await
             .map_err(IdentityError::from)
     }
 
-    pub async fn ensure_user(
+    pub async fn ensure_membership(
         &self,
         organization_id: &str,
         user_id: &str,
-    ) -> Result<User, IdentityError> {
-        let user = self.clerk.get_user(user_id).await?;
-        // Check if user is a member of the organization
-        let memberships = self.clerk.get_user_memberships(user_id).await?;
-        let is_member = memberships
-            .iter()
-            .any(|membership| membership.id == organization_id);
-        if !is_member {
-            return Err(IdentityError::Clerk(ClerkServiceError::NotFound(format!(
-                "User {user_id} is not a member of organization {organization_id}"
-            ))));
+    ) -> Result<(), IdentityError> {
+        ensure_member_metadata(self.pool, organization_id, user_id)
+            .await
+            .map_err(IdentityError::from)
+    }
+
+    pub async fn assert_membership(
+        &self,
+        organization_id: &str,
+        user_id: &str,
+    ) -> Result<(), IdentityError> {
+        let exists = query_scalar!(
+            r#"
+            SELECT EXISTS(
+                SELECT 1
+                FROM organization_member_metadata
+                WHERE organization_id = $1 AND user_id = $2
+            ) AS "exists!"
+            "#,
+            organization_id,
+            user_id
+        )
+        .fetch_one(self.pool)
+        .await?;
+
+        if exists {
+            Ok(())
+        } else {
+            Err(IdentityError::NotFound)
         }
-        let record = upsert_user(self.pool, &user).await?;
-        ensure_member_metadata(self.pool, organization_id, &record.id).await?;
-        Ok(record)
+    }
+
+    pub async fn fetch_user(&self, user_id: &str) -> Result<User, IdentityError> {
+        query_as!(
+            User,
+            r#"
+            SELECT
+                id           AS "id!",
+                email        AS "email!",
+                first_name   AS "first_name?",
+                last_name    AS "last_name?",
+                username     AS "username?",
+                created_at   AS "created_at!",
+                updated_at   AS "updated_at!"
+            FROM users
+            WHERE id = $1
+            "#,
+            user_id
+        )
+        .fetch_optional(self.pool)
+        .await?
+        .ok_or(IdentityError::NotFound)
+    }
+
+    pub async fn fetch_organization(
+        &self,
+        organization_id: &str,
+    ) -> Result<Organization, IdentityError> {
+        query_as!(
+            Organization,
+            r#"
+            SELECT
+                id          AS "id!",
+                slug        AS "slug!",
+                created_at  AS "created_at!",
+                updated_at  AS "updated_at!"
+            FROM organizations
+            WHERE id = $1
+            "#,
+            organization_id
+        )
+        .fetch_optional(self.pool)
+        .await?
+        .ok_or(IdentityError::NotFound)
     }
 }
 
@@ -89,7 +160,7 @@ async fn upsert_organization(
     organization_id: &str,
     slug: &str,
 ) -> Result<Organization, sqlx::Error> {
-    sqlx::query_as!(
+    query_as!(
         Organization,
         r#"
         INSERT INTO organizations (id, slug)
@@ -110,8 +181,8 @@ async fn upsert_organization(
     .await
 }
 
-async fn upsert_user(pool: &PgPool, user: &ClerkUser) -> Result<User, sqlx::Error> {
-    sqlx::query_as!(
+async fn upsert_user(pool: &PgPool, user: &UpsertUser<'_>) -> Result<User, sqlx::Error> {
+    query_as!(
         User,
         r#"
         INSERT INTO users (id, email, first_name, last_name, username)
@@ -133,9 +204,9 @@ async fn upsert_user(pool: &PgPool, user: &ClerkUser) -> Result<User, sqlx::Erro
         "#,
         user.id,
         user.email,
-        user.first_name.as_deref(),
-        user.last_name.as_deref(),
-        user.username.as_deref()
+        user.first_name,
+        user.last_name,
+        user.username
     )
     .fetch_one(pool)
     .await

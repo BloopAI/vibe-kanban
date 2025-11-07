@@ -5,10 +5,7 @@ use axum::{
 };
 use serde_json::json;
 
-use crate::{
-    auth::ClerkServiceError,
-    db::{identity::IdentityError, projects::ProjectError, tasks::SharedTaskError},
-};
+use crate::db::{identity::IdentityError, projects::ProjectError, tasks::SharedTaskError};
 
 pub(crate) fn task_error_response(error: SharedTaskError, context: &str) -> Response {
     let response = match error {
@@ -61,39 +58,12 @@ pub(crate) fn task_error_response(error: SharedTaskError, context: &str) -> Resp
 
 pub(crate) fn identity_error_response(error: IdentityError, message: &str) -> Response {
     match error {
-        IdentityError::Clerk(err) => {
-            tracing::debug!(?err, "clerk refused identity lookup");
-            (StatusCode::BAD_REQUEST, Json(json!({ "error": message })))
-        }
+        IdentityError::NotFound => (StatusCode::BAD_REQUEST, Json(json!({ "error": message }))),
         IdentityError::Database(err) => {
             tracing::error!(?err, "identity sync failed");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "error": "internal server error" })),
-            )
-        }
-    }
-    .into_response()
-}
-
-pub(crate) fn clerk_token_error_response(error: ClerkServiceError) -> Response {
-    match error {
-        ClerkServiceError::NotFound(_) | ClerkServiceError::OAuthTokenUnavailable(_) => (
-            StatusCode::PRECONDITION_FAILED,
-            Json(json!({ "error": "github account not linked" })),
-        ),
-        ClerkServiceError::InvalidResponse(err) => {
-            tracing::error!(?err, "failed to parse Clerk OAuth token response");
-            (
-                StatusCode::BAD_GATEWAY,
-                Json(json!({ "error": "failed to retrieve GitHub token" })),
-            )
-        }
-        ClerkServiceError::Http(err) => {
-            tracing::error!(?err, "failed to call Clerk OAuth token endpoint");
-            (
-                StatusCode::BAD_GATEWAY,
-                Json(json!({ "error": "failed to retrieve GitHub token" })),
             )
         }
     }

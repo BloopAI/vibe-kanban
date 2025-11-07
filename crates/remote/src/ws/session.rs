@@ -1,12 +1,14 @@
+use std::sync::Arc;
+
 use axum::extract::ws::{Message, WebSocket};
-use chrono::{Duration as ChronoDuration, Utc};
 use futures::{SinkExt, StreamExt};
 use sqlx::PgPool;
 use thiserror::Error;
 use tokio::time::{self, MissedTickBehavior};
 use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
 use tracing::instrument;
-use utils::ws::{WS_AUTH_REFRESH_INTERVAL, WS_BULK_SYNC_THRESHOLD, WS_TOKEN_EXPIRY_GRACE};
+use utils::ws::{WS_AUTH_REFRESH_INTERVAL, WS_BULK_SYNC_THRESHOLD};
+use uuid::Uuid;
 
 use super::{
     WsQueryParams,
@@ -15,14 +17,17 @@ use super::{
 use crate::{
     AppState,
     activity::{ActivityBroker, ActivityEvent, ActivityStream},
-    auth::{ClerkAuth, ClerkAuthError, ClerkIdentity, RequestContext},
-    db::activity::ActivityRepository,
+    auth::{JwtError, JwtIdentity, JwtService, RequestContext},
+    db::{
+        activity::ActivityRepository,
+        auth::{AuthSessionError, AuthSessionRepository},
+    },
 };
 
 #[instrument(
     name = "ws.session",
     skip(socket, state, ctx, params),
-    fields(org_id = %ctx.organization.id, user_id = %ctx.user.id, session_id = %ctx.identity.session_id)
+    fields(org_id = %ctx.organization.id, user_id = %ctx.user.id, session_id = %ctx.session_id)
 )]
 pub async fn handle(
     socket: WebSocket,
@@ -35,18 +40,17 @@ pub async fn handle(
     let org_id = ctx.organization.id.clone();
     let mut last_sent_seq = params.cursor;
     let mut auth_state = WsAuthState::new(
-        state.auth().clone(),
+        state.jwt(),
+        pool.clone(),
+        ctx.session_id,
+        ctx.session_secret.clone(),
         ctx.user.id.clone(),
         org_id.clone(),
-        ctx.identity.clone(),
-        ChronoDuration::from_std(WS_TOKEN_EXPIRY_GRACE)
-            .expect("websocket token grace fits within chrono duration range"),
     );
     let mut auth_check_interval = time::interval(WS_AUTH_REFRESH_INTERVAL);
     auth_check_interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
 
     let (mut sender, mut inbound) = socket.split();
-
     let mut activity_stream = state.broker().subscribe(&org_id);
 
     if let Ok(history) = ActivityRepository::new(&pool)
@@ -95,7 +99,6 @@ pub async fn handle(
                                         last_sent_seq = Some(seq);
                                         activity_stream = stream;
                                     }
-                                    // error handled within activity_stream_catch_up
                                     Err(()) => break,
                                 }
                                 continue;
@@ -126,14 +129,11 @@ pub async fn handle(
                             config.activity_catchup_batch_size,
                             WS_BULK_SYNC_THRESHOLD as i64,
                             "lag",
-                        )
-                        .await
-                        {
+                        ).await {
                             Ok((seq, stream)) => {
                                 last_sent_seq = Some(seq);
                                 activity_stream = stream;
                             }
-                            // error handled within activity_stream_catch_up
                             Err(()) => break,
                         }
                     }
@@ -149,9 +149,7 @@ pub async fn handle(
                         }
                         if let Message::Text(text) = msg {
                             match serde_json::from_str::<ClientMessage>(&text) {
-                                Ok(ClientMessage::Ack { cursor: _ }) => {
-                                    // No-op for now;
-                                }
+                                Ok(ClientMessage::Ack { .. }) => {}
                                 Ok(ClientMessage::AuthToken { token }) => {
                                     auth_state.store_token(token);
                                 }
@@ -172,22 +170,16 @@ pub async fn handle(
             _ = auth_check_interval.tick() => {
                 match auth_state.verify().await {
                     Ok(()) => {}
-                    Err(AuthVerifyError::Expired(identity)) => {
-                        tracing::info!(
-                            session_id = %identity.session_id,
-                            user_id = %identity.user_id,
-                            "closing websocket due to expired token"
-                        );
-                        let _ = send_error(&mut sender, "authorization expired").await;
-                        let _ = sender.send(Message::Close(None)).await;
-                        break;
-                    }
                     Err(error) => {
-                        tracing::info!(
-                            ?error,
-                            "closing websocket due to auth verification error"
-                        );
-                        let _ = send_error(&mut sender, "authorization error").await;
+                        tracing::info!(?error, "closing websocket due to auth verification error");
+                        let message = match error {
+                            AuthVerifyError::Revoked | AuthVerifyError::SecretMismatch => "authorization revoked",
+                            AuthVerifyError::UserMismatch { .. }
+                            | AuthVerifyError::OrgMismatch { .. }
+                            | AuthVerifyError::Decode(_)
+                            | AuthVerifyError::Session(_) => "authorization error",
+                        };
+                        let _ = send_error(&mut sender, message).await;
                         let _ = sender.send(Message::Close(None)).await;
                         break;
                     }
@@ -242,28 +234,31 @@ async fn send_error(
 }
 
 struct WsAuthState {
-    auth: ClerkAuth,
+    jwt: Arc<JwtService>,
+    pool: PgPool,
+    session_id: Uuid,
+    session_secret: String,
     expected_user_id: String,
     expected_org_id: String,
-    latest_identity: ClerkIdentity,
-    expiry_grace: ChronoDuration,
     pending_token: Option<String>,
 }
 
 impl WsAuthState {
     fn new(
-        auth: ClerkAuth,
+        jwt: Arc<JwtService>,
+        pool: PgPool,
+        session_id: Uuid,
+        session_secret: String,
         expected_user_id: String,
         expected_org_id: String,
-        initial_identity: ClerkIdentity,
-        expiry_grace: ChronoDuration,
     ) -> Self {
         Self {
-            auth,
+            jwt,
+            pool,
+            session_id,
+            session_secret,
             expected_user_id,
             expected_org_id,
-            latest_identity: initial_identity,
-            expiry_grace,
             pending_token: None,
         }
     }
@@ -274,77 +269,68 @@ impl WsAuthState {
 
     async fn verify(&mut self) -> Result<(), AuthVerifyError> {
         if let Some(token) = self.pending_token.take() {
-            let identity = self.verify_token(&token).await?;
-            self.latest_identity = identity;
+            let identity = self.jwt.decode(&token).map_err(AuthVerifyError::Decode)?;
+            self.apply_identity(identity).await?;
         }
 
-        if self.is_expired() {
-            return Err(AuthVerifyError::Expired(self.latest_identity.clone()));
-        }
-
-        Ok(())
+        self.validate_session().await
     }
 
-    fn is_expired(&self) -> bool {
-        Utc::now() > self.latest_identity.expires_at + self.expiry_grace
-    }
-
-    async fn verify_token(&self, token: &str) -> Result<ClerkIdentity, AuthRefreshError> {
-        let identity = self
-            .auth
-            .verify(token)
-            .await
-            .map_err(AuthRefreshError::Verify)?;
-
+    async fn apply_identity(&mut self, identity: JwtIdentity) -> Result<(), AuthVerifyError> {
         if identity.user_id != self.expected_user_id {
-            return Err(AuthRefreshError::UserMismatch {
+            return Err(AuthVerifyError::UserMismatch {
                 expected: self.expected_user_id.clone(),
                 received: identity.user_id,
             });
         }
 
-        let org_matches_expected = identity
-            .org_id
-            .as_deref()
-            .map(|org| org == self.expected_org_id)
-            .unwrap_or(false);
-
-        if !org_matches_expected {
-            return Err(AuthRefreshError::OrgMismatch {
+        if identity.org_id != self.expected_org_id {
+            return Err(AuthVerifyError::OrgMismatch {
                 expected: self.expected_org_id.clone(),
                 received: identity.org_id,
             });
         }
 
-        Ok(identity)
+        self.session_id = identity.session_id;
+        self.session_secret = identity.nonce;
+        self.validate_session().await
     }
-}
 
-#[derive(Debug, Error)]
-enum AuthRefreshError {
-    #[error("failed to verify refreshed token: {0}")]
-    Verify(ClerkAuthError),
-    #[error("received token for unexpected user: expected {expected}, received {received}")]
-    UserMismatch { expected: String, received: String },
-    #[error(
-        "received token for unexpected organization: expected {expected}, received {received:?}"
-    )]
-    OrgMismatch {
-        expected: String,
-        received: Option<String>,
-    },
+    async fn validate_session(&self) -> Result<(), AuthVerifyError> {
+        let repo = AuthSessionRepository::new(&self.pool);
+        let session = repo
+            .get(self.session_id)
+            .await
+            .map_err(AuthVerifyError::Session)?;
+
+        if session.revoked_at.is_some() {
+            return Err(AuthVerifyError::Revoked);
+        }
+
+        if session.session_secret != self.session_secret {
+            return Err(AuthVerifyError::SecretMismatch);
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Error)]
 enum AuthVerifyError {
     #[error(transparent)]
-    Refresh(#[from] AuthRefreshError),
-    #[error("authorization expired")]
-    Expired(ClerkIdentity),
+    Decode(#[from] JwtError),
+    #[error("received token for unexpected user: expected {expected}, received {received}")]
+    UserMismatch { expected: String, received: String },
+    #[error("received token for unexpected organization: expected {expected}, received {received}")]
+    OrgMismatch { expected: String, received: String },
+    #[error(transparent)]
+    Session(#[from] AuthSessionError),
+    #[error("session revoked")]
+    Revoked,
+    #[error("session rotated")]
+    SecretMismatch,
 }
 
-/// Catch up activity events from the database since last_seq up to the latest event in the broker.
-/// Returns the new last sent seq and a corresponding activity stream.
 #[allow(clippy::too_many_arguments)]
 async fn activity_stream_catch_up(
     sender: &mut futures::stream::SplitSink<WebSocket, Message>,
@@ -401,20 +387,17 @@ async fn activity_stream_catch_up(
             Err(())
         }
         Err(CatchUpError::Send) => Err(()),
-        Err(CatchUpError::Database(error)) => {
-            tracing::error!(
-                ?error,
-                org_id = %organization_id,
-                reason,
-                "failed to catch up activity backlog"
-            );
-            let _ = send_error(sender, "failed to load activity stream").await;
-            Err(())
-        }
     }
 }
 
-/// helper to catch up activity events from the database up to and including target_seq.
+#[derive(Debug, Error)]
+enum CatchUpError {
+    #[error("activity stream went stale during catch up")]
+    Stale,
+    #[error("failed to send activity event")]
+    Send,
+}
+
 async fn catch_up_from_db(
     sender: &mut futures::stream::SplitSink<WebSocket, Message>,
     pool: &PgPool,
@@ -423,45 +406,42 @@ async fn catch_up_from_db(
     target_seq: i64,
     batch_size: i64,
 ) -> Result<i64, CatchUpError> {
-    let limit = batch_size.max(1);
-    let repo = ActivityRepository::new(pool);
+    let repository = ActivityRepository::new(pool);
+    let mut current_seq = last_seq;
     let mut cursor = last_seq;
 
-    if target_seq <= cursor {
-        return Ok(cursor);
-    }
-
-    let mut remaining = target_seq - cursor;
-
-    while remaining > 0 {
-        let fetch_limit = remaining.min(limit);
-        let events = repo
-            .fetch_since(organization_id, Some(cursor), fetch_limit)
+    loop {
+        let events = repository
+            .fetch_since(organization_id, Some(cursor), batch_size)
             .await
-            .map_err(CatchUpError::Database)?;
+            .map_err(|error| {
+                tracing::error!(?error, org_id = %organization_id, "failed to fetch activity catch up");
+                CatchUpError::Stale
+            })?;
 
         if events.is_empty() {
+            tracing::warn!(org_id = %organization_id, "activity catch up returned no events");
             return Err(CatchUpError::Stale);
         }
 
         for event in events {
+            if event.seq <= current_seq {
+                continue;
+            }
+            if event.seq > target_seq {
+                return Ok(current_seq);
+            }
             if send_activity(sender, &event).await.is_err() {
                 return Err(CatchUpError::Send);
             }
+            current_seq = event.seq;
             cursor = event.seq;
-            if cursor >= target_seq {
-                return Ok(cursor);
-            }
         }
 
-        remaining = target_seq - cursor;
+        if current_seq >= target_seq {
+            break;
+        }
     }
 
-    Ok(cursor)
-}
-
-enum CatchUpError {
-    Send,
-    Database(sqlx::Error),
-    Stale,
+    Ok(current_seq)
 }
