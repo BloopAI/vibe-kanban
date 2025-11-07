@@ -19,5 +19,4 @@ pub mod metadata;
 pub mod notification;
 pub mod pr_monitor;
 pub mod share;
-pub mod token;
 pub mod worktree_manager;
