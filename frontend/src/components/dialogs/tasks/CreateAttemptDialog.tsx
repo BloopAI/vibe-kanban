@@ -120,7 +120,10 @@ export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
     const effectiveBranch = userSelectedBranch ?? defaultBranch;
 
     const isLoadingInitial =
-      isLoadingBranches || isLoadingAttempts || isLoadingTask || isLoadingParent;
+      isLoadingBranches ||
+      isLoadingAttempts ||
+      isLoadingTask ||
+      isLoadingParent;
     const canCreate = Boolean(
       effectiveProfile && effectiveBranch && !isCreating && !isLoadingInitial
     );
