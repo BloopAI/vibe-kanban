@@ -1,9 +1,9 @@
 pub mod activity;
 pub mod auth;
-pub mod github;
 pub mod identity;
 pub mod listener;
 pub mod oauth;
+pub mod oauth_accounts;
 pub mod projects;
 pub mod tasks;
 

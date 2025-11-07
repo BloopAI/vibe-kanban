@@ -35,20 +35,24 @@ CREATE INDEX IF NOT EXISTS idx_oauth_device_authorizations_status
 CREATE INDEX IF NOT EXISTS idx_oauth_device_authorizations_user
     ON oauth_device_authorizations (user_id);
 
-CREATE TABLE IF NOT EXISTS github_accounts (
-    user_id          TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    github_id        BIGINT NOT NULL,
-    login            TEXT NOT NULL,
-    name             TEXT,
-    email            TEXT,
-    avatar_url       TEXT,
-    access_token     TEXT NOT NULL,
-    token_type       TEXT NOT NULL,
-    scopes           TEXT[] NOT NULL,
-    token_expires_at TIMESTAMPTZ,
-    created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+DROP TABLE IF EXISTS github_accounts;
+
+CREATE TABLE IF NOT EXISTS oauth_accounts (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id           TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider          TEXT NOT NULL,
+    provider_user_id  TEXT NOT NULL,
+    email             TEXT,
+    username          TEXT,
+    display_name      TEXT,
+    avatar_url        TEXT,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (provider, provider_user_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_github_accounts_github_id
-    ON github_accounts (github_id);
+CREATE INDEX IF NOT EXISTS idx_oauth_accounts_user
+    ON oauth_accounts (user_id);
+
+CREATE INDEX IF NOT EXISTS idx_oauth_accounts_provider_user
+    ON oauth_accounts (provider, provider_user_id);

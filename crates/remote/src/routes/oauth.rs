@@ -11,9 +11,9 @@ use uuid::Uuid;
 
 use crate::{
     AppState,
-    api::oauth::GitHubTokenResponse,
+    api::oauth::{ProfileResponse, ProviderProfile},
     auth::{DeviceFlowError, DeviceFlowPollStatus, RequestContext},
-    db::github::GitHubAccountRepository,
+    db::oauth_accounts::OAuthAccountRepository,
 };
 
 #[derive(Debug, Deserialize)]
@@ -44,18 +44,6 @@ pub struct DevicePollResponse {
     pub error: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
-pub struct ProfileResponse {
-    pub user_id: String,
-    pub username: Option<String>,
-    pub email: String,
-    pub organization_id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub github_login: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub avatar_url: Option<String>,
-}
-
 pub async fn device_init(
     State(state): State<AppState>,
     Json(payload): Json<DeviceInitRequest>,
@@ -72,24 +60,39 @@ pub async fn device_init(
             };
             (StatusCode::OK, Json(body)).into_response()
         }
-        Err(DeviceFlowError::UnsupportedProvider(_)) => (
+        Err(error) => init_error_response(error),
+    }
+}
+
+fn init_error_response(error: DeviceFlowError) -> Response {
+    match error {
+        DeviceFlowError::UnsupportedProvider(_) => (
             StatusCode::BAD_REQUEST,
-            Json(DevicePollResponse {
-                status: "error".to_string(),
-                access_token: None,
-                error: Some("unsupported_provider".to_string()),
-            }),
+            Json(json!({ "error": "unsupported_provider" })),
         )
             .into_response(),
-        Err(error) => {
+        DeviceFlowError::Provider(err) => {
+            warn!(?err, "provider error during device init");
+            (
+                StatusCode::BAD_GATEWAY,
+                Json(json!({ "error": "provider_error" })),
+            )
+                .into_response()
+        }
+        DeviceFlowError::NotFound
+        | DeviceFlowError::Expired
+        | DeviceFlowError::Denied
+        | DeviceFlowError::Failed(_)
+        | DeviceFlowError::Database(_)
+        | DeviceFlowError::Identity(_)
+        | DeviceFlowError::OAuthAccount(_)
+        | DeviceFlowError::Session(_)
+        | DeviceFlowError::Jwt(_)
+        | DeviceFlowError::Authorization(_) => {
             warn!(?error, "failed to initiate device authorization");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(DevicePollResponse {
-                    status: "error".to_string(),
-                    access_token: None,
-                    error: Some("internal_error".to_string()),
-                }),
+                Json(json!({ "error": "internal_error" })),
             )
                 .into_response()
         }
@@ -125,47 +128,27 @@ pub async fn device_poll(
 }
 
 fn poll_error_response(error: DeviceFlowError) -> Response {
-    fn internal_error<E: std::fmt::Debug>(err: E) -> Response {
-        warn!(?err, "internal error during device poll");
+    fn response(status: StatusCode, code: &str) -> Response {
         (
-            StatusCode::INTERNAL_SERVER_ERROR,
+            status,
             Json(DevicePollResponse {
                 status: "error".to_string(),
                 access_token: None,
-                error: Some("internal_error".to_string()),
+                error: Some(code.to_string()),
             }),
         )
             .into_response()
     }
 
+    fn internal_error<E: std::fmt::Debug>(err: E) -> Response {
+        warn!(?err, "internal error during device poll");
+        response(StatusCode::INTERNAL_SERVER_ERROR, "internal_error")
+    }
+
     match error {
-        DeviceFlowError::NotFound => (
-            StatusCode::NOT_FOUND,
-            Json(DevicePollResponse {
-                status: "error".to_string(),
-                access_token: None,
-                error: Some("not_found".to_string()),
-            }),
-        )
-            .into_response(),
-        DeviceFlowError::Expired => (
-            StatusCode::GONE,
-            Json(DevicePollResponse {
-                status: "error".to_string(),
-                access_token: None,
-                error: Some("expired".to_string()),
-            }),
-        )
-            .into_response(),
-        DeviceFlowError::Denied => (
-            StatusCode::FORBIDDEN,
-            Json(DevicePollResponse {
-                status: "error".to_string(),
-                access_token: None,
-                error: Some("access_denied".to_string()),
-            }),
-        )
-            .into_response(),
+        DeviceFlowError::NotFound => response(StatusCode::NOT_FOUND, "not_found"),
+        DeviceFlowError::Expired => response(StatusCode::GONE, "expired"),
+        DeviceFlowError::Denied => response(StatusCode::FORBIDDEN, "access_denied"),
         DeviceFlowError::Failed(reason) => (
             StatusCode::BAD_REQUEST,
             Json(DevicePollResponse {
@@ -175,64 +158,21 @@ fn poll_error_response(error: DeviceFlowError) -> Response {
             }),
         )
             .into_response(),
-        DeviceFlowError::UnsupportedProvider(_) => (
-            StatusCode::BAD_REQUEST,
-            Json(DevicePollResponse {
-                status: "error".to_string(),
-                access_token: None,
-                error: Some("unsupported_provider".to_string()),
-            }),
-        )
-            .into_response(),
+        DeviceFlowError::UnsupportedProvider(_) => {
+            response(StatusCode::BAD_REQUEST, "unsupported_provider")
+        }
         DeviceFlowError::Provider(err) => {
             warn!(?err, "provider error during device poll");
-            (
-                StatusCode::BAD_GATEWAY,
-                Json(DevicePollResponse {
-                    status: "error".to_string(),
-                    access_token: None,
-                    error: Some("provider_error".to_string()),
-                }),
-            )
-                .into_response()
+            response(StatusCode::BAD_GATEWAY, "provider_error")
         }
         DeviceFlowError::Database(err) => internal_error(err),
         DeviceFlowError::Identity(err) => internal_error(err),
-        DeviceFlowError::GitHubAccount(err) => internal_error(err),
+        DeviceFlowError::OAuthAccount(err) => internal_error(err),
         DeviceFlowError::Session(err) => internal_error(err),
         DeviceFlowError::Jwt(err) => internal_error(err),
-        DeviceFlowError::Authorization(err) => internal_error(err),
-    }
-}
-
-pub async fn github_token(
-    State(state): State<AppState>,
-    Extension(ctx): Extension<RequestContext>,
-) -> Response {
-    let repo = GitHubAccountRepository::new(state.pool());
-
-    match repo.get_by_user_id(&ctx.user.id).await {
-        Ok(Some(account)) => {
-            let expires_at = account.token_expires_at.map(|ts| ts.timestamp());
-            let response = GitHubTokenResponse {
-                access_token: account.access_token,
-                expires_at,
-                scopes: account.scopes,
-            };
-            (StatusCode::OK, Json(response)).into_response()
-        }
-        Ok(None) => (
-            StatusCode::PRECONDITION_FAILED,
-            Json(json!({ "error": "github account not linked" })),
-        )
-            .into_response(),
-        Err(err) => {
-            warn!(?err, "failed to fetch GitHub token");
-            (
-                StatusCode::BAD_GATEWAY,
-                Json(json!({ "error": "failed to retrieve GitHub token" })),
-            )
-                .into_response()
+        DeviceFlowError::Authorization(err) => {
+            warn!(?err, "device authorization error");
+            response(StatusCode::BAD_GATEWAY, "provider_error")
         }
     }
 }
@@ -241,15 +181,26 @@ pub async fn profile(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
 ) -> Json<ProfileResponse> {
-    let repo = GitHubAccountRepository::new(state.pool());
-    let account = repo.get_by_user_id(&ctx.user.id).await.ok().flatten();
+    let repo = OAuthAccountRepository::new(state.pool());
+    let providers = repo
+        .list_by_user(&ctx.user.id)
+        .await
+        .unwrap_or_default()
+        .into_iter()
+        .map(|account| ProviderProfile {
+            provider: account.provider,
+            username: account.username,
+            display_name: account.display_name,
+            email: account.email,
+            avatar_url: account.avatar_url,
+        })
+        .collect();
 
     Json(ProfileResponse {
         user_id: ctx.user.id.clone(),
         username: ctx.user.username.clone(),
         email: ctx.user.email.clone(),
         organization_id: ctx.organization.id.clone(),
-        github_login: account.as_ref().map(|account| account.login.clone()),
-        avatar_url: account.and_then(|account| account.avatar_url),
+        providers,
     })
 }

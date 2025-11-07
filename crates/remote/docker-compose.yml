@@ -29,6 +29,8 @@ services:
       SERVER_ACTIVITY_CHANNEL: activity
       GITHUB_OAUTH_CLIENT_ID: ${GITHUB_OAUTH_CLIENT_ID:?set in .env.remote}
       GITHUB_OAUTH_CLIENT_SECRET: ${GITHUB_OAUTH_CLIENT_SECRET:?set in .env.remote}
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:?set in .env.remote}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:?set in .env.remote}
       REMOTE_JWT_SECRET: ${REMOTE_JWT_SECRET:?set in .env.remote}
     ports:
       - "127.0.0.1:3000:8081"

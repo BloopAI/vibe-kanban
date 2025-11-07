@@ -10,19 +10,21 @@ use uuid::Uuid;
 use super::{
     ProviderRegistry,
     jwt::{JwtError, JwtService},
-    provider::{DeviceAccessGrant, DeviceCodeResponse, ProviderUser},
+    provider::{DeviceAccessGrant, DeviceCodeResponse, ProviderAuthorization, ProviderUser},
 };
 use crate::{
     configure_user_scope,
     db::{
         auth::{AuthSessionError, AuthSessionRepository},
-        github::{GitHubAccountError, GitHubAccountRepository},
         identity::{IdentityError, IdentityRepository, UpsertUser},
-        oauth::{AuthorizationStatus, DeviceAuthorizationError, DeviceAuthorizationRepository},
+        oauth::{
+            AuthorizationStatus, DeviceAuthorization, DeviceAuthorizationError,
+            DeviceAuthorizationRepository,
+        },
+        oauth_accounts::{OAuthAccountError, OAuthAccountInsert, OAuthAccountRepository},
     },
 };
 
-const DEFAULT_SCOPE: &[&str] = &["repo", "read:user", "user:email"];
 const SESSION_SECRET_LENGTH: usize = 48;
 
 #[derive(Debug, Error)]
@@ -44,7 +46,7 @@ pub enum DeviceFlowError {
     #[error(transparent)]
     Identity(#[from] IdentityError),
     #[error(transparent)]
-    GitHubAccount(#[from] GitHubAccountError),
+    OAuthAccount(#[from] OAuthAccountError),
     #[error(transparent)]
     Session(#[from] AuthSessionError),
     #[error(transparent)]
@@ -100,7 +102,7 @@ impl DeviceFlowService {
             .ok_or_else(|| DeviceFlowError::UnsupportedProvider(provider.to_string()))?;
 
         let response = provider
-            .request_device_code(DEFAULT_SCOPE)
+            .request_device_code(provider.scopes())
             .await
             .map_err(DeviceFlowError::Provider)?;
 
@@ -141,21 +143,21 @@ impl DeviceFlowService {
             DeviceAuthorizationError::Database(inner) => inner.into(),
         })?;
 
-        match record.status().unwrap_or(AuthorizationStatus::Pending) {
-            AuthorizationStatus::Success => self.handle_success(record).await,
-            AuthorizationStatus::Error => Ok(DeviceFlowPollResponse {
+        match record.status() {
+            Some(AuthorizationStatus::Success) => self.handle_success(record).await,
+            Some(AuthorizationStatus::Error) => Ok(DeviceFlowPollResponse {
                 status: DeviceFlowPollStatus::Error,
                 access_token: None,
                 error: record.error_code,
             }),
-            AuthorizationStatus::Expired => Err(DeviceFlowError::Expired),
-            AuthorizationStatus::Pending => self.advance_pending(record).await,
+            Some(AuthorizationStatus::Expired) => Err(DeviceFlowError::Expired),
+            _ => self.advance_pending(record).await,
         }
     }
 
     async fn handle_success(
         &self,
-        record: crate::db::oauth::DeviceAuthorization,
+        record: DeviceAuthorization,
     ) -> Result<DeviceFlowPollResponse, DeviceFlowError> {
         let session_id = record
             .session_id
@@ -189,7 +191,7 @@ impl DeviceFlowService {
 
     async fn advance_pending(
         &self,
-        record: crate::db::oauth::DeviceAuthorization,
+        record: DeviceAuthorization,
     ) -> Result<DeviceFlowPollResponse, DeviceFlowError> {
         let now = Utc::now();
         if record.expires_at <= now {
@@ -224,7 +226,7 @@ impl DeviceFlowService {
             .await
             .map_err(DeviceFlowError::Provider)?
         {
-            super::provider::DevicePoll::Pending => {
+            ProviderAuthorization::Pending => {
                 let repo = DeviceAuthorizationRepository::new(&self.pool);
                 repo.record_poll(record.id).await?;
                 Ok(DeviceFlowPollResponse {
@@ -233,7 +235,7 @@ impl DeviceFlowService {
                     error: None,
                 })
             }
-            super::provider::DevicePoll::SlowDown(increment) => {
+            ProviderAuthorization::SlowDown(increment) => {
                 let repo = DeviceAuthorizationRepository::new(&self.pool);
                 repo.record_poll(record.id).await?;
                 let next_interval = record.polling_interval.saturating_add(increment as i32);
@@ -244,13 +246,13 @@ impl DeviceFlowService {
                     error: None,
                 })
             }
-            super::provider::DevicePoll::Denied => {
+            ProviderAuthorization::Denied => {
                 let repo = DeviceAuthorizationRepository::new(&self.pool);
                 repo.set_status(record.id, AuthorizationStatus::Error, Some("access_denied"))
                     .await?;
                 Err(DeviceFlowError::Denied)
             }
-            super::provider::DevicePoll::Expired => {
+            ProviderAuthorization::Expired => {
                 let repo = DeviceAuthorizationRepository::new(&self.pool);
                 repo.set_status(
                     record.id,
@@ -260,7 +262,7 @@ impl DeviceFlowService {
                 .await?;
                 Err(DeviceFlowError::Expired)
             }
-            super::provider::DevicePoll::Authorized(grant) => {
+            ProviderAuthorization::Authorized(grant) => {
                 self.complete_authorization(record, grant).await
             }
         }
@@ -268,7 +270,7 @@ impl DeviceFlowService {
 
     async fn complete_authorization(
         &self,
-        record: crate::db::oauth::DeviceAuthorization,
+        record: DeviceAuthorization,
         grant: DeviceAccessGrant,
     ) -> Result<DeviceFlowPollResponse, DeviceFlowError> {
         let provider = self
@@ -281,60 +283,71 @@ impl DeviceFlowService {
             .await
             .map_err(DeviceFlowError::Provider)?;
 
-        let user_id = user_profile.id.to_string();
-        let email = ensure_email(&user_profile);
-        let (first_name, last_name) = split_name(user_profile.name.as_deref());
-
+        let account_repo = OAuthAccountRepository::new(&self.pool);
         let identity_repo = IdentityRepository::new(&self.pool);
-        let organization_id = personal_org_id(&user_id);
-        let organization_slug = personal_org_slug(&user_profile.login, user_profile.id);
 
-        identity_repo
-            .ensure_personal_organization(&organization_id, &organization_slug)
+        let email = ensure_email(provider.name(), &user_profile);
+        let username = derive_username(provider.name(), &user_profile);
+        let display_name = derive_display_name(&user_profile);
+
+        let existing_account = account_repo
+            .get_by_provider_user(provider.name(), &user_profile.id)
             .await?;
 
+        let user_id = match existing_account {
+            Some(account) => account.user_id,
+            None => {
+                if let Some(found) = identity_repo.find_user_by_email(&email).await? {
+                    found.id
+                } else {
+                    Uuid::new_v4().to_string()
+                }
+            }
+        };
+
+        let org_id = personal_org_id(&user_id);
+        let org_slug = personal_org_slug(&user_id, username.as_deref());
         identity_repo
+            .ensure_personal_organization(&org_id, &org_slug)
+            .await?;
+
+        let (first_name, last_name) = split_name(user_profile.name.as_deref());
+
+        let user = identity_repo
             .upsert_user(UpsertUser {
                 id: &user_id,
                 email: &email,
                 first_name: first_name.as_deref(),
                 last_name: last_name.as_deref(),
-                username: Some(&user_profile.login),
+                username: username.as_deref(),
             })
             .await?;
 
-        identity_repo
-            .ensure_membership(&organization_id, &user_id)
-            .await?;
+        identity_repo.ensure_membership(&org_id, &user.id).await?;
 
-        let github_repo = GitHubAccountRepository::new(&self.pool);
-        github_repo
-            .upsert(
-                &user_id,
-                user_profile.id,
-                &user_profile.login,
-                user_profile.name.as_deref(),
-                Some(&email),
-                user_profile.avatar_url.as_deref(),
-                &grant.access_token,
-                &grant.token_type,
-                &grant.scopes,
-                grant.expires_in,
-            )
+        account_repo
+            .upsert(OAuthAccountInsert {
+                user_id: &user.id,
+                provider: provider.name(),
+                provider_user_id: &user_profile.id,
+                email: Some(email.as_str()),
+                username: username.as_deref(),
+                display_name: display_name.as_deref(),
+                avatar_url: user_profile.avatar_url.as_deref(),
+            })
             .await?;
 
         let session_secret = generate_session_secret();
         let session_repo = AuthSessionRepository::new(&self.pool);
-        let session = session_repo.create(&user_id, &session_secret).await?;
+        let session = session_repo.create(&user.id, &session_secret).await?;
 
-        let organization = identity_repo.fetch_organization(&organization_id).await?;
-        let user = identity_repo.fetch_user(&user_id).await?;
+        let organization = identity_repo.fetch_organization(&org_id).await?;
         let token = self.jwt.encode(&session, &user, &organization)?;
         session_repo.touch(session.id).await?;
 
         let oauth_repo = DeviceAuthorizationRepository::new(&self.pool);
         oauth_repo
-            .mark_completed(record.id, &user_id, session.id)
+            .mark_completed(record.id, &user.id, session.id)
             .await?;
 
         configure_user_scope(
@@ -351,12 +364,29 @@ impl DeviceFlowService {
     }
 }
 
-fn ensure_email(profile: &ProviderUser) -> String {
+fn ensure_email(provider: &str, profile: &ProviderUser) -> String {
     if let Some(email) = profile.email.clone() {
         return email;
     }
+    match provider {
+        "github" => format!("{}@users.noreply.github.com", profile.id),
+        "google" => format!("{}@users.noreply.google.com", profile.id),
+        _ => format!("{}@oauth.local", profile.id),
+    }
+}
 
-    format!("{}@users.noreply.github.com", profile.login)
+fn derive_username(provider: &str, profile: &ProviderUser) -> Option<String> {
+    if let Some(login) = profile.login.clone() {
+        return Some(login);
+    }
+    if let Some(email) = profile.email.as_deref() {
+        return email.split('@').next().map(|part| part.to_owned());
+    }
+    Some(format!("{}-{}", provider, profile.id))
+}
+
+fn derive_display_name(profile: &ProviderUser) -> Option<String> {
+    profile.name.clone()
 }
 
 fn split_name(name: Option<&str>) -> (Option<String>, Option<String>) {
@@ -364,11 +394,11 @@ fn split_name(name: Option<&str>) -> (Option<String>, Option<String>) {
         Some(value) => {
             let mut iter = value.split_whitespace();
             let first = iter.next().map(|s| s.to_string());
-            let rest: Vec<&str> = iter.collect();
-            let last = if rest.is_empty() {
+            let remainder: Vec<&str> = iter.collect();
+            let last = if remainder.is_empty() {
                 None
             } else {
-                Some(rest.join(" "))
+                Some(remainder.join(" "))
             };
             (first, last)
         }
@@ -380,8 +410,26 @@ fn personal_org_id(user_id: &str) -> String {
     format!("org-{user_id}")
 }
 
-fn personal_org_slug(login: &str, github_id: i64) -> String {
-    format!("{login}-{github_id}")
+fn personal_org_slug(user_id: &str, hint: Option<&str>) -> String {
+    let candidate = hint
+        .and_then(|value| {
+            let trimmed = value.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed)
+            }
+        })
+        .unwrap_or(user_id);
+
+    candidate
+        .chars()
+        .map(|ch| match ch {
+            'A'..='Z' => ch.to_ascii_lowercase(),
+            'a'..='z' | '0'..='9' | '-' => ch,
+            _ => '-',
+        })
+        .collect()
 }
 
 fn generate_session_secret() -> String {

@@ -1,12 +1,14 @@
 use std::{net::SocketAddr, sync::Arc};
 
-use anyhow::Context;
+use anyhow::{Context, bail};
 use tracing::instrument;
 
 use crate::{
     AppState,
     activity::ActivityBroker,
-    auth::{DeviceFlowService, GitHubDeviceProvider, JwtService, ProviderRegistry},
+    auth::{
+        DeviceFlowService, GitHubDeviceProvider, GoogleDeviceProvider, JwtService, ProviderRegistry,
+    },
     config::RemoteServerConfig,
     db, routes,
 };
@@ -36,11 +38,25 @@ impl Server {
         let jwt = Arc::new(JwtService::new(auth_config.jwt_secret().clone()));
 
         let mut registry = ProviderRegistry::new();
-        let github_provider = GitHubDeviceProvider::new(
-            auth_config.github_client_id().to_string(),
-            auth_config.github_client_secret().clone(),
-        )?;
-        registry.register(github_provider);
+
+        if let Some(github) = auth_config.github() {
+            registry.register(GitHubDeviceProvider::new(
+                github.client_id().to_string(),
+                github.client_secret().clone(),
+            )?);
+        }
+
+        if let Some(google) = auth_config.google() {
+            registry.register(GoogleDeviceProvider::new(
+                google.client_id().to_string(),
+                google.client_secret().clone(),
+            )?);
+        }
+
+        if registry.is_empty() {
+            bail!("no OAuth providers configured");
+        }
+
         let registry = Arc::new(registry);
 
         let device_flow = Arc::new(DeviceFlowService::new(

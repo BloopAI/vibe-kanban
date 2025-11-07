@@ -30,6 +30,8 @@ pub enum ConfigError {
     MissingVar(&'static str),
     #[error("invalid value for environment variable `{0}`")]
     InvalidVar(&'static str),
+    #[error("no OAuth providers configured")]
+    NoOAuthProviders,
 }
 
 impl RemoteServerConfig {
@@ -94,38 +96,82 @@ fn get_numeric_env_var<T: std::str::FromStr>(
 }
 
 #[derive(Debug, Clone)]
+pub struct OAuthProviderConfig {
+    client_id: String,
+    client_secret: SecretString,
+}
+
+impl OAuthProviderConfig {
+    fn new(client_id: String, client_secret: SecretString) -> Self {
+        Self {
+            client_id,
+            client_secret,
+        }
+    }
+
+    pub fn client_id(&self) -> &str {
+        &self.client_id
+    }
+
+    pub fn client_secret(&self) -> &SecretString {
+        &self.client_secret
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct AuthConfig {
-    github_client_id: String,
-    github_client_secret: SecretString,
+    github: Option<OAuthProviderConfig>,
+    google: Option<OAuthProviderConfig>,
     jwt_secret: SecretString,
 }
 
 impl AuthConfig {
     fn from_env() -> Result<Self, ConfigError> {
-        let github_client_id = env::var("GITHUB_OAUTH_CLIENT_ID")
-            .map_err(|_| ConfigError::MissingVar("GITHUB_OAUTH_CLIENT_ID"))?;
-
-        let github_client_secret = env::var("GITHUB_OAUTH_CLIENT_SECRET")
-            .map_err(|_| ConfigError::MissingVar("GITHUB_OAUTH_CLIENT_SECRET"))
-            .map(|value| SecretString::new(value.into()))?;
-
         let jwt_secret = env::var("REMOTE_JWT_SECRET")
             .map_err(|_| ConfigError::MissingVar("REMOTE_JWT_SECRET"))
             .map(|value| SecretString::new(value.into()))?;
 
+        let github = match env::var("GITHUB_OAUTH_CLIENT_ID") {
+            Ok(client_id) => {
+                let client_secret = env::var("GITHUB_OAUTH_CLIENT_SECRET")
+                    .map_err(|_| ConfigError::MissingVar("GITHUB_OAUTH_CLIENT_SECRET"))?;
+                Some(OAuthProviderConfig::new(
+                    client_id,
+                    SecretString::new(client_secret.into()),
+                ))
+            }
+            Err(_) => None,
+        };
+
+        let google = match env::var("GOOGLE_OAUTH_CLIENT_ID") {
+            Ok(client_id) => {
+                let client_secret = env::var("GOOGLE_OAUTH_CLIENT_SECRET")
+                    .map_err(|_| ConfigError::MissingVar("GOOGLE_OAUTH_CLIENT_SECRET"))?;
+                Some(OAuthProviderConfig::new(
+                    client_id,
+                    SecretString::new(client_secret.into()),
+                ))
+            }
+            Err(_) => None,
+        };
+
+        if github.is_none() && google.is_none() {
+            return Err(ConfigError::NoOAuthProviders);
+        }
+
         Ok(Self {
-            github_client_id,
-            github_client_secret,
+            github,
+            google,
             jwt_secret,
         })
     }
 
-    pub fn github_client_id(&self) -> &str {
-        &self.github_client_id
+    pub fn github(&self) -> Option<&OAuthProviderConfig> {
+        self.github.as_ref()
     }
 
-    pub fn github_client_secret(&self) -> &SecretString {
-        &self.github_client_secret
+    pub fn google(&self) -> Option<&OAuthProviderConfig> {
+        self.google.as_ref()
     }
 
     pub fn jwt_secret(&self) -> &SecretString {

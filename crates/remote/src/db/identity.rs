@@ -153,6 +153,28 @@ impl<'a> IdentityRepository<'a> {
         .await?
         .ok_or(IdentityError::NotFound)
     }
+
+    pub async fn find_user_by_email(&self, email: &str) -> Result<Option<User>, IdentityError> {
+        sqlx::query_as!(
+            User,
+            r#"
+            SELECT
+                id           AS "id!",
+                email        AS "email!",
+                first_name   AS "first_name?",
+                last_name    AS "last_name?",
+                username     AS "username?",
+                created_at   AS "created_at!",
+                updated_at   AS "updated_at!"
+            FROM users
+            WHERE lower(email) = lower($1)
+            "#,
+            email
+        )
+        .fetch_optional(self.pool)
+        .await
+        .map_err(IdentityError::from)
+    }
 }
 
 async fn upsert_organization(

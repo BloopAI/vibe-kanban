@@ -53,7 +53,6 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/tasks/{task_id}", patch(tasks::update_shared_task))
         .route("/v1/tasks/{task_id}", delete(tasks::delete_shared_task))
         .route("/v1/tasks/{task_id}/assign", post(tasks::assign_task))
-        .route("/v1/oauth/github/token", get(oauth::github_token))
         .route("/profile", get(oauth::profile))
         .merge(crate::ws::router())
         .layer(middleware::from_fn_with_state(
