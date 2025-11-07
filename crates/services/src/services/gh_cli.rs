@@ -121,12 +121,17 @@ impl GhCli {
         }
     }
 
-    /// Fetch repository numeric ID via the GitHub REST API through `gh`.
+    /// Fetch repository numeric ID via `gh repo view`.
     pub fn repo_database_id(&self, owner: &str, repo: &str) -> Result<i64, GhCliError> {
-        let raw = self.run(["api", &format!("repos/{owner}/{repo}"), "--jq", ".id"])?;
-        raw.trim().parse::<i64>().map_err(|err| {
+        let raw = self.run(["repo", "view", &format!("{owner}/{repo}"), "--json", "id"])?;
+        let value: Value = serde_json::from_str(raw.trim()).map_err(|err| {
             GhCliError::UnexpectedOutput(format!(
-                "Failed to parse repository id from gh api output: {err}; raw: {raw}"
+                "Failed to parse gh repo view response: {err}; raw: {raw}"
+            ))
+        })?;
+        value.get("id").and_then(Value::as_i64).ok_or_else(|| {
+            GhCliError::UnexpectedOutput(format!(
+                "gh repo view response missing 'id' field: {value:#?}"
             ))
         })
     }

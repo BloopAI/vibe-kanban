@@ -1,5 +1,6 @@
 pub mod cursor_setup;
 pub mod drafts;
+pub mod gh_cli_setup;
 pub mod util;
 
 use axum::{
@@ -1669,11 +1670,31 @@ pub async fn attach_existing_pr(
     }
 }
 
+#[axum::debug_handler]
+pub async fn gh_cli_setup_handler(
+    Extension(task_attempt): Extension<TaskAttempt>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<ExecutionProcess>>, ApiError> {
+    let execution_process = gh_cli_setup::run_gh_cli_setup(&deployment, &task_attempt).await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "gh_cli_setup_executed",
+            serde_json::json!({
+                "attempt_id": task_attempt.id.to_string(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(execution_process)))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_attempt_id_router = Router::new()
         .route("/", get(get_task_attempt))
         .route("/follow-up", post(follow_up))
         .route("/run-agent-setup", post(run_agent_setup))
+        .route("/gh-cli-setup", post(gh_cli_setup_handler))
         .route(
             "/draft",
             get(drafts::get_draft)

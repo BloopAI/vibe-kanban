@@ -98,9 +98,15 @@ const CreatePrDialog = NiceModal.create(() => {
       if (result.error) {
         // Show error message based on the error type
         switch (result.error) {
-          case GitHubServiceError.TOKEN_INVALID:
-            NiceModal.show(GhCliSetupDialog);
+          case GitHubServiceError.GH_CLI_NOT_INSTALLED:
+            NiceModal.show(GhCliSetupDialog, { attemptId: data.attempt.id });
             setError(null);
+            modal.hide();
+            break;
+          case GitHubServiceError.TOKEN_INVALID:
+            NiceModal.show(GhCliSetupDialog, { attemptId: data.attempt.id });
+            setError(null);
+            modal.hide();
             break;
           case GitHubServiceError.INSUFFICIENT_PERMISSIONS:
             setError(

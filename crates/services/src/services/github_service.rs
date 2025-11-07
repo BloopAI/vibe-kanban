@@ -34,6 +34,10 @@ pub enum GitHubServiceError {
     InsufficientPermissions,
     #[error("GitHub repository not found or no access")]
     RepoNotFoundOrNoAccess,
+    #[error(
+        "GitHub CLI is not installed or not available in PATH. Please install it from https://cli.github.com/ and authenticate with 'gh auth login'"
+    )]
+    GhCliNotInstalled,
     #[ts(skip)]
     #[serde(skip)]
     #[error(transparent)]
@@ -44,7 +48,7 @@ impl From<GhCliError> for GitHubServiceError {
     fn from(error: GhCliError) -> Self {
         match error {
             GhCliError::AuthFailed(_) => Self::TokenInvalid,
-            GhCliError::NotAvailable => Self::Repository("GitHub CLI (gh) is not installed or not available in PATH. Please install it from https://cli.github.com/ and authenticate with 'gh auth login'".to_string()),
+            GhCliError::NotAvailable => Self::GhCliNotInstalled,
             GhCliError::CommandFailed(msg) | GhCliError::UnexpectedOutput(msg) => {
                 Self::PullRequest(msg)
             }
@@ -78,6 +82,7 @@ impl GitHubServiceError {
             GitHubServiceError::TokenInvalid
                 | GitHubServiceError::InsufficientPermissions
                 | GitHubServiceError::RepoNotFoundOrNoAccess
+                | GitHubServiceError::GhCliNotInstalled
         )
     }
 
@@ -154,9 +159,7 @@ impl GitHubService {
                 ))
             })?
             .map_err(|err| match err {
-                GhCliError::NotAvailable => GitHubServiceError::Repository(
-                    "GitHub CLI (`gh`) is not available on this system".into(),
-                ),
+                GhCliError::NotAvailable => GitHubServiceError::GhCliNotInstalled,
                 GhCliError::AuthFailed(_) => GitHubServiceError::TokenInvalid,
                 GhCliError::CommandFailed(msg) => {
                     GitHubServiceError::Repository(format!("GitHub CLI auth check failed: {msg}"))
@@ -227,7 +230,7 @@ impl GitHubService {
                     "Failed to execute GitHub CLI for PR creation: {err}"
                 ))
             })?
-            .map_err(|err| Self::map_gh_cli_error(err, repo_info, request))?;
+            .map_err(|err| Self::map_gh_cli_error(err, request))?;
 
         info!(
             "Created GitHub PR #{} for branch {} in {}/{}",
@@ -237,16 +240,9 @@ impl GitHubService {
         Ok(cli_result)
     }
 
-    fn map_gh_cli_error(
-        err: GhCliError,
-        repo_info: &GitHubRepoInfo,
-        request: &CreatePrRequest,
-    ) -> GitHubServiceError {
+    fn map_gh_cli_error(err: GhCliError, request: &CreatePrRequest) -> GitHubServiceError {
         match err {
-            GhCliError::NotAvailable => GitHubServiceError::Repository(format!(
-                "GitHub CLI (`gh`) is not available while creating a PR in {}/{}",
-                repo_info.owner, repo_info.repo_name
-            )),
+            GhCliError::NotAvailable => GitHubServiceError::GhCliNotInstalled,
             GhCliError::AuthFailed(msg) => {
                 let lower = msg.to_ascii_lowercase();
                 if lower.contains("403") || lower.contains("forbidden") {
@@ -279,9 +275,7 @@ impl GitHubService {
 
     fn map_repo_cli_error(err: GhCliError) -> GitHubServiceError {
         match err {
-            GhCliError::NotAvailable => GitHubServiceError::Repository(
-                "GitHub CLI (`gh`) is not available on this system".into(),
-            ),
+            GhCliError::NotAvailable => GitHubServiceError::GhCliNotInstalled,
             GhCliError::AuthFailed(_) => GitHubServiceError::TokenInvalid,
             GhCliError::CommandFailed(msg) => {
                 let lower = msg.to_ascii_lowercase();
@@ -301,9 +295,7 @@ impl GitHubService {
 
     fn map_pr_cli_error(err: GhCliError) -> GitHubServiceError {
         match err {
-            GhCliError::NotAvailable => GitHubServiceError::Repository(
-                "GitHub CLI (`gh`) is not available on this system".into(),
-            ),
+            GhCliError::NotAvailable => GitHubServiceError::GhCliNotInstalled,
             GhCliError::AuthFailed(_) => GitHubServiceError::TokenInvalid,
             GhCliError::CommandFailed(msg) => {
                 let lower = msg.to_ascii_lowercase();
@@ -323,9 +315,7 @@ impl GitHubService {
 
     fn map_pr_list_cli_error(err: GhCliError) -> GitHubServiceError {
         match err {
-            GhCliError::NotAvailable => GitHubServiceError::Repository(
-                "GitHub CLI (`gh`) is not available on this system".into(),
-            ),
+            GhCliError::NotAvailable => GitHubServiceError::GhCliNotInstalled,
             GhCliError::AuthFailed(_) => GitHubServiceError::TokenInvalid,
             GhCliError::CommandFailed(msg) => {
                 let lower = msg.to_ascii_lowercase();

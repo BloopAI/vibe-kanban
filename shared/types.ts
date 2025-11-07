@@ -24,7 +24,7 @@ export type McpConfig = { servers: { [key in string]?: JsonValue }, servers_path
 
 export type ExecutorActionType = { "type": "CodingAgentInitialRequest" } & CodingAgentInitialRequest | { "type": "CodingAgentFollowUpRequest" } & CodingAgentFollowUpRequest | { "type": "ScriptRequest" } & ScriptRequest;
 
-export type ScriptContext = "SetupScript" | "CleanupScript" | "DevServer";
+export type ScriptContext = "SetupScript" | "CleanupScript" | "DevServer" | "GithubCliSetupScript";
 
 export type ScriptRequest = { script: string, language: ScriptRequestLanguage, context: ScriptContext, };
 
@@ -76,8 +76,6 @@ export type UpdateMcpServersBody = { servers: { [key in string]?: JsonValue }, }
 
 export type GetMcpServerResponse = { mcp_config: McpConfig, config_path: string, };
 
-export type GhSetupResponse = { success: boolean, message: string, };
-
 export type CreateFollowUpAttempt = { prompt: string, variant: string | null, image_ids: Array<string> | null, retry_process_id: string | null, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };
 
 export type DraftResponse = { task_attempt_id: string, draft_type: DraftType, retry_process_id: string | null, prompt: string, queued: boolean, variant: string | null, image_ids: Array<string> | null, version: bigint, };
@@ -106,7 +104,7 @@ export type CreateGitHubPrRequest = { title: string, body: string | null, target
 
 export type ImageResponse = { id: string, file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, created_at: string, updated_at: string, };
 
-export enum GitHubServiceError { TOKEN_INVALID = "TOKEN_INVALID", INSUFFICIENT_PERMISSIONS = "INSUFFICIENT_PERMISSIONS", REPO_NOT_FOUND_OR_NO_ACCESS = "REPO_NOT_FOUND_OR_NO_ACCESS" }
+export enum GitHubServiceError { TOKEN_INVALID = "TOKEN_INVALID", INSUFFICIENT_PERMISSIONS = "INSUFFICIENT_PERMISSIONS", REPO_NOT_FOUND_OR_NO_ACCESS = "REPO_NOT_FOUND_OR_NO_ACCESS", GH_CLI_NOT_INSTALLED = "GH_CLI_NOT_INSTALLED" }
 
 export type Config = { config_version: string, theme: ThemeMode, executor_profile: ExecutorProfileId, disclaimer_acknowledged: boolean, onboarding_acknowledged: boolean, github_login_acknowledged: boolean, login_acknowledged: boolean, telemetry_acknowledged: boolean, notifications: NotificationConfig, editor: EditorConfig, github: GitHubConfig, analytics_enabled: boolean | null, workspace_dir: string | null, last_app_version: string | null, show_release_notes: boolean, language: UiLanguage, git_branch_prefix: string, showcases: ShowcaseState, };
 
