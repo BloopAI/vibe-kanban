@@ -298,12 +298,11 @@ impl GitCli {
         Ok(())
     }
     /// Fetch a branch to the given remote using native git authentication.
-    pub fn fetch_with_token_and_refspec(
+    pub fn fetch_with_refspec(
         &self,
         repo_path: &Path,
         remote_url: &str,
         refspec: &str,
-        _token: &str,
     ) -> Result<(), GitCliError> {
         let envs = vec![(OsString::from("GIT_TERMINAL_PROMPT"), OsString::from("0"))];
 
@@ -321,12 +320,11 @@ impl GitCli {
     }
 
     /// Push a branch to the given remote using native git authentication.
-    pub fn push_with_token(
+    pub fn push(
         &self,
         repo_path: &Path,
         remote_url: &str,
         branch: &str,
-        _token: &str,
     ) -> Result<(), GitCliError> {
         let refspec = format!("refs/heads/{branch}:refs/heads/{branch}");
         let envs = vec![(OsString::from("GIT_TERMINAL_PROMPT"), OsString::from("0"))];

@@ -1783,7 +1783,7 @@ impl GitService {
             .url()
             .ok_or_else(|| GitServiceError::InvalidRepository("Remote has no URL".to_string()))?;
         let git_cli = GitCli::new();
-        if let Err(e) = git_cli.push_with_token(worktree_path, remote_url, branch_name, "") {
+        if let Err(e) = git_cli.push(worktree_path, remote_url, branch_name) {
             tracing::error!("Push to GitHub failed: {}", e);
             return Err(e.into());
         }
@@ -1818,7 +1818,7 @@ impl GitService {
             .ok_or_else(|| GitServiceError::InvalidRepository("Remote has no URL".to_string()))?;
 
         let git_cli = GitCli::new();
-        if let Err(e) = git_cli.fetch_with_token_and_refspec(repo.path(), remote_url, refspec, "") {
+        if let Err(e) = git_cli.fetch_with_refspec(repo.path(), remote_url, refspec) {
             tracing::error!("Fetch from GitHub failed: {}", e);
             return Err(e.into());
         }
