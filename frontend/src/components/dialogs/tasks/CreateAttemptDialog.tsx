@@ -13,18 +13,18 @@ import { Label } from '@/components/ui/label';
 import BranchSelector from '@/components/tasks/BranchSelector';
 import { ExecutorProfileSelector } from '@/components/settings';
 import { useAttemptCreation } from '@/hooks/useAttemptCreation';
-import { useNavigateWithSearch } from '@/hooks';
+import {
+  useNavigateWithSearch,
+  useTask,
+  useAttempt,
+  useBranches,
+  useTaskAttempts,
+} from '@/hooks';
 import { useProject } from '@/contexts/project-context';
 import { useUserSystem } from '@/components/config-provider';
-import { projectsApi, attemptsApi, tasksApi } from '@/lib/api';
 import { paths } from '@/lib/paths';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
-import type {
-  GitBranch,
-  ExecutorProfileId,
-  TaskAttempt,
-  BaseCodingAgent,
-} from 'shared/types';
+import type { ExecutorProfileId, BaseCodingAgent } from 'shared/types';
 
 export interface CreateAttemptDialogProps {
   taskId: string;
@@ -52,98 +52,42 @@ export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
       null
     );
 
-    const [branches, setBranches] = useState<GitBranch[]>([]);
-    const [isLoadingBranches, setIsLoadingBranches] = useState(false);
-
-    const [latestAttempt, setLatestAttempt] = useState<TaskAttempt | null>(
-      null
+    const { data: branches = [], isLoading: isLoadingBranches } = useBranches(
+      projectId,
+      { enabled: modal.visible && !!projectId }
     );
-    const [isLoadingAttempts, setIsLoadingAttempts] = useState(false);
 
-    const [parentAttempt, setParentAttempt] = useState<TaskAttempt | null>(
-      null
+    const { data: attempts = [], isLoading: isLoadingAttempts } =
+      useTaskAttempts(taskId, {
+        enabled: modal.visible,
+        refetchInterval: 5000,
+      });
+
+    const { data: task, isLoading: isLoadingTask } = useTask(taskId, {
+      enabled: modal.visible,
+    });
+
+    const parentAttemptId = task?.parent_task_attempt ?? undefined;
+    const { data: parentAttempt, isLoading: isLoadingParent } = useAttempt(
+      parentAttemptId,
+      { enabled: modal.visible && !!parentAttemptId }
     );
-    const [isLoadingParent, setIsLoadingParent] = useState(false);
+
+    const latestAttempt = useMemo(() => {
+      if (attempts.length === 0) return null;
+      return attempts.reduce((latest, attempt) =>
+        new Date(attempt.created_at) > new Date(latest.created_at)
+          ? attempt
+          : latest
+      );
+    }, [attempts]);
 
     useEffect(() => {
       if (!modal.visible) {
         setUserSelectedProfile(null);
         setUserSelectedBranch(null);
-        setBranches([]);
-        setIsLoadingBranches(false);
-        setLatestAttempt(null);
-        setIsLoadingAttempts(false);
-        setParentAttempt(null);
-        setIsLoadingParent(false);
-        return;
       }
-
-      if (!projectId) return;
-
-      let alive = true;
-
-      setIsLoadingBranches(true);
-      projectsApi
-        .getBranches(projectId)
-        .then((result) => {
-          if (alive) setBranches(result);
-        })
-        .catch((err) => {
-          console.error('Failed to load branches:', err);
-        })
-        .finally(() => {
-          if (alive) setIsLoadingBranches(false);
-        });
-
-      setIsLoadingAttempts(true);
-      attemptsApi
-        .getAll(taskId)
-        .then((attempts) => {
-          if (!alive) return;
-          const latest =
-            [...attempts].sort(
-              (a, b) =>
-                new Date(b.created_at).getTime() -
-                new Date(a.created_at).getTime()
-            )[0] ?? null;
-          setLatestAttempt(latest);
-        })
-        .catch((err) => {
-          console.error('Failed to load attempts:', err);
-        })
-        .finally(() => {
-          if (alive) setIsLoadingAttempts(false);
-        });
-
-      setIsLoadingParent(true);
-      tasksApi
-        .getById(taskId)
-        .then((task) => {
-          if (!alive) return;
-          const parentId = task.parent_task_attempt;
-          if (!parentId) {
-            setParentAttempt(null);
-            setIsLoadingParent(false);
-            return;
-          }
-          return attemptsApi
-            .get(parentId)
-            .then((attempt) => {
-              if (alive) setParentAttempt(attempt);
-            })
-            .finally(() => {
-              if (alive) setIsLoadingParent(false);
-            });
-        })
-        .catch((err) => {
-          console.error('Failed to load task/parent attempt:', err);
-          if (alive) setIsLoadingParent(false);
-        });
-
-      return () => {
-        alive = false;
-      };
-    }, [modal.visible, projectId, taskId]);
+    }, [modal.visible]);
 
     const defaultProfile: ExecutorProfileId | null = useMemo(() => {
       if (latestAttempt?.executor) {
@@ -176,7 +120,7 @@ export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
     const effectiveBranch = userSelectedBranch ?? defaultBranch;
 
     const isLoadingInitial =
-      isLoadingBranches || isLoadingAttempts || isLoadingParent;
+      isLoadingBranches || isLoadingAttempts || isLoadingTask || isLoadingParent;
     const canCreate = Boolean(
       effectiveProfile && effectiveBranch && !isCreating && !isLoadingInitial
     );
