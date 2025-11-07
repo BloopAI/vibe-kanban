@@ -21,7 +21,6 @@ import {
   OnboardingDialog,
   LoginPromptDialog,
   PrivacyOptInDialog,
-  ProvidePatDialog,
   ReleaseNotesDialog,
   TaskFormDialog,
   EditorSelectionDialog,
@@ -52,7 +51,6 @@ NiceModal.register('disclaimer', DisclaimerDialog);
 NiceModal.register('onboarding', OnboardingDialog);
 NiceModal.register('login-prompt', LoginPromptDialog);
 NiceModal.register('privacy-opt-in', PrivacyOptInDialog);
-NiceModal.register('provide-pat', ProvidePatDialog);
 NiceModal.register('release-notes', ReleaseNotesDialog);
 NiceModal.register('delete-task-confirmation', DeleteTaskConfirmationDialog);
 NiceModal.register('task-form', TaskFormDialog);
