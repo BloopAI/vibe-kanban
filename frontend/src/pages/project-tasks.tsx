@@ -93,7 +93,7 @@ function GitErrorBanner() {
   if (!gitError) return null;
 
   return (
-    <div className="mx-4 mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded">
+    <div className="mx-4 mt-4 p-3 border border-destructive rounded">
       <div className="text-destructive text-sm">{gitError}</div>
     </div>
   );
@@ -120,13 +120,13 @@ function DiffsPanelContainer({
       gitOps={
         attempt && selectedTask
           ? {
-              task: selectedTask,
-              projectId,
-              branchStatus: branchStatus ?? null,
-              branches,
-              isAttemptRunning,
-              selectedBranch: branchStatus?.target_branch_name ?? null,
-            }
+            task: selectedTask,
+            projectId,
+            branchStatus: branchStatus ?? null,
+            branches,
+            isAttemptRunning,
+            selectedBranch: branchStatus?.target_branch_name ?? null,
+          }
           : undefined
       }
     />
