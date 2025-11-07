@@ -1,10 +1,13 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration as StdDuration};
 
 use anyhow::Error as AnyhowError;
 use chrono::{Duration, Utc};
 use rand::{Rng, distributions::Alphanumeric};
+use reqwest::StatusCode;
 use sqlx::PgPool;
 use thiserror::Error;
+use tokio::time::sleep;
+use tracing::warn;
 use uuid::Uuid;
 
 use super::{
@@ -26,6 +29,8 @@ use crate::{
 };
 
 const SESSION_SECRET_LENGTH: usize = 48;
+const USER_FETCH_MAX_ATTEMPTS: usize = 5;
+const USER_FETCH_RETRY_DELAY_MS: u64 = 500;
 
 #[derive(Debug, Error)]
 pub enum DeviceFlowError {
@@ -278,10 +283,60 @@ impl DeviceFlowService {
             .get(&record.provider)
             .ok_or_else(|| DeviceFlowError::UnsupportedProvider(record.provider.clone()))?;
 
-        let user_profile = provider
-            .fetch_user(&grant.access_token)
-            .await
-            .map_err(DeviceFlowError::Provider)?;
+        let mut last_error: Option<AnyhowError> = None;
+        let mut attempts_made = 0;
+        let user_profile = {
+            let mut profile = None;
+            for attempt in 1..=USER_FETCH_MAX_ATTEMPTS {
+                attempts_made = attempt;
+                match provider.fetch_user(&grant.access_token).await {
+                    Ok(result) => {
+                        profile = Some(result);
+                        break;
+                    }
+                    Err(err) => {
+                        let retryable =
+                            attempt < USER_FETCH_MAX_ATTEMPTS && Self::is_forbidden_error(&err);
+                        last_error = Some(err);
+                        if retryable {
+                            sleep(StdDuration::from_millis(USER_FETCH_RETRY_DELAY_MS)).await;
+                            continue;
+                        }
+                        break;
+                    }
+                }
+            }
+            profile
+        };
+
+        let user_profile = match user_profile {
+            Some(profile) => profile,
+            None => {
+                if let Some(err) = last_error.as_ref() {
+                    warn!(
+                        provider = provider.name(),
+                        attempts = attempts_made,
+                        error = ?err,
+                        "failed to fetch provider user details"
+                    );
+                } else {
+                    warn!(
+                        provider = provider.name(),
+                        attempts = attempts_made,
+                        "failed to fetch provider user details"
+                    );
+                }
+                let oauth_repo = DeviceAuthorizationRepository::new(&self.pool);
+                oauth_repo
+                    .set_status(
+                        record.id,
+                        AuthorizationStatus::Error,
+                        Some("user_fetch_failed"),
+                    )
+                    .await?;
+                return Err(DeviceFlowError::Failed("user_fetch_failed".into()));
+            }
+        };
 
         let account_repo = OAuthAccountRepository::new(&self.pool);
         let identity_repo = IdentityRepository::new(&self.pool);
@@ -360,6 +415,16 @@ impl DeviceFlowService {
             status: DeviceFlowPollStatus::Success,
             access_token: Some(token),
             error: None,
+        })
+    }
+
+    fn is_forbidden_error(err: &AnyhowError) -> bool {
+        err.chain().any(|cause| {
+            cause
+                .downcast_ref::<reqwest::Error>()
+                .and_then(|req_err| req_err.status())
+                .map(|status| status == StatusCode::FORBIDDEN)
+                .unwrap_or(false)
         })
     }
 }
