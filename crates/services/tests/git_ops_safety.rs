@@ -420,7 +420,6 @@ fn rebase_preserves_untracked_files() {
         "new-base",
         "old-base",
         "feature",
-        None,
     );
     assert!(res.is_ok(), "rebase should succeed: {res:?}");
 
@@ -443,7 +442,6 @@ fn rebase_aborts_on_uncommitted_tracked_changes() {
         "new-base",
         "old-base",
         "feature",
-        None,
     );
     assert!(res.is_err(), "rebase should fail on dirty worktree");
 
@@ -465,7 +463,6 @@ fn rebase_aborts_if_untracked_would_be_overwritten_by_base() {
         "new-base",
         "old-base",
         "feature",
-        None,
     );
     assert!(
         res.is_err(),
@@ -697,7 +694,6 @@ fn rebase_refuses_to_abort_existing_rebase() {
             "new-base",
             "old-base",
             "feature",
-            None,
         )
         .expect_err("first rebase should error and leave in-progress state");
 
@@ -709,7 +705,6 @@ fn rebase_refuses_to_abort_existing_rebase() {
         "new-base",
         "old-base",
         "feature",
-        None,
     );
     assert!(res.is_err(), "should error because rebase is in progress");
     // Note: We do not auto-abort; user should resolve or abort explicitly
@@ -730,7 +725,6 @@ fn rebase_fast_forwards_when_no_unique_commits() {
             "new-base",
             "old-base",
             "feature",
-            None,
         )
         .expect("rebase should succeed");
     let after_oid = g.get_head_info(&worktree_path).unwrap().oid;
@@ -762,7 +756,6 @@ fn rebase_applies_multiple_commits_onto_ahead_base() {
             "new-base",
             "old-base",
             "feature",
-            None,
         )
         .expect("rebase should succeed");
 
@@ -908,7 +901,6 @@ fn rebase_preserves_rename_changes() {
             "new-base",
             "old-base",
             "feature",
-            None,
         )
         .expect("rebase should succeed");
     // after rebase, renamed file present; original absent

@@ -33,7 +33,6 @@ ignore = "0.4"
 openssl-sys = { workspace = true }
 regex = "1.11.1"
 notify-rust = "4.11"
-octocrab = "0.44"
 os_info = "3.12.0"
 reqwest = { version = "0.12", features = ["json"] }
 lazy_static = "1.4"

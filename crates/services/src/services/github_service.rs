@@ -1,24 +1,24 @@
 use std::time::Duration;
 
 use backon::{ExponentialBuilder, Retryable};
-use db::models::merge::{MergeStatus, PullRequestInfo};
-use octocrab::{Octocrab, OctocrabBuilder, models::IssueState};
+use db::models::merge::PullRequestInfo;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use tokio::task;
 use tracing::info;
 use ts_rs::TS;
 
-use crate::services::{git::GitServiceError, git_cli::GitCliError};
+use crate::services::{
+    gh_cli::{GhCli, GhCliError},
+    git::GitServiceError,
+    git_cli::GitCliError,
+};
 
 #[derive(Debug, Error, Serialize, Deserialize, TS)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[ts(use_ts_enum)]
 pub enum GitHubServiceError {
-    #[ts(skip)]
-    #[serde(skip)]
-    #[error(transparent)]
-    Client(octocrab::Error),
     #[ts(skip)]
     #[error("Repository error: {0}")]
     Repository(String),
@@ -40,25 +40,18 @@ pub enum GitHubServiceError {
     GitService(GitServiceError),
 }
 
-impl From<octocrab::Error> for GitHubServiceError {
-    fn from(err: octocrab::Error) -> Self {
-        match &err {
-            octocrab::Error::GitHub { source, .. } => {
-                let status = source.status_code.as_u16();
-                let msg = source.message.to_ascii_lowercase();
-                if status == 401 || msg.contains("bad credentials") || msg.contains("token expired")
-                {
-                    GitHubServiceError::TokenInvalid
-                } else if status == 403 {
-                    GitHubServiceError::InsufficientPermissions
-                } else {
-                    GitHubServiceError::Client(err)
-                }
+impl From<GhCliError> for GitHubServiceError {
+    fn from(error: GhCliError) -> Self {
+        match error {
+            GhCliError::AuthFailed(_) => Self::TokenInvalid,
+            GhCliError::NotAvailable => Self::Repository("GitHub CLI (gh) is not installed or not available in PATH. Please install it from https://cli.github.com/ and authenticate with 'gh auth login'".to_string()),
+            GhCliError::CommandFailed(msg) | GhCliError::UnexpectedOutput(msg) => {
+                Self::PullRequest(msg)
             }
-            _ => GitHubServiceError::Client(err),
         }
     }
 }
+
 impl From<GitServiceError> for GitHubServiceError {
     fn from(error: GitServiceError) -> Self {
         match error {
@@ -75,28 +68,6 @@ impl From<GitServiceError> for GitHubServiceError {
             }
             other => Self::GitService(other),
         }
-    }
-}
-
-fn format_octocrab_error(error: &octocrab::Error) -> String {
-    match error {
-        octocrab::Error::GitHub { source, .. } => {
-            let details = source.as_ref().to_string();
-            let trimmed = details.trim();
-            if trimmed.is_empty() {
-                format!(
-                    "GitHub API responded with status {}",
-                    source.status_code.as_u16()
-                )
-            } else {
-                format!(
-                    "GitHub API responded with status {}: {}",
-                    source.status_code.as_u16(),
-                    trimmed
-                )
-            }
-        }
-        _ => error.to_string(),
     }
 }
 
@@ -147,6 +118,11 @@ pub struct CreatePrRequest {
     pub base_branch: String,
 }
 
+#[derive(Debug, Clone)]
+pub struct GitHubService {
+    gh_cli: GhCli,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct RepositoryInfo {
     pub id: i64,
@@ -160,24 +136,35 @@ pub struct RepositoryInfo {
     pub private: bool,
 }
 
-#[derive(Debug, Clone)]
-pub struct GitHubService {
-    client: Octocrab,
-}
-
 impl GitHubService {
     /// Create a new GitHub service with authentication
-    pub fn new(github_token: &str) -> Result<Self, GitHubServiceError> {
-        let client = OctocrabBuilder::new()
-            .personal_token(github_token.to_string())
-            .build()?;
-
-        Ok(Self { client })
+    pub fn new() -> Result<Self, GitHubServiceError> {
+        Ok(Self {
+            gh_cli: GhCli::new(),
+        })
     }
 
     pub async fn check_token(&self) -> Result<(), GitHubServiceError> {
-        self.client.current().user().await?;
-        Ok(())
+        let cli = self.gh_cli.clone();
+        task::spawn_blocking(move || cli.check_auth())
+            .await
+            .map_err(|err| {
+                GitHubServiceError::Repository(format!(
+                    "Failed to execute GitHub CLI for auth check: {err}"
+                ))
+            })?
+            .map_err(|err| match err {
+                GhCliError::NotAvailable => GitHubServiceError::Repository(
+                    "GitHub CLI (`gh`) is not available on this system".into(),
+                ),
+                GhCliError::AuthFailed(_) => GitHubServiceError::TokenInvalid,
+                GhCliError::CommandFailed(msg) => {
+                    GitHubServiceError::Repository(format!("GitHub CLI auth check failed: {msg}"))
+                }
+                GhCliError::UnexpectedOutput(msg) => GitHubServiceError::Repository(format!(
+                    "Unexpected output from GitHub CLI auth check: {msg}"
+                )),
+            })
     }
 
     /// Create a pull request on GitHub
@@ -186,7 +173,7 @@ impl GitHubService {
         repo_info: &GitHubRepoInfo,
         request: &CreatePrRequest,
     ) -> Result<PullRequestInfo, GitHubServiceError> {
-        (|| async { self.create_pr_internal(repo_info, request).await })
+        (|| async { self.create_pr_via_cli(repo_info, request).await })
             .retry(
                 &ExponentialBuilder::default()
                     .with_min_delay(Duration::from_secs(1))
@@ -194,7 +181,7 @@ impl GitHubService {
                     .with_max_times(3)
                     .with_jitter(),
             )
-            .when(|e| e.should_retry())
+            .when(|e: &GitHubServiceError| e.should_retry())
             .notify(|err: &GitHubServiceError, dur: Duration| {
                 tracing::warn!(
                     "GitHub API call failed, retrying after {:.2}s: {}",
@@ -210,95 +197,152 @@ impl GitHubService {
         owner: &str,
         repo: &str,
     ) -> Result<i64, GitHubServiceError> {
-        let repository = self.client.repos(owner, repo).get().await?;
-        Ok(repository.id.0 as i64)
+        let owner = owner.to_string();
+        let repo = repo.to_string();
+        let cli = self.gh_cli.clone();
+        let owner_for_cli = owner.clone();
+        let repo_for_cli = repo.clone();
+        task::spawn_blocking(move || cli.repo_database_id(&owner_for_cli, &repo_for_cli))
+            .await
+            .map_err(|err| {
+                GitHubServiceError::Repository(format!(
+                    "Failed to execute GitHub CLI for repo lookup: {err}"
+                ))
+            })?
+            .map_err(Self::map_repo_cli_error)
     }
 
-    async fn create_pr_internal(
+    async fn create_pr_via_cli(
         &self,
         repo_info: &GitHubRepoInfo,
         request: &CreatePrRequest,
     ) -> Result<PullRequestInfo, GitHubServiceError> {
-        // Verify repository access
-        self.client
-            .repos(&repo_info.owner, &repo_info.repo_name)
-            .get()
+        let cli = self.gh_cli.clone();
+        let request_clone = request.clone();
+        let repo_clone = repo_info.clone();
+        let cli_result = task::spawn_blocking(move || cli.create_pr(&request_clone, &repo_clone))
             .await
-            .map_err(|error| match GitHubServiceError::from(error) {
-                GitHubServiceError::Client(source) => GitHubServiceError::Repository(format!(
-                    "Cannot access repository {}/{}: {}",
-                    repo_info.owner,
-                    repo_info.repo_name,
-                    format_octocrab_error(&source)
-                )),
-                other => other,
-            })?;
-
-        // Check if the base branch exists
-        self.client
-            .repos(&repo_info.owner, &repo_info.repo_name)
-            .get_ref(&octocrab::params::repos::Reference::Branch(
-                request.base_branch.to_string(),
-            ))
-            .await
-            .map_err(|err| match GitHubServiceError::from(err) {
-                GitHubServiceError::Client(source) => {
-                    let hint = if request.base_branch != "main" {
-                        " Perhaps you meant to use main as your base branch instead?"
-                    } else {
-                        ""
-                    };
-                    GitHubServiceError::Branch(format!(
-                        "Base branch '{}' does not exist: {}{}",
-                        request.base_branch,
-                        format_octocrab_error(&source),
-                        hint
-                    ))
-                }
-                other => other,
-            })?;
-
-        // Check if the head branch exists
-        self.client
-            .repos(&repo_info.owner, &repo_info.repo_name)
-            .get_ref(&octocrab::params::repos::Reference::Branch(
-                request.head_branch.to_string(),
-            ))
-            .await
-            .map_err(|err| match GitHubServiceError::from(err) {
-                GitHubServiceError::Client(source) => GitHubServiceError::Branch(format!(
-                    "Head branch '{}' does not exist: {}",
-                    request.head_branch,
-                    format_octocrab_error(&source)
-                )),
-                other => other,
-            })?;
-
-        // Create the pull request
-        let pr_info = self
-            .client
-            .pulls(&repo_info.owner, &repo_info.repo_name)
-            .create(&request.title, &request.head_branch, &request.base_branch)
-            .body(request.body.as_deref().unwrap_or(""))
-            .send()
-            .await
-            .map(Self::map_pull_request)
-            .map_err(|err| match GitHubServiceError::from(err) {
-                GitHubServiceError::Client(source) => GitHubServiceError::PullRequest(format!(
-                    "Failed to create PR for '{} -> {}': {}",
-                    request.head_branch,
-                    request.base_branch,
-                    format_octocrab_error(&source)
-                )),
-                other => other,
-            })?;
+            .map_err(|err| {
+                GitHubServiceError::PullRequest(format!(
+                    "Failed to execute GitHub CLI for PR creation: {err}"
+                ))
+            })?
+            .map_err(|err| Self::map_gh_cli_error(err, repo_info, request))?;
 
         info!(
             "Created GitHub PR #{} for branch {} in {}/{}",
-            pr_info.number, request.head_branch, repo_info.owner, repo_info.repo_name
+            cli_result.number, request.head_branch, repo_info.owner, repo_info.repo_name
         );
 
-        Ok(pr_info)
+        Ok(cli_result)
+    }
+
+    fn map_gh_cli_error(
+        err: GhCliError,
+        repo_info: &GitHubRepoInfo,
+        request: &CreatePrRequest,
+    ) -> GitHubServiceError {
+        match err {
+            GhCliError::NotAvailable => GitHubServiceError::Repository(format!(
+                "GitHub CLI (`gh`) is not available while creating a PR in {}/{}",
+                repo_info.owner, repo_info.repo_name
+            )),
+            GhCliError::AuthFailed(msg) => {
+                let lower = msg.to_ascii_lowercase();
+                if lower.contains("403") || lower.contains("forbidden") {
+                    GitHubServiceError::InsufficientPermissions
+                } else if lower.contains("404") || lower.contains("not found") {
+                    GitHubServiceError::RepoNotFoundOrNoAccess
+                } else {
+                    GitHubServiceError::TokenInvalid
+                }
+            }
+            GhCliError::CommandFailed(msg) => {
+                let lower = msg.to_ascii_lowercase();
+                if lower.contains("403") || lower.contains("forbidden") {
+                    GitHubServiceError::InsufficientPermissions
+                } else if lower.contains("404") || lower.contains("not found") {
+                    GitHubServiceError::RepoNotFoundOrNoAccess
+                } else {
+                    GitHubServiceError::PullRequest(format!(
+                        "gh pr create failed for '{} -> {}': {}",
+                        request.head_branch, request.base_branch, msg
+                    ))
+                }
+            }
+            GhCliError::UnexpectedOutput(msg) => GitHubServiceError::PullRequest(format!(
+                "Unexpected output from gh while creating '{} -> {}': {}",
+                request.head_branch, request.base_branch, msg
+            )),
+        }
+    }
+
+    fn map_repo_cli_error(err: GhCliError) -> GitHubServiceError {
+        match err {
+            GhCliError::NotAvailable => GitHubServiceError::Repository(
+                "GitHub CLI (`gh`) is not available on this system".into(),
+            ),
+            GhCliError::AuthFailed(_) => GitHubServiceError::TokenInvalid,
+            GhCliError::CommandFailed(msg) => {
+                let lower = msg.to_ascii_lowercase();
+                if lower.contains("403") || lower.contains("forbidden") {
+                    GitHubServiceError::InsufficientPermissions
+                } else if lower.contains("404") || lower.contains("not found") {
+                    GitHubServiceError::RepoNotFoundOrNoAccess
+                } else {
+                    GitHubServiceError::Repository(format!("gh repo view failed for {msg}"))
+                }
+            }
+            GhCliError::UnexpectedOutput(msg) => GitHubServiceError::Repository(format!(
+                "Unexpected output from gh repo API for {msg}"
+            )),
+        }
+    }
+
+    fn map_pr_cli_error(err: GhCliError) -> GitHubServiceError {
+        match err {
+            GhCliError::NotAvailable => GitHubServiceError::Repository(
+                "GitHub CLI (`gh`) is not available on this system".into(),
+            ),
+            GhCliError::AuthFailed(_) => GitHubServiceError::TokenInvalid,
+            GhCliError::CommandFailed(msg) => {
+                let lower = msg.to_ascii_lowercase();
+                if lower.contains("403") || lower.contains("forbidden") {
+                    GitHubServiceError::InsufficientPermissions
+                } else if lower.contains("404") || lower.contains("not found") {
+                    GitHubServiceError::RepoNotFoundOrNoAccess
+                } else {
+                    GitHubServiceError::PullRequest(format!("gh CLI failed while fetching {msg}"))
+                }
+            }
+            GhCliError::UnexpectedOutput(msg) => GitHubServiceError::PullRequest(format!(
+                "Unexpected gh CLI output while fetching {msg}"
+            )),
+        }
+    }
+
+    fn map_pr_list_cli_error(err: GhCliError) -> GitHubServiceError {
+        match err {
+            GhCliError::NotAvailable => GitHubServiceError::Repository(
+                "GitHub CLI (`gh`) is not available on this system".into(),
+            ),
+            GhCliError::AuthFailed(_) => GitHubServiceError::TokenInvalid,
+            GhCliError::CommandFailed(msg) => {
+                let lower = msg.to_ascii_lowercase();
+                if lower.contains("403") || lower.contains("forbidden") {
+                    GitHubServiceError::InsufficientPermissions
+                } else if lower.contains("404") || lower.contains("not found") {
+                    GitHubServiceError::RepoNotFoundOrNoAccess
+                } else {
+                    GitHubServiceError::PullRequest(format!(
+                        "gh CLI failed while listing PRs '{msg}'",
+                    ))
+                }
+            }
+            GhCliError::UnexpectedOutput(msg) => GitHubServiceError::PullRequest(format!(
+                "Unexpected gh CLI output while listing PRs '{msg}'",
+            )),
+        }
     }
 
     /// Update and get the status of a pull request
@@ -308,18 +352,22 @@ impl GitHubService {
         pr_number: i64,
     ) -> Result<PullRequestInfo, GitHubServiceError> {
         (|| async {
-            self.client
-                .pulls(&repo_info.owner, &repo_info.repo_name)
-                .get(pr_number as u64)
-                .await
-                .map(Self::map_pull_request)
-                .map_err(|err| match GitHubServiceError::from(err) {
-                    GitHubServiceError::Client(source) => GitHubServiceError::PullRequest(format!(
-                        "Failed to get PR #{pr_number}: {source}",
-                        source = format_octocrab_error(&source),
-                    )),
-                    other => other,
-                })
+            let owner = repo_info.owner.clone();
+            let repo = repo_info.repo_name.clone();
+            let cli = self.gh_cli.clone();
+            let pr = task::spawn_blocking({
+                let owner = owner.clone();
+                let repo = repo.clone();
+                move || cli.view_pr(&owner, &repo, pr_number)
+            })
+            .await
+            .map_err(|err| {
+                GitHubServiceError::PullRequest(format!(
+                    "Failed to execute GitHub CLI for viewing PR #{pr_number}: {err}"
+                ))
+            })?;
+            let pr = pr.map_err(Self::map_pr_cli_error)?;
+            Ok(pr)
         })
         .retry(
             &ExponentialBuilder::default()
@@ -328,7 +376,7 @@ impl GitHubService {
                 .with_max_times(3)
                 .with_jitter(),
         )
-        .when(|err| err.should_retry())
+        .when(|err: &GitHubServiceError| err.should_retry())
         .notify(|err: &GitHubServiceError, dur: Duration| {
             tracing::warn!(
                 "GitHub API call failed, retrying after {:.2}s: {}",
@@ -337,29 +385,6 @@ impl GitHubService {
             );
         })
         .await
-    }
-
-    fn map_pull_request(pr: octocrab::models::pulls::PullRequest) -> PullRequestInfo {
-        let state = match pr.state {
-            Some(IssueState::Open) => MergeStatus::Open,
-            Some(IssueState::Closed) => {
-                if pr.merged_at.is_some() {
-                    MergeStatus::Merged
-                } else {
-                    MergeStatus::Closed
-                }
-            }
-            None => MergeStatus::Unknown,
-            Some(_) => MergeStatus::Unknown,
-        };
-
-        PullRequestInfo {
-            number: pr.number as i64,
-            url: pr.html_url.map(|url| url.to_string()).unwrap_or_default(),
-            status: state,
-            merged_at: pr.merged_at.map(|dt| dt.naive_utc().and_utc()),
-            merge_commit_sha: pr.merge_commit_sha,
-        }
     }
 
     /// List all pull requests for a branch (including closed/merged)
@@ -369,8 +394,24 @@ impl GitHubService {
         branch_name: &str,
     ) -> Result<Vec<PullRequestInfo>, GitHubServiceError> {
         (|| async {
-            self.list_all_prs_for_branch_internal(repo_info, branch_name)
-                .await
+            let owner = repo_info.owner.clone();
+            let repo = repo_info.repo_name.clone();
+            let branch = branch_name.to_string();
+            let cli = self.gh_cli.clone();
+            let prs = task::spawn_blocking({
+                let owner = owner.clone();
+                let repo = repo.clone();
+                let branch = branch.clone();
+                move || cli.list_prs_for_branch(&owner, &repo, &branch)
+            })
+            .await
+            .map_err(|err| {
+                GitHubServiceError::PullRequest(format!(
+                    "Failed to execute GitHub CLI for listing PRs on branch '{branch_name}': {err}"
+                ))
+            })?;
+            let prs = prs.map_err(Self::map_pr_list_cli_error)?;
+            Ok(prs)
         })
         .retry(
             &ExponentialBuilder::default()
@@ -379,7 +420,7 @@ impl GitHubService {
                 .with_max_times(3)
                 .with_jitter(),
         )
-        .when(|e| e.should_retry())
+        .when(|e: &GitHubServiceError| e.should_retry())
         .notify(|err: &GitHubServiceError, dur: Duration| {
             tracing::warn!(
                 "GitHub API call failed, retrying after {:.2}s: {}",
@@ -390,102 +431,13 @@ impl GitHubService {
         .await
     }
 
-    async fn list_all_prs_for_branch_internal(
-        &self,
-        repo_info: &GitHubRepoInfo,
-        branch_name: &str,
-    ) -> Result<Vec<PullRequestInfo>, GitHubServiceError> {
-        let prs = self
-            .client
-            .pulls(&repo_info.owner, &repo_info.repo_name)
-            .list()
-            .state(octocrab::params::State::All)
-            .head(format!("{}:{}", repo_info.owner, branch_name))
-            .per_page(100)
-            .send()
-            .await
-            .map_err(|err| match GitHubServiceError::from(err) {
-                GitHubServiceError::Client(source) => GitHubServiceError::PullRequest(format!(
-                    "Failed to list all PRs for branch '{branch_name}': {source}",
-                    source = format_octocrab_error(&source),
-                )),
-                other => other,
-            })?;
-
-        let pr_infos = prs.items.into_iter().map(Self::map_pull_request).collect();
-
-        Ok(pr_infos)
-    }
-
-    /// List repositories for the authenticated user with pagination
     #[cfg(feature = "cloud")]
     pub async fn list_repositories(
         &self,
-        page: u8,
+        _page: u8,
     ) -> Result<Vec<RepositoryInfo>, GitHubServiceError> {
-        (|| async { self.list_repositories_internal(page).await })
-            .retry(
-                &ExponentialBuilder::default()
-                    .with_min_delay(Duration::from_secs(1))
-                    .with_max_delay(Duration::from_secs(30))
-                    .with_max_times(3)
-                    .with_jitter(),
-            )
-            .when(|err| err.should_retry())
-            .notify(|err: &GitHubServiceError, dur: Duration| {
-                tracing::warn!(
-                    "GitHub API call failed, retrying after {:.2}s: {}",
-                    dur.as_secs_f64(),
-                    err
-                );
-            })
-            .await
-    }
-
-    #[cfg(feature = "cloud")]
-    async fn list_repositories_internal(
-        &self,
-        page: u8,
-    ) -> Result<Vec<RepositoryInfo>, GitHubServiceError> {
-        let repos_page = self
-            .client
-            .current()
-            .list_repos_for_authenticated_user()
-            .type_("all")
-            .sort("updated")
-            .direction("desc")
-            .per_page(50)
-            .page(page)
-            .send()
-            .await
-            .map_err(|e| {
-                GitHubServiceError::Repository(format!("Failed to list repositories: {e}"))
-            })?;
-
-        let repositories: Vec<RepositoryInfo> = repos_page
-            .items
-            .into_iter()
-            .map(|repo| RepositoryInfo {
-                id: repo.id.0 as i64,
-                name: repo.name,
-                full_name: repo.full_name.unwrap_or_default(),
-                owner: repo.owner.map(|o| o.login).unwrap_or_default(),
-                description: repo.description,
-                clone_url: repo
-                    .clone_url
-                    .map(|url| url.to_string())
-                    .unwrap_or_default(),
-                ssh_url: repo.ssh_url.unwrap_or_default(),
-                default_branch: repo.default_branch.unwrap_or_else(|| "main".to_string()),
-                private: repo.private.unwrap_or(false),
-            })
-            .collect();
-
-        tracing::info!(
-            "Retrieved {} repositories from GitHub (page {})",
-            repositories.len(),
-            page
-        );
-        Ok(repositories)
+        Err(GitHubServiceError::Repository(
+            "Listing repositories via GitHub CLI is not supported.".into(),
+        ))
     }
 }
