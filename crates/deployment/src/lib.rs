@@ -34,7 +34,6 @@ use services::services::{
     share::{
         RemoteSync, RemoteSyncHandle, ShareConfig, SharePublisher, link_shared_tasks_to_project,
     },
-    token::GitHubTokenProvider,
     worktree_manager::WorktreeError,
 };
 use sqlx::{Error as SqlxError, types::Uuid};
@@ -107,8 +106,6 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     fn approvals(&self) -> &Approvals;
 
     fn drafts(&self) -> &DraftsService;
-
-    fn token_provider(&self) -> Arc<GitHubTokenProvider>;
 
     fn clerk_sessions(&self) -> &ClerkSessionStore;
 
@@ -418,9 +415,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
         for project in projects {
             let repo_path = project.git_repo_path.clone();
-            let metadata =
-                compute_remote_metadata(self.git(), &self.token_provider(), repo_path.as_path())
-                    .await;
+            let metadata = compute_remote_metadata(self.git(), repo_path.as_path()).await;
             let github_repo_id_changed = metadata.github_repo_id != project.github_repo_id;
 
             if let Err(err) =

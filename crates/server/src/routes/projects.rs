@@ -135,8 +135,7 @@ pub async fn create_project(
         }
     }
 
-    let remote_metadata =
-        compute_remote_metadata(deployment.git(), &deployment.token_provider(), &path).await;
+    let remote_metadata = compute_remote_metadata(deployment.git(), &path).await;
 
     match Project::create(
         &deployment.db().pool,
@@ -229,12 +228,7 @@ pub async fn update_project(
         existing_project.git_repo_path
     };
 
-    let remote_metadata = compute_remote_metadata(
-        deployment.git(),
-        &deployment.token_provider(),
-        &git_repo_path,
-    )
-    .await;
+    let remote_metadata = compute_remote_metadata(deployment.git(), &git_repo_path).await;
 
     match Project::update(
         &deployment.db().pool,

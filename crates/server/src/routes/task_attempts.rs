@@ -39,7 +39,6 @@ use services::services::{
     gh_cli::GhCli,
     git::{ConflictOp, WorktreeResetOptions},
     github_service::{CreatePrRequest, GitHubService, GitHubServiceError},
-    token::GitHubTokenSource,
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
@@ -732,21 +731,8 @@ pub async fn push_task_attempt_branch(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
-    let token_provider = deployment.token_provider();
-    let github_token = token_provider.access_token().await.map_err(|err| {
-        tracing::error!(?err, "Failed to acquire GitHub access token");
-        GitHubServiceError::TokenInvalid
-    })?;
-
     let github_service = GitHubService::new()?;
-    if let Err(err) = github_service.check_token().await {
-        if matches!(github_token.source, GitHubTokenSource::ClerkOAuth)
-            && matches!(err, GitHubServiceError::TokenInvalid)
-        {
-            token_provider.invalidate().await;
-        }
-        return Err(err.into());
-    }
+    github_service.check_token().await?;
 
     let ws_path = ensure_worktree_path(&deployment, &task_attempt).await?;
 
@@ -1567,16 +1553,6 @@ pub async fn attach_existing_pr(
         })));
     }
 
-    // Get GitHub token
-    let token_provider = deployment.token_provider();
-    let github_token = token_provider.access_token().await.map_err(|err| {
-        tracing::warn!(
-            ?err,
-            "Failed to acquire GitHub token while attaching existing PR"
-        );
-        ApiError::from(err)
-    })?;
-
     // Get project and repo info
     let Some(task) = task_attempt.parent_task(pool).await? else {
         return Err(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound));
@@ -1591,20 +1567,9 @@ pub async fn attach_existing_pr(
         .get_github_repo_info(&project.git_repo_path)?;
 
     // List all PRs for branch (open, closed, and merged)
-    let prs = match github_service
+    let prs = github_service
         .list_all_prs_for_branch(&repo_info, &task_attempt.branch)
-        .await
-    {
-        Ok(prs) => prs,
-        Err(err) => {
-            if matches!(github_token.source, GitHubTokenSource::ClerkOAuth)
-                && matches!(err, GitHubServiceError::TokenInvalid)
-            {
-                token_provider.invalidate().await;
-            }
-            return Err(err.into());
-        }
-    };
+        .await?;
 
     // Take the first PR (prefer open, but also accept merged/closed)
     if let Some(pr_info) = prs.into_iter().next() {

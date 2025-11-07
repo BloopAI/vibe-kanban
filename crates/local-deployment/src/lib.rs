@@ -17,7 +17,6 @@ use services::services::{
     git::GitService,
     image::ImageService,
     share::{RemoteSyncHandle, ShareConfig, SharePublisher},
-    token::GitHubTokenProvider,
 };
 use tokio::sync::{Mutex, RwLock};
 use utils::{assets::config_path, msg_store::MsgStore};
@@ -46,7 +45,6 @@ pub struct LocalDeployment {
     share_sync_handle: Arc<Mutex<Option<RemoteSyncHandle>>>,
     clerk_sessions: ClerkSessionStore,
     clerk_service: Option<Arc<ClerkService>>,
-    token_provider: Arc<GitHubTokenProvider>,
 }
 
 #[async_trait]
@@ -124,12 +122,6 @@ impl Deployment for LocalDeployment {
             Err(err) => return Err(DeploymentError::Other(err.into())),
         };
 
-        let token_provider = Arc::new(GitHubTokenProvider::new(
-            config.clone(),
-            share_config.as_ref().map(|sc| sc.api_base.clone()),
-            clerk_sessions.clone(),
-        ));
-
         // Populate the handle once the sync task is started
         let share_sync_handle = Arc::new(Mutex::new(None));
         let mut share_publisher: Option<SharePublisher> = None;
@@ -142,7 +134,6 @@ impl Deployment for LocalDeployment {
                 git.clone(),
                 sc_owned.clone(),
                 clerk_sessions.clone(),
-                token_provider.clone(),
             ) {
                 Ok(publisher) => {
                     share_publisher = Some(publisher);
@@ -198,7 +189,6 @@ impl Deployment for LocalDeployment {
             share_sync_handle: share_sync_handle.clone(),
             clerk_sessions,
             clerk_service,
-            token_provider,
         };
 
         if let Some(sc) = share_sync_config {
@@ -270,10 +260,6 @@ impl Deployment for LocalDeployment {
 
     fn share_sync_handle(&self) -> &Arc<Mutex<Option<RemoteSyncHandle>>> {
         &self.share_sync_handle
-    }
-
-    fn token_provider(&self) -> Arc<GitHubTokenProvider> {
-        self.token_provider.clone()
     }
 
     fn clerk_sessions(&self) -> &ClerkSessionStore {

@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 
 use db::{
     DBService,
@@ -16,10 +16,7 @@ use utils::clerk::ClerkSessionStore;
 use uuid::Uuid;
 
 use super::{ShareConfig, ShareError, convert_remote_task, link_shared_tasks_to_project, status};
-use crate::services::{
-    clerk::ClerkSession, git::GitService, metadata::compute_remote_metadata,
-    token::GitHubTokenProvider,
-};
+use crate::services::{clerk::ClerkSession, git::GitService, metadata::compute_remote_metadata};
 
 #[derive(Clone)]
 pub struct SharePublisher {
@@ -28,7 +25,6 @@ pub struct SharePublisher {
     client: HttpClient,
     config: ShareConfig,
     sessions: ClerkSessionStore,
-    github_tokens: Arc<GitHubTokenProvider>,
 }
 
 impl SharePublisher {
@@ -37,7 +33,6 @@ impl SharePublisher {
         git: GitService,
         config: ShareConfig,
         sessions: ClerkSessionStore,
-        github_tokens: Arc<GitHubTokenProvider>,
     ) -> Result<Self, ShareError> {
         let client = HttpClient::builder()
             .timeout(Duration::from_secs(30))
@@ -50,7 +45,6 @@ impl SharePublisher {
             config,
             client,
             sessions,
-            github_tokens,
         })
     }
 
@@ -231,7 +225,7 @@ impl SharePublisher {
     /// Check and populate missing project metadata needed for sharing tasks.
     async fn ensure_project_metadata(&self, mut project: Project) -> Result<Project, ShareError> {
         let repo_path = project.git_repo_path.as_path();
-        let metadata = compute_remote_metadata(&self.git, &self.github_tokens, repo_path).await;
+        let metadata = compute_remote_metadata(&self.git, repo_path).await;
 
         if !metadata.has_remote {
             tracing::warn!(
