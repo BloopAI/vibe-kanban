@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use chrono::{DateTime, Utc};
 use sqlx::{PgPool, query_as};
 use thiserror::Error;
@@ -20,14 +22,18 @@ impl AuthorizationStatus {
             Self::Expired => "expired",
         }
     }
+}
 
-    pub fn from_str(input: &str) -> Option<Self> {
+impl FromStr for AuthorizationStatus {
+    type Err = ();
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
         match input {
-            "pending" => Some(Self::Pending),
-            "success" => Some(Self::Success),
-            "error" => Some(Self::Error),
-            "expired" => Some(Self::Expired),
-            _ => None,
+            "pending" => Ok(Self::Pending),
+            "success" => Ok(Self::Success),
+            "error" => Ok(Self::Error),
+            "expired" => Ok(Self::Expired),
+            _ => Err(()),
         }
     }
 }
@@ -62,8 +68,19 @@ pub struct DeviceAuthorization {
 
 impl DeviceAuthorization {
     pub fn status(&self) -> Option<AuthorizationStatus> {
-        AuthorizationStatus::from_str(&self.status)
+        AuthorizationStatus::from_str(&self.status).ok()
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct CreateDeviceAuthorization<'a> {
+    pub provider: &'a str,
+    pub device_code: &'a str,
+    pub user_code: &'a str,
+    pub verification_uri: &'a str,
+    pub verification_uri_complete: Option<&'a str>,
+    pub expires_at: DateTime<Utc>,
+    pub polling_interval: i32,
 }
 
 pub struct DeviceAuthorizationRepository<'a> {
@@ -77,13 +94,7 @@ impl<'a> DeviceAuthorizationRepository<'a> {
 
     pub async fn create(
         &self,
-        provider: &str,
-        device_code: &str,
-        user_code: &str,
-        verification_uri: &str,
-        verification_uri_complete: Option<&str>,
-        expires_at: DateTime<Utc>,
-        polling_interval: i32,
+        data: CreateDeviceAuthorization<'_>,
     ) -> Result<DeviceAuthorization, DeviceAuthorizationError> {
         query_as!(
             DeviceAuthorization,
@@ -116,13 +127,13 @@ impl<'a> DeviceAuthorizationRepository<'a> {
                 user_id                 AS "user_id?",
                 session_id              AS "session_id?"
             "#,
-            provider,
-            device_code,
-            user_code,
-            verification_uri,
-            verification_uri_complete,
-            expires_at,
-            polling_interval
+            data.provider,
+            data.device_code,
+            data.user_code,
+            data.verification_uri,
+            data.verification_uri_complete,
+            data.expires_at,
+            data.polling_interval
         )
         .fetch_one(self.pool)
         .await

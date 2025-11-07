@@ -21,8 +21,8 @@ use crate::{
         auth::{AuthSessionError, AuthSessionRepository},
         identity::{IdentityError, IdentityRepository, UpsertUser},
         oauth::{
-            AuthorizationStatus, DeviceAuthorization, DeviceAuthorizationError,
-            DeviceAuthorizationRepository,
+            AuthorizationStatus, CreateDeviceAuthorization, DeviceAuthorization,
+            DeviceAuthorizationError, DeviceAuthorizationRepository,
         },
         oauth_accounts::{OAuthAccountError, OAuthAccountInsert, OAuthAccountRepository},
     },
@@ -122,15 +122,15 @@ impl DeviceFlowService {
         let expires_at = Utc::now() + response.expires_in;
         let repo = DeviceAuthorizationRepository::new(&self.pool);
         let record = repo
-            .create(
-                provider_name,
-                &response.device_code,
-                &response.user_code,
-                &response.verification_uri,
-                response.verification_uri_complete.as_deref(),
+            .create(CreateDeviceAuthorization {
+                provider: provider_name,
+                device_code: &response.device_code,
+                user_code: &response.user_code,
+                verification_uri: &response.verification_uri,
+                verification_uri_complete: response.verification_uri_complete.as_deref(),
                 expires_at,
-                response.interval,
-            )
+                polling_interval: response.interval,
+            })
             .await?;
 
         Ok(DeviceFlowInitResponse {

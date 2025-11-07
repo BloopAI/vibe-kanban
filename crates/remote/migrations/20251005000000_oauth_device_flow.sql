@@ -35,8 +35,6 @@ CREATE INDEX IF NOT EXISTS idx_oauth_device_authorizations_status
 CREATE INDEX IF NOT EXISTS idx_oauth_device_authorizations_user
     ON oauth_device_authorizations (user_id);
 
-DROP TABLE IF EXISTS github_accounts;
-
 CREATE TABLE IF NOT EXISTS oauth_accounts (
     id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id           TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
