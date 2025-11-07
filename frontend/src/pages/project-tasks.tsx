@@ -120,13 +120,13 @@ function DiffsPanelContainer({
       gitOps={
         attempt && selectedTask
           ? {
-            task: selectedTask,
-            projectId,
-            branchStatus: branchStatus ?? null,
-            branches,
-            isAttemptRunning,
-            selectedBranch: branchStatus?.target_branch_name ?? null,
-          }
+              task: selectedTask,
+              projectId,
+              branchStatus: branchStatus ?? null,
+              branches,
+              isAttemptRunning,
+              selectedBranch: branchStatus?.target_branch_name ?? null,
+            }
           : undefined
       }
     />
@@ -1003,21 +1003,21 @@ export function ProjectTasks() {
   const attemptArea =
     attempt && selectedTask ? (
       <GitOperationsProvider attemptId={attempt.id}>
-      <ClickedElementsProvider attempt={attempt}>
-        <ReviewProvider key={attempt.id}>
-          <ExecutionProcessesProvider key={attempt.id} attemptId={attempt.id}>
-            <TasksLayout
-              kanban={kanbanContent}
-              attempt={attemptContent}
-              aux={auxContent}
-              isPanelOpen={isPanelOpen}
-              mode={effectiveMode}
-              isMobile={isMobile}
-              rightHeader={rightHeader}
-            />
-          </ExecutionProcessesProvider>
-        </ReviewProvider>
-      </ClickedElementsProvider>
+        <ClickedElementsProvider attempt={attempt}>
+          <ReviewProvider key={attempt.id}>
+            <ExecutionProcessesProvider key={attempt.id} attemptId={attempt.id}>
+              <TasksLayout
+                kanban={kanbanContent}
+                attempt={attemptContent}
+                aux={auxContent}
+                isPanelOpen={isPanelOpen}
+                mode={effectiveMode}
+                isMobile={isMobile}
+                rightHeader={rightHeader}
+              />
+            </ExecutionProcessesProvider>
+          </ReviewProvider>
+        </ClickedElementsProvider>
       </GitOperationsProvider>
     ) : (
       <TasksLayout
