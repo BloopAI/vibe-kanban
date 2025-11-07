@@ -10,6 +10,7 @@ axum = { workspace = true }
 axum-extra = { version = "0.10.3", features = ["typed-header"] }
 chrono = { version = "0.4", features = ["serde"] }
 futures = "0.3"
+async-trait = "0.1"
 reqwest = { version = "0.12", features = ["json"] }
 secrecy = "0.10.3"
 sentry = { version = "0.41.0", features = ["anyhow", "backtrace", "panic", "debug-images"] }
@@ -26,3 +27,5 @@ tracing-error = "0.2"
 thiserror = { workspace = true }
 utils = { path = "../utils" }
 uuid = { version = "1", features = ["serde", "v4"] }
+jsonwebtoken = "9"
+rand = { version = "0.8", features = ["std"] }

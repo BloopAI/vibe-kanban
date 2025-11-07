@@ -3599,10 +3599,13 @@ name = "remote"
 version = "0.0.1"
 dependencies = [
  "anyhow",
+ "async-trait",
  "axum 0.8.6",
  "axum-extra 0.10.3",
  "chrono",
  "futures",
+ "jsonwebtoken 9.3.1",
+ "rand 0.8.5",
  "reqwest",
  "secrecy",
  "sentry",

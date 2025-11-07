@@ -17,6 +17,7 @@ COPY Cargo.toml Cargo.lock ./
 COPY crates crates
 COPY shared shared
 COPY assets assets
+COPY .sqlx .sqlx
 
 RUN mkdir -p /app/bin
 

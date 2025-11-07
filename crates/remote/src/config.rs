@@ -1,6 +1,5 @@
 use std::env;
 
-use reqwest::Url;
 use secrecy::SecretString;
 use thiserror::Error;
 
@@ -22,7 +21,7 @@ pub struct RemoteServerConfig {
     pub activity_broadcast_shards: usize,
     pub activity_broadcast_capacity: usize,
     pub activity_catchup_batch_size: i64,
-    pub clerk: ClerkConfig,
+    pub auth: AuthConfig,
 }
 
 #[derive(Debug, Error)]
@@ -31,6 +30,8 @@ pub enum ConfigError {
     MissingVar(&'static str),
     #[error("invalid value for environment variable `{0}`")]
     InvalidVar(&'static str),
+    #[error("no OAuth providers configured")]
+    NoOAuthProviders,
 }
 
 impl RemoteServerConfig {
@@ -66,7 +67,7 @@ impl RemoteServerConfig {
         )?
         .max(1);
 
-        let clerk = ClerkConfig::from_env()?;
+        let auth = AuthConfig::from_env()?;
 
         Ok(Self {
             database_url,
@@ -77,7 +78,7 @@ impl RemoteServerConfig {
             activity_broadcast_shards,
             activity_broadcast_capacity,
             activity_catchup_batch_size,
-            clerk,
+            auth,
         })
     }
 }
@@ -95,42 +96,85 @@ fn get_numeric_env_var<T: std::str::FromStr>(
 }
 
 #[derive(Debug, Clone)]
-pub struct ClerkConfig {
-    secret_key: SecretString,
-    issuer: Url,
-    api_url: Url,
+pub struct OAuthProviderConfig {
+    client_id: String,
+    client_secret: SecretString,
 }
 
-impl ClerkConfig {
+impl OAuthProviderConfig {
+    fn new(client_id: String, client_secret: SecretString) -> Self {
+        Self {
+            client_id,
+            client_secret,
+        }
+    }
+
+    pub fn client_id(&self) -> &str {
+        &self.client_id
+    }
+
+    pub fn client_secret(&self) -> &SecretString {
+        &self.client_secret
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AuthConfig {
+    github: Option<OAuthProviderConfig>,
+    google: Option<OAuthProviderConfig>,
+    jwt_secret: SecretString,
+}
+
+impl AuthConfig {
     fn from_env() -> Result<Self, ConfigError> {
-        let secret_key = env::var("CLERK_SECRET_KEY")
-            .map_err(|_| ConfigError::MissingVar("CLERK_SECRET_KEY"))
-            .map(|s| SecretString::new(s.into()))?;
-        let issuer = env::var("CLERK_ISSUER")
-            .map_err(|_| ConfigError::MissingVar("CLERK_ISSUER"))?
-            .parse()
-            .map_err(|_| ConfigError::InvalidVar("CLERK_ISSUER"))?;
-        let api_url = env::var("CLERK_API_URL")
-            .unwrap_or_else(|_| "https://api.clerk.com/v1/".to_string())
-            .parse()
-            .map_err(|_| ConfigError::InvalidVar("CLERK_API_URL"))?;
+        let jwt_secret = env::var("VIBEKANBAN_REMOTE_JWT_SECRET")
+            .map_err(|_| ConfigError::MissingVar("VIBEKANBAN_REMOTE_JWT_SECRET"))
+            .map(|value| SecretString::new(value.into()))?;
+
+        let github = match env::var("GITHUB_OAUTH_CLIENT_ID") {
+            Ok(client_id) => {
+                let client_secret = env::var("GITHUB_OAUTH_CLIENT_SECRET")
+                    .map_err(|_| ConfigError::MissingVar("GITHUB_OAUTH_CLIENT_SECRET"))?;
+                Some(OAuthProviderConfig::new(
+                    client_id,
+                    SecretString::new(client_secret.into()),
+                ))
+            }
+            Err(_) => None,
+        };
+
+        let google = match env::var("GOOGLE_OAUTH_CLIENT_ID") {
+            Ok(client_id) => {
+                let client_secret = env::var("GOOGLE_OAUTH_CLIENT_SECRET")
+                    .map_err(|_| ConfigError::MissingVar("GOOGLE_OAUTH_CLIENT_SECRET"))?;
+                Some(OAuthProviderConfig::new(
+                    client_id,
+                    SecretString::new(client_secret.into()),
+                ))
+            }
+            Err(_) => None,
+        };
+
+        if github.is_none() && google.is_none() {
+            return Err(ConfigError::NoOAuthProviders);
+        }
 
         Ok(Self {
-            secret_key,
-            issuer,
-            api_url,
+            github,
+            google,
+            jwt_secret,
         })
     }
 
-    pub(crate) fn get_secret_key(&self) -> &SecretString {
-        &self.secret_key
+    pub fn github(&self) -> Option<&OAuthProviderConfig> {
+        self.github.as_ref()
     }
 
-    pub(crate) fn get_issuer(&self) -> &Url {
-        &self.issuer
+    pub fn google(&self) -> Option<&OAuthProviderConfig> {
+        self.google.as_ref()
     }
 
-    pub(crate) fn get_api_url(&self) -> &Url {
-        &self.api_url
+    pub fn jwt_secret(&self) -> &SecretString {
+        &self.jwt_secret
     }
 }

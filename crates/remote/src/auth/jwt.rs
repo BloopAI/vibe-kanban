@@ -1,0 +1,99 @@
+use std::{collections::HashSet, sync::Arc};
+
+use chrono::Utc;
+use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
+use secrecy::{ExposeSecret, SecretString};
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+use uuid::Uuid;
+
+use crate::db::{
+    auth::AuthSession,
+    identity::{Organization, User},
+};
+
+#[derive(Debug, Error)]
+pub enum JwtError {
+    #[error("invalid token")]
+    InvalidToken,
+    #[error(transparent)]
+    Jwt(#[from] jsonwebtoken::errors::Error),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JwtClaims {
+    pub sub: String,
+    pub session_id: Uuid,
+    pub org_id: String,
+    pub nonce: String,
+    pub iat: i64,
+}
+
+#[derive(Debug, Clone)]
+pub struct JwtIdentity {
+    pub user_id: String,
+    pub session_id: Uuid,
+    pub org_id: String,
+    pub nonce: String,
+}
+
+#[derive(Clone)]
+pub struct JwtService {
+    secret: Arc<SecretString>,
+}
+
+impl JwtService {
+    pub fn new(secret: SecretString) -> Self {
+        Self {
+            secret: Arc::new(secret),
+        }
+    }
+
+    pub fn encode(
+        &self,
+        session: &AuthSession,
+        user: &User,
+        organization: &Organization,
+    ) -> Result<String, JwtError> {
+        let claims = JwtClaims {
+            sub: user.id.clone(),
+            session_id: session.id,
+            org_id: organization.id.clone(),
+            nonce: session.session_secret.clone(),
+            iat: Utc::now().timestamp(),
+        };
+
+        let token = encode(
+            &Header::new(Algorithm::HS256),
+            &claims,
+            &EncodingKey::from_secret(self.secret.expose_secret().as_bytes()),
+        )?;
+
+        Ok(token)
+    }
+
+    pub fn decode(&self, token: &str) -> Result<JwtIdentity, JwtError> {
+        if token.trim().is_empty() {
+            return Err(JwtError::InvalidToken);
+        }
+
+        let mut validation = Validation::new(Algorithm::HS256);
+        validation.validate_exp = false;
+        validation.validate_nbf = false;
+        validation.required_spec_claims = HashSet::from(["sub".to_string()]);
+
+        let data = decode::<JwtClaims>(
+            token,
+            &DecodingKey::from_secret(self.secret.expose_secret().as_bytes()),
+            &validation,
+        )?;
+
+        let claims = data.claims;
+        Ok(JwtIdentity {
+            user_id: claims.sub,
+            session_id: claims.session_id,
+            org_id: claims.org_id,
+            nonce: claims.nonce,
+        })
+    }
+}

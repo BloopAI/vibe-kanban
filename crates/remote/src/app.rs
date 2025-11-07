@@ -1,12 +1,14 @@
-use std::net::SocketAddr;
+use std::{net::SocketAddr, sync::Arc};
 
-use anyhow::Context;
+use anyhow::{Context, bail};
 use tracing::instrument;
 
 use crate::{
     AppState,
     activity::ActivityBroker,
-    auth::{ClerkAuth, ClerkService},
+    auth::{
+        DeviceFlowService, GitHubDeviceProvider, GoogleDeviceProvider, JwtService, ProviderRegistry,
+    },
     config::RemoteServerConfig,
     db, routes,
 };
@@ -32,9 +34,44 @@ impl Server {
             config.activity_broadcast_shards,
             config.activity_broadcast_capacity,
         );
-        let auth = ClerkAuth::new(config.clerk.get_issuer().clone())?;
-        let clerk = ClerkService::new(&config.clerk)?;
-        let state = AppState::new(pool.clone(), broker.clone(), config.clone(), auth, clerk);
+        let auth_config = config.auth.clone();
+        let jwt = Arc::new(JwtService::new(auth_config.jwt_secret().clone()));
+
+        let mut registry = ProviderRegistry::new();
+
+        if let Some(github) = auth_config.github() {
+            registry.register(GitHubDeviceProvider::new(
+                github.client_id().to_string(),
+                github.client_secret().clone(),
+            )?);
+        }
+
+        if let Some(google) = auth_config.google() {
+            registry.register(GoogleDeviceProvider::new(
+                google.client_id().to_string(),
+                google.client_secret().clone(),
+            )?);
+        }
+
+        if registry.is_empty() {
+            bail!("no OAuth providers configured");
+        }
+
+        let registry = Arc::new(registry);
+
+        let device_flow = Arc::new(DeviceFlowService::new(
+            pool.clone(),
+            registry.clone(),
+            jwt.clone(),
+        ));
+
+        let state = AppState::new(
+            pool.clone(),
+            broker.clone(),
+            config.clone(),
+            jwt,
+            device_flow,
+        );
 
         let listener =
             db::ActivityListener::new(pool.clone(), broker, config.activity_channel.clone());

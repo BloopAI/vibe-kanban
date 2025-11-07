@@ -1,0 +1,108 @@
+use chrono::{DateTime, Utc};
+use serde::Serialize;
+use sqlx::{PgPool, query_as};
+use thiserror::Error;
+use uuid::Uuid;
+
+#[derive(Debug, Error)]
+pub enum AuthSessionError {
+    #[error("auth session not found")]
+    NotFound,
+    #[error(transparent)]
+    Database(#[from] sqlx::Error),
+}
+
+#[derive(Debug, Clone, sqlx::FromRow, Serialize)]
+pub struct AuthSession {
+    pub id: Uuid,
+    pub user_id: String,
+    pub session_secret: String,
+    pub created_at: DateTime<Utc>,
+    pub last_used_at: Option<DateTime<Utc>>,
+    pub revoked_at: Option<DateTime<Utc>>,
+}
+
+pub struct AuthSessionRepository<'a> {
+    pool: &'a PgPool,
+}
+
+impl<'a> AuthSessionRepository<'a> {
+    pub fn new(pool: &'a PgPool) -> Self {
+        Self { pool }
+    }
+
+    pub async fn create(
+        &self,
+        user_id: &str,
+        session_secret: &str,
+    ) -> Result<AuthSession, AuthSessionError> {
+        query_as!(
+            AuthSession,
+            r#"
+            INSERT INTO auth_sessions (user_id, session_secret)
+            VALUES ($1, $2)
+            RETURNING
+                id            AS "id!",
+                user_id       AS "user_id!",
+                session_secret AS "session_secret!",
+                created_at    AS "created_at!",
+                last_used_at  AS "last_used_at?",
+                revoked_at    AS "revoked_at?"
+            "#,
+            user_id,
+            session_secret
+        )
+        .fetch_one(self.pool)
+        .await
+        .map_err(AuthSessionError::from)
+    }
+
+    pub async fn get(&self, session_id: Uuid) -> Result<AuthSession, AuthSessionError> {
+        query_as!(
+            AuthSession,
+            r#"
+            SELECT
+                id            AS "id!",
+                user_id       AS "user_id!",
+                session_secret AS "session_secret!",
+                created_at    AS "created_at!",
+                last_used_at  AS "last_used_at?",
+                revoked_at    AS "revoked_at?"
+            FROM auth_sessions
+            WHERE id = $1
+            "#,
+            session_id
+        )
+        .fetch_optional(self.pool)
+        .await?
+        .ok_or(AuthSessionError::NotFound)
+    }
+
+    pub async fn touch(&self, session_id: Uuid) -> Result<(), AuthSessionError> {
+        sqlx::query!(
+            r#"
+            UPDATE auth_sessions
+            SET last_used_at = NOW()
+            WHERE id = $1
+            "#,
+            session_id
+        )
+        .execute(self.pool)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn revoke(&self, session_id: Uuid) -> Result<(), AuthSessionError> {
+        sqlx::query!(
+            r#"
+            UPDATE auth_sessions
+            SET revoked_at = NOW()
+            WHERE id = $1
+            "#,
+            session_id
+        )
+        .execute(self.pool)
+        .await?;
+        Ok(())
+    }
+}

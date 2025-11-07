@@ -6,76 +6,91 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use axum_extra::headers::{Authorization, HeaderMapExt, authorization::Bearer};
-use utils::clerk::ClerkIdentity;
+use tracing::warn;
+use uuid::Uuid;
 
 use crate::{
     AppState, configure_user_scope,
-    db::identity::{IdentityError, IdentityRepository, Organization, User},
+    db::{
+        auth::{AuthSessionError, AuthSessionRepository},
+        identity::{IdentityError, IdentityRepository, Organization, User},
+    },
 };
 
 #[derive(Clone)]
 pub struct RequestContext {
     pub organization: Organization,
     pub user: User,
-    pub identity: ClerkIdentity,
+    pub session_id: Uuid,
+    pub session_secret: String,
 }
 
-pub async fn require_clerk_session(
+pub async fn require_session(
     State(state): State<AppState>,
     mut req: Request<Body>,
     next: Next,
 ) -> Response {
     let bearer = match req.headers().typed_get::<Authorization<Bearer>>() {
-        Some(Authorization(bearer)) => bearer,
+        Some(Authorization(token)) => token.token().to_owned(),
         None => return StatusCode::UNAUTHORIZED.into_response(),
     };
 
-    let auth = state.auth();
-    let identity = match auth.verify(bearer.token()).await {
+    let jwt = state.jwt();
+    let identity = match jwt.decode(&bearer) {
         Ok(identity) => identity,
-        Err(err) => {
-            tracing::warn!(?err, "failed to verify Clerk session");
+        Err(error) => {
+            warn!(?error, "failed to decode session token");
             return StatusCode::UNAUTHORIZED.into_response();
         }
     };
 
-    let org_id = match identity.org_id.clone() {
-        Some(org_id) => org_id,
-        None => {
-            tracing::warn!("clerk session missing organization id");
-            return StatusCode::FORBIDDEN.into_response();
+    let pool = state.pool();
+    let session_repo = AuthSessionRepository::new(pool);
+    let session = match session_repo.get(identity.session_id).await {
+        Ok(session) => session,
+        Err(AuthSessionError::NotFound) => {
+            warn!("session `{}` not found", identity.session_id);
+            return StatusCode::UNAUTHORIZED.into_response();
+        }
+        Err(AuthSessionError::Database(error)) => {
+            warn!(?error, "failed to load session");
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
     };
 
-    let repo = IdentityRepository::new(state.pool(), state.clerk());
-    let organization = match repo
-        .ensure_organization(&org_id, identity.org_slug.as_deref())
-        .await
-    {
+    if session.revoked_at.is_some() || session.session_secret != identity.nonce {
+        warn!(
+            "session `{}` rejected (revoked or rotated)",
+            identity.session_id
+        );
+        return StatusCode::UNAUTHORIZED.into_response();
+    }
+
+    let identity_repo = IdentityRepository::new(pool);
+    let organization = match identity_repo.fetch_organization(&identity.org_id).await {
         Ok(org) => org,
-        Err(IdentityError::Clerk(error)) => {
-            tracing::warn!(?error, "clerk organization lookup failed");
+        Err(IdentityError::NotFound) => {
+            warn!("organization `{}` missing", identity.org_id);
             return StatusCode::FORBIDDEN.into_response();
         }
         Err(IdentityError::Database(error)) => {
-            tracing::error!(?error, "failed to ensure organization");
+            warn!(?error, "failed to load organization");
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
     };
 
-    let user = match repo.ensure_user(&org_id, &identity.user_id).await {
+    let user = match identity_repo.fetch_user(&identity.user_id).await {
         Ok(user) => user,
-        Err(IdentityError::Clerk(error)) => {
-            tracing::warn!(?error, "clerk user lookup failed");
-            return StatusCode::FORBIDDEN.into_response();
+        Err(IdentityError::NotFound) => {
+            warn!("user `{}` missing", identity.user_id);
+            return StatusCode::UNAUTHORIZED.into_response();
         }
         Err(IdentityError::Database(error)) => {
-            tracing::error!(?error, "failed to ensure user");
+            warn!(?error, "failed to load user");
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
     };
 
-    let _scope_guard = sentry::Hub::current().push_scope();
     configure_user_scope(
         &user.id,
         user.username.as_deref(),
@@ -85,8 +100,14 @@ pub async fn require_clerk_session(
     req.extensions_mut().insert(RequestContext {
         organization,
         user,
-        identity,
+        session_id: session.id,
+        session_secret: session.session_secret.clone(),
     });
+
+    match session_repo.touch(session.id).await {
+        Ok(_) => {}
+        Err(error) => warn!(?error, "failed to update session last-used timestamp"),
+    }
 
     next.run(req).await
 }
