@@ -689,7 +689,9 @@ function DisplayConversationEntry({
     const isPlanPresentation =
       toolEntry.action_type.action === 'plan_presentation';
     const isPendingApproval = status.status === 'pending_approval';
-    const defaultExpanded = isPendingApproval || isPlanPresentation;
+    const isGithubCliSetup = toolEntry.tool_name === 'GitHub CLI Setup Script';
+    const defaultExpanded =
+      isPendingApproval || isPlanPresentation || isGithubCliSetup;
 
     const body = (() => {
       if (isFileEdit(toolEntry.action_type)) {
