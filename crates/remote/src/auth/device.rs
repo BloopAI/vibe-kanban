@@ -198,9 +198,9 @@ impl DeviceFlowService {
         &self,
         record: DeviceAuthorization,
     ) -> Result<DeviceFlowPollResponse, DeviceFlowError> {
+        let repo = DeviceAuthorizationRepository::new(&self.pool);
         let now = Utc::now();
         if record.expires_at <= now {
-            let repo = DeviceAuthorizationRepository::new(&self.pool);
             repo.set_status(
                 record.id,
                 AuthorizationStatus::Expired,
@@ -213,11 +213,7 @@ impl DeviceFlowService {
         if let Some(last_polled_at) = record.last_polled_at {
             let next_allowed = last_polled_at + Duration::seconds(record.polling_interval as i64);
             if now < next_allowed {
-                return Ok(DeviceFlowPollResponse {
-                    status: DeviceFlowPollStatus::Pending,
-                    access_token: None,
-                    error: None,
-                });
+                return Ok(Self::pending_response());
             }
         }
 
@@ -232,33 +228,21 @@ impl DeviceFlowService {
             .map_err(DeviceFlowError::Provider)?
         {
             ProviderAuthorization::Pending => {
-                let repo = DeviceAuthorizationRepository::new(&self.pool);
                 repo.record_poll(record.id).await?;
-                Ok(DeviceFlowPollResponse {
-                    status: DeviceFlowPollStatus::Pending,
-                    access_token: None,
-                    error: None,
-                })
+                Ok(Self::pending_response())
             }
             ProviderAuthorization::SlowDown(increment) => {
-                let repo = DeviceAuthorizationRepository::new(&self.pool);
                 repo.record_poll(record.id).await?;
                 let next_interval = record.polling_interval.saturating_add(increment as i32);
                 repo.update_interval(record.id, next_interval).await?;
-                Ok(DeviceFlowPollResponse {
-                    status: DeviceFlowPollStatus::Pending,
-                    access_token: None,
-                    error: None,
-                })
+                Ok(Self::pending_response())
             }
             ProviderAuthorization::Denied => {
-                let repo = DeviceAuthorizationRepository::new(&self.pool);
                 repo.set_status(record.id, AuthorizationStatus::Error, Some("access_denied"))
                     .await?;
                 Err(DeviceFlowError::Denied)
             }
             ProviderAuthorization::Expired => {
-                let repo = DeviceAuthorizationRepository::new(&self.pool);
                 repo.set_status(
                     record.id,
                     AuthorizationStatus::Expired,
@@ -270,6 +254,14 @@ impl DeviceFlowService {
             ProviderAuthorization::Authorized(grant) => {
                 self.complete_authorization(record, grant).await
             }
+        }
+    }
+
+    fn pending_response() -> DeviceFlowPollResponse {
+        DeviceFlowPollResponse {
+            status: DeviceFlowPollStatus::Pending,
+            access_token: None,
+            error: None,
         }
     }
 

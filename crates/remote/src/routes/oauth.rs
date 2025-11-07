@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use axum::{
     Json,
     extract::{Extension, State},
@@ -65,20 +67,8 @@ pub async fn device_init(
 }
 
 fn init_error_response(error: DeviceFlowError) -> Response {
-    match error {
-        DeviceFlowError::UnsupportedProvider(_) => (
-            StatusCode::BAD_REQUEST,
-            Json(json!({ "error": "unsupported_provider" })),
-        )
-            .into_response(),
-        DeviceFlowError::Provider(err) => {
-            warn!(?err, "provider error during device init");
-            (
-                StatusCode::BAD_GATEWAY,
-                Json(json!({ "error": "provider_error" })),
-            )
-                .into_response()
-        }
+    match &error {
+        DeviceFlowError::Provider(err) => warn!(?err, "provider error during device init"),
         DeviceFlowError::NotFound
         | DeviceFlowError::Expired
         | DeviceFlowError::Denied
@@ -89,13 +79,23 @@ fn init_error_response(error: DeviceFlowError) -> Response {
         | DeviceFlowError::Session(_)
         | DeviceFlowError::Jwt(_)
         | DeviceFlowError::Authorization(_) => {
-            warn!(?error, "failed to initiate device authorization");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": "internal_error" })),
-            )
-                .into_response()
+            warn!(?error, "failed to initiate device authorization")
         }
+        DeviceFlowError::UnsupportedProvider(_) => {}
+    }
+
+    let (default_status, default_code) = classify_device_flow_error(&error);
+
+    match error {
+        DeviceFlowError::UnsupportedProvider(_) | DeviceFlowError::Provider(_) => {
+            let code = default_code.into_owned();
+            (default_status, Json(json!({ "error": code }))).into_response()
+        }
+        _ => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": "internal_error" })),
+        )
+            .into_response(),
     }
 }
 
@@ -128,51 +128,66 @@ pub async fn device_poll(
 }
 
 fn poll_error_response(error: DeviceFlowError) -> Response {
-    fn response(status: StatusCode, code: &str) -> Response {
-        (
-            status,
-            Json(DevicePollResponse {
-                status: "error".to_string(),
-                access_token: None,
-                error: Some(code.to_string()),
-            }),
-        )
-            .into_response()
-    }
-
-    fn internal_error<E: std::fmt::Debug>(err: E) -> Response {
-        warn!(?err, "internal error during device poll");
-        response(StatusCode::INTERNAL_SERVER_ERROR, "internal_error")
-    }
-
-    match error {
-        DeviceFlowError::NotFound => response(StatusCode::NOT_FOUND, "not_found"),
-        DeviceFlowError::Expired => response(StatusCode::GONE, "expired"),
-        DeviceFlowError::Denied => response(StatusCode::FORBIDDEN, "access_denied"),
-        DeviceFlowError::Failed(reason) => (
-            StatusCode::BAD_REQUEST,
-            Json(DevicePollResponse {
-                status: "error".to_string(),
-                access_token: None,
-                error: Some(reason),
-            }),
-        )
-            .into_response(),
-        DeviceFlowError::UnsupportedProvider(_) => {
-            response(StatusCode::BAD_REQUEST, "unsupported_provider")
-        }
-        DeviceFlowError::Provider(err) => {
-            warn!(?err, "provider error during device poll");
-            response(StatusCode::BAD_GATEWAY, "provider_error")
-        }
-        DeviceFlowError::Database(err) => internal_error(err),
-        DeviceFlowError::Identity(err) => internal_error(err),
-        DeviceFlowError::OAuthAccount(err) => internal_error(err),
-        DeviceFlowError::Session(err) => internal_error(err),
-        DeviceFlowError::Jwt(err) => internal_error(err),
+    match &error {
+        DeviceFlowError::Provider(err) => warn!(?err, "provider error during device poll"),
+        DeviceFlowError::Database(err) => warn!(?err, "internal error during device poll"),
+        DeviceFlowError::Identity(err) => warn!(?err, "internal error during device poll"),
+        DeviceFlowError::OAuthAccount(err) => warn!(?err, "internal error during device poll"),
+        DeviceFlowError::Session(err) => warn!(?err, "internal error during device poll"),
+        DeviceFlowError::Jwt(err) => warn!(?err, "internal error during device poll"),
         DeviceFlowError::Authorization(err) => {
-            warn!(?err, "device authorization error");
-            response(StatusCode::BAD_GATEWAY, "provider_error")
+            warn!(?err, "device authorization error")
+        }
+        _ => {}
+    }
+
+    let (status, error_code) = classify_device_flow_error(&error);
+    let error_code = error_code.into_owned();
+
+    (
+        status,
+        Json(DevicePollResponse {
+            status: "error".to_string(),
+            access_token: None,
+            error: Some(error_code),
+        }),
+    )
+        .into_response()
+}
+
+fn classify_device_flow_error(error: &DeviceFlowError) -> (StatusCode, Cow<'_, str>) {
+    match error {
+        DeviceFlowError::UnsupportedProvider(_) => (
+            StatusCode::BAD_REQUEST,
+            Cow::Borrowed("unsupported_provider"),
+        ),
+        DeviceFlowError::Provider(_) => (StatusCode::BAD_GATEWAY, Cow::Borrowed("provider_error")),
+        DeviceFlowError::NotFound => (StatusCode::NOT_FOUND, Cow::Borrowed("not_found")),
+        DeviceFlowError::Expired => (StatusCode::GONE, Cow::Borrowed("expired")),
+        DeviceFlowError::Denied => (StatusCode::FORBIDDEN, Cow::Borrowed("access_denied")),
+        DeviceFlowError::Failed(reason) => (StatusCode::BAD_REQUEST, Cow::Owned(reason.clone())),
+        DeviceFlowError::Database(_) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Cow::Borrowed("internal_error"),
+        ),
+        DeviceFlowError::Identity(_) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Cow::Borrowed("internal_error"),
+        ),
+        DeviceFlowError::OAuthAccount(_) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Cow::Borrowed("internal_error"),
+        ),
+        DeviceFlowError::Session(_) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Cow::Borrowed("internal_error"),
+        ),
+        DeviceFlowError::Jwt(_) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Cow::Borrowed("internal_error"),
+        ),
+        DeviceFlowError::Authorization(_) => {
+            (StatusCode::BAD_GATEWAY, Cow::Borrowed("provider_error"))
         }
     }
 }
