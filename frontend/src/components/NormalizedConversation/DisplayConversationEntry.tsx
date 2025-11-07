@@ -428,6 +428,7 @@ const ToolCallCard: React.FC<{
   defaultExpanded?: boolean;
   statusAppearance?: ToolStatusAppearance;
   forceExpanded?: boolean;
+  linkifyUrls?: boolean;
 }> = ({
   entryType,
   action,
@@ -436,6 +437,7 @@ const ToolCallCard: React.FC<{
   entryContent,
   defaultExpanded = false,
   forceExpanded = false,
+  linkifyUrls = false,
 }) => {
   const { t } = useTranslation('common');
   const at: any = entryType?.action_type || action;
@@ -530,7 +532,7 @@ const ToolCallCard: React.FC<{
                     {t('conversation.output')}
                   </div>
                   <div className="px-2 py-1">
-                    <RawLogText content={output} />
+                    <RawLogText content={output} linkifyUrls={linkifyUrls} />
                   </div>
                 </>
               )}
@@ -732,6 +734,7 @@ function DisplayConversationEntry({
           defaultExpanded={defaultExpanded}
           statusAppearance={statusAppearance}
           forceExpanded={isPendingApproval}
+          linkifyUrls={isGithubCliSetup}
         />
       );
     })();

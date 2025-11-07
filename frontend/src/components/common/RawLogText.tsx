@@ -8,6 +8,7 @@ interface RawLogTextProps {
   channel?: 'stdout' | 'stderr';
   as?: 'div' | 'span';
   className?: string;
+  linkifyUrls?: boolean;
 }
 
 const RawLogText = memo(
@@ -16,10 +17,39 @@ const RawLogText = memo(
     channel = 'stdout',
     as: Component = 'div',
     className,
+    linkifyUrls = false,
   }: RawLogTextProps) => {
     // Only apply stderr fallback color when no ANSI codes are present
     const hasAnsiCodes = hasAnsi(content);
     const shouldApplyStderrFallback = channel === 'stderr' && !hasAnsiCodes;
+
+    const renderContent = () => {
+      if (!linkifyUrls) {
+        return <AnsiHtml text={content} />;
+      }
+
+      const urlRegex = /(https?:\/\/\S+)/g;
+      const parts = content.split(urlRegex);
+
+      return parts.map((part, index) => {
+        if (/^https?:\/\/\S+$/.test(part)) {
+          return (
+            <a
+              key={index}
+              href={part}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline text-info hover:text-info/80 cursor-pointer"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {part}
+            </a>
+          );
+        }
+        // For non-URL parts, apply ANSI formatting
+        return <AnsiHtml key={index} text={part} />;
+      });
+    };
 
     return (
       <Component
@@ -29,7 +59,7 @@ const RawLogText = memo(
           className
         )}
       >
-        <AnsiHtml text={content} />
+        {renderContent()}
       </Component>
     );
   }
