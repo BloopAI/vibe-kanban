@@ -12,6 +12,7 @@ import type { GhCliSetupError } from 'shared/types';
 import { useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface GhCliSetupDialogProps {
   attemptId: string;
@@ -26,7 +27,8 @@ export interface GhCliSupportContent {
 
 export const mapGhCliErrorToUi = (
   error: GhCliSetupError | null,
-  fallbackMessage: string
+  fallbackMessage: string,
+  t: (key: string) => string
 ): GhCliSupportContent => {
   if (!error) {
     return { message: fallbackMessage, variant: null };
@@ -34,16 +36,14 @@ export const mapGhCliErrorToUi = (
 
   if (error === 'BREW_MISSING') {
     return {
-      message:
-        'Homebrew is not installed. Install it to enable automatic setup.',
+      message: t('settings:integrations.github.cliSetup.errors.brewMissing'),
       variant: 'homebrew',
     };
   }
 
   if (error === 'SETUP_HELPER_NOT_SUPPORTED') {
     return {
-      message:
-        'Automatic setup is not supported on this platform. Install GitHub CLI manually.',
+      message: t('settings:integrations.github.cliSetup.errors.notSupported'),
       variant: 'manual',
     };
   }
@@ -60,30 +60,35 @@ export const mapGhCliErrorToUi = (
 
 export const GhCliHelpInstructions = ({
   variant,
+  t,
 }: {
   variant: GhCliSupportVariant;
+  t: (key: string) => string;
 }) => {
   if (variant === 'homebrew') {
     return (
       <div className="space-y-2 text-sm">
         <p>
-          Automatic installation requires Homebrew. Install Homebrew from{' '}
+          {t('settings:integrations.github.cliSetup.help.homebrew.description')}{' '}
           <a
             href="https://brew.sh/"
             target="_blank"
             rel="noreferrer"
             className="underline"
           >
-            brew.sh
+            {t('settings:integrations.github.cliSetup.help.homebrew.brewSh')}
           </a>{' '}
-          and then rerun the setup. Alternatively, install GitHub CLI manually
-          with:
+          {t(
+            'settings:integrations.github.cliSetup.help.homebrew.manualInstall'
+          )}
         </p>
         <pre className="rounded bg-muted px-2 py-1 text-xs">
           brew install gh
         </pre>
         <p>
-          After installation, authenticate with:
+          {t(
+            'settings:integrations.github.cliSetup.help.homebrew.afterInstall'
+          )}
           <br />
           <code className="rounded bg-muted px-1 py-0.5 text-xs">
             gh auth login --web --git-protocol https
@@ -96,16 +101,16 @@ export const GhCliHelpInstructions = ({
   return (
     <div className="space-y-2 text-sm">
       <p>
-        Install GitHub CLI from the{' '}
+        {t('settings:integrations.github.cliSetup.help.manual.description')}{' '}
         <a
           href="https://cli.github.com/"
           target="_blank"
           rel="noreferrer"
           className="underline"
         >
-          official documentation
+          {t('settings:integrations.github.cliSetup.help.manual.officialDocs')}
         </a>{' '}
-        and then authenticate with your GitHub account.
+        {t('settings:integrations.github.cliSetup.help.manual.andAuthenticate')}
       </p>
       <pre className="rounded bg-muted px-2 py-1 text-xs">
         gh auth login --web --git-protocol https
@@ -117,6 +122,7 @@ export const GhCliHelpInstructions = ({
 export const GhCliSetupDialog = NiceModal.create<GhCliSetupDialogProps>(
   ({ attemptId }) => {
     const modal = useModal();
+    const { t } = useTranslation();
     const [isRunning, setIsRunning] = useState(false);
     const [errorInfo, setErrorInfo] = useState<{
       error: GhCliSetupError;
@@ -140,13 +146,13 @@ export const GhCliSetupDialog = NiceModal.create<GhCliSetupDialogProps>(
         const rawMessage =
           typeof err?.message === 'string'
             ? err.message
-            : 'Failed to run GitHub CLI setup.';
+            : t('settings:integrations.github.cliSetup.errors.setupFailed');
 
         const errorData = err?.error_data as GhCliSetupError | undefined;
         const resolvedError: GhCliSetupError = errorData ?? {
           OTHER: { message: rawMessage },
         };
-        const ui = mapGhCliErrorToUi(resolvedError, rawMessage);
+        const ui = mapGhCliErrorToUi(resolvedError, rawMessage, t);
 
         pendingResultRef.current = resolvedError;
         setErrorInfo({
@@ -173,24 +179,36 @@ export const GhCliSetupDialog = NiceModal.create<GhCliSetupDialogProps>(
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>GitHub CLI Setup</DialogTitle>
+            <DialogTitle>
+              {t('settings:integrations.github.cliSetup.title')}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <p>
-              GitHub CLI authentication is required to create pull requests and
-              interact with GitHub repositories.
-            </p>
+            <p>{t('settings:integrations.github.cliSetup.description')}</p>
 
             <div className="space-y-2">
-              <p className="text-sm">This setup will:</p>
+              <p className="text-sm">
+                {t('settings:integrations.github.cliSetup.setupWillTitle')}
+              </p>
               <ol className="text-sm list-decimal list-inside space-y-1 ml-2">
-                <li>Check if GitHub CLI (gh) is installed</li>
-                <li>Install it via Homebrew if needed (macOS)</li>
-                <li>Authenticate with GitHub using OAuth</li>
+                <li>
+                  {t(
+                    'settings:integrations.github.cliSetup.steps.checkInstalled'
+                  )}
+                </li>
+                <li>
+                  {t(
+                    'settings:integrations.github.cliSetup.steps.installHomebrew'
+                  )}
+                </li>
+                <li>
+                  {t(
+                    'settings:integrations.github.cliSetup.steps.authenticate'
+                  )}
+                </li>
               </ol>
               <p className="text-sm text-muted-foreground mt-4">
-                The setup will run in the chat window. You'll need to complete
-                the authentication in your browser.
+                {t('settings:integrations.github.cliSetup.setupNote')}
               </p>
             </div>
             {errorInfo && (
@@ -198,7 +216,7 @@ export const GhCliSetupDialog = NiceModal.create<GhCliSetupDialogProps>(
                 <AlertDescription className="space-y-2">
                   <p>{errorInfo.message}</p>
                   {errorInfo.variant && (
-                    <GhCliHelpInstructions variant={errorInfo.variant} />
+                    <GhCliHelpInstructions variant={errorInfo.variant} t={t} />
                   )}
                 </AlertDescription>
               </Alert>
@@ -209,10 +227,10 @@ export const GhCliSetupDialog = NiceModal.create<GhCliSetupDialogProps>(
               {isRunning ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Running...
+                  {t('settings:integrations.github.cliSetup.running')}
                 </>
               ) : (
-                'Run Setup'
+                t('settings:integrations.github.cliSetup.runSetup')
               )}
             </Button>
             <Button
@@ -220,7 +238,7 @@ export const GhCliSetupDialog = NiceModal.create<GhCliSetupDialogProps>(
               onClick={handleClose}
               disabled={isRunning}
             >
-              Close
+              {t('common:buttons.close')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -87,6 +87,37 @@
           "placeholder": "ghp_xxxxxxxxxxxxxxxxxxxx",
           "helper": "Token de Acceso Personal de GitHub con permisos 'repo'. Úsalo si los permisos OAuth son insuficientes para repositorios privados y repositorios de organizaciones.",
           "createTokenLink": "Crear token aquí"
+        },
+        "cliSetup": {
+          "title": "Configuración de GitHub CLI",
+          "description": "La autenticación de GitHub CLI es necesaria para crear pull requests e interactuar con repositorios de GitHub.",
+          "setupWillTitle": "Esta configuración:",
+          "steps": {
+            "checkInstalled": "Verificará si GitHub CLI (gh) está instalado",
+            "installHomebrew": "Lo instalará vía Homebrew si es necesario (macOS)",
+            "authenticate": "Autenticará con GitHub usando OAuth"
+          },
+          "setupNote": "La configuración se ejecutará en la ventana de chat. Necesitarás completar la autenticación en tu navegador.",
+          "runSetup": "Ejecutar Configuración",
+          "running": "Ejecutando...",
+          "errors": {
+            "brewMissing": "Homebrew no está instalado. Instálalo para habilitar la configuración automática.",
+            "notSupported": "La configuración automática no es compatible con esta plataforma. Instala GitHub CLI manualmente.",
+            "setupFailed": "Error al ejecutar la configuración de GitHub CLI."
+          },
+          "help": {
+            "homebrew": {
+              "description": "La instalación automática requiere Homebrew. Instala Homebrew desde",
+              "brewSh": "brew.sh",
+              "manualInstall": "y luego vuelve a ejecutar la configuración. Alternativamente, instala GitHub CLI manualmente con:",
+              "afterInstall": "Después de la instalación, autentica con:"
+            },
+            "manual": {
+              "description": "Instala GitHub CLI desde la",
+              "officialDocs": "documentación oficial",
+              "andAuthenticate": "y luego autentica con tu cuenta de GitHub."
+            }
+          }
         }
       },
       "git": {
