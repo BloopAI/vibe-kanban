@@ -49,9 +49,17 @@ impl From<GhCliError> for GitHubServiceError {
         match error {
             GhCliError::AuthFailed(_) => Self::TokenInvalid,
             GhCliError::NotAvailable => Self::GhCliNotInstalled,
-            GhCliError::CommandFailed(msg) | GhCliError::UnexpectedOutput(msg) => {
-                Self::PullRequest(msg)
+            GhCliError::CommandFailed(msg) => {
+                let lower = msg.to_ascii_lowercase();
+                if lower.contains("403") || lower.contains("forbidden") {
+                    Self::InsufficientPermissions
+                } else if lower.contains("404") || lower.contains("not found") {
+                    Self::RepoNotFoundOrNoAccess
+                } else {
+                    Self::PullRequest(msg)
+                }
             }
+            GhCliError::UnexpectedOutput(msg) => Self::PullRequest(msg),
         }
     }
 }
@@ -108,10 +116,27 @@ impl GitHubRepoInfo {
             GitHubServiceError::Repository(format!("Invalid GitHub URL format: {remote_url}"))
         })?;
 
-        Ok(Self {
-            owner: caps.name("owner").unwrap().as_str().to_string(),
-            repo_name: caps.name("repo").unwrap().as_str().to_string(),
-        })
+        let owner = caps
+            .name("owner")
+            .ok_or_else(|| {
+                GitHubServiceError::Repository(format!(
+                    "Failed to extract owner from GitHub URL: {remote_url}"
+                ))
+            })?
+            .as_str()
+            .to_string();
+
+        let repo_name = caps
+            .name("repo")
+            .ok_or_else(|| {
+                GitHubServiceError::Repository(format!(
+                    "Failed to extract repo name from GitHub URL: {remote_url}"
+                ))
+            })?
+            .as_str()
+            .to_string();
+
+        Ok(Self { owner, repo_name })
     }
 }
 
@@ -212,7 +237,7 @@ impl GitHubService {
                     "Failed to execute GitHub CLI for repo lookup: {err}"
                 ))
             })?
-            .map_err(Self::map_repo_cli_error)
+            .map_err(GitHubServiceError::from)
     }
 
     async fn create_pr_via_cli(
@@ -230,7 +255,7 @@ impl GitHubService {
                     "Failed to execute GitHub CLI for PR creation: {err}"
                 ))
             })?
-            .map_err(|err| Self::map_gh_cli_error(err, request))?;
+            .map_err(GitHubServiceError::from)?;
 
         info!(
             "Created GitHub PR #{} for branch {} in {}/{}",
@@ -238,101 +263,6 @@ impl GitHubService {
         );
 
         Ok(cli_result)
-    }
-
-    fn map_gh_cli_error(err: GhCliError, request: &CreatePrRequest) -> GitHubServiceError {
-        match err {
-            GhCliError::NotAvailable => GitHubServiceError::GhCliNotInstalled,
-            GhCliError::AuthFailed(msg) => {
-                let lower = msg.to_ascii_lowercase();
-                if lower.contains("403") || lower.contains("forbidden") {
-                    GitHubServiceError::InsufficientPermissions
-                } else if lower.contains("404") || lower.contains("not found") {
-                    GitHubServiceError::RepoNotFoundOrNoAccess
-                } else {
-                    GitHubServiceError::TokenInvalid
-                }
-            }
-            GhCliError::CommandFailed(msg) => {
-                let lower = msg.to_ascii_lowercase();
-                if lower.contains("403") || lower.contains("forbidden") {
-                    GitHubServiceError::InsufficientPermissions
-                } else if lower.contains("404") || lower.contains("not found") {
-                    GitHubServiceError::RepoNotFoundOrNoAccess
-                } else {
-                    GitHubServiceError::PullRequest(format!(
-                        "gh pr create failed for '{} -> {}': {}",
-                        request.head_branch, request.base_branch, msg
-                    ))
-                }
-            }
-            GhCliError::UnexpectedOutput(msg) => GitHubServiceError::PullRequest(format!(
-                "Unexpected output from gh while creating '{} -> {}': {}",
-                request.head_branch, request.base_branch, msg
-            )),
-        }
-    }
-
-    fn map_repo_cli_error(err: GhCliError) -> GitHubServiceError {
-        match err {
-            GhCliError::NotAvailable => GitHubServiceError::GhCliNotInstalled,
-            GhCliError::AuthFailed(_) => GitHubServiceError::TokenInvalid,
-            GhCliError::CommandFailed(msg) => {
-                let lower = msg.to_ascii_lowercase();
-                if lower.contains("403") || lower.contains("forbidden") {
-                    GitHubServiceError::InsufficientPermissions
-                } else if lower.contains("404") || lower.contains("not found") {
-                    GitHubServiceError::RepoNotFoundOrNoAccess
-                } else {
-                    GitHubServiceError::Repository(format!("gh repo view failed for {msg}"))
-                }
-            }
-            GhCliError::UnexpectedOutput(msg) => GitHubServiceError::Repository(format!(
-                "Unexpected output from gh repo API for {msg}"
-            )),
-        }
-    }
-
-    fn map_pr_cli_error(err: GhCliError) -> GitHubServiceError {
-        match err {
-            GhCliError::NotAvailable => GitHubServiceError::GhCliNotInstalled,
-            GhCliError::AuthFailed(_) => GitHubServiceError::TokenInvalid,
-            GhCliError::CommandFailed(msg) => {
-                let lower = msg.to_ascii_lowercase();
-                if lower.contains("403") || lower.contains("forbidden") {
-                    GitHubServiceError::InsufficientPermissions
-                } else if lower.contains("404") || lower.contains("not found") {
-                    GitHubServiceError::RepoNotFoundOrNoAccess
-                } else {
-                    GitHubServiceError::PullRequest(format!("gh CLI failed while fetching {msg}"))
-                }
-            }
-            GhCliError::UnexpectedOutput(msg) => GitHubServiceError::PullRequest(format!(
-                "Unexpected gh CLI output while fetching {msg}"
-            )),
-        }
-    }
-
-    fn map_pr_list_cli_error(err: GhCliError) -> GitHubServiceError {
-        match err {
-            GhCliError::NotAvailable => GitHubServiceError::GhCliNotInstalled,
-            GhCliError::AuthFailed(_) => GitHubServiceError::TokenInvalid,
-            GhCliError::CommandFailed(msg) => {
-                let lower = msg.to_ascii_lowercase();
-                if lower.contains("403") || lower.contains("forbidden") {
-                    GitHubServiceError::InsufficientPermissions
-                } else if lower.contains("404") || lower.contains("not found") {
-                    GitHubServiceError::RepoNotFoundOrNoAccess
-                } else {
-                    GitHubServiceError::PullRequest(format!(
-                        "gh CLI failed while listing PRs '{msg}'",
-                    ))
-                }
-            }
-            GhCliError::UnexpectedOutput(msg) => GitHubServiceError::PullRequest(format!(
-                "Unexpected gh CLI output while listing PRs '{msg}'",
-            )),
-        }
     }
 
     /// Update and get the status of a pull request
@@ -356,7 +286,7 @@ impl GitHubService {
                     "Failed to execute GitHub CLI for viewing PR #{pr_number}: {err}"
                 ))
             })?;
-            let pr = pr.map_err(Self::map_pr_cli_error)?;
+            let pr = pr.map_err(GitHubServiceError::from)?;
             Ok(pr)
         })
         .retry(
@@ -400,7 +330,7 @@ impl GitHubService {
                     "Failed to execute GitHub CLI for listing PRs on branch '{branch_name}': {err}"
                 ))
             })?;
-            let prs = prs.map_err(Self::map_pr_list_cli_error)?;
+            let prs = prs.map_err(GitHubServiceError::from)?;
             Ok(prs)
         })
         .retry(
