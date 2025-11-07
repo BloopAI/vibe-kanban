@@ -34,8 +34,6 @@ pub enum GitServiceError {
     BranchesDiverged(String),
     #[error("{0} has uncommitted changes: {1}")]
     WorktreeDirty(String, String),
-    #[error("No GitHub token available.")]
-    TokenUnavailable,
     #[error("Rebase in progress; resolve or abort it before retrying")]
     RebaseInProgress,
 }
@@ -209,8 +207,7 @@ impl GitService {
             let remote = repo.find_remote(remote_name)?;
             if let Some(url) = remote.url() {
                 metadata.has_remote = true;
-                let normalized = self.convert_to_https_url(url);
-                if let Ok(info) = GitHubRepoInfo::from_remote_url(&normalized) {
+                if let Ok(info) = GitHubRepoInfo::from_remote_url(url) {
                     metadata.github_repo_owner = Some(info.owner);
                     metadata.github_repo_name = Some(info.repo_name);
                 }
@@ -944,7 +941,6 @@ impl GitService {
         repo_path: &Path,
         branch_name: &str,
         base_branch_name: Option<&str>,
-        github_token: String,
     ) -> Result<(usize, usize), GitServiceError> {
         let repo = Repository::open(repo_path)?;
         let branch_ref = Self::find_branch(&repo, branch_name)?.into_reference();
@@ -957,7 +953,7 @@ impl GitService {
         }
         .into_reference();
         let remote = self.get_remote_from_branch_ref(&repo, &base_branch_ref)?;
-        self.fetch_all_from_remote(&repo, &github_token, &remote)?;
+        self.fetch_all_from_remote(&repo, &remote)?;
         self.get_branch_status_inner(&repo, &branch_ref, &base_branch_ref)
     }
 
@@ -1410,7 +1406,6 @@ impl GitService {
         new_base_branch: &str,
         old_base_branch: &str,
         task_branch: &str,
-        github_token: Option<String>,
     ) -> Result<String, GitServiceError> {
         let worktree_repo = Repository::open(worktree_path)?;
         let main_repo = self.open_repo(repo_path)?;
@@ -1431,8 +1426,7 @@ impl GitService {
         let nbr = Self::find_branch(&main_repo, new_base_branch)?.into_reference();
         // If the target base is remote, update it first so CLI sees latest
         if nbr.is_remote() {
-            let github_token = github_token.ok_or(GitServiceError::TokenUnavailable)?;
-            self.fetch_branch_from_remote(&main_repo, &github_token, &nbr)?;
+            self.fetch_branch_from_remote(&main_repo, &nbr)?;
         }
 
         // Ensure identity for any commits produced by rebase
@@ -1777,7 +1771,6 @@ impl GitService {
         &self,
         worktree_path: &Path,
         branch_name: &str,
-        github_token: &str,
     ) -> Result<(), GitServiceError> {
         let repo = Repository::open(worktree_path)?;
         self.check_worktree_clean(&repo)?;
@@ -1789,11 +1782,8 @@ impl GitService {
         let remote_url = remote
             .url()
             .ok_or_else(|| GitServiceError::InvalidRepository("Remote has no URL".to_string()))?;
-        let https_url = self.convert_to_https_url(remote_url);
         let git_cli = GitCli::new();
-        if let Err(e) =
-            git_cli.push_with_token(worktree_path, &https_url, branch_name, github_token)
-        {
+        if let Err(e) = git_cli.push(worktree_path, remote_url, branch_name) {
             tracing::error!("Push to GitHub failed: {}", e);
             return Err(e.into());
         }
@@ -1815,30 +1805,10 @@ impl GitService {
         Ok(())
     }
 
-    pub fn convert_to_https_url(&self, url: &str) -> String {
-        // Convert SSH URL to HTTPS URL if necessary
-        let new_url = if url.starts_with("git@github.com:") {
-            // Convert git@github.com:owner/repo.git to https://github.com/owner/repo.git
-            url.replace("git@github.com:", "https://github.com/")
-        } else if url.starts_with("ssh://git@github.com/") {
-            // Convert ssh://git@github.com/owner/repo.git to https://github.com/owner/repo.git
-            url.replace("ssh://git@github.com/", "https://github.com/")
-        } else {
-            url.to_string()
-        };
-        let mut normalized = new_url.trim_end_matches('/').to_string();
-        if !normalized.ends_with(".git") {
-            normalized.push_str(".git");
-        }
-
-        normalized
-    }
-
-    /// Fetch from remote repository using GitHub token authentication
+    /// Fetch from remote repository using native git authentication
     fn fetch_from_remote(
         &self,
         repo: &Repository,
-        github_token: &str,
         remote: &Remote,
         refspec: &str,
     ) -> Result<(), GitServiceError> {
@@ -1847,22 +1817,18 @@ impl GitService {
             .url()
             .ok_or_else(|| GitServiceError::InvalidRepository("Remote has no URL".to_string()))?;
 
-        let https_url = self.convert_to_https_url(remote_url);
         let git_cli = GitCli::new();
-        if let Err(e) =
-            git_cli.fetch_with_token_and_refspec(repo.path(), &https_url, refspec, github_token)
-        {
+        if let Err(e) = git_cli.fetch_with_refspec(repo.path(), remote_url, refspec) {
             tracing::error!("Fetch from GitHub failed: {}", e);
             return Err(e.into());
         }
         Ok(())
     }
 
-    /// Fetch from remote repository using GitHub token authentication
+    /// Fetch from remote repository using native git authentication
     fn fetch_branch_from_remote(
         &self,
         repo: &Repository,
-        github_token: &str,
         branch: &Reference,
     ) -> Result<(), GitServiceError> {
         let remote = self.get_remote_from_branch_ref(repo, branch)?;
@@ -1874,20 +1840,19 @@ impl GitService {
         let remote_prefix = format!("refs/remotes/{remote_name}/");
         let src_ref = dest_ref.replacen(&remote_prefix, "refs/heads/", 1);
         let refspec = format!("+{src_ref}:{dest_ref}");
-        self.fetch_from_remote(repo, github_token, &remote, &refspec)
+        self.fetch_from_remote(repo, &remote, &refspec)
     }
 
-    /// Fetch from remote repository using GitHub token authentication
+    /// Fetch from remote repository using native git authentication
     fn fetch_all_from_remote(
         &self,
         repo: &Repository,
-        github_token: &str,
         remote: &Remote,
     ) -> Result<(), GitServiceError> {
         let default_remote_name = self.default_remote_name(repo);
         let remote_name = remote.name().unwrap_or(&default_remote_name);
         let refspec = format!("+refs/heads/*:refs/remotes/{remote_name}/*");
-        self.fetch_from_remote(repo, github_token, remote, &refspec)
+        self.fetch_from_remote(repo, remote, &refspec)
     }
 
     /// Clone a repository to the specified directory

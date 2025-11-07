@@ -34,7 +34,6 @@ use services::services::{
     share::{
         RemoteSync, RemoteSyncHandle, ShareConfig, SharePublisher, link_shared_tasks_to_project,
     },
-    token::GitHubTokenProvider,
     worktree_manager::WorktreeError,
 };
 use sqlx::{Error as SqlxError, types::Uuid};
@@ -108,8 +107,6 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     fn drafts(&self) -> &DraftsService;
 
-    fn token_provider(&self) -> Arc<GitHubTokenProvider>;
-
     fn clerk_sessions(&self) -> &ClerkSessionStore;
 
     fn clerk_service(&self) -> Option<Arc<ClerkService>>;
@@ -158,7 +155,6 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     async fn spawn_pr_monitor_service(&self) -> tokio::task::JoinHandle<()> {
         let db = self.db().clone();
-        let tokens = self.token_provider();
         let analytics = self
             .analytics()
             .as_ref()
@@ -167,7 +163,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                 analytics_service: analytics_service.clone(),
             });
         let publisher = self.share_publisher().clone();
-        PrMonitorService::spawn(db, tokens, analytics, publisher).await
+        PrMonitorService::spawn(db, analytics, publisher).await
     }
 
     async fn track_if_analytics_allowed(&self, event_name: &str, properties: Value) {
@@ -419,9 +415,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
         for project in projects {
             let repo_path = project.git_repo_path.clone();
-            let metadata =
-                compute_remote_metadata(self.git(), &self.token_provider(), repo_path.as_path())
-                    .await;
+            let metadata = compute_remote_metadata(self.git(), repo_path.as_path()).await;
             let github_repo_id_changed = metadata.github_repo_id != project.github_repo_id;
 
             if let Err(err) =

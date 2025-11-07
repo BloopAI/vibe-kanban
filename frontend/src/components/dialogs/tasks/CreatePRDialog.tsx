@@ -10,9 +10,9 @@ import { Label } from '@radix-ui/react-label';
 import { Textarea } from '@/components/ui/textarea.tsx';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Alert } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import BranchSelector from '@/components/tasks/BranchSelector';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { attemptsApi } from '@/lib/api.ts';
 import { useTranslation } from 'react-i18next';
 
@@ -25,13 +25,23 @@ import {
 import { projectsApi } from '@/lib/api.ts';
 import { Loader2 } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
-import { useAuth, useClerk } from '@clerk/clerk-react';
-import { LoginRequiredPrompt } from '@/components/dialogs/shared/LoginRequiredPrompt';
+import { useAuth } from '@clerk/clerk-react';
+import {
+  GhCliHelpInstructions,
+  GhCliSetupDialog,
+  mapGhCliErrorToUi,
+} from '@/components/dialogs/auth/GhCliSetupDialog';
+import type {
+  GhCliSupportContent,
+  GhCliSupportVariant,
+} from '@/components/dialogs/auth/GhCliSetupDialog';
+import type { GhCliSetupError } from 'shared/types';
+import { useUserSystem } from '@/components/config-provider';
 const CreatePrDialog = NiceModal.create(() => {
   const modal = useModal();
-  const { redirectToSignUp } = useClerk();
-  const { isSignedIn, isLoaded } = useAuth();
-  const { t } = useTranslation('tasks');
+  const { t } = useTranslation();
+  const { isLoaded } = useAuth();
+  const { environment } = useUserSystem();
   const data = modal.args as
     | { attempt: TaskAttempt; task: TaskWithAttemptStatus; projectId: string }
     | undefined;
@@ -40,21 +50,17 @@ const CreatePrDialog = NiceModal.create(() => {
   const [prBaseBranch, setPrBaseBranch] = useState('');
   const [creatingPR, setCreatingPR] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [ghCliHelp, setGhCliHelp] = useState<GhCliSupportContent | null>(null);
   const [branches, setBranches] = useState<GitBranch[]>([]);
   const [branchesLoading, setBranchesLoading] = useState(false);
 
+  const getGhCliHelpTitle = (variant: GhCliSupportVariant) =>
+    variant === 'homebrew'
+      ? 'Homebrew is required for automatic setup'
+      : 'GitHub CLI needs manual setup';
+
   useEffect(() => {
     if (!modal.visible || !data || !isLoaded) {
-      return;
-    }
-
-    if (!isSignedIn) {
-      setBranches([]);
-      setBranchesLoading(false);
-      setPrTitle('');
-      setPrBody('');
-      setPrBaseBranch('');
-      setError(null);
       return;
     }
 
@@ -84,13 +90,44 @@ const CreatePrDialog = NiceModal.create(() => {
     }
 
     setError(null); // Reset error when opening
-  }, [modal.visible, data, isSignedIn, isLoaded]);
+    setGhCliHelp(null);
+  }, [modal.visible, data, isLoaded]);
+
+  const isMacEnvironment = useMemo(
+    () => environment?.os_type?.toLowerCase().includes('mac'),
+    [environment?.os_type]
+  );
 
   const handleConfirmCreatePR = useCallback(async () => {
-    if (!data?.projectId || !data?.attempt.id || !isSignedIn) return;
+    if (!data?.projectId || !data?.attempt.id) return;
 
     setError(null);
+    setGhCliHelp(null);
     setCreatingPR(true);
+
+    const handleGhCliSetupOutcome = (
+      setupResult: GhCliSetupError | null,
+      fallbackMessage: string
+    ) => {
+      if (setupResult === null) {
+        setError(null);
+        setGhCliHelp(null);
+        setCreatingPR(false);
+        modal.hide();
+        return;
+      }
+
+      const ui = mapGhCliErrorToUi(setupResult, fallbackMessage, t);
+
+      if (ui.variant) {
+        setGhCliHelp(ui);
+        setError(null);
+        return;
+      }
+
+      setGhCliHelp(null);
+      setError(ui.message);
+    };
 
     const result = await attemptsApi.createPR(data.attempt.id, {
       title: prTitle,
@@ -99,59 +136,84 @@ const CreatePrDialog = NiceModal.create(() => {
     });
 
     if (result.success) {
-      setError(null); // Clear any previous errors on success
-      // Reset form and close dialog
       setPrTitle('');
       setPrBody('');
       setPrBaseBranch('');
       setCreatingPR(false);
       modal.hide();
-    } else {
-      setCreatingPR(false);
-      if (result.error) {
-        modal.hide();
-        switch (result.error) {
-          case GitHubServiceError.TOKEN_INVALID: {
-            const redirectUrl =
-              typeof window !== 'undefined' ? window.location.href : undefined;
-            void redirectToSignUp({ redirectUrl });
-            return;
+      return;
+    }
+
+    setCreatingPR(false);
+
+    const defaultGhCliErrorMessage =
+      result.message || 'Failed to run GitHub CLI setup.';
+
+    const showGhCliSetupDialog = async () => {
+      const setupResult = (await NiceModal.show(GhCliSetupDialog, {
+        attemptId: data.attempt.id,
+      })) as GhCliSetupError | null;
+
+      handleGhCliSetupOutcome(setupResult, defaultGhCliErrorMessage);
+    };
+
+    if (result.error) {
+      switch (result.error) {
+        case GitHubServiceError.GH_CLI_NOT_INSTALLED: {
+          if (isMacEnvironment) {
+            await showGhCliSetupDialog();
+          } else {
+            const ui = mapGhCliErrorToUi(
+              'SETUP_HELPER_NOT_SUPPORTED',
+              defaultGhCliErrorMessage,
+              t
+            );
+            setGhCliHelp(ui.variant ? ui : null);
+            setError(ui.variant ? null : ui.message);
           }
-          case GitHubServiceError.INSUFFICIENT_PERMISSIONS: {
-            const patProvided = await NiceModal.show('provide-pat');
-            if (patProvided) {
-              modal.show();
-              await handleConfirmCreatePR();
-            }
-            return;
-          }
-          case GitHubServiceError.REPO_NOT_FOUND_OR_NO_ACCESS: {
-            const patProvided = await NiceModal.show('provide-pat', {
-              errorMessage:
-                'Your token does not have access to this repository, or the repository does not exist. Please check the repository URL and/or provide a Personal Access Token with access.',
-            });
-            if (patProvided) {
-              modal.show();
-              await handleConfirmCreatePR();
-            }
-            return;
-          }
+          return;
         }
-      } else if (result.message) {
-        setError(result.message);
-      } else {
-        setError('Failed to create GitHub PR');
+        case GitHubServiceError.TOKEN_INVALID: {
+          if (isMacEnvironment) {
+            await showGhCliSetupDialog();
+          } else {
+            const ui = mapGhCliErrorToUi(
+              'SETUP_HELPER_NOT_SUPPORTED',
+              defaultGhCliErrorMessage,
+              t
+            );
+            setGhCliHelp(ui.variant ? ui : null);
+            setError(ui.variant ? null : ui.message);
+          }
+          return;
+        }
+        case GitHubServiceError.INSUFFICIENT_PERMISSIONS:
+          setError(
+            'Insufficient permissions. Please ensure the GitHub CLI has the necessary permissions.'
+          );
+          setGhCliHelp(null);
+          return;
+        case GitHubServiceError.REPO_NOT_FOUND_OR_NO_ACCESS:
+          setError(
+            'Repository not found or no access. Please check your repository access and ensure you are authenticated.'
+          );
+          setGhCliHelp(null);
+          return;
+        default:
+          setError(result.message || 'Failed to create GitHub PR');
+          setGhCliHelp(null);
+          return;
       }
     }
-  }, [
-    data,
-    prBaseBranch,
-    prBody,
-    prTitle,
-    modal,
-    isSignedIn,
-    redirectToSignUp,
-  ]);
+
+    if (result.message) {
+      setError(result.message);
+      setGhCliHelp(null);
+    } else {
+      setError('Failed to create GitHub PR');
+      setGhCliHelp(null);
+    }
+  }, [data, prBaseBranch, prBody, prTitle, modal, isMacEnvironment]);
 
   const handleCancelCreatePR = useCallback(() => {
     modal.hide();
@@ -178,7 +240,7 @@ const CreatePrDialog = NiceModal.create(() => {
             <div className="flex justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-          ) : isSignedIn ? (
+          ) : (
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="pr-title">Title</Label>
@@ -215,40 +277,41 @@ const CreatePrDialog = NiceModal.create(() => {
                   }
                 />
               </div>
+              {ghCliHelp?.variant && (
+                <Alert
+                  variant="default"
+                  className="border-primary/30 bg-primary/10 text-primary"
+                >
+                  <AlertTitle>
+                    {getGhCliHelpTitle(ghCliHelp.variant)}
+                  </AlertTitle>
+                  <AlertDescription className="space-y-3">
+                    <p>{ghCliHelp.message}</p>
+                    <GhCliHelpInstructions variant={ghCliHelp.variant} t={t} />
+                  </AlertDescription>
+                </Alert>
+              )}
               {error && <Alert variant="destructive">{error}</Alert>}
-            </div>
-          ) : (
-            <div className="py-6">
-              <LoginRequiredPrompt
-                mode="signIn"
-                buttonVariant="default"
-                buttonSize="default"
-                title={t('createPrDialog.loginRequired.title')}
-                description={t('createPrDialog.loginRequired.description')}
-                actionLabel={t('createPrDialog.loginRequired.action')}
-              />
             </div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={handleCancelCreatePR}>
               Cancel
             </Button>
-            {isSignedIn && (
-              <Button
-                onClick={handleConfirmCreatePR}
-                disabled={creatingPR || !prTitle.trim()}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                {creatingPR ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  'Create PR'
-                )}
-              </Button>
-            )}
+            <Button
+              onClick={handleConfirmCreatePR}
+              disabled={creatingPR || !prTitle.trim()}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {creatingPR ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                'Create PR'
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

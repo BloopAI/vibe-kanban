@@ -76,17 +76,36 @@
       },
       "github": {
         "title": "GitHub Integration",
-        "connected": "Connected as {{username}}",
-        "connectButton": "Connect GitHub Account",
-        "manage": "Manage",
-        "disconnect": "Disconnect",
-        "helper": "Vibe Kanban uses a GitHub OAuth App by default. Optionally add a personal access token if you need extra permissions for private or organization repositories.",
-        "or": "OR",
-        "pat": {
-          "label": "Personal Access Token",
-          "placeholder": "ghp_xxxxxxxxxxxxxxxxxxxx",
-          "helper": "Optional: provide a GitHub personal access token with 'repo' scope when the OAuth app does not grant enough access.",
-          "createTokenLink": "Create token here"
+        "cliSetup": {
+          "title": "GitHub CLI Setup",
+          "description": "GitHub CLI authentication is required to create pull requests and interact with GitHub repositories.",
+          "setupWillTitle": "This setup will:",
+          "steps": {
+            "checkInstalled": "Check if GitHub CLI (gh) is installed",
+            "installHomebrew": "Install it via Homebrew if needed (macOS)",
+            "authenticate": "Authenticate with GitHub using OAuth"
+          },
+          "setupNote": "The setup will run in the chat window. You'll need to complete the authentication in your browser.",
+          "runSetup": "Run Setup",
+          "running": "Running...",
+          "errors": {
+            "brewMissing": "Homebrew is not installed. Install it to enable automatic setup.",
+            "notSupported": "Automatic setup is not supported on this platform. Install GitHub CLI manually.",
+            "setupFailed": "Failed to run GitHub CLI setup."
+          },
+          "help": {
+            "homebrew": {
+              "description": "Automatic installation requires Homebrew. Install Homebrew from",
+              "brewSh": "brew.sh",
+              "manualInstall": "and then rerun the setup. Alternatively, install GitHub CLI manually with:",
+              "afterInstall": "After installation, authenticate with:"
+            },
+            "manual": {
+              "description": "Install GitHub CLI from the",
+              "officialDocs": "official documentation",
+              "andAuthenticate": "and then authenticate with your GitHub account."
+            }
+          }
         }
       },
       "git": {

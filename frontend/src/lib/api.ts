@@ -50,6 +50,7 @@ import {
   RenameBranchResponse,
   RunAgentSetupRequest,
   RunAgentSetupResponse,
+  GhCliSetupError,
 } from 'shared/types';
 import { buildClerkAuthHeaders } from './clerk';
 
@@ -631,6 +632,16 @@ export const attemptsApi = {
       }
     );
     return handleApiResponse<void>(response);
+  },
+
+  setupGhCli: async (attemptId: string): Promise<ExecutionProcess> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/gh-cli-setup`,
+      {
+        method: 'POST',
+      }
+    );
+    return handleApiResponse<ExecutionProcess, GhCliSetupError>(response);
   },
 };
 

@@ -5,11 +5,6 @@ export { LoginPromptDialog } from './global/LoginPromptDialog';
 export { PrivacyOptInDialog } from './global/PrivacyOptInDialog';
 export { ReleaseNotesDialog } from './global/ReleaseNotesDialog';
 
-// Authentication dialogs
-export {
-  ProvidePatDialog,
-  type ProvidePatDialogProps,
-} from './auth/ProvidePatDialog';
 export {
   OrganizationSwitcherDialog,
   type OrganizationSwitcherDialogProps,

@@ -1,7 +1,6 @@
 import type { TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
 import type {
   ConfirmDialogProps,
-  ProvidePatDialogProps,
   DeleteTaskConfirmationDialogProps,
   TaskFormDialogProps,
   EditorSelectionDialogProps,
@@ -27,7 +26,6 @@ declare module '@ebay/nice-modal-react' {
     disclaimer: void;
     onboarding: void;
     'privacy-opt-in': void;
-    'provide-pat': ProvidePatDialogProps;
     'release-notes': void;
 
     // Task-related modals
