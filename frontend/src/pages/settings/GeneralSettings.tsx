@@ -26,7 +26,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ChevronDown, Key, Loader2, Volume2 } from 'lucide-react';
+import { ChevronDown, Loader2, Volume2 } from 'lucide-react';
 import {
   BaseCodingAgent,
   EditorType,
@@ -533,50 +533,6 @@ export function GeneralSettings() {
               )}
             </>
           )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Key className="h-5 w-5" />
-            {t('settings.general.github.title')}
-          </CardTitle>
-          <CardDescription>
-            {t('settings.general.github.helper')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="github-token">
-              {t('settings.general.github.pat.label')}
-            </Label>
-            <Input
-              id="github-token"
-              type="password"
-              placeholder={t('settings.general.github.pat.placeholder')}
-              value={draft?.github.pat || ''}
-              onChange={(e) =>
-                updateDraft({
-                  github: {
-                    ...draft!.github,
-                    pat: e.target.value || null,
-                  },
-                })
-              }
-            />
-            <p className="text-sm text-muted-foreground">
-              {t('settings.general.github.pat.helper')}{' '}
-              <a
-                href="https://github.com/settings/tokens"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
-              >
-                {t('settings.general.github.pat.createTokenLink')}
-              </a>
-            </p>
-          </div>
         </CardContent>
       </Card>
 

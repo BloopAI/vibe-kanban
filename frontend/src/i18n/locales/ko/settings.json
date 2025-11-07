@@ -76,18 +76,6 @@
       },
       "github": {
         "title": "GitHub 연동",
-        "connected": "{{username}}으로 연결됨",
-        "connectButton": "GitHub 계정 연결",
-        "manage": "관리",
-        "disconnect": "연결 해제",
-        "helper": "GitHub 계정을 연결하여 비공개 저장소에 액세스하고 고급 Git 작업을 활성화하세요.",
-        "or": "또는",
-        "pat": {
-          "label": "개인 액세스 토큰",
-          "placeholder": "ghp_xxxxxxxxxxxxxxxxxxxx",
-          "helper": "'repo' 권한이 있는 GitHub 개인 액세스 토큰입니다. OAuth 권한이 비공개 저장소 및 조직 소유 저장소에 충분하지 않은 경우 사용하세요.",
-          "createTokenLink": "여기에서 토큰 생성"
-        },
         "cliSetup": {
           "title": "GitHub CLI 설정",
           "description": "GitHub CLI 인증은 풀 리퀘스트를 생성하고 GitHub 저장소와 상호 작용하는 데 필요합니다.",

@@ -76,18 +76,6 @@
       },
       "github": {
         "title": "GitHub Integration",
-        "connected": "Connected as {{username}}",
-        "connectButton": "Connect GitHub Account",
-        "manage": "Manage",
-        "disconnect": "Disconnect",
-        "helper": "Vibe Kanban uses a GitHub OAuth App by default. Optionally add a personal access token if you need extra permissions for private or organization repositories.",
-        "or": "OR",
-        "pat": {
-          "label": "Personal Access Token",
-          "placeholder": "ghp_xxxxxxxxxxxxxxxxxxxx",
-          "helper": "Optional: provide a GitHub personal access token with 'repo' scope when the OAuth app does not grant enough access.",
-          "createTokenLink": "Create token here"
-        },
         "cliSetup": {
           "title": "GitHub CLI Setup",
           "description": "GitHub CLI authentication is required to create pull requests and interact with GitHub repositories.",

@@ -76,18 +76,6 @@
       },
       "github": {
         "title": "Integración con GitHub",
-        "connected": "Conectado como {{username}}",
-        "connectButton": "Conectar Cuenta de GitHub",
-        "manage": "Gestionar",
-        "disconnect": "Desconectar",
-        "helper": "Conecta tu cuenta de GitHub para acceder a repositorios privados y habilitar acciones avanzadas de Git.",
-        "or": "O",
-        "pat": {
-          "label": "Token de Acceso Personal",
-          "placeholder": "ghp_xxxxxxxxxxxxxxxxxxxx",
-          "helper": "Token de Acceso Personal de GitHub con permisos 'repo'. Úsalo si los permisos OAuth son insuficientes para repositorios privados y repositorios de organizaciones.",
-          "createTokenLink": "Crear token aquí"
-        },
         "cliSetup": {
           "title": "Configuración de GitHub CLI",
           "description": "La autenticación de GitHub CLI es necesaria para crear pull requests e interactuar con repositorios de GitHub.",

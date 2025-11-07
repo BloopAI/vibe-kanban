@@ -76,18 +76,6 @@
       },
       "github": {
         "title": "GitHub連携",
-        "connected": "{{username}}として接続中",
-        "connectButton": "GitHubアカウントを接続",
-        "manage": "管理",
-        "disconnect": "切断",
-        "helper": "GitHubアカウントを接続して、プライベートリポジトリへのアクセスと高度なGit操作を有効にします。",
-        "or": "または",
-        "pat": {
-          "label": "個人用アクセストークン",
-          "placeholder": "ghp_xxxxxxxxxxxxxxxxxxxx",
-          "helper": "「repo」権限を持つGitHub個人用アクセストークン。OAuthの権限がプライベートリポジトリや組織所有のリポジトリに対して不十分な場合に使用してください。",
-          "createTokenLink": "ここでトークンを作成"
-        },
         "cliSetup": {
           "title": "GitHub CLIセットアップ",
           "description": "GitHub CLI認証は、プルリクエストの作成とGitHubリポジトリとのやり取りに必要です。",
