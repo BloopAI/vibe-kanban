@@ -67,6 +67,13 @@ impl GhCli {
         }
 
         let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+
+        // Check exit code first - gh CLI uses exit code 4 for auth failures
+        if output.status.code() == Some(4) {
+            return Err(GhCliError::AuthFailed(stderr));
+        }
+
+        // Fall back to string matching for older gh versions or other auth scenarios
         let lower = stderr.to_ascii_lowercase();
         if lower.contains("authentication failed")
             || lower.contains("must authenticate")
