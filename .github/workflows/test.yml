@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - louis/fe-revision
+      - gabriel/share
   workflow_dispatch:
 
 concurrency:
