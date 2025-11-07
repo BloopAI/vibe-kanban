@@ -127,8 +127,8 @@ pub struct AuthConfig {
 
 impl AuthConfig {
     fn from_env() -> Result<Self, ConfigError> {
-        let jwt_secret = env::var("REMOTE_JWT_SECRET")
-            .map_err(|_| ConfigError::MissingVar("REMOTE_JWT_SECRET"))
+        let jwt_secret = env::var("VIBEKANBAN_REMOTE_JWT_SECRET")
+            .map_err(|_| ConfigError::MissingVar("VIBEKANBAN_REMOTE_JWT_SECRET"))
             .map(|value| SecretString::new(value.into()))?;
 
         let github = match env::var("GITHUB_OAUTH_CLIENT_ID") {
