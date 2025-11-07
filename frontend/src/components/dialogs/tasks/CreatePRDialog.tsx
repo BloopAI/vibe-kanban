@@ -14,6 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import BranchSelector from '@/components/tasks/BranchSelector';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { attemptsApi } from '@/lib/api.ts';
+import { useTranslation } from 'react-i18next';
 
 import {
   GitBranch,
@@ -38,6 +39,7 @@ import type { GhCliSetupError } from 'shared/types';
 import { useUserSystem } from '@/components/config-provider';
 const CreatePrDialog = NiceModal.create(() => {
   const modal = useModal();
+  const { t } = useTranslation();
   const { isLoaded } = useAuth();
   const { environment } = useUserSystem();
   const data = modal.args as
@@ -115,9 +117,7 @@ const CreatePrDialog = NiceModal.create(() => {
         return;
       }
 
-      setInfoMessage(null);
-
-      const ui = mapGhCliErrorToUi(setupResult, fallbackMessage);
+      const ui = mapGhCliErrorToUi(setupResult, fallbackMessage, t);
 
       if (ui.variant) {
         setGhCliHelp(ui);
@@ -165,7 +165,8 @@ const CreatePrDialog = NiceModal.create(() => {
           } else {
             const ui = mapGhCliErrorToUi(
               'SETUP_HELPER_NOT_SUPPORTED',
-              defaultGhCliErrorMessage
+              defaultGhCliErrorMessage,
+              t
             );
             setGhCliHelp(ui.variant ? ui : null);
             setError(ui.variant ? null : ui.message);
@@ -178,7 +179,8 @@ const CreatePrDialog = NiceModal.create(() => {
           } else {
             const ui = mapGhCliErrorToUi(
               'SETUP_HELPER_NOT_SUPPORTED',
-              defaultGhCliErrorMessage
+              defaultGhCliErrorMessage,
+              t
             );
             setGhCliHelp(ui.variant ? ui : null);
             setError(ui.variant ? null : ui.message);
@@ -285,7 +287,7 @@ const CreatePrDialog = NiceModal.create(() => {
                   </AlertTitle>
                   <AlertDescription className="space-y-3">
                     <p>{ghCliHelp.message}</p>
-                    <GhCliHelpInstructions variant={ghCliHelp.variant} />
+                    <GhCliHelpInstructions variant={ghCliHelp.variant} t={t} />
                   </AlertDescription>
                 </Alert>
               )}
