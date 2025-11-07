@@ -5,13 +5,26 @@ use db::models::{
 use deployment::Deployment;
 use executors::actions::ExecutorAction;
 #[cfg(unix)]
-use executors::actions::{
-    ExecutorActionType,
-    script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
+use executors::{
+    actions::{
+        ExecutorActionType,
+        script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
+    },
+    executors::ExecutorError,
 };
+use serde::{Deserialize, Serialize};
 use services::services::container::ContainerService;
+use ts_rs::TS;
 
 use crate::{error::ApiError, routes::task_attempts::ensure_worktree_path};
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[ts(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum GhCliSetupError {
+    BrewMissing,
+    SetupHelperNotSupported,
+    Other { message: String },
+}
 
 pub async fn run_gh_cli_setup(
     deployment: &crate::DeploymentImpl,
@@ -35,6 +48,14 @@ pub async fn run_gh_cli_setup(
 async fn get_gh_cli_setup_helper_action() -> Result<ExecutorAction, ApiError> {
     #[cfg(unix)]
     {
+        use utils::shell::resolve_executable_path;
+
+        if resolve_executable_path("brew").await.is_none() {
+            return Err(ApiError::Executor(ExecutorError::ExecutableNotFound {
+                program: "brew".to_string(),
+            }));
+        }
+
         // Install script
         let install_script = r#"#!/bin/bash
 set -e

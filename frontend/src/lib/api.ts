@@ -50,6 +50,7 @@ import {
   RenameBranchResponse,
   RunAgentSetupRequest,
   RunAgentSetupResponse,
+  GhCliSetupError,
 } from 'shared/types';
 import { buildClerkAuthHeaders } from './clerk';
 
@@ -640,7 +641,7 @@ export const attemptsApi = {
         method: 'POST',
       }
     );
-    return handleApiResponse<ExecutionProcess>(response);
+    return handleApiResponse<ExecutionProcess, GhCliSetupError>(response);
   },
 };
 

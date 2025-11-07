@@ -10,9 +10,9 @@ import { Label } from '@radix-ui/react-label';
 import { Textarea } from '@/components/ui/textarea.tsx';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Alert } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import BranchSelector from '@/components/tasks/BranchSelector';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { attemptsApi } from '@/lib/api.ts';
 
 import {
@@ -25,10 +25,21 @@ import { projectsApi } from '@/lib/api.ts';
 import { Loader2 } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useAuth } from '@clerk/clerk-react';
-import { GhCliSetupDialog } from '@/components/dialogs/auth/GhCliSetupDialog';
+import {
+  GhCliHelpInstructions,
+  GhCliSetupDialog,
+  mapGhCliErrorToUi,
+} from '@/components/dialogs/auth/GhCliSetupDialog';
+import type {
+  GhCliSupportContent,
+  GhCliSupportVariant,
+} from '@/components/dialogs/auth/GhCliSetupDialog';
+import type { GhCliSetupError } from 'shared/types';
+import { useUserSystem } from '@/components/config-provider';
 const CreatePrDialog = NiceModal.create(() => {
   const modal = useModal();
   const { isLoaded } = useAuth();
+  const { environment } = useUserSystem();
   const data = modal.args as
     | { attempt: TaskAttempt; task: TaskWithAttemptStatus; projectId: string }
     | undefined;
@@ -37,8 +48,14 @@ const CreatePrDialog = NiceModal.create(() => {
   const [prBaseBranch, setPrBaseBranch] = useState('');
   const [creatingPR, setCreatingPR] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [ghCliHelp, setGhCliHelp] = useState<GhCliSupportContent | null>(null);
   const [branches, setBranches] = useState<GitBranch[]>([]);
   const [branchesLoading, setBranchesLoading] = useState(false);
+
+  const getGhCliHelpTitle = (variant: GhCliSupportVariant) =>
+    variant === 'homebrew'
+      ? 'Homebrew is required for automatic setup'
+      : 'GitHub CLI needs manual setup';
 
   useEffect(() => {
     if (!modal.visible || !data || !isLoaded) {
@@ -71,13 +88,46 @@ const CreatePrDialog = NiceModal.create(() => {
     }
 
     setError(null); // Reset error when opening
+    setGhCliHelp(null);
   }, [modal.visible, data, isLoaded]);
+
+  const isMacEnvironment = useMemo(
+    () => environment?.os_type?.toLowerCase().includes('mac'),
+    [environment?.os_type]
+  );
 
   const handleConfirmCreatePR = useCallback(async () => {
     if (!data?.projectId || !data?.attempt.id) return;
 
     setError(null);
+    setGhCliHelp(null);
     setCreatingPR(true);
+
+    const handleGhCliSetupOutcome = (
+      setupResult: GhCliSetupError | null,
+      fallbackMessage: string
+    ) => {
+      if (setupResult === null) {
+        setError(null);
+        setGhCliHelp(null);
+        setCreatingPR(false);
+        modal.hide();
+        return;
+      }
+
+      setInfoMessage(null);
+
+      const ui = mapGhCliErrorToUi(setupResult, fallbackMessage);
+
+      if (ui.variant) {
+        setGhCliHelp(ui);
+        setError(null);
+        return;
+      }
+
+      setGhCliHelp(null);
+      setError(ui.message);
+    };
 
     const result = await attemptsApi.createPR(data.attempt.id, {
       title: prTitle,
@@ -86,48 +136,82 @@ const CreatePrDialog = NiceModal.create(() => {
     });
 
     if (result.success) {
-      setError(null); // Clear any previous errors on success
-      // Reset form and close dialog
       setPrTitle('');
       setPrBody('');
       setPrBaseBranch('');
       setCreatingPR(false);
       modal.hide();
-    } else {
-      setCreatingPR(false);
-      if (result.error) {
-        // Show error message based on the error type
-        switch (result.error) {
-          case GitHubServiceError.GH_CLI_NOT_INSTALLED:
-            NiceModal.show(GhCliSetupDialog, { attemptId: data.attempt.id });
-            setError(null);
-            modal.hide();
-            break;
-          case GitHubServiceError.TOKEN_INVALID:
-            NiceModal.show(GhCliSetupDialog, { attemptId: data.attempt.id });
-            setError(null);
-            modal.hide();
-            break;
-          case GitHubServiceError.INSUFFICIENT_PERMISSIONS:
-            setError(
-              'Insufficient permissions. Please ensure the GitHub CLI has the necessary permissions.'
+      return;
+    }
+
+    setCreatingPR(false);
+
+    const defaultGhCliErrorMessage =
+      result.message || 'Failed to run GitHub CLI setup.';
+
+    const showGhCliSetupDialog = async () => {
+      const setupResult = (await NiceModal.show(GhCliSetupDialog, {
+        attemptId: data.attempt.id,
+      })) as GhCliSetupError | null;
+
+      handleGhCliSetupOutcome(setupResult, defaultGhCliErrorMessage);
+    };
+
+    if (result.error) {
+      switch (result.error) {
+        case GitHubServiceError.GH_CLI_NOT_INSTALLED: {
+          if (isMacEnvironment) {
+            await showGhCliSetupDialog();
+          } else {
+            const ui = mapGhCliErrorToUi(
+              'SETUP_HELPER_NOT_SUPPORTED',
+              defaultGhCliErrorMessage
             );
-            break;
-          case GitHubServiceError.REPO_NOT_FOUND_OR_NO_ACCESS:
-            setError(
-              'Repository not found or no access. Please check your repository access and ensure you are authenticated.'
-            );
-            break;
-          default:
-            setError(result.message || 'Failed to create GitHub PR');
+            setGhCliHelp(ui.variant ? ui : null);
+            setError(ui.variant ? null : ui.message);
+          }
+          return;
         }
-      } else if (result.message) {
-        setError(result.message);
-      } else {
-        setError('Failed to create GitHub PR');
+        case GitHubServiceError.TOKEN_INVALID: {
+          if (isMacEnvironment) {
+            await showGhCliSetupDialog();
+          } else {
+            const ui = mapGhCliErrorToUi(
+              'SETUP_HELPER_NOT_SUPPORTED',
+              defaultGhCliErrorMessage
+            );
+            setGhCliHelp(ui.variant ? ui : null);
+            setError(ui.variant ? null : ui.message);
+          }
+          return;
+        }
+        case GitHubServiceError.INSUFFICIENT_PERMISSIONS:
+          setError(
+            'Insufficient permissions. Please ensure the GitHub CLI has the necessary permissions.'
+          );
+          setGhCliHelp(null);
+          return;
+        case GitHubServiceError.REPO_NOT_FOUND_OR_NO_ACCESS:
+          setError(
+            'Repository not found or no access. Please check your repository access and ensure you are authenticated.'
+          );
+          setGhCliHelp(null);
+          return;
+        default:
+          setError(result.message || 'Failed to create GitHub PR');
+          setGhCliHelp(null);
+          return;
       }
     }
-  }, [data, prBaseBranch, prBody, prTitle, modal]);
+
+    if (result.message) {
+      setError(result.message);
+      setGhCliHelp(null);
+    } else {
+      setError('Failed to create GitHub PR');
+      setGhCliHelp(null);
+    }
+  }, [data, prBaseBranch, prBody, prTitle, modal, isMacEnvironment]);
 
   const handleCancelCreatePR = useCallback(() => {
     modal.hide();
@@ -191,6 +275,20 @@ const CreatePrDialog = NiceModal.create(() => {
                   }
                 />
               </div>
+              {ghCliHelp?.variant && (
+                <Alert
+                  variant="default"
+                  className="border-primary/30 bg-primary/10 text-primary"
+                >
+                  <AlertTitle>
+                    {getGhCliHelpTitle(ghCliHelp.variant)}
+                  </AlertTitle>
+                  <AlertDescription className="space-y-3">
+                    <p>{ghCliHelp.message}</p>
+                    <GhCliHelpInstructions variant={ghCliHelp.variant} />
+                  </AlertDescription>
+                </Alert>
+              )}
               {error && <Alert variant="destructive">{error}</Alert>}
             </div>
           )}

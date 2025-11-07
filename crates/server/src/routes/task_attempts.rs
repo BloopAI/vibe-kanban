@@ -49,7 +49,10 @@ use crate::{
     DeploymentImpl,
     error::ApiError,
     middleware::{ClerkSessionMaybe, load_task_attempt_middleware},
-    routes::task_attempts::util::{ensure_worktree_path, handle_images_for_prompt},
+    routes::task_attempts::{
+        gh_cli_setup::GhCliSetupError,
+        util::{ensure_worktree_path, handle_images_for_prompt},
+    },
 };
 
 #[derive(Debug, Deserialize, Serialize, TS)]
@@ -1639,19 +1642,37 @@ pub async fn attach_existing_pr(
 pub async fn gh_cli_setup_handler(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<ExecutionProcess>>, ApiError> {
-    let execution_process = gh_cli_setup::run_gh_cli_setup(&deployment, &task_attempt).await?;
+) -> Result<ResponseJson<ApiResponse<ExecutionProcess, GhCliSetupError>>, ApiError> {
+    match gh_cli_setup::run_gh_cli_setup(&deployment, &task_attempt).await {
+        Ok(execution_process) => {
+            deployment
+                .track_if_analytics_allowed(
+                    "gh_cli_setup_executed",
+                    serde_json::json!({
+                        "attempt_id": task_attempt.id.to_string(),
+                    }),
+                )
+                .await;
 
-    deployment
-        .track_if_analytics_allowed(
-            "gh_cli_setup_executed",
-            serde_json::json!({
-                "attempt_id": task_attempt.id.to_string(),
-            }),
-        )
-        .await;
-
-    Ok(ResponseJson(ApiResponse::success(execution_process)))
+            Ok(ResponseJson(ApiResponse::success(execution_process)))
+        }
+        Err(ApiError::Executor(ExecutorError::ExecutableNotFound { program }))
+            if program == "brew" =>
+        {
+            Ok(ResponseJson(ApiResponse::error_with_data(
+                GhCliSetupError::BrewMissing,
+            )))
+        }
+        Err(ApiError::Executor(ExecutorError::SetupHelperNotSupported)) => Ok(ResponseJson(
+            ApiResponse::error_with_data(GhCliSetupError::SetupHelperNotSupported),
+        )),
+        Err(ApiError::Executor(err)) => Ok(ResponseJson(ApiResponse::error_with_data(
+            GhCliSetupError::Other {
+                message: err.to_string(),
+            },
+        ))),
+        Err(err) => Err(err),
+    }
 }
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
