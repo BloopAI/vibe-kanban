@@ -336,7 +336,7 @@
         },
         "copyFiles": {
           "label": "Copiar Archivos",
-          "helper": "Lista separada por comas de archivos para copiar del directorio del proyecto original al worktree. Estos archivos se copiarán después de que se cree el worktree pero antes de que se ejecute el script de configuración. Útil para archivos específicos del entorno como .env, archivos de configuración y ajustes locales. ¡Asegúrate de que estén en gitignore o podrían ser confirmados!"
+          "helper": "Lista separada por comas de archivos, directorios o patrones glob para copiar del directorio del proyecto original al worktree. Estos archivos se copiarán después de que se cree el worktree pero antes de que se ejecute el script de configuración. Útil para archivos específicos del entorno como .env, archivos de configuración y ajustes locales. ¡Asegúrate de que estén en gitignore o podrían ser confirmados!"
         }
       },
       "save": {

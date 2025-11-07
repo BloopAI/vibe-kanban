@@ -336,7 +336,7 @@
         },
         "copyFiles": {
           "label": "Copy Files",
-          "helper": "Comma-separated list of files to copy from the original project directory to the worktree. These files will be copied after the worktree is created but before the setup script runs. Useful for environment-specific files like .env, configuration files, and local settings. Make sure these are gitignored or they could get committed!"
+          "helper": "Comma-separated list of files, directories, or glob patterns to copy from the original project directory to the worktree. These files will be copied after the worktree is created but before the setup script runs. Useful for environment-specific files like .env, configuration files, and local settings. Make sure these are gitignored or they could get committed!"
         }
       },
       "save": {
