@@ -16,10 +16,15 @@ use services::services::{
     filesystem::FilesystemService,
     git::GitService,
     image::ImageService,
+    oauth_credentials::OAuthCredentials,
+    remote_client::RemoteClient,
     share::{RemoteSyncHandle, ShareConfig, SharePublisher},
 };
 use tokio::sync::{Mutex, RwLock};
-use utils::{assets::config_path, msg_store::MsgStore};
+use utils::{
+    assets::{config_path, credentials_path},
+    msg_store::MsgStore,
+};
 use uuid::Uuid;
 
 use crate::container::LocalContainerService;
@@ -45,6 +50,8 @@ pub struct LocalDeployment {
     share_sync_handle: Arc<Mutex<Option<RemoteSyncHandle>>>,
     clerk_sessions: ClerkSessionStore,
     clerk_service: Option<Arc<ClerkService>>,
+    oauth_credentials: Arc<OAuthCredentials>,
+    remote_client: Option<Arc<RemoteClient>>,
 }
 
 #[async_trait]
@@ -171,6 +178,28 @@ impl Deployment for LocalDeployment {
         let drafts = DraftsService::new(db.clone(), image.clone());
         let file_search_cache = Arc::new(FileSearchCache::new());
 
+        let oauth_credentials = Arc::new(OAuthCredentials::new(credentials_path()));
+        if let Err(e) = oauth_credentials.load() {
+            tracing::warn!(?e, "failed to load OAuth credentials");
+        }
+
+        let remote_client = match std::env::var("REMOTE_OAUTH_URL") {
+            Ok(url) => match RemoteClient::new(&url) {
+                Ok(client) => {
+                    tracing::info!("OAuth remote client initialized with URL: {}", url);
+                    Some(Arc::new(client))
+                }
+                Err(e) => {
+                    tracing::error!(?e, "failed to create OAuth remote client");
+                    None
+                }
+            },
+            Err(_) => {
+                tracing::info!("REMOTE_OAUTH_URL not set; OAuth login disabled");
+                None
+            }
+        };
+
         let deployment = Self {
             config,
             user_id,
@@ -189,6 +218,8 @@ impl Deployment for LocalDeployment {
             share_sync_handle: share_sync_handle.clone(),
             clerk_sessions,
             clerk_service,
+            oauth_credentials,
+            remote_client,
         };
 
         if let Some(sc) = share_sync_config {
@@ -268,5 +299,21 @@ impl Deployment for LocalDeployment {
 
     fn clerk_service(&self) -> Option<Arc<ClerkService>> {
         self.clerk_service.clone()
+    }
+}
+
+impl LocalDeployment {
+    pub fn oauth_credentials(&self) -> &Arc<OAuthCredentials> {
+        &self.oauth_credentials
+    }
+
+    pub fn remote_client(&self) -> Option<Arc<RemoteClient>> {
+        self.remote_client.clone()
+    }
+
+    /// Convenience method to get the current JWT auth token.
+    /// Returns None if the user is not authenticated.
+    pub async fn auth_token(&self) -> Option<String> {
+        self.oauth_credentials.get().await.map(|c| c.access_token)
     }
 }
