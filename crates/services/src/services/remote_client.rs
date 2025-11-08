@@ -1,67 +1,4 @@
-//! OAuth client library for interacting with the remote OAuth server.
-//!
-//! This module provides a simple client for the OAuth device flow authentication.
-//! The client handles automatic retries with exponential backoff for transient failures.
-//!
-//! # Example Usage
-//!
-//! ```no_run
-//! use services::services::remote_client::{RemoteClient, DevicePollResult};
-//! use std::time::Duration;
-//!
-//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-//! // Create a client
-//! let client = RemoteClient::new("http://localhost:8081")?;
-//!
-//! // Initiate device flow
-//! let init = client.device_init("github").await?;
-//! println!("Visit: {}", init.verification_uri);
-//! println!("Enter code: {}", init.user_code);
-//!
-//! // Poll until authorized
-//! let access_token = loop {
-//!     tokio::time::sleep(Duration::from_secs(5)).await;
-//!     match client.device_poll(init.handoff_id).await? {
-//!         DevicePollResult::Pending => continue,
-//!         DevicePollResult::Success { access_token } => break access_token,
-//!         DevicePollResult::Error { code } => {
-//!             return Err(format!("Authorization failed: {:?}", code).into());
-//!         }
-//!     }
-//! };
-//!
-//! // Fetch user profile
-//! let profile = client.profile(&access_token).await?;
-//! println!("Logged in as: {}", profile.email);
-//! # Ok(())
-//! # }
-//! ```
-//!
-//! # Manual Testing
-//!
-//! You can test the OAuth flow manually using curl commands:
-//!
-//! 1. Start the remote server (default: http://localhost:8081)
-//!
-//! 2. Initiate device flow:
-//! ```bash
-//! curl -X POST http://localhost:8081/device-init \
-//!   -H "Content-Type: application/json" \
-//!   -d '{"provider":"github"}'
-//! ```
-//!
-//! 3. Open the `verification_uri` and enter the `user_code`, then poll:
-//! ```bash
-//! curl -X POST http://localhost:8081/device-poll \
-//!   -H "Content-Type: application/json" \
-//!   -d '{"handoff_id":"<uuid-from-init>"}'
-//! ```
-//!
-//! 4. Once you get an `access_token`, fetch the profile:
-//! ```bash
-//! curl http://localhost:8081/profile \
-//!   -H "Authorization: Bearer <access_token>"
-//! ```
+//! OAuth client for device flow authentication with automatic retries.
 
 use std::time::Duration;
 
@@ -76,7 +13,6 @@ use utils::api::oauth::{
 };
 use uuid::Uuid;
 
-/// Errors that can occur when using the RemoteClient.
 #[derive(Debug, Clone, Error)]
 pub enum RemoteClientError {
     #[error("network error: {0}")]
@@ -96,9 +32,7 @@ pub enum RemoteClientError {
 }
 
 impl RemoteClientError {
-    /// Returns true if the error is transient and the request should be retried.
-    ///
-    /// Retryable errors include network transport errors, timeouts, and 5xx server errors.
+    /// Returns true if the error is transient and should be retried.
     pub fn should_retry(&self) -> bool {
         match self {
             Self::Transport(_) | Self::Timeout => true,
@@ -108,24 +42,15 @@ impl RemoteClientError {
     }
 }
 
-/// Error codes returned by the OAuth device flow.
 #[derive(Debug, Clone)]
 pub enum DeviceFlowErrorCode {
-    /// The specified OAuth provider is not supported.
     UnsupportedProvider,
-    /// The OAuth provider returned an error.
     ProviderError,
-    /// The device authorization was not found.
     NotFound,
-    /// The device authorization has expired.
     Expired,
-    /// The user denied access.
     AccessDenied,
-    /// An internal server error occurred.
     InternalError,
-    /// Failed to fetch user details from the provider.
     UserFetchFailed,
-    /// An unrecognized error code.
     Other(String),
 }
 
@@ -142,14 +67,10 @@ fn map_error_code(code: Option<&str>) -> DeviceFlowErrorCode {
     }
 }
 
-/// Result of polling the device authorization status.
 #[derive(Debug, Clone)]
 pub enum DevicePollResult {
-    /// The authorization is still pending user action.
     Pending,
-    /// The authorization succeeded and an access token is available.
     Success { access_token: String },
-    /// The authorization failed with an error code.
     Error { code: DeviceFlowErrorCode },
 }
 
@@ -158,10 +79,7 @@ struct ApiErrorResponse {
     error: String,
 }
 
-/// HTTP client for the remote OAuth server.
-///
-/// The client is cloneable and can be shared across threads. All methods
-/// implement automatic retry with exponential backoff for transient failures.
+/// HTTP client for the remote OAuth server with automatic retries.
 #[derive(Debug, Clone)]
 pub struct RemoteClient {
     base: Url,
@@ -169,15 +87,6 @@ pub struct RemoteClient {
 }
 
 impl RemoteClient {
-    /// Creates a new client for the given base URL.
-    ///
-    /// # Arguments
-    ///
-    /// * `base_url` - The base URL of the remote OAuth server (e.g., "http://localhost:8081")
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the base URL is invalid.
     pub fn new(base_url: &str) -> Result<Self, RemoteClientError> {
         let base = Url::parse(base_url).map_err(|e| RemoteClientError::Url(e.to_string()))?;
         let http = Client::builder()
@@ -188,20 +97,7 @@ impl RemoteClient {
         Ok(Self { base, http })
     }
 
-    /// Initiates the OAuth device flow for the specified provider.
-    ///
-    /// # Arguments
-    ///
-    /// * `provider` - The OAuth provider name (e.g., "github", "google")
-    ///
-    /// # Returns
-    ///
-    /// Returns the device authorization details including the verification URI
-    /// and user code that the user must enter.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the provider is unsupported or the request fails.
+    /// Initiates OAuth device flow for the given provider.
     pub async fn device_init(
         &self,
         provider: &str,
@@ -216,20 +112,7 @@ impl RemoteClient {
         .or_else(|e| self.map_api_error(e))
     }
 
-    /// Polls the status of a device authorization.
-    ///
-    /// # Arguments
-    ///
-    /// * `handoff_id` - The handoff ID returned from `device_init()`
-    ///
-    /// # Returns
-    ///
-    /// Returns the current status of the authorization. Callers should poll
-    /// repeatedly until receiving `Success` or `Error`.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the request fails or the handoff ID is invalid.
+    /// Polls device authorization status. Call repeatedly until success or error.
     pub async fn device_poll(
         &self,
         handoff_id: Uuid,
@@ -259,20 +142,7 @@ impl RemoteClient {
         })
     }
 
-    /// Fetches the user profile using an access token.
-    ///
-    /// # Arguments
-    ///
-    /// * `token` - The access token obtained from a successful device flow
-    ///
-    /// # Returns
-    ///
-    /// Returns the user's profile information including user ID, email,
-    /// and connected OAuth provider accounts.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the token is invalid or the request fails.
+    /// Fetches user profile using an access token.
     pub async fn profile(&self, token: &str) -> Result<ProfileResponse, RemoteClientError> {
         self.get_json("/profile", Some(token)).await
     }
