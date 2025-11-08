@@ -847,10 +847,17 @@ impl ContainerService for LocalContainerService {
                 _ => Arc::new(NoopExecutorApprovalService {}),
             };
 
-        // Create the child and stream, add to execution tracker
-        let mut spawned = executor_action
-            .spawn(&current_dir, approvals_service)
-            .await?;
+        // Create the child and stream, add to execution tracker with timeout
+        let mut spawned = tokio::time::timeout(
+            Duration::from_secs(30),
+            executor_action.spawn(&current_dir, approvals_service),
+        )
+        .await
+        .map_err(|_| {
+            ContainerError::Other(anyhow!(
+                "Timeout: process took more than 30 seconds to start"
+            ))
+        })??;
 
         self.track_child_msgs_in_store(execution_process.id, &mut spawned.child)
             .await;
