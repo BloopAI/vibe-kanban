@@ -95,7 +95,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         if !profile.providers.is_empty() {
                             println!("  Providers:");
                             for provider in &profile.providers {
-                                println!("    - {} ({})", provider.provider, provider.username.as_deref().unwrap_or("no username"));
+                                println!(
+                                    "    - {} ({})",
+                                    provider.provider,
+                                    provider.username.as_deref().unwrap_or("no username")
+                                );
                             }
                         }
                     }
