@@ -6,6 +6,9 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::warn;
 use url::Url;
+use utils::api::oauth::{
+    DeviceInitResponse as DeviceInitOk, DevicePollResponse as DevicePollRaw, ProfileResponse,
+};
 use uuid::Uuid;
 
 #[derive(Debug, Error)]
@@ -61,15 +64,6 @@ fn map_error_code(code: Option<&str>) -> DeviceFlowErrorCode {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct DeviceInitOk {
-    pub verification_uri: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub verification_uri_complete: Option<String>,
-    pub user_code: String,
-    pub handoff_id: Uuid,
-}
-
 #[derive(Debug, Clone)]
 pub enum DevicePollResult {
     Pending,
@@ -77,34 +71,9 @@ pub enum DevicePollResult {
     Error { code: DeviceFlowErrorCode },
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ProviderProfile {
-    pub provider: String,
-    pub username: Option<String>,
-    pub display_name: Option<String>,
-    pub email: Option<String>,
-    pub avatar_url: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ProfileResponse {
-    pub user_id: String,
-    pub username: Option<String>,
-    pub email: String,
-    pub organization_id: String,
-    pub providers: Vec<ProviderProfile>,
-}
-
 #[derive(Deserialize)]
 struct ApiErrorResponse {
     error: String,
-}
-
-#[derive(Deserialize)]
-struct DevicePollRaw {
-    status: String,
-    access_token: Option<String>,
-    error: Option<String>,
 }
 
 #[derive(Debug, Clone)]

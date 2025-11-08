@@ -6,45 +6,17 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::warn;
-use uuid::Uuid;
-
-use crate::{
-    AppState,
-    api::oauth::{ProfileResponse, ProviderProfile},
-    auth::{DeviceFlowError, DeviceFlowPollStatus, RequestContext},
-    db::oauth_accounts::OAuthAccountRepository,
+use utils::api::oauth::{
+    DeviceInitRequest, DeviceInitResponse, DevicePollRequest, DevicePollResponse, ProfileResponse,
+    ProviderProfile,
 };
 
-#[derive(Debug, Deserialize)]
-pub struct DeviceInitRequest {
-    pub provider: String,
-}
-
-#[derive(Debug, Serialize)]
-pub struct DeviceInitResponse {
-    pub verification_uri: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub verification_uri_complete: Option<String>,
-    pub user_code: String,
-    pub handoff_id: Uuid,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct DevicePollRequest {
-    pub handoff_id: Uuid,
-}
-
-#[derive(Debug, Serialize)]
-pub struct DevicePollResponse {
-    pub status: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub access_token: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
-}
+use crate::{
+    AppState, auth::{DeviceFlowError, DeviceFlowPollStatus, RequestContext},
+    db::oauth_accounts::OAuthAccountRepository,
+};
 
 pub async fn device_init(
     State(state): State<AppState>,
