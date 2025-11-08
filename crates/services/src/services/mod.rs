@@ -18,5 +18,6 @@ pub mod image;
 pub mod metadata;
 pub mod notification;
 pub mod pr_monitor;
+pub mod remote_client;
 pub mod share;
 pub mod worktree_manager;
