@@ -108,9 +108,8 @@ export function NextActionCard({
     if (!attempt?.task_id) return;
     NiceModal.show('create-attempt', {
       taskId: attempt.task_id,
-      latestAttempt: attemptId,
     });
-  }, [attempt?.task_id, attemptId]);
+  }, [attempt?.task_id]);
 
   const handleGitActions = useCallback(() => {
     if (!attemptId) return;

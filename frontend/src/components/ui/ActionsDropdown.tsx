@@ -97,7 +97,6 @@ export function ActionsDropdown({
     if (!task?.id) return;
     NiceModal.show('create-attempt', {
       taskId: task.id,
-      latestAttempt: null,
     });
   };
 

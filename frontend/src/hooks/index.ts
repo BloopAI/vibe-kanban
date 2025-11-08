@@ -10,3 +10,7 @@ export { usePush } from './usePush';
 export { useAttemptConflicts } from './useAttemptConflicts';
 export { useNavigateWithSearch } from './useNavigateWithSearch';
 export { useGitOperations } from './useGitOperations';
+export { useTask } from './useTask';
+export { useAttempt } from './useAttempt';
+export { useBranches } from './useBranches';
+export { useTaskAttempts } from './useTaskAttempts';
