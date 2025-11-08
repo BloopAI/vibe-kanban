@@ -14,7 +14,8 @@ use utils::api::oauth::{
 };
 
 use crate::{
-    AppState, auth::{DeviceFlowError, DeviceFlowPollStatus, RequestContext},
+    AppState,
+    auth::{DeviceFlowError, DeviceFlowPollStatus, RequestContext},
     db::oauth_accounts::OAuthAccountRepository,
 };
 
