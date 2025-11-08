@@ -408,4 +408,3 @@ fn map_reqwest_error(e: reqwest::Error) -> RemoteClientError {
         RemoteClientError::Transport(e.to_string())
     }
 }
-
