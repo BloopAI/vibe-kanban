@@ -3,11 +3,15 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 
+/// OAuth credentials containing the JWT access token.
+/// The access_token is a JWT from the remote OAuth service and should be treated as opaque.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Credentials {
     pub access_token: String,
 }
 
+/// Service for managing OAuth credentials (JWT tokens) in memory and persistent storage.
+/// The token is loaded into memory on startup and persisted to disk/keychain on save.
 pub struct OAuthCredentials {
     #[cfg_attr(target_os = "macos", allow(dead_code))]
     path: PathBuf,

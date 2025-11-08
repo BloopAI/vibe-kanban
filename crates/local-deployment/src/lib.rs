@@ -310,4 +310,10 @@ impl LocalDeployment {
     pub fn remote_client(&self) -> Option<Arc<RemoteClient>> {
         self.remote_client.clone()
     }
+
+    /// Convenience method to get the current JWT auth token.
+    /// Returns None if the user is not authenticated.
+    pub async fn auth_token(&self) -> Option<String> {
+        self.oauth_credentials.get().await.map(|c| c.access_token)
+    }
 }
