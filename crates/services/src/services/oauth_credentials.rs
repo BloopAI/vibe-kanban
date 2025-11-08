@@ -163,11 +163,9 @@ mod macos {
     }
 
     pub async fn save(oauth: &OAuthCredentials, creds: &Credentials) -> io::Result<()> {
-        let bytes = serde_json::to_vec_pretty(creds)
-            .map_err(io::Error::other)?;
+        let bytes = serde_json::to_vec_pretty(creds).map_err(io::Error::other)?;
 
-        set_generic_password(SERVICE_NAME, ACCOUNT_NAME, &bytes)
-            .map_err(io::Error::other)?;
+        set_generic_password(SERVICE_NAME, ACCOUNT_NAME, &bytes).map_err(io::Error::other)?;
 
         *oauth.inner.write().await = Some(creds.clone());
         Ok(())

@@ -272,8 +272,6 @@ impl RemoteClient {
 fn map_reqwest_error(e: reqwest::Error) -> RemoteClientError {
     if e.is_timeout() {
         RemoteClientError::Timeout
-    } else if e.is_connect() || e.is_request() || e.is_body() {
-        RemoteClientError::Transport(e.to_string())
     } else {
         RemoteClientError::Transport(e.to_string())
     }
