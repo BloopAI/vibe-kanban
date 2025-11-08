@@ -176,7 +176,7 @@ impl SlashCommandService {
         }
     }
 
-    async fn get_default_paths() -> (PathBuf, PathBuf) {
+    async fn get_default_paths() -> Result<(PathBuf, PathBuf), std::io::Error> {
         let home_dir = dirs::home_dir()
             .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "Home directory not found"))?;
         let global_commands_path = home_dir.join(".claude/commands");
