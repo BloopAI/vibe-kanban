@@ -7,6 +7,7 @@ use axum::{
 use deployment::Deployment;
 use serde::Deserialize;
 use services::services::filesystem::{DirectoryEntry, DirectoryListResponse, FilesystemError};
+use services::services::slash_commands::SlashCommandService;
 use utils::response::ApiResponse;
 
 use crate::{DeploymentImpl, error::ApiError};
@@ -71,8 +72,22 @@ pub async fn list_git_repos(
     }
 }
 
+pub async fn get_slash_commands(
+    State(_deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<db::models::commands::SlashCommand>>>, ApiError> {
+    let service = SlashCommandService::new();
+    match service.get_commands().await {
+        Ok(commands) => Ok(ResponseJson(ApiResponse::success(commands))),
+        Err(e) => {
+            tracing::error!("Failed to load slash commands: {}", e);
+            Err(ApiError::Io(e))
+        }
+    }
+}
+
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/filesystem/directory", get(list_directory))
         .route("/filesystem/git-repos", get(list_git_repos))
+        .route("/filesystem/slash-commands", get(get_slash_commands))
 }

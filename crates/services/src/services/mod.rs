@@ -16,4 +16,5 @@ pub mod github_service;
 pub mod image;
 pub mod notification;
 pub mod pr_monitor;
+pub mod slash_commands;
 pub mod worktree_manager;

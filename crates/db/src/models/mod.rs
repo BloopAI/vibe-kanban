@@ -1,3 +1,4 @@
+pub mod commands;
 pub mod draft;
 pub mod execution_process;
 pub mod execution_process_logs;
