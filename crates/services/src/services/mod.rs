@@ -17,6 +17,7 @@ pub mod github_service;
 pub mod image;
 pub mod metadata;
 pub mod notification;
+pub mod oauth_credentials;
 pub mod pr_monitor;
 pub mod remote_client;
 pub mod share;

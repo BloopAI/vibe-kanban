@@ -103,7 +103,7 @@ impl RemoteClient {
         provider: &str,
     ) -> Result<DeviceInitResponse, RemoteClientError> {
         self.post_json(
-            "/device-init",
+            "/oauth/device/init",
             &DeviceInitRequest {
                 provider: provider.to_string(),
             },
@@ -118,7 +118,7 @@ impl RemoteClient {
         handoff_id: Uuid,
     ) -> Result<DevicePollResult, RemoteClientError> {
         let raw: DevicePollResponse = self
-            .post_json("/device-poll", &DevicePollRequest { handoff_id })
+            .post_json("/oauth/device/poll", &DevicePollRequest { handoff_id })
             .await
             .or_else(|e| self.map_poll_error(e))?;
 
