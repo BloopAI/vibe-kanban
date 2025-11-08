@@ -3,9 +3,9 @@ import { projectsApi } from '@/lib/api';
 import type { GitBranch } from 'shared/types';
 
 export const branchKeys = {
-  all: ['branches'] as const,
+  all: ['projectBranches'] as const,
   byProject: (projectId: string | undefined) =>
-    ['branches', projectId] as const,
+    ['projectBranches', projectId] as const,
 };
 
 type Options = {
