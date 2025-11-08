@@ -51,12 +51,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let handoff_id = init.handoff_id;
     println!("\nPlease authenticate:");
     if let Some(uri_complete) = init.verification_uri_complete.as_deref() {
-        println!("  Open this URL: {}", uri_complete);
+        println!("  Open this URL: {uri_complete}");
     } else {
         println!("  Visit: {}", init.verification_uri);
         println!("  Enter code: {}", init.user_code);
     }
-    println!("Handoff ID: {}\n", handoff_id);
+    println!("Handoff ID: {handoff_id}\n");
 
     let started = Instant::now();
     loop {
@@ -83,7 +83,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         "***".to_string()
                     }
                 };
-                println!("\n✓ Success! Access token: {}\n", display_token);
+                println!("\n✓ Success! Access token: {display_token}\n");
 
                 match client.profile(&access_token).await {
                     Ok(profile) => {
@@ -115,7 +115,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             Err(e) => {
                 if e.should_retry() {
-                    eprintln!("Transient error: {} (will retry)", e);
+                    eprintln!("Transient error: {e} (will retry)");
                     tokio::time::sleep(Duration::from_secs(args.poll_secs)).await;
                 } else {
                     error!("Polling failed: {}", e);
