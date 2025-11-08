@@ -72,8 +72,7 @@ use thiserror::Error;
 use tracing::warn;
 use url::Url;
 use utils::api::oauth::{
-    DeviceInitRequest, DeviceInitResponse, DevicePollRequest, DevicePollResponse,
-    ProfileResponse,
+    DeviceInitRequest, DeviceInitResponse, DevicePollRequest, DevicePollResponse, ProfileResponse,
 };
 use uuid::Uuid;
 
@@ -462,27 +461,35 @@ mod tests {
     fn test_should_retry() {
         assert!(RemoteClientError::Transport("conn reset".into()).should_retry());
         assert!(RemoteClientError::Timeout.should_retry());
-        assert!(RemoteClientError::Http {
-            status: 500,
-            body: "".into()
-        }
-        .should_retry());
-        assert!(RemoteClientError::Http {
-            status: 503,
-            body: "".into()
-        }
-        .should_retry());
+        assert!(
+            RemoteClientError::Http {
+                status: 500,
+                body: "".into()
+            }
+            .should_retry()
+        );
+        assert!(
+            RemoteClientError::Http {
+                status: 503,
+                body: "".into()
+            }
+            .should_retry()
+        );
 
-        assert!(!RemoteClientError::Http {
-            status: 400,
-            body: "".into()
-        }
-        .should_retry());
-        assert!(!RemoteClientError::Http {
-            status: 404,
-            body: "".into()
-        }
-        .should_retry());
+        assert!(
+            !RemoteClientError::Http {
+                status: 400,
+                body: "".into()
+            }
+            .should_retry()
+        );
+        assert!(
+            !RemoteClientError::Http {
+                status: 404,
+                body: "".into()
+            }
+            .should_retry()
+        );
         assert!(!RemoteClientError::Auth.should_retry());
         assert!(!RemoteClientError::Url("bad url".into()).should_retry());
     }
