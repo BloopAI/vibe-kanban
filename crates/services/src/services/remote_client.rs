@@ -267,20 +267,18 @@ impl RemoteClient {
     }
 
     fn map_api_error<T>(&self, err: RemoteClientError) -> Result<T, RemoteClientError> {
-        if let RemoteClientError::Http { body, .. } = &err {
-            if let Ok(api_err) = serde_json::from_str::<ApiErrorResponse>(body) {
+        if let RemoteClientError::Http { body, .. } = &err
+            && let Ok(api_err) = serde_json::from_str::<ApiErrorResponse>(body) {
                 return Err(RemoteClientError::Api(map_error_code(Some(&api_err.error))));
             }
-        }
         Err(err)
     }
 
     fn map_poll_error(&self, err: RemoteClientError) -> Result<DevicePollRaw, RemoteClientError> {
-        if let RemoteClientError::Http { body, .. } = &err {
-            if let Ok(poll_raw) = serde_json::from_str::<DevicePollRaw>(body) {
+        if let RemoteClientError::Http { body, .. } = &err
+            && let Ok(poll_raw) = serde_json::from_str::<DevicePollRaw>(body) {
                 return Ok(poll_raw);
             }
-        }
         Err(err)
     }
 }
