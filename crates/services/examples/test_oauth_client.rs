@@ -12,7 +12,7 @@ use tracing_subscriber::EnvFilter;
     about = "Manual OAuth device-flow tester"
 )]
 struct Args {
-    #[arg(long, default_value = "http://localhost:8081")]
+    #[arg(long, default_value = "http://localhost:3000")]
     base_url: String,
 
     #[arg(long, default_value = "github")]
