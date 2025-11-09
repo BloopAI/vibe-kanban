@@ -1,10 +1,11 @@
-import { Columns, FileText, Pilcrow } from 'lucide-react';
+import { Columns, FileText, Pilcrow, WrapText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import {
   useDiffViewMode,
   useDiffViewStore,
   useIgnoreWhitespaceDiff,
+  useWrapTextDiff,
 } from '@/stores/useDiffViewStore';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
@@ -24,8 +25,11 @@ export default function DiffViewSwitch({ className }: Props) {
   const setMode = useDiffViewStore((s) => s.setMode);
   const ignoreWhitespace = useIgnoreWhitespaceDiff();
   const setIgnoreWhitespace = useDiffViewStore((s) => s.setIgnoreWhitespace);
+  const wrapText = useWrapTextDiff();
+  const setWrapText = useDiffViewStore((s) => s.setWrapText);
 
   const whitespaceValue = ignoreWhitespace ? ['ignoreWhitespace'] : [];
+  const wrapTextValue = wrapText ? ['wrapText'] : [];
 
   return (
     <TooltipProvider>
@@ -89,6 +93,29 @@ export default function DiffViewSwitch({ className }: Props) {
             </TooltipTrigger>
             <TooltipContent side="bottom">
               {t('diff.ignoreWhitespace')}
+            </TooltipContent>
+          </Tooltip>
+        </ToggleGroup>
+
+        <ToggleGroup
+          type="multiple"
+          value={wrapTextValue}
+          onValueChange={(values) => setWrapText(values.includes('wrapText'))}
+          className="inline-flex gap-4"
+          aria-label={t('diff.wrapText', 'Wrap text')}
+        >
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <ToggleGroupItem
+                value="wrapText"
+                aria-label={t('diff.wrapText', 'Wrap text')}
+                active={wrapText}
+              >
+                <WrapText className="h-4 w-4" />
+              </ToggleGroupItem>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              {t('diff.wrapText', 'Wrap text')}
             </TooltipContent>
           </Tooltip>
         </ToggleGroup>

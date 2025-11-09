@@ -8,6 +8,8 @@ type State = {
   toggle: () => void;
   ignoreWhitespace: boolean;
   setIgnoreWhitespace: (value: boolean) => void;
+  wrapText: boolean;
+  setWrapText: (value: boolean) => void;
 };
 
 export const useDiffViewStore = create<State>((set) => ({
@@ -17,8 +19,11 @@ export const useDiffViewStore = create<State>((set) => ({
     set((s) => ({ mode: s.mode === 'unified' ? 'split' : 'unified' })),
   ignoreWhitespace: true,
   setIgnoreWhitespace: (value) => set({ ignoreWhitespace: value }),
+  wrapText: false,
+  setWrapText: (value) => set({ wrapText: value }),
 }));
 
 export const useDiffViewMode = () => useDiffViewStore((s) => s.mode);
 export const useIgnoreWhitespaceDiff = () =>
   useDiffViewStore((s) => s.ignoreWhitespace);
+export const useWrapTextDiff = () => useDiffViewStore((s) => s.wrapText);

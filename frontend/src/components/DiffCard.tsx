@@ -32,6 +32,7 @@ import { ReviewCommentRenderer } from '@/components/diff/ReviewCommentRenderer';
 import {
   useDiffViewMode,
   useIgnoreWhitespaceDiff,
+  useWrapTextDiff,
 } from '@/stores/useDiffViewStore';
 import { useProject } from '@/contexts/ProjectContext';
 
@@ -84,6 +85,7 @@ export default function DiffCard({
   const { comments, drafts, setDraft } = useReview();
   const globalMode = useDiffViewMode();
   const ignoreWhitespace = useIgnoreWhitespaceDiff();
+  const wrapText = useWrapTextDiff();
   const { projectId } = useProject();
 
   const oldName = diff.oldPath || undefined;
@@ -301,7 +303,7 @@ export default function DiffCard({
         <div>
           <DiffView
             diffFile={diffFile}
-            diffViewWrap={false}
+            diffViewWrap={wrapText}
             diffViewTheme={theme}
             diffViewHighlight
             diffViewMode={
