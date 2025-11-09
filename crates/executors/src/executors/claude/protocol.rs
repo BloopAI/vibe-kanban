@@ -139,6 +139,29 @@ impl ProtocolPeer {
                     }
                 }
             }
+            ControlRequestType::AskUserQuestion {
+                question,
+                options,
+                allow_multiple,
+                allow_other,
+            } => {
+                match client
+                    .on_ask_user_question(question, options, allow_multiple, allow_other)
+                    .await
+                {
+                    Ok(response) => {
+                        if let Err(e) = self.send_hook_response(request_id, response).await {
+                            tracing::error!("Failed to send user question response: {e}");
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!("Error in on_ask_user_question: {e}");
+                        if let Err(e2) = self.send_error(request_id, e.to_string()).await {
+                            tracing::error!("Failed to send error response: {e2}");
+                        }
+                    }
+                }
+            }
         }
     }
 

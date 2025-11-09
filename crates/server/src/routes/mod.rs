@@ -22,6 +22,7 @@ pub mod projects;
 pub mod tags;
 pub mod task_attempts;
 pub mod tasks;
+pub mod user_questions;
 
 pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
     // Create routers with different middleware layers
@@ -39,6 +40,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(filesystem::router())
         .merge(events::router(&deployment))
         .merge(approvals::router())
+        .merge(user_questions::router())
         .nest("/images", images::routes())
         .layer(from_fn_with_state(
             deployment.clone(),

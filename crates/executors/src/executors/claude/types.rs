@@ -75,6 +75,14 @@ pub enum ControlRequestType {
         #[serde(skip_serializing_if = "Option::is_none")]
         tool_use_id: Option<String>,
     },
+    AskUserQuestion {
+        question: String,
+        options: Vec<String>,
+        #[serde(default)]
+        allow_multiple: bool,
+        #[serde(default)]
+        allow_other: bool,
+    },
 }
 
 /// Result of permission check

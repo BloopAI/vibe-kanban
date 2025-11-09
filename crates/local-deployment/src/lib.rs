@@ -16,6 +16,7 @@ use services::services::{
     filesystem::FilesystemService,
     git::GitService,
     image::ImageService,
+    user_questions::UserQuestions,
 };
 use tokio::sync::RwLock;
 use utils::{assets::config_path, msg_store::MsgStore};
@@ -40,6 +41,7 @@ pub struct LocalDeployment {
     events: EventService,
     file_search_cache: Arc<FileSearchCache>,
     approvals: Approvals,
+    user_questions: UserQuestions,
     drafts: DraftsService,
 }
 
@@ -104,6 +106,7 @@ impl Deployment for LocalDeployment {
         }
 
         let approvals = Approvals::new(msg_stores.clone());
+        let user_questions = UserQuestions::new(msg_stores.clone());
 
         // We need to make analytics accessible to the ContainerService
         // TODO: Handle this more gracefully
@@ -140,6 +143,7 @@ impl Deployment for LocalDeployment {
             events,
             file_search_cache,
             approvals,
+            user_questions,
             drafts,
         })
     }
@@ -197,6 +201,10 @@ impl Deployment for LocalDeployment {
 
     fn approvals(&self) -> &Approvals {
         &self.approvals
+    }
+
+    fn user_questions(&self) -> &UserQuestions {
+        &self.user_questions
     }
 
     fn drafts(&self) -> &DraftsService {

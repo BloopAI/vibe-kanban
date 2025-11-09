@@ -29,6 +29,7 @@ import {
 import RawLogText from '../common/RawLogText';
 import UserMessage from './UserMessage';
 import PendingApprovalEntry from './PendingApprovalEntry';
+import PendingQuestionEntry from './PendingQuestionEntry';
 import { NextActionCard } from './NextActionCard';
 import { cn } from '@/lib/utils';
 import { useRetryUi } from '@/contexts/RetryUiContext';
@@ -51,7 +52,7 @@ const renderJson = (v: JsonValue) => (
 
 const getEntryIcon = (entryType: NormalizedEntryType) => {
   const iconSize = 'h-3 w-3';
-  if (entryType.type === 'user_message' || entryType.type === 'user_feedback') {
+  if (entryType.type === 'user_message' || entryType.type === 'user_feedback' || entryType.type === 'user_question') {
     return <User className={iconSize} />;
   }
   if (entryType.type === 'assistant_message') {
@@ -679,6 +680,28 @@ function DisplayConversationEntry({
       </div>
     );
   }
+
+  const isUserQuestion = entryType.type === 'user_question';
+  if (isUserQuestion) {
+    const questionEntry = entryType as Extract<
+      NormalizedEntryType,
+      { type: 'user_question' }
+    >;
+    return (
+      <PendingQuestionEntry
+        questionEntry={questionEntry}
+        executionProcessId={executionProcessId}
+      >
+        <div className="bg-background px-4 py-2 text-sm">
+          <MarkdownRenderer
+            content={entry.content}
+            className="whitespace-pre-wrap break-words flex flex-col gap-1 font-light"
+          />
+        </div>
+      </PendingQuestionEntry>
+    );
+  }
+
   const renderToolUse = () => {
     if (!isNormalizedEntry(entry)) return null;
     if (entryType.type !== 'tool_use') return null;

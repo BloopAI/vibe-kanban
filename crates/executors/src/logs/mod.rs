@@ -62,6 +62,14 @@ pub enum NormalizedEntryType {
     UserFeedback {
         denied_tool: String,
     },
+    UserQuestion {
+        question_id: String,
+        question: String,
+        options: Vec<String>,
+        allow_multiple: bool,
+        allow_other: bool,
+        status: QuestionStatus,
+    },
     AssistantMessage,
     ToolUse {
         tool_name: String,
@@ -127,6 +135,19 @@ pub enum ToolStatus {
         approval_id: String,
         requested_at: DateTime<Utc>,
         timeout_at: DateTime<Utc>,
+    },
+    TimedOut,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS, Default)]
+#[ts(export)]
+#[serde(tag = "status", rename_all = "snake_case")]
+pub enum QuestionStatus {
+    #[default]
+    Pending,
+    Answered {
+        selected_options: Vec<String>,
+        other_text: Option<String>,
     },
     TimedOut,
 }
