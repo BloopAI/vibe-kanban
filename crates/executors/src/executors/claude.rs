@@ -662,6 +662,11 @@ impl ClaudeLogProcessor {
             ClaudeToolData::UndoEdit { .. } => ActionType::Other {
                 description: "Undo edit".to_string(),
             },
+            ClaudeToolData::AskUserQuestion { question, .. } => ActionType::Tool {
+                tool_name: "AskUserQuestion".to_string(),
+                arguments: Some(serde_json::json!({ "question": question })),
+                result: None,
+            },
             ClaudeToolData::Unknown { .. } => {
                 // Surface MCP tools as generic Tool with args
                 let name = tool_data.get_name();
@@ -1697,6 +1702,15 @@ pub enum ClaudeToolData {
     },
     #[serde(rename = "TodoRead", alias = "todo_read")]
     TodoRead {},
+    #[serde(rename = "AskUserQuestion", alias = "ask_user_question")]
+    AskUserQuestion {
+        question: String,
+        options: Vec<String>,
+        #[serde(default)]
+        allow_multiple: Option<bool>,
+        #[serde(default)]
+        allow_other: Option<bool>,
+    },
     #[serde(untagged)]
     Unknown {
         #[serde(flatten)]
@@ -1769,6 +1783,7 @@ impl ClaudeToolData {
             ClaudeToolData::WebFetch { .. } => "WebFetch",
             ClaudeToolData::WebSearch { .. } => "WebSearch",
             ClaudeToolData::TodoRead { .. } => "TodoRead",
+            ClaudeToolData::AskUserQuestion { .. } => "AskUserQuestion",
             ClaudeToolData::Oracle { .. } => "Oracle",
             ClaudeToolData::Mermaid { .. } => "Mermaid",
             ClaudeToolData::CodebaseSearchAgent { .. } => "CodebaseSearchAgent",

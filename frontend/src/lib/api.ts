@@ -44,6 +44,8 @@ import {
   UpdateFollowUpDraftRequest,
   GitOperationError,
   ApprovalResponse,
+  QuestionResponse,
+  QuestionResponseStatus,
   RebaseTaskAttemptRequest,
   ChangeTargetBranchRequest,
   ChangeTargetBranchResponse,
@@ -885,5 +887,22 @@ export const approvalsApi = {
     });
 
     return handleApiResponse<ApprovalStatus>(res);
+  },
+};
+
+export const questionsApi = {
+  respond: async (
+    questionId: string,
+    payload: QuestionResponse,
+    signal?: AbortSignal
+  ): Promise<QuestionResponseStatus> => {
+    const res = await makeRequest(`/api/questions/${questionId}/respond`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal,
+    });
+
+    return handleApiResponse<QuestionResponseStatus>(res);
   },
 };

@@ -199,6 +199,22 @@ impl ClaudeAgentClient {
         }
     }
 
+    pub async fn on_ask_user_question(
+        &self,
+        _question: String,
+        _options: Vec<String>,
+        _allow_multiple: bool,
+        _allow_other: bool,
+    ) -> Result<serde_json::Value, ExecutorError> {
+        // For now, we'll just return a placeholder response
+        // This will be properly implemented with the questions service
+        tracing::warn!("AskUserQuestion control request received, but questions service is not yet implemented");
+        Ok(serde_json::json!({
+            "selectedOptions": [],
+            "otherText": null
+        }))
+    }
+
     pub async fn on_non_control(&self, line: &str) -> Result<(), ExecutorError> {
         // Forward all non-control messages to stdout
         self.log_writer.log_raw(line).await

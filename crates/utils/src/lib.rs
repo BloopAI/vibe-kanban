@@ -18,6 +18,7 @@ pub mod stream_ext;
 pub mod stream_lines;
 pub mod text;
 pub mod tokio;
+pub mod user_questions;
 pub mod version;
 
 /// Cache for WSL2 detection result
