@@ -62,7 +62,13 @@ export type CreateImage = { file_path: string, original_name: string, mime_type:
 
 export type ApiResponse<T, E = T> = { success: boolean, data: T | null, error_data: E | null, message: string | null, };
 
-export type UserSystemInfo = { config: Config, analytics_user_id: string, environment: Environment, 
+export type LoginStatus = { "status": "loggedout" } | { "status": "loggedin", profile: ProfileResponse, };
+
+export type ProfileResponse = { user_id: string, username: string | null, email: string, organization_id: string, providers: Array<ProviderProfile>, };
+
+export type ProviderProfile = { provider: string, username: string | null, display_name: string | null, email: string | null, avatar_url: string | null, };
+
+export type UserSystemInfo = { config: Config, analytics_user_id: string, login_status: LoginStatus, environment: Environment, 
 /**
  * Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["SESSION_FORK"] })
  */

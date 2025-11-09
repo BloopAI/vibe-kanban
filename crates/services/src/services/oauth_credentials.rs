@@ -26,14 +26,14 @@ impl OAuthCredentials {
         }
     }
 
-    pub fn load(&self) -> std::io::Result<()> {
+    pub async fn load(&self) -> std::io::Result<()> {
         #[cfg(target_os = "macos")]
         {
-            macos::load(self)
+            macos::load(self).await
         }
         #[cfg(not(target_os = "macos"))]
         {
-            file_backend::load(self)
+            file_backend::load(self).await
         }
     }
 
@@ -68,7 +68,7 @@ impl OAuthCredentials {
 mod file_backend {
     use super::*;
 
-    pub fn load(oauth: &OAuthCredentials) -> std::io::Result<()> {
+    pub async fn load(oauth: &OAuthCredentials) -> std::io::Result<()> {
         if !oauth.path.exists() {
             return Ok(());
         }
@@ -76,10 +76,7 @@ mod file_backend {
         let bytes = std::fs::read(&oauth.path)?;
         match serde_json::from_slice::<Credentials>(&bytes) {
             Ok(creds) => {
-                let rt = tokio::runtime::Handle::current();
-                rt.block_on(async {
-                    *oauth.inner.write().await = Some(creds);
-                });
+                *oauth.inner.write().await = Some(creds);
                 Ok(())
             }
             Err(e) => {
@@ -138,25 +135,19 @@ mod macos {
     const ACCOUNT_NAME: &str = "default";
     const ERR_SEC_ITEM_NOT_FOUND: i32 = -25300;
 
-    pub fn load(oauth: &OAuthCredentials) -> io::Result<()> {
+    pub async fn load(oauth: &OAuthCredentials) -> io::Result<()> {
         match get_generic_password(SERVICE_NAME, ACCOUNT_NAME) {
             Ok(bytes) => {
                 match serde_json::from_slice::<Credentials>(&bytes) {
                     Ok(creds) => {
-                        let rt = tokio::runtime::Handle::current();
-                        rt.block_on(async {
-                            *oauth.inner.write().await = Some(creds);
-                        });
+                        *oauth.inner.write().await = Some(creds);
                     }
                     Err(e) => {
                         tracing::warn!(
                             ?e,
                             "failed to parse keychain credentials; clearing in-memory"
                         );
-                        let rt = tokio::runtime::Handle::current();
-                        rt.block_on(async {
-                            *oauth.inner.write().await = None;
-                        });
+                        *oauth.inner.write().await = None;
                     }
                 }
                 Ok(())

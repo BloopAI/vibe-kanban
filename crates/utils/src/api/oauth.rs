@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -29,7 +30,7 @@ pub struct DevicePollResponse {
     pub error: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, TS)]
 pub struct ProviderProfile {
     pub provider: String,
     pub username: Option<String>,
@@ -38,11 +39,18 @@ pub struct ProviderProfile {
     pub avatar_url: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, TS)]
 pub struct ProfileResponse {
     pub user_id: String,
     pub username: Option<String>,
     pub email: String,
     pub organization_id: String,
     pub providers: Vec<ProviderProfile>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, TS)]
+#[serde(tag = "status", rename_all = "lowercase")]
+pub enum LoginStatus {
+    LoggedOut,
+    LoggedIn { profile: ProfileResponse },
 }

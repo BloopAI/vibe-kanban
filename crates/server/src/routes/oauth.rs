@@ -6,10 +6,7 @@ use axum::{
     routing::{get, post},
 };
 use serde::{Deserialize, Serialize};
-use services::services::{
-    oauth_credentials::Credentials,
-    remote_client::{DevicePollResult, RemoteClientError},
-};
+use services::services::{oauth_credentials::Credentials, remote_client::DevicePollResult};
 use utils::{
     api::oauth::{DeviceInitResponse, ProfileResponse},
     response::ApiResponse,
@@ -102,6 +99,8 @@ async fn device_poll(
                 ApiError::Conflict(format!("Failed to fetch profile: {}", e))
             })?;
 
+            deployment.set_profile_cache(profile.clone()).await;
+
             Ok(ResponseJson(ApiResponse::success(
                 DevicePollResponseData::Success { profile },
             )))
@@ -120,6 +119,8 @@ async fn logout(State(deployment): State<DeploymentImpl>) -> Result<StatusCode, 
         ApiError::Io(e)
     })?;
 
+    deployment.clear_profile_cache().await;
+
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -135,52 +136,20 @@ struct StatusResponse {
 async fn status(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<StatusResponse>>, ApiError> {
-    let credentials = deployment.oauth_credentials().get().await;
+    use utils::api::oauth::LoginStatus;
 
-    let Some(creds) = credentials else {
-        return Ok(ResponseJson(ApiResponse::success(StatusResponse {
+    match deployment.get_login_status().await {
+        LoginStatus::LoggedOut => Ok(ResponseJson(ApiResponse::success(StatusResponse {
             logged_in: false,
             profile: None,
             degraded: None,
-        })));
-    };
-
-    let remote_client = deployment
-        .remote_client()
-        .ok_or_else(|| ApiError::Conflict("OAuth remote client not configured".to_string()))?;
-
-    match remote_client.profile(&creds.access_token).await {
-        Ok(profile) => Ok(ResponseJson(ApiResponse::success(StatusResponse {
-            logged_in: true,
-            profile: Some(profile),
-            degraded: None,
         }))),
-        Err(RemoteClientError::Auth) => {
-            tracing::info!("credentials invalid, clearing");
-            let _ = deployment.oauth_credentials().clear().await;
-            Ok(ResponseJson(ApiResponse::success(StatusResponse {
-                logged_in: false,
-                profile: None,
-                degraded: None,
-            })))
-        }
-        Err(e) if e.should_retry() => {
-            tracing::warn!(
-                ?e,
-                "transient error fetching profile, not clearing credentials"
-            );
+        LoginStatus::LoggedIn { profile } => {
             Ok(ResponseJson(ApiResponse::success(StatusResponse {
                 logged_in: true,
-                profile: None,
-                degraded: Some(true),
+                profile: Some(profile),
+                degraded: None,
             })))
-        }
-        Err(e) => {
-            tracing::error!(?e, "unexpected error fetching profile");
-            Err(ApiError::Conflict(format!(
-                "Failed to fetch profile: {}",
-                e
-            )))
         }
     }
 }

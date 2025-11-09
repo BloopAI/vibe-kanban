@@ -17,11 +17,12 @@ use services::services::{
     git::GitService,
     image::ImageService,
     oauth_credentials::OAuthCredentials,
-    remote_client::RemoteClient,
+    remote_client::{RemoteClient, RemoteClientError},
     share::{RemoteSyncHandle, ShareConfig, SharePublisher},
 };
 use tokio::sync::{Mutex, RwLock};
 use utils::{
+    api::oauth::{LoginStatus, ProfileResponse},
     assets::{config_path, credentials_path},
     msg_store::MsgStore,
 };
@@ -52,6 +53,7 @@ pub struct LocalDeployment {
     clerk_service: Option<Arc<ClerkService>>,
     oauth_credentials: Arc<OAuthCredentials>,
     remote_client: Option<Arc<RemoteClient>>,
+    profile_cache: Arc<RwLock<Option<ProfileResponse>>>,
 }
 
 #[async_trait]
@@ -179,7 +181,7 @@ impl Deployment for LocalDeployment {
         let file_search_cache = Arc::new(FileSearchCache::new());
 
         let oauth_credentials = Arc::new(OAuthCredentials::new(credentials_path()));
-        if let Err(e) = oauth_credentials.load() {
+        if let Err(e) = oauth_credentials.load().await {
             tracing::warn!(?e, "failed to load OAuth credentials");
         }
 
@@ -220,6 +222,7 @@ impl Deployment for LocalDeployment {
             clerk_service,
             oauth_credentials,
             remote_client,
+            profile_cache: Arc::new(RwLock::new(None)),
         };
 
         if let Some(sc) = share_sync_config {
@@ -315,5 +318,43 @@ impl LocalDeployment {
     /// Returns None if the user is not authenticated.
     pub async fn auth_token(&self) -> Option<String> {
         self.oauth_credentials.get().await.map(|c| c.access_token)
+    }
+
+    pub async fn get_login_status(&self) -> LoginStatus {
+        let Some(creds) = self.oauth_credentials.get().await else {
+            *self.profile_cache.write().await = None;
+            return LoginStatus::LoggedOut;
+        };
+
+        if let Some(cached_profile) = self.profile_cache.read().await.as_ref() {
+            return LoginStatus::LoggedIn {
+                profile: cached_profile.clone(),
+            };
+        }
+
+        let Some(remote_client) = self.remote_client.as_ref() else {
+            return LoginStatus::LoggedOut;
+        };
+
+        match remote_client.profile(&creds.access_token).await {
+            Ok(profile) => {
+                *self.profile_cache.write().await = Some(profile.clone());
+                LoginStatus::LoggedIn { profile }
+            }
+            Err(RemoteClientError::Auth) => {
+                let _ = self.oauth_credentials.clear().await;
+                *self.profile_cache.write().await = None;
+                LoginStatus::LoggedOut
+            }
+            Err(_) => LoginStatus::LoggedOut,
+        }
+    }
+
+    pub async fn set_profile_cache(&self, profile: ProfileResponse) {
+        *self.profile_cache.write().await = Some(profile);
+    }
+
+    pub async fn clear_profile_cache(&self) {
+        *self.profile_cache.write().await = None;
     }
 }
