@@ -18,11 +18,11 @@ use crate::{
     auth::RequestContext,
     db::{
         organizations::OrganizationRepository,
-        users::UserRepository,
         tasks::{
             AssignTaskData, CreateSharedTaskData, DeleteTaskData, SharedTaskError,
             SharedTaskRepository, UpdateSharedTaskData, ensure_text_size,
         },
+        users::UserRepository,
     },
 };
 

@@ -124,15 +124,12 @@ pub async fn get_organization(
             _ => ErrorResponse::new(StatusCode::FORBIDDEN, "Access denied"),
         })?;
 
-    let organization = org_repo
-        .fetch_organization(&org_id)
-        .await
-        .map_err(|_| {
-            ErrorResponse::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Failed to fetch organization",
-            )
-        })?;
+    let organization = org_repo.fetch_organization(&org_id).await.map_err(|_| {
+        ErrorResponse::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to fetch organization",
+        )
+    })?;
 
     let role = org_repo
         .check_user_role(&org_id, &ctx.user.id)

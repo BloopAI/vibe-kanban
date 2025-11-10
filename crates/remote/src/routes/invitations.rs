@@ -84,9 +84,7 @@ pub async fn create_invitation(
             IdentityError::PermissionDenied => {
                 ErrorResponse::new(StatusCode::FORBIDDEN, "Admin access required")
             }
-            IdentityError::InvitationError(msg) => {
-                ErrorResponse::new(StatusCode::BAD_REQUEST, msg)
-            }
+            IdentityError::InvitationError(msg) => ErrorResponse::new(StatusCode::BAD_REQUEST, msg),
             _ => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"),
         })?;
 
@@ -179,9 +177,7 @@ pub async fn accept_invitation(
         .accept_invitation(&token, &user.id)
         .await
         .map_err(|e| match e {
-            IdentityError::InvitationError(msg) => {
-                ErrorResponse::new(StatusCode::BAD_REQUEST, msg)
-            }
+            IdentityError::InvitationError(msg) => ErrorResponse::new(StatusCode::BAD_REQUEST, msg),
             IdentityError::NotFound => {
                 ErrorResponse::new(StatusCode::NOT_FOUND, "Invitation not found")
             }

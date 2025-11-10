@@ -7,8 +7,8 @@ use uuid::Uuid;
 use super::{
     Tx,
     identity_errors::IdentityError,
-    users::{UserData, fetch_user},
     projects::{CreateProjectData, Project, ProjectError, ProjectMetadata, ProjectRepository},
+    users::{UserData, fetch_user},
 };
 
 pub struct BulkFetchResult {

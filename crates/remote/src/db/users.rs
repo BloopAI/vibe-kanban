@@ -2,8 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, query_as};
 
-use super::Tx;
-use super::identity_errors::IdentityError;
+use super::{Tx, identity_errors::IdentityError};
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct User {

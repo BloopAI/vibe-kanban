@@ -20,13 +20,13 @@ use crate::{
     db::{
         auth::{AuthSessionError, AuthSessionRepository},
         identity_errors::IdentityError,
-        organizations::OrganizationRepository,
-        users::{UpsertUser, UserRepository},
         oauth::{
             AuthorizationStatus, CreateDeviceAuthorization, DeviceAuthorization,
             DeviceAuthorizationError, DeviceAuthorizationRepository,
         },
         oauth_accounts::{OAuthAccountError, OAuthAccountInsert, OAuthAccountRepository},
+        organizations::OrganizationRepository,
+        users::{UpsertUser, UserRepository},
     },
 };
 

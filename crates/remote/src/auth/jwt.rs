@@ -7,11 +7,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
 
-use crate::db::{
-    auth::AuthSession,
-    organizations::Organization,
-    users::User,
-};
+use crate::db::{auth::AuthSession, organizations::Organization, users::User};
 
 #[derive(Debug, Error)]
 pub enum JwtError {

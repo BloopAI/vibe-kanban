@@ -1,10 +1,12 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{PgPool, Type, query_as};
+use sqlx::{PgPool, Type};
 use uuid::Uuid;
 
-use super::identity_errors::IdentityError;
-use super::organizations::{MemberRole, Organization};
+use super::{
+    identity_errors::IdentityError,
+    organizations::{MemberRole, Organization},
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[sqlx(type_name = "invitation_status", rename_all = "lowercase")]
@@ -83,13 +85,12 @@ impl<'a> InvitationRepository<'a> {
         .fetch_one(self.pool)
         .await
         .map_err(|e| {
-            if let Some(db_err) = e.as_database_error() {
-                if db_err.is_unique_violation() {
+            if let Some(db_err) = e.as_database_error()
+                && db_err.is_unique_violation() {
                     return IdentityError::InvitationError(
                         "A pending invitation already exists for this email".to_string(),
                     );
                 }
-            }
             IdentityError::from(e)
         })?;
 
@@ -134,10 +135,7 @@ impl<'a> InvitationRepository<'a> {
         Ok(invitations)
     }
 
-    pub async fn get_invitation_by_token(
-        &self,
-        token: &str,
-    ) -> Result<Invitation, IdentityError> {
+    pub async fn get_invitation_by_token(&self, token: &str) -> Result<Invitation, IdentityError> {
         sqlx::query_as!(
             Invitation,
             r#"

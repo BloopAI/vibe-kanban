@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Type, query_as, query_scalar};
 use uuid::Uuid;
 
-
 use super::identity_errors::IdentityError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -174,13 +173,12 @@ impl<'a> OrganizationRepository<'a> {
         .fetch_one(&mut *tx)
         .await
         .map_err(|e| {
-            if let Some(db_err) = e.as_database_error() {
-                if db_err.is_unique_violation() {
+            if let Some(db_err) = e.as_database_error()
+                && db_err.is_unique_violation() {
                     return IdentityError::OrganizationConflict(
                         "An organization with this slug already exists".to_string(),
                     );
                 }
-            }
             IdentityError::from(e)
         })?;
 
@@ -378,7 +376,7 @@ fn personal_org_id(user_id: &str) -> String {
 
 fn personal_org_name(hint: Option<&str>, user_id: &str) -> String {
     let display_name = hint.unwrap_or(user_id);
-    format!("{}'s Org", display_name)
+    format!("{display_name}'s Org")
 }
 
 fn personal_org_slug(hint: Option<&str>, user_id: &str) -> String {

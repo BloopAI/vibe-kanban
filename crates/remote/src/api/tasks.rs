@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 
 use crate::db::{
-    users::UserData,
     projects::ProjectMetadata,
     tasks::{SharedTask, SharedTaskActivityPayload, SharedTaskWithUser, TaskStatus},
+    users::UserData,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
