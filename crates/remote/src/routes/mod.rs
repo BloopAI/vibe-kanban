@@ -18,6 +18,7 @@ mod error;
 mod identity;
 mod invitations;
 mod oauth;
+mod organizations;
 mod tasks;
 
 pub fn router(state: AppState) -> Router {
@@ -55,6 +56,20 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/tasks/{task_id}", patch(tasks::update_shared_task))
         .route("/v1/tasks/{task_id}", delete(tasks::delete_shared_task))
         .route("/v1/tasks/{task_id}/assign", post(tasks::assign_task))
+        .route("/v1/organizations", post(organizations::create_organization))
+        .route("/v1/organizations", get(organizations::list_organizations))
+        .route(
+            "/v1/organizations/{org_id}",
+            get(organizations::get_organization),
+        )
+        .route(
+            "/v1/organizations/{org_id}",
+            patch(organizations::update_organization),
+        )
+        .route(
+            "/v1/organizations/{org_id}",
+            delete(organizations::delete_organization),
+        )
         .route(
             "/v1/organizations/{org_id}/invitations",
             post(invitations::create_invitation),

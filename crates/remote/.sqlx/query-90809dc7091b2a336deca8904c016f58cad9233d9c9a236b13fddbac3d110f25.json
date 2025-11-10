@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        INSERT INTO organizations (id, slug)\n        VALUES ($1, $2)\n        ON CONFLICT (id) DO UPDATE\n        SET slug = EXCLUDED.slug,\n            updated_at = NOW()\n        RETURNING\n            id          AS \"id!\",\n            slug        AS \"slug!\",\n            created_at  AS \"created_at!\",\n            updated_at  AS \"updated_at!\"\n        ",
+  "query": "\n            SELECT\n                id AS \"id!\",\n                name AS \"name!\",\n                slug AS \"slug!\",\n                created_at AS \"created_at!\",\n                updated_at AS \"updated_at!\"\n            FROM organizations\n            WHERE id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -10,23 +10,27 @@
       },
       {
         "ordinal": 1,
-        "name": "slug!",
+        "name": "name!",
         "type_info": "Text"
       },
       {
         "ordinal": 2,
+        "name": "slug!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
         "name": "created_at!",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 3,
+        "ordinal": 4,
         "name": "updated_at!",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Text",
         "Text"
       ]
     },
@@ -34,8 +38,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "08820e32d70c0770fd392a22b9842a0b299b9d567aea487f22194101b63e1a05"
+  "hash": "90809dc7091b2a336deca8904c016f58cad9233d9c9a236b13fddbac3d110f25"
 }

@@ -87,6 +87,12 @@ pub(crate) fn identity_error_response(error: IdentityError, message: &str) -> Re
         IdentityError::InvitationError(msg) => {
             (StatusCode::BAD_REQUEST, Json(json!({ "error": msg })))
         }
+        IdentityError::CannotDeleteOrganization(msg) => {
+            (StatusCode::CONFLICT, Json(json!({ "error": msg })))
+        }
+        IdentityError::OrganizationConflict(msg) => {
+            (StatusCode::CONFLICT, Json(json!({ "error": msg })))
+        }
         IdentityError::Database(err) => {
             tracing::error!(?err, "identity sync failed");
             (

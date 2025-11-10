@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                id AS \"id!\",\n                slug AS \"slug!\",\n                created_at AS \"created_at!\",\n                updated_at AS \"updated_at!\"\n            FROM organizations\n            WHERE id = $1\n            ",
+  "query": "\n            SELECT\n                id          AS \"id!\",\n                name        AS \"name!\",\n                slug        AS \"slug!\",\n                created_at  AS \"created_at!\",\n                updated_at  AS \"updated_at!\"\n            FROM organizations\n            WHERE id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -10,16 +10,21 @@
       },
       {
         "ordinal": 1,
-        "name": "slug!",
+        "name": "name!",
         "type_info": "Text"
       },
       {
         "ordinal": 2,
+        "name": "slug!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
         "name": "created_at!",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 3,
+        "ordinal": 4,
         "name": "updated_at!",
         "type_info": "Timestamptz"
       }
@@ -33,8 +38,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "c31a9cb2b7457e919e9f14d35b120b601b0c8aa7bed89cec63bf487c0ddf9a06"
+  "hash": "854228dc0fc01d0fa5cc5208267a2ad8da15e103c1665c39e8eda27227be57ec"
 }

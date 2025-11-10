@@ -176,8 +176,15 @@ impl DeviceFlowService {
 
         let identity_repo = IdentityRepository::new(&self.pool);
         let user = identity_repo.fetch_user(&session.user_id).await?;
+        
+        let display_name_for_org = user
+            .first_name
+            .as_deref()
+            .or(user.username.as_deref())
+            .or(Some(&session.user_id));
+
         let organization = identity_repo
-            .ensure_personal_org_and_admin_membership(&session.user_id, user.username.as_deref())
+            .ensure_personal_org_and_admin_membership(&session.user_id, display_name_for_org)
             .await?;
 
         let token = self.jwt.encode(&session, &user, &organization)?;
@@ -365,8 +372,13 @@ impl DeviceFlowService {
             })
             .await?;
 
+        let display_name_for_org = first_name
+            .as_deref()
+            .or(username.as_deref())
+            .or(Some(&user_id));
+
         let organization = identity_repo
-            .ensure_personal_org_and_admin_membership(&user.id, username.as_deref())
+            .ensure_personal_org_and_admin_membership(&user.id, display_name_for_org)
             .await?;
 
         account_repo
