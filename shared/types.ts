@@ -68,6 +68,42 @@ export type ProfileResponse = { user_id: string, username: string | null, email:
 
 export type ProviderProfile = { provider: string, username: string | null, display_name: string | null, email: string | null, avatar_url: string | null, };
 
+export type MemberRole = "admin" | "member";
+
+export type Organization = { id: string, name: string, slug: string, created_at: string, updated_at: string, };
+
+export type OrganizationWithRole = { id: string, name: string, slug: string, created_at: string, updated_at: string, user_role: MemberRole, };
+
+export type ListOrganizationsResponse = { organizations: Array<OrganizationWithRole>, };
+
+export type GetOrganizationResponse = { organization: Organization, user_role: string, };
+
+export type CreateOrganizationRequest = { name: string, slug: string, };
+
+export type CreateOrganizationResponse = { organization: OrganizationWithRole, };
+
+export type UpdateOrganizationRequest = { name: string, };
+
+export type Invitation = { id: string, organization_id: string, invited_by_user_id: string | null, email: string, role: MemberRole, status: string, token: string, created_at: string, expires_at: string, };
+
+export type CreateInvitationRequest = { email: string, role: MemberRole, };
+
+export type CreateInvitationResponse = { invitation: Invitation, };
+
+export type ListInvitationsResponse = { invitations: Array<Invitation>, };
+
+export type GetInvitationResponse = { id: string, organization_slug: string, role: MemberRole, expires_at: string, };
+
+export type AcceptInvitationResponse = { organization_id: string, organization_slug: string, role: MemberRole, };
+
+export type OrganizationMember = { user_id: string, role: MemberRole, joined_at: string, };
+
+export type ListMembersResponse = { members: Array<OrganizationMember>, };
+
+export type UpdateMemberRoleRequest = { role: MemberRole, };
+
+export type UpdateMemberRoleResponse = { user_id: string, role: MemberRole, };
+
 export type UserSystemInfo = { config: Config, analytics_user_id: string, login_status: LoginStatus, environment: Environment, 
 /**
  * Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["SESSION_FORK"] })

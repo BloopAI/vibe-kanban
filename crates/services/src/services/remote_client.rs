@@ -14,8 +14,11 @@ use utils::api::{
         ProfileResponse,
     },
     organizations::{
-        CreateOrganizationRequest, CreateOrganizationResponse, GetOrganizationResponse,
-        ListOrganizationsResponse, Organization, UpdateOrganizationRequest,
+        AcceptInvitationResponse, CreateInvitationRequest, CreateInvitationResponse,
+        CreateOrganizationRequest, CreateOrganizationResponse, GetInvitationResponse,
+        GetOrganizationResponse, ListInvitationsResponse, ListMembersResponse,
+        ListOrganizationsResponse, Organization, UpdateMemberRoleRequest, UpdateMemberRoleResponse,
+        UpdateOrganizationRequest,
     },
 };
 use uuid::Uuid;
@@ -201,6 +204,91 @@ impl RemoteClient {
     ) -> Result<(), RemoteClientError> {
         self.delete(&format!("/organizations/{org_id}"), token)
             .await
+    }
+
+    /// Creates an invitation to an organization.
+    pub async fn create_invitation(
+        &self,
+        token: &str,
+        org_id: Uuid,
+        request: &CreateInvitationRequest,
+    ) -> Result<CreateInvitationResponse, RemoteClientError> {
+        self.post_json_with_auth(
+            &format!("/organizations/{org_id}/invitations"),
+            request,
+            token,
+        )
+        .await
+    }
+
+    /// Lists invitations for an organization.
+    pub async fn list_invitations(
+        &self,
+        token: &str,
+        org_id: Uuid,
+    ) -> Result<ListInvitationsResponse, RemoteClientError> {
+        self.get_json(&format!("/organizations/{org_id}/invitations"), Some(token))
+            .await
+    }
+
+    /// Gets an invitation by token (public, no auth required).
+    pub async fn get_invitation(
+        &self,
+        invitation_token: &str,
+    ) -> Result<GetInvitationResponse, RemoteClientError> {
+        self.get_json(&format!("/invitations/{invitation_token}"), None)
+            .await
+    }
+
+    /// Accepts an invitation.
+    pub async fn accept_invitation(
+        &self,
+        token: &str,
+        invitation_token: &str,
+    ) -> Result<AcceptInvitationResponse, RemoteClientError> {
+        self.post_json_with_auth(
+            &format!("/invitations/{invitation_token}/accept"),
+            &serde_json::json!({}),
+            token,
+        )
+        .await
+    }
+
+    /// Lists members of an organization.
+    pub async fn list_members(
+        &self,
+        token: &str,
+        org_id: Uuid,
+    ) -> Result<ListMembersResponse, RemoteClientError> {
+        self.get_json(&format!("/organizations/{org_id}/members"), Some(token))
+            .await
+    }
+
+    /// Removes a member from an organization.
+    pub async fn remove_member(
+        &self,
+        token: &str,
+        org_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<(), RemoteClientError> {
+        self.delete(&format!("/organizations/{org_id}/members/{user_id}"), token)
+            .await
+    }
+
+    /// Updates a member's role in an organization.
+    pub async fn update_member_role(
+        &self,
+        token: &str,
+        org_id: Uuid,
+        user_id: Uuid,
+        request: &UpdateMemberRoleRequest,
+    ) -> Result<UpdateMemberRoleResponse, RemoteClientError> {
+        self.patch_json(
+            &format!("/organizations/{org_id}/members/{user_id}/role"),
+            request,
+            token,
+        )
+        .await
     }
 
     async fn post_json_with_auth<T, B>(
