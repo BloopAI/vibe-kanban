@@ -4,7 +4,7 @@ use sqlx::PgPool;
 
 use crate::{
     activity::ActivityBroker,
-    auth::{DeviceFlowService, JwtService},
+    auth::{JwtService, OAuthHandoffService},
     config::RemoteServerConfig,
 };
 
@@ -14,7 +14,7 @@ pub struct AppState {
     broker: ActivityBroker,
     config: RemoteServerConfig,
     jwt: Arc<JwtService>,
-    device_flow: Arc<DeviceFlowService>,
+    handoff: Arc<OAuthHandoffService>,
 }
 
 impl AppState {
@@ -23,14 +23,14 @@ impl AppState {
         broker: ActivityBroker,
         config: RemoteServerConfig,
         jwt: Arc<JwtService>,
-        device_flow: Arc<DeviceFlowService>,
+        handoff: Arc<OAuthHandoffService>,
     ) -> Self {
         Self {
             pool,
             broker,
             config,
             jwt,
-            device_flow,
+            handoff,
         }
     }
 
@@ -50,7 +50,7 @@ impl AppState {
         Arc::clone(&self.jwt)
     }
 
-    pub fn device_flow(&self) -> Arc<DeviceFlowService> {
-        Arc::clone(&self.device_flow)
+    pub fn handoff(&self) -> Arc<OAuthHandoffService> {
+        Arc::clone(&self.handoff)
     }
 }

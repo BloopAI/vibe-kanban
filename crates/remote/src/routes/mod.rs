@@ -42,8 +42,10 @@ pub fn router(state: AppState) -> Router {
 
     let public = Router::<AppState>::new()
         .route("/health", get(health))
-        .route("/oauth/device/init", post(oauth::device_init))
-        .route("/oauth/device/poll", post(oauth::device_poll));
+        .route("/oauth/web/init", post(oauth::web_init))
+        .route("/oauth/web/redeem", post(oauth::web_redeem))
+        .route("/oauth/{provider}/start", get(oauth::authorize_start))
+        .route("/oauth/{provider}/callback", get(oauth::authorize_callback));
 
     let protected = Router::<AppState>::new()
         .route("/v1/activity", get(activity::get_activity_stream))

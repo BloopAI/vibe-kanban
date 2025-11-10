@@ -7,7 +7,7 @@ use crate::{
     AppState,
     activity::ActivityBroker,
     auth::{
-        DeviceFlowService, GitHubDeviceProvider, GoogleDeviceProvider, JwtService, ProviderRegistry,
+        GitHubOAuthProvider, GoogleOAuthProvider, JwtService, OAuthHandoffService, ProviderRegistry,
     },
     config::RemoteServerConfig,
     db, routes,
@@ -40,14 +40,14 @@ impl Server {
         let mut registry = ProviderRegistry::new();
 
         if let Some(github) = auth_config.github() {
-            registry.register(GitHubDeviceProvider::new(
+            registry.register(GitHubOAuthProvider::new(
                 github.client_id().to_string(),
                 github.client_secret().clone(),
             )?);
         }
 
         if let Some(google) = auth_config.google() {
-            registry.register(GoogleDeviceProvider::new(
+            registry.register(GoogleOAuthProvider::new(
                 google.client_id().to_string(),
                 google.client_secret().clone(),
             )?);
@@ -59,10 +59,11 @@ impl Server {
 
         let registry = Arc::new(registry);
 
-        let device_flow = Arc::new(DeviceFlowService::new(
+        let handoff_service = Arc::new(OAuthHandoffService::new(
             pool.clone(),
             registry.clone(),
             jwt.clone(),
+            auth_config.public_base_url().to_string(),
         ));
 
         let state = AppState::new(
@@ -70,7 +71,7 @@ impl Server {
             broker.clone(),
             config.clone(),
             jwt,
-            device_flow,
+            handoff_service,
         );
 
         let listener =

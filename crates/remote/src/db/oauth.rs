@@ -1,14 +1,15 @@
 use std::str::FromStr;
 
 use chrono::{DateTime, Utc};
-use sqlx::{PgPool, query_as};
+use sqlx::PgPool;
 use thiserror::Error;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AuthorizationStatus {
     Pending,
-    Success,
+    Authorized,
+    Redeemed,
     Error,
     Expired,
 }
@@ -17,7 +18,8 @@ impl AuthorizationStatus {
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Pending => "pending",
-            Self::Success => "success",
+            Self::Authorized => "authorized",
+            Self::Redeemed => "redeemed",
             Self::Error => "error",
             Self::Expired => "expired",
         }
@@ -30,7 +32,8 @@ impl FromStr for AuthorizationStatus {
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         match input {
             "pending" => Ok(Self::Pending),
-            "success" => Ok(Self::Success),
+            "authorized" => Ok(Self::Authorized),
+            "redeemed" => Ok(Self::Redeemed),
             "error" => Ok(Self::Error),
             "expired" => Ok(Self::Expired),
             _ => Err(()),
@@ -39,136 +42,157 @@ impl FromStr for AuthorizationStatus {
 }
 
 #[derive(Debug, Error)]
-pub enum DeviceAuthorizationError {
-    #[error("device authorization not found")]
+pub enum OAuthHandoffError {
+    #[error("oauth handoff not found")]
     NotFound,
     #[error(transparent)]
     Database(#[from] sqlx::Error),
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
-pub struct DeviceAuthorization {
+pub struct OAuthHandoff {
     pub id: Uuid,
     pub provider: String,
-    pub device_code: String,
-    pub user_code: String,
-    pub verification_uri: String,
-    pub verification_uri_complete: Option<String>,
-    pub expires_at: DateTime<Utc>,
-    pub polling_interval: i32,
-    pub last_polled_at: Option<DateTime<Utc>>,
+    pub state: String,
+    pub return_to: String,
+    pub app_challenge: String,
+    pub app_code_hash: Option<String>,
     pub status: String,
     pub error_code: Option<String>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-    pub completed_at: Option<DateTime<Utc>>,
+    pub expires_at: DateTime<Utc>,
+    pub authorized_at: Option<DateTime<Utc>>,
+    pub redeemed_at: Option<DateTime<Utc>>,
     pub user_id: Option<String>,
     pub session_id: Option<Uuid>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
-impl DeviceAuthorization {
+impl OAuthHandoff {
     pub fn status(&self) -> Option<AuthorizationStatus> {
         AuthorizationStatus::from_str(&self.status).ok()
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct CreateDeviceAuthorization<'a> {
+pub struct CreateOAuthHandoff<'a> {
     pub provider: &'a str,
-    pub device_code: &'a str,
-    pub user_code: &'a str,
-    pub verification_uri: &'a str,
-    pub verification_uri_complete: Option<&'a str>,
+    pub state: &'a str,
+    pub return_to: &'a str,
+    pub app_challenge: &'a str,
     pub expires_at: DateTime<Utc>,
-    pub polling_interval: i32,
 }
 
-pub struct DeviceAuthorizationRepository<'a> {
+pub struct OAuthHandoffRepository<'a> {
     pool: &'a PgPool,
 }
 
-impl<'a> DeviceAuthorizationRepository<'a> {
+impl<'a> OAuthHandoffRepository<'a> {
     pub fn new(pool: &'a PgPool) -> Self {
         Self { pool }
     }
 
     pub async fn create(
         &self,
-        data: CreateDeviceAuthorization<'_>,
-    ) -> Result<DeviceAuthorization, DeviceAuthorizationError> {
-        query_as!(
-            DeviceAuthorization,
+        data: CreateOAuthHandoff<'_>,
+    ) -> Result<OAuthHandoff, OAuthHandoffError> {
+        sqlx::query_as!(
+            OAuthHandoff,
             r#"
-            INSERT INTO oauth_device_authorizations (
+            INSERT INTO oauth_handoffs (
                 provider,
-                device_code,
-                user_code,
-                verification_uri,
-                verification_uri_complete,
-                expires_at,
-                polling_interval
+                state,
+                return_to,
+                app_challenge,
+                expires_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            VALUES ($1, $2, $3, $4, $5)
             RETURNING
-                id                      AS "id!",
-                provider                AS "provider!",
-                device_code             AS "device_code!",
-                user_code               AS "user_code!",
-                verification_uri        AS "verification_uri!",
-                verification_uri_complete AS "verification_uri_complete?",
-                expires_at              AS "expires_at!",
-                polling_interval        AS "polling_interval!",
-                last_polled_at          AS "last_polled_at?",
-                status                  AS "status!",
-                error_code              AS "error_code?",
-                created_at              AS "created_at!",
-                updated_at              AS "updated_at!",
-                completed_at            AS "completed_at?",
-                user_id                 AS "user_id?",
-                session_id              AS "session_id?"
+                id              AS "id!",
+                provider        AS "provider!",
+                state           AS "state!",
+                return_to       AS "return_to!",
+                app_challenge   AS "app_challenge!",
+                app_code_hash   AS "app_code_hash?",
+                status          AS "status!",
+                error_code      AS "error_code?",
+                expires_at      AS "expires_at!",
+                authorized_at   AS "authorized_at?",
+                redeemed_at     AS "redeemed_at?",
+                user_id         AS "user_id?",
+                session_id      AS "session_id?",
+                created_at      AS "created_at!",
+                updated_at      AS "updated_at!"
             "#,
             data.provider,
-            data.device_code,
-            data.user_code,
-            data.verification_uri,
-            data.verification_uri_complete,
+            data.state,
+            data.return_to,
+            data.app_challenge,
             data.expires_at,
-            data.polling_interval
         )
         .fetch_one(self.pool)
         .await
-        .map_err(DeviceAuthorizationError::from)
+        .map_err(OAuthHandoffError::from)
     }
 
-    pub async fn get(&self, id: Uuid) -> Result<DeviceAuthorization, DeviceAuthorizationError> {
-        query_as!(
-            DeviceAuthorization,
+    pub async fn get(&self, id: Uuid) -> Result<OAuthHandoff, OAuthHandoffError> {
+        sqlx::query_as!(
+            OAuthHandoff,
             r#"
             SELECT
-                id                      AS "id!",
-                provider                AS "provider!",
-                device_code             AS "device_code!",
-                user_code               AS "user_code!",
-                verification_uri        AS "verification_uri!",
-                verification_uri_complete AS "verification_uri_complete?",
-                expires_at              AS "expires_at!",
-                polling_interval        AS "polling_interval!",
-                last_polled_at          AS "last_polled_at?",
-                status                  AS "status!",
-                error_code              AS "error_code?",
-                created_at              AS "created_at!",
-                updated_at              AS "updated_at!",
-                completed_at            AS "completed_at?",
-                user_id                 AS "user_id?",
-                session_id              AS "session_id?"
-            FROM oauth_device_authorizations
+                id              AS "id!",
+                provider        AS "provider!",
+                state           AS "state!",
+                return_to       AS "return_to!",
+                app_challenge   AS "app_challenge!",
+                app_code_hash   AS "app_code_hash?",
+                status          AS "status!",
+                error_code      AS "error_code?",
+                expires_at      AS "expires_at!",
+                authorized_at   AS "authorized_at?",
+                redeemed_at     AS "redeemed_at?",
+                user_id         AS "user_id?",
+                session_id      AS "session_id?",
+                created_at      AS "created_at!",
+                updated_at      AS "updated_at!"
+            FROM oauth_handoffs
             WHERE id = $1
             "#,
             id
         )
         .fetch_optional(self.pool)
         .await?
-        .ok_or(DeviceAuthorizationError::NotFound)
+        .ok_or(OAuthHandoffError::NotFound)
+    }
+
+    pub async fn get_by_state(&self, state: &str) -> Result<OAuthHandoff, OAuthHandoffError> {
+        sqlx::query_as!(
+            OAuthHandoff,
+            r#"
+            SELECT
+                id              AS "id!",
+                provider        AS "provider!",
+                state           AS "state!",
+                return_to       AS "return_to!",
+                app_challenge   AS "app_challenge!",
+                app_code_hash   AS "app_code_hash?",
+                status          AS "status!",
+                error_code      AS "error_code?",
+                expires_at      AS "expires_at!",
+                authorized_at   AS "authorized_at?",
+                redeemed_at     AS "redeemed_at?",
+                user_id         AS "user_id?",
+                session_id      AS "session_id?",
+                created_at      AS "created_at!",
+                updated_at      AS "updated_at!"
+            FROM oauth_handoffs
+            WHERE state = $1
+            "#,
+            state
+        )
+        .fetch_optional(self.pool)
+        .await?
+        .ok_or(OAuthHandoffError::NotFound)
     }
 
     pub async fn set_status(
@@ -176,10 +200,10 @@ impl<'a> DeviceAuthorizationRepository<'a> {
         id: Uuid,
         status: AuthorizationStatus,
         error_code: Option<&str>,
-    ) -> Result<(), DeviceAuthorizationError> {
+    ) -> Result<(), OAuthHandoffError> {
         sqlx::query!(
             r#"
-            UPDATE oauth_device_authorizations
+            UPDATE oauth_handoffs
             SET
                 status = $2,
                 error_code = $3,
@@ -195,59 +219,47 @@ impl<'a> DeviceAuthorizationRepository<'a> {
         Ok(())
     }
 
-    pub async fn mark_completed(
+    pub async fn mark_authorized(
         &self,
         id: Uuid,
         user_id: &str,
         session_id: Uuid,
-    ) -> Result<(), DeviceAuthorizationError> {
+        app_code_hash: &str,
+    ) -> Result<(), OAuthHandoffError> {
         sqlx::query!(
             r#"
-            UPDATE oauth_device_authorizations
+            UPDATE oauth_handoffs
             SET
-                status = 'success',
+                status = 'authorized',
+                error_code = NULL,
                 user_id = $2,
                 session_id = $3,
-                completed_at = NOW(),
+                app_code_hash = $4,
+                authorized_at = NOW(),
                 updated_at = NOW()
             WHERE id = $1
             "#,
             id,
             user_id,
-            session_id
+            session_id,
+            app_code_hash
         )
         .execute(self.pool)
         .await?;
         Ok(())
     }
 
-    pub async fn record_poll(&self, id: Uuid) -> Result<(), DeviceAuthorizationError> {
+    pub async fn mark_redeemed(&self, id: Uuid) -> Result<(), OAuthHandoffError> {
         sqlx::query!(
             r#"
-            UPDATE oauth_device_authorizations
-            SET last_polled_at = NOW(), updated_at = NOW()
+            UPDATE oauth_handoffs
+            SET
+                status = 'redeemed',
+                redeemed_at = NOW(),
+                updated_at = NOW()
             WHERE id = $1
             "#,
             id
-        )
-        .execute(self.pool)
-        .await?;
-        Ok(())
-    }
-
-    pub async fn update_interval(
-        &self,
-        id: Uuid,
-        interval: i32,
-    ) -> Result<(), DeviceAuthorizationError> {
-        sqlx::query!(
-            r#"
-            UPDATE oauth_device_authorizations
-            SET polling_interval = $2, updated_at = NOW()
-            WHERE id = $1
-            "#,
-            id,
-            interval
         )
         .execute(self.pool)
         .await?;

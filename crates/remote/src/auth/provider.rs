@@ -3,37 +3,21 @@ use std::{collections::HashMap, sync::Arc};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use chrono::Duration;
-use reqwest::{Client, StatusCode};
+use reqwest::Client;
 use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
+use url::Url;
 
 const USER_AGENT: &str = "VibeKanbanRemote/1.0";
 
 #[derive(Debug, Clone)]
-pub struct DeviceCodeResponse {
-    pub device_code: String,
-    pub user_code: String,
-    pub verification_uri: String,
-    pub verification_uri_complete: Option<String>,
-    pub expires_in: Duration,
-    pub interval: i32,
-}
-
-#[derive(Debug, Clone)]
-pub struct DeviceAccessGrant {
+pub struct AuthorizationGrant {
     pub access_token: SecretString,
     pub token_type: String,
     pub scopes: Vec<String>,
+    pub refresh_token: Option<SecretString>,
     pub expires_in: Option<Duration>,
-}
-
-#[derive(Debug)]
-pub enum ProviderAuthorization {
-    Pending,
-    SlowDown(u64),
-    Denied,
-    Expired,
-    Authorized(DeviceAccessGrant),
+    pub id_token: Option<SecretString>,
 }
 
 #[derive(Debug)]
@@ -46,17 +30,17 @@ pub struct ProviderUser {
 }
 
 #[async_trait]
-pub trait DeviceAuthorizationProvider: Send + Sync {
+pub trait AuthorizationProvider: Send + Sync {
     fn name(&self) -> &'static str;
     fn scopes(&self) -> &[&str];
-    async fn request_device_code(&self, scopes: &[&str]) -> Result<DeviceCodeResponse>;
-    async fn poll_device_code(&self, device_code: &str) -> Result<ProviderAuthorization>;
+    fn authorize_url(&self, state: &str, redirect_uri: &str) -> Result<Url>;
+    async fn exchange_code(&self, code: &str, redirect_uri: &str) -> Result<AuthorizationGrant>;
     async fn fetch_user(&self, access_token: &SecretString) -> Result<ProviderUser>;
 }
 
 #[derive(Default)]
 pub struct ProviderRegistry {
-    providers: HashMap<String, Arc<dyn DeviceAuthorizationProvider>>,
+    providers: HashMap<String, Arc<dyn AuthorizationProvider>>,
 }
 
 impl ProviderRegistry {
@@ -66,13 +50,13 @@ impl ProviderRegistry {
 
     pub fn register<P>(&mut self, provider: P)
     where
-        P: DeviceAuthorizationProvider + 'static,
+        P: AuthorizationProvider + 'static,
     {
         let key = provider.name().to_lowercase();
         self.providers.insert(key, Arc::new(provider));
     }
 
-    pub fn get(&self, provider: &str) -> Option<Arc<dyn DeviceAuthorizationProvider>> {
+    pub fn get(&self, provider: &str) -> Option<Arc<dyn AuthorizationProvider>> {
         let key = provider.to_lowercase();
         self.providers.get(&key).cloned()
     }
@@ -82,13 +66,13 @@ impl ProviderRegistry {
     }
 }
 
-pub struct GitHubDeviceProvider {
+pub struct GitHubOAuthProvider {
     client: Client,
     client_id: String,
     client_secret: SecretString,
 }
 
-impl GitHubDeviceProvider {
+impl GitHubOAuthProvider {
     pub fn new(client_id: String, client_secret: SecretString) -> Result<Self> {
         let client = Client::builder().user_agent(USER_AGENT).build()?;
         Ok(Self {
@@ -111,29 +95,15 @@ impl GitHubDeviceProvider {
 }
 
 #[derive(Debug, Deserialize)]
-struct GitHubDeviceCode {
-    device_code: String,
-    user_code: String,
-    verification_uri: String,
-    #[serde(default)]
-    verification_uri_complete: Option<String>,
-    expires_in: i64,
-    interval: i32,
-}
-
-#[derive(Debug, Deserialize)]
 #[serde(untagged)]
 enum GitHubTokenResponse {
     Success {
         access_token: String,
-        token_type: String,
         scope: Option<String>,
-        #[serde(default)]
-        expires_in: Option<i64>,
+        token_type: String,
     },
     Error {
         error: String,
-        #[allow(dead_code)]
         error_description: Option<String>,
     },
 }
@@ -155,7 +125,7 @@ struct GitHubEmail {
 }
 
 #[async_trait]
-impl DeviceAuthorizationProvider for GitHubDeviceProvider {
+impl AuthorizationProvider for GitHubOAuthProvider {
     fn name(&self) -> &'static str {
         "github"
     }
@@ -164,32 +134,20 @@ impl DeviceAuthorizationProvider for GitHubDeviceProvider {
         &["repo", "read:user", "user:email"]
     }
 
-    async fn request_device_code(&self, scopes: &[&str]) -> Result<DeviceCodeResponse> {
-        let scope = scopes.join(" ");
-        let response = self
-            .client
-            .post("https://github.com/login/device/code")
-            .header("Accept", "application/json")
-            .form(&[
-                ("client_id", self.client_id.as_str()),
-                ("scope", scope.as_str()),
-            ])
-            .send()
-            .await?
-            .error_for_status()?;
-
-        let body: GitHubDeviceCode = response.json().await?;
-        Ok(DeviceCodeResponse {
-            device_code: body.device_code,
-            user_code: body.user_code,
-            verification_uri: body.verification_uri,
-            verification_uri_complete: body.verification_uri_complete,
-            expires_in: Duration::seconds(body.expires_in),
-            interval: body.interval,
-        })
+    fn authorize_url(&self, state: &str, redirect_uri: &str) -> Result<Url> {
+        let mut url = Url::parse("https://github.com/login/oauth/authorize")?;
+        {
+            let mut qp = url.query_pairs_mut();
+            qp.append_pair("client_id", &self.client_id);
+            qp.append_pair("state", state);
+            qp.append_pair("redirect_uri", redirect_uri);
+            qp.append_pair("allow_signup", "false");
+            qp.append_pair("scope", &self.scopes().join(" "));
+        }
+        Ok(url)
     }
 
-    async fn poll_device_code(&self, device_code: &str) -> Result<ProviderAuthorization> {
+    async fn exchange_code(&self, code: &str, redirect_uri: &str) -> Result<AuthorizationGrant> {
         let response = self
             .client
             .post("https://github.com/login/oauth/access_token")
@@ -197,46 +155,33 @@ impl DeviceAuthorizationProvider for GitHubDeviceProvider {
             .form(&[
                 ("client_id", self.client_id.as_str()),
                 ("client_secret", self.client_secret.expose_secret()),
-                ("device_code", device_code),
-                ("grant_type", "urn:ietf:params:oauth:grant-type:device_code"),
+                ("code", code),
+                ("redirect_uri", redirect_uri),
             ])
             .send()
-            .await?;
+            .await?
+            .error_for_status()?;
 
-        if response.status() == StatusCode::BAD_REQUEST {
-            let body: GitHubTokenResponse = response.json().await?;
-            return Ok(match body {
-                GitHubTokenResponse::Error { error, .. } => match error.as_str() {
-                    "authorization_pending" => ProviderAuthorization::Pending,
-                    "slow_down" => ProviderAuthorization::SlowDown(5),
-                    "access_denied" => ProviderAuthorization::Denied,
-                    "expired_token" => ProviderAuthorization::Expired,
-                    _ => ProviderAuthorization::Denied,
-                },
-                GitHubTokenResponse::Success { .. } => ProviderAuthorization::Denied,
-            });
-        }
-
-        let body: GitHubTokenResponse = response.error_for_status()?.json().await?;
-        match body {
+        match response.json::<GitHubTokenResponse>().await? {
             GitHubTokenResponse::Success {
                 access_token,
-                token_type,
                 scope,
-                expires_in,
-            } => Ok(ProviderAuthorization::Authorized(DeviceAccessGrant {
+                token_type,
+            } => Ok(AuthorizationGrant {
                 access_token: SecretString::new(access_token.into()),
                 token_type,
                 scopes: Self::parse_scopes(scope),
-                expires_in: expires_in.map(Duration::seconds),
-            })),
-            GitHubTokenResponse::Error { error, .. } => match error.as_str() {
-                "authorization_pending" => Ok(ProviderAuthorization::Pending),
-                "slow_down" => Ok(ProviderAuthorization::SlowDown(5)),
-                "access_denied" => Ok(ProviderAuthorization::Denied),
-                "expired_token" => Ok(ProviderAuthorization::Expired),
-                _ => Ok(ProviderAuthorization::Denied),
-            },
+                refresh_token: None,
+                expires_in: None,
+                id_token: None,
+            }),
+            GitHubTokenResponse::Error {
+                error,
+                error_description,
+            } => {
+                let detail = error_description.unwrap_or_else(|| error.clone());
+                anyhow::bail!("github token exchange failed: {detail}")
+            }
         }
     }
 
@@ -289,13 +234,13 @@ impl DeviceAuthorizationProvider for GitHubDeviceProvider {
     }
 }
 
-pub struct GoogleDeviceProvider {
+pub struct GoogleOAuthProvider {
     client: Client,
     client_id: String,
     client_secret: SecretString,
 }
 
-impl GoogleDeviceProvider {
+impl GoogleOAuthProvider {
     pub fn new(client_id: String, client_secret: SecretString) -> Result<Self> {
         let client = Client::builder().user_agent(USER_AGENT).build()?;
         Ok(Self {
@@ -307,20 +252,6 @@ impl GoogleDeviceProvider {
 }
 
 #[derive(Debug, Deserialize)]
-struct GoogleDeviceCode {
-    device_code: String,
-    user_code: String,
-    #[serde(default)]
-    verification_url: Option<String>,
-    #[serde(default)]
-    verification_uri: Option<String>,
-    #[serde(default)]
-    verification_uri_complete: Option<String>,
-    expires_in: i64,
-    interval: Option<i32>,
-}
-
-#[derive(Debug, Deserialize)]
 #[serde(untagged)]
 enum GoogleTokenResponse {
     Success {
@@ -328,10 +259,11 @@ enum GoogleTokenResponse {
         token_type: String,
         scope: Option<String>,
         expires_in: Option<i64>,
+        refresh_token: Option<String>,
+        id_token: Option<String>,
     },
     Error {
         error: String,
-        #[allow(dead_code)]
         error_description: Option<String>,
     },
 }
@@ -339,23 +271,15 @@ enum GoogleTokenResponse {
 #[derive(Debug, Deserialize)]
 struct GoogleUser {
     sub: String,
-    #[serde(default)]
     email: Option<String>,
-    #[serde(default)]
-    #[allow(dead_code)]
-    email_verified: Option<bool>,
-    #[serde(default)]
     name: Option<String>,
-    #[serde(default)]
     given_name: Option<String>,
-    #[serde(default)]
     family_name: Option<String>,
-    #[serde(default)]
     picture: Option<String>,
 }
 
 #[async_trait]
-impl DeviceAuthorizationProvider for GoogleDeviceProvider {
+impl AuthorizationProvider for GoogleOAuthProvider {
     fn name(&self) -> &'static str {
         "google"
     }
@@ -364,82 +288,44 @@ impl DeviceAuthorizationProvider for GoogleDeviceProvider {
         &["openid", "email", "profile"]
     }
 
-    async fn request_device_code(&self, scopes: &[&str]) -> Result<DeviceCodeResponse> {
-        let scope = scopes.join(" ");
-        let response = self
-            .client
-            .post("https://oauth2.googleapis.com/device/code")
-            .form(&[
-                ("client_id", self.client_id.as_str()),
-                ("scope", scope.as_str()),
-            ])
-            .send()
-            .await?
-            .error_for_status()?;
-
-        let body: GoogleDeviceCode = response.json().await?;
-        let verification_uri = body
-            .verification_uri
-            .clone()
-            .or(body.verification_url.clone())
-            .unwrap_or_else(|| "https://www.google.com/device".to_string());
-
-        Ok(DeviceCodeResponse {
-            device_code: body.device_code.clone(),
-            user_code: body.user_code.clone(),
-            verification_uri,
-            verification_uri_complete: body.verification_uri_complete.clone(),
-            expires_in: Duration::seconds(body.expires_in),
-            interval: body.interval.unwrap_or(5),
-        })
+    fn authorize_url(&self, state: &str, redirect_uri: &str) -> Result<Url> {
+        let mut url = Url::parse("https://accounts.google.com/o/oauth2/v2/auth")?;
+        {
+            let mut qp = url.query_pairs_mut();
+            qp.append_pair("client_id", &self.client_id);
+            qp.append_pair("redirect_uri", redirect_uri);
+            qp.append_pair("response_type", "code");
+            qp.append_pair("scope", &self.scopes().join(" "));
+            qp.append_pair("state", state);
+            qp.append_pair("access_type", "offline");
+            qp.append_pair("prompt", "consent");
+        }
+        Ok(url)
     }
 
-    async fn poll_device_code(&self, device_code: &str) -> Result<ProviderAuthorization> {
+    async fn exchange_code(&self, code: &str, redirect_uri: &str) -> Result<AuthorizationGrant> {
         let response = self
             .client
             .post("https://oauth2.googleapis.com/token")
             .form(&[
                 ("client_id", self.client_id.as_str()),
                 ("client_secret", self.client_secret.expose_secret()),
-                ("device_code", device_code),
-                ("grant_type", "urn:ietf:params:oauth:grant-type:device_code"),
+                ("code", code),
+                ("grant_type", "authorization_code"),
+                ("redirect_uri", redirect_uri),
             ])
             .send()
-            .await?;
+            .await?
+            .error_for_status()?;
 
-        match response.status() {
-            StatusCode::BAD_REQUEST => {
-                let body: GoogleTokenResponse = response.json().await?;
-                return Ok(match body {
-                    GoogleTokenResponse::Error { error, .. } => match error.as_str() {
-                        "authorization_pending" => ProviderAuthorization::Pending,
-                        "slow_down" => ProviderAuthorization::SlowDown(5),
-                        "access_denied" => ProviderAuthorization::Denied,
-                        "expired_token" => ProviderAuthorization::Expired,
-                        _ => ProviderAuthorization::Denied,
-                    },
-                    GoogleTokenResponse::Success { .. } => ProviderAuthorization::Denied,
-                });
-            }
-            StatusCode::PRECONDITION_REQUIRED => {
-                return Ok(ProviderAuthorization::SlowDown(5));
-            }
-            StatusCode::FORBIDDEN => {
-                return Ok(ProviderAuthorization::Denied);
-            }
-            other if other.is_server_error() => {
-                return Ok(ProviderAuthorization::Pending);
-            }
-            _ => {}
-        }
-
-        let body: GoogleTokenResponse = response.error_for_status()?.json().await?;
-        match body {
+        match response.json::<GoogleTokenResponse>().await? {
             GoogleTokenResponse::Success {
                 access_token,
                 token_type,
                 scope,
                 expires_in,
+                refresh_token,
+                id_token,
             } => {
                 let scopes = scope
                     .unwrap_or_default()
@@ -450,20 +336,22 @@ impl DeviceAuthorizationProvider for GoogleDeviceProvider {
                     })
                     .collect();
 
-                Ok(ProviderAuthorization::Authorized(DeviceAccessGrant {
+                Ok(AuthorizationGrant {
                     access_token: SecretString::new(access_token.into()),
                     token_type,
                     scopes,
+                    refresh_token: refresh_token.map(|v| SecretString::new(v.into())),
                     expires_in: expires_in.map(Duration::seconds),
-                }))
+                    id_token: id_token.map(|v| SecretString::new(v.into())),
+                })
             }
-            GoogleTokenResponse::Error { error, .. } => match error.as_str() {
-                "authorization_pending" => Ok(ProviderAuthorization::Pending),
-                "slow_down" => Ok(ProviderAuthorization::SlowDown(5)),
-                "access_denied" => Ok(ProviderAuthorization::Denied),
-                "expired_token" => Ok(ProviderAuthorization::Expired),
-                _ => Ok(ProviderAuthorization::Denied),
-            },
+            GoogleTokenResponse::Error {
+                error,
+                error_description,
+            } => {
+                let detail = error_description.unwrap_or_else(|| error.clone());
+                anyhow::bail!("google token exchange failed: {detail}")
+            }
         }
     }
 

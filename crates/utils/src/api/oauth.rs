@@ -2,32 +2,33 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct DeviceInitRequest {
+#[derive(Debug, Serialize, Deserialize, Clone, TS)]
+#[ts(export)]
+pub struct HandoffInitRequest {
     pub provider: String,
+    pub return_to: String,
+    pub app_challenge: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct DeviceInitResponse {
-    pub verification_uri: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub verification_uri_complete: Option<String>,
-    pub user_code: String,
+#[derive(Debug, Serialize, Deserialize, Clone, TS)]
+#[ts(export)]
+pub struct HandoffInitResponse {
     pub handoff_id: Uuid,
+    pub authorize_url: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct DevicePollRequest {
+#[derive(Debug, Serialize, Deserialize, Clone, TS)]
+#[ts(export)]
+pub struct HandoffRedeemRequest {
     pub handoff_id: Uuid,
+    pub app_code: String,
+    pub app_verifier: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct DevicePollResponse {
-    pub status: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub access_token: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
+#[derive(Debug, Serialize, Deserialize, Clone, TS)]
+#[ts(export)]
+pub struct HandoffRedeemResponse {
+    pub access_token: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, TS)]
