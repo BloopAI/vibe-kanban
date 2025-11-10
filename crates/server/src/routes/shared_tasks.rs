@@ -27,7 +27,7 @@ pub struct AssignSharedTaskResponse {
     pub shared_task: SharedTask,
 }
 
-pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
+pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route(
             "/shared-tasks/{shared_task_id}/assign",
@@ -108,9 +108,9 @@ pub async fn delete_shared_task(
         return Err(ApiError::Forbidden("organization context required".into()));
     };
 
-    let shared_task = SharedTask::find_by_id(&deployment.db().pool, shared_task_id)
-        .await?
-        .ok_or_else(|| ApiError::Conflict("shared task not found".into()))?;
+    // let shared_task = SharedTask::find_by_id(&deployment.db().pool, shared_task_id)
+    //     .await?
+    //     .ok_or_else(|| ApiError::Conflict("shared task not found".into()))?;
 
     if false {
         // Auth disabled - org check removed
