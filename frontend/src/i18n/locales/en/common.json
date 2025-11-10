@@ -60,7 +60,28 @@
     "description": "Select an organization to switch to.",
     "loadError": "Failed to load organizations. Please try again.",
     "noOrganizations": "You are not a member of any organizations.",
-    "menuItem": "Organization"
+    "menuItem": "Organization",
+    "loadingPlaceholder": "Loading organizations...",
+    "selectPlaceholder": "Select an organization",
+    "currentBadge": " (current)"
   },
-  "signOut": "Sign out"
+  "signOut": "Sign out",
+  "oauth": {
+    "title": "Sign in with OAuth",
+    "description": "Connect your account using OAuth to access additional features",
+    "continueWithGitHub": "Continue with GitHub",
+    "continueWithGoogle": "Continue with Google",
+    "verifyTitle": "Verify Your Identity",
+    "verifyDescription": "Complete the authentication in your browser",
+    "verificationCode": "Verification Code:",
+    "verificationInstructions": "Click the button below to open your browser and enter the verification code.",
+    "openBrowser": "Open Browser",
+    "waitingForAuth": "Waiting for authentication...",
+    "back": "Back",
+    "successTitle": "Authentication Successful!",
+    "welcomeBack": "Welcome back, {{name}}",
+    "errorTitle": "Authentication Failed",
+    "errorDescription": "There was a problem authenticating your account",
+    "tryAgain": "Try Again"
+  }
 }

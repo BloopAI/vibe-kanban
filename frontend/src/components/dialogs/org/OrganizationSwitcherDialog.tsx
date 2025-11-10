@@ -81,8 +81,8 @@ const OrganizationSwitcherDialog = NiceModal.create(() => {
               <SelectValue
                 placeholder={
                   orgsQuery.isPending
-                    ? 'Loading organizations...'
-                    : 'Select an organization'
+                    ? t('orgSwitcher.loadingPlaceholder')
+                    : t('orgSwitcher.selectPlaceholder')
                 }
               />
             </SelectTrigger>
@@ -90,7 +90,7 @@ const OrganizationSwitcherDialog = NiceModal.create(() => {
               {organizations.map((org) => (
                 <SelectItem key={org.id} value={org.id}>
                   {org.name}
-                  {org.id === currentOrgId ? ' (current)' : ''}
+                  {org.id === currentOrgId ? t('orgSwitcher.currentBadge') : ''}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -99,7 +99,7 @@ const OrganizationSwitcherDialog = NiceModal.create(() => {
           {orgsQuery.isPending && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Loading organizations...
+              {t('orgSwitcher.loadingPlaceholder')}
             </div>
           )}
         </div>
