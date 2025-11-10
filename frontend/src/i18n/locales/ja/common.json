@@ -51,5 +51,16 @@
     "reconnecting": "再接続中",
     "saving": "保存中...",
     "success": "成功"
-  }
+  },
+  "orgMembers": {
+    "moreCount": "他 {{count}} 人"
+  },
+  "orgSwitcher": {
+    "title": "組織を切り替える",
+    "description": "切り替える組織を選択してください。",
+    "loadError": "組織の読み込みに失敗しました。もう一度お試しください。",
+    "noOrganizations": "あなたはどの組織にも所属していません。",
+    "menuItem": "組織"
+  },
+  "signOut": "サインアウト"
 }

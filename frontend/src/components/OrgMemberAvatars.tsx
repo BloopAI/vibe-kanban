@@ -1,5 +1,6 @@
 import { useOrganizationMembers } from '@/hooks/useOrganizationMembers';
 import { UserAvatar } from '@/components/tasks/UserAvatar';
+import { useTranslation } from 'react-i18next';
 
 interface OrgMemberAvatarsProps {
   limit?: number;
@@ -10,6 +11,7 @@ export function OrgMemberAvatars({
   limit = 5,
   className = '',
 }: OrgMemberAvatarsProps) {
+  const { t } = useTranslation('common');
   const { data: members, isPending } = useOrganizationMembers();
 
   if (isPending || !members || members.length === 0) {
@@ -35,7 +37,7 @@ export function OrgMemberAvatars({
       </div>
       {remainingCount > 0 && (
         <span className="ml-2 text-xs text-muted-foreground">
-          +{remainingCount} more
+          {t('orgMembers.moreCount', { count: remainingCount })}
         </span>
       )}
     </div>
