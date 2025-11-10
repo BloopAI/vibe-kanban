@@ -172,25 +172,20 @@ const OAuthDialog = NiceModal.create(() => {
                 <>
                   <div className="space-y-2">
                     <p className="text-sm font-medium">Verification Code:</p>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={state.data.user_code}
-                        readOnly
-                        className="flex-1 text-center text-2xl font-mono font-bold tracking-wider border rounded-md py-3 bg-muted"
-                      />
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-auto px-3"
+                    <div className="relative">
+                      <div
+                        className="flex items-center justify-center w-full text-center text-2xl font-mono font-bold tracking-wider border rounded-md py-3 bg-muted cursor-pointer hover:bg-muted/80 transition-colors"
                         onClick={() => handleCopyCode(state.data.user_code)}
                       >
-                        {isCopied ? (
-                          <Check className="h-5 w-5 text-green-500" />
-                        ) : (
-                          <Copy className="h-5 w-5" />
-                        )}
-                      </Button>
+                        <span>{state.data.user_code}</span>
+                        <div className="absolute right-3">
+                          {isCopied ? (
+                            <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
+                          ) : (
+                            <Copy className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
 
