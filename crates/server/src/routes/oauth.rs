@@ -151,10 +151,9 @@ async fn handoff_complete(
         }
     };
 
-    Ok(simple_html_response(
-        StatusCode::OK,
-        format!("Signed in with {provider}. You can close this window and return to the app."),
-    ))
+    Ok(close_window_response(format!(
+        "Signed in with {provider}. You can return to the app."
+    )))
 }
 
 async fn logout(State(deployment): State<DeploymentImpl>) -> Result<StatusCode, ApiError> {
@@ -228,6 +227,38 @@ fn simple_html_response(status: StatusCode, message: String) -> Response<String>
     );
     Response::builder()
         .status(status)
+        .header("content-type", "text/html; charset=utf-8")
+        .body(body)
+        .unwrap()
+}
+
+fn close_window_response(message: String) -> Response<String> {
+    let body = format!(
+        "<!doctype html>\
+         <html>\
+           <head>\
+             <meta charset=\"utf-8\">\
+             <title>Authentication Complete</title>\
+             <script>\
+               window.addEventListener('load', () => {{\
+                 try {{ window.close(); }} catch (err) {{}}\
+                 setTimeout(() => {{ window.close(); }}, 150);\
+               }});\
+             </script>\
+             <style>\
+               body {{ font-family: sans-serif; margin: 3rem; color: #1f2933; }}\
+             </style>\
+           </head>\
+           <body>\
+             <h1>{}</h1>\
+             <p>If this window does not close automatically, you may close it manually.</p>\
+           </body>\
+         </html>",
+        message
+    );
+
+    Response::builder()
+        .status(StatusCode::OK)
         .header("content-type", "text/html; charset=utf-8")
         .body(body)
         .unwrap()
