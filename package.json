@@ -26,7 +26,8 @@
     "generate-types:check": "cargo run --bin generate_types -- --check",
     "prepare-db": "node scripts/prepare-db.js",
     "build:npx": "bash ./local-build.sh",
-    "prepack": "npm run build:npx"
+    "prepack": "npm run build:npx",
+    "remote:dev": "cd crates/remote && docker compose --env-file .env.remote up --build ; docker compose down -v"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
