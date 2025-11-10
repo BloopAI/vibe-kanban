@@ -229,16 +229,6 @@ export function Navbar() {
                 variant="ghost"
                 size="icon"
                 className="h-9 w-9"
-                onClick={handleOpenOAuth}
-                aria-label="OAuth Sign In"
-              >
-                <LogIn className="h-4 w-4" />
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9"
                 asChild
                 aria-label="Settings"
               >
@@ -311,6 +301,11 @@ export function Navbar() {
                           Sign in
                         </button>
                       </SignInButton>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem onSelect={handleOpenOAuth}>
+                      <LogIn className="mr-2 h-4 w-4" />
+                      Sign in with OAuth
                     </DropdownMenuItem>
                   </SignedOut>
 
