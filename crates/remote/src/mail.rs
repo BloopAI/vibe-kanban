@@ -31,7 +31,7 @@ impl Mailer for NoopMailer {
             MemberRole::Member => "member",
         };
         let inviter = invited_by.unwrap_or("someone");
-        
+
         tracing::info!(
             "STUB: Would send invitation email to {email}\n\
              Organization: {org_slug}\n\

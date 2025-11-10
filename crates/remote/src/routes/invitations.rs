@@ -1,20 +1,19 @@
 use axum::{
+    Json,
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
-    Json,
 };
 use chrono::{Duration, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use super::error::ErrorResponse;
 use crate::{
+    AppState,
     auth::RequestContext,
     db::identity::{IdentityRepository, Invitation, MemberRole},
-    AppState,
 };
-
-use super::error::ErrorResponse;
 
 #[derive(Debug, Deserialize)]
 pub struct CreateInvitationRequest {
@@ -149,7 +148,10 @@ pub async fn get_invitation(
         .fetch_organization(&invitation.organization_id)
         .await
         .map_err(|_| {
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Failed to fetch organization")
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to fetch organization",
+            )
         })?;
 
     Ok(Json(GetInvitationResponse {

@@ -343,10 +343,7 @@ impl<'a> IdentityRepository<'a> {
         Ok(invitations)
     }
 
-    pub async fn get_invitation_by_token(
-        &self,
-        token: &str,
-    ) -> Result<Invitation, IdentityError> {
+    pub async fn get_invitation_by_token(&self, token: &str) -> Result<Invitation, IdentityError> {
         sqlx::query_as!(
             Invitation,
             r#"

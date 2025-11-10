@@ -68,9 +68,10 @@ impl Server {
         ));
 
         let mailer = Arc::new(NoopMailer);
-        let base_url = config.base_url.clone().unwrap_or_else(|| {
-            format!("http://{}", config.listen_addr)
-        });
+        let base_url = config
+            .base_url
+            .clone()
+            .unwrap_or_else(|| format!("http://{}", config.listen_addr));
 
         let state = AppState::new(
             pool.clone(),
