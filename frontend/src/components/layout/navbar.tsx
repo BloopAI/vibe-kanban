@@ -127,8 +127,11 @@ export function Navbar() {
     handleOpenInEditor();
   };
 
-  const handleOpenOAuth = () => {
-    void NiceModal.show(OAuthDialog);
+  const handleOpenOAuth = async () => {
+    const profile = await NiceModal.show(OAuthDialog);
+    if (profile) {
+      await reloadSystem();
+    }
   };
 
   const handleOAuthLogout = async () => {
@@ -317,10 +320,12 @@ export function Navbar() {
                       </SignInButton>
                     </DropdownMenuItem>
 
-                    <DropdownMenuItem onSelect={handleOpenOAuth}>
-                      <LogIn className="mr-2 h-4 w-4" />
-                      Sign in with OAuth
-                    </DropdownMenuItem>
+                    {!isOAuthLoggedIn && (
+                      <DropdownMenuItem onSelect={handleOpenOAuth}>
+                        <LogIn className="mr-2 h-4 w-4" />
+                        Sign in with OAuth
+                      </DropdownMenuItem>
+                    )}
                   </SignedOut>
 
                   <SignedIn>
