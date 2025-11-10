@@ -48,6 +48,8 @@ import {
 } from '@/components/ui/tooltip';
 import NiceModal from '@ebay/nice-modal-react';
 import { OrganizationSwitcherDialog, OAuthDialog } from '@/components/dialogs';
+import { useUserSystem } from '@/components/config-provider';
+import { oauthApi } from '@/lib/api';
 
 const INTERNAL_NAV = [{ label: 'Projects', icon: FolderOpen, to: '/projects' }];
 
@@ -88,6 +90,7 @@ export function Navbar() {
   const { data: onlineCount } = useDiscordOnlineCount();
   const { signOut, openUserProfile } = useClerk();
   const { organization } = useOrganization();
+  const { loginStatus, reloadSystem } = useUserSystem();
 
   const setSearchBarRef = useCallback(
     (node: HTMLInputElement | null) => {
@@ -127,6 +130,17 @@ export function Navbar() {
   const handleOpenOAuth = () => {
     void NiceModal.show(OAuthDialog);
   };
+
+  const handleOAuthLogout = async () => {
+    try {
+      await oauthApi.logout();
+      await reloadSystem();
+    } catch (err) {
+      console.error('Error logging out:', err);
+    }
+  };
+
+  const isOAuthLoggedIn = loginStatus?.status === 'loggedin';
 
   return (
     <div className="border-b bg-background">
@@ -329,6 +343,13 @@ export function Navbar() {
                       Sign out
                     </DropdownMenuItem>
                   </SignedIn>
+
+                  {isOAuthLoggedIn && (
+                    <DropdownMenuItem onSelect={handleOAuthLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Sign out (OAuth)
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
