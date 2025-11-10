@@ -60,11 +60,8 @@ impl JwtService {
             iat: Utc::now().timestamp(),
         };
 
-        let token = encode(
-            &Header::new(Algorithm::HS256),
-            &claims,
-            &EncodingKey::from_secret(self.secret.expose_secret().as_bytes()),
-        )?;
+        let encoding_key = EncodingKey::from_base64_secret(self.secret.expose_secret())?;
+        let token = encode(&Header::new(Algorithm::HS256), &claims, &encoding_key)?;
 
         Ok(token)
     }
@@ -79,11 +76,8 @@ impl JwtService {
         validation.validate_nbf = false;
         validation.required_spec_claims = HashSet::from(["sub".to_string()]);
 
-        let data = decode::<JwtClaims>(
-            token,
-            &DecodingKey::from_secret(self.secret.expose_secret().as_bytes()),
-            &validation,
-        )?;
+        let decoding_key = DecodingKey::from_base64_secret(self.secret.expose_secret())?;
+        let data = decode::<JwtClaims>(token, &decoding_key, &validation)?;
 
         let claims = data.claims;
         Ok(JwtIdentity {
