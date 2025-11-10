@@ -51,6 +51,13 @@ pub struct LocalDeployment {
     share_sync_handle: Arc<Mutex<Option<RemoteSyncHandle>>>,
     remote_client: Option<Arc<RemoteClient>>,
     auth_context: AuthContext,
+    oauth_handoffs: Arc<RwLock<HashMap<Uuid, PendingHandoff>>>,
+}
+
+#[derive(Debug, Clone)]
+struct PendingHandoff {
+    provider: String,
+    app_verifier: String,
 }
 
 #[async_trait]
@@ -141,6 +148,9 @@ impl Deployment for LocalDeployment {
         let profile_cache = Arc::new(RwLock::new(None));
         let auth_context = AuthContext::new(oauth_credentials.clone(), profile_cache.clone());
 
+        // In-memory storage for pending OAuth handoffs
+        let oauth_handoffs = Arc::new(RwLock::new(HashMap::new()));
+
         // Populate the handle once the sync task is started
         let share_sync_handle = Arc::new(Mutex::new(None));
         let mut share_publisher: Option<SharePublisher> = None;
@@ -208,6 +218,7 @@ impl Deployment for LocalDeployment {
             share_sync_handle: share_sync_handle.clone(),
             remote_client,
             auth_context,
+            oauth_handoffs,
         };
 
         if let Some(sc) = share_sync_config {
@@ -328,5 +339,28 @@ impl LocalDeployment {
             }
             Err(_) => LoginStatus::LoggedOut,
         }
+    }
+
+    pub async fn store_oauth_handoff(
+        &self,
+        handoff_id: Uuid,
+        provider: String,
+        app_verifier: String,
+    ) {
+        self.oauth_handoffs.write().await.insert(
+            handoff_id,
+            PendingHandoff {
+                provider,
+                app_verifier,
+            },
+        );
+    }
+
+    pub async fn take_oauth_handoff(&self, handoff_id: &Uuid) -> Option<(String, String)> {
+        self.oauth_handoffs
+            .write()
+            .await
+            .remove(handoff_id)
+            .map(|state| (state.provider, state.app_verifier))
     }
 }

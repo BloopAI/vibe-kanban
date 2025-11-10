@@ -29,3 +29,5 @@ utils = { path = "../utils" }
 uuid = { version = "1", features = ["serde", "v4"] }
 jsonwebtoken = "9"
 rand = { version = "0.8", features = ["std"] }
+sha2 = "0.10"
+url = "2.5"

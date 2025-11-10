@@ -44,6 +44,8 @@ mime_guess = "2.0"
 rust-embed = "8.2"
 axum-extra = { version = "0.9", features = ["typed-header"] }
 url = "2.5"
+rand = { version = "0.8", features = ["std"] }
+sha2 = "0.10"
 
 [build-dependencies]
 dotenv = "0.15"

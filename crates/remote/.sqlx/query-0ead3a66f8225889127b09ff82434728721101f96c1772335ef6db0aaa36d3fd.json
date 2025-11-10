@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE oauth_handoffs\n            SET\n                status = 'redeemed',\n                redeemed_at = NOW(),\n                updated_at = NOW()\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0ead3a66f8225889127b09ff82434728721101f96c1772335ef6db0aaa36d3fd"
+}

@@ -1,9 +1,9 @@
-mod device;
+mod handoff;
 mod jwt;
 mod middleware;
 mod provider;
 
-pub use device::{DeviceFlowError, DeviceFlowPollStatus, DeviceFlowService};
+pub use handoff::{CallbackResult, HandoffError, OAuthHandoffService};
 pub use jwt::{JwtError, JwtIdentity, JwtService};
 pub use middleware::{RequestContext, require_session};
-pub use provider::{GitHubDeviceProvider, GoogleDeviceProvider, ProviderRegistry};
+pub use provider::{GitHubOAuthProvider, GoogleOAuthProvider, ProviderRegistry};

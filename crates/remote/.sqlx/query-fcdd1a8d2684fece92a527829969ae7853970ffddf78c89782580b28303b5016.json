@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE oauth_handoffs\n            SET\n                status = $2,\n                error_code = $3,\n                updated_at = NOW()\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fcdd1a8d2684fece92a527829969ae7853970ffddf78c89782580b28303b5016"
+}
