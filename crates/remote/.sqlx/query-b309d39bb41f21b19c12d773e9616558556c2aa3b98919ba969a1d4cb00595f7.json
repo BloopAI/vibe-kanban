@@ -1,0 +1,53 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id AS \"id!\",\n                organization_id AS \"organization_id!: Uuid\",\n                github_repository_id AS \"github_repository_id!\",\n                owner AS \"owner!\",\n                name AS \"name!\",\n                created_at AS \"created_at!\"\n            FROM projects\n            WHERE id = $1\n              AND organization_id = $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "organization_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "github_repository_id!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "owner!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "b309d39bb41f21b19c12d773e9616558556c2aa3b98919ba969a1d4cb00595f7"
+}

@@ -419,7 +419,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
             if github_repo_id_changed && let Some(repo_id) = metadata.github_repo_id {
                 let current_profile = self.auth_context().cached_profile().await;
-                let current_user_id = current_profile.as_ref().map(|p| p.user_id.as_str());
+                let current_user_id = current_profile.as_ref().map(|p| p.user_id);
 
                 if let Err(err) = link_shared_tasks_to_project(
                     &self.db().pool,

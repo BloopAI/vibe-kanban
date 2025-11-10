@@ -33,7 +33,7 @@ impl AuthContext {
             if let (Some(creds), Some(profile)) = (creds, profile.as_ref()) {
                 return Some((
                     creds.access_token,
-                    profile.user_id.clone(),
+                    profile.user_id.to_string(),
                     profile.organization_id.clone(),
                 ));
             }

@@ -13,7 +13,9 @@ use crate::{
     AppState, configure_user_scope,
     db::{
         auth::{AuthSessionError, AuthSessionRepository},
-        identity::{IdentityError, IdentityRepository, Organization, User},
+        identity_errors::IdentityError,
+        organizations::{Organization, OrganizationRepository},
+        users::{User, UserRepository},
     },
 };
 
@@ -66,8 +68,8 @@ pub async fn require_session(
         return StatusCode::UNAUTHORIZED.into_response();
     }
 
-    let identity_repo = IdentityRepository::new(pool);
-    let organization = match identity_repo.fetch_organization(&identity.org_id).await {
+    let org_repo = OrganizationRepository::new(pool);
+    let organization = match org_repo.fetch_organization(identity.org_id).await {
         Ok(org) => org,
         Err(IdentityError::NotFound) => {
             warn!("organization `{}` missing", identity.org_id);
@@ -77,9 +79,14 @@ pub async fn require_session(
             warn!(?error, "failed to load organization");
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
+        Err(_) => {
+            warn!("unexpected error loading organization");
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
     };
 
-    let user = match identity_repo.fetch_user(&identity.user_id).await {
+    let user_repo = UserRepository::new(pool);
+    let user = match user_repo.fetch_user(identity.user_id).await {
         Ok(user) => user,
         Err(IdentityError::NotFound) => {
             warn!("user `{}` missing", identity.user_id);
@@ -89,13 +96,13 @@ pub async fn require_session(
             warn!(?error, "failed to load user");
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
+        Err(_) => {
+            warn!("unexpected error loading user");
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
     };
 
-    configure_user_scope(
-        &user.id,
-        user.username.as_deref(),
-        Some(user.email.as_str()),
-    );
+    configure_user_scope(user.id, user.username.as_deref(), Some(user.email.as_str()));
 
     req.extensions_mut().insert(RequestContext {
         organization,

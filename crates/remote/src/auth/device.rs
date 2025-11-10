@@ -19,12 +19,14 @@ use crate::{
     configure_user_scope,
     db::{
         auth::{AuthSessionError, AuthSessionRepository},
-        identity::{IdentityError, IdentityRepository, UpsertUser},
+        identity_errors::IdentityError,
         oauth::{
             AuthorizationStatus, CreateDeviceAuthorization, DeviceAuthorization,
             DeviceAuthorizationError, DeviceAuthorizationRepository,
         },
         oauth_accounts::{OAuthAccountError, OAuthAccountInsert, OAuthAccountRepository},
+        organizations::OrganizationRepository,
+        users::{UpsertUser, UserRepository},
     },
 };
 
@@ -174,18 +176,24 @@ impl DeviceFlowService {
             return Err(DeviceFlowError::Denied);
         }
 
-        let identity_repo = IdentityRepository::new(&self.pool);
-        let user = identity_repo.fetch_user(&session.user_id).await?;
-        let organization_id = personal_org_id(&session.user_id);
-        let organization = identity_repo.fetch_organization(&organization_id).await?;
+        let user_repo = UserRepository::new(&self.pool);
+        let user = user_repo.fetch_user(session.user_id).await?;
+
+        let user_id_string = session.user_id.to_string();
+        let display_name_for_org = user
+            .first_name
+            .as_deref()
+            .or(user.username.as_deref())
+            .or(Some(&user_id_string));
+
+        let org_repo = OrganizationRepository::new(&self.pool);
+        let organization = org_repo
+            .ensure_personal_org_and_admin_membership(session.user_id, display_name_for_org)
+            .await?;
 
         let token = self.jwt.encode(&session, &user, &organization)?;
         session_repo.touch(session.id).await?;
-        configure_user_scope(
-            &user.id,
-            user.username.as_deref(),
-            Some(user.email.as_str()),
-        );
+        configure_user_scope(user.id, user.username.as_deref(), Some(user.email.as_str()));
 
         Ok(DeviceFlowPollResponse {
             status: DeviceFlowPollStatus::Success,
@@ -331,7 +339,7 @@ impl DeviceFlowService {
         };
 
         let account_repo = OAuthAccountRepository::new(&self.pool);
-        let identity_repo = IdentityRepository::new(&self.pool);
+        let user_repo = UserRepository::new(&self.pool);
 
         let email = ensure_email(provider.name(), &user_profile);
         let username = derive_username(provider.name(), &user_profile);
@@ -344,25 +352,19 @@ impl DeviceFlowService {
         let user_id = match existing_account {
             Some(account) => account.user_id,
             None => {
-                if let Some(found) = identity_repo.find_user_by_email(&email).await? {
+                if let Some(found) = user_repo.find_user_by_email(&email).await? {
                     found.id
                 } else {
-                    Uuid::new_v4().to_string()
+                    Uuid::new_v4()
                 }
             }
         };
 
-        let org_id = personal_org_id(&user_id);
-        let org_slug = personal_org_slug(&user_id, username.as_deref());
-        identity_repo
-            .ensure_personal_organization(&org_id, &org_slug)
-            .await?;
-
         let (first_name, last_name) = split_name(user_profile.name.as_deref());
 
-        let user = identity_repo
+        let user = user_repo
             .upsert_user(UpsertUser {
-                id: &user_id,
+                id: user_id,
                 email: &email,
                 first_name: first_name.as_deref(),
                 last_name: last_name.as_deref(),
@@ -370,11 +372,20 @@ impl DeviceFlowService {
             })
             .await?;
 
-        identity_repo.ensure_membership(&org_id, &user.id).await?;
+        let user_id_string = user_id.to_string();
+        let display_name_for_org = first_name
+            .as_deref()
+            .or(username.as_deref())
+            .or(Some(&user_id_string));
+
+        let org_repo = OrganizationRepository::new(&self.pool);
+        let organization = org_repo
+            .ensure_personal_org_and_admin_membership(user.id, display_name_for_org)
+            .await?;
 
         account_repo
             .upsert(OAuthAccountInsert {
-                user_id: &user.id,
+                user_id: user.id,
                 provider: provider.name(),
                 provider_user_id: &user_profile.id,
                 email: Some(email.as_str()),
@@ -386,22 +397,17 @@ impl DeviceFlowService {
 
         let session_secret = generate_session_secret();
         let session_repo = AuthSessionRepository::new(&self.pool);
-        let session = session_repo.create(&user.id, &session_secret).await?;
+        let session = session_repo.create(user.id, &session_secret).await?;
 
-        let organization = identity_repo.fetch_organization(&org_id).await?;
         let token = self.jwt.encode(&session, &user, &organization)?;
         session_repo.touch(session.id).await?;
 
         let oauth_repo = DeviceAuthorizationRepository::new(&self.pool);
         oauth_repo
-            .mark_completed(record.id, &user.id, session.id)
+            .mark_completed(record.id, user.id, session.id)
             .await?;
 
-        configure_user_scope(
-            &user.id,
-            user.username.as_deref(),
-            Some(user.email.as_str()),
-        );
+        configure_user_scope(user.id, user.username.as_deref(), Some(user.email.as_str()));
 
         Ok(DeviceFlowPollResponse {
             status: DeviceFlowPollStatus::Success,
@@ -461,32 +467,6 @@ fn split_name(name: Option<&str>) -> (Option<String>, Option<String>) {
         }
         None => (None, None),
     }
-}
-
-fn personal_org_id(user_id: &str) -> String {
-    format!("org-{user_id}")
-}
-
-fn personal_org_slug(user_id: &str, hint: Option<&str>) -> String {
-    let candidate = hint
-        .and_then(|value| {
-            let trimmed = value.trim();
-            if trimmed.is_empty() {
-                None
-            } else {
-                Some(trimmed)
-            }
-        })
-        .unwrap_or(user_id);
-
-    candidate
-        .chars()
-        .map(|ch| match ch {
-            'A'..='Z' => ch.to_ascii_lowercase(),
-            'a'..='z' | '0'..='9' | '-' => ch,
-            _ => '-',
-        })
-        .collect()
 }
 
 fn generate_session_secret() -> String {

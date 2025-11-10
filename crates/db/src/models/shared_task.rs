@@ -9,13 +9,13 @@ use super::task::TaskStatus;
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
 pub struct SharedTask {
     pub id: Uuid,
-    pub organization_id: String,
+    pub organization_id: Uuid,
     pub project_id: Option<Uuid>,
     pub github_repo_id: Option<i64>,
     pub title: String,
     pub description: Option<String>,
     pub status: TaskStatus,
-    pub assignee_user_id: Option<String>,
+    pub assignee_user_id: Option<Uuid>,
     pub assignee_first_name: Option<String>,
     pub assignee_last_name: Option<String>,
     pub assignee_username: Option<String>,
@@ -30,13 +30,13 @@ pub struct SharedTask {
 #[derive(Debug, Clone)]
 pub struct SharedTaskInput {
     pub id: Uuid,
-    pub organization_id: String,
+    pub organization_id: Uuid,
     pub project_id: Option<Uuid>,
     pub github_repo_id: Option<i64>,
     pub title: String,
     pub description: Option<String>,
     pub status: TaskStatus,
-    pub assignee_user_id: Option<String>,
+    pub assignee_user_id: Option<Uuid>,
     pub assignee_first_name: Option<String>,
     pub assignee_last_name: Option<String>,
     pub assignee_username: Option<String>,
@@ -49,20 +49,20 @@ pub struct SharedTaskInput {
 impl SharedTask {
     pub async fn list_by_organization(
         pool: &SqlitePool,
-        organization_id: &str,
+        organization_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             SharedTask,
             r#"
             SELECT
                 id                         AS "id!: Uuid",
-                organization_id            AS "organization_id!: String",
+                organization_id            AS "organization_id!: Uuid",
                 project_id                 AS "project_id: Uuid",
                 github_repo_id             AS "github_repo_id: i64",
                 title                      AS title,
                 description                AS description,
                 status                     AS "status!: TaskStatus",
-                assignee_user_id           AS "assignee_user_id: String",
+                assignee_user_id           AS "assignee_user_id: Uuid",
                 assignee_first_name        AS "assignee_first_name: String",
                 assignee_last_name         AS "assignee_last_name: String",
                 assignee_username          AS "assignee_username: String",
@@ -89,13 +89,13 @@ impl SharedTask {
             r#"
             SELECT
                 id                         AS "id!: Uuid",
-                organization_id            AS "organization_id!: String",
+                organization_id            AS "organization_id!: Uuid",
                 project_id                 AS "project_id: Uuid",
                 github_repo_id             AS "github_repo_id: i64",
                 title                      AS title,
                 description                AS description,
                 status                     AS "status!: TaskStatus",
-                assignee_user_id           AS "assignee_user_id: String",
+                assignee_user_id           AS "assignee_user_id: Uuid",
                 assignee_first_name        AS "assignee_first_name: String",
                 assignee_last_name         AS "assignee_last_name: String",
                 assignee_username          AS "assignee_username: String",
@@ -155,13 +155,13 @@ impl SharedTask {
                 updated_at          = excluded.updated_at
             RETURNING
                 id                         AS "id!: Uuid",
-                organization_id            AS "organization_id!: String",
+                organization_id            AS "organization_id!: Uuid",
                 project_id                 AS "project_id: Uuid",
                 github_repo_id             AS "github_repo_id: i64",
                 title                      AS title,
                 description                AS description,
                 status                     AS "status!: TaskStatus",
-                assignee_user_id           AS "assignee_user_id: String",
+                assignee_user_id           AS "assignee_user_id: Uuid",
                 assignee_first_name        AS "assignee_first_name: String",
                 assignee_last_name         AS "assignee_last_name: String",
                 assignee_username          AS "assignee_username: String",
@@ -196,13 +196,13 @@ impl SharedTask {
             r#"
             SELECT
                 id                         AS "id!: Uuid",
-                organization_id            AS "organization_id!: String",
+                organization_id            AS "organization_id!: Uuid",
                 project_id                 AS "project_id: Uuid",
                 github_repo_id             AS "github_repo_id: i64",
                 title                      AS title,
                 description                AS description,
                 status                     AS "status!: TaskStatus",
-                assignee_user_id           AS "assignee_user_id: String",
+                assignee_user_id           AS "assignee_user_id: Uuid",
                 assignee_first_name        AS "assignee_first_name: String",
                 assignee_last_name         AS "assignee_last_name: String",
                 assignee_username          AS "assignee_username: String",
@@ -258,13 +258,13 @@ impl SharedTask {
                AND (project_id IS NULL OR project_id != $2)
             RETURNING
                 id                  AS "id!: Uuid",
-                organization_id     AS "organization_id!: String",
+                organization_id     AS "organization_id!: Uuid",
                 project_id          AS "project_id: Uuid",
                 github_repo_id      AS "github_repo_id: i64",
                 title               AS title,
                 description         AS description,
                 status              AS "status!: TaskStatus",
-                assignee_user_id    AS "assignee_user_id: String",
+                assignee_user_id    AS "assignee_user_id: Uuid",
                 assignee_first_name AS "assignee_first_name: String",
                 assignee_last_name  AS "assignee_last_name: String",
                 assignee_username   AS "assignee_username: String",
@@ -288,13 +288,13 @@ impl SharedTask {
             r#"
             SELECT
                 id                         AS "id!: Uuid",
-                organization_id            AS "organization_id!: String",
+                organization_id            AS "organization_id!: Uuid",
                 project_id                 AS "project_id: Uuid",
                 github_repo_id             AS "github_repo_id: i64",
                 title                      AS title,
                 description                AS description,
                 status                     AS "status!: TaskStatus",
-                assignee_user_id           AS "assignee_user_id: String",
+                assignee_user_id           AS "assignee_user_id: Uuid",
                 assignee_first_name        AS "assignee_first_name: String",
                 assignee_last_name         AS "assignee_last_name: String",
                 assignee_username          AS "assignee_username: String",
@@ -314,7 +314,7 @@ impl SharedTask {
 
 #[derive(Debug, Clone, FromRow)]
 pub struct SharedActivityCursor {
-    pub organization_id: String,
+    pub organization_id: Uuid,
     pub last_seq: i64,
     pub updated_at: DateTime<Utc>,
 }
@@ -322,13 +322,13 @@ pub struct SharedActivityCursor {
 impl SharedActivityCursor {
     pub async fn get(
         pool: &SqlitePool,
-        organization_id: String,
+        organization_id: Uuid,
     ) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             SharedActivityCursor,
             r#"
             SELECT
-                organization_id AS "organization_id!: String",
+                organization_id AS "organization_id!: Uuid",
                 last_seq        AS "last_seq!: i64",
                 updated_at      AS "updated_at!: DateTime<Utc>"
             FROM shared_activity_cursors
@@ -342,7 +342,7 @@ impl SharedActivityCursor {
 
     pub async fn upsert(
         pool: &SqlitePool,
-        organization_id: String,
+        organization_id: Uuid,
         last_seq: i64,
     ) -> Result<Self, sqlx::Error> {
         sqlx::query_as!(
@@ -362,7 +362,7 @@ impl SharedActivityCursor {
                 last_seq   = excluded.last_seq,
                 updated_at = excluded.updated_at
             RETURNING
-                organization_id AS "organization_id!: String",
+                organization_id AS "organization_id!: Uuid",
                 last_seq        AS "last_seq!: i64",
                 updated_at      AS "updated_at!: DateTime<Utc>"
             "#,

@@ -12,7 +12,7 @@ pub enum OAuthAccountError {
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct OAuthAccount {
     pub id: Uuid,
-    pub user_id: String,
+    pub user_id: Uuid,
     pub provider: String,
     pub provider_user_id: String,
     pub email: Option<String>,
@@ -25,7 +25,7 @@ pub struct OAuthAccount {
 
 #[derive(Debug, Clone)]
 pub struct OAuthAccountInsert<'a> {
-    pub user_id: &'a str,
+    pub user_id: Uuid,
     pub provider: &'a str,
     pub provider_user_id: &'a str,
     pub email: Option<&'a str>,
@@ -53,7 +53,7 @@ impl<'a> OAuthAccountRepository<'a> {
             r#"
             SELECT
                 id                AS "id!: Uuid",
-                user_id           AS "user_id!",
+                user_id           AS "user_id!: Uuid",
                 provider          AS "provider!",
                 provider_user_id  AS "provider_user_id!",
                 email             AS "email?",
@@ -76,14 +76,14 @@ impl<'a> OAuthAccountRepository<'a> {
 
     pub async fn list_by_user(
         &self,
-        user_id: &str,
+        user_id: Uuid,
     ) -> Result<Vec<OAuthAccount>, OAuthAccountError> {
         sqlx::query_as!(
             OAuthAccount,
             r#"
             SELECT
                 id                AS "id!: Uuid",
-                user_id           AS "user_id!",
+                user_id           AS "user_id!: Uuid",
                 provider          AS "provider!",
                 provider_user_id  AS "provider_user_id!",
                 email             AS "email?",
@@ -129,7 +129,7 @@ impl<'a> OAuthAccountRepository<'a> {
                 updated_at = NOW()
             RETURNING
                 id                AS "id!: Uuid",
-                user_id           AS "user_id!",
+                user_id           AS "user_id!: Uuid",
                 provider          AS "provider!",
                 provider_user_id  AS "provider_user_id!",
                 email             AS "email?",

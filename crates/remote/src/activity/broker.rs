@@ -19,7 +19,7 @@ pub struct ActivityResponse {
 pub struct ActivityEvent {
     pub seq: i64,
     pub event_id: uuid::Uuid,
-    pub organization_id: String,
+    pub organization_id: uuid::Uuid,
     pub event_type: String,
     pub created_at: DateTime<Utc>,
     pub payload: Option<serde_json::Value>,
@@ -29,7 +29,7 @@ impl ActivityEvent {
     pub fn new(
         seq: i64,
         event_id: uuid::Uuid,
-        organization_id: String,
+        organization_id: uuid::Uuid,
         event_type: String,
         created_at: DateTime<Utc>,
         payload: Option<serde_json::Value>,
@@ -70,14 +70,13 @@ impl ActivityBroker {
         }
     }
 
-    pub fn subscribe(&self, organization_id: &str) -> ActivityStream {
-        let index = self.shard_index(organization_id);
+    pub fn subscribe(&self, organization_id: uuid::Uuid) -> ActivityStream {
+        let index = self.shard_index(&organization_id);
         let receiver = self.shards[index].subscribe();
 
-        let org = organization_id.to_string();
         let stream = BroadcastStream::new(receiver).filter_map(move |item| {
             future::ready(match item {
-                Ok(event) if event.organization_id.as_str() == org.as_str() => Some(Ok(event)),
+                Ok(event) if event.organization_id == organization_id => Some(Ok(event)),
                 Ok(_) => None,
                 Err(err) => Some(Err(err)),
             })
@@ -87,13 +86,13 @@ impl ActivityBroker {
     }
 
     pub fn publish(&self, event: ActivityEvent) {
-        let index = self.shard_index(event.organization_id.as_str());
+        let index = self.shard_index(&event.organization_id);
         if let Err(error) = self.shards[index].send(event) {
             tracing::debug!(?error, "no subscribers for activity event");
         }
     }
 
-    fn shard_index(&self, organization_id: &str) -> usize {
+    fn shard_index(&self, organization_id: &uuid::Uuid) -> usize {
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
         organization_id.hash(&mut hasher);
         (hasher.finish() as usize) % self.shards.len()

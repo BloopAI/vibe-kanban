@@ -4,6 +4,7 @@ mod app;
 mod auth;
 pub mod config;
 pub mod db;
+pub mod mail;
 pub mod routes;
 mod state;
 pub mod ws;
@@ -69,7 +70,7 @@ pub fn sentry_init_once() {
     });
 }
 
-pub fn configure_user_scope(user_id: &str, username: Option<&str>, email: Option<&str>) {
+pub fn configure_user_scope(user_id: uuid::Uuid, username: Option<&str>, email: Option<&str>) {
     let mut sentry_user = sentry::User {
         id: Some(user_id.to_string()),
         ..Default::default()

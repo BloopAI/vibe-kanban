@@ -208,6 +208,10 @@ impl From<ShareError> for ApiError {
             ShareError::Git(err) => ApiError::GitService(err),
             ShareError::GitHub(err) => ApiError::GitHubService(err),
             ShareError::MissingAuth => ApiError::Unauthorized,
+            ShareError::InvalidUserId => ApiError::Conflict("Invalid user ID format".to_string()),
+            ShareError::InvalidOrganizationId => {
+                ApiError::Conflict("Invalid organization ID format".to_string())
+            }
         }
     }
 }

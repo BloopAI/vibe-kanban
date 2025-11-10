@@ -23,7 +23,7 @@ use processor::ActivityProcessor;
 pub use publisher::SharePublisher;
 use remote::{
     ServerMessage,
-    db::{identity::UserData as RemoteUserData, tasks::SharedTask as RemoteSharedTask},
+    db::{tasks::SharedTask as RemoteSharedTask, users::UserData as RemoteUserData},
 };
 use sqlx::SqlitePool;
 use thiserror::Error;
@@ -72,6 +72,10 @@ pub enum ShareError {
     GitHub(#[from] GitHubServiceError),
     #[error("share authentication missing or expired")]
     MissingAuth,
+    #[error("invalid user ID format")]
+    InvalidUserId,
+    #[error("invalid organization ID format")]
+    InvalidOrganizationId,
 }
 
 const WS_BACKOFF_BASE_DELAY: Duration = Duration::from_secs(1);
@@ -131,7 +135,7 @@ impl RemoteSync {
         let mut backoff = Backoff::new();
         loop {
             let profile = self.auth_ctx.cached_profile().await;
-            let Some(org_id) = profile.as_ref().map(|p| p.organization_id.clone()) else {
+            let Some(org_id_str) = profile.as_ref().map(|p| p.organization_id.clone()) else {
                 tracing::debug!("No authentication available; waiting before retry");
                 tokio::select! {
                     _ = &mut shutdown_rx => {
@@ -143,7 +147,11 @@ impl RemoteSync {
                 continue;
             };
 
-            let mut last_seq = SharedActivityCursor::get(&self.db.pool, org_id.clone())
+            let org_id = org_id_str
+                .parse::<Uuid>()
+                .map_err(|_| ShareError::InvalidOrganizationId)?;
+
+            let mut last_seq = SharedActivityCursor::get(&self.db.pool, org_id)
                 .await?
                 .map(|cursor| cursor.last_seq);
             last_seq = self.processor.catch_up(last_seq).await.unwrap_or(last_seq);
@@ -358,13 +366,13 @@ pub(super) fn convert_remote_task(
 ) -> SharedTaskInput {
     SharedTaskInput {
         id: task.id,
-        organization_id: task.organization_id.clone(),
+        organization_id: task.organization_id,
         project_id,
         github_repo_id,
         title: task.title.clone(),
         description: task.description.clone(),
         status: status::from_remote(&task.status),
-        assignee_user_id: task.assignee_user_id.clone(),
+        assignee_user_id: task.assignee_user_id,
         assignee_first_name: user.and_then(|u| u.first_name.clone()),
         assignee_last_name: user.and_then(|u| u.last_name.clone()),
         assignee_username: user.and_then(|u| u.username.clone()),
@@ -378,8 +386,8 @@ pub(super) fn convert_remote_task(
 pub(super) async fn sync_local_task_for_shared_task(
     pool: &SqlitePool,
     shared_task: &SharedTask,
-    current_user_id: Option<&str>,
-    creator_user_id: Option<&str>,
+    current_user_id: Option<uuid::Uuid>,
+    creator_user_id: Option<uuid::Uuid>,
 ) -> Result<(), ShareError> {
     let project_id = match shared_task.project_id {
         Some(project_id) => project_id,
@@ -388,10 +396,10 @@ pub(super) async fn sync_local_task_for_shared_task(
 
     let create_task_if_not_exists = {
         let assignee_is_current_user = matches!(
-            (shared_task.assignee_user_id.as_deref(), current_user_id),
+            (shared_task.assignee_user_id.as_ref(), current_user_id.as_ref()),
             (Some(assignee), Some(current)) if assignee == current
         );
-        let creator_is_current_user = matches!((creator_user_id, current_user_id), (Some(creator), Some(current)) if creator == current);
+        let creator_is_current_user = matches!((creator_user_id.as_ref(), current_user_id.as_ref()), (Some(creator), Some(current)) if creator == current);
 
         assignee_is_current_user && !creator_is_current_user
     };
@@ -414,7 +422,7 @@ pub(super) async fn sync_local_task_for_shared_task(
 
 pub async fn link_shared_tasks_to_project(
     pool: &SqlitePool,
-    current_user_id: Option<&str>,
+    current_user_id: Option<uuid::Uuid>,
     project_id: Uuid,
     github_repo_id: i64,
 ) -> Result<(), ShareError> {

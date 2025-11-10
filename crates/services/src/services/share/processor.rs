@@ -21,7 +21,7 @@ use crate::services::auth::AuthContext;
 
 struct PreparedBulkTask {
     input: SharedTaskInput,
-    creator_user_id: Option<String>,
+    creator_user_id: Option<uuid::Uuid>,
 }
 
 /// Processor for handling activity events and synchronizing shared tasks.
@@ -177,12 +177,12 @@ impl ActivityProcessor {
                 let shared_task = SharedTask::upsert(&self.db.pool, input).await?;
 
                 let current_profile = self.auth_ctx.cached_profile().await;
-                let current_user_id = current_profile.as_ref().map(|p| p.user_id.as_str());
+                let current_user_id = current_profile.as_ref().map(|p| p.user_id);
                 sync_local_task_for_shared_task(
                     &self.db.pool,
                     &shared_task,
                     current_user_id,
-                    task.creator_user_id.as_deref(),
+                    task.creator_user_id,
                 )
                 .await?;
             }
@@ -229,12 +229,16 @@ impl ActivityProcessor {
     }
 
     async fn bulk_sync(&self) -> Result<Option<i64>, ShareError> {
-        let org_id = self
+        let org_id_str = self
             .auth_ctx
             .cached_profile()
             .await
             .ok_or(ShareError::MissingAuth)?
             .organization_id;
+
+        let org_id = org_id_str
+            .parse::<Uuid>()
+            .map_err(|_| ShareError::InvalidOrganizationId)?;
 
         let bulk_resp = self.fetch_bulk_snapshot().await?;
         let latest_seq = bulk_resp.latest_seq;
@@ -267,11 +271,11 @@ impl ActivityProcessor {
             );
             replacements.push(PreparedBulkTask {
                 input,
-                creator_user_id: payload.task.creator_user_id.clone(),
+                creator_user_id: payload.task.creator_user_id,
             });
         }
 
-        let mut stale: HashSet<Uuid> = SharedTask::list_by_organization(&self.db.pool, &org_id)
+        let mut stale: HashSet<Uuid> = SharedTask::list_by_organization(&self.db.pool, org_id)
             .await?
             .into_iter()
             .filter_map(|task| {
@@ -293,7 +297,7 @@ impl ActivityProcessor {
         self.remove_stale_tasks(&stale_vec).await?;
 
         let current_profile = self.auth_ctx.cached_profile().await;
-        let current_user_id = current_profile.as_ref().map(|p| p.user_id.as_str());
+        let current_user_id = current_profile.as_ref().map(|p| p.user_id);
 
         for PreparedBulkTask {
             input,
@@ -305,7 +309,7 @@ impl ActivityProcessor {
                 &self.db.pool,
                 &shared_task,
                 current_user_id,
-                creator_user_id.as_deref(),
+                creator_user_id,
             )
             .await?;
         }

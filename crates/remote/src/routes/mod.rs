@@ -2,7 +2,7 @@ use axum::{
     Router,
     http::{Request, header::HeaderName},
     middleware,
-    routing::{delete, get, patch, post},
+    routing::get,
 };
 use tower_http::{
     cors::CorsLayer,
@@ -16,7 +16,9 @@ use crate::{AppState, auth::require_session};
 pub mod activity;
 mod error;
 mod identity;
+mod invitations;
 mod oauth;
+mod organizations;
 mod tasks;
 
 pub fn router(state: AppState) -> Router {
@@ -40,20 +42,19 @@ pub fn router(state: AppState) -> Router {
         .on_response(DefaultOnResponse::new().level(Level::INFO))
         .on_failure(DefaultOnFailure::new().level(Level::ERROR));
 
-    let public = Router::<AppState>::new()
+    let public_top = Router::<AppState>::new()
         .route("/health", get(health))
-        .route("/oauth/device/init", post(oauth::device_init))
-        .route("/oauth/device/poll", post(oauth::device_poll));
+        .merge(oauth::public_router());
 
-    let protected = Router::<AppState>::new()
-        .route("/v1/activity", get(activity::get_activity_stream))
-        .route("/v1/identity", get(identity::get_identity))
-        .route("/v1/tasks/bulk", get(tasks::bulk_shared_tasks))
-        .route("/v1/tasks", post(tasks::create_shared_task))
-        .route("/v1/tasks/{task_id}", patch(tasks::update_shared_task))
-        .route("/v1/tasks/{task_id}", delete(tasks::delete_shared_task))
-        .route("/v1/tasks/{task_id}/assign", post(tasks::assign_task))
-        .route("/profile", get(oauth::profile))
+    let v1_public = Router::<AppState>::new().merge(invitations::public_router());
+
+    let v1_protected = Router::<AppState>::new()
+        .merge(identity::router())
+        .merge(activity::router())
+        .merge(tasks::router())
+        .merge(organizations::router())
+        .merge(invitations::protected_router())
+        .merge(oauth::protected_router())
         .merge(crate::ws::router())
         .layer(middleware::from_fn_with_state(
             state.clone(),
@@ -61,8 +62,9 @@ pub fn router(state: AppState) -> Router {
         ));
 
     Router::<AppState>::new()
-        .merge(public)
-        .merge(protected)
+        .merge(public_top)
+        .nest("/v1", v1_public)
+        .nest("/v1", v1_protected)
         .layer(CorsLayer::permissive())
         .layer(trace_layer)
         .layer(PropagateRequestIdLayer::new(HeaderName::from_static(

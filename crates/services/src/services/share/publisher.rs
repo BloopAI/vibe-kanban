@@ -72,11 +72,13 @@ impl SharePublisher {
         let project = self.ensure_project_metadata(project).await?;
         let project_metadata = project_metadata_for_remote(&project)?;
 
+        let user_uuid = uuid::Uuid::parse_str(&user_id).map_err(|_| ShareError::InvalidUserId)?;
+
         let payload = CreateSharedTaskRequest {
             project: project_metadata,
             title: task.title.clone(),
             description: task.description.clone(),
-            assignee_user_id: Some(user_id),
+            assignee_user_id: Some(user_uuid),
         };
 
         let remote_task = RemoteTaskClient::new(&self.client, &self.config)
@@ -125,8 +127,14 @@ impl SharePublisher {
         version: Option<i64>,
     ) -> Result<SharedTask, ShareError> {
         let (access_token, _user_id, _org_id) = self.wait_for_auth().await?;
+
+        let assignee_uuid = new_assignee_user_id
+            .map(|id| uuid::Uuid::parse_str(&id))
+            .transpose()
+            .map_err(|_| ShareError::InvalidUserId)?;
+
         let payload = AssignSharedTaskRequest {
-            new_assignee_user_id,
+            new_assignee_user_id: assignee_uuid,
             version,
         };
 
@@ -233,7 +241,7 @@ impl SharePublisher {
 
             if github_repo_id_changed && let Some(repo_id) = metadata.github_repo_id {
                 let current_profile = self.auth_ctx.cached_profile().await;
-                let current_user_id = current_profile.as_ref().map(|p| p.user_id.as_str());
+                let current_user_id = current_profile.as_ref().map(|p| p.user_id);
                 if let Err(err) = link_shared_tasks_to_project(
                     &self.db.pool,
                     current_user_id,
