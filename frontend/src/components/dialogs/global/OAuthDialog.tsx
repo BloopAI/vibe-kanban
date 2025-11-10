@@ -89,6 +89,9 @@ const OAuthDialog = NiceModal.create(() => {
   };
 
   const handleClose = () => {
+    stopPolling();
+    setState({ type: 'select' });
+    setIsCopied(false);
     modal.resolve(null);
     modal.hide();
   };
