@@ -1,0 +1,110 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO oauth_handoffs (\n                provider,\n                state,\n                return_to,\n                app_challenge,\n                expires_at\n            )\n            VALUES ($1, $2, $3, $4, $5)\n            RETURNING\n                id              AS \"id!\",\n                provider        AS \"provider!\",\n                state           AS \"state!\",\n                return_to       AS \"return_to!\",\n                app_challenge   AS \"app_challenge!\",\n                app_code_hash   AS \"app_code_hash?\",\n                status          AS \"status!\",\n                error_code      AS \"error_code?\",\n                expires_at      AS \"expires_at!\",\n                authorized_at   AS \"authorized_at?\",\n                redeemed_at     AS \"redeemed_at?\",\n                user_id         AS \"user_id?\",\n                session_id      AS \"session_id?\",\n                created_at      AS \"created_at!\",\n                updated_at      AS \"updated_at!\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "provider!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "state!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "return_to!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "app_challenge!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "app_code_hash?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "status!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "error_code?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "expires_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "authorized_at?",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "redeemed_at?",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "user_id?",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 12,
+        "name": "session_id?",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 13,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 14,
+        "name": "updated_at!",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "4297d2fa8fd3d037243b8794a5ccfc33af057bcb6c9dc1ac601f82bb65130721"
+}

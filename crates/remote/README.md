@@ -7,12 +7,15 @@ The `remote` crate contains the implementation of the Vibe Kanban hosted API.
 Create a `.env.remote` file in the repository root:
 
 ```env
-VIBEKANBAN_REMOTE_JWT_SECRET=choose_a_strong_random_value
-GITHUB_OAUTH_CLIENT_ID=your_github_device_flow_app_client_id
-GITHUB_OAUTH_CLIENT_SECRET=your_github_device_flow_app_client_secret
-GOOGLE_OAUTH_CLIENT_ID=your_google_device_flow_app_client_id
-GOOGLE_OAUTH_CLIENT_SECRET=your_google_device_flow_app_client_secret
+VIBEKANBAN_REMOTE_JWT_SECRET=your_base64_encoded_secret
+SERVER_PUBLIC_BASE_URL=http://localhost:3000
+GITHUB_OAUTH_CLIENT_ID=your_github_web_app_client_id
+GITHUB_OAUTH_CLIENT_SECRET=your_github_web_app_client_secret
+GOOGLE_OAUTH_CLIENT_ID=your_google_web_app_client_id
+GOOGLE_OAUTH_CLIENT_SECRET=your_google_web_app_client_secret
 ```
+
+Generate `VIBEKANBAN_REMOTE_JWT_SECRET` once using `openssl rand -base64 48` and copy the value into `.env.remote`.
 
 At least one OAuth provider (GitHub or Google) must be configured.
 

@@ -1,4 +1,4 @@
-//! OAuth client for device flow authentication with automatic retries.
+//! OAuth client for authorization-code handoffs with automatic retries.
 
 use std::time::Duration;
 
@@ -10,7 +10,7 @@ use tracing::warn;
 use url::Url;
 use utils::api::{
     oauth::{
-        DeviceInitRequest, DeviceInitResponse, DevicePollRequest, DevicePollResponse,
+        HandoffInitRequest, HandoffInitResponse, HandoffRedeemRequest, HandoffRedeemResponse,
         ProfileResponse,
     },
     organizations::{
@@ -32,7 +32,7 @@ pub enum RemoteClientError {
     #[error("http {status}: {body}")]
     Http { status: u16, body: String },
     #[error("api error: {0:?}")]
-    Api(DeviceFlowErrorCode),
+    Api(HandoffErrorCode),
     #[error("unauthorized")]
     Auth,
     #[error("json error: {0}")]
@@ -53,35 +53,30 @@ impl RemoteClientError {
 }
 
 #[derive(Debug, Clone)]
-pub enum DeviceFlowErrorCode {
+pub enum HandoffErrorCode {
     UnsupportedProvider,
+    InvalidReturnUrl,
+    InvalidChallenge,
     ProviderError,
     NotFound,
     Expired,
     AccessDenied,
     InternalError,
-    UserFetchFailed,
     Other(String),
 }
 
-fn map_error_code(code: Option<&str>) -> DeviceFlowErrorCode {
+fn map_error_code(code: Option<&str>) -> HandoffErrorCode {
     match code.unwrap_or("internal_error") {
-        "unsupported_provider" => DeviceFlowErrorCode::UnsupportedProvider,
-        "provider_error" => DeviceFlowErrorCode::ProviderError,
-        "not_found" => DeviceFlowErrorCode::NotFound,
-        "expired" | "expired_token" => DeviceFlowErrorCode::Expired,
-        "access_denied" => DeviceFlowErrorCode::AccessDenied,
-        "internal_error" => DeviceFlowErrorCode::InternalError,
-        "user_fetch_failed" => DeviceFlowErrorCode::UserFetchFailed,
-        other => DeviceFlowErrorCode::Other(other.to_string()),
+        "unsupported_provider" => HandoffErrorCode::UnsupportedProvider,
+        "invalid_return_url" => HandoffErrorCode::InvalidReturnUrl,
+        "invalid_challenge" => HandoffErrorCode::InvalidChallenge,
+        "provider_error" => HandoffErrorCode::ProviderError,
+        "not_found" => HandoffErrorCode::NotFound,
+        "expired" | "expired_token" => HandoffErrorCode::Expired,
+        "access_denied" => HandoffErrorCode::AccessDenied,
+        "internal_error" => HandoffErrorCode::InternalError,
+        other => HandoffErrorCode::Other(other.to_string()),
     }
-}
-
-#[derive(Debug, Clone)]
-pub enum DevicePollResult {
-    Pending,
-    Success { access_token: String },
-    Error { code: DeviceFlowErrorCode },
 }
 
 #[derive(Deserialize)]
@@ -107,54 +102,29 @@ impl RemoteClient {
         Ok(Self { base, http })
     }
 
-    /// Initiates OAuth device flow for the given provider.
-    pub async fn device_init(
+    /// Initiates an authorization-code handoff for the given provider.
+    pub async fn handoff_init(
         &self,
-        provider: &str,
-    ) -> Result<DeviceInitResponse, RemoteClientError> {
-        self.post_json(
-            "/oauth/device/init",
-            &DeviceInitRequest {
-                provider: provider.to_string(),
-            },
-        )
-        .await
-        .or_else(|e| self.map_api_error(e))
+        request: &HandoffInitRequest,
+    ) -> Result<HandoffInitResponse, RemoteClientError> {
+        self.post_json("/oauth/web/init", request)
+            .await
+            .map_err(|e| self.map_api_error(e))
     }
 
-    /// Polls device authorization status. Call repeatedly until success or error.
-    pub async fn device_poll(
+    /// Redeems an application code for an access token.
+    pub async fn handoff_redeem(
         &self,
-        handoff_id: Uuid,
-    ) -> Result<DevicePollResult, RemoteClientError> {
-        let raw: DevicePollResponse = self
-            .post_json("/oauth/device/poll", &DevicePollRequest { handoff_id })
+        request: &HandoffRedeemRequest,
+    ) -> Result<HandoffRedeemResponse, RemoteClientError> {
+        self.post_json("/oauth/web/redeem", request)
             .await
-            .or_else(|e| self.map_poll_error(e))?;
-
-        Ok(match raw.status.as_str() {
-            "pending" => DevicePollResult::Pending,
-            "success" => {
-                if let Some(token) = raw.access_token {
-                    DevicePollResult::Success {
-                        access_token: token,
-                    }
-                } else {
-                    warn!("device flow returned success without access_token");
-                    DevicePollResult::Error {
-                        code: DeviceFlowErrorCode::InternalError,
-                    }
-                }
-            }
-            _ => DevicePollResult::Error {
-                code: map_error_code(raw.error.as_deref()),
-            },
-        })
+            .map_err(|e| self.map_api_error(e))
     }
 
     /// Fetches user profile using an access token.
     pub async fn profile(&self, token: &str) -> Result<ProfileResponse, RemoteClientError> {
-        self.get_json("/profile", Some(token)).await
+        self.get_json("/v1/profile", Some(token)).await
     }
 
     /// Lists organizations for the authenticated user.
@@ -546,25 +516,13 @@ impl RemoteClient {
         .await
     }
 
-    fn map_api_error<T>(&self, err: RemoteClientError) -> Result<T, RemoteClientError> {
+    fn map_api_error(&self, err: RemoteClientError) -> RemoteClientError {
         if let RemoteClientError::Http { body, .. } = &err
             && let Ok(api_err) = serde_json::from_str::<ApiErrorResponse>(body)
         {
-            return Err(RemoteClientError::Api(map_error_code(Some(&api_err.error))));
+            return RemoteClientError::Api(map_error_code(Some(&api_err.error)));
         }
-        Err(err)
-    }
-
-    fn map_poll_error(
-        &self,
-        err: RemoteClientError,
-    ) -> Result<DevicePollResponse, RemoteClientError> {
-        if let RemoteClientError::Http { body, .. } = &err
-            && let Ok(poll_raw) = serde_json::from_str::<DevicePollResponse>(body)
-        {
-            return Ok(poll_raw);
-        }
-        Err(err)
+        err
     }
 }
 

@@ -2,176 +2,174 @@ use std::borrow::Cow;
 
 use axum::{
     Json, Router,
-    extract::{Extension, State},
+    extract::{Extension, Path, Query, State},
     http::StatusCode,
-    response::{IntoResponse, Response},
+    response::{IntoResponse, Redirect, Response},
     routing::{get, post},
 };
-use serde_json::json;
+use serde::Deserialize;
 use tracing::warn;
+use url::Url;
 use utils::api::oauth::{
-    DeviceInitRequest, DeviceInitResponse, DevicePollRequest, DevicePollResponse, ProfileResponse,
-    ProviderProfile,
+    HandoffInitRequest, HandoffInitResponse, HandoffRedeemRequest, HandoffRedeemResponse,
+    ProfileResponse, ProviderProfile,
 };
+use uuid::Uuid;
 
 use crate::{
     AppState,
-    auth::{DeviceFlowError, DeviceFlowPollStatus, RequestContext},
+    auth::{CallbackResult, HandoffError, RequestContext},
     db::oauth_accounts::OAuthAccountRepository,
 };
 
 pub fn public_router() -> Router<AppState> {
     Router::new()
-        .route("/oauth/device/init", post(device_init))
-        .route("/oauth/device/poll", post(device_poll))
+        .route("/oauth/web/init", post(web_init))
+        .route("/oauth/web/redeem", post(web_redeem))
+        .route("/oauth/{provider}/start", get(authorize_start))
+        .route("/oauth/{provider}/callback", get(authorize_callback))
 }
 
 pub fn protected_router() -> Router<AppState> {
     Router::new().route("/profile", get(profile))
 }
 
-pub async fn device_init(
+pub async fn web_init(
     State(state): State<AppState>,
-    Json(payload): Json<DeviceInitRequest>,
+    Json(payload): Json<HandoffInitRequest>,
 ) -> Response {
-    let device_flow = state.device_flow();
+    let handoff = state.handoff();
 
-    match device_flow.initiate(&payload.provider).await {
-        Ok(response) => {
-            let body = DeviceInitResponse {
-                verification_uri: response.verification_uri,
-                verification_uri_complete: response.verification_uri_complete,
-                user_code: response.user_code,
-                handoff_id: response.handoff_id,
-            };
-            (StatusCode::OK, Json(body)).into_response()
-        }
+    match handoff
+        .initiate(
+            &payload.provider,
+            &payload.return_to,
+            &payload.app_challenge,
+        )
+        .await
+    {
+        Ok(result) => (
+            StatusCode::OK,
+            Json(HandoffInitResponse {
+                handoff_id: result.handoff_id,
+                authorize_url: result.authorize_url,
+            }),
+        )
+            .into_response(),
         Err(error) => init_error_response(error),
     }
 }
 
-fn init_error_response(error: DeviceFlowError) -> Response {
-    match &error {
-        DeviceFlowError::Provider(err) => warn!(?err, "provider error during device init"),
-        DeviceFlowError::NotFound
-        | DeviceFlowError::Expired
-        | DeviceFlowError::Denied
-        | DeviceFlowError::Failed(_)
-        | DeviceFlowError::Database(_)
-        | DeviceFlowError::Identity(_)
-        | DeviceFlowError::OAuthAccount(_)
-        | DeviceFlowError::Session(_)
-        | DeviceFlowError::Jwt(_)
-        | DeviceFlowError::Authorization(_) => {
-            warn!(?error, "failed to initiate device authorization")
-        }
-        DeviceFlowError::UnsupportedProvider(_) => {}
-    }
+pub async fn web_redeem(
+    State(state): State<AppState>,
+    Json(payload): Json<HandoffRedeemRequest>,
+) -> Response {
+    let handoff = state.handoff();
 
-    let (default_status, default_code) = classify_device_flow_error(&error);
-
-    match error {
-        DeviceFlowError::UnsupportedProvider(_) | DeviceFlowError::Provider(_) => {
-            let code = default_code.into_owned();
-            (default_status, Json(json!({ "error": code }))).into_response()
-        }
-        _ => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": "internal_error" })),
+    match handoff
+        .redeem(payload.handoff_id, &payload.app_code, &payload.app_verifier)
+        .await
+    {
+        Ok(result) => (
+            StatusCode::OK,
+            Json(HandoffRedeemResponse {
+                access_token: result.access_token,
+            }),
         )
             .into_response(),
+        Err(error) => redeem_error_response(error),
     }
 }
 
-pub async fn device_poll(
+#[derive(Debug, Deserialize)]
+pub struct StartQuery {
+    handoff_id: Uuid,
+}
+
+pub async fn authorize_start(
     State(state): State<AppState>,
-    Json(payload): Json<DevicePollRequest>,
+    Path(provider): Path<String>,
+    Query(query): Query<StartQuery>,
 ) -> Response {
-    let device_flow = state.device_flow();
+    let handoff = state.handoff();
 
-    match device_flow.poll(payload.handoff_id).await {
-        Ok(response) => {
-            let status = match response.status {
-                DeviceFlowPollStatus::Pending => "pending",
-                DeviceFlowPollStatus::Success => "success",
-                DeviceFlowPollStatus::Error => "error",
-            };
-
+    match handoff.authorize_url(&provider, query.handoff_id).await {
+        Ok(url) => Redirect::temporary(&url).into_response(),
+        Err(error) => {
+            let (status, message) = classify_handoff_error(&error);
             (
-                StatusCode::OK,
-                Json(DevicePollResponse {
-                    status: status.to_string(),
-                    access_token: response.access_token,
-                    error: response.error,
-                }),
+                status,
+                format!("OAuth authorization failed: {}", message.into_owned()),
             )
                 .into_response()
         }
-        Err(error) => poll_error_response(error),
     }
 }
 
-fn poll_error_response(error: DeviceFlowError) -> Response {
-    match &error {
-        DeviceFlowError::Provider(err) => warn!(?err, "provider error during device poll"),
-        DeviceFlowError::Database(err) => warn!(?err, "internal error during device poll"),
-        DeviceFlowError::Identity(err) => warn!(?err, "internal error during device poll"),
-        DeviceFlowError::OAuthAccount(err) => warn!(?err, "internal error during device poll"),
-        DeviceFlowError::Session(err) => warn!(?err, "internal error during device poll"),
-        DeviceFlowError::Jwt(err) => warn!(?err, "internal error during device poll"),
-        DeviceFlowError::Authorization(err) => {
-            warn!(?err, "device authorization error")
+#[derive(Debug, Deserialize)]
+pub struct CallbackQuery {
+    state: Option<String>,
+    code: Option<String>,
+    error: Option<String>,
+}
+
+pub async fn authorize_callback(
+    State(state): State<AppState>,
+    Path(provider): Path<String>,
+    Query(query): Query<CallbackQuery>,
+) -> Response {
+    let handoff = state.handoff();
+
+    match handoff
+        .handle_callback(
+            &provider,
+            query.state.as_deref(),
+            query.code.as_deref(),
+            query.error.as_deref(),
+        )
+        .await
+    {
+        Ok(CallbackResult::Success {
+            handoff_id,
+            return_to,
+            app_code,
+        }) => match append_query_params(&return_to, Some(handoff_id), Some(&app_code), None) {
+            Ok(url) => Redirect::temporary(url.as_str()).into_response(),
+            Err(err) => (
+                StatusCode::BAD_REQUEST,
+                format!("Invalid return_to URL: {err}"),
+            )
+                .into_response(),
+        },
+        Ok(CallbackResult::Error {
+            handoff_id,
+            return_to,
+            error,
+        }) => {
+            if let Some(url) = return_to {
+                match append_query_params(&url, handoff_id, None, Some(&error)) {
+                    Ok(url) => Redirect::temporary(url.as_str()).into_response(),
+                    Err(err) => (
+                        StatusCode::BAD_REQUEST,
+                        format!("Invalid return_to URL: {err}"),
+                    )
+                        .into_response(),
+                }
+            } else {
+                (
+                    StatusCode::BAD_REQUEST,
+                    format!("OAuth authorization failed: {error}"),
+                )
+                    .into_response()
+            }
         }
-        _ => {}
-    }
-
-    let (status, error_code) = classify_device_flow_error(&error);
-    let error_code = error_code.into_owned();
-
-    (
-        status,
-        Json(DevicePollResponse {
-            status: "error".to_string(),
-            access_token: None,
-            error: Some(error_code),
-        }),
-    )
-        .into_response()
-}
-
-fn classify_device_flow_error(error: &DeviceFlowError) -> (StatusCode, Cow<'_, str>) {
-    match error {
-        DeviceFlowError::UnsupportedProvider(_) => (
-            StatusCode::BAD_REQUEST,
-            Cow::Borrowed("unsupported_provider"),
-        ),
-        DeviceFlowError::Provider(_) => (StatusCode::BAD_GATEWAY, Cow::Borrowed("provider_error")),
-        DeviceFlowError::NotFound => (StatusCode::NOT_FOUND, Cow::Borrowed("not_found")),
-        DeviceFlowError::Expired => (StatusCode::GONE, Cow::Borrowed("expired")),
-        DeviceFlowError::Denied => (StatusCode::FORBIDDEN, Cow::Borrowed("access_denied")),
-        DeviceFlowError::Failed(reason) => (StatusCode::BAD_REQUEST, Cow::Owned(reason.clone())),
-        DeviceFlowError::Database(_) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Cow::Borrowed("internal_error"),
-        ),
-        DeviceFlowError::Identity(_) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Cow::Borrowed("internal_error"),
-        ),
-        DeviceFlowError::OAuthAccount(_) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Cow::Borrowed("internal_error"),
-        ),
-        DeviceFlowError::Session(_) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Cow::Borrowed("internal_error"),
-        ),
-        DeviceFlowError::Jwt(_) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Cow::Borrowed("internal_error"),
-        ),
-        DeviceFlowError::Authorization(_) => {
-            (StatusCode::BAD_GATEWAY, Cow::Borrowed("provider_error"))
+        Err(error) => {
+            let (status, message) = classify_handoff_error(&error);
+            (
+                status,
+                format!("OAuth authorization failed: {}", message.into_owned()),
+            )
+                .into_response()
         }
     }
 }
@@ -202,4 +200,90 @@ pub async fn profile(
         organization_id: ctx.organization.id.to_string(),
         providers,
     })
+}
+
+fn init_error_response(error: HandoffError) -> Response {
+    match &error {
+        HandoffError::Provider(err) => warn!(?err, "provider error during oauth init"),
+        HandoffError::Database(err) => warn!(?err, "database error during oauth init"),
+        HandoffError::Authorization(err) => warn!(?err, "authorization error during oauth init"),
+        HandoffError::Identity(err) => warn!(?err, "identity error during oauth init"),
+        HandoffError::OAuthAccount(err) => warn!(?err, "account error during oauth init"),
+        _ => {}
+    }
+
+    let (status, code) = classify_handoff_error(&error);
+    let code = code.into_owned();
+    (status, Json(serde_json::json!({ "error": code }))).into_response()
+}
+
+fn redeem_error_response(error: HandoffError) -> Response {
+    match &error {
+        HandoffError::Provider(err) => warn!(?err, "provider error during oauth redeem"),
+        HandoffError::Database(err) => warn!(?err, "database error during oauth redeem"),
+        HandoffError::Authorization(err) => warn!(?err, "authorization error during oauth redeem"),
+        HandoffError::Identity(err) => warn!(?err, "identity error during oauth redeem"),
+        HandoffError::OAuthAccount(err) => warn!(?err, "account error during oauth redeem"),
+        HandoffError::Session(err) => warn!(?err, "session error during oauth redeem"),
+        HandoffError::Jwt(err) => warn!(?err, "jwt error during oauth redeem"),
+        _ => {}
+    }
+
+    let (status, code) = classify_handoff_error(&error);
+    let code = code.into_owned();
+
+    (status, Json(serde_json::json!({ "error": code }))).into_response()
+}
+
+fn classify_handoff_error(error: &HandoffError) -> (StatusCode, Cow<'_, str>) {
+    match error {
+        HandoffError::UnsupportedProvider(_) => (
+            StatusCode::BAD_REQUEST,
+            Cow::Borrowed("unsupported_provider"),
+        ),
+        HandoffError::InvalidReturnUrl(_) => {
+            (StatusCode::BAD_REQUEST, Cow::Borrowed("invalid_return_url"))
+        }
+        HandoffError::InvalidChallenge => {
+            (StatusCode::BAD_REQUEST, Cow::Borrowed("invalid_challenge"))
+        }
+        HandoffError::NotFound => (StatusCode::NOT_FOUND, Cow::Borrowed("not_found")),
+        HandoffError::Expired => (StatusCode::GONE, Cow::Borrowed("expired")),
+        HandoffError::Denied => (StatusCode::FORBIDDEN, Cow::Borrowed("access_denied")),
+        HandoffError::Failed(reason) => (StatusCode::BAD_REQUEST, Cow::Owned(reason.clone())),
+        HandoffError::Provider(_) => (StatusCode::BAD_GATEWAY, Cow::Borrowed("provider_error")),
+        HandoffError::Database(_)
+        | HandoffError::Identity(_)
+        | HandoffError::OAuthAccount(_)
+        | HandoffError::Session(_)
+        | HandoffError::Jwt(_) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Cow::Borrowed("internal_error"),
+        ),
+        HandoffError::Authorization(_) => {
+            (StatusCode::BAD_GATEWAY, Cow::Borrowed("provider_error"))
+        }
+    }
+}
+
+fn append_query_params(
+    base: &str,
+    handoff_id: Option<Uuid>,
+    app_code: Option<&str>,
+    error: Option<&str>,
+) -> Result<Url, url::ParseError> {
+    let mut url = Url::parse(base)?;
+    {
+        let mut qp = url.query_pairs_mut();
+        if let Some(id) = handoff_id {
+            qp.append_pair("handoff_id", &id.to_string());
+        }
+        if let Some(code) = app_code {
+            qp.append_pair("app_code", code);
+        }
+        if let Some(error) = error {
+            qp.append_pair("error", error);
+        }
+    }
+    Ok(url)
 }

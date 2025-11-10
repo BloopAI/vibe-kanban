@@ -127,6 +127,7 @@ pub struct AuthConfig {
     github: Option<OAuthProviderConfig>,
     google: Option<OAuthProviderConfig>,
     jwt_secret: SecretString,
+    public_base_url: String,
 }
 
 impl AuthConfig {
@@ -163,10 +164,14 @@ impl AuthConfig {
             return Err(ConfigError::NoOAuthProviders);
         }
 
+        let public_base_url =
+            env::var("SERVER_PUBLIC_BASE_URL").unwrap_or_else(|_| "http://localhost:8081".into());
+
         Ok(Self {
             github,
             google,
             jwt_secret,
+            public_base_url,
         })
     }
 
@@ -180,5 +185,9 @@ impl AuthConfig {
 
     pub fn jwt_secret(&self) -> &SecretString {
         &self.jwt_secret
+    }
+
+    pub fn public_base_url(&self) -> &str {
+        &self.public_base_url
     }
 }

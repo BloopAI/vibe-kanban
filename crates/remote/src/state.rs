@@ -4,7 +4,7 @@ use sqlx::PgPool;
 
 use crate::{
     activity::ActivityBroker,
-    auth::{DeviceFlowService, JwtService},
+    auth::{JwtService, OAuthHandoffService},
     config::RemoteServerConfig,
     mail::Mailer,
 };
@@ -15,9 +15,9 @@ pub struct AppState {
     pub broker: ActivityBroker,
     pub config: RemoteServerConfig,
     pub jwt: Arc<JwtService>,
-    pub device_flow: Arc<DeviceFlowService>,
     pub mailer: Arc<dyn Mailer>,
     pub base_url: String,
+    handoff: Arc<OAuthHandoffService>,
 }
 
 impl AppState {
@@ -26,7 +26,7 @@ impl AppState {
         broker: ActivityBroker,
         config: RemoteServerConfig,
         jwt: Arc<JwtService>,
-        device_flow: Arc<DeviceFlowService>,
+        handoff: Arc<OAuthHandoffService>,
         mailer: Arc<dyn Mailer>,
         base_url: String,
     ) -> Self {
@@ -35,9 +35,9 @@ impl AppState {
             broker,
             config,
             jwt,
-            device_flow,
             mailer,
             base_url,
+            handoff,
         }
     }
 
@@ -57,7 +57,7 @@ impl AppState {
         Arc::clone(&self.jwt)
     }
 
-    pub fn device_flow(&self) -> Arc<DeviceFlowService> {
-        Arc::clone(&self.device_flow)
+    pub fn handoff(&self) -> Arc<OAuthHandoffService> {
+        Arc::clone(&self.handoff)
     }
 }
