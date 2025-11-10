@@ -277,7 +277,9 @@ const OAuthDialog = NiceModal.create(() => {
         }
       }}
     >
-      <DialogContent className="sm:max-w-[500px]">{renderContent()}</DialogContent>
+      <DialogContent className="sm:max-w-[500px]">
+        {renderContent()}
+      </DialogContent>
     </Dialog>
   );
 });
