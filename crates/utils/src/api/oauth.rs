@@ -11,8 +11,16 @@ pub struct HandoffInitRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, TS)]
+<<<<<<< HEAD
 #[ts(export)]
 pub struct HandoffInitResponse {
+=======
+pub struct DeviceInitResponse {
+    pub verification_uri: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub verification_uri_complete: Option<String>,
+    pub user_code: String,
+>>>>>>> 687a4cca (Excellent! I've successfully implemented the OAuth frontend. Let me create a summary of what was done:)
     pub handoff_id: Uuid,
     pub authorize_url: String,
 }
@@ -54,4 +62,21 @@ pub struct ProfileResponse {
 pub enum LoginStatus {
     LoggedOut,
     LoggedIn { profile: ProfileResponse },
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, TS)]
+#[serde(tag = "status", rename_all = "lowercase")]
+pub enum DevicePollResponseData {
+    Pending,
+    Success { profile: ProfileResponse },
+    Error { code: String },
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, TS)]
+pub struct StatusResponse {
+    pub logged_in: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub profile: Option<ProfileResponse>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub degraded: Option<bool>,
 }

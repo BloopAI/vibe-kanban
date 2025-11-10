@@ -68,6 +68,12 @@ export type ProfileResponse = { user_id: string, username: string | null, email:
 
 export type ProviderProfile = { provider: string, username: string | null, display_name: string | null, email: string | null, avatar_url: string | null, };
 
+export type DeviceInitResponse = { verification_uri: string, verification_uri_complete: string | null, user_code: string, handoff_id: string, };
+
+export type DevicePollResponseData = { "status": "pending" } | { "status": "success", profile: ProfileResponse, } | { "status": "error", code: string, };
+
+export type StatusResponse = { logged_in: boolean, profile: ProfileResponse | null, degraded: boolean | null, };
+
 export type UserSystemInfo = { config: Config, analytics_user_id: string, login_status: LoginStatus, environment: Environment, 
 /**
  * Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["SESSION_FORK"] })

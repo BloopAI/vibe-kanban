@@ -47,7 +47,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import NiceModal from '@ebay/nice-modal-react';
-import { OrganizationSwitcherDialog } from '@/components/dialogs';
+import { OrganizationSwitcherDialog, OAuthDialog } from '@/components/dialogs';
 
 const INTERNAL_NAV = [{ label: 'Projects', icon: FolderOpen, to: '/projects' }];
 
@@ -122,6 +122,10 @@ export function Navbar() {
 
   const handleOpenInIDE = () => {
     handleOpenInEditor();
+  };
+
+  const handleOpenOAuth = () => {
+    void NiceModal.show(OAuthDialog);
   };
 
   return (
@@ -221,6 +225,16 @@ export function Navbar() {
             ) : null}
 
             <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9"
+                onClick={handleOpenOAuth}
+                aria-label="OAuth Sign In"
+              >
+                <LogIn className="h-4 w-4" />
+              </Button>
+
               <Button
                 variant="ghost"
                 size="icon"

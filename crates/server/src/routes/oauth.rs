@@ -11,7 +11,11 @@ use serde::{Deserialize, Serialize};
 use services::services::oauth_credentials::Credentials;
 use sha2::{Digest, Sha256};
 use utils::{
+<<<<<<< HEAD
     api::oauth::{HandoffInitRequest, HandoffRedeemRequest, ProfileResponse},
+=======
+    api::oauth::{DeviceInitResponse, DevicePollResponseData, ProfileResponse, StatusResponse},
+>>>>>>> 687a4cca (Excellent! I've successfully implemented the OAuth frontend. Let me create a summary of what was done:)
     response::ApiResponse,
 };
 use uuid::Uuid;
@@ -32,6 +36,7 @@ struct HandoffInitPayload {
     return_to: String,
 }
 
+<<<<<<< HEAD
 #[derive(Debug, Serialize)]
 struct HandoffInitResponseBody {
     handoff_id: Uuid,
@@ -39,6 +44,9 @@ struct HandoffInitResponseBody {
 }
 
 async fn handoff_init(
+=======
+async fn device_poll(
+>>>>>>> 687a4cca (Excellent! I've successfully implemented the OAuth frontend. Let me create a summary of what was done:)
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<HandoffInitPayload>,
 ) -> Result<ResponseJson<ApiResponse<HandoffInitResponseBody>>, ApiError> {
@@ -169,15 +177,6 @@ async fn logout(State(deployment): State<DeploymentImpl>) -> Result<StatusCode, 
     deployment.auth_context().clear_profile().await;
 
     Ok(StatusCode::NO_CONTENT)
-}
-
-#[derive(Debug, Serialize)]
-struct StatusResponse {
-    logged_in: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    profile: Option<ProfileResponse>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    degraded: Option<bool>,
 }
 
 async fn status(
