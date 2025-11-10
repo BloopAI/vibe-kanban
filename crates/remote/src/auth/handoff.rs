@@ -2,7 +2,7 @@ use std::{fmt::Write, sync::Arc};
 
 use anyhow::Error as AnyhowError;
 use chrono::{DateTime, Duration, Utc};
-use rand::{Rng, distributions::Alphanumeric};
+use rand::{Rng, distr::Alphanumeric};
 use reqwest::StatusCode;
 use sha2::{Digest, Sha256};
 use sqlx::PgPool;
@@ -473,7 +473,7 @@ fn hash_sha256_hex(input: &str) -> String {
 }
 
 fn generate_state() -> String {
-    rand::thread_rng()
+    rand::rng()
         .sample_iter(&Alphanumeric)
         .take(STATE_LENGTH)
         .map(char::from)
@@ -481,7 +481,7 @@ fn generate_state() -> String {
 }
 
 fn generate_app_code() -> String {
-    rand::thread_rng()
+    rand::rng()
         .sample_iter(&Alphanumeric)
         .take(APP_CODE_LENGTH)
         .map(char::from)
@@ -489,7 +489,7 @@ fn generate_app_code() -> String {
 }
 
 fn generate_session_secret() -> String {
-    rand::thread_rng()
+    rand::rng()
         .sample_iter(&Alphanumeric)
         .take(SESSION_SECRET_LENGTH)
         .map(char::from)

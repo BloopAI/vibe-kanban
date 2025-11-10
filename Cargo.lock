@@ -3622,7 +3622,7 @@ dependencies = [
  "chrono",
  "futures",
  "jsonwebtoken 9.3.1",
- "rand 0.8.5",
+ "rand 0.9.2",
  "reqwest",
  "secrecy",
  "sentry",
