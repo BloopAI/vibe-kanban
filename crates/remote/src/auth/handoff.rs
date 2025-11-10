@@ -198,7 +198,6 @@ impl OAuthHandoffService {
         provider
             .authorize_url(&record.state, &redirect_uri)
             .map(|url| url.into())
-            .map_err(AnyhowError::from)
             .map_err(HandoffError::Provider)
     }
 
@@ -460,7 +459,7 @@ fn hash_sha256_hex(input: &str) -> String {
     let digest = Sha256::digest(input.as_bytes());
     let mut output = String::with_capacity(digest.len() * 2);
     for byte in digest {
-        let _ = write!(output, "{:02x}", byte);
+        let _ = write!(output, "{byte:02x}");
     }
     output
 }
