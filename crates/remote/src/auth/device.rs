@@ -176,7 +176,7 @@ impl DeviceFlowService {
 
         let identity_repo = IdentityRepository::new(&self.pool);
         let user = identity_repo.fetch_user(&session.user_id).await?;
-        
+
         let display_name_for_org = user
             .first_name
             .as_deref()

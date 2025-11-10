@@ -304,11 +304,12 @@ impl<'a> IdentityRepository<'a> {
         .await
         .map_err(|e| {
             if let Some(db_err) = e.as_database_error()
-                && db_err.is_unique_violation() {
-                    return IdentityError::InvitationError(
-                        "A pending invitation already exists for this email".to_string(),
-                    );
-                }
+                && db_err.is_unique_violation()
+            {
+                return IdentityError::InvitationError(
+                    "A pending invitation already exists for this email".to_string(),
+                );
+            }
             IdentityError::from(e)
         })?;
 
@@ -495,13 +496,12 @@ impl<'a> IdentityRepository<'a> {
         .fetch_one(&mut *tx)
         .await
         .map_err(|e| {
-            if let Some(db_err) = e.as_database_error() {
-                if db_err.is_unique_violation() {
+            if let Some(db_err) = e.as_database_error()
+                && db_err.is_unique_violation() {
                     return IdentityError::OrganizationConflict(
                         "An organization with this slug already exists".to_string(),
                     );
                 }
-            }
             IdentityError::from(e)
         })?;
 
@@ -730,7 +730,7 @@ fn personal_org_id(user_id: &str) -> String {
 
 fn personal_org_name(hint: Option<&str>, user_id: &str) -> String {
     let display_name = hint.unwrap_or(user_id);
-    format!("{}'s Org", display_name)
+    format!("{display_name}'s Org")
 }
 
 fn personal_org_slug(hint: Option<&str>, user_id: &str) -> String {

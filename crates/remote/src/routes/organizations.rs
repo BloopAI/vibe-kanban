@@ -1,18 +1,17 @@
 use axum::{
+    Json,
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
-    Json,
 };
 use serde::{Deserialize, Serialize};
 
+use super::error::ErrorResponse;
 use crate::{
+    AppState,
     auth::RequestContext,
     db::identity::{IdentityRepository, Organization, OrganizationWithRole},
-    AppState,
 };
-
-use super::error::ErrorResponse;
 
 #[derive(Debug, Deserialize)]
 pub struct CreateOrganizationRequest {
@@ -126,7 +125,10 @@ pub async fn get_organization(
         .fetch_organization(&org_id)
         .await
         .map_err(|_| {
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Failed to fetch organization")
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to fetch organization",
+            )
         })?;
 
     let role = identity_repo

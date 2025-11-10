@@ -56,7 +56,10 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/tasks/{task_id}", patch(tasks::update_shared_task))
         .route("/v1/tasks/{task_id}", delete(tasks::delete_shared_task))
         .route("/v1/tasks/{task_id}/assign", post(tasks::assign_task))
-        .route("/v1/organizations", post(organizations::create_organization))
+        .route(
+            "/v1/organizations",
+            post(organizations::create_organization),
+        )
         .route("/v1/organizations", get(organizations::list_organizations))
         .route(
             "/v1/organizations/{org_id}",
