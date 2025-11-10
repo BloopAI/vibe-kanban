@@ -18,7 +18,7 @@ import {
   Check,
 } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { oauthApi } from '@/lib/api';
 import type { DeviceInitResponse, ProfileResponse } from 'shared/types';
 
@@ -35,6 +35,7 @@ const OAuthDialog = NiceModal.create(() => {
   const [state, setState] = useState<OAuthState>({ type: 'select' });
   const [isPolling, setIsPolling] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleProviderSelect = async (provider: OAuthProvider) => {
     try {
@@ -57,21 +58,19 @@ const OAuthDialog = NiceModal.create(() => {
 
   const startPolling = async (handoffId: string) => {
     setIsPolling(true);
-    const pollInterval = setInterval(async () => {
+    pollingIntervalRef.current = setInterval(async () => {
       try {
         const result = await oauthApi.devicePoll(handoffId);
 
         if (result.status === 'success') {
-          clearInterval(pollInterval);
-          setIsPolling(false);
+          stopPolling();
           setState({ type: 'success', profile: result.profile });
           setTimeout(() => {
             modal.resolve(result.profile);
             modal.hide();
           }, 1500);
         } else if (result.status === 'error') {
-          clearInterval(pollInterval);
-          setIsPolling(false);
+          stopPolling();
           setState({
             type: 'error',
             message: `OAuth failed: ${result.code}`,
@@ -79,8 +78,7 @@ const OAuthDialog = NiceModal.create(() => {
         }
         // If pending, continue polling
       } catch (error) {
-        clearInterval(pollInterval);
-        setIsPolling(false);
+        stopPolling();
         setState({
           type: 'error',
           message:
@@ -110,6 +108,21 @@ const OAuthDialog = NiceModal.create(() => {
       console.error('Failed to copy code:', err);
     }
   };
+
+  const stopPolling = () => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+    setIsPolling(false);
+  };
+
+  // Cleanup polling when dialog closes
+  useEffect(() => {
+    if (!modal.visible) {
+      stopPolling();
+    }
+  }, [modal.visible]);
 
   const renderContent = () => {
     switch (state.type) {
