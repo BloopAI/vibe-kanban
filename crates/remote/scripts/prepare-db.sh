@@ -5,6 +5,11 @@ set -euo pipefail
 DATA_DIR="$(mktemp -d /tmp/sqlxpg.XXXXXX)"
 PORT=54329
 
+echo "Killing existing Postgres instance on port $PORT"
+pids=$(lsof -t -i :"$PORT" 2>/dev/null || true)
+[ -n "$pids" ] && kill $pids 2>/dev/null || true
+sleep 1
+
 echo "➤ Initializing temporary Postgres cluster..."
 initdb -D "$DATA_DIR" > /dev/null
 
@@ -27,3 +32,8 @@ echo "➤ Cleaning up..."
 rm -rf "$DATA_DIR"
 
 echo "✅ sqlx prepare complete using a temporary Postgres instance"
+
+echo "Killing existing Postgres instance on port $PORT"
+pids=$(lsof -t -i :"$PORT" 2>/dev/null || true)
+[ -n "$pids" ] && kill $pids 2>/dev/null || true
+sleep 1
