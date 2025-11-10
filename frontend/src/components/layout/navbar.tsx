@@ -89,7 +89,7 @@ export function Navbar() {
     },
     [registerInputRef]
   );
-  const { t } = useTranslation(['tasks']);
+  const { t } = useTranslation(['tasks', 'common']);
   // Navbar is global, but the share tasks toggle only makes sense on the tasks route
   const isTasksRoute = /^\/projects\/[^/]+\/tasks/.test(location.pathname);
   const showSharedTasks = searchParams.get('shared') !== 'off';
@@ -270,11 +270,11 @@ export function Navbar() {
                       }
                     >
                       <Building2 className="mr-2 h-4 w-4" />
-                      Organization
+                      {t('common:orgSwitcher.menuItem')}
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={handleOAuthLogout}>
                       <LogOut className="mr-2 h-4 w-4" />
-                      Sign out
+                      {t('common:signOut')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

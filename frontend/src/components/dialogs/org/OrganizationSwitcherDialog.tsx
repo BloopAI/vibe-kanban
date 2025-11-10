@@ -18,9 +18,11 @@ import {
 import { Loader2, Building2 } from 'lucide-react';
 import { useUserSystem } from '@/components/config-provider';
 import { useUserOrganizations } from '@/hooks/api/useUserOrganizations';
+import { useTranslation } from 'react-i18next';
 
 const OrganizationSwitcherDialog = NiceModal.create(() => {
   const modal = useModal();
+  const { t } = useTranslation('common');
   const { loginStatus } = useUserSystem();
 
   const currentOrgId =
@@ -60,17 +62,13 @@ const OrganizationSwitcherDialog = NiceModal.create(() => {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />
-            Switch Organization
+            {t('orgSwitcher.title')}
           </DialogTitle>
-          <DialogDescription>
-            Select an organization to switch to.
-          </DialogDescription>
+          <DialogDescription>{t('orgSwitcher.description')}</DialogDescription>
         </DialogHeader>
 
         {hasError && (
-          <Alert variant="destructive">
-            Failed to load organizations. Please try again.
-          </Alert>
+          <Alert variant="destructive">{t('orgSwitcher.loadError')}</Alert>
         )}
 
         <div className="space-y-3">
@@ -107,7 +105,7 @@ const OrganizationSwitcherDialog = NiceModal.create(() => {
         </div>
 
         {organizations.length === 0 && !orgsQuery.isPending && !hasError && (
-          <Alert>You are not a member of any organizations.</Alert>
+          <Alert>{t('orgSwitcher.noOrganizations')}</Alert>
         )}
       </DialogContent>
     </Dialog>

@@ -133,6 +133,7 @@
     "deleteTask": "Delete task",
     "closePanel": "Close panel"
   },
+  "navigateToParent": "Navigate to parent task attempt",
   "toolbar": {
     "actions": "Actions",
     "noAttempts": "No attempts yet",

@@ -51,5 +51,16 @@
   },
   "breadcrumb": {
     "more": "More"
-  }
+  },
+  "orgMembers": {
+    "moreCount": "+{{count}} more"
+  },
+  "orgSwitcher": {
+    "title": "Switch Organization",
+    "description": "Select an organization to switch to.",
+    "loadError": "Failed to load organizations. Please try again.",
+    "noOrganizations": "You are not a member of any organizations.",
+    "menuItem": "Organization"
+  },
+  "signOut": "Sign out"
 }
