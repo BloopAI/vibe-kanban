@@ -22,6 +22,7 @@ import {
   LoginPromptDialog,
   PrivacyOptInDialog,
   ReleaseNotesDialog,
+  OAuthDialog,
   TaskFormDialog,
   EditorSelectionDialog,
   DeleteTaskConfirmationDialog,
@@ -52,6 +53,7 @@ NiceModal.register('onboarding', OnboardingDialog);
 NiceModal.register('login-prompt', LoginPromptDialog);
 NiceModal.register('privacy-opt-in', PrivacyOptInDialog);
 NiceModal.register('release-notes', ReleaseNotesDialog);
+NiceModal.register('oauth', OAuthDialog);
 NiceModal.register('delete-task-confirmation', DeleteTaskConfirmationDialog);
 NiceModal.register('task-form', TaskFormDialog);
 NiceModal.register('editor-selection', EditorSelectionDialog);

@@ -55,3 +55,20 @@ pub enum LoginStatus {
     LoggedOut,
     LoggedIn { profile: ProfileResponse },
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone, TS)]
+#[serde(tag = "status", rename_all = "lowercase")]
+pub enum DevicePollResponseData {
+    Pending,
+    Success { profile: ProfileResponse },
+    Error { code: String },
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, TS)]
+pub struct StatusResponse {
+    pub logged_in: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub profile: Option<ProfileResponse>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub degraded: Option<bool>,
+}

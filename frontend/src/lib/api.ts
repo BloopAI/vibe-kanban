@@ -51,6 +51,9 @@ import {
   RunAgentSetupRequest,
   RunAgentSetupResponse,
   GhCliSetupError,
+  DeviceInitResponse,
+  DevicePollResponseData,
+  StatusResponse,
 } from 'shared/types';
 import { buildClerkAuthHeaders } from './clerk';
 
@@ -918,5 +921,44 @@ export const approvalsApi = {
     });
 
     return handleApiResponse<ApprovalStatus>(res);
+  },
+};
+
+// OAuth API
+export const oauthApi = {
+  deviceInit: async (provider: string): Promise<DeviceInitResponse> => {
+    const response = await makeRequest(
+      `/api/auth/device-init?provider=${provider}`,
+      {
+        method: 'POST',
+      }
+    );
+    return handleApiResponse<DeviceInitResponse>(response);
+  },
+
+  devicePoll: async (handoffId: string): Promise<DevicePollResponseData> => {
+    const response = await makeRequest('/api/auth/device-poll', {
+      method: 'POST',
+      body: JSON.stringify({ handoff_id: handoffId }),
+    });
+    return handleApiResponse<DevicePollResponseData>(response);
+  },
+
+  status: async (): Promise<StatusResponse> => {
+    const response = await makeRequest('/api/auth/status');
+    return handleApiResponse<StatusResponse>(response);
+  },
+
+  logout: async (): Promise<void> => {
+    const response = await makeRequest('/api/auth/logout', {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      throw new ApiError(
+        `Logout failed with status ${response.status}`,
+        response.status,
+        response
+      );
+    }
   },
 };
