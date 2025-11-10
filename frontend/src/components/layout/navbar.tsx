@@ -40,7 +40,11 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import NiceModal from '@ebay/nice-modal-react';
-import { OAuthDialog, OrganizationSwitcherDialog, CreateOrganizationDialog } from '@/components/dialogs';
+import {
+  OAuthDialog,
+  OrganizationSwitcherDialog,
+  CreateOrganizationDialog,
+} from '@/components/dialogs';
 import { useUserSystem } from '@/components/config-provider';
 import { oauthApi } from '@/lib/api';
 
@@ -273,9 +277,7 @@ export function Navbar() {
                       {t('common:orgSwitcher.menuItem')}
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onSelect={() =>
-                        NiceModal.show(CreateOrganizationDialog)
-                      }
+                      onSelect={() => NiceModal.show(CreateOrganizationDialog)}
                     >
                       <Plus className="mr-2 h-4 w-4" />
                       Create Organization

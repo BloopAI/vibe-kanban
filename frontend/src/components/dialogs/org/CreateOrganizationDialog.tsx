@@ -55,8 +55,10 @@ export const CreateOrganizationDialog = NiceModal.create(() => {
   const validateName = (value: string): string | null => {
     const trimmedValue = value.trim();
     if (!trimmedValue) return 'Organization name is required';
-    if (trimmedValue.length < 3) return 'Organization name must be at least 3 characters';
-    if (trimmedValue.length > 50) return 'Organization name must be 50 characters or less';
+    if (trimmedValue.length < 3)
+      return 'Organization name must be at least 3 characters';
+    if (trimmedValue.length > 50)
+      return 'Organization name must be 50 characters or less';
     return null;
   };
 
@@ -102,7 +104,9 @@ export const CreateOrganizationDialog = NiceModal.create(() => {
       } as CreateOrganizationResult);
       modal.hide();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create organization');
+      setError(
+        err instanceof Error ? err.message : 'Failed to create organization'
+      );
       setIsSubmitting(false);
     }
   };
@@ -174,7 +178,11 @@ export const CreateOrganizationDialog = NiceModal.create(() => {
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleCancel} disabled={isSubmitting}>
+          <Button
+            variant="outline"
+            onClick={handleCancel}
+            disabled={isSubmitting}
+          >
             Cancel
           </Button>
           <Button

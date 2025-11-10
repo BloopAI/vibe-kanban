@@ -965,7 +965,9 @@ export const organizationsApi = {
     return handleApiResponse<ListOrganizationsResponse>(response);
   },
 
-  createOrganization: async (data: CreateOrganizationRequest): Promise<CreateOrganizationResponse> => {
+  createOrganization: async (
+    data: CreateOrganizationRequest
+  ): Promise<CreateOrganizationResponse> => {
     const response = await makeRequest('/api/organizations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
