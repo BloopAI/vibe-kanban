@@ -1,13 +1,11 @@
 use axum::{
     Router,
-    middleware::from_fn_with_state,
     routing::{IntoMakeService, get},
 };
 
 use crate::DeploymentImpl;
 
 pub mod approvals;
-pub mod auth;
 pub mod config;
 pub mod containers;
 pub mod filesystem;
@@ -38,16 +36,11 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(task_attempts::router(&deployment))
         .merge(execution_processes::router(&deployment))
         .merge(tags::router(&deployment))
-        .merge(auth::router(&deployment))
         .merge(oauth::router())
         .merge(filesystem::router())
         .merge(events::router(&deployment))
         .merge(approvals::router())
         .nest("/images", images::routes())
-        .layer(from_fn_with_state(
-            deployment.clone(),
-            auth::sentry_user_context_middleware,
-        ))
         .with_state(deployment);
 
     Router::new()

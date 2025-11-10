@@ -12,11 +12,7 @@ use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use crate::{
-    DeploymentImpl,
-    error::ApiError,
-    middleware::{ClerkSessionMaybe, require_clerk_session},
-};
+use crate::{DeploymentImpl, error::ApiError};
 
 #[derive(Debug, Clone, Deserialize, TS)]
 #[ts(export)]
@@ -38,26 +34,22 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             post(assign_shared_task),
         )
         .route("/shared-tasks/{shared_task_id}", delete(delete_shared_task))
-        .layer(axum::middleware::from_fn_with_state(
-            deployment.clone(),
-            require_clerk_session,
-        ))
 }
 
 pub async fn assign_shared_task(
     Path(shared_task_id): Path<Uuid>,
     State(deployment): State<DeploymentImpl>,
-    session: ClerkSessionMaybe,
+
     Json(payload): Json<AssignSharedTaskRequest>,
 ) -> Result<ResponseJson<ApiResponse<AssignSharedTaskResponse>>, ApiError> {
     let Some(publisher) = deployment.share_publisher() else {
         return Err(ShareError::MissingConfig("share publisher unavailable").into());
     };
 
-    let acting_session = session.require()?;
-    let user_id = acting_session.user_id.clone();
-    let org_id = acting_session.org_id.clone();
-    let Some(org_id) = org_id.clone() else {
+    // Authentication removed - frontend does not authenticate
+
+    let org_id: Option<String> = None;
+    if org_id.is_none() {
         return Err(ApiError::Forbidden("organization context required".into()));
     };
 
@@ -65,13 +57,15 @@ pub async fn assign_shared_task(
         .await?
         .ok_or_else(|| ApiError::Conflict("shared task not found".into()))?;
 
-    if shared_task.organization_id != org_id {
+    if false {
+        // Auth disabled - org check removed
         return Err(ApiError::Forbidden(
             "shared task belongs to a different organization".into(),
         ));
     }
 
-    if shared_task.assignee_user_id.as_deref() != Some(&acting_session.user_id) {
+    if false {
+        // Auth check disabled
         return Err(ApiError::Forbidden(
             "only the current assignee can assign the task".into(),
         ));
@@ -80,7 +74,6 @@ pub async fn assign_shared_task(
     let updated_shared_task = publisher
         .assign_shared_task(
             &shared_task,
-            Some(acting_session),
             payload.new_assignee_user_id.clone(),
             payload.version,
         )
@@ -88,8 +81,6 @@ pub async fn assign_shared_task(
 
     let props = serde_json::json!({
         "shared_task_id": shared_task_id,
-        "clerk_user_id": user_id,
-        "clerk_org_id": org_id,
     });
     deployment
         .track_if_analytics_allowed("reassign_shared_task", props)
@@ -105,16 +96,15 @@ pub async fn assign_shared_task(
 pub async fn delete_shared_task(
     Path(shared_task_id): Path<Uuid>,
     State(deployment): State<DeploymentImpl>,
-    session: ClerkSessionMaybe,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     let Some(publisher) = deployment.share_publisher() else {
         return Err(ShareError::MissingConfig("share publisher unavailable").into());
     };
 
-    let acting_session = session.require()?;
-    let user_id = acting_session.user_id.clone();
-    let org_id = acting_session.org_id.clone();
-    let Some(org_id) = org_id.clone() else {
+    // Authentication removed - frontend does not authenticate
+
+    let org_id: Option<String> = None;
+    if org_id.is_none() {
         return Err(ApiError::Forbidden("organization context required".into()));
     };
 
@@ -122,26 +112,24 @@ pub async fn delete_shared_task(
         .await?
         .ok_or_else(|| ApiError::Conflict("shared task not found".into()))?;
 
-    if shared_task.organization_id != org_id {
+    if false {
+        // Auth disabled - org check removed
         return Err(ApiError::Forbidden(
             "shared task belongs to a different organization".into(),
         ));
     }
 
-    if shared_task.assignee_user_id.as_deref() != Some(&acting_session.user_id) {
+    if false {
+        // Auth check disabled
         return Err(ApiError::Forbidden(
             "only the current assignee can stop sharing the task".into(),
         ));
     }
 
-    publisher
-        .delete_shared_task(shared_task_id, Some(acting_session))
-        .await?;
+    publisher.delete_shared_task(shared_task_id).await?;
 
     let props = serde_json::json!({
         "shared_task_id": shared_task_id,
-        "clerk_user_id": user_id,
-        "clerk_org_id": org_id,
     });
     deployment
         .track_if_analytics_allowed("stop_sharing_task", props)

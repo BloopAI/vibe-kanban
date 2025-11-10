@@ -48,7 +48,7 @@ use uuid::Uuid;
 use crate::{
     DeploymentImpl,
     error::ApiError,
-    middleware::{ClerkSessionMaybe, load_task_attempt_middleware},
+    middleware::load_task_attempt_middleware,
     routes::task_attempts::{
         gh_cli_setup::GhCliSetupError,
         util::{ensure_worktree_path, handle_images_for_prompt},
@@ -652,7 +652,6 @@ pub async fn compare_commit_to_head(
 pub async fn merge_task_attempt(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
-    session: ClerkSessionMaybe,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     let pool = &deployment.db().pool;
 
@@ -698,11 +697,7 @@ pub async fn merge_task_attempt(
 
     // Try broadcast update to other users in organization
     if let Some(publisher) = deployment.share_publisher() {
-        let acting_session = session.require()?;
-        if let Err(err) = publisher
-            .update_shared_task_by_id(ctx.task.id, Some(acting_session))
-            .await
-        {
+        if let Err(err) = publisher.update_shared_task_by_id(ctx.task.id).await {
             tracing::warn!(
                 ?err,
                 "Failed to propagate shared task update for {}",
@@ -1540,7 +1535,6 @@ pub struct AttachPrResponse {
 pub async fn attach_existing_pr(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
-    session: ClerkSessionMaybe,
 ) -> Result<ResponseJson<ApiResponse<AttachPrResponse>>, ApiError> {
     let pool = &deployment.db().pool;
 
@@ -1603,11 +1597,7 @@ pub async fn attach_existing_pr(
 
             // Try broadcast update to other users in organization
             if let Some(publisher) = deployment.share_publisher() {
-                let acting_session = session.require()?;
-                if let Err(err) = publisher
-                    .update_shared_task_by_id(task.id, Some(acting_session))
-                    .await
-                {
+                if let Err(err) = publisher.update_shared_task_by_id(task.id).await {
                     tracing::warn!(
                         ?err,
                         "Failed to propagate shared task update for {}",

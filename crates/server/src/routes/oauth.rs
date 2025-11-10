@@ -5,6 +5,7 @@ use axum::{
     response::Json as ResponseJson,
     routing::{get, post},
 };
+use deployment::Deployment;
 use serde::{Deserialize, Serialize};
 use services::services::{oauth_credentials::Credentials, remote_client::DevicePollResult};
 use utils::{
@@ -86,8 +87,8 @@ async fn device_poll(
             };
 
             deployment
-                .oauth_credentials()
-                .save(&credentials)
+                .auth_context()
+                .save_credentials(&credentials)
                 .await
                 .map_err(|e| {
                     tracing::error!(?e, "failed to save credentials");
@@ -99,7 +100,7 @@ async fn device_poll(
                 ApiError::Conflict(format!("Failed to fetch profile: {}", e))
             })?;
 
-            deployment.set_profile_cache(profile.clone()).await;
+            deployment.auth_context().set_profile(profile.clone()).await;
 
             Ok(ResponseJson(ApiResponse::success(
                 DevicePollResponseData::Success { profile },
@@ -114,12 +115,16 @@ async fn device_poll(
 }
 
 async fn logout(State(deployment): State<DeploymentImpl>) -> Result<StatusCode, ApiError> {
-    deployment.oauth_credentials().clear().await.map_err(|e| {
-        tracing::error!(?e, "failed to clear credentials");
-        ApiError::Io(e)
-    })?;
+    deployment
+        .auth_context()
+        .clear_credentials()
+        .await
+        .map_err(|e| {
+            tracing::error!(?e, "failed to clear credentials");
+            ApiError::Io(e)
+        })?;
 
-    deployment.clear_profile_cache().await;
+    deployment.auth_context().clear_profile().await;
 
     Ok(StatusCode::NO_CONTENT)
 }

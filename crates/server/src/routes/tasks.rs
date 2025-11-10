@@ -30,11 +30,7 @@ use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use crate::{
-    DeploymentImpl,
-    error::ApiError,
-    middleware::{ClerkSessionMaybe, load_task_middleware, require_clerk_session},
-};
+use crate::{DeploymentImpl, error::ApiError, middleware::load_task_middleware};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TaskQuery {
@@ -220,7 +216,7 @@ pub async fn create_task_and_start(
 pub async fn update_task(
     Extension(existing_task): Extension<Task>,
     State(deployment): State<DeploymentImpl>,
-    session: ClerkSessionMaybe,
+
     Json(payload): Json<UpdateTask>,
 ) -> Result<ResponseJson<ApiResponse<Task>>, ApiError> {
     // Use existing values if not provided in update
@@ -256,10 +252,7 @@ pub async fn update_task(
         let Some(publisher) = deployment.share_publisher() else {
             return Err(ShareError::MissingConfig("share publisher unavailable").into());
         };
-        let acting_session = session.require()?;
-        publisher
-            .update_shared_task(&task, Some(acting_session))
-            .await?;
+        publisher.update_shared_task(&task).await?;
     }
 
     Ok(ResponseJson(ApiResponse::success(task)))
@@ -268,7 +261,6 @@ pub async fn update_task(
 pub async fn delete_task(
     Extension(task): Extension<Task>,
     State(deployment): State<DeploymentImpl>,
-    session: ClerkSessionMaybe,
 ) -> Result<(StatusCode, ResponseJson<ApiResponse<()>>), ApiError> {
     // Validate no running execution processes
     if deployment
@@ -311,10 +303,7 @@ pub async fn delete_task(
         let Some(publisher) = deployment.share_publisher() else {
             return Err(ShareError::MissingConfig("share publisher unavailable").into());
         };
-        let acting_session = session.require()?;
-        publisher
-            .delete_shared_task(shared_task_id, Some(acting_session))
-            .await?;
+        publisher.delete_shared_task(shared_task_id).await?;
     }
 
     // Use a transaction to ensure atomicity: either all operations succeed or all are rolled back
@@ -392,20 +381,15 @@ pub struct ShareTaskResponse {
 pub async fn share_task(
     Extension(task): Extension<Task>,
     State(deployment): State<DeploymentImpl>,
-    session: ClerkSessionMaybe,
 ) -> Result<ResponseJson<ApiResponse<ShareTaskResponse>>, ApiError> {
     let Some(publisher) = deployment.share_publisher() else {
         return Err(ShareError::MissingConfig("share publisher unavailable").into());
     };
-    let acting_session = session.require()?;
-    let analytics_session = acting_session.clone();
-    let shared_task_id = publisher.share_task(task.id, Some(acting_session)).await?;
+    let shared_task_id = publisher.share_task(task.id).await?;
 
     let props = serde_json::json!({
         "task_id": task.id,
         "shared_task_id": shared_task_id,
-        "clerk_user_id": analytics_session.user_id,
-        "clerk_org_id": analytics_session.org_id,
     });
     deployment
         .track_if_analytics_allowed("start_sharing_task", props)
@@ -421,14 +405,6 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/", put(update_task))
         .route("/", delete(delete_task))
         .route("/share", post(share_task));
-    let task_actions_router = if deployment.clerk_service().is_some() {
-        task_actions_router.layer(from_fn_with_state(
-            deployment.clone(),
-            require_clerk_session,
-        ))
-    } else {
-        task_actions_router
-    };
 
     let task_id_router = Router::new()
         .route("/", get(get_task))

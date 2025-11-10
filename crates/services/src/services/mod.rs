@@ -1,6 +1,6 @@
 pub mod analytics;
 pub mod approvals;
-pub mod clerk;
+pub mod auth;
 pub mod config;
 pub mod container;
 pub mod diff_stream;

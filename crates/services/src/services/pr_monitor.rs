@@ -148,7 +148,7 @@ impl PrMonitorService {
 
                 if let Some(publisher) = &self.publisher
                     && let Err(err) = publisher
-                        .update_shared_task_by_id(task_attempt.task_id, None)
+                        .update_shared_task_by_id(task_attempt.task_id)
                         .await
                 {
                     tracing::warn!(

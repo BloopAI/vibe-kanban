@@ -19,7 +19,7 @@ use serde_json::Value;
 use services::services::{
     analytics::{AnalyticsContext, AnalyticsService},
     approvals::Approvals,
-    clerk::{ClerkService, ClerkServiceError, ClerkSessionStore},
+    auth::AuthContext,
     config::{Config, ConfigError},
     container::{ContainerError, ContainerService},
     drafts::DraftsService,
@@ -70,8 +70,6 @@ pub enum DeploymentError {
     #[error(transparent)]
     Config(#[from] ConfigError),
     #[error(transparent)]
-    Clerk(#[from] ClerkServiceError),
-    #[error(transparent)]
     Other(#[from] AnyhowError),
 }
 
@@ -107,9 +105,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     fn drafts(&self) -> &DraftsService;
 
-    fn clerk_sessions(&self) -> &ClerkSessionStore;
-
-    fn clerk_service(&self) -> Option<Arc<ClerkService>>;
+    fn auth_context(&self) -> &AuthContext;
 
     fn share_publisher(&self) -> Option<SharePublisher>;
 
@@ -119,14 +115,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
         let deployment = self.clone();
         let handle_slot = self.share_sync_handle().clone();
         tokio::spawn(async move {
-            tracing::info!("Waiting for authentication before starting shared task sync");
-            let session = deployment.clerk_sessions().wait_for_active().await;
-            if session.org_id.is_none() {
-                tracing::warn!(
-                    "Skipping shared task sync startup: Clerk session missing organization"
-                );
-                return;
-            }
+            tracing::info!("Starting shared task sync");
 
             tracing::info!("Refreshing project metadata prior to shared task sync");
             deployment.refresh_remote_metadata().await;
@@ -134,7 +123,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
             let remote_sync_handle = RemoteSync::spawn(
                 deployment.db().clone(),
                 config,
-                deployment.clerk_sessions().clone(),
+                deployment.auth_context().clone(),
             );
             {
                 let mut guard = handle_slot.lock().await;
@@ -232,8 +221,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                 match Task::update_status(&self.db().pool, task.id, TaskStatus::InReview).await {
                     Ok(_) => {
                         if let Some(publisher) = self.share_publisher()
-                            && let Err(err) =
-                                publisher.update_shared_task_by_id(task.id, None).await
+                            && let Err(err) = publisher.update_shared_task_by_id(task.id).await
                         {
                             tracing::warn!(
                                 ?err,
@@ -429,21 +417,24 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                 continue;
             }
 
-            if github_repo_id_changed
-                && let Some(repo_id) = metadata.github_repo_id
-                && let Err(err) = link_shared_tasks_to_project(
+            if github_repo_id_changed && let Some(repo_id) = metadata.github_repo_id {
+                let current_profile = self.auth_context().cached_profile().await;
+                let current_user_id = current_profile.as_ref().map(|p| p.user_id.as_str());
+
+                if let Err(err) = link_shared_tasks_to_project(
                     &self.db().pool,
-                    self.clerk_sessions(),
+                    current_user_id,
                     project.id,
                     repo_id,
                 )
                 .await
-            {
-                tracing::warn!(
-                    project_id = %project.id,
-                    repo_id,
-                    "failed to link shared tasks after metadata refresh: {err}"
-                );
+                {
+                    tracing::warn!(
+                        project_id = %project.id,
+                        repo_id,
+                        "failed to link shared tasks after metadata refresh: {err}"
+                    );
+                }
             }
         }
     }

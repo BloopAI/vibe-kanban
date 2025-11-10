@@ -17,7 +17,7 @@ use reqwest::Client as HttpClient;
 use uuid::Uuid;
 
 use super::{ShareConfig, ShareError, convert_remote_task, sync_local_task_for_shared_task};
-use crate::services::clerk::{ClerkSession, ClerkSessionStore};
+use crate::services::auth::AuthContext;
 
 struct PreparedBulkTask {
     input: SharedTaskInput,
@@ -30,16 +30,16 @@ pub struct ActivityProcessor {
     db: DBService,
     config: ShareConfig,
     client: HttpClient,
-    sessions: ClerkSessionStore,
+    auth_ctx: AuthContext,
 }
 
 impl ActivityProcessor {
-    pub fn new(db: DBService, config: ShareConfig, sessions: ClerkSessionStore) -> Self {
+    pub fn new(db: DBService, config: ShareConfig, auth_ctx: AuthContext) -> Self {
         Self {
             db,
             config,
             client: HttpClient::new(),
-            sessions,
+            auth_ctx,
         }
     }
 
@@ -54,17 +54,13 @@ impl ActivityProcessor {
     }
 
     /// Fetch and process activity events until caught up, falling back to bulk syncs when needed.
-    pub async fn catch_up(
-        &self,
-        session: &ClerkSession,
-        mut last_seq: Option<i64>,
-    ) -> Result<Option<i64>, ShareError> {
+    pub async fn catch_up(&self, mut last_seq: Option<i64>) -> Result<Option<i64>, ShareError> {
         if last_seq.is_none() {
-            last_seq = self.bulk_sync(session).await?;
+            last_seq = self.bulk_sync().await?;
         }
 
         loop {
-            let events = self.fetch_activity(session, last_seq).await?;
+            let events = self.fetch_activity(last_seq).await?;
             if events.is_empty() {
                 break;
             }
@@ -74,7 +70,7 @@ impl ActivityProcessor {
                 && let Some(newest) = events.last()
                 && newest.seq.saturating_sub(prev_seq) > self.config.bulk_sync_threshold as i64
             {
-                last_seq = self.bulk_sync(session).await?;
+                last_seq = self.bulk_sync().await?;
                 continue;
             }
 
@@ -93,11 +89,14 @@ impl ActivityProcessor {
     }
 
     /// Fetch a page of activity events from the remote service.
-    async fn fetch_activity(
-        &self,
-        session: &ClerkSession,
-        after: Option<i64>,
-    ) -> Result<Vec<ActivityEvent>, ShareError> {
+    async fn fetch_activity(&self, after: Option<i64>) -> Result<Vec<ActivityEvent>, ShareError> {
+        let access_token = self
+            .auth_ctx
+            .get_credentials()
+            .await
+            .ok_or(ShareError::MissingAuth)?
+            .access_token;
+
         let mut url = self.config.activity_endpoint()?;
 
         {
@@ -111,7 +110,7 @@ impl ActivityProcessor {
         let resp = self
             .client
             .get(url)
-            .bearer_auth(session.bearer())
+            .bearer_auth(&access_token)
             .send()
             .await
             .map_err(ShareError::Transport)?;
@@ -177,8 +176,8 @@ impl ActivityProcessor {
                 );
                 let shared_task = SharedTask::upsert(&self.db.pool, input).await?;
 
-                let current_session = self.sessions.last().await;
-                let current_user_id = current_session.as_ref().map(|s| s.user_id.as_str());
+                let current_profile = self.auth_ctx.cached_profile().await;
+                let current_user_id = current_profile.as_ref().map(|p| p.user_id.as_str());
                 sync_local_task_for_shared_task(
                     &self.db.pool,
                     &shared_task,
@@ -229,16 +228,21 @@ impl ActivityProcessor {
         Ok(())
     }
 
-    async fn bulk_sync(&self, session: &ClerkSession) -> Result<Option<i64>, ShareError> {
-        let org_id = session.org_id.clone().ok_or(ShareError::MissingAuth)?;
+    async fn bulk_sync(&self) -> Result<Option<i64>, ShareError> {
+        let org_id = self
+            .auth_ctx
+            .cached_profile()
+            .await
+            .ok_or(ShareError::MissingAuth)?
+            .organization_id;
 
-        let snapshot = self.fetch_bulk_snapshot(session).await?;
-        let latest_seq = snapshot.latest_seq;
+        let bulk_resp = self.fetch_bulk_snapshot().await?;
+        let latest_seq = bulk_resp.latest_seq;
 
         let mut keep_ids = HashSet::new();
         let mut replacements = Vec::new();
 
-        for payload in snapshot.tasks {
+        for payload in bulk_resp.tasks {
             let project_id = self
                 .resolve_project_id(payload.task.id, &payload.project)
                 .await?;
@@ -279,7 +283,7 @@ impl ActivityProcessor {
             })
             .collect();
 
-        for deleted in snapshot.deleted_task_ids {
+        for deleted in bulk_resp.deleted_task_ids {
             if !keep_ids.contains(&deleted) {
                 stale.insert(deleted);
             }
@@ -288,8 +292,8 @@ impl ActivityProcessor {
         let stale_vec: Vec<Uuid> = stale.into_iter().collect();
         self.remove_stale_tasks(&stale_vec).await?;
 
-        let current_session = self.sessions.last().await;
-        let current_user_id = current_session.as_ref().map(|s| s.user_id.as_str());
+        let current_profile = self.auth_ctx.cached_profile().await;
+        let current_user_id = current_profile.as_ref().map(|p| p.user_id.as_str());
 
         for PreparedBulkTask {
             input,
@@ -328,16 +332,20 @@ impl ActivityProcessor {
         Ok(())
     }
 
-    async fn fetch_bulk_snapshot(
-        &self,
-        session: &ClerkSession,
-    ) -> Result<BulkSharedTasksResponse, ShareError> {
+    async fn fetch_bulk_snapshot(&self) -> Result<BulkSharedTasksResponse, ShareError> {
+        let access_token = self
+            .auth_ctx
+            .get_credentials()
+            .await
+            .ok_or(ShareError::MissingAuth)?
+            .access_token;
+
         let url = self.config.bulk_tasks_endpoint()?;
 
         let resp = self
             .client
             .get(url)
-            .bearer_auth(session.bearer())
+            .bearer_auth(&access_token)
             .send()
             .await
             .map_err(ShareError::Transport)?;

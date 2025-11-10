@@ -7,7 +7,7 @@ use executors::profile::ExecutorConfigs;
 use services::services::{
     analytics::{AnalyticsConfig, AnalyticsContext, AnalyticsService, generate_user_id},
     approvals::Approvals,
-    clerk::{ClerkPublicConfig, ClerkPublicConfigError, ClerkService, ClerkSessionStore},
+    auth::AuthContext,
     config::{Config, load_config_from_file, save_config_to_file},
     container::ContainerService,
     drafts::DraftsService,
@@ -22,7 +22,7 @@ use services::services::{
 };
 use tokio::sync::{Mutex, RwLock};
 use utils::{
-    api::oauth::{LoginStatus, ProfileResponse},
+    api::oauth::LoginStatus,
     assets::{config_path, credentials_path},
     msg_store::MsgStore,
 };
@@ -49,11 +49,8 @@ pub struct LocalDeployment {
     drafts: DraftsService,
     share_publisher: Option<SharePublisher>,
     share_sync_handle: Arc<Mutex<Option<RemoteSyncHandle>>>,
-    clerk_sessions: ClerkSessionStore,
-    clerk_service: Option<Arc<ClerkService>>,
-    oauth_credentials: Arc<OAuthCredentials>,
     remote_client: Option<Arc<RemoteClient>>,
-    profile_cache: Arc<RwLock<Option<ProfileResponse>>>,
+    auth_context: AuthContext,
 }
 
 #[async_trait]
@@ -117,32 +114,45 @@ impl Deployment for LocalDeployment {
 
         let approvals = Approvals::new(msg_stores.clone());
 
-        let clerk_sessions = ClerkSessionStore::new();
         let share_config = ShareConfig::from_env();
-        let clerk_service = match ClerkPublicConfig::from_env() {
-            Ok(public_config) => {
-                let remote_api_base = share_config.as_ref().map(|sc| sc.api_base.clone());
-                Some(Arc::new(public_config.build_auth(remote_api_base)?))
-            }
-            Err(ClerkPublicConfigError::MissingEnv(_)) => {
-                tracing::error!("CLERK_ISSUER not set; remote features disabled");
+
+        let oauth_credentials = Arc::new(OAuthCredentials::new(credentials_path()));
+        if let Err(e) = oauth_credentials.load().await {
+            tracing::warn!(?e, "failed to load OAuth credentials");
+        }
+
+        let remote_client = match std::env::var("REMOTE_OAUTH_URL") {
+            Ok(url) => match RemoteClient::new(&url) {
+                Ok(client) => {
+                    tracing::info!("OAuth remote client initialized with URL: {}", url);
+                    Some(Arc::new(client))
+                }
+                Err(e) => {
+                    tracing::error!(?e, "failed to create OAuth remote client");
+                    None
+                }
+            },
+            Err(_) => {
+                tracing::info!("REMOTE_OAUTH_URL not set; OAuth login disabled");
                 None
             }
-            Err(err) => return Err(DeploymentError::Other(err.into())),
         };
+
+        let profile_cache = Arc::new(RwLock::new(None));
+        let auth_context = AuthContext::new(oauth_credentials.clone(), profile_cache.clone());
 
         // Populate the handle once the sync task is started
         let share_sync_handle = Arc::new(Mutex::new(None));
         let mut share_publisher: Option<SharePublisher> = None;
         let mut share_sync_config: Option<ShareConfig> = None;
 
-        if let (Some(_), Some(sc_ref)) = (clerk_service.as_ref(), share_config.as_ref()) {
+        if let Some(sc_ref) = share_config.as_ref() {
             let sc_owned = sc_ref.clone();
             match SharePublisher::new(
                 db.clone(),
                 git.clone(),
                 sc_owned.clone(),
-                clerk_sessions.clone(),
+                auth_context.clone(),
             ) {
                 Ok(publisher) => {
                     share_publisher = Some(publisher);
@@ -180,28 +190,6 @@ impl Deployment for LocalDeployment {
         let drafts = DraftsService::new(db.clone(), image.clone());
         let file_search_cache = Arc::new(FileSearchCache::new());
 
-        let oauth_credentials = Arc::new(OAuthCredentials::new(credentials_path()));
-        if let Err(e) = oauth_credentials.load().await {
-            tracing::warn!(?e, "failed to load OAuth credentials");
-        }
-
-        let remote_client = match std::env::var("REMOTE_OAUTH_URL") {
-            Ok(url) => match RemoteClient::new(&url) {
-                Ok(client) => {
-                    tracing::info!("OAuth remote client initialized with URL: {}", url);
-                    Some(Arc::new(client))
-                }
-                Err(e) => {
-                    tracing::error!(?e, "failed to create OAuth remote client");
-                    None
-                }
-            },
-            Err(_) => {
-                tracing::info!("REMOTE_OAUTH_URL not set; OAuth login disabled");
-                None
-            }
-        };
-
         let deployment = Self {
             config,
             user_id,
@@ -218,11 +206,8 @@ impl Deployment for LocalDeployment {
             drafts,
             share_publisher,
             share_sync_handle: share_sync_handle.clone(),
-            clerk_sessions,
-            clerk_service,
-            oauth_credentials,
             remote_client,
-            profile_cache: Arc::new(RwLock::new(None)),
+            auth_context,
         };
 
         if let Some(sc) = share_sync_config {
@@ -296,20 +281,12 @@ impl Deployment for LocalDeployment {
         &self.share_sync_handle
     }
 
-    fn clerk_sessions(&self) -> &ClerkSessionStore {
-        &self.clerk_sessions
-    }
-
-    fn clerk_service(&self) -> Option<Arc<ClerkService>> {
-        self.clerk_service.clone()
+    fn auth_context(&self) -> &AuthContext {
+        &self.auth_context
     }
 }
 
 impl LocalDeployment {
-    pub fn oauth_credentials(&self) -> &Arc<OAuthCredentials> {
-        &self.oauth_credentials
-    }
-
     pub fn remote_client(&self) -> Option<Arc<RemoteClient>> {
         self.remote_client.clone()
     }
@@ -317,18 +294,21 @@ impl LocalDeployment {
     /// Convenience method to get the current JWT auth token.
     /// Returns None if the user is not authenticated.
     pub async fn auth_token(&self) -> Option<String> {
-        self.oauth_credentials.get().await.map(|c| c.access_token)
+        self.auth_context
+            .get_credentials()
+            .await
+            .map(|c| c.access_token)
     }
 
     pub async fn get_login_status(&self) -> LoginStatus {
-        let Some(creds) = self.oauth_credentials.get().await else {
-            *self.profile_cache.write().await = None;
+        let Some(creds) = self.auth_context.get_credentials().await else {
+            self.auth_context.clear_profile().await;
             return LoginStatus::LoggedOut;
         };
 
-        if let Some(cached_profile) = self.profile_cache.read().await.as_ref() {
+        if let Some(cached_profile) = self.auth_context.cached_profile().await {
             return LoginStatus::LoggedIn {
-                profile: cached_profile.clone(),
+                profile: cached_profile,
             };
         }
 
@@ -338,23 +318,15 @@ impl LocalDeployment {
 
         match remote_client.profile(&creds.access_token).await {
             Ok(profile) => {
-                *self.profile_cache.write().await = Some(profile.clone());
+                self.auth_context.set_profile(profile.clone()).await;
                 LoginStatus::LoggedIn { profile }
             }
             Err(RemoteClientError::Auth) => {
-                let _ = self.oauth_credentials.clear().await;
-                *self.profile_cache.write().await = None;
+                let _ = self.auth_context.clear_credentials().await;
+                self.auth_context.clear_profile().await;
                 LoginStatus::LoggedOut
             }
             Err(_) => LoginStatus::LoggedOut,
         }
-    }
-
-    pub async fn set_profile_cache(&self, profile: ProfileResponse) {
-        *self.profile_cache.write().await = Some(profile);
-    }
-
-    pub async fn clear_profile_cache(&self) {
-        *self.profile_cache.write().await = None;
     }
 }

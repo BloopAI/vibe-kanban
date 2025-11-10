@@ -171,9 +171,11 @@ pub async fn create_project(
             if let Some(_) = deployment.share_publisher()
                 && let Some(github_repo_id) = remote_metadata.github_repo_id
             {
+                let current_profile = deployment.auth_context().cached_profile().await;
+                let current_user_id = current_profile.as_ref().map(|p| p.user_id.as_str());
                 link_shared_tasks_to_project(
                     &deployment.db().pool,
-                    deployment.clerk_sessions(),
+                    current_user_id,
                     id,
                     github_repo_id,
                 )

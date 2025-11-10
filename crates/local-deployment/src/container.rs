@@ -142,7 +142,7 @@ impl LocalContainerService {
         match Task::update_status(&db.pool, ctx.task.id, TaskStatus::InReview).await {
             Ok(_) => {
                 if let Some(publisher) = share
-                    && let Err(err) = publisher.update_shared_task_by_id(ctx.task.id, None).await
+                    && let Err(err) = publisher.update_shared_task_by_id(ctx.task.id).await
                 {
                     tracing::warn!(
                         ?err,
@@ -920,8 +920,7 @@ impl ContainerService for LocalContainerService {
             match Task::update_status(&self.db.pool, ctx.task.id, TaskStatus::InReview).await {
                 Ok(_) => {
                     if let Some(publisher) = self.share_publisher()
-                        && let Err(err) =
-                            publisher.update_shared_task_by_id(ctx.task.id, None).await
+                        && let Err(err) = publisher.update_shared_task_by_id(ctx.task.id).await
                     {
                         tracing::warn!(
                             ?err,

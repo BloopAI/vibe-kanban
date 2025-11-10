@@ -12,11 +12,10 @@ use remote::{
     db::projects::ProjectMetadata,
 };
 use reqwest::{Client as HttpClient, StatusCode};
-use utils::clerk::ClerkSessionStore;
 use uuid::Uuid;
 
 use super::{ShareConfig, ShareError, convert_remote_task, link_shared_tasks_to_project, status};
-use crate::services::{clerk::ClerkSession, git::GitService, metadata::compute_remote_metadata};
+use crate::services::{auth::AuthContext, git::GitService, metadata::compute_remote_metadata};
 
 #[derive(Clone)]
 pub struct SharePublisher {
@@ -24,7 +23,7 @@ pub struct SharePublisher {
     git: GitService,
     client: HttpClient,
     config: ShareConfig,
-    sessions: ClerkSessionStore,
+    auth_ctx: AuthContext,
 }
 
 impl SharePublisher {
@@ -32,7 +31,7 @@ impl SharePublisher {
         db: DBService,
         git: GitService,
         config: ShareConfig,
-        sessions: ClerkSessionStore,
+        auth_ctx: AuthContext,
     ) -> Result<Self, ShareError> {
         let client = HttpClient::builder()
             .timeout(Duration::from_secs(30))
@@ -44,31 +43,21 @@ impl SharePublisher {
             git,
             config,
             client,
-            sessions,
+            auth_ctx,
         })
     }
 
-    async fn resolve_session(
-        &self,
-        provided: Option<&ClerkSession>,
-    ) -> Result<ClerkSession, ShareError> {
-        if let Some(session) = provided.filter(|session| !session.is_expired()) {
-            return Ok(session.clone());
-        }
+    async fn wait_for_auth(&self) -> Result<(String, String, String), ShareError> {
         // The 5-second timeout is an arbitrary choice attempting to balance responsiveness with giving
-        // enough time for session token refresh. It may need tuning based on real-world results.
-        match tokio::time::timeout(Duration::from_secs(5), self.sessions.wait_for_active()).await {
-            Ok(session) => Ok(session),
-            Err(_) => Err(ShareError::MissingAuth),
-        }
+        // enough time for authentication. It may need tuning based on real-world results.
+        self.auth_ctx
+            .wait_for_auth(Duration::from_secs(5))
+            .await
+            .ok_or(ShareError::MissingAuth)
     }
 
-    pub async fn share_task(
-        &self,
-        task_id: Uuid,
-        session: Option<&ClerkSession>,
-    ) -> Result<Uuid, ShareError> {
-        let session = self.resolve_session(session).await?;
+    pub async fn share_task(&self, task_id: Uuid) -> Result<Uuid, ShareError> {
+        let (access_token, user_id, _org_id) = self.wait_for_auth().await?;
         let task = Task::find_by_id(&self.db.pool, task_id)
             .await?
             .ok_or(ShareError::TaskNotFound(task_id))?;
@@ -87,28 +76,24 @@ impl SharePublisher {
             project: project_metadata,
             title: task.title.clone(),
             description: task.description.clone(),
-            assignee_user_id: Some(session.user_id.clone()),
+            assignee_user_id: Some(user_id),
         };
 
         let remote_task = RemoteTaskClient::new(&self.client, &self.config)
-            .create_task(&session, &payload)
+            .create_task(&access_token, &payload)
             .await?;
 
         self.sync_shared_task(&task, &remote_task).await?;
         Ok(remote_task.task.id)
     }
 
-    pub async fn update_shared_task(
-        &self,
-        task: &Task,
-        session: Option<&ClerkSession>,
-    ) -> Result<(), ShareError> {
+    pub async fn update_shared_task(&self, task: &Task) -> Result<(), ShareError> {
         // early exit if task has not been shared
         let Some(shared_task_id) = task.shared_task_id else {
             return Ok(());
         };
 
-        let session = self.resolve_session(session).await?;
+        let (access_token, _user_id, _org_id) = self.wait_for_auth().await?;
         let payload = UpdateSharedTaskRequest {
             title: Some(task.title.clone()),
             description: task.description.clone(),
@@ -117,7 +102,7 @@ impl SharePublisher {
         };
 
         let remote_task = RemoteTaskClient::new(&self.client, &self.config)
-            .update_task(&session, shared_task_id, &payload)
+            .update_task(&access_token, shared_task_id, &payload)
             .await?;
 
         self.sync_shared_task(task, &remote_task).await?;
@@ -125,26 +110,21 @@ impl SharePublisher {
         Ok(())
     }
 
-    pub async fn update_shared_task_by_id(
-        &self,
-        task_id: Uuid,
-        session: Option<&ClerkSession>,
-    ) -> Result<(), ShareError> {
+    pub async fn update_shared_task_by_id(&self, task_id: Uuid) -> Result<(), ShareError> {
         let task = Task::find_by_id(&self.db.pool, task_id)
             .await?
             .ok_or(ShareError::TaskNotFound(task_id))?;
 
-        self.update_shared_task(&task, session).await
+        self.update_shared_task(&task).await
     }
 
     pub async fn assign_shared_task(
         &self,
         shared_task: &SharedTask,
-        session: Option<&ClerkSession>,
         new_assignee_user_id: Option<String>,
         version: Option<i64>,
     ) -> Result<SharedTask, ShareError> {
-        let session = self.resolve_session(session).await?;
+        let (access_token, _user_id, _org_id) = self.wait_for_auth().await?;
         let payload = AssignSharedTaskRequest {
             new_assignee_user_id,
             version,
@@ -154,7 +134,7 @@ impl SharePublisher {
             task: remote_task,
             user,
         } = RemoteTaskClient::new(&self.client, &self.config)
-            .assign_task(&session, shared_task.id, &payload)
+            .assign_task(&access_token, shared_task.id, &payload)
             .await?;
 
         let input = convert_remote_task(
@@ -168,22 +148,18 @@ impl SharePublisher {
         Ok(record)
     }
 
-    pub async fn delete_shared_task(
-        &self,
-        shared_task_id: Uuid,
-        session: Option<&ClerkSession>,
-    ) -> Result<(), ShareError> {
+    pub async fn delete_shared_task(&self, shared_task_id: Uuid) -> Result<(), ShareError> {
         let shared_task = SharedTask::find_by_id(&self.db.pool, shared_task_id)
             .await?
             .ok_or(ShareError::TaskNotFound(shared_task_id))?;
 
-        let session = self.resolve_session(session).await?;
+        let (access_token, _user_id, _org_id) = self.wait_for_auth().await?;
         let payload = DeleteSharedTaskRequest {
             version: Some(shared_task.version),
         };
 
         RemoteTaskClient::new(&self.client, &self.config)
-            .delete_task(&session, shared_task.id, &payload)
+            .delete_task(&access_token, shared_task.id, &payload)
             .await?;
 
         if let Some(local_task) =
@@ -255,17 +231,23 @@ impl SharePublisher {
                 project.github_repo_id = Some(repo_id);
             }
 
-            if github_repo_id_changed
-                && let Some(repo_id) = metadata.github_repo_id
-                && let Err(err) =
-                    link_shared_tasks_to_project(&self.db.pool, &self.sessions, project.id, repo_id)
-                        .await
-            {
-                tracing::warn!(
-                    project_id = %project.id,
+            if github_repo_id_changed && let Some(repo_id) = metadata.github_repo_id {
+                let current_profile = self.auth_ctx.cached_profile().await;
+                let current_user_id = current_profile.as_ref().map(|p| p.user_id.as_str());
+                if let Err(err) = link_shared_tasks_to_project(
+                    &self.db.pool,
+                    current_user_id,
+                    project.id,
                     repo_id,
-                    "failed to link shared tasks after publisher metadata update: {err}"
-                );
+                )
+                .await
+                {
+                    tracing::warn!(
+                        project_id = %project.id,
+                        repo_id,
+                        "failed to link shared tasks after publisher metadata update: {err}"
+                    );
+                }
             }
         }
 
@@ -285,13 +267,13 @@ impl<'a> RemoteTaskClient<'a> {
 
     async fn create_task(
         &self,
-        session: &ClerkSession,
+        access_token: &str,
         payload: &CreateSharedTaskRequest,
     ) -> Result<SharedTaskResponse, ShareError> {
         let response = self
             .http
             .post(self.config.create_task_endpoint()?)
-            .bearer_auth(session.bearer())
+            .bearer_auth(access_token)
             .json(payload)
             .send()
             .await
@@ -302,14 +284,14 @@ impl<'a> RemoteTaskClient<'a> {
 
     async fn update_task(
         &self,
-        session: &ClerkSession,
+        access_token: &str,
         task_id: Uuid,
         payload: &UpdateSharedTaskRequest,
     ) -> Result<SharedTaskResponse, ShareError> {
         let response = self
             .http
             .patch(self.config.update_task_endpoint(task_id)?)
-            .bearer_auth(session.bearer())
+            .bearer_auth(access_token)
             .json(payload)
             .send()
             .await
@@ -320,14 +302,14 @@ impl<'a> RemoteTaskClient<'a> {
 
     async fn assign_task(
         &self,
-        session: &ClerkSession,
+        access_token: &str,
         task_id: Uuid,
         payload: &AssignSharedTaskRequest,
     ) -> Result<SharedTaskResponse, ShareError> {
         let response = self
             .http
             .post(self.config.assign_endpoint(task_id)?)
-            .bearer_auth(session.bearer())
+            .bearer_auth(access_token)
             .json(payload)
             .send()
             .await
@@ -338,14 +320,14 @@ impl<'a> RemoteTaskClient<'a> {
 
     async fn delete_task(
         &self,
-        session: &ClerkSession,
+        access_token: &str,
         task_id: Uuid,
         payload: &DeleteSharedTaskRequest,
     ) -> Result<SharedTaskResponse, ShareError> {
         let response = self
             .http
             .delete(self.config.delete_task_endpoint(task_id)?)
-            .bearer_auth(session.bearer())
+            .bearer_auth(access_token)
             .json(payload)
             .send()
             .await

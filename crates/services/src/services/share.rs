@@ -22,7 +22,7 @@ use db::{
 use processor::ActivityProcessor;
 pub use publisher::SharePublisher;
 use remote::{
-    ClientMessage, ServerMessage,
+    ServerMessage,
     db::{identity::UserData as RemoteUserData, tasks::SharedTask as RemoteSharedTask},
 };
 use sqlx::SqlitePool;
@@ -31,15 +31,13 @@ use tokio::{sync::oneshot, task::JoinHandle, time::sleep};
 use tokio_tungstenite::tungstenite::Message as WsMessage;
 use url::Url;
 use utils::ws::{
-    WS_AUTH_REFRESH_INTERVAL, WS_MAX_DELAY_BETWEEN_CATCHUP_AND_WS, WsClient, WsConfig, WsError,
-    WsHandler, WsResult, run_ws_client,
+    WS_MAX_DELAY_BETWEEN_CATCHUP_AND_WS, WsClient, WsConfig, WsError, WsHandler, WsResult,
+    run_ws_client,
 };
 use uuid::Uuid;
 
 use crate::services::{
-    clerk::{ClerkSession, ClerkSessionStore},
-    git::GitServiceError,
-    github_service::GitHubServiceError,
+    auth::AuthContext, git::GitServiceError, github_service::GitHubServiceError,
 };
 
 #[derive(Debug, Error)]
@@ -106,22 +104,18 @@ pub struct RemoteSync {
     db: DBService,
     processor: ActivityProcessor,
     config: ShareConfig,
-    sessions: ClerkSessionStore,
+    auth_ctx: AuthContext,
 }
 
 impl RemoteSync {
-    pub fn spawn(
-        db: DBService,
-        config: ShareConfig,
-        sessions: ClerkSessionStore,
-    ) -> RemoteSyncHandle {
+    pub fn spawn(db: DBService, config: ShareConfig, auth_ctx: AuthContext) -> RemoteSyncHandle {
         tracing::info!(api = %config.api_base, "starting shared task synchronizer");
-        let processor = ActivityProcessor::new(db.clone(), config.clone(), sessions.clone());
+        let processor = ActivityProcessor::new(db.clone(), config.clone(), auth_ctx.clone());
         let sync = Self {
             db,
             processor,
             config,
-            sessions,
+            auth_ctx,
         };
         let (shutdown_tx, shutdown_rx) = oneshot::channel();
         let join = tokio::spawn(async move {
@@ -136,23 +130,29 @@ impl RemoteSync {
     pub async fn run(self, mut shutdown_rx: oneshot::Receiver<()>) -> Result<(), ShareError> {
         let mut backoff = Backoff::new();
         loop {
-            let session = self.sessions.wait_for_active().await;
-            let org_id = session.org_id.clone().ok_or(ShareError::MissingAuth)?;
+            let profile = self.auth_ctx.cached_profile().await;
+            let Some(org_id) = profile.as_ref().map(|p| p.organization_id.clone()) else {
+                tracing::debug!("No authentication available; waiting before retry");
+                tokio::select! {
+                    _ = &mut shutdown_rx => {
+                        tracing::info!("shutdown received while waiting for auth");
+                        return Ok(());
+                    }
+                    _ = backoff.wait() => {}
+                }
+                continue;
+            };
 
             let mut last_seq = SharedActivityCursor::get(&self.db.pool, org_id.clone())
                 .await?
                 .map(|cursor| cursor.last_seq);
-            last_seq = self
-                .processor
-                .catch_up(&session, last_seq)
-                .await
-                .unwrap_or(last_seq);
+            last_seq = self.processor.catch_up(last_seq).await.unwrap_or(last_seq);
 
             let ws_url = self.config.websocket_endpoint(last_seq)?;
             let (close_tx, close_rx) = oneshot::channel();
             let ws_connection = match spawn_shared_remote(
                 self.processor.clone(),
-                &self.sessions,
+                &self.auth_ctx,
                 ws_url,
                 close_tx,
             )
@@ -256,25 +256,23 @@ impl WsHandler for SharedWsHandler {
 
 async fn spawn_shared_remote(
     processor: ActivityProcessor,
-    sessions: &ClerkSessionStore,
+    auth_ctx: &AuthContext,
     url: Url,
     close_tx: oneshot::Sender<()>,
 ) -> Result<WsClient, ShareError> {
-    let session_source = sessions.clone();
+    let auth_source = auth_ctx.clone();
     let ws_config = WsConfig {
         url,
         ping_interval: Some(std::time::Duration::from_secs(30)),
         header_factory: Some(Arc::new(move || {
-            let session_source = session_source.clone();
+            let auth_source = auth_source.clone();
             Box::pin(async move {
-                match tokio::time::timeout(
-                    WS_MAX_DELAY_BETWEEN_CATCHUP_AND_WS,
-                    session_source.wait_for_active(),
-                )
-                .await
+                match auth_source
+                    .wait_for_auth(WS_MAX_DELAY_BETWEEN_CATCHUP_AND_WS)
+                    .await
                 {
-                    Ok(session) => build_ws_headers(&session),
-                    Err(_) => Err(WsError::MissingAuth),
+                    Some((access_token, _user_id, _org_id)) => build_ws_headers(&access_token),
+                    None => Err(WsError::MissingAuth),
                 }
             })
         })),
@@ -288,71 +286,15 @@ async fn spawn_shared_remote(
         .await
         .map_err(ShareError::from)?;
 
-    spawn_auth_token_refresh(client.clone(), sessions.clone());
-
     Ok(client)
 }
 
-fn build_ws_headers(session: &ClerkSession) -> WsResult<Vec<(HeaderName, HeaderValue)>> {
+fn build_ws_headers(access_token: &str) -> WsResult<Vec<(HeaderName, HeaderValue)>> {
     let mut headers = Vec::new();
-    let value = format!("Bearer {}", session.bearer());
+    let value = format!("Bearer {access_token}");
     let header = HeaderValue::from_str(&value).map_err(|err| WsError::Header(err.to_string()))?;
     headers.push((AUTHORIZATION, header));
     Ok(headers)
-}
-
-fn spawn_auth_token_refresh(client: WsClient, sessions: ClerkSessionStore) {
-    tokio::spawn(async move {
-        let result: WsResult<()> = async {
-            let close_rx = client.subscribe_close();
-            loop {
-                let session_fut = sessions.wait_for_active();
-                tokio::pin!(session_fut);
-
-                let mut close_rx2 = close_rx.clone();
-                let session = tokio::select! {
-                    _ = close_rx2.changed() => break,
-                    session = session_fut => session,
-                };
-
-                let message = ClientMessage::AuthToken {
-                    token: session.bearer().to_owned(),
-                };
-                let payload = serde_json::to_string(&message)
-                    .map_err(|err| WsError::Handler(Box::new(err)))?;
-                client.send(WsMessage::Text(payload.into()))?;
-                tracing::debug!(
-                    session_id = %session.session_id,
-                    expires_at = %session.expires_at,
-                    "sent websocket auth token refresh",
-                );
-
-                let mut close_rx2 = close_rx.clone();
-                tokio::select! {
-                    _ = close_rx2.changed() => break,
-                    _ = sleep(WS_AUTH_REFRESH_INTERVAL) => {}
-                }
-            }
-            Ok(())
-        }
-        .await;
-
-        match result {
-            Ok(()) => tracing::debug!("websocket auth token refresh loop completed"),
-            Err(WsError::Send(error)) => {
-                tracing::debug!(
-                    %error,
-                    "websocket auth token refresh loop stopped after send failure",
-                );
-            }
-            Err(WsError::ShutdownChannelClosed) => {
-                tracing::debug!("websocket auth token refresh loop stopped after shutdown");
-            }
-            Err(err) => {
-                tracing::warn!(?err, "websocket auth token refresh loop exited with error");
-            }
-        }
-    });
 }
 
 #[derive(Clone)]
@@ -472,7 +414,7 @@ pub(super) async fn sync_local_task_for_shared_task(
 
 pub async fn link_shared_tasks_to_project(
     pool: &SqlitePool,
-    sessions: &ClerkSessionStore,
+    current_user_id: Option<&str>,
     project_id: Uuid,
     github_repo_id: i64,
 ) -> Result<(), ShareError> {
@@ -483,10 +425,8 @@ pub async fn link_shared_tasks_to_project(
         return Ok(());
     }
 
-    let current_user_id = sessions.last().await.as_ref().map(|s| s.user_id.clone());
-
     for task in linked_tasks {
-        sync_local_task_for_shared_task(pool, &task, current_user_id.as_deref(), None).await?;
+        sync_local_task_for_shared_task(pool, &task, current_user_id, None).await?;
     }
 
     Ok(())

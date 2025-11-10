@@ -594,7 +594,7 @@ pub trait ContainerService {
             Task::update_status(&self.db().pool, task.id, TaskStatus::InProgress).await?;
 
             if let Some(publisher) = self.share_publisher()
-                && let Err(err) = publisher.update_shared_task_by_id(task.id, None).await
+                && let Err(err) = publisher.update_shared_task_by_id(task.id).await
             {
                 tracing::warn!(
                     ?err,
