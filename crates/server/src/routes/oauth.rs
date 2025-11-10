@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use services::services::oauth_credentials::Credentials;
 use sha2::{Digest, Sha256};
 use utils::{
-    api::oauth::{HandoffInitRequest, HandoffRedeemRequest, ProfileResponse, StatusResponse},
+    api::oauth::{HandoffInitRequest, HandoffRedeemRequest, StatusResponse},
     response::ApiResponse,
 };
 use uuid::Uuid;
