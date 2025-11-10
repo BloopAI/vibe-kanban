@@ -21,6 +21,7 @@ import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useState, useRef, useEffect } from 'react';
 import { oauthApi } from '@/lib/api';
 import type { DeviceInitResponse, ProfileResponse } from 'shared/types';
+import { useTranslation } from 'react-i18next';
 
 type OAuthProvider = 'github' | 'google';
 
@@ -32,6 +33,7 @@ type OAuthState =
 
 const OAuthDialog = NiceModal.create(() => {
   const modal = useModal();
+  const { t } = useTranslation('common');
   const [state, setState] = useState<OAuthState>({ type: 'select' });
   const [isPolling, setIsPolling] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
@@ -135,10 +137,10 @@ const OAuthDialog = NiceModal.create(() => {
             <DialogHeader>
               <div className="flex items-center gap-3">
                 <LogIn className="h-6 w-6 text-primary-foreground" />
-                <DialogTitle>Sign in with OAuth</DialogTitle>
+                <DialogTitle>{t('oauth.title')}</DialogTitle>
               </div>
               <DialogDescription className="text-left pt-2">
-                Connect your account using OAuth to access additional features
+                {t('oauth.description')}
               </DialogDescription>
             </DialogHeader>
 
@@ -149,7 +151,7 @@ const OAuthDialog = NiceModal.create(() => {
                 onClick={() => handleProviderSelect('github')}
               >
                 <Github className="h-5 w-5" />
-                <span>Continue with GitHub</span>
+                <span>{t('oauth.continueWithGitHub')}</span>
               </Button>
 
               <Button
@@ -158,13 +160,13 @@ const OAuthDialog = NiceModal.create(() => {
                 onClick={() => handleProviderSelect('google')}
               >
                 <Chrome className="h-5 w-5" />
-                <span>Continue with Google</span>
+                <span>{t('oauth.continueWithGoogle')}</span>
               </Button>
             </div>
 
             <DialogFooter>
               <Button variant="ghost" onClick={handleClose}>
-                Cancel
+                {t('buttons.cancel')}
               </Button>
             </DialogFooter>
           </>
@@ -176,10 +178,10 @@ const OAuthDialog = NiceModal.create(() => {
             <DialogHeader>
               <div className="flex items-center gap-3">
                 <LogIn className="h-6 w-6 text-primary-foreground" />
-                <DialogTitle>Verify Your Identity</DialogTitle>
+                <DialogTitle>{t('oauth.verifyTitle')}</DialogTitle>
               </div>
               <DialogDescription className="text-left pt-2">
-                Complete the authentication in your browser
+                {t('oauth.verifyDescription')}
               </DialogDescription>
             </DialogHeader>
 
@@ -187,7 +189,9 @@ const OAuthDialog = NiceModal.create(() => {
               {state.data && (
                 <>
                   <div className="space-y-2">
-                    <p className="text-sm font-medium">Verification Code:</p>
+                    <p className="text-sm font-medium">
+                      {t('oauth.verificationCode')}
+                    </p>
                     <div className="relative">
                       <div
                         className="flex items-center justify-center w-full text-center text-2xl font-mono font-bold tracking-wider border rounded-md py-3 bg-muted cursor-pointer hover:bg-muted/80 transition-colors"
@@ -207,8 +211,7 @@ const OAuthDialog = NiceModal.create(() => {
 
                   <div className="flex flex-col gap-2">
                     <p className="text-sm text-muted-foreground">
-                      Click the button below to open your browser and enter the
-                      verification code.
+                      {t('oauth.verificationInstructions')}
                     </p>
                     <Button
                       variant="outline"
@@ -221,7 +224,7 @@ const OAuthDialog = NiceModal.create(() => {
                       }}
                     >
                       <ExternalLink className="h-4 w-4 mr-2" />
-                      Open Browser
+                      {t('oauth.openBrowser')}
                     </Button>
                   </div>
                 </>
@@ -230,17 +233,17 @@ const OAuthDialog = NiceModal.create(() => {
               {isPolling && (
                 <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Waiting for authentication...</span>
+                  <span>{t('oauth.waitingForAuth')}</span>
                 </div>
               )}
             </div>
 
             <DialogFooter className="gap-2 sm:gap-0">
               <Button variant="ghost" onClick={handleBack}>
-                Back
+                {t('oauth.back')}
               </Button>
               <Button variant="ghost" onClick={handleClose}>
-                Cancel
+                {t('buttons.cancel')}
               </Button>
             </DialogFooter>
           </>
@@ -250,9 +253,11 @@ const OAuthDialog = NiceModal.create(() => {
         return (
           <>
             <DialogHeader>
-              <DialogTitle>Authentication Successful!</DialogTitle>
+              <DialogTitle>{t('oauth.successTitle')}</DialogTitle>
               <DialogDescription className="text-left pt-2">
-                Welcome back, {state.profile.username || state.profile.email}
+                {t('oauth.welcomeBack', {
+                  name: state.profile.username || state.profile.email,
+                })}
               </DialogDescription>
             </DialogHeader>
 
@@ -280,9 +285,9 @@ const OAuthDialog = NiceModal.create(() => {
         return (
           <>
             <DialogHeader>
-              <DialogTitle>Authentication Failed</DialogTitle>
+              <DialogTitle>{t('oauth.errorTitle')}</DialogTitle>
               <DialogDescription className="text-left pt-2">
-                There was a problem authenticating your account
+                {t('oauth.errorDescription')}
               </DialogDescription>
             </DialogHeader>
 
@@ -294,10 +299,10 @@ const OAuthDialog = NiceModal.create(() => {
 
             <DialogFooter className="gap-2 sm:gap-0">
               <Button variant="ghost" onClick={handleBack}>
-                Try Again
+                {t('oauth.tryAgain')}
               </Button>
               <Button variant="ghost" onClick={handleClose}>
-                Close
+                {t('buttons.close')}
               </Button>
             </DialogFooter>
           </>
