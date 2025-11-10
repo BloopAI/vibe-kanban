@@ -3,7 +3,7 @@ use axum::{
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
-    routing::{get, post},
+    routing::{delete, get, patch, post},
 };
 use chrono::{Duration, Utc};
 use serde::{Deserialize, Serialize};
@@ -33,6 +33,15 @@ pub fn protected_router() -> Router<AppState> {
         )
         .route("/organizations/{org_id}/invitations", get(list_invitations))
         .route("/invitations/{token}/accept", post(accept_invitation))
+        .route("/organizations/{org_id}/members", get(list_members))
+        .route(
+            "/organizations/{org_id}/members/{user_id}",
+            delete(remove_member),
+        )
+        .route(
+            "/organizations/{org_id}/members/{user_id}/role",
+            patch(update_member_role),
+        )
 }
 
 #[derive(Debug, Deserialize)]
@@ -63,6 +72,29 @@ pub struct GetInvitationResponse {
 pub struct AcceptInvitationResponse {
     pub organization_id: String,
     pub organization_slug: String,
+    pub role: MemberRole,
+}
+
+#[derive(Debug, Serialize)]
+pub struct OrganizationMember {
+    pub user_id: Uuid,
+    pub role: MemberRole,
+    pub joined_at: chrono::DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ListMembersResponse {
+    pub members: Vec<OrganizationMember>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateMemberRoleRequest {
+    pub role: MemberRole,
+}
+
+#[derive(Debug, Serialize)]
+pub struct UpdateMemberRoleResponse {
+    pub user_id: Uuid,
     pub role: MemberRole,
 }
 
@@ -204,5 +236,273 @@ pub async fn accept_invitation(
         organization_id: org.id.to_string(),
         organization_slug: org.slug,
         role,
+    }))
+}
+
+pub async fn list_members(
+    State(state): State<AppState>,
+    axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
+    Path(org_id): Path<Uuid>,
+) -> Result<impl IntoResponse, ErrorResponse> {
+    let organization = ctx.organization;
+    if organization.id != org_id {
+        return Err(ErrorResponse::new(
+            StatusCode::FORBIDDEN,
+            "Organization mismatch",
+        ));
+    }
+
+    let members = sqlx::query_as!(
+        OrganizationMember,
+        r#"
+        SELECT
+            user_id AS "user_id!: Uuid",
+            role AS "role!: MemberRole",
+            joined_at AS "joined_at!"
+        FROM organization_member_metadata
+        WHERE organization_id = $1 AND status = 'active'
+        ORDER BY joined_at ASC
+        "#,
+        org_id
+    )
+    .fetch_all(&state.pool)
+    .await
+    .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?;
+
+    Ok(Json(ListMembersResponse { members }))
+}
+
+pub async fn remove_member(
+    State(state): State<AppState>,
+    axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
+    Path((org_id, user_id)): Path<(Uuid, Uuid)>,
+) -> Result<impl IntoResponse, ErrorResponse> {
+    let user = ctx.user;
+    let organization = ctx.organization;
+    if organization.id != org_id {
+        return Err(ErrorResponse::new(
+            StatusCode::FORBIDDEN,
+            "Organization mismatch",
+        ));
+    }
+
+    if user.id == user_id {
+        return Err(ErrorResponse::new(
+            StatusCode::BAD_REQUEST,
+            "Cannot remove yourself",
+        ));
+    }
+
+    let mut tx = state
+        .pool
+        .begin()
+        .await
+        .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?;
+
+    let requesting_role = sqlx::query_scalar!(
+        r#"
+        SELECT role AS "role!: MemberRole"
+        FROM organization_member_metadata
+        WHERE organization_id = $1 AND user_id = $2 AND status = 'active'
+        "#,
+        org_id,
+        user.id
+    )
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?
+    .ok_or_else(|| ErrorResponse::new(StatusCode::FORBIDDEN, "Not a member"))?;
+
+    if requesting_role != MemberRole::Admin {
+        return Err(ErrorResponse::new(
+            StatusCode::FORBIDDEN,
+            "Admin access required",
+        ));
+    }
+
+    let target = sqlx::query!(
+        r#"
+        SELECT role AS "role!: MemberRole", status
+        FROM organization_member_metadata
+        WHERE organization_id = $1 AND user_id = $2
+        FOR UPDATE
+        "#,
+        org_id,
+        user_id
+    )
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?
+    .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "Member not found"))?;
+
+    if target.status != "active" {
+        return Err(ErrorResponse::new(
+            StatusCode::NOT_FOUND,
+            "Member not found",
+        ));
+    }
+
+    if target.role == MemberRole::Admin {
+        let admin_ids = sqlx::query_scalar!(
+            r#"
+            SELECT user_id
+            FROM organization_member_metadata
+            WHERE organization_id = $1 AND status = 'active' AND role = 'admin'
+            FOR UPDATE
+            "#,
+            org_id
+        )
+        .fetch_all(&mut *tx)
+        .await
+        .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?;
+
+        if admin_ids.len() == 1 && admin_ids[0] == user_id {
+            return Err(ErrorResponse::new(
+                StatusCode::CONFLICT,
+                "Cannot remove the last admin",
+            ));
+        }
+    }
+
+    sqlx::query!(
+        r#"
+        DELETE FROM organization_member_metadata
+        WHERE organization_id = $1 AND user_id = $2
+        "#,
+        org_id,
+        user_id
+    )
+    .execute(&mut *tx)
+    .await
+    .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?;
+
+    tx.commit()
+        .await
+        .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+pub async fn update_member_role(
+    State(state): State<AppState>,
+    axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
+    Path((org_id, user_id)): Path<(Uuid, Uuid)>,
+    Json(payload): Json<UpdateMemberRoleRequest>,
+) -> Result<impl IntoResponse, ErrorResponse> {
+    let user = ctx.user;
+    let organization = ctx.organization;
+    if organization.id != org_id {
+        return Err(ErrorResponse::new(
+            StatusCode::FORBIDDEN,
+            "Organization mismatch",
+        ));
+    }
+
+    if user.id == user_id && payload.role == MemberRole::Member {
+        return Err(ErrorResponse::new(
+            StatusCode::BAD_REQUEST,
+            "Cannot demote yourself",
+        ));
+    }
+
+    let mut tx = state
+        .pool
+        .begin()
+        .await
+        .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?;
+
+    let requesting_role = sqlx::query_scalar!(
+        r#"
+        SELECT role AS "role!: MemberRole"
+        FROM organization_member_metadata
+        WHERE organization_id = $1 AND user_id = $2 AND status = 'active'
+        "#,
+        org_id,
+        user.id
+    )
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?
+    .ok_or_else(|| ErrorResponse::new(StatusCode::FORBIDDEN, "Not a member"))?;
+
+    if requesting_role != MemberRole::Admin {
+        return Err(ErrorResponse::new(
+            StatusCode::FORBIDDEN,
+            "Admin access required",
+        ));
+    }
+
+    let target = sqlx::query!(
+        r#"
+        SELECT role AS "role!: MemberRole", status
+        FROM organization_member_metadata
+        WHERE organization_id = $1 AND user_id = $2
+        FOR UPDATE
+        "#,
+        org_id,
+        user_id
+    )
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?
+    .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "Member not found"))?;
+
+    if target.status != "active" {
+        return Err(ErrorResponse::new(
+            StatusCode::NOT_FOUND,
+            "Member not found",
+        ));
+    }
+
+    if target.role == payload.role {
+        return Ok(Json(UpdateMemberRoleResponse {
+            user_id,
+            role: payload.role,
+        }));
+    }
+
+    if target.role == MemberRole::Admin && payload.role == MemberRole::Member {
+        let admin_ids = sqlx::query_scalar!(
+            r#"
+            SELECT user_id
+            FROM organization_member_metadata
+            WHERE organization_id = $1 AND status = 'active' AND role = 'admin'
+            FOR UPDATE
+            "#,
+            org_id
+        )
+        .fetch_all(&mut *tx)
+        .await
+        .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?;
+
+        if admin_ids.len() == 1 && admin_ids[0] == user_id {
+            return Err(ErrorResponse::new(
+                StatusCode::CONFLICT,
+                "Cannot demote the last admin",
+            ));
+        }
+    }
+
+    sqlx::query!(
+        r#"
+        UPDATE organization_member_metadata
+        SET role = $3
+        WHERE organization_id = $1 AND user_id = $2
+        "#,
+        org_id,
+        user_id,
+        payload.role as MemberRole
+    )
+    .execute(&mut *tx)
+    .await
+    .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?;
+
+    tx.commit()
+        .await
+        .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?;
+
+    Ok(Json(UpdateMemberRoleResponse {
+        user_id,
+        role: payload.role,
     }))
 }
