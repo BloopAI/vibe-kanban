@@ -1,16 +1,14 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{PgPool, Type, query_as, query_scalar};
+use sqlx::{PgPool, query_as};
 use uuid::Uuid;
 
 use super::identity_errors::IdentityError;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
-#[sqlx(type_name = "member_role", rename_all = "lowercase")]
-pub enum MemberRole {
-    Admin,
-    Member,
-}
+use super::organization_members::{
+    MemberRole, assert_admin as check_admin, assert_membership as check_membership,
+    check_user_role as get_user_role, ensure_member_metadata,
+    ensure_member_metadata_with_role,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct Organization {
@@ -55,25 +53,7 @@ impl<'a> OrganizationRepository<'a> {
         organization_id: Uuid,
         user_id: Uuid,
     ) -> Result<(), IdentityError> {
-        let exists = query_scalar!(
-            r#"
-            SELECT EXISTS(
-                SELECT 1
-                FROM organization_member_metadata
-                WHERE organization_id = $1 AND user_id = $2
-            ) AS "exists!"
-            "#,
-            organization_id,
-            user_id
-        )
-        .fetch_one(self.pool)
-        .await?;
-
-        if exists {
-            Ok(())
-        } else {
-            Err(IdentityError::NotFound)
-        }
+        check_membership(self.pool, organization_id, user_id).await
     }
 
     pub async fn fetch_organization(
@@ -127,19 +107,7 @@ impl<'a> OrganizationRepository<'a> {
         organization_id: Uuid,
         user_id: Uuid,
     ) -> Result<Option<MemberRole>, IdentityError> {
-        let result = sqlx::query!(
-            r#"
-            SELECT role AS "role!: MemberRole"
-            FROM organization_member_metadata
-            WHERE organization_id = $1 AND user_id = $2 AND status = 'active'
-            "#,
-            organization_id,
-            user_id
-        )
-        .fetch_optional(self.pool)
-        .await?;
-
-        Ok(result.map(|r| r.role))
+        get_user_role(self.pool, organization_id, user_id).await
     }
 
     pub async fn assert_admin(
@@ -147,11 +115,7 @@ impl<'a> OrganizationRepository<'a> {
         organization_id: Uuid,
         user_id: Uuid,
     ) -> Result<(), IdentityError> {
-        let role = self.check_user_role(organization_id, user_id).await?;
-        match role {
-            Some(MemberRole::Admin) => Ok(()),
-            _ => Err(IdentityError::PermissionDenied),
-        }
+        check_admin(self.pool, organization_id, user_id).await
     }
 
     pub async fn create_organization(
@@ -362,40 +326,6 @@ async fn create_organization_with_slug(
     )
     .fetch_one(pool)
     .await
-}
-
-async fn ensure_member_metadata(
-    pool: &PgPool,
-    organization_id: Uuid,
-    user_id: Uuid,
-) -> Result<(), sqlx::Error> {
-    ensure_member_metadata_with_role(pool, organization_id, user_id, MemberRole::Member).await
-}
-
-pub(super) async fn ensure_member_metadata_with_role<'a, E>(
-    executor: E,
-    organization_id: Uuid,
-    user_id: Uuid,
-    role: MemberRole,
-) -> Result<(), sqlx::Error>
-where
-    E: sqlx::Executor<'a, Database = sqlx::Postgres>,
-{
-    sqlx::query!(
-        r#"
-        INSERT INTO organization_member_metadata (organization_id, user_id, role)
-        VALUES ($1, $2, $3)
-        ON CONFLICT (organization_id, user_id) DO UPDATE
-        SET role = EXCLUDED.role
-        "#,
-        organization_id,
-        user_id,
-        role as MemberRole
-    )
-    .execute(executor)
-    .await?;
-
-    Ok(())
 }
 
 fn personal_org_name(hint: Option<&str>, user_id: Uuid) -> String {

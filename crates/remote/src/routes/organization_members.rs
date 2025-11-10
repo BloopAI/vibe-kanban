@@ -16,7 +16,8 @@ use crate::{
     db::{
         identity_errors::IdentityError,
         invitations::{Invitation, InvitationRepository},
-        organizations::{MemberRole, OrganizationRepository},
+        organization_members::MemberRole,
+        organizations::OrganizationRepository,
     },
 };
 

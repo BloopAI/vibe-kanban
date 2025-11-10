@@ -14,6 +14,7 @@ use crate::{
     auth::RequestContext,
     db::{
         identity_errors::IdentityError,
+        organization_members::MemberRole,
         organizations::{Organization, OrganizationRepository, OrganizationWithRole},
     },
 };
@@ -146,11 +147,11 @@ pub async fn get_organization(
         .check_user_role(org_id, ctx.user.id)
         .await
         .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?
-        .unwrap_or(crate::db::organizations::MemberRole::Member);
+        .unwrap_or(MemberRole::Member);
 
     let user_role = match role {
-        crate::db::organizations::MemberRole::Admin => "admin",
-        crate::db::organizations::MemberRole::Member => "member",
+        MemberRole::Admin => "admin",
+        MemberRole::Member => "member",
     }
     .to_string();
 

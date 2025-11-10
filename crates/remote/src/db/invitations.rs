@@ -5,7 +5,8 @@ use uuid::Uuid;
 
 use super::{
     identity_errors::IdentityError,
-    organizations::{MemberRole, Organization},
+    organization_members::{assert_admin, ensure_member_metadata_with_role, MemberRole},
+    organizations::Organization,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -49,12 +50,7 @@ impl<'a> InvitationRepository<'a> {
         expires_at: DateTime<Utc>,
         token: &str,
     ) -> Result<Invitation, IdentityError> {
-        use super::organizations::OrganizationRepository;
-
-        let org_repo = OrganizationRepository::new(self.pool);
-        org_repo
-            .assert_admin(organization_id, invited_by_user_id)
-            .await?;
+        assert_admin(self.pool, organization_id, invited_by_user_id).await?;
 
         let invitation = sqlx::query_as!(
             Invitation,
@@ -103,12 +99,7 @@ impl<'a> InvitationRepository<'a> {
         organization_id: Uuid,
         requesting_user_id: Uuid,
     ) -> Result<Vec<Invitation>, IdentityError> {
-        use super::organizations::OrganizationRepository;
-
-        let org_repo = OrganizationRepository::new(self.pool);
-        org_repo
-            .assert_admin(organization_id, requesting_user_id)
-            .await?;
+        assert_admin(self.pool, organization_id, requesting_user_id).await?;
 
         let invitations = sqlx::query_as!(
             Invitation,
@@ -166,8 +157,6 @@ impl<'a> InvitationRepository<'a> {
         token: &str,
         user_id: Uuid,
     ) -> Result<(Organization, MemberRole), IdentityError> {
-        use super::organizations::ensure_member_metadata_with_role;
-
         let mut tx = self.pool.begin().await?;
 
         let invitation = sqlx::query_as!(

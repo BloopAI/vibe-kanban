@@ -5,6 +5,7 @@ pub mod invitations;
 pub mod listener;
 pub mod oauth;
 pub mod oauth_accounts;
+pub mod organization_members;
 pub mod organizations;
 pub mod projects;
 pub mod tasks;
