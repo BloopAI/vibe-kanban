@@ -1,0 +1,33 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT role AS \"role!: MemberRole\"\n            FROM organization_member_metadata\n            WHERE organization_id = $1 AND user_id = $2 AND status = 'active'\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "role!: MemberRole",
+        "type_info": {
+          "Custom": {
+            "name": "member_role",
+            "kind": {
+              "Enum": [
+                "admin",
+                "member"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "4eee1a9c3745a15dac0732e24538a49a795729059289e4653928a6ab66cc4b35"
+}

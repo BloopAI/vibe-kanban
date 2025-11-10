@@ -27,7 +27,8 @@
     "prepare-db": "node scripts/prepare-db.js",
     "build:npx": "bash ./local-build.sh",
     "prepack": "npm run build:npx",
-    "remote:dev": "cd crates/remote && docker compose --env-file .env.remote up --build ; docker compose down -v"
+    "remote:dev": "cd crates/remote && docker compose --env-file .env.remote up --build ; docker compose down -v",
+    "remote:prepare-db": "cd crates/remote && bash scripts/prepare-db.sh"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
