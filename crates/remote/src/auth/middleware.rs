@@ -77,6 +77,10 @@ pub async fn require_session(
             warn!(?error, "failed to load organization");
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
+        Err(_) => {
+            warn!("unexpected error loading organization");
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
     };
 
     let user = match identity_repo.fetch_user(&identity.user_id).await {
@@ -87,6 +91,10 @@ pub async fn require_session(
         }
         Err(IdentityError::Database(error)) => {
             warn!(?error, "failed to load user");
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
+        Err(_) => {
+            warn!("unexpected error loading user");
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
     };

@@ -7,6 +7,27 @@ use serde_json::json;
 
 use crate::db::{identity::IdentityError, projects::ProjectError, tasks::SharedTaskError};
 
+#[derive(Debug)]
+pub struct ErrorResponse {
+    status: StatusCode,
+    message: String,
+}
+
+impl ErrorResponse {
+    pub fn new(status: StatusCode, message: impl Into<String>) -> Self {
+        Self {
+            status,
+            message: message.into(),
+        }
+    }
+}
+
+impl IntoResponse for ErrorResponse {
+    fn into_response(self) -> Response {
+        (self.status, Json(json!({ "error": self.message }))).into_response()
+    }
+}
+
 pub(crate) fn task_error_response(error: SharedTaskError, context: &str) -> Response {
     let response = match error {
         SharedTaskError::NotFound => (
@@ -59,6 +80,13 @@ pub(crate) fn task_error_response(error: SharedTaskError, context: &str) -> Resp
 pub(crate) fn identity_error_response(error: IdentityError, message: &str) -> Response {
     match error {
         IdentityError::NotFound => (StatusCode::BAD_REQUEST, Json(json!({ "error": message }))),
+        IdentityError::PermissionDenied => (
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "permission denied" })),
+        ),
+        IdentityError::InvitationError(msg) => {
+            (StatusCode::BAD_REQUEST, Json(json!({ "error": msg })))
+        }
         IdentityError::Database(err) => {
             tracing::error!(?err, "identity sync failed");
             (

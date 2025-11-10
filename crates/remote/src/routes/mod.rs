@@ -16,6 +16,7 @@ use crate::{AppState, auth::require_session};
 pub mod activity;
 mod error;
 mod identity;
+mod invitations;
 mod oauth;
 mod tasks;
 
@@ -43,7 +44,8 @@ pub fn router(state: AppState) -> Router {
     let public = Router::<AppState>::new()
         .route("/health", get(health))
         .route("/oauth/device/init", post(oauth::device_init))
-        .route("/oauth/device/poll", post(oauth::device_poll));
+        .route("/oauth/device/poll", post(oauth::device_poll))
+        .route("/v1/invitations/{token}", get(invitations::get_invitation));
 
     let protected = Router::<AppState>::new()
         .route("/v1/activity", get(activity::get_activity_stream))
@@ -53,6 +55,18 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/tasks/{task_id}", patch(tasks::update_shared_task))
         .route("/v1/tasks/{task_id}", delete(tasks::delete_shared_task))
         .route("/v1/tasks/{task_id}/assign", post(tasks::assign_task))
+        .route(
+            "/v1/organizations/{org_id}/invitations",
+            post(invitations::create_invitation),
+        )
+        .route(
+            "/v1/organizations/{org_id}/invitations",
+            get(invitations::list_invitations),
+        )
+        .route(
+            "/v1/invitations/{token}/accept",
+            post(invitations::accept_invitation),
+        )
         .route("/profile", get(oauth::profile))
         .merge(crate::ws::router())
         .layer(middleware::from_fn_with_state(

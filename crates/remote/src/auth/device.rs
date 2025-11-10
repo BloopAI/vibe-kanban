@@ -176,8 +176,9 @@ impl DeviceFlowService {
 
         let identity_repo = IdentityRepository::new(&self.pool);
         let user = identity_repo.fetch_user(&session.user_id).await?;
-        let organization_id = personal_org_id(&session.user_id);
-        let organization = identity_repo.fetch_organization(&organization_id).await?;
+        let organization = identity_repo
+            .ensure_personal_org_and_admin_membership(&session.user_id, user.username.as_deref())
+            .await?;
 
         let token = self.jwt.encode(&session, &user, &organization)?;
         session_repo.touch(session.id).await?;
@@ -352,12 +353,6 @@ impl DeviceFlowService {
             }
         };
 
-        let org_id = personal_org_id(&user_id);
-        let org_slug = personal_org_slug(&user_id, username.as_deref());
-        identity_repo
-            .ensure_personal_organization(&org_id, &org_slug)
-            .await?;
-
         let (first_name, last_name) = split_name(user_profile.name.as_deref());
 
         let user = identity_repo
@@ -370,7 +365,9 @@ impl DeviceFlowService {
             })
             .await?;
 
-        identity_repo.ensure_membership(&org_id, &user.id).await?;
+        let organization = identity_repo
+            .ensure_personal_org_and_admin_membership(&user.id, username.as_deref())
+            .await?;
 
         account_repo
             .upsert(OAuthAccountInsert {
@@ -388,7 +385,6 @@ impl DeviceFlowService {
         let session_repo = AuthSessionRepository::new(&self.pool);
         let session = session_repo.create(&user.id, &session_secret).await?;
 
-        let organization = identity_repo.fetch_organization(&org_id).await?;
         let token = self.jwt.encode(&session, &user, &organization)?;
         session_repo.touch(session.id).await?;
 
@@ -461,32 +457,6 @@ fn split_name(name: Option<&str>) -> (Option<String>, Option<String>) {
         }
         None => (None, None),
     }
-}
-
-fn personal_org_id(user_id: &str) -> String {
-    format!("org-{user_id}")
-}
-
-fn personal_org_slug(user_id: &str, hint: Option<&str>) -> String {
-    let candidate = hint
-        .and_then(|value| {
-            let trimmed = value.trim();
-            if trimmed.is_empty() {
-                None
-            } else {
-                Some(trimmed)
-            }
-        })
-        .unwrap_or(user_id);
-
-    candidate
-        .chars()
-        .map(|ch| match ch {
-            'A'..='Z' => ch.to_ascii_lowercase(),
-            'a'..='z' | '0'..='9' | '-' => ch,
-            _ => '-',
-        })
-        .collect()
 }
 
 fn generate_session_secret() -> String {

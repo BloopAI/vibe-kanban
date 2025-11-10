@@ -16,9 +16,18 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+DO $$
+BEGIN
+    CREATE TYPE member_role AS ENUM ('admin', 'member');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END
+$$;
+
 CREATE TABLE IF NOT EXISTS organization_member_metadata (
         organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
         user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        role            member_role NOT NULL DEFAULT 'member',
         status          TEXT NOT NULL DEFAULT 'active',
         joined_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         last_seen_at    TIMESTAMPTZ,
@@ -27,6 +36,9 @@ CREATE TABLE IF NOT EXISTS organization_member_metadata (
 
 CREATE INDEX IF NOT EXISTS idx_member_metadata_user
     ON organization_member_metadata (user_id);
+
+CREATE INDEX IF NOT EXISTS idx_member_metadata_org_role
+    ON organization_member_metadata (organization_id, role);
 
 DO $$
 BEGIN
@@ -124,3 +136,34 @@ CREATE TRIGGER trg_activity_notify
     AFTER INSERT ON activity
     FOR EACH ROW
     EXECUTE FUNCTION activity_notify();
+
+DO $$
+BEGIN
+    CREATE TYPE invitation_status AS ENUM ('pending', 'accepted', 'declined', 'expired');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END
+$$;
+
+CREATE TABLE IF NOT EXISTS organization_invitations (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id     TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    invited_by_user_id  TEXT REFERENCES users(id) ON DELETE SET NULL,
+    email               TEXT NOT NULL,
+    role                member_role NOT NULL DEFAULT 'member',
+    status              invitation_status NOT NULL DEFAULT 'pending',
+    token               TEXT NOT NULL UNIQUE,
+    expires_at          TIMESTAMPTZ NOT NULL,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_org_invites_org
+    ON organization_invitations (organization_id);
+
+CREATE INDEX IF NOT EXISTS idx_org_invites_status_expires
+    ON organization_invitations (status, expires_at);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_pending_invite_per_email_per_org
+    ON organization_invitations (organization_id, lower(email))
+    WHERE status = 'pending';
