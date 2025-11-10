@@ -16,9 +16,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2, Building2 } from 'lucide-react';
-import { organizationsApi } from '@/lib/api';
-import { useQuery } from '@tanstack/react-query';
 import { useUserSystem } from '@/components/config-provider';
+import { useUserOrganizations } from '@/hooks/api/useUserOrganizations';
 
 const OrganizationSwitcherDialog = NiceModal.create(() => {
   const modal = useModal();
@@ -33,12 +32,7 @@ const OrganizationSwitcherDialog = NiceModal.create(() => {
     currentOrgId ?? undefined
   );
 
-  const orgsQuery = useQuery({
-    queryKey: ['organizations', 'user'],
-    queryFn: () => organizationsApi.getUserOrganizations(),
-    enabled: modal.visible && !!currentOrgId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
+  const orgsQuery = useUserOrganizations();
 
   useEffect(() => {
     if (modal.visible && currentOrgId) {
