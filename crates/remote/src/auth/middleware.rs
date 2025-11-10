@@ -69,7 +69,7 @@ pub async fn require_session(
     }
 
     let org_repo = OrganizationRepository::new(pool);
-    let organization = match org_repo.fetch_organization(&identity.org_id).await {
+    let organization = match org_repo.fetch_organization(identity.org_id).await {
         Ok(org) => org,
         Err(IdentityError::NotFound) => {
             warn!("organization `{}` missing", identity.org_id);

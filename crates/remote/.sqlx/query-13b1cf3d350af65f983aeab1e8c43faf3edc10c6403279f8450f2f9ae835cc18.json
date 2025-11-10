@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                id                  AS \"id!\",\n                organization_id     AS \"organization_id!\",\n                project_id          AS \"project_id!\",\n                creator_user_id     AS \"creator_user_id?: Uuid\",\n                assignee_user_id    AS \"assignee_user_id?: Uuid\",\n                deleted_by_user_id  AS \"deleted_by_user_id?: Uuid\",\n                title               AS \"title!\",\n                description         AS \"description?\",\n                status              AS \"status!: TaskStatus\",\n                version             AS \"version!\",\n                deleted_at          AS \"deleted_at?\",\n                shared_at           AS \"shared_at?\",\n                created_at          AS \"created_at!\",\n                updated_at          AS \"updated_at!\"\n            FROM shared_tasks\n            WHERE id = $1\n              AND organization_id = $2\n              AND deleted_at IS NULL\n            ",
+  "query": "\n            INSERT INTO shared_tasks (\n                organization_id,\n                project_id,\n                creator_user_id,\n                assignee_user_id,\n                title,\n                description,\n                shared_at\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, NOW())\n            RETURNING id                 AS \"id!\",\n                      organization_id    AS \"organization_id!: Uuid\",\n                      project_id         AS \"project_id!\",\n                      creator_user_id    AS \"creator_user_id?: Uuid\",\n                      assignee_user_id   AS \"assignee_user_id?: Uuid\",\n                      deleted_by_user_id AS \"deleted_by_user_id?: Uuid\",\n                      title              AS \"title!\",\n                      description        AS \"description?\",\n                      status             AS \"status!: TaskStatus\",\n                      version            AS \"version!\",\n                      deleted_at         AS \"deleted_at?\",\n                      shared_at          AS \"shared_at?\",\n                      created_at         AS \"created_at!\",\n                      updated_at         AS \"updated_at!\"\n            ",
   "describe": {
     "columns": [
       {
@@ -10,8 +10,8 @@
       },
       {
         "ordinal": 1,
-        "name": "organization_id!",
-        "type_info": "Text"
+        "name": "organization_id!: Uuid",
+        "type_info": "Uuid"
       },
       {
         "ordinal": 2,
@@ -90,6 +90,10 @@
     "parameters": {
       "Left": [
         "Uuid",
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Text",
         "Text"
       ]
     },
@@ -110,5 +114,5 @@
       false
     ]
   },
-  "hash": "ad2e585d85a403c758ea643eef4a56efa869cb6b7bec9a632a0c2de9083a4434"
+  "hash": "13b1cf3d350af65f983aeab1e8c43faf3edc10c6403279f8450f2f9ae835cc18"
 }

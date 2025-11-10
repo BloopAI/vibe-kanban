@@ -5,7 +5,7 @@
     "columns": [],
     "parameters": {
       "Left": [
-        "Text",
+        "Uuid",
         "Uuid",
         {
           "Custom": {

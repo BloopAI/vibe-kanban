@@ -8,7 +8,7 @@ use super::Tx;
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct Project {
     pub id: Uuid,
-    pub organization_id: String,
+    pub organization_id: Uuid,
     pub github_repository_id: i64,
     pub owner: String,
     pub name: String,
@@ -27,7 +27,7 @@ impl Project {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct CreateProjectData {
-    pub organization_id: String,
+    pub organization_id: Uuid,
     pub metadata: ProjectMetadata,
 }
 
@@ -52,14 +52,14 @@ impl ProjectRepository {
     pub async fn find_by_id(
         tx: &mut Tx<'_>,
         id: Uuid,
-        organization_id: &str,
+        organization_id: Uuid,
     ) -> Result<Option<Project>, ProjectError> {
         sqlx::query_as!(
             Project,
             r#"
             SELECT
                 id AS "id!",
-                organization_id AS "organization_id!",
+                organization_id AS "organization_id!: Uuid",
                 github_repository_id AS "github_repository_id!",
                 owner AS "owner!",
                 name AS "name!",
@@ -78,7 +78,7 @@ impl ProjectRepository {
 
     pub async fn find_by_github_repo_id(
         tx: &mut Tx<'_>,
-        organization_id: &str,
+        organization_id: Uuid,
         github_repository_id: i64,
     ) -> Result<Option<Project>, ProjectError> {
         sqlx::query_as!(
@@ -86,7 +86,7 @@ impl ProjectRepository {
             r#"
             SELECT
                 id AS "id!",
-                organization_id AS "organization_id!",
+                organization_id AS "organization_id!: Uuid",
                 github_repository_id AS "github_repository_id!",
                 owner AS "owner!",
                 name AS "name!",
@@ -126,7 +126,7 @@ impl ProjectRepository {
             VALUES ($1, $2, $3, $4)
             RETURNING
                 id AS "id!",
-                organization_id AS "organization_id!",
+                organization_id AS "organization_id!: Uuid",
                 github_repository_id AS "github_repository_id!",
                 owner AS "owner!",
                 name AS "name!",

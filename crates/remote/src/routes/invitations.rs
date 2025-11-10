@@ -68,7 +68,7 @@ pub struct AcceptInvitationResponse {
 pub async fn create_invitation(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
-    Path(org_id): Path<String>,
+    Path(org_id): Path<Uuid>,
     Json(payload): Json<CreateInvitationRequest>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
     let user = ctx.user;
@@ -87,7 +87,7 @@ pub async fn create_invitation(
 
     let invitation = invitation_repo
         .create_invitation(
-            &org_id,
+            org_id,
             user.id,
             &payload.email,
             payload.role,
@@ -124,7 +124,7 @@ pub async fn create_invitation(
 pub async fn list_invitations(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
-    Path(org_id): Path<String>,
+    Path(org_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
     let user = ctx.user;
     let organization = ctx.organization;
@@ -138,7 +138,7 @@ pub async fn list_invitations(
     let invitation_repo = InvitationRepository::new(&state.pool);
 
     let invitations = invitation_repo
-        .list_invitations(&org_id, user.id)
+        .list_invitations(org_id, user.id)
         .await
         .map_err(|e| match e {
             IdentityError::PermissionDenied => {
@@ -163,7 +163,7 @@ pub async fn get_invitation(
 
     let org_repo = OrganizationRepository::new(&state.pool);
     let org = org_repo
-        .fetch_organization(&invitation.organization_id)
+        .fetch_organization(invitation.organization_id)
         .await
         .map_err(|_| {
             ErrorResponse::new(
@@ -200,7 +200,7 @@ pub async fn accept_invitation(
         })?;
 
     Ok(Json(AcceptInvitationResponse {
-        organization_id: org.id,
+        organization_id: org.id.to_string(),
         organization_slug: org.slug,
         role,
     }))

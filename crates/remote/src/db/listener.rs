@@ -5,6 +5,7 @@ use serde::Deserialize;
 use sqlx::{PgPool, postgres::PgListener};
 use tokio::time::sleep;
 use tracing::instrument;
+use uuid::Uuid;
 
 use crate::{activity::ActivityBroker, db::activity::ActivityRepository};
 
@@ -76,8 +77,12 @@ async fn listen_loop(pool: &PgPool, broker: &ActivityBroker, channel: &str) -> a
 
         tracing::trace!(%payload.seq, org_id = %payload.organization_id, "received activity notification");
 
+        let org_uuid = payload.organization_id.parse::<Uuid>().with_context(|| {
+            format!("invalid organization_id UUID: {}", payload.organization_id)
+        })?;
+
         let event = match ActivityRepository::new(pool)
-            .fetch_by_seq(&payload.organization_id, payload.seq)
+            .fetch_by_seq(org_uuid, payload.seq)
             .await
         {
             Ok(Some(event)) => event,

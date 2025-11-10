@@ -20,7 +20,7 @@ pub enum InvitationStatus {
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct Invitation {
     pub id: Uuid,
-    pub organization_id: String,
+    pub organization_id: Uuid,
     pub invited_by_user_id: Option<Uuid>,
     pub email: String,
     pub role: MemberRole,
@@ -42,7 +42,7 @@ impl<'a> InvitationRepository<'a> {
 
     pub async fn create_invitation(
         &self,
-        organization_id: &str,
+        organization_id: Uuid,
         invited_by_user_id: Uuid,
         email: &str,
         role: MemberRole,
@@ -65,7 +65,7 @@ impl<'a> InvitationRepository<'a> {
             VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING
                 id AS "id!",
-                organization_id AS "organization_id!",
+                organization_id AS "organization_id!: Uuid",
                 invited_by_user_id AS "invited_by_user_id?: Uuid",
                 email AS "email!",
                 role AS "role!: MemberRole",
@@ -100,7 +100,7 @@ impl<'a> InvitationRepository<'a> {
 
     pub async fn list_invitations(
         &self,
-        organization_id: &str,
+        organization_id: Uuid,
         requesting_user_id: Uuid,
     ) -> Result<Vec<Invitation>, IdentityError> {
         use super::organizations::OrganizationRepository;
@@ -115,7 +115,7 @@ impl<'a> InvitationRepository<'a> {
             r#"
             SELECT
                 id AS "id!",
-                organization_id AS "organization_id!",
+                organization_id AS "organization_id!: Uuid",
                 invited_by_user_id AS "invited_by_user_id?: Uuid",
                 email AS "email!",
                 role AS "role!: MemberRole",
@@ -142,7 +142,7 @@ impl<'a> InvitationRepository<'a> {
             r#"
             SELECT
                 id AS "id!",
-                organization_id AS "organization_id!",
+                organization_id AS "organization_id!: Uuid",
                 invited_by_user_id AS "invited_by_user_id?: Uuid",
                 email AS "email!",
                 role AS "role!: MemberRole",
@@ -175,7 +175,7 @@ impl<'a> InvitationRepository<'a> {
             r#"
             SELECT
                 id AS "id!",
-                organization_id AS "organization_id!",
+                organization_id AS "organization_id!: Uuid",
                 invited_by_user_id AS "invited_by_user_id?: Uuid",
                 email AS "email!",
                 role AS "role!: MemberRole",
@@ -216,7 +216,7 @@ impl<'a> InvitationRepository<'a> {
 
         ensure_member_metadata_with_role(
             &mut *tx,
-            &invitation.organization_id,
+            invitation.organization_id,
             user_id,
             invitation.role,
         )
@@ -237,7 +237,7 @@ impl<'a> InvitationRepository<'a> {
             Organization,
             r#"
             SELECT
-                id AS "id!",
+                id AS "id!: Uuid",
                 name AS "name!",
                 slug AS "slug!",
                 created_at AS "created_at!",

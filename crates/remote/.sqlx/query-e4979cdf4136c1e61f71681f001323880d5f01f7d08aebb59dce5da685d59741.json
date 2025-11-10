@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                st.id                     AS \"id!: Uuid\",\n                st.organization_id        AS \"organization_id!\",\n                st.project_id             AS \"project_id!: Uuid\",\n                st.creator_user_id        AS \"creator_user_id?: Uuid\",\n                st.assignee_user_id       AS \"assignee_user_id?: Uuid\",\n                st.deleted_by_user_id     AS \"deleted_by_user_id?: Uuid\",\n                st.title                  AS \"title!\",\n                st.description            AS \"description?\",\n                st.status                 AS \"status!: TaskStatus\",\n                st.version                AS \"version!\",\n                st.deleted_at             AS \"deleted_at?\",\n                st.shared_at              AS \"shared_at?\",\n                st.created_at             AS \"created_at!\",\n                st.updated_at             AS \"updated_at!\",\n                p.github_repository_id    AS \"project_github_repository_id!\",\n                p.owner                   AS \"project_owner!\",\n                p.name                    AS \"project_name!\",\n                u.id                      AS \"user_id?: Uuid\",\n                u.first_name              AS \"user_first_name?\",\n                u.last_name               AS \"user_last_name?\",\n                u.username                AS \"user_username?\"\n            FROM shared_tasks st\n            JOIN projects p ON st.project_id = p.id\n            LEFT JOIN users u ON st.assignee_user_id = u.id\n            WHERE st.organization_id = $1\n              AND st.deleted_at IS NULL\n            ORDER BY st.updated_at DESC\n            ",
+  "query": "\n            SELECT\n                st.id                     AS \"id!: Uuid\",\n                st.organization_id        AS \"organization_id!: Uuid\",\n                st.project_id             AS \"project_id!: Uuid\",\n                st.creator_user_id        AS \"creator_user_id?: Uuid\",\n                st.assignee_user_id       AS \"assignee_user_id?: Uuid\",\n                st.deleted_by_user_id     AS \"deleted_by_user_id?: Uuid\",\n                st.title                  AS \"title!\",\n                st.description            AS \"description?\",\n                st.status                 AS \"status!: TaskStatus\",\n                st.version                AS \"version!\",\n                st.deleted_at             AS \"deleted_at?\",\n                st.shared_at              AS \"shared_at?\",\n                st.created_at             AS \"created_at!\",\n                st.updated_at             AS \"updated_at!\",\n                p.github_repository_id    AS \"project_github_repository_id!\",\n                p.owner                   AS \"project_owner!\",\n                p.name                    AS \"project_name!\",\n                u.id                      AS \"user_id?: Uuid\",\n                u.first_name              AS \"user_first_name?\",\n                u.last_name               AS \"user_last_name?\",\n                u.username                AS \"user_username?\"\n            FROM shared_tasks st\n            JOIN projects p ON st.project_id = p.id\n            LEFT JOIN users u ON st.assignee_user_id = u.id\n            WHERE st.organization_id = $1\n              AND st.deleted_at IS NULL\n            ORDER BY st.updated_at DESC\n            ",
   "describe": {
     "columns": [
       {
@@ -10,8 +10,8 @@
       },
       {
         "ordinal": 1,
-        "name": "organization_id!",
-        "type_info": "Text"
+        "name": "organization_id!: Uuid",
+        "type_info": "Uuid"
       },
       {
         "ordinal": 2,
@@ -124,7 +124,7 @@
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -151,5 +151,5 @@
       true
     ]
   },
-  "hash": "c39775caab3c86789392fa60eebc498cd0e04b861284f8acfa4b62e7b353607b"
+  "hash": "e4979cdf4136c1e61f71681f001323880d5f01f7d08aebb59dce5da685d59741"
 }

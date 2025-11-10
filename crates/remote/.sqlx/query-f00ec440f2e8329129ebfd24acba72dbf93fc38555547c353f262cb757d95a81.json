@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            INSERT INTO projects (\n                organization_id,\n                github_repository_id,\n                owner,\n                name\n            )\n            VALUES ($1, $2, $3, $4)\n            RETURNING\n                id AS \"id!\",\n                organization_id AS \"organization_id!\",\n                github_repository_id AS \"github_repository_id!\",\n                owner AS \"owner!\",\n                name AS \"name!\",\n                created_at AS \"created_at!\"\n            ",
+  "query": "\n            INSERT INTO projects (\n                organization_id,\n                github_repository_id,\n                owner,\n                name\n            )\n            VALUES ($1, $2, $3, $4)\n            RETURNING\n                id AS \"id!\",\n                organization_id AS \"organization_id!: Uuid\",\n                github_repository_id AS \"github_repository_id!\",\n                owner AS \"owner!\",\n                name AS \"name!\",\n                created_at AS \"created_at!\"\n            ",
   "describe": {
     "columns": [
       {
@@ -10,8 +10,8 @@
       },
       {
         "ordinal": 1,
-        "name": "organization_id!",
-        "type_info": "Text"
+        "name": "organization_id!: Uuid",
+        "type_info": "Uuid"
       },
       {
         "ordinal": 2,
@@ -36,7 +36,7 @@
     ],
     "parameters": {
       "Left": [
-        "Text",
+        "Uuid",
         "Int8",
         "Text",
         "Text"
@@ -51,5 +51,5 @@
       false
     ]
   },
-  "hash": "5746f2646d664dca510d219ff49e92dba2db3953683e5cad3df1d0aa3c244562"
+  "hash": "f00ec440f2e8329129ebfd24acba72dbf93fc38555547c353f262cb757d95a81"
 }

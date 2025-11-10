@@ -45,7 +45,7 @@ impl SharedTaskWithUser {
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct SharedTask {
     pub id: Uuid,
-    pub organization_id: String,
+    pub organization_id: Uuid,
     pub project_id: Uuid,
     pub creator_user_id: Option<Uuid>,
     pub assignee_user_id: Option<Uuid>,
@@ -129,7 +129,7 @@ impl<'a> SharedTaskRepository<'a> {
 
     pub async fn find_by_id(
         &self,
-        organization_id: &str,
+        organization_id: Uuid,
         task_id: Uuid,
     ) -> Result<Option<SharedTask>, SharedTaskError> {
         let task = sqlx::query_as!(
@@ -137,7 +137,7 @@ impl<'a> SharedTaskRepository<'a> {
             r#"
             SELECT
                 id                  AS "id!",
-                organization_id     AS "organization_id!",
+                organization_id     AS "organization_id!: Uuid",
                 project_id          AS "project_id!",
                 creator_user_id     AS "creator_user_id?: Uuid",
                 assignee_user_id    AS "assignee_user_id?: Uuid",
@@ -166,7 +166,7 @@ impl<'a> SharedTaskRepository<'a> {
 
     pub async fn create(
         &self,
-        organization_id: &str,
+        organization_id: Uuid,
         data: CreateSharedTaskData,
     ) -> Result<SharedTaskWithUser, SharedTaskError> {
         let mut tx = self.pool.begin().await.map_err(SharedTaskError::from)?;
@@ -199,7 +199,7 @@ impl<'a> SharedTaskRepository<'a> {
                 ProjectRepository::insert(
                     &mut tx,
                     CreateProjectData {
-                        organization_id: organization_id.to_string(),
+                        organization_id,
                         metadata: project,
                     },
                 )
@@ -222,7 +222,7 @@ impl<'a> SharedTaskRepository<'a> {
             )
             VALUES ($1, $2, $3, $4, $5, $6, NOW())
             RETURNING id                 AS "id!",
-                      organization_id    AS "organization_id!",
+                      organization_id    AS "organization_id!: Uuid",
                       project_id         AS "project_id!",
                       creator_user_id    AS "creator_user_id?: Uuid",
                       assignee_user_id   AS "assignee_user_id?: Uuid",
@@ -258,7 +258,7 @@ impl<'a> SharedTaskRepository<'a> {
 
     pub async fn bulk_fetch(
         &self,
-        organization_id: &str,
+        organization_id: Uuid,
     ) -> Result<BulkFetchResult, SharedTaskError> {
         let mut tx = self.pool.begin().await?;
         sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
@@ -269,7 +269,7 @@ impl<'a> SharedTaskRepository<'a> {
             r#"
             SELECT
                 st.id                     AS "id!: Uuid",
-                st.organization_id        AS "organization_id!",
+                st.organization_id        AS "organization_id!: Uuid",
                 st.project_id             AS "project_id!: Uuid",
                 st.creator_user_id        AS "creator_user_id?: Uuid",
                 st.assignee_user_id       AS "assignee_user_id?: Uuid",
@@ -379,7 +379,7 @@ impl<'a> SharedTaskRepository<'a> {
 
     pub async fn update(
         &self,
-        organization_id: &str,
+        organization_id: Uuid,
         task_id: Uuid,
         data: UpdateSharedTaskData,
     ) -> Result<SharedTaskWithUser, SharedTaskError> {
@@ -401,7 +401,7 @@ impl<'a> SharedTaskRepository<'a> {
           AND t.deleted_at IS NULL
         RETURNING
             t.id                AS "id!",
-            t.organization_id   AS "organization_id!",
+            t.organization_id   AS "organization_id!: Uuid",
             t.project_id        AS "project_id!",
             t.creator_user_id   AS "creator_user_id?: Uuid",
             t.assignee_user_id  AS "assignee_user_id?: Uuid",
@@ -447,7 +447,7 @@ impl<'a> SharedTaskRepository<'a> {
 
     pub async fn assign_task(
         &self,
-        organization_id: &str,
+        organization_id: Uuid,
         task_id: Uuid,
         data: AssignTaskData,
     ) -> Result<SharedTaskWithUser, SharedTaskError> {
@@ -467,7 +467,7 @@ impl<'a> SharedTaskRepository<'a> {
           AND t.deleted_at IS NULL
         RETURNING
             t.id                AS "id!",
-            t.organization_id   AS "organization_id!",
+            t.organization_id   AS "organization_id!: Uuid",
             t.project_id        AS "project_id!",
             t.creator_user_id   AS "creator_user_id?: Uuid",
             t.assignee_user_id  AS "assignee_user_id?: Uuid",
@@ -511,7 +511,7 @@ impl<'a> SharedTaskRepository<'a> {
 
     pub async fn delete_task(
         &self,
-        organization_id: &str,
+        organization_id: Uuid,
         task_id: Uuid,
         data: DeleteTaskData,
     ) -> Result<SharedTaskWithUser, SharedTaskError> {
@@ -532,7 +532,7 @@ impl<'a> SharedTaskRepository<'a> {
           AND t.deleted_at IS NULL
         RETURNING
             t.id                AS "id!",
-            t.organization_id   AS "organization_id!",
+            t.organization_id   AS "organization_id!: Uuid",
             t.project_id        AS "project_id!",
             t.creator_user_id   AS "creator_user_id?: Uuid",
             t.assignee_user_id  AS "assignee_user_id?: Uuid",

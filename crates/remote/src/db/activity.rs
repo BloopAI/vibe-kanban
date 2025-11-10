@@ -15,7 +15,7 @@ impl<'a> ActivityRepository<'a> {
 
     pub async fn fetch_since(
         &self,
-        organization_id: &str,
+        organization_id: Uuid,
         after_seq: Option<i64>,
         limit: i64,
     ) -> Result<Vec<ActivityEvent>, sqlx::Error> {
@@ -45,7 +45,7 @@ impl<'a> ActivityRepository<'a> {
 
     pub async fn fetch_by_seq(
         &self,
-        organization_id: &str,
+        organization_id: Uuid,
         seq: i64,
     ) -> Result<Option<ActivityEvent>, sqlx::Error> {
         let row = sqlx::query_as::<_, ActivityRow>(
@@ -75,7 +75,7 @@ impl<'a> ActivityRepository<'a> {
 struct ActivityRow {
     seq: i64,
     event_id: Uuid,
-    organization_id: String,
+    organization_id: Uuid,
     event_type: String,
     created_at: DateTime<Utc>,
     payload: serde_json::Value,

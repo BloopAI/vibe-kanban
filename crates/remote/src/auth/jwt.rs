@@ -21,7 +21,7 @@ pub enum JwtError {
 pub struct JwtClaims {
     pub sub: Uuid,
     pub session_id: Uuid,
-    pub org_id: String,
+    pub org_id: Uuid,
     pub nonce: String,
     pub iat: i64,
 }
@@ -30,7 +30,7 @@ pub struct JwtClaims {
 pub struct JwtIdentity {
     pub user_id: Uuid,
     pub session_id: Uuid,
-    pub org_id: String,
+    pub org_id: Uuid,
     pub nonce: String,
 }
 
@@ -55,7 +55,7 @@ impl JwtService {
         let claims = JwtClaims {
             sub: user.id,
             session_id: session.id,
-            org_id: organization.id.clone(),
+            org_id: organization.id,
             nonce: session.session_secret.clone(),
             iat: Utc::now().timestamp(),
         };

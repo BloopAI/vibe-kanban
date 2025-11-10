@@ -46,7 +46,7 @@ pub async fn bulk_shared_tasks(
     Extension(ctx): Extension<RequestContext>,
 ) -> Response {
     let repo = SharedTaskRepository::new(state.pool());
-    match repo.bulk_fetch(&ctx.organization.id).await {
+    match repo.bulk_fetch(ctx.organization.id).await {
         Ok(snapshot) => (
             StatusCode::OK,
             Json(BulkSharedTasksResponse {
@@ -99,7 +99,7 @@ pub async fn create_shared_task(
             return identity_error_response(err, "assignee not found or inactive");
         }
         if let Err(err) = org_repo
-            .assert_membership(&ctx.organization.id, *assignee)
+            .assert_membership(ctx.organization.id, *assignee)
             .await
         {
             return identity_error_response(err, "assignee not part of organization");
@@ -114,7 +114,7 @@ pub async fn create_shared_task(
         assignee_user_id,
     };
 
-    match repo.create(&ctx.organization.id, data).await {
+    match repo.create(ctx.organization.id, data).await {
         Ok(task) => (StatusCode::CREATED, Json(SharedTaskResponse::from(task))).into_response(),
         Err(error) => task_error_response(error, "failed to create shared task"),
     }
@@ -132,7 +132,7 @@ pub async fn update_shared_task(
     Json(payload): Json<UpdateSharedTaskRequest>,
 ) -> Response {
     let repo = SharedTaskRepository::new(state.pool());
-    let existing = match repo.find_by_id(&ctx.organization.id, task_id).await {
+    let existing = match repo.find_by_id(ctx.organization.id, task_id).await {
         Ok(Some(task)) => task,
         Ok(None) => {
             return task_error_response(SharedTaskError::NotFound, "shared task not found");
@@ -171,7 +171,7 @@ pub async fn update_shared_task(
         acting_user_id: ctx.user.id,
     };
 
-    match repo.update(&ctx.organization.id, task_id, data).await {
+    match repo.update(ctx.organization.id, task_id, data).await {
         Ok(task) => (StatusCode::OK, Json(SharedTaskResponse::from(task))).into_response(),
         Err(error) => task_error_response(error, "failed to update shared task"),
     }
@@ -192,7 +192,7 @@ pub async fn assign_task(
     let org_repo = OrganizationRepository::new(state.pool());
     let user_repo = UserRepository::new(state.pool());
 
-    let existing = match repo.find_by_id(&ctx.organization.id, task_id).await {
+    let existing = match repo.find_by_id(ctx.organization.id, task_id).await {
         Ok(Some(task)) => task,
         Ok(None) => {
             return task_error_response(SharedTaskError::NotFound, "shared task not found");
@@ -214,7 +214,7 @@ pub async fn assign_task(
             return identity_error_response(err, "assignee not found or inactive");
         }
         if let Err(err) = org_repo
-            .assert_membership(&ctx.organization.id, *assignee)
+            .assert_membership(ctx.organization.id, *assignee)
             .await
         {
             return identity_error_response(err, "assignee not part of organization");
@@ -227,7 +227,7 @@ pub async fn assign_task(
         version: payload.version,
     };
 
-    match repo.assign_task(&ctx.organization.id, task_id, data).await {
+    match repo.assign_task(ctx.organization.id, task_id, data).await {
         Ok(task) => (StatusCode::OK, Json(SharedTaskResponse::from(task))).into_response(),
         Err(error) => task_error_response(error, "failed to transfer task assignment"),
     }
@@ -246,7 +246,7 @@ pub async fn delete_shared_task(
 ) -> Response {
     let repo = SharedTaskRepository::new(state.pool());
 
-    let existing = match repo.find_by_id(&ctx.organization.id, task_id).await {
+    let existing = match repo.find_by_id(ctx.organization.id, task_id).await {
         Ok(Some(task)) => task,
         Ok(None) => {
             return task_error_response(SharedTaskError::NotFound, "shared task not found");
@@ -270,7 +270,7 @@ pub async fn delete_shared_task(
         version,
     };
 
-    match repo.delete_task(&ctx.organization.id, task_id, data).await {
+    match repo.delete_task(ctx.organization.id, task_id, data).await {
         Ok(task) => (StatusCode::OK, Json(SharedTaskResponse::from(task))).into_response(),
         Err(error) => task_error_response(error, "failed to delete shared task"),
     }

@@ -14,7 +14,7 @@ pub enum MemberRole {
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct Organization {
-    pub id: String,
+    pub id: Uuid,
     pub name: String,
     pub slug: String,
     pub created_at: DateTime<Utc>,
@@ -23,7 +23,7 @@ pub struct Organization {
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct OrganizationWithRole {
-    pub id: String,
+    pub id: Uuid,
     pub name: String,
     pub slug: String,
     pub created_at: DateTime<Utc>,
@@ -42,7 +42,7 @@ impl<'a> OrganizationRepository<'a> {
 
     pub async fn ensure_membership(
         &self,
-        organization_id: &str,
+        organization_id: Uuid,
         user_id: Uuid,
     ) -> Result<(), IdentityError> {
         ensure_member_metadata(self.pool, organization_id, user_id)
@@ -52,7 +52,7 @@ impl<'a> OrganizationRepository<'a> {
 
     pub async fn assert_membership(
         &self,
-        organization_id: &str,
+        organization_id: Uuid,
         user_id: Uuid,
     ) -> Result<(), IdentityError> {
         let exists = query_scalar!(
@@ -78,13 +78,13 @@ impl<'a> OrganizationRepository<'a> {
 
     pub async fn fetch_organization(
         &self,
-        organization_id: &str,
+        organization_id: Uuid,
     ) -> Result<Organization, IdentityError> {
         query_as!(
             Organization,
             r#"
             SELECT
-                id          AS "id!",
+                id          AS "id!: Uuid",
                 name        AS "name!",
                 slug        AS "slug!",
                 created_at  AS "created_at!",
@@ -104,17 +104,27 @@ impl<'a> OrganizationRepository<'a> {
         user_id: Uuid,
         display_name_hint: Option<&str>,
     ) -> Result<Organization, IdentityError> {
-        let org_id = personal_org_id(user_id);
         let name = personal_org_name(display_name_hint, user_id);
-        let slug = personal_org_slug(display_name_hint, user_id);
-        let org = upsert_organization(self.pool, &org_id, &name, &slug).await?;
-        ensure_member_metadata_with_role(self.pool, &org_id, user_id, MemberRole::Admin).await?;
+        let slug = personal_org_slug(user_id);
+
+        // Try to find existing personal org by slug
+        let org = find_organization_by_slug(self.pool, &slug).await?;
+
+        let org = match org {
+            Some(org) => org,
+            None => {
+                // Create new personal org (DB will generate random UUID)
+                create_organization_with_slug(self.pool, &name, &slug).await?
+            }
+        };
+
+        ensure_member_metadata_with_role(self.pool, org.id, user_id, MemberRole::Admin).await?;
         Ok(org)
     }
 
     pub async fn check_user_role(
         &self,
-        organization_id: &str,
+        organization_id: Uuid,
         user_id: Uuid,
     ) -> Result<Option<MemberRole>, IdentityError> {
         let result = sqlx::query!(
@@ -134,7 +144,7 @@ impl<'a> OrganizationRepository<'a> {
 
     pub async fn assert_admin(
         &self,
-        organization_id: &str,
+        organization_id: Uuid,
         user_id: Uuid,
     ) -> Result<(), IdentityError> {
         let role = self.check_user_role(organization_id, user_id).await?;
@@ -152,21 +162,18 @@ impl<'a> OrganizationRepository<'a> {
     ) -> Result<OrganizationWithRole, IdentityError> {
         let mut tx = self.pool.begin().await?;
 
-        let org_id = format!("org-custom-{}", Uuid::new_v4());
-
         let org = sqlx::query_as!(
             Organization,
             r#"
-            INSERT INTO organizations (id, name, slug)
-            VALUES ($1, $2, $3)
+            INSERT INTO organizations (name, slug)
+            VALUES ($1, $2)
             RETURNING
-                id AS "id!",
+                id AS "id!: Uuid",
                 name AS "name!",
                 slug AS "slug!",
                 created_at AS "created_at!",
                 updated_at AS "updated_at!"
             "#,
-            org_id,
             name,
             slug
         )
@@ -183,7 +190,7 @@ impl<'a> OrganizationRepository<'a> {
             IdentityError::from(e)
         })?;
 
-        ensure_member_metadata_with_role(&mut *tx, &org_id, creator_user_id, MemberRole::Admin)
+        ensure_member_metadata_with_role(&mut *tx, org.id, creator_user_id, MemberRole::Admin)
             .await?;
 
         tx.commit().await?;
@@ -206,7 +213,7 @@ impl<'a> OrganizationRepository<'a> {
             OrganizationWithRole,
             r#"
             SELECT
-                o.id AS "id!",
+                o.id AS "id!: Uuid",
                 o.name AS "name!",
                 o.slug AS "slug!",
                 o.created_at AS "created_at!",
@@ -227,7 +234,7 @@ impl<'a> OrganizationRepository<'a> {
 
     pub async fn update_organization_name(
         &self,
-        org_id: &str,
+        org_id: Uuid,
         user_id: Uuid,
         new_name: &str,
     ) -> Result<Organization, IdentityError> {
@@ -240,7 +247,7 @@ impl<'a> OrganizationRepository<'a> {
             SET name = $2, updated_at = NOW()
             WHERE id = $1
             RETURNING
-                id AS "id!",
+                id AS "id!: Uuid",
                 name AS "name!",
                 slug AS "slug!",
                 created_at AS "created_at!",
@@ -258,9 +265,19 @@ impl<'a> OrganizationRepository<'a> {
 
     pub async fn delete_organization(
         &self,
-        org_id: &str,
+        org_id: Uuid,
         user_id: Uuid,
     ) -> Result<(), IdentityError> {
+        // First fetch the org to check if it's a personal org
+        let org = self.fetch_organization(org_id).await?;
+
+        // Check if this is a personal org by slug pattern
+        if org.slug == personal_org_slug(user_id) {
+            return Err(IdentityError::CannotDeleteOrganization(
+                "Cannot delete personal organizations".to_string(),
+            ));
+        }
+
         let result = sqlx::query!(
             r#"
             WITH s AS (
@@ -275,7 +292,6 @@ impl<'a> OrganizationRepository<'a> {
             WHERE o.id = $1
               AND s.is_admin = true
               AND s.admin_count > 1
-              AND o.id NOT LIKE 'org-%'
             RETURNING o.id
             "#,
             org_id,
@@ -291,11 +307,6 @@ impl<'a> OrganizationRepository<'a> {
                     return Err(IdentityError::PermissionDenied);
                 }
                 Some(MemberRole::Admin) => {
-                    if org_id.starts_with("org-") {
-                        return Err(IdentityError::CannotDeleteOrganization(
-                            "Cannot delete personal organizations".to_string(),
-                        ));
-                    }
                     return Err(IdentityError::CannotDeleteOrganization(
                         "Cannot delete organization: you are the only admin".to_string(),
                     ));
@@ -307,29 +318,45 @@ impl<'a> OrganizationRepository<'a> {
     }
 }
 
-async fn upsert_organization(
+async fn find_organization_by_slug(
     pool: &PgPool,
-    organization_id: &str,
+    slug: &str,
+) -> Result<Option<Organization>, sqlx::Error> {
+    query_as!(
+        Organization,
+        r#"
+        SELECT
+            id          AS "id!: Uuid",
+            name        AS "name!",
+            slug        AS "slug!",
+            created_at  AS "created_at!",
+            updated_at  AS "updated_at!"
+        FROM organizations
+        WHERE slug = $1
+        "#,
+        slug
+    )
+    .fetch_optional(pool)
+    .await
+}
+
+async fn create_organization_with_slug(
+    pool: &PgPool,
     name: &str,
     slug: &str,
 ) -> Result<Organization, sqlx::Error> {
     query_as!(
         Organization,
         r#"
-        INSERT INTO organizations (id, name, slug)
-        VALUES ($1, $2, $3)
-        ON CONFLICT (id) DO UPDATE
-        SET name = EXCLUDED.name,
-            slug = EXCLUDED.slug,
-            updated_at = NOW()
+        INSERT INTO organizations (name, slug)
+        VALUES ($1, $2)
         RETURNING
-            id          AS "id!",
+            id          AS "id!: Uuid",
             name        AS "name!",
             slug        AS "slug!",
             created_at  AS "created_at!",
             updated_at  AS "updated_at!"
         "#,
-        organization_id,
         name,
         slug
     )
@@ -339,7 +366,7 @@ async fn upsert_organization(
 
 async fn ensure_member_metadata(
     pool: &PgPool,
-    organization_id: &str,
+    organization_id: Uuid,
     user_id: Uuid,
 ) -> Result<(), sqlx::Error> {
     ensure_member_metadata_with_role(pool, organization_id, user_id, MemberRole::Member).await
@@ -347,7 +374,7 @@ async fn ensure_member_metadata(
 
 pub(super) async fn ensure_member_metadata_with_role<'a, E>(
     executor: E,
-    organization_id: &str,
+    organization_id: Uuid,
     user_id: Uuid,
     role: MemberRole,
 ) -> Result<(), sqlx::Error>
@@ -371,29 +398,15 @@ where
     Ok(())
 }
 
-fn personal_org_id(user_id: Uuid) -> String {
-    format!("org-{user_id}")
-}
-
 fn personal_org_name(hint: Option<&str>, user_id: Uuid) -> String {
     let user_id_str = user_id.to_string();
     let display_name = hint.unwrap_or(&user_id_str);
     format!("{display_name}'s Org")
 }
 
-fn personal_org_slug(hint: Option<&str>, user_id: Uuid) -> String {
-    let user_id_str = user_id.to_string();
-    let candidate = hint
-        .and_then(|value| {
-            let trimmed = value.trim();
-            if trimmed.is_empty() {
-                None
-            } else {
-                Some(trimmed)
-            }
-        })
-        .unwrap_or(&user_id_str);
-    slugify_org_name(candidate)
+fn personal_org_slug(user_id: Uuid) -> String {
+    // Use a deterministic slug pattern so we can find personal orgs
+    format!("personal-{user_id}")
 }
 
 fn slugify_org_name(name: &str) -> String {

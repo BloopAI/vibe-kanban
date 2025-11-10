@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS organization_activity_counters (
-    organization_id TEXT PRIMARY KEY REFERENCES organizations(id) ON DELETE CASCADE,
+    organization_id UUID PRIMARY KEY REFERENCES organizations(id) ON DELETE CASCADE,
     last_seq BIGINT NOT NULL
 );
 

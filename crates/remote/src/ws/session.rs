@@ -37,7 +37,7 @@ pub async fn handle(
 ) {
     let config = state.config();
     let pool = state.pool().clone();
-    let org_id = ctx.organization.id.clone();
+    let org_id = ctx.organization.id;
     let mut last_sent_seq = params.cursor;
     let mut auth_state = WsAuthState::new(
         state.jwt(),
@@ -45,16 +45,16 @@ pub async fn handle(
         ctx.session_id,
         ctx.session_secret.clone(),
         ctx.user.id,
-        org_id.clone(),
+        org_id,
     );
     let mut auth_check_interval = time::interval(WS_AUTH_REFRESH_INTERVAL);
     auth_check_interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
 
     let (mut sender, mut inbound) = socket.split();
-    let mut activity_stream = state.broker().subscribe(&org_id);
+    let mut activity_stream = state.broker().subscribe(org_id);
 
     if let Ok(history) = ActivityRepository::new(&pool)
-        .fetch_since(&org_id, params.cursor, config.activity_default_limit)
+        .fetch_since(org_id, params.cursor, config.activity_default_limit)
         .await
     {
         for event in history {
@@ -88,7 +88,7 @@ pub async fn handle(
                                 match activity_stream_catch_up(
                                     &mut sender,
                                     &pool,
-                                    &org_id,
+                                    org_id,
                                     prev_seq,
                                     state.broker(),
                                     config.activity_catchup_batch_size,
@@ -123,7 +123,7 @@ pub async fn handle(
                         match activity_stream_catch_up(
                             &mut sender,
                             &pool,
-                            &org_id,
+                            org_id,
                             prev_seq,
                             state.broker(),
                             config.activity_catchup_batch_size,
@@ -239,7 +239,7 @@ struct WsAuthState {
     session_id: Uuid,
     session_secret: String,
     expected_user_id: Uuid,
-    expected_org_id: String,
+    expected_org_id: Uuid,
     pending_token: Option<String>,
 }
 
@@ -250,7 +250,7 @@ impl WsAuthState {
         session_id: Uuid,
         session_secret: String,
         expected_user_id: Uuid,
-        expected_org_id: String,
+        expected_org_id: Uuid,
     ) -> Self {
         Self {
             jwt,
@@ -286,8 +286,8 @@ impl WsAuthState {
 
         if identity.org_id != self.expected_org_id {
             return Err(AuthVerifyError::OrgMismatch {
-                expected: self.expected_org_id.clone(),
-                received: identity.org_id,
+                expected: self.expected_org_id.to_string(),
+                received: identity.org_id.to_string(),
             });
         }
 
@@ -335,7 +335,7 @@ enum AuthVerifyError {
 async fn activity_stream_catch_up(
     sender: &mut futures::stream::SplitSink<WebSocket, Message>,
     pool: &PgPool,
-    organization_id: &str,
+    organization_id: Uuid,
     last_seq: i64,
     broker: &ActivityBroker,
     batch_size: i64,
@@ -401,7 +401,7 @@ enum CatchUpError {
 async fn catch_up_from_db(
     sender: &mut futures::stream::SplitSink<WebSocket, Message>,
     pool: &PgPool,
-    organization_id: &str,
+    organization_id: Uuid,
     last_seq: i64,
     target_seq: i64,
     batch_size: i64,

@@ -6,6 +6,7 @@ use axum::{
     routing::{delete, get, patch, post},
 };
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use super::error::ErrorResponse;
 use crate::{
@@ -120,12 +121,12 @@ pub async fn list_organizations(
 pub async fn get_organization(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
-    Path(org_id): Path<String>,
+    Path(org_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
     let org_repo = OrganizationRepository::new(&state.pool);
 
     org_repo
-        .assert_membership(&org_id, ctx.user.id)
+        .assert_membership(org_id, ctx.user.id)
         .await
         .map_err(|e| match e {
             IdentityError::NotFound => {
@@ -134,7 +135,7 @@ pub async fn get_organization(
             _ => ErrorResponse::new(StatusCode::FORBIDDEN, "Access denied"),
         })?;
 
-    let organization = org_repo.fetch_organization(&org_id).await.map_err(|_| {
+    let organization = org_repo.fetch_organization(org_id).await.map_err(|_| {
         ErrorResponse::new(
             StatusCode::INTERNAL_SERVER_ERROR,
             "Failed to fetch organization",
@@ -142,7 +143,7 @@ pub async fn get_organization(
     })?;
 
     let role = org_repo
-        .check_user_role(&org_id, ctx.user.id)
+        .check_user_role(org_id, ctx.user.id)
         .await
         .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?
         .unwrap_or(crate::db::organizations::MemberRole::Member);
@@ -162,7 +163,7 @@ pub async fn get_organization(
 pub async fn update_organization(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
-    Path(org_id): Path<String>,
+    Path(org_id): Path<Uuid>,
     Json(payload): Json<UpdateOrganizationRequest>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
     let name = payload.name.trim();
@@ -177,7 +178,7 @@ pub async fn update_organization(
     let org_repo = OrganizationRepository::new(&state.pool);
 
     let organization = org_repo
-        .update_organization_name(&org_id, ctx.user.id, name)
+        .update_organization_name(org_id, ctx.user.id, name)
         .await
         .map_err(|e| match e {
             IdentityError::PermissionDenied => {
@@ -195,12 +196,12 @@ pub async fn update_organization(
 pub async fn delete_organization(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
-    Path(org_id): Path<String>,
+    Path(org_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
     let org_repo = OrganizationRepository::new(&state.pool);
 
     org_repo
-        .delete_organization(&org_id, ctx.user.id)
+        .delete_organization(org_id, ctx.user.id)
         .await
         .map_err(|e| match e {
             IdentityError::PermissionDenied => {

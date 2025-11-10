@@ -1,12 +1,12 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            UPDATE organizations\n            SET name = $2, updated_at = NOW()\n            WHERE id = $1\n            RETURNING\n                id AS \"id!\",\n                name AS \"name!\",\n                slug AS \"slug!\",\n                created_at AS \"created_at!\",\n                updated_at AS \"updated_at!\"\n            ",
+  "query": "\n            SELECT\n                id          AS \"id!: Uuid\",\n                name        AS \"name!\",\n                slug        AS \"slug!\",\n                created_at  AS \"created_at!\",\n                updated_at  AS \"updated_at!\"\n            FROM organizations\n            WHERE id = $1\n            ",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "id!",
-        "type_info": "Text"
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
       },
       {
         "ordinal": 1,
@@ -31,8 +31,7 @@
     ],
     "parameters": {
       "Left": [
-        "Text",
-        "Text"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -43,5 +42,5 @@
       false
     ]
   },
-  "hash": "67e2b03e52d2f70120ee661a5821d9d5d6ea428d1ce4e13b58db6d245b58814b"
+  "hash": "a74c1274a491564d40c5396ee447628f4d1423c1ed03f781f633e3f0e4de4c69"
 }

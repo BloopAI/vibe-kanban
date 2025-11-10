@@ -43,7 +43,7 @@ async fn get_activity_stream(
     let after = params.after;
 
     let repo = ActivityRepository::new(state.pool());
-    match repo.fetch_since(&ctx.organization.id, after, limit).await {
+    match repo.fetch_since(ctx.organization.id, after, limit).await {
         Ok(events) => (StatusCode::OK, Json(ActivityResponse { data: events })).into_response(),
         Err(error) => {
             tracing::error!(?error, "failed to load activity stream");
