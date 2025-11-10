@@ -1,10 +1,11 @@
 use std::borrow::Cow;
 
 use axum::{
-    Json,
+    Json, Router,
     extract::{Extension, State},
     http::StatusCode,
     response::{IntoResponse, Response},
+    routing::{get, post},
 };
 use serde_json::json;
 use tracing::warn;
@@ -18,6 +19,16 @@ use crate::{
     auth::{DeviceFlowError, DeviceFlowPollStatus, RequestContext},
     db::oauth_accounts::OAuthAccountRepository,
 };
+
+pub fn public_router() -> Router<AppState> {
+    Router::new()
+        .route("/oauth/device/init", post(device_init))
+        .route("/oauth/device/poll", post(device_poll))
+}
+
+pub fn protected_router() -> Router<AppState> {
+    Router::new().route("/profile", get(profile))
+}
 
 pub async fn device_init(
     State(state): State<AppState>,

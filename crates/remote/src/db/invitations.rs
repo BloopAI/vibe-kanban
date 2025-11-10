@@ -86,11 +86,12 @@ impl<'a> InvitationRepository<'a> {
         .await
         .map_err(|e| {
             if let Some(db_err) = e.as_database_error()
-                && db_err.is_unique_violation() {
-                    return IdentityError::InvitationError(
-                        "A pending invitation already exists for this email".to_string(),
-                    );
-                }
+                && db_err.is_unique_violation()
+            {
+                return IdentityError::InvitationError(
+                    "A pending invitation already exists for this email".to_string(),
+                );
+            }
             IdentityError::from(e)
         })?;
 

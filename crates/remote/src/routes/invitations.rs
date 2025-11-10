@@ -1,8 +1,9 @@
 use axum::{
-    Json,
+    Json, Router,
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
+    routing::{get, post},
 };
 use chrono::{Duration, Utc};
 use serde::{Deserialize, Serialize};
@@ -18,6 +19,20 @@ use crate::{
         organizations::{MemberRole, OrganizationRepository},
     },
 };
+
+pub fn public_router() -> Router<AppState> {
+    Router::new().route("/invitations/{token}", get(get_invitation))
+}
+
+pub fn protected_router() -> Router<AppState> {
+    Router::new()
+        .route(
+            "/organizations/{org_id}/invitations",
+            post(create_invitation),
+        )
+        .route("/organizations/{org_id}/invitations", get(list_invitations))
+        .route("/invitations/{token}/accept", post(accept_invitation))
+}
 
 #[derive(Debug, Deserialize)]
 pub struct CreateInvitationRequest {

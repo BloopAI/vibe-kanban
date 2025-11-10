@@ -1,8 +1,9 @@
 use axum::{
-    Json,
+    Json, Router,
     extract::{Extension, Path, State},
     http::StatusCode,
     response::{IntoResponse, Response},
+    routing::{delete, get, patch, post},
 };
 use serde_json::json;
 use tracing::instrument;
@@ -25,6 +26,15 @@ use crate::{
         users::UserRepository,
     },
 };
+
+pub fn router() -> Router<AppState> {
+    Router::new()
+        .route("/tasks/bulk", get(bulk_shared_tasks))
+        .route("/tasks", post(create_shared_task))
+        .route("/tasks/{task_id}", patch(update_shared_task))
+        .route("/tasks/{task_id}", delete(delete_shared_task))
+        .route("/tasks/{task_id}/assign", post(assign_task))
+}
 
 #[instrument(
     name = "tasks.bulk_shared_tasks",

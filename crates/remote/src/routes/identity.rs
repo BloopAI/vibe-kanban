@@ -1,7 +1,11 @@
-use axum::{Extension, Json};
+use axum::{Extension, Json, Router, routing::get};
 use tracing::instrument;
 
-use crate::{api::identity::IdentityResponse, auth::RequestContext};
+use crate::{AppState, api::identity::IdentityResponse, auth::RequestContext};
+
+pub fn router() -> Router<AppState> {
+    Router::new().route("/identity", get(get_identity))
+}
 
 #[instrument(
     name = "identity.get_identity",

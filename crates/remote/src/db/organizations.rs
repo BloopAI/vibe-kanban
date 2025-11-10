@@ -174,11 +174,12 @@ impl<'a> OrganizationRepository<'a> {
         .await
         .map_err(|e| {
             if let Some(db_err) = e.as_database_error()
-                && db_err.is_unique_violation() {
-                    return IdentityError::OrganizationConflict(
-                        "An organization with this slug already exists".to_string(),
-                    );
-                }
+                && db_err.is_unique_violation()
+            {
+                return IdentityError::OrganizationConflict(
+                    "An organization with this slug already exists".to_string(),
+                );
+            }
             IdentityError::from(e)
         })?;
 

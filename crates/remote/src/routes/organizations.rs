@@ -1,8 +1,9 @@
 use axum::{
-    Json,
+    Json, Router,
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
+    routing::{delete, get, patch, post},
 };
 use serde::{Deserialize, Serialize};
 
@@ -15,6 +16,15 @@ use crate::{
         organizations::{Organization, OrganizationRepository, OrganizationWithRole},
     },
 };
+
+pub fn router() -> Router<AppState> {
+    Router::new()
+        .route("/organizations", post(create_organization))
+        .route("/organizations", get(list_organizations))
+        .route("/organizations/{org_id}", get(get_organization))
+        .route("/organizations/{org_id}", patch(update_organization))
+        .route("/organizations/{org_id}", delete(delete_organization))
+}
 
 #[derive(Debug, Deserialize)]
 pub struct CreateOrganizationRequest {
