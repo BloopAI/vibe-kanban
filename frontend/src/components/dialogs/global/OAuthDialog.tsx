@@ -8,7 +8,15 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { LogIn, Github, Loader2, ExternalLink, Chrome, Copy, Check } from 'lucide-react';
+import {
+  LogIn,
+  Github,
+  Loader2,
+  ExternalLink,
+  Chrome,
+  Copy,
+  Check,
+} from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useState } from 'react';
 import { oauthApi } from '@/lib/api';
