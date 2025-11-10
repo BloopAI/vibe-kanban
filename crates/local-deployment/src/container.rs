@@ -1268,6 +1268,8 @@ fn copy_project_files_impl(
     target_dir: &Path,
     copy_files: &str,
 ) -> Result<(), ContainerError> {
+    use std::collections::HashSet;
+
     let patterns: Vec<&str> = copy_files
         .split(',')
         .map(|s| s.trim())
@@ -1279,12 +1281,40 @@ fn copy_project_files_impl(
         ContainerError::Other(anyhow!("Failed to canonicalize source directory: {e}"))
     })?;
 
+    // Track files to avoid duplicates
+    let mut seen = HashSet::new();
+
     for pattern in patterns {
         let pattern_path = source_dir.join(pattern);
 
+        if pattern_path.is_file() {
+            match copy_single_file(
+                &pattern_path,
+                source_dir,
+                target_dir,
+                &canonical_source,
+                &mut seen,
+            ) {
+                Ok(true) => tracing::info!("Copied file: {pattern}"),
+                Ok(false) => tracing::debug!("File already copied: {pattern}"),
+                Err(e) => tracing::warn!(
+                    "Failed to copy file {} (from {}): {}",
+                    pattern,
+                    pattern_path.display(),
+                    e
+                ),
+            }
+            continue;
+        }
+
         if pattern_path.is_dir() {
-            let files_copied =
-                copy_directory_recursive(&pattern_path, source_dir, target_dir, &canonical_source)?;
+            let files_copied = copy_directory_recursive(
+                &pattern_path,
+                source_dir,
+                target_dir,
+                &canonical_source,
+                &mut seen,
+            )?;
 
             if files_copied == 0 {
                 tracing::warn!("No files found in directory: {pattern}");
@@ -1295,7 +1325,7 @@ fn copy_project_files_impl(
             continue;
         }
 
-        let glob_pattern = source_dir.join(pattern).to_string_lossy().to_string();
+        let glob_pattern = norm_glob(source_dir.join(pattern));
         let matches: Vec<_> = glob(&glob_pattern)
             .map_err(|e| ContainerError::Other(anyhow!("Invalid glob pattern '{pattern}': {e}")))?
             .collect::<Result<Vec<_>, _>>()
@@ -1308,15 +1338,38 @@ fn copy_project_files_impl(
             continue;
         }
 
-        let match_count = matches.len();
+        let mut copied_count = 0;
         for source_file in &matches {
-            copy_single_file(source_file, source_dir, target_dir, &canonical_source)?;
+            match copy_single_file(
+                source_file,
+                source_dir,
+                target_dir,
+                &canonical_source,
+                &mut seen,
+            ) {
+                Ok(true) => copied_count += 1,
+                Ok(false) => {}
+                Err(e) => {
+                    tracing::warn!("Failed to copy file {source_file:?}: {e}");
+                }
+            }
         }
 
-        tracing::info!("Copied {match_count} files matching pattern: {pattern}");
+        if copied_count > 0 {
+            tracing::info!("Copied {copied_count} files matching pattern: {pattern}");
+        }
     }
 
     Ok(())
+}
+
+#[cfg(windows)]
+fn norm_glob(p: PathBuf) -> String {
+    p.to_string_lossy().replace('\\', "/")
+}
+#[cfg(not(windows))]
+fn norm_glob(p: PathBuf) -> String {
+    p.to_string_lossy().into_owned()
 }
 
 fn copy_single_file(
@@ -1324,7 +1377,8 @@ fn copy_single_file(
     source_root: &Path,
     target_root: &Path,
     canonical_source: &Path,
-) -> Result<(), ContainerError> {
+    seen: &mut std::collections::HashSet<PathBuf>,
+) -> Result<bool, ContainerError> {
     // Validate path is within source_dir
     let canonical_file = source_file.canonicalize().map_err(|e| {
         ContainerError::Other(anyhow!("Failed to canonicalize file {source_file:?}: {e}"))
@@ -1334,6 +1388,10 @@ fn copy_single_file(
         return Err(ContainerError::Other(anyhow!(
             "File {source_file:?} is outside project directory"
         )));
+    }
+
+    if !seen.insert(canonical_file.clone()) {
+        return Ok(false);
     }
 
     let relative_path = source_file.strip_prefix(source_root).map_err(|e| {
@@ -1360,7 +1418,7 @@ fn copy_single_file(
         ))
     })?;
 
-    Ok(())
+    Ok(true)
 }
 
 fn copy_directory_recursive(
@@ -1368,6 +1426,7 @@ fn copy_directory_recursive(
     source_root: &Path,
     target_root: &Path,
     canonical_source: &Path,
+    seen: &mut std::collections::HashSet<PathBuf>,
 ) -> Result<usize, ContainerError> {
     let mut files_copied = 0;
 
@@ -1396,11 +1455,16 @@ fn copy_directory_recursive(
         if path.is_dir() {
             // Recursively copy subdirectory
             files_copied +=
-                copy_directory_recursive(&path, source_root, target_root, canonical_source)?;
+                copy_directory_recursive(&path, source_root, target_root, canonical_source, seen)?;
         } else {
             // Copy file
-            copy_single_file(&path, source_root, target_root, canonical_source)?;
-            files_copied += 1;
+            match copy_single_file(&path, source_root, target_root, canonical_source, seen) {
+                Ok(true) => files_copied += 1,
+                Ok(false) => {}
+                Err(e) => {
+                    tracing::warn!("Failed to copy file {path:?}: {e}");
+                }
+            }
         }
     }
 
@@ -1429,76 +1493,22 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_copy_single_file_success() {
-        let source_dir = TempDir::new().unwrap();
-        let target_dir = TempDir::new().unwrap();
-        let canonical = source_dir.path().canonicalize().unwrap();
+    fn test_truncate_to_char_boundary() {
+        let input = "a".repeat(10);
+        assert_eq!(truncate_to_char_boundary(&input, 7), "a".repeat(7));
 
-        // Create test file
-        let test_file = source_dir.path().join("test.txt");
-        fs::write(&test_file, "content").unwrap();
+        let input = "hello world";
+        assert_eq!(truncate_to_char_boundary(input, input.len()), input);
 
-        // Copy file
-        let result = copy_single_file(&test_file, source_dir.path(), target_dir.path(), &canonical);
-
-        assert!(result.is_ok());
-        assert!(target_dir.path().join("test.txt").exists());
-        assert_eq!(
-            fs::read_to_string(target_dir.path().join("test.txt")).unwrap(),
-            "content"
-        );
-    }
-
-    #[test]
-    fn test_copy_single_file_with_nested_path() {
-        let source_dir = TempDir::new().unwrap();
-        let target_dir = TempDir::new().unwrap();
-        let canonical = source_dir.path().canonicalize().unwrap();
-
-        // Create nested file
-        let subdir = source_dir.path().join("subdir");
-        fs::create_dir(&subdir).unwrap();
-        let test_file = subdir.join("nested.txt");
-        fs::write(&test_file, "nested content").unwrap();
-
-        // Copy file
-        let result = copy_single_file(&test_file, source_dir.path(), target_dir.path(), &canonical);
-
-        assert!(result.is_ok());
-        let target_file = target_dir.path().join("subdir/nested.txt");
-        assert!(target_file.exists());
-        assert_eq!(fs::read_to_string(target_file).unwrap(), "nested content");
-    }
-
-    #[test]
-    fn test_copy_directory_recursive_success() {
-        let source_dir = TempDir::new().unwrap();
-        let target_dir = TempDir::new().unwrap();
-        let canonical = source_dir.path().canonicalize().unwrap();
-
-        // Create directory structure
-        let subdir = source_dir.path().join("dir");
-        fs::create_dir(&subdir).unwrap();
-        fs::write(subdir.join("file1.txt"), "content1").unwrap();
-        fs::write(subdir.join("file2.txt"), "content2").unwrap();
-
-        let nested = subdir.join("nested");
-        fs::create_dir(&nested).unwrap();
-        fs::write(nested.join("file3.txt"), "content3").unwrap();
-
-        // Copy directory
-        let files_copied =
-            copy_directory_recursive(&subdir, source_dir.path(), target_dir.path(), &canonical);
-
-        assert!(files_copied.is_ok());
-        assert_eq!(files_copied.unwrap(), 3);
-        assert!(target_dir.path().join("dir/file1.txt").exists());
-        assert!(target_dir.path().join("dir/file2.txt").exists());
-        assert!(target_dir.path().join("dir/nested/file3.txt").exists());
+        let input = "🔥🔥🔥"; // each fire emoji is 4 bytes
+        assert_eq!(truncate_to_char_boundary(input, 5), "🔥");
+        assert_eq!(truncate_to_char_boundary(input, 3), "");
     }
 
     #[test]
     fn test_copy_directory_recursive_empty_dir() {
+        use std::collections::HashSet;
+
         let source_dir = TempDir::new().unwrap();
         let target_dir = TempDir::new().unwrap();
         let canonical = source_dir.path().canonicalize().unwrap();
@@ -1508,8 +1518,14 @@ mod tests {
         fs::create_dir(&empty_dir).unwrap();
 
         // Copy empty directory
-        let files_copied =
-            copy_directory_recursive(&empty_dir, source_dir.path(), target_dir.path(), &canonical);
+        let mut seen = HashSet::new();
+        let files_copied = copy_directory_recursive(
+            &empty_dir,
+            source_dir.path(),
+            target_dir.path(),
+            &canonical,
+            &mut seen,
+        );
 
         assert!(files_copied.is_ok());
         assert_eq!(files_copied.unwrap(), 0);
@@ -1547,24 +1563,6 @@ mod tests {
     }
 
     #[test]
-    fn test_copy_project_files_nested_glob() {
-        let source_dir = TempDir::new().unwrap();
-        let target_dir = TempDir::new().unwrap();
-
-        let src_dir = source_dir.path().join("src");
-        fs::create_dir(&src_dir).unwrap();
-        fs::write(src_dir.join("file1.rs"), "code1").unwrap();
-        fs::write(src_dir.join("file2.rs"), "code2").unwrap();
-        fs::write(src_dir.join("readme.md"), "docs").unwrap();
-
-        copy_project_files_impl(source_dir.path(), target_dir.path(), "src/*.rs").unwrap();
-
-        assert!(target_dir.path().join("src/file1.rs").exists());
-        assert!(target_dir.path().join("src/file2.rs").exists());
-        assert!(!target_dir.path().join("src/readme.md").exists());
-    }
-
-    #[test]
     fn test_copy_project_files_nonexistent_pattern_ok() {
         let source_dir = TempDir::new().unwrap();
         let target_dir = TempDir::new().unwrap();
@@ -1584,7 +1582,7 @@ mod tests {
         let result = copy_project_files_impl(source_dir.path(), target_dir.path(), "");
 
         assert!(result.is_ok());
-        assert_eq!(std::fs::read_dir(target_dir.path()).unwrap().count(), 0);
+        assert_eq!(fs::read_dir(target_dir.path()).unwrap().count(), 0);
     }
 
     #[test]
@@ -1597,24 +1595,6 @@ mod tests {
         copy_project_files_impl(source_dir.path(), target_dir.path(), "  test.txt  ,  ").unwrap();
 
         assert!(target_dir.path().join("test.txt").exists());
-    }
-
-    #[test]
-    fn test_copy_project_files_glob_filtering() {
-        let source_dir = TempDir::new().unwrap();
-        let target_dir = TempDir::new().unwrap();
-
-        fs::write(source_dir.path().join("test1.txt"), "1").unwrap();
-        fs::write(source_dir.path().join("test2.txt"), "2").unwrap();
-        fs::write(source_dir.path().join("test.log"), "log").unwrap();
-        fs::write(source_dir.path().join("data.json"), "{}").unwrap();
-
-        copy_project_files_impl(source_dir.path(), target_dir.path(), "*.txt").unwrap();
-
-        assert!(target_dir.path().join("test1.txt").exists());
-        assert!(target_dir.path().join("test2.txt").exists());
-        assert!(!target_dir.path().join("test.log").exists());
-        assert!(!target_dir.path().join("data.json").exists());
     }
 
     #[test]
@@ -1637,7 +1617,7 @@ mod tests {
     }
 
     #[test]
-    fn test_copy_project_files_rejects_outside_source() {
+    fn test_copy_project_files_outside_source_skips_without_copying() {
         let source_dir = TempDir::new().unwrap();
         let target_dir = TempDir::new().unwrap();
 
@@ -1649,6 +1629,93 @@ mod tests {
         // Pattern referencing parent directory should resolve to outside_file and be rejected
         let result = copy_project_files_impl(source_dir.path(), target_dir.path(), "../secret.txt");
 
-        assert!(result.is_err());
+        assert!(result.is_ok());
+        assert_eq!(fs::read_dir(target_dir.path()).unwrap().count(), 0);
+    }
+
+    #[test]
+    fn test_copy_project_files_recursive_glob_extension_filter() {
+        let source_dir = TempDir::new().unwrap();
+        let target_dir = TempDir::new().unwrap();
+
+        // Create nested directory structure with YAML files
+        let config_dir = source_dir.path().join("config");
+        fs::create_dir(&config_dir).unwrap();
+        fs::write(config_dir.join("app.yml"), "app: config").unwrap();
+        fs::write(config_dir.join("db.json"), "{}").unwrap();
+
+        let nested_dir = config_dir.join("nested");
+        fs::create_dir(&nested_dir).unwrap();
+        fs::write(nested_dir.join("settings.yml"), "settings: value").unwrap();
+        fs::write(nested_dir.join("other.txt"), "text").unwrap();
+
+        let deep_dir = nested_dir.join("deep");
+        fs::create_dir(&deep_dir).unwrap();
+        fs::write(deep_dir.join("deep.yml"), "deep: config").unwrap();
+
+        // Copy all YAML files recursively
+        copy_project_files_impl(source_dir.path(), target_dir.path(), "config/**/*.yml").unwrap();
+
+        // Verify only YAML files are copied
+        assert!(target_dir.path().join("config/app.yml").exists());
+        assert!(
+            target_dir
+                .path()
+                .join("config/nested/settings.yml")
+                .exists()
+        );
+        assert!(
+            target_dir
+                .path()
+                .join("config/nested/deep/deep.yml")
+                .exists()
+        );
+
+        // Verify non-YAML files are not copied
+        assert!(!target_dir.path().join("config/db.json").exists());
+        assert!(!target_dir.path().join("config/nested/other.txt").exists());
+    }
+
+    #[test]
+    fn test_copy_project_files_duplicate_patterns_ok() {
+        let source_dir = TempDir::new().unwrap();
+        let target_dir = TempDir::new().unwrap();
+
+        // Create source files
+        let src_dir = source_dir.path().join("src");
+        fs::create_dir(&src_dir).unwrap();
+        fs::write(src_dir.join("lib.rs"), "lib code").unwrap();
+        fs::write(src_dir.join("main.rs"), "main code").unwrap();
+
+        // Copy with overlapping patterns: glob and specific file
+        copy_project_files_impl(source_dir.path(), target_dir.path(), "src/*.rs, src/lib.rs")
+            .unwrap();
+
+        // Verify file exists once (deduplication works)
+        let target_file = target_dir.path().join("src/lib.rs");
+        assert!(target_file.exists());
+        assert_eq!(fs::read_to_string(target_file).unwrap(), "lib code");
+
+        // Verify other file from glob is also copied
+        assert!(target_dir.path().join("src/main.rs").exists());
+    }
+
+    #[test]
+    fn test_copy_project_files_single_file_path() {
+        let source_dir = TempDir::new().unwrap();
+        let target_dir = TempDir::new().unwrap();
+
+        // Create source file
+        let src_dir = source_dir.path().join("src");
+        fs::create_dir(&src_dir).unwrap();
+        fs::write(src_dir.join("lib.rs"), "library code").unwrap();
+
+        // Copy single file by exact path (exercises fast path)
+        copy_project_files_impl(source_dir.path(), target_dir.path(), "src/lib.rs").unwrap();
+
+        // Verify file is copied
+        let target_file = target_dir.path().join("src/lib.rs");
+        assert!(target_file.exists());
+        assert_eq!(fs::read_to_string(target_file).unwrap(), "library code");
     }
 }
