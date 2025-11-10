@@ -296,13 +296,12 @@ impl<'a> IdentityRepository<'a> {
         .fetch_one(self.pool)
         .await
         .map_err(|e| {
-            if let Some(db_err) = e.as_database_error() {
-                if db_err.is_unique_violation() {
+            if let Some(db_err) = e.as_database_error()
+                && db_err.is_unique_violation() {
                     return IdentityError::InvitationError(
                         "A pending invitation already exists for this email".to_string(),
                     );
                 }
-            }
             IdentityError::from(e)
         })?;
 
