@@ -4,7 +4,7 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[ts(export)]
 pub enum MemberRole {
     Admin,

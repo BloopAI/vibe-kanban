@@ -5,6 +5,7 @@ use uuid::Uuid;
 use super::identity_errors::IdentityError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[sqlx(type_name = "member_role", rename_all = "lowercase")]
 pub enum MemberRole {
     Admin,

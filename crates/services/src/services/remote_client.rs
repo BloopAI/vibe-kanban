@@ -132,7 +132,7 @@ impl RemoteClient {
         &self,
         token: &str,
     ) -> Result<ListOrganizationsResponse, RemoteClientError> {
-        self.get_json("/organizations", Some(token)).await
+        self.get_json("/v1/organizations", Some(token)).await
     }
 
     /// Gets a specific organization by ID.
@@ -141,7 +141,7 @@ impl RemoteClient {
         token: &str,
         org_id: Uuid,
     ) -> Result<GetOrganizationResponse, RemoteClientError> {
-        self.get_json(&format!("/organizations/{org_id}"), Some(token))
+        self.get_json(&format!("/v1/organizations/{org_id}"), Some(token))
             .await
     }
 
@@ -151,7 +151,7 @@ impl RemoteClient {
         token: &str,
         request: &CreateOrganizationRequest,
     ) -> Result<CreateOrganizationResponse, RemoteClientError> {
-        self.post_json_with_auth("/organizations", request, token)
+        self.post_json_with_auth("/v1/organizations", request, token)
             .await
     }
 
@@ -162,7 +162,7 @@ impl RemoteClient {
         org_id: Uuid,
         request: &UpdateOrganizationRequest,
     ) -> Result<Organization, RemoteClientError> {
-        self.patch_json(&format!("/organizations/{org_id}"), request, token)
+        self.patch_json(&format!("/v1/organizations/{org_id}"), request, token)
             .await
     }
 
@@ -172,7 +172,7 @@ impl RemoteClient {
         token: &str,
         org_id: Uuid,
     ) -> Result<(), RemoteClientError> {
-        self.delete(&format!("/organizations/{org_id}"), token)
+        self.delete(&format!("/v1/organizations/{org_id}"), token)
             .await
     }
 
@@ -184,7 +184,7 @@ impl RemoteClient {
         request: &CreateInvitationRequest,
     ) -> Result<CreateInvitationResponse, RemoteClientError> {
         self.post_json_with_auth(
-            &format!("/organizations/{org_id}/invitations"),
+            &format!("/v1/organizations/{org_id}/invitations"),
             request,
             token,
         )
@@ -197,7 +197,7 @@ impl RemoteClient {
         token: &str,
         org_id: Uuid,
     ) -> Result<ListInvitationsResponse, RemoteClientError> {
-        self.get_json(&format!("/organizations/{org_id}/invitations"), Some(token))
+        self.get_json(&format!("/v1/organizations/{org_id}/invitations"), Some(token))
             .await
     }
 
@@ -206,7 +206,7 @@ impl RemoteClient {
         &self,
         invitation_token: &str,
     ) -> Result<GetInvitationResponse, RemoteClientError> {
-        self.get_json(&format!("/invitations/{invitation_token}"), None)
+        self.get_json(&format!("/v1/invitations/{invitation_token}"), None)
             .await
     }
 
@@ -217,7 +217,7 @@ impl RemoteClient {
         invitation_token: &str,
     ) -> Result<AcceptInvitationResponse, RemoteClientError> {
         self.post_json_with_auth(
-            &format!("/invitations/{invitation_token}/accept"),
+            &format!("/v1/invitations/{invitation_token}/accept"),
             &serde_json::json!({}),
             token,
         )
@@ -230,7 +230,7 @@ impl RemoteClient {
         token: &str,
         org_id: Uuid,
     ) -> Result<ListMembersResponse, RemoteClientError> {
-        self.get_json(&format!("/organizations/{org_id}/members"), Some(token))
+        self.get_json(&format!("/v1/organizations/{org_id}/members"), Some(token))
             .await
     }
 
@@ -241,7 +241,7 @@ impl RemoteClient {
         org_id: Uuid,
         user_id: Uuid,
     ) -> Result<(), RemoteClientError> {
-        self.delete(&format!("/organizations/{org_id}/members/{user_id}"), token)
+        self.delete(&format!("/v1/organizations/{org_id}/members/{user_id}"), token)
             .await
     }
 
@@ -254,7 +254,7 @@ impl RemoteClient {
         request: &UpdateMemberRoleRequest,
     ) -> Result<UpdateMemberRoleResponse, RemoteClientError> {
         self.patch_json(
-            &format!("/organizations/{org_id}/members/{user_id}/role"),
+            &format!("/v1/organizations/{org_id}/members/{user_id}/role"),
             request,
             token,
         )
