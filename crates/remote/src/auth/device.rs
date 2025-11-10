@@ -177,26 +177,23 @@ impl DeviceFlowService {
         }
 
         let user_repo = UserRepository::new(&self.pool);
-        let user = user_repo.fetch_user(&session.user_id).await?;
+        let user = user_repo.fetch_user(session.user_id).await?;
 
+        let user_id_string = session.user_id.to_string();
         let display_name_for_org = user
             .first_name
             .as_deref()
             .or(user.username.as_deref())
-            .or(Some(&session.user_id));
+            .or(Some(&user_id_string));
 
         let org_repo = OrganizationRepository::new(&self.pool);
         let organization = org_repo
-            .ensure_personal_org_and_admin_membership(&session.user_id, display_name_for_org)
+            .ensure_personal_org_and_admin_membership(session.user_id, display_name_for_org)
             .await?;
 
         let token = self.jwt.encode(&session, &user, &organization)?;
         session_repo.touch(session.id).await?;
-        configure_user_scope(
-            &user.id,
-            user.username.as_deref(),
-            Some(user.email.as_str()),
-        );
+        configure_user_scope(user.id, user.username.as_deref(), Some(user.email.as_str()));
 
         Ok(DeviceFlowPollResponse {
             status: DeviceFlowPollStatus::Success,
@@ -358,7 +355,7 @@ impl DeviceFlowService {
                 if let Some(found) = user_repo.find_user_by_email(&email).await? {
                     found.id
                 } else {
-                    Uuid::new_v4().to_string()
+                    Uuid::new_v4()
                 }
             }
         };
@@ -367,7 +364,7 @@ impl DeviceFlowService {
 
         let user = user_repo
             .upsert_user(UpsertUser {
-                id: &user_id,
+                id: user_id,
                 email: &email,
                 first_name: first_name.as_deref(),
                 last_name: last_name.as_deref(),
@@ -375,19 +372,20 @@ impl DeviceFlowService {
             })
             .await?;
 
+        let user_id_string = user_id.to_string();
         let display_name_for_org = first_name
             .as_deref()
             .or(username.as_deref())
-            .or(Some(&user_id));
+            .or(Some(&user_id_string));
 
         let org_repo = OrganizationRepository::new(&self.pool);
         let organization = org_repo
-            .ensure_personal_org_and_admin_membership(&user.id, display_name_for_org)
+            .ensure_personal_org_and_admin_membership(user.id, display_name_for_org)
             .await?;
 
         account_repo
             .upsert(OAuthAccountInsert {
-                user_id: &user.id,
+                user_id: user.id,
                 provider: provider.name(),
                 provider_user_id: &user_profile.id,
                 email: Some(email.as_str()),
@@ -399,21 +397,17 @@ impl DeviceFlowService {
 
         let session_secret = generate_session_secret();
         let session_repo = AuthSessionRepository::new(&self.pool);
-        let session = session_repo.create(&user.id, &session_secret).await?;
+        let session = session_repo.create(user.id, &session_secret).await?;
 
         let token = self.jwt.encode(&session, &user, &organization)?;
         session_repo.touch(session.id).await?;
 
         let oauth_repo = DeviceAuthorizationRepository::new(&self.pool);
         oauth_repo
-            .mark_completed(record.id, &user.id, session.id)
+            .mark_completed(record.id, user.id, session.id)
             .await?;
 
-        configure_user_scope(
-            &user.id,
-            user.username.as_deref(),
-            Some(user.email.as_str()),
-        );
+        configure_user_scope(user.id, user.username.as_deref(), Some(user.email.as_str()));
 
         Ok(DeviceFlowPollResponse {
             status: DeviceFlowPollStatus::Success,

@@ -15,7 +15,7 @@ pub enum AuthSessionError {
 #[derive(Debug, Clone, sqlx::FromRow, Serialize)]
 pub struct AuthSession {
     pub id: Uuid,
-    pub user_id: String,
+    pub user_id: Uuid,
     pub session_secret: String,
     pub created_at: DateTime<Utc>,
     pub last_used_at: Option<DateTime<Utc>>,
@@ -33,7 +33,7 @@ impl<'a> AuthSessionRepository<'a> {
 
     pub async fn create(
         &self,
-        user_id: &str,
+        user_id: Uuid,
         session_secret: &str,
     ) -> Result<AuthSession, AuthSessionError> {
         query_as!(
@@ -43,7 +43,7 @@ impl<'a> AuthSessionRepository<'a> {
             VALUES ($1, $2)
             RETURNING
                 id            AS "id!",
-                user_id       AS "user_id!",
+                user_id       AS "user_id!: Uuid",
                 session_secret AS "session_secret!",
                 created_at    AS "created_at!",
                 last_used_at  AS "last_used_at?",
@@ -63,7 +63,7 @@ impl<'a> AuthSessionRepository<'a> {
             r#"
             SELECT
                 id            AS "id!",
-                user_id       AS "user_id!",
+                user_id       AS "user_id!: Uuid",
                 session_secret AS "session_secret!",
                 created_at    AS "created_at!",
                 last_used_at  AS "last_used_at?",

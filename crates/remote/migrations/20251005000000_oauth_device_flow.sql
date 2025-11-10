@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS auth_sessions (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     session_secret  TEXT NOT NULL,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     last_used_at    TIMESTAMPTZ,
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS oauth_device_authorizations (
     created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     completed_at                TIMESTAMPTZ,
-    user_id                     TEXT REFERENCES users(id),
+    user_id                     UUID REFERENCES users(id),
     session_id                  UUID REFERENCES auth_sessions(id) ON DELETE SET NULL
 );
 
@@ -37,7 +37,7 @@ CREATE INDEX IF NOT EXISTS idx_oauth_device_authorizations_user
 
 CREATE TABLE IF NOT EXISTS oauth_accounts (
     id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id           TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id           UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     provider          TEXT NOT NULL,
     provider_user_id  TEXT NOT NULL,
     email             TEXT,

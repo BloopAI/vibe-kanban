@@ -88,7 +88,7 @@ pub async fn create_organization(
     let org_repo = OrganizationRepository::new(&state.pool);
 
     let organization = org_repo
-        .create_organization(name, &slug, &ctx.user.id)
+        .create_organization(name, &slug, ctx.user.id)
         .await
         .map_err(|e| match e {
             IdentityError::OrganizationConflict(msg) => {
@@ -110,7 +110,7 @@ pub async fn list_organizations(
     let org_repo = OrganizationRepository::new(&state.pool);
 
     let organizations = org_repo
-        .list_user_organizations(&ctx.user.id)
+        .list_user_organizations(ctx.user.id)
         .await
         .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?;
 
@@ -125,7 +125,7 @@ pub async fn get_organization(
     let org_repo = OrganizationRepository::new(&state.pool);
 
     org_repo
-        .assert_membership(&org_id, &ctx.user.id)
+        .assert_membership(&org_id, ctx.user.id)
         .await
         .map_err(|e| match e {
             IdentityError::NotFound => {
@@ -142,7 +142,7 @@ pub async fn get_organization(
     })?;
 
     let role = org_repo
-        .check_user_role(&org_id, &ctx.user.id)
+        .check_user_role(&org_id, ctx.user.id)
         .await
         .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?
         .unwrap_or(crate::db::organizations::MemberRole::Member);
@@ -177,7 +177,7 @@ pub async fn update_organization(
     let org_repo = OrganizationRepository::new(&state.pool);
 
     let organization = org_repo
-        .update_organization_name(&org_id, &ctx.user.id, name)
+        .update_organization_name(&org_id, ctx.user.id, name)
         .await
         .map_err(|e| match e {
             IdentityError::PermissionDenied => {
@@ -200,7 +200,7 @@ pub async fn delete_organization(
     let org_repo = OrganizationRepository::new(&state.pool);
 
     org_repo
-        .delete_organization(&org_id, &ctx.user.id)
+        .delete_organization(&org_id, ctx.user.id)
         .await
         .map_err(|e| match e {
             IdentityError::PermissionDenied => {

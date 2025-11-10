@@ -72,6 +72,8 @@ pub enum ShareError {
     GitHub(#[from] GitHubServiceError),
     #[error("share authentication missing or expired")]
     MissingAuth,
+    #[error("invalid user ID format")]
+    InvalidUserId,
 }
 
 const WS_BACKOFF_BASE_DELAY: Duration = Duration::from_secs(1);
@@ -364,7 +366,7 @@ pub(super) fn convert_remote_task(
         title: task.title.clone(),
         description: task.description.clone(),
         status: status::from_remote(&task.status),
-        assignee_user_id: task.assignee_user_id.clone(),
+        assignee_user_id: task.assignee_user_id,
         assignee_first_name: user.and_then(|u| u.first_name.clone()),
         assignee_last_name: user.and_then(|u| u.last_name.clone()),
         assignee_username: user.and_then(|u| u.username.clone()),
@@ -378,8 +380,8 @@ pub(super) fn convert_remote_task(
 pub(super) async fn sync_local_task_for_shared_task(
     pool: &SqlitePool,
     shared_task: &SharedTask,
-    current_user_id: Option<&str>,
-    creator_user_id: Option<&str>,
+    current_user_id: Option<uuid::Uuid>,
+    creator_user_id: Option<uuid::Uuid>,
 ) -> Result<(), ShareError> {
     let project_id = match shared_task.project_id {
         Some(project_id) => project_id,
@@ -388,10 +390,10 @@ pub(super) async fn sync_local_task_for_shared_task(
 
     let create_task_if_not_exists = {
         let assignee_is_current_user = matches!(
-            (shared_task.assignee_user_id.as_deref(), current_user_id),
+            (shared_task.assignee_user_id.as_ref(), current_user_id.as_ref()),
             (Some(assignee), Some(current)) if assignee == current
         );
-        let creator_is_current_user = matches!((creator_user_id, current_user_id), (Some(creator), Some(current)) if creator == current);
+        let creator_is_current_user = matches!((creator_user_id.as_ref(), current_user_id.as_ref()), (Some(creator), Some(current)) if creator == current);
 
         assignee_is_current_user && !creator_is_current_user
     };
@@ -414,7 +416,7 @@ pub(super) async fn sync_local_task_for_shared_task(
 
 pub async fn link_shared_tasks_to_project(
     pool: &SqlitePool,
-    current_user_id: Option<&str>,
+    current_user_id: Option<uuid::Uuid>,
     project_id: Uuid,
     github_repo_id: i64,
 ) -> Result<(), ShareError> {

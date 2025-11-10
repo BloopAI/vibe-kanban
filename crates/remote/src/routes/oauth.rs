@@ -182,7 +182,7 @@ pub async fn profile(
 ) -> Json<ProfileResponse> {
     let repo = OAuthAccountRepository::new(state.pool());
     let providers = repo
-        .list_by_user(&ctx.user.id)
+        .list_by_user(ctx.user.id)
         .await
         .unwrap_or_default()
         .into_iter()
@@ -196,7 +196,7 @@ pub async fn profile(
         .collect();
 
     Json(ProfileResponse {
-        user_id: ctx.user.id.clone(),
+        user_id: ctx.user.id,
         username: ctx.user.username.clone(),
         email: ctx.user.email.clone(),
         organization_id: ctx.organization.id.clone(),

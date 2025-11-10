@@ -41,7 +41,7 @@ pub struct ProviderProfile {
 
 #[derive(Debug, Serialize, Deserialize, Clone, TS)]
 pub struct ProfileResponse {
-    pub user_id: String,
+    pub user_id: uuid::Uuid,
     pub username: Option<String>,
     pub email: String,
     pub organization_id: String,

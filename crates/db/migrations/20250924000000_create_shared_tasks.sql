@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS shared_tasks (
     description         TEXT,
     status              TEXT NOT NULL DEFAULT 'todo'
                         CHECK (status IN ('todo','inprogress','done','cancelled','inreview')),
-    assignee_user_id    TEXT,
+    assignee_user_id    BLOB,
     assignee_first_name TEXT,
     assignee_last_name  TEXT,
     assignee_username   TEXT,

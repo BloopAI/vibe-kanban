@@ -18,7 +18,7 @@ pub struct CreateSharedTaskRequest {
     pub project: ProjectMetadata,
     pub title: String,
     pub description: Option<String>,
-    pub assignee_user_id: Option<String>,
+    pub assignee_user_id: Option<uuid::Uuid>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -31,7 +31,7 @@ pub struct UpdateSharedTaskRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AssignSharedTaskRequest {
-    pub new_assignee_user_id: Option<String>,
+    pub new_assignee_user_id: Option<uuid::Uuid>,
     pub version: Option<i64>,
 }
 

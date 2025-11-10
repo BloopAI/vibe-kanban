@@ -95,11 +95,11 @@ pub async fn create_shared_task(
     }
 
     if let Some(assignee) = assignee_user_id.as_ref() {
-        if let Err(err) = user_repo.fetch_user(assignee).await {
+        if let Err(err) = user_repo.fetch_user(*assignee).await {
             return identity_error_response(err, "assignee not found or inactive");
         }
         if let Err(err) = org_repo
-            .assert_membership(&ctx.organization.id, assignee)
+            .assert_membership(&ctx.organization.id, *assignee)
             .await
         {
             return identity_error_response(err, "assignee not part of organization");
@@ -110,7 +110,7 @@ pub async fn create_shared_task(
         project,
         title,
         description,
-        creator_user_id: ctx.user.id.clone(),
+        creator_user_id: ctx.user.id,
         assignee_user_id,
     };
 
@@ -142,7 +142,7 @@ pub async fn update_shared_task(
         }
     };
 
-    if existing.assignee_user_id.as_deref() != Some(&ctx.user.id) {
+    if existing.assignee_user_id.as_ref() != Some(&ctx.user.id) {
         return task_error_response(
             SharedTaskError::Forbidden,
             "acting user is not the task assignee",
@@ -168,7 +168,7 @@ pub async fn update_shared_task(
         description,
         status,
         version,
-        acting_user_id: ctx.user.id.clone(),
+        acting_user_id: ctx.user.id,
     };
 
     match repo.update(&ctx.organization.id, task_id, data).await {
@@ -202,7 +202,7 @@ pub async fn assign_task(
         }
     };
 
-    if existing.assignee_user_id.as_deref() != Some(&ctx.user.id) {
+    if existing.assignee_user_id.as_ref() != Some(&ctx.user.id) {
         return task_error_response(
             SharedTaskError::Forbidden,
             "acting user is not the task assignee",
@@ -210,11 +210,11 @@ pub async fn assign_task(
     }
 
     if let Some(assignee) = payload.new_assignee_user_id.as_ref() {
-        if let Err(err) = user_repo.fetch_user(assignee).await {
+        if let Err(err) = user_repo.fetch_user(*assignee).await {
             return identity_error_response(err, "assignee not found or inactive");
         }
         if let Err(err) = org_repo
-            .assert_membership(&ctx.organization.id, assignee)
+            .assert_membership(&ctx.organization.id, *assignee)
             .await
         {
             return identity_error_response(err, "assignee not part of organization");
@@ -223,7 +223,7 @@ pub async fn assign_task(
 
     let data = AssignTaskData {
         new_assignee_user_id: payload.new_assignee_user_id,
-        previous_assignee_user_id: Some(ctx.user.id.clone()),
+        previous_assignee_user_id: Some(ctx.user.id),
         version: payload.version,
     };
 
@@ -256,7 +256,7 @@ pub async fn delete_shared_task(
         }
     };
 
-    if existing.assignee_user_id.as_deref() != Some(&ctx.user.id) {
+    if existing.assignee_user_id.as_ref() != Some(&ctx.user.id) {
         return task_error_response(
             SharedTaskError::Forbidden,
             "acting user is not the task assignee",
@@ -266,7 +266,7 @@ pub async fn delete_shared_task(
     let version = payload.as_ref().and_then(|body| body.0.version);
 
     let data = DeleteTaskData {
-        acting_user_id: ctx.user.id.clone(),
+        acting_user_id: ctx.user.id,
         version,
     };
 

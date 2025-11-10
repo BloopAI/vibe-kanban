@@ -1,12 +1,12 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                id           AS \"id!\",\n                email        AS \"email!\",\n                first_name   AS \"first_name?\",\n                last_name    AS \"last_name?\",\n                username     AS \"username?\",\n                created_at   AS \"created_at!\",\n                updated_at   AS \"updated_at!\"\n            FROM users\n            WHERE id = $1\n            ",
+  "query": "\n            SELECT\n                id           AS \"id!: Uuid\",\n                email        AS \"email!\",\n                first_name   AS \"first_name?\",\n                last_name    AS \"last_name?\",\n                username     AS \"username?\",\n                created_at   AS \"created_at!\",\n                updated_at   AS \"updated_at!\"\n            FROM users\n            WHERE id = $1\n            ",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "id!",
-        "type_info": "Text"
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
       },
       {
         "ordinal": 1,
@@ -41,7 +41,7 @@
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -54,5 +54,5 @@
       false
     ]
   },
-  "hash": "431b6a2f99b8ea766633eb26f115990738a36c7cf042c2d80c05e40b8f1a5fe9"
+  "hash": "b2c8a0820366a696d4425720bacec9c694398e2f9ff101753c8833cbf0152d9d"
 }

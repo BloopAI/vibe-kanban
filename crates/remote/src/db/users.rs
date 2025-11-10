@@ -1,12 +1,13 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, query_as};
+use uuid::Uuid;
 
 use super::{Tx, identity_errors::IdentityError};
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct User {
-    pub id: String,
+    pub id: Uuid,
     pub email: String,
     pub first_name: Option<String>,
     pub last_name: Option<String>,
@@ -17,7 +18,7 @@ pub struct User {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserData {
-    pub id: String,
+    pub id: Uuid,
     pub first_name: Option<String>,
     pub last_name: Option<String>,
     pub username: Option<String>,
@@ -25,7 +26,7 @@ pub struct UserData {
 
 #[derive(Debug, Clone)]
 pub struct UpsertUser<'a> {
-    pub id: &'a str,
+    pub id: Uuid,
     pub email: &'a str,
     pub first_name: Option<&'a str>,
     pub last_name: Option<&'a str>,
@@ -47,12 +48,12 @@ impl<'a> UserRepository<'a> {
             .map_err(IdentityError::from)
     }
 
-    pub async fn fetch_user(&self, user_id: &str) -> Result<User, IdentityError> {
+    pub async fn fetch_user(&self, user_id: Uuid) -> Result<User, IdentityError> {
         query_as!(
             User,
             r#"
             SELECT
-                id           AS "id!",
+                id           AS "id!: Uuid",
                 email        AS "email!",
                 first_name   AS "first_name?",
                 last_name    AS "last_name?",
@@ -74,7 +75,7 @@ impl<'a> UserRepository<'a> {
             User,
             r#"
             SELECT
-                id           AS "id!",
+                id           AS "id!: Uuid",
                 email        AS "email!",
                 first_name   AS "first_name?",
                 last_name    AS "last_name?",
@@ -105,7 +106,7 @@ async fn upsert_user(pool: &PgPool, user: &UpsertUser<'_>) -> Result<User, sqlx:
             username = EXCLUDED.username,
             updated_at = NOW()
         RETURNING
-            id           AS "id!",
+            id           AS "id!: Uuid",
             email        AS "email!",
             first_name   AS "first_name?",
             last_name    AS "last_name?",
@@ -123,11 +124,11 @@ async fn upsert_user(pool: &PgPool, user: &UpsertUser<'_>) -> Result<User, sqlx:
     .await
 }
 
-pub async fn fetch_user(tx: &mut Tx<'_>, user_id: &str) -> Result<Option<UserData>, IdentityError> {
+pub async fn fetch_user(tx: &mut Tx<'_>, user_id: Uuid) -> Result<Option<UserData>, IdentityError> {
     sqlx::query!(
         r#"
         SELECT
-            id         AS "id!",
+            id         AS "id!: Uuid",
             first_name AS "first_name?",
             last_name  AS "last_name?",
             username   AS "username?"

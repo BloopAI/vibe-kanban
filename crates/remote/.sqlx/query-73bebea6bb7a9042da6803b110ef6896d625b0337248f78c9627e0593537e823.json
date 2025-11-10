@@ -6,7 +6,7 @@
     "parameters": {
       "Left": [
         "Text",
-        "Text",
+        "Uuid",
         "Text",
         "Jsonb"
       ]

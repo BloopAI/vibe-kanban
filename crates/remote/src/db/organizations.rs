@@ -43,7 +43,7 @@ impl<'a> OrganizationRepository<'a> {
     pub async fn ensure_membership(
         &self,
         organization_id: &str,
-        user_id: &str,
+        user_id: Uuid,
     ) -> Result<(), IdentityError> {
         ensure_member_metadata(self.pool, organization_id, user_id)
             .await
@@ -53,7 +53,7 @@ impl<'a> OrganizationRepository<'a> {
     pub async fn assert_membership(
         &self,
         organization_id: &str,
-        user_id: &str,
+        user_id: Uuid,
     ) -> Result<(), IdentityError> {
         let exists = query_scalar!(
             r#"
@@ -101,7 +101,7 @@ impl<'a> OrganizationRepository<'a> {
 
     pub async fn ensure_personal_org_and_admin_membership(
         &self,
-        user_id: &str,
+        user_id: Uuid,
         display_name_hint: Option<&str>,
     ) -> Result<Organization, IdentityError> {
         let org_id = personal_org_id(user_id);
@@ -115,7 +115,7 @@ impl<'a> OrganizationRepository<'a> {
     pub async fn check_user_role(
         &self,
         organization_id: &str,
-        user_id: &str,
+        user_id: Uuid,
     ) -> Result<Option<MemberRole>, IdentityError> {
         let result = sqlx::query!(
             r#"
@@ -135,7 +135,7 @@ impl<'a> OrganizationRepository<'a> {
     pub async fn assert_admin(
         &self,
         organization_id: &str,
-        user_id: &str,
+        user_id: Uuid,
     ) -> Result<(), IdentityError> {
         let role = self.check_user_role(organization_id, user_id).await?;
         match role {
@@ -148,7 +148,7 @@ impl<'a> OrganizationRepository<'a> {
         &self,
         name: &str,
         slug: &str,
-        creator_user_id: &str,
+        creator_user_id: Uuid,
     ) -> Result<OrganizationWithRole, IdentityError> {
         let mut tx = self.pool.begin().await?;
 
@@ -200,7 +200,7 @@ impl<'a> OrganizationRepository<'a> {
 
     pub async fn list_user_organizations(
         &self,
-        user_id: &str,
+        user_id: Uuid,
     ) -> Result<Vec<OrganizationWithRole>, IdentityError> {
         let orgs = sqlx::query_as!(
             OrganizationWithRole,
@@ -228,7 +228,7 @@ impl<'a> OrganizationRepository<'a> {
     pub async fn update_organization_name(
         &self,
         org_id: &str,
-        user_id: &str,
+        user_id: Uuid,
         new_name: &str,
     ) -> Result<Organization, IdentityError> {
         self.assert_admin(org_id, user_id).await?;
@@ -259,7 +259,7 @@ impl<'a> OrganizationRepository<'a> {
     pub async fn delete_organization(
         &self,
         org_id: &str,
-        user_id: &str,
+        user_id: Uuid,
     ) -> Result<(), IdentityError> {
         let result = sqlx::query!(
             r#"
@@ -340,7 +340,7 @@ async fn upsert_organization(
 async fn ensure_member_metadata(
     pool: &PgPool,
     organization_id: &str,
-    user_id: &str,
+    user_id: Uuid,
 ) -> Result<(), sqlx::Error> {
     ensure_member_metadata_with_role(pool, organization_id, user_id, MemberRole::Member).await
 }
@@ -348,7 +348,7 @@ async fn ensure_member_metadata(
 pub(super) async fn ensure_member_metadata_with_role<'a, E>(
     executor: E,
     organization_id: &str,
-    user_id: &str,
+    user_id: Uuid,
     role: MemberRole,
 ) -> Result<(), sqlx::Error>
 where
@@ -371,16 +371,18 @@ where
     Ok(())
 }
 
-fn personal_org_id(user_id: &str) -> String {
+fn personal_org_id(user_id: Uuid) -> String {
     format!("org-{user_id}")
 }
 
-fn personal_org_name(hint: Option<&str>, user_id: &str) -> String {
-    let display_name = hint.unwrap_or(user_id);
+fn personal_org_name(hint: Option<&str>, user_id: Uuid) -> String {
+    let user_id_str = user_id.to_string();
+    let display_name = hint.unwrap_or(&user_id_str);
     format!("{display_name}'s Org")
 }
 
-fn personal_org_slug(hint: Option<&str>, user_id: &str) -> String {
+fn personal_org_slug(hint: Option<&str>, user_id: Uuid) -> String {
+    let user_id_str = user_id.to_string();
     let candidate = hint
         .and_then(|value| {
             let trimmed = value.trim();
@@ -390,7 +392,7 @@ fn personal_org_slug(hint: Option<&str>, user_id: &str) -> String {
                 Some(trimmed)
             }
         })
-        .unwrap_or(user_id);
+        .unwrap_or(&user_id_str);
     slugify_org_name(candidate)
 }
 

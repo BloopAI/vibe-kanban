@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            INSERT INTO oauth_device_authorizations (\n                provider,\n                device_code,\n                user_code,\n                verification_uri,\n                verification_uri_complete,\n                expires_at,\n                polling_interval\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, $7)\n            RETURNING\n                id                      AS \"id!\",\n                provider                AS \"provider!\",\n                device_code             AS \"device_code!\",\n                user_code               AS \"user_code!\",\n                verification_uri        AS \"verification_uri!\",\n                verification_uri_complete AS \"verification_uri_complete?\",\n                expires_at              AS \"expires_at!\",\n                polling_interval        AS \"polling_interval!\",\n                last_polled_at          AS \"last_polled_at?\",\n                status                  AS \"status!\",\n                error_code              AS \"error_code?\",\n                created_at              AS \"created_at!\",\n                updated_at              AS \"updated_at!\",\n                completed_at            AS \"completed_at?\",\n                user_id                 AS \"user_id?\",\n                session_id              AS \"session_id?\"\n            ",
+  "query": "\n            SELECT\n                id                      AS \"id!\",\n                provider                AS \"provider!\",\n                device_code             AS \"device_code!\",\n                user_code               AS \"user_code!\",\n                verification_uri        AS \"verification_uri!\",\n                verification_uri_complete AS \"verification_uri_complete?\",\n                expires_at              AS \"expires_at!\",\n                polling_interval        AS \"polling_interval!\",\n                last_polled_at          AS \"last_polled_at?\",\n                status                  AS \"status!\",\n                error_code              AS \"error_code?\",\n                created_at              AS \"created_at!\",\n                updated_at              AS \"updated_at!\",\n                completed_at            AS \"completed_at?\",\n                user_id                 AS \"user_id?: Uuid\",\n                session_id              AS \"session_id?\"\n            FROM oauth_device_authorizations\n            WHERE id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -75,8 +75,8 @@
       },
       {
         "ordinal": 14,
-        "name": "user_id?",
-        "type_info": "Text"
+        "name": "user_id?: Uuid",
+        "type_info": "Uuid"
       },
       {
         "ordinal": 15,
@@ -86,13 +86,7 @@
     ],
     "parameters": {
       "Left": [
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Timestamptz",
-        "Int4"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -114,5 +108,5 @@
       true
     ]
   },
-  "hash": "f7e65392a5437bd3a52a57d343be6f53de821dd9d04e7b1d40b9f73e662a4435"
+  "hash": "f22b9e9112d1ae0d305bd2df4e7311cbe91d2e71eff0d8fad5b403999949ce91"
 }

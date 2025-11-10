@@ -62,7 +62,7 @@ pub struct DeviceAuthorization {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub completed_at: Option<DateTime<Utc>>,
-    pub user_id: Option<String>,
+    pub user_id: Option<Uuid>,
     pub session_id: Option<Uuid>,
 }
 
@@ -124,7 +124,7 @@ impl<'a> DeviceAuthorizationRepository<'a> {
                 created_at              AS "created_at!",
                 updated_at              AS "updated_at!",
                 completed_at            AS "completed_at?",
-                user_id                 AS "user_id?",
+                user_id                 AS "user_id?: Uuid",
                 session_id              AS "session_id?"
             "#,
             data.provider,
@@ -159,7 +159,7 @@ impl<'a> DeviceAuthorizationRepository<'a> {
                 created_at              AS "created_at!",
                 updated_at              AS "updated_at!",
                 completed_at            AS "completed_at?",
-                user_id                 AS "user_id?",
+                user_id                 AS "user_id?: Uuid",
                 session_id              AS "session_id?"
             FROM oauth_device_authorizations
             WHERE id = $1
@@ -198,7 +198,7 @@ impl<'a> DeviceAuthorizationRepository<'a> {
     pub async fn mark_completed(
         &self,
         id: Uuid,
-        user_id: &str,
+        user_id: Uuid,
         session_id: Uuid,
     ) -> Result<(), DeviceAuthorizationError> {
         sqlx::query!(

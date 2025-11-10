@@ -86,7 +86,7 @@ pub async fn require_session(
     };
 
     let user_repo = UserRepository::new(pool);
-    let user = match user_repo.fetch_user(&identity.user_id).await {
+    let user = match user_repo.fetch_user(identity.user_id).await {
         Ok(user) => user,
         Err(IdentityError::NotFound) => {
             warn!("user `{}` missing", identity.user_id);
@@ -102,11 +102,7 @@ pub async fn require_session(
         }
     };
 
-    configure_user_scope(
-        &user.id,
-        user.username.as_deref(),
-        Some(user.email.as_str()),
-    );
+    configure_user_scope(user.id, user.username.as_deref(), Some(user.email.as_str()));
 
     req.extensions_mut().insert(RequestContext {
         organization,

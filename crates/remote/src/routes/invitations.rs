@@ -88,7 +88,7 @@ pub async fn create_invitation(
     let invitation = invitation_repo
         .create_invitation(
             &org_id,
-            &user.id,
+            user.id,
             &payload.email,
             payload.role,
             expires_at,
@@ -138,7 +138,7 @@ pub async fn list_invitations(
     let invitation_repo = InvitationRepository::new(&state.pool);
 
     let invitations = invitation_repo
-        .list_invitations(&org_id, &user.id)
+        .list_invitations(&org_id, user.id)
         .await
         .map_err(|e| match e {
             IdentityError::PermissionDenied => {
@@ -189,7 +189,7 @@ pub async fn accept_invitation(
     let invitation_repo = InvitationRepository::new(&state.pool);
 
     let (org, role) = invitation_repo
-        .accept_invitation(&token, &user.id)
+        .accept_invitation(&token, user.id)
         .await
         .map_err(|e| match e {
             IdentityError::InvitationError(msg) => ErrorResponse::new(StatusCode::BAD_REQUEST, msg),

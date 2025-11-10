@@ -21,7 +21,7 @@ pub enum InvitationStatus {
 pub struct Invitation {
     pub id: Uuid,
     pub organization_id: String,
-    pub invited_by_user_id: Option<String>,
+    pub invited_by_user_id: Option<Uuid>,
     pub email: String,
     pub role: MemberRole,
     pub status: InvitationStatus,
@@ -43,7 +43,7 @@ impl<'a> InvitationRepository<'a> {
     pub async fn create_invitation(
         &self,
         organization_id: &str,
-        invited_by_user_id: &str,
+        invited_by_user_id: Uuid,
         email: &str,
         role: MemberRole,
         expires_at: DateTime<Utc>,
@@ -66,7 +66,7 @@ impl<'a> InvitationRepository<'a> {
             RETURNING
                 id AS "id!",
                 organization_id AS "organization_id!",
-                invited_by_user_id AS "invited_by_user_id?",
+                invited_by_user_id AS "invited_by_user_id?: Uuid",
                 email AS "email!",
                 role AS "role!: MemberRole",
                 status AS "status!: InvitationStatus",
@@ -101,7 +101,7 @@ impl<'a> InvitationRepository<'a> {
     pub async fn list_invitations(
         &self,
         organization_id: &str,
-        requesting_user_id: &str,
+        requesting_user_id: Uuid,
     ) -> Result<Vec<Invitation>, IdentityError> {
         use super::organizations::OrganizationRepository;
 
@@ -116,7 +116,7 @@ impl<'a> InvitationRepository<'a> {
             SELECT
                 id AS "id!",
                 organization_id AS "organization_id!",
-                invited_by_user_id AS "invited_by_user_id?",
+                invited_by_user_id AS "invited_by_user_id?: Uuid",
                 email AS "email!",
                 role AS "role!: MemberRole",
                 status AS "status!: InvitationStatus",
@@ -143,7 +143,7 @@ impl<'a> InvitationRepository<'a> {
             SELECT
                 id AS "id!",
                 organization_id AS "organization_id!",
-                invited_by_user_id AS "invited_by_user_id?",
+                invited_by_user_id AS "invited_by_user_id?: Uuid",
                 email AS "email!",
                 role AS "role!: MemberRole",
                 status AS "status!: InvitationStatus",
@@ -164,7 +164,7 @@ impl<'a> InvitationRepository<'a> {
     pub async fn accept_invitation(
         &self,
         token: &str,
-        user_id: &str,
+        user_id: Uuid,
     ) -> Result<(Organization, MemberRole), IdentityError> {
         use super::organizations::ensure_member_metadata_with_role;
 
@@ -176,7 +176,7 @@ impl<'a> InvitationRepository<'a> {
             SELECT
                 id AS "id!",
                 organization_id AS "organization_id!",
-                invited_by_user_id AS "invited_by_user_id?",
+                invited_by_user_id AS "invited_by_user_id?: Uuid",
                 email AS "email!",
                 role AS "role!: MemberRole",
                 status AS "status!: InvitationStatus",

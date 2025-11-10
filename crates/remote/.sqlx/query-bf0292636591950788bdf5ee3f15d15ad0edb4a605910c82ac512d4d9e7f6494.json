@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                id AS \"id!\",\n                organization_id AS \"organization_id!\",\n                invited_by_user_id AS \"invited_by_user_id?\",\n                email AS \"email!\",\n                role AS \"role!: MemberRole\",\n                status AS \"status!: InvitationStatus\",\n                token AS \"token!\",\n                expires_at AS \"expires_at!\",\n                created_at AS \"created_at!\",\n                updated_at AS \"updated_at!\"\n            FROM organization_invitations\n            WHERE token = $1 AND status = 'pending'\n            FOR UPDATE\n            ",
+  "query": "\n            SELECT\n                id AS \"id!\",\n                organization_id AS \"organization_id!\",\n                invited_by_user_id AS \"invited_by_user_id?: Uuid\",\n                email AS \"email!\",\n                role AS \"role!: MemberRole\",\n                status AS \"status!: InvitationStatus\",\n                token AS \"token!\",\n                expires_at AS \"expires_at!\",\n                created_at AS \"created_at!\",\n                updated_at AS \"updated_at!\"\n            FROM organization_invitations\n            WHERE token = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -15,8 +15,8 @@
       },
       {
         "ordinal": 2,
-        "name": "invited_by_user_id?",
-        "type_info": "Text"
+        "name": "invited_by_user_id?: Uuid",
+        "type_info": "Uuid"
       },
       {
         "ordinal": 3,
@@ -94,5 +94,5 @@
       false
     ]
   },
-  "hash": "7dad15b61ba3cc2eff407a6272acd22be8d42d1e2c5cc69608367be415994b27"
+  "hash": "bf0292636591950788bdf5ee3f15d15ad0edb4a605910c82ac512d4d9e7f6494"
 }

@@ -1,12 +1,12 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        INSERT INTO users (id, email, first_name, last_name, username)\n        VALUES ($1, $2, $3, $4, $5)\n        ON CONFLICT (id) DO UPDATE\n        SET email = EXCLUDED.email,\n            first_name = EXCLUDED.first_name,\n            last_name = EXCLUDED.last_name,\n            username = EXCLUDED.username,\n            updated_at = NOW()\n        RETURNING\n            id           AS \"id!\",\n            email        AS \"email!\",\n            first_name   AS \"first_name?\",\n            last_name    AS \"last_name?\",\n            username     AS \"username?\",\n            created_at   AS \"created_at!\",\n            updated_at   AS \"updated_at!\"\n        ",
+  "query": "\n        INSERT INTO users (id, email, first_name, last_name, username)\n        VALUES ($1, $2, $3, $4, $5)\n        ON CONFLICT (id) DO UPDATE\n        SET email = EXCLUDED.email,\n            first_name = EXCLUDED.first_name,\n            last_name = EXCLUDED.last_name,\n            username = EXCLUDED.username,\n            updated_at = NOW()\n        RETURNING\n            id           AS \"id!: Uuid\",\n            email        AS \"email!\",\n            first_name   AS \"first_name?\",\n            last_name    AS \"last_name?\",\n            username     AS \"username?\",\n            created_at   AS \"created_at!\",\n            updated_at   AS \"updated_at!\"\n        ",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "id!",
-        "type_info": "Text"
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
       },
       {
         "ordinal": 1,
@@ -41,7 +41,7 @@
     ],
     "parameters": {
       "Left": [
-        "Text",
+        "Uuid",
         "Text",
         "Text",
         "Text",
@@ -58,5 +58,5 @@
       false
     ]
   },
-  "hash": "a40f5e3146c80c75e99322eabf7cd39050083089cf8cf65b1ab491e12778d018"
+  "hash": "0b823d0103791d62f48f58ed041d7afbd97f188e60aef4528289c155079063a7"
 }

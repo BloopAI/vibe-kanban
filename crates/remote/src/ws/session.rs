@@ -44,7 +44,7 @@ pub async fn handle(
         pool.clone(),
         ctx.session_id,
         ctx.session_secret.clone(),
-        ctx.user.id.clone(),
+        ctx.user.id,
         org_id.clone(),
     );
     let mut auth_check_interval = time::interval(WS_AUTH_REFRESH_INTERVAL);
@@ -238,7 +238,7 @@ struct WsAuthState {
     pool: PgPool,
     session_id: Uuid,
     session_secret: String,
-    expected_user_id: String,
+    expected_user_id: Uuid,
     expected_org_id: String,
     pending_token: Option<String>,
 }
@@ -249,7 +249,7 @@ impl WsAuthState {
         pool: PgPool,
         session_id: Uuid,
         session_secret: String,
-        expected_user_id: String,
+        expected_user_id: Uuid,
         expected_org_id: String,
     ) -> Self {
         Self {
@@ -279,7 +279,7 @@ impl WsAuthState {
     async fn apply_identity(&mut self, identity: JwtIdentity) -> Result<(), AuthVerifyError> {
         if identity.user_id != self.expected_user_id {
             return Err(AuthVerifyError::UserMismatch {
-                expected: self.expected_user_id.clone(),
+                expected: self.expected_user_id,
                 received: identity.user_id,
             });
         }
@@ -320,7 +320,7 @@ enum AuthVerifyError {
     #[error(transparent)]
     Decode(#[from] JwtError),
     #[error("received token for unexpected user: expected {expected}, received {received}")]
-    UserMismatch { expected: String, received: String },
+    UserMismatch { expected: Uuid, received: Uuid },
     #[error("received token for unexpected organization: expected {expected}, received {received}")]
     OrgMismatch { expected: String, received: String },
     #[error(transparent)]

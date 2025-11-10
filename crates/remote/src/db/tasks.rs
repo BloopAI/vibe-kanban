@@ -47,9 +47,9 @@ pub struct SharedTask {
     pub id: Uuid,
     pub organization_id: String,
     pub project_id: Uuid,
-    pub creator_user_id: Option<String>,
-    pub assignee_user_id: Option<String>,
-    pub deleted_by_user_id: Option<String>,
+    pub creator_user_id: Option<Uuid>,
+    pub assignee_user_id: Option<Uuid>,
+    pub deleted_by_user_id: Option<Uuid>,
     pub title: String,
     pub description: Option<String>,
     pub status: TaskStatus,
@@ -72,8 +72,8 @@ pub struct CreateSharedTaskData {
     pub project: ProjectMetadata,
     pub title: String,
     pub description: Option<String>,
-    pub creator_user_id: String,
-    pub assignee_user_id: Option<String>,
+    pub creator_user_id: Uuid,
+    pub assignee_user_id: Option<Uuid>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -82,19 +82,19 @@ pub struct UpdateSharedTaskData {
     pub description: Option<String>,
     pub status: Option<TaskStatus>,
     pub version: Option<i64>,
-    pub acting_user_id: String,
+    pub acting_user_id: Uuid,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct AssignTaskData {
-    pub new_assignee_user_id: Option<String>,
-    pub previous_assignee_user_id: Option<String>,
+    pub new_assignee_user_id: Option<Uuid>,
+    pub previous_assignee_user_id: Option<Uuid>,
     pub version: Option<i64>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct DeleteTaskData {
-    pub acting_user_id: String,
+    pub acting_user_id: Uuid,
     pub version: Option<i64>,
 }
 
@@ -139,9 +139,9 @@ impl<'a> SharedTaskRepository<'a> {
                 id                  AS "id!",
                 organization_id     AS "organization_id!",
                 project_id          AS "project_id!",
-                creator_user_id     AS "creator_user_id?",
-                assignee_user_id    AS "assignee_user_id?",
-                deleted_by_user_id  AS "deleted_by_user_id?",
+                creator_user_id     AS "creator_user_id?: Uuid",
+                assignee_user_id    AS "assignee_user_id?: Uuid",
+                deleted_by_user_id  AS "deleted_by_user_id?: Uuid",
                 title               AS "title!",
                 description         AS "description?",
                 status              AS "status!: TaskStatus",
@@ -224,9 +224,9 @@ impl<'a> SharedTaskRepository<'a> {
             RETURNING id                 AS "id!",
                       organization_id    AS "organization_id!",
                       project_id         AS "project_id!",
-                      creator_user_id    AS "creator_user_id?",
-                      assignee_user_id   AS "assignee_user_id?",
-                      deleted_by_user_id AS "deleted_by_user_id?",
+                      creator_user_id    AS "creator_user_id?: Uuid",
+                      assignee_user_id   AS "assignee_user_id?: Uuid",
+                      deleted_by_user_id AS "deleted_by_user_id?: Uuid",
                       title              AS "title!",
                       description        AS "description?",
                       status             AS "status!: TaskStatus",
@@ -246,7 +246,7 @@ impl<'a> SharedTaskRepository<'a> {
         .fetch_one(&mut *tx)
         .await?;
 
-        let user = match assignee_user_id.as_deref() {
+        let user = match assignee_user_id {
             Some(user_id) => fetch_user(&mut tx, user_id).await?,
             None => None,
         };
@@ -271,9 +271,9 @@ impl<'a> SharedTaskRepository<'a> {
                 st.id                     AS "id!: Uuid",
                 st.organization_id        AS "organization_id!",
                 st.project_id             AS "project_id!: Uuid",
-                st.creator_user_id        AS "creator_user_id?",
-                st.assignee_user_id       AS "assignee_user_id?",
-                st.deleted_by_user_id     AS "deleted_by_user_id?",
+                st.creator_user_id        AS "creator_user_id?: Uuid",
+                st.assignee_user_id       AS "assignee_user_id?: Uuid",
+                st.deleted_by_user_id     AS "deleted_by_user_id?: Uuid",
                 st.title                  AS "title!",
                 st.description            AS "description?",
                 st.status                 AS "status!: TaskStatus",
@@ -285,7 +285,7 @@ impl<'a> SharedTaskRepository<'a> {
                 p.github_repository_id    AS "project_github_repository_id!",
                 p.owner                   AS "project_owner!",
                 p.name                    AS "project_name!",
-                u.id                      AS "user_id?",
+                u.id                      AS "user_id?: Uuid",
                 u.first_name              AS "user_first_name?",
                 u.last_name               AS "user_last_name?",
                 u.username                AS "user_username?"
@@ -403,9 +403,9 @@ impl<'a> SharedTaskRepository<'a> {
             t.id                AS "id!",
             t.organization_id   AS "organization_id!",
             t.project_id        AS "project_id!",
-            t.creator_user_id   AS "creator_user_id?",
-            t.assignee_user_id  AS "assignee_user_id?",
-            t.deleted_by_user_id AS "deleted_by_user_id?",
+            t.creator_user_id   AS "creator_user_id?: Uuid",
+            t.assignee_user_id  AS "assignee_user_id?: Uuid",
+            t.deleted_by_user_id AS "deleted_by_user_id?: Uuid",
             t.title             AS "title!",
             t.description       AS "description?",
             t.status            AS "status!: TaskStatus",
@@ -421,7 +421,7 @@ impl<'a> SharedTaskRepository<'a> {
             data.status as Option<TaskStatus>,
             data.version,
             organization_id,
-            &data.acting_user_id
+            data.acting_user_id
         )
         .fetch_optional(&mut *tx)
         .await?
@@ -435,7 +435,7 @@ impl<'a> SharedTaskRepository<'a> {
                 SharedTaskError::Conflict("project not found for shared task".to_string())
             })?;
 
-        let user = match task.assignee_user_id.as_deref() {
+        let user = match task.assignee_user_id {
             Some(user_id) => fetch_user(&mut tx, user_id).await?,
             None => None,
         };
@@ -463,15 +463,15 @@ impl<'a> SharedTaskRepository<'a> {
         WHERE t.id = $1
           AND t.organization_id = $5
           AND t.version = COALESCE($4, t.version)
-          AND ($3::text IS NULL OR t.assignee_user_id = $3::text)
+          AND ($3::uuid IS NULL OR t.assignee_user_id = $3::uuid)
           AND t.deleted_at IS NULL
         RETURNING
             t.id                AS "id!",
             t.organization_id   AS "organization_id!",
             t.project_id        AS "project_id!",
-            t.creator_user_id   AS "creator_user_id?",
-            t.assignee_user_id  AS "assignee_user_id?",
-            t.deleted_by_user_id AS "deleted_by_user_id?",
+            t.creator_user_id   AS "creator_user_id?: Uuid",
+            t.assignee_user_id  AS "assignee_user_id?: Uuid",
+            t.deleted_by_user_id AS "deleted_by_user_id?: Uuid",
             t.title             AS "title!",
             t.description       AS "description?",
             t.status            AS "status!: TaskStatus",
@@ -499,7 +499,7 @@ impl<'a> SharedTaskRepository<'a> {
                 SharedTaskError::Conflict("project not found for shared task".to_string())
             })?;
 
-        let user = match data.new_assignee_user_id.as_deref() {
+        let user = match data.new_assignee_user_id {
             Some(user_id) => fetch_user(&mut tx, user_id).await?,
             None => None,
         };
@@ -534,9 +534,9 @@ impl<'a> SharedTaskRepository<'a> {
             t.id                AS "id!",
             t.organization_id   AS "organization_id!",
             t.project_id        AS "project_id!",
-            t.creator_user_id   AS "creator_user_id?",
-            t.assignee_user_id  AS "assignee_user_id?",
-            t.deleted_by_user_id AS "deleted_by_user_id?",
+            t.creator_user_id   AS "creator_user_id?: Uuid",
+            t.assignee_user_id  AS "assignee_user_id?: Uuid",
+            t.deleted_by_user_id AS "deleted_by_user_id?: Uuid",
             t.title             AS "title!",
             t.description       AS "description?",
             t.status            AS "status!: TaskStatus",

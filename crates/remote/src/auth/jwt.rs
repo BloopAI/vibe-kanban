@@ -19,7 +19,7 @@ pub enum JwtError {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JwtClaims {
-    pub sub: String,
+    pub sub: Uuid,
     pub session_id: Uuid,
     pub org_id: String,
     pub nonce: String,
@@ -28,7 +28,7 @@ pub struct JwtClaims {
 
 #[derive(Debug, Clone)]
 pub struct JwtIdentity {
-    pub user_id: String,
+    pub user_id: Uuid,
     pub session_id: Uuid,
     pub org_id: String,
     pub nonce: String,
@@ -53,7 +53,7 @@ impl JwtService {
         organization: &Organization,
     ) -> Result<String, JwtError> {
         let claims = JwtClaims {
-            sub: user.id.clone(),
+            sub: user.id,
             session_id: session.id,
             org_id: organization.id.clone(),
             nonce: session.session_secret.clone(),
