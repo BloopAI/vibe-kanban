@@ -97,7 +97,7 @@ export function TaskCard({
             firstName={sharedTask.assignee_first_name ?? undefined}
             lastName={sharedTask.assignee_last_name ?? undefined}
             username={sharedTask.assignee_username ?? undefined}
-            userId={sharedTask.assignee_user_id ?? undefined}
+            // TODO: Add imageUrl={sharedTask.assignee_avatar_url} when backend provides it
             className="self-center"
           />
         ) : null}

@@ -55,7 +55,6 @@ import {
   DevicePollResponseData,
   StatusResponse,
 } from 'shared/types';
-import { buildClerkAuthHeaders } from './clerk';
 
 // Re-export types for convenience
 export type { RepositoryInfo } from 'shared/types';
@@ -63,6 +62,33 @@ export type {
   UpdateFollowUpDraftRequest,
   UpdateRetryFollowUpDraftRequest,
 } from 'shared/types';
+
+// Organization types
+export type OrganizationMember = {
+  user_id: string;
+  organization_id: string;
+  email: string;
+  username: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  role?: string;
+  joined_at?: Date;
+};
+
+export type Organization = {
+  id: string;
+  name: string;
+  member_count?: number;
+  created_at?: Date;
+  updated_at?: Date;
+};
+
+export type UserOrganizations = {
+  current_organization_id: string;
+  organizations: Organization[];
+};
 
 class ApiError<E = unknown> extends Error {
   public status?: number;
@@ -87,11 +113,9 @@ const makeRequest = async (url: string, options: RequestInit = {}) => {
     headers.set('Content-Type', 'application/json');
   }
 
-  const headersWithAuth = await buildClerkAuthHeaders(headers);
-
   return fetch(url, {
     ...options,
-    headers: headersWithAuth,
+    headers,
   });
 };
 
@@ -843,13 +867,10 @@ export const imagesApi = {
     const formData = new FormData();
     formData.append('image', file);
 
-    const headers = await buildClerkAuthHeaders();
-
     const response = await fetch('/api/images/upload', {
       method: 'POST',
       body: formData,
       credentials: 'include',
-      headers,
     });
 
     if (!response.ok) {
@@ -868,13 +889,10 @@ export const imagesApi = {
     const formData = new FormData();
     formData.append('image', file);
 
-    const headers = await buildClerkAuthHeaders();
-
     const response = await fetch(`/api/images/task/${taskId}/upload`, {
       method: 'POST',
       body: formData,
       credentials: 'include',
-      headers,
     });
 
     if (!response.ok) {
@@ -960,5 +978,18 @@ export const oauthApi = {
         response
       );
     }
+  },
+};
+
+// Organizations API
+export const organizationsApi = {
+  getMembers: async (orgId: string): Promise<OrganizationMember[]> => {
+    const response = await makeRequest(`/api/organizations/${orgId}/members`);
+    return handleApiResponse<OrganizationMember[]>(response);
+  },
+
+  getUserOrganizations: async (): Promise<UserOrganizations> => {
+    const response = await makeRequest('/api/users/me/organizations');
+    return handleApiResponse<UserOrganizations>(response);
   },
 };

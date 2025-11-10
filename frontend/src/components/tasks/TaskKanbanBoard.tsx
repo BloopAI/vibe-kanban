@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { useAuth } from '@clerk/clerk-react';
+import { useAuth } from '@/hooks/useAuth';
 import {
   type DragEndEvent,
   KanbanBoard,

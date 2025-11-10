@@ -24,7 +24,7 @@ import type {
   TaskWithAttemptStatus,
 } from 'shared/types';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
-import { useAuth } from '@clerk/clerk-react';
+import { useAuth } from '@/hooks/useAuth';
 import { LoginRequiredPrompt } from '@/components/dialogs/shared/LoginRequiredPrompt';
 
 export interface GitActionsDialogProps {
@@ -145,7 +145,6 @@ export const GitActionsDialog = NiceModal.create<GitActionsDialogProps>(
           ) : !isSignedIn ? (
             <div className="py-6">
               <LoginRequiredPrompt
-                mode="signIn"
                 buttonVariant="default"
                 buttonSize="default"
                 title={t('git.actions.loginRequired.title')}

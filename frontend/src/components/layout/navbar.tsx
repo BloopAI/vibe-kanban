@@ -17,12 +17,13 @@ import {
   MessageCircle,
   Menu,
   Plus,
-  User,
-  Building2,
   LogOut,
   LogIn,
+  Building2,
 } from 'lucide-react';
 import { Logo } from '@/components/logo';
+import { UserAvatar } from '@/components/tasks/UserAvatar';
+import { OrgMemberAvatars } from '@/components/OrgMemberAvatars';
 import { SearchBar } from '@/components/search-bar';
 import { useSearch } from '@/contexts/search-context';
 import { openTaskForm } from '@/lib/openTaskForm';
@@ -30,14 +31,6 @@ import { useProject } from '@/contexts/project-context';
 import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
 import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
 import { useDiscordOnlineCount } from '@/hooks/useDiscordOnlineCount';
-
-import {
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  useClerk,
-  useOrganization,
-} from '@clerk/clerk-react';
 import { useTranslation } from 'react-i18next';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -47,7 +40,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import NiceModal from '@ebay/nice-modal-react';
-import { OrganizationSwitcherDialog, OAuthDialog } from '@/components/dialogs';
+import { OAuthDialog, OrganizationSwitcherDialog } from '@/components/dialogs';
 import { useUserSystem } from '@/components/config-provider';
 import { oauthApi } from '@/lib/api';
 
@@ -88,8 +81,6 @@ export function Navbar() {
   const { query, setQuery, active, clear, registerInputRef } = useSearch();
   const handleOpenInEditor = useOpenProjectInEditor(project || null);
   const { data: onlineCount } = useDiscordOnlineCount();
-  const { signOut, openUserProfile } = useClerk();
-  const { organization } = useOrganization();
   const { loginStatus, reloadSystem } = useUserSystem();
 
   const setSearchBarRef = useCallback(
@@ -194,31 +185,30 @@ export function Navbar() {
           </div>
 
           <div className="flex flex-1 items-center justify-end gap-1">
-            <SignedIn>
-              {shouldShowSharedToggle ? (
-                <>
-                  <div className="flex items-center gap-4">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div>
-                            <Switch
-                              checked={showSharedTasks}
-                              onCheckedChange={handleSharedToggle}
-                              aria-label={t('tasks:filters.sharedToggleAria')}
-                            />
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom">
-                          {t('tasks:filters.sharedToggleTooltip')}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                  <NavDivider />
-                </>
-              ) : null}
-            </SignedIn>
+            {isOAuthLoggedIn && shouldShowSharedToggle ? (
+              <>
+                <div className="flex items-center gap-4">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>
+                          <Switch
+                            checked={showSharedTasks}
+                            onCheckedChange={handleSharedToggle}
+                            aria-label={t('tasks:filters.sharedToggleAria')}
+                          />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        {t('tasks:filters.sharedToggleTooltip')}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <OrgMemberAvatars limit={5} />
+                </div>
+                <NavDivider />
+              </>
+            ) : null}
 
             {projectId ? (
               <>
@@ -242,6 +232,54 @@ export function Navbar() {
             ) : null}
 
             <div className="flex items-center gap-1">
+              {isOAuthLoggedIn && loginStatus?.status === 'loggedin' ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9"
+                      aria-label="User menu"
+                    >
+                      <UserAvatar
+                        username={loginStatus.profile.username}
+                        className="h-6 w-6"
+                      />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <div className="flex items-center gap-3 px-2 py-2">
+                      <UserAvatar
+                        username={loginStatus.profile.username}
+                        className="h-8 w-8"
+                      />
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium">
+                          {loginStatus.profile.username ||
+                            loginStatus.profile.email}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {loginStatus.profile.email}
+                        </span>
+                      </div>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onSelect={() =>
+                        NiceModal.show(OrganizationSwitcherDialog)
+                      }
+                    >
+                      <Building2 className="mr-2 h-4 w-4" />
+                      Organization
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={handleOAuthLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Sign out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : null}
+
               <Button
                 variant="ghost"
                 size="icon"
@@ -308,52 +346,14 @@ export function Navbar() {
                     );
                   })}
 
-                  <DropdownMenuSeparator />
-
-                  <SignedOut>
-                    <DropdownMenuItem asChild>
-                      <SignInButton mode="modal">
-                        <button className="w-full">
-                          <LogIn className="mr-2 h-4 w-4" />
-                          Sign in
-                        </button>
-                      </SignInButton>
-                    </DropdownMenuItem>
-
-                    {!isOAuthLoggedIn && (
+                  {!isOAuthLoggedIn && (
+                    <>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem onSelect={handleOpenOAuth}>
                         <LogIn className="mr-2 h-4 w-4" />
-                        Sign in with OAuth
+                        Sign in
                       </DropdownMenuItem>
-                    )}
-                  </SignedOut>
-
-                  <SignedIn>
-                    <DropdownMenuItem onSelect={() => openUserProfile()}>
-                      <User className="mr-2 h-4 w-4" />
-                      Account
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem
-                      onSelect={() =>
-                        NiceModal.show(OrganizationSwitcherDialog)
-                      }
-                    >
-                      <Building2 className="mr-2 h-4 w-4" />
-                      {organization?.name ?? 'Organization'}
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem onSelect={() => signOut()}>
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Sign out
-                    </DropdownMenuItem>
-                  </SignedIn>
-
-                  {isOAuthLoggedIn && (
-                    <DropdownMenuItem onSelect={handleOAuthLogout}>
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Sign out (OAuth)
-                    </DropdownMenuItem>
+                    </>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
