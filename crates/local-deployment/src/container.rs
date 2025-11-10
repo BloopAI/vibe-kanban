@@ -1435,8 +1435,19 @@ fn copy_directory_recursive(
     {
         let entry = entry
             .map_err(|e| ContainerError::Other(anyhow!("Failed to read directory entry: {e}")))?;
-
         let path = entry.path();
+
+        let ft = match entry.file_type() {
+            Ok(t) => t,
+            Err(e) => {
+                tracing::warn!("Failed to get file_type for {path:?}: {e}");
+                continue;
+            }
+        };
+        if ft.is_symlink() {
+            tracing::warn!("Skipping symlink: {path:?}");
+            continue;
+        }
 
         // Validate path is within source directory
         let canonical_path = match path.canonicalize() {
@@ -1717,5 +1728,21 @@ mod tests {
         let target_file = target_dir.path().join("src/lib.rs");
         assert!(target_file.exists());
         assert_eq!(fs::read_to_string(target_file).unwrap(), "library code");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_symlink_loop_is_skipped() {
+        use std::os::unix::fs::symlink;
+        let src = TempDir::new().unwrap();
+        let dst = TempDir::new().unwrap();
+
+        let loop_dir = src.path().join("loop");
+        std::fs::create_dir(&loop_dir).unwrap();
+        symlink(".", loop_dir.join("self")).unwrap(); // loop/self -> loop
+
+        copy_project_files_impl(src.path(), dst.path(), "loop").unwrap();
+
+        assert_eq!(std::fs::read_dir(dst.path()).unwrap().count(), 0);
     }
 }
