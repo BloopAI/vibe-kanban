@@ -37,7 +37,9 @@ const OAuthDialog = NiceModal.create(() => {
   const [state, setState] = useState<OAuthState>({ type: 'select' });
   const [isPolling, setIsPolling] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null
+  );
 
   const handleProviderSelect = async (provider: OAuthProvider) => {
     try {

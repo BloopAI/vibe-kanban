@@ -104,13 +104,11 @@ export type UpdateMemberRoleRequest = { role: MemberRole, };
 
 export type UpdateMemberRoleResponse = { user_id: string, role: MemberRole, };
 
-export type UserSystemInfo = {
-    config: Config, analytics_user_id: string, login_status: LoginStatus, environment: Environment,
-    /**
-     * Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["SESSION_FORK"] })
-     */
-    capabilities: { [key in string]?: Array<BaseAgentCapability> }, executors: { [key in BaseCodingAgent]?: ExecutorConfig },
-};
+export type UserSystemInfo = { config: Config, analytics_user_id: string, login_status: LoginStatus, environment: Environment, 
+/**
+ * Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["SESSION_FORK"] })
+ */
+capabilities: { [key in string]?: Array<BaseAgentCapability> }, executors: { [key in BaseCodingAgent]?: ExecutorConfig }, };
 
 export type Environment = { os_type: string, os_version: string, os_architecture: string, bitness: string, };
 
@@ -170,43 +168,39 @@ export type ShowcaseState = { seen_features: Array<string>, };
 
 export type GitBranch = { name: string, is_current: boolean, is_remote: boolean, last_commit_date: Date, };
 
-export type Diff = {
-    change: DiffChangeKind, oldPath: string | null, newPath: string | null, oldContent: string | null, newContent: string | null,
-    /**
-     * True when file contents are intentionally omitted (e.g., too large)
-     */
-    contentOmitted: boolean,
-    /**
-     * Optional precomputed stats for omitted content
-     */
-    additions: number | null, deletions: number | null,
-};
+export type Diff = { change: DiffChangeKind, oldPath: string | null, newPath: string | null, oldContent: string | null, newContent: string | null, 
+/**
+ * True when file contents are intentionally omitted (e.g., too large)
+ */
+contentOmitted: boolean, 
+/**
+ * Optional precomputed stats for omitted content
+ */
+additions: number | null, deletions: number | null, };
 
 export type DiffChangeKind = "added" | "deleted" | "modified" | "renamed" | "copied" | "permissionChange";
 
 export type RepositoryInfo = { id: bigint, name: string, full_name: string, owner: string, description: string | null, clone_url: string, ssh_url: string, default_branch: string, private: boolean, };
 
-export type CommandBuilder = {
-    /**
-     * Base executable command (e.g., "npx -y @anthropic-ai/claude-code@latest")
-     */
-    base: string,
-    /**
-     * Optional parameters to append to the base command
-     */
-    params: Array<string> | null,
-};
+export type CommandBuilder = { 
+/**
+ * Base executable command (e.g., "npx -y @anthropic-ai/claude-code@latest")
+ */
+base: string, 
+/**
+ * Optional parameters to append to the base command
+ */
+params: Array<string> | null, };
 
-export type ExecutorProfileId = {
-    /**
-     * The executor type (e.g., "CLAUDE_CODE", "AMP")
-     */
-    executor: BaseCodingAgent,
-    /**
-     * Optional variant name (e.g., "PLAN", "ROUTER")
-     */
-    variant: string | null,
-};
+export type ExecutorProfileId = { 
+/**
+ * The executor type (e.g., "CLAUDE_CODE", "AMP")
+ */
+executor: BaseCodingAgent, 
+/**
+ * Optional variant name (e.g., "PLAN", "ROUTER")
+ */
+variant: string | null, };
 
 export type ExecutorConfig = { [key in string]?: { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR_AGENT": CursorAgent } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot } };
 
@@ -242,29 +236,23 @@ export type QwenCode = { append_prompt: AppendPrompt, yolo?: boolean | null, bas
 
 export type AppendPrompt = string | null;
 
-export type CodingAgentInitialRequest = {
-    prompt: string,
-    /**
-     * Executor profile specification
-     */
-    executor_profile_id: ExecutorProfileId,
-};
+export type CodingAgentInitialRequest = { prompt: string, 
+/**
+ * Executor profile specification
+ */
+executor_profile_id: ExecutorProfileId, };
 
-export type CodingAgentFollowUpRequest = {
-    prompt: string, session_id: string,
-    /**
-     * Executor profile specification
-     */
-    executor_profile_id: ExecutorProfileId,
-};
+export type CodingAgentFollowUpRequest = { prompt: string, session_id: string, 
+/**
+ * Executor profile specification
+ */
+executor_profile_id: ExecutorProfileId, };
 
-export type CreateTaskAttemptBody = {
-    task_id: string,
-    /**
-     * Executor profile specification
-     */
-    executor_profile_id: ExecutorProfileId, base_branch: string,
-};
+export type CreateTaskAttemptBody = { task_id: string, 
+/**
+ * Executor profile specification
+ */
+executor_profile_id: ExecutorProfileId, base_branch: string, };
 
 export type RunAgentSetupRequest = { executor_profile_id: ExecutorProfileId, };
 
@@ -276,68 +264,63 @@ export type RebaseTaskAttemptRequest = { old_base_branch: string | null, new_bas
 
 export type GitOperationError = { "type": "merge_conflicts", message: string, op: ConflictOp, } | { "type": "rebase_in_progress" };
 
-export type ReplaceProcessRequest = {
-    /**
-     * Process to replace (delete this and later ones)
-     */
-    process_id: string,
-    /**
-     * New prompt to use for the replacement follow-up
-     */
-    prompt: string,
-    /**
-     * Optional variant override
-     */
-    variant: string | null,
-    /**
-     * If true, allow resetting Git even when uncommitted changes exist
-     */
-    force_when_dirty: boolean | null,
-    /**
-     * If false, skip performing the Git reset step (history drop still applies)
-     */
-    perform_git_reset: boolean | null,
-};
+export type ReplaceProcessRequest = { 
+/**
+ * Process to replace (delete this and later ones)
+ */
+process_id: string, 
+/**
+ * New prompt to use for the replacement follow-up
+ */
+prompt: string, 
+/**
+ * Optional variant override
+ */
+variant: string | null, 
+/**
+ * If true, allow resetting Git even when uncommitted changes exist
+ */
+force_when_dirty: boolean | null, 
+/**
+ * If false, skip performing the Git reset step (history drop still applies)
+ */
+perform_git_reset: boolean | null, };
 
 export type CommitInfo = { sha: string, subject: string, };
 
-export type BranchStatus = {
-    commits_behind: number | null, commits_ahead: number | null, has_uncommitted_changes: boolean | null, head_oid: string | null, uncommitted_count: number | null, untracked_count: number | null, target_branch_name: string, remote_commits_behind: number | null, remote_commits_ahead: number | null, merges: Array<Merge>,
-    /**
-     * True if a `git rebase` is currently in progress in this worktree
-     */
-    is_rebase_in_progress: boolean,
-    /**
-     * Current conflict operation if any
-     */
-    conflict_op: ConflictOp | null,
-    /**
-     * List of files currently in conflicted (unmerged) state
-     */
-    conflicted_files: Array<string>,
-};
+export type BranchStatus = { commits_behind: number | null, commits_ahead: number | null, has_uncommitted_changes: boolean | null, head_oid: string | null, uncommitted_count: number | null, untracked_count: number | null, target_branch_name: string, remote_commits_behind: number | null, remote_commits_ahead: number | null, merges: Array<Merge>, 
+/**
+ * True if a `git rebase` is currently in progress in this worktree
+ */
+is_rebase_in_progress: boolean, 
+/**
+ * Current conflict operation if any
+ */
+conflict_op: ConflictOp | null, 
+/**
+ * List of files currently in conflicted (unmerged) state
+ */
+conflicted_files: Array<string>, };
 
 export type ConflictOp = "rebase" | "merge" | "cherry_pick" | "revert";
 
 export type TaskAttempt = { id: string, task_id: string, container_ref: string | null, branch: string, target_branch: string, executor: string, worktree_deleted: boolean, setup_completed_at: string | null, created_at: string, updated_at: string, };
 
-export type ExecutionProcess = {
-    id: string, task_attempt_id: string, run_reason: ExecutionProcessRunReason, executor_action: ExecutorAction,
-    /**
-     * Git HEAD commit OID captured before the process starts
-     */
-    before_head_commit: string | null,
-    /**
-     * Git HEAD commit OID captured after the process ends
-     */
-    after_head_commit: string | null, status: ExecutionProcessStatus, exit_code: bigint | null,
-    /**
-     * dropped: true if this process is excluded from the current
-     * history view (due to restore/trimming). Hidden from logs/timeline;
-     * still listed in the Processes tab.
-     */
-    dropped: boolean, started_at: string, completed_at: string | null, created_at: string, updated_at: string,
-};
+export type ExecutionProcess = { id: string, task_attempt_id: string, run_reason: ExecutionProcessRunReason, executor_action: ExecutorAction, 
+/**
+ * Git HEAD commit OID captured before the process starts
+ */
+before_head_commit: string | null, 
+/**
+ * Git HEAD commit OID captured after the process ends
+ */
+after_head_commit: string | null, status: ExecutionProcessStatus, exit_code: bigint | null, 
+/**
+ * dropped: true if this process is excluded from the current
+ * history view (due to restore/trimming). Hidden from logs/timeline;
+ * still listed in the Processes tab.
+ */
+dropped: boolean, started_at: string, completed_at: string | null, created_at: string, updated_at: string, };
 
 export enum ExecutionProcessStatus { running = "running", completed = "completed", failed = "failed", killed = "killed" }
 
@@ -365,17 +348,15 @@ export type NormalizedEntry = { timestamp: string | null, entry_type: Normalized
 
 export type NormalizedEntryType = { "type": "user_message" } | { "type": "user_feedback", denied_tool: string, } | { "type": "assistant_message" } | { "type": "tool_use", tool_name: string, action_type: ActionType, status: ToolStatus, } | { "type": "system_message" } | { "type": "error_message", error_type: NormalizedEntryError, } | { "type": "thinking" } | { "type": "loading" } | { "type": "next_action", failed: boolean, execution_processes: number, needs_setup: boolean, };
 
-export type FileChange = { "action": "write", content: string, } | { "action": "delete" } | { "action": "rename", new_path: string, } | {
-    "action": "edit",
-    /**
-     * Unified diff containing file header and hunks.
-     */
-    unified_diff: string,
-    /**
-     * Whether line number in the hunks are reliable.
-     */
-    has_line_numbers: boolean,
-};
+export type FileChange = { "action": "write", content: string, } | { "action": "delete" } | { "action": "rename", new_path: string, } | { "action": "edit", 
+/**
+ * Unified diff containing file header and hunks.
+ */
+unified_diff: string, 
+/**
+ * Whether line number in the hunks are reliable.
+ */
+has_line_numbers: boolean, };
 
 export type ActionType = { "action": "file_read", path: string, } | { "action": "file_edit", path: string, changes: Array<FileChange>, } | { "action": "command_run", command: string, result: CommandRunResult | null, } | { "action": "search", query: string, } | { "action": "web_fetch", url: string, } | { "action": "tool", tool_name: string, arguments: JsonValue | null, result: ToolResult | null, } | { "action": "task_create", description: string, } | { "action": "plan_presentation", plan: string, } | { "action": "todo_management", todos: Array<TodoItem>, operation: string, } | { "action": "other", description: string, };
 
@@ -383,13 +364,11 @@ export type TodoItem = { content: string, status: string, priority: string | nul
 
 export type NormalizedEntryError = { "type": "setup_required" } | { "type": "other" };
 
-export type ToolResult = {
-    type: ToolResultValueType,
-    /**
-     * For Markdown, this will be a JSON string; for JSON, a structured value
-     */
-    value: JsonValue,
-};
+export type ToolResult = { type: ToolResultValueType, 
+/**
+ * For Markdown, this will be a JSON string; for JSON, a structured value
+ */
+value: JsonValue, };
 
 export type ToolResultValueType = { "type": "markdown" } | { "type": "json" };
 
