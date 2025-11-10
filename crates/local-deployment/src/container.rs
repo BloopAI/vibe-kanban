@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    io,
+    fs, io,
     path::{Path, PathBuf},
     sync::{Arc, atomic::AtomicUsize},
     time::Duration,
@@ -167,7 +167,7 @@ impl LocalContainerService {
             );
             return;
         }
-        let entries = match std::fs::read_dir(&worktree_base_dir) {
+        let entries = match fs::read_dir(&worktree_base_dir) {
             Ok(entries) => entries,
             Err(e) => {
                 tracing::error!(
@@ -1406,13 +1406,13 @@ fn copy_single_file(
     if let Some(parent) = target_file.parent()
         && !parent.exists()
     {
-        std::fs::create_dir_all(parent).map_err(|e| {
+        fs::create_dir_all(parent).map_err(|e| {
             ContainerError::Other(anyhow!("Failed to create directory {parent:?}: {e}"))
         })?;
     }
 
     // Copy the file
-    std::fs::copy(source_file, &target_file).map_err(|e| {
+    fs::copy(source_file, &target_file).map_err(|e| {
         ContainerError::Other(anyhow!(
             "Failed to copy file {source_file:?} to {target_file:?}: {e}"
         ))
@@ -1430,7 +1430,7 @@ fn copy_directory_recursive(
 ) -> Result<usize, ContainerError> {
     let mut files_copied = 0;
 
-    for entry in std::fs::read_dir(dir_path)
+    for entry in fs::read_dir(dir_path)
         .map_err(|e| ContainerError::Other(anyhow!("Failed to read directory {dir_path:?}: {e}")))?
     {
         let entry = entry
