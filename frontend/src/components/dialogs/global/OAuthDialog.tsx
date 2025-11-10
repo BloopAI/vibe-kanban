@@ -8,26 +8,18 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-  LogIn,
-  Github,
-  Loader2,
-  ExternalLink,
-  Chrome,
-  Copy,
-  Check,
-} from 'lucide-react';
+import { LogIn, Github, Loader2, Chrome } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useState, useRef, useEffect } from 'react';
 import { oauthApi } from '@/lib/api';
-import type { DeviceInitResponse, ProfileResponse } from 'shared/types';
+import type { ProfileResponse } from 'shared/types';
 import { useTranslation } from 'react-i18next';
 
 type OAuthProvider = 'github' | 'google';
 
 type OAuthState =
   | { type: 'select' }
-  | { type: 'verifying'; data: DeviceInitResponse; provider: OAuthProvider }
+  | { type: 'waiting'; provider: OAuthProvider }
   | { type: 'success'; profile: ProfileResponse }
   | { type: 'error'; message: string };
 
@@ -35,20 +27,35 @@ const OAuthDialog = NiceModal.create(() => {
   const modal = useModal();
   const { t } = useTranslation('common');
   const [state, setState] = useState<OAuthState>({ type: 'select' });
-  const [isPolling, setIsPolling] = useState(false);
-  const [isCopied, setIsCopied] = useState(false);
+  const popupRef = useRef<Window | null>(null);
   const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
     null
   );
 
   const handleProviderSelect = async (provider: OAuthProvider) => {
     try {
-      setState({ type: 'verifying', data: null as any, provider });
-      const response = await oauthApi.deviceInit(provider);
-      setState({ type: 'verifying', data: response, provider });
+      setState({ type: 'waiting', provider });
 
-      // Start polling
-      startPolling(response.handoff_id);
+      // Get the current window location as return_to
+      const returnTo = `${window.location.origin}/api/auth/handoff/complete`;
+
+      // Initialize handoff flow
+      const response = await oauthApi.handoffInit(provider, returnTo);
+
+      // Open popup window with authorize URL
+      const width = 600;
+      const height = 700;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
+
+      popupRef.current = window.open(
+        response.authorize_url,
+        'oauth-popup',
+        `width=${width},height=${height},left=${left},top=${top},popup=yes,noopener=yes`
+      );
+
+      // Start polling for completion
+      startStatusPolling();
     } catch (error) {
       setState({
         type: 'error',
@@ -60,60 +67,64 @@ const OAuthDialog = NiceModal.create(() => {
     }
   };
 
-  const startPolling = async (handoffId: string) => {
-    setIsPolling(true);
+  const startStatusPolling = () => {
     pollingIntervalRef.current = setInterval(async () => {
       try {
-        const result = await oauthApi.devicePoll(handoffId);
+        const status = await oauthApi.status();
 
-        if (result.status === 'success') {
+        // Check if popup is closed
+        if (popupRef.current?.closed) {
           stopPolling();
-          setState({ type: 'success', profile: result.profile });
+          if (!status.logged_in) {
+            setState({
+              type: 'error',
+              message:
+                'OAuth window was closed before completing authentication',
+            });
+          }
+        }
+
+        // If logged in, we're done
+        if (status.logged_in && status.profile) {
+          stopPolling();
+          if (popupRef.current && !popupRef.current.closed) {
+            popupRef.current.close();
+          }
+          setState({ type: 'success', profile: status.profile });
           setTimeout(() => {
-            modal.resolve(result.profile);
+            modal.resolve(status.profile);
             modal.hide();
           }, 1500);
-        } else if (result.status === 'error') {
-          stopPolling();
-          setState({
-            type: 'error',
-            message: `OAuth failed: ${result.code}`,
-          });
         }
-        // If pending, continue polling
       } catch (error) {
         stopPolling();
         setState({
           type: 'error',
           message:
-            error instanceof Error ? error.message : 'Failed to poll OAuth',
+            error instanceof Error
+              ? error.message
+              : 'Failed to check OAuth status',
         });
       }
-    }, 3000); // Poll every 3 seconds
+    }, 1000); // Poll every second
   };
 
   const handleClose = () => {
     stopPolling();
+    if (popupRef.current && !popupRef.current.closed) {
+      popupRef.current.close();
+    }
     setState({ type: 'select' });
-    setIsCopied(false);
     modal.resolve(null);
     modal.hide();
   };
 
   const handleBack = () => {
-    setState({ type: 'select' });
-    setIsPolling(false);
-    setIsCopied(false);
-  };
-
-  const handleCopyCode = async (code: string) => {
-    try {
-      await navigator.clipboard.writeText(code);
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy code:', err);
+    stopPolling();
+    if (popupRef.current && !popupRef.current.closed) {
+      popupRef.current.close();
     }
+    setState({ type: 'select' });
   };
 
   const stopPolling = () => {
@@ -121,13 +132,15 @@ const OAuthDialog = NiceModal.create(() => {
       clearInterval(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
     }
-    setIsPolling(false);
   };
 
   // Cleanup polling when dialog closes
   useEffect(() => {
     if (!modal.visible) {
       stopPolling();
+      if (popupRef.current && !popupRef.current.closed) {
+        popupRef.current.close();
+      }
     }
   }, [modal.visible]);
 
@@ -174,70 +187,27 @@ const OAuthDialog = NiceModal.create(() => {
           </>
         );
 
-      case 'verifying':
+      case 'waiting':
         return (
           <>
             <DialogHeader>
               <div className="flex items-center gap-3">
                 <LogIn className="h-6 w-6 text-primary-foreground" />
-                <DialogTitle>{t('oauth.verifyTitle')}</DialogTitle>
+                <DialogTitle>{t('oauth.waitingTitle')}</DialogTitle>
               </div>
               <DialogDescription className="text-left pt-2">
-                {t('oauth.verifyDescription')}
+                {t('oauth.waitingDescription')}
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4 py-4">
-              {state.data && (
-                <>
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">
-                      {t('oauth.verificationCode')}
-                    </p>
-                    <div className="relative">
-                      <div
-                        className="flex items-center justify-center w-full text-center text-2xl font-mono font-bold tracking-wider border rounded-md py-3 bg-muted cursor-pointer hover:bg-muted/80 transition-colors"
-                        onClick={() => handleCopyCode(state.data.user_code)}
-                      >
-                        <span>{state.data.user_code}</span>
-                        <div className="absolute right-3">
-                          {isCopied ? (
-                            <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
-                          ) : (
-                            <Copy className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <p className="text-sm text-muted-foreground">
-                      {t('oauth.verificationInstructions')}
-                    </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const url =
-                          state.data.verification_uri_complete ||
-                          state.data.verification_uri;
-                        window.open(url, '_blank');
-                      }}
-                    >
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      {t('oauth.openBrowser')}
-                    </Button>
-                  </div>
-                </>
-              )}
-
-              {isPolling && (
-                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>{t('oauth.waitingForAuth')}</span>
-                </div>
-              )}
+            <div className="space-y-4 py-6">
+              <div className="flex items-center justify-center gap-3 text-sm text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span>{t('oauth.waitingForAuth')}</span>
+              </div>
+              <p className="text-sm text-center text-muted-foreground">
+                {t('oauth.popupInstructions')}
+              </p>
             </div>
 
             <DialogFooter className="gap-2 sm:gap-0">

@@ -51,8 +51,6 @@ import {
   RunAgentSetupRequest,
   RunAgentSetupResponse,
   GhCliSetupError,
-  DeviceInitResponse,
-  DevicePollResponseData,
   StatusResponse,
 } from 'shared/types';
 
@@ -944,22 +942,17 @@ export const approvalsApi = {
 
 // OAuth API
 export const oauthApi = {
-  deviceInit: async (provider: string): Promise<DeviceInitResponse> => {
-    const response = await makeRequest(
-      `/api/auth/device-init?provider=${provider}`,
-      {
-        method: 'POST',
-      }
-    );
-    return handleApiResponse<DeviceInitResponse>(response);
-  },
-
-  devicePoll: async (handoffId: string): Promise<DevicePollResponseData> => {
-    const response = await makeRequest('/api/auth/device-poll', {
+  handoffInit: async (
+    provider: string,
+    returnTo: string
+  ): Promise<{ handoff_id: string; authorize_url: string }> => {
+    const response = await makeRequest('/api/auth/handoff/init', {
       method: 'POST',
-      body: JSON.stringify({ handoff_id: handoffId }),
+      body: JSON.stringify({ provider, return_to: returnTo }),
     });
-    return handleApiResponse<DevicePollResponseData>(response);
+    return handleApiResponse<{ handoff_id: string; authorize_url: string }>(
+      response
+    );
   },
 
   status: async (): Promise<StatusResponse> => {
