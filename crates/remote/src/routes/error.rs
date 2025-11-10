@@ -5,7 +5,7 @@ use axum::{
 };
 use serde_json::json;
 
-use crate::db::{identity::IdentityError, projects::ProjectError, tasks::SharedTaskError};
+use crate::db::{identity_errors::IdentityError, projects::ProjectError, tasks::SharedTaskError};
 
 #[derive(Debug)]
 pub struct ErrorResponse {

@@ -17,7 +17,8 @@ use crate::{
     },
     auth::RequestContext,
     db::{
-        identity::IdentityRepository,
+        organizations::OrganizationRepository,
+        users::UserRepository,
         tasks::{
             AssignTaskData, CreateSharedTaskData, DeleteTaskData, SharedTaskError,
             SharedTaskRepository, UpdateSharedTaskData, ensure_text_size,
@@ -70,7 +71,8 @@ pub async fn create_shared_task(
     Json(payload): Json<CreateSharedTaskRequest>,
 ) -> Response {
     let repo = SharedTaskRepository::new(state.pool());
-    let identity_repo = IdentityRepository::new(state.pool());
+    let org_repo = OrganizationRepository::new(state.pool());
+    let user_repo = UserRepository::new(state.pool());
     let CreateSharedTaskRequest {
         project,
         title,
@@ -83,10 +85,10 @@ pub async fn create_shared_task(
     }
 
     if let Some(assignee) = assignee_user_id.as_ref() {
-        if let Err(err) = identity_repo.fetch_user(assignee).await {
+        if let Err(err) = user_repo.fetch_user(assignee).await {
             return identity_error_response(err, "assignee not found or inactive");
         }
-        if let Err(err) = identity_repo
+        if let Err(err) = org_repo
             .assert_membership(&ctx.organization.id, assignee)
             .await
         {
@@ -177,7 +179,8 @@ pub async fn assign_task(
     Json(payload): Json<AssignSharedTaskRequest>,
 ) -> Response {
     let repo = SharedTaskRepository::new(state.pool());
-    let identity_repo = IdentityRepository::new(state.pool());
+    let org_repo = OrganizationRepository::new(state.pool());
+    let user_repo = UserRepository::new(state.pool());
 
     let existing = match repo.find_by_id(&ctx.organization.id, task_id).await {
         Ok(Some(task)) => task,
@@ -197,10 +200,10 @@ pub async fn assign_task(
     }
 
     if let Some(assignee) = payload.new_assignee_user_id.as_ref() {
-        if let Err(err) = identity_repo.fetch_user(assignee).await {
+        if let Err(err) = user_repo.fetch_user(assignee).await {
             return identity_error_response(err, "assignee not found or inactive");
         }
-        if let Err(err) = identity_repo
+        if let Err(err) = org_repo
             .assert_membership(&ctx.organization.id, assignee)
             .await
         {

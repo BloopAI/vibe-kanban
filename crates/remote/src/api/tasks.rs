@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::db::{
-    identity::UserData,
+    users::UserData,
     projects::ProjectMetadata,
     tasks::{SharedTask, SharedTaskActivityPayload, SharedTaskWithUser, TaskStatus},
 };

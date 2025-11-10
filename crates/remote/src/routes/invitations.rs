@@ -12,7 +12,11 @@ use super::error::ErrorResponse;
 use crate::{
     AppState,
     auth::RequestContext,
-    db::identity::{IdentityRepository, Invitation, MemberRole},
+    db::{
+        identity_errors::IdentityError,
+        invitations::{Invitation, InvitationRepository},
+        organizations::{MemberRole, OrganizationRepository},
+    },
 };
 
 #[derive(Debug, Deserialize)]
@@ -61,12 +65,12 @@ pub async fn create_invitation(
         ));
     }
 
-    let identity_repo = IdentityRepository::new(&state.pool);
+    let invitation_repo = InvitationRepository::new(&state.pool);
 
     let token = Uuid::new_v4().to_string();
     let expires_at = Utc::now() + Duration::days(7);
 
-    let invitation = identity_repo
+    let invitation = invitation_repo
         .create_invitation(
             &org_id,
             &user.id,
@@ -77,10 +81,10 @@ pub async fn create_invitation(
         )
         .await
         .map_err(|e| match e {
-            crate::db::identity::IdentityError::PermissionDenied => {
+            IdentityError::PermissionDenied => {
                 ErrorResponse::new(StatusCode::FORBIDDEN, "Admin access required")
             }
-            crate::db::identity::IdentityError::InvitationError(msg) => {
+            IdentityError::InvitationError(msg) => {
                 ErrorResponse::new(StatusCode::BAD_REQUEST, msg)
             }
             _ => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"),
@@ -118,13 +122,13 @@ pub async fn list_invitations(
         ));
     }
 
-    let identity_repo = IdentityRepository::new(&state.pool);
+    let invitation_repo = InvitationRepository::new(&state.pool);
 
-    let invitations = identity_repo
+    let invitations = invitation_repo
         .list_invitations(&org_id, &user.id)
         .await
         .map_err(|e| match e {
-            crate::db::identity::IdentityError::PermissionDenied => {
+            IdentityError::PermissionDenied => {
                 ErrorResponse::new(StatusCode::FORBIDDEN, "Admin access required")
             }
             _ => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"),
@@ -137,14 +141,15 @@ pub async fn get_invitation(
     State(state): State<AppState>,
     Path(token): Path<String>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
-    let identity_repo = IdentityRepository::new(&state.pool);
+    let invitation_repo = InvitationRepository::new(&state.pool);
 
-    let invitation = identity_repo
+    let invitation = invitation_repo
         .get_invitation_by_token(&token)
         .await
         .map_err(|_| ErrorResponse::new(StatusCode::NOT_FOUND, "Invitation not found"))?;
 
-    let org = identity_repo
+    let org_repo = OrganizationRepository::new(&state.pool);
+    let org = org_repo
         .fetch_organization(&invitation.organization_id)
         .await
         .map_err(|_| {
@@ -168,16 +173,16 @@ pub async fn accept_invitation(
     Path(token): Path<String>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
     let user = ctx.user;
-    let identity_repo = IdentityRepository::new(&state.pool);
+    let invitation_repo = InvitationRepository::new(&state.pool);
 
-    let (org, role) = identity_repo
+    let (org, role) = invitation_repo
         .accept_invitation(&token, &user.id)
         .await
         .map_err(|e| match e {
-            crate::db::identity::IdentityError::InvitationError(msg) => {
+            IdentityError::InvitationError(msg) => {
                 ErrorResponse::new(StatusCode::BAD_REQUEST, msg)
             }
-            crate::db::identity::IdentityError::NotFound => {
+            IdentityError::NotFound => {
                 ErrorResponse::new(StatusCode::NOT_FOUND, "Invitation not found")
             }
             _ => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"),

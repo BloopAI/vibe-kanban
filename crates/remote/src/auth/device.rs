@@ -19,7 +19,9 @@ use crate::{
     configure_user_scope,
     db::{
         auth::{AuthSessionError, AuthSessionRepository},
-        identity::{IdentityError, IdentityRepository, UpsertUser},
+        identity_errors::IdentityError,
+        organizations::OrganizationRepository,
+        users::{UpsertUser, UserRepository},
         oauth::{
             AuthorizationStatus, CreateDeviceAuthorization, DeviceAuthorization,
             DeviceAuthorizationError, DeviceAuthorizationRepository,
@@ -174,8 +176,8 @@ impl DeviceFlowService {
             return Err(DeviceFlowError::Denied);
         }
 
-        let identity_repo = IdentityRepository::new(&self.pool);
-        let user = identity_repo.fetch_user(&session.user_id).await?;
+        let user_repo = UserRepository::new(&self.pool);
+        let user = user_repo.fetch_user(&session.user_id).await?;
 
         let display_name_for_org = user
             .first_name
@@ -183,7 +185,8 @@ impl DeviceFlowService {
             .or(user.username.as_deref())
             .or(Some(&session.user_id));
 
-        let organization = identity_repo
+        let org_repo = OrganizationRepository::new(&self.pool);
+        let organization = org_repo
             .ensure_personal_org_and_admin_membership(&session.user_id, display_name_for_org)
             .await?;
 
@@ -339,7 +342,7 @@ impl DeviceFlowService {
         };
 
         let account_repo = OAuthAccountRepository::new(&self.pool);
-        let identity_repo = IdentityRepository::new(&self.pool);
+        let user_repo = UserRepository::new(&self.pool);
 
         let email = ensure_email(provider.name(), &user_profile);
         let username = derive_username(provider.name(), &user_profile);
@@ -352,7 +355,7 @@ impl DeviceFlowService {
         let user_id = match existing_account {
             Some(account) => account.user_id,
             None => {
-                if let Some(found) = identity_repo.find_user_by_email(&email).await? {
+                if let Some(found) = user_repo.find_user_by_email(&email).await? {
                     found.id
                 } else {
                     Uuid::new_v4().to_string()
@@ -362,7 +365,7 @@ impl DeviceFlowService {
 
         let (first_name, last_name) = split_name(user_profile.name.as_deref());
 
-        let user = identity_repo
+        let user = user_repo
             .upsert_user(UpsertUser {
                 id: &user_id,
                 email: &email,
@@ -377,7 +380,8 @@ impl DeviceFlowService {
             .or(username.as_deref())
             .or(Some(&user_id));
 
-        let organization = identity_repo
+        let org_repo = OrganizationRepository::new(&self.pool);
+        let organization = org_repo
             .ensure_personal_org_and_admin_membership(&user.id, display_name_for_org)
             .await?;
 

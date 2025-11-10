@@ -6,7 +6,8 @@ use uuid::Uuid;
 
 use super::{
     Tx,
-    identity::{IdentityError, UserData, fetch_user},
+    identity_errors::IdentityError,
+    users::{UserData, fetch_user},
     projects::{CreateProjectData, Project, ProjectError, ProjectMetadata, ProjectRepository},
 };
 

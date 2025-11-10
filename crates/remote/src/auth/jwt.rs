@@ -9,7 +9,8 @@ use uuid::Uuid;
 
 use crate::db::{
     auth::AuthSession,
-    identity::{Organization, User},
+    organizations::Organization,
+    users::User,
 };
 
 #[derive(Debug, Error)]

@@ -23,7 +23,7 @@ use processor::ActivityProcessor;
 pub use publisher::SharePublisher;
 use remote::{
     ServerMessage,
-    db::{identity::UserData as RemoteUserData, tasks::SharedTask as RemoteSharedTask},
+    db::{users::UserData as RemoteUserData, tasks::SharedTask as RemoteSharedTask},
 };
 use sqlx::SqlitePool;
 use thiserror::Error;

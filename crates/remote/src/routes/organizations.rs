@@ -10,7 +10,10 @@ use super::error::ErrorResponse;
 use crate::{
     AppState,
     auth::RequestContext,
-    db::identity::{IdentityRepository, Organization, OrganizationWithRole},
+    db::{
+        identity_errors::IdentityError,
+        organizations::{Organization, OrganizationRepository, OrganizationWithRole},
+    },
 };
 
 #[derive(Debug, Deserialize)]
@@ -72,13 +75,13 @@ pub async fn create_organization(
         ));
     }
 
-    let identity_repo = IdentityRepository::new(&state.pool);
+    let org_repo = OrganizationRepository::new(&state.pool);
 
-    let organization = identity_repo
+    let organization = org_repo
         .create_organization(name, &slug, &ctx.user.id)
         .await
         .map_err(|e| match e {
-            crate::db::identity::IdentityError::OrganizationConflict(msg) => {
+            IdentityError::OrganizationConflict(msg) => {
                 ErrorResponse::new(StatusCode::CONFLICT, msg)
             }
             _ => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"),
@@ -94,9 +97,9 @@ pub async fn list_organizations(
     State(state): State<AppState>,
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
-    let identity_repo = IdentityRepository::new(&state.pool);
+    let org_repo = OrganizationRepository::new(&state.pool);
 
-    let organizations = identity_repo
+    let organizations = org_repo
         .list_user_organizations(&ctx.user.id)
         .await
         .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?;
@@ -109,19 +112,19 @@ pub async fn get_organization(
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
     Path(org_id): Path<String>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
-    let identity_repo = IdentityRepository::new(&state.pool);
+    let org_repo = OrganizationRepository::new(&state.pool);
 
-    identity_repo
+    org_repo
         .assert_membership(&org_id, &ctx.user.id)
         .await
         .map_err(|e| match e {
-            crate::db::identity::IdentityError::NotFound => {
+            IdentityError::NotFound => {
                 ErrorResponse::new(StatusCode::NOT_FOUND, "Organization not found")
             }
             _ => ErrorResponse::new(StatusCode::FORBIDDEN, "Access denied"),
         })?;
 
-    let organization = identity_repo
+    let organization = org_repo
         .fetch_organization(&org_id)
         .await
         .map_err(|_| {
@@ -131,15 +134,15 @@ pub async fn get_organization(
             )
         })?;
 
-    let role = identity_repo
+    let role = org_repo
         .check_user_role(&org_id, &ctx.user.id)
         .await
         .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?
-        .unwrap_or(crate::db::identity::MemberRole::Member);
+        .unwrap_or(crate::db::organizations::MemberRole::Member);
 
     let user_role = match role {
-        crate::db::identity::MemberRole::Admin => "admin",
-        crate::db::identity::MemberRole::Member => "member",
+        crate::db::organizations::MemberRole::Admin => "admin",
+        crate::db::organizations::MemberRole::Member => "member",
     }
     .to_string();
 
@@ -164,16 +167,16 @@ pub async fn update_organization(
         ));
     }
 
-    let identity_repo = IdentityRepository::new(&state.pool);
+    let org_repo = OrganizationRepository::new(&state.pool);
 
-    let organization = identity_repo
+    let organization = org_repo
         .update_organization_name(&org_id, &ctx.user.id, name)
         .await
         .map_err(|e| match e {
-            crate::db::identity::IdentityError::PermissionDenied => {
+            IdentityError::PermissionDenied => {
                 ErrorResponse::new(StatusCode::FORBIDDEN, "Admin access required")
             }
-            crate::db::identity::IdentityError::NotFound => {
+            IdentityError::NotFound => {
                 ErrorResponse::new(StatusCode::NOT_FOUND, "Organization not found")
             }
             _ => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"),
@@ -187,19 +190,19 @@ pub async fn delete_organization(
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
     Path(org_id): Path<String>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
-    let identity_repo = IdentityRepository::new(&state.pool);
+    let org_repo = OrganizationRepository::new(&state.pool);
 
-    identity_repo
+    org_repo
         .delete_organization(&org_id, &ctx.user.id)
         .await
         .map_err(|e| match e {
-            crate::db::identity::IdentityError::PermissionDenied => {
+            IdentityError::PermissionDenied => {
                 ErrorResponse::new(StatusCode::FORBIDDEN, "Admin access required")
             }
-            crate::db::identity::IdentityError::CannotDeleteOrganization(msg) => {
+            IdentityError::CannotDeleteOrganization(msg) => {
                 ErrorResponse::new(StatusCode::CONFLICT, msg)
             }
-            crate::db::identity::IdentityError::NotFound => {
+            IdentityError::NotFound => {
                 ErrorResponse::new(StatusCode::NOT_FOUND, "Organization not found")
             }
             _ => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"),

@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 
-use crate::db::identity::MemberRole;
+use crate::db::organizations::MemberRole;
 
 #[async_trait]
 pub trait Mailer: Send + Sync {
