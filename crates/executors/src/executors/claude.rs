@@ -62,6 +62,8 @@ pub struct ClaudeCode {
     pub model: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dangerously_skip_permissions: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub use_claude_subscription: Option<bool>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
 
@@ -216,6 +218,12 @@ impl ClaudeCode {
             .stderr(Stdio::piped())
             .current_dir(current_dir)
             .args(&args);
+
+        // Remove ANTHROPIC_API_KEY if use_claude_subscription is enabled
+        if self.use_claude_subscription.unwrap_or(false) {
+            command.env_remove("ANTHROPIC_API_KEY");
+            tracing::info!("ANTHROPIC_API_KEY removed from environment - using Claude subscription");
+        }
 
         let mut child = command.group_spawn()?;
         let child_stdout = child.inner().stdout.take().ok_or_else(|| {
