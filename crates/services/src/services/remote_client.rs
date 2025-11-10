@@ -124,7 +124,7 @@ impl RemoteClient {
 
     /// Fetches user profile using an access token.
     pub async fn profile(&self, token: &str) -> Result<ProfileResponse, RemoteClientError> {
-        self.get_json("/profile", Some(token)).await
+        self.get_json("/v1/profile", Some(token)).await
     }
 
     /// Lists organizations for the authenticated user.
