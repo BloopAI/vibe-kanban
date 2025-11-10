@@ -157,16 +157,15 @@ const OAuthDialog = NiceModal.create(() => {
             <div className="space-y-4 py-4">
               {state.data && (
                 <>
-                  <Alert>
-                    <AlertDescription>
-                      <div className="space-y-2">
-                        <p className="font-medium">Verification Code:</p>
-                        <p className="text-2xl font-mono font-bold tracking-wider">
-                          {state.data.user_code}
-                        </p>
-                      </div>
-                    </AlertDescription>
-                  </Alert>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Verification Code:</p>
+                    <input
+                      type="text"
+                      value={state.data.user_code}
+                      readOnly
+                      className="w-full text-center text-2xl font-mono font-bold tracking-wider border rounded-md py-3 bg-muted"
+                    />
+                  </div>
 
                   <div className="flex flex-col gap-2">
                     <p className="text-sm text-muted-foreground">
