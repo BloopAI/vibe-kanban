@@ -27,10 +27,10 @@ export function OrgMemberAvatars({
         {displayMembers.map((member) => (
           <UserAvatar
             key={member.user_id}
-            firstName={member.first_name}
-            lastName={member.last_name}
-            username={member.username}
-            imageUrl={member.avatar_url}
+            firstName={null}
+            lastName={null}
+            username={null}
+            imageUrl={null}
             className="h-6 w-6 ring-2 ring-background"
           />
         ))}

@@ -28,33 +28,9 @@ export interface ReassignDialogProps {
   sharedTask: SharedTaskRecord;
 }
 
-const buildMemberLabel = (member: {
-  first_name: string | null;
-  last_name: string | null;
-  display_name: string | null;
-  username: string | null;
-  user_id: string;
-}): string => {
-  // Try first_name + last_name
-  const fullName = [member.first_name, member.last_name]
-    .filter((part): part is string => Boolean(part && part.trim().length > 0))
-    .join(' ')
-    .trim();
-  if (fullName.length > 0) {
-    return fullName;
-  }
-
-  // Try display_name
-  if (member.display_name && member.display_name.trim().length > 0) {
-    return member.display_name;
-  }
-
-  // Try username
-  if (member.username && member.username.trim().length > 0) {
-    return member.username;
-  }
-
-  // Fallback to user_id
+const buildMemberLabel = (member: { user_id: string }): string => {
+  // Backend only returns user_id, role, and joined_at
+  // Use user_id as the label
   return member.user_id;
 };
 

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { organizationsApi } from '@/lib/api';
 import { useUserSystem } from '@/components/config-provider';
+import type { ListOrganizationsResponse } from 'shared/types';
 
 /**
  * Hook to fetch all organizations that the current user is a member of
@@ -13,7 +14,7 @@ export function useUserOrganizations() {
       ? loginStatus.profile.organization_id
       : null;
 
-  return useQuery({
+  return useQuery<ListOrganizationsResponse>({
     queryKey: ['organizations', 'user'],
     queryFn: () => organizationsApi.getUserOrganizations(),
     enabled: !!currentOrgId,

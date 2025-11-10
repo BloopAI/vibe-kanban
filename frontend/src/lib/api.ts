@@ -52,6 +52,8 @@ import {
   RunAgentSetupResponse,
   GhCliSetupError,
   StatusResponse,
+  ListOrganizationsResponse,
+  OrganizationMember,
 } from 'shared/types';
 
 // Re-export types for convenience
@@ -60,33 +62,6 @@ export type {
   UpdateFollowUpDraftRequest,
   UpdateRetryFollowUpDraftRequest,
 } from 'shared/types';
-
-// Organization types
-export type OrganizationMember = {
-  user_id: string;
-  organization_id: string;
-  email: string;
-  username: string | null;
-  first_name: string | null;
-  last_name: string | null;
-  display_name: string | null;
-  avatar_url: string | null;
-  role?: string;
-  joined_at?: Date;
-};
-
-export type Organization = {
-  id: string;
-  name: string;
-  member_count?: number;
-  created_at?: Date;
-  updated_at?: Date;
-};
-
-export type UserOrganizations = {
-  current_organization_id: string;
-  organizations: Organization[];
-};
 
 class ApiError<E = unknown> extends Error {
   public status?: number;
@@ -981,8 +956,8 @@ export const organizationsApi = {
     return handleApiResponse<OrganizationMember[]>(response);
   },
 
-  getUserOrganizations: async (): Promise<UserOrganizations> => {
-    const response = await makeRequest('/api/users/me/organizations');
-    return handleApiResponse<UserOrganizations>(response);
+  getUserOrganizations: async (): Promise<ListOrganizationsResponse> => {
+    const response = await makeRequest('/api/organizations');
+    return handleApiResponse<ListOrganizationsResponse>(response);
   },
 };

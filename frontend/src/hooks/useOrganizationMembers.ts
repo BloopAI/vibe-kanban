@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { organizationsApi } from '@/lib/api';
 import { useUserSystem } from '@/components/config-provider';
+import type { OrganizationMember } from 'shared/types';
 
 /**
  * Hook to fetch organization members for the current user's organization
@@ -13,7 +14,7 @@ export function useOrganizationMembers() {
       ? loginStatus.profile.organization_id
       : null;
 
-  return useQuery({
+  return useQuery<OrganizationMember[]>({
     queryKey: ['organization', 'members', organizationId],
     queryFn: () => {
       if (!organizationId) {
