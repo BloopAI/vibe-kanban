@@ -74,6 +74,8 @@ pub enum ShareError {
     MissingAuth,
     #[error("invalid user ID format")]
     InvalidUserId,
+    #[error("invalid organization ID format")]
+    InvalidOrganizationId,
 }
 
 const WS_BACKOFF_BASE_DELAY: Duration = Duration::from_secs(1);
@@ -133,7 +135,7 @@ impl RemoteSync {
         let mut backoff = Backoff::new();
         loop {
             let profile = self.auth_ctx.cached_profile().await;
-            let Some(org_id) = profile.as_ref().map(|p| p.organization_id.clone()) else {
+            let Some(org_id_str) = profile.as_ref().map(|p| p.organization_id.clone()) else {
                 tracing::debug!("No authentication available; waiting before retry");
                 tokio::select! {
                     _ = &mut shutdown_rx => {
@@ -145,7 +147,11 @@ impl RemoteSync {
                 continue;
             };
 
-            let mut last_seq = SharedActivityCursor::get(&self.db.pool, org_id.clone())
+            let org_id = org_id_str
+                .parse::<Uuid>()
+                .map_err(|_| ShareError::InvalidOrganizationId)?;
+
+            let mut last_seq = SharedActivityCursor::get(&self.db.pool, org_id)
                 .await?
                 .map(|cursor| cursor.last_seq);
             last_seq = self.processor.catch_up(last_seq).await.unwrap_or(last_seq);
@@ -360,7 +366,7 @@ pub(super) fn convert_remote_task(
 ) -> SharedTaskInput {
     SharedTaskInput {
         id: task.id,
-        organization_id: task.organization_id.clone(),
+        organization_id: task.organization_id,
         project_id,
         github_repo_id,
         title: task.title.clone(),

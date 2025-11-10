@@ -408,19 +408,3 @@ fn personal_org_slug(user_id: Uuid) -> String {
     // Use a deterministic slug pattern so we can find personal orgs
     format!("personal-{user_id}")
 }
-
-fn slugify_org_name(name: &str) -> String {
-    name.chars()
-        .filter_map(|c| {
-            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
-                Some(c.to_ascii_lowercase())
-            } else if c.is_whitespace() {
-                Some('-')
-            } else {
-                None
-            }
-        })
-        .collect::<String>()
-        .trim_matches('-')
-        .to_string()
-}

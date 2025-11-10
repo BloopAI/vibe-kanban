@@ -229,12 +229,16 @@ impl ActivityProcessor {
     }
 
     async fn bulk_sync(&self) -> Result<Option<i64>, ShareError> {
-        let org_id = self
+        let org_id_str = self
             .auth_ctx
             .cached_profile()
             .await
             .ok_or(ShareError::MissingAuth)?
             .organization_id;
+
+        let org_id = org_id_str
+            .parse::<Uuid>()
+            .map_err(|_| ShareError::InvalidOrganizationId)?;
 
         let bulk_resp = self.fetch_bulk_snapshot().await?;
         let latest_seq = bulk_resp.latest_seq;
@@ -271,7 +275,7 @@ impl ActivityProcessor {
             });
         }
 
-        let mut stale: HashSet<Uuid> = SharedTask::list_by_organization(&self.db.pool, &org_id)
+        let mut stale: HashSet<Uuid> = SharedTask::list_by_organization(&self.db.pool, org_id)
             .await?
             .into_iter()
             .filter_map(|task| {

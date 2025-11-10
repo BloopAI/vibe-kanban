@@ -2,7 +2,7 @@ PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS shared_tasks (
     id                  BLOB PRIMARY KEY,
-    organization_id     TEXT NOT NULL,
+    organization_id     BLOB NOT NULL,
     project_id          BLOB,
     github_repo_id      INTEGER,
     title               TEXT NOT NULL,
@@ -33,7 +33,7 @@ CREATE INDEX IF NOT EXISTS idx_shared_tasks_github_repo
     ON shared_tasks (github_repo_id);
 
 CREATE TABLE IF NOT EXISTS shared_activity_cursors (
-    organization_id TEXT PRIMARY KEY,
+    organization_id BLOB PRIMARY KEY,
     last_seq        INTEGER NOT NULL CHECK (last_seq >= 0),
     updated_at      TEXT NOT NULL DEFAULT (datetime('now', 'subsec'))
 );
