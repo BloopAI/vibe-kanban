@@ -6,10 +6,8 @@ export { PrivacyOptInDialog } from './global/PrivacyOptInDialog';
 export { ReleaseNotesDialog } from './global/ReleaseNotesDialog';
 export { OAuthDialog } from './global/OAuthDialog';
 
-export {
-  OrganizationSwitcherDialog,
-  type OrganizationSwitcherDialogProps,
-} from './auth/OrganizationSwitcherDialog';
+// Organization dialogs
+export { OrganizationSwitcherDialog } from './org/OrganizationSwitcherDialog';
 
 // Project-related dialogs
 export {

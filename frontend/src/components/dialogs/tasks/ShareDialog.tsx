@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -13,11 +13,11 @@ import { tasksApi } from '@/lib/api';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useTranslation } from 'react-i18next';
 import { useUserSystem } from '@/components/config-provider';
-import { SignedIn, SignedOut, useClerk } from '@clerk/clerk-react';
 import { Loader2 } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { useMutation } from '@tanstack/react-query';
 import { LoginRequiredPrompt } from '@/components/dialogs/shared/LoginRequiredPrompt';
+import { useAuth } from '@/hooks/useAuth';
 
 export interface ShareDialogProps {
   task: TaskWithAttemptStatus;
@@ -27,6 +27,7 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
   const modal = useModal();
   const { t } = useTranslation('tasks');
   const { loading: systemLoading } = useUserSystem();
+  const { isSignedIn } = useAuth();
 
   const [shareError, setShareError] = useState<string | null>(null);
 
@@ -34,14 +35,6 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
     mutationKey: ['tasks', 'share', task.id],
     mutationFn: () => tasksApi.share(task.id),
   });
-
-  const { redirectToSignUp } = useClerk();
-
-  const redirectToClerkSignUp = useCallback(() => {
-    const redirectUrl =
-      typeof window !== 'undefined' ? window.location.href : undefined;
-    void redirectToSignUp({ redirectUrl });
-  }, [redirectToSignUp]);
 
   useEffect(() => {
     shareMutation.reset();
@@ -75,7 +68,7 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
       await shareMutation.mutateAsync();
     } catch (err) {
       if (getStatus(err) === 401) {
-        redirectToClerkSignUp();
+        void NiceModal.show('oauth');
         return;
       }
       setShareError(getReadableError(err));
@@ -104,29 +97,30 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
           </DialogDescription>
         </DialogHeader>
 
-        <SignedOut>
+        {!isSignedIn ? (
           <LoginRequiredPrompt
-            mode="signUp"
             buttonVariant="outline"
             buttonSize="sm"
             buttonClassName="mt-1"
           />
-        </SignedOut>
-
-        <SignedIn>
-          {shareMutation.isSuccess ? (
-            <Alert
-              variant="default"
-              className="border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200"
-            >
-              {t('shareDialog.success')}
-            </Alert>
-          ) : (
-            <>
-              {shareError && <Alert variant="destructive">{shareError}</Alert>}
-            </>
-          )}
-        </SignedIn>
+        ) : (
+          <>
+            {shareMutation.isSuccess ? (
+              <Alert
+                variant="default"
+                className="border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200"
+              >
+                {t('shareDialog.success')}
+              </Alert>
+            ) : (
+              <>
+                {shareError && (
+                  <Alert variant="destructive">{shareError}</Alert>
+                )}
+              </>
+            )}
+          </>
+        )}
 
         <DialogFooter className="flex sm:flex-row sm:justify-end gap-2">
           <Button variant="outline" onClick={handleClose}>
@@ -134,24 +128,22 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
               ? t('shareDialog.closeButton')
               : t('shareDialog.cancel')}
           </Button>
-          <SignedIn>
-            {!shareMutation.isSuccess && (
-              <Button
-                onClick={handleShare}
-                disabled={isShareDisabled}
-                className="gap-2"
-              >
-                {shareMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    {t('shareDialog.inProgress')}
-                  </>
-                ) : (
-                  t('shareDialog.confirm')
-                )}
-              </Button>
-            )}
-          </SignedIn>
+          {isSignedIn && !shareMutation.isSuccess && (
+            <Button
+              onClick={handleShare}
+              disabled={isShareDisabled}
+              className="gap-2"
+            >
+              {shareMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {t('shareDialog.inProgress')}
+                </>
+              ) : (
+                t('shareDialog.confirm')
+              )}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

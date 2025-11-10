@@ -1,5 +1,4 @@
-import { useOrganization } from '@clerk/clerk-react';
-import { cn } from '@/lib/utils';
+import { useOrganizationMembers } from '@/hooks/useOrganizationMembers';
 import { UserAvatar } from '@/components/tasks/UserAvatar';
 
 interface OrgMemberAvatarsProps {
@@ -9,55 +8,35 @@ interface OrgMemberAvatarsProps {
 
 export function OrgMemberAvatars({
   limit = 5,
-  className,
+  className = '',
 }: OrgMemberAvatarsProps) {
-  const { isLoaded, organization, memberships } = useOrganization({
-    memberships: {
-      pageSize: limit + 1,
-      keepPreviousData: true,
-    },
-  });
+  const { data: members, isPending } = useOrganizationMembers();
 
-  if (!isLoaded || !organization || !memberships) return null;
+  if (isPending || !members || members.length === 0) {
+    return null;
+  }
 
-  const visible = memberships.data?.slice(0, limit) ?? [];
-  const accurateRemaining =
-    typeof organization.membersCount === 'number'
-      ? Math.max(0, organization.membersCount - visible.length)
-      : null;
-  const hasMore =
-    (memberships.data?.length ?? 0) > limit || (accurateRemaining ?? 0) > 0;
+  const displayMembers = members.slice(0, limit);
+  const remainingCount = members.length - limit;
 
   return (
-    <div
-      className={cn('flex -space-x-2 items-center', className)}
-      aria-label="Organization members"
-    >
-      {visible.map((m) => {
-        const pud = m.publicUserData;
-        return (
+    <div className={`flex items-center ${className}`}>
+      <div className="flex -space-x-2">
+        {displayMembers.map((member) => (
           <UserAvatar
-            key={m.id}
-            userId={pud?.userId}
-            firstName={pud?.firstName}
-            lastName={pud?.lastName}
-            username={pud?.identifier}
-            imageUrl={pud?.imageUrl}
-            className="h-6 w-6 hover:z-10"
+            key={member.user_id}
+            firstName={member.first_name}
+            lastName={member.last_name}
+            username={member.username}
+            imageUrl={member.avatar_url}
+            className="h-6 w-6 ring-2 ring-background"
           />
-        );
-      })}
-      {hasMore && (
-        <div
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border bg-muted text-[10px] font-medium text-muted-foreground hover:z-10"
-          title={
-            accurateRemaining != null
-              ? `+${accurateRemaining} more`
-              : 'More members'
-          }
-        >
-          {accurateRemaining != null ? `+${accurateRemaining}` : '+'}
-        </div>
+        ))}
+      </div>
+      {remainingCount > 0 && (
+        <span className="ml-2 text-xs text-muted-foreground">
+          +{remainingCount} more
+        </span>
       )}
     </div>
   );
