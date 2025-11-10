@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { LogIn, Github, Loader2, ExternalLink, Chrome } from 'lucide-react';
+import { LogIn, Github, Loader2, ExternalLink, Chrome, Copy, Check } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useState } from 'react';
 import { oauthApi } from '@/lib/api';
@@ -26,19 +26,13 @@ const OAuthDialog = NiceModal.create(() => {
   const modal = useModal();
   const [state, setState] = useState<OAuthState>({ type: 'select' });
   const [isPolling, setIsPolling] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
   const handleProviderSelect = async (provider: OAuthProvider) => {
     try {
       setState({ type: 'verifying', data: null as any, provider });
       const response = await oauthApi.deviceInit(provider);
       setState({ type: 'verifying', data: response, provider });
-
-      // Auto-open the verification URL
-      if (response.verification_uri_complete) {
-        window.open(response.verification_uri_complete, '_blank');
-      } else {
-        window.open(response.verification_uri, '_blank');
-      }
 
       // Start polling
       startPolling(response.handoff_id);
@@ -96,6 +90,17 @@ const OAuthDialog = NiceModal.create(() => {
   const handleBack = () => {
     setState({ type: 'select' });
     setIsPolling(false);
+    setIsCopied(false);
+  };
+
+  const handleCopyCode = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy code:', err);
+    }
   };
 
   const renderContent = () => {
@@ -159,18 +164,32 @@ const OAuthDialog = NiceModal.create(() => {
                 <>
                   <div className="space-y-2">
                     <p className="text-sm font-medium">Verification Code:</p>
-                    <input
-                      type="text"
-                      value={state.data.user_code}
-                      readOnly
-                      className="w-full text-center text-2xl font-mono font-bold tracking-wider border rounded-md py-3 bg-muted"
-                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={state.data.user_code}
+                        readOnly
+                        className="flex-1 text-center text-2xl font-mono font-bold tracking-wider border rounded-md py-3 bg-muted"
+                      />
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-auto px-3"
+                        onClick={() => handleCopyCode(state.data.user_code)}
+                      >
+                        {isCopied ? (
+                          <Check className="h-5 w-5 text-green-500" />
+                        ) : (
+                          <Copy className="h-5 w-5" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="flex flex-col gap-2">
                     <p className="text-sm text-muted-foreground">
-                      A browser window has been opened. Enter the code above to
-                      complete authentication.
+                      Click the button below to open your browser and enter the
+                      verification code.
                     </p>
                     <Button
                       variant="outline"
@@ -183,7 +202,7 @@ const OAuthDialog = NiceModal.create(() => {
                       }}
                     >
                       <ExternalLink className="h-4 w-4 mr-2" />
-                      Open Browser Again
+                      Open Browser
                     </Button>
                   </div>
                 </>
