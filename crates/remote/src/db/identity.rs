@@ -539,7 +539,7 @@ where
         INSERT INTO organization_member_metadata (organization_id, user_id, role)
         VALUES ($1, $2, $3)
         ON CONFLICT (organization_id, user_id) DO UPDATE
-        SET role = EXCLUDED.role, updated_at = NOW()
+        SET role = EXCLUDED.role
         "#,
         organization_id,
         user_id,
