@@ -3,11 +3,12 @@ use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, query_as};
 use uuid::Uuid;
 
-use super::identity_errors::IdentityError;
-use super::organization_members::{
-    MemberRole, assert_admin as check_admin, assert_membership as check_membership,
-    check_user_role as get_user_role, ensure_member_metadata,
-    ensure_member_metadata_with_role,
+use super::{
+    identity_errors::IdentityError,
+    organization_members::{
+        MemberRole, assert_admin as check_admin, assert_membership as check_membership,
+        check_user_role as get_user_role, ensure_member_metadata, ensure_member_metadata_with_role,
+    },
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]

@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use super::{
     identity_errors::IdentityError,
-    organization_members::{assert_admin, ensure_member_metadata_with_role, MemberRole},
+    organization_members::{MemberRole, assert_admin, ensure_member_metadata_with_role},
     organizations::Organization,
 };
 
