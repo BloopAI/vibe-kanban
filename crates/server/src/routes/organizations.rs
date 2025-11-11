@@ -329,7 +329,11 @@ fn map_remote_error(e: RemoteClientError) -> ApiError {
         RemoteClientError::Timeout => ApiError::Conflict("Remote service timeout".to_string()),
         RemoteClientError::Http { status, body } => {
             tracing::error!(?status, ?body, "Remote API error");
-            ApiError::Conflict(format!("Remote service error: {}", status))
+            let error_message = serde_json::from_str::<serde_json::Value>(&body)
+                .ok()
+                .and_then(|v| v.get("message").and_then(|m| m.as_str()).map(String::from))
+                .unwrap_or(body);
+            ApiError::Conflict(error_message)
         }
         e => {
             tracing::error!(?e, "Unexpected remote client error");
