@@ -30,9 +30,7 @@ export function PendingInvitationItem({
         >
           {t('roles.' + invitation.role.toLowerCase())}
         </Badge>
-        <Badge variant="outline">
-          {t('invitationList.pending')}
-        </Badge>
+        <Badge variant="outline">{t('invitationList.pending')}</Badge>
       </div>
     </div>
   );
