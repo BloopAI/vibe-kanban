@@ -16,6 +16,7 @@ import {
   Edit,
   ExternalLink,
   FolderOpen,
+  Link2,
   MoreHorizontal,
   Trash2,
 } from 'lucide-react';
@@ -24,6 +25,8 @@ import { useEffect, useRef } from 'react';
 import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
 import { useNavigateWithSearch } from '@/hooks';
 import { projectsApi } from '@/lib/api';
+import { showLinkProject } from '@/lib/modals';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
   project: Project;
@@ -43,6 +46,7 @@ function ProjectCard({
   const navigate = useNavigateWithSearch();
   const ref = useRef<HTMLDivElement>(null);
   const handleOpenInEditor = useOpenProjectInEditor(project);
+  const { t } = useTranslation('projects');
 
   useEffect(() => {
     if (isFocused && ref.current) {
@@ -74,6 +78,20 @@ function ProjectCard({
 
   const handleOpenInIDE = () => {
     handleOpenInEditor();
+  };
+
+  const handleLinkProject = async () => {
+    try {
+      const result = await showLinkProject({
+        projectId: project.id,
+        projectName: project.name,
+      });
+      if (result.action === 'linked') {
+        onEdit(project);
+      }
+    } catch (error) {
+      console.error('Failed to link project:', error);
+    }
   };
 
   return (
@@ -112,6 +130,17 @@ function ProjectCard({
                   <FolderOpen className="mr-2 h-4 w-4" />
                   Open in IDE
                 </DropdownMenuItem>
+                {!project.has_remote && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleLinkProject();
+                    }}
+                  >
+                    <Link2 className="mr-2 h-4 w-4" />
+                    {t('linkToOrganization')}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();

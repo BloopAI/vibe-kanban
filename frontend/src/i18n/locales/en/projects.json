@@ -2,6 +2,7 @@
   "title": "Projects",
   "subtitle": "Manage your projects and track their progress",
   "createProject": "Create Project",
+  "linkToOrganization": "Link to Organization",
   "loading": "Loading projects...",
   "errors": {
     "fetchFailed": "Failed to fetch projects"
