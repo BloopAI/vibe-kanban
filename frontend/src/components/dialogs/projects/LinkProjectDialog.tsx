@@ -23,6 +23,7 @@ import { projectsApi, organizationsApi, type RemoteProject } from '@/lib/api';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationSelection } from '@/hooks/useOrganizationSelection';
 import type { Project } from 'shared/types';
+import { useTranslation } from 'react-i18next';
 
 export type LinkProjectResult = {
   action: 'linked' | 'canceled';
@@ -39,6 +40,8 @@ type LinkMode = 'existing' | 'create';
 export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
   ({ projectId, projectName }) => {
     const modal = useModal();
+    const { t } = useTranslation('projects');
+    const { t: tCommon } = useTranslation('common');
     const { data: orgsResponse, isLoading: orgsLoading } =
       useUserOrganizations();
     const { selectedOrgId, handleOrgSelect } = useOrganizationSelection({
@@ -82,7 +85,7 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
             setError(
               err instanceof Error
                 ? err.message
-                : 'Failed to load remote projects'
+                : t('linkDialog.errors.linkFailed')
             );
             setRemoteProjects([]);
           })
@@ -97,7 +100,7 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
 
     const handleLink = async () => {
       if (!selectedOrgId) {
-        setError('Please select an organization');
+        setError(t('linkDialog.errors.selectOrganization'));
         return;
       }
 
@@ -109,7 +112,7 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
 
         if (linkMode === 'existing') {
           if (!selectedRemoteProjectId) {
-            setError('Please select a remote project');
+            setError(t('linkDialog.errors.selectRemoteProject'));
             setIsSubmitting(false);
             return;
           }
@@ -119,7 +122,7 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
           );
         } else {
           if (!newProjectName.trim()) {
-            setError('Please enter a project name');
+            setError(t('linkDialog.errors.enterProjectName'));
             setIsSubmitting(false);
             return;
           }
@@ -136,7 +139,9 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
         } as LinkProjectResult);
         modal.hide();
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to link project');
+        setError(
+          err instanceof Error ? err.message : t('linkDialog.errors.linkFailed')
+        );
         setIsSubmitting(false);
       }
     };
@@ -165,31 +170,32 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
       <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Link Project to Organization</DialogTitle>
-            <DialogDescription>
-              Link this local project to a remote organization for collaboration
-              and syncing.
-            </DialogDescription>
+            <DialogTitle>{t('linkDialog.title')}</DialogTitle>
+            <DialogDescription>{t('linkDialog.description')}</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="project-name">Project</Label>
+              <Label htmlFor="project-name">
+                {t('linkDialog.projectLabel')}
+              </Label>
               <div className="px-3 py-2 bg-muted rounded-md text-sm">
                 {projectName}
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="organization-select">Organization</Label>
+              <Label htmlFor="organization-select">
+                {t('linkDialog.organizationLabel')}
+              </Label>
               {orgsLoading ? (
                 <div className="px-3 py-2 text-sm text-muted-foreground">
-                  Loading organizations...
+                  {t('linkDialog.loadingOrganizations')}
                 </div>
               ) : !orgsResponse?.organizations?.length ? (
                 <Alert>
                   <AlertDescription>
-                    No organizations available. Create an organization first.
+                    {t('linkDialog.noOrganizations')}
                   </AlertDescription>
                 </Alert>
               ) : (
@@ -199,7 +205,9 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
                   disabled={isSubmitting}
                 >
                   <SelectTrigger id="organization-select">
-                    <SelectValue placeholder="Select an organization" />
+                    <SelectValue
+                      placeholder={t('linkDialog.selectOrganization')}
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     {orgsResponse.organizations.map((org) => (
@@ -215,7 +223,7 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
             {selectedOrgId && (
               <>
                 <div className="space-y-2">
-                  <Label>Link Mode</Label>
+                  <Label>{t('linkDialog.linkModeLabel')}</Label>
                   <div className="flex gap-2">
                     <Button
                       type="button"
@@ -224,7 +232,7 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
                       disabled={isSubmitting}
                       className="flex-1"
                     >
-                      Link to Existing
+                      {t('linkDialog.linkToExisting')}
                     </Button>
                     <Button
                       type="button"
@@ -233,7 +241,7 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
                       disabled={isSubmitting}
                       className="flex-1"
                     >
-                      Create New
+                      {t('linkDialog.createNew')}
                     </Button>
                   </div>
                 </div>
@@ -241,17 +249,16 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
                 {linkMode === 'existing' ? (
                   <div className="space-y-2">
                     <Label htmlFor="remote-project-select">
-                      Remote Project
+                      {t('linkDialog.remoteProjectLabel')}
                     </Label>
                     {isLoadingProjects ? (
                       <div className="px-3 py-2 text-sm text-muted-foreground">
-                        Loading remote projects...
+                        {t('linkDialog.loadingRemoteProjects')}
                       </div>
                     ) : remoteProjects.length === 0 ? (
                       <Alert>
                         <AlertDescription>
-                          No remote projects found in this organization. Try
-                          creating a new one instead.
+                          {t('linkDialog.noRemoteProjects')}
                         </AlertDescription>
                       </Alert>
                     ) : (
@@ -261,7 +268,9 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
                         disabled={isSubmitting}
                       >
                         <SelectTrigger id="remote-project-select">
-                          <SelectValue placeholder="Select a remote project" />
+                          <SelectValue
+                            placeholder={t('linkDialog.selectRemoteProject')}
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           {remoteProjects.map((project) => (
@@ -276,7 +285,7 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
                 ) : (
                   <div className="space-y-2">
                     <Label htmlFor="new-project-name">
-                      New Remote Project Name
+                      {t('linkDialog.newProjectNameLabel')}
                     </Label>
                     <Input
                       id="new-project-name"
@@ -286,7 +295,7 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
                         setNewProjectName(e.target.value);
                         setError(null);
                       }}
-                      placeholder="Enter project name"
+                      placeholder={t('linkDialog.newProjectNamePlaceholder')}
                       disabled={isSubmitting}
                     />
                   </div>
@@ -307,13 +316,15 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
               onClick={handleCancel}
               disabled={isSubmitting}
             >
-              Cancel
+              {tCommon('buttons.cancel')}
             </Button>
             <Button
               onClick={handleLink}
               disabled={!canSubmit() || !orgsResponse?.organizations?.length}
             >
-              {isSubmitting ? 'Linking...' : 'Link Project'}
+              {isSubmitting
+                ? t('linkDialog.linking')
+                : t('linkDialog.linkButton')}
             </Button>
           </DialogFooter>
         </DialogContent>
