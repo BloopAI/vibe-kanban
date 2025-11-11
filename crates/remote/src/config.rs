@@ -1,5 +1,6 @@
 use std::env;
 
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use secrecy::SecretString;
 use thiserror::Error;
 
@@ -133,8 +134,9 @@ pub struct AuthConfig {
 impl AuthConfig {
     fn from_env() -> Result<Self, ConfigError> {
         let jwt_secret = env::var("VIBEKANBAN_REMOTE_JWT_SECRET")
-            .map_err(|_| ConfigError::MissingVar("VIBEKANBAN_REMOTE_JWT_SECRET"))
-            .map(|value| SecretString::new(value.into()))?;
+            .map_err(|_| ConfigError::MissingVar("VIBEKANBAN_REMOTE_JWT_SECRET"))?;
+        validate_jwt_secret(&jwt_secret)?;
+        let jwt_secret = SecretString::new(jwt_secret.into());
 
         let github = match env::var("GITHUB_OAUTH_CLIENT_ID") {
             Ok(client_id) => {
@@ -190,4 +192,16 @@ impl AuthConfig {
     pub fn public_base_url(&self) -> &str {
         &self.public_base_url
     }
+}
+
+fn validate_jwt_secret(secret: &str) -> Result<(), ConfigError> {
+    let decoded = BASE64_STANDARD
+        .decode(secret.as_bytes())
+        .map_err(|_| ConfigError::InvalidVar("VIBEKANBAN_REMOTE_JWT_SECRET"))?;
+
+    if decoded.len() < 32 {
+        return Err(ConfigError::InvalidVar("VIBEKANBAN_REMOTE_JWT_SECRET"));
+    }
+
+    Ok(())
 }

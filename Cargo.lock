@@ -3619,6 +3619,7 @@ dependencies = [
  "async-trait",
  "axum 0.8.6",
  "axum-extra 0.10.3",
+ "base64",
  "chrono",
  "futures",
  "jsonwebtoken 9.3.1",
