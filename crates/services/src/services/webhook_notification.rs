@@ -28,7 +28,7 @@ impl WebhookNotificationService {
     }
 
     /// Send a notification to a specific webhook
-    async fn send_notification(&self, config: &WebhookConfig, title: &str, message: &str) {
+    pub async fn send_notification(&self, config: &WebhookConfig, title: &str, message: &str) {
         let result = match config.provider {
             WebhookProvider::Slack => self.send_slack(config, title, message).await,
             WebhookProvider::Discord => self.send_discord(config, title, message).await,
