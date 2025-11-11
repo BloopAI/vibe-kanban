@@ -112,7 +112,7 @@ export function OrganizationSettings() {
 
       if (result.action === 'created') {
         await refetchOrgs();
-        handleOrgSelect(result.organizationId);
+        handleOrgSelect(result.organizationId ?? '');
         setSuccess('Organization created successfully');
         setTimeout(() => setSuccess(null), 3000);
       }
