@@ -307,13 +307,10 @@ export const projectsApi = {
     localProjectId: string,
     remoteProjectId: string
   ): Promise<Project> => {
-    const response = await makeRequest(
-      `/api/projects/${localProjectId}/link`,
-      {
-        method: 'POST',
-        body: JSON.stringify({ remote_project_id: remoteProjectId }),
-      }
-    );
+    const response = await makeRequest(`/api/projects/${localProjectId}/link`, {
+      method: 'POST',
+      body: JSON.stringify({ remote_project_id: remoteProjectId }),
+    });
     return handleApiResponse<Project>(response);
   },
 
