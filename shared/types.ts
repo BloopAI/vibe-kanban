@@ -68,7 +68,7 @@ export type ProfileResponse = { user_id: string, username: string | null, email:
 
 export type ProviderProfile = { provider: string, username: string | null, display_name: string | null, email: string | null, avatar_url: string | null, };
 
-export type MemberRole = "admin" | "member";
+export type MemberRole = "ADMIN" | "MEMBER";
 
 export type Organization = { id: string, name: string, slug: string, created_at: string, updated_at: string, };
 
