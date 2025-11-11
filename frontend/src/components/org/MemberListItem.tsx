@@ -31,7 +31,7 @@ export function MemberListItem({
   isRemoving,
   isRoleChanging,
 }: MemberListItemProps) {
-  const { t } = useTranslation();
+  const { t } = useTranslation('organization');
   const isSelf = member.user_id === currentUserId;
   const canRemove = isAdmin && !isSelf;
   const canChangeRole = isAdmin && !isSelf;
@@ -43,7 +43,7 @@ export function MemberListItem({
           <div className="font-mono text-sm">{member.user_id}</div>
           {isSelf && (
             <div className="text-xs text-muted-foreground">
-              {t('organization.memberList.you')}
+              {t('memberList.you')}
             </div>
           )}
         </div>
@@ -52,7 +52,7 @@ export function MemberListItem({
             member.role === MemberRoleEnum.ADMIN ? 'default' : 'secondary'
           }
         >
-          {member.role}
+          {t('roles.' + member.role.toLowerCase())}
         </Badge>
       </div>
       <div className="flex items-center gap-2">
@@ -69,10 +69,10 @@ export function MemberListItem({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={MemberRoleEnum.ADMIN}>
-                {t('organization.roles.admin')}
+                {t('roles.admin')}
               </SelectItem>
               <SelectItem value={MemberRoleEnum.MEMBER}>
-                {t('organization.roles.member')}
+                {t('roles.member')}
               </SelectItem>
             </SelectContent>
           </Select>

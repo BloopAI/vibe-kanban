@@ -10,7 +10,7 @@ interface PendingInvitationItemProps {
 export function PendingInvitationItem({
   invitation,
 }: PendingInvitationItemProps) {
-  const { t } = useTranslation();
+  const { t } = useTranslation('organization');
 
   return (
     <div className="flex items-center justify-between p-3 border rounded-lg">
@@ -18,7 +18,7 @@ export function PendingInvitationItem({
         <div>
           <div className="font-medium text-sm">{invitation.email}</div>
           <div className="text-xs text-muted-foreground">
-            {t('organization.invitationList.invited', {
+            {t('invitationList.invited', {
               date: new Date(invitation.created_at).toLocaleDateString(),
             })}
           </div>
@@ -28,10 +28,10 @@ export function PendingInvitationItem({
             invitation.role === MemberRole.ADMIN ? 'default' : 'secondary'
           }
         >
-          {invitation.role}
+          {t('roles.' + invitation.role.toLowerCase())}
         </Badge>
         <Badge variant="outline">
-          {t('organization.invitationList.pending')}
+          {t('invitationList.pending')}
         </Badge>
       </div>
     </div>
