@@ -286,6 +286,17 @@ export const projectsApi = {
     );
     return handleApiResponse<SearchResult[]>(response);
   },
+
+  linkToOrganization: async (
+    projectId: string,
+    organizationId: string
+  ): Promise<Project> => {
+    const response = await makeRequest(`/api/projects/${projectId}/link`, {
+      method: 'POST',
+      body: JSON.stringify({ organization_id: organizationId }),
+    });
+    return handleApiResponse<Project>(response);
+  },
 };
 
 // Task Management APIs
