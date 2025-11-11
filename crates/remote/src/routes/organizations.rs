@@ -5,18 +5,17 @@ use axum::{
     response::IntoResponse,
     routing::{delete, get, patch, post},
 };
-use serde::{Deserialize, Serialize};
+use utils::api::organizations::{
+    CreateOrganizationRequest, CreateOrganizationResponse, GetOrganizationResponse,
+    ListOrganizationsResponse, MemberRole, UpdateOrganizationRequest,
+};
 use uuid::Uuid;
 
 use super::error::ErrorResponse;
 use crate::{
     AppState,
     auth::RequestContext,
-    db::{
-        identity_errors::IdentityError,
-        organization_members::MemberRole,
-        organizations::{Organization, OrganizationRepository, OrganizationWithRole},
-    },
+    db::{identity_errors::IdentityError, organizations::OrganizationRepository},
 };
 
 pub fn router() -> Router<AppState> {
@@ -26,33 +25,6 @@ pub fn router() -> Router<AppState> {
         .route("/organizations/{org_id}", get(get_organization))
         .route("/organizations/{org_id}", patch(update_organization))
         .route("/organizations/{org_id}", delete(delete_organization))
-}
-
-#[derive(Debug, Deserialize)]
-pub struct CreateOrganizationRequest {
-    pub name: String,
-    pub slug: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct UpdateOrganizationRequest {
-    pub name: String,
-}
-
-#[derive(Debug, Serialize)]
-pub struct CreateOrganizationResponse {
-    pub organization: OrganizationWithRole,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ListOrganizationsResponse {
-    pub organizations: Vec<OrganizationWithRole>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct GetOrganizationResponse {
-    pub organization: Organization,
-    pub user_role: String,
 }
 
 pub async fn create_organization(
@@ -150,8 +122,8 @@ pub async fn get_organization(
         .unwrap_or(MemberRole::Member);
 
     let user_role = match role {
-        MemberRole::Admin => "admin",
-        MemberRole::Member => "member",
+        MemberRole::Admin => "ADMIN",
+        MemberRole::Member => "MEMBER",
     }
     .to_string();
 

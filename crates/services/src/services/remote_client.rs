@@ -197,8 +197,11 @@ impl RemoteClient {
         token: &str,
         org_id: Uuid,
     ) -> Result<ListInvitationsResponse, RemoteClientError> {
-        self.get_json(&format!("/v1/organizations/{org_id}/invitations"), Some(token))
-            .await
+        self.get_json(
+            &format!("/v1/organizations/{org_id}/invitations"),
+            Some(token),
+        )
+        .await
     }
 
     /// Gets an invitation by token (public, no auth required).
@@ -241,8 +244,11 @@ impl RemoteClient {
         org_id: Uuid,
         user_id: Uuid,
     ) -> Result<(), RemoteClientError> {
-        self.delete(&format!("/v1/organizations/{org_id}/members/{user_id}"), token)
-            .await
+        self.delete(
+            &format!("/v1/organizations/{org_id}/members/{user_id}"),
+            token,
+        )
+        .await
     }
 
     /// Updates a member's role in an organization.

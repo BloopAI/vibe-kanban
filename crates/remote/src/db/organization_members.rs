@@ -1,16 +1,8 @@
-use serde::{Deserialize, Serialize};
-use sqlx::{Executor, PgPool, Postgres, Type};
+use sqlx::{Executor, PgPool, Postgres};
+pub use utils::api::organizations::MemberRole;
 use uuid::Uuid;
 
 use super::identity_errors::IdentityError;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-#[sqlx(type_name = "member_role", rename_all = "lowercase")]
-pub enum MemberRole {
-    Admin,
-    Member,
-}
 
 pub(super) async fn ensure_member_metadata(
     pool: &PgPool,
