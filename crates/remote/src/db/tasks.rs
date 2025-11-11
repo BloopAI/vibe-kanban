@@ -10,6 +10,7 @@ use super::{
     projects::{ProjectError, ProjectRepository},
     users::{UserData, fetch_user},
 };
+use crate::db::maintenance;
 
 pub struct BulkFetchResult {
     pub tasks: Vec<SharedTaskActivityPayload>,
@@ -521,8 +522,42 @@ async fn insert_activity(
         task: task.clone(),
         user: user.cloned(),
     };
-    let value = serde_json::to_value(payload).map_err(SharedTaskError::Serialization)?;
+    let payload = serde_json::to_value(payload).map_err(SharedTaskError::Serialization)?;
 
+    // First attempt at inserting - if partitions are missing we retry after provisioning.
+    match do_insert_activity(tx, task, event_type, payload.clone()).await {
+        Ok(_) => Ok(()),
+        Err(err) => {
+            if let sqlx::Error::Database(db_err) = &err
+                && maintenance::is_partition_missing_error(db_err.as_ref())
+            {
+                let code_owned = db_err.code().map(|c| c.to_string());
+                let code = code_owned.as_deref().unwrap_or_default();
+                tracing::warn!(
+                    "Activity partition missing ({}), creating current and next partitions",
+                    code
+                );
+
+                maintenance::ensure_future_partitions(tx.as_mut())
+                    .await
+                    .map_err(SharedTaskError::from)?;
+
+                return do_insert_activity(tx, task, event_type, payload)
+                    .await
+                    .map_err(SharedTaskError::from);
+            }
+
+            Err(SharedTaskError::from(err))
+        }
+    }
+}
+
+async fn do_insert_activity(
+    tx: &mut Tx<'_>,
+    task: &SharedTask,
+    event_type: &str,
+    payload: serde_json::Value,
+) -> Result<(), sqlx::Error> {
     sqlx::query!(
         r#"
         WITH next AS (
@@ -545,12 +580,11 @@ async fn insert_activity(
         task.project_id,
         task.assignee_user_id,
         event_type,
-        value
+        payload
     )
     .execute(&mut **tx)
     .await
     .map(|_| ())
-    .map_err(SharedTaskError::from)
 }
 
 impl SharedTaskRepository<'_> {

@@ -32,6 +32,8 @@ impl Server {
             .await
             .context("failed to run database migrations")?;
 
+        db::maintenance::spawn_activity_partition_maintenance(pool.clone());
+
         let broker = ActivityBroker::new(
             config.activity_broadcast_shards,
             config.activity_broadcast_capacity,

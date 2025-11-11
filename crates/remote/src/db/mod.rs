@@ -3,6 +3,7 @@ pub mod auth;
 pub mod identity_errors;
 pub mod invitations;
 pub mod listener;
+pub mod maintenance;
 pub mod oauth;
 pub mod oauth_accounts;
 pub mod organization_members;
