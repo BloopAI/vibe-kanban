@@ -171,7 +171,7 @@ export const InviteMemberDialog = NiceModal.create(() => {
             onClick={handleCancel}
             disabled={isSubmitting}
           >
-            {t('buttons.cancel')}
+            {t('common:buttons.cancel')}
           </Button>
           <Button
             onClick={handleInvite}
