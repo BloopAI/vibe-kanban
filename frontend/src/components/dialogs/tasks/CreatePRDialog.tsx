@@ -25,7 +25,7 @@ import {
 import { projectsApi } from '@/lib/api.ts';
 import { Loader2 } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
-import { useAuth } from '@clerk/clerk-react';
+import { useAuth } from '@/hooks/useAuth';
 import {
   GhCliHelpInstructions,
   GhCliSetupDialog,

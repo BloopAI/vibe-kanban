@@ -9,6 +9,7 @@ import { paths } from '@/lib/paths';
 import { attemptsApi } from '@/lib/api';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import { UserAvatar } from './UserAvatar';
+import { useTranslation } from 'react-i18next';
 
 type Task = TaskWithAttemptStatus;
 
@@ -31,6 +32,7 @@ export function TaskCard({
   projectId,
   sharedTask,
 }: TaskCardProps) {
+  const { t } = useTranslation('tasks');
   const navigate = useNavigateWithSearch();
   const [isNavigatingToParent, setIsNavigatingToParent] = useState(false);
 
@@ -97,7 +99,7 @@ export function TaskCard({
             firstName={sharedTask.assignee_first_name ?? undefined}
             lastName={sharedTask.assignee_last_name ?? undefined}
             username={sharedTask.assignee_username ?? undefined}
-            userId={sharedTask.assignee_user_id ?? undefined}
+            // TODO: Add imageUrl={sharedTask.assignee_avatar_url} when backend provides it
             className="self-center"
           />
         ) : null}
@@ -127,7 +129,7 @@ export function TaskCard({
                   onPointerDown={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}
                   disabled={isNavigatingToParent}
-                  title="Navigate to parent task attempt"
+                  title={t('navigateToParent')}
                 >
                   <Link className="h-4 w-4" />
                 </Button>

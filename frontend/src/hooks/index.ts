@@ -14,3 +14,4 @@ export { useTask } from './useTask';
 export { useAttempt } from './useAttempt';
 export { useBranches } from './useBranches';
 export { useTaskAttempts } from './useTaskAttempts';
+export { useUserOrganizations } from './api/useUserOrganizations';

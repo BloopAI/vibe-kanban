@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use services::services::oauth_credentials::Credentials;
 use sha2::{Digest, Sha256};
 use utils::{
-    api::oauth::{HandoffInitRequest, HandoffRedeemRequest, ProfileResponse},
+    api::oauth::{HandoffInitRequest, HandoffRedeemRequest, StatusResponse},
     response::ApiResponse,
 };
 use uuid::Uuid;
@@ -169,15 +169,6 @@ async fn logout(State(deployment): State<DeploymentImpl>) -> Result<StatusCode, 
     deployment.auth_context().clear_profile().await;
 
     Ok(StatusCode::NO_CONTENT)
-}
-
-#[derive(Debug, Serialize)]
-struct StatusResponse {
-    logged_in: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    profile: Option<ProfileResponse>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    degraded: Option<bool>,
 }
 
 async fn status(

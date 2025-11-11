@@ -51,8 +51,11 @@ import {
   RunAgentSetupRequest,
   RunAgentSetupResponse,
   GhCliSetupError,
+  StatusResponse,
+  ListOrganizationsResponse,
+  OrganizationMember,
+  ListMembersResponse,
 } from 'shared/types';
-import { buildClerkAuthHeaders } from './clerk';
 
 // Re-export types for convenience
 export type { RepositoryInfo } from 'shared/types';
@@ -84,11 +87,9 @@ const makeRequest = async (url: string, options: RequestInit = {}) => {
     headers.set('Content-Type', 'application/json');
   }
 
-  const headersWithAuth = await buildClerkAuthHeaders(headers);
-
   return fetch(url, {
     ...options,
-    headers: headersWithAuth,
+    headers,
   });
 };
 
@@ -840,13 +841,10 @@ export const imagesApi = {
     const formData = new FormData();
     formData.append('image', file);
 
-    const headers = await buildClerkAuthHeaders();
-
     const response = await fetch('/api/images/upload', {
       method: 'POST',
       body: formData,
       credentials: 'include',
-      headers,
     });
 
     if (!response.ok) {
@@ -865,13 +863,10 @@ export const imagesApi = {
     const formData = new FormData();
     formData.append('image', file);
 
-    const headers = await buildClerkAuthHeaders();
-
     const response = await fetch(`/api/images/task/${taskId}/upload`, {
       method: 'POST',
       body: formData,
       credentials: 'include',
-      headers,
     });
 
     if (!response.ok) {
@@ -918,5 +913,53 @@ export const approvalsApi = {
     });
 
     return handleApiResponse<ApprovalStatus>(res);
+  },
+};
+
+// OAuth API
+export const oauthApi = {
+  handoffInit: async (
+    provider: string,
+    returnTo: string
+  ): Promise<{ handoff_id: string; authorize_url: string }> => {
+    const response = await makeRequest('/api/auth/handoff/init', {
+      method: 'POST',
+      body: JSON.stringify({ provider, return_to: returnTo }),
+    });
+    return handleApiResponse<{ handoff_id: string; authorize_url: string }>(
+      response
+    );
+  },
+
+  status: async (): Promise<StatusResponse> => {
+    const response = await makeRequest('/api/auth/status');
+    return handleApiResponse<StatusResponse>(response);
+  },
+
+  logout: async (): Promise<void> => {
+    const response = await makeRequest('/api/auth/logout', {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      throw new ApiError(
+        `Logout failed with status ${response.status}`,
+        response.status,
+        response
+      );
+    }
+  },
+};
+
+// Organizations API
+export const organizationsApi = {
+  getMembers: async (orgId: string): Promise<OrganizationMember[]> => {
+    const response = await makeRequest(`/api/organizations/${orgId}/members`);
+    const result = await handleApiResponse<ListMembersResponse>(response);
+    return result.members;
+  },
+
+  getUserOrganizations: async (): Promise<ListOrganizationsResponse> => {
+    const response = await makeRequest('/api/organizations');
+    return handleApiResponse<ListOrganizationsResponse>(response);
   },
 };

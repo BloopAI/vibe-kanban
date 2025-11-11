@@ -297,6 +297,7 @@
     "deleteTask": "Delete task",
     "editTask": "Edit task"
   },
+  "navigateToParent": "親タスクの試行に移動",
   "taskPanel": {
     "attemptsCount": "Attempts ({{count}})",
     "errorLoadingAttempts": "Failed to load attempts",

@@ -12,6 +12,7 @@ import {
   type Environment,
   type UserSystemInfo,
   type BaseAgentCapability,
+  type LoginStatus,
 } from 'shared/types';
 import type { ExecutorConfig } from 'shared/types';
 import { configApi } from '../lib/api';
@@ -23,6 +24,7 @@ interface UserSystemState {
   profiles: Record<string, ExecutorConfig> | null;
   capabilities: Record<string, BaseAgentCapability[]> | null;
   analyticsUserId: string | null;
+  loginStatus: LoginStatus | null;
 }
 
 interface UserSystemContextType {
@@ -40,6 +42,7 @@ interface UserSystemContextType {
   profiles: Record<string, ExecutorConfig> | null;
   capabilities: Record<string, BaseAgentCapability[]> | null;
   analyticsUserId: string | null;
+  loginStatus: LoginStatus | null;
   setEnvironment: (env: Environment | null) => void;
   setProfiles: (profiles: Record<string, ExecutorConfig> | null) => void;
   setCapabilities: (caps: Record<string, BaseAgentCapability[]> | null) => void;
@@ -72,6 +75,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
     BaseAgentCapability[]
   > | null>(null);
   const [analyticsUserId, setAnalyticsUserId] = useState<string | null>(null);
+  const [loginStatus, setLoginStatus] = useState<LoginStatus | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -81,6 +85,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
         setConfig(userSystemInfo.config);
         setEnvironment(userSystemInfo.environment);
         setAnalyticsUserId(userSystemInfo.analytics_user_id);
+        setLoginStatus(userSystemInfo.login_status);
         setProfiles(
           userSystemInfo.executors as Record<string, ExecutorConfig> | null
         );
@@ -150,6 +155,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       setConfig(userSystemInfo.config);
       setEnvironment(userSystemInfo.environment);
       setAnalyticsUserId(userSystemInfo.analytics_user_id);
+      setLoginStatus(userSystemInfo.login_status);
       setProfiles(
         userSystemInfo.executors as Record<string, ExecutorConfig> | null
       );
@@ -169,12 +175,20 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
   // Memoize context value to prevent unnecessary re-renders
   const value = useMemo<UserSystemContextType>(
     () => ({
-      system: { config, environment, profiles, capabilities, analyticsUserId },
+      system: {
+        config,
+        environment,
+        profiles,
+        capabilities,
+        analyticsUserId,
+        loginStatus,
+      },
       config,
       environment,
       profiles,
       capabilities,
       analyticsUserId,
+      loginStatus,
       updateConfig,
       saveConfig,
       updateAndSaveConfig,
@@ -190,6 +204,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       profiles,
       capabilities,
       analyticsUserId,
+      loginStatus,
       updateConfig,
       saveConfig,
       updateAndSaveConfig,

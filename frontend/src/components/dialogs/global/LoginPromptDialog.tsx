@@ -8,20 +8,18 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { LogIn, GitPullRequest, Users, Eye } from 'lucide-react';
-import { useClerk } from '@clerk/clerk-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useTranslation } from 'react-i18next';
+import { OAuthDialog } from '@/components/dialogs';
 
 const LoginPromptDialog = NiceModal.create(() => {
   const modal = useModal();
-  const { redirectToSignUp } = useClerk();
   const { t } = useTranslation('tasks');
 
-  const handleSignIn = () => {
+  const handleSignIn = async () => {
     modal.resolve('login');
-    const redirectUrl =
-      typeof window !== 'undefined' ? window.location.href : undefined;
-    void redirectToSignUp({ redirectUrl });
+    await NiceModal.show(OAuthDialog);
+    modal.hide();
   };
 
   const handleSkip = () => {

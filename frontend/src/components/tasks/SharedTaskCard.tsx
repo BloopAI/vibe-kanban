@@ -53,7 +53,7 @@ export function SharedTaskCard({
           firstName={task.assignee_first_name ?? undefined}
           lastName={task.assignee_last_name ?? undefined}
           username={task.assignee_username ?? undefined}
-          userId={task.assignee_user_id ?? undefined}
+          // TODO: Add imageUrl={task.assignee_avatar_url} when backend provides it
         />
         <div className="flex min-w-0 flex-1 flex-col gap-1 font-light">
           <h4 className="text-sm text-muted-foreground line-clamp-2">

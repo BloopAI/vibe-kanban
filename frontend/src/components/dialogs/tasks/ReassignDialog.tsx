@@ -20,50 +20,23 @@ import {
 import { Loader2 } from 'lucide-react';
 import { tasksApi } from '@/lib/api';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
-import { useOrganization, useAuth } from '@clerk/clerk-react';
-import type { OrganizationMembershipResource } from '@clerk/types';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/useAuth';
+import { useMutation } from '@tanstack/react-query';
+import { useOrganizationMembers } from '@/hooks/useOrganizationMembers';
 
 export interface ReassignDialogProps {
   sharedTask: SharedTaskRecord;
 }
 
-type MemberOption = {
-  userId: string;
-  label: string;
-};
-
-const buildMemberLabel = (
-  membership: OrganizationMembershipResource
-): string => {
-  const data = membership.publicUserData;
-  if (!data) {
-    return 'Member';
-  }
-
-  const combinedName = [data.firstName, data.lastName]
-    .filter((part): part is string => Boolean(part && part.trim().length > 0))
-    .join(' ')
-    .trim();
-  if (combinedName.length > 0) {
-    return combinedName;
-  }
-
-  if (data.identifier && data.identifier.trim().length > 0) {
-    return data.identifier;
-  }
-
-  if (data.userId && data.userId.trim().length > 0) {
-    return data.userId;
-  }
-
-  return 'Member';
+const buildMemberLabel = (member: { user_id: string }): string => {
+  // Backend only returns user_id, role, and joined_at
+  // Use user_id as the label
+  return member.user_id;
 };
 
 export const ReassignDialog = NiceModal.create<ReassignDialogProps>(
   ({ sharedTask }) => {
     const modal = useModal();
-    const { organization } = useOrganization();
     const { userId } = useAuth();
 
     const [selection, setSelection] = useState<string | undefined>(
@@ -72,40 +45,8 @@ export const ReassignDialog = NiceModal.create<ReassignDialogProps>(
     const [submitError, setSubmitError] = useState<string | null>(null);
 
     const isCurrentAssignee = sharedTask.assignee_user_id === userId;
-    const organizationId = organization?.id ?? null;
 
-    const membersQuery = useQuery({
-      queryKey: ['tasks', 'reassign', 'members', organizationId],
-      enabled: modal.visible && Boolean(organizationId),
-      queryFn: async (): Promise<MemberOption[]> => {
-        if (!organization || !organizationId) {
-          throw new Error(
-            'Organization context is required to reassign tasks.'
-          );
-        }
-
-        const memberships = await organization.getMemberships();
-        return memberships.data
-          .map((membership: OrganizationMembershipResource) => {
-            const memberUserId = membership.publicUserData?.userId;
-            if (!memberUserId) {
-              return null;
-            }
-
-            return {
-              userId: memberUserId,
-              label: buildMemberLabel(membership),
-            };
-          })
-          .filter((member): member is MemberOption => Boolean(member))
-          .sort((a, b) =>
-            a.label.localeCompare(b.label, undefined, {
-              sensitivity: 'base',
-            })
-          );
-      },
-      staleTime: 5 * 60 * 1000,
-    });
+    const membersQuery = useOrganizationMembers();
 
     useEffect(() => {
       if (!modal.visible) {
@@ -170,14 +111,9 @@ export const ReassignDialog = NiceModal.create<ReassignDialogProps>(
       }
     };
 
-    const organizationError =
-      modal.visible && !organization
-        ? 'Organization context is required to reassign tasks.'
-        : null;
-
-    const membersError =
-      organizationError ??
-      (membersQuery.isError ? 'Failed to load organization members.' : null);
+    const membersError = membersQuery.isError
+      ? 'Failed to load organization members.'
+      : null;
 
     const memberOptions = membersQuery.data ?? [];
 
@@ -242,10 +178,10 @@ export const ReassignDialog = NiceModal.create<ReassignDialogProps>(
               </SelectTrigger>
               <SelectContent>
                 {memberOptions.map((member) => (
-                  <SelectItem key={member.userId} value={member.userId}>
-                    {member.userId === userId
-                      ? `${member.label}`
-                      : member.label}
+                  <SelectItem key={member.user_id} value={member.user_id}>
+                    {member.user_id === userId
+                      ? `${buildMemberLabel(member)} (you)`
+                      : buildMemberLabel(member)}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -1,16 +1,14 @@
 import { useCallback, type ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LogIn, type LucideIcon } from 'lucide-react';
-import { useClerk } from '@clerk/clerk-react';
+import NiceModal from '@ebay/nice-modal-react';
+import { OAuthDialog } from '@/components/dialogs';
 
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-type LoginMode = 'signIn' | 'signUp';
-
 interface LoginRequiredPromptProps {
-  mode?: LoginMode;
   className?: string;
   buttonVariant?: ComponentProps<typeof Button>['variant'];
   buttonSize?: ComponentProps<typeof Button>['size'];
@@ -22,11 +20,7 @@ interface LoginRequiredPromptProps {
   icon?: LucideIcon;
 }
 
-const getRedirectUrl = () =>
-  typeof window !== 'undefined' ? window.location.href : undefined;
-
 export function LoginRequiredPrompt({
-  mode = 'signUp',
   className,
   buttonVariant = 'outline',
   buttonSize = 'sm',
@@ -38,20 +32,14 @@ export function LoginRequiredPrompt({
   icon,
 }: LoginRequiredPromptProps) {
   const { t } = useTranslation('tasks');
-  const { redirectToSignIn, redirectToSignUp } = useClerk();
 
   const handleRedirect = useCallback(() => {
     if (onAction) {
       onAction();
       return;
     }
-    const redirectUrl = getRedirectUrl();
-    if (mode === 'signIn') {
-      void redirectToSignIn({ redirectUrl });
-      return;
-    }
-    void redirectToSignUp({ redirectUrl });
-  }, [mode, onAction, redirectToSignIn, redirectToSignUp]);
+    void NiceModal.show(OAuthDialog);
+  }, [onAction]);
 
   const Icon = icon ?? LogIn;
 

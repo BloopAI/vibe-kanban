@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { useClerkPublicUserData } from '@/hooks/useClerkPublicUserData';
 
 interface UserAvatarProps {
   firstName?: string | null;
   lastName?: string | null;
   username?: string | null;
-  userId?: string | null;
   imageUrl?: string | null;
   className?: string;
 }
@@ -68,30 +66,24 @@ export const UserAvatar = ({
   firstName,
   lastName,
   username,
-  userId,
   imageUrl,
   className,
 }: UserAvatarProps) => {
-  const { data: clerkData } = useClerkPublicUserData(userId);
   const [imageError, setImageError] = useState(false);
 
-  const effectiveFirstName = firstName ?? clerkData?.firstName ?? null;
-  const effectiveLastName = lastName ?? clerkData?.lastName ?? null;
-  const effectiveUsername = username ?? clerkData?.identifier ?? null;
+  const effectiveFirstName = firstName ?? null;
+  const effectiveLastName = lastName ?? null;
+  const effectiveUsername = username ?? null;
 
   const optimizedImageUrl = useMemo(() => {
-    const sourceUrl = imageUrl ?? clerkData?.imageUrl ?? null;
-    return buildOptimizedImageUrl(sourceUrl);
-  }, [imageUrl, clerkData?.imageUrl]);
+    return buildOptimizedImageUrl(imageUrl);
+  }, [imageUrl]);
 
   useEffect(() => {
     setImageError(false);
   }, [optimizedImageUrl]);
 
-  const shouldShowImage =
-    Boolean(optimizedImageUrl) &&
-    !imageError &&
-    (Boolean(imageUrl) || Boolean(clerkData?.hasImage));
+  const shouldShowImage = Boolean(optimizedImageUrl) && !imageError;
 
   const initials = buildInitials(
     effectiveFirstName,
