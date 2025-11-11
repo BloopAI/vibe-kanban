@@ -5,11 +5,11 @@ use db::{
     models::{project::Project, shared_task::SharedTask, task::Task},
 };
 use remote::{
-    api::tasks::{
+    db::projects::ProjectMetadata,
+    routes::tasks::{
         AssignSharedTaskRequest, CreateSharedTaskRequest, DeleteSharedTaskRequest,
         SharedTaskResponse, UpdateSharedTaskRequest,
     },
-    db::projects::ProjectMetadata,
 };
 use reqwest::{Client as HttpClient, StatusCode};
 use uuid::Uuid;

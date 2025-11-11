@@ -10,8 +10,8 @@ use db::{
 };
 use remote::{
     activity::{ActivityEvent, ActivityResponse},
-    api::tasks::BulkSharedTasksResponse,
     db::{projects::ProjectMetadata, tasks::SharedTaskActivityPayload},
+    routes::tasks::BulkSharedTasksResponse,
 };
 use reqwest::Client as HttpClient;
 use uuid::Uuid;

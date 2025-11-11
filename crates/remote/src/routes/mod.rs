@@ -19,7 +19,7 @@ mod identity;
 mod oauth;
 mod organization_members;
 mod organizations;
-mod tasks;
+pub mod tasks;
 
 pub fn router(state: AppState) -> Router {
     let trace_layer = TraceLayer::new_for_http()
