@@ -20,6 +20,7 @@ import {
   LogOut,
   LogIn,
   Building2,
+  UserPlus,
 } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { UserAvatar } from '@/components/tasks/UserAvatar';
@@ -44,6 +45,7 @@ import {
   OAuthDialog,
   OrganizationSwitcherDialog,
   CreateOrganizationDialog,
+  InviteMemberDialog,
 } from '@/components/dialogs';
 import { useUserSystem } from '@/components/config-provider';
 import { oauthApi } from '@/lib/api';
@@ -281,6 +283,12 @@ export function Navbar() {
                     >
                       <Plus className="mr-2 h-4 w-4" />
                       Create Organization
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() => NiceModal.show(InviteMemberDialog)}
+                    >
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      Invite Member
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={handleOAuthLogout}>
                       <LogOut className="mr-2 h-4 w-4" />

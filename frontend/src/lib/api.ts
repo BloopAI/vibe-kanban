@@ -57,6 +57,8 @@ import {
   ListMembersResponse,
   CreateOrganizationRequest,
   CreateOrganizationResponse,
+  CreateInvitationRequest,
+  CreateInvitationResponse,
 } from 'shared/types';
 
 // Re-export types for convenience
@@ -974,5 +976,20 @@ export const organizationsApi = {
       body: JSON.stringify(data),
     });
     return handleApiResponse<CreateOrganizationResponse>(response);
+  },
+
+  createInvitation: async (
+    orgId: string,
+    data: CreateInvitationRequest
+  ): Promise<CreateInvitationResponse> => {
+    const response = await makeRequest(
+      `/api/organizations/${orgId}/invitations`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse<CreateInvitationResponse>(response);
   },
 };
