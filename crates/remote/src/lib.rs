@@ -1,5 +1,4 @@
 pub mod activity;
-pub mod api;
 mod app;
 mod auth;
 pub mod config;

@@ -5,6 +5,7 @@ use axum::{
     response::{IntoResponse, Response},
     routing::{delete, get, patch, post},
 };
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::instrument;
 use uuid::Uuid;
@@ -12,18 +13,16 @@ use uuid::Uuid;
 use super::error::{identity_error_response, task_error_response};
 use crate::{
     AppState,
-    api::tasks::{
-        AssignSharedTaskRequest, BulkSharedTasksResponse, CreateSharedTaskRequest,
-        DeleteSharedTaskRequest, SharedTaskResponse, UpdateSharedTaskRequest,
-    },
     auth::RequestContext,
     db::{
         organizations::OrganizationRepository,
+        projects::ProjectMetadata,
         tasks::{
-            AssignTaskData, CreateSharedTaskData, DeleteTaskData, SharedTaskError,
-            SharedTaskRepository, UpdateSharedTaskData, ensure_text_size,
+            AssignTaskData, CreateSharedTaskData, DeleteTaskData, SharedTask,
+            SharedTaskError, SharedTaskRepository, SharedTaskWithUser, TaskStatus,
+            UpdateSharedTaskData, ensure_text_size,
         },
-        users::UserRepository,
+        users::{UserData, UserRepository},
     },
 };
 
@@ -273,5 +272,54 @@ pub async fn delete_shared_task(
     match repo.delete_task(ctx.organization.id, task_id, data).await {
         Ok(task) => (StatusCode::OK, Json(SharedTaskResponse::from(task))).into_response(),
         Err(error) => task_error_response(error, "failed to delete shared task"),
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BulkSharedTasksResponse {
+    pub tasks: Vec<crate::db::tasks::SharedTaskActivityPayload>,
+    pub deleted_task_ids: Vec<Uuid>,
+    pub latest_seq: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateSharedTaskRequest {
+    pub project: ProjectMetadata,
+    pub title: String,
+    pub description: Option<String>,
+    pub assignee_user_id: Option<Uuid>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateSharedTaskRequest {
+    pub title: Option<String>,
+    pub description: Option<String>,
+    pub status: Option<TaskStatus>,
+    pub version: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AssignSharedTaskRequest {
+    pub new_assignee_user_id: Option<Uuid>,
+    pub version: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeleteSharedTaskRequest {
+    pub version: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SharedTaskResponse {
+    pub task: SharedTask,
+    pub user: Option<UserData>,
+}
+
+impl From<SharedTaskWithUser> for SharedTaskResponse {
+    fn from(v: SharedTaskWithUser) -> Self {
+        Self {
+            task: v.task,
+            user: v.user,
+        }
     }
 }
