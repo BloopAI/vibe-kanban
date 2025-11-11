@@ -30,7 +30,7 @@ export type InviteMemberResult = {
 
 export const InviteMemberDialog = NiceModal.create(() => {
   const modal = useModal();
-  const { t } = useTranslation();
+  const { t } = useTranslation('organization');
   const { loginStatus } = useUserSystem();
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<MemberRole>(MemberRole.MEMBER);
@@ -113,16 +113,16 @@ export const InviteMemberDialog = NiceModal.create(() => {
     <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{t('organization.inviteDialog.title')}</DialogTitle>
+          <DialogTitle>{t('inviteDialog.title')}</DialogTitle>
           <DialogDescription>
-            {t('organization.inviteDialog.description')}
+            {t('inviteDialog.description')}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="invite-email">
-              {t('organization.inviteDialog.emailLabel')}
+              {t('inviteDialog.emailLabel')}
             </Label>
             <Input
               id="invite-email"
@@ -132,7 +132,7 @@ export const InviteMemberDialog = NiceModal.create(() => {
                 setEmail(e.target.value);
                 setError(null);
               }}
-              placeholder={t('organization.inviteDialog.emailPlaceholder')}
+              placeholder={t('inviteDialog.emailPlaceholder')}
               autoFocus
               disabled={isSubmitting}
             />
@@ -140,7 +140,7 @@ export const InviteMemberDialog = NiceModal.create(() => {
 
           <div className="space-y-2">
             <Label htmlFor="invite-role">
-              {t('organization.inviteDialog.roleLabel')}
+              {t('inviteDialog.roleLabel')}
             </Label>
             <Select
               value={role}
@@ -149,20 +149,20 @@ export const InviteMemberDialog = NiceModal.create(() => {
             >
               <SelectTrigger id="invite-role">
                 <SelectValue
-                  placeholder={t('organization.inviteDialog.rolePlaceholder')}
+                  placeholder={t('inviteDialog.rolePlaceholder')}
                 />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={MemberRole.MEMBER}>
-                  {t('organization.roles.member')}
+                  {t('roles.member')}
                 </SelectItem>
                 <SelectItem value={MemberRole.ADMIN}>
-                  {t('organization.roles.admin')}
+                  {t('roles.admin')}
                 </SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              {t('organization.inviteDialog.roleHelper')}
+              {t('inviteDialog.roleHelper')}
             </p>
           </div>
 
@@ -186,8 +186,8 @@ export const InviteMemberDialog = NiceModal.create(() => {
             disabled={!email.trim() || isSubmitting}
           >
             {isSubmitting
-              ? t('organization.inviteDialog.sending')
-              : t('organization.inviteDialog.sendButton')}
+              ? t('inviteDialog.sending')
+              : t('inviteDialog.sendButton')}
           </Button>
         </DialogFooter>
       </DialogContent>
