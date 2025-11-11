@@ -35,7 +35,7 @@ import { MemberRole as MemberRoleEnum } from 'shared/types';
 import { useTranslation } from 'react-i18next';
 
 export function OrganizationSettings() {
-  const { t } = useTranslation();
+  const { t } = useTranslation('organization');
   const { loginStatus } = useUserSystem();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
