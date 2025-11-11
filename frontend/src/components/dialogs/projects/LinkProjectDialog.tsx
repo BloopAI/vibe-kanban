@@ -74,9 +74,7 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
         } as LinkProjectResult);
         modal.hide();
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : 'Failed to link project'
-        );
+        setError(err instanceof Error ? err.message : 'Failed to link project');
         setIsSubmitting(false);
       }
     };
