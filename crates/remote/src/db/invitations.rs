@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{PgPool, Type};
+use sqlx::PgPool;
+pub use utils::api::organizations::InvitationStatus;
 use uuid::Uuid;
 
 use super::{
@@ -8,15 +9,6 @@ use super::{
     organization_members::{MemberRole, assert_admin, ensure_member_metadata_with_role},
     organizations::Organization,
 };
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
-#[sqlx(type_name = "invitation_status", rename_all = "lowercase")]
-pub enum InvitationStatus {
-    Pending,
-    Accepted,
-    Declined,
-    Expired,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct Invitation {

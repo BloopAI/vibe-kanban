@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/select';
 import { Loader2, Building2 } from 'lucide-react';
 import { useUserSystem } from '@/components/config-provider';
-import { useUserOrganizations } from '@/hooks/api/useUserOrganizations';
+import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useTranslation } from 'react-i18next';
 
 const OrganizationSwitcherDialog = NiceModal.create(() => {

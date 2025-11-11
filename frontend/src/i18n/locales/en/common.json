@@ -66,6 +66,9 @@
     "currentBadge": " (current)"
   },
   "signOut": "Sign out",
+  "devMode": {
+    "banner": "Development Mode - This is a development build"
+  },
   "oauth": {
     "title": "Sign in with OAuth",
     "description": "Connect your account using OAuth to access additional features",

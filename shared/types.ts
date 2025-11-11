@@ -72,6 +72,8 @@ export type StatusResponse = { logged_in: boolean, profile: ProfileResponse | nu
 
 export enum MemberRole { ADMIN = "ADMIN", MEMBER = "MEMBER" }
 
+export enum InvitationStatus { PENDING = "PENDING", ACCEPTED = "ACCEPTED", DECLINED = "DECLINED", EXPIRED = "EXPIRED" }
+
 export type Organization = { id: string, name: string, slug: string, created_at: string, updated_at: string, };
 
 export type OrganizationWithRole = { id: string, name: string, slug: string, created_at: string, updated_at: string, user_role: MemberRole, };
@@ -86,7 +88,7 @@ export type CreateOrganizationResponse = { organization: OrganizationWithRole, }
 
 export type UpdateOrganizationRequest = { name: string, };
 
-export type Invitation = { id: string, organization_id: string, invited_by_user_id: string | null, email: string, role: MemberRole, status: string, token: string, created_at: string, expires_at: string, };
+export type Invitation = { id: string, organization_id: string, invited_by_user_id: string | null, email: string, role: MemberRole, status: InvitationStatus, token: string, created_at: string, expires_at: string, };
 
 export type CreateInvitationRequest = { email: string, role: MemberRole, };
 

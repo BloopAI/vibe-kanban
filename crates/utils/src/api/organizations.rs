@@ -15,6 +15,18 @@ pub enum MemberRole {
     Member,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, TS)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[sqlx(type_name = "invitation_status", rename_all = "lowercase")]
+#[ts(use_ts_enum)]
+#[ts(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum InvitationStatus {
+    Pending,
+    Accepted,
+    Declined,
+    Expired,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, TS)]
 #[ts(export)]
 pub struct Organization {
@@ -78,7 +90,7 @@ pub struct Invitation {
     pub invited_by_user_id: Option<Uuid>,
     pub email: String,
     pub role: MemberRole,
-    pub status: String,
+    pub status: InvitationStatus,
     pub token: String,
     pub created_at: DateTime<Utc>,
     pub expires_at: DateTime<Utc>,

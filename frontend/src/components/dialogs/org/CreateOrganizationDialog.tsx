@@ -13,6 +13,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { organizationsApi } from '@/lib/api';
+import { useTranslation } from 'react-i18next';
 
 export type CreateOrganizationResult = {
   action: 'created' | 'canceled';
@@ -21,6 +22,7 @@ export type CreateOrganizationResult = {
 
 export const CreateOrganizationDialog = NiceModal.create(() => {
   const modal = useModal();
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [isManualSlug, setIsManualSlug] = useState(false);
@@ -132,15 +134,17 @@ export const CreateOrganizationDialog = NiceModal.create(() => {
     <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Create New Organization</DialogTitle>
+          <DialogTitle>{t('organization.createDialog.title')}</DialogTitle>
           <DialogDescription>
-            Create a new organization to collaborate with your team.
+            {t('organization.createDialog.description')}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="org-name">Organization Name</Label>
+            <Label htmlFor="org-name">
+              {t('organization.createDialog.nameLabel')}
+            </Label>
             <Input
               id="org-name"
               value={name}
@@ -148,7 +152,7 @@ export const CreateOrganizationDialog = NiceModal.create(() => {
                 setName(e.target.value);
                 setError(null);
               }}
-              placeholder="e.g., Acme Corporation"
+              placeholder={t('organization.createDialog.namePlaceholder')}
               maxLength={50}
               autoFocus
               disabled={isSubmitting}
@@ -156,17 +160,19 @@ export const CreateOrganizationDialog = NiceModal.create(() => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="org-slug">Slug</Label>
+            <Label htmlFor="org-slug">
+              {t('organization.createDialog.slugLabel')}
+            </Label>
             <Input
               id="org-slug"
               value={slug}
               onChange={handleSlugChange}
-              placeholder="e.g., acme-corporation"
+              placeholder={t('organization.createDialog.slugPlaceholder')}
               maxLength={50}
               disabled={isSubmitting}
             />
             <p className="text-xs text-muted-foreground">
-              Used in URLs. Lowercase letters, numbers, and hyphens only.
+              {t('organization.createDialog.slugHelper')}
             </p>
           </div>
 
@@ -183,13 +189,15 @@ export const CreateOrganizationDialog = NiceModal.create(() => {
             onClick={handleCancel}
             disabled={isSubmitting}
           >
-            Cancel
+            {t('buttons.cancel')}
           </Button>
           <Button
             onClick={handleCreate}
             disabled={!name.trim() || !slug.trim() || isSubmitting}
           >
-            {isSubmitting ? 'Creating...' : 'Create Organization'}
+            {isSubmitting
+              ? t('organization.createDialog.creating')
+              : t('organization.createDialog.createButton')}
           </Button>
         </DialogFooter>
       </DialogContent>

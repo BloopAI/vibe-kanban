@@ -66,6 +66,9 @@
     "currentBadge": " (actual)"
   },
   "signOut": "Cerrar sesión",
+  "devMode": {
+    "banner": "Modo de Desarrollo - Esta es una compilación de desarrollo"
+  },
   "oauth": {
     "title": "Iniciar sesión con OAuth",
     "description": "Conecta tu cuenta usando OAuth para acceder a funciones adicionales",

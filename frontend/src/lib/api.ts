@@ -59,6 +59,10 @@ import {
   CreateOrganizationResponse,
   CreateInvitationRequest,
   CreateInvitationResponse,
+  UpdateMemberRoleRequest,
+  UpdateMemberRoleResponse,
+  Invitation,
+  ListInvitationsResponse,
 } from 'shared/types';
 
 // Re-export types for convenience
@@ -991,5 +995,39 @@ export const organizationsApi = {
       }
     );
     return handleApiResponse<CreateInvitationResponse>(response);
+  },
+
+  removeMember: async (orgId: string, userId: string): Promise<void> => {
+    const response = await makeRequest(
+      `/api/organizations/${orgId}/members/${userId}`,
+      {
+        method: 'DELETE',
+      }
+    );
+    return handleApiResponse<void>(response);
+  },
+
+  updateMemberRole: async (
+    orgId: string,
+    userId: string,
+    data: UpdateMemberRoleRequest
+  ): Promise<UpdateMemberRoleResponse> => {
+    const response = await makeRequest(
+      `/api/organizations/${orgId}/members/${userId}/role`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse<UpdateMemberRoleResponse>(response);
+  },
+
+  listInvitations: async (orgId: string): Promise<Invitation[]> => {
+    const response = await makeRequest(
+      `/api/organizations/${orgId}/invitations`
+    );
+    const result = await handleApiResponse<ListInvitationsResponse>(response);
+    return result.invitations;
   },
 };

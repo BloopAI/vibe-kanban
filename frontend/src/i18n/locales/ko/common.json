@@ -66,6 +66,9 @@
     "currentBadge": " (현재)"
   },
   "signOut": "로그아웃",
+  "devMode": {
+    "banner": "개발 모드 - 개발 빌드입니다"
+  },
   "oauth": {
     "title": "OAuth로 로그인",
     "description": "OAuth를 사용하여 계정을 연결하고 추가 기능에 액세스하세요",

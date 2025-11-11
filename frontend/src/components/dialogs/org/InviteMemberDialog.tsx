@@ -22,6 +22,7 @@ import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { organizationsApi } from '@/lib/api';
 import { useUserSystem } from '@/components/config-provider';
 import { MemberRole } from 'shared/types';
+import { useTranslation } from 'react-i18next';
 
 export type InviteMemberResult = {
   action: 'invited' | 'canceled';
@@ -29,6 +30,7 @@ export type InviteMemberResult = {
 
 export const InviteMemberDialog = NiceModal.create(() => {
   const modal = useModal();
+  const { t } = useTranslation();
   const { loginStatus } = useUserSystem();
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<MemberRole>(MemberRole.MEMBER);
@@ -111,15 +113,17 @@ export const InviteMemberDialog = NiceModal.create(() => {
     <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Invite Member</DialogTitle>
+          <DialogTitle>{t('organization.inviteDialog.title')}</DialogTitle>
           <DialogDescription>
-            Send an invitation to join your organization.
+            {t('organization.inviteDialog.description')}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="invite-email">Email Address</Label>
+            <Label htmlFor="invite-email">
+              {t('organization.inviteDialog.emailLabel')}
+            </Label>
             <Input
               id="invite-email"
               type="email"
@@ -128,29 +132,37 @@ export const InviteMemberDialog = NiceModal.create(() => {
                 setEmail(e.target.value);
                 setError(null);
               }}
-              placeholder="colleague@example.com"
+              placeholder={t('organization.inviteDialog.emailPlaceholder')}
               autoFocus
               disabled={isSubmitting}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="invite-role">Role</Label>
+            <Label htmlFor="invite-role">
+              {t('organization.inviteDialog.roleLabel')}
+            </Label>
             <Select
               value={role}
               onValueChange={(value) => setRole(value as MemberRole)}
               disabled={isSubmitting}
             >
               <SelectTrigger id="invite-role">
-                <SelectValue placeholder="Select a role" />
+                <SelectValue
+                  placeholder={t('organization.inviteDialog.rolePlaceholder')}
+                />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={MemberRole.MEMBER}>Member</SelectItem>
-                <SelectItem value={MemberRole.ADMIN}>Admin</SelectItem>
+                <SelectItem value={MemberRole.MEMBER}>
+                  {t('organization.roles.member')}
+                </SelectItem>
+                <SelectItem value={MemberRole.ADMIN}>
+                  {t('organization.roles.admin')}
+                </SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Admins can manage members and organization settings.
+              {t('organization.inviteDialog.roleHelper')}
             </p>
           </div>
 
@@ -167,13 +179,15 @@ export const InviteMemberDialog = NiceModal.create(() => {
             onClick={handleCancel}
             disabled={isSubmitting}
           >
-            Cancel
+            {t('buttons.cancel')}
           </Button>
           <Button
             onClick={handleInvite}
             disabled={!email.trim() || isSubmitting}
           >
-            {isSubmitting ? 'Sending...' : 'Send Invitation'}
+            {isSubmitting
+              ? t('organization.inviteDialog.sending')
+              : t('organization.inviteDialog.sendButton')}
           </Button>
         </DialogFooter>
       </DialogContent>
