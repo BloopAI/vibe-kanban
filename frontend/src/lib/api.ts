@@ -1030,4 +1030,11 @@ export const organizationsApi = {
     const result = await handleApiResponse<ListInvitationsResponse>(response);
     return result.invitations;
   },
+
+  deleteOrganization: async (orgId: string): Promise<void> => {
+    const response = await makeRequest(`/api/organizations/${orgId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
 };

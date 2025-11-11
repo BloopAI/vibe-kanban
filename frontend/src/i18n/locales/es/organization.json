@@ -49,7 +49,14 @@
     "selectHelper": "Choose an organization to view and manage its members",
     "noOrganizations": "No organizations available",
     "loadingOrganizations": "Loading organizations...",
-    "loadError": "Failed to load organizations"
+    "loadError": "Failed to load organizations",
+    "dangerZone": "Danger Zone",
+    "dangerZoneDescription": "Irreversible and destructive actions",
+    "deleteOrganization": "Delete Organization",
+    "deleteOrganizationDescription": "Permanently delete this organization and all its data",
+    "confirmDelete": "Are you sure you want to delete {{orgName}}? This action cannot be undone.",
+    "deleteSuccess": "Organization deleted successfully",
+    "deleteError": "Failed to delete organization"
   },
   "confirmRemoveMember": "Are you sure you want to remove this member from the organization?"
 }

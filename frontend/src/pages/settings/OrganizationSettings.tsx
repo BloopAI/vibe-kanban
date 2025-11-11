@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, UserPlus, Plus } from 'lucide-react';
+import { Loader2, UserPlus, Plus, Trash2 } from 'lucide-react';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationSelection } from '@/hooks/useOrganizationSelection';
 import { useOrganizationMembersQuery } from '@/hooks/useOrganizationMembersQuery';
@@ -82,27 +82,47 @@ export function OrganizationSettings() {
     });
 
   // Organization mutations
-  const { removeMember, updateMemberRole, refetchMembers, refetchInvitations } =
-    useOrganizationMutations({
-      onRemoveSuccess: () => {
-        setSuccess('Member removed successfully');
-        setTimeout(() => setSuccess(null), 3000);
-      },
-      onRemoveError: (err) => {
-        setError(
-          err instanceof Error ? err.message : 'Failed to remove member'
+  const {
+    removeMember,
+    updateMemberRole,
+    deleteOrganization,
+    refetchMembers,
+    refetchInvitations,
+  } = useOrganizationMutations({
+    onRemoveSuccess: () => {
+      setSuccess('Member removed successfully');
+      setTimeout(() => setSuccess(null), 3000);
+    },
+    onRemoveError: (err) => {
+      setError(err instanceof Error ? err.message : 'Failed to remove member');
+    },
+    onRoleChangeSuccess: () => {
+      setSuccess('Member role updated successfully');
+      setTimeout(() => setSuccess(null), 3000);
+    },
+    onRoleChangeError: (err) => {
+      setError(
+        err instanceof Error ? err.message : 'Failed to update member role'
+      );
+    },
+    onDeleteSuccess: async () => {
+      setSuccess(t('settings.deleteSuccess'));
+      setTimeout(() => setSuccess(null), 3000);
+      // Refetch organizations and switch to personal org
+      await refetchOrgs();
+      if (orgsResponse?.organizations) {
+        const personalOrg = orgsResponse.organizations.find((org) =>
+          org.slug.startsWith('personal-')
         );
-      },
-      onRoleChangeSuccess: () => {
-        setSuccess('Member role updated successfully');
-        setTimeout(() => setSuccess(null), 3000);
-      },
-      onRoleChangeError: (err) => {
-        setError(
-          err instanceof Error ? err.message : 'Failed to update member role'
-        );
-      },
-    });
+        if (personalOrg) {
+          handleOrgSelect(personalOrg.id);
+        }
+      }
+    },
+    onDeleteError: (err) => {
+      setError(err instanceof Error ? err.message : t('settings.deleteError'));
+    },
+  });
 
   const handleCreateOrganization = async () => {
     try {
@@ -110,7 +130,7 @@ export function OrganizationSettings() {
         CreateOrganizationDialog
       );
 
-      if (result.action === 'created') {
+      if (result.action === 'created' && result.organizationId) {
         await refetchOrgs();
         handleOrgSelect(result.organizationId ?? '');
         setSuccess('Organization created successfully');
@@ -158,6 +178,21 @@ export function OrganizationSettings() {
     setError(null);
     updateMemberRole.mutate({ orgId: selectedOrgId, userId, role: newRole });
   };
+
+  const handleDeleteOrganization = async () => {
+    if (!selectedOrgId || !selectedOrg) return;
+
+    const confirmed = window.confirm(
+      t('settings.confirmDelete', { orgName: selectedOrg.name })
+    );
+    if (!confirmed) return;
+
+    setError(null);
+    deleteOrganization.mutate(selectedOrgId);
+  };
+
+  // Check if current org is personal (cannot be deleted)
+  const isPersonalOrg = selectedOrg?.slug.startsWith('personal-') ?? false;
 
   if (orgsLoading) {
     return (
@@ -319,6 +354,43 @@ export function OrganizationSettings() {
                 ))}
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {selectedOrg && isAdmin && !isPersonalOrg && (
+        <Card className="border-destructive">
+          <CardHeader>
+            <CardTitle className="text-destructive">
+              {t('settings.dangerZone')}
+            </CardTitle>
+            <CardDescription>
+              {t('settings.dangerZoneDescription')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">
+                  {t('settings.deleteOrganization')}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.deleteOrganizationDescription')}
+                </p>
+              </div>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteOrganization}
+                disabled={deleteOrganization.isPending}
+              >
+                {deleteOrganization.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4 mr-2" />
+                )}
+                {t('common:buttons.delete')}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}

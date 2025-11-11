@@ -7,6 +7,8 @@ interface UseOrganizationMutationsOptions {
   onRemoveError?: (err: unknown) => void;
   onRoleChangeSuccess?: () => void;
   onRoleChangeError?: (err: unknown) => void;
+  onDeleteSuccess?: () => void;
+  onDeleteError?: (err: unknown) => void;
 }
 
 /**
@@ -75,9 +77,23 @@ export function useOrganizationMutations(
     });
   };
 
+  const deleteOrganization = useMutation({
+    mutationFn: (orgId: string) => organizationsApi.deleteOrganization(orgId),
+    onSuccess: () => {
+      // Invalidate user's organizations list since we deleted one
+      queryClient.invalidateQueries({ queryKey: ['user', 'organizations'] });
+      options?.onDeleteSuccess?.();
+    },
+    onError: (err) => {
+      console.error('Failed to delete organization:', err);
+      options?.onDeleteError?.(err);
+    },
+  });
+
   return {
     removeMember,
     updateMemberRole,
+    deleteOrganization,
     refetchMembers,
     refetchInvitations,
   };
