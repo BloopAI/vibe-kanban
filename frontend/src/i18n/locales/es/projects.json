@@ -2,6 +2,7 @@
   "title": "Proyectos",
   "subtitle": "Gestiona tus proyectos y sigue su progreso",
   "createProject": "Crear Proyecto",
+  "linkToOrganization": "Vincular a Organización",
   "loading": "Cargando proyectos...",
   "errors": {
     "fetchFailed": "Error al cargar proyectos"

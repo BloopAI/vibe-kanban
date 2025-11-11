@@ -2,6 +2,7 @@
   "title": "プロジェクト",
   "subtitle": "プロジェクトを管理し、進捗を追跡します",
   "createProject": "プロジェクトを作成",
+  "linkToOrganization": "組織にリンク",
   "loading": "プロジェクトを読み込み中...",
   "errors": {
     "fetchFailed": "プロジェクトの取得に失敗しました"
