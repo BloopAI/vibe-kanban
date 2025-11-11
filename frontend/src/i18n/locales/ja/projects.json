@@ -2,6 +2,7 @@
   "title": "プロジェクト",
   "subtitle": "プロジェクトを管理し、進捗を追跡します",
   "createProject": "プロジェクトを作成",
+  "linkToOrganization": "組織にリンク",
   "loading": "プロジェクトを読み込み中...",
   "errors": {
     "fetchFailed": "プロジェクトの取得に失敗しました"
@@ -10,5 +11,31 @@
     "title": "プロジェクトがありません",
     "description": "最初のプロジェクトを作成して始めましょう。",
     "createFirst": "最初のプロジェクトを作成"
+  },
+  "linkDialog": {
+    "title": "プロジェクトを組織にリンク",
+    "description": "このローカルプロジェクトをリモート組織にリンクして、コラボレーションと同期を行います。",
+    "projectLabel": "プロジェクト",
+    "organizationLabel": "組織",
+    "loadingOrganizations": "組織を読み込み中...",
+    "noOrganizations": "利用可能な組織がありません。まず組織を作成してください。",
+    "selectOrganization": "組織を選択",
+    "linkModeLabel": "リンクモード",
+    "linkToExisting": "既存にリンク",
+    "createNew": "新規作成",
+    "remoteProjectLabel": "リモートプロジェクト",
+    "loadingRemoteProjects": "リモートプロジェクトを読み込み中...",
+    "noRemoteProjects": "この組織にリモートプロジェクトが見つかりません。代わりに新しいプロジェクトを作成してください。",
+    "selectRemoteProject": "リモートプロジェクトを選択",
+    "newProjectNameLabel": "新しいリモートプロジェクト名",
+    "newProjectNamePlaceholder": "プロジェクト名を入力",
+    "linking": "リンク中...",
+    "linkButton": "プロジェクトをリンク",
+    "errors": {
+      "selectOrganization": "組織を選択してください",
+      "selectRemoteProject": "リモートプロジェクトを選択してください",
+      "enterProjectName": "プロジェクト名を入力してください",
+      "linkFailed": "プロジェクトのリンクに失敗しました"
+    }
   }
 }

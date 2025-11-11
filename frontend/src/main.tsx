@@ -39,6 +39,7 @@ import {
   ReassignDialog,
   StopShareTaskDialog,
   CreateOrganizationDialog,
+  LinkProjectDialog,
 } from './components/dialogs';
 import { CreateAttemptDialog } from './components/dialogs/tasks/CreateAttemptDialog';
 import { EditBranchNameDialog } from './components/dialogs/tasks/EditBranchNameDialog';
@@ -71,6 +72,7 @@ NiceModal.register('share-task', ShareDialog);
 NiceModal.register('reassign-shared-task', ReassignDialog);
 NiceModal.register('stop-share-shared-task', StopShareTaskDialog);
 NiceModal.register('create-organization', CreateOrganizationDialog);
+NiceModal.register('link-project', LinkProjectDialog);
 
 import {
   useLocation,

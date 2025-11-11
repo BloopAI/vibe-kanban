@@ -5,6 +5,7 @@ import type {
   TagEditResult,
   ProjectFormDialogProps,
   ProjectFormDialogResult,
+  LinkProjectResult,
 } from '@/components/dialogs';
 
 /**
@@ -53,6 +54,21 @@ export function showProjectForm(
 ): Promise<ProjectFormDialogResult> {
   return showModal<ProjectFormDialogResult>(
     'project-form',
+    props as Record<string, unknown>
+  );
+}
+
+/**
+ * Show link project dialog
+ * @param props - Props for link project dialog (projectId and projectName)
+ * @returns Promise that resolves with link result
+ */
+export function showLinkProject(props: {
+  projectId: string;
+  projectName: string;
+}): Promise<LinkProjectResult> {
+  return showModal<LinkProjectResult>(
+    'link-project',
     props as Record<string, unknown>
   );
 }

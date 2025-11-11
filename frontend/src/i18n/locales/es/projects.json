@@ -2,6 +2,7 @@
   "title": "Proyectos",
   "subtitle": "Gestiona tus proyectos y sigue su progreso",
   "createProject": "Crear Proyecto",
+  "linkToOrganization": "Vincular a Organización",
   "loading": "Cargando proyectos...",
   "errors": {
     "fetchFailed": "Error al cargar proyectos"
@@ -10,5 +11,31 @@
     "title": "Aún no hay proyectos",
     "description": "Comienza creando tu primer proyecto.",
     "createFirst": "Crear tu primer proyecto"
+  },
+  "linkDialog": {
+    "title": "Vincular Proyecto a Organización",
+    "description": "Vincula este proyecto local a una organización remota para colaboración y sincronización.",
+    "projectLabel": "Proyecto",
+    "organizationLabel": "Organización",
+    "loadingOrganizations": "Cargando organizaciones...",
+    "noOrganizations": "No hay organizaciones disponibles. Crea una organización primero.",
+    "selectOrganization": "Selecciona una organización",
+    "linkModeLabel": "Modo de Vinculación",
+    "linkToExisting": "Vincular a Existente",
+    "createNew": "Crear Nuevo",
+    "remoteProjectLabel": "Proyecto Remoto",
+    "loadingRemoteProjects": "Cargando proyectos remotos...",
+    "noRemoteProjects": "No se encontraron proyectos remotos en esta organización. Intenta crear uno nuevo en su lugar.",
+    "selectRemoteProject": "Selecciona un proyecto remoto",
+    "newProjectNameLabel": "Nombre del Nuevo Proyecto Remoto",
+    "newProjectNamePlaceholder": "Ingresa el nombre del proyecto",
+    "linking": "Vinculando...",
+    "linkButton": "Vincular Proyecto",
+    "errors": {
+      "selectOrganization": "Por favor selecciona una organización",
+      "selectRemoteProject": "Por favor selecciona un proyecto remoto",
+      "enterProjectName": "Por favor ingresa un nombre de proyecto",
+      "linkFailed": "Error al vincular el proyecto"
+    }
   }
 }
