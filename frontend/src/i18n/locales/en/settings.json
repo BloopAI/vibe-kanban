@@ -35,6 +35,10 @@
           "label": "Language",
           "placeholder": "Select language",
           "helper": "Choose your preferred language. Browser Default follows your system language."
+        },
+        "textScale": {
+          "label": "Text Scale",
+          "helper": "Adjust the size of text in conversations, diffs, and logs. UI controls remain normal size."
         }
       },
       "taskExecution": {
