@@ -18,9 +18,9 @@ use crate::{
         organizations::OrganizationRepository,
         projects::ProjectMetadata,
         tasks::{
-            AssignTaskData, CreateSharedTaskData, DeleteTaskData, SharedTask,
-            SharedTaskError, SharedTaskRepository, SharedTaskWithUser, TaskStatus,
-            UpdateSharedTaskData, ensure_text_size,
+            AssignTaskData, CreateSharedTaskData, DeleteTaskData, SharedTask, SharedTaskError,
+            SharedTaskRepository, SharedTaskWithUser, TaskStatus, UpdateSharedTaskData,
+            ensure_text_size,
         },
         users::{UserData, UserRepository},
     },
