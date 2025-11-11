@@ -19,7 +19,7 @@ export function CopyFilesField({
       <MultiFileSearchTextarea
         value={value}
         onChange={onChange}
-        placeholder="Start typing a file path... (.env, config.local.json, .local/settings.yml)"
+        placeholder="Files, dirs & globs (e.g. .env.local, secrets/*.json, config/local/**)"
         rows={3}
         disabled={disabled}
         className="w-full px-3 py-2 text-sm border border-input bg-background text-foreground disabled:opacity-50 rounded-md resize-vertical focus:outline-none focus:ring-2 focus:ring-ring"
