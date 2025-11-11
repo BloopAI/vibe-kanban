@@ -10,6 +10,7 @@ export function useAuth() {
   return {
     isSignedIn: loginStatus?.status === 'loggedin',
     isLoaded: loginStatus !== null,
-    userId: loginStatus?.status === 'loggedin' ? 'user' : null, // Backend handles actual userId
+    userId:
+      loginStatus?.status === 'loggedin' ? loginStatus.profile.user_id : null,
   };
 }

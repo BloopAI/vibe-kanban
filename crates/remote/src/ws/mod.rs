@@ -17,7 +17,7 @@ pub struct WsQueryParams {
 }
 
 pub fn router() -> Router<AppState> {
-    Router::new().route("/v1/ws", get(upgrade))
+    Router::new().route("/ws", get(upgrade))
 }
 
 async fn upgrade(
