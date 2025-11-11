@@ -130,17 +130,15 @@ function ProjectCard({
                   <FolderOpen className="mr-2 h-4 w-4" />
                   Open in IDE
                 </DropdownMenuItem>
-                {!project.has_remote && (
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleLinkProject();
-                    }}
-                  >
-                    <Link2 className="mr-2 h-4 w-4" />
-                    {t('linkToOrganization')}
-                  </DropdownMenuItem>
-                )}
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleLinkProject();
+                  }}
+                >
+                  <Link2 className="mr-2 h-4 w-4" />
+                  {t('linkToOrganization')}
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();
