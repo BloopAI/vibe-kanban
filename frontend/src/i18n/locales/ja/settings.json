@@ -10,7 +10,9 @@
         "agents": "エージェント",
         "agentsDesc": "コーディングエージェントの設定",
         "mcp": "MCPサーバー",
-        "mcpDesc": "モデルコンテキストプロトコルサーバー"
+        "mcpDesc": "モデルコンテキストプロトコルサーバー",
+        "organizations": "Organization Settings",
+        "organizationsDesc": "Manage organization members and permissions"
       }
     },
     "general": {

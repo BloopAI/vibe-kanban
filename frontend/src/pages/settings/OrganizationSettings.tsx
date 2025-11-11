@@ -123,7 +123,7 @@ export function OrganizationSettings() {
   const handleRemoveMember = async (userId: string) => {
     if (!selectedOrgId) return;
 
-    const confirmed = window.confirm(t('organization.confirmRemoveMember'));
+    const confirmed = window.confirm(t('confirmRemoveMember'));
     if (!confirmed) return;
 
     setError(null);
@@ -142,7 +142,7 @@ export function OrganizationSettings() {
       <div className="flex items-center justify-center py-8">
         <Loader2 className="h-8 w-8 animate-spin" />
         <span className="ml-2">
-          {t('organization.settings.loadingOrganizations')}
+          {t('settings.loadingOrganizations')}
         </span>
       </div>
     );
@@ -155,7 +155,7 @@ export function OrganizationSettings() {
           <AlertDescription>
             {orgsError instanceof Error
               ? orgsError.message
-              : t('organization.settings.loadError')}
+              : t('settings.loadError')}
           </AlertDescription>
         </Alert>
       </div>
@@ -180,20 +180,20 @@ export function OrganizationSettings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{t('organization.settings.title')}</CardTitle>
+          <CardTitle>{t('settings.title')}</CardTitle>
           <CardDescription>
-            {t('organization.settings.description')}
+            {t('settings.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="org-selector">
-              {t('organization.settings.selectLabel')}
+              {t('settings.selectLabel')}
             </Label>
             <Select value={selectedOrgId} onValueChange={handleOrgSelect}>
               <SelectTrigger id="org-selector">
                 <SelectValue
-                  placeholder={t('organization.settings.selectPlaceholder')}
+                  placeholder={t('settings.selectPlaceholder')}
                 />
               </SelectTrigger>
               <SelectContent>
@@ -205,13 +205,13 @@ export function OrganizationSettings() {
                   ))
                 ) : (
                   <SelectItem value="no-orgs" disabled>
-                    {t('organization.settings.noOrganizations')}
+                    {t('settings.noOrganizations')}
                   </SelectItem>
                 )}
               </SelectContent>
             </Select>
             <p className="text-sm text-muted-foreground">
-              {t('organization.settings.selectHelper')}
+              {t('settings.selectHelper')}
             </p>
           </div>
         </CardContent>
@@ -220,9 +220,9 @@ export function OrganizationSettings() {
       {selectedOrg && isAdmin && (
         <Card>
           <CardHeader>
-            <CardTitle>{t('organization.invitationList.title')}</CardTitle>
+            <CardTitle>{t('invitationList.title')}</CardTitle>
             <CardDescription>
-              {t('organization.invitationList.description', {
+              {t('invitationList.description', {
                 orgName: selectedOrg.name,
               })}
             </CardDescription>
@@ -232,12 +232,12 @@ export function OrganizationSettings() {
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin" />
                 <span className="ml-2">
-                  {t('organization.invitationList.loading')}
+                  {t('invitationList.loading')}
                 </span>
               </div>
             ) : invitations.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                {t('organization.invitationList.none')}
+                {t('invitationList.none')}
               </div>
             ) : (
               <div className="space-y-3">
@@ -258,9 +258,9 @@ export function OrganizationSettings() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>{t('organization.memberList.title')}</CardTitle>
+                <CardTitle>{t('memberList.title')}</CardTitle>
                 <CardDescription>
-                  {t('organization.memberList.description', {
+                  {t('memberList.description', {
                     orgName: selectedOrg.name,
                   })}
                 </CardDescription>
@@ -268,7 +268,7 @@ export function OrganizationSettings() {
               {isAdmin && (
                 <Button onClick={handleInviteMember} size="sm">
                   <UserPlus className="h-4 w-4 mr-2" />
-                  {t('organization.memberList.inviteButton')}
+                  {t('memberList.inviteButton')}
                 </Button>
               )}
             </div>
@@ -278,12 +278,12 @@ export function OrganizationSettings() {
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin" />
                 <span className="ml-2">
-                  {t('organization.memberList.loading')}
+                  {t('memberList.loading')}
                 </span>
               </div>
             ) : members.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                {t('organization.memberList.none')}
+                {t('memberList.none')}
               </div>
             ) : (
               <div className="space-y-3">

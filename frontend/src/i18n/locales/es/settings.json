@@ -10,7 +10,9 @@
         "agents": "Agentes",
         "agentsDesc": "Configuraciones de agentes",
         "mcp": "Servidores MCP",
-        "mcpDesc": "Servidores de Protocolo de Contexto de Modelo (MCP)"
+        "mcpDesc": "Servidores de Protocolo de Contexto de Modelo (MCP)",
+        "organizations": "Organization Settings",
+        "organizationsDesc": "Manage organization members and permissions"
       }
     },
     "general": {
