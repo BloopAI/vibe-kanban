@@ -26,6 +26,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Slider } from '@/components/ui/slider';
 import { ChevronDown, Key, Loader2, Volume2 } from 'lucide-react';
 import {
   BaseCodingAgent,
@@ -299,6 +300,29 @@ export function GeneralSettings() {
             </Select>
             <p className="text-sm text-muted-foreground">
               {t('settings.general.appearance.language.helper')}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="text-scale">
+                {t('settings.general.appearance.textScale.label')}
+              </Label>
+              <span className="text-sm font-medium tabular-nums">
+                {(draft?.text_scale || 1.0).toFixed(1)}x
+              </span>
+            </div>
+            <Slider
+              id="text-scale"
+              min={1.0}
+              max={2.0}
+              step={0.1}
+              value={[draft?.text_scale || 1.0]}
+              onValueChange={(value) => updateDraft({ text_scale: value[0] })}
+              className="w-full"
+            />
+            <p className="text-sm text-muted-foreground">
+              {t('settings.general.appearance.textScale.helper')}
             </p>
           </div>
         </CardContent>

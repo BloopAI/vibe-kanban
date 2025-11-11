@@ -32,6 +32,7 @@ import { Loader } from '@/components/ui/loader';
 import NiceModal from '@ebay/nice-modal-react';
 import { OnboardingResult } from './components/dialogs/global/OnboardingDialog';
 import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
+import { useTextScale } from '@/hooks/useTextScale';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
@@ -39,6 +40,9 @@ function AppContent() {
   const { config, analyticsUserId, updateAndSaveConfig, loading } =
     useUserSystem();
   const posthog = usePostHog();
+
+  // Apply text scale CSS variables
+  useTextScale();
 
   // Handle opt-in/opt-out and user identification when config loads
   useEffect(() => {

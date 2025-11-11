@@ -290,3 +290,65 @@
     }
   }
 }
+
+/* TEXT SCALE - Dynamic text scaling based on user preference */
+@layer base {
+  /* Default scale values (set by useTextScale hook) */
+  :root {
+    --chat-text-scale: 1.0;
+    --diff-text-scale: 1.0;
+    --log-text-scale: 1.0;
+    --markdown-scale: 1.0;
+  }
+
+  /* Chat/Conversation Messages - Scale text-sm (0.875rem) */
+  .whitespace-pre-wrap.break-words.flex.flex-col.gap-1.font-light {
+    font-size: calc(0.875rem * var(--chat-text-scale)) !important;
+    line-height: 1.6 !important;
+  }
+
+  /* Code Diffs - Scale diff content */
+  .diff-tailwindcss-wrapper .diff-line-content {
+    font-size: calc(12px * var(--diff-text-scale)) !important;
+    line-height: 1.5 !important;
+  }
+
+  /* Diff line numbers - scale slightly less */
+  .diff-tailwindcss-wrapper .diff-line-number {
+    font-size: calc(10px * var(--diff-text-scale) * 0.85) !important;
+  }
+
+  /* Terminal/Process Logs - Scale text-xs (0.625rem) */
+  .font-mono.text-xs.break-all.whitespace-pre-wrap {
+    font-size: calc(0.625rem * var(--log-text-scale)) !important;
+    line-height: 1.6 !important;
+  }
+
+  /* Markdown content within messages */
+  .markdown-content,
+  .prose {
+    font-size: calc(0.875rem * var(--markdown-scale)) !important;
+  }
+
+  /* Markdown code blocks */
+  .markdown-content code,
+  .prose code {
+    font-size: calc(0.875rem * var(--markdown-scale)) !important;
+  }
+
+  /* Markdown headings - scale proportionally */
+  .markdown-content h1,
+  .prose h1 {
+    font-size: calc(1.5rem * var(--markdown-scale)) !important;
+  }
+
+  .markdown-content h2,
+  .prose h2 {
+    font-size: calc(1.25rem * var(--markdown-scale)) !important;
+  }
+
+  .markdown-content h3,
+  .prose h3 {
+    font-size: calc(1.125rem * var(--markdown-scale)) !important;
+  }
+}
