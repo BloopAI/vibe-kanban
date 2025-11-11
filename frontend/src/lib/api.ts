@@ -111,6 +111,22 @@ export interface OpenEditorResponse {
   url: string | null;
 }
 
+// Remote project types
+export interface RemoteProject {
+  id: string;
+  name: string;
+  organization_id: string;
+}
+
+export interface LinkToExistingRequest {
+  remote_project_id: string;
+}
+
+export interface CreateRemoteProjectRequest {
+  organization_id: string;
+  name: string;
+}
+
 export type Ok<T> = { success: true; data: T };
 export type Err<E> = { success: false; error: E | undefined; message?: string };
 
@@ -287,14 +303,35 @@ export const projectsApi = {
     return handleApiResponse<SearchResult[]>(response);
   },
 
-  linkToOrganization: async (
-    projectId: string,
-    organizationId: string
+  linkToExisting: async (
+    localProjectId: string,
+    remoteProjectId: string
   ): Promise<Project> => {
-    const response = await makeRequest(`/api/projects/${projectId}/link`, {
-      method: 'POST',
-      body: JSON.stringify({ organization_id: organizationId }),
-    });
+    const response = await makeRequest(
+      `/api/projects/${localProjectId}/link`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ remote_project_id: remoteProjectId }),
+      }
+    );
+    return handleApiResponse<Project>(response);
+  },
+
+  createAndLink: async (
+    localProjectId: string,
+    organizationId: string,
+    projectName: string
+  ): Promise<Project> => {
+    const response = await makeRequest(
+      `/api/projects/${localProjectId}/link/create`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          organization_id: organizationId,
+          name: projectName,
+        }),
+      }
+    );
     return handleApiResponse<Project>(response);
   },
 };
@@ -980,6 +1017,11 @@ export const organizationsApi = {
   getUserOrganizations: async (): Promise<ListOrganizationsResponse> => {
     const response = await makeRequest('/api/organizations');
     return handleApiResponse<ListOrganizationsResponse>(response);
+  },
+
+  getProjects: async (orgId: string): Promise<RemoteProject[]> => {
+    const response = await makeRequest(`/api/organizations/${orgId}/projects`);
+    return handleApiResponse<RemoteProject[]>(response);
   },
 
   createOrganization: async (
