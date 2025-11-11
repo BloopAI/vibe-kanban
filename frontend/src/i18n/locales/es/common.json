@@ -66,9 +66,12 @@
     "currentBadge": " (actual)"
   },
   "signOut": "Cerrar sesión",
+  "devMode": {
+    "banner": "Modo de Desarrollo - Esta es una compilación de desarrollo"
+  },
   "oauth": {
-    "title": "Iniciar sesión con OAuth",
-    "description": "Conecta tu cuenta usando OAuth para acceder a funciones adicionales",
+    "title": "Iniciar sesión en Vibe Kanban",
+    "description": "Inicia sesión para unirte a organizaciones y compartir tareas con tu equipo",
     "continueWithGitHub": "Continuar con GitHub",
     "continueWithGoogle": "Continuar con Google",
     "waitingTitle": "Completar Autenticación",

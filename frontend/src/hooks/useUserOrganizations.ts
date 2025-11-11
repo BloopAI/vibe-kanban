@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { organizationsApi } from '@/lib/api';
+import { organizationsApi } from '../lib/api';
 import { useUserSystem } from '@/components/config-provider';
 import type { ListOrganizationsResponse } from 'shared/types';
 
@@ -15,7 +15,7 @@ export function useUserOrganizations() {
       : null;
 
   return useQuery<ListOrganizationsResponse>({
-    queryKey: ['organizations', 'user'],
+    queryKey: ['user', 'organizations'],
     queryFn: () => organizationsApi.getUserOrganizations(),
     enabled: !!currentOrgId,
     staleTime: 5 * 60 * 1000, // 5 minutes

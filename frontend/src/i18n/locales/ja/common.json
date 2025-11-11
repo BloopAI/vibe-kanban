@@ -66,9 +66,12 @@
     "currentBadge": " (現在)"
   },
   "signOut": "サインアウト",
+  "devMode": {
+    "banner": "開発モード - これは開発ビルドです"
+  },
   "oauth": {
-    "title": "OAuthでサインイン",
-    "description": "OAuthを使用してアカウントを接続し、追加機能にアクセスします",
+    "title": "Vibe Kanbanにサインイン",
+    "description": "サインインして組織に参加し、チームとタスクを共有します",
     "continueWithGitHub": "GitHubで続行",
     "continueWithGoogle": "Googleで続行",
     "waitingTitle": "認証を完了",

@@ -13,6 +13,7 @@ import {
   AgentSettings,
   GeneralSettings,
   McpSettings,
+  OrganizationSettings,
   ProjectSettings,
   SettingsLayout,
 } from '@/pages/settings/';
@@ -101,17 +102,7 @@ function AppContent() {
         return;
       }
 
-      // 4) Login prompt - only if signed out
-      if (!isSignedIn && !config.login_acknowledged) {
-        await NiceModal.show('login-prompt');
-        if (!cancelled) {
-          await updateAndSaveConfig({ login_acknowledged: true });
-        }
-        await NiceModal.hide('login-prompt');
-        return;
-      }
-
-      // 5) Release notes - last step
+      // 4) Release notes - last step
       if (config.show_release_notes) {
         await NiceModal.show('release-notes');
         if (!cancelled) {
@@ -161,6 +152,10 @@ function AppContent() {
                   <Route index element={<Navigate to="general" replace />} />
                   <Route path="general" element={<GeneralSettings />} />
                   <Route path="projects" element={<ProjectSettings />} />
+                  <Route
+                    path="organizations"
+                    element={<OrganizationSettings />}
+                  />
                   <Route path="agents" element={<AgentSettings />} />
                   <Route path="mcp" element={<McpSettings />} />
                 </Route>

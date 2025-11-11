@@ -353,27 +353,5 @@
       "next": "Siguiente",
       "finish": "Finalizar"
     }
-  },
-  "loginPrompt": {
-    "title": "Iniciar sesión en Vibe Kanban",
-    "description": "Desbloquea funciones de colaboración en equipo",
-    "features": {
-      "pullRequests": {
-        "title": "Crear pull requests",
-        "description": "Enviar cambios directamente a GitHub"
-      },
-      "shareTasks": {
-        "title": "Compartir tareas con tu equipo",
-        "description": "Colaborar en el trabajo juntos"
-      },
-      "trackProgress": {
-        "title": "Ver lo que otros están haciendo",
-        "description": "Seguir el progreso del equipo en tiempo real"
-      }
-    },
-    "buttons": {
-      "skip": "Omitir por ahora",
-      "signIn": "Iniciar sesión"
-    }
   }
 }

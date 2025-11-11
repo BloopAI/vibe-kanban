@@ -19,10 +19,8 @@ import {
   Plus,
   LogOut,
   LogIn,
-  Building2,
 } from 'lucide-react';
 import { Logo } from '@/components/logo';
-import { UserAvatar } from '@/components/tasks/UserAvatar';
 import { OrgMemberAvatars } from '@/components/OrgMemberAvatars';
 import { SearchBar } from '@/components/search-bar';
 import { useSearch } from '@/contexts/search-context';
@@ -40,7 +38,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import NiceModal from '@ebay/nice-modal-react';
-import { OAuthDialog, OrganizationSwitcherDialog } from '@/components/dialogs';
+import { OAuthDialog } from '@/components/dialogs';
 import { useUserSystem } from '@/components/config-provider';
 import { oauthApi } from '@/lib/api';
 
@@ -232,54 +230,6 @@ export function Navbar() {
             ) : null}
 
             <div className="flex items-center gap-1">
-              {isOAuthLoggedIn && loginStatus?.status === 'loggedin' ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9"
-                      aria-label="User menu"
-                    >
-                      <UserAvatar
-                        username={loginStatus.profile.username}
-                        className="h-6 w-6"
-                      />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <div className="flex items-center gap-3 px-2 py-2">
-                      <UserAvatar
-                        username={loginStatus.profile.username}
-                        className="h-8 w-8"
-                      />
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium">
-                          {loginStatus.profile.username ||
-                            loginStatus.profile.email}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {loginStatus.profile.email}
-                        </span>
-                      </div>
-                    </div>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onSelect={() =>
-                        NiceModal.show(OrganizationSwitcherDialog)
-                      }
-                    >
-                      <Building2 className="mr-2 h-4 w-4" />
-                      {t('common:orgSwitcher.menuItem')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={handleOAuthLogout}>
-                      <LogOut className="mr-2 h-4 w-4" />
-                      {t('common:signOut')}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              ) : null}
-
               <Button
                 variant="ghost"
                 size="icon"
@@ -346,14 +296,18 @@ export function Navbar() {
                     );
                   })}
 
-                  {!isOAuthLoggedIn && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onSelect={handleOpenOAuth}>
-                        <LogIn className="mr-2 h-4 w-4" />
-                        Sign in
-                      </DropdownMenuItem>
-                    </>
+                  <DropdownMenuSeparator />
+
+                  {isOAuthLoggedIn ? (
+                    <DropdownMenuItem onSelect={handleOAuthLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      {t('common:signOut')}
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem onSelect={handleOpenOAuth}>
+                      <LogIn className="mr-2 h-4 w-4" />
+                      Sign in
+                    </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>

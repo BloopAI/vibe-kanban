@@ -1,13 +1,19 @@
 // Global app dialogs
 export { DisclaimerDialog } from './global/DisclaimerDialog';
 export { OnboardingDialog } from './global/OnboardingDialog';
-export { LoginPromptDialog } from './global/LoginPromptDialog';
 export { PrivacyOptInDialog } from './global/PrivacyOptInDialog';
 export { ReleaseNotesDialog } from './global/ReleaseNotesDialog';
 export { OAuthDialog } from './global/OAuthDialog';
 
 // Organization dialogs
-export { OrganizationSwitcherDialog } from './org/OrganizationSwitcherDialog';
+export {
+  CreateOrganizationDialog,
+  type CreateOrganizationResult,
+} from './org/CreateOrganizationDialog';
+export {
+  InviteMemberDialog,
+  type InviteMemberResult,
+} from './org/InviteMemberDialog';
 
 // Project-related dialogs
 export {
