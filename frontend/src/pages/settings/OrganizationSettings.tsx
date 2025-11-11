@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, UserPlus } from 'lucide-react';
+import { Loader2, UserPlus, Plus } from 'lucide-react';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationSelection } from '@/hooks/useOrganizationSelection';
 import { useOrganizationMembersQuery } from '@/hooks/useOrganizationMembersQuery';
@@ -28,6 +28,10 @@ import {
   InviteMemberDialog,
   type InviteMemberResult,
 } from '@/components/dialogs/org/InviteMemberDialog';
+import {
+  CreateOrganizationDialog,
+  type CreateOrganizationResult,
+} from '@/components/dialogs/org/CreateOrganizationDialog';
 import { MemberListItem } from '@/components/org/MemberListItem';
 import { PendingInvitationItem } from '@/components/org/PendingInvitationItem';
 import type { MemberRole } from 'shared/types';
@@ -45,6 +49,7 @@ export function OrganizationSettings() {
     data: orgsResponse,
     isLoading: orgsLoading,
     error: orgsError,
+    refetch: refetchOrgs,
   } = useUserOrganizations();
 
   // Organization selection with URL sync
@@ -98,6 +103,23 @@ export function OrganizationSettings() {
         );
       },
     });
+
+  const handleCreateOrganization = async () => {
+    try {
+      const result: CreateOrganizationResult = await NiceModal.show(
+        CreateOrganizationDialog
+      );
+
+      if (result.action === 'created') {
+        await refetchOrgs();
+        handleOrgSelect(result.organizationId);
+        setSuccess('Organization created successfully');
+        setTimeout(() => setSuccess(null), 3000);
+      }
+    } catch (err) {
+      // Dialog error
+    }
+  };
 
   const handleInviteMember = async () => {
     try {
@@ -178,8 +200,16 @@ export function OrganizationSettings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{t('settings.title')}</CardTitle>
-          <CardDescription>{t('settings.description')}</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>{t('settings.title')}</CardTitle>
+              <CardDescription>{t('settings.description')}</CardDescription>
+            </div>
+            <Button onClick={handleCreateOrganization} size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              {t('createDialog.createButton')}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">

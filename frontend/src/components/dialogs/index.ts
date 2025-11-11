@@ -7,7 +7,6 @@ export { ReleaseNotesDialog } from './global/ReleaseNotesDialog';
 export { OAuthDialog } from './global/OAuthDialog';
 
 // Organization dialogs
-export { OrganizationSwitcherDialog } from './org/OrganizationSwitcherDialog';
 export {
   CreateOrganizationDialog,
   type CreateOrganizationResult,
