@@ -21,7 +21,6 @@ import {
   LogIn,
 } from 'lucide-react';
 import { Logo } from '@/components/logo';
-import { OrgMemberAvatars } from '@/components/OrgMemberAvatars';
 import { SearchBar } from '@/components/search-bar';
 import { useSearch } from '@/contexts/search-context';
 import { openTaskForm } from '@/lib/openTaskForm';
@@ -202,7 +201,6 @@ export function Navbar() {
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
-                  <OrgMemberAvatars limit={5} />
                 </div>
                 <NavDivider />
               </>

@@ -20,7 +20,6 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { organizationsApi } from '@/lib/api';
-import { useUserSystem } from '@/components/config-provider';
 import { MemberRole } from 'shared/types';
 import { useTranslation } from 'react-i18next';
 
@@ -28,161 +27,166 @@ export type InviteMemberResult = {
   action: 'invited' | 'canceled';
 };
 
-export const InviteMemberDialog = NiceModal.create(() => {
-  const modal = useModal();
-  const { t } = useTranslation('organization');
-  const { loginStatus } = useUserSystem();
-  const [email, setEmail] = useState('');
-  const [role, setRole] = useState<MemberRole>(MemberRole.MEMBER);
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+export interface InviteMemberDialogProps {
+  organizationId: string;
+}
 
-  useEffect(() => {
-    // Reset form when dialog opens
-    if (modal.visible) {
-      setEmail('');
-      setRole(MemberRole.MEMBER);
+export const InviteMemberDialog = NiceModal.create<InviteMemberDialogProps>(
+  (props) => {
+    const modal = useModal();
+    const { organizationId } = props;
+    const { t } = useTranslation('organization');
+    const [email, setEmail] = useState('');
+    const [role, setRole] = useState<MemberRole>(MemberRole.MEMBER);
+    const [error, setError] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    useEffect(() => {
+      // Reset form when dialog opens
+      if (modal.visible) {
+        setEmail('');
+        setRole(MemberRole.MEMBER);
+        setError(null);
+        setIsSubmitting(false);
+      }
+    }, [modal.visible]);
+
+    const validateEmail = (value: string): string | null => {
+      const trimmedValue = value.trim();
+      if (!trimmedValue) return 'Email is required';
+
+      // Basic email validation regex
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(trimmedValue)) {
+        return 'Please enter a valid email address';
+      }
+
+      return null;
+    };
+
+    const handleInvite = async () => {
+      const emailError = validateEmail(email);
+      if (emailError) {
+        setError(emailError);
+        return;
+      }
+
+      if (!organizationId) {
+        setError('No organization selected');
+        return;
+      }
+
+      setIsSubmitting(true);
       setError(null);
-      setIsSubmitting(false);
-    }
-  }, [modal.visible]);
 
-  const validateEmail = (value: string): string | null => {
-    const trimmedValue = value.trim();
-    if (!trimmedValue) return 'Email is required';
-
-    // Basic email validation regex
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(trimmedValue)) {
-      return 'Please enter a valid email address';
-    }
-
-    return null;
-  };
-
-  const handleInvite = async () => {
-    const emailError = validateEmail(email);
-    if (emailError) {
-      setError(emailError);
-      return;
-    }
-
-    // Get organization ID from login status
-    if (
-      loginStatus?.status !== 'loggedin' ||
-      !loginStatus.profile?.organization_id
-    ) {
-      setError('No organization selected');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setError(null);
-
-    try {
-      await organizationsApi.createInvitation(
-        loginStatus.profile.organization_id,
-        {
+      try {
+        await organizationsApi.createInvitation(organizationId, {
           email: email.trim(),
           role: role,
-        }
-      );
+        });
 
-      modal.resolve({ action: 'invited' } as InviteMemberResult);
+        modal.resolve({ action: 'invited' } as InviteMemberResult);
+        modal.hide();
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : 'Failed to send invitation'
+        );
+        setIsSubmitting(false);
+      }
+    };
+
+    const handleCancel = () => {
+      modal.resolve({ action: 'canceled' } as InviteMemberResult);
       modal.hide();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to send invitation'
-      );
-      setIsSubmitting(false);
-    }
-  };
+    };
 
-  const handleCancel = () => {
-    modal.resolve({ action: 'canceled' } as InviteMemberResult);
-    modal.hide();
-  };
+    const handleOpenChange = (open: boolean) => {
+      if (!open) {
+        handleCancel();
+      }
+    };
 
-  const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      handleCancel();
-    }
-  };
+    return (
+      <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('inviteDialog.title')}</DialogTitle>
+            <DialogDescription>
+              {t('inviteDialog.description')}
+            </DialogDescription>
+          </DialogHeader>
 
-  return (
-    <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{t('inviteDialog.title')}</DialogTitle>
-          <DialogDescription>{t('inviteDialog.description')}</DialogDescription>
-        </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="invite-email">
+                {t('inviteDialog.emailLabel')}
+              </Label>
+              <Input
+                id="invite-email"
+                type="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setError(null);
+                }}
+                placeholder={t('inviteDialog.emailPlaceholder')}
+                autoFocus
+                disabled={isSubmitting}
+              />
+            </div>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="invite-email">{t('inviteDialog.emailLabel')}</Label>
-            <Input
-              id="invite-email"
-              type="email"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                setError(null);
-              }}
-              placeholder={t('inviteDialog.emailPlaceholder')}
-              autoFocus
-              disabled={isSubmitting}
-            />
+            <div className="space-y-2">
+              <Label htmlFor="invite-role">{t('inviteDialog.roleLabel')}</Label>
+              <Select
+                value={role}
+                onValueChange={(value) => setRole(value as MemberRole)}
+                disabled={isSubmitting}
+              >
+                <SelectTrigger id="invite-role">
+                  <SelectValue
+                    placeholder={t('inviteDialog.rolePlaceholder')}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={MemberRole.MEMBER}>
+                    {t('roles.member')}
+                  </SelectItem>
+                  <SelectItem value={MemberRole.ADMIN}>
+                    {t('roles.admin')}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {t('inviteDialog.roleHelper')}
+              </p>
+            </div>
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="invite-role">{t('inviteDialog.roleLabel')}</Label>
-            <Select
-              value={role}
-              onValueChange={(value) => setRole(value as MemberRole)}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleCancel}
               disabled={isSubmitting}
             >
-              <SelectTrigger id="invite-role">
-                <SelectValue placeholder={t('inviteDialog.rolePlaceholder')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={MemberRole.MEMBER}>
-                  {t('roles.member')}
-                </SelectItem>
-                <SelectItem value={MemberRole.ADMIN}>
-                  {t('roles.admin')}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              {t('inviteDialog.roleHelper')}
-            </p>
-          </div>
-
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-        </div>
-
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={handleCancel}
-            disabled={isSubmitting}
-          >
-            {t('common:buttons.cancel')}
-          </Button>
-          <Button
-            onClick={handleInvite}
-            disabled={!email.trim() || isSubmitting}
-          >
-            {isSubmitting
-              ? t('inviteDialog.sending')
-              : t('inviteDialog.sendButton')}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-});
+              {t('common:buttons.cancel')}
+            </Button>
+            <Button
+              onClick={handleInvite}
+              disabled={!email.trim() || isSubmitting}
+            >
+              {isSubmitting
+                ? t('inviteDialog.sending')
+                : t('inviteDialog.sendButton')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+);

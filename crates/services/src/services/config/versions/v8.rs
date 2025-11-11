@@ -37,17 +37,8 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn from_previous_version(raw_config: &str) -> Result<Self, Error> {
-        let old_config = match serde_json::from_str::<v7::Config>(raw_config) {
-            Ok(cfg) => cfg,
-            Err(e) => {
-                tracing::error!("❌ Failed to parse config: {}", e);
-                tracing::error!("   at line {}, column {}", e.line(), e.column());
-                return Err(e.into());
-            }
-        };
-
-        Ok(Self {
+    fn from_v7_config(old_config: v7::Config) -> Self {
+        Self {
             config_version: "v8".to_string(),
             theme: old_config.theme,
             executor_profile: old_config.executor_profile,
@@ -64,7 +55,12 @@ impl Config {
             language: old_config.language,
             git_branch_prefix: old_config.git_branch_prefix,
             showcases: old_config.showcases,
-        })
+        }
+    }
+
+    pub fn from_previous_version(raw_config: &str) -> Result<Self, Error> {
+        let old_config = v7::Config::from(raw_config.to_string());
+        Ok(Self::from_v7_config(old_config))
     }
 }
 

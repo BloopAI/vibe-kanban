@@ -142,20 +142,22 @@ export function OrganizationSettings() {
   };
 
   const handleInviteMember = async () => {
+    if (!selectedOrgId) return;
+
     try {
-      const result: InviteMemberResult =
-        await NiceModal.show(InviteMemberDialog);
+      const result: InviteMemberResult = await NiceModal.show(
+        InviteMemberDialog,
+        { organizationId: selectedOrgId }
+      );
 
       if (result.action === 'invited') {
-        if (selectedOrgId) {
-          await refetchMembers(selectedOrgId);
-          if (isAdmin) {
-            await refetchInvitations(selectedOrgId);
-          }
-
-          setSuccess('Member invited successfully');
-          setTimeout(() => setSuccess(null), 3000);
+        await refetchMembers(selectedOrgId);
+        if (isAdmin) {
+          await refetchInvitations(selectedOrgId);
         }
+
+        setSuccess('Member invited successfully');
+        setTimeout(() => setSuccess(null), 3000);
       }
     } catch (err) {
       // Dialog error
