@@ -1,34 +1,14 @@
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, query_as};
+pub use utils::api::organizations::{MemberRole, Organization, OrganizationWithRole};
 use uuid::Uuid;
 
 use super::{
     identity_errors::IdentityError,
     organization_members::{
-        MemberRole, assert_admin as check_admin, assert_membership as check_membership,
+        assert_admin as check_admin, assert_membership as check_membership,
         check_user_role as get_user_role, ensure_member_metadata, ensure_member_metadata_with_role,
     },
 };
-
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
-pub struct Organization {
-    pub id: Uuid,
-    pub name: String,
-    pub slug: String,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
-pub struct OrganizationWithRole {
-    pub id: Uuid,
-    pub name: String,
-    pub slug: String,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-    pub user_role: MemberRole,
-}
 
 pub struct OrganizationRepository<'a> {
     pool: &'a PgPool,
