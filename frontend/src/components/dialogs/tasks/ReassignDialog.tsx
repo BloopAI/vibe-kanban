@@ -22,7 +22,7 @@ import { tasksApi } from '@/lib/api';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import { useAuth } from '@/hooks/useAuth';
 import { useMutation } from '@tanstack/react-query';
-import { useOrganizationMembers } from '@/hooks/useOrganizationMembers';
+import { useOrganizationMembersQuery } from '@/hooks/useOrganizationMembersQuery';
 
 export interface ReassignDialogProps {
   sharedTask: SharedTaskRecord;
@@ -46,7 +46,9 @@ export const ReassignDialog = NiceModal.create<ReassignDialogProps>(
 
     const isCurrentAssignee = sharedTask.assignee_user_id === userId;
 
-    const membersQuery = useOrganizationMembers(sharedTask.organization_id);
+    const organizationId = sharedTask.organization_id;
+
+    const membersQuery = useOrganizationMembersQuery({ organizationId });
 
     useEffect(() => {
       if (!modal.visible) {
