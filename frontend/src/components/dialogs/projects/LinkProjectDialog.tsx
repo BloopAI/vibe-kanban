@@ -118,7 +118,7 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
           }
           updatedProject = await projectsApi.linkToExisting(
             projectId,
-            selectedRemoteProjectId
+            { remote_project_id: selectedRemoteProjectId }
           );
         } else {
           if (!newProjectName.trim()) {
@@ -128,8 +128,7 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
           }
           updatedProject = await projectsApi.createAndLink(
             projectId,
-            selectedOrgId,
-            newProjectName.trim()
+            { organization_id: selectedOrgId, name: newProjectName.trim() }
           );
         }
 
