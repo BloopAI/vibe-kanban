@@ -10,8 +10,8 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tracing::warn;
 use utils::api::organizations::{
-    ListMembersResponse, OrganizationMemberWithProfile, UpdateMemberRoleRequest,
-    UpdateMemberRoleResponse,
+    ListMembersResponse, OrganizationMemberWithProfile, RevokeInvitationRequest,
+    UpdateMemberRoleRequest, UpdateMemberRoleResponse,
 };
 use uuid::Uuid;
 
@@ -40,6 +40,10 @@ pub fn protected_router() -> Router<AppState> {
             post(create_invitation),
         )
         .route("/organizations/{org_id}/invitations", get(list_invitations))
+        .route(
+            "/organizations/{org_id}/invitations/revoke",
+            post(revoke_invitation),
+        )
         .route("/invitations/{token}/accept", post(accept_invitation))
         .route("/organizations/{org_id}/members", get(list_members))
         .route(
@@ -192,6 +196,33 @@ pub async fn get_invitation(
         role: invitation.role,
         expires_at: invitation.expires_at,
     }))
+}
+
+pub async fn revoke_invitation(
+    State(state): State<AppState>,
+    axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
+    Path(org_id): Path<Uuid>,
+    Json(payload): Json<RevokeInvitationRequest>,
+) -> Result<impl IntoResponse, ErrorResponse> {
+    let user = ctx.user;
+    let invitation_repo = InvitationRepository::new(&state.pool);
+
+    ensure_admin_access(&state.pool, org_id, user.id).await?;
+
+    invitation_repo
+        .revoke_invitation(org_id, payload.invitation_id, user.id)
+        .await
+        .map_err(|e| match e {
+            IdentityError::PermissionDenied => {
+                ErrorResponse::new(StatusCode::FORBIDDEN, "Admin access required")
+            }
+            IdentityError::NotFound => {
+                ErrorResponse::new(StatusCode::NOT_FOUND, "Invitation not found")
+            }
+            _ => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"),
+        })?;
+
+    Ok(StatusCode::NO_CONTENT)
 }
 
 pub async fn accept_invitation(

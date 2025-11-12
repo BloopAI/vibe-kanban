@@ -60,6 +60,7 @@ import {
   CreateOrganizationResponse,
   CreateInvitationRequest,
   CreateInvitationResponse,
+  RevokeInvitationRequest,
   UpdateMemberRoleRequest,
   CreateRemoteProjectRequest,
   LinkToExistingRequest,
@@ -180,6 +181,10 @@ const handleApiResponse = async <T, E = T>(response: Response): Promise<T> => {
       timestamp: new Date().toISOString(),
     });
     throw new ApiError<E>(errorMessage, response.status, response);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
   }
 
   const result: ApiResponse<T, E> = await response.json();
@@ -1081,6 +1086,22 @@ export const organizationsApi = {
     );
     const result = await handleApiResponse<ListInvitationsResponse>(response);
     return result.invitations;
+  },
+
+  revokeInvitation: async (
+    orgId: string,
+    invitationId: string
+  ): Promise<void> => {
+    const body: RevokeInvitationRequest = { invitation_id: invitationId };
+    const response = await makeRequest(
+      `/api/organizations/${orgId}/invitations/revoke`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }
+    );
+    return handleApiResponse<void>(response);
   },
 
   deleteOrganization: async (orgId: string): Promise<void> => {

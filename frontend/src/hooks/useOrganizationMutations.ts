@@ -14,6 +14,8 @@ interface UseOrganizationMutationsOptions {
   onCreateError?: (err: unknown) => void;
   onInviteSuccess?: (result: CreateInvitationResponse) => void;
   onInviteError?: (err: unknown) => void;
+  onRevokeSuccess?: () => void;
+  onRevokeError?: (err: unknown) => void;
   onRemoveSuccess?: () => void;
   onRemoveError?: (err: unknown) => void;
   onRoleChangeSuccess?: () => void;
@@ -63,6 +65,29 @@ export function useOrganizationMutations(
     onError: (err) => {
       console.error('Failed to create invitation:', err);
       options?.onInviteError?.(err);
+    },
+  });
+
+  const revokeInvitation = useMutation({
+    mutationFn: ({
+      orgId,
+      invitationId,
+    }: {
+      orgId: string;
+      invitationId: string;
+    }) => organizationsApi.revokeInvitation(orgId, invitationId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['organization', 'members', variables.orgId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['organization', 'invitations', variables.orgId],
+      });
+      options?.onRevokeSuccess?.();
+    },
+    onError: (err) => {
+      console.error('Failed to revoke invitation:', err);
+      options?.onRevokeError?.(err);
     },
   });
 
@@ -131,6 +156,7 @@ export function useOrganizationMutations(
   return {
     createOrganization,
     createInvitation,
+    revokeInvitation,
     removeMember,
     updateMemberRole,
     deleteOrganization,

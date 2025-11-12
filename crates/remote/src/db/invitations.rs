@@ -144,6 +144,32 @@ impl<'a> InvitationRepository<'a> {
         .ok_or(IdentityError::NotFound)
     }
 
+    pub async fn revoke_invitation(
+        &self,
+        organization_id: Uuid,
+        invitation_id: Uuid,
+        requesting_user_id: Uuid,
+    ) -> Result<(), IdentityError> {
+        assert_admin(self.pool, organization_id, requesting_user_id).await?;
+
+        let result = sqlx::query!(
+            r#"
+            DELETE FROM organization_invitations
+            WHERE id = $1 AND organization_id = $2
+            "#,
+            invitation_id,
+            organization_id
+        )
+        .execute(self.pool)
+        .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(IdentityError::NotFound);
+        }
+
+        Ok(())
+    }
+
     pub async fn accept_invitation(
         &self,
         token: &str,

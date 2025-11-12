@@ -13,8 +13,8 @@ use utils::{
             AcceptInvitationResponse, CreateInvitationRequest, CreateInvitationResponse,
             CreateOrganizationRequest, CreateOrganizationResponse, GetInvitationResponse,
             GetOrganizationResponse, ListInvitationsResponse, ListMembersResponse,
-            ListOrganizationsResponse, Organization, UpdateMemberRoleRequest,
-            UpdateMemberRoleResponse, UpdateOrganizationRequest,
+            ListOrganizationsResponse, Organization, RevokeInvitationRequest,
+            UpdateMemberRoleRequest, UpdateMemberRoleResponse, UpdateOrganizationRequest,
         },
         projects::RemoteProject,
     },
@@ -40,6 +40,10 @@ pub fn router() -> Router<DeploymentImpl> {
             post(create_invitation),
         )
         .route("/organizations/{org_id}/invitations", get(list_invitations))
+        .route(
+            "/organizations/{org_id}/invitations/revoke",
+            post(revoke_invitation),
+        )
         .route("/invitations/{token}", get(get_invitation))
         .route("/invitations/{token}/accept", post(accept_invitation))
         .route("/organizations/{org_id}/members", get(list_members))
@@ -252,6 +256,30 @@ async fn get_invitation(
         .map_err(map_remote_error)?;
 
     Ok(ResponseJson(ApiResponse::success(response)))
+}
+
+async fn revoke_invitation(
+    State(deployment): State<DeploymentImpl>,
+    Path(org_id): Path<Uuid>,
+    Json(payload): Json<RevokeInvitationRequest>,
+) -> Result<StatusCode, ApiError> {
+    let remote_client = deployment
+        .remote_client()
+        .ok_or_else(|| ApiError::Conflict("OAuth remote client not configured".to_string()))?;
+
+    let token = deployment
+        .auth_context()
+        .get_credentials()
+        .await
+        .ok_or_else(|| ApiError::Conflict("Not authenticated".to_string()))?
+        .access_token;
+
+    remote_client
+        .revoke_invitation(&token, org_id, payload.invitation_id)
+        .await
+        .map_err(map_remote_error)?;
+
+    Ok(StatusCode::NO_CONTENT)
 }
 
 async fn accept_invitation(
