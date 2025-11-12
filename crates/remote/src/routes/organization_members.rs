@@ -10,8 +10,8 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tracing::warn;
 use utils::api::organizations::{
-    ListMembersResponse, OrganizationMemberWithProfile, UpdateMemberRoleRequest,
-    UpdateMemberRoleResponse,
+    ListMembersResponse, OrganizationMemberWithProfile, RevokeInvitationRequest,
+    UpdateMemberRoleRequest, UpdateMemberRoleResponse,
 };
 use uuid::Uuid;
 
@@ -28,7 +28,6 @@ use crate::{
         tasks::SharedTaskRepository,
     },
 };
-use utils::api::organizations::RevokeInvitationRequest;
 
 pub fn public_router() -> Router<AppState> {
     Router::new().route("/invitations/{token}", get(get_invitation))
