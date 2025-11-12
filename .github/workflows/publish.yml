@@ -22,7 +22,7 @@ permissions:
 
 env:
   NODE_VERSION: 22
-  PNPM_VERSION: 10.8.1
+  PNPM_VERSION: 10.13.1
 
 jobs:
   publish:
