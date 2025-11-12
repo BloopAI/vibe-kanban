@@ -3,6 +3,7 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS shared_tasks (
     id                  BLOB PRIMARY KEY,
     organization_id     BLOB NOT NULL,
+    remote_project_id   BLOB NOT NULL,
     project_id          BLOB,
     github_repo_id      INTEGER,
     title               TEXT NOT NULL,
@@ -23,6 +24,9 @@ CREATE TABLE IF NOT EXISTS shared_tasks (
 CREATE INDEX IF NOT EXISTS idx_shared_tasks_org
     ON shared_tasks (organization_id);
 
+CREATE INDEX IF NOT EXISTS idx_shared_tasks_remote_project
+    ON shared_tasks (remote_project_id);
+
 CREATE INDEX IF NOT EXISTS idx_shared_tasks_status
     ON shared_tasks (status);
 
@@ -33,9 +37,9 @@ CREATE INDEX IF NOT EXISTS idx_shared_tasks_github_repo
     ON shared_tasks (github_repo_id);
 
 CREATE TABLE IF NOT EXISTS shared_activity_cursors (
-    organization_id BLOB PRIMARY KEY,
-    last_seq        INTEGER NOT NULL CHECK (last_seq >= 0),
-    updated_at      TEXT NOT NULL DEFAULT (datetime('now', 'subsec'))
+    remote_project_id BLOB PRIMARY KEY,
+    last_seq          INTEGER NOT NULL CHECK (last_seq >= 0),
+    updated_at        TEXT NOT NULL DEFAULT (datetime('now', 'subsec'))
 );
 
 ALTER TABLE projects

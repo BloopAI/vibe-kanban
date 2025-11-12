@@ -103,3 +103,18 @@ pub(crate) fn identity_error_response(error: IdentityError, message: &str) -> Re
     }
     .into_response()
 }
+
+pub(crate) fn membership_error(error: IdentityError, forbidden_message: &str) -> ErrorResponse {
+    match error {
+        IdentityError::NotFound | IdentityError::PermissionDenied => {
+            ErrorResponse::new(StatusCode::FORBIDDEN, forbidden_message)
+        }
+        IdentityError::Database(_) => {
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error")
+        }
+        other => {
+            tracing::warn!(?other, "unexpected membership error");
+            ErrorResponse::new(StatusCode::FORBIDDEN, forbidden_message)
+        }
+    }
+}

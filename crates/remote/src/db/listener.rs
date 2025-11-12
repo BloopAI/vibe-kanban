@@ -75,23 +75,24 @@ async fn listen_loop(pool: &PgPool, broker: &ActivityBroker, channel: &str) -> a
         let payload: NotificationEnvelope = serde_json::from_str(notification.payload())
             .with_context(|| format!("invalid notification payload: {}", notification.payload()))?;
 
-        tracing::trace!(%payload.seq, org_id = %payload.organization_id, "received activity notification");
+        tracing::trace!(%payload.seq, project_id = %payload.project_id, "received activity notification");
 
-        let org_uuid = payload.organization_id.parse::<Uuid>().with_context(|| {
-            format!("invalid organization_id UUID: {}", payload.organization_id)
-        })?;
+        let project_uuid = payload
+            .project_id
+            .parse::<Uuid>()
+            .with_context(|| format!("invalid project_id UUID: {}", payload.project_id))?;
 
         let event = match ActivityRepository::new(pool)
-            .fetch_by_seq(org_uuid, payload.seq)
+            .fetch_by_seq(project_uuid, payload.seq)
             .await
         {
             Ok(Some(event)) => event,
             Ok(None) => {
-                tracing::warn!(seq = payload.seq, org_id = %payload.organization_id, "activity row missing for notification");
+                tracing::warn!(seq = payload.seq, project_id = %payload.project_id, "activity row missing for notification");
                 continue;
             }
             Err(error) => {
-                tracing::error!(?error, seq = payload.seq, org_id = %payload.organization_id, "failed to fetch activity payload");
+                tracing::error!(?error, seq = payload.seq, project_id = %payload.project_id, "failed to fetch activity payload");
                 continue;
             }
         };
@@ -103,5 +104,5 @@ async fn listen_loop(pool: &PgPool, broker: &ActivityBroker, channel: &str) -> a
 #[derive(Debug, Deserialize)]
 struct NotificationEnvelope {
     seq: i64,
-    organization_id: String,
+    project_id: String,
 }

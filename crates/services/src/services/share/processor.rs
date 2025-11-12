@@ -10,7 +10,7 @@ use db::{
 };
 use remote::{
     activity::{ActivityEvent, ActivityResponse},
-    db::{projects::ProjectMetadata, tasks::SharedTaskActivityPayload},
+    db::tasks::SharedTaskActivityPayload,
     routes::tasks::BulkSharedTasksResponse,
 };
 use reqwest::Client as HttpClient;
@@ -49,18 +49,22 @@ impl ActivityProcessor {
             _ => self.process_upsert_event(&event).await?,
         }
 
-        SharedActivityCursor::upsert(&self.db.pool, event.organization_id, event.seq).await?;
+        SharedActivityCursor::upsert(&self.db.pool, event.project_id, event.seq).await?;
         Ok(())
     }
 
     /// Fetch and process activity events until caught up, falling back to bulk syncs when needed.
-    pub async fn catch_up(&self, mut last_seq: Option<i64>) -> Result<Option<i64>, ShareError> {
+    pub async fn catch_up_project(
+        &self,
+        remote_project_id: Uuid,
+        mut last_seq: Option<i64>,
+    ) -> Result<Option<i64>, ShareError> {
         if last_seq.is_none() {
-            last_seq = self.bulk_sync().await?;
+            last_seq = self.bulk_sync(remote_project_id).await?;
         }
 
         loop {
-            let events = self.fetch_activity(last_seq).await?;
+            let events = self.fetch_activity(remote_project_id, last_seq).await?;
             if events.is_empty() {
                 break;
             }
@@ -70,12 +74,20 @@ impl ActivityProcessor {
                 && let Some(newest) = events.last()
                 && newest.seq.saturating_sub(prev_seq) > self.config.bulk_sync_threshold as i64
             {
-                last_seq = self.bulk_sync().await?;
+                last_seq = self.bulk_sync(remote_project_id).await?;
                 continue;
             }
 
             let page_len = events.len();
             for ev in events {
+                if ev.project_id != remote_project_id {
+                    tracing::warn!(
+                        expected = %remote_project_id,
+                        received = %ev.project_id,
+                        "received activity for unexpected project; ignoring"
+                    );
+                    continue;
+                }
                 self.process_event(ev.clone()).await?;
                 last_seq = Some(ev.seq);
             }
@@ -89,7 +101,11 @@ impl ActivityProcessor {
     }
 
     /// Fetch a page of activity events from the remote service.
-    async fn fetch_activity(&self, after: Option<i64>) -> Result<Vec<ActivityEvent>, ShareError> {
+    async fn fetch_activity(
+        &self,
+        remote_project_id: Uuid,
+        after: Option<i64>,
+    ) -> Result<Vec<ActivityEvent>, ShareError> {
         let access_token = self
             .auth_ctx
             .get_credentials()
@@ -102,6 +118,7 @@ impl ActivityProcessor {
         {
             let mut qp = url.query_pairs_mut();
             qp.append_pair("limit", &self.config.activity_page_limit.to_string());
+            qp.append_pair("project_id", &remote_project_id.to_string());
             if let Some(s) = after {
                 qp.append_pair("after", &s.to_string());
             }
@@ -124,21 +141,22 @@ impl ActivityProcessor {
         Ok(resp_body.data)
     }
 
-    async fn resolve_project_id(
+    async fn resolve_project(
         &self,
         task_id: Uuid,
-        metadata: &ProjectMetadata,
-    ) -> Result<Option<Uuid>, ShareError> {
+        remote_project_id: Uuid,
+    ) -> Result<Option<Project>, ShareError> {
         if let Some(existing) = SharedTask::find_by_id(&self.db.pool, task_id).await?
             && let Some(project_id) = existing.project_id
+            && let Some(project) = Project::find_by_id(&self.db.pool, project_id).await?
         {
-            return Ok(Some(project_id));
+            return Ok(Some(project));
         }
 
         if let Some(project) =
-            Project::find_by_github_repo_id(&self.db.pool, metadata.github_repository_id).await?
+            Project::find_by_remote_project_id(&self.db.pool, remote_project_id).await?
         {
-            return Ok(Some(project.id));
+            return Ok(Some(project));
         }
 
         Ok(None)
@@ -151,27 +169,23 @@ impl ActivityProcessor {
         };
 
         match serde_json::from_value::<SharedTaskActivityPayload>(payload.clone()) {
-            Ok(SharedTaskActivityPayload {
-                task,
-                project,
-                user,
-            }) => {
-                let project_id = self.resolve_project_id(task.id, &project).await?;
-                if project_id.is_none() {
+            Ok(SharedTaskActivityPayload { task, user }) => {
+                let project = self.resolve_project(task.id, event.project_id).await?;
+                if project.is_none() {
                     tracing::debug!(
                         task_id = %task.id,
-                        repo_id = project.github_repository_id,
-                        owner = %project.owner,
-                        name = %project.name,
-                        "stored shared task without local project; awaiting metadata link"
+                        remote_project_id = %task.project_id,
+                        "stored shared task without local project; awaiting link"
                     );
                 }
 
+                let project_id = project.as_ref().map(|p| p.id);
+                let github_repo_id = project.as_ref().and_then(|p| p.github_repo_id);
                 let input = convert_remote_task(
                     &task,
                     user.as_ref(),
                     project_id,
-                    Some(project.github_repository_id),
+                    github_repo_id,
                     Some(event.seq),
                 );
                 let shared_task = SharedTask::upsert(&self.db.pool, input).await?;
@@ -228,45 +242,34 @@ impl ActivityProcessor {
         Ok(())
     }
 
-    async fn bulk_sync(&self) -> Result<Option<i64>, ShareError> {
-        let org_id_str = self
-            .auth_ctx
-            .cached_profile()
-            .await
-            .ok_or(ShareError::MissingAuth)?
-            .organization_id;
-
-        let org_id = org_id_str
-            .parse::<Uuid>()
-            .map_err(|_| ShareError::InvalidOrganizationId)?;
-
-        let bulk_resp = self.fetch_bulk_snapshot().await?;
+    async fn bulk_sync(&self, remote_project_id: Uuid) -> Result<Option<i64>, ShareError> {
+        let bulk_resp = self.fetch_bulk_snapshot(remote_project_id).await?;
         let latest_seq = bulk_resp.latest_seq;
 
         let mut keep_ids = HashSet::new();
         let mut replacements = Vec::new();
 
         for payload in bulk_resp.tasks {
-            let project_id = self
-                .resolve_project_id(payload.task.id, &payload.project)
+            let project = self
+                .resolve_project(payload.task.id, remote_project_id)
                 .await?;
 
-            if project_id.is_none() {
+            if project.is_none() {
                 tracing::debug!(
                     task_id = %payload.task.id,
-                    repo_id = payload.project.github_repository_id,
-                    owner = %payload.project.owner,
-                    name = %payload.project.name,
+                    remote_project_id = %payload.task.project_id,
                     "storing shared task during bulk sync without local project"
                 );
             }
 
+            let project_id = project.as_ref().map(|p| p.id);
+            let github_repo_id = project.as_ref().and_then(|p| p.github_repo_id);
             keep_ids.insert(payload.task.id);
             let input = convert_remote_task(
                 &payload.task,
                 payload.user.as_ref(),
                 project_id,
-                Some(payload.project.github_repository_id),
+                github_repo_id,
                 latest_seq,
             );
             replacements.push(PreparedBulkTask {
@@ -275,17 +278,18 @@ impl ActivityProcessor {
             });
         }
 
-        let mut stale: HashSet<Uuid> = SharedTask::list_by_organization(&self.db.pool, org_id)
-            .await?
-            .into_iter()
-            .filter_map(|task| {
-                if keep_ids.contains(&task.id) {
-                    None
-                } else {
-                    Some(task.id)
-                }
-            })
-            .collect();
+        let mut stale: HashSet<Uuid> =
+            SharedTask::list_by_remote_project_id(&self.db.pool, remote_project_id)
+                .await?
+                .into_iter()
+                .filter_map(|task| {
+                    if keep_ids.contains(&task.id) {
+                        None
+                    } else {
+                        Some(task.id)
+                    }
+                })
+                .collect();
 
         for deleted in bulk_resp.deleted_task_ids {
             if !keep_ids.contains(&deleted) {
@@ -315,7 +319,7 @@ impl ActivityProcessor {
         }
 
         if let Some(seq) = latest_seq {
-            SharedActivityCursor::upsert(&self.db.pool, org_id, seq).await?;
+            SharedActivityCursor::upsert(&self.db.pool, remote_project_id, seq).await?;
         }
 
         Ok(latest_seq)
@@ -336,7 +340,10 @@ impl ActivityProcessor {
         Ok(())
     }
 
-    async fn fetch_bulk_snapshot(&self) -> Result<BulkSharedTasksResponse, ShareError> {
+    async fn fetch_bulk_snapshot(
+        &self,
+        remote_project_id: Uuid,
+    ) -> Result<BulkSharedTasksResponse, ShareError> {
         let access_token = self
             .auth_ctx
             .get_credentials()
@@ -344,7 +351,11 @@ impl ActivityProcessor {
             .ok_or(ShareError::MissingAuth)?
             .access_token;
 
-        let url = self.config.bulk_tasks_endpoint()?;
+        let mut url = self.config.bulk_tasks_endpoint()?;
+        {
+            let mut qp = url.query_pairs_mut();
+            qp.append_pair("project_id", &remote_project_id.to_string());
+        }
 
         let resp = self
             .client

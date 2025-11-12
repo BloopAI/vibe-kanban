@@ -1,10 +1,10 @@
 {
   "db_name": "SQLite",
-  "query": "\n            SELECT\n                organization_id AS \"organization_id!: Uuid\",\n                last_seq        AS \"last_seq!: i64\",\n                updated_at      AS \"updated_at!: DateTime<Utc>\"\n            FROM shared_activity_cursors\n            WHERE organization_id = $1\n            ",
+  "query": "\n            SELECT\n                remote_project_id AS \"remote_project_id!: Uuid\",\n                last_seq          AS \"last_seq!: i64\",\n                updated_at        AS \"updated_at!: DateTime<Utc>\"\n            FROM shared_activity_cursors\n            WHERE remote_project_id = $1\n            ",
   "describe": {
     "columns": [
       {
-        "name": "organization_id!: Uuid",
+        "name": "remote_project_id!: Uuid",
         "ordinal": 0,
         "type_info": "Blob"
       },
@@ -28,5 +28,5 @@
       false
     ]
   },
-  "hash": "d555ba07a45177dbc0880c5cb6a2d11ebe4fc49dd747bd6b7ad30109cd0f10c3"
+  "hash": "2a49be016c5999f4069823fc7aa1cd0eeed1b1b1743f50e89ceb2d310c5f18bb"
 }

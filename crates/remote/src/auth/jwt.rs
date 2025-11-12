@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
 
-use crate::db::{auth::AuthSession, organizations::Organization, users::User};
+use crate::db::{auth::AuthSession, users::User};
 
 #[derive(Debug, Error)]
 pub enum JwtError {
@@ -21,7 +21,6 @@ pub enum JwtError {
 pub struct JwtClaims {
     pub sub: Uuid,
     pub session_id: Uuid,
-    pub org_id: Uuid,
     pub nonce: String,
     pub iat: i64,
 }
@@ -30,7 +29,6 @@ pub struct JwtClaims {
 pub struct JwtIdentity {
     pub user_id: Uuid,
     pub session_id: Uuid,
-    pub org_id: Uuid,
     pub nonce: String,
 }
 
@@ -46,16 +44,10 @@ impl JwtService {
         }
     }
 
-    pub fn encode(
-        &self,
-        session: &AuthSession,
-        user: &User,
-        organization: &Organization,
-    ) -> Result<String, JwtError> {
+    pub fn encode(&self, session: &AuthSession, user: &User) -> Result<String, JwtError> {
         let claims = JwtClaims {
             sub: user.id,
             session_id: session.id,
-            org_id: organization.id,
             nonce: session.session_secret.clone(),
             iat: Utc::now().timestamp(),
         };
@@ -83,7 +75,6 @@ impl JwtService {
         Ok(JwtIdentity {
             user_id: claims.sub,
             session_id: claims.session_id,
-            org_id: claims.org_id,
             nonce: claims.nonce,
         })
     }

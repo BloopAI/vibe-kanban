@@ -15,7 +15,9 @@ use super::error::ErrorResponse;
 use crate::{
     AppState,
     auth::RequestContext,
-    db::{identity_errors::IdentityError, organizations::OrganizationRepository},
+    db::{
+        identity_errors::IdentityError, organization_members, organizations::OrganizationRepository,
+    },
 };
 
 pub fn router() -> Router<AppState> {
@@ -98,8 +100,7 @@ pub async fn get_organization(
 ) -> Result<impl IntoResponse, ErrorResponse> {
     let org_repo = OrganizationRepository::new(&state.pool);
 
-    org_repo
-        .assert_membership(org_id, ctx.user.id)
+    organization_members::assert_membership(&state.pool, org_id, ctx.user.id)
         .await
         .map_err(|e| match e {
             IdentityError::NotFound => {

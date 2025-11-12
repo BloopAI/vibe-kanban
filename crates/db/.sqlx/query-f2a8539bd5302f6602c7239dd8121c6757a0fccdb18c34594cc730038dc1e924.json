@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      git_repo_path,\n                      setup_script,\n                      dev_script,\n                      cleanup_script,\n                      copy_files,\n                      has_remote as \"has_remote!: bool\",\n                      github_repo_owner,\n                      github_repo_name,\n                      github_repo_id,\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               WHERE github_repo_id = $1\n               LIMIT 1",
+  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      git_repo_path,\n                      setup_script,\n                      dev_script,\n                      cleanup_script,\n                      copy_files,\n                      has_remote as \"has_remote!: bool\",\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      github_repo_owner,\n                      github_repo_name,\n                      github_repo_id,\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -44,33 +44,38 @@
         "type_info": "Integer"
       },
       {
-        "name": "github_repo_owner",
+        "name": "remote_project_id: Uuid",
         "ordinal": 8,
-        "type_info": "Text"
+        "type_info": "Blob"
       },
       {
-        "name": "github_repo_name",
+        "name": "github_repo_owner",
         "ordinal": 9,
         "type_info": "Text"
       },
       {
-        "name": "github_repo_id",
+        "name": "github_repo_name",
         "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "github_repo_id",
+        "ordinal": 11,
         "type_info": "Integer"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 11,
+        "ordinal": 12,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 12,
+        "ordinal": 13,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 0
     },
     "nullable": [
       true,
@@ -84,9 +89,10 @@
       true,
       true,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "7fc63cc07976d3522c942ed757cef692faf4623f361aca2b623d3e12c554e817"
+  "hash": "f2a8539bd5302f6602c7239dd8121c6757a0fccdb18c34594cc730038dc1e924"
 }

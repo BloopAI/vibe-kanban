@@ -7,7 +7,7 @@ use uuid::Uuid;
 use super::{
     Tx,
     identity_errors::IdentityError,
-    projects::{CreateProjectData, Project, ProjectError, ProjectMetadata, ProjectRepository},
+    projects::{ProjectError, ProjectRepository},
     users::{UserData, fetch_user},
 };
 
@@ -63,13 +63,12 @@ pub struct SharedTask {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SharedTaskActivityPayload {
     pub task: SharedTask,
-    pub project: ProjectMetadata,
     pub user: Option<UserData>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct CreateSharedTaskData {
-    pub project: ProjectMetadata,
+    pub project_id: Uuid,
     pub title: String,
     pub description: Option<String>,
     pub creator_user_id: Uuid,
@@ -172,7 +171,7 @@ impl<'a> SharedTaskRepository<'a> {
         let mut tx = self.pool.begin().await.map_err(SharedTaskError::from)?;
 
         let CreateSharedTaskData {
-            project,
+            project_id,
             title,
             description,
             creator_user_id,
@@ -181,33 +180,17 @@ impl<'a> SharedTaskRepository<'a> {
 
         ensure_text_size(&title, description.as_deref())?;
 
-        let project = match ProjectRepository::find_by_github_repo_id(
-            &mut tx,
-            organization_id,
-            project.github_repository_id,
-        )
-        .await?
-        {
-            Some(existing_project) => existing_project,
-            None => {
-                tracing::info!(
-                    "Creating new project for shared task: org_id={}, github_repo_id={}",
-                    organization_id,
-                    project.github_repository_id
+        ProjectRepository::find_by_id(&mut tx, project_id, organization_id)
+            .await?
+            .ok_or_else(|| {
+                tracing::warn!(
+                    %project_id,
+                    %organization_id,
+                    "remote project not found when creating shared task"
                 );
+                SharedTaskError::NotFound
+            })?;
 
-                ProjectRepository::insert(
-                    &mut tx,
-                    CreateProjectData {
-                        organization_id,
-                        metadata: project,
-                    },
-                )
-                .await?
-            }
-        };
-
-        let project_id = project.id;
         let task = sqlx::query_as!(
             SharedTask,
             r#"
@@ -251,15 +234,12 @@ impl<'a> SharedTaskRepository<'a> {
             None => None,
         };
 
-        insert_activity(&mut tx, &task, &project, user.as_ref(), "task.created").await?;
+        insert_activity(&mut tx, &task, user.as_ref(), "task.created").await?;
         tx.commit().await.map_err(SharedTaskError::from)?;
         Ok(SharedTaskWithUser::new(task, user))
     }
 
-    pub async fn bulk_fetch(
-        &self,
-        organization_id: Uuid,
-    ) -> Result<BulkFetchResult, SharedTaskError> {
+    pub async fn bulk_fetch(&self, project_id: Uuid) -> Result<BulkFetchResult, SharedTaskError> {
         let mut tx = self.pool.begin().await?;
         sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
             .execute(&mut *tx)
@@ -282,21 +262,17 @@ impl<'a> SharedTaskRepository<'a> {
                 st.shared_at              AS "shared_at?",
                 st.created_at             AS "created_at!",
                 st.updated_at             AS "updated_at!",
-                p.github_repository_id    AS "project_github_repository_id!",
-                p.owner                   AS "project_owner!",
-                p.name                    AS "project_name!",
                 u.id                      AS "user_id?: Uuid",
                 u.first_name              AS "user_first_name?",
                 u.last_name               AS "user_last_name?",
                 u.username                AS "user_username?"
             FROM shared_tasks st
-            JOIN projects p ON st.project_id = p.id
             LEFT JOIN users u ON st.assignee_user_id = u.id
-            WHERE st.organization_id = $1
+            WHERE st.project_id = $1
               AND st.deleted_at IS NULL
             ORDER BY st.updated_at DESC
             "#,
-            organization_id
+            project_id
         )
         .fetch_all(&mut *tx)
         .await?;
@@ -321,12 +297,6 @@ impl<'a> SharedTaskRepository<'a> {
                     updated_at: row.updated_at,
                 };
 
-                let project = ProjectMetadata {
-                    github_repository_id: row.project_github_repository_id,
-                    owner: row.project_owner,
-                    name: row.project_name,
-                };
-
                 let user = row.user_id.map(|id| UserData {
                     id,
                     first_name: row.user_first_name,
@@ -334,11 +304,7 @@ impl<'a> SharedTaskRepository<'a> {
                     username: row.user_username,
                 });
 
-                SharedTaskActivityPayload {
-                    task,
-                    user,
-                    project,
-                }
+                SharedTaskActivityPayload { task, user }
             })
             .collect();
 
@@ -346,11 +312,10 @@ impl<'a> SharedTaskRepository<'a> {
             r#"
             SELECT st.id AS "id!: Uuid"
             FROM shared_tasks st
-            JOIN projects p ON st.project_id = p.id
-            WHERE st.organization_id = $1
+            WHERE st.project_id = $1
               AND st.deleted_at IS NOT NULL
             "#,
-            organization_id
+            project_id
         )
         .fetch_all(&mut *tx)
         .await?;
@@ -361,9 +326,9 @@ impl<'a> SharedTaskRepository<'a> {
             r#"
             SELECT MAX(seq)
             FROM activity
-            WHERE organization_id = $1
+            WHERE project_id = $1
             "#,
-            organization_id
+            project_id
         )
         .fetch_one(&mut *tx)
         .await?;
@@ -429,18 +394,21 @@ impl<'a> SharedTaskRepository<'a> {
 
         ensure_text_size(&task.title, task.description.as_deref())?;
 
-        let project = ProjectRepository::find_by_id(&mut tx, task.project_id, organization_id)
+        if ProjectRepository::find_by_id(&mut tx, task.project_id, organization_id)
             .await?
-            .ok_or_else(|| {
-                SharedTaskError::Conflict("project not found for shared task".to_string())
-            })?;
+            .is_none()
+        {
+            return Err(SharedTaskError::Conflict(
+                "project not found for shared task".to_string(),
+            ));
+        }
 
         let user = match task.assignee_user_id {
             Some(user_id) => fetch_user(&mut tx, user_id).await?,
             None => None,
         };
 
-        insert_activity(&mut tx, &task, &project, user.as_ref(), "task.updated").await?;
+        insert_activity(&mut tx, &task, user.as_ref(), "task.updated").await?;
         tx.commit().await.map_err(SharedTaskError::from)?;
         Ok(SharedTaskWithUser::new(task, user))
     }
@@ -485,7 +453,7 @@ impl<'a> SharedTaskRepository<'a> {
             data.new_assignee_user_id,
             data.previous_assignee_user_id,
             data.version,
-            organization_id,
+            organization_id
         )
         .fetch_optional(&mut *tx)
         .await?
@@ -493,18 +461,21 @@ impl<'a> SharedTaskRepository<'a> {
             SharedTaskError::Conflict("task version or previous assignee mismatch".to_string())
         })?;
 
-        let project = ProjectRepository::find_by_id(&mut tx, task.project_id, organization_id)
+        if ProjectRepository::find_by_id(&mut tx, task.project_id, organization_id)
             .await?
-            .ok_or_else(|| {
-                SharedTaskError::Conflict("project not found for shared task".to_string())
-            })?;
+            .is_none()
+        {
+            return Err(SharedTaskError::Conflict(
+                "project not found for shared task".to_string(),
+            ));
+        }
 
         let user = match data.new_assignee_user_id {
             Some(user_id) => fetch_user(&mut tx, user_id).await?,
             None => None,
         };
 
-        insert_activity(&mut tx, &task, &project, user.as_ref(), "task.reassigned").await?;
+        insert_activity(&mut tx, &task, user.as_ref(), "task.reassigned").await?;
         tx.commit().await.map_err(SharedTaskError::from)?;
         Ok(SharedTaskWithUser::new(task, user))
     }
@@ -557,13 +528,16 @@ impl<'a> SharedTaskRepository<'a> {
             SharedTaskError::Conflict("task version mismatch or user not authorized".to_string())
         })?;
 
-        let project = ProjectRepository::find_by_id(&mut tx, task.project_id, organization_id)
+        if ProjectRepository::find_by_id(&mut tx, task.project_id, organization_id)
             .await?
-            .ok_or_else(|| {
-                SharedTaskError::Conflict("project not found for shared task".to_string())
-            })?;
+            .is_none()
+        {
+            return Err(SharedTaskError::Conflict(
+                "project not found for shared task".to_string(),
+            ));
+        }
 
-        insert_activity(&mut tx, &task, &project, None, "task.deleted").await?;
+        insert_activity(&mut tx, &task, None, "task.deleted").await?;
         tx.commit().await.map_err(SharedTaskError::from)?;
         Ok(SharedTaskWithUser::new(task, None))
     }
@@ -585,13 +559,11 @@ pub(crate) fn ensure_text_size(
 async fn insert_activity(
     tx: &mut Tx<'_>,
     task: &SharedTask,
-    project: &Project,
     user: Option<&UserData>,
     event_type: &str,
 ) -> Result<(), SharedTaskError> {
     let payload = SharedTaskActivityPayload {
         task: task.clone(),
-        project: project.metadata(),
         user: user.cloned(),
     };
     let value = serde_json::to_value(payload).map_err(SharedTaskError::Serialization)?;
@@ -599,14 +571,14 @@ async fn insert_activity(
     sqlx::query!(
         r#"
         WITH next AS (
-            INSERT INTO organization_activity_counters AS counters (organization_id, last_seq)
+            INSERT INTO project_activity_counters AS counters (project_id, last_seq)
             VALUES ($1, 1)
-            ON CONFLICT (organization_id)
+            ON CONFLICT (project_id)
             DO UPDATE SET last_seq = counters.last_seq + 1
             RETURNING last_seq
         )
         INSERT INTO activity (
-            organization_id,
+            project_id,
             seq,
             assignee_user_id,
             event_type,
@@ -615,7 +587,7 @@ async fn insert_activity(
         SELECT $1, next.last_seq, $2, $3, $4
         FROM next
         "#,
-        task.organization_id,
+        task.project_id,
         task.assignee_user_id,
         event_type,
         value
@@ -624,4 +596,22 @@ async fn insert_activity(
     .await
     .map(|_| ())
     .map_err(SharedTaskError::from)
+}
+
+impl SharedTaskRepository<'_> {
+    pub async fn organization_id(
+        pool: &PgPool,
+        task_id: Uuid,
+    ) -> Result<Option<Uuid>, sqlx::Error> {
+        sqlx::query_scalar!(
+            r#"
+            SELECT organization_id
+            FROM shared_tasks
+            WHERE id = $1
+            "#,
+            task_id
+        )
+        .fetch_optional(pool)
+        .await
+    }
 }

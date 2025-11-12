@@ -58,7 +58,7 @@ pub(super) async fn check_user_role(
     Ok(result.map(|r| r.role))
 }
 
-pub(super) async fn assert_membership(
+pub(crate) async fn assert_membership(
     pool: &PgPool,
     organization_id: Uuid,
     user_id: Uuid,

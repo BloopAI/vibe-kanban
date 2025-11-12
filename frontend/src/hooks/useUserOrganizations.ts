@@ -8,16 +8,12 @@ import type { ListOrganizationsResponse } from 'shared/types';
  */
 export function useUserOrganizations() {
   const { loginStatus } = useUserSystem();
-
-  const currentOrgId =
-    loginStatus?.status === 'loggedin'
-      ? loginStatus.profile.organization_id
-      : null;
+  const isLoggedIn = loginStatus?.status === 'loggedin';
 
   return useQuery<ListOrganizationsResponse>({
     queryKey: ['user', 'organizations'],
     queryFn: () => organizationsApi.getUserOrganizations(),
-    enabled: !!currentOrgId,
+    enabled: Boolean(isLoggedIn),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }

@@ -158,12 +158,7 @@ impl Deployment for LocalDeployment {
 
         if let Some(sc_ref) = share_config.as_ref() {
             let sc_owned = sc_ref.clone();
-            match SharePublisher::new(
-                db.clone(),
-                git.clone(),
-                sc_owned.clone(),
-                auth_context.clone(),
-            ) {
+            match SharePublisher::new(db.clone(), sc_owned.clone(), auth_context.clone()) {
                 Ok(publisher) => {
                     share_publisher = Some(publisher);
                     share_sync_config = Some(sc_owned);

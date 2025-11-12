@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "INSERT INTO projects (\n                    id,\n                    name,\n                    git_repo_path,\n                    setup_script,\n                    dev_script,\n                    cleanup_script,\n                    copy_files,\n                    has_remote,\n                    github_repo_owner,\n                    github_repo_name,\n                    github_repo_id\n                ) VALUES (\n                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11\n                )\n                RETURNING id as \"id!: Uuid\",\n                          name,\n                          git_repo_path,\n                          setup_script,\n                          dev_script,\n                          cleanup_script,\n                          copy_files,\n                          has_remote as \"has_remote!: bool\",\n                          github_repo_owner,\n                          github_repo_name,\n                          github_repo_id,\n                          created_at as \"created_at!: DateTime<Utc>\",\n                          updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "\n            SELECT p.id as \"id!: Uuid\", p.name, p.git_repo_path, p.setup_script, p.dev_script, p.cleanup_script, p.copy_files, \n                   p.has_remote as \"has_remote!: bool\",\n                   p.remote_project_id as \"remote_project_id: Uuid\",\n                   p.github_repo_owner,\n                   p.github_repo_name,\n                   p.github_repo_id,\n                   p.created_at as \"created_at!: DateTime<Utc>\", p.updated_at as \"updated_at!: DateTime<Utc>\"\n            FROM projects p\n            WHERE p.id IN (\n                SELECT DISTINCT t.project_id\n                FROM tasks t\n                INNER JOIN task_attempts ta ON ta.task_id = t.id\n                ORDER BY ta.updated_at DESC\n            )\n            LIMIT $1\n            ",
   "describe": {
     "columns": [
       {
@@ -44,33 +44,38 @@
         "type_info": "Integer"
       },
       {
-        "name": "github_repo_owner",
+        "name": "remote_project_id: Uuid",
         "ordinal": 8,
-        "type_info": "Text"
+        "type_info": "Blob"
       },
       {
-        "name": "github_repo_name",
+        "name": "github_repo_owner",
         "ordinal": 9,
         "type_info": "Text"
       },
       {
-        "name": "github_repo_id",
+        "name": "github_repo_name",
         "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "github_repo_id",
+        "ordinal": 11,
         "type_info": "Integer"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 11,
+        "ordinal": 12,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 12,
+        "ordinal": 13,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 11
+      "Right": 1
     },
     "nullable": [
       true,
@@ -84,9 +89,10 @@
       true,
       true,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "ff2a642b453cb2073e198dd727a185d753aeddcf3f40b7ccb2edc9424595db97"
+  "hash": "fbb9ae140ac1dfff7b89ba8c68817519c403cd88ab02d75a98ac48577680e9d2"
 }

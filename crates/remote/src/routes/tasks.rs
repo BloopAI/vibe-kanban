@@ -1,22 +1,24 @@
 use axum::{
     Json, Router,
-    extract::{Extension, Path, State},
+    extract::{Extension, Path, Query, State},
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::{delete, get, patch, post},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tracing::instrument;
+use tracing::{Span, instrument};
 use uuid::Uuid;
 
-use super::error::{identity_error_response, task_error_response};
+use super::{
+    error::{identity_error_response, task_error_response},
+    organization_members::{ensure_project_access, ensure_task_access},
+};
 use crate::{
     AppState,
     auth::RequestContext,
     db::{
-        organizations::OrganizationRepository,
-        projects::ProjectMetadata,
+        organization_members,
         tasks::{
             AssignTaskData, CreateSharedTaskData, DeleteTaskData, SharedTask, SharedTaskError,
             SharedTaskRepository, SharedTaskWithUser, TaskStatus, UpdateSharedTaskData,
@@ -35,17 +37,32 @@ pub fn router() -> Router<AppState> {
         .route("/tasks/{task_id}/assign", post(assign_task))
 }
 
+#[derive(Debug, Deserialize)]
+pub struct BulkTasksQuery {
+    pub project_id: Uuid,
+}
+
 #[instrument(
     name = "tasks.bulk_shared_tasks",
-    skip(state, ctx),
-    fields(org_id = %ctx.organization.id, user_id = %ctx.user.id)
+    skip(state, ctx, query),
+    fields(user_id = %ctx.user.id, project_id = %query.project_id, org_id = tracing::field::Empty)
 )]
 pub async fn bulk_shared_tasks(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
+    Query(query): Query<BulkTasksQuery>,
 ) -> Response {
-    let repo = SharedTaskRepository::new(state.pool());
-    match repo.bulk_fetch(ctx.organization.id).await {
+    let pool = state.pool();
+    let _organization_id = match ensure_project_access(pool, ctx.user.id, query.project_id).await {
+        Ok(org_id) => {
+            Span::current().record("org_id", format_args!("{org_id}"));
+            org_id
+        }
+        Err(error) => return error.into_response(),
+    };
+
+    let repo = SharedTaskRepository::new(pool);
+    match repo.bulk_fetch(query.project_id).await {
         Ok(snapshot) => (
             StatusCode::OK,
             Json(BulkSharedTasksResponse {
@@ -72,18 +89,18 @@ pub async fn bulk_shared_tasks(
 #[instrument(
     name = "tasks.create_shared_task",
     skip(state, ctx, payload),
-    fields(org_id = %ctx.organization.id, user_id = %ctx.user.id)
+    fields(user_id = %ctx.user.id, org_id = tracing::field::Empty)
 )]
 pub async fn create_shared_task(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateSharedTaskRequest>,
 ) -> Response {
-    let repo = SharedTaskRepository::new(state.pool());
-    let org_repo = OrganizationRepository::new(state.pool());
-    let user_repo = UserRepository::new(state.pool());
+    let pool = state.pool();
+    let repo = SharedTaskRepository::new(pool);
+    let user_repo = UserRepository::new(pool);
     let CreateSharedTaskRequest {
-        project,
+        project_id,
         title,
         description,
         assignee_user_id,
@@ -93,27 +110,34 @@ pub async fn create_shared_task(
         return task_error_response(error, "shared task payload too large");
     }
 
+    let organization_id = match ensure_project_access(pool, ctx.user.id, project_id).await {
+        Ok(org_id) => {
+            Span::current().record("org_id", format_args!("{org_id}"));
+            org_id
+        }
+        Err(error) => return error.into_response(),
+    };
+
     if let Some(assignee) = assignee_user_id.as_ref() {
         if let Err(err) = user_repo.fetch_user(*assignee).await {
             return identity_error_response(err, "assignee not found or inactive");
         }
-        if let Err(err) = org_repo
-            .assert_membership(ctx.organization.id, *assignee)
-            .await
+        if let Err(err) =
+            organization_members::assert_membership(pool, organization_id, *assignee).await
         {
             return identity_error_response(err, "assignee not part of organization");
         }
     }
 
     let data = CreateSharedTaskData {
-        project,
+        project_id,
         title,
         description,
         creator_user_id: ctx.user.id,
         assignee_user_id,
     };
 
-    match repo.create(ctx.organization.id, data).await {
+    match repo.create(organization_id, data).await {
         Ok(task) => (StatusCode::CREATED, Json(SharedTaskResponse::from(task))).into_response(),
         Err(error) => task_error_response(error, "failed to create shared task"),
     }
@@ -122,7 +146,7 @@ pub async fn create_shared_task(
 #[instrument(
     name = "tasks.update_shared_task",
     skip(state, ctx, payload),
-    fields(org_id = %ctx.organization.id, user_id = %ctx.user.id, task_id = %task_id)
+    fields(user_id = %ctx.user.id, task_id = %task_id, org_id = tracing::field::Empty)
 )]
 pub async fn update_shared_task(
     State(state): State<AppState>,
@@ -130,8 +154,17 @@ pub async fn update_shared_task(
     Path(task_id): Path<Uuid>,
     Json(payload): Json<UpdateSharedTaskRequest>,
 ) -> Response {
-    let repo = SharedTaskRepository::new(state.pool());
-    let existing = match repo.find_by_id(ctx.organization.id, task_id).await {
+    let pool = state.pool();
+    let organization_id = match ensure_task_access(pool, ctx.user.id, task_id).await {
+        Ok(org_id) => {
+            Span::current().record("org_id", format_args!("{org_id}"));
+            org_id
+        }
+        Err(error) => return error.into_response(),
+    };
+
+    let repo = SharedTaskRepository::new(pool);
+    let existing = match repo.find_by_id(organization_id, task_id).await {
         Ok(Some(task)) => task,
         Ok(None) => {
             return task_error_response(SharedTaskError::NotFound, "shared task not found");
@@ -170,7 +203,7 @@ pub async fn update_shared_task(
         acting_user_id: ctx.user.id,
     };
 
-    match repo.update(ctx.organization.id, task_id, data).await {
+    match repo.update(organization_id, task_id, data).await {
         Ok(task) => (StatusCode::OK, Json(SharedTaskResponse::from(task))).into_response(),
         Err(error) => task_error_response(error, "failed to update shared task"),
     }
@@ -179,7 +212,7 @@ pub async fn update_shared_task(
 #[instrument(
     name = "tasks.assign_shared_task",
     skip(state, ctx, payload),
-    fields(org_id = %ctx.organization.id, user_id = %ctx.user.id, task_id = %task_id)
+    fields(user_id = %ctx.user.id, task_id = %task_id, org_id = tracing::field::Empty)
 )]
 pub async fn assign_task(
     State(state): State<AppState>,
@@ -187,11 +220,19 @@ pub async fn assign_task(
     Path(task_id): Path<Uuid>,
     Json(payload): Json<AssignSharedTaskRequest>,
 ) -> Response {
-    let repo = SharedTaskRepository::new(state.pool());
-    let org_repo = OrganizationRepository::new(state.pool());
-    let user_repo = UserRepository::new(state.pool());
+    let pool = state.pool();
+    let organization_id = match ensure_task_access(pool, ctx.user.id, task_id).await {
+        Ok(org_id) => {
+            Span::current().record("org_id", format_args!("{org_id}"));
+            org_id
+        }
+        Err(error) => return error.into_response(),
+    };
 
-    let existing = match repo.find_by_id(ctx.organization.id, task_id).await {
+    let repo = SharedTaskRepository::new(pool);
+    let user_repo = UserRepository::new(pool);
+
+    let existing = match repo.find_by_id(organization_id, task_id).await {
         Ok(Some(task)) => task,
         Ok(None) => {
             return task_error_response(SharedTaskError::NotFound, "shared task not found");
@@ -212,9 +253,8 @@ pub async fn assign_task(
         if let Err(err) = user_repo.fetch_user(*assignee).await {
             return identity_error_response(err, "assignee not found or inactive");
         }
-        if let Err(err) = org_repo
-            .assert_membership(ctx.organization.id, *assignee)
-            .await
+        if let Err(err) =
+            organization_members::assert_membership(pool, organization_id, *assignee).await
         {
             return identity_error_response(err, "assignee not part of organization");
         }
@@ -226,7 +266,7 @@ pub async fn assign_task(
         version: payload.version,
     };
 
-    match repo.assign_task(ctx.organization.id, task_id, data).await {
+    match repo.assign_task(organization_id, task_id, data).await {
         Ok(task) => (StatusCode::OK, Json(SharedTaskResponse::from(task))).into_response(),
         Err(error) => task_error_response(error, "failed to transfer task assignment"),
     }
@@ -235,7 +275,7 @@ pub async fn assign_task(
 #[instrument(
     name = "tasks.delete_shared_task",
     skip(state, ctx, payload),
-    fields(org_id = %ctx.organization.id, user_id = %ctx.user.id, task_id = %task_id)
+    fields(user_id = %ctx.user.id, task_id = %task_id, org_id = tracing::field::Empty)
 )]
 pub async fn delete_shared_task(
     State(state): State<AppState>,
@@ -243,9 +283,18 @@ pub async fn delete_shared_task(
     Path(task_id): Path<Uuid>,
     payload: Option<Json<DeleteSharedTaskRequest>>,
 ) -> Response {
-    let repo = SharedTaskRepository::new(state.pool());
+    let pool = state.pool();
+    let organization_id = match ensure_task_access(pool, ctx.user.id, task_id).await {
+        Ok(org_id) => {
+            Span::current().record("org_id", format_args!("{org_id}"));
+            org_id
+        }
+        Err(error) => return error.into_response(),
+    };
 
-    let existing = match repo.find_by_id(ctx.organization.id, task_id).await {
+    let repo = SharedTaskRepository::new(pool);
+
+    let existing = match repo.find_by_id(organization_id, task_id).await {
         Ok(Some(task)) => task,
         Ok(None) => {
             return task_error_response(SharedTaskError::NotFound, "shared task not found");
@@ -269,7 +318,7 @@ pub async fn delete_shared_task(
         version,
     };
 
-    match repo.delete_task(ctx.organization.id, task_id, data).await {
+    match repo.delete_task(organization_id, task_id, data).await {
         Ok(task) => (StatusCode::OK, Json(SharedTaskResponse::from(task))).into_response(),
         Err(error) => task_error_response(error, "failed to delete shared task"),
     }
@@ -284,7 +333,7 @@ pub struct BulkSharedTasksResponse {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateSharedTaskRequest {
-    pub project: ProjectMetadata,
+    pub project_id: Uuid,
     pub title: String,
     pub description: Option<String>,
     pub assignee_user_id: Option<Uuid>,
