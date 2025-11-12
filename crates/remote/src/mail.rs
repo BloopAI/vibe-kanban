@@ -11,7 +11,7 @@ const LOOPS_INVITE_TEMPLATE_ID: &str = "cmhvy2wgs3s13z70i1pxakij9";
 pub trait Mailer: Send + Sync {
     async fn send_org_invitation(
         &self,
-        org_slug: &str,
+        org_name: &str,
         email: &str,
         accept_url: &str,
         role: MemberRole,
@@ -25,7 +25,7 @@ pub struct NoopMailer;
 impl Mailer for NoopMailer {
     async fn send_org_invitation(
         &self,
-        org_slug: &str,
+        org_name: &str,
         email: &str,
         accept_url: &str,
         role: MemberRole,
@@ -39,7 +39,7 @@ impl Mailer for NoopMailer {
 
         tracing::debug!(
             "STUB: Would send invitation email to {email}\n\
-             Organization: {org_slug}\n\
+             Organization: {org_name}\n\
              Role: {role_str}\n\
              Invited by: {inviter}\n\
              Accept URL: {accept_url}"
@@ -67,7 +67,7 @@ impl LoopsMailer {
 impl Mailer for LoopsMailer {
     async fn send_org_invitation(
         &self,
-        org_slug: &str,
+        org_name: &str,
         email: &str,
         accept_url: &str,
         role: MemberRole,
@@ -82,7 +82,7 @@ impl Mailer for LoopsMailer {
         if cfg!(debug_assertions) {
             tracing::info!(
                 "Sending invitation email to {email}\n\
-                 Organization: {org_slug}\n\
+                 Organization: {org_name}\n\
                  Role: {role_str}\n\
                  Invited by: {inviter}\n\
                  Accept URL: {accept_url}"
@@ -93,7 +93,7 @@ impl Mailer for LoopsMailer {
             "transactionalId": LOOPS_INVITE_TEMPLATE_ID,
             "email": email,
             "dataVariables": {
-                "org_name": org_slug,
+                "org_name": org_name,
                 "accept_url": accept_url,
                 "role": role_str,
                 "invited_by": inviter,

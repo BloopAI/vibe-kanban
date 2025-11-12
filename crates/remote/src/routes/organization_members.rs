@@ -146,7 +146,7 @@ pub async fn create_invitation(
     state
         .mailer
         .send_org_invitation(
-            &organization.slug,
+            &organization.name,
             &payload.email,
             &accept_url,
             payload.role,
