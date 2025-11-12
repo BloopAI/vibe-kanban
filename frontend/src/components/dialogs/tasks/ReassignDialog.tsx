@@ -24,14 +24,22 @@ import { useAuth } from '@/hooks';
 import { useMutation } from '@tanstack/react-query';
 import { useProject } from '@/contexts/project-context';
 import { useProjectRemoteMembers } from '@/hooks/useProjectRemoteMembers';
+import type { OrganizationMemberWithProfile } from 'shared/types';
 
 export interface ReassignDialogProps {
   sharedTask: SharedTaskRecord;
 }
 
-const buildMemberLabel = (member: { user_id: string }): string => {
-  // Backend only returns user_id, role, and joined_at
-  // Use user_id as the label
+const buildMemberLabel = (member: OrganizationMemberWithProfile): string => {
+  const fullName = [member.first_name, member.last_name]
+    .filter(Boolean)
+    .join(' ');
+  if (fullName) {
+    return fullName;
+  }
+  if (member.username) {
+    return `@${member.username}`;
+  }
   return member.user_id;
 };
 

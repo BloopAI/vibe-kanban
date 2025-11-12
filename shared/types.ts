@@ -106,7 +106,9 @@ export type AcceptInvitationResponse = { organization_id: string, organization_s
 
 export type OrganizationMember = { user_id: string, role: MemberRole, joined_at: string, };
 
-export type ListMembersResponse = { members: Array<OrganizationMember>, };
+export type OrganizationMemberWithProfile = { user_id: string, role: MemberRole, joined_at: string, first_name: string | null, last_name: string | null, username: string | null, email: string | null, avatar_url: string | null, };
+
+export type ListMembersResponse = { members: Array<OrganizationMemberWithProfile>, };
 
 export type UpdateMemberRoleRequest = { role: MemberRole, };
 
@@ -116,7 +118,7 @@ export type RemoteProject = { id: string, organization_id: string, name: string,
 
 export type ListProjectsResponse = { projects: Array<RemoteProject>, };
 
-export type RemoteProjectMembersResponse = { organization_id: string, members: Array<OrganizationMember>, };
+export type RemoteProjectMembersResponse = { organization_id: string, members: Array<OrganizationMemberWithProfile>, };
 
 export type UserSystemInfo = { config: Config, analytics_user_id: string, login_status: LoginStatus, environment: Environment, 
 /**

@@ -9,6 +9,10 @@ use chrono::{Duration, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tracing::warn;
+use utils::api::organizations::{
+    ListMembersResponse, OrganizationMemberWithProfile, UpdateMemberRoleRequest,
+    UpdateMemberRoleResponse,
+};
 use uuid::Uuid;
 
 use super::error::{ErrorResponse, membership_error};
@@ -76,29 +80,6 @@ pub struct GetInvitationResponse {
 pub struct AcceptInvitationResponse {
     pub organization_id: String,
     pub organization_slug: String,
-    pub role: MemberRole,
-}
-
-#[derive(Debug, Serialize)]
-pub struct OrganizationMember {
-    pub user_id: Uuid,
-    pub role: MemberRole,
-    pub joined_at: chrono::DateTime<Utc>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ListMembersResponse {
-    pub members: Vec<OrganizationMember>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct UpdateMemberRoleRequest {
-    pub role: MemberRole,
-}
-
-#[derive(Debug, Serialize)]
-pub struct UpdateMemberRoleResponse {
-    pub user_id: Uuid,
     pub role: MemberRole,
 }
 
@@ -248,15 +229,28 @@ pub async fn list_members(
     ensure_member_access(&state.pool, org_id, user.id).await?;
 
     let members = sqlx::query_as!(
-        OrganizationMember,
+        OrganizationMemberWithProfile,
         r#"
         SELECT
-            user_id AS "user_id!: Uuid",
-            role AS "role!: MemberRole",
-            joined_at AS "joined_at!"
-        FROM organization_member_metadata
-        WHERE organization_id = $1 AND status = 'active'
-        ORDER BY joined_at ASC
+            omm.user_id AS "user_id!: Uuid",
+            omm.role AS "role!: MemberRole",
+            omm.joined_at AS "joined_at!",
+            u.first_name AS "first_name?",
+            u.last_name AS "last_name?",
+            u.username AS "username?",
+            u.email AS "email?",
+            oa.avatar_url AS "avatar_url?"
+        FROM organization_member_metadata omm
+        INNER JOIN users u ON omm.user_id = u.id
+        LEFT JOIN LATERAL (
+            SELECT avatar_url
+            FROM oauth_accounts
+            WHERE user_id = omm.user_id
+            ORDER BY created_at ASC
+            LIMIT 1
+        ) oa ON true
+        WHERE omm.organization_id = $1 AND omm.status = 'active'
+        ORDER BY omm.joined_at ASC
         "#,
         org_id
     )

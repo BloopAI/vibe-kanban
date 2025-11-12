@@ -144,8 +144,21 @@ pub struct OrganizationMember {
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
+pub struct OrganizationMemberWithProfile {
+    pub user_id: Uuid,
+    pub role: MemberRole,
+    pub joined_at: DateTime<Utc>,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
+    pub username: Option<String>,
+    pub email: Option<String>,
+    pub avatar_url: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct ListMembersResponse {
-    pub members: Vec<OrganizationMember>,
+    pub members: Vec<OrganizationMemberWithProfile>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
