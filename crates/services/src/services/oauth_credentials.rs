@@ -13,64 +13,34 @@ pub struct Credentials {
 /// Service for managing OAuth credentials (JWT tokens) in memory and persistent storage.
 /// The token is loaded into memory on startup and persisted to disk/keychain on save.
 pub struct OAuthCredentials {
-    #[cfg_attr(target_os = "macos", allow(dead_code))]
-    path: PathBuf,
+    backend: Backend,
     inner: RwLock<Option<Credentials>>,
 }
 
 impl OAuthCredentials {
     pub fn new(path: PathBuf) -> Self {
         Self {
-            path,
+            backend: Backend::detect(path),
             inner: RwLock::new(None),
         }
     }
 
     pub async fn load(&self) -> std::io::Result<()> {
-        #[cfg(target_os = "macos")]
-        {
-            if use_file_backend() {
-                tracing::info!("OAuth credentials backend: file");
-                file_backend::load(self).await
-            } else {
-                tracing::info!("OAuth credentials backend: keychain");
-                macos::load(self).await
-            }
-        }
-        #[cfg(not(target_os = "macos"))]
-        {
-            file_backend::load(self).await
-        }
+        let creds = self.backend.load().await?;
+        *self.inner.write().await = creds;
+        Ok(())
     }
 
     pub async fn save(&self, creds: &Credentials) -> std::io::Result<()> {
-        #[cfg(target_os = "macos")]
-        {
-            if use_file_backend() {
-                file_backend::save(self, creds).await
-            } else {
-                macos::save(self, creds).await
-            }
-        }
-        #[cfg(not(target_os = "macos"))]
-        {
-            file_backend::save(self, creds).await
-        }
+        self.backend.save(creds).await?;
+        *self.inner.write().await = Some(creds.clone());
+        Ok(())
     }
 
     pub async fn clear(&self) -> std::io::Result<()> {
-        #[cfg(target_os = "macos")]
-        {
-            if use_file_backend() {
-                file_backend::clear(self).await
-            } else {
-                macos::clear(self).await
-            }
-        }
-        #[cfg(not(target_os = "macos"))]
-        {
-            file_backend::clear(self).await
-        }
+        self.backend.clear().await?;
+        *self.inner.write().await = None;
+        Ok(())
     }
 
     pub async fn get(&self) -> Option<Credentials> {
@@ -78,40 +48,93 @@ impl OAuthCredentials {
     }
 }
 
-#[cfg(target_os = "macos")]
-fn use_file_backend() -> bool {
-    match std::env::var("OAUTH_CREDENTIALS_BACKEND") {
-        Ok(v) if v.eq_ignore_ascii_case("file") => true,
-        Ok(v) if v.eq_ignore_ascii_case("keychain") => false,
-        _ => cfg!(debug_assertions),
+trait StoreBackend {
+    async fn load(&self) -> std::io::Result<Option<Credentials>>;
+    async fn save(&self, creds: &Credentials) -> std::io::Result<()>;
+    async fn clear(&self) -> std::io::Result<()>;
+}
+
+enum Backend {
+    File(FileBackend),
+    #[cfg(target_os = "macos")]
+    Keychain(KeychainBackend),
+}
+
+impl Backend {
+    fn detect(path: PathBuf) -> Self {
+        #[cfg(target_os = "macos")]
+        {
+            let use_file = match std::env::var("OAUTH_CREDENTIALS_BACKEND") {
+                Ok(v) if v.eq_ignore_ascii_case("file") => true,
+                Ok(v) if v.eq_ignore_ascii_case("keychain") => false,
+                _ => cfg!(debug_assertions),
+            };
+            if use_file {
+                tracing::info!("OAuth credentials backend: file");
+                Backend::File(FileBackend { path })
+            } else {
+                tracing::info!("OAuth credentials backend: keychain");
+                Backend::Keychain(KeychainBackend)
+            }
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            tracing::info!("OAuth credentials backend: file");
+            Backend::File(FileBackend { path })
+        }
     }
 }
 
-mod file_backend {
-    use super::*;
+impl StoreBackend for Backend {
+    async fn load(&self) -> std::io::Result<Option<Credentials>> {
+        match self {
+            Backend::File(b) => b.load().await,
+            #[cfg(target_os = "macos")]
+            Backend::Keychain(b) => b.load().await,
+        }
+    }
 
-    pub async fn load(oauth: &OAuthCredentials) -> std::io::Result<()> {
-        if !oauth.path.exists() {
-            return Ok(());
+    async fn save(&self, creds: &Credentials) -> std::io::Result<()> {
+        match self {
+            Backend::File(b) => b.save(creds).await,
+            #[cfg(target_os = "macos")]
+            Backend::Keychain(b) => b.save(creds).await,
+        }
+    }
+
+    async fn clear(&self) -> std::io::Result<()> {
+        match self {
+            Backend::File(b) => b.clear().await,
+            #[cfg(target_os = "macos")]
+            Backend::Keychain(b) => b.clear().await,
+        }
+    }
+}
+
+struct FileBackend {
+    path: PathBuf,
+}
+
+impl FileBackend {
+    async fn load(&self) -> std::io::Result<Option<Credentials>> {
+        if !self.path.exists() {
+            return Ok(None);
         }
 
-        let bytes = std::fs::read(&oauth.path)?;
+        let bytes = std::fs::read(&self.path)?;
         match serde_json::from_slice::<Credentials>(&bytes) {
-            Ok(creds) => {
-                *oauth.inner.write().await = Some(creds);
-                Ok(())
-            }
+            Ok(creds) => Ok(Some(creds)),
             Err(e) => {
                 tracing::warn!(?e, "failed to parse credentials file, renaming to .bad");
-                let bad = oauth.path.with_extension("bad");
-                let _ = std::fs::rename(&oauth.path, bad);
-                Ok(())
+                let bad = self.path.with_extension("bad");
+                let _ = std::fs::rename(&self.path, bad);
+                Ok(None)
             }
         }
     }
 
-    pub async fn save(oauth: &OAuthCredentials, creds: &Credentials) -> std::io::Result<()> {
-        let tmp = oauth.path.with_extension("tmp");
+    async fn save(&self, creds: &Credentials) -> std::io::Result<()> {
+        let tmp = self.path.with_extension("tmp");
 
         let file = {
             let mut opts = std::fs::OpenOptions::new();
@@ -130,72 +153,56 @@ mod file_backend {
         file.sync_all()?;
         drop(file);
 
-        std::fs::rename(&tmp, &oauth.path)?;
-
-        *oauth.inner.write().await = Some(creds.clone());
+        std::fs::rename(&tmp, &self.path)?;
         Ok(())
     }
 
-    pub async fn clear(oauth: &OAuthCredentials) -> std::io::Result<()> {
-        let _ = std::fs::remove_file(&oauth.path);
-        *oauth.inner.write().await = None;
+    async fn clear(&self) -> std::io::Result<()> {
+        let _ = std::fs::remove_file(&self.path);
         Ok(())
     }
 }
 
 #[cfg(target_os = "macos")]
-mod macos {
-    use std::io;
+struct KeychainBackend;
 
-    use security_framework::passwords::{
-        delete_generic_password, get_generic_password, set_generic_password,
-    };
-
-    use super::*;
-
-    const SERVICE_NAME: &str = concat!(env!("CARGO_PKG_NAME"), ":oauth");
-    const ACCOUNT_NAME: &str = "default";
+#[cfg(target_os = "macos")]
+impl KeychainBackend {
+    const SERVICE_NAME: &'static str = concat!(env!("CARGO_PKG_NAME"), ":oauth");
+    const ACCOUNT_NAME: &'static str = "default";
     const ERR_SEC_ITEM_NOT_FOUND: i32 = -25300;
 
-    pub async fn load(oauth: &OAuthCredentials) -> io::Result<()> {
-        match get_generic_password(SERVICE_NAME, ACCOUNT_NAME) {
-            Ok(bytes) => {
-                match serde_json::from_slice::<Credentials>(&bytes) {
-                    Ok(creds) => {
-                        *oauth.inner.write().await = Some(creds);
-                    }
-                    Err(e) => {
-                        tracing::warn!(
-                            ?e,
-                            "failed to parse keychain credentials; clearing in-memory"
-                        );
-                        *oauth.inner.write().await = None;
-                    }
+    async fn load(&self) -> std::io::Result<Option<Credentials>> {
+        use security_framework::passwords::get_generic_password;
+
+        match get_generic_password(Self::SERVICE_NAME, Self::ACCOUNT_NAME) {
+            Ok(bytes) => match serde_json::from_slice::<Credentials>(&bytes) {
+                Ok(creds) => Ok(Some(creds)),
+                Err(e) => {
+                    tracing::warn!(?e, "failed to parse keychain credentials; ignoring");
+                    Ok(None)
                 }
-                Ok(())
-            }
-            Err(e) if e.code() == ERR_SEC_ITEM_NOT_FOUND => Ok(()),
-            Err(e) => Err(io::Error::other(e)),
+            },
+            Err(e) if e.code() == Self::ERR_SEC_ITEM_NOT_FOUND => Ok(None),
+            Err(e) => Err(std::io::Error::other(e)),
         }
     }
 
-    pub async fn save(oauth: &OAuthCredentials, creds: &Credentials) -> io::Result<()> {
-        let bytes = serde_json::to_vec_pretty(creds).map_err(io::Error::other)?;
+    async fn save(&self, creds: &Credentials) -> std::io::Result<()> {
+        use security_framework::passwords::set_generic_password;
 
-        set_generic_password(SERVICE_NAME, ACCOUNT_NAME, &bytes).map_err(io::Error::other)?;
-
-        *oauth.inner.write().await = Some(creds.clone());
-        Ok(())
+        let bytes = serde_json::to_vec_pretty(creds).map_err(std::io::Error::other)?;
+        set_generic_password(Self::SERVICE_NAME, Self::ACCOUNT_NAME, &bytes)
+            .map_err(std::io::Error::other)
     }
 
-    pub async fn clear(oauth: &OAuthCredentials) -> io::Result<()> {
-        match delete_generic_password(SERVICE_NAME, ACCOUNT_NAME) {
-            Ok(()) => {}
-            Err(e) if e.code() == ERR_SEC_ITEM_NOT_FOUND => {}
-            Err(e) => return Err(io::Error::other(e)),
-        }
+    async fn clear(&self) -> std::io::Result<()> {
+        use security_framework::passwords::delete_generic_password;
 
-        *oauth.inner.write().await = None;
-        Ok(())
+        match delete_generic_password(Self::SERVICE_NAME, Self::ACCOUNT_NAME) {
+            Ok(()) => Ok(()),
+            Err(e) if e.code() == Self::ERR_SEC_ITEM_NOT_FOUND => Ok(()),
+            Err(e) => Err(std::io::Error::other(e)),
+        }
     }
 }
