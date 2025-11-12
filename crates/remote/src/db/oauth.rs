@@ -45,6 +45,10 @@ impl FromStr for AuthorizationStatus {
 pub enum OAuthHandoffError {
     #[error("oauth handoff not found")]
     NotFound,
+    #[error("oauth handoff is not authorized")]
+    NotAuthorized,
+    #[error("oauth handoff already redeemed or not in authorized state")]
+    AlreadyRedeemed,
     #[error(transparent)]
     Database(#[from] sqlx::Error),
 }
@@ -250,7 +254,7 @@ impl<'a> OAuthHandoffRepository<'a> {
     }
 
     pub async fn mark_redeemed(&self, id: Uuid) -> Result<(), OAuthHandoffError> {
-        sqlx::query!(
+        let result = sqlx::query!(
             r#"
             UPDATE oauth_handoffs
             SET
@@ -258,11 +262,27 @@ impl<'a> OAuthHandoffRepository<'a> {
                 redeemed_at = NOW(),
                 updated_at = NOW()
             WHERE id = $1
+              AND status = 'authorized'
             "#,
             id
         )
         .execute(self.pool)
         .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(OAuthHandoffError::AlreadyRedeemed);
+        }
+
         Ok(())
+    }
+
+    pub async fn ensure_redeemable(&self, id: Uuid) -> Result<(), OAuthHandoffError> {
+        let handoff = self.get(id).await?;
+
+        match handoff.status() {
+            Some(AuthorizationStatus::Authorized) => Ok(()),
+            Some(AuthorizationStatus::Pending) => Err(OAuthHandoffError::NotAuthorized),
+            _ => Err(OAuthHandoffError::AlreadyRedeemed),
+        }
     }
 }
