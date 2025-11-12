@@ -1,12 +1,20 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { projectsApi } from '@/lib/api';
-import type { CreateProject, UpdateProject, Project } from 'shared/types';
+import type {
+  CreateProject,
+  UpdateProject,
+  Project,
+  LinkToExistingRequest,
+  CreateRemoteProjectRequest,
+} from 'shared/types';
 
 interface UseProjectMutationsOptions {
   onCreateSuccess?: (project: Project) => void;
   onCreateError?: (err: unknown) => void;
   onUpdateSuccess?: (project: Project) => void;
   onUpdateError?: (err: unknown) => void;
+  onLinkSuccess?: (project: Project) => void;
+  onLinkError?: (err: unknown) => void;
 }
 
 export function useProjectMutations(options?: UseProjectMutationsOptions) {
@@ -53,8 +61,64 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
     },
   });
 
+  const linkToExisting = useMutation({
+    mutationKey: ['linkToExisting'],
+    mutationFn: ({
+      localProjectId,
+      data,
+    }: {
+      localProjectId: string;
+      data: LinkToExistingRequest;
+    }) => projectsApi.linkToExisting(localProjectId, data),
+    onSuccess: (project: Project) => {
+      // Update single project cache
+      queryClient.setQueryData(['project', project.id], project);
+
+      // Update the project in the projects list cache immediately
+      queryClient.setQueryData<Project[]>(['projects'], (old) => {
+        if (!old) return old;
+        return old.map((p) => (p.id === project.id ? project : p));
+      });
+
+      options?.onLinkSuccess?.(project);
+    },
+    onError: (err) => {
+      console.error('Failed to link project:', err);
+      options?.onLinkError?.(err);
+    },
+  });
+
+  const createAndLink = useMutation({
+    mutationKey: ['createAndLink'],
+    mutationFn: ({
+      localProjectId,
+      data,
+    }: {
+      localProjectId: string;
+      data: CreateRemoteProjectRequest;
+    }) => projectsApi.createAndLink(localProjectId, data),
+    onSuccess: (project: Project) => {
+      // Update single project cache
+      queryClient.setQueryData(['project', project.id], project);
+
+      // Update the project in the projects list cache immediately
+      queryClient.setQueryData<Project[]>(['projects'], (old) => {
+        if (!old) return old;
+        return old.map((p) => (p.id === project.id ? project : p));
+      });
+
+      options?.onLinkSuccess?.(project);
+    },
+    onError: (err) => {
+      console.error('Failed to create and link project:', err);
+      options?.onLinkError?.(err);
+    },
+  });
+
   return {
     createProject,
     updateProject,
+    linkToExisting,
+    createAndLink,
   };
 }
