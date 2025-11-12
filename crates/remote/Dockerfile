@@ -13,7 +13,7 @@ COPY remote-frontend/package.json remote-frontend/package.json
 
 RUN pnpm fetch --filter ./remote-frontend
 
-RUN pnpm install --offline --frozen-lockfile --filter ./remote-frontend
+RUN pnpm install --offline --filter ./remote-frontend
 
 COPY remote-frontend/ remote-frontend/
 
