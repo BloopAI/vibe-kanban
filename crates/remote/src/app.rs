@@ -11,7 +11,7 @@ use crate::{
     },
     config::RemoteServerConfig,
     db,
-    mail::NoopMailer,
+    mail::{LoopsMailer, NoopMailer},
     routes,
 };
 
@@ -68,7 +68,18 @@ impl Server {
             auth_config.public_base_url().to_string(),
         ));
 
-        let mailer = Arc::new(NoopMailer);
+        let mailer: Arc<dyn crate::mail::Mailer> =
+            match (std::env::var("LOOPS_EMAIL_API_KEY"), std::env::var("LOOPS_INVITE_TEMPLATE_ID")) {
+                (Ok(api_key), Ok(invite_template_id)) => {
+                    tracing::info!("Using LoopsMailer for transactional email");
+                    Arc::new(LoopsMailer::new(api_key, invite_template_id))
+                }
+                _ => {
+                    tracing::info!("Loops env vars not set; using NoopMailer");
+                    Arc::new(NoopMailer)
+                }
+            };
+
         let base_url = config
             .base_url
             .clone()
