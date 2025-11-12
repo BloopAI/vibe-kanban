@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { organizationsApi } from '@/lib/api';
-import type { OrganizationMember } from 'shared/types';
+import type { OrganizationMemberWithProfile } from 'shared/types';
 
 export function useOrganizationMembers(organizationId?: string) {
-  return useQuery<OrganizationMember[]>({
+  return useQuery<OrganizationMemberWithProfile[]>({
     queryKey: ['organization', 'members', organizationId],
     queryFn: () => {
       if (!organizationId) {

@@ -8,12 +8,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Trash2 } from 'lucide-react';
-import type { OrganizationMember, MemberRole } from 'shared/types';
+import type { OrganizationMemberWithProfile, MemberRole } from 'shared/types';
 import { MemberRole as MemberRoleEnum } from 'shared/types';
 import { useTranslation } from 'react-i18next';
+import { UserAvatar } from '@/components/tasks/UserAvatar';
 
 interface MemberListItemProps {
-  member: OrganizationMember;
+  member: OrganizationMemberWithProfile;
   currentUserId: string | null;
   isAdmin: boolean;
   onRemove: (userId: string) => void;
@@ -36,11 +37,28 @@ export function MemberListItem({
   const canRemove = isAdmin && !isSelf;
   const canChangeRole = isAdmin && !isSelf;
 
+  const displayName = member.username || member.user_id;
+  const fullName = [member.first_name, member.last_name]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <div className="flex items-center justify-between p-3 border rounded-lg">
       <div className="flex items-center gap-3">
+        <UserAvatar
+          firstName={member.first_name}
+          lastName={member.last_name}
+          username={member.username}
+          imageUrl={member.avatar_url}
+          className="h-8 w-8"
+        />
         <div>
-          <div className="font-mono text-sm">{member.user_id}</div>
+          <div className="font-medium text-sm">{fullName || displayName}</div>
+          {fullName && member.username && (
+            <div className="text-xs text-muted-foreground">
+              @{member.username}
+            </div>
+          )}
           {isSelf && (
             <div className="text-xs text-muted-foreground">
               {t('memberList.you')}

@@ -53,7 +53,7 @@ import {
   GhCliSetupError,
   StatusResponse,
   ListOrganizationsResponse,
-  OrganizationMember,
+  OrganizationMemberWithProfile,
   ListMembersResponse,
   RemoteProjectMembersResponse,
   CreateOrganizationRequest,
@@ -1005,7 +1005,9 @@ export const oauthApi = {
 
 // Organizations API
 export const organizationsApi = {
-  getMembers: async (orgId: string): Promise<OrganizationMember[]> => {
+  getMembers: async (
+    orgId: string
+  ): Promise<OrganizationMemberWithProfile[]> => {
     const response = await makeRequest(`/api/organizations/${orgId}/members`);
     const result = await handleApiResponse<ListMembersResponse>(response);
     return result.members;
