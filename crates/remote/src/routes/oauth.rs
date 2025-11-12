@@ -19,7 +19,7 @@ use uuid::Uuid;
 use crate::{
     AppState,
     auth::{CallbackResult, HandoffError, RequestContext},
-    db::oauth_accounts::OAuthAccountRepository,
+    db::{oauth::OAuthHandoffError, oauth_accounts::OAuthAccountRepository},
 };
 
 pub fn public_router() -> Router<AppState> {
@@ -259,9 +259,17 @@ fn classify_handoff_error(error: &HandoffError) -> (StatusCode, Cow<'_, str>) {
             StatusCode::INTERNAL_SERVER_ERROR,
             Cow::Borrowed("internal_error"),
         ),
-        HandoffError::Authorization(_) => {
-            (StatusCode::BAD_GATEWAY, Cow::Borrowed("provider_error"))
-        }
+        HandoffError::Authorization(auth_err) => match auth_err {
+            OAuthHandoffError::NotAuthorized => (StatusCode::GONE, Cow::Borrowed("not_authorized")),
+            OAuthHandoffError::AlreadyRedeemed => {
+                (StatusCode::GONE, Cow::Borrowed("already_redeemed"))
+            }
+            OAuthHandoffError::NotFound => (StatusCode::NOT_FOUND, Cow::Borrowed("not_found")),
+            OAuthHandoffError::Database(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Cow::Borrowed("internal_error"),
+            ),
+        },
     }
 }
 

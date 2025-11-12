@@ -282,11 +282,9 @@ impl OAuthHandoffService {
         app_verifier: &str,
     ) -> Result<RedeemResponse, HandoffError> {
         let repo = OAuthHandoffRepository::new(&self.pool);
-        let record = repo.get(handoff_id).await?;
+        repo.ensure_redeemable(handoff_id).await?;
 
-        if record.status() != Some(AuthorizationStatus::Authorized) {
-            return Err(HandoffError::Failed("invalid_state".into()));
-        }
+        let record = repo.get(handoff_id).await?;
 
         if is_expired(&record) {
             repo.set_status(record.id, AuthorizationStatus::Expired, Some("expired"))
