@@ -37,5 +37,9 @@
       "enterProjectName": "プロジェクト名を入力してください",
       "linkFailed": "プロジェクトのリンクに失敗しました"
     }
-  }
+  },
+  "unlinkFromOrganization": "組織からリンク解除",
+  "viewProject": "プロジェクトを表示",
+  "openInIDE": "IDEで開く",
+  "createdDate": "作成日 {{date}}"
 }

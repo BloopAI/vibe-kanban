@@ -15,6 +15,8 @@ interface UseProjectMutationsOptions {
   onUpdateError?: (err: unknown) => void;
   onLinkSuccess?: (project: Project) => void;
   onLinkError?: (err: unknown) => void;
+  onUnlinkSuccess?: (project: Project) => void;
+  onUnlinkError?: (err: unknown) => void;
 }
 
 export function useProjectMutations(options?: UseProjectMutationsOptions) {
@@ -115,10 +117,32 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
     },
   });
 
+  const unlinkProject = useMutation({
+    mutationKey: ['unlinkProject'],
+    mutationFn: (projectId: string) => projectsApi.unlink(projectId),
+    onSuccess: (project: Project) => {
+      queryClient.setQueryData(['project', project.id], project);
+      queryClient.setQueryData<Project[]>(['projects'], (old) => {
+        if (!old) return old;
+        return old.map((p) => (p.id === project.id ? project : p));
+      });
+
+      // Invalidate to ensure fresh data from server
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+
+      options?.onUnlinkSuccess?.(project);
+    },
+    onError: (err) => {
+      console.error('Failed to unlink project:', err);
+      options?.onUnlinkError?.(err);
+    },
+  });
+
   return {
     createProject,
     updateProject,
     linkToExisting,
     createAndLink,
+    unlinkProject,
   };
 }
