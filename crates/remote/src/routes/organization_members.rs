@@ -73,6 +73,7 @@ pub struct ListInvitationsResponse {
 pub struct GetInvitationResponse {
     pub id: Uuid,
     pub organization_slug: String,
+    pub organization_name: String,
     pub role: MemberRole,
     pub expires_at: chrono::DateTime<Utc>,
 }
@@ -216,6 +217,7 @@ pub async fn get_invitation(
     Ok(Json(GetInvitationResponse {
         id: invitation.id,
         organization_slug: org.slug,
+        organization_name: org.name,
         role: invitation.role,
         expires_at: invitation.expires_at,
     }))

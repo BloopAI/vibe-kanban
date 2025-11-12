@@ -12,7 +12,7 @@ export default function InvitationCompletePage() {
   useEffect(() => {
     if (handoffId && appCode) {
       const appBase = import.meta.env.VITE_APP_BASE_URL || window.location.origin
-      const target = `${appBase}/orgs`
+      const target = `${appBase}`
       const timer = setTimeout(() => {
         window.location.assign(target)
       }, 2000)
@@ -42,7 +42,7 @@ export default function InvitationCompletePage() {
   return (
     <StatusCard
       title="Invitation accepted!"
-      body="Redirecting to your organization..."
+      body="Redirecting..."
       isSuccess
     />
   )
@@ -63,13 +63,12 @@ function StatusCard({
     <div className="min-h-screen grid place-items-center bg-gray-50 p-4">
       <div className="max-w-md w-full bg-white shadow rounded-lg p-6">
         <h2
-          className={`text-lg font-semibold ${
-            isError
-              ? 'text-red-600'
-              : isSuccess
+          className={`text-lg font-semibold ${isError
+            ? 'text-red-600'
+            : isSuccess
               ? 'text-green-600'
               : 'text-gray-900'
-          }`}
+            }`}
         >
           {title}
         </h2>

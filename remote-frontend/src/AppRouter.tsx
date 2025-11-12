@@ -10,7 +10,7 @@ const router = createBrowserRouter([
     element: <HomePage />,
   },
   {
-    path: '/invitations/:token',
+    path: '/invitations/:token/accept',
     element: <InvitationPage />,
   },
   {

@@ -3,6 +3,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 export type Invitation = {
   id: string
   organization_slug: string
+  organization_name: string
   role: string
   expires_at: string
 }

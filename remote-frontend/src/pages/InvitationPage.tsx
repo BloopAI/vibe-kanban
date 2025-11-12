@@ -34,7 +34,7 @@ export default function InvitationPage() {
             You've been invited
           </h1>
           <p className="text-gray-600 mt-1">
-            Join the <span className="font-semibold">{data.organization_slug}</span> organization
+            Join <span className="font-semibold">{data.organization_name}</span>
           </p>
         </div>
 
