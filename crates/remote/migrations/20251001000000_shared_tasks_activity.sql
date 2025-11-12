@@ -49,18 +49,15 @@ END
 $$;
 
 CREATE TABLE IF NOT EXISTS projects (
-    id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id      UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    github_repository_id BIGINT NOT NULL,
-    owner                TEXT NOT NULL,
-    name                 TEXT NOT NULL,
-    created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (organization_id, github_repository_id)
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    name            TEXT NOT NULL,
+    metadata        JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_projects_org_owner_name
-    ON projects (organization_id, owner, name);
-
+CREATE INDEX IF NOT EXISTS idx_projects_org_name
+    ON projects (organization_id, name);
 
 CREATE TABLE IF NOT EXISTS shared_tasks (
     id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),

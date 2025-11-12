@@ -170,14 +170,13 @@ impl From<ShareError> for ApiError {
             ShareError::ProjectNotFound(_) => {
                 ApiError::Conflict("Project not found for sharing".to_string())
             }
-            ShareError::MissingProjectMetadata(project_id) => {
+            ShareError::ProjectNotLinked(project_id) => {
                 tracing::warn!(
                     %project_id,
-                    "project missing GitHub metadata required for sharing"
+                    "project must be linked to a remote project before sharing tasks"
                 );
                 ApiError::Conflict(
-                    "This project needs a linked GitHub repository before tasks can be shared. Open the project settings, connect GitHub, and try again."
-                        .to_string(),
+                    "Link this project to a remote project before sharing tasks.".to_string(),
                 )
             }
             ShareError::MissingConfig(reason) => {

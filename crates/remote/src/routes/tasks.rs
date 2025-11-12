@@ -11,7 +11,7 @@ use tracing::{Span, instrument};
 use uuid::Uuid;
 
 use super::{
-    error::{ErrorResponse, identity_error_response, task_error_response},
+    error::{identity_error_response, task_error_response},
     organization_members::{ensure_project_access, ensure_task_access},
 };
 use crate::{
@@ -19,7 +19,6 @@ use crate::{
     auth::RequestContext,
     db::{
         organization_members,
-        projects::{ProjectMetadata, ProjectRepository},
         tasks::{
             AssignTaskData, CreateSharedTaskData, DeleteTaskData, SharedTask, SharedTaskError,
             SharedTaskRepository, SharedTaskWithUser, TaskStatus, UpdateSharedTaskData,
@@ -101,7 +100,7 @@ pub async fn create_shared_task(
     let repo = SharedTaskRepository::new(pool);
     let user_repo = UserRepository::new(pool);
     let CreateSharedTaskRequest {
-        project,
+        project_id,
         title,
         description,
         assignee_user_id,
@@ -111,25 +110,13 @@ pub async fn create_shared_task(
         return task_error_response(error, "shared task payload too large");
     }
 
-    let organization_id =
-        match ProjectRepository::organization_for_metadata(pool, ctx.user.id, &project).await {
-            Ok(Some(org_id)) => {
-                Span::current().record("org_id", format_args!("{org_id}"));
-                org_id
-            }
-            Ok(None) => {
-                return ErrorResponse::new(StatusCode::FORBIDDEN, "project not accessible")
-                    .into_response();
-            }
-            Err(error) => {
-                tracing::error!(?error, "failed to resolve project organization");
-                return ErrorResponse::new(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "internal server error",
-                )
-                .into_response();
-            }
-        };
+    let organization_id = match ensure_project_access(pool, ctx.user.id, project_id).await {
+        Ok(org_id) => {
+            Span::current().record("org_id", format_args!("{org_id}"));
+            org_id
+        }
+        Err(error) => return error.into_response(),
+    };
 
     if let Some(assignee) = assignee_user_id.as_ref() {
         if let Err(err) = user_repo.fetch_user(*assignee).await {
@@ -143,7 +130,7 @@ pub async fn create_shared_task(
     }
 
     let data = CreateSharedTaskData {
-        project,
+        project_id,
         title,
         description,
         creator_user_id: ctx.user.id,
@@ -346,7 +333,7 @@ pub struct BulkSharedTasksResponse {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateSharedTaskRequest {
-    pub project: ProjectMetadata,
+    pub project_id: Uuid,
     pub title: String,
     pub description: Option<String>,
     pub assignee_user_id: Option<Uuid>,

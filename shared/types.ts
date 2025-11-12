@@ -108,7 +108,7 @@ export type UpdateMemberRoleRequest = { role: MemberRole, };
 
 export type UpdateMemberRoleResponse = { user_id: string, role: MemberRole, };
 
-export type RemoteProject = { id: string, organization_id: string, github_repository_id: bigint, owner: string, name: string, created_at: string, };
+export type RemoteProject = { id: string, organization_id: string, name: string, metadata: Record<string, unknown>, created_at: string, };
 
 export type ListProjectsResponse = { projects: Array<RemoteProject>, };
 

@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH next AS (\n            INSERT INTO project_activity_counters AS counters (project_id, last_seq)\n            VALUES ($1, 1)\n            ON CONFLICT (project_id)\n            DO UPDATE SET last_seq = counters.last_seq + 1\n            RETURNING last_seq\n        )\n        INSERT INTO activity (\n            project_id,\n            seq,\n            assignee_user_id,\n            event_type,\n            payload\n        )\n        SELECT $1, next.last_seq, $2, $3, $4\n        FROM next\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "814e3c0507a86c04008e08104176c3c552833f518b2e880e649ad7fc10c0721c"
+}

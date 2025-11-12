@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -7,9 +8,9 @@ use uuid::Uuid;
 pub struct RemoteProject {
     pub id: Uuid,
     pub organization_id: Uuid,
-    pub github_repository_id: i64,
-    pub owner: String,
     pub name: String,
+    #[ts(type = "Record<string, unknown>")]
+    pub metadata: Value,
     pub created_at: DateTime<Utc>,
 }
 

@@ -4,23 +4,19 @@ use db::{
     DBService,
     models::{project::Project, shared_task::SharedTask, task::Task},
 };
-use remote::{
-    db::projects::ProjectMetadata,
-    routes::tasks::{
-        AssignSharedTaskRequest, CreateSharedTaskRequest, DeleteSharedTaskRequest,
-        SharedTaskResponse, UpdateSharedTaskRequest,
-    },
+use remote::routes::tasks::{
+    AssignSharedTaskRequest, CreateSharedTaskRequest, DeleteSharedTaskRequest, SharedTaskResponse,
+    UpdateSharedTaskRequest,
 };
 use reqwest::{Client as HttpClient, StatusCode};
 use uuid::Uuid;
 
 use super::{ShareConfig, ShareError, convert_remote_task, status};
-use crate::services::{auth::AuthContext, git::GitService, metadata::compute_remote_metadata};
+use crate::services::auth::AuthContext;
 
 #[derive(Clone)]
 pub struct SharePublisher {
     db: DBService,
-    git: GitService,
     client: HttpClient,
     config: ShareConfig,
     auth_ctx: AuthContext,
@@ -29,7 +25,6 @@ pub struct SharePublisher {
 impl SharePublisher {
     pub fn new(
         db: DBService,
-        git: GitService,
         config: ShareConfig,
         auth_ctx: AuthContext,
     ) -> Result<Self, ShareError> {
@@ -40,7 +35,6 @@ impl SharePublisher {
 
         Ok(Self {
             db,
-            git,
             config,
             client,
             auth_ctx,
@@ -69,13 +63,14 @@ impl SharePublisher {
         let project = Project::find_by_id(&self.db.pool, task.project_id)
             .await?
             .ok_or(ShareError::ProjectNotFound(task.project_id))?;
-        let project = self.ensure_project_metadata(project).await?;
-        let project_metadata = project_metadata_for_remote(&project)?;
+        let remote_project_id = project
+            .remote_project_id
+            .ok_or(ShareError::ProjectNotLinked(project.id))?;
 
         let user_uuid = uuid::Uuid::parse_str(&user_id).map_err(|_| ShareError::InvalidUserId)?;
 
         let payload = CreateSharedTaskRequest {
-            project: project_metadata,
+            project_id: remote_project_id,
             title: task.title.clone(),
             description: task.description.clone(),
             assignee_user_id: Some(user_uuid),
@@ -205,42 +200,6 @@ impl SharePublisher {
         Task::set_shared_task_id(&self.db.pool, task.id, Some(remote_task.id)).await?;
         Ok(())
     }
-
-    /// Check and populate missing project metadata needed for sharing tasks.
-    async fn ensure_project_metadata(&self, mut project: Project) -> Result<Project, ShareError> {
-        let repo_path = project.git_repo_path.as_path();
-        let metadata = compute_remote_metadata(&self.git, repo_path).await;
-
-        if !metadata.has_remote {
-            tracing::warn!(
-                "Project '{}' has no git remote configured at {}",
-                project.name,
-                repo_path.display()
-            );
-            return Err(ShareError::MissingProjectMetadata(project.id));
-        }
-
-        if metadata.github_repo_id.is_none() {
-            tracing::warn!(
-                "Project '{}' has a remote, but not a GitHub repo ID (non-GitHub remote?)",
-                project.name
-            );
-            return Err(ShareError::MissingProjectMetadata(project.id));
-        }
-
-        // metadata differs from store, persist the update
-        if metadata != project.metadata() {
-            Project::update_remote_metadata(&self.db.pool, project.id, &metadata).await?;
-            project.has_remote = metadata.has_remote;
-            project.github_repo_owner = metadata.github_repo_owner.clone();
-            project.github_repo_name = metadata.github_repo_name.clone();
-            if let Some(repo_id) = metadata.github_repo_id {
-                project.github_repo_id = Some(repo_id);
-            }
-        }
-
-        Ok(project)
-    }
 }
 
 struct RemoteTaskClient<'a> {
@@ -338,17 +297,4 @@ impl<'a> RemoteTaskClient<'a> {
         let envelope: SharedTaskResponse = response.json().await.map_err(ShareError::Transport)?;
         Ok(envelope)
     }
-}
-
-fn project_metadata_for_remote(project: &Project) -> Result<ProjectMetadata, ShareError> {
-    let missing = || ShareError::MissingProjectMetadata(project.id);
-
-    Ok(ProjectMetadata {
-        github_repository_id: project.github_repo_id.ok_or_else(missing)?,
-        owner: project.github_repo_owner.clone().ok_or_else(missing)?,
-        name: project
-            .github_repo_name
-            .clone()
-            .unwrap_or_else(|| project.name.clone()),
-    })
 }

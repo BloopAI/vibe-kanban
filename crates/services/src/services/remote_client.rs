@@ -5,6 +5,7 @@ use std::time::Duration;
 use backon::{ExponentialBuilder, Retryable};
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use thiserror::Error;
 use tracing::warn;
 use url::Url;
@@ -564,9 +565,9 @@ impl RemoteClient {
 #[derive(Debug, Serialize)]
 pub struct CreateRemoteProjectPayload {
     pub organization_id: Uuid,
-    pub github_repository_id: i64,
-    pub owner: String,
     pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Value>,
 }
 
 fn map_reqwest_error(e: reqwest::Error) -> RemoteClientError {

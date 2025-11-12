@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT st.id AS \"id!: Uuid\"\n            FROM shared_tasks st\n            WHERE st.project_id = $1\n              AND st.deleted_at IS NOT NULL\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "4153afb5c59d76df7c880d2f427cdba11d2eaf2fe26193043947a45bcda46f45"
+}

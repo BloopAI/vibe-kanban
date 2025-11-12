@@ -10,7 +10,7 @@ use db::{
 };
 use remote::{
     activity::{ActivityEvent, ActivityResponse},
-    db::{projects::ProjectMetadata, tasks::SharedTaskActivityPayload},
+    db::tasks::SharedTaskActivityPayload,
     routes::tasks::BulkSharedTasksResponse,
 };
 use reqwest::Client as HttpClient;
@@ -41,10 +41,6 @@ impl ActivityProcessor {
             client: HttpClient::new(),
             auth_ctx,
         }
-    }
-
-    pub fn database(&self) -> DBService {
-        self.db.clone()
     }
 
     pub async fn process_event(&self, event: ActivityEvent) -> Result<(), ShareError> {
@@ -145,28 +141,22 @@ impl ActivityProcessor {
         Ok(resp_body.data)
     }
 
-    async fn resolve_project_id(
+    async fn resolve_project(
         &self,
         task_id: Uuid,
         remote_project_id: Uuid,
-        metadata: &ProjectMetadata,
-    ) -> Result<Option<Uuid>, ShareError> {
+    ) -> Result<Option<Project>, ShareError> {
         if let Some(existing) = SharedTask::find_by_id(&self.db.pool, task_id).await?
             && let Some(project_id) = existing.project_id
+            && let Some(project) = Project::find_by_id(&self.db.pool, project_id).await?
         {
-            return Ok(Some(project_id));
+            return Ok(Some(project));
         }
 
         if let Some(project) =
             Project::find_by_remote_project_id(&self.db.pool, remote_project_id).await?
         {
-            return Ok(Some(project.id));
-        }
-
-        if let Some(project) =
-            Project::find_by_github_repo_id(&self.db.pool, metadata.github_repository_id).await?
-        {
-            return Ok(Some(project.id));
+            return Ok(Some(project));
         }
 
         Ok(None)
@@ -179,29 +169,23 @@ impl ActivityProcessor {
         };
 
         match serde_json::from_value::<SharedTaskActivityPayload>(payload.clone()) {
-            Ok(SharedTaskActivityPayload {
-                task,
-                project,
-                user,
-            }) => {
-                let project_id = self
-                    .resolve_project_id(task.id, event.project_id, &project)
-                    .await?;
-                if project_id.is_none() {
+            Ok(SharedTaskActivityPayload { task, user }) => {
+                let project = self.resolve_project(task.id, event.project_id).await?;
+                if project.is_none() {
                     tracing::debug!(
                         task_id = %task.id,
-                        repo_id = project.github_repository_id,
-                        owner = %project.owner,
-                        name = %project.name,
-                        "stored shared task without local project; awaiting metadata link"
+                        remote_project_id = %task.project_id,
+                        "stored shared task without local project; awaiting link"
                     );
                 }
 
+                let project_id = project.as_ref().map(|p| p.id);
+                let github_repo_id = project.as_ref().and_then(|p| p.github_repo_id);
                 let input = convert_remote_task(
                     &task,
                     user.as_ref(),
                     project_id,
-                    Some(project.github_repository_id),
+                    github_repo_id,
                     Some(event.seq),
                 );
                 let shared_task = SharedTask::upsert(&self.db.pool, input).await?;
@@ -266,26 +250,26 @@ impl ActivityProcessor {
         let mut replacements = Vec::new();
 
         for payload in bulk_resp.tasks {
-            let project_id = self
-                .resolve_project_id(payload.task.id, remote_project_id, &payload.project)
+            let project = self
+                .resolve_project(payload.task.id, remote_project_id)
                 .await?;
 
-            if project_id.is_none() {
+            if project.is_none() {
                 tracing::debug!(
                     task_id = %payload.task.id,
-                    repo_id = payload.project.github_repository_id,
-                    owner = %payload.project.owner,
-                    name = %payload.project.name,
+                    remote_project_id = %payload.task.project_id,
                     "storing shared task during bulk sync without local project"
                 );
             }
 
+            let project_id = project.as_ref().map(|p| p.id);
+            let github_repo_id = project.as_ref().and_then(|p| p.github_repo_id);
             keep_ids.insert(payload.task.id);
             let input = convert_remote_task(
                 &payload.task,
                 payload.user.as_ref(),
                 project_id,
-                Some(payload.project.github_repository_id),
+                github_repo_id,
                 latest_seq,
             );
             replacements.push(PreparedBulkTask {

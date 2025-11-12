@@ -5,6 +5,7 @@ use axum::{
     routing::get,
 };
 use serde::Deserialize;
+use serde_json::Value;
 use tracing::instrument;
 use utils::api::projects::{ListProjectsResponse, RemoteProject};
 use uuid::Uuid;
@@ -13,7 +14,7 @@ use super::{error::ErrorResponse, organization_members::ensure_member_access};
 use crate::{
     AppState,
     auth::RequestContext,
-    db::projects::{CreateProjectData, Project, ProjectError, ProjectMetadata, ProjectRepository},
+    db::projects::{CreateProjectData, Project, ProjectError, ProjectRepository},
 };
 
 #[derive(Debug, Deserialize)]
@@ -24,9 +25,9 @@ struct ProjectsQuery {
 #[derive(Debug, Deserialize)]
 struct CreateProjectRequest {
     organization_id: Uuid,
-    github_repository_id: i64,
-    owner: String,
     name: String,
+    #[serde(default)]
+    metadata: Value,
 }
 
 pub fn router() -> Router<AppState> {
@@ -82,14 +83,7 @@ async fn get_project(
 
     ensure_member_access(state.pool(), record.organization_id, ctx.user.id).await?;
 
-    Ok(Json(RemoteProject {
-        id: record.id,
-        organization_id: record.organization_id,
-        github_repository_id: record.github_repository_id,
-        owner: record.owner,
-        name: record.name,
-        created_at: record.created_at,
-    }))
+    Ok(Json(to_remote_project(record)))
 }
 
 #[instrument(
@@ -102,22 +96,29 @@ async fn create_project(
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateProjectRequest>,
 ) -> Result<Json<RemoteProject>, ErrorResponse> {
-    ensure_member_access(state.pool(), payload.organization_id, ctx.user.id).await?;
+    let CreateProjectRequest {
+        organization_id,
+        name,
+        metadata,
+    } = payload;
+
+    ensure_member_access(state.pool(), organization_id, ctx.user.id).await?;
 
     let mut tx = state.pool().begin().await.map_err(|error| {
         tracing::error!(?error, "failed to start transaction for project creation");
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
 
+    let metadata = normalize_metadata(metadata).ok_or_else(|| {
+        ErrorResponse::new(StatusCode::BAD_REQUEST, "metadata must be a JSON object")
+    })?;
+
     let project = match ProjectRepository::insert(
         &mut tx,
         CreateProjectData {
-            organization_id: payload.organization_id,
-            metadata: ProjectMetadata {
-                github_repository_id: payload.github_repository_id,
-                owner: payload.owner.clone(),
-                name: payload.name.clone(),
-            },
+            organization_id,
+            name,
+            metadata,
         },
     )
     .await
@@ -129,6 +130,9 @@ async fn create_project(
                 ProjectError::Conflict(message) => {
                     tracing::warn!(?message, "remote project conflict");
                     ErrorResponse::new(StatusCode::CONFLICT, "project already exists")
+                }
+                ProjectError::InvalidMetadata => {
+                    ErrorResponse::new(StatusCode::BAD_REQUEST, "invalid project metadata")
                 }
                 ProjectError::Database(err) => {
                     tracing::error!(?err, "failed to create remote project");
@@ -153,9 +157,16 @@ fn to_remote_project(project: Project) -> RemoteProject {
     RemoteProject {
         id: project.id,
         organization_id: project.organization_id,
-        github_repository_id: project.github_repository_id,
-        owner: project.owner,
         name: project.name,
+        metadata: project.metadata,
         created_at: project.created_at,
+    }
+}
+
+fn normalize_metadata(value: Value) -> Option<Value> {
+    match value {
+        Value::Null => Some(Value::Object(serde_json::Map::new())),
+        Value::Object(_) => Some(value),
+        _ => None,
     }
 }

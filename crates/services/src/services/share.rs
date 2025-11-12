@@ -63,8 +63,8 @@ pub enum ShareError {
     TaskNotFound(Uuid),
     #[error("project {0} not found")]
     ProjectNotFound(Uuid),
-    #[error("project {0} is missing GitHub metadata for sharing")]
-    MissingProjectMetadata(Uuid),
+    #[error("project {0} is not linked to a remote project")]
+    ProjectNotLinked(Uuid),
     #[error("invalid response from remote share service")]
     InvalidResponse,
     #[error("task {0} is already shared")]

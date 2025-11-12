@@ -207,8 +207,7 @@ pub async fn handle(
                                 "authorization revoked"
                             }
                             AuthVerifyError::MembershipRevoked => "project access revoked",
-                            AuthVerifyError::MembershipCheck
-                            | AuthVerifyError::UserMismatch { .. }
+                            AuthVerifyError::UserMismatch { .. }
                             | AuthVerifyError::Decode(_)
                             | AuthVerifyError::Session(_) => "authorization error",
                         };
@@ -375,8 +374,6 @@ enum AuthVerifyError {
     SecretMismatch,
     #[error("organization membership revoked")]
     MembershipRevoked,
-    #[error("failed to verify membership")]
-    MembershipCheck,
 }
 
 #[allow(clippy::too_many_arguments)]

@@ -14,6 +14,7 @@ use db::models::project::{
 use deployment::Deployment;
 use ignore::WalkBuilder;
 use serde::Deserialize;
+use serde_json::json;
 use services::services::{
     file_ranker::FileRanker,
     file_search_cache::{CacheError, SearchMode, SearchQuery},
@@ -134,14 +135,18 @@ pub async fn create_and_link_remote_project(
         ));
     }
 
+    let remote_project_metadata = json!({
+        "github_repository_id": github_repo_id,
+        "owner": owner,
+    });
+
     let remote_project = remote_client
         .create_project(
             &creds.access_token,
             &CreateRemoteProjectPayload {
                 organization_id,
-                github_repository_id: github_repo_id,
-                owner,
                 name: repo_name,
+                metadata: Some(remote_project_metadata),
             },
         )
         .await
@@ -165,23 +170,41 @@ async fn apply_remote_project_link(
         .ok_or(ProjectError::ProjectNotFound)?;
 
     let mut metadata = existing_project.metadata();
-    if let Some(local_repo_id) = metadata.github_repo_id
-        && local_repo_id != remote_project.github_repository_id
-    {
-        return Err(ApiError::Conflict(
-            "The selected remote project is linked to a different GitHub repository.".to_string(),
-        ));
-    }
-    metadata.github_repo_id = Some(remote_project.github_repository_id);
+    let remote_github_id = github_repository_id(&remote_project);
+    let remote_github_owner = github_repository_owner(&remote_project).map(|s| s.to_string());
 
-    if let Some(owner) = metadata.github_repo_owner.as_ref()
-        && owner != &remote_project.owner
-    {
-        return Err(ApiError::Conflict(
-            "The selected remote project belongs to a different GitHub owner.".to_string(),
-        ));
+    if let Some(local_repo_id) = metadata.github_repo_id {
+        match remote_github_id {
+            Some(remote_id) if remote_id != local_repo_id => {
+                return Err(ApiError::Conflict(
+                    "The selected remote project is linked to a different GitHub repository."
+                        .to_string(),
+                ));
+            }
+            None => {
+                return Err(ApiError::Conflict(
+                    "The selected remote project is missing GitHub repository metadata."
+                        .to_string(),
+                ));
+            }
+            _ => {}
+        }
+    } else if let Some(remote_id) = remote_github_id {
+        metadata.github_repo_id = Some(remote_id);
     }
-    metadata.github_repo_owner = Some(remote_project.owner.clone());
+
+    if let Some(current_owner) = metadata.github_repo_owner.as_ref() {
+        if let Some(remote_owner) = remote_github_owner.as_ref()
+            && current_owner != remote_owner
+        {
+            return Err(ApiError::Conflict(
+                "The selected remote project belongs to a different GitHub owner.".to_string(),
+            ));
+        }
+    } else if let Some(remote_owner) = remote_github_owner.clone() {
+        metadata.github_repo_owner = Some(remote_owner);
+    }
+
     metadata.github_repo_name = Some(remote_project.name.clone());
     metadata.remote_project_id = Some(remote_project.id);
     metadata.has_remote = true;
@@ -684,6 +707,22 @@ fn map_remote_error(error: RemoteClientError) -> ApiError {
             ApiError::Conflict("Failed to contact remote project service".to_string())
         }
     }
+}
+
+fn github_repository_id(project: &RemoteProject) -> Option<i64> {
+    project
+        .metadata
+        .as_object()
+        .and_then(|obj| obj.get("github_repository_id"))
+        .and_then(|value| value.as_i64())
+}
+
+fn github_repository_owner(project: &RemoteProject) -> Option<&str> {
+    project
+        .metadata
+        .as_object()
+        .and_then(|obj| obj.get("owner"))
+        .and_then(|value| value.as_str())
 }
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
