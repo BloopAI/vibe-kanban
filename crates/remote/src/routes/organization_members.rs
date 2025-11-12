@@ -142,11 +142,11 @@ pub async fn create_invitation(
         )
     })?;
 
-    let accept_url = format!("{}/invitations/{}", state.base_url, token);
+    let accept_url = format!("{}/invitations/{}", state.server_public_base_url, token);
     state
         .mailer
         .send_org_invitation(
-            &organization.slug,
+            &organization.name,
             &payload.email,
             &accept_url,
             payload.role,

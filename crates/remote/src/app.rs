@@ -11,7 +11,7 @@ use crate::{
     },
     config::RemoteServerConfig,
     db,
-    mail::NoopMailer,
+    mail::LoopsMailer,
     routes,
 };
 
@@ -68,11 +68,15 @@ impl Server {
             auth_config.public_base_url().to_string(),
         ));
 
-        let mailer = Arc::new(NoopMailer);
-        let base_url = config
-            .base_url
-            .clone()
-            .unwrap_or_else(|| format!("http://{}", config.listen_addr));
+        let api_key = std::env::var("LOOPS_EMAIL_API_KEY")
+            .context("LOOPS_EMAIL_API_KEY environment variable is required")?;
+        let mailer = Arc::new(LoopsMailer::new(api_key));
+
+        let server_public_base_url = config.server_public_base_url.clone().ok_or_else(|| {
+            anyhow::anyhow!(
+                "SERVER_PUBLIC_BASE_URL is not set. Please set it in your .env.remote file."
+            )
+        })?;
 
         let state = AppState::new(
             pool.clone(),
@@ -81,7 +85,7 @@ impl Server {
             jwt,
             handoff_service,
             mailer,
-            base_url,
+            server_public_base_url,
         );
 
         let listener =
