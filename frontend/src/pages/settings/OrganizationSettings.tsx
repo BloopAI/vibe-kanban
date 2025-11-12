@@ -72,6 +72,7 @@ export function OrganizationSettings() {
   // Get current user's role and ID
   const currentUserRole = selectedOrg?.user_role;
   const isAdmin = currentUserRole === MemberRoleEnum.ADMIN;
+  const isPersonalOrg = selectedOrg?.is_personal ?? false;
   const currentUserId =
     loginStatus?.status === 'loggedin' ? loginStatus.profile.user_id : null;
 
@@ -84,6 +85,7 @@ export function OrganizationSettings() {
     useOrganizationInvitations({
       organizationId: selectedOrgId || null,
       isAdmin,
+      isPersonal: isPersonalOrg,
     });
 
   // Organization mutations
@@ -124,8 +126,8 @@ export function OrganizationSettings() {
       // Refetch organizations and switch to personal org
       await refetchOrgs();
       if (orgsResponse?.organizations) {
-        const personalOrg = orgsResponse.organizations.find((org) =>
-          org.slug.startsWith('personal-')
+        const personalOrg = orgsResponse.organizations.find(
+          (org) => org.is_personal
         );
         if (personalOrg) {
           handleOrgSelect(personalOrg.id);
@@ -260,9 +262,6 @@ export function OrganizationSettings() {
     unlinkProject.mutate(projectId);
   };
 
-  // Check if current org is personal (cannot be deleted)
-  const isPersonalOrg = selectedOrg?.slug.startsWith('personal-') ?? false;
-
   if (!isLoaded || orgsLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -355,7 +354,7 @@ export function OrganizationSettings() {
         </CardContent>
       </Card>
 
-      {selectedOrg && isAdmin && (
+      {selectedOrg && isAdmin && !isPersonalOrg && (
         <Card>
           <CardHeader>
             <CardTitle>{t('invitationList.title')}</CardTitle>
@@ -403,7 +402,7 @@ export function OrganizationSettings() {
                   })}
                 </CardDescription>
               </div>
-              {isAdmin && (
+              {isAdmin && !isPersonalOrg && (
                 <Button onClick={handleInviteMember} size="sm">
                   <UserPlus className="h-4 w-4 mr-2" />
                   {t('memberList.inviteButton')}

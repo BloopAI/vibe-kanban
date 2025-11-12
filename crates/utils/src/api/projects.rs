@@ -22,6 +22,7 @@ pub struct ListProjectsResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct RemoteProjectMembersResponse {
     pub organization_id: Uuid,
     pub members: Vec<OrganizationMemberWithProfile>,

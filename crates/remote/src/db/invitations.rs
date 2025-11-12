@@ -7,7 +7,7 @@ use uuid::Uuid;
 use super::{
     identity_errors::IdentityError,
     organization_members::{MemberRole, assert_admin, ensure_member_metadata_with_role},
-    organizations::Organization,
+    organizations::{Organization, OrganizationRepository},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
@@ -43,6 +43,15 @@ impl<'a> InvitationRepository<'a> {
         token: &str,
     ) -> Result<Invitation, IdentityError> {
         assert_admin(self.pool, organization_id, invited_by_user_id).await?;
+
+        if OrganizationRepository::new(self.pool)
+            .is_personal(organization_id)
+            .await?
+        {
+            return Err(IdentityError::InvitationError(
+                "Cannot invite members to a personal organization".to_string(),
+            ));
+        }
 
         let invitation = sqlx::query_as!(
             Invitation,
@@ -92,6 +101,15 @@ impl<'a> InvitationRepository<'a> {
         requesting_user_id: Uuid,
     ) -> Result<Vec<Invitation>, IdentityError> {
         assert_admin(self.pool, organization_id, requesting_user_id).await?;
+
+        if OrganizationRepository::new(self.pool)
+            .is_personal(organization_id)
+            .await?
+        {
+            return Err(IdentityError::InvitationError(
+                "Personal organizations do not support invitations".to_string(),
+            ));
+        }
 
         let invitations = sqlx::query_as!(
             Invitation,
@@ -203,6 +221,16 @@ impl<'a> InvitationRepository<'a> {
             IdentityError::InvitationError("Invitation not found or already used".to_string())
         })?;
 
+        if OrganizationRepository::new(self.pool)
+            .is_personal(invitation.organization_id)
+            .await?
+        {
+            tx.rollback().await?;
+            return Err(IdentityError::InvitationError(
+                "Cannot accept invitations for a personal organization".to_string(),
+            ));
+        }
+
         if invitation.expires_at < Utc::now() {
             sqlx::query!(
                 r#"
@@ -240,25 +268,12 @@ impl<'a> InvitationRepository<'a> {
         .execute(&mut *tx)
         .await?;
 
-        let org = sqlx::query_as!(
-            Organization,
-            r#"
-            SELECT
-                id AS "id!: Uuid",
-                name AS "name!",
-                slug AS "slug!",
-                created_at AS "created_at!",
-                updated_at AS "updated_at!"
-            FROM organizations
-            WHERE id = $1
-            "#,
-            invitation.organization_id
-        )
-        .fetch_one(&mut *tx)
-        .await?;
-
         tx.commit().await?;
 
-        Ok((org, invitation.role))
+        let organization = OrganizationRepository::new(self.pool)
+            .fetch_organization(invitation.organization_id)
+            .await?;
+
+        Ok((organization, invitation.role))
     }
 }

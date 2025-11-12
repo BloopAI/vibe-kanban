@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            id          AS \"id!: Uuid\",\n            name        AS \"name!\",\n            slug        AS \"slug!\",\n            created_at  AS \"created_at!\",\n            updated_at  AS \"updated_at!\"\n        FROM organizations\n        WHERE slug = $1\n        ",
+  "query": "\n        INSERT INTO organizations (name, slug, is_personal)\n        VALUES ($1, $2, TRUE)\n        RETURNING\n            id          AS \"id!: Uuid\",\n            name        AS \"name!\",\n            slug        AS \"slug!\",\n            is_personal AS \"is_personal!\",\n            created_at  AS \"created_at!\",\n            updated_at  AS \"updated_at!\"\n        ",
   "describe": {
     "columns": [
       {
@@ -20,17 +20,23 @@
       },
       {
         "ordinal": 3,
+        "name": "is_personal!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 4,
         "name": "created_at!",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "updated_at!",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
+        "Text",
         "Text"
       ]
     },
@@ -39,8 +45,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "2fc28607ffb32b8820bf8ae3d2c81acd44fbd5c22c9743e28d4c215cbfdc6a6b"
+  "hash": "57e4e923c756fcc30d1460c584da60a9c4040a09908d300ae37989b3ac81dc1a"
 }

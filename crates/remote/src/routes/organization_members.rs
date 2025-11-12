@@ -162,6 +162,7 @@ pub async fn list_invitations(
             IdentityError::PermissionDenied => {
                 ErrorResponse::new(StatusCode::FORBIDDEN, "Admin access required")
             }
+            IdentityError::InvitationError(msg) => ErrorResponse::new(StatusCode::BAD_REQUEST, msg),
             _ => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"),
         })?;
 
@@ -305,6 +306,18 @@ pub async fn remove_member(
         ));
     }
 
+    let org_repo = OrganizationRepository::new(&state.pool);
+    if org_repo
+        .is_personal(org_id)
+        .await
+        .map_err(|_| ErrorResponse::new(StatusCode::NOT_FOUND, "Organization not found"))?
+    {
+        return Err(ErrorResponse::new(
+            StatusCode::BAD_REQUEST,
+            "Cannot modify members of a personal organization",
+        ));
+    }
+
     ensure_admin_access(&state.pool, org_id, user.id).await?;
 
     let mut tx = state
@@ -387,6 +400,18 @@ pub async fn update_member_role(
         return Err(ErrorResponse::new(
             StatusCode::BAD_REQUEST,
             "Cannot demote yourself",
+        ));
+    }
+
+    let org_repo = OrganizationRepository::new(&state.pool);
+    if org_repo
+        .is_personal(org_id)
+        .await
+        .map_err(|_| ErrorResponse::new(StatusCode::NOT_FOUND, "Organization not found"))?
+    {
+        return Err(ErrorResponse::new(
+            StatusCode::BAD_REQUEST,
+            "Cannot modify members of a personal organization",
         ));
     }
 

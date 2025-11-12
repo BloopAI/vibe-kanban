@@ -48,6 +48,7 @@ impl<'a> OrganizationRepository<'a> {
                 id          AS "id!: Uuid",
                 name        AS "name!",
                 slug        AS "slug!",
+                is_personal AS "is_personal!",
                 created_at  AS "created_at!",
                 updated_at  AS "updated_at!"
             FROM organizations
@@ -58,6 +59,21 @@ impl<'a> OrganizationRepository<'a> {
         .fetch_optional(self.pool)
         .await?
         .ok_or(IdentityError::NotFound)
+    }
+
+    pub async fn is_personal(&self, organization_id: Uuid) -> Result<bool, IdentityError> {
+        let result = sqlx::query_scalar!(
+            r#"
+            SELECT is_personal
+            FROM organizations
+            WHERE id = $1
+            "#,
+            organization_id
+        )
+        .fetch_optional(self.pool)
+        .await?;
+
+        result.ok_or(IdentityError::NotFound)
     }
 
     pub async fn ensure_personal_org_and_admin_membership(
@@ -75,7 +91,7 @@ impl<'a> OrganizationRepository<'a> {
             Some(org) => org,
             None => {
                 // Create new personal org (DB will generate random UUID)
-                create_organization_with_slug(self.pool, &name, &slug).await?
+                create_personal_org(self.pool, &name, &slug).await?
             }
         };
 
@@ -116,6 +132,7 @@ impl<'a> OrganizationRepository<'a> {
                 id AS "id!: Uuid",
                 name AS "name!",
                 slug AS "slug!",
+                is_personal AS "is_personal!",
                 created_at AS "created_at!",
                 updated_at AS "updated_at!"
             "#,
@@ -144,6 +161,7 @@ impl<'a> OrganizationRepository<'a> {
             id: org.id,
             name: org.name,
             slug: org.slug,
+            is_personal: org.is_personal,
             created_at: org.created_at,
             updated_at: org.updated_at,
             user_role: MemberRole::Admin,
@@ -161,6 +179,7 @@ impl<'a> OrganizationRepository<'a> {
                 o.id AS "id!: Uuid",
                 o.name AS "name!",
                 o.slug AS "slug!",
+                o.is_personal AS "is_personal!",
                 o.created_at AS "created_at!",
                 o.updated_at AS "updated_at!",
                 m.role AS "user_role!: MemberRole"
@@ -195,6 +214,7 @@ impl<'a> OrganizationRepository<'a> {
                 id AS "id!: Uuid",
                 name AS "name!",
                 slug AS "slug!",
+                is_personal AS "is_personal!",
                 created_at AS "created_at!",
                 updated_at AS "updated_at!"
             "#,
@@ -216,8 +236,8 @@ impl<'a> OrganizationRepository<'a> {
         // First fetch the org to check if it's a personal org
         let org = self.fetch_organization(org_id).await?;
 
-        // Check if this is a personal org by slug pattern
-        if org.slug == personal_org_slug(user_id) {
+        // Check if this is a personal org by flag
+        if org.is_personal {
             return Err(IdentityError::CannotDeleteOrganization(
                 "Cannot delete personal organizations".to_string(),
             ));
@@ -274,6 +294,7 @@ async fn find_organization_by_slug(
             id          AS "id!: Uuid",
             name        AS "name!",
             slug        AS "slug!",
+            is_personal AS "is_personal!",
             created_at  AS "created_at!",
             updated_at  AS "updated_at!"
         FROM organizations
@@ -285,7 +306,7 @@ async fn find_organization_by_slug(
     .await
 }
 
-async fn create_organization_with_slug(
+async fn create_personal_org(
     pool: &PgPool,
     name: &str,
     slug: &str,
@@ -293,12 +314,13 @@ async fn create_organization_with_slug(
     query_as!(
         Organization,
         r#"
-        INSERT INTO organizations (name, slug)
-        VALUES ($1, $2)
+        INSERT INTO organizations (name, slug, is_personal)
+        VALUES ($1, $2, TRUE)
         RETURNING
             id          AS "id!: Uuid",
             name        AS "name!",
             slug        AS "slug!",
+            is_personal AS "is_personal!",
             created_at  AS "created_at!",
             updated_at  AS "updated_at!"
         "#,

@@ -5,12 +5,13 @@ import { InvitationStatus, type Invitation } from 'shared/types';
 interface UseOrganizationInvitationsOptions {
   organizationId: string | null;
   isAdmin: boolean;
+  isPersonal: boolean;
 }
 
 export function useOrganizationInvitations(
   options: UseOrganizationInvitationsOptions
 ) {
-  const { organizationId, isAdmin } = options;
+  const { organizationId, isAdmin, isPersonal } = options;
 
   return useQuery<Invitation[]>({
     queryKey: ['organization', 'invitations', organizationId],
@@ -25,7 +26,7 @@ export function useOrganizationInvitations(
         (inv) => inv.status === InvitationStatus.PENDING
       );
     },
-    enabled: !!organizationId && !!isAdmin,
+    enabled: !!organizationId && !!isAdmin && !isPersonal,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
