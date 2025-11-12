@@ -147,9 +147,7 @@ export function OrganizationSettings() {
       setTimeout(() => setSuccess(null), 3000);
     },
     onUnlinkError: (err) => {
-      setError(
-        err instanceof Error ? err.message : 'Failed to unlink project'
-      );
+      setError(err instanceof Error ? err.message : 'Failed to unlink project');
     },
   });
 
@@ -395,7 +393,8 @@ export function OrganizationSettings() {
           <CardHeader>
             <CardTitle>Linked Projects</CardTitle>
             <CardDescription>
-              Local projects that are linked to shared projects in {selectedOrg.name}
+              Local projects that are linked to shared projects in{' '}
+              {selectedOrg.name}
             </CardDescription>
           </CardHeader>
           <CardContent>
