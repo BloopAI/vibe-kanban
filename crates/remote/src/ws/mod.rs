@@ -5,6 +5,7 @@ use axum::{
     routing::get,
 };
 use serde::Deserialize;
+use uuid::Uuid;
 
 use crate::{AppState, auth::RequestContext};
 
@@ -13,6 +14,7 @@ mod session;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct WsQueryParams {
+    pub project_id: Uuid,
     pub cursor: Option<i64>,
 }
 
@@ -26,5 +28,14 @@ async fn upgrade(
     Extension(ctx): Extension<RequestContext>,
     Query(params): Query<WsQueryParams>,
 ) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| session::handle(socket, state, ctx, params))
+    match crate::routes::organization_members::ensure_project_access(
+        state.pool(),
+        ctx.user.id,
+        params.project_id,
+    )
+    .await
+    {
+        Ok(_) => ws.on_upgrade(move |socket| session::handle(socket, state, ctx, params)),
+        Err(error) => error.into_response(),
+    }
 }

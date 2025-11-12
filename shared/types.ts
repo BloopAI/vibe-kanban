@@ -8,7 +8,7 @@ export type DirectoryEntry = { name: string, path: string, is_directory: boolean
 
 export type DirectoryListResponse = { entries: Array<DirectoryEntry>, current_path: string, };
 
-export type Project = { id: string, name: string, git_repo_path: string, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, copy_files: string | null, has_remote: boolean, github_repo_owner: string | null, github_repo_name: string | null, github_repo_id: bigint | null, created_at: Date, updated_at: Date, };
+export type Project = { id: string, name: string, git_repo_path: string, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, copy_files: string | null, has_remote: boolean, remote_project_id: string | null, github_repo_owner: string | null, github_repo_name: string | null, github_repo_id: bigint | null, created_at: Date, updated_at: Date, };
 
 export type CreateProject = { name: string, git_repo_path: string, use_existing_repo: boolean, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, copy_files: string | null, };
 
@@ -54,7 +54,7 @@ export type CreateTask = { project_id: string, title: string, description: strin
 
 export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, parent_task_attempt: string | null, image_ids: Array<string> | null, };
 
-export type SharedTask = { id: string, organization_id: string, project_id: string | null, github_repo_id: bigint | null, title: string, description: string | null, status: TaskStatus, assignee_user_id: string | null, assignee_first_name: string | null, assignee_last_name: string | null, assignee_username: string | null, version: bigint, last_event_seq: bigint | null, created_at: Date, updated_at: Date, };
+export type SharedTask = { id: string, organization_id: string, remote_project_id: string, project_id: string | null, github_repo_id: bigint | null, title: string, description: string | null, status: TaskStatus, assignee_user_id: string | null, assignee_first_name: string | null, assignee_last_name: string | null, assignee_username: string | null, version: bigint, last_event_seq: bigint | null, created_at: Date, updated_at: Date, };
 
 export type Image = { id: string, file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, created_at: string, updated_at: string, };
 
@@ -64,7 +64,7 @@ export type ApiResponse<T, E = T> = { success: boolean, data: T | null, error_da
 
 export type LoginStatus = { "status": "loggedout" } | { "status": "loggedin", profile: ProfileResponse, };
 
-export type ProfileResponse = { user_id: string, username: string | null, email: string, organization_id: string, providers: Array<ProviderProfile>, };
+export type ProfileResponse = { user_id: string, username: string | null, email: string, providers: Array<ProviderProfile>, };
 
 export type ProviderProfile = { provider: string, username: string | null, display_name: string | null, email: string | null, avatar_url: string | null, };
 
@@ -107,6 +107,10 @@ export type ListMembersResponse = { members: Array<OrganizationMember>, };
 export type UpdateMemberRoleRequest = { role: MemberRole, };
 
 export type UpdateMemberRoleResponse = { user_id: string, role: MemberRole, };
+
+export type RemoteProject = { id: string, organization_id: string, github_repository_id: bigint, owner: string, name: string, created_at: string, };
+
+export type ListProjectsResponse = { projects: Array<RemoteProject>, };
 
 export type UserSystemInfo = { config: Config, analytics_user_id: string, login_status: LoginStatus, environment: Environment, 
 /**

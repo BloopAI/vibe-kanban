@@ -1,19 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { organizationsApi } from '@/lib/api';
-import { useUserSystem } from '@/components/config-provider';
 import type { OrganizationMember } from 'shared/types';
 
 /**
- * Hook to fetch organization members for the current user's organization
+ * Fetch members for a specific organization. Fetching is disabled when the
+ * organization identifier is not provided.
  */
-export function useOrganizationMembers() {
-  const { loginStatus } = useUserSystem();
-
-  const organizationId =
-    loginStatus?.status === 'loggedin'
-      ? loginStatus.profile.organization_id
-      : null;
-
+export function useOrganizationMembers(organizationId?: string) {
   return useQuery<OrganizationMember[]>({
     queryKey: ['organization', 'members', organizationId],
     queryFn: () => {
@@ -22,7 +15,7 @@ export function useOrganizationMembers() {
       }
       return organizationsApi.getMembers(organizationId);
     },
-    enabled: !!organizationId,
+    enabled: Boolean(organizationId),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }

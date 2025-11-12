@@ -5,16 +5,18 @@ import { useTranslation } from 'react-i18next';
 interface OrgMemberAvatarsProps {
   limit?: number;
   className?: string;
+  organizationId?: string;
 }
 
 export function OrgMemberAvatars({
   limit = 5,
   className = '',
+  organizationId,
 }: OrgMemberAvatarsProps) {
   const { t } = useTranslation('common');
-  const { data: members, isPending } = useOrganizationMembers();
+  const { data: members, isPending } = useOrganizationMembers(organizationId);
 
-  if (isPending || !members || members.length === 0) {
+  if (!organizationId || isPending || !members || members.length === 0) {
     return null;
   }
 

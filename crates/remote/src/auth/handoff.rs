@@ -324,11 +324,11 @@ impl OAuthHandoffService {
         let user_repo = UserRepository::new(&self.pool);
         let user = user_repo.fetch_user(user_id).await?;
         let org_repo = OrganizationRepository::new(&self.pool);
-        let organization = org_repo
+        let _organization = org_repo
             .ensure_personal_org_and_admin_membership(user.id, user.username.as_deref())
             .await?;
 
-        let token = self.jwt.encode(&session, &user, &organization)?;
+        let token = self.jwt.encode(&session, &user)?;
         session_repo.touch(session.id).await?;
         repo.mark_redeemed(record.id).await?;
 

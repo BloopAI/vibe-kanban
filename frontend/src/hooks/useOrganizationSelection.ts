@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useUserSystem } from '@/components/config-provider';
 import type {
   OrganizationWithRole,
   ListOrganizationsResponse,
@@ -19,7 +18,6 @@ export function useOrganizationSelection(
 ) {
   const { organizations, onSelectionChange } = options;
   const [searchParams, setSearchParams] = useSearchParams();
-  const { loginStatus } = useUserSystem();
   const orgIdParam = searchParams.get('orgId') ?? '';
 
   const [selectedOrgId, setSelectedOrgId] = useState<string>(
@@ -29,23 +27,34 @@ export function useOrganizationSelection(
     null
   );
 
-  // Default to current org if no selection
-  useEffect(() => {
-    if (!selectedOrgId && loginStatus?.status === 'loggedin') {
-      const currentOrgId = loginStatus.profile.organization_id;
-      if (currentOrgId) {
-        setSelectedOrgId(currentOrgId);
-        setSearchParams({ orgId: currentOrgId });
-      }
-    }
-  }, [selectedOrgId, loginStatus, setSearchParams]);
-
   // Sync selectedOrgId when URL changes
   useEffect(() => {
     if (orgIdParam && orgIdParam !== selectedOrgId) {
       setSelectedOrgId(orgIdParam);
     }
   }, [orgIdParam, selectedOrgId]);
+
+  // Default to first available organization if none selected
+  useEffect(() => {
+    const orgList = organizations?.organizations ?? [];
+    if (orgList.length === 0) {
+      return;
+    }
+
+    const hasSelection = selectedOrgId
+      ? orgList.some((org) => org.id === selectedOrgId)
+      : false;
+
+    if (!selectedOrgId || !hasSelection) {
+      const fallbackId = orgList[0].id;
+      setSelectedOrgId(fallbackId);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('orgId', fallbackId);
+        return next;
+      });
+    }
+  }, [organizations, selectedOrgId, setSearchParams]);
 
   // Update selected organization from list
   useEffect(() => {
@@ -65,9 +74,17 @@ export function useOrganizationSelection(
 
       setSelectedOrgId(id);
       if (id) {
-        setSearchParams({ orgId: id });
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('orgId', id);
+          return next;
+        });
       } else {
-        setSearchParams({});
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('orgId');
+          return next;
+        });
       }
       onSelectionChange?.();
     },

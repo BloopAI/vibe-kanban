@@ -31,9 +31,7 @@ use services::services::{
     image::{ImageError, ImageService},
     metadata::compute_remote_metadata,
     pr_monitor::PrMonitorService,
-    share::{
-        RemoteSync, RemoteSyncHandle, ShareConfig, SharePublisher, link_shared_tasks_to_project,
-    },
+    share::{RemoteSync, RemoteSyncHandle, ShareConfig, SharePublisher},
     worktree_manager::WorktreeError,
 };
 use sqlx::{Error as SqlxError, types::Uuid};
@@ -415,26 +413,6 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                     repo_path.display()
                 );
                 continue;
-            }
-
-            if github_repo_id_changed && let Some(repo_id) = metadata.github_repo_id {
-                let current_profile = self.auth_context().cached_profile().await;
-                let current_user_id = current_profile.as_ref().map(|p| p.user_id);
-
-                if let Err(err) = link_shared_tasks_to_project(
-                    &self.db().pool,
-                    current_user_id,
-                    project.id,
-                    repo_id,
-                )
-                .await
-                {
-                    tracing::warn!(
-                        project_id = %project.id,
-                        repo_id,
-                        "failed to link shared tasks after metadata refresh: {err}"
-                    );
-                }
             }
         }
     }

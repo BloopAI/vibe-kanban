@@ -17,8 +17,9 @@ pub mod activity;
 mod error;
 mod identity;
 mod oauth;
-mod organization_members;
+pub(crate) mod organization_members;
 mod organizations;
+mod projects;
 pub mod tasks;
 
 pub fn router(state: AppState) -> Router {
@@ -51,6 +52,7 @@ pub fn router(state: AppState) -> Router {
     let v1_protected = Router::<AppState>::new()
         .merge(identity::router())
         .merge(activity::router())
+        .merge(projects::router())
         .merge(tasks::router())
         .merge(organizations::router())
         .merge(organization_members::protected_router())

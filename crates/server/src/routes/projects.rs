@@ -1,8 +1,8 @@
-use std::path::Path;
+use std::path::Path as StdPath;
 
 use axum::{
     Extension, Json, Router,
-    extract::{Query, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     middleware::from_fn_with_state,
     response::Json as ResponseJson,
@@ -13,17 +13,30 @@ use db::models::project::{
 };
 use deployment::Deployment;
 use ignore::WalkBuilder;
+use serde::Deserialize;
 use services::services::{
     file_ranker::FileRanker,
     file_search_cache::{CacheError, SearchMode, SearchQuery},
     git::GitBranch,
     metadata::compute_remote_metadata,
+    remote_client::{CreateRemoteProjectPayload, RemoteClientError},
     share::link_shared_tasks_to_project,
 };
-use utils::{path::expand_tilde, response::ApiResponse};
+use utils::{api::projects::RemoteProject, path::expand_tilde, response::ApiResponse};
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError, middleware::load_project_middleware};
+
+#[derive(Deserialize)]
+pub struct LinkToExistingRequest {
+    pub remote_project_id: String,
+}
+
+#[derive(Deserialize)]
+pub struct CreateRemoteProjectRequest {
+    pub organization_id: String,
+    pub name: String,
+}
 
 pub async fn get_projects(
     State(deployment): State<DeploymentImpl>,
@@ -44,6 +57,146 @@ pub async fn get_project_branches(
 ) -> Result<ResponseJson<ApiResponse<Vec<GitBranch>>>, ApiError> {
     let branches = deployment.git().get_all_branches(&project.git_repo_path)?;
     Ok(ResponseJson(ApiResponse::success(branches)))
+}
+
+pub async fn link_project_to_existing_remote(
+    Path(project_id): Path<Uuid>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<LinkToExistingRequest>,
+) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
+    let remote_client = deployment
+        .remote_client()
+        .ok_or_else(|| ApiError::Conflict("Share service not configured".to_string()))?;
+
+    let creds = deployment
+        .auth_context()
+        .get_credentials()
+        .await
+        .ok_or(ApiError::Unauthorized)?;
+
+    let remote_project_id = Uuid::parse_str(payload.remote_project_id.trim())
+        .map_err(|_| ApiError::Conflict("Invalid remote_project_id".to_string()))?;
+
+    let remote_project = remote_client
+        .get_project(&creds.access_token, remote_project_id)
+        .await
+        .map_err(map_remote_error)?;
+
+    let updated_project =
+        apply_remote_project_link(&deployment, project_id, remote_project).await?;
+
+    Ok(ResponseJson(ApiResponse::success(updated_project)))
+}
+
+pub async fn create_and_link_remote_project(
+    Path(project_id): Path<Uuid>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<CreateRemoteProjectRequest>,
+) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
+    let remote_client = deployment
+        .remote_client()
+        .ok_or_else(|| ApiError::Conflict("Share service not configured".to_string()))?;
+
+    let creds = deployment
+        .auth_context()
+        .get_credentials()
+        .await
+        .ok_or(ApiError::Unauthorized)?;
+
+    let organization_id = Uuid::parse_str(payload.organization_id.trim())
+        .map_err(|_| ApiError::Conflict("Invalid organization_id".to_string()))?;
+
+    let existing_project = Project::find_by_id(&deployment.db().pool, project_id)
+        .await?
+        .ok_or(ProjectError::ProjectNotFound)?;
+
+    let metadata = existing_project.metadata();
+    let github_repo_id = metadata.github_repo_id.ok_or_else(|| {
+        ApiError::Conflict(
+            "This project is missing GitHub repository metadata. Open the project settings and connect the GitHub repository before linking."
+                .to_string(),
+        )
+    })?;
+    let owner = metadata.github_repo_owner.clone().ok_or_else(|| {
+        ApiError::Conflict(
+            "This project is missing the GitHub repository owner. Re-run the GitHub setup for this project."
+                .to_string(),
+        )
+    })?;
+    let repo_name = metadata
+        .github_repo_name
+        .clone()
+        .unwrap_or_else(|| payload.name.trim().to_string());
+
+    if repo_name.trim().is_empty() {
+        return Err(ApiError::Conflict(
+            "Remote project name cannot be empty.".to_string(),
+        ));
+    }
+
+    let remote_project = remote_client
+        .create_project(
+            &creds.access_token,
+            &CreateRemoteProjectPayload {
+                organization_id,
+                github_repository_id: github_repo_id,
+                owner,
+                name: repo_name,
+            },
+        )
+        .await
+        .map_err(map_remote_error)?;
+
+    let updated_project =
+        apply_remote_project_link(&deployment, project_id, remote_project).await?;
+
+    Ok(ResponseJson(ApiResponse::success(updated_project)))
+}
+
+async fn apply_remote_project_link(
+    deployment: &DeploymentImpl,
+    project_id: Uuid,
+    remote_project: RemoteProject,
+) -> Result<Project, ApiError> {
+    let pool = &deployment.db().pool;
+
+    let existing_project = Project::find_by_id(pool, project_id)
+        .await?
+        .ok_or(ProjectError::ProjectNotFound)?;
+
+    let mut metadata = existing_project.metadata();
+    if let Some(local_repo_id) = metadata.github_repo_id
+        && local_repo_id != remote_project.github_repository_id
+    {
+        return Err(ApiError::Conflict(
+            "The selected remote project is linked to a different GitHub repository.".to_string(),
+        ));
+    }
+    metadata.github_repo_id = Some(remote_project.github_repository_id);
+
+    if let Some(owner) = metadata.github_repo_owner.as_ref()
+        && owner != &remote_project.owner
+    {
+        return Err(ApiError::Conflict(
+            "The selected remote project belongs to a different GitHub owner.".to_string(),
+        ));
+    }
+    metadata.github_repo_owner = Some(remote_project.owner.clone());
+    metadata.github_repo_name = Some(remote_project.name.clone());
+    metadata.remote_project_id = Some(remote_project.id);
+    metadata.has_remote = true;
+
+    Project::update_remote_metadata(pool, project_id, &metadata).await?;
+
+    let updated_project = Project::find_by_id(pool, project_id)
+        .await?
+        .ok_or(ProjectError::ProjectNotFound)?;
+
+    let current_profile = deployment.auth_context().cached_profile().await;
+    let current_user_id = current_profile.as_ref().map(|p| p.user_id);
+    link_shared_tasks_to_project(pool, current_user_id, project_id, remote_project.id).await?;
+
+    Ok(updated_project)
 }
 
 pub async fn create_project(
@@ -167,20 +320,6 @@ pub async fn create_project(
                     }),
                 )
                 .await;
-
-            if let Some(_) = deployment.share_publisher()
-                && let Some(github_repo_id) = remote_metadata.github_repo_id
-            {
-                let current_profile = deployment.auth_context().cached_profile().await;
-                let current_user_id = current_profile.as_ref().map(|p| p.user_id);
-                link_shared_tasks_to_project(
-                    &deployment.db().pool,
-                    current_user_id,
-                    id,
-                    github_repo_id,
-                )
-                .await?;
-            }
 
             Ok(ResponseJson(ApiResponse::success(project)))
         }
@@ -403,7 +542,7 @@ async fn search_files_in_repo(
     query: &str,
     mode: SearchMode,
 ) -> Result<Vec<SearchResult>, Box<dyn std::error::Error + Send + Sync>> {
-    let repo_path = Path::new(repo_path);
+    let repo_path = StdPath::new(repo_path);
 
     if !repo_path.exists() {
         return Err("Repository path does not exist".into());
@@ -526,6 +665,27 @@ async fn search_files_in_repo(
     Ok(results)
 }
 
+fn map_remote_error(error: RemoteClientError) -> ApiError {
+    match error {
+        RemoteClientError::Auth => ApiError::Unauthorized,
+        RemoteClientError::Http { status: 404, .. } => {
+            ApiError::Conflict("Remote project not found".to_string())
+        }
+        RemoteClientError::Transport(msg) => {
+            ApiError::Conflict(format!("Remote service unavailable: {msg}"))
+        }
+        RemoteClientError::Timeout => ApiError::Conflict("Remote service timeout".to_string()),
+        RemoteClientError::Http { status, body } => {
+            tracing::error!(?status, ?body, "Remote project API error");
+            ApiError::Conflict(format!("Remote service error: {status}"))
+        }
+        other => {
+            tracing::error!(?other, "Unexpected remote client error");
+            ApiError::Conflict("Failed to contact remote project service".to_string())
+        }
+    }
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let project_id_router = Router::new()
         .route(
@@ -535,6 +695,8 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/branches", get(get_project_branches))
         .route("/search", get(search_project_files))
         .route("/open-editor", post(open_project_in_editor))
+        .route("/link", post(link_project_to_existing_remote))
+        .route("/link/create", post(create_and_link_remote_project))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_project_middleware,

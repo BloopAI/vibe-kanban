@@ -22,7 +22,7 @@ impl AuthContext {
         Self { oauth, profile }
     }
 
-    pub async fn wait_for_auth(&self, timeout: Duration) -> Option<(String, String, String)> {
+    pub async fn wait_for_auth(&self, timeout: Duration) -> Option<(String, String)> {
         let start = tokio::time::Instant::now();
         let poll_interval = Duration::from_millis(100);
 
@@ -31,11 +31,7 @@ impl AuthContext {
             let creds = self.oauth.get().await;
 
             if let (Some(creds), Some(profile)) = (creds, profile.as_ref()) {
-                return Some((
-                    creds.access_token,
-                    profile.user_id.to_string(),
-                    profile.organization_id.clone(),
-                ));
+                return Some((creds.access_token, profile.user_id.to_string()));
             }
             drop(profile);
             sleep(poll_interval).await;

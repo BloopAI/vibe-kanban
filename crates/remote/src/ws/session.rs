@@ -6,7 +6,7 @@ use sqlx::PgPool;
 use thiserror::Error;
 use tokio::time::{self, MissedTickBehavior};
 use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
-use tracing::instrument;
+use tracing::{Span, instrument};
 use utils::ws::{WS_AUTH_REFRESH_INTERVAL, WS_BULK_SYNC_THRESHOLD};
 use uuid::Uuid;
 
@@ -27,7 +27,12 @@ use crate::{
 #[instrument(
     name = "ws.session",
     skip(socket, state, ctx, params),
-    fields(org_id = %ctx.organization.id, user_id = %ctx.user.id, session_id = %ctx.session_id)
+    fields(
+        user_id = %ctx.user.id,
+        project_id = %params.project_id,
+        org_id = tracing::field::Empty,
+        session_id = %ctx.session_id
+    )
 )]
 pub async fn handle(
     socket: WebSocket,
@@ -36,8 +41,29 @@ pub async fn handle(
     params: WsQueryParams,
 ) {
     let config = state.config();
-    let pool = state.pool().clone();
-    let org_id = ctx.organization.id;
+    let pool_ref = state.pool();
+    let project_id = params.project_id;
+    let organization_id = match crate::routes::organization_members::ensure_project_access(
+        pool_ref,
+        ctx.user.id,
+        project_id,
+    )
+    .await
+    {
+        Ok(org_id) => org_id,
+        Err(error) => {
+            tracing::info!(
+            ?error,
+            user_id = %ctx.user.id,
+                %project_id,
+                "websocket project access denied"
+            );
+            return;
+        }
+    };
+    Span::current().record("org_id", format_args!("{organization_id}"));
+
+    let pool = pool_ref.clone();
     let mut last_sent_seq = params.cursor;
     let mut auth_state = WsAuthState::new(
         state.jwt(),
@@ -45,16 +71,16 @@ pub async fn handle(
         ctx.session_id,
         ctx.session_secret.clone(),
         ctx.user.id,
-        org_id,
+        project_id,
     );
     let mut auth_check_interval = time::interval(WS_AUTH_REFRESH_INTERVAL);
     auth_check_interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
 
     let (mut sender, mut inbound) = socket.split();
-    let mut activity_stream = state.broker().subscribe(org_id);
+    let mut activity_stream = state.broker().subscribe(project_id);
 
     if let Ok(history) = ActivityRepository::new(&pool)
-        .fetch_since(org_id, params.cursor, config.activity_default_limit)
+        .fetch_since(project_id, params.cursor, config.activity_default_limit)
         .await
     {
         for event in history {
@@ -65,7 +91,7 @@ pub async fn handle(
         }
     }
 
-    tracing::debug!(%org_id, "starting websocket session");
+    tracing::debug!(org_id = %organization_id, project_id = %project_id, "starting websocket session");
 
     loop {
         tokio::select! {
@@ -73,7 +99,7 @@ pub async fn handle(
                 match maybe_activity {
                     Some(Ok(event)) => {
                         tracing::trace!(?event, "received activity event");
-                        assert_eq!(event.organization_id, org_id, "activity stream emitted cross-org event");
+                        assert_eq!(event.project_id, project_id, "activity stream emitted cross-project event");
                         if let Some(prev_seq) = last_sent_seq {
                             if prev_seq >= event.seq {
                                 continue;
@@ -82,13 +108,15 @@ pub async fn handle(
                                 tracing::warn!(
                                     expected_next = prev_seq + 1,
                                     actual = event.seq,
-                                    org_id = %org_id,
+                                    org_id = %organization_id,
+                                    project_id = %project_id,
                                     "activity stream skipped sequence; running catch-up"
                                 );
                                 match activity_stream_catch_up(
                                     &mut sender,
                                     &pool,
-                                    org_id,
+                                    project_id,
+                                    organization_id,
                                     prev_seq,
                                     state.broker(),
                                     config.activity_catchup_batch_size,
@@ -110,10 +138,11 @@ pub async fn handle(
                         last_sent_seq = Some(event.seq);
                     }
                     Some(Err(BroadcastStreamRecvError::Lagged(skipped))) => {
-                        tracing::warn!(skipped, org_id = %org_id, "activity stream lagged");
+                        tracing::warn!(skipped, org_id = %organization_id, project_id = %project_id, "activity stream lagged");
                         let Some(prev_seq) = last_sent_seq else {
                             tracing::info!(
-                                org_id = %org_id,
+                                org_id = %organization_id,
+                                project_id = %project_id,
                                 "activity stream lagged without baseline; forcing bulk sync"
                             );
                             let _ = send_error(&mut sender, "activity backlog dropped").await;
@@ -123,7 +152,8 @@ pub async fn handle(
                         match activity_stream_catch_up(
                             &mut sender,
                             &pool,
-                            org_id,
+                            project_id,
+                            organization_id,
                             prev_seq,
                             state.broker(),
                             config.activity_catchup_batch_size,
@@ -173,9 +203,12 @@ pub async fn handle(
                     Err(error) => {
                         tracing::info!(?error, "closing websocket due to auth verification error");
                         let message = match error {
-                            AuthVerifyError::Revoked | AuthVerifyError::SecretMismatch => "authorization revoked",
-                            AuthVerifyError::UserMismatch { .. }
-                            | AuthVerifyError::OrgMismatch { .. }
+                            AuthVerifyError::Revoked | AuthVerifyError::SecretMismatch => {
+                                "authorization revoked"
+                            }
+                            AuthVerifyError::MembershipRevoked => "project access revoked",
+                            AuthVerifyError::MembershipCheck
+                            | AuthVerifyError::UserMismatch { .. }
                             | AuthVerifyError::Decode(_)
                             | AuthVerifyError::Session(_) => "authorization error",
                         };
@@ -195,7 +228,7 @@ async fn send_activity(
 ) -> Result<(), ()> {
     tracing::trace!(
         event_type = %event.event_type.as_str(),
-        org_id = %event.organization_id,
+        project_id = %event.project_id,
         "sending activity event"
     );
 
@@ -239,7 +272,7 @@ struct WsAuthState {
     session_id: Uuid,
     session_secret: String,
     expected_user_id: Uuid,
-    expected_org_id: Uuid,
+    project_id: Uuid,
     pending_token: Option<String>,
 }
 
@@ -250,7 +283,7 @@ impl WsAuthState {
         session_id: Uuid,
         session_secret: String,
         expected_user_id: Uuid,
-        expected_org_id: Uuid,
+        project_id: Uuid,
     ) -> Self {
         Self {
             jwt,
@@ -258,7 +291,7 @@ impl WsAuthState {
             session_id,
             session_secret,
             expected_user_id,
-            expected_org_id,
+            project_id,
             pending_token: None,
         }
     }
@@ -273,7 +306,8 @@ impl WsAuthState {
             self.apply_identity(identity).await?;
         }
 
-        self.validate_session().await
+        self.validate_session().await?;
+        self.validate_membership().await
     }
 
     async fn apply_identity(&mut self, identity: JwtIdentity) -> Result<(), AuthVerifyError> {
@@ -281,13 +315,6 @@ impl WsAuthState {
             return Err(AuthVerifyError::UserMismatch {
                 expected: self.expected_user_id,
                 received: identity.user_id,
-            });
-        }
-
-        if identity.org_id != self.expected_org_id {
-            return Err(AuthVerifyError::OrgMismatch {
-                expected: self.expected_org_id.to_string(),
-                received: identity.org_id.to_string(),
             });
         }
 
@@ -313,6 +340,25 @@ impl WsAuthState {
 
         Ok(())
     }
+
+    async fn validate_membership(&self) -> Result<(), AuthVerifyError> {
+        crate::routes::organization_members::ensure_project_access(
+            &self.pool,
+            self.expected_user_id,
+            self.project_id,
+        )
+        .await
+        .map(|_| ())
+        .map_err(|error| {
+            tracing::warn!(
+                ?error,
+                user_id = %self.expected_user_id,
+                project_id = %self.project_id,
+                "websocket membership validation failed"
+            );
+            AuthVerifyError::MembershipRevoked
+        })
+    }
 }
 
 #[derive(Debug, Error)]
@@ -321,20 +367,23 @@ enum AuthVerifyError {
     Decode(#[from] JwtError),
     #[error("received token for unexpected user: expected {expected}, received {received}")]
     UserMismatch { expected: Uuid, received: Uuid },
-    #[error("received token for unexpected organization: expected {expected}, received {received}")]
-    OrgMismatch { expected: String, received: String },
     #[error(transparent)]
     Session(#[from] AuthSessionError),
     #[error("session revoked")]
     Revoked,
     #[error("session rotated")]
     SecretMismatch,
+    #[error("organization membership revoked")]
+    MembershipRevoked,
+    #[error("failed to verify membership")]
+    MembershipCheck,
 }
 
 #[allow(clippy::too_many_arguments)]
 async fn activity_stream_catch_up(
     sender: &mut futures::stream::SplitSink<WebSocket, Message>,
     pool: &PgPool,
+    project_id: Uuid,
     organization_id: Uuid,
     last_seq: i64,
     broker: &ActivityBroker,
@@ -342,7 +391,7 @@ async fn activity_stream_catch_up(
     bulk_limit: i64,
     reason: &'static str,
 ) -> Result<(i64, ActivityStream), ()> {
-    let mut activity_stream = broker.subscribe(organization_id);
+    let mut activity_stream = broker.subscribe(project_id);
 
     let event = match activity_stream.next().await {
         Some(Ok(event)) => event,
@@ -362,6 +411,7 @@ async fn activity_stream_catch_up(
     if diff > bulk_limit {
         tracing::info!(
             org_id = %organization_id,
+            project_id = %project_id,
             threshold = bulk_limit,
             reason,
             "activity catch up exceeded threshold; forcing bulk sync"
@@ -373,6 +423,7 @@ async fn activity_stream_catch_up(
     let catch_up_result = catch_up_from_db(
         sender,
         pool,
+        project_id,
         organization_id,
         last_seq,
         target_seq,
@@ -401,6 +452,7 @@ enum CatchUpError {
 async fn catch_up_from_db(
     sender: &mut futures::stream::SplitSink<WebSocket, Message>,
     pool: &PgPool,
+    project_id: Uuid,
     organization_id: Uuid,
     last_seq: i64,
     target_seq: i64,
@@ -412,15 +464,15 @@ async fn catch_up_from_db(
 
     loop {
         let events = repository
-            .fetch_since(organization_id, Some(cursor), batch_size)
+            .fetch_since(project_id, Some(cursor), batch_size)
             .await
             .map_err(|error| {
-                tracing::error!(?error, org_id = %organization_id, "failed to fetch activity catch up");
+                tracing::error!(?error, org_id = %organization_id, project_id = %project_id, "failed to fetch activity catch up");
                 CatchUpError::Stale
             })?;
 
         if events.is_empty() {
-            tracing::warn!(org_id = %organization_id, "activity catch up returned no events");
+            tracing::warn!(org_id = %organization_id, project_id = %project_id, "activity catch up returned no events");
             return Err(CatchUpError::Stale);
         }
 

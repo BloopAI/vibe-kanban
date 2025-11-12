@@ -14,7 +14,7 @@ use remote::{
 use reqwest::{Client as HttpClient, StatusCode};
 use uuid::Uuid;
 
-use super::{ShareConfig, ShareError, convert_remote_task, link_shared_tasks_to_project, status};
+use super::{ShareConfig, ShareError, convert_remote_task, status};
 use crate::services::{auth::AuthContext, git::GitService, metadata::compute_remote_metadata};
 
 #[derive(Clone)]
@@ -47,7 +47,7 @@ impl SharePublisher {
         })
     }
 
-    async fn wait_for_auth(&self) -> Result<(String, String, String), ShareError> {
+    async fn wait_for_auth(&self) -> Result<(String, String), ShareError> {
         // The 5-second timeout is an arbitrary choice attempting to balance responsiveness with giving
         // enough time for authentication. It may need tuning based on real-world results.
         self.auth_ctx
@@ -57,7 +57,7 @@ impl SharePublisher {
     }
 
     pub async fn share_task(&self, task_id: Uuid) -> Result<Uuid, ShareError> {
-        let (access_token, user_id, _org_id) = self.wait_for_auth().await?;
+        let (access_token, user_id) = self.wait_for_auth().await?;
         let task = Task::find_by_id(&self.db.pool, task_id)
             .await?
             .ok_or(ShareError::TaskNotFound(task_id))?;
@@ -95,7 +95,7 @@ impl SharePublisher {
             return Ok(());
         };
 
-        let (access_token, _user_id, _org_id) = self.wait_for_auth().await?;
+        let (access_token, _user_id) = self.wait_for_auth().await?;
         let payload = UpdateSharedTaskRequest {
             title: Some(task.title.clone()),
             description: task.description.clone(),
@@ -126,7 +126,7 @@ impl SharePublisher {
         new_assignee_user_id: Option<String>,
         version: Option<i64>,
     ) -> Result<SharedTask, ShareError> {
-        let (access_token, _user_id, _org_id) = self.wait_for_auth().await?;
+        let (access_token, _user_id) = self.wait_for_auth().await?;
 
         let assignee_uuid = new_assignee_user_id
             .map(|id| uuid::Uuid::parse_str(&id))
@@ -161,7 +161,7 @@ impl SharePublisher {
             .await?
             .ok_or(ShareError::TaskNotFound(shared_task_id))?;
 
-        let (access_token, _user_id, _org_id) = self.wait_for_auth().await?;
+        let (access_token, _user_id) = self.wait_for_auth().await?;
         let payload = DeleteSharedTaskRequest {
             version: Some(shared_task.version),
         };
@@ -230,32 +230,12 @@ impl SharePublisher {
 
         // metadata differs from store, persist the update
         if metadata != project.metadata() {
-            let github_repo_id_changed = metadata.github_repo_id != project.github_repo_id;
             Project::update_remote_metadata(&self.db.pool, project.id, &metadata).await?;
             project.has_remote = metadata.has_remote;
             project.github_repo_owner = metadata.github_repo_owner.clone();
             project.github_repo_name = metadata.github_repo_name.clone();
             if let Some(repo_id) = metadata.github_repo_id {
                 project.github_repo_id = Some(repo_id);
-            }
-
-            if github_repo_id_changed && let Some(repo_id) = metadata.github_repo_id {
-                let current_profile = self.auth_ctx.cached_profile().await;
-                let current_user_id = current_profile.as_ref().map(|p| p.user_id);
-                if let Err(err) = link_shared_tasks_to_project(
-                    &self.db.pool,
-                    current_user_id,
-                    project.id,
-                    repo_id,
-                )
-                .await
-                {
-                    tracing::warn!(
-                        project_id = %project.id,
-                        repo_id,
-                        "failed to link shared tasks after publisher metadata update: {err}"
-                    );
-                }
             }
         }
 

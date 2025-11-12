@@ -256,10 +256,7 @@ impl<'a> SharedTaskRepository<'a> {
         Ok(SharedTaskWithUser::new(task, user))
     }
 
-    pub async fn bulk_fetch(
-        &self,
-        organization_id: Uuid,
-    ) -> Result<BulkFetchResult, SharedTaskError> {
+    pub async fn bulk_fetch(&self, project_id: Uuid) -> Result<BulkFetchResult, SharedTaskError> {
         let mut tx = self.pool.begin().await?;
         sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
             .execute(&mut *tx)
@@ -292,11 +289,11 @@ impl<'a> SharedTaskRepository<'a> {
             FROM shared_tasks st
             JOIN projects p ON st.project_id = p.id
             LEFT JOIN users u ON st.assignee_user_id = u.id
-            WHERE st.organization_id = $1
+            WHERE st.project_id = $1
               AND st.deleted_at IS NULL
             ORDER BY st.updated_at DESC
             "#,
-            organization_id
+            project_id
         )
         .fetch_all(&mut *tx)
         .await?;
@@ -347,10 +344,10 @@ impl<'a> SharedTaskRepository<'a> {
             SELECT st.id AS "id!: Uuid"
             FROM shared_tasks st
             JOIN projects p ON st.project_id = p.id
-            WHERE st.organization_id = $1
+            WHERE st.project_id = $1
               AND st.deleted_at IS NOT NULL
             "#,
-            organization_id
+            project_id
         )
         .fetch_all(&mut *tx)
         .await?;
@@ -361,9 +358,9 @@ impl<'a> SharedTaskRepository<'a> {
             r#"
             SELECT MAX(seq)
             FROM activity
-            WHERE organization_id = $1
+            WHERE project_id = $1
             "#,
-            organization_id
+            project_id
         )
         .fetch_one(&mut *tx)
         .await?;
@@ -485,7 +482,7 @@ impl<'a> SharedTaskRepository<'a> {
             data.new_assignee_user_id,
             data.previous_assignee_user_id,
             data.version,
-            organization_id,
+            organization_id
         )
         .fetch_optional(&mut *tx)
         .await?
@@ -599,14 +596,14 @@ async fn insert_activity(
     sqlx::query!(
         r#"
         WITH next AS (
-            INSERT INTO organization_activity_counters AS counters (organization_id, last_seq)
+            INSERT INTO project_activity_counters AS counters (project_id, last_seq)
             VALUES ($1, 1)
-            ON CONFLICT (organization_id)
+            ON CONFLICT (project_id)
             DO UPDATE SET last_seq = counters.last_seq + 1
             RETURNING last_seq
         )
         INSERT INTO activity (
-            organization_id,
+            project_id,
             seq,
             assignee_user_id,
             event_type,
@@ -615,7 +612,7 @@ async fn insert_activity(
         SELECT $1, next.last_seq, $2, $3, $4
         FROM next
         "#,
-        task.organization_id,
+        task.project_id,
         task.assignee_user_id,
         event_type,
         value
@@ -624,4 +621,22 @@ async fn insert_activity(
     .await
     .map(|_| ())
     .map_err(SharedTaskError::from)
+}
+
+impl SharedTaskRepository<'_> {
+    pub async fn organization_id(
+        pool: &PgPool,
+        task_id: Uuid,
+    ) -> Result<Option<Uuid>, sqlx::Error> {
+        sqlx::query_scalar!(
+            r#"
+            SELECT organization_id
+            FROM shared_tasks
+            WHERE id = $1
+            "#,
+            task_id
+        )
+        .fetch_optional(pool)
+        .await
+    }
 }

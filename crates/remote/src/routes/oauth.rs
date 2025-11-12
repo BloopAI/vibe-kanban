@@ -197,7 +197,6 @@ pub async fn profile(
         user_id: ctx.user.id,
         username: ctx.user.username.clone(),
         email: ctx.user.email.clone(),
-        organization_id: ctx.organization.id.to_string(),
         providers,
     })
 }

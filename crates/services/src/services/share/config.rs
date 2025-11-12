@@ -50,10 +50,18 @@ impl ShareConfig {
         self.api_base.join(&format!("/v1/tasks/{task_id}/assign"))
     }
 
-    pub fn websocket_endpoint(&self, cursor: Option<i64>) -> Result<Url, url::ParseError> {
+    pub fn websocket_endpoint(
+        &self,
+        project_id: Uuid,
+        cursor: Option<i64>,
+    ) -> Result<Url, url::ParseError> {
         let mut url = self.websocket_base.join("/v1/ws")?;
-        if let Some(c) = cursor {
-            url.query_pairs_mut().append_pair("cursor", &c.to_string());
+        {
+            let mut qp = url.query_pairs_mut();
+            qp.append_pair("project_id", &project_id.to_string());
+            if let Some(c) = cursor {
+                qp.append_pair("cursor", &c.to_string());
+            }
         }
         Ok(url)
     }

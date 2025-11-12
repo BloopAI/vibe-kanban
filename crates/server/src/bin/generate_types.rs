@@ -62,6 +62,8 @@ fn generate_types_content() -> String {
         utils::api::organizations::ListMembersResponse::decl(),
         utils::api::organizations::UpdateMemberRoleRequest::decl(),
         utils::api::organizations::UpdateMemberRoleResponse::decl(),
+        utils::api::projects::RemoteProject::decl(),
+        utils::api::projects::ListProjectsResponse::decl(),
         server::routes::config::UserSystemInfo::decl(),
         server::routes::config::Environment::decl(),
         server::routes::config::McpServerQuery::decl(),

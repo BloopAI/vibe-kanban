@@ -45,7 +45,6 @@ pub struct ProfileResponse {
     pub user_id: Uuid,
     pub username: Option<String>,
     pub email: String,
-    pub organization_id: String,
     pub providers: Vec<ProviderProfile>,
 }
 

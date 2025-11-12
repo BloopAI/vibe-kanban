@@ -4,6 +4,7 @@ mod publisher;
 mod status;
 
 use std::{
+    collections::{HashMap, HashSet},
     io,
     sync::{Arc, Mutex as StdMutex},
     time::Duration,
@@ -27,7 +28,11 @@ use remote::{
 };
 use sqlx::SqlitePool;
 use thiserror::Error;
-use tokio::{sync::oneshot, task::JoinHandle, time::sleep};
+use tokio::{
+    sync::{mpsc, oneshot},
+    task::JoinHandle,
+    time::{MissedTickBehavior, interval, sleep},
+};
 use tokio_tungstenite::tungstenite::Message as WsMessage;
 use url::Url;
 use utils::ws::{
@@ -104,6 +109,16 @@ impl Backoff {
     }
 }
 
+struct ProjectWatcher {
+    shutdown: oneshot::Sender<()>,
+    join: JoinHandle<()>,
+}
+
+struct ProjectWatcherEvent {
+    project_id: Uuid,
+    result: Result<(), ShareError>,
+}
+
 pub struct RemoteSync {
     db: DBService,
     processor: ActivityProcessor,
@@ -132,95 +147,129 @@ impl RemoteSync {
     }
 
     pub async fn run(self, mut shutdown_rx: oneshot::Receiver<()>) -> Result<(), ShareError> {
-        let mut backoff = Backoff::new();
+        let mut watchers: HashMap<Uuid, ProjectWatcher> = HashMap::new();
+        let (event_tx, mut event_rx) = mpsc::unbounded_channel();
+        let mut refresh_interval = interval(Duration::from_secs(5));
+        refresh_interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
+
+        self.reconcile_watchers(&mut watchers, &event_tx).await?;
+
         loop {
-            let profile = self.auth_ctx.cached_profile().await;
-            let Some(org_id_str) = profile.as_ref().map(|p| p.organization_id.clone()) else {
-                tracing::debug!("No authentication available; waiting before retry");
-                tokio::select! {
-                    _ = &mut shutdown_rx => {
-                        tracing::info!("shutdown received while waiting for auth");
-                        return Ok(());
-                    }
-                    _ = backoff.wait() => {}
-                }
-                continue;
-            };
-
-            let org_id = org_id_str
-                .parse::<Uuid>()
-                .map_err(|_| ShareError::InvalidOrganizationId)?;
-
-            let mut last_seq = SharedActivityCursor::get(&self.db.pool, org_id)
-                .await?
-                .map(|cursor| cursor.last_seq);
-            last_seq = self.processor.catch_up(last_seq).await.unwrap_or(last_seq);
-
-            let ws_url = self.config.websocket_endpoint(last_seq)?;
-            let (close_tx, close_rx) = oneshot::channel();
-            let ws_connection = match spawn_shared_remote(
-                self.processor.clone(),
-                &self.auth_ctx,
-                ws_url,
-                close_tx,
-            )
-            .await
-            {
-                Ok(remote) => {
-                    backoff.reset();
-                    remote
-                }
-                Err(err) => {
-                    tracing::error!(?err, "failed to start remote sync websocket; retrying soon");
-                    tokio::select! {
-                        _ = &mut shutdown_rx => {
-                            tracing::info!("shutdown received while waiting to retry remote sync");
-                            return Ok(());
-                        }
-                        _ = backoff.wait() => {}
-                    }
-                    continue;
-                }
-            };
-
             tokio::select! {
                 _ = &mut shutdown_rx => {
-                    tracing::info!("shutdown signal received for remote sync");
-                    if let Err(err) = ws_connection.close() {
-                        tracing::warn!(?err, "failed to request websocket shutdown");
+                    tracing::info!("remote sync shutdown requested");
+                    for (project_id, watcher) in watchers.drain() {
+                        tracing::info!(%project_id, "stopping watcher due to shutdown");
+                        let _ = watcher.shutdown.send(());
+                        tokio::spawn(async move {
+                            if let Err(err) = watcher.join.await {
+                                tracing::debug!(?err, %project_id, "project watcher join failed during shutdown");
+                            }
+                        });
                     }
-                    break;
+                    return Ok(());
                 }
-                res = close_rx => {
-                    match res {
+                Some(event) = event_rx.recv() => {
+                    match event.result {
                         Ok(()) => {
-                            tracing::info!("remote sync websocket closed; scheduling catch-up and reconnect");
+                            tracing::debug!(project_id = %event.project_id, "project watcher exited cleanly");
                         }
-                        Err(_) => {
-                            tracing::warn!("remote sync websocket close signal dropped");
+                        Err(err) => {
+                            tracing::warn!(project_id = %event.project_id, ?err, "project watcher terminated with error");
                         }
                     }
-                    if let Err(err) = ws_connection.close() {
-                        tracing::debug!(?err, "websocket already closed when shutting down");
-                    }
-                    tokio::select! {
-                        _ = &mut shutdown_rx => {
-                            tracing::info!("shutdown received during websocket retry backoff");
-                            return Ok(());
-                        }
-                        _ = backoff.wait() => {}
-                    }
-                    continue;
+                    watchers.remove(&event.project_id);
+                }
+                _ = refresh_interval.tick() => {
+                    self.reconcile_watchers(&mut watchers, &event_tx).await?;
                 }
             }
         }
+    }
+
+    async fn reconcile_watchers(
+        &self,
+        watchers: &mut HashMap<Uuid, ProjectWatcher>,
+        events_tx: &mpsc::UnboundedSender<ProjectWatcherEvent>,
+    ) -> Result<(), ShareError> {
+        let linked_projects = self.linked_remote_projects().await?;
+        let desired: HashSet<Uuid> = linked_projects.iter().copied().collect();
+
+        for project_id in linked_projects {
+            if let std::collections::hash_map::Entry::Vacant(e) = watchers.entry(project_id) {
+                tracing::info!(%project_id, "starting watcher for linked remote project");
+                let watcher = self
+                    .spawn_project_watcher(project_id, events_tx.clone())
+                    .await?;
+                e.insert(watcher);
+            }
+        }
+
+        let to_remove: Vec<Uuid> = watchers
+            .keys()
+            .copied()
+            .filter(|id| !desired.contains(id))
+            .collect();
+
+        for project_id in to_remove {
+            if let Some(watcher) = watchers.remove(&project_id) {
+                tracing::info!(%project_id, "remote project unlinked; shutting down watcher");
+                let _ = watcher.shutdown.send(());
+                tokio::spawn(async move {
+                    if let Err(err) = watcher.join.await {
+                        tracing::debug!(?err, %project_id, "project watcher join failed during teardown");
+                    }
+                });
+            }
+        }
+
         Ok(())
+    }
+
+    async fn linked_remote_projects(&self) -> Result<Vec<Uuid>, ShareError> {
+        let rows = sqlx::query_scalar::<_, Uuid>(
+            r#"
+            SELECT remote_project_id
+            FROM projects
+            WHERE remote_project_id IS NOT NULL
+            "#,
+        )
+        .fetch_all(&self.db.pool)
+        .await?;
+
+        Ok(rows)
+    }
+
+    async fn spawn_project_watcher(
+        &self,
+        project_id: Uuid,
+        events_tx: mpsc::UnboundedSender<ProjectWatcherEvent>,
+    ) -> Result<ProjectWatcher, ShareError> {
+        let processor = self.processor.clone();
+        let config = self.config.clone();
+        let auth_ctx = self.auth_ctx.clone();
+        let db = self.db.clone();
+        let (shutdown_tx, shutdown_rx) = oneshot::channel();
+
+        let join = tokio::spawn(async move {
+            let result =
+                project_watcher_task(db, processor, config, auth_ctx, project_id, shutdown_rx)
+                    .await;
+
+            let _ = events_tx.send(ProjectWatcherEvent { project_id, result });
+        });
+
+        Ok(ProjectWatcher {
+            shutdown: shutdown_tx,
+            join,
+        })
     }
 }
 
 struct SharedWsHandler {
     processor: ActivityProcessor,
     close_tx: Option<oneshot::Sender<()>>,
+    remote_project_id: Uuid,
 }
 
 #[async_trait]
@@ -230,6 +279,14 @@ impl WsHandler for SharedWsHandler {
             match serde_json::from_str::<ServerMessage>(&txt) {
                 Ok(ServerMessage::Activity(event)) => {
                     let seq = event.seq;
+                    if event.project_id != self.remote_project_id {
+                        tracing::warn!(
+                            expected = %self.remote_project_id,
+                            received = %event.project_id,
+                            "received activity for unexpected project via websocket"
+                        );
+                        return Ok(());
+                    }
                     self.processor
                         .process_event(event)
                         .await
@@ -267,6 +324,7 @@ async fn spawn_shared_remote(
     auth_ctx: &AuthContext,
     url: Url,
     close_tx: oneshot::Sender<()>,
+    remote_project_id: Uuid,
 ) -> Result<WsClient, ShareError> {
     let auth_source = auth_ctx.clone();
     let ws_config = WsConfig {
@@ -279,7 +337,7 @@ async fn spawn_shared_remote(
                     .wait_for_auth(WS_MAX_DELAY_BETWEEN_CATCHUP_AND_WS)
                     .await
                 {
-                    Some((access_token, _user_id, _org_id)) => build_ws_headers(&access_token),
+                    Some((access_token, _user_id)) => build_ws_headers(&access_token),
                     None => Err(WsError::MissingAuth),
                 }
             })
@@ -289,12 +347,124 @@ async fn spawn_shared_remote(
     let handler = SharedWsHandler {
         processor,
         close_tx: Some(close_tx),
+        remote_project_id,
     };
     let client = run_ws_client(handler, ws_config)
         .await
         .map_err(ShareError::from)?;
 
     Ok(client)
+}
+
+async fn project_watcher_task(
+    db: DBService,
+    processor: ActivityProcessor,
+    config: ShareConfig,
+    auth_ctx: AuthContext,
+    remote_project_id: Uuid,
+    mut shutdown_rx: oneshot::Receiver<()>,
+) -> Result<(), ShareError> {
+    let mut backoff = Backoff::new();
+
+    loop {
+        if auth_ctx.cached_profile().await.is_none() {
+            tracing::debug!(%remote_project_id, "waiting for authentication before syncing project");
+            tokio::select! {
+                _ = &mut shutdown_rx => return Ok(()),
+                _ = backoff.wait() => {}
+            }
+            continue;
+        }
+
+        let mut last_seq = SharedActivityCursor::get(&db.pool, remote_project_id)
+            .await?
+            .map(|cursor| cursor.last_seq);
+
+        match processor
+            .catch_up_project(remote_project_id, last_seq)
+            .await
+        {
+            Ok(seq) => {
+                last_seq = seq;
+            }
+            Err(ShareError::MissingAuth) => {
+                tracing::debug!(%remote_project_id, "missing auth during catch-up; retrying after backoff");
+                tokio::select! {
+                    _ = &mut shutdown_rx => return Ok(()),
+                    _ = backoff.wait() => {}
+                }
+                continue;
+            }
+            Err(err) => return Err(err),
+        }
+
+        let ws_url = match config.websocket_endpoint(remote_project_id, last_seq) {
+            Ok(url) => url,
+            Err(err) => return Err(ShareError::Url(err)),
+        };
+
+        let (close_tx, close_rx) = oneshot::channel();
+        let ws_connection = match spawn_shared_remote(
+            processor.clone(),
+            &auth_ctx,
+            ws_url,
+            close_tx,
+            remote_project_id,
+        )
+        .await
+        {
+            Ok(conn) => {
+                backoff.reset();
+                conn
+            }
+            Err(ShareError::MissingAuth) => {
+                tracing::debug!(%remote_project_id, "missing auth during websocket connect; retrying");
+                tokio::select! {
+                    _ = &mut shutdown_rx => return Ok(()),
+                    _ = backoff.wait() => {}
+                }
+                continue;
+            }
+            Err(err) => {
+                tracing::error!(%remote_project_id, ?err, "failed to establish websocket; retrying");
+                tokio::select! {
+                    _ = &mut shutdown_rx => return Ok(()),
+                    _ = backoff.wait() => {}
+                }
+                continue;
+            }
+        };
+
+        tokio::select! {
+            _ = &mut shutdown_rx => {
+                tracing::info!(%remote_project_id, "shutdown signal received for project watcher");
+                if let Err(err) = ws_connection.close() {
+                    tracing::debug!(?err, %remote_project_id, "failed to close websocket during shutdown");
+                }
+                return Ok(());
+            }
+            res = close_rx => {
+                match res {
+                    Ok(()) => {
+                        tracing::info!(%remote_project_id, "project websocket closed; scheduling reconnect");
+                    }
+                    Err(_) => {
+                        tracing::warn!(%remote_project_id, "project websocket close signal dropped");
+                    }
+                }
+                if let Err(err) = ws_connection.close() {
+                    tracing::debug!(?err, %remote_project_id, "project websocket already closed when reconnecting");
+                }
+                tokio::select! {
+                    _ = &mut shutdown_rx => {
+                        tracing::info!(%remote_project_id, "shutdown received during reconnect wait");
+                        return Ok(());
+                    }
+                    _ = backoff.wait() => {}
+                }
+            }
+        }
+    }
 }
 
 fn build_ws_headers(access_token: &str) -> WsResult<Vec<(HeaderName, HeaderValue)>> {
@@ -367,6 +537,7 @@ pub(super) fn convert_remote_task(
     SharedTaskInput {
         id: task.id,
         organization_id: task.organization_id,
+        remote_project_id: task.project_id,
         project_id,
         github_repo_id,
         title: task.title.clone(),
@@ -424,10 +595,11 @@ pub async fn link_shared_tasks_to_project(
     pool: &SqlitePool,
     current_user_id: Option<uuid::Uuid>,
     project_id: Uuid,
-    github_repo_id: i64,
+    remote_project_id: Uuid,
 ) -> Result<(), ShareError> {
     let linked_tasks =
-        SharedTask::link_to_project_by_repo_id(pool, github_repo_id, project_id).await?;
+        SharedTask::link_to_project_by_remote_project_id(pool, remote_project_id, project_id)
+            .await?;
 
     if linked_tasks.is_empty() {
         return Ok(());

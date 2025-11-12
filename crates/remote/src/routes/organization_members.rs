@@ -7,17 +7,21 @@ use axum::{
 };
 use chrono::{Duration, Utc};
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
+use tracing::warn;
 use uuid::Uuid;
 
-use super::error::ErrorResponse;
+use super::error::{ErrorResponse, membership_error};
 use crate::{
     AppState,
     auth::RequestContext,
     db::{
         identity_errors::IdentityError,
         invitations::{Invitation, InvitationRepository},
-        organization_members::MemberRole,
+        organization_members::{self, MemberRole},
         organizations::OrganizationRepository,
+        projects::ProjectRepository,
+        tasks::SharedTaskRepository,
     },
 };
 
@@ -105,15 +109,10 @@ pub async fn create_invitation(
     Json(payload): Json<CreateInvitationRequest>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
     let user = ctx.user;
-    let organization = ctx.organization;
-    if organization.id != org_id {
-        return Err(ErrorResponse::new(
-            StatusCode::FORBIDDEN,
-            "Organization mismatch",
-        ));
-    }
-
+    let org_repo = OrganizationRepository::new(&state.pool);
     let invitation_repo = InvitationRepository::new(&state.pool);
+
+    ensure_admin_access(&state.pool, org_id, user.id).await?;
 
     let token = Uuid::new_v4().to_string();
     let expires_at = Utc::now() + Duration::days(7);
@@ -135,6 +134,13 @@ pub async fn create_invitation(
             IdentityError::InvitationError(msg) => ErrorResponse::new(StatusCode::BAD_REQUEST, msg),
             _ => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"),
         })?;
+
+    let organization = org_repo.fetch_organization(org_id).await.map_err(|_| {
+        ErrorResponse::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to fetch organization",
+        )
+    })?;
 
     let accept_url = format!("{}/invitations/{}", state.base_url, token);
     state
@@ -160,15 +166,9 @@ pub async fn list_invitations(
     Path(org_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
     let user = ctx.user;
-    let organization = ctx.organization;
-    if organization.id != org_id {
-        return Err(ErrorResponse::new(
-            StatusCode::FORBIDDEN,
-            "Organization mismatch",
-        ));
-    }
-
     let invitation_repo = InvitationRepository::new(&state.pool);
+
+    ensure_admin_access(&state.pool, org_id, user.id).await?;
 
     let invitations = invitation_repo
         .list_invitations(org_id, user.id)
@@ -244,13 +244,8 @@ pub async fn list_members(
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
     Path(org_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
-    let organization = ctx.organization;
-    if organization.id != org_id {
-        return Err(ErrorResponse::new(
-            StatusCode::FORBIDDEN,
-            "Organization mismatch",
-        ));
-    }
+    let user = ctx.user;
+    ensure_member_access(&state.pool, org_id, user.id).await?;
 
     let members = sqlx::query_as!(
         OrganizationMember,
@@ -278,14 +273,6 @@ pub async fn remove_member(
     Path((org_id, user_id)): Path<(Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
     let user = ctx.user;
-    let organization = ctx.organization;
-    if organization.id != org_id {
-        return Err(ErrorResponse::new(
-            StatusCode::FORBIDDEN,
-            "Organization mismatch",
-        ));
-    }
-
     if user.id == user_id {
         return Err(ErrorResponse::new(
             StatusCode::BAD_REQUEST,
@@ -293,32 +280,13 @@ pub async fn remove_member(
         ));
     }
 
+    ensure_admin_access(&state.pool, org_id, user.id).await?;
+
     let mut tx = state
         .pool
         .begin()
         .await
         .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?;
-
-    let requesting_role = sqlx::query_scalar!(
-        r#"
-        SELECT role AS "role!: MemberRole"
-        FROM organization_member_metadata
-        WHERE organization_id = $1 AND user_id = $2 AND status = 'active'
-        "#,
-        org_id,
-        user.id
-    )
-    .fetch_optional(&mut *tx)
-    .await
-    .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?
-    .ok_or_else(|| ErrorResponse::new(StatusCode::FORBIDDEN, "Not a member"))?;
-
-    if requesting_role != MemberRole::Admin {
-        return Err(ErrorResponse::new(
-            StatusCode::FORBIDDEN,
-            "Admin access required",
-        ));
-    }
 
     let target = sqlx::query!(
         r#"
@@ -390,14 +358,6 @@ pub async fn update_member_role(
     Json(payload): Json<UpdateMemberRoleRequest>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
     let user = ctx.user;
-    let organization = ctx.organization;
-    if organization.id != org_id {
-        return Err(ErrorResponse::new(
-            StatusCode::FORBIDDEN,
-            "Organization mismatch",
-        ));
-    }
-
     if user.id == user_id && payload.role == MemberRole::Member {
         return Err(ErrorResponse::new(
             StatusCode::BAD_REQUEST,
@@ -405,32 +365,13 @@ pub async fn update_member_role(
         ));
     }
 
+    ensure_admin_access(&state.pool, org_id, user.id).await?;
+
     let mut tx = state
         .pool
         .begin()
         .await
         .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?;
-
-    let requesting_role = sqlx::query_scalar!(
-        r#"
-        SELECT role AS "role!: MemberRole"
-        FROM organization_member_metadata
-        WHERE organization_id = $1 AND user_id = $2 AND status = 'active'
-        "#,
-        org_id,
-        user.id
-    )
-    .fetch_optional(&mut *tx)
-    .await
-    .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?
-    .ok_or_else(|| ErrorResponse::new(StatusCode::FORBIDDEN, "Not a member"))?;
-
-    if requesting_role != MemberRole::Admin {
-        return Err(ErrorResponse::new(
-            StatusCode::FORBIDDEN,
-            "Admin access required",
-        ));
-    }
 
     let target = sqlx::query!(
         r#"
@@ -505,4 +446,115 @@ pub async fn update_member_role(
         user_id,
         role: payload.role,
     }))
+}
+
+pub(crate) async fn ensure_member_access(
+    pool: &PgPool,
+    organization_id: Uuid,
+    user_id: Uuid,
+) -> Result<(), ErrorResponse> {
+    organization_members::assert_membership(pool, organization_id, user_id)
+        .await
+        .map_err(|err| membership_error(err, "Not a member of organization"))
+}
+
+pub(crate) async fn ensure_admin_access(
+    pool: &PgPool,
+    organization_id: Uuid,
+    user_id: Uuid,
+) -> Result<(), ErrorResponse> {
+    OrganizationRepository::new(pool)
+        .assert_admin(organization_id, user_id)
+        .await
+        .map_err(|err| membership_error(err, "Admin access required"))
+}
+
+pub(crate) async fn ensure_project_access(
+    pool: &PgPool,
+    user_id: Uuid,
+    project_id: Uuid,
+) -> Result<Uuid, ErrorResponse> {
+    let organization_id = ProjectRepository::organization_id(pool, project_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %project_id, "failed to load project");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        })?
+        .ok_or_else(|| {
+            warn!(
+                %project_id,
+                %user_id,
+                "project not found for access check"
+            );
+            ErrorResponse::new(StatusCode::NOT_FOUND, "project not found")
+        })?;
+
+    organization_members::assert_membership(pool, organization_id, user_id)
+        .await
+        .map_err(|err| {
+            if let IdentityError::Database(error) = &err {
+                tracing::error!(
+                    ?error,
+                    %organization_id,
+                    %project_id,
+                    "failed to authorize project membership"
+                );
+            } else {
+                warn!(
+                    ?err,
+                    %organization_id,
+                    %project_id,
+                    %user_id,
+                    "project access denied"
+                );
+            }
+            membership_error(err, "project not accessible")
+        })?;
+
+    Ok(organization_id)
+}
+
+pub(crate) async fn ensure_task_access(
+    pool: &PgPool,
+    user_id: Uuid,
+    task_id: Uuid,
+) -> Result<Uuid, ErrorResponse> {
+    let organization_id = SharedTaskRepository::organization_id(pool, task_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %task_id, "failed to load shared task");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+        })?
+        .ok_or_else(|| {
+            warn!(
+                %task_id,
+                %user_id,
+                "shared task not found for access check"
+            );
+            ErrorResponse::new(StatusCode::NOT_FOUND, "shared task not found")
+        })?;
+
+    organization_members::assert_membership(pool, organization_id, user_id)
+        .await
+        .map_err(|err| {
+            if let IdentityError::Database(error) = &err {
+                tracing::error!(
+                    ?error,
+                    %organization_id,
+                    %task_id,
+                    "failed to authorize shared task access"
+                );
+            } else {
+                warn!(
+                    ?err,
+                    %organization_id,
+                    %task_id,
+                    %user_id,
+                    "shared task access denied"
+                );
+            }
+            membership_error(err, "task not accessible")
+        })?;
+
+    Ok(organization_id)
 }
