@@ -2,7 +2,7 @@
   "title": "프로젝트",
   "subtitle": "프로젝트를 관리하고 진행 상황을 추적하세요",
   "createProject": "프로젝트 생성",
-  "linkToOrganization": "조직에 연결",
+  "linkToOrganization": "원격 프로젝트에 연결",
   "loading": "프로젝트 로딩 중...",
   "errors": {
     "fetchFailed": "프로젝트를 불러오지 못했습니다"
@@ -13,8 +13,8 @@
     "createFirst": "첫 번째 프로젝트 생성"
   },
   "linkDialog": {
-    "title": "프로젝트를 조직에 연결",
-    "description": "이 로컬 프로젝트를 원격 조직에 연결하여 협업 및 동기화를 수행합니다.",
+    "title": "프로젝트를 원격 프로젝트에 연결",
+    "description": "이 로컬 프로젝트를 원격 프로젝트에 연결하여 협업 및 동기화를 수행합니다.",
     "projectLabel": "프로젝트",
     "organizationLabel": "조직",
     "loadingOrganizations": "조직 로딩 중...",
@@ -38,7 +38,7 @@
       "linkFailed": "프로젝트 연결에 실패했습니다"
     }
   },
-  "unlinkFromOrganization": "조직에서 연결 해제",
+  "unlinkFromOrganization": "원격 프로젝트에서 연결 해제",
   "viewProject": "프로젝트 보기",
   "openInIDE": "IDE에서 열기",
   "createdDate": "생성일 {{date}}"

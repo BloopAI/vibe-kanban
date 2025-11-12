@@ -2,7 +2,7 @@
   "title": "Projects",
   "subtitle": "Manage your projects and track their progress",
   "createProject": "Create Project",
-  "linkToOrganization": "Link to Organization",
+  "linkToOrganization": "Link to Remote Project",
   "loading": "Loading projects...",
   "errors": {
     "fetchFailed": "Failed to fetch projects"
@@ -13,8 +13,8 @@
     "createFirst": "Create your first project"
   },
   "linkDialog": {
-    "title": "Link Project to Organization",
-    "description": "Link this local project to a remote organization for collaboration and syncing.",
+    "title": "Link Project to Remote Project",
+    "description": "Link this local project to a remote project for collaboration and syncing.",
     "projectLabel": "Project",
     "organizationLabel": "Organization",
     "loadingOrganizations": "Loading organizations...",
@@ -38,7 +38,7 @@
       "linkFailed": "Failed to link project"
     }
   },
-  "unlinkFromOrganization": "Unlink from Organization",
+  "unlinkFromOrganization": "Unlink from Remote Project",
   "viewProject": "View Project",
   "openInIDE": "Open in IDE",
   "createdDate": "Created {{date}}"
