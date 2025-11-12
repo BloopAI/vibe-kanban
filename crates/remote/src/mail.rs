@@ -5,6 +5,8 @@ use serde_json::json;
 
 use crate::db::organization_members::MemberRole;
 
+const LOOPS_INVITE_TEMPLATE_ID: &str = "cmhvy2wgs3s13z70i1pxakij9";
+
 #[async_trait]
 pub trait Mailer: Send + Sync {
     async fn send_org_invitation(
@@ -48,21 +50,16 @@ impl Mailer for NoopMailer {
 pub struct LoopsMailer {
     client: reqwest::Client,
     api_key: String,
-    invite_template_id: String,
 }
 
 impl LoopsMailer {
-    pub fn new(api_key: String, invite_template_id: String) -> Self {
+    pub fn new(api_key: String) -> Self {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(5))
             .build()
             .expect("failed to build reqwest client");
 
-        Self {
-            client,
-            api_key,
-            invite_template_id,
-        }
+        Self { client, api_key }
     }
 }
 
@@ -82,7 +79,7 @@ impl Mailer for LoopsMailer {
         };
 
         let payload = json!({
-            "transactionalId": self.invite_template_id,
+            "transactionalId": LOOPS_INVITE_TEMPLATE_ID,
             "email": email,
             "dataVariables": {
                 "org_name": org_slug,

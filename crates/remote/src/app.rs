@@ -68,16 +68,13 @@ impl Server {
             auth_config.public_base_url().to_string(),
         ));
 
-        let mailer: Arc<dyn crate::mail::Mailer> = match (
-            std::env::var("LOOPS_EMAIL_API_KEY"),
-            std::env::var("LOOPS_INVITE_TEMPLATE_ID"),
-        ) {
-            (Ok(api_key), Ok(invite_template_id)) => {
+        let mailer: Arc<dyn crate::mail::Mailer> = match std::env::var("LOOPS_EMAIL_API_KEY") {
+            Ok(api_key) => {
                 tracing::info!("Using LoopsMailer for transactional email");
-                Arc::new(LoopsMailer::new(api_key, invite_template_id))
+                Arc::new(LoopsMailer::new(api_key))
             }
-            _ => {
-                tracing::info!("Loops env vars not set; using NoopMailer");
+            Err(_) => {
+                tracing::info!("LOOPS_EMAIL_API_KEY not set; using NoopMailer");
                 Arc::new(NoopMailer)
             }
         };
