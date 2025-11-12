@@ -225,7 +225,10 @@ export function OrganizationSettings() {
     deleteOrganization.mutate(selectedOrgId);
   };
 
-  const handleLinkProject = (remoteProjectId: string, localProjectId: string) => {
+  const handleLinkProject = (
+    remoteProjectId: string,
+    localProjectId: string
+  ) => {
     setError(null);
     linkToExisting.mutate({
       localProjectId,
@@ -410,7 +413,8 @@ export function OrganizationSettings() {
           <CardHeader>
             <CardTitle>Shared Projects</CardTitle>
             <CardDescription>
-              Remote projects in {selectedOrg.name} and their links to local projects
+              Remote projects in {selectedOrg.name} and their links to local
+              projects
             </CardDescription>
           </CardHeader>
           <CardContent>
