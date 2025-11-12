@@ -84,3 +84,4 @@ dev_assets
 .ssh
 
 vibe-kanban-cloud/
+remote-frontend/dist
