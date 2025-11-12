@@ -314,6 +314,13 @@ export const projectsApi = {
     );
     return handleApiResponse<Project>(response);
   },
+
+  unlink: async (projectId: string): Promise<Project> => {
+    const response = await makeRequest(`/api/projects/${projectId}/link`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<Project>(response);
+  },
 };
 
 // Task Management APIs

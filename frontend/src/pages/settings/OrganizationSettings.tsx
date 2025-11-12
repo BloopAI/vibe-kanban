@@ -34,9 +34,13 @@ import {
 } from '@/components/dialogs/org/CreateOrganizationDialog';
 import { MemberListItem } from '@/components/org/MemberListItem';
 import { PendingInvitationItem } from '@/components/org/PendingInvitationItem';
+import { LinkedProjectItem } from '@/components/org/LinkedProjectItem';
 import type { MemberRole } from 'shared/types';
 import { MemberRole as MemberRoleEnum } from 'shared/types';
 import { useTranslation } from 'react-i18next';
+import { useProjects } from '@/hooks/useProjects';
+import { useOrganizationProjects } from '@/hooks/useOrganizationProjects';
+import { useProjectMutations } from '@/hooks/useProjectMutations';
 
 export function OrganizationSettings() {
   const { t } = useTranslation('organization');
@@ -121,6 +125,34 @@ export function OrganizationSettings() {
       },
     });
 
+  // Fetch all local projects
+  const { data: allProjects = [], isLoading: loadingProjects } = useProjects();
+
+  // Fetch remote projects for the selected organization
+  const { data: remoteProjects = [], isLoading: loadingRemoteProjects } =
+    useOrganizationProjects(selectedOrgId);
+
+  // Filter local projects that are linked to remote projects in this org
+  const linkedProjects = allProjects.filter((project) => {
+    if (!project.remote_project_id) return false;
+    return remoteProjects.some(
+      (remoteProject) => remoteProject.id === project.remote_project_id
+    );
+  });
+
+  // Project mutations
+  const { unlinkProject } = useProjectMutations({
+    onUnlinkSuccess: () => {
+      setSuccess('Project unlinked successfully');
+      setTimeout(() => setSuccess(null), 3000);
+    },
+    onUnlinkError: (err) => {
+      setError(
+        err instanceof Error ? err.message : 'Failed to unlink project'
+      );
+    },
+  });
+
   const handleCreateOrganization = async () => {
     try {
       const result: CreateOrganizationResult = await NiceModal.show(
@@ -184,6 +216,11 @@ export function OrganizationSettings() {
 
     setError(null);
     deleteOrganization.mutate(selectedOrgId);
+  };
+
+  const handleUnlinkProject = (projectId: string) => {
+    setError(null);
+    unlinkProject.mutate(projectId);
   };
 
   // Check if current org is personal (cannot be deleted)
@@ -345,6 +382,40 @@ export function OrganizationSettings() {
                     onRoleChange={handleRoleChange}
                     isRemoving={removeMember.isPending}
                     isRoleChanging={updateMemberRole.isPending}
+                  />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {selectedOrg && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Linked Projects</CardTitle>
+            <CardDescription>
+              Local projects that are linked to shared projects in {selectedOrg.name}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loadingProjects || loadingRemoteProjects ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin" />
+                <span className="ml-2">Loading projects...</span>
+              </div>
+            ) : linkedProjects.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No linked projects found in this organization
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {linkedProjects.map((project) => (
+                  <LinkedProjectItem
+                    key={project.id}
+                    project={project}
+                    onUnlink={handleUnlinkProject}
+                    isUnlinking={unlinkProject.isPending}
                   />
                 ))}
               </div>

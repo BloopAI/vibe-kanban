@@ -159,6 +159,29 @@ pub async fn create_and_link_remote_project(
     Ok(ResponseJson(ApiResponse::success(updated_project)))
 }
 
+pub async fn unlink_project(
+    Path(project_id): Path<Uuid>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
+    let pool = &deployment.db().pool;
+
+    let existing_project = Project::find_by_id(pool, project_id)
+        .await?
+        .ok_or(ProjectError::ProjectNotFound)?;
+
+    let mut metadata = existing_project.metadata();
+    metadata.remote_project_id = None;
+    metadata.has_remote = false;
+
+    Project::update_remote_metadata(pool, project_id, &metadata).await?;
+
+    let updated_project = Project::find_by_id(pool, project_id)
+        .await?
+        .ok_or(ProjectError::ProjectNotFound)?;
+
+    Ok(ResponseJson(ApiResponse::success(updated_project)))
+}
+
 async fn apply_remote_project_link(
     deployment: &DeploymentImpl,
     project_id: Uuid,
@@ -735,7 +758,10 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/branches", get(get_project_branches))
         .route("/search", get(search_project_files))
         .route("/open-editor", post(open_project_in_editor))
-        .route("/link", post(link_project_to_existing_remote))
+        .route(
+            "/link",
+            post(link_project_to_existing_remote).delete(unlink_project),
+        )
         .route("/link/create", post(create_and_link_remote_project))
         .layer(from_fn_with_state(
             deployment.clone(),
