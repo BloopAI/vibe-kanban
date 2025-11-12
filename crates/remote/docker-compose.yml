@@ -8,7 +8,7 @@ services:
     volumes:
       - remote-db-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U remote -d remote"]
+      test: [ "CMD-SHELL", "pg_isready -U remote -d remote" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -32,6 +32,7 @@ services:
       GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:?set in .env.remote}
       GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:?set in .env.remote}
       VIBEKANBAN_REMOTE_JWT_SECRET: ${VIBEKANBAN_REMOTE_JWT_SECRET:?set in .env.remote}
+      LOOPS_EMAIL_API_KEY: ${LOOPS_EMAIL_API_KEY:?set in .env.remote}
       SERVER_PUBLIC_BASE_URL: http://localhost:3000
     ports:
       - "127.0.0.1:3000:8081"

@@ -16,7 +16,7 @@ pub struct AppState {
     pub config: RemoteServerConfig,
     pub jwt: Arc<JwtService>,
     pub mailer: Arc<dyn Mailer>,
-    pub base_url: String,
+    pub server_public_base_url: String,
     handoff: Arc<OAuthHandoffService>,
 }
 
@@ -28,7 +28,7 @@ impl AppState {
         jwt: Arc<JwtService>,
         handoff: Arc<OAuthHandoffService>,
         mailer: Arc<dyn Mailer>,
-        base_url: String,
+        server_public_base_url: String,
     ) -> Self {
         Self {
             pool,
@@ -36,7 +36,7 @@ impl AppState {
             config,
             jwt,
             mailer,
-            base_url,
+            server_public_base_url,
             handoff,
         }
     }

@@ -72,10 +72,11 @@ impl Server {
             .context("LOOPS_EMAIL_API_KEY environment variable is required")?;
         let mailer = Arc::new(LoopsMailer::new(api_key));
 
-        let base_url = config
-            .base_url
-            .clone()
-            .unwrap_or_else(|| format!("http://{}", config.listen_addr));
+        let server_public_base_url = config.server_public_base_url.clone().ok_or_else(|| {
+            anyhow::anyhow!(
+                "SERVER_PUBLIC_BASE_URL is not set. Please set it in your .env.remote file."
+            )
+        })?;
 
         let state = AppState::new(
             pool.clone(),
@@ -84,7 +85,7 @@ impl Server {
             jwt,
             handoff_service,
             mailer,
-            base_url,
+            server_public_base_url,
         );
 
         let listener =

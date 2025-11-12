@@ -16,7 +16,7 @@ const DEFAULT_ACTIVITY_CATCHUP_BATCH_SIZE: i64 = 100;
 pub struct RemoteServerConfig {
     pub database_url: String,
     pub listen_addr: String,
-    pub base_url: Option<String>,
+    pub server_public_base_url: Option<String>,
     pub activity_channel: String,
     pub activity_default_limit: i64,
     pub activity_max_limit: i64,
@@ -45,7 +45,7 @@ impl RemoteServerConfig {
         let listen_addr =
             env::var("SERVER_LISTEN_ADDR").unwrap_or_else(|_| "0.0.0.0:8081".to_string());
 
-        let base_url = env::var("SERVER_BASE_URL").ok();
+        let server_public_base_url = env::var("SERVER_PUBLIC_BASE_URL").ok();
 
         let activity_channel =
             env::var("SERVER_ACTIVITY_CHANNEL").unwrap_or_else(|_| "activity".to_string());
@@ -76,7 +76,7 @@ impl RemoteServerConfig {
         Ok(Self {
             database_url,
             listen_addr,
-            base_url,
+            server_public_base_url,
             activity_channel,
             activity_default_limit,
             activity_max_limit,
