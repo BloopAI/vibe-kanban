@@ -23,6 +23,8 @@ import { useOrganizationMembers } from '@/hooks/useOrganizationMembers';
 import { useOrganizationInvitations } from '@/hooks/useOrganizationInvitations';
 import { useOrganizationMutations } from '@/hooks/useOrganizationMutations';
 import { useUserSystem } from '@/components/config-provider';
+import { useAuth } from '@/hooks/auth/useAuth';
+import { LoginRequiredPrompt } from '@/components/dialogs/shared/LoginRequiredPrompt';
 import NiceModal from '@ebay/nice-modal-react';
 import {
   InviteMemberDialog,
@@ -45,6 +47,7 @@ import { useProjectMutations } from '@/hooks/useProjectMutations';
 export function OrganizationSettings() {
   const { t } = useTranslation('organization');
   const { loginStatus } = useUserSystem();
+  const { isSignedIn, isLoaded } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -244,11 +247,23 @@ export function OrganizationSettings() {
   // Check if current org is personal (cannot be deleted)
   const isPersonalOrg = selectedOrg?.slug.startsWith('personal-') ?? false;
 
-  if (orgsLoading) {
+  if (!isLoaded || orgsLoading) {
     return (
       <div className="flex items-center justify-center py-8">
         <Loader2 className="h-8 w-8 animate-spin" />
         <span className="ml-2">{t('settings.loadingOrganizations')}</span>
+      </div>
+    );
+  }
+
+  if (!isSignedIn) {
+    return (
+      <div className="py-8">
+        <LoginRequiredPrompt
+          title={t('loginRequired.title')}
+          description={t('loginRequired.description')}
+          actionLabel={t('loginRequired.action')}
+        />
       </div>
     );
   }
