@@ -26,7 +26,7 @@ export type AcceptInvitationResponse = {
 }
 
 export async function getInvitation(token: string): Promise<Invitation> {
-  const res = await fetch(`${API_BASE}/invitations/${token}`)
+  const res = await fetch(`${API_BASE}/v1/invitations/${token}`)
   if (!res.ok) {
     throw new Error(`Invitation not found (${res.status})`)
   }
@@ -77,7 +77,7 @@ export async function acceptInvitation(
   token: string,
   accessToken: string
 ): Promise<AcceptInvitationResponse> {
-  const res = await fetch(`${API_BASE}/invitations/${token}/accept`, {
+  const res = await fetch(`${API_BASE}/v1/invitations/${token}/accept`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
