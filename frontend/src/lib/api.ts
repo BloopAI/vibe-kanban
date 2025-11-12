@@ -62,7 +62,9 @@ import {
   UpdateMemberRoleRequest,
   UpdateMemberRoleResponse,
   Invitation,
+  RemoteProject,
   ListInvitationsResponse,
+  ListProjectsResponse,
 } from 'shared/types';
 
 // Re-export types for convenience
@@ -109,22 +111,6 @@ export interface FollowUpResponse {
 
 export interface OpenEditorResponse {
   url: string | null;
-}
-
-// Remote project types
-export interface RemoteProject {
-  id: string;
-  name: string;
-  organization_id: string;
-}
-
-export interface LinkToExistingRequest {
-  remote_project_id: string;
-}
-
-export interface CreateRemoteProjectRequest {
-  organization_id: string;
-  name: string;
 }
 
 export type Ok<T> = { success: true; data: T };
@@ -1018,7 +1004,8 @@ export const organizationsApi = {
 
   getProjects: async (orgId: string): Promise<RemoteProject[]> => {
     const response = await makeRequest(`/api/organizations/${orgId}/projects`);
-    return handleApiResponse<RemoteProject[]>(response);
+    const result = await handleApiResponse<ListProjectsResponse>(response);
+    return result.projects;
   },
 
   createOrganization: async (

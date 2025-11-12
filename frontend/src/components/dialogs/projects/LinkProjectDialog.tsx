@@ -19,10 +19,10 @@ import {
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
-import { projectsApi, organizationsApi, type RemoteProject } from '@/lib/api';
+import { projectsApi, organizationsApi } from '@/lib/api';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationSelection } from '@/hooks/useOrganizationSelection';
-import type { Project } from 'shared/types';
+import type { Project, RemoteProject } from 'shared/types';
 import { useTranslation } from 'react-i18next';
 
 export type LinkProjectResult = {
