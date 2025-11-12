@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -9,15 +9,25 @@ import {
 import { Button } from '@/components/ui/button';
 import { AlertCircle, ExternalLink } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { useTheme } from '@/components/theme-provider';
+import { getActualTheme } from '@/utils/theme';
 
-const RELEASE_NOTES_URL = 'https://vibekanban.com/release-notes';
+const RELEASE_NOTES_BASE_URL = 'https://vibekanban.com/release-notes';
 
 export const ReleaseNotesDialog = NiceModal.create(() => {
   const modal = useModal();
   const [iframeError, setIframeError] = useState(false);
+  const { theme } = useTheme();
+
+  const releaseNotesUrl = useMemo(() => {
+    const actualTheme = getActualTheme(theme);
+    const url = new URL(RELEASE_NOTES_BASE_URL);
+    url.searchParams.set('theme', actualTheme);
+    return url.toString();
+  }, [theme]);
 
   const handleOpenInBrowser = () => {
-    window.open(RELEASE_NOTES_URL, '_blank');
+    window.open(releaseNotesUrl, '_blank');
     modal.resolve();
   };
 
@@ -57,7 +67,7 @@ export const ReleaseNotesDialog = NiceModal.create(() => {
           </div>
         ) : (
           <iframe
-            src={RELEASE_NOTES_URL}
+            src={releaseNotesUrl}
             className="flex-1 w-full border-0"
             sandbox="allow-scripts allow-same-origin allow-popups"
             referrerPolicy="no-referrer"
