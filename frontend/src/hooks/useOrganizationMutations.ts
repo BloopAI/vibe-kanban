@@ -78,6 +78,9 @@ export function useOrganizationMutations(
     }) => organizationsApi.revokeInvitation(orgId, invitationId),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
+        queryKey: ['organization', 'members', variables.orgId],
+      });
+      queryClient.invalidateQueries({
         queryKey: ['organization', 'invitations', variables.orgId],
       });
       options?.onRevokeSuccess?.();
