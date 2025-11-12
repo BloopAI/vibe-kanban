@@ -36,11 +36,7 @@ pub enum ProjectError {
 pub struct ProjectRepository;
 
 impl ProjectRepository {
-    pub async fn find_by_id(
-        tx: &mut Tx<'_>,
-        id: Uuid,
-        organization_id: Uuid,
-    ) -> Result<Option<Project>, ProjectError> {
+    pub async fn find_by_id(tx: &mut Tx<'_>, id: Uuid) -> Result<Option<Project>, ProjectError> {
         let record = sqlx::query!(
             r#"
             SELECT
@@ -51,10 +47,8 @@ impl ProjectRepository {
                 created_at       AS "created_at!: DateTime<Utc>"
             FROM projects
             WHERE id = $1
-              AND organization_id = $2
             "#,
-            id,
-            organization_id
+            id
         )
         .fetch_optional(&mut **tx)
         .await?;

@@ -22,6 +22,7 @@ use crate::services::auth::AuthContext;
 struct PreparedBulkTask {
     input: SharedTaskInput,
     creator_user_id: Option<uuid::Uuid>,
+    project_id: Option<Uuid>,
 }
 
 /// Processor for handling activity events and synchronizing shared tasks.
@@ -147,8 +148,9 @@ impl ActivityProcessor {
         remote_project_id: Uuid,
     ) -> Result<Option<Project>, ShareError> {
         if let Some(existing) = SharedTask::find_by_id(&self.db.pool, task_id).await?
-            && let Some(project_id) = existing.project_id
-            && let Some(project) = Project::find_by_id(&self.db.pool, project_id).await?
+            && let Some(project) =
+                Project::find_by_remote_project_id(&self.db.pool, existing.remote_project_id)
+                    .await?
         {
             return Ok(Some(project));
         }
@@ -180,14 +182,7 @@ impl ActivityProcessor {
                 }
 
                 let project_id = project.as_ref().map(|p| p.id);
-                let github_repo_id = project.as_ref().and_then(|p| p.github_repo_id);
-                let input = convert_remote_task(
-                    &task,
-                    user.as_ref(),
-                    project_id,
-                    github_repo_id,
-                    Some(event.seq),
-                );
+                let input = convert_remote_task(&task, user.as_ref(), Some(event.seq));
                 let shared_task = SharedTask::upsert(&self.db.pool, input).await?;
 
                 let current_profile = self.auth_ctx.cached_profile().await;
@@ -197,6 +192,7 @@ impl ActivityProcessor {
                     &shared_task,
                     current_user_id,
                     task.creator_user_id,
+                    project_id,
                 )
                 .await?;
             }
@@ -263,18 +259,12 @@ impl ActivityProcessor {
             }
 
             let project_id = project.as_ref().map(|p| p.id);
-            let github_repo_id = project.as_ref().and_then(|p| p.github_repo_id);
             keep_ids.insert(payload.task.id);
-            let input = convert_remote_task(
-                &payload.task,
-                payload.user.as_ref(),
-                project_id,
-                github_repo_id,
-                latest_seq,
-            );
+            let input = convert_remote_task(&payload.task, payload.user.as_ref(), latest_seq);
             replacements.push(PreparedBulkTask {
                 input,
                 creator_user_id: payload.task.creator_user_id,
+                project_id,
             });
         }
 
@@ -306,6 +296,7 @@ impl ActivityProcessor {
         for PreparedBulkTask {
             input,
             creator_user_id,
+            project_id,
         } in replacements
         {
             let shared_task = SharedTask::upsert(&self.db.pool, input).await?;
@@ -314,6 +305,7 @@ impl ActivityProcessor {
                 &shared_task,
                 current_user_id,
                 creator_user_id,
+                project_id,
             )
             .await?;
         }

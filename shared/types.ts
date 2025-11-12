@@ -58,7 +58,7 @@ export type CreateTask = { project_id: string, title: string, description: strin
 
 export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, parent_task_attempt: string | null, image_ids: Array<string> | null, };
 
-export type SharedTask = { id: string, organization_id: string, remote_project_id: string, project_id: string | null, github_repo_id: bigint | null, title: string, description: string | null, status: TaskStatus, assignee_user_id: string | null, assignee_first_name: string | null, assignee_last_name: string | null, assignee_username: string | null, version: bigint, last_event_seq: bigint | null, created_at: Date, updated_at: Date, };
+export type SharedTask = { id: string, remote_project_id: string, title: string, description: string | null, status: TaskStatus, assignee_user_id: string | null, assignee_first_name: string | null, assignee_last_name: string | null, assignee_username: string | null, version: bigint, last_event_seq: bigint | null, created_at: Date, updated_at: Date, };
 
 export type Image = { id: string, file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, created_at: string, updated_at: string, };
 
@@ -115,6 +115,8 @@ export type UpdateMemberRoleResponse = { user_id: string, role: MemberRole, };
 export type RemoteProject = { id: string, organization_id: string, name: string, metadata: Record<string, unknown>, created_at: string, };
 
 export type ListProjectsResponse = { projects: Array<RemoteProject>, };
+
+export type RemoteProjectMembersResponse = { organization_id: string, members: Array<OrganizationMember>, };
 
 export type UserSystemInfo = { config: Config, analytics_user_id: string, login_status: LoginStatus, environment: Environment, 
 /**

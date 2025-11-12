@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        UPDATE shared_tasks AS t\n        SET deleted_at = NOW(),\n            deleted_by_user_id = $4,\n            version = t.version + 1,\n            updated_at = NOW()\n        WHERE t.id = $1\n          AND t.organization_id = $2\n          AND t.version = COALESCE($3, t.version)\n          AND t.assignee_user_id = $4\n          AND t.deleted_at IS NULL\n        RETURNING\n            t.id                AS \"id!\",\n            t.organization_id   AS \"organization_id!: Uuid\",\n            t.project_id        AS \"project_id!\",\n            t.creator_user_id   AS \"creator_user_id?: Uuid\",\n            t.assignee_user_id  AS \"assignee_user_id?: Uuid\",\n            t.deleted_by_user_id AS \"deleted_by_user_id?: Uuid\",\n            t.title             AS \"title!\",\n            t.description       AS \"description?\",\n            t.status            AS \"status!: TaskStatus\",\n            t.version           AS \"version!\",\n            t.deleted_at        AS \"deleted_at?\",\n            t.shared_at         AS \"shared_at?\",\n            t.created_at        AS \"created_at!\",\n            t.updated_at        AS \"updated_at!\"\n        ",
+  "query": "\n        UPDATE shared_tasks AS t\n        SET assignee_user_id = $2,\n            version = t.version + 1,\n            updated_at = NOW()\n        WHERE t.id = $1\n          AND t.version = COALESCE($4, t.version)\n          AND ($3::uuid IS NULL OR t.assignee_user_id = $3::uuid)\n          AND t.deleted_at IS NULL\n        RETURNING\n            t.id                AS \"id!\",\n            t.organization_id   AS \"organization_id!: Uuid\",\n            t.project_id        AS \"project_id!\",\n            t.creator_user_id   AS \"creator_user_id?: Uuid\",\n            t.assignee_user_id  AS \"assignee_user_id?: Uuid\",\n            t.deleted_by_user_id AS \"deleted_by_user_id?: Uuid\",\n            t.title             AS \"title!\",\n            t.description       AS \"description?\",\n            t.status            AS \"status!: TaskStatus\",\n            t.version           AS \"version!\",\n            t.deleted_at        AS \"deleted_at?\",\n            t.shared_at         AS \"shared_at?\",\n            t.created_at        AS \"created_at!\",\n            t.updated_at        AS \"updated_at!\"\n        ",
   "describe": {
     "columns": [
       {
@@ -91,8 +91,8 @@
       "Left": [
         "Uuid",
         "Uuid",
-        "Int8",
-        "Uuid"
+        "Uuid",
+        "Int8"
       ]
     },
     "nullable": [
@@ -112,5 +112,5 @@
       false
     ]
   },
-  "hash": "8f2ade7bc5839c78048ac50353f90a1f322e6c061dbbe8eacf087eab0878d56f"
+  "hash": "7939a24efc19a4519e31d2a94cb89da65c41aea0ad7f20755cae80e2967c0529"
 }

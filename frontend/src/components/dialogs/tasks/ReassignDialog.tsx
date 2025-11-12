@@ -22,7 +22,8 @@ import { tasksApi } from '@/lib/api';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import { useAuth } from '@/hooks';
 import { useMutation } from '@tanstack/react-query';
-import { useOrganizationMembers } from '@/hooks/useOrganizationMembers';
+import { useProject } from '@/contexts/project-context';
+import { useProjectRemoteMembers } from '@/hooks/useProjectRemoteMembers';
 
 export interface ReassignDialogProps {
   sharedTask: SharedTaskRecord;
@@ -46,9 +47,8 @@ export const ReassignDialog = NiceModal.create<ReassignDialogProps>(
 
     const isCurrentAssignee = sharedTask.assignee_user_id === userId;
 
-    const organizationId = sharedTask.organization_id;
-
-    const membersQuery = useOrganizationMembers(organizationId);
+    const { projectId } = useProject();
+    const membersQuery = useProjectRemoteMembers(projectId);
 
     useEffect(() => {
       if (!modal.visible) {
@@ -113,11 +113,19 @@ export const ReassignDialog = NiceModal.create<ReassignDialogProps>(
       }
     };
 
-    const membersError = membersQuery.isError
-      ? 'Failed to load organization members.'
-      : null;
+    const membersError = (() => {
+      if (!projectId) {
+        return 'Unable to determine project context.';
+      }
+      if (membersQuery.isError) {
+        return (
+          membersQuery.error.message || 'Failed to load organization members.'
+        );
+      }
+      return null;
+    })();
 
-    const memberOptions = membersQuery.data ?? [];
+    const memberOptions = membersQuery.data?.members ?? [];
 
     const canSubmit =
       isCurrentAssignee &&

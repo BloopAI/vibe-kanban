@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        UPDATE shared_tasks AS t\n        SET title       = COALESCE($2, t.title),\n            description = COALESCE($3, t.description),\n            status      = COALESCE($4, t.status),\n            version     = t.version + 1,\n            updated_at  = NOW()\n        WHERE t.id = $1\n          AND t.organization_id = $6\n          AND t.version = COALESCE($5, t.version)\n          AND t.assignee_user_id = $7\n          AND t.deleted_at IS NULL\n        RETURNING\n            t.id                AS \"id!\",\n            t.organization_id   AS \"organization_id!: Uuid\",\n            t.project_id        AS \"project_id!\",\n            t.creator_user_id   AS \"creator_user_id?: Uuid\",\n            t.assignee_user_id  AS \"assignee_user_id?: Uuid\",\n            t.deleted_by_user_id AS \"deleted_by_user_id?: Uuid\",\n            t.title             AS \"title!\",\n            t.description       AS \"description?\",\n            t.status            AS \"status!: TaskStatus\",\n            t.version           AS \"version!\",\n            t.deleted_at        AS \"deleted_at?\",\n            t.shared_at         AS \"shared_at?\",\n            t.created_at        AS \"created_at!\",\n            t.updated_at        AS \"updated_at!\"\n        ",
+  "query": "\n            SELECT\n                id                  AS \"id!\",\n                organization_id     AS \"organization_id!: Uuid\",\n                project_id          AS \"project_id!\",\n                creator_user_id     AS \"creator_user_id?: Uuid\",\n                assignee_user_id    AS \"assignee_user_id?: Uuid\",\n                deleted_by_user_id  AS \"deleted_by_user_id?: Uuid\",\n                title               AS \"title!\",\n                description         AS \"description?\",\n                status              AS \"status!: TaskStatus\",\n                version             AS \"version!\",\n                deleted_at          AS \"deleted_at?\",\n                shared_at           AS \"shared_at?\",\n                created_at          AS \"created_at!\",\n                updated_at          AS \"updated_at!\"\n            FROM shared_tasks\n            WHERE id = $1\n              AND deleted_at IS NULL\n            ",
   "describe": {
     "columns": [
       {
@@ -89,25 +89,6 @@
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Text",
-        "Text",
-        {
-          "Custom": {
-            "name": "task_status",
-            "kind": {
-              "Enum": [
-                "todo",
-                "in-progress",
-                "in-review",
-                "done",
-                "cancelled"
-              ]
-            }
-          }
-        },
-        "Int8",
-        "Uuid",
         "Uuid"
       ]
     },
@@ -128,5 +109,5 @@
       false
     ]
   },
-  "hash": "c29a061510ac09f413f6e44e51c2f36d34997bc91a7adfe0a1840fd26968e947"
+  "hash": "2a9a7c649ededf8772f750bb42c5144f4ab5e74dc905fb8a63340f09fd55a3d7"
 }
