@@ -29,7 +29,13 @@ impl OAuthCredentials {
     pub async fn load(&self) -> std::io::Result<()> {
         #[cfg(target_os = "macos")]
         {
-            macos::load(self).await
+            if use_file_backend() {
+                tracing::info!("OAuth credentials backend: file");
+                file_backend::load(self).await
+            } else {
+                tracing::info!("OAuth credentials backend: keychain");
+                macos::load(self).await
+            }
         }
         #[cfg(not(target_os = "macos"))]
         {
@@ -40,7 +46,11 @@ impl OAuthCredentials {
     pub async fn save(&self, creds: &Credentials) -> std::io::Result<()> {
         #[cfg(target_os = "macos")]
         {
-            macos::save(self, creds).await
+            if use_file_backend() {
+                file_backend::save(self, creds).await
+            } else {
+                macos::save(self, creds).await
+            }
         }
         #[cfg(not(target_os = "macos"))]
         {
@@ -51,7 +61,11 @@ impl OAuthCredentials {
     pub async fn clear(&self) -> std::io::Result<()> {
         #[cfg(target_os = "macos")]
         {
-            macos::clear(self).await
+            if use_file_backend() {
+                file_backend::clear(self).await
+            } else {
+                macos::clear(self).await
+            }
         }
         #[cfg(not(target_os = "macos"))]
         {
@@ -64,7 +78,15 @@ impl OAuthCredentials {
     }
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "macos")]
+fn use_file_backend() -> bool {
+    match std::env::var("OAUTH_CREDENTIALS_BACKEND") {
+        Ok(v) if v.eq_ignore_ascii_case("file") => true,
+        Ok(v) if v.eq_ignore_ascii_case("keychain") => false,
+        _ => cfg!(debug_assertions),
+    }
+}
+
 mod file_backend {
     use super::*;
 
