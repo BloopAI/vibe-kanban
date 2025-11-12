@@ -2,6 +2,23 @@
 
 ARG APP_NAME=remote
 
+FROM node:20-alpine AS fe-builder
+WORKDIR /repo
+
+RUN corepack enable
+
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY frontend/package.json frontend/package.json
+COPY remote-frontend/package.json remote-frontend/package.json
+
+RUN pnpm fetch --filter ./remote-frontend
+
+RUN pnpm install --offline --frozen-lockfile --filter ./remote-frontend
+
+COPY remote-frontend/ remote-frontend/
+
+RUN pnpm -C remote-frontend build
+
 FROM rust:1.89-slim-bookworm AS builder
 ARG APP_NAME
 
@@ -37,6 +54,7 @@ RUN apt-get update \
 WORKDIR /srv
 
 COPY --from=builder /app/bin/${APP_NAME} /usr/local/bin/${APP_NAME}
+COPY --from=fe-builder /repo/remote-frontend/dist /srv/static
 
 USER appuser
 

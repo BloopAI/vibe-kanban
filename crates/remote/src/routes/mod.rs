@@ -7,6 +7,7 @@ use axum::{
 use tower_http::{
     cors::CorsLayer,
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, RequestId, SetRequestIdLayer},
+    services::{ServeDir, ServeFile},
     trace::{DefaultOnFailure, DefaultOnResponse, TraceLayer},
 };
 use tracing::{Level, field};
@@ -63,10 +64,15 @@ pub fn router(state: AppState) -> Router {
             require_session,
         ));
 
+    let static_dir = "/srv/static";
+    let spa = ServeDir::new(static_dir)
+        .fallback(ServeFile::new(format!("{}/index.html", static_dir)));
+
     Router::<AppState>::new()
         .merge(public_top)
         .nest("/v1", v1_public)
         .nest("/v1", v1_protected)
+        .fallback_service(spa)
         .layer(CorsLayer::permissive())
         .layer(trace_layer)
         .layer(PropagateRequestIdLayer::new(HeaderName::from_static(
