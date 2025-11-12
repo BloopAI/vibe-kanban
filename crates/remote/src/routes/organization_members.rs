@@ -29,7 +29,10 @@ pub fn public_router() -> Router<AppState> {
     Router::new()
         .route("/invitations/{token}", get(get_invitation))
         .route("/invitations/{token}/accept", get(accept_invitation))
-        .route("/invitations/{token}/complete", get(accept_invitation_complete))
+        .route(
+            "/invitations/{token}/complete",
+            get(accept_invitation_complete),
+        )
 }
 
 pub fn protected_router() -> Router<AppState> {
