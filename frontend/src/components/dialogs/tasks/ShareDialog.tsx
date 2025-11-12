@@ -106,9 +106,7 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
         ) : (
           <>
             {shareMutation.isSuccess ? (
-              <Alert variant="success">
-                {t('shareDialog.success')}
-              </Alert>
+              <Alert variant="success">{t('shareDialog.success')}</Alert>
             ) : (
               <>
                 {shareError && (
