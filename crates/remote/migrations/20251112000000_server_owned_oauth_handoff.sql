@@ -1,0 +1,2 @@
+-- Placeholder migration (server-owned OAuth flow removed in favor of PKCE)
+-- No changes needed to oauth_handoffs table
