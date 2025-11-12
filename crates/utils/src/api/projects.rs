@@ -4,6 +4,8 @@ use serde_json::Value;
 use ts_rs::TS;
 use uuid::Uuid;
 
+use super::organizations::OrganizationMember;
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct RemoteProject {
     pub id: Uuid,
@@ -17,4 +19,10 @@ pub struct RemoteProject {
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct ListProjectsResponse {
     pub projects: Vec<RemoteProject>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct RemoteProjectMembersResponse {
+    pub organization_id: Uuid,
+    pub members: Vec<OrganizationMember>,
 }

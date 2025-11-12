@@ -16,6 +16,7 @@ pub use config::ShareConfig;
 use db::{
     DBService,
     models::{
+        project::Project,
         shared_task::{SharedActivityCursor, SharedTask, SharedTaskInput},
         task::{SyncTask, Task},
     },
@@ -530,16 +531,11 @@ impl Drop for RemoteSyncHandleInner {
 pub(super) fn convert_remote_task(
     task: &RemoteSharedTask,
     user: Option<&RemoteUserData>,
-    project_id: Option<Uuid>,
-    github_repo_id: Option<i64>,
     last_event_seq: Option<i64>,
 ) -> SharedTaskInput {
     SharedTaskInput {
         id: task.id,
-        organization_id: task.organization_id,
         remote_project_id: task.project_id,
-        project_id,
-        github_repo_id,
         title: task.title.clone(),
         description: task.description.clone(),
         status: status::from_remote(&task.status),
@@ -559,10 +555,15 @@ pub(super) async fn sync_local_task_for_shared_task(
     shared_task: &SharedTask,
     current_user_id: Option<uuid::Uuid>,
     creator_user_id: Option<uuid::Uuid>,
+    project_id_override: Option<Uuid>,
 ) -> Result<(), ShareError> {
-    let project_id = match shared_task.project_id {
-        Some(project_id) => project_id,
-        None => return Ok(()),
+    let project_id = if let Some(id) = project_id_override {
+        id
+    } else {
+        match Project::find_by_remote_project_id(pool, shared_task.remote_project_id).await? {
+            Some(project) => project.id,
+            None => return Ok(()),
+        }
     };
 
     let create_task_if_not_exists = {
@@ -597,16 +598,15 @@ pub async fn link_shared_tasks_to_project(
     project_id: Uuid,
     remote_project_id: Uuid,
 ) -> Result<(), ShareError> {
-    let linked_tasks =
-        SharedTask::link_to_project_by_remote_project_id(pool, remote_project_id, project_id)
-            .await?;
+    let tasks = SharedTask::list_by_remote_project_id(pool, remote_project_id).await?;
 
-    if linked_tasks.is_empty() {
+    if tasks.is_empty() {
         return Ok(());
     }
 
-    for task in linked_tasks {
-        sync_local_task_for_shared_task(pool, &task, current_user_id, None).await?;
+    for task in tasks {
+        sync_local_task_for_shared_task(pool, &task, current_user_id, None, Some(project_id))
+            .await?;
     }
 
     Ok(())

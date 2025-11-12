@@ -1,6 +1,7 @@
 use db::models::{
     draft::{Draft, DraftType},
     execution_process::ExecutionProcess,
+    project::Project,
     shared_task::SharedTask,
     task::{Task, TaskWithAttemptStatus},
 };
@@ -32,7 +33,15 @@ impl EventService {
             .map(|task| (task.id.to_string(), serde_json::to_value(task).unwrap()))
             .collect();
 
-        let shared_tasks = SharedTask::list_by_project_id(&self.db.pool, project_id).await?;
+        let remote_project_id = Project::find_by_id(&self.db.pool, project_id)
+            .await?
+            .and_then(|project| project.remote_project_id);
+
+        let shared_tasks = if let Some(remote_project_id) = remote_project_id {
+            SharedTask::list_by_remote_project_id(&self.db.pool, remote_project_id).await?
+        } else {
+            Vec::new()
+        };
         let shared_tasks_map: serde_json::Map<String, serde_json::Value> = shared_tasks
             .into_iter()
             .map(|task| (task.id.to_string(), serde_json::to_value(task).unwrap()))
@@ -54,6 +63,7 @@ impl EventService {
 
         // Clone necessary data for the async filter
         let db_pool = self.db.pool.clone();
+        let remote_project_id_filter = remote_project_id;
 
         // Get filtered event stream
         let filtered_stream =
@@ -71,9 +81,11 @@ impl EventService {
                                                 serde_json::from_value::<SharedTask>(
                                                     op.value.clone(),
                                                 )
-                                                && shared_task
-                                                    .project_id
-                                                    .is_some_and(|id| id == project_id)
+                                                && remote_project_id_filter
+                                                    .map(|expected| {
+                                                        shared_task.remote_project_id == expected
+                                                    })
+                                                    .unwrap_or(false)
                                             {
                                                 return Some(Ok(LogMsg::JsonPatch(patch)));
                                             }
@@ -83,9 +95,11 @@ impl EventService {
                                                 serde_json::from_value::<SharedTask>(
                                                     op.value.clone(),
                                                 )
-                                                && shared_task
-                                                    .project_id
-                                                    .is_some_and(|id| id == project_id)
+                                                && remote_project_id_filter
+                                                    .map(|expected| {
+                                                        shared_task.remote_project_id == expected
+                                                    })
+                                                    .unwrap_or(false)
                                             {
                                                 return Some(Ok(LogMsg::JsonPatch(patch)));
                                             }
@@ -152,9 +166,11 @@ impl EventService {
                                             }
                                         }
                                         RecordTypes::SharedTask(shared_task) => {
-                                            if shared_task
-                                                .project_id
-                                                .is_some_and(|id| id == project_id)
+                                            if remote_project_id_filter
+                                                .map(|expected| {
+                                                    shared_task.remote_project_id == expected
+                                                })
+                                                .unwrap_or(false)
                                             {
                                                 return Some(Ok(LogMsg::JsonPatch(patch)));
                                             }

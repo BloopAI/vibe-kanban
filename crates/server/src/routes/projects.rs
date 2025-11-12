@@ -24,7 +24,11 @@ use services::services::{
     share::link_shared_tasks_to_project,
 };
 use ts_rs::TS;
-use utils::{api::projects::RemoteProject, path::expand_tilde, response::ApiResponse};
+use utils::{
+    api::projects::{RemoteProject, RemoteProjectMembersResponse},
+    path::expand_tilde,
+    response::ApiResponse,
+};
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError, middleware::load_project_middleware};
@@ -180,6 +184,65 @@ pub async fn unlink_project(
         .ok_or(ProjectError::ProjectNotFound)?;
 
     Ok(ResponseJson(ApiResponse::success(updated_project)))
+}
+
+pub async fn get_remote_project_by_id(
+    State(deployment): State<DeploymentImpl>,
+    Path(remote_project_id): Path<Uuid>,
+) -> Result<ResponseJson<ApiResponse<RemoteProject>>, ApiError> {
+    let remote_client = deployment
+        .remote_client()
+        .ok_or_else(|| ApiError::Conflict("Share service not configured".to_string()))?;
+
+    let creds = deployment
+        .auth_context()
+        .get_credentials()
+        .await
+        .ok_or(ApiError::Unauthorized)?;
+
+    let remote_project = remote_client
+        .get_project(&creds.access_token, remote_project_id)
+        .await
+        .map_err(map_remote_error)?;
+
+    Ok(ResponseJson(ApiResponse::success(remote_project)))
+}
+
+pub async fn get_project_remote_members(
+    State(deployment): State<DeploymentImpl>,
+    Extension(project): Extension<Project>,
+) -> Result<ResponseJson<ApiResponse<RemoteProjectMembersResponse>>, ApiError> {
+    let remote_client = deployment
+        .remote_client()
+        .ok_or_else(|| ApiError::Conflict("Share service not configured".to_string()))?;
+
+    let creds = deployment
+        .auth_context()
+        .get_credentials()
+        .await
+        .ok_or(ApiError::Unauthorized)?;
+
+    let remote_project_id = project.remote_project_id.ok_or_else(|| {
+        ApiError::Conflict("Project is not linked to a remote project".to_string())
+    })?;
+
+    let remote_project = remote_client
+        .get_project(&creds.access_token, remote_project_id)
+        .await
+        .map_err(map_remote_error)?;
+
+    let members = remote_client
+        .list_members(&creds.access_token, remote_project.organization_id)
+        .await
+        .map_err(map_remote_error)?
+        .members;
+
+    Ok(ResponseJson(ApiResponse::success(
+        RemoteProjectMembersResponse {
+            organization_id: remote_project.organization_id,
+            members,
+        },
+    )))
 }
 
 async fn apply_remote_project_link(
@@ -755,6 +818,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             "/",
             get(get_project).put(update_project).delete(delete_project),
         )
+        .route("/remote/members", get(get_project_remote_members))
         .route("/branches", get(get_project_branches))
         .route("/search", get(search_project_files))
         .route("/open-editor", post(open_project_in_editor))
@@ -772,5 +836,8 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/", get(get_projects).post(create_project))
         .nest("/{id}", project_id_router);
 
-    Router::new().nest("/projects", projects_router)
+    Router::new().nest("/projects", projects_router).route(
+        "/remote-projects/{remote_project_id}",
+        get(get_remote_project_by_id),
+    )
 }

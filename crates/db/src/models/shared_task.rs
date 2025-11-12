@@ -9,10 +9,7 @@ use super::task::TaskStatus;
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
 pub struct SharedTask {
     pub id: Uuid,
-    pub organization_id: Uuid,
     pub remote_project_id: Uuid,
-    pub project_id: Option<Uuid>,
-    pub github_repo_id: Option<i64>,
     pub title: String,
     pub description: Option<String>,
     pub status: TaskStatus,
@@ -31,10 +28,7 @@ pub struct SharedTask {
 #[derive(Debug, Clone)]
 pub struct SharedTaskInput {
     pub id: Uuid,
-    pub organization_id: Uuid,
     pub remote_project_id: Uuid,
-    pub project_id: Option<Uuid>,
-    pub github_repo_id: Option<i64>,
     pub title: String,
     pub description: Option<String>,
     pub status: TaskStatus,
@@ -49,74 +43,6 @@ pub struct SharedTaskInput {
 }
 
 impl SharedTask {
-    pub async fn list_by_organization(
-        pool: &SqlitePool,
-        organization_id: Uuid,
-    ) -> Result<Vec<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            SharedTask,
-            r#"
-            SELECT
-                id                         AS "id!: Uuid",
-                organization_id            AS "organization_id!: Uuid",
-                remote_project_id          AS "remote_project_id!: Uuid",
-                project_id                 AS "project_id: Uuid",
-                github_repo_id             AS "github_repo_id: i64",
-                title                      AS title,
-                description                AS description,
-                status                     AS "status!: TaskStatus",
-                assignee_user_id           AS "assignee_user_id: Uuid",
-                assignee_first_name        AS "assignee_first_name: String",
-                assignee_last_name         AS "assignee_last_name: String",
-                assignee_username          AS "assignee_username: String",
-                version                    AS "version!: i64",
-                last_event_seq             AS "last_event_seq: i64",
-                created_at                 AS "created_at!: DateTime<Utc>",
-                updated_at                 AS "updated_at!: DateTime<Utc>"
-            FROM shared_tasks
-            WHERE organization_id = $1
-            ORDER BY updated_at DESC
-            "#,
-            organization_id
-        )
-        .fetch_all(pool)
-        .await
-    }
-
-    pub async fn list_by_project_id(
-        pool: &SqlitePool,
-        project_id: Uuid,
-    ) -> Result<Vec<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            SharedTask,
-            r#"
-            SELECT
-                id                         AS "id!: Uuid",
-                organization_id            AS "organization_id!: Uuid",
-                remote_project_id          AS "remote_project_id!: Uuid",
-                project_id                 AS "project_id: Uuid",
-                github_repo_id             AS "github_repo_id: i64",
-                title                      AS title,
-                description                AS description,
-                status                     AS "status!: TaskStatus",
-                assignee_user_id           AS "assignee_user_id: Uuid",
-                assignee_first_name        AS "assignee_first_name: String",
-                assignee_last_name         AS "assignee_last_name: String",
-                assignee_username          AS "assignee_username: String",
-                version                    AS "version!: i64",
-                last_event_seq             AS "last_event_seq: i64",
-                created_at                 AS "created_at!: DateTime<Utc>",
-                updated_at                 AS "updated_at!: DateTime<Utc>"
-            FROM shared_tasks
-            WHERE project_id = $1
-            ORDER BY updated_at DESC
-            "#,
-            project_id
-        )
-        .fetch_all(pool)
-        .await
-    }
-
     pub async fn list_by_remote_project_id(
         pool: &SqlitePool,
         remote_project_id: Uuid,
@@ -126,10 +52,7 @@ impl SharedTask {
             r#"
             SELECT
                 id                         AS "id!: Uuid",
-                organization_id            AS "organization_id!: Uuid",
                 remote_project_id          AS "remote_project_id!: Uuid",
-                project_id                 AS "project_id: Uuid",
-                github_repo_id             AS "github_repo_id: i64",
                 title                      AS title,
                 description                AS description,
                 status                     AS "status!: TaskStatus",
@@ -158,10 +81,7 @@ impl SharedTask {
             r#"
             INSERT INTO shared_tasks (
                 id,
-                organization_id,
                 remote_project_id,
-                project_id,
-                github_repo_id,
                 title,
                 description,
                 status,
@@ -175,13 +95,10 @@ impl SharedTask {
                 updated_at
             )
             VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
             )
             ON CONFLICT(id) DO UPDATE SET
-                organization_id     = excluded.organization_id,
                 remote_project_id   = excluded.remote_project_id,
-                project_id          = excluded.project_id,
-                github_repo_id      = excluded.github_repo_id,
                 title               = excluded.title,
                 description         = excluded.description,
                 status              = excluded.status,
@@ -195,10 +112,7 @@ impl SharedTask {
                 updated_at          = excluded.updated_at
             RETURNING
                 id                         AS "id!: Uuid",
-                organization_id            AS "organization_id!: Uuid",
                 remote_project_id          AS "remote_project_id!: Uuid",
-                project_id                 AS "project_id: Uuid",
-                github_repo_id             AS "github_repo_id: i64",
                 title                      AS title,
                 description                AS description,
                 status                     AS "status!: TaskStatus",
@@ -212,10 +126,7 @@ impl SharedTask {
                 updated_at                 AS "updated_at!: DateTime<Utc>"
             "#,
             data.id,
-            data.organization_id,
             data.remote_project_id,
-            data.project_id,
-            data.github_repo_id,
             data.title,
             data.description,
             status,
@@ -238,10 +149,7 @@ impl SharedTask {
             r#"
             SELECT
                 id                         AS "id!: Uuid",
-                organization_id            AS "organization_id!: Uuid",
                 remote_project_id          AS "remote_project_id!: Uuid",
-                project_id                 AS "project_id: Uuid",
-                github_repo_id             AS "github_repo_id: i64",
                 title                      AS title,
                 description                AS description,
                 status                     AS "status!: TaskStatus",
@@ -286,56 +194,13 @@ impl SharedTask {
         Ok(())
     }
 
-    pub async fn link_to_project_by_remote_project_id(
-        pool: &SqlitePool,
-        remote_project_id: Uuid,
-        project_id: Uuid,
-    ) -> Result<Vec<Self>, sqlx::Error> {
-        let tasks = sqlx::query_as!(
-            SharedTask,
-            r#"
-            UPDATE shared_tasks
-               SET project_id = $2,
-                   updated_at = datetime('now', 'subsec')
-             WHERE remote_project_id = $1
-               AND (project_id IS NULL OR project_id != $2)
-            RETURNING
-                id                         AS "id!: Uuid",
-                organization_id            AS "organization_id!: Uuid",
-                remote_project_id          AS "remote_project_id!: Uuid",
-                project_id                 AS "project_id: Uuid",
-                github_repo_id             AS "github_repo_id: i64",
-                title                      AS title,
-                description                AS description,
-                status                     AS "status!: TaskStatus",
-                assignee_user_id           AS "assignee_user_id: Uuid",
-                assignee_first_name        AS "assignee_first_name: String",
-                assignee_last_name         AS "assignee_last_name: String",
-                assignee_username          AS "assignee_username: String",
-                version                    AS "version!: i64",
-                last_event_seq             AS "last_event_seq: i64",
-                created_at                 AS "created_at!: DateTime<Utc>",
-                updated_at                 AS "updated_at!: DateTime<Utc>"
-            "#,
-            remote_project_id,
-            project_id
-        )
-        .fetch_all(pool)
-        .await?;
-
-        Ok(tasks)
-    }
-
     pub async fn find_by_rowid(pool: &SqlitePool, rowid: i64) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             SharedTask,
             r#"
             SELECT
                 id                         AS "id!: Uuid",
-                organization_id            AS "organization_id!: Uuid",
                 remote_project_id          AS "remote_project_id!: Uuid",
-                project_id                 AS "project_id: Uuid",
-                github_repo_id             AS "github_repo_id: i64",
                 title                      AS title,
                 description                AS description,
                 status                     AS "status!: TaskStatus",

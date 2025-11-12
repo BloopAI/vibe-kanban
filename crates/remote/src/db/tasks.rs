@@ -126,11 +126,7 @@ impl<'a> SharedTaskRepository<'a> {
         Self { pool }
     }
 
-    pub async fn find_by_id(
-        &self,
-        organization_id: Uuid,
-        task_id: Uuid,
-    ) -> Result<Option<SharedTask>, SharedTaskError> {
+    pub async fn find_by_id(&self, task_id: Uuid) -> Result<Option<SharedTask>, SharedTaskError> {
         let task = sqlx::query_as!(
             SharedTask,
             r#"
@@ -151,11 +147,9 @@ impl<'a> SharedTaskRepository<'a> {
                 updated_at          AS "updated_at!"
             FROM shared_tasks
             WHERE id = $1
-              AND organization_id = $2
               AND deleted_at IS NULL
             "#,
-            task_id,
-            organization_id
+            task_id
         )
         .fetch_optional(self.pool)
         .await?;
@@ -165,7 +159,6 @@ impl<'a> SharedTaskRepository<'a> {
 
     pub async fn create(
         &self,
-        organization_id: Uuid,
         data: CreateSharedTaskData,
     ) -> Result<SharedTaskWithUser, SharedTaskError> {
         let mut tx = self.pool.begin().await.map_err(SharedTaskError::from)?;
@@ -180,16 +173,14 @@ impl<'a> SharedTaskRepository<'a> {
 
         ensure_text_size(&title, description.as_deref())?;
 
-        ProjectRepository::find_by_id(&mut tx, project_id, organization_id)
+        let project = ProjectRepository::find_by_id(&mut tx, project_id)
             .await?
             .ok_or_else(|| {
-                tracing::warn!(
-                    %project_id,
-                    %organization_id,
-                    "remote project not found when creating shared task"
-                );
+                tracing::warn!(%project_id, "remote project not found when creating shared task");
                 SharedTaskError::NotFound
             })?;
+
+        let organization_id = project.organization_id;
 
         let task = sqlx::query_as!(
             SharedTask,
@@ -344,7 +335,6 @@ impl<'a> SharedTaskRepository<'a> {
 
     pub async fn update(
         &self,
-        organization_id: Uuid,
         task_id: Uuid,
         data: UpdateSharedTaskData,
     ) -> Result<SharedTaskWithUser, SharedTaskError> {
@@ -360,9 +350,8 @@ impl<'a> SharedTaskRepository<'a> {
             version     = t.version + 1,
             updated_at  = NOW()
         WHERE t.id = $1
-          AND t.organization_id = $6
           AND t.version = COALESCE($5, t.version)
-          AND t.assignee_user_id = $7
+          AND t.assignee_user_id = $6
           AND t.deleted_at IS NULL
         RETURNING
             t.id                AS "id!",
@@ -385,7 +374,6 @@ impl<'a> SharedTaskRepository<'a> {
             data.description,
             data.status as Option<TaskStatus>,
             data.version,
-            organization_id,
             data.acting_user_id
         )
         .fetch_optional(&mut *tx)
@@ -393,15 +381,6 @@ impl<'a> SharedTaskRepository<'a> {
         .ok_or_else(|| SharedTaskError::Conflict("task version mismatch".to_string()))?;
 
         ensure_text_size(&task.title, task.description.as_deref())?;
-
-        if ProjectRepository::find_by_id(&mut tx, task.project_id, organization_id)
-            .await?
-            .is_none()
-        {
-            return Err(SharedTaskError::Conflict(
-                "project not found for shared task".to_string(),
-            ));
-        }
 
         let user = match task.assignee_user_id {
             Some(user_id) => fetch_user(&mut tx, user_id).await?,
@@ -415,7 +394,6 @@ impl<'a> SharedTaskRepository<'a> {
 
     pub async fn assign_task(
         &self,
-        organization_id: Uuid,
         task_id: Uuid,
         data: AssignTaskData,
     ) -> Result<SharedTaskWithUser, SharedTaskError> {
@@ -429,7 +407,6 @@ impl<'a> SharedTaskRepository<'a> {
             version = t.version + 1,
             updated_at = NOW()
         WHERE t.id = $1
-          AND t.organization_id = $5
           AND t.version = COALESCE($4, t.version)
           AND ($3::uuid IS NULL OR t.assignee_user_id = $3::uuid)
           AND t.deleted_at IS NULL
@@ -452,23 +429,13 @@ impl<'a> SharedTaskRepository<'a> {
             task_id,
             data.new_assignee_user_id,
             data.previous_assignee_user_id,
-            data.version,
-            organization_id
+            data.version
         )
         .fetch_optional(&mut *tx)
         .await?
         .ok_or_else(|| {
             SharedTaskError::Conflict("task version or previous assignee mismatch".to_string())
         })?;
-
-        if ProjectRepository::find_by_id(&mut tx, task.project_id, organization_id)
-            .await?
-            .is_none()
-        {
-            return Err(SharedTaskError::Conflict(
-                "project not found for shared task".to_string(),
-            ));
-        }
 
         let user = match data.new_assignee_user_id {
             Some(user_id) => fetch_user(&mut tx, user_id).await?,
@@ -482,7 +449,6 @@ impl<'a> SharedTaskRepository<'a> {
 
     pub async fn delete_task(
         &self,
-        organization_id: Uuid,
         task_id: Uuid,
         data: DeleteTaskData,
     ) -> Result<SharedTaskWithUser, SharedTaskError> {
@@ -493,13 +459,12 @@ impl<'a> SharedTaskRepository<'a> {
             r#"
         UPDATE shared_tasks AS t
         SET deleted_at = NOW(),
-            deleted_by_user_id = $4,
+            deleted_by_user_id = $3,
             version = t.version + 1,
             updated_at = NOW()
         WHERE t.id = $1
-          AND t.organization_id = $2
-          AND t.version = COALESCE($3, t.version)
-          AND t.assignee_user_id = $4
+          AND t.version = COALESCE($2, t.version)
+          AND t.assignee_user_id = $3
           AND t.deleted_at IS NULL
         RETURNING
             t.id                AS "id!",
@@ -518,7 +483,6 @@ impl<'a> SharedTaskRepository<'a> {
             t.updated_at        AS "updated_at!"
         "#,
             task_id,
-            organization_id,
             data.version,
             data.acting_user_id
         )
@@ -527,15 +491,6 @@ impl<'a> SharedTaskRepository<'a> {
         .ok_or_else(|| {
             SharedTaskError::Conflict("task version mismatch or user not authorized".to_string())
         })?;
-
-        if ProjectRepository::find_by_id(&mut tx, task.project_id, organization_id)
-            .await?
-            .is_none()
-        {
-            return Err(SharedTaskError::Conflict(
-                "project not found for shared task".to_string(),
-            ));
-        }
 
         insert_activity(&mut tx, &task, None, "task.deleted").await?;
         tx.commit().await.map_err(SharedTaskError::from)?;

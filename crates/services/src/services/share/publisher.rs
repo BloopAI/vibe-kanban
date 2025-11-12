@@ -140,13 +140,7 @@ impl SharePublisher {
             .assign_task(&access_token, shared_task.id, &payload)
             .await?;
 
-        let input = convert_remote_task(
-            &remote_task,
-            user.as_ref(),
-            shared_task.project_id,
-            shared_task.github_repo_id,
-            None,
-        );
+        let input = convert_remote_task(&remote_task, user.as_ref(), None);
         let record = SharedTask::upsert(&self.db.pool, input).await?;
         Ok(record)
     }
@@ -185,17 +179,11 @@ impl SharePublisher {
             user,
         } = remote_task;
 
-        let project = Project::find_by_id(&self.db.pool, task.project_id)
+        Project::find_by_id(&self.db.pool, task.project_id)
             .await?
             .ok_or(ShareError::ProjectNotFound(task.project_id))?;
 
-        let input = convert_remote_task(
-            remote_task,
-            user.as_ref(),
-            Some(task.project_id),
-            project.github_repo_id,
-            None,
-        );
+        let input = convert_remote_task(remote_task, user.as_ref(), None);
         SharedTask::upsert(&self.db.pool, input).await?;
         Task::set_shared_task_id(&self.db.pool, task.id, Some(remote_task.id)).await?;
         Ok(())

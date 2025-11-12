@@ -55,6 +55,7 @@ import {
   ListOrganizationsResponse,
   OrganizationMember,
   ListMembersResponse,
+  RemoteProjectMembersResponse,
   CreateOrganizationRequest,
   CreateOrganizationResponse,
   CreateInvitationRequest,
@@ -246,6 +247,15 @@ export const projectsApi = {
       body: JSON.stringify(data),
     });
     return handleApiResponse<Project>(response);
+  },
+
+  getRemoteMembers: async (
+    projectId: string
+  ): Promise<RemoteProjectMembersResponse> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/remote/members`
+    );
+    return handleApiResponse<RemoteProjectMembersResponse>(response);
   },
 
   delete: async (id: string): Promise<void> => {
