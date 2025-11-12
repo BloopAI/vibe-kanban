@@ -11,7 +11,7 @@ export function useUserOrganizations() {
   const isLoggedIn = loginStatus?.status === 'loggedin';
 
   return useQuery<ListOrganizationsResponse>({
-    queryKey: ['user', 'organizations', userId],
+    queryKey: ['user', 'organizations'],
     queryFn: () => organizationsApi.getUserOrganizations(),
     enabled: Boolean(isLoggedIn),
     staleTime: 5 * 60 * 1000, // 5 minutes

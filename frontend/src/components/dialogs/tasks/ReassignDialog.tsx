@@ -48,7 +48,7 @@ export const ReassignDialog = NiceModal.create<ReassignDialogProps>(
 
     const organizationId = sharedTask.organization_id;
 
-    const membersQuery = useOrganizationMembers({ organizationId });
+    const membersQuery = useOrganizationMembers(organizationId);
 
     useEffect(() => {
       if (!modal.visible) {
