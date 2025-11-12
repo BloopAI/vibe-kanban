@@ -8,10 +8,7 @@ use axum::{
 use deployment::Deployment;
 use rand::{Rng, distributions::Alphanumeric};
 use serde::{Deserialize, Serialize};
-use services::services::{
-    config::save_config_to_file,
-    oauth_credentials::Credentials,
-};
+use services::services::{config::save_config_to_file, oauth_credentials::Credentials};
 use sha2::{Digest, Sha256};
 use utils::{
     api::oauth::{HandoffInitRequest, HandoffRedeemRequest, StatusResponse},
@@ -159,7 +156,10 @@ async fn handoff_complete(
         // Save updated config to disk
         let config_path = config_path();
         if let Err(e) = save_config_to_file(&new_config, &config_path).await {
-            tracing::warn!(?e, "failed to save config after enabling analytics on login");
+            tracing::warn!(
+                ?e,
+                "failed to save config after enabling analytics on login"
+            );
         } else {
             // Update in-memory config
             let mut config = deployment.config().write().await;
