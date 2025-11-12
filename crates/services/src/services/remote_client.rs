@@ -129,6 +129,11 @@ impl RemoteClient {
         self.get_json("/v1/profile", Some(token)).await
     }
 
+    /// Revokes the session associated with the provided token.
+    pub async fn logout(&self, token: &str) -> Result<(), RemoteClientError> {
+        self.post_empty("/v1/oauth/logout", token).await
+    }
+
     /// Lists organizations for the authenticated user.
     pub async fn list_organizations(
         &self,
@@ -434,6 +439,49 @@ impl RemoteClient {
             let res = self
                 .http
                 .delete(url.clone())
+                .bearer_auth(token)
+                .send()
+                .await
+                .map_err(map_reqwest_error)?;
+
+            match res.status() {
+                StatusCode::NO_CONTENT | StatusCode::OK => Ok(()),
+                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => Err(RemoteClientError::Auth),
+                s => {
+                    let status = s.as_u16();
+                    let body = res.text().await.unwrap_or_default();
+                    Err(RemoteClientError::Http { status, body })
+                }
+            }
+        })
+        .retry(
+            &ExponentialBuilder::default()
+                .with_min_delay(Duration::from_secs(1))
+                .with_max_delay(Duration::from_secs(30))
+                .with_max_times(3)
+                .with_jitter(),
+        )
+        .when(|e: &RemoteClientError| e.should_retry())
+        .notify(|e, dur| {
+            warn!(
+                "Remote call failed, retrying after {:.2}s: {}",
+                dur.as_secs_f64(),
+                e
+            )
+        })
+        .await
+    }
+
+    async fn post_empty(&self, path: &str, token: &str) -> Result<(), RemoteClientError> {
+        let url = self
+            .base
+            .join(path)
+            .map_err(|e| RemoteClientError::Url(e.to_string()))?;
+
+        (|| async {
+            let res = self
+                .http
+                .post(url.clone())
                 .bearer_auth(token)
                 .send()
                 .await
