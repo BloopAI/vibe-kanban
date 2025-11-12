@@ -33,6 +33,7 @@ pub struct Organization {
     pub id: Uuid,
     pub name: String,
     pub slug: String,
+    pub is_personal: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -43,6 +44,7 @@ pub struct OrganizationWithRole {
     pub id: Uuid,
     pub name: String,
     pub slug: String,
+    pub is_personal: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub user_role: MemberRole,
