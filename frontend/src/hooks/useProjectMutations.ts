@@ -77,6 +77,9 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
         return old.map((p) => (p.id === project.id ? project : p));
       });
 
+      // Invalidate to ensure fresh data from server
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+
       options?.onLinkSuccess?.(project);
     },
     onError: (err) => {
@@ -100,6 +103,9 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
         if (!old) return old;
         return old.map((p) => (p.id === project.id ? project : p));
       });
+
+      // Invalidate to ensure fresh data from server
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
 
       options?.onLinkSuccess?.(project);
     },

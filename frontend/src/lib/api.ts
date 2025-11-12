@@ -66,7 +66,6 @@ import {
   Invitation,
   RemoteProject,
   ListInvitationsResponse,
-  ListProjectsResponse,
 } from 'shared/types';
 
 // Re-export types for convenience
@@ -1002,8 +1001,7 @@ export const organizationsApi = {
 
   getProjects: async (orgId: string): Promise<RemoteProject[]> => {
     const response = await makeRequest(`/api/organizations/${orgId}/projects`);
-    const result = await handleApiResponse<ListProjectsResponse>(response);
-    return result.projects;
+    return handleApiResponse<RemoteProject[]>(response);
   },
 
   createOrganization: async (
