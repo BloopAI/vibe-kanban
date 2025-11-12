@@ -24,6 +24,12 @@ use crate::{
         tasks::SharedTaskRepository,
     },
 };
+use utils::api::organizations::{
+    ListMembersResponse,
+    OrganizationMemberWithProfile,
+    UpdateMemberRoleRequest,
+    UpdateMemberRoleResponse,
+};
 
 pub fn public_router() -> Router<AppState> {
     Router::new().route("/invitations/{token}", get(get_invitation))
@@ -76,41 +82,6 @@ pub struct GetInvitationResponse {
 pub struct AcceptInvitationResponse {
     pub organization_id: String,
     pub organization_slug: String,
-    pub role: MemberRole,
-}
-
-#[derive(Debug, Serialize)]
-pub struct OrganizationMember {
-    pub user_id: Uuid,
-    pub role: MemberRole,
-    pub joined_at: chrono::DateTime<Utc>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct OrganizationMemberWithProfile {
-    pub user_id: Uuid,
-    pub role: MemberRole,
-    pub joined_at: chrono::DateTime<Utc>,
-    pub first_name: Option<String>,
-    pub last_name: Option<String>,
-    pub username: Option<String>,
-    pub email: Option<String>,
-    pub avatar_url: Option<String>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ListMembersResponse {
-    pub members: Vec<OrganizationMemberWithProfile>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct UpdateMemberRoleRequest {
-    pub role: MemberRole,
-}
-
-#[derive(Debug, Serialize)]
-pub struct UpdateMemberRoleResponse {
-    pub user_id: Uuid,
     pub role: MemberRole,
 }
 
