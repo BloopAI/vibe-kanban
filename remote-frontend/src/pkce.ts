@@ -8,7 +8,7 @@ export async function generateChallenge(verifier: string): Promise<string> {
   const encoder = new TextEncoder()
   const data = encoder.encode(verifier)
   const hash = await crypto.subtle.digest('SHA-256', data)
-  return base64UrlEncode(new Uint8Array(hash))
+  return bytesToHex(new Uint8Array(hash))
 }
 
 function base64UrlEncode(array: Uint8Array): string {
@@ -17,6 +17,14 @@ function base64UrlEncode(array: Uint8Array): string {
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=/g, '')
+}
+
+function bytesToHex(bytes: Uint8Array): string {
+  let out = ''
+  for (let i = 0; i < bytes.length; i++) {
+    out += bytes[i].toString(16).padStart(2, '0')
+  }
+  return out
 }
 
 const VERIFIER_KEY = 'oauth_verifier'
