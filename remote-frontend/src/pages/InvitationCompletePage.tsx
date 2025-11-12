@@ -61,7 +61,7 @@ export default function InvitationCompletePage() {
         const timer = setTimeout(() => {
           const appBase =
             import.meta.env.VITE_APP_BASE_URL || window.location.origin
-          window.location.assign(`${appBase}/orgs/${result.organization_slug}`)
+          window.location.assign(`${appBase}`)
         }, 2000)
         return () => clearTimeout(timer)
       } catch (e) {
@@ -117,13 +117,12 @@ function StatusCard({
     <div className="min-h-screen grid place-items-center bg-gray-50 p-4">
       <div className="max-w-md w-full bg-white shadow rounded-lg p-6">
         <h2
-          className={`text-lg font-semibold ${
-            isError
-              ? 'text-red-600'
-              : isSuccess
+          className={`text-lg font-semibold ${isError
+            ? 'text-red-600'
+            : isSuccess
               ? 'text-green-600'
               : 'text-gray-900'
-          }`}
+            }`}
         >
           {title}
         </h2>
