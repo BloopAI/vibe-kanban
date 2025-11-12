@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 use serde::Serialize;
 use sqlx::{PgPool, query_as};
 use thiserror::Error;
@@ -21,6 +21,8 @@ pub struct AuthSession {
     pub last_used_at: Option<DateTime<Utc>>,
     pub revoked_at: Option<DateTime<Utc>>,
 }
+
+pub const MAX_SESSION_INACTIVITY_DURATION: Duration = Duration::days(365);
 
 pub struct AuthSessionRepository<'a> {
     pool: &'a PgPool,
@@ -82,8 +84,12 @@ impl<'a> AuthSessionRepository<'a> {
         sqlx::query!(
             r#"
             UPDATE auth_sessions
-            SET last_used_at = NOW()
+            SET last_used_at = date_trunc('day', NOW())
             WHERE id = $1
+              AND (
+                last_used_at IS NULL
+                OR last_used_at < date_trunc('day', NOW())
+              )
             "#,
             session_id
         )
@@ -104,5 +110,15 @@ impl<'a> AuthSessionRepository<'a> {
         .execute(self.pool)
         .await?;
         Ok(())
+    }
+}
+
+impl AuthSession {
+    pub fn last_activity_at(&self) -> DateTime<Utc> {
+        self.last_used_at.unwrap_or(self.created_at)
+    }
+
+    pub fn inactivity_duration(&self, now: DateTime<Utc>) -> Duration {
+        now.signed_duration_since(self.last_activity_at())
     }
 }

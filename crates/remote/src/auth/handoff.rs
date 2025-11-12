@@ -18,7 +18,7 @@ use super::{
 use crate::{
     configure_user_scope,
     db::{
-        auth::{AuthSessionError, AuthSessionRepository},
+        auth::{AuthSessionError, AuthSessionRepository, MAX_SESSION_INACTIVITY_DURATION},
         identity_errors::IdentityError,
         oauth::{
             AuthorizationStatus, CreateOAuthHandoff, OAuthHandoff, OAuthHandoffError,
@@ -316,6 +316,11 @@ impl OAuthHandoffService {
         let session_repo = AuthSessionRepository::new(&self.pool);
         let session = session_repo.get(session_id).await?;
         if session.revoked_at.is_some() {
+            return Err(HandoffError::Denied);
+        }
+
+        if session.inactivity_duration(Utc::now()) > MAX_SESSION_INACTIVITY_DURATION {
+            session_repo.revoke(session.id).await?;
             return Err(HandoffError::Denied);
         }
 

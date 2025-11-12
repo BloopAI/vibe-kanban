@@ -8,7 +8,9 @@ use axum::{
 use deployment::Deployment;
 use rand::{Rng, distributions::Alphanumeric};
 use serde::{Deserialize, Serialize};
-use services::services::{config::save_config_to_file, oauth_credentials::Credentials};
+use services::services::{
+    config::save_config_to_file, oauth_credentials::Credentials, remote_client::RemoteClientError,
+};
 use sha2::{Digest, Sha256};
 use utils::{
     api::oauth::{HandoffInitRequest, HandoffRedeemRequest, StatusResponse},
@@ -194,16 +196,30 @@ async fn handoff_complete(
 }
 
 async fn logout(State(deployment): State<DeploymentImpl>) -> Result<StatusCode, ApiError> {
-    deployment
-        .auth_context()
-        .clear_credentials()
-        .await
-        .map_err(|e| {
-            tracing::error!(?e, "failed to clear credentials");
-            ApiError::Io(e)
-        })?;
+    let auth_context = deployment.auth_context();
+    let credentials = auth_context.get_credentials().await;
 
-    deployment.auth_context().clear_profile().await;
+    if let (Some(remote_client), Some(creds)) = (deployment.remote_client(), credentials.as_ref())
+        && let Err(error) = remote_client.logout(&creds.access_token).await
+    {
+        match error {
+            RemoteClientError::Auth => {
+                tracing::debug!(
+                    "remote session already invalid during logout; continuing with local cleanup"
+                );
+            }
+            other => {
+                tracing::warn!(?other, "failed to revoke remote session during logout");
+            }
+        }
+    }
+
+    auth_context.clear_credentials().await.map_err(|e| {
+        tracing::error!(?e, "failed to clear credentials");
+        ApiError::Io(e)
+    })?;
+
+    auth_context.clear_profile().await;
 
     Ok(StatusCode::NO_CONTENT)
 }

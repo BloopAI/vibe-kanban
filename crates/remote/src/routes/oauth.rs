@@ -31,7 +31,9 @@ pub fn public_router() -> Router<AppState> {
 }
 
 pub fn protected_router() -> Router<AppState> {
-    Router::new().route("/profile", get(profile))
+    Router::new()
+        .route("/profile", get(profile))
+        .route("/oauth/logout", post(logout))
 }
 
 pub async fn web_init(
@@ -199,6 +201,23 @@ pub async fn profile(
         email: ctx.user.email.clone(),
         providers,
     })
+}
+
+pub async fn logout(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+) -> Response {
+    use crate::db::auth::{AuthSessionError, AuthSessionRepository};
+
+    let repo = AuthSessionRepository::new(state.pool());
+
+    match repo.revoke(ctx.session_id).await {
+        Ok(_) | Err(AuthSessionError::NotFound) => StatusCode::NO_CONTENT.into_response(),
+        Err(AuthSessionError::Database(error)) => {
+            warn!(?error, session_id = %ctx.session_id, "failed to revoke auth session");
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
 }
 
 fn init_error_response(error: HandoffError) -> Response {
