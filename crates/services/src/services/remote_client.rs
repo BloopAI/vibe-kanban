@@ -18,8 +18,8 @@ use utils::api::{
         AcceptInvitationResponse, CreateInvitationRequest, CreateInvitationResponse,
         CreateOrganizationRequest, CreateOrganizationResponse, GetInvitationResponse,
         GetOrganizationResponse, ListInvitationsResponse, ListMembersResponse,
-        ListOrganizationsResponse, Organization, UpdateMemberRoleRequest, UpdateMemberRoleResponse,
-        UpdateOrganizationRequest,
+        ListOrganizationsResponse, Organization, RevokeInvitationRequest, UpdateMemberRoleRequest,
+        UpdateMemberRoleResponse, UpdateOrganizationRequest,
     },
     projects::{ListProjectsResponse, RemoteProject},
 };
@@ -250,16 +250,13 @@ impl RemoteClient {
         org_id: Uuid,
         invitation_id: Uuid,
     ) -> Result<(), RemoteClientError> {
-        let body = serde_json::json!({
-            "invitation_id": invitation_id
-        });
+        let body = RevokeInvitationRequest { invitation_id };
         self.post_json_with_auth(
             &format!("/v1/organizations/{org_id}/invitations/revoke"),
             &body,
             token,
         )
-        .await?;
-        Ok(())
+        .await
     }
 
     /// Accepts an invitation.
