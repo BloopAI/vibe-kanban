@@ -28,14 +28,8 @@ use crate::{
 pub fn public_router() -> Router<AppState> {
     Router::new()
         .route("/invitations/{token}", get(get_invitation))
-        .route(
-            "/invitations/{token}/accept-web",
-            get(accept_invitation_web_start),
-        )
-        .route(
-            "/invitations/{token}/complete",
-            get(accept_invitation_web_complete),
-        )
+        .route("/invitations/{token}/accept", get(accept_invitation))
+        .route("/invitations/{token}/complete", get(accept_invitation_complete))
 }
 
 pub fn protected_router() -> Router<AppState> {
@@ -45,7 +39,6 @@ pub fn protected_router() -> Router<AppState> {
             post(create_invitation),
         )
         .route("/organizations/{org_id}/invitations", get(list_invitations))
-        .route("/invitations/{token}/accept", post(accept_invitation))
         .route("/organizations/{org_id}/members", get(list_members))
         .route(
             "/organizations/{org_id}/members/{user_id}",
@@ -152,7 +145,7 @@ pub async fn create_invitation(
     })?;
 
     let accept_url = format!(
-        "{}/invitations/{}/accept-web",
+        "{}/invitations/{}/accept",
         state.server_public_base_url, token
     );
     state
@@ -225,32 +218,6 @@ pub async fn get_invitation(
     }))
 }
 
-pub async fn accept_invitation(
-    State(state): State<AppState>,
-    axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
-    Path(token): Path<String>,
-) -> Result<impl IntoResponse, ErrorResponse> {
-    let user = ctx.user;
-    let invitation_repo = InvitationRepository::new(&state.pool);
-
-    let (org, role) = invitation_repo
-        .accept_invitation(&token, user.id)
-        .await
-        .map_err(|e| match e {
-            IdentityError::InvitationError(msg) => ErrorResponse::new(StatusCode::BAD_REQUEST, msg),
-            IdentityError::NotFound => {
-                ErrorResponse::new(StatusCode::NOT_FOUND, "Invitation not found")
-            }
-            _ => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"),
-        })?;
-
-    Ok(Json(AcceptInvitationResponse {
-        organization_id: org.id.to_string(),
-        organization_slug: org.slug,
-        role,
-    }))
-}
-
 #[derive(Debug, Deserialize)]
 pub struct AcceptWebQuery {
     #[serde(default = "default_provider")]
@@ -261,7 +228,7 @@ fn default_provider() -> String {
     "github".to_string()
 }
 
-pub async fn accept_invitation_web_start(
+pub async fn accept_invitation(
     State(state): State<AppState>,
     Path(token): Path<String>,
     Query(query): Query<AcceptWebQuery>,
@@ -291,7 +258,7 @@ pub struct CompleteQuery {
     pub app_code: String,
 }
 
-pub async fn accept_invitation_web_complete(
+pub async fn accept_invitation_complete(
     State(state): State<AppState>,
     Path(token): Path<String>,
     Query(query): Query<CompleteQuery>,

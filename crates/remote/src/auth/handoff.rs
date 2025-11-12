@@ -149,7 +149,6 @@ impl OAuthHandoffService {
                 return_to: return_to_url.as_str(),
                 app_challenge,
                 expires_at,
-                server_owned: false,
                 server_verifier: None,
             })
             .await?;
@@ -367,7 +366,6 @@ impl OAuthHandoffService {
                 return_to: return_to_url.as_str(),
                 app_challenge: &challenge,
                 expires_at,
-                server_owned: true,
                 server_verifier: Some(&verifier),
             })
             .await?;
@@ -394,13 +392,9 @@ impl OAuthHandoffService {
         let repo = OAuthHandoffRepository::new(&self.pool);
         let record = repo.get(handoff_id).await?;
 
-        if !record.server_owned {
-            return Err(HandoffError::Failed("not_server_owned".into()));
-        }
-
         let verifier = record
             .server_verifier
-            .ok_or_else(|| HandoffError::Failed("missing_server_verifier".into()))?;
+            .ok_or_else(|| HandoffError::Failed("not_server_owned".into()))?;
 
         let redeem_result = self.redeem(handoff_id, app_code, &verifier).await?;
 

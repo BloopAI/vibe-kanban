@@ -64,7 +64,6 @@ pub struct OAuthHandoff {
     pub redeemed_at: Option<DateTime<Utc>>,
     pub user_id: Option<Uuid>,
     pub session_id: Option<Uuid>,
-    pub server_owned: bool,
     pub server_verifier: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -83,7 +82,6 @@ pub struct CreateOAuthHandoff<'a> {
     pub return_to: &'a str,
     pub app_challenge: &'a str,
     pub expires_at: DateTime<Utc>,
-    pub server_owned: bool,
     pub server_verifier: Option<&'a str>,
 }
 
@@ -109,10 +107,9 @@ impl<'a> OAuthHandoffRepository<'a> {
                 return_to,
                 app_challenge,
                 expires_at,
-                server_owned,
                 server_verifier
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING
                 id              AS "id!",
                 provider        AS "provider!",
@@ -127,7 +124,6 @@ impl<'a> OAuthHandoffRepository<'a> {
                 redeemed_at     AS "redeemed_at?",
                 user_id         AS "user_id?",
                 session_id      AS "session_id?",
-                server_owned    AS "server_owned!",
                 server_verifier AS "server_verifier?",
                 created_at      AS "created_at!",
                 updated_at      AS "updated_at!"
@@ -137,7 +133,6 @@ impl<'a> OAuthHandoffRepository<'a> {
             data.return_to,
             data.app_challenge,
             data.expires_at,
-            data.server_owned,
             data.server_verifier,
         )
         .fetch_one(self.pool)
@@ -163,7 +158,6 @@ impl<'a> OAuthHandoffRepository<'a> {
                 redeemed_at     AS "redeemed_at?",
                 user_id         AS "user_id?",
                 session_id      AS "session_id?",
-                server_owned    AS "server_owned!",
                 server_verifier AS "server_verifier?",
                 created_at      AS "created_at!",
                 updated_at      AS "updated_at!"
@@ -195,7 +189,6 @@ impl<'a> OAuthHandoffRepository<'a> {
                 redeemed_at     AS "redeemed_at?",
                 user_id         AS "user_id?",
                 session_id      AS "session_id?",
-                server_owned    AS "server_owned!",
                 server_verifier AS "server_verifier?",
                 created_at      AS "created_at!",
                 updated_at      AS "updated_at!"
