@@ -402,7 +402,6 @@ pub trait Deployment: Clone + Send + Sync + 'static {
         for project in projects {
             let repo_path = project.git_repo_path.clone();
             let metadata = compute_remote_metadata(self.git(), repo_path.as_path()).await;
-            let github_repo_id_changed = metadata.github_repo_id != project.github_repo_id;
 
             if let Err(err) =
                 Project::update_remote_metadata(&self.db().pool, project.id, &metadata).await
