@@ -82,13 +82,8 @@ export function OrganizationSettings() {
     });
 
   // Organization mutations
-  const {
-    removeMember,
-    updateMemberRole,
-    deleteOrganization,
-    refetchMembers,
-    refetchInvitations,
-  } = useOrganizationMutations({
+  const { removeMember, updateMemberRole, deleteOrganization } =
+    useOrganizationMutations({
     onRemoveSuccess: () => {
       setSuccess('Member removed successfully');
       setTimeout(() => setSuccess(null), 3000);
@@ -131,7 +126,7 @@ export function OrganizationSettings() {
       );
 
       if (result.action === 'created' && result.organizationId) {
-        await refetchOrgs();
+        // No need to refetch - the mutation hook handles cache invalidation
         handleOrgSelect(result.organizationId ?? '');
         setSuccess('Organization created successfully');
         setTimeout(() => setSuccess(null), 3000);
@@ -151,11 +146,7 @@ export function OrganizationSettings() {
       );
 
       if (result.action === 'invited') {
-        await refetchMembers(selectedOrgId);
-        if (isAdmin) {
-          await refetchInvitations(selectedOrgId);
-        }
-
+        // No need to refetch - the mutation hook handles cache invalidation
         setSuccess('Member invited successfully');
         setTimeout(() => setSuccess(null), 3000);
       }

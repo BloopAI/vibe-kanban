@@ -1,8 +1,19 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { organizationsApi } from '@/lib/api';
-import type { MemberRole, UpdateMemberRoleResponse } from 'shared/types';
+import type {
+  MemberRole,
+  UpdateMemberRoleResponse,
+  CreateOrganizationRequest,
+  CreateOrganizationResponse,
+  CreateInvitationRequest,
+  CreateInvitationResponse,
+} from 'shared/types';
 
 interface UseOrganizationMutationsOptions {
+  onCreateSuccess?: (result: CreateOrganizationResponse) => void;
+  onCreateError?: (err: unknown) => void;
+  onInviteSuccess?: (result: CreateInvitationResponse) => void;
+  onInviteError?: (err: unknown) => void;
   onRemoveSuccess?: () => void;
   onRemoveError?: (err: unknown) => void;
   onRoleChangeSuccess?: () => void;
@@ -12,12 +23,53 @@ interface UseOrganizationMutationsOptions {
 }
 
 /**
- * Hook providing mutations for organization member management
+ * Hook providing mutations for organization management and member operations
  */
 export function useOrganizationMutations(
   options?: UseOrganizationMutationsOptions
 ) {
   const queryClient = useQueryClient();
+
+  const createOrganization = useMutation({
+    mutationKey: ['createOrganization'],
+    mutationFn: (data: CreateOrganizationRequest) =>
+      organizationsApi.createOrganization(data),
+    onSuccess: (result: CreateOrganizationResponse) => {
+      // Invalidate user's organizations list to include the new organization
+      queryClient.invalidateQueries({ queryKey: ['user', 'organizations'] });
+      options?.onCreateSuccess?.(result);
+    },
+    onError: (err) => {
+      console.error('Failed to create organization:', err);
+      options?.onCreateError?.(err);
+    },
+  });
+
+  const createInvitation = useMutation({
+    mutationKey: ['createInvitation'],
+    mutationFn: ({
+      orgId,
+      data,
+    }: {
+      orgId: string;
+      data: CreateInvitationRequest;
+    }) => organizationsApi.createInvitation(orgId, data),
+    onSuccess: (result: CreateInvitationResponse, variables) => {
+      // Invalidate members query to include the new invitation
+      queryClient.invalidateQueries({
+        queryKey: ['organization', 'members', variables.orgId],
+      });
+      // Invalidate invitations query for this organization
+      queryClient.invalidateQueries({
+        queryKey: ['organization', 'invitations', variables.orgId],
+      });
+      options?.onInviteSuccess?.(result);
+    },
+    onError: (err) => {
+      console.error('Failed to create invitation:', err);
+      options?.onInviteError?.(err);
+    },
+  });
 
   const removeMember = useMutation({
     mutationFn: ({ orgId, userId }: { orgId: string; userId: string }) =>
@@ -91,6 +143,8 @@ export function useOrganizationMutations(
   });
 
   return {
+    createOrganization,
+    createInvitation,
     removeMember,
     updateMemberRole,
     deleteOrganization,

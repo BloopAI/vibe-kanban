@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
-import { organizationsApi } from '@/lib/api';
+import { useOrganizationMutations } from '@/hooks/useOrganizationMutations';
 import { useTranslation } from 'react-i18next';
 
 export type CreateOrganizationResult = {
@@ -27,7 +27,21 @@ export const CreateOrganizationDialog = NiceModal.create(() => {
   const [slug, setSlug] = useState('');
   const [isManualSlug, setIsManualSlug] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { createOrganization } = useOrganizationMutations({
+    onCreateSuccess: (result) => {
+      modal.resolve({
+        action: 'created',
+        organizationId: result.organization.id,
+      } as CreateOrganizationResult);
+      modal.hide();
+    },
+    onCreateError: (err) => {
+      setError(
+        err instanceof Error ? err.message : 'Failed to create organization'
+      );
+    },
+  });
 
   useEffect(() => {
     // Reset form when dialog opens
@@ -36,7 +50,6 @@ export const CreateOrganizationDialog = NiceModal.create(() => {
       setSlug('');
       setIsManualSlug(false);
       setError(null);
-      setIsSubmitting(false);
     }
   }, [modal.visible]);
 
@@ -78,7 +91,7 @@ export const CreateOrganizationDialog = NiceModal.create(() => {
     return null;
   };
 
-  const handleCreate = async () => {
+  const handleCreate = () => {
     const nameError = validateName(name);
     if (nameError) {
       setError(nameError);
@@ -91,26 +104,11 @@ export const CreateOrganizationDialog = NiceModal.create(() => {
       return;
     }
 
-    setIsSubmitting(true);
     setError(null);
-
-    try {
-      const response = await organizationsApi.createOrganization({
-        name: name.trim(),
-        slug: slug.trim(),
-      });
-
-      modal.resolve({
-        action: 'created',
-        organizationId: response.organization.id,
-      } as CreateOrganizationResult);
-      modal.hide();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to create organization'
-      );
-      setIsSubmitting(false);
-    }
+    createOrganization.mutate({
+      name: name.trim(),
+      slug: slug.trim(),
+    });
   };
 
   const handleCancel = () => {
@@ -151,7 +149,7 @@ export const CreateOrganizationDialog = NiceModal.create(() => {
               placeholder={t('createDialog.namePlaceholder')}
               maxLength={50}
               autoFocus
-              disabled={isSubmitting}
+              disabled={createOrganization.isPending}
             />
           </div>
 
@@ -163,7 +161,7 @@ export const CreateOrganizationDialog = NiceModal.create(() => {
               onChange={handleSlugChange}
               placeholder={t('createDialog.slugPlaceholder')}
               maxLength={50}
-              disabled={isSubmitting}
+              disabled={createOrganization.isPending}
             />
             <p className="text-xs text-muted-foreground">
               {t('createDialog.slugHelper')}
@@ -181,15 +179,17 @@ export const CreateOrganizationDialog = NiceModal.create(() => {
           <Button
             variant="outline"
             onClick={handleCancel}
-            disabled={isSubmitting}
+            disabled={createOrganization.isPending}
           >
             {t('common:buttons.cancel')}
           </Button>
           <Button
             onClick={handleCreate}
-            disabled={!name.trim() || !slug.trim() || isSubmitting}
+            disabled={
+              !name.trim() || !slug.trim() || createOrganization.isPending
+            }
           >
-            {isSubmitting
+            {createOrganization.isPending
               ? t('createDialog.creating')
               : t('createDialog.createButton')}
           </Button>
