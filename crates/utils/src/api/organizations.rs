@@ -133,7 +133,6 @@ pub struct AcceptInvitationResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct RevokeInvitationRequest {
     pub invitation_id: Uuid,
 }

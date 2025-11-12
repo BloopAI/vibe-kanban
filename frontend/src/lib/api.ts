@@ -60,6 +60,7 @@ import {
   CreateOrganizationResponse,
   CreateInvitationRequest,
   CreateInvitationResponse,
+  RevokeInvitationRequest,
   UpdateMemberRoleRequest,
   CreateRemoteProjectRequest,
   LinkToExistingRequest,
@@ -1091,12 +1092,13 @@ export const organizationsApi = {
     orgId: string,
     invitationId: string
   ): Promise<void> => {
+    const body: RevokeInvitationRequest = { invitation_id: invitationId };
     const response = await makeRequest(
       `/api/organizations/${orgId}/invitations/revoke`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ invitation_id: invitationId }),
+        body: JSON.stringify(body),
       }
     );
     return handleApiResponse<void>(response);
