@@ -77,6 +77,17 @@ impl Mailer for LoopsMailer {
             MemberRole::Admin => "admin",
             MemberRole::Member => "member",
         };
+        let inviter = invited_by.unwrap_or("someone");
+
+        if cfg!(debug_assertions) {
+            tracing::info!(
+                "Sending invitation email to {email}\n\
+                 Organization: {org_slug}\n\
+                 Role: {role_str}\n\
+                 Invited by: {inviter}\n\
+                 Accept URL: {accept_url}"
+            );
+        }
 
         let payload = json!({
             "transactionalId": LOOPS_INVITE_TEMPLATE_ID,
@@ -85,7 +96,7 @@ impl Mailer for LoopsMailer {
                 "org_name": org_slug,
                 "accept_url": accept_url,
                 "role": role_str,
-                "invited_by": invited_by.unwrap_or("someone"),
+                "invited_by": inviter,
             }
         });
 
