@@ -28,8 +28,14 @@ use crate::{
 pub fn public_router() -> Router<AppState> {
     Router::new()
         .route("/invitations/{token}", get(get_invitation))
-        .route("/invitations/{token}/accept-web", get(accept_invitation_web_start))
-        .route("/invitations/{token}/complete", get(accept_invitation_web_complete))
+        .route(
+            "/invitations/{token}/accept-web",
+            get(accept_invitation_web_start),
+        )
+        .route(
+            "/invitations/{token}/complete",
+            get(accept_invitation_web_complete),
+        )
 }
 
 pub fn protected_router() -> Router<AppState> {
@@ -272,7 +278,7 @@ pub async fn accept_invitation_web_start(
         .map_err(|e| {
             ErrorResponse::new(
                 StatusCode::BAD_REQUEST,
-                format!("OAuth initialization failed: {}", e),
+                format!("OAuth initialization failed: {e}"),
             )
         })?;
 
@@ -297,7 +303,7 @@ pub async fn accept_invitation_web_complete(
         .map_err(|e| {
             ErrorResponse::new(
                 StatusCode::BAD_REQUEST,
-                format!("OAuth redemption failed: {}", e),
+                format!("OAuth redemption failed: {e}"),
             )
         })?;
 
