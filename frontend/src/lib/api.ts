@@ -182,6 +182,11 @@ const handleApiResponse = async <T, E = T>(response: Response): Promise<T> => {
     throw new ApiError<E>(errorMessage, response.status, response);
   }
 
+  // Handle 204 NO_CONTENT - no body to parse
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
   const result: ApiResponse<T, E> = await response.json();
 
   if (!result.success) {
