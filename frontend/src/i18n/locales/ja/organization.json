@@ -58,6 +58,11 @@
     "deleteSuccess": "Organization deleted successfully",
     "deleteError": "Failed to delete organization"
   },
+  "loginRequired": {
+    "title": "ログインが必要です",
+    "description": "組織設定を管理するにはログインする必要があります。",
+    "action": "ログイン"
+  },
   "confirmRemoveMember": "Are you sure you want to remove this member from the organization?",
   "sharedProjects": {
     "title": "共有プロジェクト",

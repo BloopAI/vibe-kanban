@@ -58,6 +58,11 @@
     "deleteSuccess": "Organization deleted successfully",
     "deleteError": "Failed to delete organization"
   },
+  "loginRequired": {
+    "title": "로그인 필요",
+    "description": "조직 설정을 관리하려면 로그인해야 합니다.",
+    "action": "로그인"
+  },
   "confirmRemoveMember": "Are you sure you want to remove this member from the organization?",
   "sharedProjects": {
     "title": "공유 프로젝트",
