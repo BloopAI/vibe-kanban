@@ -11,9 +11,8 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY frontend/package.json frontend/package.json
 COPY remote-frontend/package.json remote-frontend/package.json
 
-RUN pnpm fetch --filter ./remote-frontend
-
-RUN pnpm install --offline --filter ./remote-frontend
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm install --filter ./remote-frontend --frozen-lockfile
 
 COPY remote-frontend/ remote-frontend/
 
