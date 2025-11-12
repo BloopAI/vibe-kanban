@@ -367,7 +367,7 @@ export function AgentSettings() {
       )}
 
       {profilesSuccess && (
-        <Alert className="border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
+        <Alert variant="success">
           <AlertDescription className="font-medium">
             {t('settings.agents.save.success')}
           </AlertDescription>
