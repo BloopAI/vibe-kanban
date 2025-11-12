@@ -47,9 +47,7 @@ function AppContent() {
   useEffect(() => {
     if (!posthog || !analyticsUserId) return;
 
-    const userOptedIn = config?.analytics_enabled !== false;
-
-    if (userOptedIn) {
+    if (config?.analytics_enabled) {
       posthog.opt_in_capturing();
       posthog.identify(analyticsUserId);
       console.log('[Analytics] Analytics enabled and user identified');
@@ -88,21 +86,7 @@ function AppContent() {
         return;
       }
 
-      // 3) Telemetry - privacy opt-in
-      if (!config.telemetry_acknowledged) {
-        const analyticsEnabled: boolean =
-          await NiceModal.show('privacy-opt-in');
-        if (!cancelled) {
-          await updateAndSaveConfig({
-            telemetry_acknowledged: true,
-            analytics_enabled: analyticsEnabled,
-          });
-        }
-        await NiceModal.hide('privacy-opt-in');
-        return;
-      }
-
-      // 4) Release notes - last step
+      // 3) Release notes - last step
       if (config.show_release_notes) {
         await NiceModal.show('release-notes');
         if (!cancelled) {

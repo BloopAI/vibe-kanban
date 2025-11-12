@@ -155,11 +155,8 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     async fn track_if_analytics_allowed(&self, event_name: &str, properties: Value) {
         let analytics_enabled = self.config().read().await.analytics_enabled;
-        // Only skip tracking if user explicitly opted out (Some(false))
-        // Send for None (undecided) and Some(true) (opted in)
-        if analytics_enabled != Some(false)
-            && let Some(analytics) = self.analytics()
-        {
+        // Track events unless user has explicitly opted out
+        if analytics_enabled && let Some(analytics) = self.analytics() {
             analytics.track_event(self.user_id(), event_name, Some(properties.clone()));
         }
     }
