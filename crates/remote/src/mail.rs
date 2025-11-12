@@ -19,34 +19,6 @@ pub trait Mailer: Send + Sync {
     );
 }
 
-pub struct NoopMailer;
-
-#[async_trait]
-impl Mailer for NoopMailer {
-    async fn send_org_invitation(
-        &self,
-        org_name: &str,
-        email: &str,
-        accept_url: &str,
-        role: MemberRole,
-        invited_by: Option<&str>,
-    ) {
-        let role_str = match role {
-            MemberRole::Admin => "admin",
-            MemberRole::Member => "member",
-        };
-        let inviter = invited_by.unwrap_or("someone");
-
-        tracing::debug!(
-            "STUB: Would send invitation email to {email}\n\
-             Organization: {org_name}\n\
-             Role: {role_str}\n\
-             Invited by: {inviter}\n\
-             Accept URL: {accept_url}"
-        );
-    }
-}
-
 pub struct LoopsMailer {
     client: reqwest::Client,
     api_key: String,
