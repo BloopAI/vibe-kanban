@@ -108,7 +108,7 @@ function ProjectCard({
 
   const handleUnlinkProject = () => {
     const confirmed = window.confirm(
-      `Are you sure you want to unlink "${project.name}"? The local project will remain, but it will no longer be linked to the remote organization project.`
+      `Are you sure you want to unlink "${project.name}"? The local project will remain, but it will no longer be linked to the remote project.`
     );
     if (confirmed) {
       unlinkProject.mutate(project.id);

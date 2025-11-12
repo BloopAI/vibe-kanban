@@ -2,7 +2,7 @@
   "title": "プロジェクト",
   "subtitle": "プロジェクトを管理し、進捗を追跡します",
   "createProject": "プロジェクトを作成",
-  "linkToOrganization": "組織にリンク",
+  "linkToOrganization": "リモートプロジェクトにリンク",
   "loading": "プロジェクトを読み込み中...",
   "errors": {
     "fetchFailed": "プロジェクトの取得に失敗しました"
@@ -13,8 +13,8 @@
     "createFirst": "最初のプロジェクトを作成"
   },
   "linkDialog": {
-    "title": "プロジェクトを組織にリンク",
-    "description": "このローカルプロジェクトをリモート組織にリンクして、コラボレーションと同期を行います。",
+    "title": "プロジェクトをリモートプロジェクトにリンク",
+    "description": "このローカルプロジェクトをリモートプロジェクトにリンクして、コラボレーションと同期を行います。",
     "projectLabel": "プロジェクト",
     "organizationLabel": "組織",
     "loadingOrganizations": "組織を読み込み中...",
@@ -38,7 +38,7 @@
       "linkFailed": "プロジェクトのリンクに失敗しました"
     }
   },
-  "unlinkFromOrganization": "組織からリンク解除",
+  "unlinkFromOrganization": "リモートプロジェクトからリンク解除",
   "viewProject": "プロジェクトを表示",
   "openInIDE": "IDEで開く",
   "createdDate": "作成日 {{date}}"

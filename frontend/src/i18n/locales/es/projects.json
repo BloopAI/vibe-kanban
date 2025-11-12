@@ -2,7 +2,7 @@
   "title": "Proyectos",
   "subtitle": "Gestiona tus proyectos y sigue su progreso",
   "createProject": "Crear Proyecto",
-  "linkToOrganization": "Vincular a Organización",
+  "linkToOrganization": "Vincular a Proyecto Remoto",
   "loading": "Cargando proyectos...",
   "errors": {
     "fetchFailed": "Error al cargar proyectos"
@@ -13,8 +13,8 @@
     "createFirst": "Crear tu primer proyecto"
   },
   "linkDialog": {
-    "title": "Vincular Proyecto a Organización",
-    "description": "Vincula este proyecto local a una organización remota para colaboración y sincronización.",
+    "title": "Vincular Proyecto a Proyecto Remoto",
+    "description": "Vincula este proyecto local a un proyecto remoto para colaboración y sincronización.",
     "projectLabel": "Proyecto",
     "organizationLabel": "Organización",
     "loadingOrganizations": "Cargando organizaciones...",
@@ -38,7 +38,7 @@
       "linkFailed": "Error al vincular el proyecto"
     }
   },
-  "unlinkFromOrganization": "Desvincular de Organización",
+  "unlinkFromOrganization": "Desvincular de Proyecto Remoto",
   "viewProject": "Ver Proyecto",
   "openInIDE": "Abrir en IDE",
   "createdDate": "Creado {{date}}"
