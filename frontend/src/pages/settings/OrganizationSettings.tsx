@@ -34,7 +34,7 @@ import {
 } from '@/components/dialogs/org/CreateOrganizationDialog';
 import { MemberListItem } from '@/components/org/MemberListItem';
 import { PendingInvitationItem } from '@/components/org/PendingInvitationItem';
-import { LinkedProjectItem } from '@/components/org/LinkedProjectItem';
+import { RemoteProjectItem } from '@/components/org/RemoteProjectItem';
 import type { MemberRole } from 'shared/types';
 import { MemberRole as MemberRoleEnum } from 'shared/types';
 import { useTranslation } from 'react-i18next';
@@ -132,16 +132,25 @@ export function OrganizationSettings() {
   const { data: remoteProjects = [], isLoading: loadingRemoteProjects } =
     useOrganizationProjects(selectedOrgId);
 
-  // Filter local projects that are linked to remote projects in this org
-  const linkedProjects = allProjects.filter((project) => {
-    if (!project.remote_project_id) return false;
-    return remoteProjects.some(
-      (remoteProject) => remoteProject.id === project.remote_project_id
+  // Calculate available local projects (not linked to any remote project in this org)
+  const remoteProjectIds = remoteProjects.map((rp) => rp.id);
+  const availableLocalProjects = allProjects.filter((project) => {
+    // Project is available if it has no remote link OR if it's linked to a project outside this org
+    return (
+      !project.remote_project_id ||
+      !remoteProjectIds.includes(project.remote_project_id)
     );
   });
 
   // Project mutations
-  const { unlinkProject } = useProjectMutations({
+  const { linkToExisting, unlinkProject } = useProjectMutations({
+    onLinkSuccess: () => {
+      setSuccess('Project linked successfully');
+      setTimeout(() => setSuccess(null), 3000);
+    },
+    onLinkError: (err) => {
+      setError(err instanceof Error ? err.message : 'Failed to link project');
+    },
     onUnlinkSuccess: () => {
       setSuccess('Project unlinked successfully');
       setTimeout(() => setSuccess(null), 3000);
@@ -214,6 +223,14 @@ export function OrganizationSettings() {
 
     setError(null);
     deleteOrganization.mutate(selectedOrgId);
+  };
+
+  const handleLinkProject = (remoteProjectId: string, localProjectId: string) => {
+    setError(null);
+    linkToExisting.mutate({
+      localProjectId,
+      data: { remote_project_id: remoteProjectId },
+    });
   };
 
   const handleUnlinkProject = (projectId: string) => {
@@ -391,10 +408,9 @@ export function OrganizationSettings() {
       {selectedOrg && (
         <Card>
           <CardHeader>
-            <CardTitle>Linked Projects</CardTitle>
+            <CardTitle>Shared Projects</CardTitle>
             <CardDescription>
-              Local projects that are linked to shared projects in{' '}
-              {selectedOrg.name}
+              Remote projects in {selectedOrg.name} and their links to local projects
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -403,20 +419,31 @@ export function OrganizationSettings() {
                 <Loader2 className="h-6 w-6 animate-spin" />
                 <span className="ml-2">Loading projects...</span>
               </div>
-            ) : linkedProjects.length === 0 ? (
+            ) : remoteProjects.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                No linked projects found in this organization
+                No shared projects found in this organization
               </div>
             ) : (
               <div className="space-y-3">
-                {linkedProjects.map((project) => (
-                  <LinkedProjectItem
-                    key={project.id}
-                    project={project}
-                    onUnlink={handleUnlinkProject}
-                    isUnlinking={unlinkProject.isPending}
-                  />
-                ))}
+                {remoteProjects.map((remoteProject) => {
+                  // Find the local project linked to this remote project
+                  const linkedLocalProject = allProjects.find(
+                    (p) => p.remote_project_id === remoteProject.id
+                  );
+
+                  return (
+                    <RemoteProjectItem
+                      key={remoteProject.id}
+                      remoteProject={remoteProject}
+                      linkedLocalProject={linkedLocalProject}
+                      availableLocalProjects={availableLocalProjects}
+                      onLink={handleLinkProject}
+                      onUnlink={handleUnlinkProject}
+                      isLinking={linkToExisting.isPending}
+                      isUnlinking={unlinkProject.isPending}
+                    />
+                  );
+                })}
               </div>
             )}
           </CardContent>
