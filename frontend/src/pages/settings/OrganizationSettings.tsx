@@ -87,46 +87,55 @@ export function OrganizationSettings() {
     });
 
   // Organization mutations
-  const { removeMember, updateMemberRole, deleteOrganization } =
-    useOrganizationMutations({
-      onRemoveSuccess: () => {
-        setSuccess('Member removed successfully');
-        setTimeout(() => setSuccess(null), 3000);
-      },
-      onRemoveError: (err) => {
-        setError(
-          err instanceof Error ? err.message : 'Failed to remove member'
+  const {
+    removeMember,
+    updateMemberRole,
+    revokeInvitation,
+    deleteOrganization,
+  } = useOrganizationMutations({
+    onRevokeSuccess: () => {
+      setSuccess('Invitation revoked successfully');
+      setTimeout(() => setSuccess(null), 3000);
+    },
+    onRevokeError: (err) => {
+      setError(
+        err instanceof Error ? err.message : 'Failed to revoke invitation'
+      );
+    },
+    onRemoveSuccess: () => {
+      setSuccess('Member removed successfully');
+      setTimeout(() => setSuccess(null), 3000);
+    },
+    onRemoveError: (err) => {
+      setError(err instanceof Error ? err.message : 'Failed to remove member');
+    },
+    onRoleChangeSuccess: () => {
+      setSuccess('Member role updated successfully');
+      setTimeout(() => setSuccess(null), 3000);
+    },
+    onRoleChangeError: (err) => {
+      setError(
+        err instanceof Error ? err.message : 'Failed to update member role'
+      );
+    },
+    onDeleteSuccess: async () => {
+      setSuccess(t('settings.deleteSuccess'));
+      setTimeout(() => setSuccess(null), 3000);
+      // Refetch organizations and switch to personal org
+      await refetchOrgs();
+      if (orgsResponse?.organizations) {
+        const personalOrg = orgsResponse.organizations.find((org) =>
+          org.slug.startsWith('personal-')
         );
-      },
-      onRoleChangeSuccess: () => {
-        setSuccess('Member role updated successfully');
-        setTimeout(() => setSuccess(null), 3000);
-      },
-      onRoleChangeError: (err) => {
-        setError(
-          err instanceof Error ? err.message : 'Failed to update member role'
-        );
-      },
-      onDeleteSuccess: async () => {
-        setSuccess(t('settings.deleteSuccess'));
-        setTimeout(() => setSuccess(null), 3000);
-        // Refetch organizations and switch to personal org
-        await refetchOrgs();
-        if (orgsResponse?.organizations) {
-          const personalOrg = orgsResponse.organizations.find((org) =>
-            org.slug.startsWith('personal-')
-          );
-          if (personalOrg) {
-            handleOrgSelect(personalOrg.id);
-          }
+        if (personalOrg) {
+          handleOrgSelect(personalOrg.id);
         }
-      },
-      onDeleteError: (err) => {
-        setError(
-          err instanceof Error ? err.message : t('settings.deleteError')
-        );
-      },
-    });
+      }
+    },
+    onDeleteError: (err) => {
+      setError(err instanceof Error ? err.message : t('settings.deleteError'));
+    },
+  });
 
   // Fetch all local projects
   const { data: allProjects = [], isLoading: loadingProjects } = useProjects();
@@ -197,6 +206,13 @@ export function OrganizationSettings() {
     } catch (err) {
       // Dialog error
     }
+  };
+
+  const handleRevokeInvitation = (invitationId: string) => {
+    if (!selectedOrgId) return;
+
+    setError(null);
+    revokeInvitation.mutate({ orgId: selectedOrgId, invitationId });
   };
 
   const handleRemoveMember = async (userId: string) => {
@@ -365,6 +381,8 @@ export function OrganizationSettings() {
                   <PendingInvitationItem
                     key={invitation.id}
                     invitation={invitation}
+                    onRevoke={handleRevokeInvitation}
+                    isRevoking={revokeInvitation.isPending}
                   />
                 ))}
               </div>

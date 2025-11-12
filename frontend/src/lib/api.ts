@@ -1083,6 +1083,21 @@ export const organizationsApi = {
     return result.invitations;
   },
 
+  revokeInvitation: async (
+    orgId: string,
+    invitationId: string
+  ): Promise<void> => {
+    const response = await makeRequest(
+      `/api/organizations/${orgId}/invitations/revoke`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invitation_id: invitationId }),
+      }
+    );
+    return handleApiResponse<void>(response);
+  },
+
   deleteOrganization: async (orgId: string): Promise<void> => {
     const response = await makeRequest(`/api/organizations/${orgId}`, {
       method: 'DELETE',

@@ -243,6 +243,25 @@ impl RemoteClient {
             .await
     }
 
+    /// Revokes (deletes) an invitation.
+    pub async fn revoke_invitation(
+        &self,
+        token: &str,
+        org_id: Uuid,
+        invitation_id: Uuid,
+    ) -> Result<(), RemoteClientError> {
+        let body = serde_json::json!({
+            "invitation_id": invitation_id
+        });
+        self.post_json_with_auth(
+            &format!("/v1/organizations/{org_id}/invitations/revoke"),
+            &body,
+            token,
+        )
+        .await?;
+        Ok(())
+    }
+
     /// Accepts an invitation.
     pub async fn accept_invitation(
         &self,
