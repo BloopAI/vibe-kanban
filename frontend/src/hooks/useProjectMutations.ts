@@ -82,6 +82,19 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
       // Invalidate to ensure fresh data from server
       queryClient.invalidateQueries({ queryKey: ['projects'] });
 
+      // Invalidate organization projects queries since linking affects remote projects
+      queryClient.invalidateQueries({
+        queryKey: ['organizations'],
+        predicate: (query) => {
+          const key = query.queryKey;
+          return (
+            key.length === 3 &&
+            key[0] === 'organizations' &&
+            key[2] === 'projects'
+          );
+        },
+      });
+
       options?.onLinkSuccess?.(project);
     },
     onError: (err) => {
@@ -109,6 +122,19 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
       // Invalidate to ensure fresh data from server
       queryClient.invalidateQueries({ queryKey: ['projects'] });
 
+      // Invalidate organization projects queries since linking affects remote projects
+      queryClient.invalidateQueries({
+        queryKey: ['organizations'],
+        predicate: (query) => {
+          const key = query.queryKey;
+          return (
+            key.length === 3 &&
+            key[0] === 'organizations' &&
+            key[2] === 'projects'
+          );
+        },
+      });
+
       options?.onLinkSuccess?.(project);
     },
     onError: (err) => {
@@ -129,6 +155,19 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
 
       // Invalidate to ensure fresh data from server
       queryClient.invalidateQueries({ queryKey: ['projects'] });
+
+      // Invalidate organization projects queries since unlinking affects remote projects
+      queryClient.invalidateQueries({
+        queryKey: ['organizations'],
+        predicate: (query) => {
+          const key = query.queryKey;
+          return (
+            key.length === 3 &&
+            key[0] === 'organizations' &&
+            key[2] === 'projects'
+          );
+        },
+      });
 
       options?.onUnlinkSuccess?.(project);
     },
