@@ -7,7 +7,6 @@ use uuid::Uuid;
 use super::organizations::OrganizationMemberWithProfile;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct RemoteProject {
     pub id: Uuid,
     pub organization_id: Uuid,
@@ -18,13 +17,11 @@ pub struct RemoteProject {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct ListProjectsResponse {
     pub projects: Vec<RemoteProject>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct RemoteProjectMembersResponse {
     pub organization_id: Uuid,
     pub members: Vec<OrganizationMemberWithProfile>,
