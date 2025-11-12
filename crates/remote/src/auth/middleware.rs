@@ -6,13 +6,14 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use axum_extra::headers::{Authorization, HeaderMapExt, authorization::Bearer};
+use chrono::Utc;
 use tracing::warn;
 use uuid::Uuid;
 
 use crate::{
     AppState, configure_user_scope,
     db::{
-        auth::{AuthSessionError, AuthSessionRepository},
+        auth::{AuthSessionError, AuthSessionRepository, MAX_SESSION_INACTIVITY_DURATION},
         identity_errors::IdentityError,
         users::{User, UserRepository},
     },
@@ -63,6 +64,17 @@ pub async fn require_session(
             "session `{}` rejected (revoked or rotated)",
             identity.session_id
         );
+        return StatusCode::UNAUTHORIZED.into_response();
+    }
+
+    if session.inactivity_duration(Utc::now()) > MAX_SESSION_INACTIVITY_DURATION {
+        warn!(
+            "session `{}` expired due to inactivity; revoking",
+            identity.session_id
+        );
+        if let Err(error) = session_repo.revoke(session.id).await {
+            warn!(?error, "failed to revoke inactive session");
+        }
         return StatusCode::UNAUTHORIZED.into_response();
     }
 
