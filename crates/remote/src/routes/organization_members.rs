@@ -9,6 +9,10 @@ use chrono::{Duration, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tracing::warn;
+use utils::api::organizations::{
+    ListMembersResponse, OrganizationMemberWithProfile, UpdateMemberRoleRequest,
+    UpdateMemberRoleResponse,
+};
 use uuid::Uuid;
 
 use super::error::{ErrorResponse, membership_error};
@@ -23,12 +27,6 @@ use crate::{
         projects::ProjectRepository,
         tasks::SharedTaskRepository,
     },
-};
-use utils::api::organizations::{
-    ListMembersResponse,
-    OrganizationMemberWithProfile,
-    UpdateMemberRoleRequest,
-    UpdateMemberRoleResponse,
 };
 
 pub fn public_router() -> Router<AppState> {
