@@ -9,10 +9,6 @@ interface UseOrganizationSelectionOptions {
   organizations: ListOrganizationsResponse | undefined;
   onSelectionChange?: () => void;
 }
-
-/**
- * Hook to manage organization selection with URL synchronization
- */
 export function useOrganizationSelection(
   options: UseOrganizationSelectionOptions
 ) {
@@ -56,7 +52,6 @@ export function useOrganizationSelection(
     }
   }, [organizations, selectedOrgId, setSearchParams]);
 
-  // Update selected organization from list
   useEffect(() => {
     if (!organizations?.organizations) return;
 

@@ -20,7 +20,7 @@ import {
 import { Loader2 } from 'lucide-react';
 import { tasksApi } from '@/lib/api';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks';
 import { useMutation } from '@tanstack/react-query';
 import { useOrganizationMembers } from '@/hooks/useOrganizationMembers';
 
@@ -46,7 +46,9 @@ export const ReassignDialog = NiceModal.create<ReassignDialogProps>(
 
     const isCurrentAssignee = sharedTask.assignee_user_id === userId;
 
-    const membersQuery = useOrganizationMembers(sharedTask.organization_id);
+    const organizationId = sharedTask.organization_id;
+
+    const membersQuery = useOrganizationMembers(organizationId);
 
     useEffect(() => {
       if (!modal.visible) {

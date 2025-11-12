@@ -19,7 +19,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, UserPlus, Plus, Trash2 } from 'lucide-react';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationSelection } from '@/hooks/useOrganizationSelection';
-import { useOrganizationMembersQuery } from '@/hooks/useOrganizationMembersQuery';
+import { useOrganizationMembers } from '@/hooks/useOrganizationMembers';
 import { useOrganizationInvitations } from '@/hooks/useOrganizationInvitations';
 import { useOrganizationMutations } from '@/hooks/useOrganizationMutations';
 import { useUserSystem } from '@/components/config-provider';
@@ -70,9 +70,7 @@ export function OrganizationSettings() {
 
   // Fetch members using query hook
   const { data: members = [], isLoading: loadingMembers } =
-    useOrganizationMembersQuery({
-      organizationId: selectedOrgId || null,
-    });
+    useOrganizationMembers(selectedOrgId);
 
   // Fetch invitations using query hook (admin only)
   const { data: invitations = [], isLoading: loadingInvitations } =
@@ -82,47 +80,46 @@ export function OrganizationSettings() {
     });
 
   // Organization mutations
-  const {
-    removeMember,
-    updateMemberRole,
-    deleteOrganization,
-    refetchMembers,
-    refetchInvitations,
-  } = useOrganizationMutations({
-    onRemoveSuccess: () => {
-      setSuccess('Member removed successfully');
-      setTimeout(() => setSuccess(null), 3000);
-    },
-    onRemoveError: (err) => {
-      setError(err instanceof Error ? err.message : 'Failed to remove member');
-    },
-    onRoleChangeSuccess: () => {
-      setSuccess('Member role updated successfully');
-      setTimeout(() => setSuccess(null), 3000);
-    },
-    onRoleChangeError: (err) => {
-      setError(
-        err instanceof Error ? err.message : 'Failed to update member role'
-      );
-    },
-    onDeleteSuccess: async () => {
-      setSuccess(t('settings.deleteSuccess'));
-      setTimeout(() => setSuccess(null), 3000);
-      // Refetch organizations and switch to personal org
-      await refetchOrgs();
-      if (orgsResponse?.organizations) {
-        const personalOrg = orgsResponse.organizations.find((org) =>
-          org.slug.startsWith('personal-')
+  const { removeMember, updateMemberRole, deleteOrganization } =
+    useOrganizationMutations({
+      onRemoveSuccess: () => {
+        setSuccess('Member removed successfully');
+        setTimeout(() => setSuccess(null), 3000);
+      },
+      onRemoveError: (err) => {
+        setError(
+          err instanceof Error ? err.message : 'Failed to remove member'
         );
-        if (personalOrg) {
-          handleOrgSelect(personalOrg.id);
+      },
+      onRoleChangeSuccess: () => {
+        setSuccess('Member role updated successfully');
+        setTimeout(() => setSuccess(null), 3000);
+      },
+      onRoleChangeError: (err) => {
+        setError(
+          err instanceof Error ? err.message : 'Failed to update member role'
+        );
+      },
+      onDeleteSuccess: async () => {
+        setSuccess(t('settings.deleteSuccess'));
+        setTimeout(() => setSuccess(null), 3000);
+        // Refetch organizations and switch to personal org
+        await refetchOrgs();
+        if (orgsResponse?.organizations) {
+          const personalOrg = orgsResponse.organizations.find((org) =>
+            org.slug.startsWith('personal-')
+          );
+          if (personalOrg) {
+            handleOrgSelect(personalOrg.id);
+          }
         }
-      }
-    },
-    onDeleteError: (err) => {
-      setError(err instanceof Error ? err.message : t('settings.deleteError'));
-    },
-  });
+      },
+      onDeleteError: (err) => {
+        setError(
+          err instanceof Error ? err.message : t('settings.deleteError')
+        );
+      },
+    });
 
   const handleCreateOrganization = async () => {
     try {
@@ -131,7 +128,7 @@ export function OrganizationSettings() {
       );
 
       if (result.action === 'created' && result.organizationId) {
-        await refetchOrgs();
+        // No need to refetch - the mutation hook handles cache invalidation
         handleOrgSelect(result.organizationId ?? '');
         setSuccess('Organization created successfully');
         setTimeout(() => setSuccess(null), 3000);
@@ -151,11 +148,7 @@ export function OrganizationSettings() {
       );
 
       if (result.action === 'invited') {
-        await refetchMembers(selectedOrgId);
-        if (isAdmin) {
-          await refetchInvitations(selectedOrgId);
-        }
-
+        // No need to refetch - the mutation hook handles cache invalidation
         setSuccess('Member invited successfully');
         setTimeout(() => setSuccess(null), 3000);
       }

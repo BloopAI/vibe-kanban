@@ -23,17 +23,18 @@ use services::services::{
     remote_client::{CreateRemoteProjectPayload, RemoteClientError},
     share::link_shared_tasks_to_project,
 };
+use ts_rs::TS;
 use utils::{api::projects::RemoteProject, path::expand_tilde, response::ApiResponse};
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError, middleware::load_project_middleware};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, TS)]
 pub struct LinkToExistingRequest {
     pub remote_project_id: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, TS)]
 pub struct CreateRemoteProjectRequest {
     pub organization_id: String,
     pub name: String,

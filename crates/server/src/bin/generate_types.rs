@@ -17,6 +17,8 @@ fn generate_types_content() -> String {
         db::models::project::UpdateProject::decl(),
         db::models::project::SearchResult::decl(),
         db::models::project::SearchMatchType::decl(),
+        server::routes::projects::CreateRemoteProjectRequest::decl(),
+        server::routes::projects::LinkToExistingRequest::decl(),
         executors::actions::ExecutorAction::decl(),
         executors::mcp_config::McpConfig::decl(),
         executors::actions::ExecutorActionType::decl(),

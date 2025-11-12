@@ -60,8 +60,11 @@ import {
   CreateInvitationRequest,
   CreateInvitationResponse,
   UpdateMemberRoleRequest,
+  CreateRemoteProjectRequest,
+  LinkToExistingRequest,
   UpdateMemberRoleResponse,
   Invitation,
+  RemoteProject,
   ListInvitationsResponse,
 } from 'shared/types';
 
@@ -109,22 +112,6 @@ export interface FollowUpResponse {
 
 export interface OpenEditorResponse {
   url: string | null;
-}
-
-// Remote project types
-export interface RemoteProject {
-  id: string;
-  name: string;
-  organization_id: string;
-}
-
-export interface LinkToExistingRequest {
-  remote_project_id: string;
-}
-
-export interface CreateRemoteProjectRequest {
-  organization_id: string;
-  name: string;
 }
 
 export type Ok<T> = { success: true; data: T };
@@ -305,28 +292,24 @@ export const projectsApi = {
 
   linkToExisting: async (
     localProjectId: string,
-    remoteProjectId: string
+    data: LinkToExistingRequest
   ): Promise<Project> => {
     const response = await makeRequest(`/api/projects/${localProjectId}/link`, {
       method: 'POST',
-      body: JSON.stringify({ remote_project_id: remoteProjectId }),
+      body: JSON.stringify(data),
     });
     return handleApiResponse<Project>(response);
   },
 
   createAndLink: async (
     localProjectId: string,
-    organizationId: string,
-    projectName: string
+    data: CreateRemoteProjectRequest
   ): Promise<Project> => {
     const response = await makeRequest(
       `/api/projects/${localProjectId}/link/create`,
       {
         method: 'POST',
-        body: JSON.stringify({
-          organization_id: organizationId,
-          name: projectName,
-        }),
+        body: JSON.stringify(data),
       }
     );
     return handleApiResponse<Project>(response);

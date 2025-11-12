@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
-import { organizationsApi } from '@/lib/api';
+import { useOrganizationMutations } from '@/hooks/useOrganizationMutations';
 import { MemberRole } from 'shared/types';
 import { useTranslation } from 'react-i18next';
 
@@ -39,7 +39,18 @@ export const InviteMemberDialog = NiceModal.create<InviteMemberDialogProps>(
     const [email, setEmail] = useState('');
     const [role, setRole] = useState<MemberRole>(MemberRole.MEMBER);
     const [error, setError] = useState<string | null>(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const { createInvitation } = useOrganizationMutations({
+      onInviteSuccess: () => {
+        modal.resolve({ action: 'invited' } as InviteMemberResult);
+        modal.hide();
+      },
+      onInviteError: (err) => {
+        setError(
+          err instanceof Error ? err.message : 'Failed to send invitation'
+        );
+      },
+    });
 
     useEffect(() => {
       // Reset form when dialog opens
@@ -47,7 +58,6 @@ export const InviteMemberDialog = NiceModal.create<InviteMemberDialogProps>(
         setEmail('');
         setRole(MemberRole.MEMBER);
         setError(null);
-        setIsSubmitting(false);
       }
     }, [modal.visible]);
 
@@ -64,7 +74,7 @@ export const InviteMemberDialog = NiceModal.create<InviteMemberDialogProps>(
       return null;
     };
 
-    const handleInvite = async () => {
+    const handleInvite = () => {
       const emailError = validateEmail(email);
       if (emailError) {
         setError(emailError);
@@ -76,23 +86,14 @@ export const InviteMemberDialog = NiceModal.create<InviteMemberDialogProps>(
         return;
       }
 
-      setIsSubmitting(true);
       setError(null);
-
-      try {
-        await organizationsApi.createInvitation(organizationId, {
+      createInvitation.mutate({
+        orgId: organizationId,
+        data: {
           email: email.trim(),
           role: role,
-        });
-
-        modal.resolve({ action: 'invited' } as InviteMemberResult);
-        modal.hide();
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : 'Failed to send invitation'
-        );
-        setIsSubmitting(false);
-      }
+        },
+      });
     };
 
     const handleCancel = () => {
@@ -131,7 +132,7 @@ export const InviteMemberDialog = NiceModal.create<InviteMemberDialogProps>(
                 }}
                 placeholder={t('inviteDialog.emailPlaceholder')}
                 autoFocus
-                disabled={isSubmitting}
+                disabled={createInvitation.isPending}
               />
             </div>
 
@@ -140,7 +141,7 @@ export const InviteMemberDialog = NiceModal.create<InviteMemberDialogProps>(
               <Select
                 value={role}
                 onValueChange={(value) => setRole(value as MemberRole)}
-                disabled={isSubmitting}
+                disabled={createInvitation.isPending}
               >
                 <SelectTrigger id="invite-role">
                   <SelectValue
@@ -172,15 +173,15 @@ export const InviteMemberDialog = NiceModal.create<InviteMemberDialogProps>(
             <Button
               variant="outline"
               onClick={handleCancel}
-              disabled={isSubmitting}
+              disabled={createInvitation.isPending}
             >
               {t('common:buttons.cancel')}
             </Button>
             <Button
               onClick={handleInvite}
-              disabled={!email.trim() || isSubmitting}
+              disabled={!email.trim() || createInvitation.isPending}
             >
-              {isSubmitting
+              {createInvitation.isPending
                 ? t('inviteDialog.sending')
                 : t('inviteDialog.sendButton')}
             </Button>

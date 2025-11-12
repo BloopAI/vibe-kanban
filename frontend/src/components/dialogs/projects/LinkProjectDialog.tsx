@@ -19,9 +19,10 @@ import {
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
-import { projectsApi, organizationsApi, type RemoteProject } from '@/lib/api';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationSelection } from '@/hooks/useOrganizationSelection';
+import { useOrganizationProjects } from '@/hooks/useOrganizationProjects';
+import { useProjectMutations } from '@/hooks/useProjectMutations';
 import type { Project } from 'shared/types';
 import { useTranslation } from 'react-i18next';
 
@@ -49,100 +50,67 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
     });
 
     const [linkMode, setLinkMode] = useState<LinkMode>('existing');
-    const [remoteProjects, setRemoteProjects] = useState<RemoteProject[]>([]);
+    const { data: remoteProjects = [], isLoading: isLoadingProjects } =
+      useOrganizationProjects(linkMode === 'existing' ? selectedOrgId : null);
     const [selectedRemoteProjectId, setSelectedRemoteProjectId] = useState<
       string | null
     >(null);
     const [newProjectName, setNewProjectName] = useState('');
-    const [isLoadingProjects, setIsLoadingProjects] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const { linkToExisting, createAndLink } = useProjectMutations({
+      onLinkSuccess: (project) => {
+        modal.resolve({
+          action: 'linked',
+          project,
+        } as LinkProjectResult);
+        modal.hide();
+      },
+      onLinkError: (err) => {
+        setError(
+          err instanceof Error ? err.message : t('linkDialog.errors.linkFailed')
+        );
+      },
+    });
+
+    const isSubmitting = linkToExisting.isPending || createAndLink.isPending;
 
     useEffect(() => {
       // Reset form when dialog opens
       if (modal.visible) {
         setLinkMode('existing');
-        setRemoteProjects([]);
         setSelectedRemoteProjectId(null);
         setNewProjectName('');
         setError(null);
-        setIsSubmitting(false);
       }
     }, [modal.visible]);
 
-    // Fetch remote projects when org changes and mode is "existing"
-    useEffect(() => {
-      if (selectedOrgId && linkMode === 'existing') {
-        setIsLoadingProjects(true);
-        setError(null);
-        organizationsApi
-          .getProjects(selectedOrgId)
-          .then((projects) => {
-            setRemoteProjects(projects);
-            setSelectedRemoteProjectId(null);
-          })
-          .catch((err) => {
-            setError(
-              err instanceof Error
-                ? err.message
-                : t('linkDialog.errors.linkFailed')
-            );
-            setRemoteProjects([]);
-          })
-          .finally(() => {
-            setIsLoadingProjects(false);
-          });
-      } else {
-        setRemoteProjects([]);
-        setSelectedRemoteProjectId(null);
-      }
-    }, [selectedOrgId, linkMode]);
-
-    const handleLink = async () => {
+    const handleLink = () => {
       if (!selectedOrgId) {
         setError(t('linkDialog.errors.selectOrganization'));
         return;
       }
 
-      setIsSubmitting(true);
       setError(null);
 
-      try {
-        let updatedProject: Project;
-
-        if (linkMode === 'existing') {
-          if (!selectedRemoteProjectId) {
-            setError(t('linkDialog.errors.selectRemoteProject'));
-            setIsSubmitting(false);
-            return;
-          }
-          updatedProject = await projectsApi.linkToExisting(
-            projectId,
-            selectedRemoteProjectId
-          );
-        } else {
-          if (!newProjectName.trim()) {
-            setError(t('linkDialog.errors.enterProjectName'));
-            setIsSubmitting(false);
-            return;
-          }
-          updatedProject = await projectsApi.createAndLink(
-            projectId,
-            selectedOrgId,
-            newProjectName.trim()
-          );
+      if (linkMode === 'existing') {
+        if (!selectedRemoteProjectId) {
+          setError(t('linkDialog.errors.selectRemoteProject'));
+          return;
         }
-
-        modal.resolve({
-          action: 'linked',
-          project: updatedProject,
-        } as LinkProjectResult);
-        modal.hide();
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : t('linkDialog.errors.linkFailed')
-        );
-        setIsSubmitting(false);
+        linkToExisting.mutate({
+          localProjectId: projectId,
+          data: { remote_project_id: selectedRemoteProjectId },
+        });
+      } else {
+        if (!newProjectName.trim()) {
+          setError(t('linkDialog.errors.enterProjectName'));
+          return;
+        }
+        createAndLink.mutate({
+          localProjectId: projectId,
+          data: { organization_id: selectedOrgId, name: newProjectName.trim() },
+        });
       }
     };
 
