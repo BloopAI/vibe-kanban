@@ -67,7 +67,6 @@ impl Mailer for LoopsMailer {
             "dataVariables": {
                 "org_name": org_name,
                 "accept_url": accept_url,
-                "role": role_str,
                 "invited_by": inviter,
             }
         });
