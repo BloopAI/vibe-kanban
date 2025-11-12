@@ -37,5 +37,9 @@
       "enterProjectName": "프로젝트 이름을 입력하세요",
       "linkFailed": "프로젝트 연결에 실패했습니다"
     }
-  }
+  },
+  "unlinkFromOrganization": "조직에서 연결 해제",
+  "viewProject": "프로젝트 보기",
+  "openInIDE": "IDE에서 열기",
+  "createdDate": "생성일 {{date}}"
 }

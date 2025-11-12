@@ -411,21 +411,20 @@ export function OrganizationSettings() {
       {selectedOrg && (
         <Card>
           <CardHeader>
-            <CardTitle>Shared Projects</CardTitle>
+            <CardTitle>{t('sharedProjects.title')}</CardTitle>
             <CardDescription>
-              Remote projects in {selectedOrg.name} and their links to local
-              projects
+              {t('sharedProjects.description', { orgName: selectedOrg.name })}
             </CardDescription>
           </CardHeader>
           <CardContent>
             {loadingProjects || loadingRemoteProjects ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin" />
-                <span className="ml-2">Loading projects...</span>
+                <span className="ml-2">{t('sharedProjects.loading')}</span>
               </div>
             ) : remoteProjects.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                No shared projects found in this organization
+                {t('sharedProjects.noProjects')}
               </div>
             ) : (
               <div className="space-y-3">

@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/select';
 import { Unlink } from 'lucide-react';
 import type { Project, RemoteProject } from 'shared/types';
+import { useTranslation } from 'react-i18next';
 
 interface RemoteProjectItemProps {
   remoteProject: RemoteProject;
@@ -29,6 +30,7 @@ export function RemoteProjectItem({
   isLinking,
   isUnlinking,
 }: RemoteProjectItemProps) {
+  const { t } = useTranslation('organization');
   const handleUnlinkClick = () => {
     if (!linkedLocalProject) return;
 
@@ -51,13 +53,19 @@ export function RemoteProjectItem({
           <div className="font-medium text-sm">{remoteProject.name}</div>
           {linkedLocalProject ? (
             <div className="text-xs text-muted-foreground">
-              Linked to: {linkedLocalProject.name}
+              {t('sharedProjects.linkedTo', {
+                projectName: linkedLocalProject.name,
+              })}
             </div>
           ) : (
-            <div className="text-xs text-muted-foreground">Not linked</div>
+            <div className="text-xs text-muted-foreground">
+              {t('sharedProjects.notLinked')}
+            </div>
           )}
         </div>
-        {linkedLocalProject && <Badge variant="default">Linked</Badge>}
+        {linkedLocalProject && (
+          <Badge variant="default">{t('sharedProjects.linked')}</Badge>
+        )}
       </div>
       <div className="flex items-center gap-2">
         {linkedLocalProject ? (
@@ -75,12 +83,12 @@ export function RemoteProjectItem({
             disabled={isLinking || availableLocalProjects.length === 0}
           >
             <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Link project..." />
+              <SelectValue placeholder={t('sharedProjects.linkProject')} />
             </SelectTrigger>
             <SelectContent>
               {availableLocalProjects.length === 0 ? (
                 <SelectItem value="no-projects" disabled>
-                  No available projects
+                  {t('sharedProjects.noAvailableProjects')}
                 </SelectItem>
               ) : (
                 availableLocalProjects.map((project) => (

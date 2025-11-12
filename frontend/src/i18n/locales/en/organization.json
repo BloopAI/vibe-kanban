@@ -58,5 +58,16 @@
     "deleteSuccess": "Organization deleted successfully",
     "deleteError": "Failed to delete organization"
   },
-  "confirmRemoveMember": "Are you sure you want to remove this member from the organization?"
+  "confirmRemoveMember": "Are you sure you want to remove this member from the organization?",
+  "sharedProjects": {
+    "title": "Shared Projects",
+    "description": "Remote projects in {{orgName}} and their links to local projects",
+    "loading": "Loading projects...",
+    "noProjects": "No shared projects found in this organization",
+    "notLinked": "Not linked",
+    "linkedTo": "Linked to: {{projectName}}",
+    "linked": "Linked",
+    "linkProject": "Link project...",
+    "noAvailableProjects": "No available projects"
+  }
 }

@@ -37,5 +37,9 @@
       "enterProjectName": "Please enter a project name",
       "linkFailed": "Failed to link project"
     }
-  }
+  },
+  "unlinkFromOrganization": "Unlink from Organization",
+  "viewProject": "View Project",
+  "openInIDE": "Open in IDE",
+  "createdDate": "Created {{date}}"
 }
