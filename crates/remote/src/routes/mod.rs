@@ -65,8 +65,8 @@ pub fn router(state: AppState) -> Router {
         ));
 
     let static_dir = "/srv/static";
-    let spa = ServeDir::new(static_dir)
-        .fallback(ServeFile::new(format!("{}/index.html", static_dir)));
+    let spa =
+        ServeDir::new(static_dir).fallback(ServeFile::new(format!("{static_dir}/index.html")));
 
     Router::<AppState>::new()
         .merge(public_top)
