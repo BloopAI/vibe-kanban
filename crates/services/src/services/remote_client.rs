@@ -243,7 +243,6 @@ impl RemoteClient {
             .await
     }
 
-    /// Revokes (deletes) an invitation.
     pub async fn revoke_invitation(
         &self,
         token: &str,
