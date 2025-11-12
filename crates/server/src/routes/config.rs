@@ -147,12 +147,7 @@ async fn track_config_events(deployment: &DeploymentImpl, old: &Config, new: &Co
             }),
         ),
         (
-            !old.telemetry_acknowledged && new.telemetry_acknowledged,
-            "onboarding_telemetry_choice",
-            serde_json::json!({}),
-        ),
-        (
-            !old.analytics_enabled.unwrap_or(false) && new.analytics_enabled.unwrap_or(false),
+            !old.analytics_enabled && new.analytics_enabled,
             "analytics_session_start",
             serde_json::json!({}),
         ),
