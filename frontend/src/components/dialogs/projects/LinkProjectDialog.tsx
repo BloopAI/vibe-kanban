@@ -50,12 +50,8 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
     });
 
     const [linkMode, setLinkMode] = useState<LinkMode>('existing');
-    const {
-      data: remoteProjects = [],
-      isLoading: isLoadingProjects,
-    } = useOrganizationProjects(
-      linkMode === 'existing' ? selectedOrgId : null
-    );
+    const { data: remoteProjects = [], isLoading: isLoadingProjects } =
+      useOrganizationProjects(linkMode === 'existing' ? selectedOrgId : null);
     const [selectedRemoteProjectId, setSelectedRemoteProjectId] = useState<
       string | null
     >(null);

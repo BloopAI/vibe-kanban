@@ -9,8 +9,13 @@ interface UseAuthMutationsOptions {
 export function useAuthMutations(options?: UseAuthMutationsOptions) {
   const initHandoff = useMutation({
     mutationKey: ['auth', 'init'],
-    mutationFn: ({ provider, returnTo }: { provider: string; returnTo: string }) =>
-      oauthApi.handoffInit(provider, returnTo),
+    mutationFn: ({
+      provider,
+      returnTo,
+    }: {
+      provider: string;
+      returnTo: string;
+    }) => oauthApi.handoffInit(provider, returnTo),
     onSuccess: (data) => {
       options?.onInitSuccess?.(data);
     },

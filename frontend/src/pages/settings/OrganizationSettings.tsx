@@ -70,9 +70,7 @@ export function OrganizationSettings() {
 
   // Fetch members using query hook
   const { data: members = [], isLoading: loadingMembers } =
-    useOrganizationMembers(
-      selectedOrgId,
-    );
+    useOrganizationMembers(selectedOrgId);
 
   // Fetch invitations using query hook (admin only)
   const { data: invitations = [], isLoading: loadingInvitations } =
@@ -89,7 +87,9 @@ export function OrganizationSettings() {
         setTimeout(() => setSuccess(null), 3000);
       },
       onRemoveError: (err) => {
-        setError(err instanceof Error ? err.message : 'Failed to remove member');
+        setError(
+          err instanceof Error ? err.message : 'Failed to remove member'
+        );
       },
       onRoleChangeSuccess: () => {
         setSuccess('Member role updated successfully');
@@ -115,7 +115,9 @@ export function OrganizationSettings() {
         }
       },
       onDeleteError: (err) => {
-        setError(err instanceof Error ? err.message : t('settings.deleteError'));
+        setError(
+          err instanceof Error ? err.message : t('settings.deleteError')
+        );
       },
     });
 
