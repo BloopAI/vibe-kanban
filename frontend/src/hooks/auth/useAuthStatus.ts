@@ -5,10 +5,6 @@ interface UseAuthStatusOptions {
   enabled: boolean;
 }
 
-/**
- * Hook for polling OAuth authentication status.
- * Uses React Query for automatic refetching and caching.
- */
 export function useAuthStatus(options: UseAuthStatusOptions) {
   return useQuery({
     queryKey: ['auth', 'status'],

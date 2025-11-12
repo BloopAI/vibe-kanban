@@ -22,9 +22,6 @@ interface UseOrganizationMutationsOptions {
   onDeleteError?: (err: unknown) => void;
 }
 
-/**
- * Hook providing mutations for organization management and member operations
- */
 export function useOrganizationMutations(
   options?: UseOrganizationMutationsOptions
 ) {
@@ -55,11 +52,9 @@ export function useOrganizationMutations(
       data: CreateInvitationRequest;
     }) => organizationsApi.createInvitation(orgId, data),
     onSuccess: (result: CreateInvitationResponse, variables) => {
-      // Invalidate members query to include the new invitation
       queryClient.invalidateQueries({
         queryKey: ['organization', 'members', variables.orgId],
       });
-      // Invalidate invitations query for this organization
       queryClient.invalidateQueries({
         queryKey: ['organization', 'invitations', variables.orgId],
       });
@@ -75,7 +70,6 @@ export function useOrganizationMutations(
     mutationFn: ({ orgId, userId }: { orgId: string; userId: string }) =>
       organizationsApi.removeMember(orgId, userId),
     onSuccess: (_data, variables) => {
-      // Invalidate members query for this organization
       queryClient.invalidateQueries({
         queryKey: ['organization', 'members', variables.orgId],
       });
@@ -97,7 +91,6 @@ export function useOrganizationMutations(
     mutationFn: ({ orgId, userId, role }) =>
       organizationsApi.updateMemberRole(orgId, userId, { role }),
     onSuccess: (_data, variables) => {
-      // Invalidate members query for this organization
       queryClient.invalidateQueries({
         queryKey: ['organization', 'members', variables.orgId],
       });
@@ -111,18 +104,12 @@ export function useOrganizationMutations(
     },
   });
 
-  /**
-   * Helper to manually refetch members for an organization
-   */
   const refetchMembers = async (orgId: string) => {
     await queryClient.invalidateQueries({
       queryKey: ['organization', 'members', orgId],
     });
   };
 
-  /**
-   * Helper to manually refetch invitations for an organization
-   */
   const refetchInvitations = async (orgId: string) => {
     await queryClient.invalidateQueries({
       queryKey: ['organization', 'invitations', orgId],
@@ -132,7 +119,6 @@ export function useOrganizationMutations(
   const deleteOrganization = useMutation({
     mutationFn: (orgId: string) => organizationsApi.deleteOrganization(orgId),
     onSuccess: () => {
-      // Invalidate user's organizations list since we deleted one
       queryClient.invalidateQueries({ queryKey: ['user', 'organizations'] });
       options?.onDeleteSuccess?.();
     },

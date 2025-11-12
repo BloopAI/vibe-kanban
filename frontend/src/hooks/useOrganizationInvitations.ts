@@ -7,9 +7,6 @@ interface UseOrganizationInvitationsOptions {
   isAdmin: boolean;
 }
 
-/**
- * Hook to fetch pending invitations for an organization (admin only)
- */
 export function useOrganizationInvitations(
   options: UseOrganizationInvitationsOptions
 ) {

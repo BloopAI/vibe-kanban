@@ -6,10 +6,6 @@ interface UseAuthMutationsOptions {
   onInitError?: (err: unknown) => void;
 }
 
-/**
- * Hook providing mutations for OAuth authentication operations.
- * Note: Status checking is handled by useAuthStatus query hook, not a mutation.
- */
 export function useAuthMutations(options?: UseAuthMutationsOptions) {
   const initHandoff = useMutation({
     mutationKey: ['auth', 'init'],

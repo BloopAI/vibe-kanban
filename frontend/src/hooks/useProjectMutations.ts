@@ -71,10 +71,7 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
       data: LinkToExistingRequest;
     }) => projectsApi.linkToExisting(localProjectId, data),
     onSuccess: (project: Project) => {
-      // Update single project cache
       queryClient.setQueryData(['project', project.id], project);
-
-      // Update the project in the projects list cache immediately
       queryClient.setQueryData<Project[]>(['projects'], (old) => {
         if (!old) return old;
         return old.map((p) => (p.id === project.id ? project : p));
@@ -98,10 +95,7 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
       data: CreateRemoteProjectRequest;
     }) => projectsApi.createAndLink(localProjectId, data),
     onSuccess: (project: Project) => {
-      // Update single project cache
       queryClient.setQueryData(['project', project.id], project);
-
-      // Update the project in the projects list cache immediately
       queryClient.setQueryData<Project[]>(['projects'], (old) => {
         if (!old) return old;
         return old.map((p) => (p.id === project.id ? project : p));

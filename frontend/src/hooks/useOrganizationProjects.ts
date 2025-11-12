@@ -2,9 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import { organizationsApi } from '../lib/api';
 import type { RemoteProject } from 'shared/types';
 
-/**
- * Hook to fetch all projects for a specific organization
- */
 export function useOrganizationProjects(organizationId: string | null) {
   return useQuery<RemoteProject[]>({
     queryKey: ['organizations', organizationId, 'projects'],
