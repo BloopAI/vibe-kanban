@@ -1,49 +1,103 @@
-import { useEffect, useMemo } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { useLocation, useParams } from 'react-router-dom'
+import { redeemOAuth, acceptInvitation } from '../api'
+import {
+  retrieveVerifier,
+  retrieveInvitationToken,
+  clearVerifier,
+  clearInvitationToken,
+} from '../pkce'
 
 export default function InvitationCompletePage() {
+  const { token: urlToken } = useParams()
   const { search } = useLocation()
   const qp = useMemo(() => new URLSearchParams(search), [search])
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
+  const [orgSlug, setOrgSlug] = useState<string | null>(null)
 
   const handoffId = qp.get('handoff_id')
   const appCode = qp.get('app_code')
-  const error = qp.get('error')
+  const oauthError = qp.get('error')
 
   useEffect(() => {
-    if (handoffId && appCode) {
-      const appBase = import.meta.env.VITE_APP_BASE_URL || window.location.origin
-      const target = `${appBase}`
-      const timer = setTimeout(() => {
-        window.location.assign(target)
-      }, 2000)
-      return () => clearTimeout(timer)
+    const completeInvitation = async () => {
+      if (oauthError) {
+        setError(`OAuth error: ${oauthError}`)
+        return
+      }
+
+      if (!handoffId || !appCode) {
+        return
+      }
+
+      try {
+        const verifier = retrieveVerifier()
+        if (!verifier) {
+          setError('OAuth session lost. Please try again.')
+          return
+        }
+
+        const token = retrieveInvitationToken() || urlToken
+        if (!token) {
+          setError('Invitation token lost. Please try again.')
+          return
+        }
+
+        const { access_token } = await redeemOAuth(
+          handoffId,
+          appCode,
+          verifier
+        )
+
+        const result = await acceptInvitation(token, access_token)
+
+        clearVerifier()
+        clearInvitationToken()
+
+        setSuccess(true)
+        setOrgSlug(result.organization_slug)
+
+        const timer = setTimeout(() => {
+          const appBase =
+            import.meta.env.VITE_APP_BASE_URL || window.location.origin
+          window.location.assign(`${appBase}/orgs/${result.organization_slug}`)
+        }, 2000)
+        return () => clearTimeout(timer)
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Failed to complete invitation')
+        clearVerifier()
+        clearInvitationToken()
+      }
     }
-  }, [handoffId, appCode])
+
+    completeInvitation()
+  }, [handoffId, appCode, oauthError, urlToken])
 
   if (error) {
     return (
       <StatusCard
         title="Could not accept invitation"
-        body={`OAuth error: ${error}`}
+        body={error}
         isError
       />
     )
   }
 
-  if (!handoffId || !appCode) {
+  if (success) {
     return (
       <StatusCard
-        title="Completing invitation..."
-        body="Waiting for OAuth callback..."
+        title="Invitation accepted!"
+        body={orgSlug ? `Redirecting to ${orgSlug}...` : 'Redirecting...'}
+        isSuccess
       />
     )
   }
 
   return (
     <StatusCard
-      title="Invitation accepted!"
-      body="Redirecting..."
-      isSuccess
+      title="Completing invitation..."
+      body="Processing OAuth callback..."
     />
   )
 }
@@ -63,12 +117,13 @@ function StatusCard({
     <div className="min-h-screen grid place-items-center bg-gray-50 p-4">
       <div className="max-w-md w-full bg-white shadow rounded-lg p-6">
         <h2
-          className={`text-lg font-semibold ${isError
-            ? 'text-red-600'
-            : isSuccess
+          className={`text-lg font-semibold ${
+            isError
+              ? 'text-red-600'
+              : isSuccess
               ? 'text-green-600'
               : 'text-gray-900'
-            }`}
+          }`}
         >
           {title}
         </h2>

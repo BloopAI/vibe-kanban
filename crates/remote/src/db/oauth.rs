@@ -64,7 +64,6 @@ pub struct OAuthHandoff {
     pub redeemed_at: Option<DateTime<Utc>>,
     pub user_id: Option<Uuid>,
     pub session_id: Option<Uuid>,
-    pub server_verifier: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -82,7 +81,6 @@ pub struct CreateOAuthHandoff<'a> {
     pub return_to: &'a str,
     pub app_challenge: &'a str,
     pub expires_at: DateTime<Utc>,
-    pub server_verifier: Option<&'a str>,
 }
 
 pub struct OAuthHandoffRepository<'a> {
@@ -106,10 +104,9 @@ impl<'a> OAuthHandoffRepository<'a> {
                 state,
                 return_to,
                 app_challenge,
-                expires_at,
-                server_verifier
+                expires_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6)
+            VALUES ($1, $2, $3, $4, $5)
             RETURNING
                 id              AS "id!",
                 provider        AS "provider!",
@@ -124,7 +121,6 @@ impl<'a> OAuthHandoffRepository<'a> {
                 redeemed_at     AS "redeemed_at?",
                 user_id         AS "user_id?",
                 session_id      AS "session_id?",
-                server_verifier AS "server_verifier?",
                 created_at      AS "created_at!",
                 updated_at      AS "updated_at!"
             "#,
@@ -133,7 +129,6 @@ impl<'a> OAuthHandoffRepository<'a> {
             data.return_to,
             data.app_challenge,
             data.expires_at,
-            data.server_verifier,
         )
         .fetch_one(self.pool)
         .await
@@ -158,7 +153,6 @@ impl<'a> OAuthHandoffRepository<'a> {
                 redeemed_at     AS "redeemed_at?",
                 user_id         AS "user_id?",
                 session_id      AS "session_id?",
-                server_verifier AS "server_verifier?",
                 created_at      AS "created_at!",
                 updated_at      AS "updated_at!"
             FROM oauth_handoffs
@@ -189,7 +183,6 @@ impl<'a> OAuthHandoffRepository<'a> {
                 redeemed_at     AS "redeemed_at?",
                 user_id         AS "user_id?",
                 session_id      AS "session_id?",
-                server_verifier AS "server_verifier?",
                 created_at      AS "created_at!",
                 updated_at      AS "updated_at!"
             FROM oauth_handoffs
@@ -262,7 +255,6 @@ impl<'a> OAuthHandoffRepository<'a> {
             UPDATE oauth_handoffs
             SET
                 status = 'redeemed',
-                server_verifier = NULL,
                 redeemed_at = NOW(),
                 updated_at = NOW()
             WHERE id = $1

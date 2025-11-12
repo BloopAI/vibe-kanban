@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                id              AS \"id!\",\n                provider        AS \"provider!\",\n                state           AS \"state!\",\n                return_to       AS \"return_to!\",\n                app_challenge   AS \"app_challenge!\",\n                app_code_hash   AS \"app_code_hash?\",\n                status          AS \"status!\",\n                error_code      AS \"error_code?\",\n                expires_at      AS \"expires_at!\",\n                authorized_at   AS \"authorized_at?\",\n                redeemed_at     AS \"redeemed_at?\",\n                user_id         AS \"user_id?\",\n                session_id      AS \"session_id?\",\n                server_verifier AS \"server_verifier?\",\n                created_at      AS \"created_at!\",\n                updated_at      AS \"updated_at!\"\n            FROM oauth_handoffs\n            WHERE id = $1\n            ",
+  "query": "\n            INSERT INTO oauth_handoffs (\n                provider,\n                state,\n                return_to,\n                app_challenge,\n                expires_at\n            )\n            VALUES ($1, $2, $3, $4, $5)\n            RETURNING\n                id              AS \"id!\",\n                provider        AS \"provider!\",\n                state           AS \"state!\",\n                return_to       AS \"return_to!\",\n                app_challenge   AS \"app_challenge!\",\n                app_code_hash   AS \"app_code_hash?\",\n                status          AS \"status!\",\n                error_code      AS \"error_code?\",\n                expires_at      AS \"expires_at!\",\n                authorized_at   AS \"authorized_at?\",\n                redeemed_at     AS \"redeemed_at?\",\n                user_id         AS \"user_id?\",\n                session_id      AS \"session_id?\",\n                created_at      AS \"created_at!\",\n                updated_at      AS \"updated_at!\"\n            ",
   "describe": {
     "columns": [
       {
@@ -70,23 +70,22 @@
       },
       {
         "ordinal": 13,
-        "name": "server_verifier?",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 14,
         "name": "created_at!",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 15,
+        "ordinal": 14,
         "name": "updated_at!",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz"
       ]
     },
     "nullable": [
@@ -103,10 +102,9 @@
       true,
       true,
       true,
-      true,
       false,
       false
     ]
   },
-  "hash": "44027ed1b3530d7b4c217a84d36595c68134e69c1f4e503ffa05a0725f3f1652"
+  "hash": "4297d2fa8fd3d037243b8794a5ccfc33af057bcb6c9dc1ac601f82bb65130721"
 }

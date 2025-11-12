@@ -1,8 +1,8 @@
 use axum::{
     Json, Router,
-    extract::{Path, Query, State},
+    extract::{Path, State},
     http::StatusCode,
-    response::{IntoResponse, Redirect},
+    response::IntoResponse,
     routing::{delete, get, patch, post},
 };
 use chrono::{Duration, Utc};
@@ -26,13 +26,7 @@ use crate::{
 };
 
 pub fn public_router() -> Router<AppState> {
-    Router::new()
-        .route("/invitations/{token}", get(get_invitation))
-        .route("/invitations/{token}/accept", get(accept_invitation))
-        .route(
-            "/invitations/{token}/complete",
-            get(accept_invitation_complete),
-        )
+    Router::new().route("/invitations/{token}", get(get_invitation))
 }
 
 pub fn protected_router() -> Router<AppState> {
@@ -42,6 +36,7 @@ pub fn protected_router() -> Router<AppState> {
             post(create_invitation),
         )
         .route("/organizations/{org_id}/invitations", get(list_invitations))
+        .route("/invitations/{token}/accept", post(accept_invitation))
         .route("/organizations/{org_id}/members", get(list_members))
         .route(
             "/organizations/{org_id}/members/{user_id}",
@@ -223,65 +218,16 @@ pub async fn get_invitation(
     }))
 }
 
-#[derive(Debug, Deserialize)]
-pub struct AcceptWebQuery {
-    #[serde(default = "default_provider")]
-    pub provider: String,
-}
-
-fn default_provider() -> String {
-    "github".to_string()
-}
-
 pub async fn accept_invitation(
     State(state): State<AppState>,
+    axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
     Path(token): Path<String>,
-    Query(query): Query<AcceptWebQuery>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
-    let return_to = format!(
-        "{}/invitations/{}/complete",
-        state.server_public_base_url, token
-    );
-
-    let handoff = state.handoff();
-    let init = handoff
-        .initiate_server_owned(&query.provider, &return_to)
-        .await
-        .map_err(|e| {
-            ErrorResponse::new(
-                StatusCode::BAD_REQUEST,
-                format!("OAuth initialization failed: {e}"),
-            )
-        })?;
-
-    Ok(Redirect::temporary(&init.authorize_url))
-}
-
-#[derive(Debug, Deserialize)]
-pub struct CompleteQuery {
-    pub handoff_id: Uuid,
-    pub app_code: String,
-}
-
-pub async fn accept_invitation_complete(
-    State(state): State<AppState>,
-    Path(token): Path<String>,
-    Query(query): Query<CompleteQuery>,
-) -> Result<impl IntoResponse, ErrorResponse> {
-    let handoff = state.handoff();
-    let (_, user_id) = handoff
-        .redeem_server_owned(query.handoff_id, &query.app_code)
-        .await
-        .map_err(|e| {
-            ErrorResponse::new(
-                StatusCode::BAD_REQUEST,
-                format!("OAuth redemption failed: {e}"),
-            )
-        })?;
-
+    let user = ctx.user;
     let invitation_repo = InvitationRepository::new(&state.pool);
-    let (org, _role) = invitation_repo
-        .accept_invitation(&token, user_id)
+
+    let (org, role) = invitation_repo
+        .accept_invitation(&token, user.id)
         .await
         .map_err(|e| match e {
             IdentityError::InvitationError(msg) => ErrorResponse::new(StatusCode::BAD_REQUEST, msg),
@@ -291,8 +237,11 @@ pub async fn accept_invitation_complete(
             _ => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"),
         })?;
 
-    let redirect_url = format!("{}/orgs/{}", state.server_public_base_url, org.slug);
-    Ok(Redirect::temporary(&redirect_url))
+    Ok(Json(AcceptInvitationResponse {
+        organization_id: org.id.to_string(),
+        organization_slug: org.slug,
+        role,
+    }))
 }
 
 pub async fn list_members(

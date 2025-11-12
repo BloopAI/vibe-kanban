@@ -1,17 +1,50 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { getInvitation, buildAcceptUrl, type Invitation } from '../api'
+import {
+  getInvitation,
+  initOAuth,
+  type Invitation,
+  type OAuthProvider,
+} from '../api'
+import {
+  generateVerifier,
+  generateChallenge,
+  storeVerifier,
+  storeInvitationToken,
+} from '../pkce'
 
 export default function InvitationPage() {
   const { token = '' } = useParams()
   const [data, setData] = useState<Invitation | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     getInvitation(token)
       .then(setData)
       .catch((e) => setError(e.message))
   }, [token])
+
+  const handleOAuthLogin = async (provider: OAuthProvider) => {
+    setLoading(true)
+    try {
+      const verifier = generateVerifier()
+      const challenge = await generateChallenge(verifier)
+
+      storeVerifier(verifier)
+      storeInvitationToken(token)
+
+      const appBase =
+        import.meta.env.VITE_APP_BASE_URL || window.location.origin
+      const returnTo = `${appBase}/invitations/${token}/complete`
+
+      const result = await initOAuth(provider, returnTo, challenge)
+      window.location.assign(result.authorize_url)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'OAuth init failed')
+      setLoading(false)
+    }
+  }
 
   if (error) {
     return (
@@ -57,11 +90,13 @@ export default function InvitationPage() {
           </p>
           <OAuthButton
             label="Continue with GitHub"
-            onClick={() => window.location.assign(buildAcceptUrl(token, 'github'))}
+            onClick={() => handleOAuthLogin('github')}
+            disabled={loading}
           />
           <OAuthButton
             label="Continue with Google"
-            onClick={() => window.location.assign(buildAcceptUrl(token, 'google'))}
+            onClick={() => handleOAuthLogin('google')}
+            disabled={loading}
           />
         </div>
       </div>
@@ -72,14 +107,17 @@ export default function InvitationPage() {
 function OAuthButton({
   label,
   onClick,
+  disabled,
 }: {
   label: string
   onClick: () => void
+  disabled?: boolean
 }) {
   return (
     <button
       onClick={onClick}
-      className="w-full py-3 px-4 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium"
+      disabled={disabled}
+      className="w-full py-3 px-4 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {label}
     </button>

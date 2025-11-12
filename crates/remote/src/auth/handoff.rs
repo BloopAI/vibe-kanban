@@ -149,7 +149,6 @@ impl OAuthHandoffService {
                 return_to: return_to_url.as_str(),
                 app_challenge,
                 expires_at,
-                server_verifier: None,
             })
             .await?;
 
@@ -338,71 +337,6 @@ impl OAuthHandoffService {
         Ok(RedeemResponse {
             access_token: token,
         })
-    }
-
-    pub async fn initiate_server_owned(
-        &self,
-        provider: &str,
-        return_to: &str,
-    ) -> Result<HandoffInitResponse, HandoffError> {
-        let provider = self
-            .providers
-            .get(provider)
-            .ok_or_else(|| HandoffError::UnsupportedProvider(provider.to_string()))?;
-
-        let return_to_url =
-            Url::parse(return_to).map_err(|_| HandoffError::InvalidReturnUrl(return_to.into()))?;
-
-        let state = generate_state();
-        let verifier = generate_session_secret();
-        let challenge = hash_sha256_hex(&verifier);
-        let expires_at = Utc::now() + Duration::minutes(HANDOFF_TTL);
-
-        let repo = OAuthHandoffRepository::new(&self.pool);
-        let record = repo
-            .create(CreateOAuthHandoff {
-                provider: provider.name(),
-                state: &state,
-                return_to: return_to_url.as_str(),
-                app_challenge: &challenge,
-                expires_at,
-                server_verifier: Some(&verifier),
-            })
-            .await?;
-
-        let authorize_url = format!(
-            "{}/oauth/{}/start?handoff_id={}",
-            self.public_origin,
-            provider.name(),
-            record.id
-        );
-
-        Ok(HandoffInitResponse {
-            handoff_id: record.id,
-            authorize_url,
-            expires_at: record.expires_at,
-        })
-    }
-
-    pub async fn redeem_server_owned(
-        &self,
-        handoff_id: Uuid,
-        app_code: &str,
-    ) -> Result<(RedeemResponse, Uuid), HandoffError> {
-        let repo = OAuthHandoffRepository::new(&self.pool);
-        let record = repo.get(handoff_id).await?;
-
-        let verifier = record
-            .server_verifier
-            .ok_or_else(|| HandoffError::Failed("not_server_owned".into()))?;
-
-        let redeem_result = self.redeem(handoff_id, app_code, &verifier).await?;
-
-        let user_id = record
-            .user_id
-            .ok_or_else(|| HandoffError::Failed("missing_user_id".into()))?;
-
-        Ok((redeem_result, user_id))
     }
 
     async fn fetch_user_with_retries(

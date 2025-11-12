@@ -1,3 +1,2 @@
--- Add server verifier support for backend-managed OAuth flows (e.g., invitation acceptance)
-ALTER TABLE oauth_handoffs
-    ADD COLUMN server_verifier TEXT NULL;
+-- Placeholder migration (server-owned OAuth flow removed in favor of PKCE)
+-- No changes needed to oauth_handoffs table
