@@ -7,7 +7,7 @@ import { ProjectTasks } from '@/pages/project-tasks';
 import { FullAttemptLogsPage } from '@/pages/full-attempt-logs';
 import { NormalLayout } from '@/components/layout/NormalLayout';
 import { usePostHog } from 'posthog-js/react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks';
 
 import {
   AgentSettings,

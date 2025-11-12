@@ -11,7 +11,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { LogIn, Github, Loader2, Chrome } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useState, useRef, useEffect } from 'react';
-import { oauthApi } from '@/lib/api';
+import { useAuthMutations } from '@/hooks/auth/useAuthMutations';
+import { useAuthStatus } from '@/hooks/auth/useAuthStatus';
+import { useUserSystem } from '@/components/config-provider';
 import type { ProfileResponse } from 'shared/types';
 import { useTranslation } from 'react-i18next';
 
@@ -26,22 +28,14 @@ type OAuthState =
 const OAuthDialog = NiceModal.create(() => {
   const modal = useModal();
   const { t } = useTranslation('common');
+  const { reloadSystem } = useUserSystem();
   const [state, setState] = useState<OAuthState>({ type: 'select' });
   const popupRef = useRef<Window | null>(null);
-  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
-    null
-  );
+  const [isPolling, setIsPolling] = useState(false);
 
-  const handleProviderSelect = async (provider: OAuthProvider) => {
-    try {
-      setState({ type: 'waiting', provider });
-
-      // Get the current window location as return_to
-      const returnTo = `${window.location.origin}/api/auth/handoff/complete`;
-
-      // Initialize handoff flow
-      const response = await oauthApi.handoffInit(provider, returnTo);
-
+  // Auth mutations hook
+  const { initHandoff } = useAuthMutations({
+    onInitSuccess: (data) => {
       // Open popup window with authorize URL
       const width = 600;
       const height = 700;
@@ -49,14 +43,15 @@ const OAuthDialog = NiceModal.create(() => {
       const top = window.screenY + (window.outerHeight - height) / 2;
 
       popupRef.current = window.open(
-        response.authorize_url,
+        data.authorize_url,
         'oauth-popup',
         `width=${width},height=${height},left=${left},top=${top},popup=yes,noopener=yes`
       );
 
-      // Start polling for completion
-      startStatusPolling();
-    } catch (error) {
+      // Start polling
+      setIsPolling(true);
+    },
+    onInitError: (error) => {
       setState({
         type: 'error',
         message:
@@ -64,53 +59,70 @@ const OAuthDialog = NiceModal.create(() => {
             ? error.message
             : 'Failed to initialize OAuth flow',
       });
+    },
+  });
+
+  // Poll for auth status using proper query hook
+  const { data: statusData, isError: isStatusError } = useAuthStatus({
+    enabled: isPolling,
+  });
+
+  // Handle status check errors
+  useEffect(() => {
+    if (isStatusError && isPolling) {
+      setIsPolling(false);
+      setState({
+        type: 'error',
+        message: 'Failed to check OAuth status',
+      });
     }
-  };
+  }, [isStatusError, isPolling]);
 
-  const startStatusPolling = () => {
-    pollingIntervalRef.current = setInterval(async () => {
-      try {
-        const status = await oauthApi.status();
+  // Monitor status changes
+  useEffect(() => {
+    if (!isPolling || !statusData) return;
 
-        // Check if popup is closed
-        if (popupRef.current?.closed) {
-          stopPolling();
-          if (!status.logged_in) {
-            setState({
-              type: 'error',
-              message:
-                'OAuth window was closed before completing authentication',
-            });
-          }
-        }
-
-        // If logged in, we're done
-        if (status.logged_in && status.profile) {
-          stopPolling();
-          if (popupRef.current && !popupRef.current.closed) {
-            popupRef.current.close();
-          }
-          setState({ type: 'success', profile: status.profile });
-          setTimeout(() => {
-            modal.resolve(status.profile);
-            modal.hide();
-          }, 1500);
-        }
-      } catch (error) {
-        stopPolling();
+    // Check if popup is closed
+    if (popupRef.current?.closed) {
+      setIsPolling(false);
+      if (!statusData.logged_in) {
         setState({
           type: 'error',
-          message:
-            error instanceof Error
-              ? error.message
-              : 'Failed to check OAuth status',
+          message: 'OAuth window was closed before completing authentication',
         });
       }
-    }, 1000); // Poll every second
+    }
+
+    // If logged in, stop polling and trigger success
+    if (statusData.logged_in && statusData.profile) {
+      setIsPolling(false);
+      if (popupRef.current && !popupRef.current.closed) {
+        popupRef.current.close();
+      }
+
+      // Reload user system to refresh login status
+      reloadSystem();
+
+      setState({ type: 'success', profile: statusData.profile });
+      setTimeout(() => {
+        modal.resolve(statusData.profile);
+        modal.hide();
+      }, 1500);
+    }
+  }, [statusData, isPolling, modal, reloadSystem]);
+
+  const handleProviderSelect = (provider: OAuthProvider) => {
+    setState({ type: 'waiting', provider });
+
+    // Get the current window location as return_to
+    const returnTo = `${window.location.origin}/api/auth/handoff/complete`;
+
+    // Initialize handoff flow
+    initHandoff.mutate({ provider, returnTo });
   };
 
   const handleClose = () => {
-    stopPolling();
+    setIsPolling(false);
     if (popupRef.current && !popupRef.current.closed) {
       popupRef.current.close();
     }
@@ -120,24 +132,17 @@ const OAuthDialog = NiceModal.create(() => {
   };
 
   const handleBack = () => {
-    stopPolling();
+    setIsPolling(false);
     if (popupRef.current && !popupRef.current.closed) {
       popupRef.current.close();
     }
     setState({ type: 'select' });
   };
 
-  const stopPolling = () => {
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-      pollingIntervalRef.current = null;
-    }
-  };
-
   // Cleanup polling when dialog closes
   useEffect(() => {
     if (!modal.visible) {
-      stopPolling();
+      setIsPolling(false);
       if (popupRef.current && !popupRef.current.closed) {
         popupRef.current.close();
       }

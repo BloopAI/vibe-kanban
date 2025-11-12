@@ -24,7 +24,7 @@ import type {
   TaskWithAttemptStatus,
 } from 'shared/types';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks';
 import { LoginRequiredPrompt } from '@/components/dialogs/shared/LoginRequiredPrompt';
 
 export interface GitActionsDialogProps {

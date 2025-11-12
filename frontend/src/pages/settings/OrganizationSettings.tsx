@@ -19,7 +19,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, UserPlus, Plus, Trash2 } from 'lucide-react';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationSelection } from '@/hooks/useOrganizationSelection';
-import { useOrganizationMembersQuery } from '@/hooks/useOrganizationMembersQuery';
+import { useOrganizationMembers } from '@/hooks/useOrganizationMembers';
 import { useOrganizationInvitations } from '@/hooks/useOrganizationInvitations';
 import { useOrganizationMutations } from '@/hooks/useOrganizationMutations';
 import { useUserSystem } from '@/components/config-provider';
@@ -70,7 +70,7 @@ export function OrganizationSettings() {
 
   // Fetch members using query hook
   const { data: members = [], isLoading: loadingMembers } =
-    useOrganizationMembersQuery({
+    useOrganizationMembers({
       organizationId: selectedOrgId || null,
     });
 

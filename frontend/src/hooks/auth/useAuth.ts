@@ -1,4 +1,4 @@
-import { useUserSystem } from '../components/config-provider';
+import { useUserSystem } from '../../components/config-provider';
 
 /**
  * Simple auth hook that wraps UserSystemProvider's loginStatus

@@ -17,7 +17,7 @@ import { openTaskForm } from '@/lib/openTaskForm';
 import { ViewRelatedTasksDialog } from '@/components/dialogs/tasks/ViewRelatedTasksDialog';
 import { useNavigate } from 'react-router-dom';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks';
 
 interface ActionsDropdownProps {
   task?: TaskWithAttemptStatus | null;

@@ -59,7 +59,7 @@ import TaskAttemptPanel from '@/components/panels/TaskAttemptPanel';
 import TaskPanel from '@/components/panels/TaskPanel';
 import SharedTaskPanel from '@/components/panels/SharedTaskPanel';
 import TodoPanel from '@/components/tasks/TodoPanel';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks';
 import { NewCard, NewCardHeader } from '@/components/ui/new-card';
 import {
   Breadcrumb,

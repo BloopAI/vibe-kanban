@@ -17,7 +17,7 @@ import { Loader2 } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { useMutation } from '@tanstack/react-query';
 import { LoginRequiredPrompt } from '@/components/dialogs/shared/LoginRequiredPrompt';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks';
 
 export interface ShareDialogProps {
   task: TaskWithAttemptStatus;
