@@ -234,9 +234,7 @@ impl From<RemoteClientError> for ApiError {
             RemoteClientError::Transport(msg) => {
                 ApiError::Conflict(format!("Remote service unavailable: {}", msg))
             }
-            RemoteClientError::Timeout => {
-                ApiError::Conflict("Remote service timeout".to_string())
-            }
+            RemoteClientError::Timeout => ApiError::Conflict("Remote service timeout".to_string()),
             RemoteClientError::Http { body, .. } => {
                 // Try to extract message from JSON error response
                 ApiError::Conflict(body)

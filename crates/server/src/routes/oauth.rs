@@ -44,7 +44,8 @@ async fn handoff_init(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<HandoffInitPayload>,
 ) -> Result<ResponseJson<ApiResponse<HandoffInitResponseBody>>, ApiError> {
-    let remote_client = deployment.remote_client()
+    let remote_client = deployment
+        .remote_client()
         .ok_or(AuthedClientInitError::NotConfigured)?;
 
     let app_verifier = generate_secret();
@@ -111,7 +112,8 @@ async fn handoff_complete(
         }
     };
 
-    let remote_client = deployment.remote_client()
+    let remote_client = deployment
+        .remote_client()
         .ok_or(AuthedClientInitError::NotConfigured)?;
 
     let redeem_request = HandoffRedeemRequest {
@@ -189,7 +191,10 @@ async fn logout(State(deployment): State<DeploymentImpl>) -> Result<StatusCode, 
     let credentials = auth_context.get_credentials().await;
 
     if let (Some(remote_client), Some(creds)) = (deployment.remote_client(), credentials.as_ref()) {
-        let _ = remote_client.authenticated(&creds.access_token).logout().await;
+        let _ = remote_client
+            .authenticated(&creds.access_token)
+            .logout()
+            .await;
     }
 
     auth_context.clear_credentials().await.map_err(|e| {

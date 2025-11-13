@@ -69,7 +69,11 @@ pub async fn link_project_to_existing_remote(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<LinkToExistingRequest>,
 ) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
-    let remote_project = deployment.authenticated_remote_client().await?.get_project(payload.remote_project_id).await?;
+    let remote_project = deployment
+        .authenticated_remote_client()
+        .await?
+        .get_project(payload.remote_project_id)
+        .await?;
 
     let updated_project =
         apply_remote_project_link(&deployment, project_id, remote_project).await?;
@@ -89,11 +93,15 @@ pub async fn create_and_link_remote_project(
         ));
     }
 
-    let remote_project = deployment.authenticated_remote_client().await?.create_project(&CreateRemoteProjectPayload {
-        organization_id: payload.organization_id,
-        name: repo_name,
-        metadata: None,
-    }).await?;
+    let remote_project = deployment
+        .authenticated_remote_client()
+        .await?
+        .create_project(&CreateRemoteProjectPayload {
+            organization_id: payload.organization_id,
+            name: repo_name,
+            metadata: None,
+        })
+        .await?;
 
     let updated_project =
         apply_remote_project_link(&deployment, project_id, remote_project).await?;
@@ -128,7 +136,11 @@ pub async fn get_remote_project_by_id(
     State(deployment): State<DeploymentImpl>,
     Path(remote_project_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<RemoteProject>>, ApiError> {
-    let remote_project = deployment.authenticated_remote_client().await?.get_project(remote_project_id).await?;
+    let remote_project = deployment
+        .authenticated_remote_client()
+        .await?
+        .get_project(remote_project_id)
+        .await?;
 
     Ok(ResponseJson(ApiResponse::success(remote_project)))
 }
@@ -143,7 +155,10 @@ pub async fn get_project_remote_members(
 
     let client = deployment.authenticated_remote_client().await?;
     let remote_project = client.get_project(remote_project_id).await?;
-    let members = client.list_members(remote_project.organization_id).await?.members;
+    let members = client
+        .list_members(remote_project.organization_id)
+        .await?
+        .members;
 
     Ok(ResponseJson(ApiResponse::success(
         RemoteProjectMembersResponse {
@@ -632,8 +647,6 @@ async fn search_files_in_repo(
 
     Ok(results)
 }
-
-
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let project_id_router = Router::new()
