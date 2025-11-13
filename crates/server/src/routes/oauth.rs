@@ -6,8 +6,8 @@ use axum::{
     routing::{get, post},
 };
 use deployment::Deployment;
-use local_deployment::AuthedClientInitError;
 use rand::{Rng, distributions::Alphanumeric};
+use services::RemoteClient;
 use serde::{Deserialize, Serialize};
 use services::services::{config::save_config_to_file, oauth_credentials::Credentials};
 use sha2::{Digest, Sha256};
@@ -44,9 +44,8 @@ async fn handoff_init(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<HandoffInitPayload>,
 ) -> Result<ResponseJson<ApiResponse<HandoffInitResponseBody>>, ApiError> {
-    let remote_client = deployment
-        .remote_client()
-        .ok_or(AuthedClientInitError::NotConfigured)?;
+    let remote = deployment.remote_client().ok_or_else(|| ApiError::BadRequest("Remote client not configured".into()))?;
+    let client = RemoteClient::new(remote.base_url())?;
 
     let app_verifier = generate_secret();
     let app_challenge = hash_sha256_hex(&app_verifier);
@@ -57,7 +56,7 @@ async fn handoff_init(
         app_challenge,
     };
 
-    let response = remote_client.handoff_init(&request).await?;
+    let response = client.handoff_init(&request).await?;
 
     deployment
         .store_oauth_handoff(response.handoff_id, payload.provider, app_verifier)
@@ -112,9 +111,8 @@ async fn handoff_complete(
         }
     };
 
-    let remote_client = deployment
-        .remote_client()
-        .ok_or(AuthedClientInitError::NotConfigured)?;
+    let remote = deployment.remote_client().ok_or_else(|| ApiError::BadRequest("Remote client not configured".into()))?;
+    let client = RemoteClient::new(remote.base_url())?;
 
     let redeem_request = HandoffRedeemRequest {
         handoff_id: query.handoff_id,
@@ -122,7 +120,7 @@ async fn handoff_complete(
         app_verifier,
     };
 
-    let redeem = remote_client.handoff_redeem(&redeem_request).await?;
+    let redeem = client.handoff_redeem(&redeem_request).await?;
 
     let credentials = Credentials {
         access_token: redeem.access_token.clone(),
@@ -173,13 +171,14 @@ async fn handoff_complete(
         drop(config_guard);
     }
 
-    let authed = remote_client.authenticated(&redeem.access_token);
-    match authed.profile().await {
-        Ok(profile) => deployment.auth_context().set_profile(profile).await,
-        Err(error) => {
-            tracing::warn!(?error, "failed to fetch profile after oauth handoff");
+    if let Ok(authed) = RemoteClient::with_token(remote.base_url(), &redeem.access_token) {
+        match authed.profile().await {
+            Ok(profile) => deployment.auth_context().set_profile(profile).await,
+            Err(error) => {
+                tracing::warn!(?error, "failed to fetch profile after oauth handoff");
+            }
         }
-    };
+    }
 
     Ok(close_window_response(format!(
         "Signed in with {provider}. You can return to the app."
@@ -190,11 +189,10 @@ async fn logout(State(deployment): State<DeploymentImpl>) -> Result<StatusCode, 
     let auth_context = deployment.auth_context();
     let credentials = auth_context.get_credentials().await;
 
-    if let (Some(remote_client), Some(creds)) = (deployment.remote_client(), credentials.as_ref()) {
-        let _ = remote_client
-            .authenticated(&creds.access_token)
-            .logout()
-            .await;
+    if let (Some(remote), Some(creds)) = (deployment.remote_client(), credentials.as_ref()) {
+        if let Ok(authed) = RemoteClient::with_token(remote.base_url(), &creds.access_token) {
+            let _ = authed.logout().await;
+        }
     }
 
     auth_context.clear_credentials().await.map_err(|e| {

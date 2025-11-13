@@ -10,7 +10,6 @@ use db::models::{
 use deployment::DeploymentError;
 use executors::executors::ExecutorError;
 use git2::Error as Git2Error;
-use local_deployment::AuthedClientInitError;
 use services::services::{
     config::ConfigError, container::ContainerError, drafts::DraftsServiceError,
     git::GitServiceError, github_service::GitHubServiceError, image::ImageError,
@@ -56,6 +55,8 @@ pub enum ApiError {
     RemoteClient(#[from] RemoteClientError),
     #[error("Unauthorized")]
     Unauthorized,
+    #[error("Bad request: {0}")]
+    BadRequest(String),
     #[error("Conflict: {0}")]
     Conflict(String),
     #[error("Forbidden: {0}")]
@@ -146,6 +147,7 @@ impl IntoResponse for ApiError {
                 }
             },
             ApiError::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized"),
+            ApiError::BadRequest(_) => (StatusCode::BAD_REQUEST, "BadRequest"),
             ApiError::Conflict(_) => (StatusCode::CONFLICT, "ConflictError"),
             ApiError::Forbidden(_) => (StatusCode::FORBIDDEN, "ForbiddenError"),
         };
@@ -215,6 +217,7 @@ impl IntoResponse for ApiError {
                 RemoteClientError::Url(_) => "Remote service URL is invalid.".to_string(),
             },
             ApiError::Unauthorized => "Unauthorized. Please sign in again.".to_string(),
+            ApiError::BadRequest(msg) => msg.clone(),
             ApiError::Conflict(msg) => msg.clone(),
             ApiError::Forbidden(msg) => msg.clone(),
             ApiError::Drafts(drafts_err) => match drafts_err {
@@ -290,13 +293,4 @@ impl From<ShareError> for ApiError {
     }
 }
 
-impl From<AuthedClientInitError> for ApiError {
-    fn from(err: AuthedClientInitError) -> Self {
-        match err {
-            AuthedClientInitError::NotConfigured => {
-                ApiError::Conflict("OAuth remote client not configured".to_string())
-            }
-            AuthedClientInitError::NotAuthenticated => ApiError::Unauthorized,
-        }
-    }
-}
+

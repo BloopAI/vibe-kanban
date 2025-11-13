@@ -9,16 +9,16 @@ use remote::routes::tasks::{
 use uuid::Uuid;
 
 use super::{ShareError, convert_remote_task, status};
-use crate::services::remote_client::AuthenticatedRemoteClient;
+use crate::services::remote_client::RemoteClient;
 
 #[derive(Clone)]
 pub struct SharePublisher {
     db: DBService,
-    client: AuthenticatedRemoteClient,
+    client: RemoteClient,
 }
 
 impl SharePublisher {
-    pub fn new(db: DBService, client: AuthenticatedRemoteClient) -> Self {
+    pub fn new(db: DBService, client: RemoteClient) -> Self {
         Self { db, client }
     }
 

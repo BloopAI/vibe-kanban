@@ -17,10 +17,9 @@ use services::services::{
     git::GitService,
     image::ImageService,
     oauth_credentials::OAuthCredentials,
-    remote_client::{AuthenticatedRemoteClient, RemoteClient, RemoteClientError},
+    remote_client::{RemoteClient, RemoteClientError},
     share::{RemoteSyncHandle, ShareConfig, SharePublisher},
 };
-use thiserror::Error;
 use tokio::sync::{Mutex, RwLock};
 use utils::{
     api::oauth::LoginStatus,
@@ -32,14 +31,6 @@ use uuid::Uuid;
 use crate::container::LocalContainerService;
 mod command;
 pub mod container;
-
-#[derive(Debug, Error)]
-pub enum AuthedClientInitError {
-    #[error("OAuth remote client not configured")]
-    NotConfigured,
-    #[error("Not authenticated")]
-    NotAuthenticated,
-}
 
 #[derive(Clone)]
 pub struct LocalDeployment {
@@ -169,9 +160,14 @@ impl Deployment for LocalDeployment {
             && let Some(creds) = oauth_credentials.get().await
         {
             let sc_owned = sc_ref.clone();
-            let authenticated_client = remote.authenticated(&creds.access_token);
-            share_publisher = Some(SharePublisher::new(db.clone(), authenticated_client));
-            share_sync_config = Some(sc_owned);
+            if let Ok(authenticated_client) = RemoteClient::with_token_and_timeout(
+                remote.base_url(),
+                &creds.access_token,
+                Duration::from_secs(30),
+            ) {
+                share_publisher = Some(SharePublisher::new(db.clone(), authenticated_client));
+                share_sync_config = Some(sc_owned);
+            }
         }
 
         // We need to make analytics accessible to the ContainerService
@@ -299,23 +295,6 @@ impl LocalDeployment {
         self.remote_client.clone()
     }
 
-    /// Returns an authenticated remote client ready to make API calls.
-    /// Combines remote_client and auth_context into a single operation.
-    pub async fn authenticated_remote_client(
-        &self,
-    ) -> Result<AuthenticatedRemoteClient, AuthedClientInitError> {
-        let remote_client = self
-            .remote_client
-            .as_ref()
-            .ok_or(AuthedClientInitError::NotConfigured)?;
-        let creds = self
-            .auth_context
-            .get_credentials()
-            .await
-            .ok_or(AuthedClientInitError::NotAuthenticated)?;
-        Ok(remote_client.authenticated(&creds.access_token))
-    }
-
     /// Convenience method to get the current JWT auth token.
     /// Returns None if the user is not authenticated.
     pub async fn auth_token(&self) -> Option<String> {
@@ -341,7 +320,15 @@ impl LocalDeployment {
             return LoginStatus::LoggedOut;
         };
 
-        let authed = remote_client.authenticated(&creds.access_token);
+        let authed = match RemoteClient::with_token_and_timeout(
+            remote_client.base_url(),
+            &creds.access_token,
+            Duration::from_secs(30),
+        ) {
+            Ok(client) => client,
+            Err(_) => return LoginStatus::LoggedOut,
+        };
+
         match authed.profile().await {
             Ok(profile) => {
                 self.auth_context.set_profile(profile.clone()).await;
