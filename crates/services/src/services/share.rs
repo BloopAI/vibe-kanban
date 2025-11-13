@@ -633,12 +633,14 @@ impl SharedTaskLinkingLock {
         self.count > 0
     }
 
+    #[allow(dead_code)]
     pub(super) fn guard(&mut self) -> SharedTaskLinkingGuard {
         self.count += 1;
         SharedTaskLinkingGuard
     }
 }
 
+#[allow(dead_code)]
 pub(super) struct SharedTaskLinkingGuard;
 
 impl Drop for SharedTaskLinkingGuard {
