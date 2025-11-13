@@ -34,6 +34,8 @@ services:
       VIBEKANBAN_REMOTE_JWT_SECRET: ${VIBEKANBAN_REMOTE_JWT_SECRET:?set in .env.remote}
       LOOPS_EMAIL_API_KEY: ${LOOPS_EMAIL_API_KEY:?set in .env.remote}
       SERVER_PUBLIC_BASE_URL: http://localhost:3000
+      VITE_APP_BASE_URL: http://localhost:3000
+      VITE_API_BASE_URL: http://localhost:3000
     ports:
       - "127.0.0.1:3000:8081"
     restart: unless-stopped

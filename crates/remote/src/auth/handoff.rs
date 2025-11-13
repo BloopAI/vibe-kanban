@@ -131,7 +131,7 @@ impl OAuthHandoffService {
 
         let return_to_url =
             Url::parse(return_to).map_err(|_| HandoffError::InvalidReturnUrl(return_to.into()))?;
-        if !is_allowed_return_to(&return_to_url) {
+        if !is_allowed_return_to(&return_to_url, &self.public_origin) {
             return Err(HandoffError::InvalidReturnUrl(return_to.into()));
         }
 
@@ -445,17 +445,18 @@ fn is_valid_challenge(challenge: &str) -> bool {
         && challenge.chars().all(|ch| ch.is_ascii_hexdigit())
 }
 
-fn is_allowed_return_to(url: &Url) -> bool {
-    if url.scheme() != "http" {
-        return false;
+fn is_allowed_return_to(url: &Url, public_origin: &str) -> bool {
+    if url.scheme() == "http" && matches!(url.host_str(), Some("127.0.0.1" | "localhost" | "[::1]"))
+    {
+        return true;
     }
 
-    match url.host_str() {
-        Some("127.0.0.1") | Some("localhost") | Some("[::1]") => {}
-        _ => return false,
-    }
-
-    true
+    url.scheme() == "https"
+        && Url::parse(public_origin).ok().is_some_and(|public_url| {
+            public_url.scheme() == "https"
+                && public_url.host_str().is_some()
+                && url.host_str() == public_url.host_str()
+        })
 }
 
 fn hash_sha256_hex(input: &str) -> String {
