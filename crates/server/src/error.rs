@@ -10,10 +10,11 @@ use db::models::{
 use deployment::DeploymentError;
 use executors::executors::ExecutorError;
 use git2::Error as Git2Error;
+use local_deployment::AuthedClientInitError;
 use services::services::{
     config::ConfigError, container::ContainerError, drafts::DraftsServiceError,
-    git::GitServiceError, github_service::GitHubServiceError, image::ImageError, share::ShareError,
-    worktree_manager::WorktreeError,
+    git::GitServiceError, github_service::GitHubServiceError, image::ImageError,
+    remote_client::RemoteClientError, share::ShareError, worktree_manager::WorktreeError,
 };
 use thiserror::Error;
 use utils::response::ApiResponse;
@@ -210,6 +211,38 @@ impl From<ShareError> for ApiError {
             ShareError::InvalidUserId => ApiError::Conflict("Invalid user ID format".to_string()),
             ShareError::InvalidOrganizationId => {
                 ApiError::Conflict("Invalid organization ID format".to_string())
+            }
+        }
+    }
+}
+
+impl From<AuthedClientInitError> for ApiError {
+    fn from(err: AuthedClientInitError) -> Self {
+        match err {
+            AuthedClientInitError::NotConfigured => {
+                ApiError::Conflict("OAuth remote client not configured".to_string())
+            }
+            AuthedClientInitError::NotAuthenticated => ApiError::Unauthorized,
+        }
+    }
+}
+
+impl From<RemoteClientError> for ApiError {
+    fn from(err: RemoteClientError) -> Self {
+        match err {
+            RemoteClientError::Auth => ApiError::Unauthorized,
+            RemoteClientError::Transport(msg) => {
+                ApiError::Conflict(format!("Remote service unavailable: {}", msg))
+            }
+            RemoteClientError::Timeout => {
+                ApiError::Conflict("Remote service timeout".to_string())
+            }
+            RemoteClientError::Http { body, .. } => {
+                // Try to extract message from JSON error response
+                ApiError::Conflict(body)
+            }
+            RemoteClientError::Api(_) | RemoteClientError::Serde(_) | RemoteClientError::Url(_) => {
+                ApiError::Conflict(format!("Remote client error: {}", err))
             }
         }
     }

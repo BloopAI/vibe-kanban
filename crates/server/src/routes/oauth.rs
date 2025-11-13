@@ -6,11 +6,10 @@ use axum::{
     routing::{get, post},
 };
 use deployment::Deployment;
+use local_deployment::AuthedClientInitError;
 use rand::{Rng, distributions::Alphanumeric};
 use serde::{Deserialize, Serialize};
-use services::services::{
-    config::save_config_to_file, oauth_credentials::Credentials, remote_client::RemoteClientError,
-};
+use services::services::{config::save_config_to_file, oauth_credentials::Credentials};
 use sha2::{Digest, Sha256};
 use utils::{
     api::oauth::{HandoffInitRequest, HandoffRedeemRequest, StatusResponse},
@@ -45,9 +44,8 @@ async fn handoff_init(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<HandoffInitPayload>,
 ) -> Result<ResponseJson<ApiResponse<HandoffInitResponseBody>>, ApiError> {
-    let remote_client = deployment
-        .remote_client()
-        .ok_or_else(|| ApiError::Conflict("OAuth remote client not configured".to_string()))?;
+    let remote_client = deployment.remote_client()
+        .ok_or(AuthedClientInitError::NotConfigured)?;
 
     let app_verifier = generate_secret();
     let app_challenge = hash_sha256_hex(&app_verifier);
@@ -58,10 +56,7 @@ async fn handoff_init(
         app_challenge,
     };
 
-    let response = remote_client.handoff_init(&request).await.map_err(|e| {
-        tracing::error!(?e, "failed to initiate oauth handoff");
-        ApiError::Conflict(format!("Failed to initiate OAuth: {}", e))
-    })?;
+    let response = remote_client.handoff_init(&request).await?;
 
     deployment
         .store_oauth_handoff(response.handoff_id, payload.provider, app_verifier)
@@ -116,9 +111,8 @@ async fn handoff_complete(
         }
     };
 
-    let remote_client = deployment
-        .remote_client()
-        .ok_or_else(|| ApiError::Conflict("OAuth remote client not configured".to_string()))?;
+    let remote_client = deployment.remote_client()
+        .ok_or(AuthedClientInitError::NotConfigured)?;
 
     let redeem_request = HandoffRedeemRequest {
         handoff_id: query.handoff_id,
@@ -126,13 +120,7 @@ async fn handoff_complete(
         app_verifier,
     };
 
-    let redeem = remote_client
-        .handoff_redeem(&redeem_request)
-        .await
-        .map_err(|e| {
-            tracing::error!(?e, "failed to redeem oauth app code");
-            ApiError::Conflict(format!("Failed to redeem OAuth code: {}", e))
-        })?;
+    let redeem = remote_client.handoff_redeem(&redeem_request).await?;
 
     let credentials = Credentials {
         access_token: redeem.access_token.clone(),
@@ -200,22 +188,8 @@ async fn logout(State(deployment): State<DeploymentImpl>) -> Result<StatusCode, 
     let auth_context = deployment.auth_context();
     let credentials = auth_context.get_credentials().await;
 
-    if let (Some(remote_client), Some(creds)) = (deployment.remote_client(), credentials.as_ref())
-        && let Err(error) = remote_client
-            .authenticated(&creds.access_token)
-            .logout()
-            .await
-    {
-        match error {
-            RemoteClientError::Auth => {
-                tracing::debug!(
-                    "remote session already invalid during logout; continuing with local cleanup"
-                );
-            }
-            other => {
-                tracing::warn!(?other, "failed to revoke remote session during logout");
-            }
-        }
+    if let (Some(remote_client), Some(creds)) = (deployment.remote_client(), credentials.as_ref()) {
+        let _ = remote_client.authenticated(&creds.access_token).logout().await;
     }
 
     auth_context.clear_credentials().await.map_err(|e| {

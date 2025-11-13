@@ -19,7 +19,7 @@ use services::services::{
     file_ranker::FileRanker,
     file_search_cache::{CacheError, SearchMode, SearchQuery},
     git::GitBranch,
-    remote_client::{CreateRemoteProjectPayload, RemoteClientError},
+    remote_client::CreateRemoteProjectPayload,
     share::link_shared_tasks_to_project,
 };
 use ts_rs::TS;
@@ -69,15 +69,7 @@ pub async fn link_project_to_existing_remote(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<LinkToExistingRequest>,
 ) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
-    let client = deployment
-        .authenticated_remote_client()
-        .await
-        .map_err(|e| ApiError::Conflict(e.to_string()))?;
-
-    let remote_project = client
-        .get_project(payload.remote_project_id)
-        .await
-        .map_err(map_remote_error)?;
+    let remote_project = deployment.authenticated_remote_client().await?.get_project(payload.remote_project_id).await?;
 
     let updated_project =
         apply_remote_project_link(&deployment, project_id, remote_project).await?;
@@ -90,11 +82,6 @@ pub async fn create_and_link_remote_project(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateRemoteProjectRequest>,
 ) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
-    let client = deployment
-        .authenticated_remote_client()
-        .await
-        .map_err(|e| ApiError::Conflict(e.to_string()))?;
-
     let repo_name = payload.name.trim().to_string();
     if repo_name.trim().is_empty() {
         return Err(ApiError::Conflict(
@@ -102,14 +89,11 @@ pub async fn create_and_link_remote_project(
         ));
     }
 
-    let remote_project = client
-        .create_project(&CreateRemoteProjectPayload {
-            organization_id: payload.organization_id,
-            name: repo_name,
-            metadata: None,
-        })
-        .await
-        .map_err(map_remote_error)?;
+    let remote_project = deployment.authenticated_remote_client().await?.create_project(&CreateRemoteProjectPayload {
+        organization_id: payload.organization_id,
+        name: repo_name,
+        metadata: None,
+    }).await?;
 
     let updated_project =
         apply_remote_project_link(&deployment, project_id, remote_project).await?;
@@ -144,15 +128,7 @@ pub async fn get_remote_project_by_id(
     State(deployment): State<DeploymentImpl>,
     Path(remote_project_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<RemoteProject>>, ApiError> {
-    let client = deployment
-        .authenticated_remote_client()
-        .await
-        .map_err(|e| ApiError::Conflict(e.to_string()))?;
-
-    let remote_project = client
-        .get_project(remote_project_id)
-        .await
-        .map_err(map_remote_error)?;
+    let remote_project = deployment.authenticated_remote_client().await?.get_project(remote_project_id).await?;
 
     Ok(ResponseJson(ApiResponse::success(remote_project)))
 }
@@ -161,25 +137,13 @@ pub async fn get_project_remote_members(
     State(deployment): State<DeploymentImpl>,
     Extension(project): Extension<Project>,
 ) -> Result<ResponseJson<ApiResponse<RemoteProjectMembersResponse>>, ApiError> {
-    let client = deployment
-        .authenticated_remote_client()
-        .await
-        .map_err(|e| ApiError::Conflict(e.to_string()))?;
-
     let remote_project_id = project.remote_project_id.ok_or_else(|| {
         ApiError::Conflict("Project is not linked to a remote project".to_string())
     })?;
 
-    let remote_project = client
-        .get_project(remote_project_id)
-        .await
-        .map_err(map_remote_error)?;
-
-    let members = client
-        .list_members(remote_project.organization_id)
-        .await
-        .map_err(map_remote_error)?
-        .members;
+    let client = deployment.authenticated_remote_client().await?;
+    let remote_project = client.get_project(remote_project_id).await?;
+    let members = client.list_members(remote_project.organization_id).await?.members;
 
     Ok(ResponseJson(ApiResponse::success(
         RemoteProjectMembersResponse {
@@ -669,26 +633,7 @@ async fn search_files_in_repo(
     Ok(results)
 }
 
-fn map_remote_error(error: RemoteClientError) -> ApiError {
-    match error {
-        RemoteClientError::Auth => ApiError::Unauthorized,
-        RemoteClientError::Http { status: 404, .. } => {
-            ApiError::Conflict("Remote project not found".to_string())
-        }
-        RemoteClientError::Transport(msg) => {
-            ApiError::Conflict(format!("Remote service unavailable: {msg}"))
-        }
-        RemoteClientError::Timeout => ApiError::Conflict("Remote service timeout".to_string()),
-        RemoteClientError::Http { status, body } => {
-            tracing::error!(?status, ?body, "Remote project API error");
-            ApiError::Conflict(format!("Remote service error: {status}"))
-        }
-        other => {
-            tracing::error!(?other, "Unexpected remote client error");
-            ApiError::Conflict("Failed to contact remote project service".to_string())
-        }
-    }
-}
+
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let project_id_router = Router::new()
