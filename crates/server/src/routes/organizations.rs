@@ -73,7 +73,8 @@ async fn list_organization_projects(
         .access_token;
 
     let response = remote_client
-        .list_projects(&token, org_id)
+        .authenticated(&token)
+        .list_projects(org_id)
         .await
         .map_err(map_remote_error)?;
 
@@ -95,7 +96,8 @@ async fn list_organizations(
         .access_token;
 
     let response = remote_client
-        .list_organizations(&token)
+        .authenticated(&token)
+        .list_organizations()
         .await
         .map_err(map_remote_error)?;
 
@@ -118,7 +120,8 @@ async fn get_organization(
         .access_token;
 
     let response = remote_client
-        .get_organization(&token, id)
+        .authenticated(&token)
+        .get_organization(id)
         .await
         .map_err(map_remote_error)?;
 
@@ -141,7 +144,8 @@ async fn create_organization(
         .access_token;
 
     let response = remote_client
-        .create_organization(&token, &request)
+        .authenticated(&token)
+        .create_organization(&request)
         .await
         .map_err(map_remote_error)?;
 
@@ -165,7 +169,8 @@ async fn update_organization(
         .access_token;
 
     let response = remote_client
-        .update_organization(&token, id, &request)
+        .authenticated(&token)
+        .update_organization(id, &request)
         .await
         .map_err(map_remote_error)?;
 
@@ -188,7 +193,8 @@ async fn delete_organization(
         .access_token;
 
     remote_client
-        .delete_organization(&token, id)
+        .authenticated(&token)
+        .delete_organization(id)
         .await
         .map_err(map_remote_error)?;
 
@@ -212,7 +218,8 @@ async fn create_invitation(
         .access_token;
 
     let response = remote_client
-        .create_invitation(&token, org_id, &request)
+        .authenticated(&token)
+        .create_invitation(org_id, &request)
         .await
         .map_err(map_remote_error)?;
 
@@ -235,7 +242,8 @@ async fn list_invitations(
         .access_token;
 
     let response = remote_client
-        .list_invitations(&token, org_id)
+        .authenticated(&token)
+        .list_invitations(org_id)
         .await
         .map_err(map_remote_error)?;
 
@@ -275,7 +283,8 @@ async fn revoke_invitation(
         .access_token;
 
     remote_client
-        .revoke_invitation(&token, org_id, payload.invitation_id)
+        .authenticated(&token)
+        .revoke_invitation(org_id, payload.invitation_id)
         .await
         .map_err(map_remote_error)?;
 
@@ -298,7 +307,8 @@ async fn accept_invitation(
         .access_token;
 
     let response = remote_client
-        .accept_invitation(&token, &invitation_token)
+        .authenticated(&token)
+        .accept_invitation(&invitation_token)
         .await
         .map_err(map_remote_error)?;
 
@@ -321,7 +331,8 @@ async fn list_members(
         .access_token;
 
     let response = remote_client
-        .list_members(&token, org_id)
+        .authenticated(&token)
+        .list_members(org_id)
         .await
         .map_err(map_remote_error)?;
 
@@ -344,7 +355,8 @@ async fn remove_member(
         .access_token;
 
     remote_client
-        .remove_member(&token, org_id, user_id)
+        .authenticated(&token)
+        .remove_member(org_id, user_id)
         .await
         .map_err(map_remote_error)?;
 
@@ -368,7 +380,8 @@ async fn update_member_role(
         .access_token;
 
     let response = remote_client
-        .update_member_role(&token, org_id, user_id, &request)
+        .authenticated(&token)
+        .update_member_role(org_id, user_id, &request)
         .await
         .map_err(map_remote_error)?;
 

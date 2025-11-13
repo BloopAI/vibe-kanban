@@ -80,7 +80,8 @@ pub async fn link_project_to_existing_remote(
         .ok_or(ApiError::Unauthorized)?;
 
     let remote_project = remote_client
-        .get_project(&creds.access_token, payload.remote_project_id)
+        .authenticated(&creds.access_token)
+        .get_project(payload.remote_project_id)
         .await
         .map_err(map_remote_error)?;
 
@@ -113,14 +114,12 @@ pub async fn create_and_link_remote_project(
     }
 
     let remote_project = remote_client
-        .create_project(
-            &creds.access_token,
-            &CreateRemoteProjectPayload {
-                organization_id: payload.organization_id,
-                name: repo_name,
-                metadata: None,
-            },
-        )
+        .authenticated(&creds.access_token)
+        .create_project(&CreateRemoteProjectPayload {
+            organization_id: payload.organization_id,
+            name: repo_name,
+            metadata: None,
+        })
         .await
         .map_err(map_remote_error)?;
 
@@ -168,7 +167,8 @@ pub async fn get_remote_project_by_id(
         .ok_or(ApiError::Unauthorized)?;
 
     let remote_project = remote_client
-        .get_project(&creds.access_token, remote_project_id)
+        .authenticated(&creds.access_token)
+        .get_project(remote_project_id)
         .await
         .map_err(map_remote_error)?;
 
@@ -194,12 +194,14 @@ pub async fn get_project_remote_members(
     })?;
 
     let remote_project = remote_client
-        .get_project(&creds.access_token, remote_project_id)
+        .authenticated(&creds.access_token)
+        .get_project(remote_project_id)
         .await
         .map_err(map_remote_error)?;
 
     let members = remote_client
-        .list_members(&creds.access_token, remote_project.organization_id)
+        .authenticated(&creds.access_token)
+        .list_members(remote_project.organization_id)
         .await
         .map_err(map_remote_error)?
         .members;

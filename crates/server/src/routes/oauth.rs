@@ -183,7 +183,8 @@ async fn handoff_complete(
         drop(config_guard);
     }
 
-    match remote_client.profile(&redeem.access_token).await {
+    let authed = remote_client.authenticated(&redeem.access_token);
+    match authed.profile().await {
         Ok(profile) => deployment.auth_context().set_profile(profile).await,
         Err(error) => {
             tracing::warn!(?error, "failed to fetch profile after oauth handoff");
@@ -200,7 +201,7 @@ async fn logout(State(deployment): State<DeploymentImpl>) -> Result<StatusCode, 
     let credentials = auth_context.get_credentials().await;
 
     if let (Some(remote_client), Some(creds)) = (deployment.remote_client(), credentials.as_ref())
-        && let Err(error) = remote_client.logout(&creds.access_token).await
+        && let Err(error) = remote_client.authenticated(&creds.access_token).logout().await
     {
         match error {
             RemoteClientError::Auth => {

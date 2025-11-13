@@ -322,7 +322,8 @@ impl LocalDeployment {
             return LoginStatus::LoggedOut;
         };
 
-        match remote_client.profile(&creds.access_token).await {
+        let authed = remote_client.authenticated(&creds.access_token);
+        match authed.profile().await {
             Ok(profile) => {
                 self.auth_context.set_profile(profile.clone()).await;
                 LoginStatus::LoggedIn { profile }
