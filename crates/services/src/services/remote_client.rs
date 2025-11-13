@@ -486,12 +486,16 @@ impl AuthenticatedRemoteClient {
 
     /// Revokes the session associated with the token.
     pub async fn logout(&self) -> Result<(), RemoteClientError> {
-        self.client.post_empty("/v1/oauth/logout", &self.token).await
+        self.client
+            .post_empty("/v1/oauth/logout", &self.token)
+            .await
     }
 
     /// Lists organizations for the authenticated user.
     pub async fn list_organizations(&self) -> Result<ListOrganizationsResponse, RemoteClientError> {
-        self.client.get_json("/v1/organizations", Some(&self.token)).await
+        self.client
+            .get_json("/v1/organizations", Some(&self.token))
+            .await
     }
 
     /// Lists projects for a given organization.
@@ -503,10 +507,7 @@ impl AuthenticatedRemoteClient {
         self.client.get_json(&path, Some(&self.token)).await
     }
 
-    pub async fn get_project(
-        &self,
-        project_id: Uuid,
-    ) -> Result<RemoteProject, RemoteClientError> {
+    pub async fn get_project(&self, project_id: Uuid) -> Result<RemoteProject, RemoteClientError> {
         self.client
             .get_json(&format!("/v1/projects/{project_id}"), Some(&self.token))
             .await
@@ -622,12 +623,19 @@ impl AuthenticatedRemoteClient {
         org_id: Uuid,
     ) -> Result<ListMembersResponse, RemoteClientError> {
         self.client
-            .get_json(&format!("/v1/organizations/{org_id}/members"), Some(&self.token))
+            .get_json(
+                &format!("/v1/organizations/{org_id}/members"),
+                Some(&self.token),
+            )
             .await
     }
 
     /// Removes a member from an organization.
-    pub async fn remove_member(&self, org_id: Uuid, user_id: Uuid) -> Result<(), RemoteClientError> {
+    pub async fn remove_member(
+        &self,
+        org_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<(), RemoteClientError> {
         self.client
             .delete(
                 &format!("/v1/organizations/{org_id}/members/{user_id}"),
