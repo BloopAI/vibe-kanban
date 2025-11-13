@@ -7,6 +7,7 @@ import type {
   CreateOrganizationResponse,
   CreateInvitationRequest,
   CreateInvitationResponse,
+  ListOrganizationsResponse,
 } from 'shared/types';
 
 interface UseOrganizationMutationsOptions {
@@ -34,7 +35,18 @@ export function useOrganizationMutations(
     mutationFn: (data: CreateOrganizationRequest) =>
       organizationsApi.createOrganization(data),
     onSuccess: (result: CreateOrganizationResponse) => {
-      // Invalidate user's organizations list to include the new organization
+      // Immediately add new org to cache to prevent race condition with selection
+      queryClient.setQueryData<ListOrganizationsResponse>(
+        ['user', 'organizations'],
+        (old) => {
+          if (!old) return { organizations: [result.organization] };
+          return {
+            organizations: [...old.organizations, result.organization],
+          };
+        }
+      );
+
+      // Then invalidate to ensure server data stays fresh
       queryClient.invalidateQueries({ queryKey: ['user', 'organizations'] });
       options?.onCreateSuccess?.(result);
     },

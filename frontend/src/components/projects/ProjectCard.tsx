@@ -94,13 +94,10 @@ function ProjectCard({
 
   const handleLinkProject = async () => {
     try {
-      const result = await showLinkProject({
+      await showLinkProject({
         projectId: project.id,
         projectName: project.name,
       });
-      if (result.action === 'linked') {
-        onEdit(project);
-      }
     } catch (error) {
       console.error('Failed to link project:', error);
     }
