@@ -136,7 +136,7 @@ impl Deployment for LocalDeployment {
         let auth_context = AuthContext::new(oauth_credentials.clone(), profile_cache.clone());
 
         let remote_client = match std::env::var("VK_SHARED_API_BASE") {
-            Ok(url) => match RemoteClient::with_auth_and_timeout(&url, auth_context.clone(), Duration::from_secs(30)) {
+            Ok(url) => match RemoteClient::with_auth(&url, auth_context.clone()) {
                 Ok(client) => {
                     tracing::info!("Remote client initialized with URL: {}", url);
                     Ok(client)

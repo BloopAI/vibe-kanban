@@ -126,14 +126,12 @@ impl Clone for RemoteClient {
 }
 
 impl RemoteClient {
-    pub fn new(base_url: &str) -> Result<Self, RemoteClientError> {
-        Self::new_with_timeout(base_url, Duration::from_secs(10))
-    }
+    const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
-    pub fn new_with_timeout(base_url: &str, timeout: Duration) -> Result<Self, RemoteClientError> {
+    pub fn new(base_url: &str) -> Result<Self, RemoteClientError> {
         let base = Url::parse(base_url).map_err(|e| RemoteClientError::Url(e.to_string()))?;
         let http = Client::builder()
-            .timeout(timeout)
+            .timeout(Self::REQUEST_TIMEOUT)
             .user_agent(concat!("remote-client/", env!("CARGO_PKG_VERSION")))
             .build()
             .map_err(|e| RemoteClientError::Transport(e.to_string()))?;
@@ -146,18 +144,9 @@ impl RemoteClient {
 
     /// Creates a client with an AuthContext.
     pub fn with_auth(base_url: &str, auth_context: AuthContext) -> Result<Self, RemoteClientError> {
-        Self::with_auth_and_timeout(base_url, auth_context, Duration::from_secs(10))
-    }
-
-    /// Creates a client with an AuthContext and custom timeout.
-    pub fn with_auth_and_timeout(
-        base_url: &str,
-        auth_context: AuthContext,
-        timeout: Duration,
-    ) -> Result<Self, RemoteClientError> {
         let base = Url::parse(base_url).map_err(|e| RemoteClientError::Url(e.to_string()))?;
         let http = Client::builder()
-            .timeout(timeout)
+            .timeout(Self::REQUEST_TIMEOUT)
             .user_agent(concat!("remote-client/", env!("CARGO_PKG_VERSION")))
             .build()
             .map_err(|e| RemoteClientError::Transport(e.to_string()))?;
