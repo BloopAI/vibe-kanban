@@ -3,9 +3,12 @@
 use std::time::Duration;
 
 use backon::{ExponentialBuilder, Retryable};
-use remote::routes::tasks::{
-    AssignSharedTaskRequest, CreateSharedTaskRequest, DeleteSharedTaskRequest, SharedTaskResponse,
-    UpdateSharedTaskRequest,
+use remote::{
+    activity::ActivityResponse,
+    routes::tasks::{
+        AssignSharedTaskRequest, BulkSharedTasksResponse, CreateSharedTaskRequest,
+        DeleteSharedTaskRequest, SharedTaskResponse, UpdateSharedTaskRequest,
+    },
 };
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -104,7 +107,10 @@ impl std::fmt::Debug for RemoteClient {
         f.debug_struct("RemoteClient")
             .field("base", &self.base)
             .field("http", &self.http)
-            .field("auth_context", &self.auth_context.as_ref().map(|_| "<present>"))
+            .field(
+                "auth_context",
+                &self.auth_context.as_ref().map(|_| "<present>"),
+            )
             .finish()
     }
 }
@@ -165,7 +171,10 @@ impl RemoteClient {
     /// Returns the token if available.
     async fn require_token(&self) -> Result<String, RemoteClientError> {
         let auth_context = self.auth_context.as_ref().ok_or(RemoteClientError::Auth)?;
-        let creds = auth_context.get_credentials().await.ok_or(RemoteClientError::Auth)?;
+        let creds = auth_context
+            .get_credentials()
+            .await
+            .ok_or(RemoteClientError::Auth)?;
         Ok(creds.access_token)
     }
 
@@ -327,13 +336,8 @@ impl RemoteClient {
 
     async fn delete_authed(&self, path: &str) -> Result<(), RemoteClientError> {
         let token = self.require_token().await?;
-        self.send(
-            reqwest::Method::DELETE,
-            path,
-            Some(&token),
-            None::<&()>,
-        )
-        .await?;
+        self.send(reqwest::Method::DELETE, path, Some(&token), None::<&()>)
+            .await?;
         Ok(())
     }
 
@@ -386,7 +390,8 @@ impl RemoteClient {
         &self,
         org_id: Uuid,
     ) -> Result<GetOrganizationResponse, RemoteClientError> {
-        self.get_authed(&format!("/v1/organizations/{org_id}")).await
+        self.get_authed(&format!("/v1/organizations/{org_id}"))
+            .await
     }
 
     /// Creates a new organization.
@@ -409,7 +414,8 @@ impl RemoteClient {
 
     /// Deletes an organization.
     pub async fn delete_organization(&self, org_id: Uuid) -> Result<(), RemoteClientError> {
-        self.delete_authed(&format!("/v1/organizations/{org_id}")).await
+        self.delete_authed(&format!("/v1/organizations/{org_id}"))
+            .await
     }
 
     /// Creates an invitation to an organization.
@@ -506,7 +512,8 @@ impl RemoteClient {
         task_id: Uuid,
         request: &UpdateSharedTaskRequest,
     ) -> Result<SharedTaskResponse, RemoteClientError> {
-        self.patch_authed(&format!("/v1/tasks/{task_id}"), request).await
+        self.patch_authed(&format!("/v1/tasks/{task_id}"), request)
+            .await
     }
 
     /// Assigns a shared task to a user.
@@ -537,6 +544,29 @@ impl RemoteClient {
         res.json::<SharedTaskResponse>()
             .await
             .map_err(|e| RemoteClientError::Serde(e.to_string()))
+    }
+
+    /// Fetches activity events for a project.
+    pub async fn fetch_activity(
+        &self,
+        project_id: Uuid,
+        after: Option<i64>,
+        limit: u32,
+    ) -> Result<ActivityResponse, RemoteClientError> {
+        let mut path = format!("/v1/activity?project_id={project_id}&limit={limit}");
+        if let Some(seq) = after {
+            path.push_str(&format!("&after={seq}"));
+        }
+        self.get_authed(&path).await
+    }
+
+    /// Fetches bulk snapshot of shared tasks for a project.
+    pub async fn fetch_bulk_snapshot(
+        &self,
+        project_id: Uuid,
+    ) -> Result<BulkSharedTasksResponse, RemoteClientError> {
+        self.get_authed(&format!("/v1/tasks/bulk?project_id={project_id}"))
+            .await
     }
 }
 

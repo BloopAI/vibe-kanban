@@ -40,7 +40,10 @@ use uuid::Uuid;
 
 use crate::{
     RemoteClientError,
-    services::{auth::AuthContext, git::GitServiceError, github_service::GitHubServiceError},
+    services::{
+        auth::AuthContext, git::GitServiceError, github_service::GitHubServiceError,
+        remote_client::RemoteClient,
+    },
 };
 
 #[derive(Debug, Error)]
@@ -129,7 +132,9 @@ pub struct RemoteSync {
 impl RemoteSync {
     pub fn spawn(db: DBService, config: ShareConfig, auth_ctx: AuthContext) -> RemoteSyncHandle {
         tracing::info!(api = %config.api_base, "starting shared task synchronizer");
-        let processor = ActivityProcessor::new(db.clone(), config.clone(), auth_ctx.clone());
+        let remote_client = RemoteClient::with_auth(config.api_base.as_str(), auth_ctx.clone())
+            .expect("failed to create remote client");
+        let processor = ActivityProcessor::new(db.clone(), config.clone(), remote_client, auth_ctx.clone());
         let sync = Self {
             db,
             processor,
