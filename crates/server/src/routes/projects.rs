@@ -117,33 +117,26 @@ pub async fn create_and_link_remote_project(
         .ok_or(ProjectError::ProjectNotFound)?;
 
     let metadata = existing_project.metadata();
-    let github_repo_id = metadata.github_repo_id.ok_or_else(|| {
-        ApiError::Conflict(
-            "This project is missing GitHub repository metadata. Open the project settings and connect the GitHub repository before linking."
-                .to_string(),
-        )
-    })?;
-    let owner = metadata.github_repo_owner.clone().ok_or_else(|| {
-        ApiError::Conflict(
-            "This project is missing the GitHub repository owner. Re-run the GitHub setup for this project."
-                .to_string(),
-        )
-    })?;
-    let repo_name = metadata
-        .github_repo_name
-        .clone()
-        .unwrap_or_else(|| payload.name.trim().to_string());
-
+    let remote_project_metadata = if let Some(github_repo_id) = metadata.github_repo_id
+        && let Some(owner) = metadata.github_repo_owner.as_ref()
+    {
+        Some(json!({
+            "github_repository_id": github_repo_id,
+            "owner": owner,
+        }))
+    } else {
+        tracing::debug!(
+            "Creating remote project without GitHub metadata for local project {}",
+            existing_project.id
+        );
+        None
+    };
+    let repo_name = payload.name.trim().to_string();
     if repo_name.trim().is_empty() {
         return Err(ApiError::Conflict(
             "Remote project name cannot be empty.".to_string(),
         ));
     }
-
-    let remote_project_metadata = json!({
-        "github_repository_id": github_repo_id,
-        "owner": owner,
-    });
 
     let remote_project = remote_client
         .create_project(
@@ -151,7 +144,7 @@ pub async fn create_and_link_remote_project(
             &CreateRemoteProjectPayload {
                 organization_id,
                 name: repo_name,
-                metadata: Some(remote_project_metadata),
+                metadata: remote_project_metadata,
             },
         )
         .await
