@@ -214,9 +214,7 @@ impl RemoteClient {
         T: for<'de> Deserialize<'de>,
         B: Serialize,
     {
-        let res = self
-            .send(reqwest::Method::POST, path, None, body)
-            .await?;
+        let res = self.send(reqwest::Method::POST, path, None, body).await?;
         res.json::<T>()
             .await
             .map_err(|e| RemoteClientError::Serde(e.to_string()))
@@ -382,8 +380,11 @@ impl AuthenticatedRemoteClient {
         org_id: Uuid,
         request: &CreateInvitationRequest,
     ) -> Result<CreateInvitationResponse, RemoteClientError> {
-        self.post(&format!("/v1/organizations/{org_id}/invitations"), Some(request))
-            .await
+        self.post(
+            &format!("/v1/organizations/{org_id}/invitations"),
+            Some(request),
+        )
+        .await
     }
 
     /// Lists invitations for an organization.
