@@ -41,8 +41,9 @@ use utils::ws::{
 };
 use uuid::Uuid;
 
-use crate::services::{
-    auth::AuthContext, git::GitServiceError, github_service::GitHubServiceError,
+use crate::{
+    RemoteClientError,
+    services::{auth::AuthContext, git::GitServiceError, github_service::GitHubServiceError},
 };
 
 #[derive(Debug, Error)]
@@ -81,6 +82,8 @@ pub enum ShareError {
     InvalidUserId,
     #[error("invalid organization ID format")]
     InvalidOrganizationId,
+    #[error(transparent)]
+    RemoteClientError(#[from] RemoteClientError),
 }
 
 const WS_BACKOFF_BASE_DELAY: Duration = Duration::from_secs(1);

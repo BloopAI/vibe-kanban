@@ -8,17 +8,15 @@ use remote::routes::tasks::{
     AssignSharedTaskRequest, CreateSharedTaskRequest, DeleteSharedTaskRequest, SharedTaskResponse,
     UpdateSharedTaskRequest,
 };
-use reqwest::{Client as HttpClient, StatusCode};
 use uuid::Uuid;
 
 use super::{ShareConfig, ShareError, convert_remote_task, status};
-use crate::services::auth::AuthContext;
+use crate::services::{auth::AuthContext, remote_client::RemoteClient};
 
 #[derive(Clone)]
 pub struct SharePublisher {
     db: DBService,
-    client: HttpClient,
-    config: ShareConfig,
+    remote: RemoteClient,
     auth_ctx: AuthContext,
 }
 
@@ -28,15 +26,12 @@ impl SharePublisher {
         config: ShareConfig,
         auth_ctx: AuthContext,
     ) -> Result<Self, ShareError> {
-        let client = HttpClient::builder()
-            .timeout(Duration::from_secs(30))
-            .build()
-            .map_err(ShareError::Transport)?;
+        let remote =
+            RemoteClient::new_with_timeout(config.api_base.as_str(), Duration::from_secs(30))?;
 
         Ok(Self {
             db,
-            config,
-            client,
+            remote,
             auth_ctx,
         })
     }
@@ -76,12 +71,8 @@ impl SharePublisher {
             assignee_user_id: Some(user_uuid),
         };
 
-        // Prevent duplicate local tasks from being created
-        let _task_duplication_guard = super::SHARED_TASK_LINKING_LOCK.lock().unwrap().guard();
-
-        let remote_task = RemoteTaskClient::new(&self.client, &self.config)
-            .create_task(&access_token, &payload)
-            .await?;
+        let client = self.remote.authenticated(access_token);
+        let remote_task = client.create_shared_task(&payload).await?;
 
         self.sync_shared_task(&task, &remote_task).await?;
         Ok(remote_task.task.id)
@@ -101,9 +92,8 @@ impl SharePublisher {
             version: None,
         };
 
-        let remote_task = RemoteTaskClient::new(&self.client, &self.config)
-            .update_task(&access_token, shared_task_id, &payload)
-            .await?;
+        let client = self.remote.authenticated(access_token);
+        let remote_task = client.update_shared_task(shared_task_id, &payload).await?;
 
         self.sync_shared_task(task, &remote_task).await?;
 
@@ -136,12 +126,11 @@ impl SharePublisher {
             version,
         };
 
+        let client = self.remote.authenticated(access_token);
         let SharedTaskResponse {
             task: remote_task,
             user,
-        } = RemoteTaskClient::new(&self.client, &self.config)
-            .assign_task(&access_token, shared_task.id, &payload)
-            .await?;
+        } = client.assign_shared_task(shared_task.id, &payload).await?;
 
         let input = convert_remote_task(&remote_task, user.as_ref(), None);
         let record = SharedTask::upsert(&self.db.pool, input).await?;
@@ -158,9 +147,8 @@ impl SharePublisher {
             version: Some(shared_task.version),
         };
 
-        RemoteTaskClient::new(&self.client, &self.config)
-            .delete_task(&access_token, shared_task.id, &payload)
-            .await?;
+        let client = self.remote.authenticated(access_token);
+        client.delete_shared_task(shared_task.id, &payload).await?;
 
         if let Some(local_task) =
             Task::find_by_shared_task_id(&self.db.pool, shared_task.id).await?
@@ -190,102 +178,5 @@ impl SharePublisher {
         SharedTask::upsert(&self.db.pool, input).await?;
         Task::set_shared_task_id(&self.db.pool, task.id, Some(remote_task.id)).await?;
         Ok(())
-    }
-}
-
-struct RemoteTaskClient<'a> {
-    http: &'a HttpClient,
-    config: &'a ShareConfig,
-}
-
-impl<'a> RemoteTaskClient<'a> {
-    fn new(http: &'a HttpClient, config: &'a ShareConfig) -> Self {
-        Self { http, config }
-    }
-
-    async fn create_task(
-        &self,
-        access_token: &str,
-        payload: &CreateSharedTaskRequest,
-    ) -> Result<SharedTaskResponse, ShareError> {
-        let response = self
-            .http
-            .post(self.config.create_task_endpoint()?)
-            .bearer_auth(access_token)
-            .json(payload)
-            .send()
-            .await
-            .map_err(ShareError::Transport)?;
-
-        Self::parse_response(response).await
-    }
-
-    async fn update_task(
-        &self,
-        access_token: &str,
-        task_id: Uuid,
-        payload: &UpdateSharedTaskRequest,
-    ) -> Result<SharedTaskResponse, ShareError> {
-        let response = self
-            .http
-            .patch(self.config.update_task_endpoint(task_id)?)
-            .bearer_auth(access_token)
-            .json(payload)
-            .send()
-            .await
-            .map_err(ShareError::Transport)?;
-
-        Self::parse_response(response).await
-    }
-
-    async fn assign_task(
-        &self,
-        access_token: &str,
-        task_id: Uuid,
-        payload: &AssignSharedTaskRequest,
-    ) -> Result<SharedTaskResponse, ShareError> {
-        let response = self
-            .http
-            .post(self.config.assign_endpoint(task_id)?)
-            .bearer_auth(access_token)
-            .json(payload)
-            .send()
-            .await
-            .map_err(ShareError::Transport)?;
-
-        Self::parse_response(response).await
-    }
-
-    async fn delete_task(
-        &self,
-        access_token: &str,
-        task_id: Uuid,
-        payload: &DeleteSharedTaskRequest,
-    ) -> Result<SharedTaskResponse, ShareError> {
-        let response = self
-            .http
-            .delete(self.config.delete_task_endpoint(task_id)?)
-            .bearer_auth(access_token)
-            .json(payload)
-            .send()
-            .await
-            .map_err(ShareError::Transport)?;
-
-        Self::parse_response(response).await
-    }
-
-    async fn parse_response(response: reqwest::Response) -> Result<SharedTaskResponse, ShareError> {
-        if response.status() == StatusCode::UNAUTHORIZED {
-            return Err(ShareError::MissingAuth);
-        }
-
-        if response.status() == StatusCode::CONFLICT {
-            tracing::warn!("remote share service reported a conflict");
-            return Err(ShareError::InvalidResponse);
-        }
-
-        let response = response.error_for_status().map_err(ShareError::Transport)?;
-        let envelope: SharedTaskResponse = response.json().await.map_err(ShareError::Transport)?;
-        Ok(envelope)
     }
 }
