@@ -65,7 +65,10 @@ async fn list_organization_projects(
         .await
         .map_err(|e| ApiError::Conflict(e.to_string()))?;
 
-    let response = client.list_projects(org_id).await.map_err(map_remote_error)?;
+    let response = client
+        .list_projects(org_id)
+        .await
+        .map_err(map_remote_error)?;
 
     Ok(ResponseJson(ApiResponse::success(response.projects)))
 }
@@ -78,7 +81,10 @@ async fn list_organizations(
         .await
         .map_err(|e| ApiError::Conflict(e.to_string()))?;
 
-    let response = client.list_organizations().await.map_err(map_remote_error)?;
+    let response = client
+        .list_organizations()
+        .await
+        .map_err(map_remote_error)?;
 
     Ok(ResponseJson(ApiResponse::success(response)))
 }
@@ -92,7 +98,10 @@ async fn get_organization(
         .await
         .map_err(|e| ApiError::Conflict(e.to_string()))?;
 
-    let response = client.get_organization(id).await.map_err(map_remote_error)?;
+    let response = client
+        .get_organization(id)
+        .await
+        .map_err(map_remote_error)?;
 
     Ok(ResponseJson(ApiResponse::success(response)))
 }
@@ -106,7 +115,10 @@ async fn create_organization(
         .await
         .map_err(|e| ApiError::Conflict(e.to_string()))?;
 
-    let response = client.create_organization(&request).await.map_err(map_remote_error)?;
+    let response = client
+        .create_organization(&request)
+        .await
+        .map_err(map_remote_error)?;
 
     Ok(ResponseJson(ApiResponse::success(response)))
 }
@@ -138,7 +150,10 @@ async fn delete_organization(
         .await
         .map_err(|e| ApiError::Conflict(e.to_string()))?;
 
-    client.delete_organization(id).await.map_err(map_remote_error)?;
+    client
+        .delete_organization(id)
+        .await
+        .map_err(map_remote_error)?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -170,7 +185,10 @@ async fn list_invitations(
         .await
         .map_err(|e| ApiError::Conflict(e.to_string()))?;
 
-    let response = client.list_invitations(org_id).await.map_err(map_remote_error)?;
+    let response = client
+        .list_invitations(org_id)
+        .await
+        .map_err(map_remote_error)?;
 
     Ok(ResponseJson(ApiResponse::success(response)))
 }
@@ -235,7 +253,10 @@ async fn list_members(
         .await
         .map_err(|e| ApiError::Conflict(e.to_string()))?;
 
-    let response = client.list_members(org_id).await.map_err(map_remote_error)?;
+    let response = client
+        .list_members(org_id)
+        .await
+        .map_err(map_remote_error)?;
 
     Ok(ResponseJson(ApiResponse::success(response)))
 }
