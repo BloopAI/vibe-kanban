@@ -80,7 +80,6 @@ pub enum SearchMatchType {
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct ProjectRemoteMetadata {
     pub has_remote: bool,
-    pub remote_project_id: Option<Uuid>,
     pub github_repo_owner: Option<String>,
     pub github_repo_name: Option<String>,
     pub github_repo_id: Option<i64>,
@@ -307,7 +306,6 @@ impl Project {
     ) -> Result<Self, sqlx::Error> {
         let ProjectRemoteMetadata {
             has_remote,
-            remote_project_id,
             github_repo_owner,
             github_repo_name,
             github_repo_id,
@@ -324,12 +322,11 @@ impl Project {
                     cleanup_script,
                     copy_files,
                     has_remote,
-                    remote_project_id,
                     github_repo_owner,
                     github_repo_name,
                     github_repo_id
                 ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
                 )
                 RETURNING id as "id!: Uuid",
                           name,
@@ -353,7 +350,6 @@ impl Project {
             data.cleanup_script,
             data.copy_files,
             has_remote,
-            remote_project_id,
             github_repo_owner,
             github_repo_name,
             github_repo_id
@@ -376,7 +372,6 @@ impl Project {
     ) -> Result<Self, sqlx::Error> {
         let ProjectRemoteMetadata {
             has_remote,
-            remote_project_id,
             github_repo_owner,
             github_repo_name,
             github_repo_id,
@@ -392,10 +387,9 @@ impl Project {
                    cleanup_script = $6,
                    copy_files = $7,
                    has_remote = $8,
-                   remote_project_id = $9,
-                   github_repo_owner = $10,
-                   github_repo_name = $11,
-                   github_repo_id = $12
+                   github_repo_owner = $9,
+                   github_repo_name = $10,
+                   github_repo_id = $11
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          name,
@@ -419,7 +413,6 @@ impl Project {
             cleanup_script,
             copy_files,
             has_remote,
-            remote_project_id,
             github_repo_owner,
             github_repo_name,
             github_repo_id
@@ -440,15 +433,31 @@ impl Project {
                SET has_remote = $2,
                    github_repo_owner = $3,
                    github_repo_name = $4,
-                   github_repo_id = COALESCE($5, github_repo_id),
-                   remote_project_id = $6
+                   github_repo_id = COALESCE($5, github_repo_id)
                WHERE id = $1"#,
             id,
             metadata.has_remote,
             owner,
             name,
-            metadata.github_repo_id,
-            metadata.remote_project_id
+            metadata.github_repo_id
+        )
+        .execute(pool)
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn set_remote_project_id(
+        pool: &SqlitePool,
+        id: Uuid,
+        remote_project_id: Option<Uuid>,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            r#"UPDATE projects
+               SET remote_project_id = $2
+               WHERE id = $1"#,
+            id,
+            remote_project_id
         )
         .execute(pool)
         .await?;
@@ -481,7 +490,6 @@ impl Project {
     pub fn metadata(&self) -> ProjectRemoteMetadata {
         ProjectRemoteMetadata {
             has_remote: self.has_remote,
-            remote_project_id: self.remote_project_id,
             github_repo_owner: self.github_repo_owner.clone(),
             github_repo_name: self.github_repo_name.clone(),
             github_repo_id: self.github_repo_id,

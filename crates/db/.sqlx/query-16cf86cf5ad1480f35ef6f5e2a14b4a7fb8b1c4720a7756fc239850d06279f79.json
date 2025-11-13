@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "UPDATE projects\n               SET name = $2,\n                   git_repo_path = $3,\n                   setup_script = $4,\n                   dev_script = $5,\n                   cleanup_script = $6,\n                   copy_files = $7,\n                   has_remote = $8,\n                   remote_project_id = $9,\n                   github_repo_owner = $10,\n                   github_repo_name = $11,\n                   github_repo_id = $12\n               WHERE id = $1\n               RETURNING id as \"id!: Uuid\",\n                         name,\n                         git_repo_path,\n                         setup_script,\n                         dev_script,\n                         cleanup_script,\n                         copy_files,\n                         has_remote as \"has_remote!: bool\",\n                         remote_project_id as \"remote_project_id: Uuid\",\n                         github_repo_owner,\n                         github_repo_name,\n                         github_repo_id,\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "INSERT INTO projects (\n                    id,\n                    name,\n                    git_repo_path,\n                    setup_script,\n                    dev_script,\n                    cleanup_script,\n                    copy_files,\n                    has_remote,\n                    github_repo_owner,\n                    github_repo_name,\n                    github_repo_id\n                ) VALUES (\n                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11\n                )\n                RETURNING id as \"id!: Uuid\",\n                          name,\n                          git_repo_path,\n                          setup_script,\n                          dev_script,\n                          cleanup_script,\n                          copy_files,\n                          has_remote as \"has_remote!: bool\",\n                          remote_project_id as \"remote_project_id: Uuid\",\n                          github_repo_owner,\n                          github_repo_name,\n                          github_repo_id,\n                          created_at as \"created_at!: DateTime<Utc>\",\n                          updated_at as \"updated_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -75,7 +75,7 @@
       }
     ],
     "parameters": {
-      "Right": 12
+      "Right": 11
     },
     "nullable": [
       true,
@@ -94,5 +94,5 @@
       false
     ]
   },
-  "hash": "3fa7cb4ef03d2693bd55e8332a93012a79bb59d35e9856dc10eb4456dcd505df"
+  "hash": "16cf86cf5ad1480f35ef6f5e2a14b4a7fb8b1c4720a7756fc239850d06279f79"
 }
