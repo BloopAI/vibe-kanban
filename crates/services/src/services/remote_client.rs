@@ -137,7 +137,8 @@ impl RemoteClient {
         &self,
         invitation_token: &str,
     ) -> Result<GetInvitationResponse, RemoteClientError> {
-        self.get(&format!("/v1/invitations/{invitation_token}")).await
+        self.get(&format!("/v1/invitations/{invitation_token}"))
+            .await
     }
 
     async fn send<B>(
@@ -299,7 +300,12 @@ impl AuthenticatedRemoteClient {
 
     async fn delete(&self, path: &str) -> Result<(), RemoteClientError> {
         self.client
-            .send(reqwest::Method::DELETE, path, Some(&self.token), None::<&()>)
+            .send(
+                reqwest::Method::DELETE,
+                path,
+                Some(&self.token),
+                None::<&()>,
+            )
             .await?;
         Ok(())
     }
@@ -376,11 +382,8 @@ impl AuthenticatedRemoteClient {
         org_id: Uuid,
         request: &CreateInvitationRequest,
     ) -> Result<CreateInvitationResponse, RemoteClientError> {
-        self.post(
-            &format!("/v1/organizations/{org_id}/invitations"),
-            request,
-        )
-        .await
+        self.post(&format!("/v1/organizations/{org_id}/invitations"), request)
+            .await
     }
 
     /// Lists invitations for an organization.
