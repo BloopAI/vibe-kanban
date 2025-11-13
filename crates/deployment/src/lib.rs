@@ -38,6 +38,10 @@ use thiserror::Error;
 use tokio::sync::{Mutex, RwLock};
 use utils::{msg_store::MsgStore, sentry as sentry_utils};
 
+#[derive(Debug, Clone, Copy, Error)]
+#[error("Remote client not configured")]
+pub struct RemoteClientNotConfigured;
+
 #[derive(Debug, Error)]
 pub enum DeploymentError {
     #[error(transparent)]
@@ -106,7 +110,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     fn auth_context(&self) -> &AuthContext;
 
-    fn share_publisher(&self) -> Option<SharePublisher>;
+    fn share_publisher(&self) -> Result<SharePublisher, RemoteClientNotConfigured>;
 
     fn share_sync_handle(&self) -> &Arc<Mutex<Option<RemoteSyncHandle>>>;
 
@@ -147,7 +151,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                 user_id: self.user_id().to_string(),
                 analytics_service: analytics_service.clone(),
             });
-        let publisher = self.share_publisher().clone();
+        let publisher = self.share_publisher().ok();
         PrMonitorService::spawn(db, analytics, publisher).await
     }
 
@@ -213,7 +217,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
             {
                 match Task::update_status(&self.db().pool, task.id, TaskStatus::InReview).await {
                     Ok(_) => {
-                        if let Some(publisher) = self.share_publisher()
+                        if let Ok(publisher) = self.share_publisher()
                             && let Err(err) = publisher.update_shared_task_by_id(task.id).await
                         {
                             tracing::warn!(

@@ -24,7 +24,7 @@ use db::{
         task_attempt::TaskAttempt,
     },
 };
-use deployment::DeploymentError;
+use deployment::{DeploymentError, RemoteClientNotConfigured};
 use executors::{
     actions::{Executable, ExecutorAction},
     approvals::{ExecutorApprovalService, NoopExecutorApprovalService},
@@ -72,7 +72,7 @@ pub struct LocalContainerService {
     image_service: ImageService,
     analytics: Option<AnalyticsContext>,
     approvals: Approvals,
-    publisher: Option<SharePublisher>,
+    publisher: Result<SharePublisher, RemoteClientNotConfigured>,
 }
 
 impl LocalContainerService {
@@ -85,7 +85,7 @@ impl LocalContainerService {
         image_service: ImageService,
         analytics: Option<AnalyticsContext>,
         approvals: Approvals,
-        publisher: Option<SharePublisher>,
+        publisher: Result<SharePublisher, RemoteClientNotConfigured>,
     ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
 
@@ -136,12 +136,12 @@ impl LocalContainerService {
     async fn finalize_task(
         db: &DBService,
         config: &Arc<RwLock<Config>>,
-        share: &Option<SharePublisher>,
+        share: &Result<SharePublisher, RemoteClientNotConfigured>,
         ctx: &ExecutionContext,
     ) {
         match Task::update_status(&db.pool, ctx.task.id, TaskStatus::InReview).await {
             Ok(_) => {
-                if let Some(publisher) = share
+                if let Ok(publisher) = share
                     && let Err(err) = publisher.update_shared_task_by_id(ctx.task.id).await
                 {
                     tracing::warn!(
@@ -681,7 +681,7 @@ impl ContainerService for LocalContainerService {
     }
 
     fn share_publisher(&self) -> Option<&SharePublisher> {
-        self.publisher.as_ref()
+        self.publisher.as_ref().ok()
     }
 
     async fn git_branch_prefix(&self) -> String {

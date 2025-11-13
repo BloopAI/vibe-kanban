@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use async_trait::async_trait;
 use db::DBService;
-use deployment::{Deployment, DeploymentError};
+use deployment::{Deployment, DeploymentError, RemoteClientNotConfigured};
 use executors::profile::ExecutorConfigs;
 use services::services::{
     analytics::{AnalyticsConfig, AnalyticsContext, AnalyticsService, generate_user_id},
@@ -32,10 +32,6 @@ use crate::container::LocalContainerService;
 mod command;
 pub mod container;
 
-#[derive(Debug, Clone, Copy, thiserror::Error)]
-#[error("Remote client not configured")]
-pub struct RemoteClientNotConfigured;
-
 #[derive(Clone)]
 pub struct LocalDeployment {
     config: Arc<RwLock<Config>>,
@@ -51,8 +47,9 @@ pub struct LocalDeployment {
     file_search_cache: Arc<FileSearchCache>,
     approvals: Approvals,
     drafts: DraftsService,
-    share_publisher: Option<SharePublisher>,
+    share_publisher: Result<SharePublisher, RemoteClientNotConfigured>,
     share_sync_handle: Arc<Mutex<Option<RemoteSyncHandle>>>,
+    share_config: Option<ShareConfig>,
     remote_client: Result<RemoteClient, RemoteClientNotConfigured>,
     auth_context: AuthContext,
     oauth_handoffs: Arc<RwLock<HashMap<Uuid, PendingHandoff>>>,
@@ -136,7 +133,7 @@ impl Deployment for LocalDeployment {
         let auth_context = AuthContext::new(oauth_credentials.clone(), profile_cache.clone());
 
         let remote_client = match std::env::var("VK_SHARED_API_BASE") {
-            Ok(url) => match RemoteClient::with_auth(&url, auth_context.clone()) {
+            Ok(url) => match RemoteClient::new(&url, auth_context.clone()) {
                 Ok(client) => {
                     tracing::info!("Remote client initialized with URL: {}", url);
                     Ok(client)
@@ -152,18 +149,18 @@ impl Deployment for LocalDeployment {
             }
         };
 
-        // In-memory storage for pending OAuth handoffs
+        let share_publisher = remote_client
+            .as_ref()
+            .map(|client| SharePublisher::new(db.clone(), client.clone()))
+            .map_err(|e| *e);
+
         let oauth_handoffs = Arc::new(RwLock::new(HashMap::new()));
-
-        // Populate the handle once the sync task is started
         let share_sync_handle = Arc::new(Mutex::new(None));
-        let mut share_publisher: Option<SharePublisher> = None;
-        let mut share_sync_config: Option<ShareConfig> = None;
 
-        if let (Some(sc_ref), Ok(remote)) = (share_config.as_ref(), &remote_client)
+        let mut share_sync_config: Option<ShareConfig> = None;
+        if let (Some(sc_ref), Ok(_)) = (share_config.as_ref(), &share_publisher)
             && oauth_credentials.get().await.is_some()
         {
-            share_publisher = Some(SharePublisher::new(db.clone(), remote.clone()));
             share_sync_config = Some(sc_ref.clone());
         }
 
@@ -206,6 +203,7 @@ impl Deployment for LocalDeployment {
             drafts,
             share_publisher,
             share_sync_handle: share_sync_handle.clone(),
+            share_config: share_sync_config.clone(),
             remote_client,
             auth_context,
             oauth_handoffs,
@@ -274,7 +272,7 @@ impl Deployment for LocalDeployment {
         &self.drafts
     }
 
-    fn share_publisher(&self) -> Option<SharePublisher> {
+    fn share_publisher(&self) -> Result<SharePublisher, RemoteClientNotConfigured> {
         self.share_publisher.clone()
     }
 
@@ -352,5 +350,9 @@ impl LocalDeployment {
             .await
             .remove(handoff_id)
             .map(|state| (state.provider, state.app_verifier))
+    }
+
+    pub fn share_config(&self) -> Option<&ShareConfig> {
+        self.share_config.as_ref()
     }
 }

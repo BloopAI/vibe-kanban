@@ -696,7 +696,7 @@ pub async fn merge_task_attempt(
     Task::update_status(pool, ctx.task.id, TaskStatus::Done).await?;
 
     // Try broadcast update to other users in organization
-    if let Some(publisher) = deployment.share_publisher() {
+    if let Ok(publisher) = deployment.share_publisher() {
         if let Err(err) = publisher.update_shared_task_by_id(ctx.task.id).await {
             tracing::warn!(
                 ?err,
@@ -1596,7 +1596,7 @@ pub async fn attach_existing_pr(
             Task::update_status(pool, task.id, TaskStatus::Done).await?;
 
             // Try broadcast update to other users in organization
-            if let Some(publisher) = deployment.share_publisher() {
+            if let Ok(publisher) = deployment.share_publisher() {
                 if let Err(err) = publisher.update_shared_task_by_id(task.id).await {
                     tracing::warn!(
                         ?err,

@@ -8,10 +8,7 @@ use axum::{
 use deployment::Deployment;
 use rand::{Rng, distributions::Alphanumeric};
 use serde::{Deserialize, Serialize};
-use services::{
-    RemoteClient,
-    services::{config::save_config_to_file, oauth_credentials::Credentials},
-};
+use services::services::{config::save_config_to_file, oauth_credentials::Credentials};
 use sha2::{Digest, Sha256};
 use utils::{
     api::oauth::{HandoffInitRequest, HandoffRedeemRequest, StatusResponse},
@@ -46,8 +43,7 @@ async fn handoff_init(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<HandoffInitPayload>,
 ) -> Result<ResponseJson<ApiResponse<HandoffInitResponseBody>>, ApiError> {
-    let remote = deployment.remote_client()?;
-    let client = RemoteClient::new(remote.base_url())?;
+    let client = deployment.remote_client()?;
 
     let app_verifier = generate_secret();
     let app_challenge = hash_sha256_hex(&app_verifier);
@@ -113,8 +109,7 @@ async fn handoff_complete(
         }
     };
 
-    let remote = deployment.remote_client()?;
-    let client = RemoteClient::new(remote.base_url())?;
+    let client = deployment.remote_client()?;
 
     let redeem_request = HandoffRedeemRequest {
         handoff_id: query.handoff_id,
@@ -176,12 +171,36 @@ async fn handoff_complete(
     // Fetch and cache the user's profile
     let _ = deployment.get_login_status().await;
 
+    // Start remote sync if not already running
+    {
+        let handle_guard = deployment.share_sync_handle().lock().await;
+        let should_start = handle_guard.is_none();
+        drop(handle_guard);
+
+        if should_start {
+            if let Some(share_config) = deployment.share_config() {
+                tracing::info!("Starting remote sync after login");
+                deployment.spawn_remote_sync(share_config.clone());
+            } else {
+                tracing::debug!(
+                    "Share config not available; skipping remote sync spawn after login"
+                );
+            }
+        }
+    }
+
     Ok(close_window_response(format!(
         "Signed in with {provider}. You can return to the app."
     )))
 }
 
 async fn logout(State(deployment): State<DeploymentImpl>) -> Result<StatusCode, ApiError> {
+    // Stop remote sync if running
+    if let Some(handle) = deployment.share_sync_handle().lock().await.take() {
+        tracing::info!("Stopping remote sync due to logout");
+        handle.shutdown().await;
+    }
+
     let auth_context = deployment.auth_context();
 
     if let Ok(client) = deployment.remote_client() {

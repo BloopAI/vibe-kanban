@@ -249,7 +249,7 @@ pub async fn update_task(
 
     // If task has been shared, broadcast update
     if task.shared_task_id.is_some() {
-        let Some(publisher) = deployment.share_publisher() else {
+        let Ok(publisher) = deployment.share_publisher() else {
             return Err(ShareError::MissingConfig("share publisher unavailable").into());
         };
         publisher.update_shared_task(&task).await?;
@@ -300,7 +300,7 @@ pub async fn delete_task(
         .collect();
 
     if let Some(shared_task_id) = task.shared_task_id {
-        let Some(publisher) = deployment.share_publisher() else {
+        let Ok(publisher) = deployment.share_publisher() else {
             return Err(ShareError::MissingConfig("share publisher unavailable").into());
         };
         publisher.delete_shared_task(shared_task_id).await?;
@@ -382,7 +382,7 @@ pub async fn share_task(
     Extension(task): Extension<Task>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<ShareTaskResponse>>, ApiError> {
-    let Some(publisher) = deployment.share_publisher() else {
+    let Ok(publisher) = deployment.share_publisher() else {
         return Err(ShareError::MissingConfig("share publisher unavailable").into());
     };
     let profile = deployment
