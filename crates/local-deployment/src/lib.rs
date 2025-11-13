@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use async_trait::async_trait;
 use db::DBService;
-use deployment::{Deployment, DeploymentError};
+use deployment::{Deployment, DeploymentError, RemoteClientNotConfigured};
 use executors::profile::ExecutorConfigs;
 use services::services::{
     analytics::{AnalyticsConfig, AnalyticsContext, AnalyticsService, generate_user_id},
@@ -32,10 +32,6 @@ use crate::container::LocalContainerService;
 mod command;
 pub mod container;
 
-#[derive(Debug, Clone, Copy, thiserror::Error)]
-#[error("Remote client not configured")]
-pub struct RemoteClientNotConfigured;
-
 #[derive(Clone)]
 pub struct LocalDeployment {
     config: Arc<RwLock<Config>>,
@@ -51,7 +47,7 @@ pub struct LocalDeployment {
     file_search_cache: Arc<FileSearchCache>,
     approvals: Approvals,
     drafts: DraftsService,
-    share_publisher: Option<SharePublisher>,
+    share_publisher: Result<SharePublisher, RemoteClientNotConfigured>,
     share_sync_handle: Arc<Mutex<Option<RemoteSyncHandle>>>,
     remote_client: Result<RemoteClient, RemoteClientNotConfigured>,
     auth_context: AuthContext,
@@ -157,13 +153,14 @@ impl Deployment for LocalDeployment {
 
         // Populate the handle once the sync task is started
         let share_sync_handle = Arc::new(Mutex::new(None));
-        let mut share_publisher: Option<SharePublisher> = None;
-        let mut share_sync_config: Option<ShareConfig> = None;
+        let share_publisher = remote_client
+            .clone()
+            .map(|remote| SharePublisher::new(db.clone(), remote));
 
-        if let (Some(sc_ref), Ok(remote)) = (share_config.as_ref(), &remote_client)
+        let mut share_sync_config: Option<ShareConfig> = None;
+        if let (Some(sc_ref), Ok(_)) = (share_config.as_ref(), &share_publisher)
             && oauth_credentials.get().await.is_some()
         {
-            share_publisher = Some(SharePublisher::new(db.clone(), remote.clone()));
             share_sync_config = Some(sc_ref.clone());
         }
 
@@ -274,7 +271,7 @@ impl Deployment for LocalDeployment {
         &self.drafts
     }
 
-    fn share_publisher(&self) -> Option<SharePublisher> {
+    fn share_publisher(&self) -> Result<SharePublisher, RemoteClientNotConfigured> {
         self.share_publisher.clone()
     }
 

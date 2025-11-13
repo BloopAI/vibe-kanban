@@ -10,7 +10,7 @@ use db::models::{
 use deployment::DeploymentError;
 use executors::executors::ExecutorError;
 use git2::Error as Git2Error;
-use local_deployment::RemoteClientNotConfigured;
+use deployment::RemoteClientNotConfigured;
 use services::services::{
     config::ConfigError, container::ContainerError, drafts::DraftsServiceError,
     git::GitServiceError, github_service::GitHubServiceError, image::ImageError,

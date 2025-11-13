@@ -41,7 +41,7 @@ pub async fn assign_shared_task(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<AssignSharedTaskRequest>,
 ) -> Result<ResponseJson<ApiResponse<AssignSharedTaskResponse>>, ApiError> {
-    let Some(publisher) = deployment.share_publisher() else {
+    let Ok(publisher) = deployment.share_publisher() else {
         return Err(ShareError::MissingConfig("share publisher unavailable").into());
     };
 
@@ -76,7 +76,7 @@ pub async fn delete_shared_task(
     Path(shared_task_id): Path<Uuid>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
-    let Some(publisher) = deployment.share_publisher() else {
+    let Ok(publisher) = deployment.share_publisher() else {
         return Err(ShareError::MissingConfig("share publisher unavailable").into());
     };
 
