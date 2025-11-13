@@ -15,12 +15,9 @@ import { useTranslation } from 'react-i18next';
 import { useUserSystem } from '@/components/config-provider';
 import { Link as LinkIcon, Loader2 } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { LoginRequiredPrompt } from '@/components/dialogs/shared/LoginRequiredPrompt';
-import {
-  LinkProjectDialog,
-  type LinkProjectResult,
-} from '@/components/dialogs/projects/LinkProjectDialog';
+import { LinkProjectDialog } from '@/components/dialogs/projects/LinkProjectDialog';
 import { useAuth } from '@/hooks';
 import { useProject } from '@/contexts/project-context';
 
@@ -34,7 +31,6 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
   const { loading: systemLoading } = useUserSystem();
   const { isSignedIn } = useAuth();
   const { project } = useProject();
-  const queryClient = useQueryClient();
 
   const [shareError, setShareError] = useState<string | null>(null);
 
@@ -82,20 +78,13 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
     }
   };
 
-  const handleLinkProject = async () => {
+  const handleLinkProject = () => {
     if (!project) return;
 
-    const result = (await NiceModal.show(LinkProjectDialog, {
+    void NiceModal.show(LinkProjectDialog, {
       projectId: project.id,
       projectName: project.name,
-    })) as LinkProjectResult;
-
-    if (result.action === 'linked') {
-      // Refresh project data after successful link
-      await queryClient.invalidateQueries({
-        queryKey: ['project', project.id],
-      });
-    }
+    });
   };
 
   const isShareDisabled = systemLoading || shareMutation.isPending;
