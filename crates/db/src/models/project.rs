@@ -30,12 +30,7 @@ pub struct Project {
     pub dev_script: Option<String>,
     pub cleanup_script: Option<String>,
     pub copy_files: Option<String>,
-    pub has_remote: bool,
     pub remote_project_id: Option<Uuid>,
-    pub github_repo_owner: Option<String>,
-    pub github_repo_name: Option<String>,
-    pub github_repo_id: Option<i64>,
-
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
     #[ts(type = "Date")]
@@ -77,28 +72,6 @@ pub enum SearchMatchType {
     FullPath,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-pub struct ProjectRemoteMetadata {
-    pub has_remote: bool,
-    pub github_repo_owner: Option<String>,
-    pub github_repo_name: Option<String>,
-    pub github_repo_id: Option<i64>,
-}
-
-impl ProjectRemoteMetadata {
-    /// Do we need to read from `git remote`
-    pub fn needs_git_enrichment(&self) -> bool {
-        !self.has_remote || self.github_repo_owner.is_none() || self.github_repo_name.is_none()
-    }
-
-    // Do we need to fetch GitHub repo ID
-    pub fn needs_repo_id_enrichment(&self) -> bool {
-        self.github_repo_id.is_none()
-            && self.github_repo_owner.is_some()
-            && self.github_repo_name.is_some()
-    }
-}
-
 impl Project {
     pub async fn count(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
         sqlx::query_scalar!(r#"SELECT COUNT(*) as "count!: i64" FROM projects"#)
@@ -116,11 +89,7 @@ impl Project {
                       dev_script,
                       cleanup_script,
                       copy_files,
-                      has_remote as "has_remote!: bool",
                       remote_project_id as "remote_project_id: Uuid",
-                      github_repo_owner,
-                      github_repo_name,
-                      github_repo_id,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -136,11 +105,7 @@ impl Project {
             Project,
             r#"
             SELECT p.id as "id!: Uuid", p.name, p.git_repo_path, p.setup_script, p.dev_script, p.cleanup_script, p.copy_files, 
-                   p.has_remote as "has_remote!: bool",
                    p.remote_project_id as "remote_project_id: Uuid",
-                   p.github_repo_owner,
-                   p.github_repo_name,
-                   p.github_repo_id,
                    p.created_at as "created_at!: DateTime<Utc>", p.updated_at as "updated_at!: DateTime<Utc>"
             FROM projects p
             WHERE p.id IN (
@@ -167,11 +132,7 @@ impl Project {
                       dev_script,
                       cleanup_script,
                       copy_files,
-                      has_remote as "has_remote!: bool",
                       remote_project_id as "remote_project_id: Uuid",
-                      github_repo_owner,
-                      github_repo_name,
-                      github_repo_id,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -195,11 +156,7 @@ impl Project {
                       dev_script,
                       cleanup_script,
                       copy_files,
-                      has_remote as "has_remote!: bool",
                       remote_project_id as "remote_project_id: Uuid",
-                      github_repo_owner,
-                      github_repo_name,
-                      github_repo_id,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -224,45 +181,12 @@ impl Project {
                       dev_script,
                       cleanup_script,
                       copy_files,
-                      has_remote as "has_remote!: bool",
                       remote_project_id as "remote_project_id: Uuid",
-                      github_repo_owner,
-                      github_repo_name,
-                      github_repo_id,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
                WHERE git_repo_path = $1"#,
             git_repo_path
-        )
-        .fetch_optional(pool)
-        .await
-    }
-
-    pub async fn find_by_github_repo_id(
-        pool: &SqlitePool,
-        github_repo_id: i64,
-    ) -> Result<Option<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            Project,
-            r#"SELECT id as "id!: Uuid",
-                      name,
-                      git_repo_path,
-                      setup_script,
-                      dev_script,
-                      cleanup_script,
-                      copy_files,
-                      has_remote as "has_remote!: bool",
-                      remote_project_id as "remote_project_id: Uuid",
-                      github_repo_owner,
-                      github_repo_name,
-                      github_repo_id,
-                      created_at as "created_at!: DateTime<Utc>",
-                      updated_at as "updated_at!: DateTime<Utc>"
-               FROM projects
-               WHERE github_repo_id = $1
-               LIMIT 1"#,
-            github_repo_id
         )
         .fetch_optional(pool)
         .await
@@ -282,11 +206,7 @@ impl Project {
                       dev_script,
                       cleanup_script,
                       copy_files,
-                      has_remote as "has_remote!: bool",
                       remote_project_id as "remote_project_id: Uuid",
-                      github_repo_owner,
-                      github_repo_name,
-                      github_repo_id,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
@@ -302,15 +222,7 @@ impl Project {
         pool: &SqlitePool,
         data: &CreateProject,
         project_id: Uuid,
-        remote_metadata: Option<&ProjectRemoteMetadata>,
     ) -> Result<Self, sqlx::Error> {
-        let ProjectRemoteMetadata {
-            has_remote,
-            github_repo_owner,
-            github_repo_name,
-            github_repo_id,
-        } = remote_metadata.cloned().unwrap_or_default();
-
         sqlx::query_as!(
             Project,
             r#"INSERT INTO projects (
@@ -320,13 +232,9 @@ impl Project {
                     setup_script,
                     dev_script,
                     cleanup_script,
-                    copy_files,
-                    has_remote,
-                    github_repo_owner,
-                    github_repo_name,
-                    github_repo_id
+                    copy_files
                 ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+                    $1, $2, $3, $4, $5, $6, $7
                 )
                 RETURNING id as "id!: Uuid",
                           name,
@@ -335,11 +243,7 @@ impl Project {
                           dev_script,
                           cleanup_script,
                           copy_files,
-                          has_remote as "has_remote!: bool",
                           remote_project_id as "remote_project_id: Uuid",
-                          github_repo_owner,
-                          github_repo_name,
-                          github_repo_id,
                           created_at as "created_at!: DateTime<Utc>",
                           updated_at as "updated_at!: DateTime<Utc>""#,
             project_id,
@@ -349,10 +253,6 @@ impl Project {
             data.dev_script,
             data.cleanup_script,
             data.copy_files,
-            has_remote,
-            github_repo_owner,
-            github_repo_name,
-            github_repo_id
         )
         .fetch_one(pool)
         .await
@@ -368,15 +268,7 @@ impl Project {
         dev_script: Option<String>,
         cleanup_script: Option<String>,
         copy_files: Option<String>,
-        remote_metadata: &ProjectRemoteMetadata,
     ) -> Result<Self, sqlx::Error> {
-        let ProjectRemoteMetadata {
-            has_remote,
-            github_repo_owner,
-            github_repo_name,
-            github_repo_id,
-        } = remote_metadata.clone();
-
         sqlx::query_as!(
             Project,
             r#"UPDATE projects
@@ -385,11 +277,7 @@ impl Project {
                    setup_script = $4,
                    dev_script = $5,
                    cleanup_script = $6,
-                   copy_files = $7,
-                   has_remote = $8,
-                   github_repo_owner = $9,
-                   github_repo_name = $10,
-                   github_repo_id = $11
+                   copy_files = $7
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          name,
@@ -398,11 +286,7 @@ impl Project {
                          dev_script,
                          cleanup_script,
                          copy_files,
-                         has_remote as "has_remote!: bool",
                          remote_project_id as "remote_project_id: Uuid",
-                         github_repo_owner,
-                         github_repo_name,
-                         github_repo_id,
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
@@ -412,39 +296,9 @@ impl Project {
             dev_script,
             cleanup_script,
             copy_files,
-            has_remote,
-            github_repo_owner,
-            github_repo_name,
-            github_repo_id
         )
         .fetch_one(pool)
         .await
-    }
-
-    pub async fn update_remote_metadata(
-        pool: &SqlitePool,
-        id: Uuid,
-        metadata: &ProjectRemoteMetadata,
-    ) -> Result<(), sqlx::Error> {
-        let owner = metadata.github_repo_owner.clone();
-        let name = metadata.github_repo_name.clone();
-        sqlx::query!(
-            r#"UPDATE projects
-               SET has_remote = $2,
-                   github_repo_owner = $3,
-                   github_repo_name = $4,
-                   github_repo_id = COALESCE($5, github_repo_id)
-               WHERE id = $1"#,
-            id,
-            metadata.has_remote,
-            owner,
-            name,
-            metadata.github_repo_id
-        )
-        .execute(pool)
-        .await?;
-
-        Ok(())
     }
 
     pub async fn set_remote_project_id(
@@ -485,14 +339,5 @@ impl Project {
         .await?;
 
         Ok(result.count > 0)
-    }
-
-    pub fn metadata(&self) -> ProjectRemoteMetadata {
-        ProjectRemoteMetadata {
-            has_remote: self.has_remote,
-            github_repo_owner: self.github_repo_owner.clone(),
-            github_repo_name: self.github_repo_name.clone(),
-            github_repo_id: self.github_repo_id,
-        }
     }
 }

@@ -29,7 +29,6 @@ use services::services::{
     filesystem_watcher::FilesystemWatcherError,
     git::{GitService, GitServiceError},
     image::{ImageError, ImageService},
-    metadata::compute_remote_metadata,
     pr_monitor::PrMonitorService,
     share::{RemoteSync, RemoteSyncHandle, ShareConfig, SharePublisher},
     worktree_manager::WorktreeError,
@@ -114,9 +113,6 @@ pub trait Deployment: Clone + Send + Sync + 'static {
         let handle_slot = self.share_sync_handle().clone();
         tokio::spawn(async move {
             tracing::info!("Starting shared task sync");
-
-            tracing::info!("Refreshing project metadata prior to shared task sync");
-            deployment.refresh_remote_metadata().await;
 
             let remote_sync_handle = RemoteSync::spawn(
                 deployment.db().clone(),
@@ -323,16 +319,8 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
                     // Create project (ignore individual failures)
                     let project_id = Uuid::new_v4();
-                    let remote_metadata = compute_remote_metadata(self.git(), &repo.path).await;
 
-                    match Project::create(
-                        &self.db().pool,
-                        &create_data,
-                        project_id,
-                        Some(&remote_metadata),
-                    )
-                    .await
-                    {
+                    match Project::create(&self.db().pool, &create_data, project_id).await {
                         Ok(project) => {
                             tracing::info!(
                                 "Auto-created project '{}' from {}",
@@ -374,40 +362,5 @@ pub trait Deployment: Clone + Send + Sync + 'static {
             .history_plus_stream()
             .map_ok(|m| m.to_sse_event())
             .boxed()
-    }
-
-    /// Refresh remote metadata for all projects
-    async fn refresh_remote_metadata(&self) {
-        let projects = match Project::find_all(&self.db().pool).await {
-            Ok(projects) => projects,
-            Err(err) => {
-                tracing::warn!("Failed to load projects for remote metadata refresh: {err}");
-                return;
-            }
-        };
-
-        for project in projects {
-            let repo_path = project.git_repo_path.clone();
-            let metadata = compute_remote_metadata(self.git(), repo_path.as_path()).await;
-
-            if let Err(err) =
-                Project::update_remote_metadata(&self.db().pool, project.id, &metadata).await
-            {
-                tracing::warn!(
-                    "Failed to update remote metadata for project '{}' ({}): {err}",
-                    project.name,
-                    repo_path.display()
-                );
-                continue;
-            }
-        }
-    }
-
-    /// Spawn background task to refresh remote metadata for all projects
-    fn refresh_remote_metadata_background(&self) {
-        let d = self.clone();
-        tokio::spawn(async move {
-            d.refresh_remote_metadata().await;
-        });
     }
 }

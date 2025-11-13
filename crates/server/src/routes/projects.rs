@@ -14,12 +14,10 @@ use db::models::project::{
 use deployment::Deployment;
 use ignore::WalkBuilder;
 use serde::Deserialize;
-use serde_json::json;
 use services::services::{
     file_ranker::FileRanker,
     file_search_cache::{CacheError, SearchMode, SearchQuery},
     git::GitBranch,
-    metadata::compute_remote_metadata,
     remote_client::{CreateRemoteProjectPayload, RemoteClientError},
     share::link_shared_tasks_to_project,
 };
@@ -35,12 +33,12 @@ use crate::{DeploymentImpl, error::ApiError, middleware::load_project_middleware
 
 #[derive(Deserialize, TS)]
 pub struct LinkToExistingRequest {
-    pub remote_project_id: String,
+    pub remote_project_id: Uuid,
 }
 
 #[derive(Deserialize, TS)]
 pub struct CreateRemoteProjectRequest {
-    pub organization_id: String,
+    pub organization_id: Uuid,
     pub name: String,
 }
 
@@ -80,11 +78,8 @@ pub async fn link_project_to_existing_remote(
         .await
         .ok_or(ApiError::Unauthorized)?;
 
-    let remote_project_id = Uuid::parse_str(payload.remote_project_id.trim())
-        .map_err(|_| ApiError::Conflict("Invalid remote_project_id".to_string()))?;
-
     let remote_project = remote_client
-        .get_project(&creds.access_token, remote_project_id)
+        .get_project(&creds.access_token, payload.remote_project_id)
         .await
         .map_err(map_remote_error)?;
 
@@ -109,28 +104,6 @@ pub async fn create_and_link_remote_project(
         .await
         .ok_or(ApiError::Unauthorized)?;
 
-    let organization_id = Uuid::parse_str(payload.organization_id.trim())
-        .map_err(|_| ApiError::Conflict("Invalid organization_id".to_string()))?;
-
-    let existing_project = Project::find_by_id(&deployment.db().pool, project_id)
-        .await?
-        .ok_or(ProjectError::ProjectNotFound)?;
-
-    let metadata = existing_project.metadata();
-    let remote_project_metadata = if let Some(github_repo_id) = metadata.github_repo_id
-        && let Some(owner) = metadata.github_repo_owner.as_ref()
-    {
-        Some(json!({
-            "github_repository_id": github_repo_id,
-            "owner": owner,
-        }))
-    } else {
-        tracing::debug!(
-            "Creating remote project without GitHub metadata for local project {}",
-            existing_project.id
-        );
-        None
-    };
     let repo_name = payload.name.trim().to_string();
     if repo_name.trim().is_empty() {
         return Err(ApiError::Conflict(
@@ -142,9 +115,9 @@ pub async fn create_and_link_remote_project(
         .create_project(
             &creds.access_token,
             &CreateRemoteProjectPayload {
-                organization_id,
+                organization_id: payload.organization_id,
                 name: repo_name,
-                metadata: remote_project_metadata,
+                metadata: None,
             },
         )
         .await
@@ -339,8 +312,6 @@ pub async fn create_project(
         }
     }
 
-    let remote_metadata = compute_remote_metadata(deployment.git(), &path).await;
-
     match Project::create(
         &deployment.db().pool,
         &CreateProject {
@@ -353,7 +324,6 @@ pub async fn create_project(
             copy_files,
         },
         id,
-        Some(&remote_metadata),
     )
     .await
     {
@@ -420,8 +390,6 @@ pub async fn update_project(
         existing_project.git_repo_path
     };
 
-    let remote_metadata = compute_remote_metadata(deployment.git(), &git_repo_path).await;
-
     match Project::update(
         &deployment.db().pool,
         existing_project.id,
@@ -431,7 +399,6 @@ pub async fn update_project(
         dev_script,
         cleanup_script,
         copy_files,
-        &remote_metadata,
     )
     .await
     {
