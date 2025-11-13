@@ -76,6 +76,9 @@ impl SharePublisher {
             assignee_user_id: Some(user_uuid),
         };
 
+        // Prevent duplicate local tasks from being created
+        let _task_duplication_guard = super::SHARED_TASK_LINKING_LOCK.lock().unwrap().guard();
+
         let remote_task = RemoteTaskClient::new(&self.client, &self.config)
             .create_task(&access_token, &payload)
             .await?;

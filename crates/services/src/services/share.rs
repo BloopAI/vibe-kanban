@@ -570,7 +570,8 @@ where
         );
         let creator_is_current_user = matches!((creator_user_id.as_ref(), current_user_id.as_ref()), (Some(creator), Some(current)) if creator == current);
 
-        assignee_is_current_user && !creator_is_current_user
+        assignee_is_current_user
+            && !(creator_is_current_user && SHARED_TASK_LINKING_LOCK.lock().unwrap().is_locked())
     };
 
     Task::sync_from_shared_task(
@@ -607,4 +608,38 @@ pub async fn link_shared_tasks_to_project(
     }
 
     Ok(())
+}
+
+// Prevent duplicate local tasks from being created during task sharing.
+// The activity event handler can create a duplicate local task when it receives a shared task assigned to the current user.
+lazy_static::lazy_static! {
+    pub(super) static ref SHARED_TASK_LINKING_LOCK: StdMutex<SharedTaskLinkingLock> = StdMutex::new(SharedTaskLinkingLock::new());
+}
+
+#[derive(Debug)]
+pub(super) struct SharedTaskLinkingLock {
+    count: usize,
+}
+
+impl SharedTaskLinkingLock {
+    fn new() -> Self {
+        Self { count: 0 }
+    }
+
+    pub(super) fn is_locked(&self) -> bool {
+        self.count > 0
+    }
+
+    pub(super) fn guard(&mut self) -> SharedTaskLinkingGuard {
+        self.count += 1;
+        SharedTaskLinkingGuard
+    }
+}
+
+pub(super) struct SharedTaskLinkingGuard;
+
+impl Drop for SharedTaskLinkingGuard {
+    fn drop(&mut self) {
+        SHARED_TASK_LINKING_LOCK.lock().unwrap().count -= 1;
+    }
 }
