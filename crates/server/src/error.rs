@@ -10,6 +10,7 @@ use db::models::{
 use deployment::DeploymentError;
 use executors::executors::ExecutorError;
 use git2::Error as Git2Error;
+use local_deployment::RemoteClientNotConfigured;
 use services::services::{
     config::ConfigError, container::ContainerError, drafts::DraftsServiceError,
     git::GitServiceError, github_service::GitHubServiceError, image::ImageError,
@@ -63,9 +64,21 @@ pub enum ApiError {
     Forbidden(String),
 }
 
+impl From<&'static str> for ApiError {
+    fn from(msg: &'static str) -> Self {
+        ApiError::BadRequest(msg.to_string())
+    }
+}
+
 impl From<Git2Error> for ApiError {
     fn from(err: Git2Error) -> Self {
         ApiError::GitService(GitServiceError::from(err))
+    }
+}
+
+impl From<RemoteClientNotConfigured> for ApiError {
+    fn from(_: RemoteClientNotConfigured) -> Self {
+        ApiError::BadRequest("Remote client not configured".to_string())
     }
 }
 

@@ -70,7 +70,7 @@ pub async fn link_project_to_existing_remote(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<LinkToExistingRequest>,
 ) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
-    let remote = deployment.remote_client().ok_or_else(|| ApiError::BadRequest("Remote client not configured".into()))?;
+    let remote = deployment.remote_client()?;
     let token = deployment.auth_token().await.ok_or_else(|| ApiError::Unauthorized)?;
     let client = RemoteClient::with_token(remote.base_url(), &token)?;
     
@@ -94,7 +94,7 @@ pub async fn create_and_link_remote_project(
         ));
     }
 
-    let remote = deployment.remote_client().ok_or_else(|| ApiError::BadRequest("Remote client not configured".into()))?;
+    let remote = deployment.remote_client()?;
     let token = deployment.auth_token().await.ok_or_else(|| ApiError::Unauthorized)?;
     let client = RemoteClient::with_token(remote.base_url(), &token)?;
     
@@ -137,7 +137,7 @@ pub async fn get_remote_project_by_id(
     State(deployment): State<DeploymentImpl>,
     Path(remote_project_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<RemoteProject>>, ApiError> {
-    let remote = deployment.remote_client().ok_or_else(|| ApiError::BadRequest("Remote client not configured".into()))?;
+    let remote = deployment.remote_client()?;
     let token = deployment.auth_token().await.ok_or_else(|| ApiError::Unauthorized)?;
     let client = RemoteClient::with_token(remote.base_url(), &token)?;
     
@@ -154,7 +154,7 @@ pub async fn get_project_remote_members(
         ApiError::Conflict("Project is not linked to a remote project".to_string())
     })?;
 
-    let remote = deployment.remote_client().ok_or_else(|| ApiError::BadRequest("Remote client not configured".into()))?;
+    let remote = deployment.remote_client()?;
     let token = deployment.auth_token().await.ok_or_else(|| ApiError::Unauthorized)?;
     let client = RemoteClient::with_token(remote.base_url(), &token)?;
     

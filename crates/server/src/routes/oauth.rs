@@ -44,7 +44,7 @@ async fn handoff_init(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<HandoffInitPayload>,
 ) -> Result<ResponseJson<ApiResponse<HandoffInitResponseBody>>, ApiError> {
-    let remote = deployment.remote_client().ok_or_else(|| ApiError::BadRequest("Remote client not configured".into()))?;
+    let remote = deployment.remote_client()?;
     let client = RemoteClient::new(remote.base_url())?;
 
     let app_verifier = generate_secret();
@@ -111,7 +111,7 @@ async fn handoff_complete(
         }
     };
 
-    let remote = deployment.remote_client().ok_or_else(|| ApiError::BadRequest("Remote client not configured".into()))?;
+    let remote = deployment.remote_client()?;
     let client = RemoteClient::new(remote.base_url())?;
 
     let redeem_request = HandoffRedeemRequest {
@@ -189,7 +189,7 @@ async fn logout(State(deployment): State<DeploymentImpl>) -> Result<StatusCode, 
     let auth_context = deployment.auth_context();
     let credentials = auth_context.get_credentials().await;
 
-    if let (Some(remote), Some(creds)) = (deployment.remote_client(), credentials.as_ref()) {
+    if let (Ok(remote), Some(creds)) = (deployment.remote_client(), credentials.as_ref()) {
         if let Ok(authed) = RemoteClient::with_token(remote.base_url(), &creds.access_token) {
             let _ = authed.logout().await;
         }

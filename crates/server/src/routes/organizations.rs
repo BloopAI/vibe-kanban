@@ -60,7 +60,7 @@ async fn list_organization_projects(
     State(deployment): State<DeploymentImpl>,
     Path(org_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<Vec<RemoteProject>>>, ApiError> {
-    let remote = deployment.remote_client().ok_or_else(|| ApiError::BadRequest("Remote client not configured".into()))?;
+    let remote = deployment.remote_client()?;
     let token = deployment.auth_token().await.ok_or_else(|| ApiError::Unauthorized)?;
     let client = RemoteClient::with_token(remote.base_url(), &token)?;
     
@@ -72,7 +72,7 @@ async fn list_organization_projects(
 async fn list_organizations(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<ListOrganizationsResponse>>, ApiError> {
-    let remote = deployment.remote_client().ok_or_else(|| ApiError::BadRequest("Remote client not configured".into()))?;
+    let remote = deployment.remote_client()?;
     let token = deployment.auth_token().await.ok_or_else(|| ApiError::Unauthorized)?;
     let client = RemoteClient::with_token(remote.base_url(), &token)?;
     
@@ -85,7 +85,7 @@ async fn get_organization(
     State(deployment): State<DeploymentImpl>,
     Path(id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<GetOrganizationResponse>>, ApiError> {
-    let remote = deployment.remote_client().ok_or_else(|| ApiError::BadRequest("Remote client not configured".into()))?;
+    let remote = deployment.remote_client()?;
     let token = deployment.auth_token().await.ok_or_else(|| ApiError::Unauthorized)?;
     let client = RemoteClient::with_token(remote.base_url(), &token)?;
     
@@ -98,7 +98,7 @@ async fn create_organization(
     State(deployment): State<DeploymentImpl>,
     Json(request): Json<CreateOrganizationRequest>,
 ) -> Result<ResponseJson<ApiResponse<CreateOrganizationResponse>>, ApiError> {
-    let remote = deployment.remote_client().ok_or_else(|| ApiError::BadRequest("Remote client not configured".into()))?;
+    let remote = deployment.remote_client()?;
     let token = deployment.auth_token().await.ok_or_else(|| ApiError::Unauthorized)?;
     let client = RemoteClient::with_token(remote.base_url(), &token)?;
     
@@ -112,7 +112,7 @@ async fn update_organization(
     Path(id): Path<Uuid>,
     Json(request): Json<UpdateOrganizationRequest>,
 ) -> Result<ResponseJson<ApiResponse<Organization>>, ApiError> {
-    let remote = deployment.remote_client().ok_or_else(|| ApiError::BadRequest("Remote client not configured".into()))?;
+    let remote = deployment.remote_client()?;
     let token = deployment.auth_token().await.ok_or_else(|| ApiError::Unauthorized)?;
     let client = RemoteClient::with_token(remote.base_url(), &token)?;
     
@@ -125,7 +125,7 @@ async fn delete_organization(
     State(deployment): State<DeploymentImpl>,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
-    let remote = deployment.remote_client().ok_or_else(|| ApiError::BadRequest("Remote client not configured".into()))?;
+    let remote = deployment.remote_client()?;
     let token = deployment.auth_token().await.ok_or_else(|| ApiError::Unauthorized)?;
     let client = RemoteClient::with_token(remote.base_url(), &token)?;
     
@@ -139,7 +139,7 @@ async fn create_invitation(
     Path(org_id): Path<Uuid>,
     Json(request): Json<CreateInvitationRequest>,
 ) -> Result<ResponseJson<ApiResponse<CreateInvitationResponse>>, ApiError> {
-    let remote = deployment.remote_client().ok_or_else(|| ApiError::BadRequest("Remote client not configured".into()))?;
+    let remote = deployment.remote_client()?;
     let token = deployment.auth_token().await.ok_or_else(|| ApiError::Unauthorized)?;
     let client = RemoteClient::with_token(remote.base_url(), &token)?;
     
@@ -152,7 +152,7 @@ async fn list_invitations(
     State(deployment): State<DeploymentImpl>,
     Path(org_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<ListInvitationsResponse>>, ApiError> {
-    let remote = deployment.remote_client().ok_or_else(|| ApiError::BadRequest("Remote client not configured".into()))?;
+    let remote = deployment.remote_client()?;
     let token = deployment.auth_token().await.ok_or_else(|| ApiError::Unauthorized)?;
     let client = RemoteClient::with_token(remote.base_url(), &token)?;
     
@@ -165,7 +165,7 @@ async fn get_invitation(
     State(deployment): State<DeploymentImpl>,
     Path(token): Path<String>,
 ) -> Result<ResponseJson<ApiResponse<GetInvitationResponse>>, ApiError> {
-    let remote = deployment.remote_client().ok_or_else(|| ApiError::BadRequest("Remote client not configured".into()))?;
+    let remote = deployment.remote_client()?;
     let client = RemoteClient::new(remote.base_url())?;
 
     let response = client.get_invitation(&token).await?;
@@ -178,7 +178,7 @@ async fn revoke_invitation(
     Path(org_id): Path<Uuid>,
     Json(payload): Json<RevokeInvitationRequest>,
 ) -> Result<StatusCode, ApiError> {
-    let remote = deployment.remote_client().ok_or_else(|| ApiError::BadRequest("Remote client not configured".into()))?;
+    let remote = deployment.remote_client()?;
     let token = deployment.auth_token().await.ok_or_else(|| ApiError::Unauthorized)?;
     let client = RemoteClient::with_token(remote.base_url(), &token)?;
     
@@ -191,7 +191,7 @@ async fn accept_invitation(
     State(deployment): State<DeploymentImpl>,
     Path(invitation_token): Path<String>,
 ) -> Result<ResponseJson<ApiResponse<AcceptInvitationResponse>>, ApiError> {
-    let remote = deployment.remote_client().ok_or_else(|| ApiError::BadRequest("Remote client not configured".into()))?;
+    let remote = deployment.remote_client()?;
     let token = deployment.auth_token().await.ok_or_else(|| ApiError::Unauthorized)?;
     let client = RemoteClient::with_token(remote.base_url(), &token)?;
     
@@ -204,7 +204,7 @@ async fn list_members(
     State(deployment): State<DeploymentImpl>,
     Path(org_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<ListMembersResponse>>, ApiError> {
-    let remote = deployment.remote_client().ok_or_else(|| ApiError::BadRequest("Remote client not configured".into()))?;
+    let remote = deployment.remote_client()?;
     let token = deployment.auth_token().await.ok_or_else(|| ApiError::Unauthorized)?;
     let client = RemoteClient::with_token(remote.base_url(), &token)?;
     
@@ -217,7 +217,7 @@ async fn remove_member(
     State(deployment): State<DeploymentImpl>,
     Path((org_id, user_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode, ApiError> {
-    let remote = deployment.remote_client().ok_or_else(|| ApiError::BadRequest("Remote client not configured".into()))?;
+    let remote = deployment.remote_client()?;
     let token = deployment.auth_token().await.ok_or_else(|| ApiError::Unauthorized)?;
     let client = RemoteClient::with_token(remote.base_url(), &token)?;
     
@@ -231,7 +231,7 @@ async fn update_member_role(
     Path((org_id, user_id)): Path<(Uuid, Uuid)>,
     Json(request): Json<UpdateMemberRoleRequest>,
 ) -> Result<ResponseJson<ApiResponse<UpdateMemberRoleResponse>>, ApiError> {
-    let remote = deployment.remote_client().ok_or_else(|| ApiError::BadRequest("Remote client not configured".into()))?;
+    let remote = deployment.remote_client()?;
     let token = deployment.auth_token().await.ok_or_else(|| ApiError::Unauthorized)?;
     let client = RemoteClient::with_token(remote.base_url(), &token)?;
     

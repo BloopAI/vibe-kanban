@@ -32,6 +32,10 @@ use crate::container::LocalContainerService;
 mod command;
 pub mod container;
 
+#[derive(Debug, Clone, Copy, thiserror::Error)]
+#[error("Remote client not configured")]
+pub struct RemoteClientNotConfigured;
+
 #[derive(Clone)]
 pub struct LocalDeployment {
     config: Arc<RwLock<Config>>,
@@ -49,7 +53,7 @@ pub struct LocalDeployment {
     drafts: DraftsService,
     share_publisher: Option<SharePublisher>,
     share_sync_handle: Arc<Mutex<Option<RemoteSyncHandle>>>,
-    remote_client: Option<RemoteClient>,
+    remote_client: Result<RemoteClient, RemoteClientNotConfigured>,
     auth_context: AuthContext,
     oauth_handoffs: Arc<RwLock<HashMap<Uuid, PendingHandoff>>>,
 }
@@ -132,16 +136,16 @@ impl Deployment for LocalDeployment {
             Ok(url) => match RemoteClient::new_with_timeout(&url, Duration::from_secs(30)) {
                 Ok(client) => {
                     tracing::info!("Remote client initialized with URL: {}", url);
-                    Some(client)
+                    Ok(client)
                 }
                 Err(e) => {
                     tracing::error!(?e, "failed to create remote client");
-                    None
+                    Err(RemoteClientNotConfigured)
                 }
             },
             Err(_) => {
                 tracing::info!("VK_SHARED_API_BASE not set; remote features disabled");
-                None
+                Err(RemoteClientNotConfigured)
             }
         };
 
@@ -156,7 +160,7 @@ impl Deployment for LocalDeployment {
         let mut share_publisher: Option<SharePublisher> = None;
         let mut share_sync_config: Option<ShareConfig> = None;
 
-        if let (Some(sc_ref), Some(remote)) = (share_config.as_ref(), remote_client.clone())
+        if let (Some(sc_ref), Ok(remote)) = (share_config.as_ref(), &remote_client)
             && let Some(creds) = oauth_credentials.get().await
         {
             let sc_owned = sc_ref.clone();
@@ -291,7 +295,7 @@ impl Deployment for LocalDeployment {
 }
 
 impl LocalDeployment {
-    pub fn remote_client(&self) -> Option<RemoteClient> {
+    pub fn remote_client(&self) -> Result<RemoteClient, RemoteClientNotConfigured> {
         self.remote_client.clone()
     }
 
@@ -316,7 +320,7 @@ impl LocalDeployment {
             };
         }
 
-        let Some(remote_client) = self.remote_client.as_ref() else {
+        let Ok(remote_client) = self.remote_client.as_ref() else {
             return LoginStatus::LoggedOut;
         };
 
