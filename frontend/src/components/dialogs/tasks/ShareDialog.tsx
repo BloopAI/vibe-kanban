@@ -92,7 +92,9 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
 
     if (result.action === 'linked') {
       // Refresh project data after successful link
-      await queryClient.invalidateQueries({ queryKey: ['project', project.id] });
+      await queryClient.invalidateQueries({
+        queryKey: ['project', project.id],
+      });
     }
   };
 
