@@ -50,7 +50,11 @@ pub async fn assign_shared_task(
         .ok_or_else(|| ApiError::Conflict("shared task not found".into()))?;
 
     let updated_shared_task = publisher
-        .assign_shared_task(&shared_task, payload.new_assignee_user_id.clone(), payload.version)
+        .assign_shared_task(
+            &shared_task,
+            payload.new_assignee_user_id.clone(),
+            payload.version,
+        )
         .await?;
 
     let props = serde_json::json!({
