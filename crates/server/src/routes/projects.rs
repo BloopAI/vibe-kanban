@@ -136,22 +136,14 @@ pub async fn unlink_project(
 ) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
     let pool = &deployment.db().pool;
 
-    // If there's a remote_project_id, we need to clean up shared task references
     if let Some(remote_project_id) = project.remote_project_id {
-        // Use a transaction to ensure atomicity
         let mut tx = pool.begin().await?;
 
-        // Clear shared_task_id from all tasks that reference shared tasks for this remote project
         Task::clear_shared_task_ids_for_remote_project(&mut *tx, remote_project_id).await?;
 
-        // Set remote_project_id to NULL on the project
         Project::set_remote_project_id_tx(&mut *tx, project.id, None).await?;
 
-        // Commit the transaction
         tx.commit().await?;
-    } else {
-        // No remote project linked, just proceed normally
-        Project::set_remote_project_id(pool, project.id, None).await?;
     }
 
     let updated_project = Project::find_by_id(pool, project.id)
