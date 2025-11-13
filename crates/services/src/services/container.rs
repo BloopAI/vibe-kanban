@@ -259,17 +259,17 @@ pub trait ContainerService {
             );
         } else {
             // Fallback: load from DB and create direct stream
-            let logs_record =
+            let log_records =
                 match ExecutionProcessLogs::find_by_execution_id(&self.db().pool, *id).await {
-                    Ok(Some(record)) => record,
-                    Ok(None) => return None, // No logs exist
+                    Ok(records) if !records.is_empty() => records,
+                    Ok(_) => return None, // No logs exist
                     Err(e) => {
                         tracing::error!("Failed to fetch logs for execution {}: {}", id, e);
                         return None;
                     }
                 };
 
-            let messages = match logs_record.parse_logs() {
+            let messages = match ExecutionProcessLogs::parse_logs(&log_records) {
                 Ok(msgs) => msgs,
                 Err(e) => {
                     tracing::error!("Failed to parse logs for execution {}: {}", id, e);
@@ -308,17 +308,17 @@ pub trait ContainerService {
             )
         } else {
             // Fallback: load from DB and normalize
-            let logs_record =
+            let log_records =
                 match ExecutionProcessLogs::find_by_execution_id(&self.db().pool, *id).await {
-                    Ok(Some(record)) => record,
-                    Ok(None) => return None, // No logs exist
+                    Ok(records) if !records.is_empty() => records,
+                    Ok(_) => return None, // No logs exist
                     Err(e) => {
                         tracing::error!("Failed to fetch logs for execution {}: {}", id, e);
                         return None;
                     }
                 };
 
-            let raw_messages = match logs_record.parse_logs() {
+            let raw_messages = match ExecutionProcessLogs::parse_logs(&log_records) {
                 Ok(msgs) => msgs,
                 Err(e) => {
                     tracing::error!("Failed to parse logs for execution {}: {}", id, e);

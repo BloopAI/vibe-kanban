@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT \n                execution_id as \"execution_id!: Uuid\",\n                logs,\n                byte_size,\n                inserted_at as \"inserted_at!: DateTime<Utc>\"\n               FROM execution_process_logs \n               WHERE execution_id = $1",
+  "query": "SELECT \n                execution_id as \"execution_id!: Uuid\",\n                logs,\n                byte_size,\n                inserted_at as \"inserted_at!: DateTime<Utc>\"\n               FROM execution_process_logs \n               WHERE execution_id = $1\n               ORDER BY inserted_at ASC",
   "describe": {
     "columns": [
       {
@@ -28,11 +28,11 @@
       "Right": 1
     },
     "nullable": [
-      true,
+      false,
       false,
       false,
       false
     ]
   },
-  "hash": "2ec7648202fc6f496b97d9486cf9fd3c59fdba73c168628784f0a09488b80528"
+  "hash": "a1574f21db387b0e4a2c3f5723de6df4ee42d98145d16e9d135345dd60128429"
 }
