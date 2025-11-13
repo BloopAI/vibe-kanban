@@ -148,14 +148,13 @@ impl Deployment for LocalDeployment {
             }
         };
 
-        // In-memory storage for pending OAuth handoffs
-        let oauth_handoffs = Arc::new(RwLock::new(HashMap::new()));
-
-        // Populate the handle once the sync task is started
-        let share_sync_handle = Arc::new(Mutex::new(None));
         let share_publisher = remote_client
-            .clone()
-            .map(|remote| SharePublisher::new(db.clone(), remote));
+            .as_ref()
+            .map(|client| SharePublisher::new(db.clone(), client.clone()))
+            .map_err(|e| *e);
+
+        let oauth_handoffs = Arc::new(RwLock::new(HashMap::new()));
+        let share_sync_handle = Arc::new(Mutex::new(None));
 
         let mut share_sync_config: Option<ShareConfig> = None;
         if let (Some(sc_ref), Ok(_)) = (share_config.as_ref(), &share_publisher)
