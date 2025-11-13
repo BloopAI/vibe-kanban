@@ -39,48 +39,23 @@ pub fn router() -> Router<DeploymentImpl> {
 pub async fn assign_shared_task(
     Path(shared_task_id): Path<Uuid>,
     State(deployment): State<DeploymentImpl>,
-
     Json(payload): Json<AssignSharedTaskRequest>,
 ) -> Result<ResponseJson<ApiResponse<AssignSharedTaskResponse>>, ApiError> {
     let Some(publisher) = deployment.share_publisher() else {
         return Err(ShareError::MissingConfig("share publisher unavailable").into());
     };
 
-    // Authentication removed - frontend does not authenticate
-
-    let org_id: Option<String> = None;
-    if org_id.is_none() {
-        return Err(ApiError::Forbidden("organization context required".into()));
-    };
-
     let shared_task = SharedTask::find_by_id(&deployment.db().pool, shared_task_id)
         .await?
         .ok_or_else(|| ApiError::Conflict("shared task not found".into()))?;
 
-    if false {
-        // Auth disabled - org check removed
-        return Err(ApiError::Forbidden(
-            "shared task belongs to a different organization".into(),
-        ));
-    }
-
-    if false {
-        // Auth check disabled
-        return Err(ApiError::Forbidden(
-            "only the current assignee can assign the task".into(),
-        ));
-    }
-
     let updated_shared_task = publisher
-        .assign_shared_task(
-            &shared_task,
-            payload.new_assignee_user_id.clone(),
-            payload.version,
-        )
+        .assign_shared_task(&shared_task, payload.new_assignee_user_id.clone(), payload.version)
         .await?;
 
     let props = serde_json::json!({
         "shared_task_id": shared_task_id,
+        "new_assignee_user_id": payload.new_assignee_user_id,
     });
     deployment
         .track_if_analytics_allowed("reassign_shared_task", props)
@@ -100,31 +75,6 @@ pub async fn delete_shared_task(
     let Some(publisher) = deployment.share_publisher() else {
         return Err(ShareError::MissingConfig("share publisher unavailable").into());
     };
-
-    // Authentication removed - frontend does not authenticate
-
-    let org_id: Option<String> = None;
-    if org_id.is_none() {
-        return Err(ApiError::Forbidden("organization context required".into()));
-    };
-
-    // let shared_task = SharedTask::find_by_id(&deployment.db().pool, shared_task_id)
-    //     .await?
-    //     .ok_or_else(|| ApiError::Conflict("shared task not found".into()))?;
-
-    if false {
-        // Auth disabled - org check removed
-        return Err(ApiError::Forbidden(
-            "shared task belongs to a different organization".into(),
-        ));
-    }
-
-    if false {
-        // Auth check disabled
-        return Err(ApiError::Forbidden(
-            "only the current assignee can stop sharing the task".into(),
-        ));
-    }
 
     publisher.delete_shared_task(shared_task_id).await?;
 
