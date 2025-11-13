@@ -343,6 +343,11 @@ impl RemoteClient {
                 .map_err(map_reqwest_error)?;
 
             match res.status() {
+                StatusCode::NO_CONTENT => {
+                    // For NO_CONTENT responses, return default value without parsing JSON
+                    Ok(serde_json::from_str("null")
+                        .expect("Failed to deserialize null as default value"))
+                }
                 s if s.is_success() => res
                     .json::<T>()
                     .await
