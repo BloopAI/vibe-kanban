@@ -6,9 +6,10 @@ use uuid::Uuid;
 
 use super::{
     identity_errors::IdentityError,
-    organization_members::{MemberRole, assert_admin, ensure_member_metadata_with_role},
+    organization_members::{MemberRole, add_member, assert_admin},
     organizations::{Organization, OrganizationRepository},
 };
+use crate::db::organization_members::is_member;
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct Invitation {
@@ -249,7 +250,14 @@ impl<'a> InvitationRepository<'a> {
             ));
         }
 
-        ensure_member_metadata_with_role(
+        if is_member(&mut *tx, invitation.organization_id, user_id).await? {
+            tx.rollback().await?;
+            return Err(IdentityError::InvitationError(
+                "You are already a member of the organization".to_string(),
+            ));
+        }
+
+        add_member(
             &mut *tx,
             invitation.organization_id,
             user_id,

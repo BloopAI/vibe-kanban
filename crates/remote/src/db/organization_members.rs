@@ -4,15 +4,7 @@ use uuid::Uuid;
 
 use super::identity_errors::IdentityError;
 
-pub(super) async fn ensure_member_metadata(
-    pool: &PgPool,
-    organization_id: Uuid,
-    user_id: Uuid,
-) -> Result<(), sqlx::Error> {
-    ensure_member_metadata_with_role(pool, organization_id, user_id, MemberRole::Member).await
-}
-
-pub(super) async fn ensure_member_metadata_with_role<'a, E>(
+pub(super) async fn add_member<'a, E>(
     executor: E,
     organization_id: Uuid,
     user_id: Uuid,
@@ -58,11 +50,14 @@ pub(super) async fn check_user_role(
     Ok(result.map(|r| r.role))
 }
 
-pub(crate) async fn assert_membership(
-    pool: &PgPool,
+pub async fn is_member<'a, E>(
+    executor: E,
     organization_id: Uuid,
     user_id: Uuid,
-) -> Result<(), IdentityError> {
+) -> Result<bool, IdentityError>
+where
+    E: Executor<'a, Database = Postgres>,
+{
     let exists = sqlx::query_scalar!(
         r#"
         SELECT EXISTS(
@@ -74,8 +69,18 @@ pub(crate) async fn assert_membership(
         organization_id,
         user_id
     )
-    .fetch_one(pool)
+    .fetch_one(executor)
     .await?;
+
+    Ok(exists)
+}
+
+pub(crate) async fn assert_membership(
+    pool: &PgPool,
+    organization_id: Uuid,
+    user_id: Uuid,
+) -> Result<(), IdentityError> {
+    let exists = is_member(pool, organization_id, user_id).await?;
 
     if exists {
         Ok(())
