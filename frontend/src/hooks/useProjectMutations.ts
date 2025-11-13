@@ -80,6 +80,7 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
       });
 
       // Invalidate to ensure fresh data from server
+      queryClient.invalidateQueries({ queryKey: ['project', project.id] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
 
       // Invalidate organization projects queries since linking affects remote projects
@@ -120,6 +121,7 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
       });
 
       // Invalidate to ensure fresh data from server
+      queryClient.invalidateQueries({ queryKey: ['project', project.id] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
 
       // Invalidate organization projects queries since linking affects remote projects
