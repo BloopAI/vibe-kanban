@@ -20,6 +20,11 @@
     "loadingOrganizations": "Loading organizations...",
     "noOrganizations": "No organizations available. Create an organization first.",
     "selectOrganization": "Select an organization",
+    "loginRequired": {
+      "title": "Login Required",
+      "description": "You need to be logged in to link projects.",
+      "action": "Login"
+    },
     "linkModeLabel": "Link Mode",
     "linkToExisting": "Link to Existing",
     "createNew": "Create New",

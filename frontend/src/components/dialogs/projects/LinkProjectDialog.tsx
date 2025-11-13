@@ -23,6 +23,8 @@ import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationSelection } from '@/hooks/useOrganizationSelection';
 import { useOrganizationProjects } from '@/hooks/useOrganizationProjects';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
+import { useAuth } from '@/hooks/auth/useAuth';
+import { LoginRequiredPrompt } from '@/components/dialogs/shared/LoginRequiredPrompt';
 import type { Project } from 'shared/types';
 import { useTranslation } from 'react-i18next';
 
@@ -43,6 +45,7 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
     const modal = useModal();
     const { t } = useTranslation('projects');
     const { t: tCommon } = useTranslation('common');
+    const { isSignedIn, isLoaded } = useAuth();
     const { data: orgsResponse, isLoading: orgsLoading } =
       useUserOrganizations();
     const { selectedOrgId, handleOrgSelect } = useOrganizationSelection({
@@ -160,6 +163,12 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
                 <div className="px-3 py-2 text-sm text-muted-foreground">
                   {t('linkDialog.loadingOrganizations')}
                 </div>
+              ) : !isSignedIn ? (
+                <LoginRequiredPrompt
+                  title={t('linkDialog.loginRequired.title')}
+                  description={t('linkDialog.loginRequired.description')}
+                  actionLabel={t('linkDialog.loginRequired.action')}
+                />
               ) : !orgsResponse?.organizations?.length ? (
                 <Alert>
                   <AlertDescription>

@@ -20,6 +20,11 @@
     "loadingOrganizations": "조직 로딩 중...",
     "noOrganizations": "사용 가능한 조직이 없습니다. 먼저 조직을 만드세요.",
     "selectOrganization": "조직 선택",
+    "loginRequired": {
+      "title": "로그인이 필요합니다",
+      "description": "프로젝트를 연결하려면 로그인이 필요합니다.",
+      "action": "로그인"
+    },
     "linkModeLabel": "연결 모드",
     "linkToExisting": "기존에 연결",
     "createNew": "새로 만들기",
