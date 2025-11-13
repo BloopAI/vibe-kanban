@@ -7,7 +7,7 @@ use db::{
     DBService,
     models::{
         execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
-        project::{CreateProject, Project, ProjectRemoteMetadata},
+        project::{CreateProject, Project},
         task::{Task, TaskStatus},
         task_attempt::{TaskAttempt, TaskAttemptError},
     },
@@ -323,17 +323,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
                     // Create project (ignore individual failures)
                     let project_id = Uuid::new_v4();
-                    let remote_metadata = self
-                        .git()
-                        .get_remote_metadata(&repo.path)
-                        .unwrap_or_else(|error| {
-                            tracing::warn!(
-                                "Failed to read git remotes for auto-created project '{}': {}",
-                                create_data.git_repo_path,
-                                error
-                            );
-                            ProjectRemoteMetadata::default()
-                        });
+                    let remote_metadata = compute_remote_metadata(self.git(), &repo.path).await;
 
                     match Project::create(
                         &self.db().pool,
