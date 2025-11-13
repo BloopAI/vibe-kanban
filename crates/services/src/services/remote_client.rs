@@ -99,7 +99,7 @@ struct ApiErrorResponse {
 pub struct RemoteClient {
     base: Url,
     http: Client,
-    auth_context: Option<AuthContext>,
+    auth_context: AuthContext,
 }
 
 impl std::fmt::Debug for RemoteClient {
@@ -107,10 +107,7 @@ impl std::fmt::Debug for RemoteClient {
         f.debug_struct("RemoteClient")
             .field("base", &self.base)
             .field("http", &self.http)
-            .field(
-                "auth_context",
-                &self.auth_context.as_ref().map(|_| "<present>"),
-            )
+            .field("auth_context", &"<present>")
             .finish()
     }
 }
@@ -128,7 +125,7 @@ impl Clone for RemoteClient {
 impl RemoteClient {
     const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
-    pub fn new(base_url: &str) -> Result<Self, RemoteClientError> {
+    pub fn new(base_url: &str, auth_context: AuthContext) -> Result<Self, RemoteClientError> {
         let base = Url::parse(base_url).map_err(|e| RemoteClientError::Url(e.to_string()))?;
         let http = Client::builder()
             .timeout(Self::REQUEST_TIMEOUT)
@@ -138,29 +135,14 @@ impl RemoteClient {
         Ok(Self {
             base,
             http,
-            auth_context: None,
-        })
-    }
-
-    /// Creates a client with an AuthContext.
-    pub fn with_auth(base_url: &str, auth_context: AuthContext) -> Result<Self, RemoteClientError> {
-        let base = Url::parse(base_url).map_err(|e| RemoteClientError::Url(e.to_string()))?;
-        let http = Client::builder()
-            .timeout(Self::REQUEST_TIMEOUT)
-            .user_agent(concat!("remote-client/", env!("CARGO_PKG_VERSION")))
-            .build()
-            .map_err(|e| RemoteClientError::Transport(e.to_string()))?;
-        Ok(Self {
-            base,
-            http,
-            auth_context: Some(auth_context),
+            auth_context,
         })
     }
 
     /// Returns the token if available.
     async fn require_token(&self) -> Result<String, RemoteClientError> {
-        let auth_context = self.auth_context.as_ref().ok_or(RemoteClientError::Auth)?;
-        let creds = auth_context
+        let creds = self
+            .auth_context
             .get_credentials()
             .await
             .ok_or(RemoteClientError::Auth)?;

@@ -5,7 +5,6 @@ use axum::{
     response::Json as ResponseJson,
     routing::{delete, get, patch, post},
 };
-use services::RemoteClient;
 use utils::{
     api::{
         organizations::{
@@ -149,8 +148,7 @@ async fn get_invitation(
     State(deployment): State<DeploymentImpl>,
     Path(token): Path<String>,
 ) -> Result<ResponseJson<ApiResponse<GetInvitationResponse>>, ApiError> {
-    let remote = deployment.remote_client()?;
-    let client = RemoteClient::new(remote.base_url())?;
+    let client = deployment.remote_client()?;
 
     let response = client.get_invitation(&token).await?;
 

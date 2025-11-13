@@ -8,10 +8,7 @@ use axum::{
 use deployment::Deployment;
 use rand::{Rng, distributions::Alphanumeric};
 use serde::{Deserialize, Serialize};
-use services::{
-    RemoteClient,
-    services::{config::save_config_to_file, oauth_credentials::Credentials},
-};
+use services::services::{config::save_config_to_file, oauth_credentials::Credentials};
 use sha2::{Digest, Sha256};
 use utils::{
     api::oauth::{HandoffInitRequest, HandoffRedeemRequest, StatusResponse},
@@ -46,8 +43,7 @@ async fn handoff_init(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<HandoffInitPayload>,
 ) -> Result<ResponseJson<ApiResponse<HandoffInitResponseBody>>, ApiError> {
-    let remote = deployment.remote_client()?;
-    let client = RemoteClient::new(remote.base_url())?;
+    let client = deployment.remote_client()?;
 
     let app_verifier = generate_secret();
     let app_challenge = hash_sha256_hex(&app_verifier);
@@ -113,8 +109,7 @@ async fn handoff_complete(
         }
     };
 
-    let remote = deployment.remote_client()?;
-    let client = RemoteClient::new(remote.base_url())?;
+    let client = deployment.remote_client()?;
 
     let redeem_request = HandoffRedeemRequest {
         handoff_id: query.handoff_id,
