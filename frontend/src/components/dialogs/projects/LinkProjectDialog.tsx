@@ -45,7 +45,7 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
     const modal = useModal();
     const { t } = useTranslation('projects');
     const { t: tCommon } = useTranslation('common');
-    const { isSignedIn, isLoaded } = useAuth();
+    const { isSignedIn } = useAuth();
     const { data: orgsResponse, isLoading: orgsLoading } =
       useUserOrganizations();
     const { selectedOrgId, handleOrgSelect } = useOrganizationSelection({
