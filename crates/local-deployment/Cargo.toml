@@ -16,7 +16,8 @@ anyhow = { workspace = true }
 tracing = { workspace = true }
 sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "sqlite", "sqlite-preupdate-hook", "chrono", "uuid"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
-async-trait = { workspace = true } 
+async-trait = { workspace = true }
+thiserror = { workspace = true }
 command-group = { version = "5.0", features = ["with-tokio"] }
 nix = { version = "0.29", features = ["signal", "process"] }
 openssl-sys = { workspace = true }

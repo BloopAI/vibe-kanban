@@ -3,6 +3,13 @@
 use std::time::Duration;
 
 use backon::{ExponentialBuilder, Retryable};
+use remote::{
+    activity::ActivityResponse,
+    routes::tasks::{
+        AssignSharedTaskRequest, BulkSharedTasksResponse, CreateSharedTaskRequest,
+        DeleteSharedTaskRequest, SharedTaskResponse, UpdateSharedTaskRequest,
+    },
+};
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -24,6 +31,8 @@ use utils::api::{
     projects::{ListProjectsResponse, RemoteProject},
 };
 use uuid::Uuid;
+
+use super::auth::AuthContext;
 
 #[derive(Debug, Clone, Error)]
 pub enum RemoteClientError {
@@ -87,21 +96,80 @@ struct ApiErrorResponse {
 }
 
 /// HTTP client for the remote OAuth server with automatic retries.
-#[derive(Debug, Clone)]
 pub struct RemoteClient {
     base: Url,
     http: Client,
+    auth_context: Option<AuthContext>,
+}
+
+impl std::fmt::Debug for RemoteClient {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RemoteClient")
+            .field("base", &self.base)
+            .field("http", &self.http)
+            .field(
+                "auth_context",
+                &self.auth_context.as_ref().map(|_| "<present>"),
+            )
+            .finish()
+    }
+}
+
+impl Clone for RemoteClient {
+    fn clone(&self) -> Self {
+        Self {
+            base: self.base.clone(),
+            http: self.http.clone(),
+            auth_context: self.auth_context.clone(),
+        }
+    }
 }
 
 impl RemoteClient {
+    const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
+
     pub fn new(base_url: &str) -> Result<Self, RemoteClientError> {
         let base = Url::parse(base_url).map_err(|e| RemoteClientError::Url(e.to_string()))?;
         let http = Client::builder()
-            .timeout(Duration::from_secs(10))
+            .timeout(Self::REQUEST_TIMEOUT)
             .user_agent(concat!("remote-client/", env!("CARGO_PKG_VERSION")))
             .build()
             .map_err(|e| RemoteClientError::Transport(e.to_string()))?;
-        Ok(Self { base, http })
+        Ok(Self {
+            base,
+            http,
+            auth_context: None,
+        })
+    }
+
+    /// Creates a client with an AuthContext.
+    pub fn with_auth(base_url: &str, auth_context: AuthContext) -> Result<Self, RemoteClientError> {
+        let base = Url::parse(base_url).map_err(|e| RemoteClientError::Url(e.to_string()))?;
+        let http = Client::builder()
+            .timeout(Self::REQUEST_TIMEOUT)
+            .user_agent(concat!("remote-client/", env!("CARGO_PKG_VERSION")))
+            .build()
+            .map_err(|e| RemoteClientError::Transport(e.to_string()))?;
+        Ok(Self {
+            base,
+            http,
+            auth_context: Some(auth_context),
+        })
+    }
+
+    /// Returns the token if available.
+    async fn require_token(&self) -> Result<String, RemoteClientError> {
+        let auth_context = self.auth_context.as_ref().ok_or(RemoteClientError::Auth)?;
+        let creds = auth_context
+            .get_credentials()
+            .await
+            .ok_or(RemoteClientError::Auth)?;
+        Ok(creds.access_token)
+    }
+
+    /// Returns the base URL for the client.
+    pub fn base_url(&self) -> &str {
+        self.base.as_str()
     }
 
     /// Initiates an authorization-code handoff for the given provider.
@@ -109,7 +177,7 @@ impl RemoteClient {
         &self,
         request: &HandoffInitRequest,
     ) -> Result<HandoffInitResponse, RemoteClientError> {
-        self.post_json("/oauth/web/init", request)
+        self.post_public("/oauth/web/init", Some(request))
             .await
             .map_err(|e| self.map_api_error(e))
     }
@@ -119,124 +187,9 @@ impl RemoteClient {
         &self,
         request: &HandoffRedeemRequest,
     ) -> Result<HandoffRedeemResponse, RemoteClientError> {
-        self.post_json("/oauth/web/redeem", request)
+        self.post_public("/oauth/web/redeem", Some(request))
             .await
             .map_err(|e| self.map_api_error(e))
-    }
-
-    /// Fetches user profile using an access token.
-    pub async fn profile(&self, token: &str) -> Result<ProfileResponse, RemoteClientError> {
-        self.get_json("/v1/profile", Some(token)).await
-    }
-
-    /// Revokes the session associated with the provided token.
-    pub async fn logout(&self, token: &str) -> Result<(), RemoteClientError> {
-        self.post_empty("/v1/oauth/logout", token).await
-    }
-
-    /// Lists organizations for the authenticated user.
-    pub async fn list_organizations(
-        &self,
-        token: &str,
-    ) -> Result<ListOrganizationsResponse, RemoteClientError> {
-        self.get_json("/v1/organizations", Some(token)).await
-    }
-
-    /// Lists projects for a given organization.
-    pub async fn list_projects(
-        &self,
-        token: &str,
-        organization_id: Uuid,
-    ) -> Result<ListProjectsResponse, RemoteClientError> {
-        let path = format!("/v1/projects?organization_id={organization_id}");
-        self.get_json(&path, Some(token)).await
-    }
-
-    pub async fn get_project(
-        &self,
-        token: &str,
-        project_id: Uuid,
-    ) -> Result<RemoteProject, RemoteClientError> {
-        self.get_json(&format!("/v1/projects/{project_id}"), Some(token))
-            .await
-    }
-
-    pub async fn create_project(
-        &self,
-        token: &str,
-        request: &CreateRemoteProjectPayload,
-    ) -> Result<RemoteProject, RemoteClientError> {
-        self.post_json_with_auth("/v1/projects", request, token)
-            .await
-    }
-
-    /// Gets a specific organization by ID.
-    pub async fn get_organization(
-        &self,
-        token: &str,
-        org_id: Uuid,
-    ) -> Result<GetOrganizationResponse, RemoteClientError> {
-        self.get_json(&format!("/v1/organizations/{org_id}"), Some(token))
-            .await
-    }
-
-    /// Creates a new organization.
-    pub async fn create_organization(
-        &self,
-        token: &str,
-        request: &CreateOrganizationRequest,
-    ) -> Result<CreateOrganizationResponse, RemoteClientError> {
-        self.post_json_with_auth("/v1/organizations", request, token)
-            .await
-    }
-
-    /// Updates an organization's name.
-    pub async fn update_organization(
-        &self,
-        token: &str,
-        org_id: Uuid,
-        request: &UpdateOrganizationRequest,
-    ) -> Result<Organization, RemoteClientError> {
-        self.patch_json(&format!("/v1/organizations/{org_id}"), request, token)
-            .await
-    }
-
-    /// Deletes an organization.
-    pub async fn delete_organization(
-        &self,
-        token: &str,
-        org_id: Uuid,
-    ) -> Result<(), RemoteClientError> {
-        self.delete(&format!("/v1/organizations/{org_id}"), token)
-            .await
-    }
-
-    /// Creates an invitation to an organization.
-    pub async fn create_invitation(
-        &self,
-        token: &str,
-        org_id: Uuid,
-        request: &CreateInvitationRequest,
-    ) -> Result<CreateInvitationResponse, RemoteClientError> {
-        self.post_json_with_auth(
-            &format!("/v1/organizations/{org_id}/invitations"),
-            request,
-            token,
-        )
-        .await
-    }
-
-    /// Lists invitations for an organization.
-    pub async fn list_invitations(
-        &self,
-        token: &str,
-        org_id: Uuid,
-    ) -> Result<ListInvitationsResponse, RemoteClientError> {
-        self.get_json(
-            &format!("/v1/organizations/{org_id}/invitations"),
-            Some(token),
-        )
-        .await
     }
 
     /// Gets an invitation by token (public, no auth required).
@@ -244,87 +197,18 @@ impl RemoteClient {
         &self,
         invitation_token: &str,
     ) -> Result<GetInvitationResponse, RemoteClientError> {
-        self.get_json(&format!("/v1/invitations/{invitation_token}"), None)
+        self.get_public(&format!("/v1/invitations/{invitation_token}"))
             .await
     }
 
-    pub async fn revoke_invitation(
+    async fn send<B>(
         &self,
-        token: &str,
-        org_id: Uuid,
-        invitation_id: Uuid,
-    ) -> Result<(), RemoteClientError> {
-        let body = RevokeInvitationRequest { invitation_id };
-        self.post_json_with_auth(
-            &format!("/v1/organizations/{org_id}/invitations/revoke"),
-            &body,
-            token,
-        )
-        .await
-    }
-
-    /// Accepts an invitation.
-    pub async fn accept_invitation(
-        &self,
-        token: &str,
-        invitation_token: &str,
-    ) -> Result<AcceptInvitationResponse, RemoteClientError> {
-        self.post_json_with_auth(
-            &format!("/v1/invitations/{invitation_token}/accept"),
-            &serde_json::json!({}),
-            token,
-        )
-        .await
-    }
-
-    /// Lists members of an organization.
-    pub async fn list_members(
-        &self,
-        token: &str,
-        org_id: Uuid,
-    ) -> Result<ListMembersResponse, RemoteClientError> {
-        self.get_json(&format!("/v1/organizations/{org_id}/members"), Some(token))
-            .await
-    }
-
-    /// Removes a member from an organization.
-    pub async fn remove_member(
-        &self,
-        token: &str,
-        org_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<(), RemoteClientError> {
-        self.delete(
-            &format!("/v1/organizations/{org_id}/members/{user_id}"),
-            token,
-        )
-        .await
-    }
-
-    /// Updates a member's role in an organization.
-    pub async fn update_member_role(
-        &self,
-        token: &str,
-        org_id: Uuid,
-        user_id: Uuid,
-        request: &UpdateMemberRoleRequest,
-    ) -> Result<UpdateMemberRoleResponse, RemoteClientError> {
-        self.patch_json(
-            &format!("/v1/organizations/{org_id}/members/{user_id}/role"),
-            request,
-            token,
-        )
-        .await
-    }
-
-    async fn post_json_with_auth<T, B>(
-        &self,
+        method: reqwest::Method,
         path: &str,
-        body: &B,
-        token: &str,
-    ) -> Result<T, RemoteClientError>
+        token: Option<&str>,
+        body: Option<&B>,
+    ) -> Result<reqwest::Response, RemoteClientError>
     where
-        T: for<'de> Deserialize<'de>,
         B: Serialize,
     {
         let url = self
@@ -333,268 +217,21 @@ impl RemoteClient {
             .map_err(|e| RemoteClientError::Url(e.to_string()))?;
 
         (|| async {
-            let res = self
-                .http
-                .post(url.clone())
-                .bearer_auth(token)
-                .json(body)
-                .send()
-                .await
-                .map_err(map_reqwest_error)?;
+            let mut req = self.http.request(method.clone(), url.clone());
 
-            match res.status() {
-                StatusCode::NO_CONTENT => {
-                    // For NO_CONTENT responses, return default value without parsing JSON
-                    Ok(serde_json::from_str("null")
-                        .expect("Failed to deserialize null as default value"))
-                }
-                s if s.is_success() => res
-                    .json::<T>()
-                    .await
-                    .map_err(|e| RemoteClientError::Serde(e.to_string())),
-                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => Err(RemoteClientError::Auth),
-                s => {
-                    let status = s.as_u16();
-                    let body = res.text().await.unwrap_or_default();
-                    Err(RemoteClientError::Http { status, body })
-                }
-            }
-        })
-        .retry(
-            &ExponentialBuilder::default()
-                .with_min_delay(Duration::from_secs(1))
-                .with_max_delay(Duration::from_secs(30))
-                .with_max_times(3)
-                .with_jitter(),
-        )
-        .when(|e: &RemoteClientError| e.should_retry())
-        .notify(|e, dur| {
-            warn!(
-                "Remote call failed, retrying after {:.2}s: {}",
-                dur.as_secs_f64(),
-                e
-            )
-        })
-        .await
-    }
-
-    async fn patch_json<T, B>(
-        &self,
-        path: &str,
-        body: &B,
-        token: &str,
-    ) -> Result<T, RemoteClientError>
-    where
-        T: for<'de> Deserialize<'de>,
-        B: Serialize,
-    {
-        let url = self
-            .base
-            .join(path)
-            .map_err(|e| RemoteClientError::Url(e.to_string()))?;
-
-        (|| async {
-            let res = self
-                .http
-                .patch(url.clone())
-                .bearer_auth(token)
-                .json(body)
-                .send()
-                .await
-                .map_err(map_reqwest_error)?;
-
-            match res.status() {
-                StatusCode::OK => res
-                    .json::<T>()
-                    .await
-                    .map_err(|e| RemoteClientError::Serde(e.to_string())),
-                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => Err(RemoteClientError::Auth),
-                s => {
-                    let status = s.as_u16();
-                    let body = res.text().await.unwrap_or_default();
-                    Err(RemoteClientError::Http { status, body })
-                }
-            }
-        })
-        .retry(
-            &ExponentialBuilder::default()
-                .with_min_delay(Duration::from_secs(1))
-                .with_max_delay(Duration::from_secs(30))
-                .with_max_times(3)
-                .with_jitter(),
-        )
-        .when(|e: &RemoteClientError| e.should_retry())
-        .notify(|e, dur| {
-            warn!(
-                "Remote call failed, retrying after {:.2}s: {}",
-                dur.as_secs_f64(),
-                e
-            )
-        })
-        .await
-    }
-
-    async fn delete(&self, path: &str, token: &str) -> Result<(), RemoteClientError> {
-        let url = self
-            .base
-            .join(path)
-            .map_err(|e| RemoteClientError::Url(e.to_string()))?;
-
-        (|| async {
-            let res = self
-                .http
-                .delete(url.clone())
-                .bearer_auth(token)
-                .send()
-                .await
-                .map_err(map_reqwest_error)?;
-
-            match res.status() {
-                StatusCode::NO_CONTENT | StatusCode::OK => Ok(()),
-                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => Err(RemoteClientError::Auth),
-                s => {
-                    let status = s.as_u16();
-                    let body = res.text().await.unwrap_or_default();
-                    Err(RemoteClientError::Http { status, body })
-                }
-            }
-        })
-        .retry(
-            &ExponentialBuilder::default()
-                .with_min_delay(Duration::from_secs(1))
-                .with_max_delay(Duration::from_secs(30))
-                .with_max_times(3)
-                .with_jitter(),
-        )
-        .when(|e: &RemoteClientError| e.should_retry())
-        .notify(|e, dur| {
-            warn!(
-                "Remote call failed, retrying after {:.2}s: {}",
-                dur.as_secs_f64(),
-                e
-            )
-        })
-        .await
-    }
-
-    async fn post_empty(&self, path: &str, token: &str) -> Result<(), RemoteClientError> {
-        let url = self
-            .base
-            .join(path)
-            .map_err(|e| RemoteClientError::Url(e.to_string()))?;
-
-        (|| async {
-            let res = self
-                .http
-                .post(url.clone())
-                .bearer_auth(token)
-                .send()
-                .await
-                .map_err(map_reqwest_error)?;
-
-            match res.status() {
-                StatusCode::NO_CONTENT | StatusCode::OK => Ok(()),
-                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => Err(RemoteClientError::Auth),
-                s => {
-                    let status = s.as_u16();
-                    let body = res.text().await.unwrap_or_default();
-                    Err(RemoteClientError::Http { status, body })
-                }
-            }
-        })
-        .retry(
-            &ExponentialBuilder::default()
-                .with_min_delay(Duration::from_secs(1))
-                .with_max_delay(Duration::from_secs(30))
-                .with_max_times(3)
-                .with_jitter(),
-        )
-        .when(|e: &RemoteClientError| e.should_retry())
-        .notify(|e, dur| {
-            warn!(
-                "Remote call failed, retrying after {:.2}s: {}",
-                dur.as_secs_f64(),
-                e
-            )
-        })
-        .await
-    }
-
-    async fn post_json<T, B>(&self, path: &str, body: &B) -> Result<T, RemoteClientError>
-    where
-        T: for<'de> Deserialize<'de>,
-        B: Serialize,
-    {
-        let url = self
-            .base
-            .join(path)
-            .map_err(|e| RemoteClientError::Url(e.to_string()))?;
-
-        (|| async {
-            let res = self
-                .http
-                .post(url.clone())
-                .json(body)
-                .send()
-                .await
-                .map_err(map_reqwest_error)?;
-
-            if !res.status().is_success() {
-                let status = res.status().as_u16();
-                let body = res.text().await.unwrap_or_default();
-                return Err(RemoteClientError::Http { status, body });
+            if let Some(t) = token {
+                req = req.bearer_auth(t);
             }
 
-            res.json::<T>()
-                .await
-                .map_err(|e| RemoteClientError::Serde(e.to_string()))
-        })
-        .retry(
-            &ExponentialBuilder::default()
-                .with_min_delay(Duration::from_secs(1))
-                .with_max_delay(Duration::from_secs(30))
-                .with_max_times(3)
-                .with_jitter(),
-        )
-        .when(|e: &RemoteClientError| e.should_retry())
-        .notify(|e, dur| {
-            warn!(
-                "Remote call failed, retrying after {:.2}s: {}",
-                dur.as_secs_f64(),
-                e
-            )
-        })
-        .await
-    }
-
-    async fn get_json<T>(&self, path: &str, auth: Option<&str>) -> Result<T, RemoteClientError>
-    where
-        T: for<'de> Deserialize<'de>,
-    {
-        let url = self
-            .base
-            .join(path)
-            .map_err(|e| RemoteClientError::Url(e.to_string()))?;
-
-        (|| async {
-            let mut req = self.http.get(url.clone());
-            if let Some(token) = auth {
-                req = req.bearer_auth(token);
+            if let Some(b) = body {
+                req = req.json(b);
             }
 
             let res = req.send().await.map_err(map_reqwest_error)?;
 
             match res.status() {
-                StatusCode::OK => res
-                    .json::<T>()
-                    .await
-                    .map_err(|e| RemoteClientError::Serde(e.to_string())),
+                s if s.is_success() => Ok(res),
                 StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => Err(RemoteClientError::Auth),
-                s if s.is_server_error() => {
-                    let status = s.as_u16();
-                    let body = res.text().await.unwrap_or_default();
-                    Err(RemoteClientError::Http { status, body })
-                }
                 s => {
                     let status = s.as_u16();
                     let body = res.text().await.unwrap_or_default();
@@ -618,6 +255,79 @@ impl RemoteClient {
             )
         })
         .await
+    }
+
+    // Public endpoint helpers (no auth required)
+    async fn get_public<T>(&self, path: &str) -> Result<T, RemoteClientError>
+    where
+        T: for<'de> Deserialize<'de>,
+    {
+        let res = self
+            .send(reqwest::Method::GET, path, None, None::<&()>)
+            .await?;
+        res.json::<T>()
+            .await
+            .map_err(|e| RemoteClientError::Serde(e.to_string()))
+    }
+
+    async fn post_public<T, B>(&self, path: &str, body: Option<&B>) -> Result<T, RemoteClientError>
+    where
+        T: for<'de> Deserialize<'de>,
+        B: Serialize,
+    {
+        let res = self.send(reqwest::Method::POST, path, None, body).await?;
+        res.json::<T>()
+            .await
+            .map_err(|e| RemoteClientError::Serde(e.to_string()))
+    }
+
+    // Authenticated endpoint helpers (require token)
+    async fn get_authed<T>(&self, path: &str) -> Result<T, RemoteClientError>
+    where
+        T: for<'de> Deserialize<'de>,
+    {
+        let token = self.require_token().await?;
+        let res = self
+            .send(reqwest::Method::GET, path, Some(&token), None::<&()>)
+            .await?;
+        res.json::<T>()
+            .await
+            .map_err(|e| RemoteClientError::Serde(e.to_string()))
+    }
+
+    async fn post_authed<T, B>(&self, path: &str, body: Option<&B>) -> Result<T, RemoteClientError>
+    where
+        T: for<'de> Deserialize<'de>,
+        B: Serialize,
+    {
+        let token = self.require_token().await?;
+        let res = self
+            .send(reqwest::Method::POST, path, Some(&token), body)
+            .await?;
+        res.json::<T>()
+            .await
+            .map_err(|e| RemoteClientError::Serde(e.to_string()))
+    }
+
+    async fn patch_authed<T, B>(&self, path: &str, body: &B) -> Result<T, RemoteClientError>
+    where
+        T: for<'de> Deserialize<'de>,
+        B: Serialize,
+    {
+        let token = self.require_token().await?;
+        let res = self
+            .send(reqwest::Method::PATCH, path, Some(&token), Some(body))
+            .await?;
+        res.json::<T>()
+            .await
+            .map_err(|e| RemoteClientError::Serde(e.to_string()))
+    }
+
+    async fn delete_authed(&self, path: &str) -> Result<(), RemoteClientError> {
+        let token = self.require_token().await?;
+        self.send(reqwest::Method::DELETE, path, Some(&token), None::<&()>)
+            .await?;
+        Ok(())
     }
 
     fn map_api_error(&self, err: RemoteClientError) -> RemoteClientError {
@@ -627,6 +337,225 @@ impl RemoteClient {
             return RemoteClientError::Api(map_error_code(Some(&api_err.error)));
         }
         err
+    }
+
+    /// Fetches user profile.
+    pub async fn profile(&self) -> Result<ProfileResponse, RemoteClientError> {
+        self.get_authed("/v1/profile").await
+    }
+
+    /// Revokes the session associated with the token.
+    pub async fn logout(&self) -> Result<(), RemoteClientError> {
+        self.delete_authed("/v1/oauth/logout").await
+    }
+
+    /// Lists organizations for the authenticated user.
+    pub async fn list_organizations(&self) -> Result<ListOrganizationsResponse, RemoteClientError> {
+        self.get_authed("/v1/organizations").await
+    }
+
+    /// Lists projects for a given organization.
+    pub async fn list_projects(
+        &self,
+        organization_id: Uuid,
+    ) -> Result<ListProjectsResponse, RemoteClientError> {
+        self.get_authed(&format!("/v1/projects?organization_id={organization_id}"))
+            .await
+    }
+
+    pub async fn get_project(&self, project_id: Uuid) -> Result<RemoteProject, RemoteClientError> {
+        self.get_authed(&format!("/v1/projects/{project_id}")).await
+    }
+
+    pub async fn create_project(
+        &self,
+        request: &CreateRemoteProjectPayload,
+    ) -> Result<RemoteProject, RemoteClientError> {
+        self.post_authed("/v1/projects", Some(request)).await
+    }
+
+    /// Gets a specific organization by ID.
+    pub async fn get_organization(
+        &self,
+        org_id: Uuid,
+    ) -> Result<GetOrganizationResponse, RemoteClientError> {
+        self.get_authed(&format!("/v1/organizations/{org_id}"))
+            .await
+    }
+
+    /// Creates a new organization.
+    pub async fn create_organization(
+        &self,
+        request: &CreateOrganizationRequest,
+    ) -> Result<CreateOrganizationResponse, RemoteClientError> {
+        self.post_authed("/v1/organizations", Some(request)).await
+    }
+
+    /// Updates an organization's name.
+    pub async fn update_organization(
+        &self,
+        org_id: Uuid,
+        request: &UpdateOrganizationRequest,
+    ) -> Result<Organization, RemoteClientError> {
+        self.patch_authed(&format!("/v1/organizations/{org_id}"), request)
+            .await
+    }
+
+    /// Deletes an organization.
+    pub async fn delete_organization(&self, org_id: Uuid) -> Result<(), RemoteClientError> {
+        self.delete_authed(&format!("/v1/organizations/{org_id}"))
+            .await
+    }
+
+    /// Creates an invitation to an organization.
+    pub async fn create_invitation(
+        &self,
+        org_id: Uuid,
+        request: &CreateInvitationRequest,
+    ) -> Result<CreateInvitationResponse, RemoteClientError> {
+        self.post_authed(
+            &format!("/v1/organizations/{org_id}/invitations"),
+            Some(request),
+        )
+        .await
+    }
+
+    /// Lists invitations for an organization.
+    pub async fn list_invitations(
+        &self,
+        org_id: Uuid,
+    ) -> Result<ListInvitationsResponse, RemoteClientError> {
+        self.get_authed(&format!("/v1/organizations/{org_id}/invitations"))
+            .await
+    }
+
+    pub async fn revoke_invitation(
+        &self,
+        org_id: Uuid,
+        invitation_id: Uuid,
+    ) -> Result<(), RemoteClientError> {
+        let body = RevokeInvitationRequest { invitation_id };
+        self.post_authed(
+            &format!("/v1/organizations/{org_id}/invitations/revoke"),
+            Some(&body),
+        )
+        .await
+    }
+
+    /// Accepts an invitation.
+    pub async fn accept_invitation(
+        &self,
+        invitation_token: &str,
+    ) -> Result<AcceptInvitationResponse, RemoteClientError> {
+        self.post_authed(
+            &format!("/v1/invitations/{invitation_token}/accept"),
+            None::<&()>,
+        )
+        .await
+    }
+
+    /// Lists members of an organization.
+    pub async fn list_members(
+        &self,
+        org_id: Uuid,
+    ) -> Result<ListMembersResponse, RemoteClientError> {
+        self.get_authed(&format!("/v1/organizations/{org_id}/members"))
+            .await
+    }
+
+    /// Removes a member from an organization.
+    pub async fn remove_member(
+        &self,
+        org_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<(), RemoteClientError> {
+        self.delete_authed(&format!("/v1/organizations/{org_id}/members/{user_id}"))
+            .await
+    }
+
+    /// Updates a member's role in an organization.
+    pub async fn update_member_role(
+        &self,
+        org_id: Uuid,
+        user_id: Uuid,
+        request: &UpdateMemberRoleRequest,
+    ) -> Result<UpdateMemberRoleResponse, RemoteClientError> {
+        self.patch_authed(
+            &format!("/v1/organizations/{org_id}/members/{user_id}/role"),
+            request,
+        )
+        .await
+    }
+
+    /// Creates a shared task.
+    pub async fn create_shared_task(
+        &self,
+        request: &CreateSharedTaskRequest,
+    ) -> Result<SharedTaskResponse, RemoteClientError> {
+        self.post_authed("/v1/tasks", Some(request)).await
+    }
+
+    /// Updates a shared task.
+    pub async fn update_shared_task(
+        &self,
+        task_id: Uuid,
+        request: &UpdateSharedTaskRequest,
+    ) -> Result<SharedTaskResponse, RemoteClientError> {
+        self.patch_authed(&format!("/v1/tasks/{task_id}"), request)
+            .await
+    }
+
+    /// Assigns a shared task to a user.
+    pub async fn assign_shared_task(
+        &self,
+        task_id: Uuid,
+        request: &AssignSharedTaskRequest,
+    ) -> Result<SharedTaskResponse, RemoteClientError> {
+        self.post_authed(&format!("/v1/tasks/{task_id}/assign"), Some(request))
+            .await
+    }
+
+    /// Deletes a shared task.
+    pub async fn delete_shared_task(
+        &self,
+        task_id: Uuid,
+        request: &DeleteSharedTaskRequest,
+    ) -> Result<SharedTaskResponse, RemoteClientError> {
+        let token = self.require_token().await?;
+        let res = self
+            .send(
+                reqwest::Method::DELETE,
+                &format!("/v1/tasks/{task_id}"),
+                Some(&token),
+                Some(request),
+            )
+            .await?;
+        res.json::<SharedTaskResponse>()
+            .await
+            .map_err(|e| RemoteClientError::Serde(e.to_string()))
+    }
+
+    /// Fetches activity events for a project.
+    pub async fn fetch_activity(
+        &self,
+        project_id: Uuid,
+        after: Option<i64>,
+        limit: u32,
+    ) -> Result<ActivityResponse, RemoteClientError> {
+        let mut path = format!("/v1/activity?project_id={project_id}&limit={limit}");
+        if let Some(seq) = after {
+            path.push_str(&format!("&after={seq}"));
+        }
+        self.get_authed(&path).await
+    }
+
+    /// Fetches bulk snapshot of shared tasks for a project.
+    pub async fn fetch_bulk_snapshot(
+        &self,
+        project_id: Uuid,
+    ) -> Result<BulkSharedTasksResponse, RemoteClientError> {
+        self.get_authed(&format!("/v1/tasks/bulk?project_id={project_id}"))
+            .await
     }
 }
 

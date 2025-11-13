@@ -9,16 +9,14 @@ use db::{
     },
 };
 use remote::{
-    activity::{ActivityEvent, ActivityResponse},
-    db::tasks::SharedTaskActivityPayload,
+    activity::ActivityEvent, db::tasks::SharedTaskActivityPayload,
     routes::tasks::BulkSharedTasksResponse,
 };
-use reqwest::Client as HttpClient;
 use sqlx::{Sqlite, Transaction};
 use uuid::Uuid;
 
 use super::{ShareConfig, ShareError, convert_remote_task, sync_local_task_for_shared_task};
-use crate::services::auth::AuthContext;
+use crate::services::{auth::AuthContext, remote_client::RemoteClient};
 
 struct PreparedBulkTask {
     input: SharedTaskInput,
@@ -31,16 +29,21 @@ struct PreparedBulkTask {
 pub struct ActivityProcessor {
     db: DBService,
     config: ShareConfig,
-    client: HttpClient,
+    remote_client: RemoteClient,
     auth_ctx: AuthContext,
 }
 
 impl ActivityProcessor {
-    pub fn new(db: DBService, config: ShareConfig, auth_ctx: AuthContext) -> Self {
+    pub fn new(
+        db: DBService,
+        config: ShareConfig,
+        remote_client: RemoteClient,
+        auth_ctx: AuthContext,
+    ) -> Self {
         Self {
             db,
             config,
-            client: HttpClient::new(),
+            remote_client,
             auth_ctx,
         }
     }
@@ -110,39 +113,11 @@ impl ActivityProcessor {
         remote_project_id: Uuid,
         after: Option<i64>,
     ) -> Result<Vec<ActivityEvent>, ShareError> {
-        let access_token = self
-            .auth_ctx
-            .get_credentials()
-            .await
-            .ok_or(ShareError::MissingAuth)?
-            .access_token;
-
-        let mut url = self.config.activity_endpoint()?;
-
-        {
-            let mut qp = url.query_pairs_mut();
-            qp.append_pair("limit", &self.config.activity_page_limit.to_string());
-            qp.append_pair("project_id", &remote_project_id.to_string());
-            if let Some(s) = after {
-                qp.append_pair("after", &s.to_string());
-            }
-        }
-
         let resp = self
-            .client
-            .get(url)
-            .bearer_auth(&access_token)
-            .send()
-            .await
-            .map_err(ShareError::Transport)?;
-
-        if resp.status() == reqwest::StatusCode::UNAUTHORIZED {
-            return Err(ShareError::MissingAuth);
-        }
-
-        let resp = resp.error_for_status().map_err(ShareError::Transport)?;
-        let resp_body = resp.json::<ActivityResponse>().await?;
-        Ok(resp_body.data)
+            .remote_client
+            .fetch_activity(remote_project_id, after, self.config.activity_page_limit)
+            .await?;
+        Ok(resp.data)
     }
 
     async fn resolve_project(
@@ -353,33 +328,9 @@ impl ActivityProcessor {
         &self,
         remote_project_id: Uuid,
     ) -> Result<BulkSharedTasksResponse, ShareError> {
-        let access_token = self
-            .auth_ctx
-            .get_credentials()
-            .await
-            .ok_or(ShareError::MissingAuth)?
-            .access_token;
-
-        let mut url = self.config.bulk_tasks_endpoint()?;
-        {
-            let mut qp = url.query_pairs_mut();
-            qp.append_pair("project_id", &remote_project_id.to_string());
-        }
-
-        let resp = self
-            .client
-            .get(url)
-            .bearer_auth(&access_token)
-            .send()
-            .await
-            .map_err(ShareError::Transport)?;
-
-        if resp.status() == reqwest::StatusCode::UNAUTHORIZED {
-            return Err(ShareError::MissingAuth);
-        }
-
-        let resp = resp.error_for_status().map_err(ShareError::Transport)?;
-        let body = resp.json::<BulkSharedTasksResponse>().await?;
-        Ok(body)
+        Ok(self
+            .remote_client
+            .fetch_bulk_snapshot(remote_project_id)
+            .await?)
     }
 }

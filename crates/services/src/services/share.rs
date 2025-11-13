@@ -35,14 +35,15 @@ use tokio::{
 };
 use tokio_tungstenite::tungstenite::Message as WsMessage;
 use url::Url;
-use utils::ws::{
-    WS_MAX_DELAY_BETWEEN_CATCHUP_AND_WS, WsClient, WsConfig, WsError, WsHandler, WsResult,
-    run_ws_client,
-};
+use utils::ws::{WsClient, WsConfig, WsError, WsHandler, WsResult, run_ws_client};
 use uuid::Uuid;
 
-use crate::services::{
-    auth::AuthContext, git::GitServiceError, github_service::GitHubServiceError,
+use crate::{
+    RemoteClientError,
+    services::{
+        auth::AuthContext, git::GitServiceError, github_service::GitHubServiceError,
+        remote_client::RemoteClient,
+    },
 };
 
 #[derive(Debug, Error)]
@@ -81,6 +82,8 @@ pub enum ShareError {
     InvalidUserId,
     #[error("invalid organization ID format")]
     InvalidOrganizationId,
+    #[error(transparent)]
+    RemoteClientError(#[from] RemoteClientError),
 }
 
 const WS_BACKOFF_BASE_DELAY: Duration = Duration::from_secs(1);
@@ -129,7 +132,10 @@ pub struct RemoteSync {
 impl RemoteSync {
     pub fn spawn(db: DBService, config: ShareConfig, auth_ctx: AuthContext) -> RemoteSyncHandle {
         tracing::info!(api = %config.api_base, "starting shared task synchronizer");
-        let processor = ActivityProcessor::new(db.clone(), config.clone(), auth_ctx.clone());
+        let remote_client = RemoteClient::with_auth(config.api_base.as_str(), auth_ctx.clone())
+            .expect("failed to create remote client");
+        let processor =
+            ActivityProcessor::new(db.clone(), config.clone(), remote_client, auth_ctx.clone());
         let sync = Self {
             db,
             processor,
@@ -333,12 +339,10 @@ async fn spawn_shared_remote(
         header_factory: Some(Arc::new(move || {
             let auth_source = auth_source.clone();
             Box::pin(async move {
-                match auth_source
-                    .wait_for_auth(WS_MAX_DELAY_BETWEEN_CATCHUP_AND_WS)
-                    .await
-                {
-                    Some((access_token, _user_id)) => build_ws_headers(&access_token),
-                    None => Err(WsError::MissingAuth),
+                if let Some(creds) = auth_source.get_credentials().await {
+                    build_ws_headers(&creds.access_token)
+                } else {
+                    Err(WsError::MissingAuth)
                 }
             })
         })),
@@ -630,12 +634,14 @@ impl SharedTaskLinkingLock {
         self.count > 0
     }
 
+    #[allow(dead_code)]
     pub(super) fn guard(&mut self) -> SharedTaskLinkingGuard {
         self.count += 1;
         SharedTaskLinkingGuard
     }
 }
 
+#[allow(dead_code)]
 pub(super) struct SharedTaskLinkingGuard;
 
 impl Drop for SharedTaskLinkingGuard {

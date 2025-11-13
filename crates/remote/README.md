@@ -30,7 +30,6 @@ Exposes the API on `http://localhost:8081`. The Postgres service is available at
 
 ```bash
 export VK_SHARED_API_BASE=http://localhost:8081
-export VK_SHARED_WS_URL=ws://localhost:8081/v1/ws
 
 pnpm run dev
 ```

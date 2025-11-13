@@ -5,8 +5,7 @@ use axum::{
     response::Json as ResponseJson,
     routing::{delete, get, patch, post},
 };
-use deployment::Deployment;
-use services::services::remote_client::RemoteClientError;
+use services::RemoteClient;
 use utils::{
     api::{
         organizations::{
@@ -61,21 +60,9 @@ async fn list_organization_projects(
     State(deployment): State<DeploymentImpl>,
     Path(org_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<Vec<RemoteProject>>>, ApiError> {
-    let remote_client = deployment
-        .remote_client()
-        .ok_or_else(|| ApiError::Conflict("OAuth remote client not configured".to_string()))?;
+    let client = deployment.remote_client()?;
 
-    let token = deployment
-        .auth_context()
-        .get_credentials()
-        .await
-        .ok_or_else(|| ApiError::Conflict("Not authenticated".to_string()))?
-        .access_token;
-
-    let response = remote_client
-        .list_projects(&token, org_id)
-        .await
-        .map_err(map_remote_error)?;
+    let response = client.list_projects(org_id).await?;
 
     Ok(ResponseJson(ApiResponse::success(response.projects)))
 }
@@ -83,21 +70,9 @@ async fn list_organization_projects(
 async fn list_organizations(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<ListOrganizationsResponse>>, ApiError> {
-    let remote_client = deployment
-        .remote_client()
-        .ok_or_else(|| ApiError::Conflict("OAuth remote client not configured".to_string()))?;
+    let client = deployment.remote_client()?;
 
-    let token = deployment
-        .auth_context()
-        .get_credentials()
-        .await
-        .ok_or_else(|| ApiError::Conflict("Not authenticated".to_string()))?
-        .access_token;
-
-    let response = remote_client
-        .list_organizations(&token)
-        .await
-        .map_err(map_remote_error)?;
+    let response = client.list_organizations().await?;
 
     Ok(ResponseJson(ApiResponse::success(response)))
 }
@@ -106,21 +81,9 @@ async fn get_organization(
     State(deployment): State<DeploymentImpl>,
     Path(id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<GetOrganizationResponse>>, ApiError> {
-    let remote_client = deployment
-        .remote_client()
-        .ok_or_else(|| ApiError::Conflict("OAuth remote client not configured".to_string()))?;
+    let client = deployment.remote_client()?;
 
-    let token = deployment
-        .auth_context()
-        .get_credentials()
-        .await
-        .ok_or_else(|| ApiError::Conflict("Not authenticated".to_string()))?
-        .access_token;
-
-    let response = remote_client
-        .get_organization(&token, id)
-        .await
-        .map_err(map_remote_error)?;
+    let response = client.get_organization(id).await?;
 
     Ok(ResponseJson(ApiResponse::success(response)))
 }
@@ -129,21 +92,9 @@ async fn create_organization(
     State(deployment): State<DeploymentImpl>,
     Json(request): Json<CreateOrganizationRequest>,
 ) -> Result<ResponseJson<ApiResponse<CreateOrganizationResponse>>, ApiError> {
-    let remote_client = deployment
-        .remote_client()
-        .ok_or_else(|| ApiError::Conflict("OAuth remote client not configured".to_string()))?;
+    let client = deployment.remote_client()?;
 
-    let token = deployment
-        .auth_context()
-        .get_credentials()
-        .await
-        .ok_or_else(|| ApiError::Conflict("Not authenticated".to_string()))?
-        .access_token;
-
-    let response = remote_client
-        .create_organization(&token, &request)
-        .await
-        .map_err(map_remote_error)?;
+    let response = client.create_organization(&request).await?;
 
     Ok(ResponseJson(ApiResponse::success(response)))
 }
@@ -153,21 +104,9 @@ async fn update_organization(
     Path(id): Path<Uuid>,
     Json(request): Json<UpdateOrganizationRequest>,
 ) -> Result<ResponseJson<ApiResponse<Organization>>, ApiError> {
-    let remote_client = deployment
-        .remote_client()
-        .ok_or_else(|| ApiError::Conflict("OAuth remote client not configured".to_string()))?;
+    let client = deployment.remote_client()?;
 
-    let token = deployment
-        .auth_context()
-        .get_credentials()
-        .await
-        .ok_or_else(|| ApiError::Conflict("Not authenticated".to_string()))?
-        .access_token;
-
-    let response = remote_client
-        .update_organization(&token, id, &request)
-        .await
-        .map_err(map_remote_error)?;
+    let response = client.update_organization(id, &request).await?;
 
     Ok(ResponseJson(ApiResponse::success(response)))
 }
@@ -176,21 +115,9 @@ async fn delete_organization(
     State(deployment): State<DeploymentImpl>,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
-    let remote_client = deployment
-        .remote_client()
-        .ok_or_else(|| ApiError::Conflict("OAuth remote client not configured".to_string()))?;
+    let client = deployment.remote_client()?;
 
-    let token = deployment
-        .auth_context()
-        .get_credentials()
-        .await
-        .ok_or_else(|| ApiError::Conflict("Not authenticated".to_string()))?
-        .access_token;
-
-    remote_client
-        .delete_organization(&token, id)
-        .await
-        .map_err(map_remote_error)?;
+    client.delete_organization(id).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -200,21 +127,9 @@ async fn create_invitation(
     Path(org_id): Path<Uuid>,
     Json(request): Json<CreateInvitationRequest>,
 ) -> Result<ResponseJson<ApiResponse<CreateInvitationResponse>>, ApiError> {
-    let remote_client = deployment
-        .remote_client()
-        .ok_or_else(|| ApiError::Conflict("OAuth remote client not configured".to_string()))?;
+    let client = deployment.remote_client()?;
 
-    let token = deployment
-        .auth_context()
-        .get_credentials()
-        .await
-        .ok_or_else(|| ApiError::Conflict("Not authenticated".to_string()))?
-        .access_token;
-
-    let response = remote_client
-        .create_invitation(&token, org_id, &request)
-        .await
-        .map_err(map_remote_error)?;
+    let response = client.create_invitation(org_id, &request).await?;
 
     Ok(ResponseJson(ApiResponse::success(response)))
 }
@@ -223,21 +138,9 @@ async fn list_invitations(
     State(deployment): State<DeploymentImpl>,
     Path(org_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<ListInvitationsResponse>>, ApiError> {
-    let remote_client = deployment
-        .remote_client()
-        .ok_or_else(|| ApiError::Conflict("OAuth remote client not configured".to_string()))?;
+    let client = deployment.remote_client()?;
 
-    let token = deployment
-        .auth_context()
-        .get_credentials()
-        .await
-        .ok_or_else(|| ApiError::Conflict("Not authenticated".to_string()))?
-        .access_token;
-
-    let response = remote_client
-        .list_invitations(&token, org_id)
-        .await
-        .map_err(map_remote_error)?;
+    let response = client.list_invitations(org_id).await?;
 
     Ok(ResponseJson(ApiResponse::success(response)))
 }
@@ -246,14 +149,10 @@ async fn get_invitation(
     State(deployment): State<DeploymentImpl>,
     Path(token): Path<String>,
 ) -> Result<ResponseJson<ApiResponse<GetInvitationResponse>>, ApiError> {
-    let remote_client = deployment
-        .remote_client()
-        .ok_or_else(|| ApiError::Conflict("OAuth remote client not configured".to_string()))?;
+    let remote = deployment.remote_client()?;
+    let client = RemoteClient::new(remote.base_url())?;
 
-    let response = remote_client
-        .get_invitation(&token)
-        .await
-        .map_err(map_remote_error)?;
+    let response = client.get_invitation(&token).await?;
 
     Ok(ResponseJson(ApiResponse::success(response)))
 }
@@ -263,21 +162,11 @@ async fn revoke_invitation(
     Path(org_id): Path<Uuid>,
     Json(payload): Json<RevokeInvitationRequest>,
 ) -> Result<StatusCode, ApiError> {
-    let remote_client = deployment
-        .remote_client()
-        .ok_or_else(|| ApiError::Conflict("OAuth remote client not configured".to_string()))?;
+    let client = deployment.remote_client()?;
 
-    let token = deployment
-        .auth_context()
-        .get_credentials()
-        .await
-        .ok_or_else(|| ApiError::Conflict("Not authenticated".to_string()))?
-        .access_token;
-
-    remote_client
-        .revoke_invitation(&token, org_id, payload.invitation_id)
-        .await
-        .map_err(map_remote_error)?;
+    client
+        .revoke_invitation(org_id, payload.invitation_id)
+        .await?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -286,21 +175,9 @@ async fn accept_invitation(
     State(deployment): State<DeploymentImpl>,
     Path(invitation_token): Path<String>,
 ) -> Result<ResponseJson<ApiResponse<AcceptInvitationResponse>>, ApiError> {
-    let remote_client = deployment
-        .remote_client()
-        .ok_or_else(|| ApiError::Conflict("OAuth remote client not configured".to_string()))?;
+    let client = deployment.remote_client()?;
 
-    let token = deployment
-        .auth_context()
-        .get_credentials()
-        .await
-        .ok_or_else(|| ApiError::Conflict("Not authenticated".to_string()))?
-        .access_token;
-
-    let response = remote_client
-        .accept_invitation(&token, &invitation_token)
-        .await
-        .map_err(map_remote_error)?;
+    let response = client.accept_invitation(&invitation_token).await?;
 
     Ok(ResponseJson(ApiResponse::success(response)))
 }
@@ -309,21 +186,9 @@ async fn list_members(
     State(deployment): State<DeploymentImpl>,
     Path(org_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<ListMembersResponse>>, ApiError> {
-    let remote_client = deployment
-        .remote_client()
-        .ok_or_else(|| ApiError::Conflict("OAuth remote client not configured".to_string()))?;
+    let client = deployment.remote_client()?;
 
-    let token = deployment
-        .auth_context()
-        .get_credentials()
-        .await
-        .ok_or_else(|| ApiError::Conflict("Not authenticated".to_string()))?
-        .access_token;
-
-    let response = remote_client
-        .list_members(&token, org_id)
-        .await
-        .map_err(map_remote_error)?;
+    let response = client.list_members(org_id).await?;
 
     Ok(ResponseJson(ApiResponse::success(response)))
 }
@@ -332,21 +197,9 @@ async fn remove_member(
     State(deployment): State<DeploymentImpl>,
     Path((org_id, user_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode, ApiError> {
-    let remote_client = deployment
-        .remote_client()
-        .ok_or_else(|| ApiError::Conflict("OAuth remote client not configured".to_string()))?;
+    let client = deployment.remote_client()?;
 
-    let token = deployment
-        .auth_context()
-        .get_credentials()
-        .await
-        .ok_or_else(|| ApiError::Conflict("Not authenticated".to_string()))?
-        .access_token;
-
-    remote_client
-        .remove_member(&token, org_id, user_id)
-        .await
-        .map_err(map_remote_error)?;
+    client.remove_member(org_id, user_id).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -356,46 +209,9 @@ async fn update_member_role(
     Path((org_id, user_id)): Path<(Uuid, Uuid)>,
     Json(request): Json<UpdateMemberRoleRequest>,
 ) -> Result<ResponseJson<ApiResponse<UpdateMemberRoleResponse>>, ApiError> {
-    let remote_client = deployment
-        .remote_client()
-        .ok_or_else(|| ApiError::Conflict("OAuth remote client not configured".to_string()))?;
+    let client = deployment.remote_client()?;
 
-    let token = deployment
-        .auth_context()
-        .get_credentials()
-        .await
-        .ok_or_else(|| ApiError::Conflict("Not authenticated".to_string()))?
-        .access_token;
-
-    let response = remote_client
-        .update_member_role(&token, org_id, user_id, &request)
-        .await
-        .map_err(map_remote_error)?;
+    let response = client.update_member_role(org_id, user_id, &request).await?;
 
     Ok(ResponseJson(ApiResponse::success(response)))
-}
-
-fn map_remote_error(e: RemoteClientError) -> ApiError {
-    match e {
-        RemoteClientError::Auth => ApiError::Unauthorized,
-        RemoteClientError::Http { status: 404, .. } => {
-            ApiError::Conflict("Organization not found".to_string())
-        }
-        RemoteClientError::Transport(msg) => {
-            ApiError::Conflict(format!("Remote service unavailable: {}", msg))
-        }
-        RemoteClientError::Timeout => ApiError::Conflict("Remote service timeout".to_string()),
-        RemoteClientError::Http { status, body } => {
-            tracing::error!(?status, ?body, "Remote API error");
-            let error_message = serde_json::from_str::<serde_json::Value>(&body)
-                .ok()
-                .and_then(|v| v.get("message").and_then(|m| m.as_str()).map(String::from))
-                .unwrap_or(body);
-            ApiError::Conflict(error_message)
-        }
-        e => {
-            tracing::error!(?e, "Unexpected remote client error");
-            ApiError::Conflict(format!("Failed to fetch organizations: {}", e))
-        }
-    }
 }

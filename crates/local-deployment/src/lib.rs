@@ -32,6 +32,10 @@ use crate::container::LocalContainerService;
 mod command;
 pub mod container;
 
+#[derive(Debug, Clone, Copy, thiserror::Error)]
+#[error("Remote client not configured")]
+pub struct RemoteClientNotConfigured;
+
 #[derive(Clone)]
 pub struct LocalDeployment {
     config: Arc<RwLock<Config>>,
@@ -49,7 +53,7 @@ pub struct LocalDeployment {
     drafts: DraftsService,
     share_publisher: Option<SharePublisher>,
     share_sync_handle: Arc<Mutex<Option<RemoteSyncHandle>>>,
-    remote_client: Option<Arc<RemoteClient>>,
+    remote_client: Result<RemoteClient, RemoteClientNotConfigured>,
     auth_context: AuthContext,
     oauth_handoffs: Arc<RwLock<HashMap<Uuid, PendingHandoff>>>,
 }
@@ -128,25 +132,25 @@ impl Deployment for LocalDeployment {
             tracing::warn!(?e, "failed to load OAuth credentials");
         }
 
-        let remote_client = match std::env::var("REMOTE_OAUTH_URL") {
-            Ok(url) => match RemoteClient::new(&url) {
+        let profile_cache = Arc::new(RwLock::new(None));
+        let auth_context = AuthContext::new(oauth_credentials.clone(), profile_cache.clone());
+
+        let remote_client = match std::env::var("VK_SHARED_API_BASE") {
+            Ok(url) => match RemoteClient::with_auth(&url, auth_context.clone()) {
                 Ok(client) => {
-                    tracing::info!("OAuth remote client initialized with URL: {}", url);
-                    Some(Arc::new(client))
+                    tracing::info!("Remote client initialized with URL: {}", url);
+                    Ok(client)
                 }
                 Err(e) => {
-                    tracing::error!(?e, "failed to create OAuth remote client");
-                    None
+                    tracing::error!(?e, "failed to create remote client");
+                    Err(RemoteClientNotConfigured)
                 }
             },
             Err(_) => {
-                tracing::info!("REMOTE_OAUTH_URL not set; OAuth login disabled");
-                None
+                tracing::info!("VK_SHARED_API_BASE not set; remote features disabled");
+                Err(RemoteClientNotConfigured)
             }
         };
-
-        let profile_cache = Arc::new(RwLock::new(None));
-        let auth_context = AuthContext::new(oauth_credentials.clone(), profile_cache.clone());
 
         // In-memory storage for pending OAuth handoffs
         let oauth_handoffs = Arc::new(RwLock::new(HashMap::new()));
@@ -156,20 +160,11 @@ impl Deployment for LocalDeployment {
         let mut share_publisher: Option<SharePublisher> = None;
         let mut share_sync_config: Option<ShareConfig> = None;
 
-        if let Some(sc_ref) = share_config.as_ref() {
-            let sc_owned = sc_ref.clone();
-            match SharePublisher::new(db.clone(), sc_owned.clone(), auth_context.clone()) {
-                Ok(publisher) => {
-                    share_publisher = Some(publisher);
-                    share_sync_config = Some(sc_owned);
-                }
-                Err(err) => {
-                    tracing::error!(
-                        ?err,
-                        "Failed to initialize SharePublisher; disabling share feature"
-                    );
-                }
-            };
+        if let (Some(sc_ref), Ok(remote)) = (share_config.as_ref(), &remote_client)
+            && oauth_credentials.get().await.is_some()
+        {
+            share_publisher = Some(SharePublisher::new(db.clone(), remote.clone()));
+            share_sync_config = Some(sc_ref.clone());
         }
 
         // We need to make analytics accessible to the ContainerService
@@ -293,7 +288,7 @@ impl Deployment for LocalDeployment {
 }
 
 impl LocalDeployment {
-    pub fn remote_client(&self) -> Option<Arc<RemoteClient>> {
+    pub fn remote_client(&self) -> Result<RemoteClient, RemoteClientNotConfigured> {
         self.remote_client.clone()
     }
 
@@ -307,7 +302,7 @@ impl LocalDeployment {
     }
 
     pub async fn get_login_status(&self) -> LoginStatus {
-        let Some(creds) = self.auth_context.get_credentials().await else {
+        if self.auth_context.get_credentials().await.is_none() {
             self.auth_context.clear_profile().await;
             return LoginStatus::LoggedOut;
         };
@@ -318,11 +313,11 @@ impl LocalDeployment {
             };
         }
 
-        let Some(remote_client) = self.remote_client.as_ref() else {
+        let Ok(client) = self.remote_client() else {
             return LoginStatus::LoggedOut;
         };
 
-        match remote_client.profile(&creds.access_token).await {
+        match client.profile().await {
             Ok(profile) => {
                 self.auth_context.set_profile(profile.clone()).await;
                 LoginStatus::LoggedIn { profile }
