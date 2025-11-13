@@ -8,16 +8,17 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Alert } from '@/components/ui/alert';
-import { tasksApi } from '@/lib/api';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useTranslation } from 'react-i18next';
 import { useUserSystem } from '@/components/config-provider';
-import { Loader2 } from 'lucide-react';
+import { Link as LinkIcon, Loader2 } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
-import { useMutation } from '@tanstack/react-query';
 import { LoginRequiredPrompt } from '@/components/dialogs/shared/LoginRequiredPrompt';
+import { LinkProjectDialog } from '@/components/dialogs/projects/LinkProjectDialog';
 import { useAuth } from '@/hooks';
+import { useProject } from '@/contexts/project-context';
+import { useTaskMutations } from '@/hooks/useTaskMutations';
 
 export interface ShareDialogProps {
   task: TaskWithAttemptStatus;
@@ -28,22 +29,19 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
   const { t } = useTranslation('tasks');
   const { loading: systemLoading } = useUserSystem();
   const { isSignedIn } = useAuth();
+  const { project } = useProject();
+  const { shareTask } = useTaskMutations(task.project_id);
 
   const [shareError, setShareError] = useState<string | null>(null);
 
-  const shareMutation = useMutation({
-    mutationKey: ['tasks', 'share', task.id],
-    mutationFn: () => tasksApi.share(task.id),
-  });
-
   useEffect(() => {
-    shareMutation.reset();
+    shareTask.reset();
     setShareError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [task.id, shareMutation.reset]);
+  }, [task.id, shareTask.reset]);
 
   const handleClose = () => {
-    modal.resolve(shareMutation.isSuccess);
+    modal.resolve(shareTask.isSuccess);
     modal.hide();
   };
 
@@ -65,7 +63,8 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
   const handleShare = async () => {
     setShareError(null);
     try {
-      await shareMutation.mutateAsync();
+      await shareTask.mutateAsync(task.id);
+      modal.hide();
     } catch (err) {
       if (getStatus(err) === 401) {
         void NiceModal.show('oauth');
@@ -75,14 +74,24 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
     }
   };
 
-  const isShareDisabled = systemLoading || shareMutation.isPending;
+  const handleLinkProject = () => {
+    if (!project) return;
+
+    void NiceModal.show(LinkProjectDialog, {
+      projectId: project.id,
+      projectName: project.name,
+    });
+  };
+
+  const isShareDisabled = systemLoading || shareTask.isPending;
+  const isProjectLinked = project?.remote_project_id != null;
 
   return (
     <Dialog
       open={modal.visible}
       onOpenChange={(open) => {
         if (open) {
-          shareMutation.reset();
+          shareTask.reset();
           setShareError(null);
         } else {
           handleClose();
@@ -103,9 +112,24 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
             buttonSize="sm"
             buttonClassName="mt-1"
           />
+        ) : !isProjectLinked ? (
+          <Alert className="mt-1">
+            <LinkIcon className="h-4 w-4" />
+            <AlertDescription className="flex items-center justify-between">
+              <span>{t('shareDialog.linkProjectRequired.description')}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLinkProject}
+                className="ml-2"
+              >
+                {t('shareDialog.linkProjectRequired.action')}
+              </Button>
+            </AlertDescription>
+          </Alert>
         ) : (
           <>
-            {shareMutation.isSuccess ? (
+            {shareTask.isSuccess ? (
               <Alert variant="success">{t('shareDialog.success')}</Alert>
             ) : (
               <>
@@ -119,17 +143,17 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
 
         <DialogFooter className="flex sm:flex-row sm:justify-end gap-2">
           <Button variant="outline" onClick={handleClose}>
-            {shareMutation.isSuccess
+            {shareTask.isSuccess
               ? t('shareDialog.closeButton')
               : t('shareDialog.cancel')}
           </Button>
-          {isSignedIn && !shareMutation.isSuccess && (
+          {isSignedIn && isProjectLinked && !shareTask.isSuccess && (
             <Button
               onClick={handleShare}
               disabled={isShareDisabled}
               className="gap-2"
             >
-              {shareMutation.isPending ? (
+              {shareTask.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   {t('shareDialog.inProgress')}

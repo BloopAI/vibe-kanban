@@ -91,6 +91,10 @@
       "description": "공유 작업을 게시하려면 GitHub 계정을 연결하세요.",
       "action": "GitHub 연결"
     },
+    "linkProjectRequired": {
+      "description": "작업을 공유하기 전에 이 프로젝트를 조직에 연결하세요.",
+      "action": "프로젝트 연결"
+    },
     "confirmationTitle": "공유 확인",
     "confirmationBody": "작업을 공유하면 공유 작업 공간에 게시됩니다.",
     "cancel": "취소",

@@ -91,6 +91,10 @@
       "description": "Conecta tu cuenta de GitHub para que podamos publicar tareas compartidas por ti.",
       "action": "Conectar GitHub"
     },
+    "linkProjectRequired": {
+      "description": "Vincula este proyecto a una organización antes de compartir tareas.",
+      "action": "Vincular Proyecto"
+    },
     "confirmationTitle": "Confirma el uso compartido",
     "confirmationBody": "Compartir publicará esta tarea en tu espacio de trabajo compartido.",
     "cancel": "Cancelar",
