@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
+import { useProject } from '@/contexts/project-context';
 import type {
   SharedTask,
   TaskStatus,
@@ -41,7 +42,10 @@ export interface UseProjectTasksResult {
  * Live updates arrive at /tasks/<id> via add/replace/remove operations.
  */
 export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
-  const endpoint = `/api/tasks/stream/ws?project_id=${encodeURIComponent(projectId)}`;
+  const { project } = useProject();
+  const remoteProjectId = project?.remote_project_id;
+
+  const endpoint = `/api/tasks/stream/ws?project_id=${encodeURIComponent(projectId)}&remote_project_id=${encodeURIComponent(remoteProjectId ?? 'null')}`;
 
   const initialData = useCallback(
     (): TasksState => ({ tasks: {}, shared_tasks: {} }),
