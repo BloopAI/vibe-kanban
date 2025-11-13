@@ -315,6 +315,10 @@
       "description": "Connect your GitHub account to share tasks. This project must have a remote repository on GitHub.",
       "action": "Connect GitHub"
     },
+    "linkProjectRequired": {
+      "description": "Link this project to an organization before sharing tasks.",
+      "action": "Link Project"
+    },
     "confirmationTitle": "Confirm sharing",
     "confirmationBody": "Sharing will publish this task to your shared workspace.",
     "cancel": "Cancel",

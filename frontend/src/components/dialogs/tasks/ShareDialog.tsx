@@ -116,16 +116,14 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
           <Alert className="mt-1">
             <LinkIcon className="h-4 w-4" />
             <AlertDescription className="flex items-center justify-between">
-              <span>
-                Link this project to an organization before sharing tasks.
-              </span>
+              <span>{t('shareDialog.linkProjectRequired.description')}</span>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleLinkProject}
                 className="ml-2"
               >
-                Link Project
+                {t('shareDialog.linkProjectRequired.action')}
               </Button>
             </AlertDescription>
           </Alert>

@@ -91,6 +91,10 @@
       "description": "共有タスクを公開できるよう、GitHub アカウントを接続してください。",
       "action": "GitHub を接続"
     },
+    "linkProjectRequired": {
+      "description": "タスクを共有する前に、このプロジェクトを組織にリンクしてください。",
+      "action": "プロジェクトをリンク"
+    },
     "confirmationTitle": "共有を確認",
     "confirmationBody": "共有すると、このタスクが共有ワークスペースに公開されます。",
     "cancel": "キャンセル",
