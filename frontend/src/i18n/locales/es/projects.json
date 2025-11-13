@@ -20,6 +20,11 @@
     "loadingOrganizations": "Cargando organizaciones...",
     "noOrganizations": "No hay organizaciones disponibles. Crea una organización primero.",
     "selectOrganization": "Selecciona una organización",
+    "loginRequired": {
+      "title": "Inicio de Sesión Requerido",
+      "description": "Necesitas iniciar sesión para vincular proyectos.",
+      "action": "Iniciar Sesión"
+    },
     "linkModeLabel": "Modo de Vinculación",
     "linkToExisting": "Vincular a Existente",
     "createNew": "Crear Nuevo",
