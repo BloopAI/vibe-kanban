@@ -49,7 +49,7 @@ pub struct LocalDeployment {
     drafts: DraftsService,
     share_publisher: Option<SharePublisher>,
     share_sync_handle: Arc<Mutex<Option<RemoteSyncHandle>>>,
-    remote_client: Option<Arc<RemoteClient>>,
+    remote_client: Option<RemoteClient>,
     auth_context: AuthContext,
     oauth_handoffs: Arc<RwLock<HashMap<Uuid, PendingHandoff>>>,
 }
@@ -132,7 +132,7 @@ impl Deployment for LocalDeployment {
             Ok(url) => match RemoteClient::new_with_timeout(&url, Duration::from_secs(30)) {
                 Ok(client) => {
                     tracing::info!("Remote client initialized with URL: {}", url);
-                    Some(Arc::new(client))
+                    Some(client)
                 }
                 Err(e) => {
                     tracing::error!(?e, "failed to create remote client");
@@ -291,7 +291,7 @@ impl Deployment for LocalDeployment {
 }
 
 impl LocalDeployment {
-    pub fn remote_client(&self) -> Option<Arc<RemoteClient>> {
+    pub fn remote_client(&self) -> Option<RemoteClient> {
         self.remote_client.clone()
     }
 
