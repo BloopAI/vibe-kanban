@@ -14,6 +14,7 @@ use remote::{
     routes::tasks::BulkSharedTasksResponse,
 };
 use reqwest::Client as HttpClient;
+use sqlx::{Sqlite, Transaction};
 use uuid::Uuid;
 
 use super::{ShareConfig, ShareError, convert_remote_task, sync_local_task_for_shared_task};
@@ -45,12 +46,14 @@ impl ActivityProcessor {
     }
 
     pub async fn process_event(&self, event: ActivityEvent) -> Result<(), ShareError> {
+        let mut tx = self.db.pool.begin().await?;
         match event.event_type.as_str() {
-            "task.deleted" => self.process_deleted_task_event(&event).await?,
-            _ => self.process_upsert_event(&event).await?,
+            "task.deleted" => self.process_deleted_task_event(&mut tx, &event).await?,
+            _ => self.process_upsert_event(&mut tx, &event).await?,
         }
 
-        SharedActivityCursor::upsert(&self.db.pool, event.project_id, event.seq).await?;
+        SharedActivityCursor::upsert(tx.as_mut(), event.project_id, event.seq).await?;
+        tx.commit().await?;
         Ok(())
     }
 
@@ -164,7 +167,11 @@ impl ActivityProcessor {
         Ok(None)
     }
 
-    async fn process_upsert_event(&self, event: &ActivityEvent) -> Result<(), ShareError> {
+    async fn process_upsert_event(
+        &self,
+        tx: &mut Transaction<'_, Sqlite>,
+        event: &ActivityEvent,
+    ) -> Result<(), ShareError> {
         let Some(payload) = &event.payload else {
             tracing::warn!(event_id = %event.event_id, "received activity event with empty payload");
             return Ok(());
@@ -183,12 +190,12 @@ impl ActivityProcessor {
 
                 let project_id = project.as_ref().map(|p| p.id);
                 let input = convert_remote_task(&task, user.as_ref(), Some(event.seq));
-                let shared_task = SharedTask::upsert(&self.db.pool, input).await?;
+                let shared_task = SharedTask::upsert(tx.as_mut(), input).await?;
 
                 let current_profile = self.auth_ctx.cached_profile().await;
                 let current_user_id = current_profile.as_ref().map(|p| p.user_id);
                 sync_local_task_for_shared_task(
-                    &self.db.pool,
+                    tx.as_mut(),
                     &shared_task,
                     current_user_id,
                     task.creator_user_id,
@@ -208,7 +215,11 @@ impl ActivityProcessor {
         Ok(())
     }
 
-    async fn process_deleted_task_event(&self, event: &ActivityEvent) -> Result<(), ShareError> {
+    async fn process_deleted_task_event(
+        &self,
+        tx: &mut Transaction<'_, Sqlite>,
+        event: &ActivityEvent,
+    ) -> Result<(), ShareError> {
         let Some(payload) = &event.payload else {
             tracing::warn!(
                 event_id = %event.event_id,
@@ -230,11 +241,11 @@ impl ActivityProcessor {
                 }
             };
 
-        if let Some(local_task) = Task::find_by_shared_task_id(&self.db.pool, task.id).await? {
-            Task::set_shared_task_id(&self.db.pool, local_task.id, None).await?;
+        if let Some(local_task) = Task::find_by_shared_task_id(tx.as_mut(), task.id).await? {
+            Task::set_shared_task_id(tx.as_mut(), local_task.id, None).await?;
         }
 
-        SharedTask::remove(&self.db.pool, task.id).await?;
+        SharedTask::remove(tx.as_mut(), task.id).await?;
         Ok(())
     }
 
@@ -288,10 +299,11 @@ impl ActivityProcessor {
         }
 
         let stale_vec: Vec<Uuid> = stale.into_iter().collect();
-        self.remove_stale_tasks(&stale_vec).await?;
-
         let current_profile = self.auth_ctx.cached_profile().await;
         let current_user_id = current_profile.as_ref().map(|p| p.user_id);
+
+        let mut tx = self.db.pool.begin().await?;
+        self.remove_stale_tasks(&mut tx, &stale_vec).await?;
 
         for PreparedBulkTask {
             input,
@@ -299,9 +311,9 @@ impl ActivityProcessor {
             project_id,
         } in replacements
         {
-            let shared_task = SharedTask::upsert(&self.db.pool, input).await?;
+            let shared_task = SharedTask::upsert(tx.as_mut(), input).await?;
             sync_local_task_for_shared_task(
-                &self.db.pool,
+                tx.as_mut(),
                 &shared_task,
                 current_user_id,
                 creator_user_id,
@@ -311,24 +323,29 @@ impl ActivityProcessor {
         }
 
         if let Some(seq) = latest_seq {
-            SharedActivityCursor::upsert(&self.db.pool, remote_project_id, seq).await?;
+            SharedActivityCursor::upsert(tx.as_mut(), remote_project_id, seq).await?;
         }
 
+        tx.commit().await?;
         Ok(latest_seq)
     }
 
-    async fn remove_stale_tasks(&self, ids: &[Uuid]) -> Result<(), ShareError> {
+    async fn remove_stale_tasks(
+        &self,
+        tx: &mut Transaction<'_, Sqlite>,
+        ids: &[Uuid],
+    ) -> Result<(), ShareError> {
         if ids.is_empty() {
             return Ok(());
         }
 
         for id in ids {
-            if let Some(local_task) = Task::find_by_shared_task_id(&self.db.pool, *id).await? {
-                Task::set_shared_task_id(&self.db.pool, local_task.id, None).await?;
+            if let Some(local_task) = Task::find_by_shared_task_id(tx.as_mut(), *id).await? {
+                Task::set_shared_task_id(tx.as_mut(), local_task.id, None).await?;
             }
         }
 
-        SharedTask::remove_many(&self.db.pool, ids).await?;
+        SharedTask::remove_many(tx.as_mut(), ids).await?;
         Ok(())
     }
 

@@ -16,7 +16,6 @@ pub use config::ShareConfig;
 use db::{
     DBService,
     models::{
-        project::Project,
         shared_task::{SharedActivityCursor, SharedTask, SharedTaskInput},
         task::{SyncTask, Task},
     },
@@ -27,7 +26,7 @@ use remote::{
     ServerMessage,
     db::{tasks::SharedTask as RemoteSharedTask, users::UserData as RemoteUserData},
 };
-use sqlx::SqlitePool;
+use sqlx::{Executor, Sqlite, SqlitePool};
 use thiserror::Error;
 use tokio::{
     sync::{mpsc, oneshot},
@@ -550,20 +549,18 @@ pub(super) fn convert_remote_task(
     }
 }
 
-pub(super) async fn sync_local_task_for_shared_task(
-    pool: &SqlitePool,
+pub(super) async fn sync_local_task_for_shared_task<'e, E>(
+    executor: E,
     shared_task: &SharedTask,
     current_user_id: Option<uuid::Uuid>,
     creator_user_id: Option<uuid::Uuid>,
-    project_id_override: Option<Uuid>,
-) -> Result<(), ShareError> {
-    let project_id = if let Some(id) = project_id_override {
-        id
-    } else {
-        match Project::find_by_remote_project_id(pool, shared_task.remote_project_id).await? {
-            Some(project) => project.id,
-            None => return Ok(()),
-        }
+    project_id: Option<Uuid>,
+) -> Result<(), ShareError>
+where
+    E: Executor<'e, Database = Sqlite>,
+{
+    let Some(project_id) = project_id else {
+        return Ok(());
     };
 
     let create_task_if_not_exists = {
@@ -577,7 +574,7 @@ pub(super) async fn sync_local_task_for_shared_task(
     };
 
     Task::sync_from_shared_task(
-        pool,
+        executor,
         SyncTask {
             shared_task_id: shared_task.id,
             project_id,
