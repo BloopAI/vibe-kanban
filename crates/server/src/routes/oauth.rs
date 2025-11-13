@@ -201,7 +201,10 @@ async fn logout(State(deployment): State<DeploymentImpl>) -> Result<StatusCode, 
     let credentials = auth_context.get_credentials().await;
 
     if let (Some(remote_client), Some(creds)) = (deployment.remote_client(), credentials.as_ref())
-        && let Err(error) = remote_client.authenticated(&creds.access_token).logout().await
+        && let Err(error) = remote_client
+            .authenticated(&creds.access_token)
+            .logout()
+            .await
     {
         match error {
             RemoteClientError::Auth => {
