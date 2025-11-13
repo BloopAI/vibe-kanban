@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,7 +20,6 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
-import { useOrganizationSelection } from '@/hooks/useOrganizationSelection';
 import { useOrganizationProjects } from '@/hooks/useOrganizationProjects';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 import type { Project } from 'shared/types';
@@ -45,18 +44,33 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
     const { t: tCommon } = useTranslation('common');
     const { data: orgsResponse, isLoading: orgsLoading } =
       useUserOrganizations();
-    const { selectedOrgId, handleOrgSelect } = useOrganizationSelection({
-      organizations: orgsResponse,
-    });
 
+    const [selectedOrgId, setSelectedOrgId] = useState<string>('');
     const [linkMode, setLinkMode] = useState<LinkMode>('existing');
-    const { data: remoteProjects = [], isLoading: isLoadingProjects } =
-      useOrganizationProjects(linkMode === 'existing' ? selectedOrgId : null);
-    const [selectedRemoteProjectId, setSelectedRemoteProjectId] = useState<
-      string | null
-    >(null);
+    const [selectedRemoteProjectId, setSelectedRemoteProjectId] =
+      useState<string>('');
     const [newProjectName, setNewProjectName] = useState('');
     const [error, setError] = useState<string | null>(null);
+
+    // Compute default organization (prefer non-personal)
+    const defaultOrgId = useMemo(() => {
+      const orgs = orgsResponse?.organizations ?? [];
+      return orgs.find((o) => !o.is_personal)?.id ?? orgs[0]?.id ?? '';
+    }, [orgsResponse]);
+
+    // Use selected or default
+    const currentOrgId = selectedOrgId || defaultOrgId;
+
+    const { data: remoteProjects = [], isLoading: isLoadingProjects } =
+      useOrganizationProjects(linkMode === 'existing' ? currentOrgId : null);
+
+    // Compute default project (first in list)
+    const defaultProjectId = useMemo(() => {
+      return remoteProjects[0]?.id ?? '';
+    }, [remoteProjects]);
+
+    // Use selected or default
+    const currentProjectId = selectedRemoteProjectId || defaultProjectId;
 
     const { linkToExisting, createAndLink } = useProjectMutations({
       onLinkSuccess: (project) => {
@@ -76,17 +90,32 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
     const isSubmitting = linkToExisting.isPending || createAndLink.isPending;
 
     useEffect(() => {
-      // Reset form when dialog opens
       if (modal.visible) {
+        // Reset form when dialog opens
         setLinkMode('existing');
-        setSelectedRemoteProjectId(null);
+        setSelectedOrgId(defaultOrgId);
+        setSelectedRemoteProjectId('');
+        setNewProjectName(projectName);
+        setError(null);
+      } else {
+        // Cleanup when dialog closes
+        setLinkMode('existing');
+        setSelectedOrgId('');
+        setSelectedRemoteProjectId('');
         setNewProjectName('');
         setError(null);
       }
-    }, [modal.visible]);
+    }, [modal.visible, projectName, defaultOrgId]);
+
+    const handleOrgChange = (orgId: string) => {
+      setSelectedOrgId(orgId);
+      setSelectedRemoteProjectId(''); // Reset to first project of new org
+      setNewProjectName(projectName); // Reset to current project name
+      setError(null);
+    };
 
     const handleLink = () => {
-      if (!selectedOrgId) {
+      if (!currentOrgId) {
         setError(t('linkDialog.errors.selectOrganization'));
         return;
       }
@@ -94,13 +123,13 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
       setError(null);
 
       if (linkMode === 'existing') {
-        if (!selectedRemoteProjectId) {
+        if (!currentProjectId) {
           setError(t('linkDialog.errors.selectRemoteProject'));
           return;
         }
         linkToExisting.mutate({
           localProjectId: projectId,
-          data: { remote_project_id: selectedRemoteProjectId },
+          data: { remote_project_id: currentProjectId },
         });
       } else {
         if (!newProjectName.trim()) {
@@ -109,7 +138,7 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
         }
         createAndLink.mutate({
           localProjectId: projectId,
-          data: { organization_id: selectedOrgId, name: newProjectName.trim() },
+          data: { organization_id: currentOrgId, name: newProjectName.trim() },
         });
       }
     };
@@ -126,9 +155,9 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
     };
 
     const canSubmit = () => {
-      if (!selectedOrgId || isSubmitting) return false;
+      if (!currentOrgId || isSubmitting) return false;
       if (linkMode === 'existing') {
-        return !!selectedRemoteProjectId && !isLoadingProjects;
+        return !!currentProjectId && !isLoadingProjects;
       } else {
         return !!newProjectName.trim();
       }
@@ -169,7 +198,7 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
               ) : (
                 <Select
                   value={selectedOrgId}
-                  onValueChange={handleOrgSelect}
+                  onValueChange={handleOrgChange}
                   disabled={isSubmitting}
                 >
                   <SelectTrigger id="organization-select">
@@ -188,7 +217,7 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
               )}
             </div>
 
-            {selectedOrgId && (
+            {currentOrgId && (
               <>
                 <div className="space-y-2">
                   <Label>{t('linkDialog.linkModeLabel')}</Label>
@@ -231,8 +260,11 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
                       </Alert>
                     ) : (
                       <Select
-                        value={selectedRemoteProjectId || ''}
-                        onValueChange={setSelectedRemoteProjectId}
+                        value={currentProjectId}
+                        onValueChange={(id) => {
+                          setSelectedRemoteProjectId(id);
+                          setError(null);
+                        }}
                         disabled={isSubmitting}
                       >
                         <SelectTrigger id="remote-project-select">
