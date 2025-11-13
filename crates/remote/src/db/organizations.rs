@@ -5,8 +5,8 @@ use uuid::Uuid;
 use super::{
     identity_errors::IdentityError,
     organization_members::{
-        assert_admin as check_admin, assert_membership as check_membership,
-        check_user_role as get_user_role, ensure_member_metadata, ensure_member_metadata_with_role,
+        add_member, assert_admin as check_admin, assert_membership as check_membership,
+        check_user_role as get_user_role,
     },
 };
 
@@ -17,16 +17,6 @@ pub struct OrganizationRepository<'a> {
 impl<'a> OrganizationRepository<'a> {
     pub fn new(pool: &'a PgPool) -> Self {
         Self { pool }
-    }
-
-    pub async fn ensure_membership(
-        &self,
-        organization_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<(), IdentityError> {
-        ensure_member_metadata(self.pool, organization_id, user_id)
-            .await
-            .map_err(IdentityError::from)
     }
 
     pub async fn assert_membership(
@@ -95,7 +85,7 @@ impl<'a> OrganizationRepository<'a> {
             }
         };
 
-        ensure_member_metadata_with_role(self.pool, org.id, user_id, MemberRole::Admin).await?;
+        add_member(self.pool, org.id, user_id, MemberRole::Admin).await?;
         Ok(org)
     }
 
@@ -152,8 +142,7 @@ impl<'a> OrganizationRepository<'a> {
             IdentityError::from(e)
         })?;
 
-        ensure_member_metadata_with_role(&mut *tx, org.id, creator_user_id, MemberRole::Admin)
-            .await?;
+        add_member(&mut *tx, org.id, creator_user_id, MemberRole::Admin).await?;
 
         tx.commit().await?;
 
