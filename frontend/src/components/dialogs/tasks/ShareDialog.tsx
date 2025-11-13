@@ -8,16 +8,21 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Alert } from '@/components/ui/alert';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { tasksApi } from '@/lib/api';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useTranslation } from 'react-i18next';
 import { useUserSystem } from '@/components/config-provider';
-import { Loader2 } from 'lucide-react';
+import { Link as LinkIcon, Loader2 } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { LoginRequiredPrompt } from '@/components/dialogs/shared/LoginRequiredPrompt';
+import {
+  LinkProjectDialog,
+  type LinkProjectResult,
+} from '@/components/dialogs/projects/LinkProjectDialog';
 import { useAuth } from '@/hooks';
+import { useProject } from '@/contexts/project-context';
 
 export interface ShareDialogProps {
   task: TaskWithAttemptStatus;
@@ -28,6 +33,8 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
   const { t } = useTranslation('tasks');
   const { loading: systemLoading } = useUserSystem();
   const { isSignedIn } = useAuth();
+  const { project } = useProject();
+  const queryClient = useQueryClient();
 
   const [shareError, setShareError] = useState<string | null>(null);
 
@@ -75,7 +82,22 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
     }
   };
 
+  const handleLinkProject = async () => {
+    if (!project) return;
+
+    const result = (await NiceModal.show(LinkProjectDialog, {
+      projectId: project.id,
+      projectName: project.name,
+    })) as LinkProjectResult;
+
+    if (result.action === 'linked') {
+      // Refresh project data after successful link
+      await queryClient.invalidateQueries({ queryKey: ['project', project.id] });
+    }
+  };
+
   const isShareDisabled = systemLoading || shareMutation.isPending;
+  const isProjectLinked = project?.remote_project_id != null;
 
   return (
     <Dialog
@@ -103,6 +125,23 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
             buttonSize="sm"
             buttonClassName="mt-1"
           />
+        ) : !isProjectLinked ? (
+          <Alert className="mt-1">
+            <LinkIcon className="h-4 w-4" />
+            <AlertDescription className="flex items-center justify-between">
+              <span>
+                Link this project to an organization before sharing tasks.
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLinkProject}
+                className="ml-2"
+              >
+                Link Project
+              </Button>
+            </AlertDescription>
+          </Alert>
         ) : (
           <>
             {shareMutation.isSuccess ? (
@@ -123,7 +162,7 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
               ? t('shareDialog.closeButton')
               : t('shareDialog.cancel')}
           </Button>
-          {isSignedIn && !shareMutation.isSuccess && (
+          {isSignedIn && isProjectLinked && !shareMutation.isSuccess && (
             <Button
               onClick={handleShare}
               disabled={isShareDisabled}
