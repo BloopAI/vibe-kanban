@@ -30,24 +30,8 @@ impl ShareConfig {
         self.api_base.join("/v1/activity")
     }
 
-    pub fn create_task_endpoint(&self) -> Result<Url, url::ParseError> {
-        self.api_base.join("/v1/tasks")
-    }
-
     pub fn bulk_tasks_endpoint(&self) -> Result<Url, url::ParseError> {
         self.api_base.join("/v1/tasks/bulk")
-    }
-
-    pub fn update_task_endpoint(&self, task_id: Uuid) -> Result<Url, url::ParseError> {
-        self.api_base.join(&format!("/v1/tasks/{task_id}"))
-    }
-
-    pub fn delete_task_endpoint(&self, task_id: Uuid) -> Result<Url, url::ParseError> {
-        self.api_base.join(&format!("/v1/tasks/{task_id}"))
-    }
-
-    pub fn assign_endpoint(&self, task_id: Uuid) -> Result<Url, url::ParseError> {
-        self.api_base.join(&format!("/v1/tasks/{task_id}/assign"))
     }
 
     pub fn websocket_endpoint(

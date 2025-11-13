@@ -1,9 +1,6 @@
 use std::sync::Arc;
 
-use tokio::{
-    sync::RwLock,
-    time::{Duration, sleep},
-};
+use tokio::sync::RwLock;
 use utils::api::oauth::ProfileResponse;
 
 use super::oauth_credentials::{Credentials, OAuthCredentials};
@@ -20,24 +17,6 @@ impl AuthContext {
         profile: Arc<RwLock<Option<ProfileResponse>>>,
     ) -> Self {
         Self { oauth, profile }
-    }
-
-    pub async fn wait_for_auth(&self, timeout: Duration) -> Option<(String, String)> {
-        let start = tokio::time::Instant::now();
-        let poll_interval = Duration::from_millis(100);
-
-        while start.elapsed() < timeout {
-            let profile = self.profile.read().await;
-            let creds = self.oauth.get().await;
-
-            if let (Some(creds), Some(profile)) = (creds, profile.as_ref()) {
-                return Some((creds.access_token, profile.user_id.to_string()));
-            }
-            drop(profile);
-            sleep(poll_interval).await;
-        }
-
-        None
     }
 
     pub async fn get_credentials(&self) -> Option<Credentials> {

@@ -35,10 +35,7 @@ use tokio::{
 };
 use tokio_tungstenite::tungstenite::Message as WsMessage;
 use url::Url;
-use utils::ws::{
-    WS_MAX_DELAY_BETWEEN_CATCHUP_AND_WS, WsClient, WsConfig, WsError, WsHandler, WsResult,
-    run_ws_client,
-};
+use utils::ws::{WsClient, WsConfig, WsError, WsHandler, WsResult, run_ws_client};
 use uuid::Uuid;
 
 use crate::{
@@ -336,12 +333,10 @@ async fn spawn_shared_remote(
         header_factory: Some(Arc::new(move || {
             let auth_source = auth_source.clone();
             Box::pin(async move {
-                match auth_source
-                    .wait_for_auth(WS_MAX_DELAY_BETWEEN_CATCHUP_AND_WS)
-                    .await
-                {
-                    Some((access_token, _user_id)) => build_ws_headers(&access_token),
-                    None => Err(WsError::MissingAuth),
+                if let Some(creds) = auth_source.get_credentials().await {
+                    build_ws_headers(&creds.access_token)
+                } else {
+                    Err(WsError::MissingAuth)
                 }
             })
         })),

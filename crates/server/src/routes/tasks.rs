@@ -385,7 +385,12 @@ pub async fn share_task(
     let Some(publisher) = deployment.share_publisher() else {
         return Err(ShareError::MissingConfig("share publisher unavailable").into());
     };
-    let shared_task_id = publisher.share_task(task.id).await?;
+    let profile = deployment
+        .auth_context()
+        .cached_profile()
+        .await
+        .ok_or(ShareError::MissingAuth)?;
+    let shared_task_id = publisher.share_task(task.id, profile.user_id).await?;
 
     let props = serde_json::json!({
         "task_id": task.id,

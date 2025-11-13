@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
 use db::DBService;
@@ -137,19 +137,19 @@ impl Deployment for LocalDeployment {
             tracing::warn!(?e, "failed to load OAuth credentials");
         }
 
-        let remote_client = match std::env::var("REMOTE_OAUTH_URL") {
-            Ok(url) => match RemoteClient::new(&url) {
+        let remote_client = match std::env::var("VK_SHARED_API_BASE") {
+            Ok(url) => match RemoteClient::new_with_timeout(&url, Duration::from_secs(30)) {
                 Ok(client) => {
-                    tracing::info!("OAuth remote client initialized with URL: {}", url);
+                    tracing::info!("Remote client initialized with URL: {}", url);
                     Some(Arc::new(client))
                 }
                 Err(e) => {
-                    tracing::error!(?e, "failed to create OAuth remote client");
+                    tracing::error!(?e, "failed to create remote client");
                     None
                 }
             },
             Err(_) => {
-                tracing::info!("REMOTE_OAUTH_URL not set; OAuth login disabled");
+                tracing::info!("VK_SHARED_API_BASE not set; remote features disabled");
                 None
             }
         };
@@ -165,20 +165,13 @@ impl Deployment for LocalDeployment {
         let mut share_publisher: Option<SharePublisher> = None;
         let mut share_sync_config: Option<ShareConfig> = None;
 
-        if let Some(sc_ref) = share_config.as_ref() {
+        if let (Some(sc_ref), Some(remote)) = (share_config.as_ref(), remote_client.clone())
+            && let Some(creds) = oauth_credentials.get().await
+        {
             let sc_owned = sc_ref.clone();
-            match SharePublisher::new(db.clone(), sc_owned.clone(), auth_context.clone()) {
-                Ok(publisher) => {
-                    share_publisher = Some(publisher);
-                    share_sync_config = Some(sc_owned);
-                }
-                Err(err) => {
-                    tracing::error!(
-                        ?err,
-                        "Failed to initialize SharePublisher; disabling share feature"
-                    );
-                }
-            };
+            let authenticated_client = remote.authenticated(&creds.access_token);
+            share_publisher = Some(SharePublisher::new(db.clone(), authenticated_client));
+            share_sync_config = Some(sc_owned);
         }
 
         // We need to make analytics accessible to the ContainerService
