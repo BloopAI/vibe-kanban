@@ -117,7 +117,7 @@ impl RemoteClient {
         &self,
         request: &HandoffInitRequest,
     ) -> Result<HandoffInitResponse, RemoteClientError> {
-        self.post("/oauth/web/init", request)
+        self.post("/oauth/web/init", Some(request))
             .await
             .map_err(|e| self.map_api_error(e))
     }
@@ -127,7 +127,7 @@ impl RemoteClient {
         &self,
         request: &HandoffRedeemRequest,
     ) -> Result<HandoffRedeemResponse, RemoteClientError> {
-        self.post("/oauth/web/redeem", request)
+        self.post("/oauth/web/redeem", Some(request))
             .await
             .map_err(|e| self.map_api_error(e))
     }
@@ -209,13 +209,13 @@ impl RemoteClient {
             .map_err(|e| RemoteClientError::Serde(e.to_string()))
     }
 
-    async fn post<T, B>(&self, path: &str, body: &B) -> Result<T, RemoteClientError>
+    async fn post<T, B>(&self, path: &str, body: Option<&B>) -> Result<T, RemoteClientError>
     where
         T: for<'de> Deserialize<'de>,
         B: Serialize,
     {
         let res = self
-            .send(reqwest::Method::POST, path, None, Some(body))
+            .send(reqwest::Method::POST, path, None, body)
             .await?;
         res.json::<T>()
             .await
@@ -270,14 +270,14 @@ impl AuthenticatedRemoteClient {
             .map_err(|e| RemoteClientError::Serde(e.to_string()))
     }
 
-    async fn post<T, B>(&self, path: &str, body: &B) -> Result<T, RemoteClientError>
+    async fn post<T, B>(&self, path: &str, body: Option<&B>) -> Result<T, RemoteClientError>
     where
         T: for<'de> Deserialize<'de>,
         B: Serialize,
     {
         let res = self
             .client
-            .send(reqwest::Method::POST, path, Some(&self.token), Some(body))
+            .send(reqwest::Method::POST, path, Some(&self.token), body)
             .await?;
         res.json::<T>()
             .await
@@ -342,7 +342,7 @@ impl AuthenticatedRemoteClient {
         &self,
         request: &CreateRemoteProjectPayload,
     ) -> Result<RemoteProject, RemoteClientError> {
-        self.post("/v1/projects", request).await
+        self.post("/v1/projects", Some(request)).await
     }
 
     /// Gets a specific organization by ID.
@@ -358,7 +358,7 @@ impl AuthenticatedRemoteClient {
         &self,
         request: &CreateOrganizationRequest,
     ) -> Result<CreateOrganizationResponse, RemoteClientError> {
-        self.post("/v1/organizations", request).await
+        self.post("/v1/organizations", Some(request)).await
     }
 
     /// Updates an organization's name.
@@ -382,7 +382,7 @@ impl AuthenticatedRemoteClient {
         org_id: Uuid,
         request: &CreateInvitationRequest,
     ) -> Result<CreateInvitationResponse, RemoteClientError> {
-        self.post(&format!("/v1/organizations/{org_id}/invitations"), request)
+        self.post(&format!("/v1/organizations/{org_id}/invitations"), Some(request))
             .await
     }
 
@@ -403,7 +403,7 @@ impl AuthenticatedRemoteClient {
         let body = RevokeInvitationRequest { invitation_id };
         self.post(
             &format!("/v1/organizations/{org_id}/invitations/revoke"),
-            &body,
+            Some(&body),
         )
         .await
     }
@@ -415,7 +415,7 @@ impl AuthenticatedRemoteClient {
     ) -> Result<AcceptInvitationResponse, RemoteClientError> {
         self.post(
             &format!("/v1/invitations/{invitation_token}/accept"),
-            &serde_json::json!({}),
+            None::<&()>,
         )
         .await
     }
