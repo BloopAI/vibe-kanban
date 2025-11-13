@@ -263,10 +263,13 @@ ORDER BY t.created_at DESC"#,
         .await
     }
 
-    pub async fn find_by_shared_task_id(
-        pool: &SqlitePool,
+    pub async fn find_by_shared_task_id<'e, E>(
+        executor: E,
         shared_task_id: Uuid,
-    ) -> Result<Option<Self>, sqlx::Error> {
+    ) -> Result<Option<Self>, sqlx::Error>
+    where
+        E: Executor<'e, Database = Sqlite>,
+    {
         sqlx::query_as!(
             Task,
             r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
@@ -275,7 +278,7 @@ ORDER BY t.created_at DESC"#,
                LIMIT 1"#,
             shared_task_id
         )
-        .fetch_optional(pool)
+        .fetch_optional(executor)
         .await
     }
 
@@ -328,11 +331,14 @@ ORDER BY t.created_at DESC"#,
         .await
     }
 
-    pub async fn sync_from_shared_task(
-        pool: &SqlitePool,
+    pub async fn sync_from_shared_task<'e, E>(
+        executor: E,
         data: SyncTask,
         create_if_not_exists: bool,
-    ) -> Result<bool, sqlx::Error> {
+    ) -> Result<bool, sqlx::Error>
+    where
+        E: Executor<'e, Database = Sqlite>,
+    {
         let new_task_id = Uuid::new_v4();
 
         let result = sqlx::query!(
@@ -371,7 +377,7 @@ ORDER BY t.created_at DESC"#,
             data.shared_task_id,
             create_if_not_exists
         )
-        .execute(pool)
+        .execute(executor)
         .await?;
 
         Ok(result.rows_affected() > 0)
@@ -442,17 +448,20 @@ ORDER BY t.created_at DESC"#,
         Ok(result.rows_affected())
     }
 
-    pub async fn set_shared_task_id(
-        pool: &SqlitePool,
+    pub async fn set_shared_task_id<'e, E>(
+        executor: E,
         id: Uuid,
         shared_task_id: Option<Uuid>,
-    ) -> Result<(), sqlx::Error> {
+    ) -> Result<(), sqlx::Error>
+    where
+        E: Executor<'e, Database = Sqlite>,
+    {
         sqlx::query!(
             "UPDATE tasks SET shared_task_id = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
             id,
             shared_task_id
         )
-        .execute(pool)
+        .execute(executor)
         .await?;
         Ok(())
     }

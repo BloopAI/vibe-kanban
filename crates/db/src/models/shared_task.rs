@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, QueryBuilder, Sqlite, SqlitePool};
+use sqlx::{Executor, FromRow, QueryBuilder, Sqlite, SqlitePool};
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -74,7 +74,10 @@ impl SharedTask {
         .await
     }
 
-    pub async fn upsert(pool: &SqlitePool, data: SharedTaskInput) -> Result<Self, sqlx::Error> {
+    pub async fn upsert<'e, E>(executor: E, data: SharedTaskInput) -> Result<Self, sqlx::Error>
+    where
+        E: Executor<'e, Database = Sqlite>,
+    {
         let status = data.status.clone();
         sqlx::query_as!(
             SharedTask,
@@ -139,7 +142,7 @@ impl SharedTask {
             data.created_at,
             data.updated_at
         )
-        .fetch_one(pool)
+        .fetch_one(executor)
         .await
     }
 
@@ -170,14 +173,20 @@ impl SharedTask {
         .await
     }
 
-    pub async fn remove(pool: &SqlitePool, id: Uuid) -> Result<(), sqlx::Error> {
+    pub async fn remove<'e, E>(executor: E, id: Uuid) -> Result<(), sqlx::Error>
+    where
+        E: Executor<'e, Database = Sqlite>,
+    {
         sqlx::query!("DELETE FROM shared_tasks WHERE id = $1", id)
-            .execute(pool)
+            .execute(executor)
             .await?;
         Ok(())
     }
 
-    pub async fn remove_many(pool: &SqlitePool, ids: &[Uuid]) -> Result<(), sqlx::Error> {
+    pub async fn remove_many<'e, E>(executor: E, ids: &[Uuid]) -> Result<(), sqlx::Error>
+    where
+        E: Executor<'e, Database = Sqlite>,
+    {
         if ids.is_empty() {
             return Ok(());
         }
@@ -190,7 +199,7 @@ impl SharedTask {
             }
         }
         builder.push(")");
-        builder.build().execute(pool).await?;
+        builder.build().execute(executor).await?;
         Ok(())
     }
 
@@ -250,11 +259,14 @@ impl SharedActivityCursor {
         .await
     }
 
-    pub async fn upsert(
-        pool: &SqlitePool,
+    pub async fn upsert<'e, E>(
+        executor: E,
         remote_project_id: Uuid,
         last_seq: i64,
-    ) -> Result<Self, sqlx::Error> {
+    ) -> Result<Self, sqlx::Error>
+    where
+        E: Executor<'e, Database = Sqlite>,
+    {
         sqlx::query_as!(
             SharedActivityCursor,
             r#"
@@ -279,7 +291,7 @@ impl SharedActivityCursor {
             remote_project_id,
             last_seq
         )
-        .fetch_one(pool)
+        .fetch_one(executor)
         .await
     }
 }
