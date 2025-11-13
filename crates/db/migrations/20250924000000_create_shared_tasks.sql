@@ -29,18 +29,6 @@ CREATE TABLE IF NOT EXISTS shared_activity_cursors (
     updated_at        TEXT NOT NULL DEFAULT (datetime('now', 'subsec'))
 );
 
-ALTER TABLE projects
-    ADD COLUMN has_remote INTEGER NOT NULL DEFAULT 0;
-
-ALTER TABLE projects
-    ADD COLUMN github_repo_owner TEXT;
-
-ALTER TABLE projects
-    ADD COLUMN github_repo_name TEXT;
-
-ALTER TABLE projects
-    ADD COLUMN github_repo_id INTEGER;
-
 ALTER TABLE tasks
     ADD COLUMN shared_task_id BLOB REFERENCES shared_tasks(id) ON DELETE SET NULL;
 

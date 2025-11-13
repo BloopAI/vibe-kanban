@@ -1,7 +1,6 @@
 use std::{collections::HashMap, path::Path};
 
 use chrono::{DateTime, Utc};
-use db::models::project::ProjectRemoteMetadata;
 use git2::{
     BranchType, Delta, DiffFindOptions, DiffOptions, Error as GitError, Reference, Remote,
     Repository, Sort, build::CheckoutBuilder,
@@ -193,29 +192,6 @@ impl GitService {
         } else {
             "origin".to_string()
         }
-    }
-
-    pub fn get_remote_metadata(
-        &self,
-        repo_path: &Path,
-    ) -> Result<ProjectRemoteMetadata, GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-        let mut metadata = ProjectRemoteMetadata::default();
-
-        let remotes = repo.remotes()?;
-        if let Some(remote_name) = remotes.iter().flatten().next() {
-            let remote = repo.find_remote(remote_name)?;
-            if let Some(url) = remote.url() {
-                metadata.has_remote = true;
-                if let Ok(info) = GitHubRepoInfo::from_remote_url(url) {
-                    metadata.github_repo_owner = Some(info.owner);
-                    metadata.github_repo_name = Some(info.repo_name);
-                }
-            }
-            return Ok(metadata);
-        }
-
-        Ok(metadata)
     }
 
     /// Initialize a new git repository with a main branch and initial commit
