@@ -61,7 +61,7 @@ async fn list_organization_projects(
     Path(org_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<Vec<RemoteProject>>>, ApiError> {
     let client = deployment.remote_client()?;
-    
+
     let response = client.list_projects(org_id).await?;
 
     Ok(ResponseJson(ApiResponse::success(response.projects)))
@@ -71,7 +71,7 @@ async fn list_organizations(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<ListOrganizationsResponse>>, ApiError> {
     let client = deployment.remote_client()?;
-    
+
     let response = client.list_organizations().await?;
 
     Ok(ResponseJson(ApiResponse::success(response)))
@@ -82,7 +82,7 @@ async fn get_organization(
     Path(id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<GetOrganizationResponse>>, ApiError> {
     let client = deployment.remote_client()?;
-    
+
     let response = client.get_organization(id).await?;
 
     Ok(ResponseJson(ApiResponse::success(response)))
@@ -93,7 +93,7 @@ async fn create_organization(
     Json(request): Json<CreateOrganizationRequest>,
 ) -> Result<ResponseJson<ApiResponse<CreateOrganizationResponse>>, ApiError> {
     let client = deployment.remote_client()?;
-    
+
     let response = client.create_organization(&request).await?;
 
     Ok(ResponseJson(ApiResponse::success(response)))
@@ -105,7 +105,7 @@ async fn update_organization(
     Json(request): Json<UpdateOrganizationRequest>,
 ) -> Result<ResponseJson<ApiResponse<Organization>>, ApiError> {
     let client = deployment.remote_client()?;
-    
+
     let response = client.update_organization(id, &request).await?;
 
     Ok(ResponseJson(ApiResponse::success(response)))
@@ -116,7 +116,7 @@ async fn delete_organization(
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
     let client = deployment.remote_client()?;
-    
+
     client.delete_organization(id).await?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -128,7 +128,7 @@ async fn create_invitation(
     Json(request): Json<CreateInvitationRequest>,
 ) -> Result<ResponseJson<ApiResponse<CreateInvitationResponse>>, ApiError> {
     let client = deployment.remote_client()?;
-    
+
     let response = client.create_invitation(org_id, &request).await?;
 
     Ok(ResponseJson(ApiResponse::success(response)))
@@ -139,7 +139,7 @@ async fn list_invitations(
     Path(org_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<ListInvitationsResponse>>, ApiError> {
     let client = deployment.remote_client()?;
-    
+
     let response = client.list_invitations(org_id).await?;
 
     Ok(ResponseJson(ApiResponse::success(response)))
@@ -163,8 +163,10 @@ async fn revoke_invitation(
     Json(payload): Json<RevokeInvitationRequest>,
 ) -> Result<StatusCode, ApiError> {
     let client = deployment.remote_client()?;
-    
-    client.revoke_invitation(org_id, payload.invitation_id).await?;
+
+    client
+        .revoke_invitation(org_id, payload.invitation_id)
+        .await?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -174,7 +176,7 @@ async fn accept_invitation(
     Path(invitation_token): Path<String>,
 ) -> Result<ResponseJson<ApiResponse<AcceptInvitationResponse>>, ApiError> {
     let client = deployment.remote_client()?;
-    
+
     let response = client.accept_invitation(&invitation_token).await?;
 
     Ok(ResponseJson(ApiResponse::success(response)))
@@ -185,7 +187,7 @@ async fn list_members(
     Path(org_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<ListMembersResponse>>, ApiError> {
     let client = deployment.remote_client()?;
-    
+
     let response = client.list_members(org_id).await?;
 
     Ok(ResponseJson(ApiResponse::success(response)))
@@ -196,7 +198,7 @@ async fn remove_member(
     Path((org_id, user_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode, ApiError> {
     let client = deployment.remote_client()?;
-    
+
     client.remove_member(org_id, user_id).await?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -208,7 +210,7 @@ async fn update_member_role(
     Json(request): Json<UpdateMemberRoleRequest>,
 ) -> Result<ResponseJson<ApiResponse<UpdateMemberRoleResponse>>, ApiError> {
     let client = deployment.remote_client()?;
-    
+
     let response = client.update_member_role(org_id, user_id, &request).await?;
 
     Ok(ResponseJson(ApiResponse::success(response)))

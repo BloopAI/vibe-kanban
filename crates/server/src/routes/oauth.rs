@@ -7,11 +7,10 @@ use axum::{
 };
 use deployment::Deployment;
 use rand::{Rng, distributions::Alphanumeric};
-use services::RemoteClient;
 use serde::{Deserialize, Serialize};
-use services::services::{
-    config::save_config_to_file,
-    oauth_credentials::Credentials,
+use services::{
+    RemoteClient,
+    services::{config::save_config_to_file, oauth_credentials::Credentials},
 };
 use sha2::{Digest, Sha256};
 use utils::{

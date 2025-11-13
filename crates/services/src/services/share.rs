@@ -134,7 +134,8 @@ impl RemoteSync {
         tracing::info!(api = %config.api_base, "starting shared task synchronizer");
         let remote_client = RemoteClient::with_auth(config.api_base.as_str(), auth_ctx.clone())
             .expect("failed to create remote client");
-        let processor = ActivityProcessor::new(db.clone(), config.clone(), remote_client, auth_ctx.clone());
+        let processor =
+            ActivityProcessor::new(db.clone(), config.clone(), remote_client, auth_ctx.clone());
         let sync = Self {
             db,
             processor,

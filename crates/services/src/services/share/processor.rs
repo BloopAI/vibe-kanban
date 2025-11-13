@@ -9,8 +9,7 @@ use db::{
     },
 };
 use remote::{
-    activity::ActivityEvent,
-    db::tasks::SharedTaskActivityPayload,
+    activity::ActivityEvent, db::tasks::SharedTaskActivityPayload,
     routes::tasks::BulkSharedTasksResponse,
 };
 use sqlx::{Sqlite, Transaction};
@@ -35,7 +34,12 @@ pub struct ActivityProcessor {
 }
 
 impl ActivityProcessor {
-    pub fn new(db: DBService, config: ShareConfig, remote_client: RemoteClient, auth_ctx: AuthContext) -> Self {
+    pub fn new(
+        db: DBService,
+        config: ShareConfig,
+        remote_client: RemoteClient,
+        auth_ctx: AuthContext,
+    ) -> Self {
         Self {
             db,
             config,
@@ -324,6 +328,9 @@ impl ActivityProcessor {
         &self,
         remote_project_id: Uuid,
     ) -> Result<BulkSharedTasksResponse, ShareError> {
-        Ok(self.remote_client.fetch_bulk_snapshot(remote_project_id).await?)
+        Ok(self
+            .remote_client
+            .fetch_bulk_snapshot(remote_project_id)
+            .await?)
     }
 }

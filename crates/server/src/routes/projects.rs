@@ -70,7 +70,7 @@ pub async fn link_project_to_existing_remote(
     Json(payload): Json<LinkToExistingRequest>,
 ) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
     let client = deployment.remote_client()?;
-    
+
     let remote_project = client.get_project(payload.remote_project_id).await?;
 
     let updated_project =
@@ -92,12 +92,14 @@ pub async fn create_and_link_remote_project(
     }
 
     let client = deployment.remote_client()?;
-    
-    let remote_project = client.create_project(&CreateRemoteProjectPayload {
-        organization_id: payload.organization_id,
-        name: repo_name,
-        metadata: None,
-    }).await?;
+
+    let remote_project = client
+        .create_project(&CreateRemoteProjectPayload {
+            organization_id: payload.organization_id,
+            name: repo_name,
+            metadata: None,
+        })
+        .await?;
 
     let updated_project =
         apply_remote_project_link(&deployment, project_id, remote_project).await?;
@@ -133,7 +135,7 @@ pub async fn get_remote_project_by_id(
     Path(remote_project_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<RemoteProject>>, ApiError> {
     let client = deployment.remote_client()?;
-    
+
     let remote_project = client.get_project(remote_project_id).await?;
 
     Ok(ResponseJson(ApiResponse::success(remote_project)))
@@ -148,7 +150,7 @@ pub async fn get_project_remote_members(
     })?;
 
     let client = deployment.remote_client()?;
-    
+
     let remote_project = client.get_project(remote_project_id).await?;
     let members = client
         .list_members(remote_project.organization_id)
