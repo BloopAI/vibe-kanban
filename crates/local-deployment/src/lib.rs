@@ -49,6 +49,7 @@ pub struct LocalDeployment {
     drafts: DraftsService,
     share_publisher: Result<SharePublisher, RemoteClientNotConfigured>,
     share_sync_handle: Arc<Mutex<Option<RemoteSyncHandle>>>,
+    share_config: Option<ShareConfig>,
     remote_client: Result<RemoteClient, RemoteClientNotConfigured>,
     auth_context: AuthContext,
     oauth_handoffs: Arc<RwLock<HashMap<Uuid, PendingHandoff>>>,
@@ -202,6 +203,7 @@ impl Deployment for LocalDeployment {
             drafts,
             share_publisher,
             share_sync_handle: share_sync_handle.clone(),
+            share_config: share_sync_config.clone(),
             remote_client,
             auth_context,
             oauth_handoffs,
@@ -348,5 +350,9 @@ impl LocalDeployment {
             .await
             .remove(handoff_id)
             .map(|state| (state.provider, state.app_verifier))
+    }
+
+    pub fn share_config(&self) -> Option<&ShareConfig> {
+        self.share_config.as_ref()
     }
 }
