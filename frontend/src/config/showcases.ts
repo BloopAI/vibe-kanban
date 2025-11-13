@@ -41,7 +41,7 @@ export const showcases = {
         descriptionKey: 'showcases.taskPanel.tags.description',
         media: {
           type: 'video',
-          src: 'https://vkcdn.britannio.dev/showcase/flat-task-panel/vk-task-tags.mp4',
+          src: 'https://vkcdn.britannio.dev/showcase/flat-task-panel/vk-tags.mp4',
         },
       },
     ],
