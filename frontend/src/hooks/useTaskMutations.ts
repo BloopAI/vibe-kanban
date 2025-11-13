@@ -90,6 +90,16 @@ export function useTaskMutations(projectId?: string) {
     },
   });
 
+  const shareTask = useMutation({
+    mutationFn: (taskId: string) => tasksApi.share(taskId),
+    onSuccess: () => {
+      invalidateQueries();
+    },
+    onError: (err) => {
+      console.error('Failed to share task:', err);
+    },
+  });
+
   const unshareSharedTask = useMutation({
     mutationFn: (sharedTaskId: string) => tasksApi.unshare(sharedTaskId),
     onSuccess: () => {
@@ -105,6 +115,7 @@ export function useTaskMutations(projectId?: string) {
     createAndStart,
     updateTask,
     deleteTask,
+    shareTask,
     stopShareTask: unshareSharedTask,
   };
 }
