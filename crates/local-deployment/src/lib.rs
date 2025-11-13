@@ -17,9 +17,10 @@ use services::services::{
     git::GitService,
     image::ImageService,
     oauth_credentials::OAuthCredentials,
-    remote_client::{RemoteClient, RemoteClientError},
+    remote_client::{AuthenticatedRemoteClient, RemoteClient, RemoteClientError},
     share::{RemoteSyncHandle, ShareConfig, SharePublisher},
 };
+use thiserror::Error;
 use tokio::sync::{Mutex, RwLock};
 use utils::{
     api::oauth::LoginStatus,
@@ -31,6 +32,14 @@ use uuid::Uuid;
 use crate::container::LocalContainerService;
 mod command;
 pub mod container;
+
+#[derive(Debug, Error)]
+pub enum AuthedClientInitError {
+    #[error("OAuth remote client not configured")]
+    NotConfigured,
+    #[error("Not authenticated")]
+    NotAuthenticated,
+}
 
 #[derive(Clone)]
 pub struct LocalDeployment {
@@ -295,6 +304,23 @@ impl Deployment for LocalDeployment {
 impl LocalDeployment {
     pub fn remote_client(&self) -> Option<Arc<RemoteClient>> {
         self.remote_client.clone()
+    }
+
+    /// Returns an authenticated remote client ready to make API calls.
+    /// Combines remote_client and auth_context into a single operation.
+    pub async fn authenticated_remote_client(
+        &self,
+    ) -> Result<AuthenticatedRemoteClient, AuthedClientInitError> {
+        let remote_client = self
+            .remote_client
+            .as_ref()
+            .ok_or(AuthedClientInitError::NotConfigured)?;
+        let creds = self
+            .auth_context
+            .get_credentials()
+            .await
+            .ok_or(AuthedClientInitError::NotAuthenticated)?;
+        Ok(remote_client.authenticated(&creds.access_token))
     }
 
     /// Convenience method to get the current JWT auth token.

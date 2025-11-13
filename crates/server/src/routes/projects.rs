@@ -69,18 +69,12 @@ pub async fn link_project_to_existing_remote(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<LinkToExistingRequest>,
 ) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
-    let remote_client = deployment
-        .remote_client()
-        .ok_or_else(|| ApiError::Conflict("Share service not configured".to_string()))?;
-
-    let creds = deployment
-        .auth_context()
-        .get_credentials()
+    let client = deployment
+        .authenticated_remote_client()
         .await
-        .ok_or(ApiError::Unauthorized)?;
+        .map_err(|e| ApiError::Conflict(e.to_string()))?;
 
-    let remote_project = remote_client
-        .authenticated(&creds.access_token)
+    let remote_project = client
         .get_project(payload.remote_project_id)
         .await
         .map_err(map_remote_error)?;
@@ -96,15 +90,10 @@ pub async fn create_and_link_remote_project(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateRemoteProjectRequest>,
 ) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
-    let remote_client = deployment
-        .remote_client()
-        .ok_or_else(|| ApiError::Conflict("Share service not configured".to_string()))?;
-
-    let creds = deployment
-        .auth_context()
-        .get_credentials()
+    let client = deployment
+        .authenticated_remote_client()
         .await
-        .ok_or(ApiError::Unauthorized)?;
+        .map_err(|e| ApiError::Conflict(e.to_string()))?;
 
     let repo_name = payload.name.trim().to_string();
     if repo_name.trim().is_empty() {
@@ -113,8 +102,7 @@ pub async fn create_and_link_remote_project(
         ));
     }
 
-    let remote_project = remote_client
-        .authenticated(&creds.access_token)
+    let remote_project = client
         .create_project(&CreateRemoteProjectPayload {
             organization_id: payload.organization_id,
             name: repo_name,
@@ -156,18 +144,12 @@ pub async fn get_remote_project_by_id(
     State(deployment): State<DeploymentImpl>,
     Path(remote_project_id): Path<Uuid>,
 ) -> Result<ResponseJson<ApiResponse<RemoteProject>>, ApiError> {
-    let remote_client = deployment
-        .remote_client()
-        .ok_or_else(|| ApiError::Conflict("Share service not configured".to_string()))?;
-
-    let creds = deployment
-        .auth_context()
-        .get_credentials()
+    let client = deployment
+        .authenticated_remote_client()
         .await
-        .ok_or(ApiError::Unauthorized)?;
+        .map_err(|e| ApiError::Conflict(e.to_string()))?;
 
-    let remote_project = remote_client
-        .authenticated(&creds.access_token)
+    let remote_project = client
         .get_project(remote_project_id)
         .await
         .map_err(map_remote_error)?;
@@ -179,28 +161,21 @@ pub async fn get_project_remote_members(
     State(deployment): State<DeploymentImpl>,
     Extension(project): Extension<Project>,
 ) -> Result<ResponseJson<ApiResponse<RemoteProjectMembersResponse>>, ApiError> {
-    let remote_client = deployment
-        .remote_client()
-        .ok_or_else(|| ApiError::Conflict("Share service not configured".to_string()))?;
-
-    let creds = deployment
-        .auth_context()
-        .get_credentials()
+    let client = deployment
+        .authenticated_remote_client()
         .await
-        .ok_or(ApiError::Unauthorized)?;
+        .map_err(|e| ApiError::Conflict(e.to_string()))?;
 
     let remote_project_id = project.remote_project_id.ok_or_else(|| {
         ApiError::Conflict("Project is not linked to a remote project".to_string())
     })?;
 
-    let remote_project = remote_client
-        .authenticated(&creds.access_token)
+    let remote_project = client
         .get_project(remote_project_id)
         .await
         .map_err(map_remote_error)?;
 
-    let members = remote_client
-        .authenticated(&creds.access_token)
+    let members = client
         .list_members(remote_project.organization_id)
         .await
         .map_err(map_remote_error)?
