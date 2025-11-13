@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, SqlitePool};
+use sqlx::{Executor, FromRow, Sqlite, SqlitePool};
 use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
@@ -314,6 +314,28 @@ impl Project {
             remote_project_id
         )
         .execute(pool)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Transaction-compatible version of set_remote_project_id
+    pub async fn set_remote_project_id_tx<'e, E>(
+        executor: E,
+        id: Uuid,
+        remote_project_id: Option<Uuid>,
+    ) -> Result<(), sqlx::Error>
+    where
+        E: Executor<'e, Database = Sqlite>,
+    {
+        sqlx::query!(
+            r#"UPDATE projects
+               SET remote_project_id = $2
+               WHERE id = $1"#,
+            id,
+            remote_project_id
+        )
+        .execute(executor)
         .await?;
 
         Ok(())

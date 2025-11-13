@@ -8,8 +8,9 @@ use axum::{
     response::Json as ResponseJson,
     routing::{get, post},
 };
-use db::models::project::{
-    CreateProject, Project, ProjectError, SearchMatchType, SearchResult, UpdateProject,
+use db::models::{
+    project::{CreateProject, Project, ProjectError, SearchMatchType, SearchResult, UpdateProject},
+    task::Task,
 };
 use deployment::Deployment;
 use ignore::WalkBuilder;
@@ -130,14 +131,22 @@ pub async fn create_and_link_remote_project(
 }
 
 pub async fn unlink_project(
-    Path(project_id): Path<Uuid>,
+    Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
     let pool = &deployment.db().pool;
 
-    Project::set_remote_project_id(pool, project_id, None).await?;
+    if let Some(remote_project_id) = project.remote_project_id {
+        let mut tx = pool.begin().await?;
 
-    let updated_project = Project::find_by_id(pool, project_id)
+        Task::clear_shared_task_ids_for_remote_project(&mut *tx, remote_project_id).await?;
+
+        Project::set_remote_project_id_tx(&mut *tx, project.id, None).await?;
+
+        tx.commit().await?;
+    }
+
+    let updated_project = Project::find_by_id(pool, project.id)
         .await?
         .ok_or(ProjectError::ProjectNotFound)?;
 
