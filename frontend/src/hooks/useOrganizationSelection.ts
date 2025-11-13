@@ -42,7 +42,9 @@ export function useOrganizationSelection(
       : false;
 
     if (!selectedOrgId || !hasSelection) {
-      const fallbackId = orgList[0].id;
+      // Prefer first non-personal org, fallback to first org if all are personal
+      const firstNonPersonal = orgList.find((org) => !org.is_personal);
+      const fallbackId = (firstNonPersonal ?? orgList[0]).id;
       setSelectedOrgId(fallbackId);
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
