@@ -132,8 +132,11 @@ impl Deployment for LocalDeployment {
             tracing::warn!(?e, "failed to load OAuth credentials");
         }
 
+        let profile_cache = Arc::new(RwLock::new(None));
+        let auth_context = AuthContext::new(oauth_credentials.clone(), profile_cache.clone());
+
         let remote_client = match std::env::var("VK_SHARED_API_BASE") {
-            Ok(url) => match RemoteClient::new_with_timeout(&url, Duration::from_secs(30)) {
+            Ok(url) => match RemoteClient::with_auth_and_timeout(&url, auth_context.clone(), Duration::from_secs(30)) {
                 Ok(client) => {
                     tracing::info!("Remote client initialized with URL: {}", url);
                     Ok(client)
@@ -149,9 +152,6 @@ impl Deployment for LocalDeployment {
             }
         };
 
-        let profile_cache = Arc::new(RwLock::new(None));
-        let auth_context = AuthContext::new(oauth_credentials.clone(), profile_cache.clone());
-
         // In-memory storage for pending OAuth handoffs
         let oauth_handoffs = Arc::new(RwLock::new(HashMap::new()));
 
@@ -161,17 +161,10 @@ impl Deployment for LocalDeployment {
         let mut share_sync_config: Option<ShareConfig> = None;
 
         if let (Some(sc_ref), Ok(remote)) = (share_config.as_ref(), &remote_client)
-            && let Some(creds) = oauth_credentials.get().await
+            && oauth_credentials.get().await.is_some()
         {
-            let sc_owned = sc_ref.clone();
-            if let Ok(authenticated_client) = RemoteClient::with_token_and_timeout(
-                remote.base_url(),
-                &creds.access_token,
-                Duration::from_secs(30),
-            ) {
-                share_publisher = Some(SharePublisher::new(db.clone(), authenticated_client));
-                share_sync_config = Some(sc_owned);
-            }
+            share_publisher = Some(SharePublisher::new(db.clone(), remote.clone()));
+            share_sync_config = Some(sc_ref.clone());
         }
 
         // We need to make analytics accessible to the ContainerService
@@ -309,7 +302,7 @@ impl LocalDeployment {
     }
 
     pub async fn get_login_status(&self) -> LoginStatus {
-        let Some(creds) = self.auth_context.get_credentials().await else {
+        if self.auth_context.get_credentials().await.is_none() {
             self.auth_context.clear_profile().await;
             return LoginStatus::LoggedOut;
         };
@@ -320,20 +313,11 @@ impl LocalDeployment {
             };
         }
 
-        let Ok(remote_client) = self.remote_client.as_ref() else {
+        let Ok(client) = self.remote_client() else {
             return LoginStatus::LoggedOut;
         };
 
-        let authed = match RemoteClient::with_token_and_timeout(
-            remote_client.base_url(),
-            &creds.access_token,
-            Duration::from_secs(30),
-        ) {
-            Ok(client) => client,
-            Err(_) => return LoginStatus::LoggedOut,
-        };
-
-        match authed.profile().await {
+        match client.profile().await {
             Ok(profile) => {
                 self.auth_context.set_profile(profile.clone()).await;
                 LoginStatus::LoggedIn { profile }

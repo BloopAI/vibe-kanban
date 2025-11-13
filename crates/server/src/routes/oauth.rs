@@ -9,7 +9,10 @@ use deployment::Deployment;
 use rand::{Rng, distributions::Alphanumeric};
 use services::RemoteClient;
 use serde::{Deserialize, Serialize};
-use services::services::{config::save_config_to_file, oauth_credentials::Credentials};
+use services::services::{
+    config::save_config_to_file,
+    oauth_credentials::Credentials,
+};
 use sha2::{Digest, Sha256};
 use utils::{
     api::oauth::{HandoffInitRequest, HandoffRedeemRequest, StatusResponse},
@@ -171,14 +174,8 @@ async fn handoff_complete(
         drop(config_guard);
     }
 
-    if let Ok(authed) = RemoteClient::with_token(remote.base_url(), &redeem.access_token) {
-        match authed.profile().await {
-            Ok(profile) => deployment.auth_context().set_profile(profile).await,
-            Err(error) => {
-                tracing::warn!(?error, "failed to fetch profile after oauth handoff");
-            }
-        }
-    }
+    // Fetch and cache the user's profile
+    let _ = deployment.get_login_status().await;
 
     Ok(close_window_response(format!(
         "Signed in with {provider}. You can return to the app."
@@ -187,12 +184,9 @@ async fn handoff_complete(
 
 async fn logout(State(deployment): State<DeploymentImpl>) -> Result<StatusCode, ApiError> {
     let auth_context = deployment.auth_context();
-    let credentials = auth_context.get_credentials().await;
 
-    if let (Ok(remote), Some(creds)) = (deployment.remote_client(), credentials.as_ref()) {
-        if let Ok(authed) = RemoteClient::with_token(remote.base_url(), &creds.access_token) {
-            let _ = authed.logout().await;
-        }
+    if let Ok(client) = deployment.remote_client() {
+        let _ = client.logout().await;
     }
 
     auth_context.clear_credentials().await.map_err(|e| {

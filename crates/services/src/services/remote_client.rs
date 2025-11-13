@@ -29,6 +29,8 @@ use utils::api::{
 };
 use uuid::Uuid;
 
+use super::auth::AuthContext;
+
 #[derive(Debug, Clone, Error)]
 pub enum RemoteClientError {
     #[error("network error: {0}")]
@@ -94,7 +96,7 @@ struct ApiErrorResponse {
 pub struct RemoteClient {
     base: Url,
     http: Client,
-    token: Option<String>,
+    auth_context: Option<AuthContext>,
 }
 
 impl std::fmt::Debug for RemoteClient {
@@ -102,7 +104,7 @@ impl std::fmt::Debug for RemoteClient {
         f.debug_struct("RemoteClient")
             .field("base", &self.base)
             .field("http", &self.http)
-            .field("token", &self.token.as_ref().map(|_| "<redacted>"))
+            .field("auth_context", &self.auth_context.as_ref().map(|_| "<present>"))
             .finish()
     }
 }
@@ -112,7 +114,7 @@ impl Clone for RemoteClient {
         Self {
             base: self.base.clone(),
             http: self.http.clone(),
-            token: self.token.clone(),
+            auth_context: self.auth_context.clone(),
         }
     }
 }
@@ -132,19 +134,19 @@ impl RemoteClient {
         Ok(Self {
             base,
             http,
-            token: None,
+            auth_context: None,
         })
     }
 
-    /// Creates a client with an authentication token.
-    pub fn with_token(base_url: &str, token: impl Into<String>) -> Result<Self, RemoteClientError> {
-        Self::with_token_and_timeout(base_url, token, Duration::from_secs(10))
+    /// Creates a client with an AuthContext.
+    pub fn with_auth(base_url: &str, auth_context: AuthContext) -> Result<Self, RemoteClientError> {
+        Self::with_auth_and_timeout(base_url, auth_context, Duration::from_secs(10))
     }
 
-    /// Creates a client with an authentication token and custom timeout.
-    pub fn with_token_and_timeout(
+    /// Creates a client with an AuthContext and custom timeout.
+    pub fn with_auth_and_timeout(
         base_url: &str,
-        token: impl Into<String>,
+        auth_context: AuthContext,
         timeout: Duration,
     ) -> Result<Self, RemoteClientError> {
         let base = Url::parse(base_url).map_err(|e| RemoteClientError::Url(e.to_string()))?;
@@ -156,13 +158,15 @@ impl RemoteClient {
         Ok(Self {
             base,
             http,
-            token: Some(token.into()),
+            auth_context: Some(auth_context),
         })
     }
 
     /// Returns the token if available.
-    fn require_token(&self) -> Result<&str, RemoteClientError> {
-        self.token.as_deref().ok_or(RemoteClientError::Auth)
+    async fn require_token(&self) -> Result<String, RemoteClientError> {
+        let auth_context = self.auth_context.as_ref().ok_or(RemoteClientError::Auth)?;
+        let creds = auth_context.get_credentials().await.ok_or(RemoteClientError::Auth)?;
+        Ok(creds.access_token)
     }
 
     /// Returns the base URL for the client.
@@ -284,9 +288,9 @@ impl RemoteClient {
     where
         T: for<'de> Deserialize<'de>,
     {
-        let token = self.require_token()?;
+        let token = self.require_token().await?;
         let res = self
-            .send(reqwest::Method::GET, path, Some(token), None::<&()>)
+            .send(reqwest::Method::GET, path, Some(&token), None::<&()>)
             .await?;
         res.json::<T>()
             .await
@@ -298,9 +302,9 @@ impl RemoteClient {
         T: for<'de> Deserialize<'de>,
         B: Serialize,
     {
-        let token = self.require_token()?;
+        let token = self.require_token().await?;
         let res = self
-            .send(reqwest::Method::POST, path, Some(token), body)
+            .send(reqwest::Method::POST, path, Some(&token), body)
             .await?;
         res.json::<T>()
             .await
@@ -312,9 +316,9 @@ impl RemoteClient {
         T: for<'de> Deserialize<'de>,
         B: Serialize,
     {
-        let token = self.require_token()?;
+        let token = self.require_token().await?;
         let res = self
-            .send(reqwest::Method::PATCH, path, Some(token), Some(body))
+            .send(reqwest::Method::PATCH, path, Some(&token), Some(body))
             .await?;
         res.json::<T>()
             .await
@@ -322,11 +326,11 @@ impl RemoteClient {
     }
 
     async fn delete_authed(&self, path: &str) -> Result<(), RemoteClientError> {
-        let token = self.require_token()?;
+        let token = self.require_token().await?;
         self.send(
             reqwest::Method::DELETE,
             path,
-            Some(token),
+            Some(&token),
             None::<&()>,
         )
         .await?;
@@ -521,12 +525,12 @@ impl RemoteClient {
         task_id: Uuid,
         request: &DeleteSharedTaskRequest,
     ) -> Result<SharedTaskResponse, RemoteClientError> {
-        let token = self.require_token()?;
+        let token = self.require_token().await?;
         let res = self
             .send(
                 reqwest::Method::DELETE,
                 &format!("/v1/tasks/{task_id}"),
-                Some(token),
+                Some(&token),
                 Some(request),
             )
             .await?;
