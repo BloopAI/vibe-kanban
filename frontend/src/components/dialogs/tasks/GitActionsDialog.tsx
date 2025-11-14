@@ -24,8 +24,6 @@ import type {
   TaskWithAttemptStatus,
 } from 'shared/types';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
-import { useAuth } from '@/hooks';
-import { LoginRequiredPrompt } from '@/components/dialogs/shared/LoginRequiredPrompt';
 
 export interface GitActionsDialogProps {
   attemptId: string;
@@ -104,7 +102,6 @@ export const GitActionsDialog = NiceModal.create<GitActionsDialogProps>(
     const modal = useModal();
     const { t } = useTranslation('tasks');
     const { project } = useProject();
-    const { isSignedIn, isLoaded } = useAuth();
 
     const effectiveProjectId = providedProjectId ?? project?.id;
     const { data: attempt } = useTaskAttempt(attemptId);
@@ -129,7 +126,7 @@ export const GitActionsDialog = NiceModal.create<GitActionsDialogProps>(
     };
 
     const isLoading =
-      !attempt || !effectiveProjectId || loadingBranches || !task || !isLoaded;
+      !attempt || !effectiveProjectId || loadingBranches || !task;
 
     return (
       <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
@@ -141,16 +138,6 @@ export const GitActionsDialog = NiceModal.create<GitActionsDialogProps>(
           {isLoading ? (
             <div className="py-8">
               <Loader size={24} />
-            </div>
-          ) : !isSignedIn ? (
-            <div className="py-6">
-              <LoginRequiredPrompt
-                buttonVariant="default"
-                buttonSize="default"
-                title={t('git.actions.loginRequired.title')}
-                description={t('git.actions.loginRequired.description')}
-                actionLabel={t('git.actions.loginRequired.action')}
-              />
             </div>
           ) : (
             <GitOperationsProvider attemptId={attempt.id}>
