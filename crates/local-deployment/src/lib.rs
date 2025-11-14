@@ -203,7 +203,7 @@ impl Deployment for LocalDeployment {
             drafts,
             share_publisher,
             share_sync_handle: share_sync_handle.clone(),
-            share_config: share_sync_config.clone(),
+            share_config: share_config.clone(),
             remote_client,
             auth_context,
             oauth_handoffs,
