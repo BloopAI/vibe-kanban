@@ -39,7 +39,7 @@ pub(super) async fn check_user_role(
         r#"
         SELECT role AS "role!: MemberRole"
         FROM organization_member_metadata
-        WHERE organization_id = $1 AND user_id = $2 AND status = 'active'
+        WHERE organization_id = $1 AND user_id = $2
         "#,
         organization_id,
         user_id

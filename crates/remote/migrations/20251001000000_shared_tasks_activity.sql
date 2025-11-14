@@ -41,7 +41,6 @@ CREATE TABLE IF NOT EXISTS organization_member_metadata (
         organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
         user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         role            member_role NOT NULL DEFAULT 'member',
-        status          TEXT NOT NULL DEFAULT 'active',
         joined_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         last_seen_at    TIMESTAMPTZ,
         PRIMARY KEY (organization_id, user_id)
