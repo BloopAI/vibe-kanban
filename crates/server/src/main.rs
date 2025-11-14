@@ -1,9 +1,12 @@
 use anyhow::{self, Error as AnyhowError};
+use db::models::execution_process::{ExecutionProcess, ExecutionProcessStatus};
 use deployment::{Deployment, DeploymentError};
 use server::{DeploymentImpl, routes};
+use services::services::container::ContainerService;
 use sqlx::Error as SqlxError;
 use strip_ansi_escapes::strip;
 use thiserror::Error;
+use tokio::sync::watch;
 use tracing_subscriber::{EnvFilter, prelude::*};
 use utils::{
     assets::asset_dir,
@@ -64,7 +67,7 @@ async fn main() -> Result<(), VibeKanbanError> {
         }
     });
 
-    let app_router = routes::router(deployment);
+    let app_router = routes::router(deployment.clone());
 
     let port = std::env::var("BACKEND_PORT")
         .or_else(|_| std::env::var("PORT"))
@@ -104,6 +107,96 @@ async fn main() -> Result<(), VibeKanbanError> {
         });
     }
 
-    axum::serve(listener, app_router).await?;
+    // Set up signal handlers for graceful shutdown
+    let (shutdown_tx, shutdown_rx) = watch::channel(false);
+
+    let shutdown_signal_task = tokio::spawn({
+        let shutdown_tx = shutdown_tx;
+        async move {
+            shutdown_signal().await;
+            let _ = shutdown_tx.send(true);
+        }
+    });
+
+    let mut cleanup_shutdown_rx = shutdown_rx.clone();
+    let deployment_for_shutdown = deployment.clone();
+    let cleanup_handle = tokio::spawn(async move {
+        wait_for_shutdown(&mut cleanup_shutdown_rx).await;
+        tracing::info!("Shutdown signal received, stopping dev servers...");
+
+        // Find all running dev servers
+        match ExecutionProcess::find_all_running_dev_servers(&deployment_for_shutdown.db().pool)
+            .await
+        {
+            Ok(dev_servers) => {
+                if !dev_servers.is_empty() {
+                    tracing::info!("Stopping {} running dev server(s)...", dev_servers.len());
+                    for dev_server in dev_servers {
+                        if let Err(e) = deployment_for_shutdown
+                            .container()
+                            .stop_execution(&dev_server, ExecutionProcessStatus::Killed)
+                            .await
+                        {
+                            tracing::error!("Failed to stop dev server {}: {}", dev_server.id, e);
+                        } else {
+                            tracing::info!("Stopped dev server {}", dev_server.id);
+                        }
+                    }
+                    tracing::info!("All dev servers stopped");
+                } else {
+                    tracing::info!("No running dev servers to stop");
+                }
+            }
+            Err(e) => {
+                tracing::error!("Failed to find running dev servers: {}", e);
+            }
+        }
+    });
+
+    let mut server_shutdown_rx = shutdown_rx.clone();
+    axum::serve(listener, app_router)
+        .with_graceful_shutdown(async move {
+            wait_for_shutdown(&mut server_shutdown_rx).await;
+        })
+        .await?;
+
+    cleanup_handle
+        .await
+        .map_err(|err| VibeKanbanError::Other(err.into()))?;
+    shutdown_signal_task
+        .await
+        .map_err(|err| VibeKanbanError::Other(err.into()))?;
     Ok(())
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+}
+
+async fn wait_for_shutdown(rx: &mut watch::Receiver<bool>) {
+    if *rx.borrow() {
+        return;
+    }
+
+    let _ = rx.changed().await;
 }

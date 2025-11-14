@@ -246,6 +246,21 @@ impl ExecutionProcess {
         .await
     }
 
+    /// Find all running dev servers
+    pub async fn find_all_running_dev_servers(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            ExecutionProcess,
+            r#"SELECT id as "id!: Uuid", task_attempt_id as "task_attempt_id!: Uuid", run_reason as "run_reason!: ExecutionProcessRunReason", executor_action as "executor_action!: sqlx::types::Json<ExecutorActionField>",
+                      before_head_commit, after_head_commit, status as "status!: ExecutionProcessStatus", exit_code,
+                      dropped, started_at as "started_at!: DateTime<Utc>", completed_at as "completed_at?: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+               FROM execution_processes
+               WHERE status = 'running' AND run_reason = 'devserver'
+               ORDER BY created_at ASC"#
+        )
+        .fetch_all(pool)
+        .await
+    }
+
     /// Find running dev servers for a specific project
     pub async fn find_running_dev_servers_by_project(
         pool: &SqlitePool,
@@ -264,6 +279,26 @@ impl ExecutionProcess {
             project_id
         )
         .fetch_all(pool)
+        .await
+    }
+
+    /// Find running dev server for a specific task attempt
+    pub async fn find_running_dev_server_by_task_attempt(
+        pool: &SqlitePool,
+        task_attempt_id: Uuid,
+    ) -> Result<Option<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            ExecutionProcess,
+            r#"SELECT id as "id!: Uuid", task_attempt_id as "task_attempt_id!: Uuid", run_reason as "run_reason!: ExecutionProcessRunReason", executor_action as "executor_action!: sqlx::types::Json<ExecutorActionField>",
+                      before_head_commit, after_head_commit, status as "status!: ExecutionProcessStatus", exit_code,
+                      dropped, started_at as "started_at!: DateTime<Utc>", completed_at as "completed_at?: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+               FROM execution_processes
+               WHERE status = 'running' AND run_reason = 'devserver' AND task_attempt_id = ?
+               ORDER BY created_at DESC
+               LIMIT 1"#,
+            task_attempt_id
+        )
+        .fetch_optional(pool)
         .await
     }
 
