@@ -256,9 +256,8 @@ impl OAuthHandoffService {
         let user_profile = self.fetch_user_with_retries(&provider, &grant).await?;
 
         let user = self.upsert_identity(&provider, &user_profile).await?;
-        let session_secret = generate_session_secret();
         let session_repo = AuthSessionRepository::new(&self.pool);
-        let session_record = session_repo.create(user.id, &session_secret).await?;
+        let session_record = session_repo.create(user.id, None).await?;
 
         let app_code = generate_app_code();
         let app_code_hash = hash_sha256_hex(&app_code);
@@ -314,7 +313,7 @@ impl OAuthHandoffService {
             .ok_or_else(|| HandoffError::Failed("missing_user".into()))?;
 
         let session_repo = AuthSessionRepository::new(&self.pool);
-        let session = session_repo.get(session_id).await?;
+        let mut session = session_repo.get(session_id).await?;
         if session.revoked_at.is_some() {
             return Err(HandoffError::Denied);
         }
@@ -324,6 +323,13 @@ impl OAuthHandoffService {
             return Err(HandoffError::Denied);
         }
 
+        let session_secret = generate_session_secret();
+        let session_secret_hash = self.jwt.hash_session_secret(&session_secret)?;
+        session_repo
+            .update_secret(session.id, &session_secret_hash)
+            .await?;
+        session.session_secret_hash = Some(session_secret_hash.clone());
+
         let user_repo = UserRepository::new(&self.pool);
         let user = user_repo.fetch_user(user_id).await?;
         let org_repo = OrganizationRepository::new(&self.pool);
@@ -331,7 +337,7 @@ impl OAuthHandoffService {
             .ensure_personal_org_and_admin_membership(user.id, user.username.as_deref())
             .await?;
 
-        let token = self.jwt.encode(&session, &user)?;
+        let token = self.jwt.encode(&session, &user, &session_secret)?;
         session_repo.touch(session.id).await?;
         repo.mark_redeemed(record.id).await?;
 

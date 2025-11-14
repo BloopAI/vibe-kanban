@@ -333,7 +333,11 @@ impl WsAuthState {
             return Err(AuthVerifyError::Revoked);
         }
 
-        if session.session_secret != self.session_secret {
+        if !self
+            .jwt
+            .verify_session_secret(session.session_secret_hash.as_deref(), &self.session_secret)
+            .unwrap_or(false)
+        {
             return Err(AuthVerifyError::SecretMismatch);
         }
 
