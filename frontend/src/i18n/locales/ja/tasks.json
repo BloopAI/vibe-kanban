@@ -103,6 +103,22 @@
     "closeButton": "閉じる"
   },
   "createPrDialog": {
+    "title": "GitHub プルリクエストを作成",
+    "description": "このタスク試行のプルリクエストをGitHubで作成します。",
+    "titleLabel": "タイトル",
+    "titlePlaceholder": "PRタイトルを入力",
+    "descriptionLabel": "説明 (オプション)",
+    "descriptionPlaceholder": "PR説明を入力",
+    "baseBranchLabel": "ベースブランチ",
+    "loadingBranches": "ブランチを読み込み中...",
+    "selectBaseBranch": "ベースブランチを選択",
+    "creating": "作成中...",
+    "createButton": "PRを作成",
+    "errors": {
+      "insufficientPermissions": "権限が不足しています。GitHub CLIに必要な権限があることを確認してください。",
+      "repoNotFoundOrNoAccess": "リポジトリが見つからないか、アクセス権がありません。リポジトリへのアクセス権を確認し、認証されていることを確認してください。",
+      "failedToCreate": "GitHub PRの作成に失敗しました"
+    },
     "loginRequired": {
       "title": "プルリクエストを作成するにはサインインしてください",
       "description": "このタスクでプルリクエストを開く前にサインインが必要です。サインインページに移動します。",

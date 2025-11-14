@@ -39,7 +39,7 @@ import type { GhCliSetupError } from 'shared/types';
 import { useUserSystem } from '@/components/config-provider';
 const CreatePrDialog = NiceModal.create(() => {
   const modal = useModal();
-  const { t } = useTranslation();
+  const { t } = useTranslation('tasks');
   const { isLoaded } = useAuth();
   const { environment } = useUserSystem();
   const data = modal.args as
@@ -188,19 +188,15 @@ const CreatePrDialog = NiceModal.create(() => {
           return;
         }
         case GitHubServiceError.INSUFFICIENT_PERMISSIONS:
-          setError(
-            'Insufficient permissions. Please ensure the GitHub CLI has the necessary permissions.'
-          );
+          setError(t('createPrDialog.errors.insufficientPermissions'));
           setGhCliHelp(null);
           return;
         case GitHubServiceError.REPO_NOT_FOUND_OR_NO_ACCESS:
-          setError(
-            'Repository not found or no access. Please check your repository access and ensure you are authenticated.'
-          );
+          setError(t('createPrDialog.errors.repoNotFoundOrNoAccess'));
           setGhCliHelp(null);
           return;
         default:
-          setError(result.message || 'Failed to create GitHub PR');
+          setError(result.message || t('createPrDialog.errors.failedToCreate'));
           setGhCliHelp(null);
           return;
       }
@@ -210,7 +206,7 @@ const CreatePrDialog = NiceModal.create(() => {
       setError(result.message);
       setGhCliHelp(null);
     } else {
-      setError('Failed to create GitHub PR');
+      setError(t('createPrDialog.errors.failedToCreate'));
       setGhCliHelp(null);
     }
   }, [data, prBaseBranch, prBody, prTitle, modal, isMacEnvironment]);
@@ -231,9 +227,9 @@ const CreatePrDialog = NiceModal.create(() => {
       <Dialog open={modal.visible} onOpenChange={() => handleCancelCreatePR()}>
         <DialogContent className="sm:max-w-[525px]">
           <DialogHeader>
-            <DialogTitle>Create GitHub Pull Request</DialogTitle>
+            <DialogTitle>{t('createPrDialog.title')}</DialogTitle>
             <DialogDescription>
-              Create a pull request for this task attempt on GitHub.
+              {t('createPrDialog.description')}
             </DialogDescription>
           </DialogHeader>
           {!isLoaded ? (
@@ -243,34 +239,34 @@ const CreatePrDialog = NiceModal.create(() => {
           ) : (
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="pr-title">Title</Label>
+                <Label htmlFor="pr-title">{t('createPrDialog.titleLabel')}</Label>
                 <Input
                   id="pr-title"
                   value={prTitle}
                   onChange={(e) => setPrTitle(e.target.value)}
-                  placeholder="Enter PR title"
+                  placeholder={t('createPrDialog.titlePlaceholder')}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="pr-body">Description (optional)</Label>
+                <Label htmlFor="pr-body">{t('createPrDialog.descriptionLabel')}</Label>
                 <Textarea
                   id="pr-body"
                   value={prBody}
                   onChange={(e) => setPrBody(e.target.value)}
-                  placeholder="Enter PR description"
+                  placeholder={t('createPrDialog.descriptionPlaceholder')}
                   rows={4}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="pr-base">Base Branch</Label>
+                <Label htmlFor="pr-base">{t('createPrDialog.baseBranchLabel')}</Label>
                 <BranchSelector
                   branches={branches}
                   selectedBranch={prBaseBranch}
                   onBranchSelect={setPrBaseBranch}
                   placeholder={
                     branchesLoading
-                      ? 'Loading branches...'
-                      : 'Select base branch'
+                      ? t('createPrDialog.loadingBranches')
+                      : t('createPrDialog.selectBaseBranch')
                   }
                   className={
                     branchesLoading ? 'opacity-50 cursor-not-allowed' : ''
@@ -296,7 +292,7 @@ const CreatePrDialog = NiceModal.create(() => {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={handleCancelCreatePR}>
-              Cancel
+              {t('common:buttons.cancel')}
             </Button>
             <Button
               onClick={handleConfirmCreatePR}
@@ -306,10 +302,10 @@ const CreatePrDialog = NiceModal.create(() => {
               {creatingPR ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating...
+                  {t('createPrDialog.creating')}
                 </>
               ) : (
-                'Create PR'
+                t('createPrDialog.createButton')
               )}
             </Button>
           </DialogFooter>

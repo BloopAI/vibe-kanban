@@ -327,6 +327,22 @@
     "closeButton": "Close"
   },
   "createPrDialog": {
+    "title": "Create GitHub Pull Request",
+    "description": "Create a pull request for this task attempt on GitHub.",
+    "titleLabel": "Title",
+    "titlePlaceholder": "Enter PR title",
+    "descriptionLabel": "Description (optional)",
+    "descriptionPlaceholder": "Enter PR description",
+    "baseBranchLabel": "Base Branch",
+    "loadingBranches": "Loading branches...",
+    "selectBaseBranch": "Select base branch",
+    "creating": "Creating...",
+    "createButton": "Create PR",
+    "errors": {
+      "insufficientPermissions": "Insufficient permissions. Please ensure the GitHub CLI has the necessary permissions.",
+      "repoNotFoundOrNoAccess": "Repository not found or no access. Please check your repository access and ensure you are authenticated.",
+      "failedToCreate": "Failed to create GitHub PR"
+    },
     "loginRequired": {
       "title": "Sign in to create a pull request",
       "description": "You need to sign in before you can open a pull request for this task. We'll take you to the sign-in page.",

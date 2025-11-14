@@ -334,5 +334,40 @@
         "confirmSwitch": "未保存の変更があります。本当にプロジェクトを切り替えますか？変更は失われます。"
       }
     }
+  },
+  "integrations": {
+    "github": {
+      "cliSetup": {
+        "title": "GitHub CLI セットアップ",
+        "description": "プルリクエストの作成とGitHubリポジトリとのやり取りには、GitHub CLI認証が必要です。",
+        "setupWillTitle": "このセットアップは次のことを行います：",
+        "steps": {
+          "checkInstalled": "GitHub CLI (gh) がインストールされているか確認",
+          "installHomebrew": "必要に応じてHomebrewでインストール（macOS）",
+          "authenticate": "OAuthを使用してGitHubで認証"
+        },
+        "setupNote": "セットアップはチャットウィンドウで実行されます。ブラウザで認証を完了する必要があります。",
+        "runSetup": "セットアップを実行",
+        "running": "実行中...",
+        "errors": {
+          "brewMissing": "Homebrewがインストールされていません。自動セットアップを有効にするにはインストールしてください。",
+          "notSupported": "このプラットフォームでは自動セットアップがサポートされていません。GitHub CLIを手動でインストールしてください。",
+          "setupFailed": "GitHub CLIセットアップの実行に失敗しました。"
+        },
+        "help": {
+          "homebrew": {
+            "description": "自動インストールにはHomebrewが必要です。次からHomebrewをインストールしてください",
+            "brewSh": "brew.sh",
+            "manualInstall": "その後、セットアップを再実行してください。または、次のコマンドでGitHub CLIを手動でインストールしてください：",
+            "afterInstall": "インストール後、次のコマンドで認証してください："
+          },
+          "manual": {
+            "description": "次からGitHub CLIをインストールしてください",
+            "officialDocs": "公式ドキュメント",
+            "andAuthenticate": "その後、GitHubアカウントで認証してください。"
+          }
+        }
+      }
+    }
   }
 }

@@ -334,5 +334,40 @@
         "confirmSwitch": "Tienes cambios sin guardar. ¿Estás seguro de que quieres cambiar de proyecto? Tus cambios se perderán."
       }
     }
+  },
+  "integrations": {
+    "github": {
+      "cliSetup": {
+        "title": "Configuración de GitHub CLI",
+        "description": "Se requiere autenticación de GitHub CLI para crear pull requests e interactuar con repositorios de GitHub.",
+        "setupWillTitle": "Esta configuración:",
+        "steps": {
+          "checkInstalled": "Verificar si GitHub CLI (gh) está instalado",
+          "installHomebrew": "Instalarlo a través de Homebrew si es necesario (macOS)",
+          "authenticate": "Autenticar con GitHub usando OAuth"
+        },
+        "setupNote": "La configuración se ejecutará en la ventana de chat. Necesitarás completar la autenticación en tu navegador.",
+        "runSetup": "Ejecutar Configuración",
+        "running": "Ejecutando...",
+        "errors": {
+          "brewMissing": "Homebrew no está instalado. Instálalo para habilitar la configuración automática.",
+          "notSupported": "La configuración automática no está soportada en esta plataforma. Instala GitHub CLI manualmente.",
+          "setupFailed": "Error al ejecutar la configuración de GitHub CLI."
+        },
+        "help": {
+          "homebrew": {
+            "description": "La instalación automática requiere Homebrew. Instala Homebrew desde",
+            "brewSh": "brew.sh",
+            "manualInstall": "y luego vuelve a ejecutar la configuración. Alternativamente, instala GitHub CLI manualmente con:",
+            "afterInstall": "Después de la instalación, autentica con:"
+          },
+          "manual": {
+            "description": "Instala GitHub CLI desde la",
+            "officialDocs": "documentación oficial",
+            "andAuthenticate": "y luego autentica con tu cuenta de GitHub."
+          }
+        }
+      }
+    }
   }
 }

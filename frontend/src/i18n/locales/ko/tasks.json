@@ -103,6 +103,22 @@
     "closeButton": "닫기"
   },
   "createPrDialog": {
+    "title": "GitHub Pull Request 생성",
+    "description": "이 작업 시도에 대한 Pull Request를 GitHub에서 생성합니다.",
+    "titleLabel": "제목",
+    "titlePlaceholder": "PR 제목 입력",
+    "descriptionLabel": "설명 (선택사항)",
+    "descriptionPlaceholder": "PR 설명 입력",
+    "baseBranchLabel": "기본 브랜치",
+    "loadingBranches": "브랜치 로딩 중...",
+    "selectBaseBranch": "기본 브랜치 선택",
+    "creating": "생성 중...",
+    "createButton": "PR 생성",
+    "errors": {
+      "insufficientPermissions": "권한이 부족합니다. GitHub CLI에 필요한 권한이 있는지 확인하세요.",
+      "repoNotFoundOrNoAccess": "저장소를 찾을 수 없거나 액세스 권한이 없습니다. 저장소 액세스를 확인하고 인증되었는지 확인하세요.",
+      "failedToCreate": "GitHub PR 생성에 실패했습니다"
+    },
     "loginRequired": {
       "title": "Pull Request를 만들려면 로그인하세요",
       "description": "이 작업에 대해 풀 리퀘스트를 열기 전에 로그인해야 합니다. 로그인 페이지로 이동합니다.",
