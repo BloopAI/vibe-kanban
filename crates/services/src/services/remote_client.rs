@@ -159,7 +159,7 @@ impl RemoteClient {
         &self,
         request: &HandoffInitRequest,
     ) -> Result<HandoffInitResponse, RemoteClientError> {
-        self.post_public("/oauth/web/init", Some(request))
+        self.post_public("/v1/oauth/web/init", Some(request))
             .await
             .map_err(|e| self.map_api_error(e))
     }
@@ -169,7 +169,7 @@ impl RemoteClient {
         &self,
         request: &HandoffRedeemRequest,
     ) -> Result<HandoffRedeemResponse, RemoteClientError> {
-        self.post_public("/oauth/web/redeem", Some(request))
+        self.post_public("/v1/oauth/web/redeem", Some(request))
             .await
             .map_err(|e| self.map_api_error(e))
     }

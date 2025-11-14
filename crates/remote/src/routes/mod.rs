@@ -44,11 +44,10 @@ pub fn router(state: AppState) -> Router {
         .on_response(DefaultOnResponse::new().level(Level::INFO))
         .on_failure(DefaultOnFailure::new().level(Level::ERROR));
 
-    let public_top = Router::<AppState>::new()
+    let v1_public = Router::<AppState>::new()
         .route("/health", get(health))
-        .merge(oauth::public_router());
-
-    let v1_public = Router::<AppState>::new().merge(organization_members::public_router());
+        .merge(oauth::public_router())
+        .merge(organization_members::public_router());
 
     let v1_protected = Router::<AppState>::new()
         .merge(identity::router())
@@ -69,7 +68,6 @@ pub fn router(state: AppState) -> Router {
         ServeDir::new(static_dir).fallback(ServeFile::new(format!("{static_dir}/index.html")));
 
     Router::<AppState>::new()
-        .merge(public_top)
         .nest("/v1", v1_public)
         .nest("/v1", v1_protected)
         .fallback_service(spa)

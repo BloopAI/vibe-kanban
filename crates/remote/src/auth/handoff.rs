@@ -153,7 +153,7 @@ impl OAuthHandoffService {
             .await?;
 
         let authorize_url = format!(
-            "{}/oauth/{}/start?handoff_id={}",
+            "{}/v1/oauth/{}/start?handoff_id={}",
             self.public_origin,
             provider.name(),
             record.id
@@ -193,7 +193,11 @@ impl OAuthHandoffService {
             return Err(HandoffError::Failed("invalid_state".into()));
         }
 
-        let redirect_uri = format!("{}/oauth/{}/callback", self.public_origin, provider.name());
+        let redirect_uri = format!(
+            "{}/v1/oauth/{}/callback",
+            self.public_origin,
+            provider.name()
+        );
 
         provider
             .authorize_url(&record.state, &redirect_uri)
@@ -246,7 +250,11 @@ impl OAuthHandoffService {
 
         let code = code.ok_or_else(|| HandoffError::Failed("missing_code".into()))?;
 
-        let redirect_uri = format!("{}/oauth/{}/callback", self.public_origin, provider.name());
+        let redirect_uri = format!(
+            "{}/v1/oauth/{}/callback",
+            self.public_origin,
+            provider.name()
+        );
 
         let grant = provider
             .exchange_code(code, &redirect_uri)
