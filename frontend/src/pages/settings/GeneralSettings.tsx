@@ -26,7 +26,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ChevronDown, Key, Loader2, Volume2 } from 'lucide-react';
+import { ChevronDown, Loader2, Volume2 } from 'lucide-react';
 import {
   BaseCodingAgent,
   EditorType,
@@ -41,7 +41,6 @@ import { toPrettyCase } from '@/utils/string';
 import { useTheme } from '@/components/theme-provider';
 import { useUserSystem } from '@/components/config-provider';
 import { TagManager } from '@/components/TagManager';
-import NiceModal from '@ebay/nice-modal-react';
 
 export function GeneralSettings() {
   const { t } = useTranslation(['settings', 'common']);
@@ -183,22 +182,6 @@ export function GeneralSettings() {
     updateAndSaveConfig({ onboarding_acknowledged: false });
   };
 
-  const isAuthenticated = !!(
-    config?.github?.username && config?.github?.oauth_token
-  );
-
-  const handleLogout = useCallback(async () => {
-    if (!config) return;
-    updateAndSaveConfig({
-      github: {
-        ...config.github,
-        oauth_token: null,
-        username: null,
-        primary_email: null,
-      },
-    });
-  }, [config, updateAndSaveConfig]);
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -227,7 +210,7 @@ export function GeneralSettings() {
       )}
 
       {success && (
-        <Alert className="border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
+        <Alert variant="success">
           <AlertDescription className="font-medium">
             {t('settings.general.save.success')}
           </AlertDescription>
@@ -550,88 +533,6 @@ export function GeneralSettings() {
               )}
             </>
           )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Key className="h-5 w-5" />
-            {t('settings.general.github.title')}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {isAuthenticated ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div>
-                  <p className="font-medium">
-                    {t('settings.general.github.connected', {
-                      username: config.github.username,
-                    })}
-                  </p>
-                  {config.github.primary_email && (
-                    <p className="text-sm text-muted-foreground">
-                      {config.github.primary_email}
-                    </p>
-                  )}
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      {t('settings.general.github.manage')}{' '}
-                      <ChevronDown className="ml-1 h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={handleLogout}>
-                      {t('settings.general.github.disconnect')}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                {t('settings.general.github.helper')}
-              </p>
-              <Button onClick={() => NiceModal.show('github-login')}>
-                {t('settings.general.github.connectButton')}
-              </Button>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <Label htmlFor="github-token">
-              {t('settings.general.github.pat.label')}
-            </Label>
-            <Input
-              id="github-token"
-              type="password"
-              placeholder={t('settings.general.github.pat.placeholder')}
-              value={draft?.github.pat || ''}
-              onChange={(e) =>
-                updateDraft({
-                  github: {
-                    ...draft!.github,
-                    pat: e.target.value || null,
-                  },
-                })
-              }
-            />
-            <p className="text-sm text-muted-foreground">
-              {t('settings.general.github.pat.helper')}{' '}
-              <a
-                href="https://github.com/settings/tokens"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
-              >
-                {t('settings.general.github.pat.createTokenLink')}
-              </a>
-            </p>
-          </div>
         </CardContent>
       </Card>
 

@@ -8,6 +8,10 @@
   "actions": {
     "addTask": "Add task"
   },
+  "filters": {
+    "sharedToggleAria": "Toggle shared tasks",
+    "sharedToggleTooltip": "Show/hide shared content"
+  },
   "rebase": {
     "common": {
       "action": "Rebase",
@@ -129,6 +133,7 @@
     "deleteTask": "Delete task",
     "closePanel": "Close panel"
   },
+  "navigateToParent": "Navigate to parent task attempt",
   "toolbar": {
     "actions": "Actions",
     "noAttempts": "No attempts yet",
@@ -224,7 +229,12 @@
     },
     "actions": {
       "title": "Git Actions",
-      "prMerged": "PR #{{number}} is already merged"
+      "prMerged": "PR #{{number}} is already merged",
+      "loginRequired": {
+        "title": "Sign in to manage git actions",
+        "description": "Sign in to Vibe Kanban so you can push branches, merge changes, or open pull requests for this task.",
+        "action": "Sign in"
+      }
     }
   },
   "createAttemptDialog": {
@@ -266,6 +276,9 @@
     "gitActions": "Git actions",
     "editBranchName": "Edit branch name",
     "task": "Task",
+    "share": "Share",
+    "reassign": "Reassign",
+    "stopShare": "Stop share",
     "duplicate": "Duplicate"
   },
   "editBranchName": {
@@ -276,6 +289,64 @@
       "placeholder": "e.g., feature/my-branch",
       "renaming": "Renaming...",
       "action": "Rename Branch"
+    }
+  },
+  "stopShareDialog": {
+    "title": "Stop Sharing Task",
+    "description": "Stop sharing \"{{title}}\" with your organization?",
+    "warning": "Stops sharing the task with your organization, but keeps your local task.",
+    "confirm": "Stop share task",
+    "inProgress": "Stop sharing...",
+    "genericError": "Failed to stop sharing task. Please try again."
+  },
+  "shareDialog": {
+    "title": "Share Task",
+    "description": "Share \"{{title}}\" with your organization?",
+    "success": "Task shared successfully.",
+    "genericError": "Failed to share task. Please try again.",
+    "loadingSystem": "Loading account status...",
+    "loginRequired": {
+      "title": "Sign in to continue",
+      "description": "You need to sign in before you can share tasks. We will redirect you to the sign-in page.",
+      "action": "Go to sign in"
+    },
+    "githubRequired": {
+      "title": "Connect GitHub",
+      "description": "Connect your GitHub account to share tasks. This project must have a remote repository on GitHub.",
+      "action": "Connect GitHub"
+    },
+    "linkProjectRequired": {
+      "description": "Link this project to an organization before sharing tasks.",
+      "action": "Link Project"
+    },
+    "confirmationTitle": "Confirm sharing",
+    "confirmationBody": "Sharing will publish this task to your shared workspace.",
+    "cancel": "Cancel",
+    "confirm": "Share task",
+    "inProgress": "Sharing...",
+    "closeButton": "Close"
+  },
+  "createPrDialog": {
+    "title": "Create GitHub Pull Request",
+    "description": "Create a pull request for this task attempt on GitHub.",
+    "titleLabel": "Title",
+    "titlePlaceholder": "Enter PR title",
+    "descriptionLabel": "Description (optional)",
+    "descriptionPlaceholder": "Enter PR description",
+    "baseBranchLabel": "Base Branch",
+    "loadingBranches": "Loading branches...",
+    "selectBaseBranch": "Select base branch",
+    "creating": "Creating...",
+    "createButton": "Create PR",
+    "errors": {
+      "insufficientPermissions": "Insufficient permissions. Please ensure the GitHub CLI has the necessary permissions.",
+      "repoNotFoundOrNoAccess": "Repository not found or no access. Please check your repository access and ensure you are authenticated.",
+      "failedToCreate": "Failed to create GitHub PR"
+    },
+    "loginRequired": {
+      "title": "Sign in to create a pull request",
+      "description": "You need to sign in before you can open a pull request for this task. We'll take you to the sign-in page.",
+      "action": "Sign in"
     }
   },
   "showcases": {

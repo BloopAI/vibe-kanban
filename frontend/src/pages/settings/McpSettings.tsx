@@ -243,7 +243,7 @@ export function McpSettings() {
       )}
 
       {success && (
-        <Alert className="border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
+        <Alert variant="success">
           <AlertDescription className="font-medium">
             {t('settings.mcp.save.successMessage')}
           </AlertDescription>
@@ -436,7 +436,6 @@ export function McpSettings() {
           <Button
             onClick={handleApplyMcpServers}
             disabled={mcpApplying || mcpLoading || !!mcpError || success}
-            className={success ? 'bg-green-600 hover:bg-green-700' : ''}
           >
             {mcpApplying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {success && <span className="mr-2">✓</span>}

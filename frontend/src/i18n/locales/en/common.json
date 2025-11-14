@@ -51,5 +51,38 @@
   },
   "breadcrumb": {
     "more": "More"
+  },
+  "orgMembers": {
+    "moreCount": "+{{count}} more"
+  },
+  "orgSwitcher": {
+    "title": "Switch Organization",
+    "description": "Select an organization to switch to.",
+    "loadError": "Failed to load organizations. Please try again.",
+    "noOrganizations": "You are not a member of any organizations.",
+    "menuItem": "Organization",
+    "loadingPlaceholder": "Loading organizations...",
+    "selectPlaceholder": "Select an organization",
+    "currentBadge": " (current)"
+  },
+  "signOut": "Sign out",
+  "devMode": {
+    "banner": "Development Mode - This is a development build"
+  },
+  "oauth": {
+    "title": "Sign in to Vibe Kanban",
+    "description": "Sign in to join organizations and share tasks with your team",
+    "continueWithGitHub": "Continue with GitHub",
+    "continueWithGoogle": "Continue with Google",
+    "waitingTitle": "Complete Authentication",
+    "waitingDescription": "A popup window has been opened for authentication",
+    "waitingForAuth": "Waiting for authentication...",
+    "popupInstructions": "If the popup window didn't open, please check your popup blocker settings.",
+    "back": "Back",
+    "successTitle": "Authentication Successful!",
+    "welcomeBack": "Welcome back, {{name}}",
+    "errorTitle": "Authentication Failed",
+    "errorDescription": "There was a problem authenticating your account",
+    "tryAgain": "Try Again"
   }
 }

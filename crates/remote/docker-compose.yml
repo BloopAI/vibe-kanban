@@ -1,0 +1,44 @@
+services:
+  remote-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: remote
+      POSTGRES_USER: remote
+      POSTGRES_PASSWORD: remote
+    volumes:
+      - remote-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U remote -d remote" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    ports:
+      - "5432:5432"
+
+  remote-server:
+    build:
+      context: ../..
+      dockerfile: crates/remote/Dockerfile
+    depends_on:
+      remote-db:
+        condition: service_healthy
+    environment:
+      SERVER_DATABASE_URL: postgres://remote:remote@remote-db:5432/remote
+      SERVER_LISTEN_ADDR: 0.0.0.0:8081
+      SERVER_ACTIVITY_CHANNEL: activity
+      GITHUB_OAUTH_CLIENT_ID: ${GITHUB_OAUTH_CLIENT_ID:?set in .env.remote}
+      GITHUB_OAUTH_CLIENT_SECRET: ${GITHUB_OAUTH_CLIENT_SECRET:?set in .env.remote}
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:?set in .env.remote}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:?set in .env.remote}
+      VIBEKANBAN_REMOTE_JWT_SECRET: ${VIBEKANBAN_REMOTE_JWT_SECRET:?set in .env.remote}
+      LOOPS_EMAIL_API_KEY: ${LOOPS_EMAIL_API_KEY:?set in .env.remote}
+      SERVER_PUBLIC_BASE_URL: http://localhost:3000
+      VITE_APP_BASE_URL: http://localhost:3000
+      VITE_API_BASE_URL: http://localhost:3000
+    ports:
+      - "127.0.0.1:3000:8081"
+    restart: unless-stopped
+
+volumes:
+  remote-db-data:

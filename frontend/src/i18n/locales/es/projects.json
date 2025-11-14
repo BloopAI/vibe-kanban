@@ -2,6 +2,7 @@
   "title": "Proyectos",
   "subtitle": "Gestiona tus proyectos y sigue su progreso",
   "createProject": "Crear Proyecto",
+  "linkToOrganization": "Vincular a Proyecto Remoto",
   "loading": "Cargando proyectos...",
   "errors": {
     "fetchFailed": "Error al cargar proyectos"
@@ -10,5 +11,40 @@
     "title": "Aún no hay proyectos",
     "description": "Comienza creando tu primer proyecto.",
     "createFirst": "Crear tu primer proyecto"
-  }
+  },
+  "linkDialog": {
+    "title": "Vincular Proyecto a Proyecto Remoto",
+    "description": "Vincula este proyecto local a un proyecto remoto para colaboración y sincronización.",
+    "projectLabel": "Proyecto",
+    "organizationLabel": "Organización",
+    "loadingOrganizations": "Cargando organizaciones...",
+    "noOrganizations": "No hay organizaciones disponibles. Crea una organización primero.",
+    "selectOrganization": "Selecciona una organización",
+    "loginRequired": {
+      "title": "Inicio de Sesión Requerido",
+      "description": "Necesitas iniciar sesión para vincular proyectos.",
+      "action": "Iniciar Sesión"
+    },
+    "linkModeLabel": "Modo de Vinculación",
+    "linkToExisting": "Vincular a Existente",
+    "createNew": "Crear Nuevo",
+    "remoteProjectLabel": "Proyecto Remoto",
+    "loadingRemoteProjects": "Cargando proyectos remotos...",
+    "noRemoteProjects": "No se encontraron proyectos remotos en esta organización. Intenta crear uno nuevo en su lugar.",
+    "selectRemoteProject": "Selecciona un proyecto remoto",
+    "newProjectNameLabel": "Nombre del Nuevo Proyecto Remoto",
+    "newProjectNamePlaceholder": "Ingresa el nombre del proyecto",
+    "linking": "Vinculando...",
+    "linkButton": "Vincular Proyecto",
+    "errors": {
+      "selectOrganization": "Por favor selecciona una organización",
+      "selectRemoteProject": "Por favor selecciona un proyecto remoto",
+      "enterProjectName": "Por favor ingresa un nombre de proyecto",
+      "linkFailed": "Error al vincular el proyecto"
+    }
+  },
+  "unlinkFromOrganization": "Desvincular de Proyecto Remoto",
+  "viewProject": "Ver Proyecto",
+  "openInIDE": "Abrir en IDE",
+  "createdDate": "Creado {{date}}"
 }

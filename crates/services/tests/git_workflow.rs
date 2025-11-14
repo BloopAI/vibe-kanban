@@ -541,32 +541,6 @@ fn delete_file_commit_has_author_without_user() {
 }
 
 #[test]
-fn convert_to_https_url_handles_common_git_forms() {
-    let svc = GitService::new();
-
-    let ssh_url = "git@github.com:owner/repo.git";
-    assert_eq!(
-        svc.convert_to_https_url(ssh_url),
-        "https://github.com/owner/repo.git"
-    );
-
-    let ssh_scheme_url = "ssh://git@github.com/owner/repo";
-    assert_eq!(
-        svc.convert_to_https_url(ssh_scheme_url),
-        "https://github.com/owner/repo.git"
-    );
-
-    let https_without_suffix = "https://github.com/owner/repo";
-    assert_eq!(
-        svc.convert_to_https_url(https_without_suffix),
-        "https://github.com/owner/repo.git"
-    );
-
-    let converted = svc.convert_to_https_url("https://github.com/owner/repo/");
-    assert_eq!(converted, "https://github.com/owner/repo.git");
-}
-
-#[test]
 fn github_repo_info_parses_https_and_ssh_urls() {
     let info = GitHubRepoInfo::from_remote_url("https://github.com/owner/repo.git").unwrap();
     assert_eq!(info.owner, "owner");

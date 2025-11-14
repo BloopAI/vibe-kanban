@@ -51,5 +51,38 @@
     "reconnecting": "Reconectando",
     "saving": "Guardando...",
     "success": "Éxito"
+  },
+  "orgMembers": {
+    "moreCount": "+{{count}} más"
+  },
+  "orgSwitcher": {
+    "title": "Cambiar Organización",
+    "description": "Selecciona una organización para cambiar.",
+    "loadError": "No se pudieron cargar las organizaciones. Por favor, inténtalo de nuevo.",
+    "noOrganizations": "No eres miembro de ninguna organización.",
+    "menuItem": "Organización",
+    "loadingPlaceholder": "Cargando organizaciones...",
+    "selectPlaceholder": "Seleccionar una organización",
+    "currentBadge": " (actual)"
+  },
+  "signOut": "Cerrar sesión",
+  "devMode": {
+    "banner": "Modo de Desarrollo - Esta es una compilación de desarrollo"
+  },
+  "oauth": {
+    "title": "Iniciar sesión en Vibe Kanban",
+    "description": "Inicia sesión para unirte a organizaciones y compartir tareas con tu equipo",
+    "continueWithGitHub": "Continuar con GitHub",
+    "continueWithGoogle": "Continuar con Google",
+    "waitingTitle": "Completar Autenticación",
+    "waitingDescription": "Se ha abierto una ventana emergente para la autenticación",
+    "waitingForAuth": "Esperando autenticación...",
+    "popupInstructions": "Si la ventana emergente no se abrió, por favor revisa la configuración de bloqueo de ventanas emergentes.",
+    "back": "Atrás",
+    "successTitle": "¡Autenticación exitosa!",
+    "welcomeBack": "Bienvenido de nuevo, {{name}}",
+    "errorTitle": "Falló la autenticación",
+    "errorDescription": "Hubo un problema al autenticar tu cuenta",
+    "tryAgain": "Intentar de nuevo"
   }
 }

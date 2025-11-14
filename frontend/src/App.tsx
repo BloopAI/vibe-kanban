@@ -7,11 +7,13 @@ import { ProjectTasks } from '@/pages/project-tasks';
 import { FullAttemptLogsPage } from '@/pages/full-attempt-logs';
 import { NormalLayout } from '@/components/layout/NormalLayout';
 import { usePostHog } from 'posthog-js/react';
+import { useAuth } from '@/hooks';
 
 import {
   AgentSettings,
   GeneralSettings,
   McpSettings,
+  OrganizationSettings,
   ProjectSettings,
   SettingsLayout,
 } from '@/pages/settings/';
@@ -39,14 +41,13 @@ function AppContent() {
   const { config, analyticsUserId, updateAndSaveConfig, loading } =
     useUserSystem();
   const posthog = usePostHog();
+  const { isSignedIn } = useAuth();
 
   // Handle opt-in/opt-out and user identification when config loads
   useEffect(() => {
     if (!posthog || !analyticsUserId) return;
 
-    const userOptedIn = config?.analytics_enabled !== false;
-
-    if (userOptedIn) {
+    if (config?.analytics_enabled) {
       posthog.opt_in_capturing();
       posthog.identify(analyticsUserId);
       console.log('[Analytics] Analytics enabled and user identified');
@@ -57,92 +58,51 @@ function AppContent() {
   }, [config?.analytics_enabled, analyticsUserId, posthog]);
 
   useEffect(() => {
+    if (!config) return;
     let cancelled = false;
 
-    const handleOnboardingComplete = async (
-      onboardingConfig: OnboardingResult
-    ) => {
-      if (cancelled) return;
-      const updatedConfig = {
-        ...config,
-        onboarding_acknowledged: true,
-        executor_profile: onboardingConfig.profile,
-        editor: onboardingConfig.editor,
-      };
-
-      updateAndSaveConfig(updatedConfig);
-    };
-
-    const handleDisclaimerAccept = async () => {
-      if (cancelled) return;
-      await updateAndSaveConfig({ disclaimer_acknowledged: true });
-    };
-
-    const handleGitHubLoginComplete = async () => {
-      if (cancelled) return;
-      await updateAndSaveConfig({ github_login_acknowledged: true });
-    };
-
-    const handleTelemetryOptIn = async (analyticsEnabled: boolean) => {
-      if (cancelled) return;
-      await updateAndSaveConfig({
-        telemetry_acknowledged: true,
-        analytics_enabled: analyticsEnabled,
-      });
-    };
-
-    const handleReleaseNotesClose = async () => {
-      if (cancelled) return;
-      await updateAndSaveConfig({ show_release_notes: false });
-    };
-
-    const checkOnboardingSteps = async () => {
-      if (!config || cancelled) return;
-
+    const showNextStep = async () => {
+      // 1) Disclaimer - first step
       if (!config.disclaimer_acknowledged) {
         await NiceModal.show('disclaimer');
-        await handleDisclaimerAccept();
+        if (!cancelled) {
+          await updateAndSaveConfig({ disclaimer_acknowledged: true });
+        }
         await NiceModal.hide('disclaimer');
+        return;
       }
 
+      // 2) Onboarding - configure executor and editor
       if (!config.onboarding_acknowledged) {
-        const onboardingResult: OnboardingResult =
-          await NiceModal.show('onboarding');
-        await handleOnboardingComplete(onboardingResult);
+        const result: OnboardingResult = await NiceModal.show('onboarding');
+        if (!cancelled) {
+          await updateAndSaveConfig({
+            onboarding_acknowledged: true,
+            executor_profile: result.profile,
+            editor: result.editor,
+          });
+        }
         await NiceModal.hide('onboarding');
+        return;
       }
 
-      if (!config.github_login_acknowledged) {
-        await NiceModal.show('github-login');
-        await handleGitHubLoginComplete();
-        await NiceModal.hide('github-login');
-      }
-
-      if (!config.telemetry_acknowledged) {
-        const analyticsEnabled: boolean =
-          await NiceModal.show('privacy-opt-in');
-        await handleTelemetryOptIn(analyticsEnabled);
-        await NiceModal.hide('privacy-opt-in');
-      }
-
+      // 3) Release notes - last step
       if (config.show_release_notes) {
         await NiceModal.show('release-notes');
-        await handleReleaseNotesClose();
+        if (!cancelled) {
+          await updateAndSaveConfig({ show_release_notes: false });
+        }
         await NiceModal.hide('release-notes');
+        return;
       }
     };
 
-    const runOnboarding = async () => {
-      if (!config || cancelled) return;
-      await checkOnboardingSteps();
-    };
-
-    runOnboarding();
+    showNextStep();
 
     return () => {
       cancelled = true;
     };
-  }, [config]);
+  }, [config, isSignedIn]);
 
   if (loading) {
     return (
@@ -176,6 +136,10 @@ function AppContent() {
                   <Route index element={<Navigate to="general" replace />} />
                   <Route path="general" element={<GeneralSettings />} />
                   <Route path="projects" element={<ProjectSettings />} />
+                  <Route
+                    path="organizations"
+                    element={<OrganizationSettings />}
+                  />
                   <Route path="agents" element={<AgentSettings />} />
                   <Route path="mcp" element={<McpSettings />} />
                 </Route>

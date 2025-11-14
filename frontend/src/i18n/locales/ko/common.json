@@ -51,5 +51,38 @@
     "reconnecting": "재연결 중",
     "saving": "저장 중...",
     "success": "성공"
+  },
+  "orgMembers": {
+    "moreCount": "+{{count}}명 더"
+  },
+  "orgSwitcher": {
+    "title": "조직 전환",
+    "description": "전환할 조직을 선택하세요.",
+    "loadError": "조직을 불러오는데 실패했습니다. 다시 시도해주세요.",
+    "noOrganizations": "어떤 조직에도 소속되어 있지 않습니다.",
+    "menuItem": "조직",
+    "loadingPlaceholder": "조직 로딩 중...",
+    "selectPlaceholder": "조직 선택",
+    "currentBadge": " (현재)"
+  },
+  "signOut": "로그아웃",
+  "devMode": {
+    "banner": "개발 모드 - 개발 빌드입니다"
+  },
+  "oauth": {
+    "title": "Vibe Kanban 로그인",
+    "description": "로그인하여 조직에 참여하고 팀과 작업을 공유하세요",
+    "continueWithGitHub": "GitHub로 계속",
+    "continueWithGoogle": "Google로 계속",
+    "waitingTitle": "인증 완료",
+    "waitingDescription": "인증을 위한 팝업 창이 열렸습니다",
+    "waitingForAuth": "인증 대기 중...",
+    "popupInstructions": "팝업 창이 열리지 않는 경우 팝업 차단 설정을 확인해주세요.",
+    "back": "뒤로",
+    "successTitle": "인증 성공!",
+    "welcomeBack": "환영합니다, {{name}}",
+    "errorTitle": "인증 실패",
+    "errorDescription": "계정 인증 중 문제가 발생했습니다",
+    "tryAgain": "다시 시도"
   }
 }

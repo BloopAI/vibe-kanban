@@ -7,13 +7,13 @@ use axum::{
 use db::models::{
     execution_process::ExecutionProcessError, project::ProjectError, task_attempt::TaskAttemptError,
 };
-use deployment::DeploymentError;
+use deployment::{DeploymentError, RemoteClientNotConfigured};
 use executors::executors::ExecutorError;
 use git2::Error as Git2Error;
 use services::services::{
-    auth::AuthError, config::ConfigError, container::ContainerError, drafts::DraftsServiceError,
+    config::ConfigError, container::ContainerError, drafts::DraftsServiceError,
     git::GitServiceError, github_service::GitHubServiceError, image::ImageError,
-    worktree_manager::WorktreeError,
+    remote_client::RemoteClientError, share::ShareError, worktree_manager::WorktreeError,
 };
 use thiserror::Error;
 use utils::response::ApiResponse;
@@ -31,8 +31,6 @@ pub enum ApiError {
     GitService(#[from] GitServiceError),
     #[error(transparent)]
     GitHubService(#[from] GitHubServiceError),
-    #[error(transparent)]
-    Auth(#[from] AuthError),
     #[error(transparent)]
     Deployment(#[from] DeploymentError),
     #[error(transparent)]
@@ -53,13 +51,33 @@ pub enum ApiError {
     Multipart(#[from] MultipartError),
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
+    #[error(transparent)]
+    RemoteClient(#[from] RemoteClientError),
+    #[error("Unauthorized")]
+    Unauthorized,
+    #[error("Bad request: {0}")]
+    BadRequest(String),
     #[error("Conflict: {0}")]
     Conflict(String),
+    #[error("Forbidden: {0}")]
+    Forbidden(String),
+}
+
+impl From<&'static str> for ApiError {
+    fn from(msg: &'static str) -> Self {
+        ApiError::BadRequest(msg.to_string())
+    }
 }
 
 impl From<Git2Error> for ApiError {
     fn from(err: Git2Error) -> Self {
         ApiError::GitService(GitServiceError::from(err))
+    }
+}
+
+impl From<RemoteClientNotConfigured> for ApiError {
+    fn from(_: RemoteClientNotConfigured) -> Self {
+        ApiError::BadRequest("Remote client not configured".to_string())
     }
 }
 
@@ -85,7 +103,6 @@ impl IntoResponse for ApiError {
                 _ => (StatusCode::INTERNAL_SERVER_ERROR, "GitServiceError"),
             },
             ApiError::GitHubService(_) => (StatusCode::INTERNAL_SERVER_ERROR, "GitHubServiceError"),
-            ApiError::Auth(_) => (StatusCode::INTERNAL_SERVER_ERROR, "AuthError"),
             ApiError::Deployment(_) => (StatusCode::INTERNAL_SERVER_ERROR, "DeploymentError"),
             ApiError::Container(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ContainerError"),
             ApiError::Executor(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ExecutorError"),
@@ -113,7 +130,38 @@ impl IntoResponse for ApiError {
             },
             ApiError::Io(_) => (StatusCode::INTERNAL_SERVER_ERROR, "IoError"),
             ApiError::Multipart(_) => (StatusCode::BAD_REQUEST, "MultipartError"),
+            ApiError::RemoteClient(err) => match err {
+                RemoteClientError::Auth => (StatusCode::UNAUTHORIZED, "RemoteClientError"),
+                RemoteClientError::Timeout => (StatusCode::GATEWAY_TIMEOUT, "RemoteClientError"),
+                RemoteClientError::Transport(_) => (StatusCode::BAD_GATEWAY, "RemoteClientError"),
+                RemoteClientError::Http { status, .. } => (
+                    StatusCode::from_u16(*status).unwrap_or(StatusCode::BAD_GATEWAY),
+                    "RemoteClientError",
+                ),
+                RemoteClientError::Api(code) => match code {
+                    services::services::remote_client::HandoffErrorCode::NotFound => {
+                        (StatusCode::NOT_FOUND, "RemoteClientError")
+                    }
+                    services::services::remote_client::HandoffErrorCode::Expired => {
+                        (StatusCode::UNAUTHORIZED, "RemoteClientError")
+                    }
+                    services::services::remote_client::HandoffErrorCode::AccessDenied => {
+                        (StatusCode::FORBIDDEN, "RemoteClientError")
+                    }
+                    services::services::remote_client::HandoffErrorCode::ProviderError
+                    | services::services::remote_client::HandoffErrorCode::InternalError => {
+                        (StatusCode::BAD_GATEWAY, "RemoteClientError")
+                    }
+                    _ => (StatusCode::BAD_REQUEST, "RemoteClientError"),
+                },
+                RemoteClientError::Serde(_) | RemoteClientError::Url(_) => {
+                    (StatusCode::BAD_REQUEST, "RemoteClientError")
+                }
+            },
+            ApiError::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized"),
+            ApiError::BadRequest(_) => (StatusCode::BAD_REQUEST, "BadRequest"),
             ApiError::Conflict(_) => (StatusCode::CONFLICT, "ConflictError"),
+            ApiError::Forbidden(_) => (StatusCode::FORBIDDEN, "ForbiddenError"),
         };
 
         let error_message = match &self {
@@ -137,7 +185,53 @@ impl IntoResponse for ApiError {
                 _ => format!("{}: {}", error_type, self),
             },
             ApiError::Multipart(_) => "Failed to upload file. Please ensure the file is valid and try again.".to_string(),
+            ApiError::RemoteClient(err) => match err {
+                RemoteClientError::Auth => "Unauthorized. Please sign in again.".to_string(),
+                RemoteClientError::Timeout => "Remote service timeout. Please try again.".to_string(),
+                RemoteClientError::Transport(_) => "Remote service unavailable. Please try again.".to_string(),
+                RemoteClientError::Http { body, .. } => {
+                    if body.is_empty() {
+                        "Remote service error. Please try again.".to_string()
+                    } else {
+                        body.clone()
+                    }
+                }
+                RemoteClientError::Api(code) => match code {
+                    services::services::remote_client::HandoffErrorCode::NotFound => {
+                        "The requested resource was not found.".to_string()
+                    }
+                    services::services::remote_client::HandoffErrorCode::Expired => {
+                        "The link or token has expired.".to_string()
+                    }
+                    services::services::remote_client::HandoffErrorCode::AccessDenied => {
+                        "Access denied.".to_string()
+                    }
+                    services::services::remote_client::HandoffErrorCode::UnsupportedProvider => {
+                        "Unsupported authentication provider.".to_string()
+                    }
+                    services::services::remote_client::HandoffErrorCode::InvalidReturnUrl => {
+                        "Invalid return URL.".to_string()
+                    }
+                    services::services::remote_client::HandoffErrorCode::InvalidChallenge => {
+                        "Invalid authentication challenge.".to_string()
+                    }
+                    services::services::remote_client::HandoffErrorCode::ProviderError => {
+                        "Authentication provider error. Please try again.".to_string()
+                    }
+                    services::services::remote_client::HandoffErrorCode::InternalError => {
+                        "Internal remote service error. Please try again.".to_string()
+                    }
+                    services::services::remote_client::HandoffErrorCode::Other(msg) => {
+                        format!("Authentication error: {}", msg)
+                    }
+                },
+                RemoteClientError::Serde(_) => "Unexpected response from remote service.".to_string(),
+                RemoteClientError::Url(_) => "Remote service URL is invalid.".to_string(),
+            },
+            ApiError::Unauthorized => "Unauthorized. Please sign in again.".to_string(),
+            ApiError::BadRequest(msg) => msg.clone(),
             ApiError::Conflict(msg) => msg.clone(),
+            ApiError::Forbidden(msg) => msg.clone(),
             ApiError::Drafts(drafts_err) => match drafts_err {
                 DraftsServiceError::Conflict(msg) => msg.clone(),
                 DraftsServiceError::Database(_) => format!("{}: {}", error_type, drafts_err),
@@ -151,5 +245,62 @@ impl IntoResponse for ApiError {
         };
         let response = ApiResponse::<()>::error(&error_message);
         (status_code, Json(response)).into_response()
+    }
+}
+
+impl From<ShareError> for ApiError {
+    fn from(err: ShareError) -> Self {
+        match err {
+            ShareError::Database(db_err) => ApiError::Database(db_err),
+            ShareError::AlreadyShared(_) => ApiError::Conflict("Task already shared".to_string()),
+            ShareError::TaskNotFound(_) => {
+                ApiError::Conflict("Task not found for sharing".to_string())
+            }
+            ShareError::ProjectNotFound(_) => {
+                ApiError::Conflict("Project not found for sharing".to_string())
+            }
+            ShareError::ProjectNotLinked(project_id) => {
+                tracing::warn!(
+                    %project_id,
+                    "project must be linked to a remote project before sharing tasks"
+                );
+                ApiError::Conflict(
+                    "Link this project to a remote project before sharing tasks.".to_string(),
+                )
+            }
+            ShareError::MissingConfig(reason) => {
+                ApiError::Conflict(format!("Share service not configured: {reason}"))
+            }
+            ShareError::Transport(err) => {
+                tracing::error!(?err, "share task transport error");
+                ApiError::Conflict("Failed to share task with remote service".to_string())
+            }
+            ShareError::Serialization(err) => {
+                tracing::error!(?err, "share task serialization error");
+                ApiError::Conflict("Failed to parse remote share response".to_string())
+            }
+            ShareError::Url(err) => {
+                tracing::error!(?err, "share task URL error");
+                ApiError::Conflict("Share service URL is invalid".to_string())
+            }
+            ShareError::WebSocket(err) => {
+                tracing::error!(?err, "share task websocket error");
+                ApiError::Conflict("Unexpected websocket error during sharing".to_string())
+            }
+            ShareError::InvalidResponse => ApiError::Conflict(
+                "Remote share service returned an unexpected response".to_string(),
+            ),
+            ShareError::MissingGitHubToken => ApiError::Conflict(
+                "GitHub token is required to fetch repository metadata for sharing".to_string(),
+            ),
+            ShareError::Git(err) => ApiError::GitService(err),
+            ShareError::GitHub(err) => ApiError::GitHubService(err),
+            ShareError::MissingAuth => ApiError::Unauthorized,
+            ShareError::InvalidUserId => ApiError::Conflict("Invalid user ID format".to_string()),
+            ShareError::InvalidOrganizationId => {
+                ApiError::Conflict("Invalid organization ID format".to_string())
+            }
+            ShareError::RemoteClientError(err) => ApiError::Conflict(err.to_string()),
+        }
     }
 }

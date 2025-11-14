@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            WITH s AS (\n                SELECT\n                    COUNT(*) FILTER (WHERE role = 'admin') AS admin_count,\n                    BOOL_OR(user_id = $2 AND role = 'admin') AS is_admin\n                FROM organization_member_metadata\n                WHERE organization_id = $1\n            )\n            DELETE FROM organizations o\n            USING s\n            WHERE o.id = $1\n              AND s.is_admin = true\n              AND s.admin_count > 1\n            RETURNING o.id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "c9e755d05954681e0698d6287ad5cd11592d117083baf43e859961e5c4e5d10f"
+}

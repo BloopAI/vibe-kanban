@@ -16,20 +16,29 @@ import { useProject } from '@/contexts/project-context';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { ViewRelatedTasksDialog } from '@/components/dialogs/tasks/ViewRelatedTasksDialog';
 import { useNavigate } from 'react-router-dom';
+import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
+import { useAuth } from '@/hooks';
 
 interface ActionsDropdownProps {
   task?: TaskWithAttemptStatus | null;
   attempt?: TaskAttempt | null;
+  sharedTask?: SharedTaskRecord;
 }
 
-export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
+export function ActionsDropdown({
+  task,
+  attempt,
+  sharedTask,
+}: ActionsDropdownProps) {
   const { t } = useTranslation('tasks');
   const { projectId } = useProject();
   const openInEditor = useOpenInEditor(attempt?.id);
   const navigate = useNavigate();
+  const { userId } = useAuth();
 
   const hasAttemptActions = Boolean(attempt);
   const hasTaskActions = Boolean(task);
+  const isShared = Boolean(sharedTask);
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -88,7 +97,6 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
     if (!task?.id) return;
     NiceModal.show('create-attempt', {
       taskId: task.id,
-      latestAttempt: null,
     });
   };
 
@@ -120,6 +128,30 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
       currentBranchName: attempt.branch,
     });
   };
+  const handleShare = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!task || isShared) return;
+    NiceModal.show('share-task', { task });
+  };
+
+  const handleReassign = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!sharedTask) return;
+    NiceModal.show('reassign-shared-task', { sharedTask });
+  };
+
+  const handleStopShare = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!sharedTask) return;
+    NiceModal.show('stop-share-shared-task', { sharedTask });
+  };
+
+  const canReassign =
+    Boolean(task) &&
+    Boolean(sharedTask) &&
+    sharedTask?.assignee_user_id === userId;
+  const canStopShare =
+    Boolean(sharedTask) && sharedTask?.assignee_user_id === userId;
 
   return (
     <>
@@ -185,6 +217,26 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
           {hasTaskActions && (
             <>
               <DropdownMenuLabel>{t('actionsMenu.task')}</DropdownMenuLabel>
+              <DropdownMenuItem
+                disabled={!task || isShared}
+                onClick={handleShare}
+              >
+                {t('actionsMenu.share')}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!canReassign}
+                onClick={handleReassign}
+              >
+                {t('actionsMenu.reassign')}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!canStopShare}
+                onClick={handleStopShare}
+                className="text-destructive"
+              >
+                {t('actionsMenu.stopShare')}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem disabled={!projectId} onClick={handleEdit}>
                 {t('common:buttons.edit')}
               </DropdownMenuItem>

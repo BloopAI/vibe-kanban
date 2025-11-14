@@ -10,7 +10,9 @@
         "agents": "Agents",
         "agentsDesc": "Coding agent configurations",
         "mcp": "MCP Servers",
-        "mcpDesc": "Model Context Protocol servers"
+        "mcpDesc": "Model Context Protocol servers",
+        "organizations": "Organization Settings",
+        "organizationsDesc": "Manage organization members and permissions"
       }
     },
     "general": {
@@ -76,17 +78,36 @@
       },
       "github": {
         "title": "GitHub Integration",
-        "connected": "Connected as {{username}}",
-        "connectButton": "Connect GitHub Account",
-        "manage": "Manage",
-        "disconnect": "Disconnect",
-        "helper": "Connect your GitHub account to access private repositories and enable advanced Git operations.",
-        "or": "OR",
-        "pat": {
-          "label": "Personal Access Token",
-          "placeholder": "ghp_xxxxxxxxxxxxxxxxxxxx",
-          "helper": "GitHub Personal Access Token with 'repo' permissions. Use this if OAuth permissions are insufficient for private repositories and organisation owned repositories.",
-          "createTokenLink": "Create token here"
+        "cliSetup": {
+          "title": "GitHub CLI Setup",
+          "description": "GitHub CLI authentication is required to create pull requests and interact with GitHub repositories.",
+          "setupWillTitle": "This setup will:",
+          "steps": {
+            "checkInstalled": "Check if GitHub CLI (gh) is installed",
+            "installHomebrew": "Install it via Homebrew if needed (macOS)",
+            "authenticate": "Authenticate with GitHub using OAuth"
+          },
+          "setupNote": "The setup will run in the chat window. You'll need to complete the authentication in your browser.",
+          "runSetup": "Run Setup",
+          "running": "Running...",
+          "errors": {
+            "brewMissing": "Homebrew is not installed. Install it to enable automatic setup.",
+            "notSupported": "Automatic setup is not supported on this platform. Install GitHub CLI manually.",
+            "setupFailed": "Failed to run GitHub CLI setup."
+          },
+          "help": {
+            "homebrew": {
+              "description": "Automatic installation requires Homebrew. Install Homebrew from",
+              "brewSh": "brew.sh",
+              "manualInstall": "and then rerun the setup. Alternatively, install GitHub CLI manually with:",
+              "afterInstall": "After installation, authenticate with:"
+            },
+            "manual": {
+              "description": "Install GitHub CLI from the",
+              "officialDocs": "official documentation",
+              "andAuthenticate": "and then authenticate with your GitHub account."
+            }
+          }
         }
       },
       "git": {
@@ -311,6 +332,41 @@
         "unsavedChanges": "• You have unsaved changes",
         "discard": "Discard",
         "confirmSwitch": "You have unsaved changes. Are you sure you want to switch projects? Your changes will be lost."
+      }
+    }
+  },
+  "integrations": {
+    "github": {
+      "cliSetup": {
+        "title": "GitHub CLI Setup",
+        "description": "GitHub CLI authentication is required to create pull requests and interact with GitHub repositories.",
+        "setupWillTitle": "This setup will:",
+        "steps": {
+          "checkInstalled": "Check if GitHub CLI (gh) is installed",
+          "installHomebrew": "Install it via Homebrew if needed (macOS)",
+          "authenticate": "Authenticate with GitHub using OAuth"
+        },
+        "setupNote": "The setup will run in the chat window. You'll need to complete the authentication in your browser.",
+        "runSetup": "Run Setup",
+        "running": "Running...",
+        "errors": {
+          "brewMissing": "Homebrew is not installed. Install it to enable automatic setup.",
+          "notSupported": "Automatic setup is not supported on this platform. Install GitHub CLI manually.",
+          "setupFailed": "Failed to run GitHub CLI setup."
+        },
+        "help": {
+          "homebrew": {
+            "description": "Automatic installation requires Homebrew. Install Homebrew from",
+            "brewSh": "brew.sh",
+            "manualInstall": "and then rerun the setup. Alternatively, install GitHub CLI manually with:",
+            "afterInstall": "After installation, authenticate with:"
+          },
+          "manual": {
+            "description": "Install GitHub CLI from the",
+            "officialDocs": "official documentation",
+            "andAuthenticate": "and then authenticate with your GitHub account."
+          }
+        }
       }
     }
   }

@@ -8,7 +8,7 @@ export type DirectoryEntry = { name: string, path: string, is_directory: boolean
 
 export type DirectoryListResponse = { entries: Array<DirectoryEntry>, current_path: string, };
 
-export type Project = { id: string, name: string, git_repo_path: string, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, copy_files: string | null, created_at: Date, updated_at: Date, };
+export type Project = { id: string, name: string, git_repo_path: string, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, copy_files: string | null, remote_project_id: string | null, created_at: Date, updated_at: Date, };
 
 export type CreateProject = { name: string, git_repo_path: string, use_existing_repo: boolean, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, copy_files: string | null, };
 
@@ -18,13 +18,17 @@ export type SearchResult = { path: string, is_file: boolean, match_type: SearchM
 
 export type SearchMatchType = "FileName" | "DirectoryName" | "FullPath";
 
+export type CreateRemoteProjectRequest = { organization_id: string, name: string, };
+
+export type LinkToExistingRequest = { remote_project_id: string, };
+
 export type ExecutorAction = { typ: ExecutorActionType, next_action: ExecutorAction | null, };
 
 export type McpConfig = { servers: { [key in string]?: JsonValue }, servers_path: Array<string>, template: JsonValue, preconfigured: JsonValue, is_toml_config: boolean, };
 
 export type ExecutorActionType = { "type": "CodingAgentInitialRequest" } & CodingAgentInitialRequest | { "type": "CodingAgentFollowUpRequest" } & CodingAgentFollowUpRequest | { "type": "ScriptRequest" } & ScriptRequest;
 
-export type ScriptContext = "SetupScript" | "CleanupScript" | "DevServer";
+export type ScriptContext = "SetupScript" | "CleanupScript" | "DevServer" | "GithubCliSetupScript";
 
 export type ScriptRequest = { script: string, language: ScriptRequestLanguage, context: ScriptContext, };
 
@@ -44,15 +48,17 @@ export type TagSearchParams = { search: string | null, };
 
 export type TaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelled";
 
-export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_task_attempt: string | null, created_at: string, updated_at: string, };
+export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_task_attempt: string | null, shared_task_id: string | null, created_at: string, updated_at: string, };
 
-export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, has_merged_attempt: boolean, last_attempt_failed: boolean, executor: string, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_task_attempt: string | null, created_at: string, updated_at: string, };
+export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, has_merged_attempt: boolean, last_attempt_failed: boolean, executor: string, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_task_attempt: string | null, shared_task_id: string | null, created_at: string, updated_at: string, };
 
 export type TaskRelationships = { parent_task: Task | null, current_attempt: TaskAttempt, children: Array<Task>, };
 
-export type CreateTask = { project_id: string, title: string, description: string | null, parent_task_attempt: string | null, image_ids: Array<string> | null, };
+export type CreateTask = { project_id: string, title: string, description: string | null, status: TaskStatus | null, parent_task_attempt: string | null, image_ids: Array<string> | null, shared_task_id: string | null, };
 
 export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, parent_task_attempt: string | null, image_ids: Array<string> | null, };
+
+export type SharedTask = { id: string, remote_project_id: string, title: string, description: string | null, status: TaskStatus, assignee_user_id: string | null, assignee_first_name: string | null, assignee_last_name: string | null, assignee_username: string | null, version: bigint, last_event_seq: bigint | null, created_at: Date, updated_at: Date, };
 
 export type Image = { id: string, file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, created_at: string, updated_at: string, };
 
@@ -60,7 +66,63 @@ export type CreateImage = { file_path: string, original_name: string, mime_type:
 
 export type ApiResponse<T, E = T> = { success: boolean, data: T | null, error_data: E | null, message: string | null, };
 
-export type UserSystemInfo = { config: Config, analytics_user_id: string, environment: Environment, 
+export type LoginStatus = { "status": "loggedout" } | { "status": "loggedin", profile: ProfileResponse, };
+
+export type ProfileResponse = { user_id: string, username: string | null, email: string, providers: Array<ProviderProfile>, };
+
+export type ProviderProfile = { provider: string, username: string | null, display_name: string | null, email: string | null, avatar_url: string | null, };
+
+export type StatusResponse = { logged_in: boolean, profile: ProfileResponse | null, degraded: boolean | null, };
+
+export enum MemberRole { ADMIN = "ADMIN", MEMBER = "MEMBER" }
+
+export enum InvitationStatus { PENDING = "PENDING", ACCEPTED = "ACCEPTED", DECLINED = "DECLINED", EXPIRED = "EXPIRED" }
+
+export type Organization = { id: string, name: string, slug: string, is_personal: boolean, created_at: string, updated_at: string, };
+
+export type OrganizationWithRole = { id: string, name: string, slug: string, is_personal: boolean, created_at: string, updated_at: string, user_role: MemberRole, };
+
+export type ListOrganizationsResponse = { organizations: Array<OrganizationWithRole>, };
+
+export type GetOrganizationResponse = { organization: Organization, user_role: string, };
+
+export type CreateOrganizationRequest = { name: string, slug: string, };
+
+export type CreateOrganizationResponse = { organization: OrganizationWithRole, };
+
+export type UpdateOrganizationRequest = { name: string, };
+
+export type Invitation = { id: string, organization_id: string, invited_by_user_id: string | null, email: string, role: MemberRole, status: InvitationStatus, token: string, created_at: string, expires_at: string, };
+
+export type CreateInvitationRequest = { email: string, role: MemberRole, };
+
+export type CreateInvitationResponse = { invitation: Invitation, };
+
+export type ListInvitationsResponse = { invitations: Array<Invitation>, };
+
+export type GetInvitationResponse = { id: string, organization_slug: string, role: MemberRole, expires_at: string, };
+
+export type AcceptInvitationResponse = { organization_id: string, organization_slug: string, role: MemberRole, };
+
+export type RevokeInvitationRequest = { invitation_id: string, };
+
+export type OrganizationMember = { user_id: string, role: MemberRole, joined_at: string, };
+
+export type OrganizationMemberWithProfile = { user_id: string, role: MemberRole, joined_at: string, first_name: string | null, last_name: string | null, username: string | null, email: string | null, avatar_url: string | null, };
+
+export type ListMembersResponse = { members: Array<OrganizationMemberWithProfile>, };
+
+export type UpdateMemberRoleRequest = { role: MemberRole, };
+
+export type UpdateMemberRoleResponse = { user_id: string, role: MemberRole, };
+
+export type RemoteProject = { id: string, organization_id: string, name: string, metadata: Record<string, unknown>, created_at: string, };
+
+export type ListProjectsResponse = { projects: Array<RemoteProject>, };
+
+export type RemoteProjectMembersResponse = { organization_id: string, members: Array<OrganizationMemberWithProfile>, };
+
+export type UserSystemInfo = { config: Config, analytics_user_id: string, login_status: LoginStatus, environment: Environment, 
 /**
  * Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["SESSION_FORK"] })
  */
@@ -90,15 +152,21 @@ export type RenameBranchRequest = { new_branch_name: string, };
 
 export type RenameBranchResponse = { branch: string, };
 
+export type AssignSharedTaskRequest = { new_assignee_user_id: string | null, version: bigint | null, };
+
+export type AssignSharedTaskResponse = { shared_task: SharedTask, };
+
+export type ShareTaskResponse = { shared_task_id: string, };
+
 export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id: ExecutorProfileId, base_branch: string, };
 
 export type CreateGitHubPrRequest = { title: string, body: string | null, target_branch: string | null, };
 
 export type ImageResponse = { id: string, file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, created_at: string, updated_at: string, };
 
-export enum GitHubServiceError { TOKEN_INVALID = "TOKEN_INVALID", INSUFFICIENT_PERMISSIONS = "INSUFFICIENT_PERMISSIONS", REPO_NOT_FOUND_OR_NO_ACCESS = "REPO_NOT_FOUND_OR_NO_ACCESS" }
+export enum GitHubServiceError { TOKEN_INVALID = "TOKEN_INVALID", INSUFFICIENT_PERMISSIONS = "INSUFFICIENT_PERMISSIONS", REPO_NOT_FOUND_OR_NO_ACCESS = "REPO_NOT_FOUND_OR_NO_ACCESS", GH_CLI_NOT_INSTALLED = "GH_CLI_NOT_INSTALLED" }
 
-export type Config = { config_version: string, theme: ThemeMode, executor_profile: ExecutorProfileId, disclaimer_acknowledged: boolean, onboarding_acknowledged: boolean, github_login_acknowledged: boolean, telemetry_acknowledged: boolean, notifications: NotificationConfig, editor: EditorConfig, github: GitHubConfig, analytics_enabled: boolean | null, workspace_dir: string | null, last_app_version: string | null, show_release_notes: boolean, language: UiLanguage, git_branch_prefix: string, showcases: ShowcaseState, };
+export type Config = { config_version: string, theme: ThemeMode, executor_profile: ExecutorProfileId, disclaimer_acknowledged: boolean, onboarding_acknowledged: boolean, notifications: NotificationConfig, editor: EditorConfig, github: GitHubConfig, analytics_enabled: boolean, workspace_dir: string | null, last_app_version: string | null, show_release_notes: boolean, language: UiLanguage, git_branch_prefix: string, showcases: ShowcaseState, };
 
 export type NotificationConfig = { sound_enabled: boolean, push_enabled: boolean, sound_file: SoundFile, };
 
@@ -115,12 +183,6 @@ export enum SoundFile { ABSTRACT_SOUND1 = "ABSTRACT_SOUND1", ABSTRACT_SOUND2 = "
 export type UiLanguage = "BROWSER" | "EN" | "JA" | "ES" | "KO";
 
 export type ShowcaseState = { seen_features: Array<string>, };
-
-export type DeviceFlowStartResponse = { user_code: string, verification_uri: string, expires_in: number, interval: number, };
-
-export enum DevicePollStatus { SLOW_DOWN = "SLOW_DOWN", AUTHORIZATION_PENDING = "AUTHORIZATION_PENDING", SUCCESS = "SUCCESS" }
-
-export enum CheckTokenResponse { VALID = "VALID", INVALID = "INVALID" }
 
 export type GitBranch = { name: string, is_current: boolean, is_remote: boolean, last_commit_date: Date, };
 
@@ -213,6 +275,8 @@ executor_profile_id: ExecutorProfileId, base_branch: string, };
 export type RunAgentSetupRequest = { executor_profile_id: ExecutorProfileId, };
 
 export type RunAgentSetupResponse = Record<string, never>;
+
+export type GhCliSetupError = "BREW_MISSING" | "SETUP_HELPER_NOT_SUPPORTED" | { "OTHER": { message: string, } };
 
 export type RebaseTaskAttemptRequest = { old_base_branch: string | null, new_base_branch: string | null, };
 

@@ -231,7 +231,7 @@ fn setup_direct_conflict_repo(root: &TempDir) -> (PathBuf, PathBuf) {
 }
 
 #[test]
-fn push_with_token_reports_non_fast_forward() {
+fn push_reports_non_fast_forward() {
     let temp_dir = TempDir::new().unwrap();
     let remote_path = temp_dir.path().join("remote.git");
     Repository::init_bare(&remote_path).expect("init bare remote");
@@ -277,7 +277,7 @@ fn push_with_token_reports_non_fast_forward() {
     let remote_url_string = remote.url().expect("origin url").to_string();
 
     let git_cli = GitCli::new();
-    let result = git_cli.push_with_token(&local_path, &remote_url_string, "main", "dummy-token");
+    let result = git_cli.push(&local_path, &remote_url_string, "main");
     match result {
         Err(GitCliError::PushRejected(msg)) => {
             let lower = msg.to_ascii_lowercase();
@@ -292,7 +292,7 @@ fn push_with_token_reports_non_fast_forward() {
 }
 
 #[test]
-fn fetch_with_token_missing_ref_returns_error() {
+fn fetch_with_missing_ref_returns_error() {
     let temp_dir = TempDir::new().unwrap();
     let remote_path = temp_dir.path().join("remote.git");
     Repository::init_bare(&remote_path).expect("init bare remote");
@@ -317,8 +317,7 @@ fn fetch_with_token_missing_ref_returns_error() {
 
     let git_cli = GitCli::new();
     let refspec = "+refs/heads/missing:refs/remotes/origin/missing";
-    let result =
-        git_cli.fetch_with_token_and_refspec(&local_path, remote_url, refspec, "dummy-token");
+    let result = git_cli.fetch_with_refspec(&local_path, remote_url, refspec);
     match result {
         Err(GitCliError::CommandFailed(msg)) => {
             assert!(
@@ -376,7 +375,7 @@ fn push_and_fetch_roundtrip_updates_tracking_branch() {
 
     let git_cli = GitCli::new();
     git_cli
-        .push_with_token(&producer_path, &remote_url_string, "main", "dummy-token")
+        .push(&producer_path, &remote_url_string, "main")
         .expect("push succeeded");
 
     let new_oid = producer_repo
@@ -387,11 +386,10 @@ fn push_and_fetch_roundtrip_updates_tracking_branch() {
     assert_ne!(old_oid, new_oid, "producer created new commit");
 
     git_cli
-        .fetch_with_token_and_refspec(
+        .fetch_with_refspec(
             &consumer_path,
             &remote_url_string,
             "+refs/heads/main:refs/remotes/origin/main",
-            "dummy-token",
         )
         .expect("fetch succeeded");
 
@@ -420,7 +418,6 @@ fn rebase_preserves_untracked_files() {
         "new-base",
         "old-base",
         "feature",
-        None,
     );
     assert!(res.is_ok(), "rebase should succeed: {res:?}");
 
@@ -443,7 +440,6 @@ fn rebase_aborts_on_uncommitted_tracked_changes() {
         "new-base",
         "old-base",
         "feature",
-        None,
     );
     assert!(res.is_err(), "rebase should fail on dirty worktree");
 
@@ -465,7 +461,6 @@ fn rebase_aborts_if_untracked_would_be_overwritten_by_base() {
         "new-base",
         "old-base",
         "feature",
-        None,
     );
     assert!(
         res.is_err(),
@@ -697,7 +692,6 @@ fn rebase_refuses_to_abort_existing_rebase() {
             "new-base",
             "old-base",
             "feature",
-            None,
         )
         .expect_err("first rebase should error and leave in-progress state");
 
@@ -709,7 +703,6 @@ fn rebase_refuses_to_abort_existing_rebase() {
         "new-base",
         "old-base",
         "feature",
-        None,
     );
     assert!(res.is_err(), "should error because rebase is in progress");
     // Note: We do not auto-abort; user should resolve or abort explicitly
@@ -730,7 +723,6 @@ fn rebase_fast_forwards_when_no_unique_commits() {
             "new-base",
             "old-base",
             "feature",
-            None,
         )
         .expect("rebase should succeed");
     let after_oid = g.get_head_info(&worktree_path).unwrap().oid;
@@ -762,7 +754,6 @@ fn rebase_applies_multiple_commits_onto_ahead_base() {
             "new-base",
             "old-base",
             "feature",
-            None,
         )
         .expect("rebase should succeed");
 
@@ -908,7 +899,6 @@ fn rebase_preserves_rename_changes() {
             "new-base",
             "old-base",
             "feature",
-            None,
         )
         .expect("rebase should succeed");
     // after rebase, renamed file present; original absent

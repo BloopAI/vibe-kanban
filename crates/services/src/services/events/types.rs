@@ -2,6 +2,7 @@ use anyhow::Error as AnyhowError;
 use db::models::{
     draft::{Draft, DraftType},
     execution_process::ExecutionProcess,
+    shared_task::SharedTask,
     task::Task,
     task_attempt::TaskAttempt,
 };
@@ -32,6 +33,8 @@ pub enum HookTables {
     ExecutionProcesses,
     #[strum(to_string = "drafts")]
     Drafts,
+    #[strum(to_string = "shared_tasks")]
+    SharedTasks,
 }
 
 #[derive(Serialize, Deserialize, TS)]
@@ -42,6 +45,7 @@ pub enum RecordTypes {
     ExecutionProcess(ExecutionProcess),
     Draft(Draft),
     RetryDraft(Draft),
+    SharedTask(SharedTask),
     DeletedTask {
         rowid: i64,
         project_id: Option<Uuid>,
@@ -60,6 +64,10 @@ pub enum RecordTypes {
         rowid: i64,
         draft_type: DraftType,
         task_attempt_id: Option<Uuid>,
+    },
+    DeletedSharedTask {
+        rowid: i64,
+        task_id: Option<Uuid>,
     },
 }
 

@@ -12,10 +12,10 @@ import {
   type Environment,
   type UserSystemInfo,
   type BaseAgentCapability,
-  CheckTokenResponse,
+  type LoginStatus,
 } from 'shared/types';
 import type { ExecutorConfig } from 'shared/types';
-import { configApi, githubAuthApi } from '../lib/api';
+import { configApi } from '../lib/api';
 import { updateLanguageFromConfig } from '../i18n/config';
 
 interface UserSystemState {
@@ -24,6 +24,7 @@ interface UserSystemState {
   profiles: Record<string, ExecutorConfig> | null;
   capabilities: Record<string, BaseAgentCapability[]> | null;
   analyticsUserId: string | null;
+  loginStatus: LoginStatus | null;
 }
 
 interface UserSystemContextType {
@@ -41,6 +42,7 @@ interface UserSystemContextType {
   profiles: Record<string, ExecutorConfig> | null;
   capabilities: Record<string, BaseAgentCapability[]> | null;
   analyticsUserId: string | null;
+  loginStatus: LoginStatus | null;
   setEnvironment: (env: Environment | null) => void;
   setProfiles: (profiles: Record<string, ExecutorConfig> | null) => void;
   setCapabilities: (caps: Record<string, BaseAgentCapability[]> | null) => void;
@@ -50,7 +52,6 @@ interface UserSystemContextType {
 
   // State
   loading: boolean;
-  githubTokenInvalid: boolean;
 }
 
 const UserSystemContext = createContext<UserSystemContextType | undefined>(
@@ -74,8 +75,8 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
     BaseAgentCapability[]
   > | null>(null);
   const [analyticsUserId, setAnalyticsUserId] = useState<string | null>(null);
+  const [loginStatus, setLoginStatus] = useState<LoginStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [githubTokenInvalid, setGithubTokenInvalid] = useState(false);
 
   useEffect(() => {
     const loadUserSystem = async () => {
@@ -84,6 +85,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
         setConfig(userSystemInfo.config);
         setEnvironment(userSystemInfo.environment);
         setAnalyticsUserId(userSystemInfo.analytics_user_id);
+        setLoginStatus(userSystemInfo.login_status);
         setProfiles(
           userSystemInfo.executors as Record<string, ExecutorConfig> | null
         );
@@ -109,27 +111,6 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       updateLanguageFromConfig(config.language);
     }
   }, [config?.language]);
-
-  // Check GitHub token validity after config loads
-  useEffect(() => {
-    if (loading) return;
-    const checkToken = async () => {
-      const valid = await githubAuthApi.checkGithubToken();
-      if (valid === undefined) {
-        // Network/server error: do not update githubTokenInvalid
-        return;
-      }
-      switch (valid) {
-        case CheckTokenResponse.VALID:
-          setGithubTokenInvalid(false);
-          break;
-        case CheckTokenResponse.INVALID:
-          setGithubTokenInvalid(true);
-          break;
-      }
-    };
-    checkToken();
-  }, [loading]);
 
   const updateConfig = useCallback((updates: Partial<Config>) => {
     setConfig((prev) => (prev ? { ...prev, ...updates } : null));
@@ -168,11 +149,13 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
   );
 
   const reloadSystem = useCallback(async () => {
+    setLoading(true);
     try {
       const userSystemInfo: UserSystemInfo = await configApi.getConfig();
       setConfig(userSystemInfo.config);
       setEnvironment(userSystemInfo.environment);
       setAnalyticsUserId(userSystemInfo.analytics_user_id);
+      setLoginStatus(userSystemInfo.login_status);
       setProfiles(
         userSystemInfo.executors as Record<string, ExecutorConfig> | null
       );
@@ -184,18 +167,28 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       );
     } catch (err) {
       console.error('Error reloading user system:', err);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
   // Memoize context value to prevent unnecessary re-renders
   const value = useMemo<UserSystemContextType>(
     () => ({
-      system: { config, environment, profiles, capabilities, analyticsUserId },
+      system: {
+        config,
+        environment,
+        profiles,
+        capabilities,
+        analyticsUserId,
+        loginStatus,
+      },
       config,
       environment,
       profiles,
       capabilities,
       analyticsUserId,
+      loginStatus,
       updateConfig,
       saveConfig,
       updateAndSaveConfig,
@@ -204,7 +197,6 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       setCapabilities,
       reloadSystem,
       loading,
-      githubTokenInvalid,
     }),
     [
       config,
@@ -212,12 +204,12 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       profiles,
       capabilities,
       analyticsUserId,
+      loginStatus,
       updateConfig,
       saveConfig,
       updateAndSaveConfig,
       reloadSystem,
       loading,
-      githubTokenInvalid,
     ]
   );
 

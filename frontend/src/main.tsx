@@ -14,14 +14,12 @@ import { PostHogProvider } from 'posthog-js/react';
 import './types/modals';
 // Import and register modals
 import {
-  GitHubLoginDialog,
   CreatePRDialog,
   ConfirmDialog,
   DisclaimerDialog,
   OnboardingDialog,
-  PrivacyOptInDialog,
-  ProvidePatDialog,
   ReleaseNotesDialog,
+  OAuthDialog,
   TaskFormDialog,
   EditorSelectionDialog,
   DeleteTaskConfirmationDialog,
@@ -36,19 +34,22 @@ import {
   RestoreLogsDialog,
   ViewProcessesDialog,
   GitActionsDialog,
+  ShareDialog,
+  ReassignDialog,
+  StopShareTaskDialog,
+  CreateOrganizationDialog,
+  LinkProjectDialog,
 } from './components/dialogs';
 import { CreateAttemptDialog } from './components/dialogs/tasks/CreateAttemptDialog';
 import { EditBranchNameDialog } from './components/dialogs/tasks/EditBranchNameDialog';
 
 // Register modals
-NiceModal.register('github-login', GitHubLoginDialog);
 NiceModal.register('create-pr', CreatePRDialog);
 NiceModal.register('confirm', ConfirmDialog);
 NiceModal.register('disclaimer', DisclaimerDialog);
 NiceModal.register('onboarding', OnboardingDialog);
-NiceModal.register('privacy-opt-in', PrivacyOptInDialog);
-NiceModal.register('provide-pat', ProvidePatDialog);
 NiceModal.register('release-notes', ReleaseNotesDialog);
+NiceModal.register('oauth', OAuthDialog);
 NiceModal.register('delete-task-confirmation', DeleteTaskConfirmationDialog);
 NiceModal.register('task-form', TaskFormDialog);
 NiceModal.register('editor-selection', EditorSelectionDialog);
@@ -65,6 +66,11 @@ NiceModal.register('view-processes', ViewProcessesDialog);
 NiceModal.register('create-attempt', CreateAttemptDialog);
 NiceModal.register('git-actions', GitActionsDialog);
 NiceModal.register('edit-branch-name-dialog', EditBranchNameDialog);
+NiceModal.register('share-task', ShareDialog);
+NiceModal.register('reassign-shared-task', ReassignDialog);
+NiceModal.register('stop-share-shared-task', StopShareTaskDialog);
+NiceModal.register('create-organization', CreateOrganizationDialog);
+NiceModal.register('link-project', LinkProjectDialog);
 
 import {
   useLocation,
