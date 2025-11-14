@@ -117,6 +117,6 @@ impl JwtService {
             None => return Ok(false),
         };
         let candidate_hash = self.hash_session_secret(candidate_secret)?;
-        Ok(stored.as_bytes().ct_eq((&candidate_hash).as_bytes()).into())
+        Ok(stored.as_bytes().ct_eq(candidate_hash.as_bytes()).into())
     }
 }
