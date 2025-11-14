@@ -171,7 +171,6 @@ async fn handoff_complete(
     // Fetch and cache the user's profile
     let _ = deployment.get_login_status().await;
 
-    // Track user identification with email for analytics
     if let Some(profile) = deployment.auth_context().cached_profile().await {
         if let Some(analytics) = deployment.analytics() {
             analytics.track_event(
