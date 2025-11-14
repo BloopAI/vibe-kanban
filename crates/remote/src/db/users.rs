@@ -103,8 +103,7 @@ async fn upsert_user(pool: &PgPool, user: &UpsertUser<'_>) -> Result<User, sqlx:
         SET email = EXCLUDED.email,
             first_name = EXCLUDED.first_name,
             last_name = EXCLUDED.last_name,
-            username = EXCLUDED.username,
-            updated_at = NOW()
+            username = EXCLUDED.username
         RETURNING
             id           AS "id!: Uuid",
             email        AS "email!",

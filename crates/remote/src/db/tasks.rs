@@ -405,8 +405,7 @@ impl<'a> SharedTaskRepository<'a> {
             r#"
         UPDATE shared_tasks AS t
         SET assignee_user_id = $2,
-            version = t.version + 1,
-            updated_at = NOW()
+            version = t.version + 1
         WHERE t.id = $1
           AND t.version = COALESCE($4, t.version)
           AND ($3::uuid IS NULL OR t.assignee_user_id = $3::uuid)
@@ -461,8 +460,7 @@ impl<'a> SharedTaskRepository<'a> {
         UPDATE shared_tasks AS t
         SET deleted_at = NOW(),
             deleted_by_user_id = $3,
-            version = t.version + 1,
-            updated_at = NOW()
+            version = t.version + 1
         WHERE t.id = $1
           AND t.version = COALESCE($2, t.version)
           AND t.assignee_user_id = $3

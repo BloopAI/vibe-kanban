@@ -1,5 +1,15 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+CREATE OR REPLACE FUNCTION set_updated_at()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$;
+
 CREATE TABLE IF NOT EXISTS organizations (
     id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name       TEXT NOT NULL,
@@ -12,7 +22,9 @@ CREATE TABLE IF NOT EXISTS organizations (
 CREATE TABLE IF NOT EXISTS users (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email        TEXT NOT NULL UNIQUE,
-    display_name TEXT NOT NULL,
+    first_name   TEXT,
+    last_name    TEXT,
+    username     TEXT,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -66,18 +78,20 @@ CREATE TABLE IF NOT EXISTS project_activity_counters (
 );
 
 CREATE TABLE IF NOT EXISTS shared_tasks (
-    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id   UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    project_id        UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-    creator_user_id   UUID REFERENCES users(id) ON DELETE SET NULL,
-    assignee_user_id  UUID REFERENCES users(id) ON DELETE SET NULL,
-    title             TEXT NOT NULL,
-    description       TEXT,
-    status            task_status NOT NULL DEFAULT 'todo'::task_status,
-    version           BIGINT NOT NULL DEFAULT 1,
-    shared_at         TIMESTAMPTZ DEFAULT NOW(),
-    created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id    UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    project_id         UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    creator_user_id    UUID REFERENCES users(id) ON DELETE SET NULL,
+    assignee_user_id   UUID REFERENCES users(id) ON DELETE SET NULL,
+    deleted_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    title              TEXT NOT NULL,
+    description        TEXT,
+    status             task_status NOT NULL DEFAULT 'todo'::task_status,
+    version            BIGINT NOT NULL DEFAULT 1,
+    deleted_at         TIMESTAMPTZ,
+    shared_at          TIMESTAMPTZ DEFAULT NOW(),
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_tasks_org_status
@@ -88,6 +102,10 @@ CREATE INDEX IF NOT EXISTS idx_tasks_org_assignee
 
 CREATE INDEX IF NOT EXISTS idx_tasks_project
     ON shared_tasks (project_id);
+
+CREATE INDEX IF NOT EXISTS idx_shared_tasks_org_deleted_at
+    ON shared_tasks (organization_id, deleted_at)
+    WHERE deleted_at IS NOT NULL;
 
 -- Partitioned activity feed (24-hour range partitions on created_at).
 CREATE TABLE activity (
@@ -212,3 +230,89 @@ CREATE INDEX IF NOT EXISTS idx_org_invites_status_expires
 CREATE UNIQUE INDEX IF NOT EXISTS uniq_pending_invite_per_email_per_org
     ON organization_invitations (organization_id, lower(email))
     WHERE status = 'pending';
+
+CREATE TABLE IF NOT EXISTS auth_sessions (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    session_secret  TEXT NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_used_at    TIMESTAMPTZ,
+    revoked_at      TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_auth_sessions_user
+    ON auth_sessions (user_id);
+
+CREATE TABLE IF NOT EXISTS oauth_accounts (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id           UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider          TEXT NOT NULL,
+    provider_user_id  TEXT NOT NULL,
+    email             TEXT,
+    username          TEXT,
+    display_name      TEXT,
+    avatar_url        TEXT,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (provider, provider_user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_oauth_accounts_user
+    ON oauth_accounts (user_id);
+
+CREATE INDEX IF NOT EXISTS idx_oauth_accounts_provider_user
+    ON oauth_accounts (provider, provider_user_id);
+
+CREATE TABLE IF NOT EXISTS oauth_handoffs (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    provider        TEXT NOT NULL,
+    state           TEXT NOT NULL,
+    return_to       TEXT NOT NULL,
+    app_challenge   TEXT NOT NULL,
+    app_code_hash   TEXT,
+    status          TEXT NOT NULL DEFAULT 'pending',
+    error_code      TEXT,
+    expires_at      TIMESTAMPTZ NOT NULL,
+    authorized_at   TIMESTAMPTZ,
+    redeemed_at     TIMESTAMPTZ,
+    user_id         UUID REFERENCES users(id),
+    session_id      UUID REFERENCES auth_sessions(id) ON DELETE SET NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_oauth_handoffs_status
+    ON oauth_handoffs (status);
+
+CREATE INDEX IF NOT EXISTS idx_oauth_handoffs_user
+    ON oauth_handoffs (user_id);
+
+CREATE TRIGGER trg_organizations_updated_at
+    BEFORE UPDATE ON organizations
+    FOR EACH ROW
+    EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER trg_users_updated_at
+    BEFORE UPDATE ON users
+    FOR EACH ROW
+    EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER trg_shared_tasks_updated_at
+    BEFORE UPDATE ON shared_tasks
+    FOR EACH ROW
+    EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER trg_org_invites_updated_at
+    BEFORE UPDATE ON organization_invitations
+    FOR EACH ROW
+    EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER trg_oauth_accounts_updated_at
+    BEFORE UPDATE ON oauth_accounts
+    FOR EACH ROW
+    EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER trg_oauth_handoffs_updated_at
+    BEFORE UPDATE ON oauth_handoffs
+    FOR EACH ROW
+    EXECUTE FUNCTION set_updated_at();

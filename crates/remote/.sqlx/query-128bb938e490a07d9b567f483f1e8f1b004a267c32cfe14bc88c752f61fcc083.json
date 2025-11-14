@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE oauth_handoffs\n            SET\n                status = 'authorized',\n                error_code = NULL,\n                user_id = $2,\n                session_id = $3,\n                app_code_hash = $4,\n                authorized_at = NOW()\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "128bb938e490a07d9b567f483f1e8f1b004a267c32cfe14bc88c752f61fcc083"
+}

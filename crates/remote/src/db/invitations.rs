@@ -236,7 +236,7 @@ impl<'a> InvitationRepository<'a> {
             sqlx::query!(
                 r#"
                 UPDATE organization_invitations
-                SET status = 'expired', updated_at = NOW()
+                SET status = 'expired'
                 WHERE id = $1
                 "#,
                 invitation.id
@@ -268,7 +268,7 @@ impl<'a> InvitationRepository<'a> {
         sqlx::query!(
             r#"
             UPDATE organization_invitations
-            SET status = 'accepted', updated_at = NOW()
+            SET status = 'accepted'
             WHERE id = $1
             "#,
             invitation.id

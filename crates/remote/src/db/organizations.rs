@@ -197,7 +197,7 @@ impl<'a> OrganizationRepository<'a> {
             Organization,
             r#"
             UPDATE organizations
-            SET name = $2, updated_at = NOW()
+            SET name = $2
             WHERE id = $1
             RETURNING
                 id AS "id!: Uuid",
