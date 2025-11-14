@@ -90,7 +90,7 @@ export function Navbar() {
   // Navbar is global, but the share tasks toggle only makes sense on the tasks route
   const isTasksRoute = /^\/projects\/[^/]+\/tasks/.test(location.pathname);
   const showSharedTasks = searchParams.get('shared') !== 'off';
-  const shouldShowSharedToggle = isTasksRoute && active;
+  const shouldShowSharedToggle = isTasksRoute && active && project?.remote_project_id != null;
 
   const handleSharedToggle = useCallback(
     (checked: boolean) => {
