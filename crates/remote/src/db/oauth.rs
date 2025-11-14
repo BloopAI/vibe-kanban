@@ -210,8 +210,7 @@ impl<'a> OAuthHandoffRepository<'a> {
             UPDATE oauth_handoffs
             SET
                 status = $2,
-                error_code = $3,
-                updated_at = NOW()
+                error_code = $3
             WHERE id = $1
             "#,
             id,
@@ -239,8 +238,7 @@ impl<'a> OAuthHandoffRepository<'a> {
                 user_id = $2,
                 session_id = $3,
                 app_code_hash = $4,
-                authorized_at = NOW(),
-                updated_at = NOW()
+                authorized_at = NOW()
             WHERE id = $1
             "#,
             id,
@@ -259,8 +257,7 @@ impl<'a> OAuthHandoffRepository<'a> {
             UPDATE oauth_handoffs
             SET
                 status = 'redeemed',
-                redeemed_at = NOW(),
-                updated_at = NOW()
+                redeemed_at = NOW()
             WHERE id = $1
               AND status = 'authorized'
             "#,

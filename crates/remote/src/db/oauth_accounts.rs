@@ -125,8 +125,7 @@ impl<'a> OAuthAccountRepository<'a> {
                 email = EXCLUDED.email,
                 username = EXCLUDED.username,
                 display_name = EXCLUDED.display_name,
-                avatar_url = EXCLUDED.avatar_url,
-                updated_at = NOW()
+                avatar_url = EXCLUDED.avatar_url
             RETURNING
                 id                AS "id!: Uuid",
                 user_id           AS "user_id!: Uuid",
