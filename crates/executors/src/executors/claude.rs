@@ -18,6 +18,7 @@ use workspace_utils::{
     log_msg::LogMsg,
     msg_store::MsgStore,
     path::make_path_relative,
+    vk_mcp_context::{VK_MCP_CONTEXT_ENV, VkMcpContext},
 };
 
 use self::{client::ClaudeAgentClient, protocol::ProtocolPeer, types::PermissionMode};
@@ -69,6 +70,10 @@ pub struct ClaudeCode {
     #[ts(skip)]
     #[derivative(Debug = "ignore", PartialEq = "ignore")]
     approvals_service: Option<Arc<dyn ExecutorApprovalService>>,
+    #[serde(skip)]
+    #[ts(skip)]
+    #[schemars(skip)]
+    vk_mcp_context: Option<VkMcpContext>,
 }
 
 impl ClaudeCode {
@@ -154,6 +159,10 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         self.approvals_service = Some(approvals);
     }
 
+    fn use_vk_mcp_context(&mut self, vk_mcp_context: &VkMcpContext) {
+        self.vk_mcp_context = Some(vk_mcp_context.to_owned());
+    }
+
     async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
         let command_builder = self.build_command_builder().await;
         let command_parts = command_builder.build_initial()?;
@@ -216,6 +225,13 @@ impl ClaudeCode {
             .stderr(Stdio::piped())
             .current_dir(current_dir)
             .args(&args);
+
+        if let Some(vk_mcp_context) = &self.vk_mcp_context {
+            command.env(
+                VK_MCP_CONTEXT_ENV,
+                serde_json::to_string(vk_mcp_context).unwrap_or_default(),
+            );
+        }
 
         let mut child = command.group_spawn()?;
         let child_stdout = child.inner().stdout.take().ok_or_else(|| {
@@ -1977,6 +1993,7 @@ mod tests {
                 additional_params: None,
             },
             approvals_service: None,
+            vk_mcp_context: None,
         };
         let msg_store = Arc::new(MsgStore::new());
         let current_dir = std::path::PathBuf::from("/tmp/test-worktree");

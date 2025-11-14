@@ -3,6 +3,7 @@ use std::{path::Path, sync::Arc};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
+use workspace_utils::vk_mcp_context::VkMcpContext;
 
 use crate::{
     actions::Executable,
@@ -32,6 +33,7 @@ impl Executable for CodingAgentInitialRequest {
         &self,
         current_dir: &Path,
         approvals: Arc<dyn ExecutorApprovalService>,
+        vk_mcp_context: &VkMcpContext,
     ) -> Result<SpawnedChild, ExecutorError> {
         let executor_profile_id = self.executor_profile_id.clone();
         let mut agent = ExecutorConfigs::get_cached()
@@ -41,6 +43,7 @@ impl Executable for CodingAgentInitialRequest {
             ))?;
 
         agent.use_approvals(approvals.clone());
+        agent.use_vk_mcp_context(vk_mcp_context);
 
         agent.spawn(current_dir, &self.prompt).await
     }

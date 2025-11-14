@@ -21,7 +21,10 @@ use serde_json::Value;
 use strum_macros::AsRefStr;
 use tokio::process::Command;
 use ts_rs::TS;
-use workspace_utils::msg_store::MsgStore;
+use workspace_utils::{
+    msg_store::MsgStore,
+    vk_mcp_context::{VK_MCP_CONTEXT_ENV, VkMcpContext},
+};
 
 use self::{
     client::{AppServerClient, LogWriter},
@@ -133,12 +136,19 @@ pub struct Codex {
     #[ts(skip)]
     #[derivative(Debug = "ignore", PartialEq = "ignore")]
     approvals: Option<Arc<dyn ExecutorApprovalService>>,
+    #[serde(skip)]
+    #[ts(skip)]
+    vk_mcp_context: Option<VkMcpContext>,
 }
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Codex {
     fn use_approvals(&mut self, approvals: Arc<dyn ExecutorApprovalService>) {
         self.approvals = Some(approvals);
+    }
+
+    fn use_vk_mcp_context(&mut self, vk_mcp_context: &VkMcpContext) {
+        self.vk_mcp_context = Some(vk_mcp_context.clone());
     }
 
     async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
@@ -264,6 +274,13 @@ impl Codex {
             .env("NODE_NO_WARNINGS", "1")
             .env("NO_COLOR", "1")
             .env("RUST_LOG", "error");
+
+        if let Some(vk_mcp_context) = &self.vk_mcp_context {
+            process.env(
+                VK_MCP_CONTEXT_ENV,
+                serde_json::to_string(vk_mcp_context).unwrap_or_default(),
+            );
+        }
 
         let mut child = process.group_spawn()?;
 

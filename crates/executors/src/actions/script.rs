@@ -5,7 +5,7 @@ use command_group::AsyncCommandGroup;
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 use ts_rs::TS;
-use workspace_utils::shell::get_shell_command;
+use workspace_utils::{shell::get_shell_command, vk_mcp_context::VkMcpContext};
 
 use crate::{
     actions::Executable,
@@ -39,6 +39,7 @@ impl Executable for ScriptRequest {
         &self,
         current_dir: &Path,
         _approvals: Arc<dyn ExecutorApprovalService>,
+        _vk_mcp_context: &VkMcpContext,
     ) -> Result<SpawnedChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
         let mut command = Command::new(shell_cmd);

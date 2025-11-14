@@ -94,6 +94,22 @@ pub struct ExecutionContext {
     pub task: Task,
 }
 
+use utils::vk_mcp_context::VkMcpContext;
+impl ExecutionContext {
+    pub fn to_vk_mcp_context(&self) -> VkMcpContext {
+        VkMcpContext {
+            project_id: self.task.project_id,
+            task_id: self.task.id,
+            task_title: self.task.title.clone(),
+            attempt_id: self.task_attempt.id,
+            attempt_branch: self.task_attempt.branch.clone(),
+            attempt_target_branch: self.task_attempt.target_branch.clone(),
+            execution_process_id: self.execution_process.id,
+            executor: self.task_attempt.executor.clone(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum ExecutorActionField {

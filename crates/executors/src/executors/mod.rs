@@ -10,7 +10,7 @@ use sqlx::Type;
 use strum_macros::{Display, EnumDiscriminants, EnumString, VariantNames};
 use thiserror::Error;
 use ts_rs::TS;
-use workspace_utils::msg_store::MsgStore;
+use workspace_utils::{msg_store::MsgStore, vk_mcp_context::VkMcpContext};
 
 use crate::{
     actions::ExecutorAction,
@@ -157,6 +157,7 @@ impl CodingAgent {
 #[enum_dispatch(CodingAgent)]
 pub trait StandardCodingAgentExecutor {
     fn use_approvals(&mut self, _approvals: Arc<dyn ExecutorApprovalService>) {}
+    fn use_vk_mcp_context(&mut self, _vk_mcp_context: &VkMcpContext) {}
 
     async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError>;
     async fn spawn_follow_up(
