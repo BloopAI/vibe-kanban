@@ -232,12 +232,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS uniq_pending_invite_per_email_per_org
     WHERE status = 'pending';
 
 CREATE TABLE IF NOT EXISTS auth_sessions (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    session_secret  TEXT NOT NULL,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    last_used_at    TIMESTAMPTZ,
-    revoked_at      TIMESTAMPTZ
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id             UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    session_secret_hash TEXT,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_used_at        TIMESTAMPTZ,
+    revoked_at          TIMESTAMPTZ
 );
 
 CREATE INDEX IF NOT EXISTS idx_auth_sessions_user
@@ -316,3 +316,18 @@ CREATE TRIGGER trg_oauth_handoffs_updated_at
     BEFORE UPDATE ON oauth_handoffs
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
+
+CREATE OR REPLACE FUNCTION set_last_used_at()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    NEW.last_used_at = NOW();
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_auth_sessions_last_used_at
+BEFORE UPDATE ON auth_sessions
+FOR EACH ROW
+EXECUTE FUNCTION set_last_used_at();

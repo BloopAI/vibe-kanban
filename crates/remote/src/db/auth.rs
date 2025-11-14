@@ -16,7 +16,7 @@ pub enum AuthSessionError {
 pub struct AuthSession {
     pub id: Uuid,
     pub user_id: Uuid,
-    pub session_secret: String,
+    pub session_secret_hash: Option<String>,
     pub created_at: DateTime<Utc>,
     pub last_used_at: Option<DateTime<Utc>>,
     pub revoked_at: Option<DateTime<Utc>>,
@@ -36,23 +36,23 @@ impl<'a> AuthSessionRepository<'a> {
     pub async fn create(
         &self,
         user_id: Uuid,
-        session_secret: &str,
+        session_secret_hash: Option<&str>,
     ) -> Result<AuthSession, AuthSessionError> {
         query_as!(
             AuthSession,
             r#"
-            INSERT INTO auth_sessions (user_id, session_secret)
+            INSERT INTO auth_sessions (user_id, session_secret_hash)
             VALUES ($1, $2)
             RETURNING
-                id            AS "id!",
-                user_id       AS "user_id!: Uuid",
-                session_secret AS "session_secret!",
-                created_at    AS "created_at!",
-                last_used_at  AS "last_used_at?",
-                revoked_at    AS "revoked_at?"
+                id                  AS "id!",
+                user_id             AS "user_id!: Uuid",
+                session_secret_hash AS "session_secret_hash?",
+                created_at          AS "created_at!",
+                last_used_at        AS "last_used_at?",
+                revoked_at          AS "revoked_at?"
             "#,
             user_id,
-            session_secret
+            session_secret_hash
         )
         .fetch_one(self.pool)
         .await
@@ -64,12 +64,12 @@ impl<'a> AuthSessionRepository<'a> {
             AuthSession,
             r#"
             SELECT
-                id            AS "id!",
-                user_id       AS "user_id!: Uuid",
-                session_secret AS "session_secret!",
-                created_at    AS "created_at!",
-                last_used_at  AS "last_used_at?",
-                revoked_at    AS "revoked_at?"
+                id                  AS "id!",
+                user_id             AS "user_id!: Uuid",
+                session_secret_hash AS "session_secret_hash?",
+                created_at          AS "created_at!",
+                last_used_at        AS "last_used_at?",
+                revoked_at          AS "revoked_at?"
             FROM auth_sessions
             WHERE id = $1
             "#,
@@ -106,6 +106,25 @@ impl<'a> AuthSessionRepository<'a> {
             WHERE id = $1
             "#,
             session_id
+        )
+        .execute(self.pool)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn update_secret(
+        &self,
+        session_id: Uuid,
+        session_secret_hash: &str,
+    ) -> Result<(), AuthSessionError> {
+        sqlx::query!(
+            r#"
+            UPDATE auth_sessions
+            SET session_secret_hash = $2
+            WHERE id = $1
+            "#,
+            session_id,
+            session_secret_hash
         )
         .execute(self.pool)
         .await?;

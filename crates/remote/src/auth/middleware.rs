@@ -59,7 +59,11 @@ pub async fn require_session(
         }
     };
 
-    if session.revoked_at.is_some() || session.session_secret != identity.nonce {
+    let secrets_match = jwt
+        .verify_session_secret(session.session_secret_hash.as_deref(), &identity.nonce)
+        .unwrap_or(false);
+
+    if session.revoked_at.is_some() || !secrets_match {
         warn!(
             "session `{}` rejected (revoked or rotated)",
             identity.session_id
@@ -100,7 +104,7 @@ pub async fn require_session(
     req.extensions_mut().insert(RequestContext {
         user,
         session_id: session.id,
-        session_secret: session.session_secret.clone(),
+        session_secret: identity.nonce,
     });
 
     match session_repo.touch(session.id).await {
