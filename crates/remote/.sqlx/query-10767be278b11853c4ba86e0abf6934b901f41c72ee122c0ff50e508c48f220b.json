@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                o.id AS \"id!: Uuid\",\n                o.name AS \"name!\",\n                o.slug AS \"slug!\",\n                o.is_personal AS \"is_personal!\",\n                o.created_at AS \"created_at!\",\n                o.updated_at AS \"updated_at!\",\n                m.role AS \"user_role!: MemberRole\"\n            FROM organizations o\n            JOIN organization_member_metadata m ON m.organization_id = o.id\n            WHERE m.user_id = $1 AND m.status = 'active'\n            ORDER BY o.created_at DESC\n            ",
+  "query": "\n            SELECT\n                o.id AS \"id!: Uuid\",\n                o.name AS \"name!\",\n                o.slug AS \"slug!\",\n                o.is_personal AS \"is_personal!\",\n                o.created_at AS \"created_at!\",\n                o.updated_at AS \"updated_at!\",\n                m.role AS \"user_role!: MemberRole\"\n            FROM organizations o\n            JOIN organization_member_metadata m ON m.organization_id = o.id\n            WHERE m.user_id = $1\n            ORDER BY o.created_at DESC\n            ",
   "describe": {
     "columns": [
       {
@@ -64,5 +64,5 @@
       false
     ]
   },
-  "hash": "0029e524b5cc2f444bf2c93b0cbb8acd37824d1f55e7a59507d27391ed9da09a"
+  "hash": "10767be278b11853c4ba86e0abf6934b901f41c72ee122c0ff50e508c48f220b"
 }

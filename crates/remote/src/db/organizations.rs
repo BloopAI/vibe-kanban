@@ -174,7 +174,7 @@ impl<'a> OrganizationRepository<'a> {
                 m.role AS "user_role!: MemberRole"
             FROM organizations o
             JOIN organization_member_metadata m ON m.organization_id = o.id
-            WHERE m.user_id = $1 AND m.status = 'active'
+            WHERE m.user_id = $1
             ORDER BY o.created_at DESC
             "#,
             user_id
@@ -236,8 +236,8 @@ impl<'a> OrganizationRepository<'a> {
             r#"
             WITH s AS (
                 SELECT
-                    COUNT(*) FILTER (WHERE role = 'admin' AND status = 'active') AS admin_count,
-                    BOOL_OR(user_id = $2 AND role = 'admin' AND status = 'active') AS is_admin
+                    COUNT(*) FILTER (WHERE role = 'admin') AS admin_count,
+                    BOOL_OR(user_id = $2 AND role = 'admin') AS is_admin
                 FROM organization_member_metadata
                 WHERE organization_id = $1
             )

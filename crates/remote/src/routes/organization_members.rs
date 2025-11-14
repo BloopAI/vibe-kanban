@@ -286,7 +286,7 @@ pub async fn list_members(
             ORDER BY created_at ASC
             LIMIT 1
         ) oa ON true
-        WHERE omm.organization_id = $1 AND omm.status = 'active'
+        WHERE omm.organization_id = $1
         ORDER BY omm.joined_at ASC
         "#,
         org_id
@@ -333,7 +333,7 @@ pub async fn remove_member(
 
     let target = sqlx::query!(
         r#"
-        SELECT role AS "role!: MemberRole", status
+        SELECT role AS "role!: MemberRole"
         FROM organization_member_metadata
         WHERE organization_id = $1 AND user_id = $2
         FOR UPDATE
@@ -346,19 +346,12 @@ pub async fn remove_member(
     .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?
     .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "Member not found"))?;
 
-    if target.status != "active" {
-        return Err(ErrorResponse::new(
-            StatusCode::NOT_FOUND,
-            "Member not found",
-        ));
-    }
-
     if target.role == MemberRole::Admin {
         let admin_ids = sqlx::query_scalar!(
             r#"
             SELECT user_id
             FROM organization_member_metadata
-            WHERE organization_id = $1 AND status = 'active' AND role = 'admin'
+            WHERE organization_id = $1 AND role = 'admin'
             FOR UPDATE
             "#,
             org_id
@@ -430,7 +423,7 @@ pub async fn update_member_role(
 
     let target = sqlx::query!(
         r#"
-        SELECT role AS "role!: MemberRole", status
+        SELECT role AS "role!: MemberRole"
         FROM organization_member_metadata
         WHERE organization_id = $1 AND user_id = $2
         FOR UPDATE
@@ -442,13 +435,6 @@ pub async fn update_member_role(
     .await
     .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?
     .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "Member not found"))?;
-
-    if target.status != "active" {
-        return Err(ErrorResponse::new(
-            StatusCode::NOT_FOUND,
-            "Member not found",
-        ));
-    }
 
     if target.role == payload.role {
         return Ok(Json(UpdateMemberRoleResponse {
@@ -462,7 +448,7 @@ pub async fn update_member_role(
             r#"
             SELECT user_id
             FROM organization_member_metadata
-            WHERE organization_id = $1 AND status = 'active' AND role = 'admin'
+            WHERE organization_id = $1 AND role = 'admin'
             FOR UPDATE
             "#,
             org_id
