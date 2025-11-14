@@ -239,7 +239,9 @@ const CreatePrDialog = NiceModal.create(() => {
           ) : (
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="pr-title">{t('createPrDialog.titleLabel')}</Label>
+                <Label htmlFor="pr-title">
+                  {t('createPrDialog.titleLabel')}
+                </Label>
                 <Input
                   id="pr-title"
                   value={prTitle}
@@ -248,7 +250,9 @@ const CreatePrDialog = NiceModal.create(() => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="pr-body">{t('createPrDialog.descriptionLabel')}</Label>
+                <Label htmlFor="pr-body">
+                  {t('createPrDialog.descriptionLabel')}
+                </Label>
                 <Textarea
                   id="pr-body"
                   value={prBody}
@@ -258,7 +262,9 @@ const CreatePrDialog = NiceModal.create(() => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="pr-base">{t('createPrDialog.baseBranchLabel')}</Label>
+                <Label htmlFor="pr-base">
+                  {t('createPrDialog.baseBranchLabel')}
+                </Label>
                 <BranchSelector
                   branches={branches}
                   selectedBranch={prBaseBranch}
