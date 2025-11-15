@@ -42,9 +42,7 @@ export function FullAttemptLogsPage() {
                   <TaskAttemptPanel attempt={attempt} task={task}>
                     {({ logs, followUp }) => (
                       <div className="h-full min-h-0 grid grid-rows-[minmax(0,1fr)_minmax(0,1fr)]">
-                        <div className="min-h-0 flex flex-col">
-                          {logs}
-                        </div>
+                        <div className="min-h-0 flex flex-col">{logs}</div>
                         <div className="border-t min-h-0 overflow-hidden">
                           <div className="mx-auto w-full max-w-[50rem] h-full min-h-0">
                             {followUp}
