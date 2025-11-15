@@ -524,7 +524,9 @@ export function TaskFollowUpSection({
             <div className="flex-1 flex gap-2">
               {/* Image button */}
               <Button
-                variant={images.length > 0 || showImageUpload ? 'default' : 'secondary'}
+                variant={
+                  images.length > 0 || showImageUpload ? 'default' : 'secondary'
+                }
                 size="sm"
                 onClick={() => setShowImageUpload(!showImageUpload)}
                 disabled={!isEditable}
