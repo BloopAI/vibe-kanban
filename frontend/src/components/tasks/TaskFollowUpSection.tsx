@@ -472,7 +472,9 @@ export function TaskFollowUpSection({
                     canSendFollowUp && !isAttemptRunning && isEditable
                   }
                   enableAbort={canSendFollowUp && !isAttemptRunning}
-                  conflictResolutionInstructions={conflictResolutionInstructions}
+                  conflictResolutionInstructions={
+                    conflictResolutionInstructions
+                  }
                 />
               )}
 
@@ -506,7 +508,10 @@ export function TaskFollowUpSection({
                       isLoaded: isDraftLoaded,
                       isSending: !!draft?.sending,
                     },
-                    queue: { isUnqueuing: isUnqueuing, isQueued: displayQueued },
+                    queue: {
+                      isUnqueuing: isUnqueuing,
+                      isQueued: displayQueued,
+                    },
                   }}
                 />
               </div>
