@@ -524,17 +524,12 @@ export function TaskFollowUpSection({
             <div className="flex-1 flex gap-2">
               {/* Image button */}
               <Button
-                variant="secondary"
+                variant={images.length > 0 || showImageUpload ? 'default' : 'secondary'}
                 size="sm"
                 onClick={() => setShowImageUpload(!showImageUpload)}
                 disabled={!isEditable}
               >
-                <ImageIcon
-                  className={cn(
-                    'h-4 w-4',
-                    (images.length > 0 || showImageUpload) && 'text-primary'
-                  )}
-                />
+                <ImageIcon className="h-4 w-4" />
               </Button>
 
               <VariantSelector
