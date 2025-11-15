@@ -101,7 +101,7 @@ export function TaskCard({
                 firstName={sharedTask.assignee_first_name ?? undefined}
                 lastName={sharedTask.assignee_last_name ?? undefined}
                 username={sharedTask.assignee_username ?? undefined}
-                className="mr-2 inline-block align-middle h-5 w-5"
+                className="mr-2 inline-flex align-middle h-5 w-5"
               />
             ) : null}
             <span className="align-middle">{task.title}</span>
