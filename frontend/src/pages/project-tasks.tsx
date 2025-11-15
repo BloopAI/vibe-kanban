@@ -958,8 +958,8 @@ export function ProjectTasks() {
           {({ logs, followUp }) => (
             <>
               <GitErrorBanner />
-              <div className="flex-1 min-h-0 grid grid-rows-[minmax(0,1fr)_auto_minmax(0,1fr)]">
-                <div className="min-h-0 flex flex-col">{logs}</div>
+              <div className="flex-1 min-h-0 flex flex-col">
+                <div className="flex-1 min-h-0 flex flex-col">{logs}</div>
 
                 <div className="shrink-0 border-t">
                   <div className="mx-auto w-full max-w-[50rem]">
@@ -967,7 +967,7 @@ export function ProjectTasks() {
                   </div>
                 </div>
 
-                <div className="min-h-0 border-t overflow-hidden">
+                <div className="min-h-0 max-h-[50%] border-t overflow-hidden">
                   <div className="mx-auto w-full max-w-[50rem] h-full min-h-0">
                     {followUp}
                   </div>
