@@ -175,7 +175,7 @@ export const RestoreLogsDialog = NiceModal.create<RestoreLogsDialogProps>(
                         aria-checked={worktreeResetOn}
                         onClick={() => setWorktreeResetOn((v) => !v)}
                       >
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-xs text-muted-foreground flex-1 min-w-0 break-words">
                           {worktreeResetOn ? 'Enabled' : 'Disabled'}
                         </div>
                         <div className="ml-auto relative inline-flex h-5 w-9 items-center rounded-full">
@@ -210,7 +210,7 @@ export const RestoreLogsDialog = NiceModal.create<RestoreLogsDialogProps>(
                               </span>
                             )}
                             {targetSubject && (
-                              <span className="text-muted-foreground break-words whitespace-normal">
+                              <span className="text-muted-foreground break-words flex-1 min-w-0 max-w-full">
                                 {targetSubject}
                               </span>
                             )}
@@ -275,7 +275,7 @@ export const RestoreLogsDialog = NiceModal.create<RestoreLogsDialogProps>(
                           });
                         }}
                       >
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-xs text-muted-foreground flex-1 min-w-0 break-words">
                           {forceReset
                             ? worktreeResetOn
                               ? 'Enabled'
@@ -312,7 +312,7 @@ export const RestoreLogsDialog = NiceModal.create<RestoreLogsDialogProps>(
                           });
                         }}
                       >
-                        <div className="text-xs font-medium text-destructive">
+                        <div className="text-xs font-medium text-destructive flex-1 min-w-0 break-words">
                           Force reset (discard uncommitted changes)
                         </div>
                         <div className="ml-auto relative inline-flex h-5 w-9 items-center rounded-full">
@@ -348,7 +348,7 @@ export const RestoreLogsDialog = NiceModal.create<RestoreLogsDialogProps>(
                               {short}
                             </span>
                             {targetSubject && (
-                              <span className="text-muted-foreground break-words whitespace-normal">
+                              <span className="text-muted-foreground break-words flex-1 min-w-0 max-w-full">
                                 {targetSubject}
                               </span>
                             )}
