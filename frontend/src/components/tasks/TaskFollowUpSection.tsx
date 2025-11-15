@@ -454,7 +454,7 @@ export function TaskFollowUpSection({
               {/* Review comments preview */}
               {reviewMarkdown && (
                 <div className="mb-4">
-                  <div className="text-sm whitespace-pre-wrap break-words max-h-[40vh] overflow-y-auto rounded-md border bg-muted p-3">
+                  <div className="text-sm whitespace-pre-wrap break-words rounded-md border bg-muted p-3">
                     {reviewMarkdown}
                   </div>
                 </div>
@@ -498,7 +498,6 @@ export function TaskFollowUpSection({
                   disabled={!isEditable}
                   showLoadingOverlay={isUnqueuing || !isDraftLoaded}
                   onPasteFiles={handlePasteImages}
-                  textareaClassName="max-h-[40vh] overflow-y-auto"
                   onFocusChange={setIsTextareaFocused}
                 />
                 <FollowUpStatusRow
