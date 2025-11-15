@@ -966,8 +966,8 @@ export function ProjectTasks() {
                 </div>
               </div>
 
-              <div className="shrink-0 border-t">
-                <div className="mx-auto w-full max-w-[50rem]">{followUp}</div>
+              <div className="min-h-0 border-t overflow-hidden">
+                <div className="mx-auto w-full max-w-[50rem] h-full min-h-0">{followUp}</div>
               </div>
             </>
           )}

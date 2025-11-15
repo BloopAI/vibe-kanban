@@ -45,8 +45,8 @@ export function FullAttemptLogsPage() {
                         <div className="flex-1 min-h-0 flex flex-col">
                           {logs}
                         </div>
-                        <div className="border-t shrink-0">
-                          <div className="mx-auto w-full max-w-[50rem]">
+                        <div className="border-t min-h-0 overflow-hidden">
+                          <div className="mx-auto w-full max-w-[50rem] h-full min-h-0">
                             {followUp}
                           </div>
                         </div>
@@ -61,8 +61,8 @@ export function FullAttemptLogsPage() {
               {({ logs, followUp }) => (
                 <div className="h-full flex flex-col">
                   <div className="flex-1 min-h-0 flex flex-col">{logs}</div>
-                  <div className="border-t shrink-0">
-                    <div className="mx-auto w-full max-w-[50rem]">
+                  <div className="border-t min-h-0 overflow-hidden">
+                    <div className="mx-auto w-full max-w-[50rem] h-full min-h-0">
                       {followUp}
                     </div>
                   </div>
