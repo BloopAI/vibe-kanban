@@ -494,6 +494,7 @@ export function TaskFollowUpSection({
                 disabled={!isEditable}
                 showLoadingOverlay={isUnqueuing || !isDraftLoaded}
                 onPasteFiles={handlePasteImages}
+                textareaClassName="max-h-[40vh] overflow-y-auto"
                 onFocusChange={setIsTextareaFocused}
               />
               <FollowUpStatusRow
