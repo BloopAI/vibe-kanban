@@ -94,18 +94,18 @@ export function TaskCard({
       }
     >
       <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-start gap-3 min-w-0">
           <h4 className="flex-1 min-w-0 line-clamp-2 font-light text-sm">
-            {task.title}
+            {sharedTask ? (
+              <UserAvatar
+                firstName={sharedTask.assignee_first_name ?? undefined}
+                lastName={sharedTask.assignee_last_name ?? undefined}
+                username={sharedTask.assignee_username ?? undefined}
+                className="mr-2 inline-block align-middle h-5 w-5"
+              />
+            ) : null}
+            <span className="align-middle">{task.title}</span>
           </h4>
-          {sharedTask ? (
-            <UserAvatar
-              firstName={sharedTask.assignee_first_name ?? undefined}
-              lastName={sharedTask.assignee_last_name ?? undefined}
-              username={sharedTask.assignee_username ?? undefined}
-              className="shrink-0"
-            />
-          ) : null}
           <div className="flex items-center gap-1 shrink-0">
             {/* In Progress Spinner */}
             {task.has_in_progress_attempt && (
