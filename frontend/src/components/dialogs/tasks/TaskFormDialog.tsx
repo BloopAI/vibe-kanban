@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useRef, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { defineModal } from '@/lib/modals';
 import { useDropzone } from 'react-dropzone';
 import { useForm, useStore } from '@tanstack/react-form';
 import { Image as ImageIcon } from 'lucide-react';
@@ -76,7 +77,7 @@ type TaskFormValues = {
   autoStart: boolean;
 };
 
-export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
+const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const { mode, projectId } = props;
   const editMode = mode === 'edit';
   const modal = useModal();
@@ -622,3 +623,7 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
     </>
   );
 });
+
+export const TaskFormDialog = defineModal<TaskFormDialogProps, void>(
+  TaskFormDialogImpl
+);

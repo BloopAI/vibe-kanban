@@ -1,4 +1,5 @@
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { defineModal } from '@/lib/modals';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -20,9 +21,8 @@ export interface ViewRelatedTasksDialogProps {
   onNavigateToTask?: (taskId: string) => void;
 }
 
-export const ViewRelatedTasksDialog =
-  NiceModal.create<ViewRelatedTasksDialogProps>(
-    ({ attemptId, projectId, attempt, onNavigateToTask }) => {
+const ViewRelatedTasksDialogImpl = NiceModal.create<ViewRelatedTasksDialogProps>(
+  ({ attemptId, projectId, attempt, onNavigateToTask }) => {
       const modal = useModal();
       const { t } = useTranslation('tasks');
       const {
@@ -165,4 +165,9 @@ export const ViewRelatedTasksDialog =
         </Dialog>
       );
     }
-  );
+);
+
+export const ViewRelatedTasksDialog = defineModal<
+  ViewRelatedTasksDialogProps,
+  void
+>(ViewRelatedTasksDialogImpl);

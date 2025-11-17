@@ -37,14 +37,20 @@ import type {
 } from '@/components/dialogs/auth/GhCliSetupDialog';
 import type { GhCliSetupError } from 'shared/types';
 import { useUserSystem } from '@/components/config-provider';
-const CreatePrDialog = NiceModal.create(() => {
-  const modal = useModal();
-  const { t } = useTranslation('tasks');
-  const { isLoaded } = useAuth();
-  const { environment } = useUserSystem();
-  const data = modal.args as
-    | { attempt: TaskAttempt; task: TaskWithAttemptStatus; projectId: string }
-    | undefined;
+import { defineModal } from '@/lib/modals';
+
+interface CreatePRDialogProps {
+  attempt: TaskAttempt;
+  task: TaskWithAttemptStatus;
+  projectId: string;
+}
+
+const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
+  ({ attempt, task, projectId }) => {
+    const modal = useModal();
+    const { t } = useTranslation('tasks');
+    const { isLoaded } = useAuth();
+    const { environment } = useUserSystem();
   const [prTitle, setPrTitle] = useState('');
   const [prBody, setPrBody] = useState('');
   const [prBaseBranch, setPrBaseBranch] = useState('');
@@ -60,24 +66,24 @@ const CreatePrDialog = NiceModal.create(() => {
       : 'GitHub CLI needs manual setup';
 
   useEffect(() => {
-    if (!modal.visible || !data || !isLoaded) {
+    if (!modal.visible || !isLoaded) {
       return;
     }
 
-    setPrTitle(`${data.task.title} (vibe-kanban)`);
-    setPrBody(data.task.description || '');
+    setPrTitle(`${task.title} (vibe-kanban)`);
+    setPrBody(task.description || '');
 
     // Always fetch branches for dropdown population
-    if (data.projectId) {
+    if (projectId) {
       setBranchesLoading(true);
       projectsApi
-        .getBranches(data.projectId)
+        .getBranches(projectId)
         .then((projectBranches) => {
           setBranches(projectBranches);
 
           // Set smart default: task target branch OR current branch
-          if (data.attempt.target_branch) {
-            setPrBaseBranch(data.attempt.target_branch);
+          if (attempt.target_branch) {
+            setPrBaseBranch(attempt.target_branch);
           } else {
             const currentBranch = projectBranches.find((b) => b.is_current);
             if (currentBranch) {
@@ -91,7 +97,7 @@ const CreatePrDialog = NiceModal.create(() => {
 
     setError(null); // Reset error when opening
     setGhCliHelp(null);
-  }, [modal.visible, data, isLoaded]);
+  }, [modal.visible, isLoaded, task, attempt, projectId]);
 
   const isMacEnvironment = useMemo(
     () => environment?.os_type?.toLowerCase().includes('mac'),
@@ -99,7 +105,7 @@ const CreatePrDialog = NiceModal.create(() => {
   );
 
   const handleConfirmCreatePR = useCallback(async () => {
-    if (!data?.projectId || !data?.attempt.id) return;
+    if (!projectId || !attempt.id) return;
 
     setError(null);
     setGhCliHelp(null);
@@ -129,7 +135,7 @@ const CreatePrDialog = NiceModal.create(() => {
       setError(ui.message);
     };
 
-    const result = await attemptsApi.createPR(data.attempt.id, {
+    const result = await attemptsApi.createPR(attempt.id, {
       title: prTitle,
       body: prBody || null,
       target_branch: prBaseBranch || null,
@@ -150,9 +156,9 @@ const CreatePrDialog = NiceModal.create(() => {
       result.message || 'Failed to run GitHub CLI setup.';
 
     const showGhCliSetupDialog = async () => {
-      const setupResult = (await NiceModal.show(GhCliSetupDialog, {
-        attemptId: data.attempt.id,
-      })) as GhCliSetupError | null;
+      const setupResult = await GhCliSetupDialog.show({
+        attemptId: attempt.id,
+      });
 
       handleGhCliSetupOutcome(setupResult, defaultGhCliErrorMessage);
     };
@@ -209,7 +215,7 @@ const CreatePrDialog = NiceModal.create(() => {
       setError(t('createPrDialog.errors.failedToCreate'));
       setGhCliHelp(null);
     }
-  }, [data, prBaseBranch, prBody, prTitle, modal, isMacEnvironment]);
+  }, [attempt, projectId, prBaseBranch, prBody, prTitle, modal, isMacEnvironment, t]);
 
   const handleCancelCreatePR = useCallback(() => {
     modal.hide();
@@ -219,8 +225,7 @@ const CreatePrDialog = NiceModal.create(() => {
     setPrBaseBranch('');
   }, [modal]);
 
-  // Don't render if no data
-  if (!data) return null;
+
 
   return (
     <>
@@ -316,6 +321,9 @@ const CreatePrDialog = NiceModal.create(() => {
       </Dialog>
     </>
   );
-});
+  }
+);
 
-export { CreatePrDialog as CreatePRDialog };
+export const CreatePRDialog = defineModal<CreatePRDialogProps, void>(
+  CreatePRDialogImpl
+);
