@@ -108,7 +108,7 @@ pub struct Opencode {
 
 impl Opencode {
     fn build_command_builder(&self) -> CommandBuilder {
-        let mut builder = CommandBuilder::new("npx -y opencode-ai@0.15.8 run").params([
+        let mut builder = CommandBuilder::new("npx -y opencode-ai@1.0.68 run").params([
             "--print-logs",
             "--log-level",
             "ERROR",

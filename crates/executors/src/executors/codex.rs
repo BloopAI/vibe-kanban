@@ -168,7 +168,7 @@ impl StandardCodingAgentExecutor for Codex {
 
 impl Codex {
     fn build_command_builder(&self) -> CommandBuilder {
-        let mut builder = CommandBuilder::new("npx -y @openai/codex@0.55.0 app-server");
+        let mut builder = CommandBuilder::new("npx -y @openai/codex@0.58.0 app-server");
 
         if self.oss.unwrap_or(false) {
             builder = builder.extend_params(["--oss"]);
