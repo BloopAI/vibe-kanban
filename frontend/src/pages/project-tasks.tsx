@@ -207,9 +207,11 @@ export function ProjectTasks() {
 
   useEffect(() => {
     if (taskPanelShowcase.isOpen) {
-      FeatureShowcaseDialog.show({ config: showcases.taskPanel }).finally(() => {
-        taskPanelShowcase.close();
-      });
+      FeatureShowcaseDialog.show({ config: showcases.taskPanel }).finally(
+        () => {
+          taskPanelShowcase.close();
+        }
+      );
     }
   }, [taskPanelShowcase.isOpen]);
 
