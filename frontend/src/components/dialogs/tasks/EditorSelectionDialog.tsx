@@ -18,13 +18,14 @@ import {
 import { EditorType } from 'shared/types';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { defineModal } from '@/lib/modals';
 
 export interface EditorSelectionDialogProps {
   selectedAttemptId?: string;
   filePath?: string;
 }
 
-export const EditorSelectionDialog =
+const EditorSelectionDialogImpl =
   NiceModal.create<EditorSelectionDialogProps>(
     ({ selectedAttemptId, filePath }) => {
       const modal = useModal();
@@ -92,3 +93,7 @@ export const EditorSelectionDialog =
       );
     }
   );
+
+export const EditorSelectionDialog = defineModal<EditorType | null>(
+  EditorSelectionDialogImpl
+);

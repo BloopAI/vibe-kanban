@@ -34,6 +34,7 @@ import type {
 } from 'shared/types';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useKeySubmitTask, useKeySubmitTaskAlt, Scope } from '@/keyboard';
+import { defineModal } from '@/lib/modals';
 
 interface Task {
   id: string;
@@ -53,7 +54,7 @@ export interface TaskFormDialogProps {
   parentTaskAttemptId?: string; // For linking to parent task attempt
 }
 
-export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
+const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>(
   ({
     task,
     projectId,
@@ -695,3 +696,5 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>(
     );
   }
 );
+
+export const TaskFormDialog = defineModal<void>(TaskFormDialogImpl);

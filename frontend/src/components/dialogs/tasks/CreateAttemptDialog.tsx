@@ -24,13 +24,14 @@ import { useProject } from '@/contexts/project-context';
 import { useUserSystem } from '@/components/config-provider';
 import { paths } from '@/lib/paths';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { defineModal } from '@/lib/modals';
 import type { ExecutorProfileId, BaseCodingAgent } from 'shared/types';
 
 export interface CreateAttemptDialogProps {
   taskId: string;
 }
 
-export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
+const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
   ({ taskId }) => {
     const modal = useModal();
     const navigate = useNavigateWithSearch();
@@ -135,6 +136,7 @@ export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
           profile: effectiveProfile,
           baseBranch: effectiveBranch,
         });
+
         modal.hide();
       } catch (err) {
         console.error('Failed to create attempt:', err);
@@ -210,3 +212,5 @@ export const CreateAttemptDialog = NiceModal.create<CreateAttemptDialogProps>(
     );
   }
 );
+
+export const CreateAttemptDialog = defineModal<void>(CreateAttemptDialogImpl);

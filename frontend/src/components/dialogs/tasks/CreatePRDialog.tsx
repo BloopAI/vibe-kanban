@@ -25,6 +25,7 @@ import {
 import { projectsApi } from '@/lib/api.ts';
 import { Loader2 } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { defineModal } from '@/lib/modals';
 import { showModal } from '@/lib/modals';
 import { Modals } from '@/components/dialogs';
 import { useAuth } from '@/hooks';
@@ -322,4 +323,4 @@ const CreatePrDialog = NiceModal.create(() => {
   );
 });
 
-export { CreatePrDialog as CreatePRDialog };
+export const CreatePRDialog = defineModal<void>(CreatePrDialog);

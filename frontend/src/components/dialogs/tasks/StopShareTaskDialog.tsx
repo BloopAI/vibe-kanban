@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { defineModal } from '@/lib/modals';
 import { useTranslation } from 'react-i18next';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import { useTaskMutations } from '@/hooks/useTaskMutations';
@@ -19,7 +20,8 @@ export interface StopShareTaskDialogProps {
   sharedTask: SharedTaskRecord;
 }
 
-const StopShareTaskDialog = NiceModal.create<StopShareTaskDialogProps>(
+const StopShareTaskDialogImpl =
+  NiceModal.create<StopShareTaskDialogProps>(
   ({ sharedTask }) => {
     const modal = useModal();
     const { t } = useTranslation('tasks');
@@ -130,4 +132,6 @@ const StopShareTaskDialog = NiceModal.create<StopShareTaskDialogProps>(
   }
 );
 
-export { StopShareTaskDialog };
+export const StopShareTaskDialog = defineModal<void>(
+  StopShareTaskDialogImpl
+);

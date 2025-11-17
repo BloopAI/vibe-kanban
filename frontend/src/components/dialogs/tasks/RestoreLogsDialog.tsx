@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, GitCommit } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { defineModal } from '@/lib/modals';
 
 export interface RestoreLogsDialogProps {
   targetSha: string | null;
@@ -35,7 +36,7 @@ export type RestoreLogsDialogResult = {
   forceWhenDirty?: boolean;
 };
 
-export const RestoreLogsDialog = NiceModal.create<RestoreLogsDialogProps>(
+const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
   ({
     targetSha,
     targetSubject,
@@ -310,6 +311,7 @@ export const RestoreLogsDialog = NiceModal.create<RestoreLogsDialogProps>(
                             if (next) setWorktreeResetOn(true);
                             return next;
                           });
+
                         }}
                       >
                         <div className="text-xs font-medium text-destructive flex-1 min-w-0 break-words">
@@ -383,3 +385,5 @@ export const RestoreLogsDialog = NiceModal.create<RestoreLogsDialogProps>(
     );
   }
 );
+
+export const RestoreLogsDialog = defineModal<RestoreLogsDialogResult>(RestoreLogsDialogImpl);

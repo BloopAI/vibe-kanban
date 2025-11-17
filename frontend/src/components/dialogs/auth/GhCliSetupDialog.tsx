@@ -7,6 +7,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { defineModal } from '@/lib/modals';
 import { attemptsApi } from '@/lib/api';
 import type { GhCliSetupError } from 'shared/types';
 import { useRef, useState } from 'react';
@@ -119,7 +120,7 @@ export const GhCliHelpInstructions = ({
   );
 };
 
-export const GhCliSetupDialog = NiceModal.create<GhCliSetupDialogProps>(
+const GhCliSetupDialogImpl = NiceModal.create<GhCliSetupDialogProps>(
   ({ attemptId }) => {
     const modal = useModal();
     const { t } = useTranslation();
@@ -160,6 +161,7 @@ export const GhCliSetupDialog = NiceModal.create<GhCliSetupDialogProps>(
           message: ui.message,
           variant: ui.variant,
         });
+
       } finally {
         setIsRunning(false);
       }
@@ -246,3 +248,5 @@ export const GhCliSetupDialog = NiceModal.create<GhCliSetupDialogProps>(
     );
   }
 );
+
+export const GhCliSetupDialog = defineModal<GhCliSupportContent | null>(GhCliSetupDialogImpl);

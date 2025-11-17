@@ -30,13 +30,14 @@ import { useUserSystem } from '@/components/config-provider';
 
 import { toPrettyCase } from '@/utils/string';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { defineModal } from '@/lib/modals';
 
 export type OnboardingResult = {
   profile: ExecutorProfileId;
   editor: EditorConfig;
 };
 
-const OnboardingDialog = NiceModal.create(() => {
+const OnboardingDialogImpl = NiceModal.create(() => {
   const modal = useModal();
   const { profiles, config } = useUserSystem();
 
@@ -227,4 +228,6 @@ const OnboardingDialog = NiceModal.create(() => {
   );
 });
 
-export { OnboardingDialog };
+export const OnboardingDialog = defineModal<OnboardingResult>(
+  OnboardingDialogImpl
+);

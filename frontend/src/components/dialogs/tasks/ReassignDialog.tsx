@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { defineModal } from '@/lib/modals';
 import {
   Dialog,
   DialogContent,
@@ -43,7 +44,7 @@ const buildMemberLabel = (member: OrganizationMemberWithProfile): string => {
   return member.user_id;
 };
 
-export const ReassignDialog = NiceModal.create<ReassignDialogProps>(
+const ReassignDialogImpl = NiceModal.create<ReassignDialogProps>(
   ({ sharedTask }) => {
     const modal = useModal();
     const { userId } = useAuth();
@@ -102,6 +103,7 @@ export const ReassignDialog = NiceModal.create<ReassignDialogProps>(
         setSubmitError(getReadableError(error));
       },
     });
+
 
     const handleConfirm = async () => {
       if (reassignMutation.isPending) {
@@ -238,3 +240,5 @@ export const ReassignDialog = NiceModal.create<ReassignDialogProps>(
     );
   }
 );
+
+export const ReassignDialog = defineModal<SharedTaskRecord | null>(ReassignDialogImpl);

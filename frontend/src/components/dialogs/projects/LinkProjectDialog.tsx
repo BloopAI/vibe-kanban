@@ -26,6 +26,7 @@ import { useAuth } from '@/hooks/auth/useAuth';
 import { LoginRequiredPrompt } from '@/components/dialogs/shared/LoginRequiredPrompt';
 import type { Project } from 'shared/types';
 import { useTranslation } from 'react-i18next';
+import { defineModal } from '@/lib/modals';
 
 export type LinkProjectResult = {
   action: 'linked' | 'canceled';
@@ -39,7 +40,7 @@ interface LinkProjectDialogProps {
 
 type LinkMode = 'existing' | 'create';
 
-export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
+const LinkProjectDialogImpl = NiceModal.create<LinkProjectDialogProps>(
   ({ projectId, projectName }) => {
     const modal = useModal();
     const { t } = useTranslation('projects');
@@ -340,4 +341,8 @@ export const LinkProjectDialog = NiceModal.create<LinkProjectDialogProps>(
       </Dialog>
     );
   }
+);
+
+export const LinkProjectDialog = defineModal<LinkProjectResult>(
+  LinkProjectDialogImpl
 );

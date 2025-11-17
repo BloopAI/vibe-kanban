@@ -12,6 +12,7 @@ import { CreateProject } from 'shared/types';
 import { generateProjectNameFromPath } from '@/utils/string';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
+import { defineModal } from '@/lib/modals';
 
 export interface ProjectFormDialogProps {
   // No props needed - this is only for creating projects now
@@ -19,7 +20,7 @@ export interface ProjectFormDialogProps {
 
 export type ProjectFormDialogResult = 'saved' | 'canceled';
 
-export const ProjectFormDialog = NiceModal.create<ProjectFormDialogProps>(
+const ProjectFormDialogImpl = NiceModal.create<ProjectFormDialogProps>(
   () => {
     const modal = useModal();
     const [name, setName] = useState('');
@@ -163,4 +164,8 @@ export const ProjectFormDialog = NiceModal.create<ProjectFormDialogProps>(
       </Dialog>
     );
   }
+);
+
+export const ProjectFormDialog = defineModal<ProjectFormDialogResult>(
+  ProjectFormDialogImpl
 );

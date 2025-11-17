@@ -22,6 +22,7 @@ import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useOrganizationMutations } from '@/hooks/useOrganizationMutations';
 import { MemberRole } from 'shared/types';
 import { useTranslation } from 'react-i18next';
+import { defineModal } from '@/lib/modals';
 
 export type InviteMemberResult = {
   action: 'invited' | 'canceled';
@@ -31,7 +32,7 @@ export interface InviteMemberDialogProps {
   organizationId: string;
 }
 
-export const InviteMemberDialog = NiceModal.create<InviteMemberDialogProps>(
+const InviteMemberDialogImpl = NiceModal.create<InviteMemberDialogProps>(
   (props) => {
     const modal = useModal();
     const { organizationId } = props;
@@ -190,4 +191,8 @@ export const InviteMemberDialog = NiceModal.create<InviteMemberDialogProps>(
       </Dialog>
     );
   }
+);
+
+export const InviteMemberDialog = defineModal<InviteMemberResult>(
+  InviteMemberDialogImpl
 );

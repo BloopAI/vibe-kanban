@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { defineModal } from '@/lib/modals';
 import { showModal } from '@/lib/modals';
 import { Modals } from '@/components/dialogs';
 import { useTranslation } from 'react-i18next';
@@ -25,7 +26,7 @@ export interface ShareDialogProps {
   task: TaskWithAttemptStatus;
 }
 
-const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
+const ShareDialogImpl = NiceModal.create<ShareDialogProps>(({ task }) => {
   const modal = useModal();
   const { t } = useTranslation('tasks');
   const { loading: systemLoading } = useUserSystem();
@@ -170,4 +171,5 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
   );
 });
 
-export { ShareDialog };
+
+export const ShareDialog = defineModal<boolean>(ShareDialogImpl);
