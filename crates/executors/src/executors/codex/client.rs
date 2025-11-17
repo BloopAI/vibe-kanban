@@ -8,11 +8,11 @@ use std::{
 use async_trait::async_trait;
 use codex_app_server_protocol::{
     AddConversationListenerParams, AddConversationSubscriptionResponse, ApplyPatchApprovalResponse,
-    ClientInfo, ClientNotification, ClientRequest, ExecCommandApprovalResponse, InitializeParams,
-    InitializeResponse, InputItem, JSONRPCError, JSONRPCNotification, JSONRPCRequest,
-    JSONRPCResponse, NewConversationParams, NewConversationResponse, RequestId,
-    ResumeConversationParams, ResumeConversationResponse, SendUserMessageParams,
-    SendUserMessageResponse, ServerNotification, ServerRequest,
+    ClientInfo, ClientNotification, ClientRequest, ExecCommandApprovalResponse,
+    GetAuthStatusParams, GetAuthStatusResponse, InitializeParams, InitializeResponse, InputItem,
+    JSONRPCError, JSONRPCNotification, JSONRPCRequest, JSONRPCResponse, NewConversationParams,
+    NewConversationResponse, RequestId, ResumeConversationParams, ResumeConversationResponse,
+    SendUserMessageParams, SendUserMessageResponse, ServerNotification, ServerRequest,
 };
 use codex_protocol::{ConversationId, protocol::ReviewDecision};
 use serde::{Serialize, de::DeserializeOwned};
@@ -131,6 +131,16 @@ impl AppServerClient {
         self.send_request(request, "sendUserMessage").await
     }
 
+    pub async fn get_auth_status(&self) -> Result<GetAuthStatusResponse, ExecutorError> {
+        let request = ClientRequest::GetAuthStatus {
+            request_id: self.next_request_id(),
+            params: GetAuthStatusParams {
+                include_token: Some(true),
+                refresh_token: Some(false),
+            },
+        };
+        self.send_request(request, "getAuthStatus").await
+    }
     async fn handle_server_request(
         &self,
         peer: &JsonRpcPeer,
@@ -454,6 +464,7 @@ fn request_id(request: &ClientRequest) -> RequestId {
     match request {
         ClientRequest::Initialize { request_id, .. }
         | ClientRequest::NewConversation { request_id, .. }
+        | ClientRequest::GetAuthStatus { request_id, .. }
         | ClientRequest::ResumeConversation { request_id, .. }
         | ClientRequest::AddConversationListener { request_id, .. }
         | ClientRequest::SendUserMessage { request_id, .. } => request_id.clone(),
