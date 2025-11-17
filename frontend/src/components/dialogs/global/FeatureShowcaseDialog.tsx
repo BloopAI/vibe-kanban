@@ -6,15 +6,15 @@ import { useHotkeysContext } from 'react-hotkeys-hook';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { useKeyExit, Scope } from '@/keyboard';
-import { ShowcaseStageMedia } from './ShowcaseStageMedia';
+import { ShowcaseStageMedia } from '@/components/showcase/ShowcaseStageMedia';
 import type { ShowcaseConfig } from '@/types/showcase';
 
-interface FeatureShowcaseModalProps {
+interface FeatureShowcaseDialogProps {
   config: ShowcaseConfig;
 }
 
 /**
- * FeatureShowcaseModal - Generic multi-stage modal for showcasing features with media
+ * FeatureShowcaseDialog - Generic multi-stage modal for showcasing features with media
  *
  * Displays a bottom-aligned modal with stages containing videos or images, title, description,
  * and navigation controls. Properly manages keyboard shortcuts (ESC captured but disabled)
@@ -30,11 +30,11 @@ interface FeatureShowcaseModalProps {
  *
  * Usage:
  * ```ts
- * FeatureShowcaseModal.show({ config: showcases.taskPanel });
+ * FeatureShowcaseDialog.show({ config: showcases.taskPanel });
  * ```
  */
-const FeatureShowcaseModalImpl = NiceModal.create<FeatureShowcaseModalProps>(
-  ({ config }: FeatureShowcaseModalProps) => {
+const FeatureShowcaseDialogImpl = NiceModal.create<FeatureShowcaseDialogProps>(
+  ({ config }: FeatureShowcaseDialogProps) => {
     const modal = useModal();
     const [currentStage, setCurrentStage] = useState(0);
     const { t } = useTranslation('tasks');
@@ -180,7 +180,7 @@ const FeatureShowcaseModalImpl = NiceModal.create<FeatureShowcaseModalProps>(
   }
 );
 
-export const FeatureShowcaseModal = defineModal<
-  FeatureShowcaseModalProps,
+export const FeatureShowcaseDialog = defineModal<
+  FeatureShowcaseDialogProps,
   void
->(FeatureShowcaseModalImpl);
+>(FeatureShowcaseDialogImpl);
