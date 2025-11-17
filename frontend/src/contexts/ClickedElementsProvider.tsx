@@ -11,6 +11,7 @@ import type {
   SelectedComponent,
 } from '@/utils/previewBridge';
 import type { TaskAttempt } from 'shared/types';
+import { genId } from '@/utils/id';
 
 export interface ClickedEntry {
   id: string;
@@ -344,7 +345,7 @@ export function ClickedElementsProvider({
         return prev; // Skip consecutive duplicate
       }
       const newEntry: ClickedEntry = {
-        id: crypto.randomUUID(),
+        id: genId(),
         payload: sanitized,
         timestamp: Date.now(),
         dedupeKey,
