@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { KanbanCard } from '@/components/ui/shadcn-io/kanban';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
-import { UserAvatar } from './UserAvatar';
+import { TaskCardHeader } from './TaskCardHeader';
 
 interface SharedTaskCardProps {
   task: SharedTaskRecord;
@@ -48,23 +48,22 @@ export function SharedTaskCard({
       dragDisabled
       className="relative overflow-hidden pl-5 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-muted-foreground before:content-['']"
     >
-      <div className="flex items-center gap-3">
-        <UserAvatar
-          firstName={task.assignee_first_name ?? undefined}
-          lastName={task.assignee_last_name ?? undefined}
-          username={task.assignee_username ?? undefined}
-          // TODO: Add imageUrl={task.assignee_avatar_url} when backend provides it
+      <div className="flex flex-col gap-2">
+        <TaskCardHeader
+          title={task.title}
+          avatar={{
+            firstName: task.assignee_first_name ?? undefined,
+            lastName: task.assignee_last_name ?? undefined,
+            username: task.assignee_username ?? undefined,
+          }}
         />
-        <div className="flex min-w-0 flex-1 flex-col gap-1 font-light">
-          <h4 className="text-sm text-muted-foreground line-clamp-2">
-            {task.title}
-          </h4>
-          {task.description && (
-            <p className="text-xs text-muted-foreground line-clamp-2">
-              {task.description}
-            </p>
-          )}
-        </div>
+        {task.description && (
+          <p className="text-sm text-secondary-foreground break-words">
+            {task.description.length > 130
+              ? `${task.description.substring(0, 130)}...`
+              : task.description}
+          </p>
+        )}
       </div>
     </KanbanCard>
   );
