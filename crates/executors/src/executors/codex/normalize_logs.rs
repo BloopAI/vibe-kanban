@@ -1035,11 +1035,15 @@ lazy_static! {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Error {
     LaunchError { error: String },
+    AuthRequired { error: String },
 }
 
 impl Error {
     pub fn launch_error(error: String) -> Self {
         Self::LaunchError { error }
+    }
+    pub fn auth_required(error: String) -> Self {
+        Self::AuthRequired { error }
     }
 
     pub fn raw(&self) -> String {
@@ -1049,15 +1053,23 @@ impl Error {
 
 impl ToNormalizedEntry for Error {
     fn to_normalized_entry(&self) -> NormalizedEntry {
-        NormalizedEntry {
-            timestamp: None,
-            entry_type: NormalizedEntryType::ErrorMessage {
-                error_type: NormalizedEntryError::Other,
+        match self {
+            Error::LaunchError { error } => NormalizedEntry {
+                timestamp: None,
+                entry_type: NormalizedEntryType::ErrorMessage {
+                    error_type: NormalizedEntryError::Other,
+                },
+                content: error.clone(),
+                metadata: None,
             },
-            content: match self {
-                Error::LaunchError { error } => error.clone(),
+            Error::AuthRequired { error } => NormalizedEntry {
+                timestamp: None,
+                entry_type: NormalizedEntryType::ErrorMessage {
+                    error_type: NormalizedEntryError::SetupRequired,
+                },
+                content: error.clone(),
+                metadata: None,
             },
-            metadata: None,
         }
     }
 }

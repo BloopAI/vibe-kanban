@@ -125,6 +125,14 @@ pub trait ContainerService {
     /// - The next action is None (no follow-up actions)
     /// - The run reason is not DevServer
     fn should_finalize(&self, ctx: &ExecutionContext) -> bool {
+        // Always finalize failed or killed executions
+        if matches!(
+            ctx.execution_process.status,
+            ExecutionProcessStatus::Failed | ExecutionProcessStatus::Killed
+        ) {
+            return true;
+        }
+        // Otherwise, finalize only if no next action and not a dev server
         ctx.execution_process
             .executor_action()
             .unwrap()

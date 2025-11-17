@@ -28,7 +28,7 @@ use deployment::{DeploymentError, RemoteClientNotConfigured};
 use executors::{
     actions::{Executable, ExecutorAction},
     approvals::{ExecutorApprovalService, NoopExecutorApprovalService},
-    executors::BaseCodingAgent,
+    executors::{BaseCodingAgent, ExecutorExitResult, ExecutorExitSignal},
     logs::{
         NormalizedEntryType,
         utils::{
@@ -284,7 +284,7 @@ impl LocalContainerService {
     pub fn spawn_exit_monitor(
         &self,
         exec_id: &Uuid,
-        exit_signal: Option<tokio::sync::oneshot::Receiver<()>>,
+        exit_signal: Option<ExecutorExitSignal>,
     ) -> JoinHandle<()> {
         let exec_id = *exec_id;
         let child_store = self.child_store.clone();
@@ -299,25 +299,31 @@ impl LocalContainerService {
 
         tokio::spawn(async move {
             let mut exit_signal_future = exit_signal
-                .map(|rx| rx.map(|_| ()).boxed()) // wait for signal
-                .unwrap_or_else(|| std::future::pending::<()>().boxed()); // no signal, stall forever
+                .map(|rx| rx.boxed()) // wait for result
+                .unwrap_or_else(|| std::future::pending().boxed()); // no signal, stall forever
 
             let status_result: std::io::Result<std::process::ExitStatus>;
 
             // Wait for process to exit, or exit signal from executor
             tokio::select! {
-                // Exit signal.
+                // Exit signal with result.
                 // Some coding agent processes do not automatically exit after processing the user request; instead the executor
                 // signals when processing has finished to gracefully kill the process.
-                _ = &mut exit_signal_future => {
-                    // Executor signaled completion: kill group and remember to force Completed(0)
+                exit_result = &mut exit_signal_future => {
+                    // Executor signaled completion: kill group and use the provided result
                     if let Some(child_lock) = child_store.read().await.get(&exec_id).cloned() {
                         let mut child = child_lock.write().await ;
                         if let Err(err) = command::kill_process_group(&mut child).await {
                             tracing::error!("Failed to kill process group after exit signal: {} {}", exec_id, err);
                         }
                     }
-                    status_result = Ok(success_exit_status());
+
+                    // Map the exit result to appropriate exit status
+                    status_result = match exit_result {
+                        Ok(ExecutorExitResult::Success) => Ok(success_exit_status()),
+                        Ok(ExecutorExitResult::Failure) => Ok(failure_exit_status()),
+                        Err(_) => Ok(success_exit_status()), // Channel closed, assume success
+                    };
                 }
                 // Process exit
                 exit_status_result = &mut process_exit_rx => {
@@ -807,6 +813,19 @@ impl LocalContainerService {
             Draft::clear_after_send(&self.db.pool, ctx.task_attempt.id, DraftType::FollowUp).await;
 
         Ok(())
+    }
+}
+
+fn failure_exit_status() -> std::process::ExitStatus {
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::ExitStatusExt;
+        ExitStatusExt::from_raw(256) // Exit code 1 (shifted by 8 bits)
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::ExitStatusExt;
+        ExitStatusExt::from_raw(1)
     }
 }
 

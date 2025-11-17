@@ -19,7 +19,7 @@ use workspace_utils::stream_lines::LinesStreamExt;
 use super::{AcpClient, SessionManager};
 use crate::{
     command::CommandParts,
-    executors::{ExecutorError, SpawnedChild, acp::AcpEvent},
+    executors::{ExecutorError, ExecutorExitResult, SpawnedChild, acp::AcpEvent},
 };
 
 /// Reusable harness for ACP-based conns (Gemini, Qwen, etc.)
@@ -68,7 +68,7 @@ impl AcpAgentHarness {
 
         let mut child = command.group_spawn()?;
 
-        let (exit_tx, exit_rx) = tokio::sync::oneshot::channel::<()>();
+        let (exit_tx, exit_rx) = tokio::sync::oneshot::channel::<ExecutorExitResult>();
         Self::bootstrap_acp_connection(
             &mut child,
             current_dir.to_path_buf(),
@@ -105,7 +105,7 @@ impl AcpAgentHarness {
 
         let mut child = command.group_spawn()?;
 
-        let (exit_tx, exit_rx) = tokio::sync::oneshot::channel::<()>();
+        let (exit_tx, exit_rx) = tokio::sync::oneshot::channel::<ExecutorExitResult>();
         Self::bootstrap_acp_connection(
             &mut child,
             current_dir.to_path_buf(),
@@ -127,7 +127,7 @@ impl AcpAgentHarness {
         cwd: PathBuf,
         existing_session: Option<String>,
         prompt: String,
-        exit_signal: Option<tokio::sync::oneshot::Sender<()>>,
+        exit_signal: Option<tokio::sync::oneshot::Sender<ExecutorExitResult>>,
         session_namespace: String,
     ) -> Result<(), ExecutorError> {
         // Take child's stdio for ACP wiring
@@ -387,7 +387,7 @@ impl AcpAgentHarness {
                         }
                         // Notify container of completion
                         if let Some(tx) = exit_signal_tx.take() {
-                            let _ = tx.send(());
+                            let _ = tx.send(ExecutorExitResult::Success);
                         }
 
                         // Cancel session work

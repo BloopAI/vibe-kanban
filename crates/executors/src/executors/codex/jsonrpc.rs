@@ -27,7 +27,7 @@ use tokio::{
     sync::{Mutex, oneshot},
 };
 
-use crate::executors::ExecutorError;
+use crate::executors::{ExecutorError, ExecutorExitResult};
 
 #[derive(Debug)]
 pub enum PendingResponse {
@@ -38,18 +38,19 @@ pub enum PendingResponse {
 
 #[derive(Clone)]
 pub struct ExitSignalSender {
-    inner: Arc<Mutex<Option<oneshot::Sender<()>>>>,
+    inner: Arc<Mutex<Option<oneshot::Sender<ExecutorExitResult>>>>,
 }
 
 impl ExitSignalSender {
-    pub fn new(sender: oneshot::Sender<()>) -> Self {
+    pub fn new(sender: oneshot::Sender<ExecutorExitResult>) -> Self {
         Self {
             inner: Arc::new(Mutex::new(Some(sender))),
         }
     }
-    pub async fn send_exit_signal(&self) {
+
+    pub async fn send_exit_signal(&self, result: ExecutorExitResult) {
         if let Some(sender) = self.inner.lock().await.take() {
-            let _ = sender.send(());
+            let _ = sender.send(result);
         }
     }
 }
@@ -155,7 +156,7 @@ impl JsonRpcPeer {
                 }
             }
 
-            exit_tx.send_exit_signal().await;
+            exit_tx.send_exit_signal(ExecutorExitResult::Success).await;
             let _ = reader_peer.shutdown().await;
         });
 
