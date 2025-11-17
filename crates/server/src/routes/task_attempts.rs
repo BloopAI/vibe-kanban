@@ -1429,34 +1429,31 @@ pub async fn start_dev_server(
         .ok_or(SqlxError::RowNotFound)?;
 
     // Stop any existing dev servers for this project
-    let existing_dev_servers =
-        match ExecutionProcess::find_running_dev_servers_by_project(pool, project.id).await {
-            Ok(servers) => servers,
-            Err(e) => {
+    let running_dev_servers =
+        ExecutionProcess::find_running_dev_servers_by_project(pool, project.id)
+            .await
+            .map_err(|e| {
                 tracing::error!(
-                    "Failed to find running dev servers for project {}: {}",
+                    "Failed to fetch dev servers for project {}: {}",
                     project.id,
                     e
                 );
-                return Err(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
-                    e.to_string(),
-                )));
-            }
-        };
+                ApiError::TaskAttempt(TaskAttemptError::ValidationError(e.to_string()))
+            })?;
 
-    for dev_server in existing_dev_servers {
+    for running_dev_server in running_dev_servers {
         tracing::info!(
-            "Stopping existing dev server {} for project {}",
-            dev_server.id,
+            "Stopping dev server {} for project {}",
+            running_dev_server.id,
             project.id
         );
 
         if let Err(e) = deployment
             .container()
-            .stop_execution(&dev_server, ExecutionProcessStatus::Killed)
+            .stop_execution(&running_dev_server, ExecutionProcessStatus::Killed)
             .await
         {
-            tracing::error!("Failed to stop dev server {}: {}", dev_server.id, e);
+            tracing::error!("Failed to stop dev server {}: {}", running_dev_server.id, e);
         }
     }
 

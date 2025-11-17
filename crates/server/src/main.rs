@@ -1,12 +1,10 @@
 use anyhow::{self, Error as AnyhowError};
-use db::models::execution_process::{ExecutionProcess, ExecutionProcessStatus};
 use deployment::{Deployment, DeploymentError};
 use server::{DeploymentImpl, routes};
 use services::services::container::ContainerService;
 use sqlx::Error as SqlxError;
 use strip_ansi_escapes::strip;
 use thiserror::Error;
-use tokio::sync::watch;
 use tracing_subscriber::{EnvFilter, prelude::*};
 use utils::{
     assets::asset_dir,

@@ -14,8 +14,7 @@ use db::{
     models::{
         draft::{Draft, DraftType},
         execution_process::{
-            self, ExecutionContext, ExecutionProcess, ExecutionProcessRunReason,
-            ExecutionProcessStatus,
+            ExecutionContext, ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus,
         },
         executor_session::ExecutorSession,
         image::TaskImage,
