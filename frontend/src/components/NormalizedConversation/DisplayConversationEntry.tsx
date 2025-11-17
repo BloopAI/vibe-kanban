@@ -428,9 +428,10 @@ const ToolCallCard: React.FC<{
 
   // Determine if this is a NormalizedEntry with tool_use
   const isNormalizedEntry = 'entry_type' in entry;
-  const entryType = isNormalizedEntry && entry.entry_type.type === 'tool_use' 
-    ? entry.entry_type 
-    : undefined;
+  const entryType =
+    isNormalizedEntry && entry.entry_type.type === 'tool_use'
+      ? entry.entry_type
+      : undefined;
 
   // Compute defaults from entry
   const linkifyUrls = entryType?.tool_name === 'GitHub CLI Setup Script';
@@ -448,9 +449,7 @@ const ToolCallCard: React.FC<{
   const isTool = actionType?.action === 'tool';
 
   // Label and content
-  const label = isCommand
-    ? 'Ran'
-    : entryType?.tool_name || 'Tool';
+  const label = isCommand ? 'Ran' : entryType?.tool_name || 'Tool';
 
   const inlineText = isNormalizedEntry ? entry.content.trim() : '';
   const isSingleLine = inlineText !== '' && !/\r?\n/.test(inlineText);
@@ -462,9 +461,7 @@ const ToolCallCard: React.FC<{
   let argsText: string | null = null;
   if (isCommand) {
     const fromArgs =
-      typeof actionType.command === 'string'
-        ? actionType.command
-        : '';
+      typeof actionType.command === 'string' ? actionType.command : '';
     const fallback = inlineText;
     argsText = (fromArgs || fallback).trim();
   }
