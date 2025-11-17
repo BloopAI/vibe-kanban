@@ -264,10 +264,8 @@ impl TaskServer {
     }
 
     pub async fn init(mut self) -> Self {
-        // Try to fetch VK context at startup
         let vk_context = self.fetch_context_at_startup().await;
 
-        // If no context, remove the tool from the router
         if vk_context.is_none() {
             self.tool_router.map.remove("get_context");
             tracing::debug!("VK context not available, get_context tool will not be registered");
@@ -289,7 +287,6 @@ impl TaskServer {
             container_ref: normalized_path.to_string_lossy().to_string(),
         };
 
-        // Async HTTP call with timeout
         let response = tokio::time::timeout(
             std::time::Duration::from_millis(500),
             self.client.get(&url).query(&query).send(),
