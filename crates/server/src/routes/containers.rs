@@ -53,20 +53,11 @@ pub async fn get_context(
     State(deployment): State<DeploymentImpl>,
     Query(payload): Query<ContainerQuery>,
 ) -> Result<ResponseJson<ApiResponse<Option<TaskAttemptContext>>>, ApiError> {
-    tracing::info!("Getting context for ref: {}", payload.container_ref);
-    // Try to resolve the path to task attempt via container_ref
     let result =
         TaskAttempt::resolve_container_ref(&deployment.db().pool, &payload.container_ref).await;
 
     match result {
         Ok((attempt_id, task_id, project_id)) => {
-            tracing::info!(
-                "Resolved context for ref {}: attempt {}, task {}, project {}",
-                payload.container_ref,
-                attempt_id,
-                task_id,
-                project_id
-            );
             let ctx =
                 TaskAttempt::load_context(&deployment.db().pool, attempt_id, task_id, project_id)
                     .await?;

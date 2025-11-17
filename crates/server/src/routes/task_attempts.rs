@@ -132,6 +132,7 @@ pub async fn get_task_attempt(
 ) -> Result<ResponseJson<ApiResponse<TaskAttempt>>, ApiError> {
     Ok(ResponseJson(ApiResponse::success(task_attempt)))
 }
+
 #[derive(Debug, Serialize, Deserialize, ts_rs::TS)]
 pub struct CreateTaskAttemptBody {
     pub task_id: Uuid,
