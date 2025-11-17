@@ -1,6 +1,6 @@
-import {
+import type {
   ArrayFieldTemplateProps,
-  ArrayFieldTemplateItemType,
+  ArrayFieldItemTemplateProps,
 } from '@rjsf/utils';
 import { Button } from '@/components/ui/button';
 import { Plus, X } from 'lucide-react';
@@ -14,17 +14,7 @@ export const ArrayFieldTemplate = (props: ArrayFieldTemplateProps) => {
 
   return (
     <div className="space-y-4">
-      <div>
-        {items.length > 0 &&
-          items.map((element: ArrayFieldTemplateItemType) => (
-            <ArrayItem
-              key={element.key}
-              element={element}
-              disabled={disabled}
-              readonly={readonly}
-            />
-          ))}
-      </div>
+      <div>{items}</div>
 
       {canAdd && (
         <Button
@@ -43,42 +33,23 @@ export const ArrayFieldTemplate = (props: ArrayFieldTemplateProps) => {
   );
 };
 
-interface ArrayItemProps {
-  element: ArrayFieldTemplateItemType;
-  disabled?: boolean;
-  readonly?: boolean;
-}
-
-// TODO: Remove this type when @rjsf/utils v6 types stabilize
-type ArrayItemWithButtons = ArrayFieldTemplateItemType & {
-  buttonsProps?: {
-    hasRemove?: boolean;
-    onDropIndexClick: (idx: number) => () => void;
-    index: number;
-    disabled?: boolean;
-  };
-};
-
-const ArrayItem = ({ element, disabled, readonly }: ArrayItemProps) => {
-  const { children } = element;
-  const elementWithButtons = element as ArrayItemWithButtons;
+export const ArrayFieldItemTemplate = (
+  props: ArrayFieldItemTemplateProps
+) => {
+  const { children, buttonsProps, disabled, readonly } = props;
 
   return (
     <div className="flex items-center gap-2">
       <div className="flex-1">{children}</div>
 
       {/* Remove button */}
-      {elementWithButtons.buttonsProps?.hasRemove && (
+      {buttonsProps.hasRemove && (
         <Button
           type="button"
           variant="ghost"
           size="sm"
-          onClick={elementWithButtons.buttonsProps.onDropIndexClick(
-            elementWithButtons.buttonsProps.index
-          )}
-          disabled={
-            disabled || readonly || elementWithButtons.buttonsProps.disabled
-          }
+          onClick={buttonsProps.onRemoveItem}
+          disabled={disabled || readonly || buttonsProps.disabled}
           className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200 shrink-0"
           title="Remove item"
         >

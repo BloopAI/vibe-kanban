@@ -7,6 +7,7 @@ import {
 } from './widgets';
 import {
   ArrayFieldTemplate,
+  ArrayFieldItemTemplate,
   FieldTemplate,
   ObjectFieldTemplate,
   FormTemplate,
@@ -22,6 +23,7 @@ export const customWidgets: RegistryWidgetsType = {
 
 export const customTemplates = {
   ArrayFieldTemplate,
+  ArrayFieldItemTemplate,
   FieldTemplate,
   ObjectFieldTemplate,
   FormTemplate,

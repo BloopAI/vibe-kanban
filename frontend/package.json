@@ -40,7 +40,7 @@
     "@radix-ui/react-tabs": "^1.1.12",
     "@radix-ui/react-toggle-group": "^1.1.11",
     "@radix-ui/react-tooltip": "^1.2.7",
-    "@rjsf/shadcn": "6.0.0-beta.10",
+    "@rjsf/shadcn": "6.1.1",
     "@sentry/react": "^9.34.0",
     "@sentry/vite-plugin": "^3.5.0",
     "@tailwindcss/typography": "^0.5.16",
@@ -83,9 +83,9 @@
     "zustand": "^4.5.4"
   },
   "devDependencies": {
-    "@rjsf/core": "6.0.0-beta.11",
-    "@rjsf/utils": "6.0.0-beta.11",
-    "@rjsf/validator-ajv8": "6.0.0-beta.11",
+    "@rjsf/core": "6.1.1",
+    "@rjsf/utils": "6.1.1",
+    "@rjsf/validator-ajv8": "6.1.1",
     "@tailwindcss/container-queries": "^0.1.1",
     "@types/lodash": "^4.17.20",
     "@types/react": "^18.2.43",
