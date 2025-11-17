@@ -21,7 +21,6 @@ pub mod text;
 pub mod tokio;
 pub mod version;
 pub mod ws;
-pub mod vk_mcp_context;
 
 /// Cache for WSL2 detection result
 static WSL2_CACHE: OnceLock<bool> = OnceLock::new();

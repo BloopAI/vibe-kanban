@@ -14,10 +14,7 @@ use tokio_util::{
     io::ReaderStream,
 };
 use tracing::error;
-use workspace_utils::{
-    stream_lines::LinesStreamExt,
-    vk_mcp_context::{VK_MCP_CONTEXT_ENV, VkMcpContext},
-};
+use workspace_utils::stream_lines::LinesStreamExt;
 
 use super::{AcpClient, SessionManager};
 use crate::{
@@ -57,7 +54,6 @@ impl AcpAgentHarness {
         current_dir: &Path,
         prompt: String,
         command_parts: CommandParts,
-        vk_mcp_context: Option<&VkMcpContext>,
     ) -> Result<SpawnedChild, ExecutorError> {
         let (program_path, args) = command_parts.into_resolved().await?;
         let mut command = Command::new(program_path);
@@ -69,13 +65,6 @@ impl AcpAgentHarness {
             .current_dir(current_dir)
             .args(&args)
             .env("NODE_NO_WARNINGS", "1");
-
-        if let Some(vk_mcp_context) = vk_mcp_context {
-            command.env(
-                VK_MCP_CONTEXT_ENV,
-                serde_json::to_string(vk_mcp_context).unwrap_or_default(),
-            );
-        }
 
         let mut child = command.group_spawn()?;
 
@@ -102,7 +91,6 @@ impl AcpAgentHarness {
         prompt: String,
         session_id: &str,
         command_parts: CommandParts,
-        vk_mcp_context: Option<&VkMcpContext>,
     ) -> Result<SpawnedChild, ExecutorError> {
         let (program_path, args) = command_parts.into_resolved().await?;
         let mut command = Command::new(program_path);
@@ -114,13 +102,6 @@ impl AcpAgentHarness {
             .current_dir(current_dir)
             .args(&args)
             .env("NODE_NO_WARNINGS", "1");
-
-        if let Some(vk_mcp_context) = vk_mcp_context {
-            command.env(
-                VK_MCP_CONTEXT_ENV,
-                serde_json::to_string(vk_mcp_context).unwrap_or_default(),
-            );
-        }
 
         let mut child = command.group_spawn()?;
 

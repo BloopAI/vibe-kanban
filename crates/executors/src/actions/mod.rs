@@ -4,7 +4,6 @@ use async_trait::async_trait;
 use enum_dispatch::enum_dispatch;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
-use workspace_utils::vk_mcp_context::VkMcpContext;
 
 use crate::{
     actions::{
@@ -72,7 +71,6 @@ pub trait Executable {
         &self,
         current_dir: &Path,
         approvals: Arc<dyn ExecutorApprovalService>,
-        vk_mcp_context: &VkMcpContext,
     ) -> Result<SpawnedChild, ExecutorError>;
 }
 
@@ -82,8 +80,7 @@ impl Executable for ExecutorAction {
         &self,
         current_dir: &Path,
         approvals: Arc<dyn ExecutorApprovalService>,
-        vk_mcp_context: &VkMcpContext,
     ) -> Result<SpawnedChild, ExecutorError> {
-        self.typ.spawn(current_dir, approvals, vk_mcp_context).await
+        self.typ.spawn(current_dir, approvals).await
     }
 }

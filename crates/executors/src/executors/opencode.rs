@@ -16,11 +16,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
-use workspace_utils::{
-    msg_store::MsgStore,
-    path::make_path_relative,
-    vk_mcp_context::{VK_MCP_CONTEXT_ENV, VkMcpContext},
-};
+use workspace_utils::{msg_store::MsgStore, path::make_path_relative};
 
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
@@ -108,10 +104,6 @@ pub struct Opencode {
     pub agent: Option<String>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
-    #[serde(skip)]
-    #[ts(skip)]
-    #[schemars(skip)]
-    vk_mcp_context: Option<VkMcpContext>,
 }
 
 impl Opencode {
@@ -136,10 +128,6 @@ impl Opencode {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Opencode {
-    fn use_vk_mcp_context(&mut self, vk_mcp_context: &VkMcpContext) {
-        self.vk_mcp_context = Some(vk_mcp_context.to_owned());
-    }
-
     async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
         // Start a dedicated local share bridge bound to this opencode process
         let bridge = ShareBridge::start().await.map_err(ExecutorError::Io)?;
@@ -155,16 +143,7 @@ impl StandardCodingAgentExecutor for Opencode {
             .stdout(Stdio::piped()) // Keep stdout but we won't use it
             .stderr(Stdio::piped())
             .current_dir(current_dir)
-            .args(&args);
-
-        if let Some(vk_mcp_context) = &self.vk_mcp_context {
-            command.env(
-                VK_MCP_CONTEXT_ENV,
-                serde_json::to_string(vk_mcp_context).unwrap_or_default(),
-            );
-        }
-
-        command
+            .args(&args)
             .env("NODE_NO_WARNINGS", "1")
             .env("OPENCODE_AUTO_SHARE", "1")
             .env("OPENCODE_API", bridge.base_url.clone());
@@ -230,16 +209,7 @@ impl StandardCodingAgentExecutor for Opencode {
             .stdout(Stdio::piped()) // Keep stdout but we won't use it
             .stderr(Stdio::piped())
             .current_dir(current_dir)
-            .args(&args);
-
-        if let Some(vk_mcp_context) = &self.vk_mcp_context {
-            command.env(
-                VK_MCP_CONTEXT_ENV,
-                serde_json::to_string(vk_mcp_context).unwrap_or_default(),
-            );
-        }
-
-        command
+            .args(&args)
             .env("NODE_NO_WARNINGS", "1")
             .env("OPENCODE_AUTO_SHARE", "1")
             .env("OPENCODE_API", bridge.base_url.clone());

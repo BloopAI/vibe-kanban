@@ -6,10 +6,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
-use workspace_utils::{
-    msg_store::MsgStore,
-    vk_mcp_context::{VK_MCP_CONTEXT_ENV, VkMcpContext},
-};
+use workspace_utils::msg_store::MsgStore;
 
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
@@ -19,6 +16,7 @@ use crate::{
     },
     logs::{stderr_processor::normalize_stderr_logs, utils::EntryIndexProvider},
 };
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct Amp {
     #[serde(default)]
@@ -31,10 +29,6 @@ pub struct Amp {
     pub dangerously_allow_all: Option<bool>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
-    #[serde(skip, default)]
-    #[ts(skip)]
-    #[schemars(skip)]
-    vk_mcp_context: Option<VkMcpContext>,
 }
 
 impl Amp {
@@ -50,10 +44,6 @@ impl Amp {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Amp {
-    fn use_vk_mcp_context(&mut self, vk_mcp_context: &VkMcpContext) {
-        self.vk_mcp_context = Some(vk_mcp_context.to_owned());
-    }
-
     async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
         let command_parts = self.build_command_builder().build_initial()?;
         let (executable_path, args) = command_parts.into_resolved().await?;
@@ -68,13 +58,6 @@ impl StandardCodingAgentExecutor for Amp {
             .stderr(Stdio::piped())
             .current_dir(current_dir)
             .args(&args);
-
-        if let Some(vk_mcp_context) = &self.vk_mcp_context {
-            command.env(
-                VK_MCP_CONTEXT_ENV,
-                serde_json::to_string(vk_mcp_context).unwrap_or_default(),
-            );
-        }
 
         let mut child = command.group_spawn()?;
 
@@ -143,13 +126,6 @@ impl StandardCodingAgentExecutor for Amp {
             .stderr(Stdio::piped())
             .current_dir(current_dir)
             .args(&continue_args);
-
-        if let Some(vk_mcp_context) = &self.vk_mcp_context {
-            command.env(
-                VK_MCP_CONTEXT_ENV,
-                serde_json::to_string(vk_mcp_context).unwrap_or_default(),
-            );
-        }
 
         let mut child = command.group_spawn()?;
 

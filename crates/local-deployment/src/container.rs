@@ -1037,10 +1037,6 @@ impl ContainerService for LocalContainerService {
                 _ => Arc::new(NoopExecutorApprovalService {}),
             };
 
-        let execution_ctx =
-            ExecutionProcess::load_context(&self.db.pool, execution_process.id).await?;
-
-        let vk_context = execution_ctx.to_vk_mcp_context();
         // Create the child and stream, add to execution tracker with timeout
         let mut spawned = tokio::time::timeout(
             Duration::from_secs(30),

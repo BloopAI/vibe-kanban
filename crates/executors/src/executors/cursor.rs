@@ -16,7 +16,6 @@ use workspace_utils::{
     msg_store::MsgStore,
     path::make_path_relative,
     shell::resolve_executable_path,
-    vk_mcp_context::{VK_MCP_CONTEXT_ENV, VkMcpContext},
 };
 
 use crate::{
@@ -29,6 +28,7 @@ use crate::{
         utils::{ConversationPatch, EntryIndexProvider},
     },
 };
+
 mod mcp;
 const CURSOR_AUTH_REQUIRED_MSG: &str = "Authentication required. Please run 'cursor-agent login' first, or set CURSOR_API_KEY environment variable.";
 
@@ -44,10 +44,6 @@ pub struct CursorAgent {
     pub model: Option<String>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
-    #[serde(skip)]
-    #[ts(skip)]
-    #[schemars(skip)]
-    vk_mcp_context: Option<VkMcpContext>,
 }
 
 impl CursorAgent {
@@ -73,10 +69,6 @@ impl CursorAgent {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for CursorAgent {
-    fn use_vk_mcp_context(&mut self, vk_mcp_context: &VkMcpContext) {
-        self.vk_mcp_context = Some(vk_mcp_context.to_owned());
-    }
-
     async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
         mcp::ensure_mcp_server_trust(self, current_dir).await;
 
@@ -94,13 +86,6 @@ impl StandardCodingAgentExecutor for CursorAgent {
             .stderr(Stdio::piped())
             .current_dir(current_dir)
             .args(&args);
-
-        if let Some(vk_mcp_context) = &self.vk_mcp_context {
-            command.env(
-                VK_MCP_CONTEXT_ENV,
-                serde_json::to_string(vk_mcp_context).unwrap_or_default(),
-            );
-        }
 
         let mut child = command.group_spawn()?;
 
@@ -135,13 +120,6 @@ impl StandardCodingAgentExecutor for CursorAgent {
             .stderr(Stdio::piped())
             .current_dir(current_dir)
             .args(&args);
-
-        if let Some(vk_mcp_context) = &self.vk_mcp_context {
-            command.env(
-                VK_MCP_CONTEXT_ENV,
-                serde_json::to_string(vk_mcp_context).unwrap_or_default(),
-            );
-        }
 
         let mut child = command.group_spawn()?;
 
@@ -1209,7 +1187,6 @@ mod tests {
             force: None,
             model: None,
             cmd: Default::default(),
-            vk_mcp_context: None,
         };
         let msg_store = Arc::new(MsgStore::new());
         let current_dir = std::path::PathBuf::from("/tmp/test-worktree");
