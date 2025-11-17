@@ -4,7 +4,10 @@ import type { GhCliSupportContent } from './auth/GhCliSetupDialog';
 
 // Global app dialogs
 export { DisclaimerDialog } from './global/DisclaimerDialog';
-export { OnboardingDialog, type OnboardingResult } from './global/OnboardingDialog';
+export {
+  OnboardingDialog,
+  type OnboardingResult,
+} from './global/OnboardingDialog';
 export { ReleaseNotesDialog } from './global/ReleaseNotesDialog';
 export { OAuthDialog } from './global/OAuthDialog';
 
@@ -178,12 +181,16 @@ export const Modals = {
   OAuth: defineModal<ProfileResponse | null>(OAuthDialog),
 
   // Organization dialogs
-  CreateOrganization: defineModal<CreateOrganizationResult>(CreateOrganizationDialog),
+  CreateOrganization: defineModal<CreateOrganizationResult>(
+    CreateOrganizationDialog
+  ),
   InviteMember: defineModal<InviteMemberResult>(InviteMemberDialog),
 
   // Project dialogs
   ProjectForm: defineModal<ProjectFormDialogResult>(ProjectFormDialog),
-  ProjectEditorSelection: defineModal<EditorType | null>(ProjectEditorSelectionDialog),
+  ProjectEditorSelection: defineModal<EditorType | null>(
+    ProjectEditorSelectionDialog
+  ),
   LinkProject: defineModal<LinkProjectResult>(LinkProjectDialog),
 
   // Task dialogs
@@ -193,7 +200,9 @@ export const Modals = {
   DeleteTaskConfirmation: defineModal<void>(DeleteTaskConfirmationDialog),
   ShareTask: defineModal<boolean>(ShareDialog),
   TagEdit: defineModal<TagEditResult>(TagEditDialog),
-  ChangeTargetBranch: defineModal<ChangeTargetBranchDialogResult>(ChangeTargetBranchDialog),
+  ChangeTargetBranch: defineModal<ChangeTargetBranchDialogResult>(
+    ChangeTargetBranchDialog
+  ),
   Rebase: defineModal<RebaseDialogResult>(RebaseDialog),
   RestoreLogs: defineModal<RestoreLogsDialogResult>(RestoreLogsDialog),
   ViewProcesses: defineModal<void>(ViewProcessesDialog),
@@ -208,8 +217,12 @@ export const Modals = {
   GhCliSetup: defineModal<GhCliSupportContent | null>(GhCliSetupDialog),
 
   // Settings dialogs
-  CreateConfiguration: defineModal<CreateConfigurationResult>(CreateConfigurationDialog),
-  DeleteConfiguration: defineModal<DeleteConfigurationResult>(DeleteConfigurationDialog),
+  CreateConfiguration: defineModal<CreateConfigurationResult>(
+    CreateConfigurationDialog
+  ),
+  DeleteConfiguration: defineModal<DeleteConfigurationResult>(
+    DeleteConfigurationDialog
+  ),
 
   // Shared dialogs
   FolderPicker: defineModal<string | null>(FolderPickerDialog),

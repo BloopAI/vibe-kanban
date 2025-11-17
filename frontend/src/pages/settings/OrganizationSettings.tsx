@@ -193,10 +193,9 @@ export function OrganizationSettings() {
     if (!selectedOrgId) return;
 
     try {
-      const result: InviteMemberResult = await showModal(
-        Modals.InviteMember,
-        { organizationId: selectedOrgId }
-      );
+      const result: InviteMemberResult = await showModal(Modals.InviteMember, {
+        organizationId: selectedOrgId,
+      });
 
       if (result.action === 'invited') {
         // No need to refetch - the mutation hook handles cache invalidation
