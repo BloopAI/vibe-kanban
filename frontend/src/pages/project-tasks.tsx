@@ -8,7 +8,7 @@ import { Loader } from '@/components/ui/loader';
 import { tasksApi } from '@/lib/api';
 import type { GitBranch } from 'shared/types';
 import { openTaskForm } from '@/lib/openTaskForm';
-import { FeatureShowcaseModal } from '@/components/showcase/FeatureShowcaseModal';
+import { FeatureShowcaseDialog } from '@/components/dialogs/global/FeatureShowcaseDialog';
 import { showcases } from '@/config/showcases';
 import { useShowcaseTrigger } from '@/hooks/useShowcaseTrigger';
 import { usePostHog } from 'posthog-js/react';
@@ -207,7 +207,7 @@ export function ProjectTasks() {
 
   useEffect(() => {
     if (taskPanelShowcase.isOpen) {
-      FeatureShowcaseModal.show({ config: showcases.taskPanel }).finally(() => {
+      FeatureShowcaseDialog.show({ config: showcases.taskPanel }).finally(() => {
         taskPanelShowcase.close();
       });
     }
