@@ -94,6 +94,7 @@ const DeleteConfigurationDialogImpl =
     }
   );
 
-export const DeleteConfigurationDialog = defineModal<DeleteConfigurationResult>(
-  DeleteConfigurationDialogImpl
-);
+export const DeleteConfigurationDialog = defineModal<
+  DeleteConfigurationDialogProps,
+  DeleteConfigurationResult
+>(DeleteConfigurationDialogImpl);

@@ -31,7 +31,6 @@ import { ThemeMode } from 'shared/types';
 import * as Sentry from '@sentry/react';
 import { Loader } from '@/components/ui/loader';
 
-import { showModal, hideModal } from '@/lib/modals';
 import { DisclaimerDialog } from '@/components/dialogs/global/DisclaimerDialog';
 import { OnboardingDialog } from '@/components/dialogs/global/OnboardingDialog';
 import { ReleaseNotesDialog } from '@/components/dialogs/global/ReleaseNotesDialog';
@@ -67,17 +66,17 @@ function AppContent() {
     const showNextStep = async () => {
       // 1) Disclaimer - first step
       if (!config.disclaimer_acknowledged) {
-        await showModal(DisclaimerDialog, {});
+        await DisclaimerDialog.show();
         if (!cancelled) {
           await updateAndSaveConfig({ disclaimer_acknowledged: true });
         }
-        hideModal(DisclaimerDialog);
+        DisclaimerDialog.hide();
         return;
       }
 
       // 2) Onboarding - configure executor and editor
       if (!config.onboarding_acknowledged) {
-        const result = await showModal(OnboardingDialog, {});
+        const result = await OnboardingDialog.show();
         if (!cancelled) {
           await updateAndSaveConfig({
             onboarding_acknowledged: true,
@@ -85,17 +84,17 @@ function AppContent() {
             editor: result.editor,
           });
         }
-        hideModal(OnboardingDialog);
+        OnboardingDialog.hide();
         return;
       }
 
       // 3) Release notes - last step
       if (config.show_release_notes) {
-        await showModal(ReleaseNotesDialog, {});
+        await ReleaseNotesDialog.show();
         if (!cancelled) {
           await updateAndSaveConfig({ show_release_notes: false });
         }
-        hideModal(ReleaseNotesDialog);
+        ReleaseNotesDialog.hide();
         return;
       }
     };

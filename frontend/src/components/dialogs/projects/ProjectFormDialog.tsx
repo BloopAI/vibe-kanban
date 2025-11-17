@@ -164,6 +164,7 @@ const ProjectFormDialogImpl = NiceModal.create<ProjectFormDialogProps>(() => {
   );
 });
 
-export const ProjectFormDialog = defineModal<ProjectFormDialogResult>(
-  ProjectFormDialogImpl
-);
+export const ProjectFormDialog = defineModal<
+  ProjectFormDialogProps,
+  ProjectFormDialogResult
+>(ProjectFormDialogImpl);

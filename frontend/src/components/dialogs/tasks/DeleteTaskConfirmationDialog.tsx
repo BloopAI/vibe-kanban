@@ -94,6 +94,7 @@ const DeleteTaskConfirmationDialogImpl =
     );
   });
 
-export const DeleteTaskConfirmationDialog = defineModal<void>(
-  DeleteTaskConfirmationDialogImpl
-);
+export const DeleteTaskConfirmationDialog = defineModal<
+  DeleteTaskConfirmationDialogProps,
+  void
+>(DeleteTaskConfirmationDialogImpl);

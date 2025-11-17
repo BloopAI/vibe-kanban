@@ -213,4 +213,6 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
   }
 );
 
-export const CreateAttemptDialog = defineModal<void>(CreateAttemptDialogImpl);
+export const CreateAttemptDialog = defineModal<CreateAttemptDialogProps, void>(
+  CreateAttemptDialogImpl
+);

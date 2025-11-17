@@ -131,4 +131,6 @@ const StopShareTaskDialogImpl = NiceModal.create<StopShareTaskDialogProps>(
   }
 );
 
-export const StopShareTaskDialog = defineModal<void>(StopShareTaskDialogImpl);
+export const StopShareTaskDialog = defineModal<StopShareTaskDialogProps, void>(
+  StopShareTaskDialogImpl
+);

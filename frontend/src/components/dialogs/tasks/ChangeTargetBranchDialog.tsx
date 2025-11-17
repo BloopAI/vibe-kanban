@@ -102,5 +102,7 @@ const ChangeTargetBranchDialogImpl =
     }
   );
 
-export const ChangeTargetBranchDialog =
-  defineModal<ChangeTargetBranchDialogResult>(ChangeTargetBranchDialogImpl);
+export const ChangeTargetBranchDialog = defineModal<
+  ChangeTargetBranchDialogProps,
+  ChangeTargetBranchDialogResult
+>(ChangeTargetBranchDialogImpl);

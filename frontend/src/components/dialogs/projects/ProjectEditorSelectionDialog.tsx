@@ -91,6 +91,7 @@ const ProjectEditorSelectionDialogImpl =
     );
   });
 
-export const ProjectEditorSelectionDialog = defineModal<EditorType | null>(
-  ProjectEditorSelectionDialogImpl
-);
+export const ProjectEditorSelectionDialog = defineModal<
+  ProjectEditorSelectionDialogProps,
+  EditorType | null
+>(ProjectEditorSelectionDialogImpl);

@@ -55,4 +55,6 @@ const ViewProcessesDialogImpl = NiceModal.create<ViewProcessesDialogProps>(
   }
 );
 
-export const ViewProcessesDialog = defineModal<void>(ViewProcessesDialogImpl);
+export const ViewProcessesDialog = defineModal<ViewProcessesDialogProps, void>(
+  ViewProcessesDialogImpl
+);

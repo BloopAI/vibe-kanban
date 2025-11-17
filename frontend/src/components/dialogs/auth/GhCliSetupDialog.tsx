@@ -248,6 +248,7 @@ const GhCliSetupDialogImpl = NiceModal.create<GhCliSetupDialogProps>(
   }
 );
 
-export const GhCliSetupDialog = defineModal<GhCliSupportContent | null>(
-  GhCliSetupDialogImpl
-);
+export const GhCliSetupDialog = defineModal<
+  GhCliSetupDialogProps,
+  GhCliSupportContent | null
+>(GhCliSetupDialogImpl);

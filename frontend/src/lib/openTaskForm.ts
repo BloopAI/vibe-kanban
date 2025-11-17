@@ -1,4 +1,3 @@
-import { showModal } from '@/lib/modals';
 import { TaskFormDialog } from '@/components/dialogs/tasks/TaskFormDialog';
 import type { TaskFormDialogProps } from '@/components/dialogs/tasks/TaskFormDialog';
 
@@ -7,5 +6,5 @@ import type { TaskFormDialogProps } from '@/components/dialogs/tasks/TaskFormDia
  * This replaces the previous TaskFormDialogContainer pattern
  */
 export function openTaskForm(props: TaskFormDialogProps) {
-  return showModal(TaskFormDialog, props);
+  return TaskFormDialog.show(props);
 }

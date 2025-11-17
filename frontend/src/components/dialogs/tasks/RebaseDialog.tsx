@@ -157,4 +157,6 @@ const RebaseDialogImpl = NiceModal.create<RebaseDialogProps>(
   }
 );
 
-export const RebaseDialog = defineModal<RebaseDialogResult>(RebaseDialogImpl);
+export const RebaseDialog = defineModal<RebaseDialogProps, RebaseDialogResult>(
+  RebaseDialogImpl
+);

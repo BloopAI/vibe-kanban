@@ -83,4 +83,6 @@ const ConfirmDialogImpl = NiceModal.create<ConfirmDialogProps>((props) => {
   );
 });
 
-export const ConfirmDialog = defineModal<ConfirmResult>(ConfirmDialogImpl);
+export const ConfirmDialog = defineModal<ConfirmDialogProps, ConfirmResult>(
+  ConfirmDialogImpl
+);

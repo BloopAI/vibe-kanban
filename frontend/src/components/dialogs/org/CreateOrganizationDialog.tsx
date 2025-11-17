@@ -14,14 +14,14 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useOrganizationMutations } from '@/hooks/useOrganizationMutations';
 import { useTranslation } from 'react-i18next';
-import { defineModal } from '@/lib/modals';
+import { defineModal, type NoProps } from '@/lib/modals';
 
 export type CreateOrganizationResult = {
   action: 'created' | 'canceled';
   organizationId?: string;
 };
 
-const CreateOrganizationDialogImpl = NiceModal.create(() => {
+const CreateOrganizationDialogImpl = NiceModal.create<NoProps>(() => {
   const modal = useModal();
   const { t } = useTranslation('organization');
   const [name, setName] = useState('');
@@ -200,6 +200,7 @@ const CreateOrganizationDialogImpl = NiceModal.create(() => {
   );
 });
 
-export const CreateOrganizationDialog = defineModal<CreateOrganizationResult>(
-  CreateOrganizationDialogImpl
-);
+export const CreateOrganizationDialog = defineModal<
+  void,
+  CreateOrganizationResult
+>(CreateOrganizationDialogImpl);

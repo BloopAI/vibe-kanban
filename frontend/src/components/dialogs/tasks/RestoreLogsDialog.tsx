@@ -385,6 +385,7 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
   }
 );
 
-export const RestoreLogsDialog = defineModal<RestoreLogsDialogResult>(
-  RestoreLogsDialogImpl
-);
+export const RestoreLogsDialog = defineModal<
+  RestoreLogsDialogProps,
+  RestoreLogsDialogResult
+>(RestoreLogsDialogImpl);

@@ -21,7 +21,6 @@ import type { DraftResponse, TaskAttempt } from 'shared/types';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useUserSystem } from '@/components/config-provider';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
-import { showModal } from '@/lib/modals';
 import { RestoreLogsDialog } from '@/components/dialogs/tasks/RestoreLogsDialog';
 import {
   shouldShowInLogs,
@@ -192,7 +191,7 @@ export function RetryEditorInline({
       // Ask user for confirmation
       let modalResult: RestoreLogsDialogResult | undefined;
       try {
-        modalResult = await showModal(RestoreLogsDialog, {
+        modalResult = await RestoreLogsDialog.show({
           targetSha: before,
           targetSubject,
           commitsToReset,

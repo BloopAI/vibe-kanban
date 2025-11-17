@@ -240,6 +240,7 @@ const ReassignDialogImpl = NiceModal.create<ReassignDialogProps>(
   }
 );
 
-export const ReassignDialog = defineModal<SharedTaskRecord | null>(
-  ReassignDialogImpl
-);
+export const ReassignDialog = defineModal<
+  ReassignDialogProps,
+  SharedTaskRecord | null
+>(ReassignDialogImpl);

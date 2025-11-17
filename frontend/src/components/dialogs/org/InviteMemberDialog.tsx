@@ -193,6 +193,7 @@ const InviteMemberDialogImpl = NiceModal.create<InviteMemberDialogProps>(
   }
 );
 
-export const InviteMemberDialog = defineModal<InviteMemberResult>(
-  InviteMemberDialogImpl
-);
+export const InviteMemberDialog = defineModal<
+  InviteMemberDialogProps,
+  InviteMemberResult
+>(InviteMemberDialogImpl);

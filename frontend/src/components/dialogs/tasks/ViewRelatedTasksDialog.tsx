@@ -167,6 +167,7 @@ const ViewRelatedTasksDialogImpl =
     }
   );
 
-export const ViewRelatedTasksDialog = defineModal<void>(
-  ViewRelatedTasksDialogImpl
-);
+export const ViewRelatedTasksDialog = defineModal<
+  ViewRelatedTasksDialogProps,
+  void
+>(ViewRelatedTasksDialogImpl);

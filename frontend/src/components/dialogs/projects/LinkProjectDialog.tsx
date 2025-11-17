@@ -343,6 +343,7 @@ const LinkProjectDialogImpl = NiceModal.create<LinkProjectDialogProps>(
   }
 );
 
-export const LinkProjectDialog = defineModal<LinkProjectResult>(
-  LinkProjectDialogImpl
-);
+export const LinkProjectDialog = defineModal<
+  LinkProjectDialogProps,
+  LinkProjectResult
+>(LinkProjectDialogImpl);

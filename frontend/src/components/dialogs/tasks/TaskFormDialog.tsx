@@ -697,4 +697,6 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>(
   }
 );
 
-export const TaskFormDialog = defineModal<void>(TaskFormDialogImpl);
+export const TaskFormDialog = defineModal<TaskFormDialogProps, void>(
+  TaskFormDialogImpl
+);

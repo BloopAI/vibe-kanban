@@ -1,34 +1,33 @@
 import NiceModal from '@ebay/nice-modal-react';
 import type React from 'react';
+import type { NiceModalHocProps } from '@ebay/nice-modal-react';
 
-// Brand a component with its modal result type (props are inferred)
-export type ModalResultOf<M> = M extends { __modalResult?: infer R }
-  ? R
-  : never;
-export type ModalPropsOf<M> =
-  M extends React.ComponentType<infer P> ? P : never;
+// Use this instead of {} to avoid ban-types
+export type NoProps = Record<string, never>;
 
-export function defineModal<R>(component: React.ComponentType<any>) {
-  return component as React.ComponentType<any> & { __modalResult?: R };
-}
+// Map P for component props: void -> NoProps; otherwise P
+type ComponentProps<P> = [P] extends [void] ? NoProps : P;
 
-// Fully typed show using the component as the identifier
-export function showModal<M extends React.ComponentType<any>>(
-  modal: M,
-  props: ModalPropsOf<M>
-): Promise<ModalResultOf<M>> {
-  return NiceModal.show(modal as any, props) as Promise<ModalResultOf<M>>;
-}
+// Map P for .show() args: void -> []; otherwise [props: P]
+type ShowArgs<P> = [P] extends [void] ? [] : [props: P];
 
-// Optional typed hide/remove if you need them globally
-export function hideModal<M extends React.ComponentType<any>>(modal: M): void {
-  NiceModal.hide(modal as any);
-}
+// Modalized component with static show/hide/remove methods
+export type Modalized<P, R> = React.ComponentType<ComponentProps<P>> & {
+  __modalResult?: R;
+  show: (...args: ShowArgs<P>) => Promise<R>;
+  hide: () => void;
+  remove: () => void;
+};
 
-export function removeModal<M extends React.ComponentType<any>>(
-  modal: M
-): void {
-  NiceModal.remove(modal as any);
+export function defineModal<P, R>(
+  component: React.ComponentType<ComponentProps<P> & NiceModalHocProps>
+): Modalized<P, R> {
+  const c = component as unknown as Modalized<P, R>;
+  c.show = ((...args: any[]) =>
+    NiceModal.show(component as any, args[0])) as Modalized<P, R>['show'];
+  c.hide = () => NiceModal.hide(component as any);
+  c.remove = () => NiceModal.remove(component as any);
+  return c;
 }
 
 // Common modal result types for standardization

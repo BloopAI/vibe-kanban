@@ -9,9 +9,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { AlertTriangle } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
-import { defineModal } from '@/lib/modals';
+import { defineModal, type NoProps } from '@/lib/modals';
 
-const DisclaimerDialogImpl = NiceModal.create(() => {
+const DisclaimerDialogImpl = NiceModal.create<NoProps>(() => {
   const modal = useModal();
 
   const handleAccept = () => {
@@ -61,6 +61,6 @@ const DisclaimerDialogImpl = NiceModal.create(() => {
   );
 });
 
-export const DisclaimerDialog = defineModal<'accepted' | void>(
+export const DisclaimerDialog = defineModal<void, 'accepted' | void>(
   DisclaimerDialogImpl
 );

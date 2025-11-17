@@ -24,7 +24,6 @@ import { Loader2 } from 'lucide-react';
 import { ExecutorConfigForm } from '@/components/ExecutorConfigForm';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useUserSystem } from '@/components/config-provider';
-import { showModal } from '@/lib/modals';
 import { CreateConfigurationDialog } from '@/components/dialogs/settings/CreateConfigurationDialog';
 import { DeleteConfigurationDialog } from '@/components/dialogs/settings/DeleteConfigurationDialog';
 
@@ -86,7 +85,7 @@ export function AgentSettings() {
   // Open create dialog
   const openCreateDialog = async () => {
     try {
-      const result = await showModal(CreateConfigurationDialog, {
+      const result = await CreateConfigurationDialog.show({
         executorType: selectedExecutorType,
         existingConfigs: Object.keys(
           localParsedProfiles?.executors?.[selectedExecutorType] || {}
@@ -139,7 +138,7 @@ export function AgentSettings() {
   // Open delete dialog
   const openDeleteDialog = async (configName: string) => {
     try {
-      const result = await showModal(DeleteConfigurationDialog, {
+      const result = await DeleteConfigurationDialog.show({
         configName,
         executorType: selectedExecutorType,
       });

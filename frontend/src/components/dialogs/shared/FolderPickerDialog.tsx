@@ -290,6 +290,7 @@ const FolderPickerDialogImpl = NiceModal.create<FolderPickerDialogProps>(
   }
 );
 
-export const FolderPickerDialog = defineModal<string | null>(
-  FolderPickerDialogImpl
-);
+export const FolderPickerDialog = defineModal<
+  FolderPickerDialogProps,
+  string | null
+>(FolderPickerDialogImpl);

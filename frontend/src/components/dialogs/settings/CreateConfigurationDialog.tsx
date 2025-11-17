@@ -158,6 +158,7 @@ const CreateConfigurationDialogImpl =
     }
   );
 
-export const CreateConfigurationDialog = defineModal<CreateConfigurationResult>(
-  CreateConfigurationDialogImpl
-);
+export const CreateConfigurationDialog = defineModal<
+  CreateConfigurationDialogProps,
+  CreateConfigurationResult
+>(CreateConfigurationDialogImpl);

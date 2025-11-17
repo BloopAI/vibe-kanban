@@ -15,7 +15,6 @@ import { useScriptPlaceholders } from '@/hooks/useScriptPlaceholders';
 import { CopyFilesField } from './copy-files-field';
 // Removed collapsible sections for simplicity; show fields always in edit mode
 import { fileSystemApi } from '@/lib/api';
-import { showModal } from '@/lib/modals';
 import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
 import { DirectoryEntry } from 'shared/types';
 import { generateProjectNameFromPath } from '@/utils/string';
@@ -245,7 +244,7 @@ export function ProjectFormFields({
                   className="p-4 border border-dashed cursor-pointer hover:shadow-md transition-shadow rounded-lg bg-card"
                   onClick={async () => {
                     setError('');
-                    const selectedPath = await showModal(FolderPickerDialog, {
+                    const selectedPath = await FolderPickerDialog.show({
                       title: 'Select Git Repository',
                       description: 'Choose an existing git repository',
                     });
@@ -342,7 +341,7 @@ export function ProjectFormFields({
                   variant="ghost"
                   size="icon"
                   onClick={async () => {
-                    const selectedPath = await showModal(FolderPickerDialog, {
+                    const selectedPath = await FolderPickerDialog.show({
                       title: 'Select Parent Directory',
                       description: 'Choose where to create the new repository',
                       value: parentPath,
@@ -382,7 +381,7 @@ export function ProjectFormFields({
                 type="button"
                 variant="outline"
                 onClick={async () => {
-                  const selectedPath = await showModal(FolderPickerDialog, {
+                  const selectedPath = await FolderPickerDialog.show({
                     title: 'Select Git Repository',
                     description: 'Choose an existing git repository',
                     value: gitRepoPath,

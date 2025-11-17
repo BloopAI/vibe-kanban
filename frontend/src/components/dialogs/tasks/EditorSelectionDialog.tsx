@@ -93,6 +93,7 @@ const EditorSelectionDialogImpl = NiceModal.create<EditorSelectionDialogProps>(
   }
 );
 
-export const EditorSelectionDialog = defineModal<EditorType | null>(
-  EditorSelectionDialogImpl
-);
+export const EditorSelectionDialog = defineModal<
+  EditorSelectionDialogProps,
+  EditorType | null
+>(EditorSelectionDialogImpl);

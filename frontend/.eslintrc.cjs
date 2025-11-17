@@ -43,7 +43,13 @@ module.exports = {
             name: '@ebay/nice-modal-react',
             importNames: ['default'],
             message:
-              'Import NiceModal only in lib/modals.ts or dialog component files. Use showModal from @/lib/modals instead.',
+              'Import NiceModal only in lib/modals.ts or dialog component files. Use DialogName.show(props) instead.',
+          },
+          {
+            name: '@/lib/modals',
+            importNames: ['showModal', 'hideModal', 'removeModal'],
+            message:
+              'Do not import showModal/hideModal/removeModal. Use DialogName.show(props) and DialogName.hide() instead.',
           },
         ],
       },
@@ -54,13 +60,26 @@ module.exports = {
         selector:
           'CallExpression[callee.object.name="NiceModal"][callee.property.name="show"]',
         message:
-          'Do not use NiceModal.show() directly. Use showModal(Modals.X, props) from @/lib/modals instead.',
+          'Do not use NiceModal.show() directly. Use DialogName.show(props) instead.',
       },
       {
         selector:
           'CallExpression[callee.object.name="NiceModal"][callee.property.name="register"]',
         message:
-          'Do not use NiceModal.register(). Dialogs are registered automatically when used with showModal().',
+          'Do not use NiceModal.register(). Dialogs are registered automatically.',
+      },
+      {
+        selector: 'CallExpression[callee.name="showModal"]',
+        message:
+          'Do not use showModal(). Use DialogName.show(props) instead.',
+      },
+      {
+        selector: 'CallExpression[callee.name="hideModal"]',
+        message: 'Do not use hideModal(). Use DialogName.hide() instead.',
+      },
+      {
+        selector: 'CallExpression[callee.name="removeModal"]',
+        message: 'Do not use removeModal(). Use DialogName.remove() instead.',
       },
     ],
     // i18n rule - only active when LINT_I18N=true

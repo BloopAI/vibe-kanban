@@ -161,4 +161,6 @@ const GitActionsDialogImpl = NiceModal.create<GitActionsDialogProps>(
   }
 );
 
-export const GitActionsDialog = defineModal<void>(GitActionsDialogImpl);
+export const GitActionsDialog = defineModal<GitActionsDialogProps, void>(
+  GitActionsDialogImpl
+);

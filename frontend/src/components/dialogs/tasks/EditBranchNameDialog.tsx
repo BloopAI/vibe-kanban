@@ -138,6 +138,7 @@ const EditBranchNameDialogImpl = NiceModal.create<EditBranchNameDialogProps>(
   }
 );
 
-export const EditBranchNameDialog = defineModal<EditBranchNameDialogResult>(
-  EditBranchNameDialogImpl
-);
+export const EditBranchNameDialog = defineModal<
+  EditBranchNameDialogProps,
+  EditBranchNameDialogResult
+>(EditBranchNameDialogImpl);

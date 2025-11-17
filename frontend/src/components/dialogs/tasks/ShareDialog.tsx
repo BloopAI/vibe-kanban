@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
-import { showModal } from '@/lib/modals';
 import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
 import { LinkProjectDialog } from '@/components/dialogs/projects/LinkProjectDialog';
 import { useTranslation } from 'react-i18next';
@@ -70,7 +69,7 @@ const ShareDialogImpl = NiceModal.create<ShareDialogProps>(({ task }) => {
       modal.hide();
     } catch (err) {
       if (getStatus(err) === 401) {
-        void showModal(OAuthDialog, {});
+        void OAuthDialog.show();
         return;
       }
       setShareError(getReadableError(err));
@@ -80,7 +79,7 @@ const ShareDialogImpl = NiceModal.create<ShareDialogProps>(({ task }) => {
   const handleLinkProject = () => {
     if (!project) return;
 
-    void showModal(LinkProjectDialog, {
+    void LinkProjectDialog.show({
       projectId: project.id,
       projectName: project.name,
     });
@@ -172,4 +171,6 @@ const ShareDialogImpl = NiceModal.create<ShareDialogProps>(({ task }) => {
   );
 });
 
-export const ShareDialog = defineModal<boolean>(ShareDialogImpl);
+export const ShareDialog = defineModal<ShareDialogProps, boolean>(
+  ShareDialogImpl
+);
