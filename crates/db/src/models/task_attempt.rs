@@ -72,7 +72,7 @@ pub struct AttemptResumeContext {
     pub cumulative_diffs: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TaskAttemptContext {
     pub task_attempt: TaskAttempt,
     pub task: Task,

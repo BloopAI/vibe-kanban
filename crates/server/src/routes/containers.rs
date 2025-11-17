@@ -4,7 +4,7 @@ use axum::{
     response::Json as ResponseJson,
     routing::get,
 };
-use db::models::task_attempt::TaskAttempt;
+use db::models::task_attempt::{TaskAttempt, TaskAttemptContext};
 use deployment::Deployment;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -20,7 +20,7 @@ pub struct ContainerInfo {
     pub project_id: Uuid,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ContainerQuery {
     #[serde(rename = "ref")]
     pub container_ref: String,
@@ -49,6 +49,35 @@ pub async fn get_container_info(
     Ok(ResponseJson(ApiResponse::success(container_info)))
 }
 
+pub async fn get_context(
+    State(deployment): State<DeploymentImpl>,
+    Query(payload): Query<ContainerQuery>,
+) -> Result<ResponseJson<ApiResponse<Option<TaskAttemptContext>>>, ApiError> {
+    tracing::info!("Getting context for ref: {}", payload.container_ref);
+    // Try to resolve the path to task attempt via container_ref
+    let result =
+        TaskAttempt::resolve_container_ref(&deployment.db().pool, &payload.container_ref).await;
+
+    match result {
+        Ok((attempt_id, task_id, project_id)) => {
+            tracing::info!(
+                "Resolved context for ref {}: attempt {}, task {}, project {}",
+                payload.container_ref,
+                attempt_id,
+                task_id,
+                project_id
+            );
+            let ctx =
+                TaskAttempt::load_context(&deployment.db().pool, attempt_id, task_id, project_id)
+                    .await?;
+            Ok(ResponseJson(ApiResponse::success(Some(ctx))))
+        }
+        Err(_) => Ok(ResponseJson(ApiResponse::success(None))),
+    }
+}
+
 pub fn router(_deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
-    Router::new().route("/containers/info", get(get_container_info))
+    Router::new()
+        .route("/containers/info", get(get_container_info))
+        .route("/containers/attempt-context", get(get_context))
 }

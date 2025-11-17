@@ -3,7 +3,7 @@ use std::{future::Future, path::PathBuf, str::FromStr};
 use db::models::{
     project::Project,
     task::{CreateTask, Task, TaskStatus, TaskWithAttemptStatus, UpdateTask},
-    task_attempt::TaskAttempt,
+    task_attempt::{TaskAttempt, TaskAttemptContext},
 };
 use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
 use rmcp::{
@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json;
 use uuid::Uuid;
 
-use crate::routes::task_attempts::CreateTaskAttemptBody;
+use crate::routes::{containers::ContainerQuery, task_attempts::CreateTaskAttemptBody};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct CreateTaskRequest {
@@ -241,6 +241,17 @@ pub struct TaskServer {
     tool_router: ToolRouter<TaskServer>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct McpContext {
+    pub project_id: Uuid,
+    pub task_id: Uuid,
+    pub task_title: String,
+    pub attempt_id: Uuid,
+    pub attempt_branch: String,
+    pub attempt_target_branch: String,
+    pub executor: String,
+}
+
 impl TaskServer {
     pub fn new(base_url: &str) -> Self {
         Self {
@@ -322,6 +333,42 @@ impl TaskServer {
 
 #[tool_router]
 impl TaskServer {
+    #[tool(
+        description = "Return project, task, and attempt metadata for the current VK MCP session"
+    )]
+    async fn get_vk_context(&self) -> Result<CallToolResult, ErrorData> {
+        let url = self.url("/api/containers/attempt-context");
+        let current_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+
+        // Canonicalize to resolve symlinks (e.g., /private/var -> /var on macOS)
+        let canonical_path = current_dir.canonicalize().unwrap_or(current_dir);
+        let normalized_path = utils::path::normalize_macos_private_alias(&canonical_path);
+
+        let request = ContainerQuery {
+            container_ref: normalized_path.to_string_lossy().to_string(),
+        };
+        let ctx_repsonse = match self
+            .send_json::<Option<TaskAttemptContext>>(self.client.get(&url).query(&request))
+            .await
+        {
+            Ok(ctx) => ctx,
+            Err(e) => return Ok(e),
+        };
+        if let Some(ctx) = ctx_repsonse {
+            let mcp_context = McpContext {
+                project_id: ctx.project.id,
+                task_id: ctx.task.id,
+                task_title: ctx.task.title,
+                attempt_id: ctx.task_attempt.id,
+                attempt_branch: ctx.task_attempt.branch,
+                attempt_target_branch: ctx.task_attempt.target_branch,
+                executor: ctx.task_attempt.executor,
+            };
+            TaskServer::success(&mcp_context)
+        } else {
+            Self::err("No VK MCP context available".to_string(), None::<String>)
+        }
+    }
     #[tool(
         description = "Create a new task/ticket in a project. Always pass the `project_id` of the project you want to create the task in - it is required!"
     )]
@@ -591,16 +638,18 @@ impl TaskServer {
 #[tool_handler]
 impl ServerHandler for TaskServer {
     fn get_info(&self) -> ServerInfo {
+        let mut instructions = "A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. This should be provided to you. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project`. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'start_task_attempt', 'get_task', 'update_task', 'delete_task'. Make sure to pass `project_id` or `task_id` where required. You can use list tools to get the available ids.".to_string();
+
+        instructions.push_str(" Use 'get_vk_context' to fetch project/task/attempt metadata for the active Vibe Kanban attempt when available.");
+
         ServerInfo {
             protocol_version: ProtocolVersion::V_2025_03_26,
-            capabilities: ServerCapabilities::builder()
-                .enable_tools()
-                .build(),
+            capabilities: ServerCapabilities::builder().enable_tools().build(),
             server_info: Implementation {
                 name: "vibe-kanban".to_string(),
                 version: "1.0.0".to_string(),
             },
-            instructions: Some("A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. This should be provided to you. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project`. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'start_task_attempt', 'get_task', 'update_task', 'delete_task'. Make sure to pass `project_id` or `task_id` where required. You can use list tools to get the available ids.".to_string()),
+            instructions: Some(instructions),
         }
     }
 }
