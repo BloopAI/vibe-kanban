@@ -99,7 +99,7 @@ export const UserAvatar = ({
   return (
     <div
       className={cn(
-        'flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted text-xs font-medium text-muted-foreground',
+        'flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted-foreground text-xs font-medium text-muted',
         className
       )}
       title={label}
