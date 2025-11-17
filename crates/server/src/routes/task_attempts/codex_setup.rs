@@ -64,7 +64,7 @@ async fn get_setup_helper_action() -> Result<ExecutorAction, ApiError> {
     let login_request = ScriptRequest {
         script: login_script,
         language: ScriptRequestLanguage::Bash,
-        context: ScriptContext::SetupScript,
+        context: ScriptContext::ToolInstallScript,
     };
 
     Ok(ExecutorAction::new(
