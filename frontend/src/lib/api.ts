@@ -274,7 +274,7 @@ export const projectsApi = {
     id: string,
     editorType?: EditorType
   ): Promise<OpenEditorResponse> => {
-    const requestBody: any = {};
+    const requestBody: { editor_type?: EditorType } = {};
     if (editorType) requestBody.editor_type = editorType;
 
     const response = await makeRequest(`/api/projects/${id}/open-editor`, {

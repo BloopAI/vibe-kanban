@@ -24,7 +24,7 @@ import { getIdeName } from '@/components/ide/IdeIcon';
 import { useProject } from '@/contexts/project-context';
 import { useQuery } from '@tanstack/react-query';
 import { attemptsApi } from '@/lib/api';
-import { BaseAgentCapability, type BaseCodingAgent } from 'shared/types';
+import { BaseAgentCapability, type BaseCodingAgent, type TaskWithAttemptStatus } from 'shared/types';
 import {
   Tooltip,
   TooltipContent,
@@ -37,7 +37,7 @@ type NextActionCardProps = {
   containerRef?: string | null;
   failed: boolean;
   execution_processes: number;
-  task?: any;
+  task?: TaskWithAttemptStatus;
   needsSetup?: boolean;
 };
 

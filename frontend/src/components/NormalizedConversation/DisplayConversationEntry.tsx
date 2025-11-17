@@ -6,6 +6,8 @@ import {
   TaskAttempt,
   ToolStatus,
   type NormalizedEntryType,
+  type TaskWithAttemptStatus,
+  type JsonValue,
 } from 'shared/types.ts';
 import type { ProcessStartPayload } from '@/types/logs';
 import FileChangeRenderer from './FileChangeRenderer';
@@ -39,11 +41,22 @@ type Props = {
   diffDeletable?: boolean;
   executionProcessId?: string;
   taskAttempt?: TaskAttempt;
-  task?: any;
+  task?: TaskWithAttemptStatus;
 };
 
 type FileEditAction = Extract<ActionType, { action: 'file_edit' }>;
-type JsonValue = any;
+
+type ActionLike = {
+  action?: string;
+  arguments?: JsonValue;
+  result?: {
+    output?: string;
+    exit_status?: { type: string; success?: boolean; code?: number };
+  };
+  tool_name?: string;
+  message?: string;
+  summary?: string;
+};
 
 const renderJson = (v: JsonValue) => (
   <pre className="whitespace-pre-wrap">{JSON.stringify(v, null, 2)}</pre>
@@ -420,7 +433,7 @@ const PlanPresentationCard: React.FC<{
 
 const ToolCallCard: React.FC<{
   entryType?: Extract<NormalizedEntryType, { type: 'tool_use' }>;
-  action?: any;
+  action?: ActionLike;
   expansionKey: string;
   content?: string;
   entryContent?: string;
@@ -440,7 +453,7 @@ const ToolCallCard: React.FC<{
   linkifyUrls = false,
 }) => {
   const { t } = useTranslation('common');
-  const at: any = entryType?.action_type || action;
+  const at = (entryType?.action_type as ActionLike | undefined) ?? action;
   const [expanded, toggle] = useExpandable(
     `tool-entry:${expansionKey}`,
     defaultExpanded
@@ -624,11 +637,11 @@ function DisplayConversationEntry({
   const greyed = isProcessGreyed(executionProcessId);
 
   if (isProcessStart(entry)) {
-    const toolAction: any = entry.action ?? null;
+    const toolAction = (entry.action ?? null) as unknown as ActionLike | null;
     return (
       <div className={greyed ? 'opacity-50 pointer-events-none' : undefined}>
         <ToolCallCard
-          action={toolAction}
+          action={toolAction ?? undefined}
           expansionKey={expansionKey}
           content={toolAction?.message ?? toolAction?.summary ?? undefined}
         />
