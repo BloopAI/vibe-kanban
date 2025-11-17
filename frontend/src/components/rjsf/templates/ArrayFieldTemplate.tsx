@@ -77,9 +77,7 @@ const ArrayItem = ({ element, disabled, readonly }: ArrayItemProps) => {
             elementWithButtons.buttonsProps.index
           )}
           disabled={
-            disabled ||
-            readonly ||
-            elementWithButtons.buttonsProps.disabled
+            disabled || readonly || elementWithButtons.buttonsProps.disabled
           }
           className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200 shrink-0"
           title="Remove item"
