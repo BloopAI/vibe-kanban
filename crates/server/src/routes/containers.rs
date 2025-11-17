@@ -52,7 +52,7 @@ pub async fn get_container_info(
 pub async fn get_context(
     State(deployment): State<DeploymentImpl>,
     Query(payload): Query<ContainerQuery>,
-) -> Result<ResponseJson<ApiResponse<Option<TaskAttemptContext>>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<TaskAttemptContext>>, ApiError> {
     let result =
         TaskAttempt::resolve_container_ref(&deployment.db().pool, &payload.container_ref).await;
 
@@ -61,9 +61,11 @@ pub async fn get_context(
             let ctx =
                 TaskAttempt::load_context(&deployment.db().pool, attempt_id, task_id, project_id)
                     .await?;
-            Ok(ResponseJson(ApiResponse::success(Some(ctx))))
+            Ok(ResponseJson(ApiResponse::success(ctx)))
         }
-        Err(_) => Ok(ResponseJson(ApiResponse::success(None))),
+        Err(_) => Ok(ResponseJson(ApiResponse::error(
+            "No vibe-kanban context available, you are likely not running inside a task attempt.",
+        ))),
     }
 }
 
