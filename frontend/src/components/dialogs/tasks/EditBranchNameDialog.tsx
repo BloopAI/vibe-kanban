@@ -24,8 +24,7 @@ export type EditBranchNameDialogResult = {
   branchName?: string;
 };
 
-const EditBranchNameDialogImpl =
-  NiceModal.create<EditBranchNameDialogProps>(
+const EditBranchNameDialogImpl = NiceModal.create<EditBranchNameDialogProps>(
   ({ attemptId, currentBranchName }) => {
     const modal = useModal();
     const { t } = useTranslation(['tasks', 'common']);

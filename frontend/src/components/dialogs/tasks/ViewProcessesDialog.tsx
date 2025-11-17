@@ -15,8 +15,7 @@ export interface ViewProcessesDialogProps {
   initialProcessId?: string | null;
 }
 
-const ViewProcessesDialogImpl =
-  NiceModal.create<ViewProcessesDialogProps>(
+const ViewProcessesDialogImpl = NiceModal.create<ViewProcessesDialogProps>(
   ({ attemptId, initialProcessId }) => {
     const { t } = useTranslation('tasks');
     const modal = useModal();
@@ -56,6 +55,4 @@ const ViewProcessesDialogImpl =
   }
 );
 
-export const ViewProcessesDialog = defineModal<void>(
-  ViewProcessesDialogImpl
-);
+export const ViewProcessesDialog = defineModal<void>(ViewProcessesDialogImpl);

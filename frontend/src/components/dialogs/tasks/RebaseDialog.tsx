@@ -28,8 +28,7 @@ export type RebaseDialogResult = {
   upstreamBranch?: string;
 };
 
-const RebaseDialogImpl =
-  NiceModal.create<RebaseDialogProps>(
+const RebaseDialogImpl = NiceModal.create<RebaseDialogProps>(
   ({
     branches,
     isRebasing = false,
@@ -158,6 +157,4 @@ const RebaseDialogImpl =
   }
 );
 
-export const RebaseDialog = defineModal<RebaseDialogResult>(
-  RebaseDialogImpl
-);
+export const RebaseDialog = defineModal<RebaseDialogResult>(RebaseDialogImpl);

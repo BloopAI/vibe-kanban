@@ -203,7 +203,4 @@ const TagEditDialogImpl = NiceModal.create<TagEditDialogProps>(({ tag }) => {
   );
 });
 
-
-export const TagEditDialog = defineModal<TagEditResult>(
-  TagEditDialogImpl
-);
+export const TagEditDialog = defineModal<TagEditResult>(TagEditDialogImpl);

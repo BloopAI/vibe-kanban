@@ -311,7 +311,6 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                             if (next) setWorktreeResetOn(true);
                             return next;
                           });
-
                         }}
                       >
                         <div className="text-xs font-medium text-destructive flex-1 min-w-0 break-words">
@@ -386,4 +385,6 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
   }
 );
 
-export const RestoreLogsDialog = defineModal<RestoreLogsDialogResult>(RestoreLogsDialogImpl);
+export const RestoreLogsDialog = defineModal<RestoreLogsDialogResult>(
+  RestoreLogsDialogImpl
+);

@@ -172,5 +172,4 @@ const ShareDialogImpl = NiceModal.create<ShareDialogProps>(({ task }) => {
   );
 });
 
-
 export const ShareDialog = defineModal<boolean>(ShareDialogImpl);

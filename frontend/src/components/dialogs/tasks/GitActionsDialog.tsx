@@ -98,8 +98,7 @@ function GitActionsDialogContent({
   );
 }
 
-const GitActionsDialogImpl =
-  NiceModal.create<GitActionsDialogProps>(
+const GitActionsDialogImpl = NiceModal.create<GitActionsDialogProps>(
   ({ attemptId, task, projectId: providedProjectId }) => {
     const modal = useModal();
     const { t } = useTranslation('tasks');
@@ -162,6 +161,4 @@ const GitActionsDialogImpl =
   }
 );
 
-export const GitActionsDialog = defineModal<void>(
-  GitActionsDialogImpl
-);
+export const GitActionsDialog = defineModal<void>(GitActionsDialogImpl);

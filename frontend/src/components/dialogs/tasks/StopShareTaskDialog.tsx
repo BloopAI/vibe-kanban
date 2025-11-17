@@ -20,8 +20,7 @@ export interface StopShareTaskDialogProps {
   sharedTask: SharedTaskRecord;
 }
 
-const StopShareTaskDialogImpl =
-  NiceModal.create<StopShareTaskDialogProps>(
+const StopShareTaskDialogImpl = NiceModal.create<StopShareTaskDialogProps>(
   ({ sharedTask }) => {
     const modal = useModal();
     const { t } = useTranslation('tasks');
@@ -132,6 +131,4 @@ const StopShareTaskDialogImpl =
   }
 );
 
-export const StopShareTaskDialog = defineModal<void>(
-  StopShareTaskDialogImpl
-);
+export const StopShareTaskDialog = defineModal<void>(StopShareTaskDialogImpl);

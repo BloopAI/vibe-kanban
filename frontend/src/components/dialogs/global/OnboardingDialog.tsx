@@ -228,6 +228,5 @@ const OnboardingDialogImpl = NiceModal.create(() => {
   );
 });
 
-export const OnboardingDialog = defineModal<OnboardingResult>(
-  OnboardingDialogImpl
-);
+export const OnboardingDialog =
+  defineModal<OnboardingResult>(OnboardingDialogImpl);

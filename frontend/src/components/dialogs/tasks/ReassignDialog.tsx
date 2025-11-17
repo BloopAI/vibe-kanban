@@ -104,7 +104,6 @@ const ReassignDialogImpl = NiceModal.create<ReassignDialogProps>(
       },
     });
 
-
     const handleConfirm = async () => {
       if (reassignMutation.isPending) {
         return;
@@ -241,4 +240,6 @@ const ReassignDialogImpl = NiceModal.create<ReassignDialogProps>(
   }
 );
 
-export const ReassignDialog = defineModal<SharedTaskRecord | null>(ReassignDialogImpl);
+export const ReassignDialog = defineModal<SharedTaskRecord | null>(
+  ReassignDialogImpl
+);
