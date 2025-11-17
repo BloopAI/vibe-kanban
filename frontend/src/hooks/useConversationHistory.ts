@@ -192,8 +192,9 @@ export const useConversationHistory = ({
           },
         });
       });
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     },
+    // emitEntries is stable (only depends on flattenEntriesForEmit which has no deps)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 

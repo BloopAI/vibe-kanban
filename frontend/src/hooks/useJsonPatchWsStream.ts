@@ -30,7 +30,7 @@ export const useJsonPatchWsStream = <T>(
   endpoint: string | undefined,
   enabled: boolean,
   initialData: () => T,
-  options: UseJsonPatchStreamOptions<T> = {}
+  options?: UseJsonPatchStreamOptions<T>
 ): UseJsonPatchStreamResult<T> => {
   const [data, setData] = useState<T | undefined>(undefined);
   const [isConnected, setIsConnected] = useState(false);
@@ -41,6 +41,9 @@ export const useJsonPatchWsStream = <T>(
   const retryAttemptsRef = useRef<number>(0);
   const [retryNonce, setRetryNonce] = useState(0);
   const finishedRef = useRef<boolean>(false);
+
+  const injectInitialEntry = options?.injectInitialEntry;
+  const deduplicatePatches = options?.deduplicatePatches;
 
   function scheduleReconnect() {
     if (retryTimerRef.current) return; // already scheduled
@@ -78,8 +81,8 @@ export const useJsonPatchWsStream = <T>(
       dataRef.current = initialData();
 
       // Inject initial entry if provided
-      if (options.injectInitialEntry) {
-        options.injectInitialEntry(dataRef.current);
+      if (injectInitialEntry) {
+        injectInitialEntry(dataRef.current);
       }
     }
 
@@ -110,8 +113,8 @@ export const useJsonPatchWsStream = <T>(
           // Handle JsonPatch messages (same as SSE json_patch event)
           if ('JsonPatch' in msg) {
             const patches: Operation[] = msg.JsonPatch;
-            const filtered = options.deduplicatePatches
-              ? options.deduplicatePatches(patches)
+            const filtered = deduplicatePatches
+              ? deduplicatePatches(patches)
               : patches;
 
             if (!filtered.length || !dataRef.current) return;
@@ -183,7 +186,7 @@ export const useJsonPatchWsStream = <T>(
       dataRef.current = undefined;
       setData(undefined);
     };
-  }, [endpoint, enabled, initialData, options, retryNonce]);
+  }, [endpoint, enabled, initialData, injectInitialEntry, deduplicatePatches, retryNonce]);
 
   return { data, isConnected, error };
 };
