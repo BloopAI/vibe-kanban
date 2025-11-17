@@ -373,5 +373,33 @@
       "next": "Next",
       "finish": "Finish"
     }
+  },
+  "taskFormDialog": {
+    "createTitle": "Create New Task",
+    "editTitle": "Edit Task",
+    "titlePlaceholder": "Task title",
+    "descriptionPlaceholder": "Add more details (optional). Type @ to search files.",
+    "statusLabel": "Status",
+    "statusOptions": {
+      "todo": "To Do",
+      "inprogress": "In Progress",
+      "inreview": "In Review",
+      "done": "Done",
+      "cancelled": "Cancelled"
+    },
+    "startLabel": "Start",
+    "attachImage": "Attach image",
+    "dropImagesHere": "Drop images here",
+    "updating": "Updating...",
+    "updateTask": "Update Task",
+    "starting": "Starting...",
+    "creating": "Creating...",
+    "create": "Create",
+    "discardDialog": {
+      "title": "Discard unsaved changes?",
+      "description": "You have unsaved changes. Are you sure you want to discard them?",
+      "continueEditing": "Continue Editing",
+      "discardChanges": "Discard Changes"
+    }
   }
 }

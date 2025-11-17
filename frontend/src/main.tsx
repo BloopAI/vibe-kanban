@@ -73,6 +73,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <ClickToComponent />
           <VibeKanbanWebCompanion />
           <App />
+          {/*<TanStackDevtools plugins={[FormDevtoolsPlugin()]} />*/}
           {/* <ReactQueryDevtools initialIsOpen={false} /> */}
         </Sentry.ErrorBoundary>
       </PostHogProvider>

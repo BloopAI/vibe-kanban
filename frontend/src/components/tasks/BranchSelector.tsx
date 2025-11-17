@@ -64,9 +64,11 @@ const BranchRow = memo(function BranchRow({
       disabled={isDisabled}
       className={classes.trim()}
     >
-      <div className="flex items-center justify-between w-full">
-        <span className={nameClass}>{branch.name}</span>
-        <div className="flex gap-1">
+      <div className="flex items-center justify-between w-full gap-2">
+        <span className={`${nameClass} truncate flex-1 min-w-0`}>
+          {branch.name}
+        </span>
+        <div className="flex gap-1 flex-shrink-0">
           {branch.is_current && (
             <span className="text-xs bg-background px-1 rounded">
               {t('branchSelector.badges.current')}
@@ -209,13 +211,13 @@ function BranchSelector({
           size="sm"
           className={`w-full justify-between text-xs ${className}`}
         >
-          <div className="flex items-center gap-1.5 w-full">
-            <GitBranchIcon className="h-3 w-3" />
+          <div className="flex items-center gap-1.5 w-full min-w-0">
+            <GitBranchIcon className="h-3 w-3 flex-shrink-0" />
             <span className="truncate">
               {selectedBranch || effectivePlaceholder}
             </span>
           </div>
-          <ArrowDown className="h-3 w-3" />
+          <ArrowDown className="h-3 w-3 flex-shrink-0" />
         </Button>
       </DropdownMenuTrigger>
 

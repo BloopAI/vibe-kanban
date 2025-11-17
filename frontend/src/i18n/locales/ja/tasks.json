@@ -373,5 +373,33 @@
       "next": "次へ",
       "finish": "完了"
     }
+  },
+  "taskFormDialog": {
+    "createTitle": "新規タスクを作成",
+    "editTitle": "タスクを編集",
+    "titlePlaceholder": "タスクのタイトル",
+    "descriptionPlaceholder": "詳細を追加（オプション）。@でファイルを検索できます。",
+    "statusLabel": "ステータス",
+    "statusOptions": {
+      "todo": "未着手",
+      "inprogress": "進行中",
+      "inreview": "レビュー中",
+      "done": "完了",
+      "cancelled": "キャンセル"
+    },
+    "startLabel": "開始",
+    "attachImage": "画像を添付",
+    "dropImagesHere": "画像をここにドロップ",
+    "updating": "更新中...",
+    "updateTask": "タスクを更新",
+    "starting": "開始中...",
+    "creating": "作成中...",
+    "create": "作成",
+    "discardDialog": {
+      "title": "未保存の変更を破棄しますか？",
+      "description": "未保存の変更があります。本当に破棄してもよろしいですか？",
+      "continueEditing": "編集を続ける",
+      "discardChanges": "変更を破棄"
+    }
   }
 }

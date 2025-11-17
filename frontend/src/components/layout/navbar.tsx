@@ -107,7 +107,7 @@ export function Navbar() {
 
   const handleCreateTask = () => {
     if (projectId) {
-      openTaskForm({ projectId });
+      openTaskForm({ mode: 'create', projectId });
     }
   };
 

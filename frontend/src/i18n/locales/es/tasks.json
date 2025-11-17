@@ -373,5 +373,33 @@
       "next": "Siguiente",
       "finish": "Finalizar"
     }
+  },
+  "taskFormDialog": {
+    "createTitle": "Crear Nueva Tarea",
+    "editTitle": "Editar Tarea",
+    "titlePlaceholder": "Título de la tarea",
+    "descriptionPlaceholder": "Agrega más detalles (opcional). Escribe @ para buscar archivos.",
+    "statusLabel": "Estado",
+    "statusOptions": {
+      "todo": "Por Hacer",
+      "inprogress": "En Progreso",
+      "inreview": "En Revisión",
+      "done": "Completado",
+      "cancelled": "Cancelado"
+    },
+    "startLabel": "Iniciar",
+    "attachImage": "Adjuntar imagen",
+    "dropImagesHere": "Suelta las imágenes aquí",
+    "updating": "Actualizando...",
+    "updateTask": "Actualizar Tarea",
+    "starting": "Iniciando...",
+    "creating": "Creando...",
+    "create": "Crear",
+    "discardDialog": {
+      "title": "¿Descartar cambios sin guardar?",
+      "description": "Tienes cambios sin guardar. ¿Estás seguro de que deseas descartarlos?",
+      "continueEditing": "Continuar Editando",
+      "discardChanges": "Descartar Cambios"
+    }
   }
 }

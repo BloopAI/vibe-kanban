@@ -239,10 +239,7 @@ const CreatePrDialog = NiceModal.create<CreatePRDialogProps>(
 
     return (
       <>
-        <Dialog
-          open={modal.visible}
-          onOpenChange={() => handleCancelCreatePR()}
-        >
+        <Dialog open={modal.visible} onOpenChange={() => handleCancelCreatePR()}>
           <DialogContent className="sm:max-w-[525px]">
             <DialogHeader>
               <DialogTitle>{t('createPrDialog.title')}</DialogTitle>
@@ -298,19 +295,13 @@ const CreatePrDialog = NiceModal.create<CreatePRDialogProps>(
                   />
                 </div>
                 {ghCliHelp?.variant && (
-                  <Alert
-                    variant="default"
-                    className="border-primary/30 bg-primary/10 text-primary"
-                  >
+                  <Alert variant="default">
                     <AlertTitle>
                       {getGhCliHelpTitle(ghCliHelp.variant)}
                     </AlertTitle>
                     <AlertDescription className="space-y-3">
                       <p>{ghCliHelp.message}</p>
-                      <GhCliHelpInstructions
-                        variant={ghCliHelp.variant}
-                        t={t}
-                      />
+                      <GhCliHelpInstructions variant={ghCliHelp.variant} t={t} />
                     </AlertDescription>
                   </Alert>
                 )}
@@ -340,8 +331,7 @@ const CreatePrDialog = NiceModal.create<CreatePRDialogProps>(
         </Dialog>
       </>
     );
-  }
-);
+  });
 
 export const CreatePRDialog = defineModal<CreatePRDialogProps, void>(
   CreatePrDialog

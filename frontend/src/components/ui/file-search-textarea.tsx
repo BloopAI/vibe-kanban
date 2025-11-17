@@ -1,10 +1,25 @@
-import { useEffect, useRef, useState, forwardRef } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  forwardRef,
+  useLayoutEffect,
+  useCallback,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { projectsApi, tagsApi } from '@/lib/api';
 import { Tag as TagIcon, FileText } from 'lucide-react';
+import { getCaretClientRect } from '@/lib/caret-position';
 
 import type { SearchResult, Tag } from 'shared/types';
+
+const DROPDOWN_MIN_WIDTH = 320;
+const DROPDOWN_MAX_HEIGHT = 320;
+const DROPDOWN_MIN_HEIGHT = 120;
+const DROPDOWN_VIEWPORT_PADDING = 16;
+const DROPDOWN_VIEWPORT_PADDING_TOTAL = DROPDOWN_VIEWPORT_PADDING * 2;
+const DROPDOWN_GAP = 4;
 
 interface FileSearchResult extends SearchResult {
   name: string;
@@ -32,6 +47,7 @@ interface FileSearchTextareaProps {
   onPasteFiles?: (files: File[]) => void;
   onFocus?: (e: React.FocusEvent<HTMLTextAreaElement>) => void;
   onBlur?: (e: React.FocusEvent<HTMLTextAreaElement>) => void;
+  disableScroll?: boolean;
 }
 
 export const FileSearchTextarea = forwardRef<
@@ -51,6 +67,7 @@ export const FileSearchTextarea = forwardRef<
     onPasteFiles,
     onFocus,
     onBlur,
+    disableScroll = false,
   },
   ref
 ) {
@@ -219,74 +236,141 @@ export const FileSearchTextarea = forwardRef<
   };
 
   // Calculate dropdown position relative to textarea
-  const getDropdownPosition = () => {
-    if (!textareaRef.current) return { top: 0, left: 0, maxHeight: 240 };
+  const getDropdownPosition = useCallback(() => {
+    if (typeof window === 'undefined' || !textareaRef.current) {
+      return {
+        top: 0,
+        left: 0,
+        maxHeight: DROPDOWN_MAX_HEIGHT,
+      };
+    }
 
-    const textareaRect = textareaRef.current.getBoundingClientRect();
-    const dropdownWidth = 320; // Wider for tag content preview
-    const maxDropdownHeight = 320;
-    const minDropdownHeight = 120;
+    const caretRect = getCaretClientRect(textareaRef.current);
+    const referenceRect =
+      caretRect ?? textareaRef.current.getBoundingClientRect();
+    const currentDropdownRect = dropdownRef.current?.getBoundingClientRect();
 
-    // Position dropdown below the textarea by default
-    let finalTop = textareaRect.bottom + 4; // 4px gap
-    let finalLeft = textareaRect.left;
-    let maxHeight = maxDropdownHeight;
+    const availableWidth = Math.max(
+      window.innerWidth - DROPDOWN_VIEWPORT_PADDING * 2,
+      0
+    );
+    const fallbackWidth =
+      availableWidth > 0
+        ? Math.min(DROPDOWN_MIN_WIDTH, availableWidth)
+        : DROPDOWN_MIN_WIDTH;
+    const measuredWidth =
+      currentDropdownRect && currentDropdownRect.width > 0
+        ? currentDropdownRect.width
+        : fallbackWidth;
+    const dropdownWidth =
+      availableWidth > 0
+        ? Math.min(Math.max(measuredWidth, fallbackWidth), availableWidth)
+        : Math.max(measuredWidth, fallbackWidth);
+
+    // Position dropdown near the caret by default
+    let finalTop = referenceRect.bottom + DROPDOWN_GAP;
+    let finalLeft = referenceRect.left;
+    let maxHeight = DROPDOWN_MAX_HEIGHT;
 
     // Ensure dropdown doesn't go off the right edge
-    if (finalLeft + dropdownWidth > window.innerWidth - 16) {
-      finalLeft = window.innerWidth - dropdownWidth - 16;
+    if (
+      finalLeft + dropdownWidth >
+      window.innerWidth - DROPDOWN_VIEWPORT_PADDING
+    ) {
+      finalLeft = window.innerWidth - dropdownWidth - DROPDOWN_VIEWPORT_PADDING;
     }
 
     // Ensure dropdown doesn't go off the left edge
-    if (finalLeft < 16) {
-      finalLeft = 16;
+    if (finalLeft < DROPDOWN_VIEWPORT_PADDING) {
+      finalLeft = DROPDOWN_VIEWPORT_PADDING;
     }
 
-    // Calculate available space below and above textarea
-    const availableSpaceBelow = window.innerHeight - textareaRect.bottom - 32;
-    const availableSpaceAbove = textareaRect.top - 32;
+    // Calculate available space below and above the caret
+    const availableSpaceBelow =
+      window.innerHeight - referenceRect.bottom - DROPDOWN_VIEWPORT_PADDING * 2;
+    const availableSpaceAbove =
+      referenceRect.top - DROPDOWN_VIEWPORT_PADDING * 2;
 
     // If not enough space below, position above
     if (
-      availableSpaceBelow < minDropdownHeight &&
+      availableSpaceBelow < DROPDOWN_MIN_HEIGHT &&
       availableSpaceAbove > availableSpaceBelow
     ) {
-      // Get actual height from rendered dropdown
-      const actualHeight =
-        dropdownRef.current?.getBoundingClientRect().height ||
-        minDropdownHeight;
-      finalTop = textareaRect.top - actualHeight - 4;
+      const actualHeight = currentDropdownRect?.height || DROPDOWN_MIN_HEIGHT;
+      finalTop = referenceRect.top - actualHeight - DROPDOWN_GAP;
       maxHeight = Math.min(
-        maxDropdownHeight,
-        Math.max(availableSpaceAbove, minDropdownHeight)
+        DROPDOWN_MAX_HEIGHT,
+        Math.max(availableSpaceAbove, DROPDOWN_MIN_HEIGHT)
       );
     } else {
       // Position below with available space
       maxHeight = Math.min(
-        maxDropdownHeight,
-        Math.max(availableSpaceBelow, minDropdownHeight)
+        DROPDOWN_MAX_HEIGHT,
+        Math.max(availableSpaceBelow, DROPDOWN_MIN_HEIGHT)
       );
     }
 
-    return { top: finalTop, left: finalLeft, maxHeight };
-  };
+    const estimatedHeight =
+      currentDropdownRect?.height || Math.min(maxHeight, DROPDOWN_MAX_HEIGHT);
+    const maxTop =
+      window.innerHeight -
+      DROPDOWN_VIEWPORT_PADDING -
+      Math.max(estimatedHeight, DROPDOWN_MIN_HEIGHT);
 
-  // Use effect to reposition when dropdown content changes
-  useEffect(() => {
-    if (showDropdown && dropdownRef.current) {
-      // Small delay to ensure content is rendered
-      setTimeout(() => {
-        const newPosition = getDropdownPosition();
-        if (dropdownRef.current) {
-          dropdownRef.current.style.top = `${newPosition.top}px`;
-          dropdownRef.current.style.left = `${newPosition.left}px`;
-          dropdownRef.current.style.maxHeight = `${newPosition.maxHeight}px`;
-        }
-      }, 0);
+    if (finalTop > maxTop) {
+      finalTop = Math.max(DROPDOWN_VIEWPORT_PADDING, maxTop);
     }
-  }, [searchResults.length, showDropdown]);
 
-  const dropdownPosition = getDropdownPosition();
+    if (finalTop < DROPDOWN_VIEWPORT_PADDING) {
+      finalTop = DROPDOWN_VIEWPORT_PADDING;
+    }
+
+    return {
+      top: finalTop,
+      left: finalLeft,
+      maxHeight,
+    };
+  }, [searchQuery, value]);
+
+  const [dropdownPosition, setDropdownPosition] = useState(() =>
+    getDropdownPosition()
+  );
+
+  // Keep dropdown positioned near the caret and within viewport bounds
+  useLayoutEffect(() => {
+    if (!showDropdown) return;
+
+    const updatePosition = () => {
+      const newPosition = getDropdownPosition();
+      setDropdownPosition((prev) => {
+        if (
+          prev.top === newPosition.top &&
+          prev.left === newPosition.left &&
+          prev.maxHeight === newPosition.maxHeight
+        ) {
+          return prev;
+        }
+        return newPosition;
+      });
+    };
+
+    updatePosition();
+    let frameId = requestAnimationFrame(updatePosition);
+
+    const scheduleUpdate = () => {
+      cancelAnimationFrame(frameId);
+      frameId = requestAnimationFrame(updatePosition);
+    };
+
+    window.addEventListener('resize', scheduleUpdate);
+    window.addEventListener('scroll', scheduleUpdate, true);
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      window.removeEventListener('resize', scheduleUpdate);
+      window.removeEventListener('scroll', scheduleUpdate, true);
+    };
+  }, [showDropdown, searchResults.length, getDropdownPosition]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Handle dropdown navigation first
@@ -352,6 +436,7 @@ export const FileSearchTextarea = forwardRef<
         onPaste={handlePaste}
         onFocus={onFocus}
         onBlur={onBlur}
+        disableInternalScroll={disableScroll}
       />
 
       {showDropdown &&
@@ -363,7 +448,8 @@ export const FileSearchTextarea = forwardRef<
               top: dropdownPosition.top,
               left: dropdownPosition.left,
               maxHeight: dropdownPosition.maxHeight,
-              minWidth: '320px',
+              minWidth: `min(${DROPDOWN_MIN_WIDTH}px, calc(100vw - ${DROPDOWN_VIEWPORT_PADDING_TOTAL}px))`,
+              maxWidth: `calc(100vw - ${DROPDOWN_VIEWPORT_PADDING_TOTAL}px)`,
               zIndex: 10000, // Higher than dialog z-[9999]
             }}
           >

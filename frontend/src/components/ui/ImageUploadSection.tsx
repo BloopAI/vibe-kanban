@@ -30,6 +30,7 @@ interface ImageUploadSectionProps {
   readOnly?: boolean;
   collapsible?: boolean;
   defaultExpanded?: boolean;
+  hideDropZone?: boolean; // Hide the drag and drop area
   className?: string;
 }
 
@@ -64,6 +65,7 @@ export const ImageUploadSection = forwardRef<
       readOnly = false,
       collapsible = true,
       defaultExpanded = false,
+      hideDropZone = false,
       className,
     },
     ref
@@ -232,8 +234,8 @@ export const ImageUploadSection = forwardRef<
           <p className="text-sm text-muted-foreground">No images attached</p>
         )}
 
-        {/* Drop zone - only show when not read-only */}
-        {!readOnly && (
+        {/* Drop zone - only show when not read-only and not hidden */}
+        {!readOnly && !hideDropZone && (
           <div
             className={cn(
               'border-2 border-dashed rounded-lg p-6 text-center transition-colors',

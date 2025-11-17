@@ -67,7 +67,7 @@
         "pages": [
           "configuration-customisation/global-settings",
           "configuration-customisation/agent-configurations",
-          "configuration-customisation/creating-task-templates",
+          "configuration-customisation/creating-task-tags",
           "configuration-customisation/keyboard-shortcuts"
         ]
       },

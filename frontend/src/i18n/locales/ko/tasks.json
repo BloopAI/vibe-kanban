@@ -373,5 +373,33 @@
       "next": "다음",
       "finish": "완료"
     }
+  },
+  "taskFormDialog": {
+    "createTitle": "새 작업 만들기",
+    "editTitle": "작업 수정",
+    "titlePlaceholder": "작업 제목",
+    "descriptionPlaceholder": "세부 정보 추가 (선택 사항). @를 입력하여 파일을 검색합니다.",
+    "statusLabel": "상태",
+    "statusOptions": {
+      "todo": "할 일",
+      "inprogress": "진행 중",
+      "inreview": "검토 중",
+      "done": "완료",
+      "cancelled": "취소됨"
+    },
+    "startLabel": "시작",
+    "attachImage": "이미지 첨부",
+    "dropImagesHere": "여기에 이미지를 드롭하세요",
+    "updating": "업데이트 중...",
+    "updateTask": "작업 업데이트",
+    "starting": "시작 중...",
+    "creating": "만드는 중...",
+    "create": "만들기",
+    "discardDialog": {
+      "title": "저장하지 않은 변경사항을 버리시겠습니까?",
+      "description": "저장하지 않은 변경사항이 있습니다. 정말 버리시겠습니까?",
+      "continueEditing": "계속 수정",
+      "discardChanges": "변경사항 버리기"
+    }
   }
 }

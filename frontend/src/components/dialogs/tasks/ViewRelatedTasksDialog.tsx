@@ -92,6 +92,7 @@ const ViewRelatedTasksDialogImpl =
           await Promise.resolve();
 
           await openTaskForm({
+            mode: 'subtask',
             projectId,
             parentTaskAttemptId: attempt.id,
             initialBaseBranch: attempt.branch || attempt.target_branch,
