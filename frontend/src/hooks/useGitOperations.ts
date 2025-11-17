@@ -32,16 +32,24 @@ export function useGitOperations(
   const merge = useMerge(
     attemptId,
     () => setError(null),
-    (err: any) => {
-      setError(err?.message || 'Failed to merge');
+    (err: unknown) => {
+      const message =
+        err && typeof err === 'object' && 'message' in err
+          ? String(err.message)
+          : 'Failed to merge';
+      setError(message);
     }
   );
 
   const push = usePush(
     attemptId,
     () => setError(null),
-    (err: any) => {
-      setError(err?.message || 'Failed to push');
+    (err: unknown) => {
+      const message =
+        err && typeof err === 'object' && 'message' in err
+          ? String(err.message)
+          : 'Failed to push';
+      setError(message);
     }
   );
 
@@ -49,8 +57,12 @@ export function useGitOperations(
     attemptId,
     projectId,
     () => setError(null),
-    (err: any) => {
-      setError(err?.message || 'Failed to change target branch');
+    (err: unknown) => {
+      const message =
+        err && typeof err === 'object' && 'message' in err
+          ? String(err.message)
+          : 'Failed to change target branch';
+      setError(message);
     }
   );
 

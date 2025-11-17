@@ -49,24 +49,38 @@ interface ArrayItemProps {
   readonly?: boolean;
 }
 
+// TODO: Remove this type when @rjsf/utils v6 types stabilize
+type ArrayItemWithButtons = ArrayFieldTemplateItemType & {
+  buttonsProps?: {
+    hasRemove?: boolean;
+    onDropIndexClick: (idx: number) => () => void;
+    index: number;
+    disabled?: boolean;
+  };
+};
+
 const ArrayItem = ({ element, disabled, readonly }: ArrayItemProps) => {
   const { children } = element;
-  const elementAny = element as any; // Type assertion needed for RJSF v6 beta properties
+  const elementWithButtons = element as ArrayItemWithButtons;
 
   return (
     <div className="flex items-center gap-2">
       <div className="flex-1">{children}</div>
 
       {/* Remove button */}
-      {elementAny.buttonsProps?.hasRemove && (
+      {elementWithButtons.buttonsProps?.hasRemove && (
         <Button
           type="button"
           variant="ghost"
           size="sm"
-          onClick={elementAny.buttonsProps.onDropIndexClick(
-            elementAny.buttonsProps.index
+          onClick={elementWithButtons.buttonsProps.onDropIndexClick(
+            elementWithButtons.buttonsProps.index
           )}
-          disabled={disabled || readonly || elementAny.buttonsProps.disabled}
+          disabled={
+            disabled ||
+            readonly ||
+            elementWithButtons.buttonsProps.disabled
+          }
           className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200 shrink-0"
           title="Remove item"
         >

@@ -1,5 +1,3 @@
-export const FormTemplate = (props: any) => {
-  const { children } = props;
-
+export const FormTemplate = ({ children }: React.PropsWithChildren) => {
   return <div className="w-full">{children}</div>;
 };

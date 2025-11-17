@@ -1,5 +1,6 @@
 import { useMemo, useEffect, useState } from 'react';
 import Form from '@rjsf/core';
+import type { IChangeEvent } from '@rjsf/core';
 import { RJSFValidationError } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 
@@ -22,10 +23,10 @@ type ExecutorType =
 
 interface ExecutorConfigFormProps {
   executor: ExecutorType;
-  value: any;
-  onSubmit?: (formData: any) => void;
-  onChange?: (formData: any) => void;
-  onSave?: (formData: any) => Promise<void>;
+  value: unknown;
+  onSubmit?: (formData: unknown) => void;
+  onChange?: (formData: unknown) => void;
+  onSave?: (formData: unknown) => Promise<void>;
   disabled?: boolean;
   isSaving?: boolean;
   isDirty?: boolean;
@@ -43,7 +44,7 @@ export function ExecutorConfigForm({
   isSaving = false,
   isDirty = false,
 }: ExecutorConfigFormProps) {
-  const [formData, setFormData] = useState(value || {});
+  const [formData, setFormData] = useState<unknown>(value || {});
   const [validationErrors, setValidationErrors] = useState<
     RJSFValidationError[]
   >([]);
@@ -57,14 +58,16 @@ export function ExecutorConfigForm({
     setValidationErrors([]);
   }, [value, executor]);
 
-  const handleChange = ({ formData: newFormData }: any) => {
+  const handleChange = (event: IChangeEvent<unknown>) => {
+    const newFormData = event.formData;
     setFormData(newFormData);
     if (onChange) {
       onChange(newFormData);
     }
   };
 
-  const handleSubmit = async ({ formData: submitData }: any) => {
+  const handleSubmit = async (event: IChangeEvent<unknown>) => {
+    const submitData = event.formData;
     setValidationErrors([]);
     if (onSave) {
       await onSave(submitData);
