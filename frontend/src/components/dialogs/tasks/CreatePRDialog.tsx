@@ -280,10 +280,7 @@ const CreatePrDialog = NiceModal.create(() => {
                 />
               </div>
               {ghCliHelp?.variant && (
-                <Alert
-                  variant="default"
-                  className="border-primary/30 bg-primary/10 text-primary"
-                >
+                <Alert variant="default">
                   <AlertTitle>
                     {getGhCliHelpTitle(ghCliHelp.variant)}
                   </AlertTitle>
