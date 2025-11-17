@@ -34,8 +34,9 @@ export function useProfiles(): UseProfilesReturn {
     mutationFn: (content: string) => profilesApi.save(content),
     onSuccess: (_, content) => {
       // Optimistically update cache with new content
-      queryClient.setQueryData<{ content: string; path: string }>(['profiles'], (old) =>
-        old ? { ...old, content } : old
+      queryClient.setQueryData<{ content: string; path: string }>(
+        ['profiles'],
+        (old) => (old ? { ...old, content } : old)
       );
     },
   });
