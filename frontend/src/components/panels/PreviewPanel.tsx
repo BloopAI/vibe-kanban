@@ -114,12 +114,7 @@ export function PreviewPanel() {
       setShowLogs(true);
       setLoadingTimeFinished(false);
     }
-  }, [
-    loadingTimeFinished,
-    isReady,
-    latestDevServerProcess,
-    runningDevServer,
-  ]);
+  }, [loadingTimeFinished, isReady, latestDevServerProcess, runningDevServer]);
 
   const isPreviewReady =
     previewState.status === 'ready' &&

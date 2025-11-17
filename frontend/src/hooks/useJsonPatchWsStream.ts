@@ -183,13 +183,7 @@ export const useJsonPatchWsStream = <T>(
       dataRef.current = undefined;
       setData(undefined);
     };
-  }, [
-    endpoint,
-    enabled,
-    initialData,
-    options,
-    retryNonce,
-  ]);
+  }, [endpoint, enabled, initialData, options, retryNonce]);
 
   return { data, isConnected, error };
 };
