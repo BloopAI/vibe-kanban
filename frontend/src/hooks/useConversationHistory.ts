@@ -158,71 +158,16 @@ export const useConversationHistory = ({
     );
   };
 
-  // This emits its own events as they are streamed
-  const loadRunningAndEmit = useCallback(
-    (executionProcess: ExecutionProcess): Promise<void> => {
-      return new Promise((resolve, reject) => {
-        let url = '';
-        if (executionProcess.executor_action.typ.type === 'ScriptRequest') {
-          url = `/api/execution-processes/${executionProcess.id}/raw-logs/ws`;
-        } else {
-          url = `/api/execution-processes/${executionProcess.id}/normalized-logs/ws`;
-        }
-        const controller = streamJsonPatchEntries<PatchType>(url, {
-          onEntries(entries) {
-            const patchesWithKey = entries.map((entry, index) =>
-              patchWithKey(entry, executionProcess.id, index)
-            );
-            mergeIntoDisplayed((state) => {
-              state[executionProcess.id] = {
-                executionProcess,
-                entries: patchesWithKey,
-              };
-            });
-            emitEntries(displayedExecutionProcesses.current, 'running', false);
-          },
-          onFinished: () => {
-            emitEntries(displayedExecutionProcesses.current, 'running', false);
-            controller.close();
-            resolve();
-          },
-          onError: () => {
-            controller.close();
-            reject();
-          },
-        });
-      });
-    },
-    // emitEntries is stable (only depends on flattenEntriesForEmit which has no deps)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
-
-  // Sometimes it can take a few seconds for the stream to start, wrap the loadRunningAndEmit method
-  const loadRunningAndEmitWithBackoff = useCallback(
-    async (executionProcess: ExecutionProcess) => {
-      for (let i = 0; i < 20; i++) {
-        try {
-          await loadRunningAndEmit(executionProcess);
-          break;
-        } catch (_) {
-          await new Promise((resolve) => setTimeout(resolve, 500));
-        }
-      }
-    },
-    [loadRunningAndEmit]
-  );
-
-  const getActiveAgentProcess = (): ExecutionProcess | null => {
-    const activeProcesses = executionProcesses?.current.filter(
-      (p) =>
-        p.status === ExecutionProcessStatus.running &&
-        p.run_reason !== 'devserver'
-    );
-    if (activeProcesses.length > 1) {
-      console.error('More than one active execution process found');
-    }
-    return activeProcesses[0] || null;
+  const patchWithKey = (
+    patch: PatchType,
+    executionProcessId: string,
+    index: number | 'user'
+  ) => {
+    return {
+      ...patch,
+      patchKey: `${executionProcessId}:${index}`,
+      executionProcessId,
+    };
   };
 
   const flattenEntries = (
@@ -246,8 +191,21 @@ export const useConversationHistory = ({
       .flatMap((p) => p.entries);
   };
 
-  const flattenEntriesForEmit = useCallback(
-    (executionProcessState: ExecutionProcessStateStore): PatchTypeWithKey[] => {
+  const getActiveAgentProcess = (): ExecutionProcess | null => {
+    const activeProcesses = executionProcesses?.current.filter(
+      (p) =>
+        p.status === ExecutionProcessStatus.running &&
+        p.run_reason !== 'devserver'
+    );
+    if (activeProcesses.length > 1) {
+      console.error('More than one active execution process found');
+    }
+    return activeProcesses[0] || null;
+  };
+
+  const flattenEntriesForEmit = useCallback((
+    executionProcessState: ExecutionProcessStateStore
+  ): PatchTypeWithKey[] => {
       // Flags to control Next Action bar emit
       let hasPendingApproval = false;
       let hasRunningProcess = false;
@@ -456,21 +414,67 @@ export const useConversationHistory = ({
       }
 
       return allEntries;
-    },
-    []
-  );
+  }, []);
 
-  const patchWithKey = (
-    patch: PatchType,
-    executionProcessId: string,
-    index: number | 'user'
+  const emitEntries = useCallback((
+    executionProcessState: ExecutionProcessStateStore,
+    addEntryType: AddEntryType,
+    loading: boolean
   ) => {
-    return {
-      ...patch,
-      patchKey: `${executionProcessId}:${index}`,
-      executionProcessId,
-    };
-  };
+    const entries = flattenEntriesForEmit(executionProcessState);
+    onEntriesUpdatedRef.current?.(entries, addEntryType, loading);
+  }, [flattenEntriesForEmit]);
+
+  // This emits its own events as they are streamed
+  const loadRunningAndEmit = useCallback((
+    executionProcess: ExecutionProcess
+  ): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      let url = '';
+      if (executionProcess.executor_action.typ.type === 'ScriptRequest') {
+        url = `/api/execution-processes/${executionProcess.id}/raw-logs/ws`;
+      } else {
+        url = `/api/execution-processes/${executionProcess.id}/normalized-logs/ws`;
+      }
+      const controller = streamJsonPatchEntries<PatchType>(url, {
+        onEntries(entries) {
+          const patchesWithKey = entries.map((entry, index) =>
+            patchWithKey(entry, executionProcess.id, index)
+          );
+          mergeIntoDisplayed((state) => {
+            state[executionProcess.id] = {
+              executionProcess,
+              entries: patchesWithKey,
+            };
+          });
+          emitEntries(displayedExecutionProcesses.current, 'running', false);
+        },
+        onFinished: () => {
+          emitEntries(displayedExecutionProcesses.current, 'running', false);
+          controller.close();
+          resolve();
+        },
+        onError: () => {
+          controller.close();
+          reject();
+        },
+      });
+    });
+  }, [emitEntries]);
+
+  // Sometimes it can take a few seconds for the stream to start, wrap the loadRunningAndEmit method
+  const loadRunningAndEmitWithBackoff = useCallback(async (
+    executionProcess: ExecutionProcess
+  ) => {
+    for (let i = 0; i < 20; i++) {
+      try {
+        await loadRunningAndEmit(executionProcess);
+        break;
+      } catch (_) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+    }
+  }, [loadRunningAndEmit]);
 
   const loadInitialEntries =
     useCallback(async (): Promise<ExecutionProcessStateStore> => {
@@ -545,18 +549,6 @@ export const useConversationHistory = ({
       return anyUpdated;
     },
     [executionProcesses]
-  );
-
-  const emitEntries = useCallback(
-    (
-      executionProcessState: ExecutionProcessStateStore,
-      addEntryType: AddEntryType,
-      loading: boolean
-    ) => {
-      const entries = flattenEntriesForEmit(executionProcessState);
-      onEntriesUpdatedRef.current?.(entries, addEntryType, loading);
-    },
-    [flattenEntriesForEmit]
   );
 
   const ensureProcessVisible = useCallback((p: ExecutionProcess) => {
