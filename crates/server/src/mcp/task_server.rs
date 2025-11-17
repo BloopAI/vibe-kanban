@@ -239,7 +239,7 @@ pub struct TaskServer {
     client: reqwest::Client,
     base_url: String,
     tool_router: ToolRouter<TaskServer>,
-    vk_context: Option<McpContext>,
+    context: Option<McpContext>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, schemars::JsonSchema)]
@@ -259,21 +259,21 @@ impl TaskServer {
             client: reqwest::Client::new(),
             base_url: base_url.to_string(),
             tool_router: Self::tool_router(),
-            vk_context: None,
+            context: None,
         }
     }
 
     pub async fn init(mut self) -> Self {
-        let vk_context = self.fetch_context_at_startup().await;
+        let context = self.fetch_context_at_startup().await;
 
-        if vk_context.is_none() {
+        if context.is_none() {
             self.tool_router.map.remove("get_context");
             tracing::debug!("VK context not available, get_context tool will not be registered");
         } else {
             tracing::info!("VK context loaded, get_context tool available");
         }
 
-        self.vk_context = vk_context;
+        self.context = context;
         self
     }
 
@@ -395,7 +395,7 @@ impl TaskServer {
     async fn get_context(&self) -> Result<CallToolResult, ErrorData> {
         // Context was fetched at startup and cached
         // This tool is only registered if context exists, so unwrap is safe
-        let context = self.vk_context.as_ref().expect("VK context should exist");
+        let context = self.context.as_ref().expect("VK context should exist");
         TaskServer::success(context)
     }
     #[tool(
@@ -668,7 +668,7 @@ impl TaskServer {
 impl ServerHandler for TaskServer {
     fn get_info(&self) -> ServerInfo {
         let mut instruction = "A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list projects`. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project`.. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'start_task_attempt', 'get_task', 'update_task', 'delete_task'. Make sure to pass `project_id` or `task_id` where required. You can use list tools to get the available ids.".to_string();
-        if self.vk_context.is_some() {
+        if self.context.is_some() {
             let context_instruction = "Use 'get_context' to fetch project/task/attempt metadata for the active Vibe Kanban attempt when available.";
             instruction = format!("{} {}", context_instruction, instruction);
         }
