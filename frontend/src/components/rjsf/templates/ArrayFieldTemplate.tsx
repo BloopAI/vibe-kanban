@@ -33,9 +33,7 @@ export const ArrayFieldTemplate = (props: ArrayFieldTemplateProps) => {
   );
 };
 
-export const ArrayFieldItemTemplate = (
-  props: ArrayFieldItemTemplateProps
-) => {
+export const ArrayFieldItemTemplate = (props: ArrayFieldItemTemplateProps) => {
   const { children, buttonsProps, disabled, readonly } = props;
 
   return (
