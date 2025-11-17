@@ -8,6 +8,7 @@ import {
   type NormalizedEntryType,
   type TaskWithAttemptStatus,
   type JsonValue,
+  type CommandRunResult,
 } from 'shared/types.ts';
 import type { ProcessStartPayload } from '@/types/logs';
 import FileChangeRenderer from './FileChangeRenderer';
@@ -46,17 +47,14 @@ type Props = {
 
 type FileEditAction = Extract<ActionType, { action: 'file_edit' }>;
 
-type ActionLike = {
-  action?: string;
-  arguments?: JsonValue;
-  result?: {
-    output?: string;
-    exit_status?: { type: string; success?: boolean; code?: number };
-  };
-  tool_name?: string;
-  message?: string;
-  summary?: string;
-};
+type ActionLike = Partial<{
+  action: string;
+  arguments: JsonValue;
+  result: CommandRunResult;
+  tool_name: string;
+  message: string;
+  summary: string;
+}>;
 
 const renderJson = (v: JsonValue) => (
   <pre className="whitespace-pre-wrap">{JSON.stringify(v, null, 2)}</pre>
