@@ -26,7 +26,8 @@ import { useUserSystem } from '@/components/config-provider';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { LoginRequiredPrompt } from '@/components/dialogs/shared/LoginRequiredPrompt';
 import { showModal } from '@/lib/modals';
-import { Modals } from '@/components/dialogs';
+import { CreateOrganizationDialog } from '@/components/dialogs/org/CreateOrganizationDialog';
+import { InviteMemberDialog } from '@/components/dialogs/org/InviteMemberDialog';
 import type {
   InviteMemberResult,
   CreateOrganizationResult,
@@ -174,7 +175,7 @@ export function OrganizationSettings() {
   const handleCreateOrganization = async () => {
     try {
       const result: CreateOrganizationResult = await showModal(
-        Modals.CreateOrganization,
+        CreateOrganizationDialog,
         {}
       );
 
@@ -193,7 +194,7 @@ export function OrganizationSettings() {
     if (!selectedOrgId) return;
 
     try {
-      const result: InviteMemberResult = await showModal(Modals.InviteMember, {
+      const result: InviteMemberResult = await showModal(InviteMemberDialog, {
         organizationId: selectedOrgId,
       });
 

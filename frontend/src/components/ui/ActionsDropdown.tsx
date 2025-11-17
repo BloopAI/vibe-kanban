@@ -12,7 +12,15 @@ import { MoreHorizontal } from 'lucide-react';
 import type { TaskWithAttemptStatus, TaskAttempt } from 'shared/types';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import { showModal } from '@/lib/modals';
-import { Modals } from '@/components/dialogs';
+import { DeleteTaskConfirmationDialog } from '@/components/dialogs/tasks/DeleteTaskConfirmationDialog';
+import { ViewProcessesDialog } from '@/components/dialogs/tasks/ViewProcessesDialog';
+import { ViewRelatedTasksDialog } from '@/components/dialogs/tasks/ViewRelatedTasksDialog';
+import { CreateAttemptDialog } from '@/components/dialogs/tasks/CreateAttemptDialog';
+import { GitActionsDialog } from '@/components/dialogs/tasks/GitActionsDialog';
+import { EditBranchNameDialog } from '@/components/dialogs/tasks/EditBranchNameDialog';
+import { ShareDialog } from '@/components/dialogs/tasks/ShareDialog';
+import { ReassignDialog } from '@/components/dialogs/tasks/ReassignDialog';
+import { StopShareTaskDialog } from '@/components/dialogs/tasks/StopShareTaskDialog';
 import { useProject } from '@/contexts/project-context';
 import { openTaskForm } from '@/lib/openTaskForm';
 
@@ -57,7 +65,7 @@ export function ActionsDropdown({
     e.stopPropagation();
     if (!projectId || !task) return;
     try {
-      await showModal(Modals.DeleteTaskConfirmation, {
+      await showModal(DeleteTaskConfirmationDialog, {
         task,
         projectId,
       });
@@ -75,13 +83,13 @@ export function ActionsDropdown({
   const handleViewProcesses = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!attempt?.id) return;
-    showModal(Modals.ViewProcesses, { attemptId: attempt.id });
+    showModal(ViewProcessesDialog, { attemptId: attempt.id });
   };
 
   const handleViewRelatedTasks = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!attempt?.id || !projectId) return;
-    showModal(Modals.ViewRelatedTasks, {
+    showModal(ViewRelatedTasksDialog, {
       attemptId: attempt.id,
       projectId,
       attempt,
@@ -96,7 +104,7 @@ export function ActionsDropdown({
   const handleCreateNewAttempt = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!task?.id) return;
-    showModal(Modals.CreateAttempt, {
+    showModal(CreateAttemptDialog, {
       taskId: task.id,
     });
   };
@@ -114,7 +122,7 @@ export function ActionsDropdown({
   const handleGitActions = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!attempt?.id || !task) return;
-    showModal(Modals.GitActions, {
+    showModal(GitActionsDialog, {
       attemptId: attempt.id,
       task,
       projectId,
@@ -124,7 +132,7 @@ export function ActionsDropdown({
   const handleEditBranchName = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!attempt?.id) return;
-    showModal(Modals.EditBranchName, {
+    showModal(EditBranchNameDialog, {
       attemptId: attempt.id,
       currentBranchName: attempt.branch,
     });
@@ -132,19 +140,19 @@ export function ActionsDropdown({
   const handleShare = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!task || isShared) return;
-    showModal(Modals.ShareTask, { task });
+    showModal(ShareDialog, { task });
   };
 
   const handleReassign = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!sharedTask) return;
-    showModal(Modals.ReassignSharedTask, { sharedTask });
+    showModal(ReassignDialog, { sharedTask });
   };
 
   const handleStopShare = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!sharedTask) return;
-    showModal(Modals.StopShareTask, { sharedTask });
+    showModal(StopShareTaskDialog, { sharedTask });
   };
 
   const canReassign =

@@ -2,7 +2,7 @@ import { useCallback, type ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LogIn, type LucideIcon } from 'lucide-react';
 import { showModal } from '@/lib/modals';
-import { Modals } from '@/components/dialogs';
+import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
 
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -38,7 +38,7 @@ export function LoginRequiredPrompt({
       onAction();
       return;
     }
-    void showModal(Modals.OAuth, {});
+    void showModal(OAuthDialog, {});
   }, [onAction]);
 
   const Icon = icon ?? LogIn;

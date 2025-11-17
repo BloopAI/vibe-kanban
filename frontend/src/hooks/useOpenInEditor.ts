@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { attemptsApi } from '@/lib/api';
 import { showModal } from '@/lib/modals';
-import { Modals } from '@/components/dialogs';
+import { EditorSelectionDialog } from '@/components/dialogs/tasks/EditorSelectionDialog';
 import type { EditorType } from 'shared/types';
 
 type OpenEditorOptions = {
@@ -36,7 +36,7 @@ export function useOpenInEditor(
           if (onShowEditorDialog) {
             onShowEditorDialog();
           } else {
-            showModal(Modals.EditorSelection, {
+            showModal(EditorSelectionDialog, {
               selectedAttemptId: attemptId,
               filePath,
             });

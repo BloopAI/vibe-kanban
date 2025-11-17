@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { projectsApi } from '@/lib/api';
 import { showModal } from '@/lib/modals';
-import { Modals } from '@/components/dialogs';
+import { ProjectEditorSelectionDialog } from '@/components/dialogs/projects/ProjectEditorSelectionDialog';
 import type { EditorType, Project } from 'shared/types';
 
 export function useOpenProjectInEditor(
@@ -25,7 +25,7 @@ export function useOpenProjectInEditor(
           if (onShowEditorDialog) {
             onShowEditorDialog();
           } else {
-            showModal(Modals.ProjectEditorSelection, {
+            showModal(ProjectEditorSelectionDialog, {
               selectedProject: project,
             });
           }

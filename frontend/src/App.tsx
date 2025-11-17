@@ -32,7 +32,9 @@ import * as Sentry from '@sentry/react';
 import { Loader } from '@/components/ui/loader';
 
 import { showModal, hideModal } from '@/lib/modals';
-import { Modals } from '@/components/dialogs';
+import { DisclaimerDialog } from '@/components/dialogs/global/DisclaimerDialog';
+import { OnboardingDialog } from '@/components/dialogs/global/OnboardingDialog';
+import { ReleaseNotesDialog } from '@/components/dialogs/global/ReleaseNotesDialog';
 import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
 import NiceModal from '@ebay/nice-modal-react';
 
@@ -65,17 +67,17 @@ function AppContent() {
     const showNextStep = async () => {
       // 1) Disclaimer - first step
       if (!config.disclaimer_acknowledged) {
-        await showModal(Modals.Disclaimer, {});
+        await showModal(DisclaimerDialog, {});
         if (!cancelled) {
           await updateAndSaveConfig({ disclaimer_acknowledged: true });
         }
-        hideModal(Modals.Disclaimer);
+        hideModal(DisclaimerDialog);
         return;
       }
 
       // 2) Onboarding - configure executor and editor
       if (!config.onboarding_acknowledged) {
-        const result = await showModal(Modals.Onboarding, {});
+        const result = await showModal(OnboardingDialog, {});
         if (!cancelled) {
           await updateAndSaveConfig({
             onboarding_acknowledged: true,
@@ -83,17 +85,17 @@ function AppContent() {
             editor: result.editor,
           });
         }
-        hideModal(Modals.Onboarding);
+        hideModal(OnboardingDialog);
         return;
       }
 
       // 3) Release notes - last step
       if (config.show_release_notes) {
-        await showModal(Modals.ReleaseNotes, {});
+        await showModal(ReleaseNotesDialog, {});
         if (!cancelled) {
           await updateAndSaveConfig({ show_release_notes: false });
         }
-        hideModal(Modals.ReleaseNotes);
+        hideModal(ReleaseNotesDialog);
         return;
       }
     };

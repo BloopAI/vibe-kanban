@@ -23,7 +23,9 @@ import type {
   TaskWithAttemptStatus,
 } from 'shared/types';
 import { showModal } from '@/lib/modals';
-import { Modals } from '@/components/dialogs';
+import { ChangeTargetBranchDialog } from '@/components/dialogs/tasks/ChangeTargetBranchDialog';
+import { RebaseDialog } from '@/components/dialogs/tasks/RebaseDialog';
+import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
 import { useTranslation } from 'react-i18next';
 import { useGitOperations } from '@/hooks/useGitOperations';
 
@@ -75,7 +77,7 @@ function GitOperations({
 
   const handleChangeTargetBranchDialogOpen = async () => {
     try {
-      const result = await showModal(Modals.ChangeTargetBranch, {
+      const result = await showModal(ChangeTargetBranchDialog, {
         branches,
         isChangingTargetBranch: isChangingTargetBranch,
       });
@@ -191,7 +193,7 @@ function GitOperations({
   const handleRebaseDialogOpen = async () => {
     try {
       const defaultTargetBranch = selectedAttempt.target_branch;
-      const result = await showModal(Modals.Rebase, {
+      const result = await showModal(RebaseDialog, {
         branches,
         isRebasing: rebasing,
         initialTargetBranch: defaultTargetBranch,
@@ -219,7 +221,7 @@ function GitOperations({
       return;
     }
 
-    showModal(Modals.CreatePR, {
+    showModal(CreatePRDialog, {
       attempt: selectedAttempt,
       task,
       projectId,

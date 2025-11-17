@@ -27,7 +27,7 @@ import { Loader2 } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { showModal } from '@/lib/modals';
-import { Modals } from '@/components/dialogs';
+import { GhCliSetupDialog } from '@/components/dialogs/auth/GhCliSetupDialog';
 import { useAuth } from '@/hooks';
 import {
   GhCliHelpInstructions,
@@ -152,7 +152,7 @@ const CreatePrDialog = NiceModal.create(() => {
       result.message || 'Failed to run GitHub CLI setup.';
 
     const showGhCliSetupDialog = async () => {
-      const setupResult = (await showModal(Modals.GhCliSetup, {
+      const setupResult = (await showModal(GhCliSetupDialog, {
         attemptId: data.attempt.id,
       })) as GhCliSetupError | null;
 

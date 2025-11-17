@@ -37,7 +37,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { showModal } from '@/lib/modals';
-import { Modals } from '@/components/dialogs';
+import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
 import { useUserSystem } from '@/components/config-provider';
 import { oauthApi } from '@/lib/api';
 
@@ -117,7 +117,7 @@ export function Navbar() {
   };
 
   const handleOpenOAuth = async () => {
-    const profile = await showModal(Modals.OAuth, {});
+    const profile = await showModal(OAuthDialog, {});
     if (profile) {
       await reloadSystem();
     }

@@ -12,7 +12,9 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { showModal } from '@/lib/modals';
-import { Modals } from '@/components/dialogs';
+import { ViewProcessesDialog } from '@/components/dialogs/tasks/ViewProcessesDialog';
+import { CreateAttemptDialog } from '@/components/dialogs/tasks/CreateAttemptDialog';
+import { GitActionsDialog } from '@/components/dialogs/tasks/GitActionsDialog';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import { useDiffSummary } from '@/hooks/useDiffSummary';
 import { useDevServer } from '@/hooks/useDevServer';
@@ -94,7 +96,7 @@ export function NextActionCard({
 
   const handleViewLogs = useCallback(() => {
     if (attemptId) {
-      showModal(Modals.ViewProcesses, {
+      showModal(ViewProcessesDialog, {
         attemptId,
         initialProcessId: latestDevServerProcess?.id,
       });
@@ -107,14 +109,14 @@ export function NextActionCard({
 
   const handleTryAgain = useCallback(() => {
     if (!attempt?.task_id) return;
-    showModal(Modals.CreateAttempt, {
+    showModal(CreateAttemptDialog, {
       taskId: attempt.task_id,
     });
   }, [attempt?.task_id]);
 
   const handleGitActions = useCallback(() => {
     if (!attemptId) return;
-    showModal(Modals.GitActions, {
+    showModal(GitActionsDialog, {
       attemptId,
       task,
       projectId: project?.id,

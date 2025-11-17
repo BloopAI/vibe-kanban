@@ -46,38 +46,3 @@ export function getErrorMessage(error: unknown): string {
   }
   return 'An unknown error occurred';
 }
-
-// Legacy helper functions - kept for backward compatibility
-// These will be migrated to use Modals registry over time
-import { Modals } from '@/components/dialogs';
-import type {
-  FolderPickerDialogProps,
-  TagEditDialogProps,
-  TagEditResult,
-  ProjectFormDialogProps,
-  ProjectFormDialogResult,
-  LinkProjectResult,
-} from '@/components/dialogs';
-
-export function showFolderPicker(
-  props: FolderPickerDialogProps = {}
-): Promise<string | null> {
-  return showModal(Modals.FolderPicker, props);
-}
-
-export function showTagEdit(props: TagEditDialogProps): Promise<TagEditResult> {
-  return showModal(Modals.TagEdit, props);
-}
-
-export function showProjectForm(
-  props: ProjectFormDialogProps = {}
-): Promise<ProjectFormDialogResult> {
-  return showModal(Modals.ProjectForm, props);
-}
-
-export function showLinkProject(props: {
-  projectId: string;
-  projectName: string;
-}): Promise<LinkProjectResult> {
-  return showModal(Modals.LinkProject, props);
-}

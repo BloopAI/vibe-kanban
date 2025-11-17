@@ -9,7 +9,7 @@ import { NewCardContent } from '../ui/new-card';
 import { Button } from '../ui/button';
 import { PlusIcon } from 'lucide-react';
 import { showModal } from '@/lib/modals';
-import { Modals } from '@/components/dialogs';
+import { CreateAttemptDialog } from '@/components/dialogs/tasks/CreateAttemptDialog';
 import MarkdownRenderer from '@/components/ui/markdown-renderer';
 import { DataTable, type ColumnDef } from '@/components/ui/table';
 
@@ -156,7 +156,7 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
                       <Button
                         variant="icon"
                         onClick={() =>
-                          showModal(Modals.CreateAttempt, {
+                          showModal(CreateAttemptDialog, {
                             taskId: task.id,
                           })
                         }
