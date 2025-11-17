@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\", task_attempt_id as \"task_attempt_id!: Uuid\", run_reason as \"run_reason!: ExecutionProcessRunReason\", executor_action as \"executor_action!: sqlx::types::Json<ExecutorActionField>\",\n                      before_head_commit, after_head_commit, status as \"status!: ExecutionProcessStatus\", exit_code,\n                      dropped, started_at as \"started_at!: DateTime<Utc>\", completed_at as \"completed_at?: DateTime<Utc>\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM execution_processes\n               WHERE status = 'running' AND run_reason = 'devserver' AND task_attempt_id = ?\n               ORDER BY created_at DESC\n               LIMIT 1",
+  "query": "\n        SELECT\n            id as \"id!: Uuid\",\n            task_attempt_id as \"task_attempt_id!: Uuid\",\n            run_reason as \"run_reason!: ExecutionProcessRunReason\",\n            executor_action as \"executor_action!: sqlx::types::Json<ExecutorActionField>\",\n            before_head_commit,\n            after_head_commit,\n            status as \"status!: ExecutionProcessStatus\",\n            exit_code,\n            dropped,\n            started_at as \"started_at!: DateTime<Utc>\",\n            completed_at as \"completed_at?: DateTime<Utc>\",\n            created_at as \"created_at!: DateTime<Utc>\",\n            updated_at as \"updated_at!: DateTime<Utc>\"\n        FROM execution_processes\n        WHERE status = 'running'\n          AND run_reason = 'devserver'\n          AND task_attempt_id = ?\n        ORDER BY created_at DESC\n        ",
   "describe": {
     "columns": [
       {
@@ -88,5 +88,5 @@
       false
     ]
   },
-  "hash": "0e146fd6ccedb0395c7a75977c654f81db035026a9c07274944b72bd89e08d05"
+  "hash": "196a97c709d226c23b957cc258c57f0d6cd35b1a6aeef879c7f6dfa89fc85539"
 }

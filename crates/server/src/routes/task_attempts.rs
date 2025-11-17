@@ -695,15 +695,17 @@ pub async fn merge_task_attempt(
     .await?;
     Task::update_status(pool, ctx.task.id, TaskStatus::Done).await?;
 
-    // Stop any running dev server for this task attempt
-    if let Some(dev_server) =
-        ExecutionProcess::find_running_dev_server_by_task_attempt(pool, task_attempt.id).await?
-    {
+    // Stop any running dev servers for this task attempt
+    let dev_servers =
+        ExecutionProcess::find_running_dev_servers_by_task_attempt(pool, task_attempt.id).await?;
+
+    for dev_server in dev_servers {
         tracing::info!(
             "Stopping dev server {} for completed task attempt {}",
             dev_server.id,
             task_attempt.id
         );
+
         if let Err(e) = deployment
             .container()
             .stop_execution(&dev_server, ExecutionProcessStatus::Killed)
@@ -1429,31 +1431,34 @@ pub async fn start_dev_server(
         .ok_or(SqlxError::RowNotFound)?;
 
     // Stop any existing dev servers for this project
-    let running_dev_servers =
-        ExecutionProcess::find_running_dev_servers_by_project(pool, project.id)
-            .await
-            .map_err(|e| {
+    let existing_dev_servers =
+        match ExecutionProcess::find_running_dev_servers_by_project(pool, project.id).await {
+            Ok(servers) => servers,
+            Err(e) => {
                 tracing::error!(
-                    "Failed to fetch dev servers for project {}: {}",
+                    "Failed to find running dev servers for project {}: {}",
                     project.id,
                     e
                 );
-                ApiError::TaskAttempt(TaskAttemptError::ValidationError(e.to_string()))
-            })?;
+                return Err(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
+                    e.to_string(),
+                )));
+            }
+        };
 
-    for running_dev_server in running_dev_servers {
+    for dev_server in existing_dev_servers {
         tracing::info!(
-            "Stopping dev server {} for project {}",
-            running_dev_server.id,
+            "Stopping existing dev server {} for project {}",
+            dev_server.id,
             project.id
         );
 
         if let Err(e) = deployment
             .container()
-            .stop_execution(&running_dev_server, ExecutionProcessStatus::Killed)
+            .stop_execution(&dev_server, ExecutionProcessStatus::Killed)
             .await
         {
-            tracing::error!("Failed to stop dev server {}: {}", running_dev_server.id, e);
+            tracing::error!("Failed to stop dev server {}: {}", dev_server.id, e);
         }
     }
 
