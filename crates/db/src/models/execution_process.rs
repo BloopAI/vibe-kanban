@@ -104,7 +104,7 @@ impl ExecutionContext {
             attempt_id: self.task_attempt.id,
             attempt_branch: self.task_attempt.branch.clone(),
             attempt_target_branch: self.task_attempt.target_branch.clone(),
-            execution_process_id: self.execution_process.id,
+            execution_process_id: Some(self.execution_process.id),
             executor: self.task_attempt.executor.clone(),
         }
     }

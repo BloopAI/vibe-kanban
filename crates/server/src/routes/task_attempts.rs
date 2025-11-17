@@ -42,7 +42,7 @@ use services::services::{
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
-use utils::response::ApiResponse;
+use utils::{response::ApiResponse, vk_mcp_context::VkMcpContext};
 use uuid::Uuid;
 
 use crate::{
@@ -117,6 +117,11 @@ pub struct DiffStreamQuery {
     pub stats_only: bool,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct GetContextRequest {
+    pub path: String,
+}
+
 pub async fn get_task_attempts(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<TaskAttemptQuery>,
@@ -131,6 +136,43 @@ pub async fn get_task_attempt(
     State(_deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<TaskAttempt>>, ApiError> {
     Ok(ResponseJson(ApiResponse::success(task_attempt)))
+}
+
+pub async fn get_context(
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<GetContextRequest>,
+) -> Result<ResponseJson<ApiResponse<Option<VkMcpContext>>>, ApiError> {
+    // Try to resolve the path to task attempt via container_ref
+    let result = TaskAttempt::resolve_container_ref(&deployment.db().pool, &payload.path).await;
+
+    match result {
+        Ok((attempt_id, task_id, project_id)) => {
+            // Fetch full attempt and task details to build context
+            let attempt = TaskAttempt::find_by_id(&deployment.db().pool, attempt_id)
+                .await?
+                .ok_or(SqlxError::RowNotFound)?;
+            let task = Task::find_by_id(&deployment.db().pool, task_id)
+                .await?
+                .ok_or(SqlxError::RowNotFound)?;
+
+            let context = VkMcpContext {
+                project_id,
+                task_id,
+                task_title: task.title,
+                attempt_id,
+                attempt_branch: attempt.branch,
+                attempt_target_branch: attempt.target_branch,
+                execution_process_id: None,
+                executor: attempt.executor,
+            };
+
+            Ok(ResponseJson(ApiResponse::success(Some(context))))
+        }
+        Err(_) => {
+            // Path not in VK - return None
+            Ok(ResponseJson(ApiResponse::success(None)))
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, ts_rs::TS)]
@@ -1728,6 +1770,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
 
     let task_attempts_router = Router::new()
         .route("/", get(get_task_attempts).post(create_task_attempt))
+        .route("/context", post(get_context))
         .nest("/{id}", task_attempt_id_router);
 
     Router::new().nest("/task-attempts", task_attempts_router)

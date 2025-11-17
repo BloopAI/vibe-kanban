@@ -12,6 +12,6 @@ pub struct VkMcpContext {
     pub attempt_id: Uuid,
     pub attempt_branch: String,
     pub attempt_target_branch: String,
-    pub execution_process_id: Uuid,
+    pub execution_process_id: Option<Uuid>,
     pub executor: String,
 }
