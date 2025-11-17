@@ -1044,7 +1044,7 @@ impl ContainerService for LocalContainerService {
         // Create the child and stream, add to execution tracker with timeout
         let mut spawned = tokio::time::timeout(
             Duration::from_secs(30),
-            executor_action.spawn(&current_dir, approvals_service, &vk_context),
+            executor_action.spawn(&current_dir, approvals_service),
         )
         .await
         .map_err(|_| {
