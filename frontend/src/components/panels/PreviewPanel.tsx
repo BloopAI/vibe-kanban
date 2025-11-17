@@ -117,7 +117,7 @@ export function PreviewPanel() {
   }, [
     loadingTimeFinished,
     isReady,
-    latestDevServerProcess?.id,
+    latestDevServerProcess,
     runningDevServer,
   ]);
 

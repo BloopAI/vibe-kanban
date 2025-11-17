@@ -44,7 +44,7 @@ const AutoExpandingTextarea = React.forwardRef<
         const newHeight = Math.min(textarea.scrollHeight, maxHeight);
         textarea.style.height = `${newHeight}px`;
       }
-    }, [maxRows, disableInternalScroll]);
+    }, [maxRows, disableInternalScroll, textareaRef]);
 
     // Adjust height on mount and when content changes
     React.useEffect(() => {
@@ -52,14 +52,15 @@ const AutoExpandingTextarea = React.forwardRef<
     }, [adjustHeight, props.value]);
 
     // Adjust height on input
+    const { onInput } = props;
     const handleInput = React.useCallback(
       (e: React.FormEvent<HTMLTextAreaElement>) => {
         adjustHeight();
-        if (props.onInput) {
-          props.onInput(e);
+        if (onInput) {
+          onInput(e);
         }
       },
-      [adjustHeight, props.onInput]
+      [adjustHeight, onInput]
     );
 
     return (

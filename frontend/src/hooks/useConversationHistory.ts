@@ -10,7 +10,7 @@ import {
   ToolStatus,
 } from 'shared/types';
 import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
-import { useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { streamJsonPatchEntries } from '@/utils/streamJsonPatchEntries';
 
 export type PatchTypeWithKey = PatchType & {
@@ -159,7 +159,7 @@ export const useConversationHistory = ({
   };
 
   // This emits its own events as they are streamed
-  const loadRunningAndEmit = (
+  const loadRunningAndEmit = useCallback((
     executionProcess: ExecutionProcess
   ): Promise<void> => {
     return new Promise((resolve, reject) => {
@@ -193,10 +193,11 @@ export const useConversationHistory = ({
         },
       });
     });
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Sometimes it can take a few seconds for the stream to start, wrap the loadRunningAndEmit method
-  const loadRunningAndEmitWithBackoff = async (
+  const loadRunningAndEmitWithBackoff = useCallback(async (
     executionProcess: ExecutionProcess
   ) => {
     for (let i = 0; i < 20; i++) {
@@ -207,7 +208,7 @@ export const useConversationHistory = ({
         await new Promise((resolve) => setTimeout(resolve, 500));
       }
     }
-  };
+  }, [loadRunningAndEmit]);
 
   const getActiveAgentProcess = (): ExecutionProcess | null => {
     const activeProcesses = executionProcesses?.current.filter(
@@ -242,7 +243,7 @@ export const useConversationHistory = ({
       .flatMap((p) => p.entries);
   };
 
-  const flattenEntriesForEmit = (
+  const flattenEntriesForEmit = useCallback((
     executionProcessState: ExecutionProcessStateStore
   ): PatchTypeWithKey[] => {
     // Flags to control Next Action bar emit
@@ -449,7 +450,7 @@ export const useConversationHistory = ({
     }
 
     return allEntries;
-  };
+  }, []);
 
   const patchWithKey = (
     patch: PatchType,
@@ -463,7 +464,7 @@ export const useConversationHistory = ({
     };
   };
 
-  const loadInitialEntries = async (): Promise<ExecutionProcessStateStore> => {
+  const loadInitialEntries = useCallback(async (): Promise<ExecutionProcessStateStore> => {
     const localDisplayedExecutionProcesses: ExecutionProcessStateStore = {};
 
     if (!executionProcesses?.current) return localDisplayedExecutionProcesses;
@@ -491,9 +492,9 @@ export const useConversationHistory = ({
     }
 
     return localDisplayedExecutionProcesses;
-  };
+  }, [executionProcesses]);
 
-  const loadRemainingEntriesInBatches = async (
+  const loadRemainingEntriesInBatches = useCallback(async (
     batchSize: number
   ): Promise<boolean> => {
     if (!executionProcesses?.current) return false;
@@ -529,18 +530,18 @@ export const useConversationHistory = ({
       anyUpdated = true;
     }
     return anyUpdated;
-  };
+  }, [executionProcesses]);
 
-  const emitEntries = (
+  const emitEntries = useCallback((
     executionProcessState: ExecutionProcessStateStore,
     addEntryType: AddEntryType,
     loading: boolean
   ) => {
     const entries = flattenEntriesForEmit(executionProcessState);
     onEntriesUpdatedRef.current?.(entries, addEntryType, loading);
-  };
+  }, [flattenEntriesForEmit]);
 
-  const ensureProcessVisible = (p: ExecutionProcess) => {
+  const ensureProcessVisible = useCallback((p: ExecutionProcess) => {
     mergeIntoDisplayed((state) => {
       if (!state[p.id]) {
         state[p.id] = {
@@ -554,7 +555,7 @@ export const useConversationHistory = ({
         };
       }
     });
-  };
+  }, []);
 
   const idListKey = useMemo(
     () => executionProcessesRaw?.map((p) => p.id).join(','),
@@ -599,7 +600,7 @@ export const useConversationHistory = ({
     return () => {
       cancelled = true;
     };
-  }, [attempt.id, idListKey]); // include idListKey so new processes trigger reload
+  }, [attempt.id, idListKey, loadInitialEntries, loadRemainingEntriesInBatches, emitEntries]); // include idListKey so new processes trigger reload
 
   useEffect(() => {
     const activeProcess = getActiveAgentProcess();
@@ -621,7 +622,7 @@ export const useConversationHistory = ({
       lastActiveProcessId.current = activeProcess.id;
       loadRunningAndEmitWithBackoff(activeProcess);
     }
-  }, [attempt.id, idStatusKey]);
+  }, [attempt.id, idStatusKey, emitEntries, ensureProcessVisible, loadRunningAndEmitWithBackoff]);
 
   // If an execution process is removed, remove it from the state
   useEffect(() => {
@@ -638,7 +639,7 @@ export const useConversationHistory = ({
         });
       });
     }
-  }, [attempt.id, idListKey]);
+  }, [attempt.id, idListKey, executionProcessesRaw]);
 
   // Reset state when attempt changes
   useEffect(() => {
@@ -646,7 +647,7 @@ export const useConversationHistory = ({
     loadedInitialEntries.current = false;
     lastActiveProcessId.current = null;
     emitEntries(displayedExecutionProcesses.current, 'initial', true);
-  }, [attempt.id]);
+  }, [attempt.id, emitEntries]);
 
   return {};
 };

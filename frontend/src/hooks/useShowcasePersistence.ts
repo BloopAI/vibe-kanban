@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useUserSystem } from '@/components/config-provider';
 
 export interface ShowcasePersistence {
@@ -10,7 +10,10 @@ export interface ShowcasePersistence {
 export function useShowcasePersistence(): ShowcasePersistence {
   const { config, updateAndSaveConfig, loading } = useUserSystem();
 
-  const seenFeatures = config?.showcases?.seen_features ?? [];
+  const seenFeatures = useMemo(
+    () => config?.showcases?.seen_features ?? [],
+    [config?.showcases?.seen_features]
+  );
 
   const hasSeen = useCallback(
     (id: string): boolean => {

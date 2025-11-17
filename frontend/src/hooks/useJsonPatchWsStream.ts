@@ -187,8 +187,7 @@ export const useJsonPatchWsStream = <T>(
     endpoint,
     enabled,
     initialData,
-    options.injectInitialEntry,
-    options.deduplicatePatches,
+    options,
     retryNonce,
   ]);
 

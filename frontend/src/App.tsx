@@ -104,7 +104,7 @@ function AppContent() {
     return () => {
       cancelled = true;
     };
-  }, [config, isSignedIn]);
+  }, [config, isSignedIn, updateAndSaveConfig]);
 
   if (loading) {
     return (

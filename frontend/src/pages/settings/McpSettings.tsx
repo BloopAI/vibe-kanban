@@ -106,7 +106,7 @@ export function McpSettings() {
     if (selectedProfile) {
       loadMcpServersForProfile(selectedProfile);
     }
-  }, [selectedProfile]);
+  }, [selectedProfile, profiles]);
 
   const handleMcpServersChange = (value: string) => {
     setMcpServers(value);

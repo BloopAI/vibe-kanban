@@ -330,7 +330,7 @@ export const FileSearchTextarea = forwardRef<
       left: finalLeft,
       maxHeight,
     };
-  }, [searchQuery, value]);
+  }, [textareaRef]);
 
   const [dropdownPosition, setDropdownPosition] = useState(() =>
     getDropdownPosition()

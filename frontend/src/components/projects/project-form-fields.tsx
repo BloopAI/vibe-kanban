@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -77,14 +77,7 @@ export function ProjectFormFields({
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [showRecentRepos, setShowRecentRepos] = useState(false);
 
-  // Lazy-load repositories when the user navigates to the repo list
-  useEffect(() => {
-    if (!isEditing && showRecentRepos && !loading && allRepos.length === 0) {
-      loadRecentRepos();
-    }
-  }, [isEditing, showRecentRepos]);
-
-  const loadRecentRepos = async () => {
+  const loadRecentRepos = useCallback(async () => {
     setLoading(true);
     setReposError('');
 
@@ -97,7 +90,14 @@ export function ProjectFormFields({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Lazy-load repositories when the user navigates to the repo list
+  useEffect(() => {
+    if (!isEditing && showRecentRepos && !loading && allRepos.length === 0) {
+      loadRecentRepos();
+    }
+  }, [isEditing, showRecentRepos, loading, allRepos.length, loadRecentRepos]);
 
   return (
     <>

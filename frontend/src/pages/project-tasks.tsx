@@ -224,6 +224,14 @@ export function ProjectTasks() {
     })[0].id;
   }, [attempts]);
 
+  const navigateWithSearch = useCallback(
+    (pathname: string, options?: { replace?: boolean }) => {
+      const search = searchParams.toString();
+      navigate({ pathname, search: search ? `?${search}` : '' }, options);
+    },
+    [navigate, searchParams]
+  );
+
   useEffect(() => {
     if (!projectId || !taskId) return;
     if (!isLatest) return;
@@ -244,6 +252,7 @@ export function ProjectTasks() {
     isAttemptsLoading,
     latestAttemptId,
     navigate,
+    navigateWithSearch,
   ]);
 
   useEffect(() => {
@@ -294,14 +303,6 @@ export function ProjectTasks() {
       setSearchParams(params, { replace: true });
     },
     [searchParams, setSearchParams]
-  );
-
-  const navigateWithSearch = useCallback(
-    (pathname: string, options?: { replace?: boolean }) => {
-      const search = searchParams.toString();
-      navigate({ pathname, search: search ? `?${search}` : '' }, options);
-    },
-    [navigate, searchParams]
   );
 
   const handleCreateNewTask = useCallback(() => {

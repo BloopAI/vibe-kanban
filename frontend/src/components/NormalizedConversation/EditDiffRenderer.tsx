@@ -77,7 +77,7 @@ function EditDiffRenderer({
   const theme = getActualTheme(config?.theme);
   const { hunks, hideLineNumbers, additions, deletions, isValidDiff } = useMemo(
     () => processUnifiedDiff(unifiedDiff, hasLineNumbers),
-    [path, unifiedDiff, hasLineNumbers]
+    [unifiedDiff, hasLineNumbers]
   );
 
   const hideLineNumbersClass = hideLineNumbers ? ' edit-diff-hide-nums' : '';
