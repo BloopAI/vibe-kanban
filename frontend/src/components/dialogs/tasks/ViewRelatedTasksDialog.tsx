@@ -21,8 +21,9 @@ export interface ViewRelatedTasksDialogProps {
   onNavigateToTask?: (taskId: string) => void;
 }
 
-const ViewRelatedTasksDialogImpl = NiceModal.create<ViewRelatedTasksDialogProps>(
-  ({ attemptId, projectId, attempt, onNavigateToTask }) => {
+const ViewRelatedTasksDialogImpl =
+  NiceModal.create<ViewRelatedTasksDialogProps>(
+    ({ attemptId, projectId, attempt, onNavigateToTask }) => {
       const modal = useModal();
       const { t } = useTranslation('tasks');
       const {
@@ -165,7 +166,7 @@ const ViewRelatedTasksDialogImpl = NiceModal.create<ViewRelatedTasksDialogProps>
         </Dialog>
       );
     }
-);
+  );
 
 export const ViewRelatedTasksDialog = defineModal<
   ViewRelatedTasksDialogProps,
