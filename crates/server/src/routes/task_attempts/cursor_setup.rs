@@ -85,7 +85,7 @@ fi"#
         let install_request = ScriptRequest {
             script: install_script,
             language: ScriptRequestLanguage::Bash,
-            context: ScriptContext::SetupScript,
+            context: ScriptContext::ToolInstallScript,
         };
         // Second action (chained): Login
         let login_script = format!(
@@ -98,7 +98,7 @@ export PATH="$HOME/.local/bin:$PATH"
         let login_request = ScriptRequest {
             script: login_script,
             language: ScriptRequestLanguage::Bash,
-            context: ScriptContext::SetupScript,
+            context: ScriptContext::ToolInstallScript,
         };
 
         // Chain them: install → login

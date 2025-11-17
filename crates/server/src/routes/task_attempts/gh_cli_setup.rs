@@ -71,7 +71,7 @@ fi"#
         let install_request = ScriptRequest {
             script: install_script,
             language: ScriptRequestLanguage::Bash,
-            context: ScriptContext::GithubCliSetupScript,
+            context: ScriptContext::ToolInstallScript,
         };
 
         // Auth script
@@ -85,7 +85,7 @@ gh auth login --web --git-protocol https --skip-ssh-key
         let auth_request = ScriptRequest {
             script: auth_script,
             language: ScriptRequestLanguage::Bash,
-            context: ScriptContext::GithubCliSetupScript,
+            context: ScriptContext::ToolInstallScript,
         };
 
         // Chain them: install → auth

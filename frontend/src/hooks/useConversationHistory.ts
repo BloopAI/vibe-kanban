@@ -326,8 +326,8 @@ export const useConversationHistory = ({
               case 'CleanupScript':
                 toolName = 'Cleanup Script';
                 break;
-              case 'GithubCliSetupScript':
-                toolName = 'GitHub CLI Setup Script';
+              case 'ToolInstallScript':
+                toolName = 'Tool Install Script';
                 break;
               default:
                 return [];

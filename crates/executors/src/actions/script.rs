@@ -23,7 +23,7 @@ pub enum ScriptContext {
     SetupScript,
     CleanupScript,
     DevServer,
-    GithubCliSetupScript,
+    ToolInstallScript,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
