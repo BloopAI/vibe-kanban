@@ -11,7 +11,8 @@ import {
   Settings,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import NiceModal from '@ebay/nice-modal-react';
+import { showModal } from '@/lib/modals';
+import { Modals } from '@/components/dialogs';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import { useDiffSummary } from '@/hooks/useDiffSummary';
 import { useDevServer } from '@/hooks/useDevServer';
@@ -93,7 +94,7 @@ export function NextActionCard({
 
   const handleViewLogs = useCallback(() => {
     if (attemptId) {
-      NiceModal.show('view-processes', {
+      showModal(Modals.ViewProcesses, {
         attemptId,
         initialProcessId: latestDevServerProcess?.id,
       });
@@ -106,14 +107,14 @@ export function NextActionCard({
 
   const handleTryAgain = useCallback(() => {
     if (!attempt?.task_id) return;
-    NiceModal.show('create-attempt', {
+    showModal(Modals.CreateAttempt, {
       taskId: attempt.task_id,
     });
   }, [attempt?.task_id]);
 
   const handleGitActions = useCallback(() => {
     if (!attemptId) return;
-    NiceModal.show('git-actions', {
+    showModal(Modals.GitActions, {
       attemptId,
       task,
       projectId: project?.id,

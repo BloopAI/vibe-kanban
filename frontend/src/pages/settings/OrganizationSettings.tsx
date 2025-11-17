@@ -25,15 +25,12 @@ import { useOrganizationMutations } from '@/hooks/useOrganizationMutations';
 import { useUserSystem } from '@/components/config-provider';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { LoginRequiredPrompt } from '@/components/dialogs/shared/LoginRequiredPrompt';
-import NiceModal from '@ebay/nice-modal-react';
-import {
-  InviteMemberDialog,
-  type InviteMemberResult,
-} from '@/components/dialogs/org/InviteMemberDialog';
-import {
-  CreateOrganizationDialog,
-  type CreateOrganizationResult,
-} from '@/components/dialogs/org/CreateOrganizationDialog';
+import { showModal } from '@/lib/modals';
+import { Modals } from '@/components/dialogs';
+import type {
+  InviteMemberResult,
+  CreateOrganizationResult,
+} from '@/components/dialogs';
 import { MemberListItem } from '@/components/org/MemberListItem';
 import { PendingInvitationItem } from '@/components/org/PendingInvitationItem';
 import { RemoteProjectItem } from '@/components/org/RemoteProjectItem';
@@ -176,8 +173,9 @@ export function OrganizationSettings() {
 
   const handleCreateOrganization = async () => {
     try {
-      const result: CreateOrganizationResult = await NiceModal.show(
-        CreateOrganizationDialog
+      const result: CreateOrganizationResult = await showModal(
+        Modals.CreateOrganization,
+        {}
       );
 
       if (result.action === 'created' && result.organizationId) {
@@ -195,8 +193,8 @@ export function OrganizationSettings() {
     if (!selectedOrgId) return;
 
     try {
-      const result: InviteMemberResult = await NiceModal.show(
-        InviteMemberDialog,
+      const result: InviteMemberResult = await showModal(
+        Modals.InviteMember,
         { organizationId: selectedOrgId }
       );
 

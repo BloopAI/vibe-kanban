@@ -25,6 +25,7 @@ import { ExecutorConfigForm } from '@/components/ExecutorConfigForm';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useUserSystem } from '@/components/config-provider';
 import { showModal } from '@/lib/modals';
+import { Modals } from '@/components/dialogs';
 
 export function AgentSettings() {
   const { t } = useTranslation('settings');
@@ -84,11 +85,7 @@ export function AgentSettings() {
   // Open create dialog
   const openCreateDialog = async () => {
     try {
-      const result = await showModal<{
-        action: 'created' | 'canceled';
-        configName?: string;
-        cloneFrom?: string | null;
-      }>('create-configuration', {
+      const result = await showModal(Modals.CreateConfiguration, {
         executorType: selectedExecutorType,
         existingConfigs: Object.keys(
           localParsedProfiles?.executors?.[selectedExecutorType] || {}
@@ -141,13 +138,10 @@ export function AgentSettings() {
   // Open delete dialog
   const openDeleteDialog = async (configName: string) => {
     try {
-      const result = await showModal<'deleted' | 'canceled'>(
-        'delete-configuration',
-        {
-          configName,
-          executorType: selectedExecutorType,
-        }
-      );
+      const result = await showModal(Modals.DeleteConfiguration, {
+        configName,
+        executorType: selectedExecutorType,
+      });
 
       if (result === 'deleted') {
         await handleDeleteConfiguration(configName);

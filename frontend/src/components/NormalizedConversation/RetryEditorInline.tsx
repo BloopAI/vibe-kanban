@@ -22,6 +22,7 @@ import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useUserSystem } from '@/components/config-provider';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
 import { showModal } from '@/lib/modals';
+import { Modals } from '@/components/dialogs';
 import {
   shouldShowInLogs,
   isCodingAgent,
@@ -191,7 +192,7 @@ export function RetryEditorInline({
       // Ask user for confirmation
       let modalResult: RestoreLogsDialogResult | undefined;
       try {
-        modalResult = await showModal<RestoreLogsDialogResult>('restore-logs', {
+        modalResult = await showModal(Modals.RestoreLogs, {
           targetSha: before,
           targetSubject,
           commitsToReset,

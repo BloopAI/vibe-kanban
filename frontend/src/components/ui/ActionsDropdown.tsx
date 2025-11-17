@@ -11,10 +11,11 @@ import {
 import { MoreHorizontal } from 'lucide-react';
 import type { TaskWithAttemptStatus, TaskAttempt } from 'shared/types';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
-import NiceModal from '@ebay/nice-modal-react';
+import { showModal } from '@/lib/modals';
+import { Modals } from '@/components/dialogs';
 import { useProject } from '@/contexts/project-context';
 import { openTaskForm } from '@/lib/openTaskForm';
-import { ViewRelatedTasksDialog } from '@/components/dialogs/tasks/ViewRelatedTasksDialog';
+
 import { useNavigate } from 'react-router-dom';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import { useAuth } from '@/hooks';
@@ -56,7 +57,7 @@ export function ActionsDropdown({
     e.stopPropagation();
     if (!projectId || !task) return;
     try {
-      await NiceModal.show('delete-task-confirmation', {
+      await showModal(Modals.DeleteTaskConfirmation, {
         task,
         projectId,
       });
@@ -74,13 +75,13 @@ export function ActionsDropdown({
   const handleViewProcesses = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!attempt?.id) return;
-    NiceModal.show('view-processes', { attemptId: attempt.id });
+    showModal(Modals.ViewProcesses, { attemptId: attempt.id });
   };
 
   const handleViewRelatedTasks = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!attempt?.id || !projectId) return;
-    NiceModal.show(ViewRelatedTasksDialog, {
+    showModal(Modals.ViewRelatedTasks, {
       attemptId: attempt.id,
       projectId,
       attempt,
@@ -95,7 +96,7 @@ export function ActionsDropdown({
   const handleCreateNewAttempt = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!task?.id) return;
-    NiceModal.show('create-attempt', {
+    showModal(Modals.CreateAttempt, {
       taskId: task.id,
     });
   };
@@ -113,7 +114,7 @@ export function ActionsDropdown({
   const handleGitActions = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!attempt?.id || !task) return;
-    NiceModal.show('git-actions', {
+    showModal(Modals.GitActions, {
       attemptId: attempt.id,
       task,
       projectId,
@@ -123,7 +124,7 @@ export function ActionsDropdown({
   const handleEditBranchName = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!attempt?.id) return;
-    NiceModal.show('edit-branch-name-dialog', {
+    showModal(Modals.EditBranchName, {
       attemptId: attempt.id,
       currentBranchName: attempt.branch,
     });
@@ -131,19 +132,19 @@ export function ActionsDropdown({
   const handleShare = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!task || isShared) return;
-    NiceModal.show('share-task', { task });
+    showModal(Modals.ShareTask, { task });
   };
 
   const handleReassign = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!sharedTask) return;
-    NiceModal.show('reassign-shared-task', { sharedTask });
+    showModal(Modals.ReassignSharedTask, { sharedTask });
   };
 
   const handleStopShare = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!sharedTask) return;
-    NiceModal.show('stop-share-shared-task', { sharedTask });
+    showModal(Modals.StopShareTask, { sharedTask });
   };
 
   const canReassign =

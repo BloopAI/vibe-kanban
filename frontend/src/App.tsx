@@ -31,9 +31,10 @@ import { ThemeMode } from 'shared/types';
 import * as Sentry from '@sentry/react';
 import { Loader } from '@/components/ui/loader';
 
-import NiceModal from '@ebay/nice-modal-react';
-import { OnboardingResult } from './components/dialogs/global/OnboardingDialog';
+import { showModal, hideModal } from '@/lib/modals';
+import { Modals } from '@/components/dialogs';
 import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
+import NiceModal from '@ebay/nice-modal-react';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
@@ -64,17 +65,17 @@ function AppContent() {
     const showNextStep = async () => {
       // 1) Disclaimer - first step
       if (!config.disclaimer_acknowledged) {
-        await NiceModal.show('disclaimer');
+        await showModal(Modals.Disclaimer, {});
         if (!cancelled) {
           await updateAndSaveConfig({ disclaimer_acknowledged: true });
         }
-        await NiceModal.hide('disclaimer');
+        hideModal(Modals.Disclaimer);
         return;
       }
 
       // 2) Onboarding - configure executor and editor
       if (!config.onboarding_acknowledged) {
-        const result: OnboardingResult = await NiceModal.show('onboarding');
+        const result = await showModal(Modals.Onboarding, {});
         if (!cancelled) {
           await updateAndSaveConfig({
             onboarding_acknowledged: true,
@@ -82,17 +83,17 @@ function AppContent() {
             editor: result.editor,
           });
         }
-        await NiceModal.hide('onboarding');
+        hideModal(Modals.Onboarding);
         return;
       }
 
       // 3) Release notes - last step
       if (config.show_release_notes) {
-        await NiceModal.show('release-notes');
+        await showModal(Modals.ReleaseNotes, {});
         if (!cancelled) {
           await updateAndSaveConfig({ show_release_notes: false });
         }
-        await NiceModal.hide('release-notes');
+        hideModal(Modals.ReleaseNotes);
         return;
       }
     };

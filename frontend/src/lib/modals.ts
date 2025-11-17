@@ -1,4 +1,50 @@
 import NiceModal from '@ebay/nice-modal-react';
+import type React from 'react';
+
+// Brand a component with its modal result type (props are inferred)
+export type ModalResultOf<M> = M extends { __modalResult?: infer R } ? R : never;
+export type ModalPropsOf<M> = M extends React.ComponentType<infer P> ? P : never;
+
+export function defineModal<R>(component: React.ComponentType<any>) {
+  return component as React.ComponentType<any> & { __modalResult?: R };
+}
+
+// Fully typed show using the component as the identifier
+export function showModal<M extends React.ComponentType<any>>(
+  modal: M,
+  props: ModalPropsOf<M>
+): Promise<ModalResultOf<M>> {
+  return NiceModal.show(modal as any, props) as Promise<ModalResultOf<M>>;
+}
+
+// Optional typed hide/remove if you need them globally
+export function hideModal<M extends React.ComponentType<any>>(modal: M): void {
+  NiceModal.hide(modal as any);
+}
+
+export function removeModal<M extends React.ComponentType<any>>(modal: M): void {
+  NiceModal.remove(modal as any);
+}
+
+// Common modal result types for standardization
+export type ConfirmResult = 'confirmed' | 'canceled';
+export type DeleteResult = 'deleted' | 'canceled';
+export type SaveResult = 'saved' | 'canceled';
+
+// Error handling utility for modal operations
+export function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  return 'An unknown error occurred';
+}
+
+// Legacy helper functions - kept for backward compatibility
+// These will be migrated to use Modals registry over time
+import { Modals } from '@/components/dialogs';
 import type {
   FolderPickerDialogProps,
   TagEditDialogProps,
@@ -8,109 +54,25 @@ import type {
   LinkProjectResult,
 } from '@/components/dialogs';
 
-/**
- * Typed wrapper around NiceModal.show with better TypeScript support
- * @param modal - Modal ID (string) or component reference
- * @param props - Props to pass to the modal
- * @returns Promise that resolves with the modal's result
- */
-export function showModal<T = void>(
-  modal: string,
-  props: Record<string, unknown> = {}
-): Promise<T> {
-  return NiceModal.show<T>(modal, props) as Promise<T>;
-}
-
-/**
- * Show folder picker dialog
- * @param props - Props for folder picker
- * @returns Promise that resolves with selected path or null if cancelled
- */
 export function showFolderPicker(
   props: FolderPickerDialogProps = {}
 ): Promise<string | null> {
-  return showModal<string | null>(
-    'folder-picker',
-    props as Record<string, unknown>
-  );
+  return showModal(Modals.FolderPicker, props);
 }
 
-/**
- * Show task tag edit dialog
- * @param props - Props for tag edit dialog
- * @returns Promise that resolves with 'saved' or 'canceled'
- */
 export function showTagEdit(props: TagEditDialogProps): Promise<TagEditResult> {
-  return showModal<TagEditResult>('tag-edit', props as Record<string, unknown>);
+  return showModal(Modals.TagEdit, props);
 }
 
-/**
- * Show project form dialog
- * @param props - Props for project form dialog
- * @returns Promise that resolves with 'saved' or 'canceled'
- */
 export function showProjectForm(
   props: ProjectFormDialogProps = {}
 ): Promise<ProjectFormDialogResult> {
-  return showModal<ProjectFormDialogResult>(
-    'project-form',
-    props as Record<string, unknown>
-  );
+  return showModal(Modals.ProjectForm, props);
 }
 
-/**
- * Show link project dialog
- * @param props - Props for link project dialog (projectId and projectName)
- * @returns Promise that resolves with link result
- */
 export function showLinkProject(props: {
   projectId: string;
   projectName: string;
 }): Promise<LinkProjectResult> {
-  return showModal<LinkProjectResult>(
-    'link-project',
-    props as Record<string, unknown>
-  );
-}
-
-/**
- * Hide a modal by ID
- */
-export function hideModal(modal: string): void {
-  NiceModal.hide(modal);
-}
-
-/**
- * Remove a modal by ID
- */
-export function removeModal(modal: string): void {
-  NiceModal.remove(modal);
-}
-
-/**
- * Hide all currently visible modals
- */
-export function hideAllModals(): void {
-  // NiceModal doesn't have a direct hideAll, so we'll implement as needed
-  console.log('Hide all modals - implement as needed');
-}
-
-/**
- * Common modal result types for standardization
- */
-export type ConfirmResult = 'confirmed' | 'canceled';
-export type DeleteResult = 'deleted' | 'canceled';
-export type SaveResult = 'saved' | 'canceled';
-
-/**
- * Error handling utility for modal operations
- */
-export function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  if (typeof error === 'string') {
-    return error;
-  }
-  return 'An unknown error occurred';
+  return showModal(Modals.LinkProject, props);
 }

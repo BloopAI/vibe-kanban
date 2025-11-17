@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { attemptsApi } from '@/lib/api';
-import NiceModal from '@ebay/nice-modal-react';
+import { showModal } from '@/lib/modals';
+import { Modals } from '@/components/dialogs';
 import type { EditorType } from 'shared/types';
 
 type OpenEditorOptions = {
@@ -35,7 +36,7 @@ export function useOpenInEditor(
           if (onShowEditorDialog) {
             onShowEditorDialog();
           } else {
-            NiceModal.show('editor-selection', {
+            showModal(Modals.EditorSelection, {
               selectedAttemptId: attemptId,
               filePath,
             });

@@ -36,8 +36,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import NiceModal from '@ebay/nice-modal-react';
-import { OAuthDialog } from '@/components/dialogs';
+import { showModal } from '@/lib/modals';
+import { Modals } from '@/components/dialogs';
 import { useUserSystem } from '@/components/config-provider';
 import { oauthApi } from '@/lib/api';
 
@@ -117,7 +117,7 @@ export function Navbar() {
   };
 
   const handleOpenOAuth = async () => {
-    const profile = await NiceModal.show(OAuthDialog);
+    const profile = await showModal(Modals.OAuth, {});
     if (profile) {
       await reloadSystem();
     }

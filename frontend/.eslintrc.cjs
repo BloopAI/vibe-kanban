@@ -34,6 +34,35 @@ module.exports = {
     ],
     '@typescript-eslint/no-explicit-any': 'warn',
     '@typescript-eslint/switch-exhaustiveness-check': 'error',
+    // Enforce typesafe modal pattern
+    'no-restricted-imports': [
+      'error',
+      {
+        paths: [
+          {
+            name: '@ebay/nice-modal-react',
+            importNames: ['default'],
+            message:
+              'Import NiceModal only in lib/modals.ts or dialog component files. Use showModal from @/lib/modals instead.',
+          },
+        ],
+      },
+    ],
+    'no-restricted-syntax': [
+      'error',
+      {
+        selector:
+          'CallExpression[callee.object.name="NiceModal"][callee.property.name="show"]',
+        message:
+          'Do not use NiceModal.show() directly. Use showModal(Modals.X, props) from @/lib/modals instead.',
+      },
+      {
+        selector:
+          'CallExpression[callee.object.name="NiceModal"][callee.property.name="register"]',
+        message:
+          'Do not use NiceModal.register(). Dialogs are registered automatically when used with showModal().',
+      },
+    ],
     // i18n rule - only active when LINT_I18N=true
     'i18next/no-literal-string': i18nCheck
       ? [
@@ -74,6 +103,14 @@ module.exports = {
       },
       rules: {
         '@typescript-eslint/switch-exhaustiveness-check': 'off',
+      },
+    },
+    {
+      // Allow NiceModal usage in lib/modals.ts, App.tsx (for Provider), and dialog component files
+      files: ['src/lib/modals.ts', 'src/App.tsx', 'src/components/dialogs/**/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-imports': 'off',
+        'no-restricted-syntax': 'off',
       },
     },
   ],

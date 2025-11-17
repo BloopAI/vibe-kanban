@@ -10,12 +10,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { showModal } from '@/lib/modals';
+import { Modals } from '@/components/dialogs';
 import { useTranslation } from 'react-i18next';
 import { useUserSystem } from '@/components/config-provider';
 import { Link as LinkIcon, Loader2 } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { LoginRequiredPrompt } from '@/components/dialogs/shared/LoginRequiredPrompt';
-import { LinkProjectDialog } from '@/components/dialogs/projects/LinkProjectDialog';
 import { useAuth } from '@/hooks';
 import { useProject } from '@/contexts/project-context';
 import { useTaskMutations } from '@/hooks/useTaskMutations';
@@ -67,7 +68,7 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
       modal.hide();
     } catch (err) {
       if (getStatus(err) === 401) {
-        void NiceModal.show('oauth');
+        void showModal(Modals.OAuth, {});
         return;
       }
       setShareError(getReadableError(err));
@@ -77,7 +78,7 @@ const ShareDialog = NiceModal.create<ShareDialogProps>(({ task }) => {
   const handleLinkProject = () => {
     if (!project) return;
 
-    void NiceModal.show(LinkProjectDialog, {
+    void showModal(Modals.LinkProject, {
       projectId: project.id,
       projectName: project.name,
     });

@@ -8,7 +8,8 @@ import type { TaskWithAttemptStatus, TaskAttempt } from 'shared/types';
 import { NewCardContent } from '../ui/new-card';
 import { Button } from '../ui/button';
 import { PlusIcon } from 'lucide-react';
-import NiceModal from '@ebay/nice-modal-react';
+import { showModal } from '@/lib/modals';
+import { Modals } from '@/components/dialogs';
 import MarkdownRenderer from '@/components/ui/markdown-renderer';
 import { DataTable, type ColumnDef } from '@/components/ui/table';
 
@@ -155,7 +156,7 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
                       <Button
                         variant="icon"
                         onClick={() =>
-                          NiceModal.show('create-attempt', {
+                          showModal(Modals.CreateAttempt, {
                             taskId: task.id,
                           })
                         }
