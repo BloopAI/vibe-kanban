@@ -14,7 +14,8 @@ use db::{
     models::{
         draft::{Draft, DraftType},
         execution_process::{
-            ExecutionContext, ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus,
+            self, ExecutionContext, ExecutionProcess, ExecutionProcessRunReason,
+            ExecutionProcessStatus,
         },
         executor_session::ExecutorSession,
         image::TaskImage,
@@ -651,18 +652,208 @@ impl LocalContainerService {
         .await
         .map_err(|e| ContainerError::Other(anyhow!("{e}")))
     }
-}
 
-fn success_exit_status() -> std::process::ExitStatus {
-    #[cfg(unix)]
-    {
-        use std::os::unix::process::ExitStatusExt;
-        ExitStatusExt::from_raw(0)
+    /// Extract the last assistant message from the MsgStore history
+    fn extract_last_assistant_message(&self, exec_id: &Uuid) -> Option<String> {
+        // Get the MsgStore for this execution
+        let msg_stores = self.msg_stores.try_read().ok()?;
+        let msg_store = msg_stores.get(exec_id)?;
+
+        // Get the history and scan in reverse for the last assistant message
+        let history = msg_store.get_history();
+
+        for msg in history.iter().rev() {
+            if let LogMsg::JsonPatch(patch) = msg {
+                // Try to extract a NormalizedEntry from the patch
+                if let Some((_, entry)) = extract_normalized_entry_from_patch(patch)
+                    && matches!(entry.entry_type, NormalizedEntryType::AssistantMessage)
+                {
+                    let content = entry.content.trim();
+                    if !content.is_empty() {
+                        const MAX_SUMMARY_LENGTH: usize = 4096;
+                        if content.len() > MAX_SUMMARY_LENGTH {
+                            let truncated = truncate_to_char_boundary(content, MAX_SUMMARY_LENGTH);
+                            return Some(format!("{truncated}..."));
+                        }
+                        return Some(content.to_string());
+                    }
+                }
+            }
+        }
+
+        None
     }
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::ExitStatusExt;
-        ExitStatusExt::from_raw(0)
+
+    /// Update the executor session summary with the final assistant message
+    async fn update_executor_session_summary(&self, exec_id: &Uuid) -> Result<(), anyhow::Error> {
+        // Check if there's an executor session for this execution process
+        let session =
+            ExecutorSession::find_by_execution_process_id(&self.db.pool, *exec_id).await?;
+
+        if let Some(session) = session {
+            // Only update if summary is not already set
+            if session.summary.is_none() {
+                if let Some(summary) = self.extract_last_assistant_message(exec_id) {
+                    ExecutorSession::update_summary(&self.db.pool, *exec_id, &summary).await?;
+                } else {
+                    tracing::debug!("No assistant message found for execution {}", exec_id);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// If a queued follow-up draft exists for this attempt and nothing is running,
+    /// start it immediately and clear the draft.
+    async fn try_consume_queued_followup(
+        &self,
+        ctx: &ExecutionContext,
+    ) -> Result<(), ContainerError> {
+        // Only consider CodingAgent/cleanup chains; skip DevServer completions
+        if matches!(
+            ctx.execution_process.run_reason,
+            ExecutionProcessRunReason::DevServer
+        ) {
+            return Ok(());
+        }
+
+        // If anything is running for this attempt, bail
+        let procs =
+            ExecutionProcess::find_by_task_attempt_id(&self.db.pool, ctx.task_attempt.id, false)
+                .await?;
+        if procs
+            .iter()
+            .any(|p| matches!(p.status, ExecutionProcessStatus::Running))
+        {
+            return Ok(());
+        }
+
+        // Load draft and ensure it's eligible
+        let Some(draft) = Draft::find_by_task_attempt_and_type(
+            &self.db.pool,
+            ctx.task_attempt.id,
+            DraftType::FollowUp,
+        )
+        .await?
+        else {
+            return Ok(());
+        };
+
+        if !draft.queued || draft.prompt.trim().is_empty() {
+            return Ok(());
+        }
+
+        // Atomically acquire sending lock; if not acquired, someone else is sending.
+        if !Draft::try_mark_sending(&self.db.pool, ctx.task_attempt.id, DraftType::FollowUp)
+            .await
+            .unwrap_or(false)
+        {
+            return Ok(());
+        }
+
+        // Ensure worktree exists
+        let container_ref = self.ensure_container_exists(&ctx.task_attempt).await?;
+
+        // Get session id
+        let Some(session_id) = ExecutionProcess::find_latest_session_id_by_task_attempt(
+            &self.db.pool,
+            ctx.task_attempt.id,
+        )
+        .await?
+        else {
+            tracing::warn!(
+                "No session id found for attempt {}. Cannot start queued follow-up.",
+                ctx.task_attempt.id
+            );
+            return Ok(());
+        };
+
+        // Get last coding agent process to inherit executor profile
+        let Some(latest) = ExecutionProcess::find_latest_by_task_attempt_and_run_reason(
+            &self.db.pool,
+            ctx.task_attempt.id,
+            &ExecutionProcessRunReason::CodingAgent,
+        )
+        .await?
+        else {
+            tracing::warn!(
+                "No prior CodingAgent process for attempt {}. Cannot start queued follow-up.",
+                ctx.task_attempt.id
+            );
+            return Ok(());
+        };
+
+        use executors::actions::ExecutorActionType;
+        let initial_executor_profile_id = match &latest.executor_action()?.typ {
+            ExecutorActionType::CodingAgentInitialRequest(req) => req.executor_profile_id.clone(),
+            ExecutorActionType::CodingAgentFollowUpRequest(req) => req.executor_profile_id.clone(),
+            _ => {
+                tracing::warn!(
+                    "Latest process for attempt {} is not a coding agent; skipping queued follow-up",
+                    ctx.task_attempt.id
+                );
+                return Ok(());
+            }
+        };
+
+        let executor_profile_id = executors::profile::ExecutorProfileId {
+            executor: initial_executor_profile_id.executor,
+            variant: draft.variant.clone(),
+        };
+
+        // Prepare cleanup action
+        let cleanup_action = ctx
+            .task
+            .parent_project(&self.db.pool)
+            .await?
+            .and_then(|project| self.cleanup_action(project.cleanup_script));
+
+        // Handle images: associate, copy to worktree, canonicalize prompt
+        let mut prompt = draft.prompt.clone();
+        if let Some(image_ids) = &draft.image_ids {
+            // Associate to task
+            let _ = TaskImage::associate_many_dedup(&self.db.pool, ctx.task.id, image_ids).await;
+
+            // Copy to worktree and canonicalize
+            let worktree_path = std::path::PathBuf::from(&container_ref);
+            if let Err(e) = self
+                .image_service
+                .copy_images_by_ids_to_worktree(&worktree_path, image_ids)
+                .await
+            {
+                tracing::warn!("Failed to copy images to worktree: {}", e);
+            } else {
+                prompt = ImageService::canonicalise_image_paths(&prompt, &worktree_path);
+            }
+        }
+
+        let follow_up_request =
+            executors::actions::coding_agent_follow_up::CodingAgentFollowUpRequest {
+                prompt,
+                session_id,
+                executor_profile_id,
+            };
+
+        let follow_up_action = executors::actions::ExecutorAction::new(
+            executors::actions::ExecutorActionType::CodingAgentFollowUpRequest(follow_up_request),
+            cleanup_action,
+        );
+
+        // Start the execution
+        let _ = self
+            .start_execution(
+                &ctx.task_attempt,
+                &follow_up_action,
+                &ExecutionProcessRunReason::CodingAgent,
+            )
+            .await?;
+
+        // Clear the draft to reflect that it has been consumed
+        let _ =
+            Draft::clear_after_send(&self.db.pool, ctx.task_attempt.id, DraftType::FollowUp).await;
+
+        Ok(())
     }
 }
 
@@ -1110,208 +1301,23 @@ impl ContainerService for LocalContainerService {
         }
         Ok(())
     }
-}
 
-impl LocalContainerService {
-    /// Extract the last assistant message from the MsgStore history
-    fn extract_last_assistant_message(&self, exec_id: &Uuid) -> Option<String> {
-        // Get the MsgStore for this execution
-        let msg_stores = self.msg_stores.try_read().ok()?;
-        let msg_store = msg_stores.get(exec_id)?;
+    async fn kill_all_running_processes(&self) -> Result<(), ContainerError> {
+        tracing::info!("Killing all running processes");
+        let running_processes = ExecutionProcess::find_running(&self.db.pool).await?;
 
-        // Get the history and scan in reverse for the last assistant message
-        let history = msg_store.get_history();
-
-        for msg in history.iter().rev() {
-            if let LogMsg::JsonPatch(patch) = msg {
-                // Try to extract a NormalizedEntry from the patch
-                if let Some((_, entry)) = extract_normalized_entry_from_patch(patch)
-                    && matches!(entry.entry_type, NormalizedEntryType::AssistantMessage)
-                {
-                    let content = entry.content.trim();
-                    if !content.is_empty() {
-                        const MAX_SUMMARY_LENGTH: usize = 4096;
-                        if content.len() > MAX_SUMMARY_LENGTH {
-                            let truncated = truncate_to_char_boundary(content, MAX_SUMMARY_LENGTH);
-                            return Some(format!("{truncated}..."));
-                        }
-                        return Some(content.to_string());
-                    }
-                }
-            }
-        }
-
-        None
-    }
-
-    /// Update the executor session summary with the final assistant message
-    async fn update_executor_session_summary(&self, exec_id: &Uuid) -> Result<(), anyhow::Error> {
-        // Check if there's an executor session for this execution process
-        let session =
-            ExecutorSession::find_by_execution_process_id(&self.db.pool, *exec_id).await?;
-
-        if let Some(session) = session {
-            // Only update if summary is not already set
-            if session.summary.is_none() {
-                if let Some(summary) = self.extract_last_assistant_message(exec_id) {
-                    ExecutorSession::update_summary(&self.db.pool, *exec_id, &summary).await?;
-                } else {
-                    tracing::debug!("No assistant message found for execution {}", exec_id);
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    /// If a queued follow-up draft exists for this attempt and nothing is running,
-    /// start it immediately and clear the draft.
-    async fn try_consume_queued_followup(
-        &self,
-        ctx: &ExecutionContext,
-    ) -> Result<(), ContainerError> {
-        // Only consider CodingAgent/cleanup chains; skip DevServer completions
-        if matches!(
-            ctx.execution_process.run_reason,
-            ExecutionProcessRunReason::DevServer
-        ) {
-            return Ok(());
-        }
-
-        // If anything is running for this attempt, bail
-        let procs =
-            ExecutionProcess::find_by_task_attempt_id(&self.db.pool, ctx.task_attempt.id, false)
-                .await?;
-        if procs
-            .iter()
-            .any(|p| matches!(p.status, ExecutionProcessStatus::Running))
-        {
-            return Ok(());
-        }
-
-        // Load draft and ensure it's eligible
-        let Some(draft) = Draft::find_by_task_attempt_and_type(
-            &self.db.pool,
-            ctx.task_attempt.id,
-            DraftType::FollowUp,
-        )
-        .await?
-        else {
-            return Ok(());
-        };
-
-        if !draft.queued || draft.prompt.trim().is_empty() {
-            return Ok(());
-        }
-
-        // Atomically acquire sending lock; if not acquired, someone else is sending.
-        if !Draft::try_mark_sending(&self.db.pool, ctx.task_attempt.id, DraftType::FollowUp)
-            .await
-            .unwrap_or(false)
-        {
-            return Ok(());
-        }
-
-        // Ensure worktree exists
-        let container_ref = self.ensure_container_exists(&ctx.task_attempt).await?;
-
-        // Get session id
-        let Some(session_id) = ExecutionProcess::find_latest_session_id_by_task_attempt(
-            &self.db.pool,
-            ctx.task_attempt.id,
-        )
-        .await?
-        else {
-            tracing::warn!(
-                "No session id found for attempt {}. Cannot start queued follow-up.",
-                ctx.task_attempt.id
-            );
-            return Ok(());
-        };
-
-        // Get last coding agent process to inherit executor profile
-        let Some(latest) = ExecutionProcess::find_latest_by_task_attempt_and_run_reason(
-            &self.db.pool,
-            ctx.task_attempt.id,
-            &ExecutionProcessRunReason::CodingAgent,
-        )
-        .await?
-        else {
-            tracing::warn!(
-                "No prior CodingAgent process for attempt {}. Cannot start queued follow-up.",
-                ctx.task_attempt.id
-            );
-            return Ok(());
-        };
-
-        use executors::actions::ExecutorActionType;
-        let initial_executor_profile_id = match &latest.executor_action()?.typ {
-            ExecutorActionType::CodingAgentInitialRequest(req) => req.executor_profile_id.clone(),
-            ExecutorActionType::CodingAgentFollowUpRequest(req) => req.executor_profile_id.clone(),
-            _ => {
-                tracing::warn!(
-                    "Latest process for attempt {} is not a coding agent; skipping queued follow-up",
-                    ctx.task_attempt.id
-                );
-                return Ok(());
-            }
-        };
-
-        let executor_profile_id = executors::profile::ExecutorProfileId {
-            executor: initial_executor_profile_id.executor,
-            variant: draft.variant.clone(),
-        };
-
-        // Prepare cleanup action
-        let cleanup_action = ctx
-            .task
-            .parent_project(&self.db.pool)
-            .await?
-            .and_then(|project| self.cleanup_action(project.cleanup_script));
-
-        // Handle images: associate, copy to worktree, canonicalize prompt
-        let mut prompt = draft.prompt.clone();
-        if let Some(image_ids) = &draft.image_ids {
-            // Associate to task
-            let _ = TaskImage::associate_many_dedup(&self.db.pool, ctx.task.id, image_ids).await;
-
-            // Copy to worktree and canonicalize
-            let worktree_path = std::path::PathBuf::from(&container_ref);
-            if let Err(e) = self
-                .image_service
-                .copy_images_by_ids_to_worktree(&worktree_path, image_ids)
+        for process in running_processes {
+            if let Err(error) = self
+                .stop_execution(&process, ExecutionProcessStatus::Killed)
                 .await
             {
-                tracing::warn!("Failed to copy images to worktree: {}", e);
-            } else {
-                prompt = ImageService::canonicalise_image_paths(&prompt, &worktree_path);
+                tracing::error!(
+                    "Failed to cleanly kill running execution process {:?}: {:?}",
+                    process,
+                    error
+                );
             }
         }
-
-        let follow_up_request =
-            executors::actions::coding_agent_follow_up::CodingAgentFollowUpRequest {
-                prompt,
-                session_id,
-                executor_profile_id,
-            };
-
-        let follow_up_action = executors::actions::ExecutorAction::new(
-            executors::actions::ExecutorActionType::CodingAgentFollowUpRequest(follow_up_request),
-            cleanup_action,
-        );
-
-        // Start the execution
-        let _ = self
-            .start_execution(
-                &ctx.task_attempt,
-                &follow_up_action,
-                &ExecutionProcessRunReason::CodingAgent,
-            )
-            .await?;
-
-        // Clear the draft to reflect that it has been consumed
-        let _ =
-            Draft::clear_after_send(&self.db.pool, ctx.task_attempt.id, DraftType::FollowUp).await;
 
         Ok(())
     }
@@ -1332,6 +1338,19 @@ fn truncate_to_char_boundary(content: &str, max_len: usize) -> &str {
 
     debug_assert!(content.is_char_boundary(cutoff));
     &content[..cutoff]
+}
+
+fn success_exit_status() -> std::process::ExitStatus {
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::ExitStatusExt;
+        ExitStatusExt::from_raw(0)
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::ExitStatusExt;
+        ExitStatusExt::from_raw(0)
+    }
 }
 
 #[cfg(test)]

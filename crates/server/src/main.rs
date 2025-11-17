@@ -107,96 +107,55 @@ async fn main() -> Result<(), VibeKanbanError> {
         });
     }
 
-    // Set up signal handlers for graceful shutdown
-    let (shutdown_tx, shutdown_rx) = watch::channel(false);
-
-    let shutdown_signal_task = tokio::spawn({
-        let shutdown_tx = shutdown_tx;
-        async move {
-            shutdown_signal().await;
-            let _ = shutdown_tx.send(true);
-        }
-    });
-
-    let mut cleanup_shutdown_rx = shutdown_rx.clone();
-    let deployment_for_shutdown = deployment.clone();
-    let cleanup_handle = tokio::spawn(async move {
-        wait_for_shutdown(&mut cleanup_shutdown_rx).await;
-        tracing::info!("Shutdown signal received, stopping dev servers...");
-
-        // Find all running dev servers
-        match ExecutionProcess::find_all_running_dev_servers(&deployment_for_shutdown.db().pool)
-            .await
-        {
-            Ok(dev_servers) => {
-                if !dev_servers.is_empty() {
-                    tracing::info!("Stopping {} running dev server(s)...", dev_servers.len());
-                    for dev_server in dev_servers {
-                        if let Err(e) = deployment_for_shutdown
-                            .container()
-                            .stop_execution(&dev_server, ExecutionProcessStatus::Killed)
-                            .await
-                        {
-                            tracing::error!("Failed to stop dev server {}: {}", dev_server.id, e);
-                        } else {
-                            tracing::info!("Stopped dev server {}", dev_server.id);
-                        }
-                    }
-                    tracing::info!("All dev servers stopped");
-                } else {
-                    tracing::info!("No running dev servers to stop");
-                }
-            }
-            Err(e) => {
-                tracing::error!("Failed to find running dev servers: {}", e);
-            }
-        }
-    });
-
-    let mut server_shutdown_rx = shutdown_rx.clone();
     axum::serve(listener, app_router)
-        .with_graceful_shutdown(async move {
-            wait_for_shutdown(&mut server_shutdown_rx).await;
-        })
+        .with_graceful_shutdown(shutdown_signal())
         .await?;
 
-    cleanup_handle
-        .await
-        .map_err(|err| VibeKanbanError::Other(err.into()))?;
-    shutdown_signal_task
-        .await
-        .map_err(|err| VibeKanbanError::Other(err.into()))?;
+    perform_cleanup_actions(&deployment).await;
+
     Ok(())
 }
 
-async fn shutdown_signal() {
+pub async fn shutdown_signal() {
+    // Always wait for Ctrl+C
     let ctrl_c = async {
-        tokio::signal::ctrl_c()
-            .await
-            .expect("failed to install Ctrl+C handler");
+        if let Err(e) = tokio::signal::ctrl_c().await {
+            tracing::error!("Failed to install Ctrl+C handler: {e}");
+        }
     };
 
     #[cfg(unix)]
-    let terminate = async {
-        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-            .expect("failed to install signal handler")
-            .recv()
-            .await;
-    };
+    {
+        use tokio::signal::unix::{SignalKind, signal};
+
+        // Try to install SIGTERM handler, but don't panic if it fails
+        let terminate = async {
+            if let Ok(mut sigterm) = signal(SignalKind::terminate()) {
+                sigterm.recv().await;
+            } else {
+                tracing::error!("Failed to install SIGTERM handler");
+                // Fallback: never resolves
+                std::future::pending::<()>().await;
+            }
+        };
+
+        tokio::select! {
+            _ = ctrl_c => {},
+            _ = terminate => {},
+        }
+    }
 
     #[cfg(not(unix))]
-    let terminate = std::future::pending::<()>();
-
-    tokio::select! {
-        _ = ctrl_c => {},
-        _ = terminate => {},
+    {
+        // Only ctrl_c is available, so just await it
+        ctrl_c.await;
     }
 }
 
-async fn wait_for_shutdown(rx: &mut watch::Receiver<bool>) {
-    if *rx.borrow() {
-        return;
-    }
-
-    let _ = rx.changed().await;
+pub async fn perform_cleanup_actions(deployment: &DeploymentImpl) {
+    deployment
+        .container()
+        .kill_all_running_processes()
+        .await
+        .expect("Failed to cleanly kill running execution processes");
 }

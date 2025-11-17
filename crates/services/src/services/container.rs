@@ -117,6 +117,8 @@ pub trait ContainerService {
 
     async fn create(&self, task_attempt: &TaskAttempt) -> Result<ContainerRef, ContainerError>;
 
+    async fn kill_all_running_processes(&self) -> Result<(), ContainerError>;
+
     async fn delete(&self, task_attempt: &TaskAttempt) -> Result<(), ContainerError> {
         self.try_stop(task_attempt).await;
         self.delete_inner(task_attempt).await
