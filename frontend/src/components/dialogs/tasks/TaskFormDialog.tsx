@@ -177,9 +177,11 @@ export const TaskFormDialog = NiceModal.create<TaskFormDialogProps>((props) => {
         project_id: projectId,
         title: value.title,
         description: value.description,
+        status: null,
         parent_task_attempt:
           mode === 'subtask' ? props.parentTaskAttemptId : null,
         image_ids: imageIds,
+        shared_task_id: null,
       };
       if (value.autoStart) {
         await createAndStart.mutateAsync(
