@@ -63,9 +63,7 @@ pub async fn get_context(
                     .await?;
             Ok(ResponseJson(ApiResponse::success(ctx)))
         }
-        Err(_) => Ok(ResponseJson(ApiResponse::error(
-            "No vibe-kanban context available, you are likely not running inside a task attempt.",
-        ))),
+        Err(e) => Err(ApiError::Database(e)),
     }
 }
 
