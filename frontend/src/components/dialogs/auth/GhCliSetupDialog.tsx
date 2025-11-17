@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
-import { defineModal } from '@/lib/modals';
+import { defineModal, getErrorMessage } from '@/lib/modals';
 import { attemptsApi } from '@/lib/api';
 import type { GhCliSetupError } from 'shared/types';
 import { useRef, useState } from 'react';
@@ -143,13 +143,25 @@ const GhCliSetupDialogImpl = NiceModal.create<GhCliSetupDialogProps>(
         hasResolvedRef.current = true;
         modal.resolve(null);
         modal.hide();
-      } catch (err: any) {
+      } catch (err: unknown) {
         const rawMessage =
-          typeof err?.message === 'string'
-            ? err.message
-            : t('settings:integrations.github.cliSetup.errors.setupFailed');
+          getErrorMessage(err) ||
+          t('settings:integrations.github.cliSetup.errors.setupFailed');
 
-        const errorData = err?.error_data as GhCliSetupError | undefined;
+        const maybeErrorData =
+          typeof err === 'object' && err !== null && 'error_data' in err
+            ? (err as { error_data?: unknown }).error_data
+            : undefined;
+
+        const isGhCliSetupError = (x: unknown): x is GhCliSetupError =>
+          x === 'BREW_MISSING' ||
+          x === 'SETUP_HELPER_NOT_SUPPORTED' ||
+          (typeof x === 'object' && x !== null && 'OTHER' in x);
+
+        const errorData = isGhCliSetupError(maybeErrorData)
+          ? maybeErrorData
+          : undefined;
+
         const resolvedError: GhCliSetupError = errorData ?? {
           OTHER: { message: rawMessage },
         };

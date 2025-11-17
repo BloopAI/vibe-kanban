@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
-import { defineModal } from '@/lib/modals';
+import { defineModal, getErrorMessage } from '@/lib/modals';
 import { useRenameBranch } from '@/hooks/useRenameBranch';
 
 export interface EditBranchNameDialogProps {
@@ -40,8 +40,8 @@ const EditBranchNameDialogImpl = NiceModal.create<EditBranchNameDialogProps>(
         } as EditBranchNameDialogResult);
         modal.hide();
       },
-      (err: any) => {
-        setError(err?.message || 'Failed to rename branch');
+      (err: unknown) => {
+        setError(getErrorMessage(err) || 'Failed to rename branch');
       }
     );
 

@@ -16,7 +16,7 @@ import { Loader2 } from 'lucide-react';
 import { tagsApi } from '@/lib/api';
 import type { Tag, CreateTag, UpdateTag } from 'shared/types';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
-import { defineModal } from '@/lib/modals';
+import { defineModal, getErrorMessage } from '@/lib/modals';
 
 export interface TagEditDialogProps {
   tag?: Tag | null; // null for create mode
@@ -79,9 +79,10 @@ const TagEditDialogImpl = NiceModal.create<TagEditDialogProps>(({ tag }) => {
 
       modal.resolve('saved' as TagEditResult);
       modal.hide();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(
-        err.message || t('settings.general.tags.dialog.errors.saveFailed')
+        getErrorMessage(err) ||
+          t('settings.general.tags.dialog.errors.saveFailed')
       );
     } finally {
       setSaving(false);
