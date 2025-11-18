@@ -36,9 +36,8 @@ use git2::BranchType;
 use serde::{Deserialize, Serialize};
 use services::services::{
     container::ContainerService,
-    gh_cli::GhCli,
     git::{ConflictOp, WorktreeResetOptions},
-    github_service::{CreatePrRequest, GitHubService, GitHubServiceError},
+    github::{CreatePrRequest, GitHubService, GitHubServiceError},
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
@@ -843,9 +842,9 @@ pub async fn create_github_pr(
         .git()
         .get_github_repo_info(&project.git_repo_path)?;
 
-    // Use gh CLI to create the PR (uses native GitHub authentication)
-    let gh_cli = GhCli::new();
-    match gh_cli.create_pr(&pr_request, &repo_info) {
+    // Use GitHubService to create the PR
+    let github_service = GitHubService::new()?;
+    match github_service.create_pr(&repo_info, &pr_request).await {
         Ok(pr_info) => {
             // Update the task attempt with PR information
             if let Err(e) = Merge::create_pr(

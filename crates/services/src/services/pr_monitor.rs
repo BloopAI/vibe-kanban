@@ -16,7 +16,7 @@ use tracing::{debug, error, info};
 
 use crate::services::{
     analytics::AnalyticsContext,
-    github_service::{GitHubRepoInfo, GitHubService, GitHubServiceError},
+    github::{GitHubRepoInfo, GitHubService, GitHubServiceError},
     share::SharePublisher,
 };
 

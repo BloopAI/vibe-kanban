@@ -12,7 +12,7 @@ use executors::executors::ExecutorError;
 use git2::Error as Git2Error;
 use services::services::{
     config::ConfigError, container::ContainerError, drafts::DraftsServiceError,
-    git::GitServiceError, github_service::GitHubServiceError, image::ImageError,
+    git::GitServiceError, github::GitHubServiceError, image::ImageError,
     remote_client::RemoteClientError, share::ShareError, worktree_manager::WorktreeError,
 };
 use thiserror::Error;

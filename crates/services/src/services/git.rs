@@ -10,10 +10,14 @@ use thiserror::Error;
 use ts_rs::TS;
 use utils::diff::{Diff, DiffChangeKind, FileDiffDetails};
 
+mod cli;
+
 // Import for file ranking functionality
+use cli::{ChangeType, StatusDiffEntry, StatusDiffOptions};
+pub use cli::{GitCli, GitCliError};
+
 use super::file_ranker::FileStat;
-use super::git_cli::{ChangeType, GitCli, GitCliError, StatusDiffEntry, StatusDiffOptions};
-use crate::services::github_service::GitHubRepoInfo;
+use crate::services::github::GitHubRepoInfo;
 
 #[derive(Debug, Error)]
 pub enum GitServiceError {
@@ -1084,7 +1088,7 @@ impl GitService {
         &self,
         worktree_path: &Path,
     ) -> Result<(usize, usize), GitServiceError> {
-        let cli = super::git_cli::GitCli::new();
+        let cli = GitCli::new();
         let st = cli
             .get_worktree_status(worktree_path)
             .map_err(|e| GitServiceError::InvalidRepository(format!("git status failed: {e}")))?;
@@ -1095,8 +1099,8 @@ impl GitService {
     pub fn get_worktree_status(
         &self,
         worktree_path: &Path,
-    ) -> Result<super::git_cli::WorktreeStatus, GitServiceError> {
-        let cli = super::git_cli::GitCli::new();
+    ) -> Result<cli::WorktreeStatus, GitServiceError> {
+        let cli = GitCli::new();
         cli.get_worktree_status(worktree_path)
             .map_err(|e| GitServiceError::InvalidRepository(format!("git status failed: {e}")))
     }
@@ -1155,7 +1159,7 @@ impl GitService {
             // Avoid clobbering uncommitted changes unless explicitly forced
             self.check_worktree_clean(&repo)?;
         }
-        let cli = super::git_cli::GitCli::new();
+        let cli = GitCli::new();
         cli.git(worktree_path, ["reset", "--hard", commit_sha])
             .map_err(|e| {
                 GitServiceError::InvalidRepository(format!("git reset --hard failed: {e}"))
@@ -1225,6 +1229,27 @@ impl GitService {
     ) -> Result<(), GitServiceError> {
         let git = GitCli::new();
         git.worktree_add(repo_path, worktree_path, branch, create_branch)
+            .map_err(|e| GitServiceError::InvalidRepository(e.to_string()))?;
+        Ok(())
+    }
+
+    /// Remove a worktree
+    pub fn remove_worktree(
+        &self,
+        repo_path: &Path,
+        worktree_path: &Path,
+        force: bool,
+    ) -> Result<(), GitServiceError> {
+        let git = GitCli::new();
+        git.worktree_remove(repo_path, worktree_path, force)
+            .map_err(|e| GitServiceError::InvalidRepository(e.to_string()))?;
+        Ok(())
+    }
+
+    /// Prune worktrees
+    pub fn prune_worktrees(&self, repo_path: &Path) -> Result<(), GitServiceError> {
+        let git = GitCli::new();
+        git.worktree_prune(repo_path)
             .map_err(|e| GitServiceError::InvalidRepository(e.to_string()))?;
         Ok(())
     }
@@ -1961,42 +1986,3 @@ impl GitService {
         Ok(stats)
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use tempfile::TempDir;
-
-//     use super::*;
-
-//     fn create_test_repo() -> (TempDir, Repository) {
-//         let temp_dir = TempDir::new().unwrap();
-//         let repo = Repository::init(temp_dir.path()).unwrap();
-
-//         // Configure the repository
-//         let mut config = repo.config().unwrap();
-//         config.set_str("user.name", "Test User").unwrap();
-//         config.set_str("user.email", "test@example.com").unwrap();
-
-//         (temp_dir, repo)
-//     }
-
-//     #[test]
-//     fn test_git_service_creation() {
-//         let (temp_dir, _repo) = create_test_repo();
-//         let _git_service = GitService::new(temp_dir.path()).unwrap();
-//     }
-
-//     #[test]
-//     fn test_invalid_repository_path() {
-//         let result = GitService::new("/nonexistent/path");
-//         assert!(result.is_err());
-//     }
-
-//     #[test]
-//     fn test_default_branch_name() {
-//         let (temp_dir, _repo) = create_test_repo();
-//         let git_service = GitService::new(temp_dir.path()).unwrap();
-//         let branch_name = git_service.get_default_branch_name().unwrap();
-//         assert_eq!(branch_name, "main");
-//     }
-// }

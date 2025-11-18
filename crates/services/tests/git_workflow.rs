@@ -6,7 +6,7 @@ use std::{
 
 use services::services::{
     git::{DiffTarget, GitService},
-    github_service::{GitHubRepoInfo, GitHubServiceError},
+    github::{GitHubRepoInfo, GitHubServiceError},
 };
 use tempfile::TempDir;
 use utils::diff::DiffChangeKind;

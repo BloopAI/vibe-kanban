@@ -68,7 +68,6 @@ pub struct StatusDiffEntry {
 #[derive(Debug, Clone)]
 pub struct WorktreeEntry {
     pub path: String,
-    pub head_sha: String,
     pub branch: Option<String>,
 }
 
@@ -81,7 +80,6 @@ impl GitCli {
     pub fn new() -> Self {
         Self {}
     }
-
     /// Run `git -C <repo> worktree add <path> <branch>` (optionally creating the branch with -b)
     pub fn worktree_add(
         &self,
@@ -248,7 +246,6 @@ impl GitCli {
         self.git(worktree_path, ["add", "-A"])?;
         Ok(())
     }
-
     pub fn list_worktrees(&self, repo_path: &Path) -> Result<Vec<WorktreeEntry>, GitCliError> {
         let out = self.git(repo_path, ["worktree", "list", "--porcelain"])?;
         let mut entries = Vec::new();
@@ -261,10 +258,9 @@ impl GitCli {
 
             if line.is_empty() {
                 // End of current worktree entry, save it if we have required data
-                if let (Some(path), Some(head)) = (current_path.take(), current_head.take()) {
+                if let (Some(path), Some(_head)) = (current_path.take(), current_head.take()) {
                     entries.push(WorktreeEntry {
                         path,
-                        head_sha: head,
                         branch: current_branch.take(),
                     });
                 }
@@ -281,10 +277,9 @@ impl GitCli {
         }
 
         // Handle the last entry if no trailing empty line
-        if let (Some(path), Some(head)) = (current_path, current_head) {
+        if let (Some(path), Some(_head)) = (current_path, current_head) {
             entries.push(WorktreeEntry {
                 path,
-                head_sha: head,
                 branch: current_branch,
             });
         }
@@ -500,11 +495,6 @@ impl GitCli {
                 String::from_utf8_lossy(&out.stderr).trim().to_string(),
             )),
         }
-    }
-
-    /// Reset index to HEAD (mixed reset). Does not modify working tree.
-    pub fn reset(&self, repo_path: &Path) -> Result<(), GitCliError> {
-        self.git(repo_path, ["reset"]).map(|_| ())
     }
 
     /// Checkout base branch, squash-merge from_branch, and commit with message. Returns new HEAD sha.

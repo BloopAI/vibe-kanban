@@ -15,7 +15,7 @@ use serde_json::Value;
 use thiserror::Error;
 use utils::shell::resolve_executable_path_blocking;
 
-use crate::services::github_service::{CreatePrRequest, GitHubRepoInfo};
+use crate::services::github::{CreatePrRequest, GitHubRepoInfo};
 
 /// High-level errors originating from the GitHub CLI.
 #[derive(Debug, Error)]

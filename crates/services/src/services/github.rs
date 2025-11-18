@@ -9,11 +9,11 @@ use tokio::task;
 use tracing::info;
 use ts_rs::TS;
 
-use crate::services::{
-    gh_cli::{GhCli, GhCliError},
-    git::GitServiceError,
-    git_cli::GitCliError,
-};
+mod cli;
+
+use cli::{GhCli, GhCliError};
+
+use crate::services::git::{GitCliError, GitServiceError};
 
 #[derive(Debug, Error, Serialize, Deserialize, TS)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]

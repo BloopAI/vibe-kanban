@@ -5,10 +5,7 @@ use std::{
 };
 
 use git2::{PushOptions, Repository, build::CheckoutBuilder};
-use services::services::{
-    git::GitService,
-    git_cli::{GitCli, GitCliError},
-};
+use services::services::git::{GitCli, GitCliError, GitService};
 use tempfile::TempDir;
 // Avoid direct git CLI usage in tests; exercise GitService instead.
 
