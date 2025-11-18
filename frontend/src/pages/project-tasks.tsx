@@ -212,6 +212,7 @@ export function ProjectTasks() {
     if (!isLoaded || !isPanelOpen || seen) return;
 
     FeatureShowcaseDialog.show({ config: showcases.taskPanel }).finally(() => {
+      FeatureShowcaseDialog.hide();
       if (seenFeatures.includes(showcaseId)) return;
       void updateAndSaveConfig({
         showcases: { seen_features: [...seenFeatures, showcaseId] },

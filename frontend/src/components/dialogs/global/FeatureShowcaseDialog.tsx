@@ -43,7 +43,7 @@ const FeatureShowcaseDialogImpl = NiceModal.create<FeatureShowcaseDialogProps>(
     const handleNext = () => {
       setCurrentStage((prev) => {
         if (prev >= totalStages - 1) {
-          modal.hide();
+          modal.resolve();
           return prev;
         }
         return prev + 1;
