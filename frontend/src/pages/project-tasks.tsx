@@ -10,7 +10,7 @@ import type { GitBranch } from 'shared/types';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { FeatureShowcaseDialog } from '@/components/dialogs/global/FeatureShowcaseDialog';
 import { showcases } from '@/config/showcases';
-import { useShowcasePersistence } from '@/hooks/useShowcasePersistence';
+import { useUserSystem } from '@/components/config-provider';
 import { usePostHog } from 'posthog-js/react';
 
 import { useSearch } from '@/contexts/search-context';
@@ -201,9 +201,12 @@ export function ProjectTasks() {
   const isSharedPanelOpen = Boolean(selectedSharedTask);
   const isPanelOpen = isTaskPanelOpen || isSharedPanelOpen;
 
-  const { isLoaded, hasSeen, markSeen } = useShowcasePersistence();
+  const { config, updateAndSaveConfig, loading } = useUserSystem();
+
+  const isLoaded = !loading;
   const showcaseId = showcases.taskPanel.id;
-  const seen = isLoaded && hasSeen(showcaseId);
+  const seenFeatures = config?.showcases?.seen_features ?? [];
+  const seen = isLoaded && seenFeatures.includes(showcaseId);
 
   useEffect(() => {
     if (!isLoaded || !isPanelOpen || seen) return;
@@ -211,9 +214,14 @@ export function ProjectTasks() {
     let cancelled = false;
     const timer = window.setTimeout(() => {
       if (cancelled) return;
+
       FeatureShowcaseDialog.show({ config: showcases.taskPanel }).finally(
         () => {
-          if (!cancelled) void markSeen(showcaseId);
+          if (cancelled) return;
+          if (seenFeatures.includes(showcaseId)) return;
+          void updateAndSaveConfig({
+            showcases: { seen_features: [...seenFeatures, showcaseId] },
+          });
         }
       );
     }, 300);
@@ -222,7 +230,7 @@ export function ProjectTasks() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [isLoaded, isPanelOpen, seen, markSeen, showcaseId]);
+  }, [isLoaded, isPanelOpen, seen, showcaseId, updateAndSaveConfig, seenFeatures]);
 
   const isLatest = attemptId === 'latest';
   const { data: attempts = [], isLoading: isAttemptsLoading } = useTaskAttempts(
