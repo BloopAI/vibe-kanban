@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { projectsApi } from '@/lib/api';
 import { ProjectEditorSelectionDialog } from '@/components/dialogs/projects/ProjectEditorSelectionDialog';
 import { EditorType, type EditorOpenError, type Project } from 'shared/types';
+import { ConfirmDialog } from '@/components/dialogs/shared/ConfirmDialog';
 
 export function useOpenProjectInEditor(
   project: Project | null,
@@ -29,11 +30,15 @@ export function useOpenProjectInEditor(
         if (errorData?.type === 'executable_not_found') {
           const installUrl = errorData.install_url;
           if (installUrl) {
-            if (
-              window.confirm(
-                `Editor executable '${errorData.executable}' not found. Would you like to open the installation page?`
-              )
-            ) {
+            const result = await ConfirmDialog.show({
+              title: 'Editor Not Found',
+              message: `Editor executable '${errorData.executable}' not found. Would you like to open the installation page?`,
+              confirmText: 'Open Install Page',
+              cancelText: 'Cancel',
+              variant: 'info',
+            });
+
+            if (result === 'confirmed') {
               window.open(installUrl, '_blank');
             }
             return;
