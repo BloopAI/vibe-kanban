@@ -224,7 +224,14 @@ export function ProjectTasks() {
     return () => {
       cancelled = true;
     };
-  }, [isLoaded, isPanelOpen, seen, showcaseId, updateAndSaveConfig, seenFeatures]);
+  }, [
+    isLoaded,
+    isPanelOpen,
+    seen,
+    showcaseId,
+    updateAndSaveConfig,
+    seenFeatures,
+  ]);
 
   const isLatest = attemptId === 'latest';
   const { data: attempts = [], isLoading: isAttemptsLoading } = useTaskAttempts(
