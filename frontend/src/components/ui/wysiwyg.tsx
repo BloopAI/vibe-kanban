@@ -10,7 +10,10 @@ import {
   TRANSFORMERS,
   type Transformer,
 } from '@lexical/markdown';
-import { ImageChipNode, InsertImageChipPlugin } from './wysiwyg/image-chip-node';
+import {
+  ImageChipNode,
+  InsertImageChipPlugin,
+} from './wysiwyg/image-chip-node';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { ListNode, ListItemNode } from '@lexical/list';

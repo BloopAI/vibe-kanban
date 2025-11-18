@@ -17,10 +17,7 @@ import {
   ProjectSettings,
   SettingsLayout,
 } from '@/pages/settings/';
-import {
-  UserSystemProvider,
-  useUserSystem,
-} from '@/components/ConfigProvider';
+import { UserSystemProvider, useUserSystem } from '@/components/ConfigProvider';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { SearchProvider } from '@/contexts/SearchContext';
 
