@@ -201,19 +201,10 @@ export function ProjectTasks() {
   const isSharedPanelOpen = Boolean(selectedSharedTask);
   const isPanelOpen = isTaskPanelOpen || isSharedPanelOpen;
 
-  const taskPanelShowcase = useShowcaseTrigger(showcases.taskPanel, {
+  useShowcaseTrigger(showcases.taskPanel, {
     enabled: isPanelOpen,
+    onShow: () => FeatureShowcaseDialog.show({ config: showcases.taskPanel }),
   });
-
-  useEffect(() => {
-    if (taskPanelShowcase.isOpen) {
-      FeatureShowcaseDialog.show({ config: showcases.taskPanel }).finally(
-        () => {
-          taskPanelShowcase.close();
-        }
-      );
-    }
-  }, [taskPanelShowcase.isOpen]);
 
   const isLatest = attemptId === 'latest';
   const { data: attempts = [], isLoading: isAttemptsLoading } = useTaskAttempts(

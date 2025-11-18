@@ -7,6 +7,7 @@ export interface ShowcaseTriggerOptions {
   openDelay?: number;
   resetOnDisable?: boolean;
   markSeenOnClose?: boolean;
+  onShow?: () => Promise<unknown>;
 }
 
 export interface ShowcaseTriggerResult {
@@ -25,6 +26,7 @@ export function useShowcaseTrigger(
     openDelay = 300,
     resetOnDisable = true,
     markSeenOnClose = true,
+    onShow,
   } = options;
 
   const persistence = useShowcasePersistence();
@@ -32,6 +34,11 @@ export function useShowcaseTrigger(
   const [hasSeenState, setHasSeenState] = useState(false);
   const timerRef = useRef<number | null>(null);
   const mountedRef = useRef(true);
+  const onShowRef = useRef(onShow);
+
+  useEffect(() => {
+    onShowRef.current = onShow;
+  }, [onShow]);
 
   // Keep 'hasSeenState' in sync if id change or config loads
   useEffect(() => {
@@ -65,9 +72,18 @@ export function useShowcaseTrigger(
 
         // Delay opening to ensure UI is mounted
         timerRef.current = window.setTimeout(() => {
-          if (mountedRef.current) {
-            setIsOpen(true);
-            timerRef.current = null;
+          if (!mountedRef.current) return;
+
+          setIsOpen(true);
+          timerRef.current = null;
+
+          const fn = onShowRef.current;
+          if (fn) {
+            Promise.resolve(fn()).finally(() => {
+              if (mountedRef.current) {
+                close();
+              }
+            });
           }
         }, openDelay);
       }
