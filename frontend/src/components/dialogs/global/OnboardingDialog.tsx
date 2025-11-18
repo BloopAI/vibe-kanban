@@ -200,9 +200,7 @@ const OnboardingDialogImpl = NiceModal.create<NoProps>(() => {
 
             {/* Editor availability status indicator */}
             {editorType !== EditorType.CUSTOM && (
-              <EditorAvailabilityIndicator
-                availability={editorAvailability}
-              />
+              <EditorAvailabilityIndicator availability={editorAvailability} />
             )}
 
             <p className="text-sm text-muted-foreground">
