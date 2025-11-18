@@ -20,7 +20,13 @@ mod identity;
 mod oauth;
 pub(crate) mod organization_members;
 mod organizations;
+mod project_members;
+mod project_statuses;
 mod projects;
+mod sprints;
+mod tags;
+mod task_comment_reactions;
+mod task_comments;
 pub mod tasks;
 
 pub fn router(state: AppState) -> Router {
@@ -57,6 +63,12 @@ pub fn router(state: AppState) -> Router {
         .merge(organizations::router())
         .merge(organization_members::protected_router())
         .merge(oauth::protected_router())
+        .merge(sprints::router())
+        .merge(project_statuses::router())
+        .merge(tags::router())
+        .merge(task_comments::router())
+        .merge(task_comment_reactions::router())
+        .merge(project_members::router())
         .merge(crate::ws::router())
         .layer(middleware::from_fn_with_state(
             state.clone(),
