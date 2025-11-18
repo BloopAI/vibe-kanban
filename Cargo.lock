@@ -1058,7 +1058,7 @@ checksum = "2a2330da5de22e8a3cb63252ce2abb30116bf5265e89c0e01bc17015ce30a476"
 
 [[package]]
 name = "db"
-version = "0.0.118"
+version = "0.0.119"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1087,7 +1087,7 @@ dependencies = [
 
 [[package]]
 name = "deployment"
-version = "0.0.118"
+version = "0.0.119"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1438,7 +1438,7 @@ dependencies = [
 
 [[package]]
 name = "executors"
-version = "0.0.118"
+version = "0.0.119"
 dependencies = [
  "agent-client-protocol",
  "async-trait",
@@ -2646,7 +2646,7 @@ dependencies = [
 
 [[package]]
 name = "local-deployment"
-version = "0.0.118"
+version = "0.0.119"
 dependencies = [
  "anyhow",
  "async-stream",
@@ -3684,7 +3684,7 @@ checksum = "7a2d987857b319362043e95f5353c0535c1f58eec5336fdfcf626430af7def58"
 
 [[package]]
 name = "remote"
-version = "0.0.118"
+version = "0.0.119"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4349,7 +4349,7 @@ dependencies = [
 
 [[package]]
 name = "server"
-version = "0.0.118"
+version = "0.0.119"
 dependencies = [
  "anyhow",
  "axum 0.8.6",
@@ -4394,7 +4394,7 @@ dependencies = [
 
 [[package]]
 name = "services"
-version = "0.0.118"
+version = "0.0.119"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -5585,7 +5585,7 @@ checksum = "b6c140620e7ffbb22c2dee59cafe6084a59b5ffc27a8859a5f0d494b5d52b6be"
 
 [[package]]
 name = "utils"
-version = "0.0.118"
+version = "0.0.119"
 dependencies = [
  "async-stream",
  "async-trait",
