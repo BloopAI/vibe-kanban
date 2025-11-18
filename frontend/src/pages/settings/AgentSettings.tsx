@@ -116,7 +116,8 @@ export function AgentSettings() {
   ) => {
     if (!localParsedProfiles || !localParsedProfiles.executors) return;
 
-    const executorsMap = localParsedProfiles.executors as unknown as ExecutorsMap;
+    const executorsMap =
+      localParsedProfiles.executors as unknown as ExecutorsMap;
     const base =
       baseConfig && executorsMap[executorType]?.[baseConfig]?.[executorType]
         ? executorsMap[executorType][baseConfig][executorType]
@@ -284,7 +285,8 @@ export function AgentSettings() {
   ) => {
     if (!localParsedProfiles || !localParsedProfiles.executors) return;
 
-    const executorsMap = localParsedProfiles.executors as unknown as ExecutorsMap;
+    const executorsMap =
+      localParsedProfiles.executors as unknown as ExecutorsMap;
     // Update the parsed profiles with the new config
     const updatedProfiles = {
       ...localParsedProfiles,
@@ -509,23 +511,24 @@ export function AgentSettings() {
                 const executorsMap =
                   localParsedProfiles.executors as unknown as ExecutorsMap;
                 return (
-                  !!executorsMap[selectedExecutorType]?.[selectedConfiguration]?.[
-                    selectedExecutorType
-                  ] && (
+                  !!executorsMap[selectedExecutorType]?.[
+                    selectedConfiguration
+                  ]?.[selectedExecutorType] && (
                     <ExecutorConfigForm
                       executor={selectedExecutorType}
                       value={
-                        (executorsMap[selectedExecutorType][selectedConfiguration][
-                          selectedExecutorType
-                        ] as Record<string, unknown>) || {}
+                        (executorsMap[selectedExecutorType][
+                          selectedConfiguration
+                        ][selectedExecutorType] as Record<string, unknown>) ||
+                        {}
                       }
-                  onChange={(formData) =>
-                    handleExecutorConfigChange(
-                      selectedExecutorType,
-                      selectedConfiguration,
-                      formData
-                    )
-                  }
+                      onChange={(formData) =>
+                        handleExecutorConfigChange(
+                          selectedExecutorType,
+                          selectedConfiguration,
+                          formData
+                        )
+                      }
                       onSave={handleExecutorConfigSave}
                       disabled={profilesSaving}
                       isSaving={profilesSaving}
