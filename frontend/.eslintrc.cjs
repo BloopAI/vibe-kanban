@@ -16,7 +16,7 @@ module.exports = {
   ],
   ignorePatterns: ['dist', '.eslintrc.cjs'],
   parser: '@typescript-eslint/parser',
-  plugins: ['react-refresh', '@typescript-eslint', 'unused-imports', 'i18next', 'eslint-comments'],
+  plugins: ['react-refresh', '@typescript-eslint', 'unused-imports', 'i18next', 'eslint-comments', 'check-file'],
   parserOptions: {
     ecmaVersion: 'latest',
     sourceType: 'module',
@@ -108,8 +108,42 @@ module.exports = {
           },
         ]
       : 'off',
+    // File naming conventions
+    'check-file/filename-naming-convention': [
+      'error',
+      {
+        // React components (tsx) should be PascalCase
+        'src/**/*.tsx': 'PASCAL_CASE',
+        // Hooks should be camelCase starting with 'use'
+        'src/**/use*.ts': 'CAMEL_CASE',
+        // Utils should be camelCase
+        'src/utils/**/*.ts': 'CAMEL_CASE',
+        // Lib/config/constants should be camelCase
+        'src/lib/**/*.ts': 'CAMEL_CASE',
+        'src/config/**/*.ts': 'CAMEL_CASE',
+        'src/constants/**/*.ts': 'CAMEL_CASE',
+      },
+      {
+        ignoreMiddleExtensions: true,
+      },
+    ],
   },
   overrides: [
+    {
+      // Shadcn UI components are an exception - keep kebab-case
+      files: ['src/components/ui/**/*.{ts,tsx}'],
+      rules: {
+        'check-file/filename-naming-convention': [
+          'error',
+          {
+            'src/components/ui/**/*.{ts,tsx}': 'KEBAB_CASE',
+          },
+          {
+            ignoreMiddleExtensions: true,
+          },
+        ],
+      },
+    },
     {
       files: ['**/*.test.{ts,tsx}', '**/*.stories.{ts,tsx}'],
       rules: {
