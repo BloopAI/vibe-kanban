@@ -48,6 +48,7 @@ import {
   ChangeTargetBranchResponse,
   RenameBranchRequest,
   RenameBranchResponse,
+  CheckEditorAvailabilityResponse,
   RunAgentSetupRequest,
   RunAgentSetupResponse,
   GhCliSetupError,
@@ -791,6 +792,14 @@ export const configApi = {
       body: JSON.stringify(config),
     });
     return handleApiResponse<Config>(response);
+  },
+  checkEditorAvailability: async (
+    editorType: EditorType
+  ): Promise<CheckEditorAvailabilityResponse> => {
+    const response = await makeRequest(
+      `/api/editors/check-availability?editor_type=${encodeURIComponent(editorType)}`
+    );
+    return handleApiResponse<CheckEditorAvailabilityResponse>(response);
   },
 };
 

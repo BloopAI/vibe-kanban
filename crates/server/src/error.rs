@@ -137,7 +137,12 @@ impl IntoResponse for ApiError {
                 }
             },
             ApiError::Io(_) => (StatusCode::INTERNAL_SERVER_ERROR, "IoError"),
-            ApiError::EditorOpen(_) => (StatusCode::BAD_REQUEST, "EditorOpenError"),
+            ApiError::EditorOpen(err) => match err {
+                EditorOpenError::LaunchFailed { .. } => {
+                    (StatusCode::INTERNAL_SERVER_ERROR, "EditorLaunchError")
+                }
+                _ => (StatusCode::BAD_REQUEST, "EditorOpenError"),
+            },
             ApiError::Multipart(_) => (StatusCode::BAD_REQUEST, "MultipartError"),
             ApiError::RemoteClient(err) => match err {
                 RemoteClientError::Auth => (StatusCode::UNAUTHORIZED, "RemoteClientError"),

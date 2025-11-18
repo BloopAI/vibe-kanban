@@ -38,6 +38,8 @@ import {
 import { getLanguageOptions } from '@/i18n/languages';
 
 import { toPrettyCase } from '@/utils/string';
+import { useEditorAvailability } from '@/hooks/useEditorAvailability';
+import { EditorAvailabilityIndicator } from '@/components/EditorAvailabilityIndicator';
 import { useTheme } from '@/components/ThemeProvider';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { TagManager } from '@/components/TagManager';
@@ -69,6 +71,9 @@ export function GeneralSettings() {
     null
   );
   const { setTheme } = useTheme();
+
+  // Check editor availability when draft editor changes
+  const editorAvailability = useEditorAvailability(draft?.editor.editor_type);
 
   const validateBranchPrefix = useCallback(
     (prefix: string): string | null => {
@@ -447,6 +452,12 @@ export function GeneralSettings() {
                 ))}
               </SelectContent>
             </Select>
+
+            {/* Editor availability status indicator */}
+            {draft?.editor.editor_type !== EditorType.CUSTOM && (
+              <EditorAvailabilityIndicator availability={editorAvailability} />
+            )}
+
             <p className="text-sm text-muted-foreground">
               {t('settings.general.editor.type.helper')}
             </p>

@@ -136,6 +136,10 @@ export type UpdateMcpServersBody = { servers: { [key in string]?: JsonValue }, }
 
 export type GetMcpServerResponse = { mcp_config: McpConfig, config_path: string, };
 
+export type CheckEditorAvailabilityQuery = { editor_type: EditorType, };
+
+export type CheckEditorAvailabilityResponse = { available: boolean, };
+
 export type CreateFollowUpAttempt = { prompt: string, variant: string | null, image_ids: Array<string> | null, retry_process_id: string | null, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };
 
 export type DraftResponse = { task_attempt_id: string, draft_type: DraftType, retry_process_id: string | null, prompt: string, queued: boolean, variant: string | null, image_ids: Array<string> | null, version: bigint, };
@@ -176,7 +180,7 @@ export type EditorConfig = { editor_type: EditorType, custom_command: string | n
 
 export enum EditorType { VS_CODE = "VS_CODE", CURSOR = "CURSOR", WINDSURF = "WINDSURF", INTELLI_J = "INTELLI_J", ZED = "ZED", XCODE = "XCODE", CUSTOM = "CUSTOM" }
 
-export type EditorOpenError = { "type": "executable_not_found", executable: string, editor_type: string, };
+export type EditorOpenError = { "type": "executable_not_found", executable: string, editor_type: EditorType, } | { "type": "invalid_command", details: string, editor_type: EditorType, } | { "type": "launch_failed", executable: string, details: string, editor_type: EditorType, };
 
 export type GitHubConfig = { pat: string | null, oauth_token: string | null, username: string | null, primary_email: string | null, default_pr_base: string | null, };
 

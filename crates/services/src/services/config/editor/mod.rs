@@ -2,7 +2,7 @@ use std::{path::Path, str::FromStr};
 
 use executors::{command::CommandBuilder, executors::ExecutorError};
 use serde::{Deserialize, Serialize};
-use strum_macros::EnumString;
+use strum_macros::{EnumIter, EnumString};
 use thiserror::Error;
 use ts_rs::TS;
 
@@ -14,7 +14,18 @@ pub enum EditorOpenError {
     #[error("Editor executable '{executable}' not found in PATH")]
     ExecutableNotFound {
         executable: String,
-        editor_type: String,
+        editor_type: EditorType,
+    },
+    #[error("Editor command for {editor_type:?} is invalid: {details}")]
+    InvalidCommand {
+        details: String,
+        editor_type: EditorType,
+    },
+    #[error("Failed to launch '{executable}' for {editor_type:?}: {details}")]
+    LaunchFailed {
+        executable: String,
+        details: String,
+        editor_type: EditorType,
     },
 }
 
@@ -28,7 +39,7 @@ pub struct EditorConfig {
     remote_ssh_user: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS, EnumString)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, EnumString, EnumIter)]
 #[ts(use_ts_enum)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
@@ -78,14 +89,43 @@ impl EditorConfig {
             EditorType::Zed => "zed",
             EditorType::Xcode => "xed",
             EditorType::Custom => {
-                if let Some(custom) = &self.custom_command {
-                    custom.as_str()
-                } else {
-                    "code" // fallback to VSCode
-                }
+                // Custom editor - use user-provided command or fallback to VSCode
+                self.custom_command.as_deref().unwrap_or("code")
             }
         };
         CommandBuilder::new(base_command)
+    }
+
+    /// Resolve the editor command to an executable path and args.
+    /// This is shared logic used by both check_availability() and spawn_local().
+    async fn resolve_command(&self) -> Result<(std::path::PathBuf, Vec<String>), EditorOpenError> {
+        let command_builder = self.get_command();
+        let command_parts =
+            command_builder
+                .build_initial()
+                .map_err(|e| EditorOpenError::InvalidCommand {
+                    details: e.to_string(),
+                    editor_type: self.editor_type.clone(),
+                })?;
+
+        let (executable, args) = command_parts.into_resolved().await.map_err(|e| match e {
+            ExecutorError::ExecutableNotFound { program } => EditorOpenError::ExecutableNotFound {
+                executable: program,
+                editor_type: self.editor_type.clone(),
+            },
+            _ => EditorOpenError::InvalidCommand {
+                details: e.to_string(),
+                editor_type: self.editor_type.clone(),
+            },
+        })?;
+
+        Ok((executable, args))
+    }
+
+    /// Check if the editor is available on the system.
+    /// Uses the same command resolution logic as spawn_local().
+    pub async fn check_availability(&self) -> bool {
+        self.resolve_command().await.is_ok()
     }
 
     pub async fn open_file(&self, path: &Path) -> Result<Option<String>, EditorOpenError> {
@@ -118,33 +158,15 @@ impl EditorConfig {
     }
 
     pub async fn spawn_local(&self, path: &Path) -> Result<(), EditorOpenError> {
-        let command_builder = self.get_command();
-        let command_parts =
-            command_builder
-                .build_initial()
-                .map_err(|e| EditorOpenError::ExecutableNotFound {
-                    executable: e.to_string(),
-                    editor_type: format!("{:?}", self.editor_type),
-                })?;
+        let (executable, args) = self.resolve_command().await?;
 
-        let (executable, args) = command_parts.into_resolved().await.map_err(|e| match e {
-            ExecutorError::ExecutableNotFound { program } => EditorOpenError::ExecutableNotFound {
-                executable: program,
-                editor_type: format!("{:?}", self.editor_type),
-            },
-            _ => EditorOpenError::ExecutableNotFound {
-                executable: e.to_string(),
-                editor_type: format!("{:?}", self.editor_type),
-            },
-        })?;
-
-        let mut cmd = std::process::Command::new(executable);
+        let mut cmd = std::process::Command::new(&executable);
         cmd.args(&args).arg(path);
-        cmd.spawn()
-            .map_err(|e| EditorOpenError::ExecutableNotFound {
-                executable: e.to_string(),
-                editor_type: format!("{:?}", self.editor_type),
-            })?;
+        cmd.spawn().map_err(|e| EditorOpenError::LaunchFailed {
+            executable: executable.to_string_lossy().into_owned(),
+            details: e.to_string(),
+            editor_type: self.editor_type.clone(),
+        })?;
         Ok(())
     }
 

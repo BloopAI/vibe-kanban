@@ -31,6 +31,8 @@ import { useUserSystem } from '@/components/ConfigProvider';
 import { toPrettyCase } from '@/utils/string';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal, type NoProps } from '@/lib/modals';
+import { useEditorAvailability } from '@/hooks/useEditorAvailability';
+import { EditorAvailabilityIndicator } from '@/components/EditorAvailabilityIndicator';
 
 export type OnboardingResult = {
   profile: ExecutorProfileId;
@@ -49,6 +51,9 @@ const OnboardingDialogImpl = NiceModal.create<NoProps>(() => {
   );
   const [editorType, setEditorType] = useState<EditorType>(EditorType.VS_CODE);
   const [customCommand, setCustomCommand] = useState<string>('');
+
+  // Check editor availability when selection changes
+  const editorAvailability = useEditorAvailability(editorType);
 
   const handleComplete = () => {
     modal.resolve({
@@ -192,6 +197,12 @@ const OnboardingDialogImpl = NiceModal.create<NoProps>(() => {
                 ))}
               </SelectContent>
             </Select>
+
+            {/* Editor availability status indicator */}
+            {editorType !== EditorType.CUSTOM && (
+              <EditorAvailabilityIndicator availability={editorAvailability} />
+            )}
+
             <p className="text-sm text-muted-foreground">
               This editor will be used to open task attempts and project files.
             </p>
