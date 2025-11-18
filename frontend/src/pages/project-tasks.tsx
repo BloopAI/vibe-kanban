@@ -211,9 +211,11 @@ export function ProjectTasks() {
     let cancelled = false;
     const timer = window.setTimeout(() => {
       if (cancelled) return;
-      FeatureShowcaseDialog.show({ config: showcases.taskPanel }).finally(() => {
-        if (!cancelled) void markSeen(showcaseId);
-      });
+      FeatureShowcaseDialog.show({ config: showcases.taskPanel }).finally(
+        () => {
+          if (!cancelled) void markSeen(showcaseId);
+        }
+      );
     }, 300);
 
     return () => {
