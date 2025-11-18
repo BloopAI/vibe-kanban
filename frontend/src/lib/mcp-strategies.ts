@@ -1,6 +1,6 @@
 import type { McpConfig, JsonValue } from 'shared/types';
 
-type JsonObject = { [key: string]: JsonValue };
+type JsonObject = Record<string, JsonValue>;
 
 function isJsonObject(v: unknown): v is JsonObject {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
