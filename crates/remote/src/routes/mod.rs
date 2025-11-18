@@ -22,6 +22,7 @@ pub(crate) mod organization_members;
 mod organizations;
 mod projects;
 pub mod tasks;
+mod tokens;
 
 pub fn router(state: AppState) -> Router {
     let trace_layer = TraceLayer::new_for_http()
@@ -47,7 +48,8 @@ pub fn router(state: AppState) -> Router {
     let v1_public = Router::<AppState>::new()
         .route("/health", get(health))
         .merge(oauth::public_router())
-        .merge(organization_members::public_router());
+        .merge(organization_members::public_router())
+        .merge(tokens::public_router());
 
     let v1_protected = Router::<AppState>::new()
         .merge(identity::router())

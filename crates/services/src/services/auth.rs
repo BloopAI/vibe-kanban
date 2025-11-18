@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex as TokioMutex, OwnedMutexGuard, RwLock};
 use utils::api::oauth::ProfileResponse;
 
 use super::oauth_credentials::{Credentials, OAuthCredentials};
@@ -9,6 +9,7 @@ use super::oauth_credentials::{Credentials, OAuthCredentials};
 pub struct AuthContext {
     oauth: Arc<OAuthCredentials>,
     profile: Arc<RwLock<Option<ProfileResponse>>>,
+    refresh_lock: Arc<TokioMutex<()>>,
 }
 
 impl AuthContext {
@@ -16,7 +17,11 @@ impl AuthContext {
         oauth: Arc<OAuthCredentials>,
         profile: Arc<RwLock<Option<ProfileResponse>>>,
     ) -> Self {
-        Self { oauth, profile }
+        Self {
+            oauth,
+            profile,
+            refresh_lock: Arc::new(TokioMutex::new(())),
+        }
     }
 
     pub async fn get_credentials(&self) -> Option<Credentials> {
@@ -41,5 +46,9 @@ impl AuthContext {
 
     pub async fn clear_profile(&self) {
         *self.profile.write().await = None
+    }
+
+    pub async fn refresh_guard(&self) -> OwnedMutexGuard<()> {
+        self.refresh_lock.clone().lock_owned().await
     }
 }

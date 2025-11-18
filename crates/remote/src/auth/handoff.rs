@@ -30,7 +30,6 @@ use crate::{
     },
 };
 
-const SESSION_SECRET_LENGTH: usize = 48;
 const STATE_LENGTH: usize = 48;
 const APP_CODE_LENGTH: usize = 48;
 const HANDOFF_TTL: i64 = 10; // minutes
@@ -93,6 +92,7 @@ pub enum CallbackResult {
 #[derive(Debug, Clone)]
 pub struct RedeemResponse {
     pub access_token: String,
+    pub refresh_token: String,
 }
 
 pub struct OAuthHandoffService {
@@ -321,7 +321,7 @@ impl OAuthHandoffService {
             .ok_or_else(|| HandoffError::Failed("missing_user".into()))?;
 
         let session_repo = AuthSessionRepository::new(&self.pool);
-        let mut session = session_repo.get(session_id).await?;
+        let session = session_repo.get(session_id).await?;
         if session.revoked_at.is_some() {
             return Err(HandoffError::Denied);
         }
@@ -331,13 +331,6 @@ impl OAuthHandoffService {
             return Err(HandoffError::Denied);
         }
 
-        let session_secret = generate_session_secret();
-        let session_secret_hash = self.jwt.hash_session_secret(&session_secret)?;
-        session_repo
-            .update_secret(session.id, &session_secret_hash)
-            .await?;
-        session.session_secret_hash = Some(session_secret_hash.clone());
-
         let user_repo = UserRepository::new(&self.pool);
         let user = user_repo.fetch_user(user_id).await?;
         let org_repo = OrganizationRepository::new(&self.pool);
@@ -345,14 +338,20 @@ impl OAuthHandoffService {
             .ensure_personal_org_and_admin_membership(user.id, user.username.as_deref())
             .await?;
 
-        let token = self.jwt.encode(&session, &user, &session_secret)?;
+        let tokens = self.jwt.generate_tokens(&session, &user)?;
+
+        session_repo
+            .set_current_refresh_token(session.id, tokens.refresh_token_id)
+            .await?;
+
         session_repo.touch(session.id).await?;
         repo.mark_redeemed(record.id).await?;
 
         configure_user_scope(user.id, user.username.as_deref(), Some(user.email.as_str()));
 
         Ok(RedeemResponse {
-            access_token: token,
+            access_token: tokens.access_token,
+            refresh_token: tokens.refresh_token,
         })
     }
 
@@ -494,14 +493,6 @@ fn generate_app_code() -> String {
     rand::rng()
         .sample_iter(&Alphanumeric)
         .take(APP_CODE_LENGTH)
-        .map(char::from)
-        .collect()
-}
-
-fn generate_session_secret() -> String {
-    rand::rng()
-        .sample_iter(&Alphanumeric)
-        .take(SESSION_SECRET_LENGTH)
         .map(char::from)
         .collect()
 }

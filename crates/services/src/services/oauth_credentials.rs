@@ -1,13 +1,40 @@
 use std::path::PathBuf;
 
+use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 
-/// OAuth credentials containing the JWT access token.
-/// The access_token is a JWT from the remote OAuth service and should be treated as opaque.
+/// OAuth credentials containing the JWT tokens issued by the remote OAuth service.
+/// The `access_token` is short-lived; `refresh_token` allows minting a new pair.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Credentials {
-    pub access_token: String,
+    pub access_token: Option<String>,
+    pub refresh_token: String,
+    pub expires_at: Option<DateTime<Utc>>,
+}
+
+impl Credentials {
+    pub fn expires_soon(&self, leeway: ChronoDuration) -> bool {
+        match (self.access_token.as_ref(), self.expires_at.as_ref()) {
+            (Some(_), Some(exp)) => Utc::now() + leeway >= *exp,
+            _ => true,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct StoredCredentials {
+    refresh_token: String,
+}
+
+impl From<StoredCredentials> for Credentials {
+    fn from(value: StoredCredentials) -> Self {
+        Self {
+            access_token: None,
+            refresh_token: value.refresh_token,
+            expires_at: None,
+        }
+    }
 }
 
 /// Service for managing OAuth credentials (JWT tokens) in memory and persistent storage.
@@ -26,13 +53,16 @@ impl OAuthCredentials {
     }
 
     pub async fn load(&self) -> std::io::Result<()> {
-        let creds = self.backend.load().await?;
+        let creds = self.backend.load().await?.map(Credentials::from);
         *self.inner.write().await = creds;
         Ok(())
     }
 
     pub async fn save(&self, creds: &Credentials) -> std::io::Result<()> {
-        self.backend.save(creds).await?;
+        let stored = StoredCredentials {
+            refresh_token: creds.refresh_token.clone(),
+        };
+        self.backend.save(&stored).await?;
         *self.inner.write().await = Some(creds.clone());
         Ok(())
     }
@@ -49,8 +79,8 @@ impl OAuthCredentials {
 }
 
 trait StoreBackend {
-    async fn load(&self) -> std::io::Result<Option<Credentials>>;
-    async fn save(&self, creds: &Credentials) -> std::io::Result<()>;
+    async fn load(&self) -> std::io::Result<Option<StoredCredentials>>;
+    async fn save(&self, creds: &StoredCredentials) -> std::io::Result<()>;
     async fn clear(&self) -> std::io::Result<()>;
 }
 
@@ -86,7 +116,7 @@ impl Backend {
 }
 
 impl StoreBackend for Backend {
-    async fn load(&self) -> std::io::Result<Option<Credentials>> {
+    async fn load(&self) -> std::io::Result<Option<StoredCredentials>> {
         match self {
             Backend::File(b) => b.load().await,
             #[cfg(target_os = "macos")]
@@ -94,7 +124,7 @@ impl StoreBackend for Backend {
         }
     }
 
-    async fn save(&self, creds: &Credentials) -> std::io::Result<()> {
+    async fn save(&self, creds: &StoredCredentials) -> std::io::Result<()> {
         match self {
             Backend::File(b) => b.save(creds).await,
             #[cfg(target_os = "macos")]
@@ -116,13 +146,13 @@ struct FileBackend {
 }
 
 impl FileBackend {
-    async fn load(&self) -> std::io::Result<Option<Credentials>> {
+    async fn load(&self) -> std::io::Result<Option<StoredCredentials>> {
         if !self.path.exists() {
             return Ok(None);
         }
 
         let bytes = std::fs::read(&self.path)?;
-        match serde_json::from_slice::<Credentials>(&bytes) {
+        match Self::parse_credentials(&bytes) {
             Ok(creds) => Ok(Some(creds)),
             Err(e) => {
                 tracing::warn!(?e, "failed to parse credentials file, renaming to .bad");
@@ -133,7 +163,11 @@ impl FileBackend {
         }
     }
 
-    async fn save(&self, creds: &Credentials) -> std::io::Result<()> {
+    fn parse_credentials(bytes: &[u8]) -> Result<StoredCredentials, serde_json::Error> {
+        serde_json::from_slice::<StoredCredentials>(bytes)
+    }
+
+    async fn save(&self, creds: &StoredCredentials) -> std::io::Result<()> {
         let tmp = self.path.with_extension("tmp");
 
         let file = {
@@ -149,7 +183,7 @@ impl FileBackend {
             opts.open(&tmp)?
         };
 
-        serde_json::to_writer_pretty(&file, &creds)?;
+        serde_json::to_writer_pretty(&file, creds)?;
         file.sync_all()?;
         drop(file);
 
@@ -172,14 +206,17 @@ impl KeychainBackend {
     const ACCOUNT_NAME: &'static str = "default";
     const ERR_SEC_ITEM_NOT_FOUND: i32 = -25300;
 
-    async fn load(&self) -> std::io::Result<Option<Credentials>> {
+    async fn load(&self) -> std::io::Result<Option<StoredCredentials>> {
         use security_framework::passwords::get_generic_password;
 
         match get_generic_password(Self::SERVICE_NAME, Self::ACCOUNT_NAME) {
-            Ok(bytes) => match serde_json::from_slice::<Credentials>(&bytes) {
+            Ok(bytes) => match serde_json::from_slice::<StoredCredentials>(&bytes) {
                 Ok(creds) => Ok(Some(creds)),
-                Err(e) => {
-                    tracing::warn!(?e, "failed to parse keychain credentials; ignoring");
+                Err(error) => {
+                    tracing::warn!(
+                        ?error,
+                        "failed to parse keychain credentials; ignoring entry and requiring re-login"
+                    );
                     Ok(None)
                 }
             },
@@ -188,7 +225,7 @@ impl KeychainBackend {
         }
     }
 
-    async fn save(&self, creds: &Credentials) -> std::io::Result<()> {
+    async fn save(&self, creds: &StoredCredentials) -> std::io::Result<()> {
         use security_framework::passwords::set_generic_password;
 
         let bytes = serde_json::to_vec_pretty(creds).map_err(std::io::Error::other)?;

@@ -294,15 +294,6 @@ impl LocalDeployment {
         self.remote_client.clone()
     }
 
-    /// Convenience method to get the current JWT auth token.
-    /// Returns None if the user is not authenticated.
-    pub async fn auth_token(&self) -> Option<String> {
-        self.auth_context
-            .get_credentials()
-            .await
-            .map(|c| c.access_token)
-    }
-
     pub async fn get_login_status(&self) -> LoginStatus {
         if self.auth_context.get_credentials().await.is_none() {
             self.auth_context.clear_profile().await;

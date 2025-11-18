@@ -23,7 +23,7 @@ sentry = { version = "0.41.0", features = ["anyhow", "backtrace", "panic", "debu
 sentry-tracing = { version = "0.41.0", features = ["backtrace"] }
 futures-util = "0.3"
 json-patch = "2.0"
-jsonwebtoken = { version = "10.0.0", features = ["rust_crypto"] }
+jsonwebtoken = { version = "10.2.0", features = ["rust_crypto"] }
 tokio = { workspace = true }
 futures = "0.3.31"
 tokio-stream = { version = "0.1.17", features = ["sync"] }

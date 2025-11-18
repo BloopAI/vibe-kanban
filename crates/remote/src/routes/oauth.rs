@@ -76,6 +76,7 @@ pub async fn web_redeem(
             StatusCode::OK,
             Json(HandoffRedeemResponse {
                 access_token: result.access_token,
+                refresh_token: result.refresh_token,
             }),
         )
             .into_response(),
@@ -214,6 +215,10 @@ pub async fn logout(
     match repo.revoke(ctx.session_id).await {
         Ok(_) | Err(AuthSessionError::NotFound) => StatusCode::NO_CONTENT.into_response(),
         Err(AuthSessionError::Database(error)) => {
+            warn!(?error, session_id = %ctx.session_id, "failed to revoke auth session");
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+        Err(error) => {
             warn!(?error, session_id = %ctx.session_id, "failed to revoke auth session");
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }

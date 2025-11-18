@@ -138,6 +138,7 @@ impl IntoResponse for ApiError {
                     StatusCode::from_u16(*status).unwrap_or(StatusCode::BAD_GATEWAY),
                     "RemoteClientError",
                 ),
+                RemoteClientError::Token(_) => (StatusCode::BAD_GATEWAY, "RemoteClientError"),
                 RemoteClientError::Api(code) => match code {
                     services::services::remote_client::HandoffErrorCode::NotFound => {
                         (StatusCode::NOT_FOUND, "RemoteClientError")
@@ -154,6 +155,9 @@ impl IntoResponse for ApiError {
                     }
                     _ => (StatusCode::BAD_REQUEST, "RemoteClientError"),
                 },
+                RemoteClientError::Storage(_) => {
+                    (StatusCode::INTERNAL_SERVER_ERROR, "RemoteClientError")
+                }
                 RemoteClientError::Serde(_) | RemoteClientError::Url(_) => {
                     (StatusCode::BAD_REQUEST, "RemoteClientError")
                 }
@@ -195,6 +199,12 @@ impl IntoResponse for ApiError {
                     } else {
                         body.clone()
                     }
+                }
+                RemoteClientError::Token(_) => {
+                    "Remote service returned an invalid access token. Please sign in again.".to_string()
+                }
+                RemoteClientError::Storage(_) => {
+                    "Failed to persist credentials locally. Please retry.".to_string()
                 }
                 RemoteClientError::Api(code) => match code {
                     services::services::remote_client::HandoffErrorCode::NotFound => {

@@ -17,6 +17,7 @@ export type HandoffInitResponse = {
 
 export type HandoffRedeemResponse = {
   access_token: string;
+  refresh_token: string;
 };
 
 export type AcceptInvitationResponse = {

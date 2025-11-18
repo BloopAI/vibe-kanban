@@ -1,19 +1,17 @@
 use std::{collections::HashSet, sync::Arc};
 
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
-use chrono::Utc;
-use hmac::{Hmac, Mac};
+use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
-use sha2::Sha256;
-use subtle::ConstantTimeEq;
 use thiserror::Error;
 use uuid::Uuid;
 
 use crate::db::{auth::AuthSession, users::User};
 
-type HmacSha256 = Hmac<Sha256>;
+pub const ACCESS_TOKEN_TTL_SECONDS: i64 = 120;
+pub const REFRESH_TOKEN_TTL_DAYS: i64 = 365;
+const DEFAULT_JWT_LEEWAY_SECONDS: u64 = 60;
 
 #[derive(Debug, Error)]
 pub enum JwtError {
@@ -21,28 +19,61 @@ pub enum JwtError {
     InvalidToken,
     #[error("invalid jwt secret")]
     InvalidSecret,
+    #[error("token expired")]
+    TokenExpired,
+    #[error("refresh token reused - possible theft detected")]
+    TokenReuseDetected,
+    #[error("session revoked")]
+    SessionRevoked,
+    #[error("token type mismatch")]
+    InvalidTokenType,
     #[error(transparent)]
     Jwt(#[from] jsonwebtoken::errors::Error),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct JwtClaims {
+pub struct AccessTokenClaims {
     pub sub: Uuid,
     pub session_id: Uuid,
-    pub nonce: String,
     pub iat: i64,
+    pub exp: i64,
+    pub aud: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RefreshTokenClaims {
+    pub sub: Uuid,
+    pub session_id: Uuid,
+    pub jti: Uuid,
+    pub iat: i64,
+    pub exp: i64,
+    pub aud: String,
 }
 
 #[derive(Debug, Clone)]
-pub struct JwtIdentity {
+pub struct AccessTokenDetails {
     pub user_id: Uuid,
     pub session_id: Uuid,
-    pub nonce: String,
+    pub expires_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone)]
+pub struct RefreshTokenDetails {
+    pub user_id: Uuid,
+    pub session_id: Uuid,
+    pub refresh_token_id: Uuid,
 }
 
 #[derive(Clone)]
 pub struct JwtService {
     secret: Arc<SecretString>,
+}
+
+#[derive(Debug, Clone)]
+pub struct TokenPair {
+    pub access_token: String,
+    pub refresh_token: String,
+    pub refresh_token_id: Uuid,
 }
 
 impl JwtService {
@@ -52,71 +83,114 @@ impl JwtService {
         }
     }
 
-    pub fn encode(
+    pub fn generate_tokens(
         &self,
         session: &AuthSession,
         user: &User,
-        session_secret: &str,
-    ) -> Result<String, JwtError> {
-        let claims = JwtClaims {
+    ) -> Result<TokenPair, JwtError> {
+        let now = Utc::now();
+        let refresh_token_id = Uuid::new_v4();
+
+        // Access token, short-lived (~2 minutes)
+        let access_exp = now + ChronoDuration::seconds(ACCESS_TOKEN_TTL_SECONDS);
+        let access_claims = AccessTokenClaims {
             sub: user.id,
             session_id: session.id,
-            nonce: session_secret.to_string(),
-            iat: Utc::now().timestamp(),
+            iat: now.timestamp(),
+            exp: access_exp.timestamp(),
+            aud: "access".to_string(),
+        };
+
+        // Refresh token, long-lived (~1 year)
+        let refresh_exp = now + ChronoDuration::days(REFRESH_TOKEN_TTL_DAYS);
+        let refresh_claims = RefreshTokenClaims {
+            sub: user.id,
+            session_id: session.id,
+            jti: refresh_token_id,
+            iat: now.timestamp(),
+            exp: refresh_exp.timestamp(),
+            aud: "refresh".to_string(),
         };
 
         let encoding_key = EncodingKey::from_base64_secret(self.secret.expose_secret())?;
-        let token = encode(&Header::new(Algorithm::HS256), &claims, &encoding_key)?;
 
-        Ok(token)
+        let access_token = encode(
+            &Header::new(Algorithm::HS256),
+            &access_claims,
+            &encoding_key,
+        )?;
+
+        let refresh_token = encode(
+            &Header::new(Algorithm::HS256),
+            &refresh_claims,
+            &encoding_key,
+        )?;
+
+        Ok(TokenPair {
+            access_token,
+            refresh_token,
+            refresh_token_id,
+        })
     }
 
-    pub fn decode(&self, token: &str) -> Result<JwtIdentity, JwtError> {
+    pub fn decode_access_token(&self, token: &str) -> Result<AccessTokenDetails, JwtError> {
+        self.decode_access_token_with_leeway(token, DEFAULT_JWT_LEEWAY_SECONDS)
+    }
+
+    pub fn decode_access_token_with_leeway(
+        &self,
+        token: &str,
+        leeway_seconds: u64,
+    ) -> Result<AccessTokenDetails, JwtError> {
         if token.trim().is_empty() {
             return Err(JwtError::InvalidToken);
         }
 
         let mut validation = Validation::new(Algorithm::HS256);
-        validation.validate_exp = false;
+        validation.validate_exp = true;
         validation.validate_nbf = false;
-        validation.required_spec_claims = HashSet::from(["sub".to_string()]);
+        validation.set_audience(&["access"]);
+        validation.required_spec_claims =
+            HashSet::from(["sub".to_string(), "exp".to_string(), "aud".to_string()]);
+        validation.leeway = leeway_seconds;
 
         let decoding_key = DecodingKey::from_base64_secret(self.secret.expose_secret())?;
-        let data = decode::<JwtClaims>(token, &decoding_key, &validation)?;
-
+        let data = decode::<AccessTokenClaims>(token, &decoding_key, &validation)?;
         let claims = data.claims;
-        Ok(JwtIdentity {
+        let expires_at = DateTime::from_timestamp(claims.exp, 0).ok_or(JwtError::InvalidToken)?;
+
+        Ok(AccessTokenDetails {
             user_id: claims.sub,
             session_id: claims.session_id,
-            nonce: claims.nonce,
+            expires_at,
         })
     }
 
-    fn secret_key_bytes(&self) -> Result<Vec<u8>, JwtError> {
-        let raw = self.secret.expose_secret();
-        BASE64_STANDARD
-            .decode(raw.as_bytes())
-            .map_err(|_| JwtError::InvalidSecret)
-    }
+    pub fn decode_refresh_token(&self, token: &str) -> Result<RefreshTokenDetails, JwtError> {
+        if token.trim().is_empty() {
+            return Err(JwtError::InvalidToken);
+        }
 
-    pub fn hash_session_secret(&self, session_secret: &str) -> Result<String, JwtError> {
-        let key = self.secret_key_bytes()?;
-        let mut mac = HmacSha256::new_from_slice(&key).map_err(|_| JwtError::InvalidSecret)?;
-        mac.update(session_secret.as_bytes());
-        let digest = mac.finalize().into_bytes();
-        Ok(BASE64_STANDARD.encode(digest))
-    }
+        let mut validation = Validation::new(Algorithm::HS256);
+        validation.validate_exp = true;
+        validation.validate_nbf = false;
+        validation.set_audience(&["refresh"]);
+        validation.required_spec_claims = HashSet::from([
+            "sub".to_string(),
+            "exp".to_string(),
+            "aud".to_string(),
+            "jti".to_string(),
+        ]);
+        validation.leeway = DEFAULT_JWT_LEEWAY_SECONDS;
 
-    pub fn verify_session_secret(
-        &self,
-        stored_hash: Option<&str>,
-        candidate_secret: &str,
-    ) -> Result<bool, JwtError> {
-        let stored = match stored_hash {
-            Some(value) => value,
-            None => return Ok(false),
-        };
-        let candidate_hash = self.hash_session_secret(candidate_secret)?;
-        Ok(stored.as_bytes().ct_eq(candidate_hash.as_bytes()).into())
+        let decoding_key = DecodingKey::from_base64_secret(self.secret.expose_secret())?;
+        let data = decode::<RefreshTokenClaims>(token, &decoding_key, &validation)?;
+        let claims = data.claims;
+
+        Ok(RefreshTokenDetails {
+            user_id: claims.sub,
+            session_id: claims.session_id,
+            refresh_token_id: claims.jti,
+        })
     }
 }

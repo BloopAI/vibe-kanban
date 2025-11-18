@@ -23,7 +23,7 @@ use db::{
 use processor::ActivityProcessor;
 pub use publisher::SharePublisher;
 use remote::{
-    ServerMessage,
+    ClientMessage, ServerMessage,
     db::{tasks::SharedTask as RemoteSharedTask, users::UserData as RemoteUserData},
 };
 use sqlx::{Executor, Sqlite, SqlitePool};
@@ -35,7 +35,9 @@ use tokio::{
 };
 use tokio_tungstenite::tungstenite::Message as WsMessage;
 use url::Url;
-use utils::ws::{WsClient, WsConfig, WsError, WsHandler, WsResult, run_ws_client};
+use utils::ws::{
+    WS_AUTH_REFRESH_INTERVAL, WsClient, WsConfig, WsError, WsHandler, WsResult, run_ws_client,
+};
 use uuid::Uuid;
 
 use crate::{
@@ -254,13 +256,21 @@ impl RemoteSync {
         let processor = self.processor.clone();
         let config = self.config.clone();
         let auth_ctx = self.auth_ctx.clone();
+        let remote_client = processor.remote_client();
         let db = self.db.clone();
         let (shutdown_tx, shutdown_rx) = oneshot::channel();
 
         let join = tokio::spawn(async move {
-            let result =
-                project_watcher_task(db, processor, config, auth_ctx, project_id, shutdown_rx)
-                    .await;
+            let result = project_watcher_task(
+                db,
+                processor,
+                config,
+                auth_ctx,
+                remote_client,
+                project_id,
+                shutdown_rx,
+            )
+            .await;
 
             let _ = events_tx.send(ProjectWatcherEvent { project_id, result });
         });
@@ -327,22 +337,27 @@ impl WsHandler for SharedWsHandler {
 
 async fn spawn_shared_remote(
     processor: ActivityProcessor,
-    auth_ctx: &AuthContext,
+    remote_client: RemoteClient,
     url: Url,
     close_tx: oneshot::Sender<()>,
     remote_project_id: Uuid,
 ) -> Result<WsClient, ShareError> {
-    let auth_source = auth_ctx.clone();
+    let remote_client_clone = remote_client.clone();
     let ws_config = WsConfig {
         url,
         ping_interval: Some(std::time::Duration::from_secs(30)),
         header_factory: Some(Arc::new(move || {
-            let auth_source = auth_source.clone();
+            let remote_client_clone = remote_client_clone.clone();
             Box::pin(async move {
-                if let Some(creds) = auth_source.get_credentials().await {
-                    build_ws_headers(&creds.access_token)
-                } else {
-                    Err(WsError::MissingAuth)
+                match remote_client_clone.access_token().await {
+                    Ok(token) => build_ws_headers(&token),
+                    Err(error) => {
+                        tracing::warn!(
+                            ?error,
+                            "failed to obtain access token for websocket connection"
+                        );
+                        Err(WsError::MissingAuth)
+                    }
                 }
             })
         })),
@@ -356,6 +371,7 @@ async fn spawn_shared_remote(
     let client = run_ws_client(handler, ws_config)
         .await
         .map_err(ShareError::from)?;
+    spawn_ws_auth_refresh_task(client.clone(), remote_client);
 
     Ok(client)
 }
@@ -365,6 +381,7 @@ async fn project_watcher_task(
     processor: ActivityProcessor,
     config: ShareConfig,
     auth_ctx: AuthContext,
+    remote_client: RemoteClient,
     remote_project_id: Uuid,
     mut shutdown_rx: oneshot::Receiver<()>,
 ) -> Result<(), ShareError> {
@@ -410,7 +427,7 @@ async fn project_watcher_task(
         let (close_tx, close_rx) = oneshot::channel();
         let ws_connection = match spawn_shared_remote(
             processor.clone(),
-            &auth_ctx,
+            remote_client.clone(),
             ws_url,
             close_tx,
             remote_project_id,
@@ -477,6 +494,44 @@ fn build_ws_headers(access_token: &str) -> WsResult<Vec<(HeaderName, HeaderValue
     let header = HeaderValue::from_str(&value).map_err(|err| WsError::Header(err.to_string()))?;
     headers.push((AUTHORIZATION, header));
     Ok(headers)
+}
+
+fn spawn_ws_auth_refresh_task(client: WsClient, remote_client: RemoteClient) {
+    tokio::spawn(async move {
+        let mut close_rx = client.subscribe_close();
+        loop {
+            match remote_client.access_token().await {
+                Ok(token) => {
+                    if let Err(err) = send_ws_auth_token(&client, token).await {
+                        tracing::warn!(
+                            ?err,
+                            "failed to send websocket auth token; stopping auth refresh"
+                        );
+                        break;
+                    }
+                }
+                Err(err) => {
+                    tracing::warn!(
+                        ?err,
+                        "failed to obtain access token for websocket auth refresh; stopping auth refresh"
+                    );
+                    break;
+                }
+            }
+
+            tokio::select! {
+                _ = close_rx.changed() => break,
+                _ = sleep(WS_AUTH_REFRESH_INTERVAL) => {}
+            }
+        }
+    });
+}
+
+async fn send_ws_auth_token(client: &WsClient, token: String) -> Result<(), ShareError> {
+    let payload = serde_json::to_string(&ClientMessage::AuthToken { token })?;
+    client
+        .send(WsMessage::Text(payload.into()))
+        .map_err(ShareError::from)
 }
 
 #[derive(Clone)]

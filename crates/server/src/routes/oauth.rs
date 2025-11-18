@@ -13,6 +13,7 @@ use sha2::{Digest, Sha256};
 use utils::{
     api::oauth::{HandoffInitRequest, HandoffRedeemRequest, StatusResponse},
     assets::config_path,
+    jwt::extract_expiration,
     response::ApiResponse,
 };
 use uuid::Uuid;
@@ -119,8 +120,12 @@ async fn handoff_complete(
 
     let redeem = client.handoff_redeem(&redeem_request).await?;
 
+    let expires_at = extract_expiration(&redeem.access_token)
+        .map_err(|err| ApiError::BadRequest(format!("Invalid access token: {err}")))?;
     let credentials = Credentials {
-        access_token: redeem.access_token.clone(),
+        access_token: Some(redeem.access_token.clone()),
+        refresh_token: redeem.refresh_token.clone(),
+        expires_at: Some(expires_at),
     };
 
     deployment

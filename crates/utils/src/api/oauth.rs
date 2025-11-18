@@ -29,6 +29,20 @@ pub struct HandoffRedeemRequest {
 #[ts(export)]
 pub struct HandoffRedeemResponse {
     pub access_token: String,
+    pub refresh_token: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, TS)]
+#[ts(export)]
+pub struct TokenRefreshRequest {
+    pub refresh_token: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, TS)]
+#[ts(export)]
+pub struct TokenRefreshResponse {
+    pub access_token: String,
+    pub refresh_token: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, TS)]

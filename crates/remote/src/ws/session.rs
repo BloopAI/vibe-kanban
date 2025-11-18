@@ -1,13 +1,14 @@
 use std::sync::Arc;
 
 use axum::extract::ws::{Message, WebSocket};
+use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use futures::{SinkExt, StreamExt};
 use sqlx::PgPool;
 use thiserror::Error;
 use tokio::time::{self, MissedTickBehavior};
 use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
 use tracing::{Span, instrument};
-use utils::ws::{WS_AUTH_REFRESH_INTERVAL, WS_BULK_SYNC_THRESHOLD};
+use utils::ws::{WS_AUTH_REFRESH_INTERVAL, WS_BULK_SYNC_THRESHOLD, WS_TOKEN_EXPIRY_GRACE};
 use uuid::Uuid;
 
 use super::{
@@ -17,7 +18,7 @@ use super::{
 use crate::{
     AppState,
     activity::{ActivityBroker, ActivityEvent, ActivityStream},
-    auth::{JwtError, JwtIdentity, JwtService, RequestContext},
+    auth::{JwtError, JwtService, RequestContext},
     db::{
         activity::ActivityRepository,
         auth::{AuthSessionError, AuthSessionRepository},
@@ -69,9 +70,9 @@ pub async fn handle(
         state.jwt(),
         pool.clone(),
         ctx.session_id,
-        ctx.session_secret.clone(),
         ctx.user.id,
         project_id,
+        ctx.access_token_expires_at,
     );
     let mut auth_check_interval = time::interval(WS_AUTH_REFRESH_INTERVAL);
     auth_check_interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
@@ -203,10 +204,9 @@ pub async fn handle(
                     Err(error) => {
                         tracing::info!(?error, "closing websocket due to auth verification error");
                         let message = match error {
-                            AuthVerifyError::Revoked | AuthVerifyError::SecretMismatch => {
-                                "authorization revoked"
-                            }
+                            AuthVerifyError::Revoked => "authorization revoked",
                             AuthVerifyError::MembershipRevoked => "project access revoked",
+                            AuthVerifyError::Expired => "authorization expired",
                             AuthVerifyError::UserMismatch { .. }
                             | AuthVerifyError::Decode(_)
                             | AuthVerifyError::Session(_) => "authorization error",
@@ -269,10 +269,10 @@ struct WsAuthState {
     jwt: Arc<JwtService>,
     pool: PgPool,
     session_id: Uuid,
-    session_secret: String,
     expected_user_id: Uuid,
     project_id: Uuid,
-    pending_token: Option<String>,
+    token_expires_at: DateTime<Utc>,
+    new_access_token: Option<String>,
 }
 
 impl WsAuthState {
@@ -280,46 +280,62 @@ impl WsAuthState {
         jwt: Arc<JwtService>,
         pool: PgPool,
         session_id: Uuid,
-        session_secret: String,
         expected_user_id: Uuid,
         project_id: Uuid,
+        token_expires_at: DateTime<Utc>,
     ) -> Self {
         Self {
             jwt,
             pool,
             session_id,
-            session_secret,
             expected_user_id,
             project_id,
-            pending_token: None,
+            new_access_token: None,
+            token_expires_at,
         }
     }
 
     fn store_token(&mut self, token: String) {
-        self.pending_token = Some(token);
+        self.new_access_token = Some(token);
     }
 
     async fn verify(&mut self) -> Result<(), AuthVerifyError> {
-        if let Some(token) = self.pending_token.take() {
-            let identity = self.jwt.decode(&token).map_err(AuthVerifyError::Decode)?;
-            self.apply_identity(identity).await?;
+        if let Some(token) = self.new_access_token.take() {
+            let token_details = self
+                .jwt
+                .decode_access_token_with_leeway(&token, WS_TOKEN_EXPIRY_GRACE.as_secs())
+                .map_err(AuthVerifyError::Decode)?;
+            self.apply_identity(token_details.user_id, token_details.session_id)
+                .await?;
+            self.token_expires_at = token_details.expires_at;
         }
 
+        self.validate_token_expiry()?;
         self.validate_session().await?;
         self.validate_membership().await
     }
 
-    async fn apply_identity(&mut self, identity: JwtIdentity) -> Result<(), AuthVerifyError> {
-        if identity.user_id != self.expected_user_id {
+    async fn apply_identity(
+        &mut self,
+        user_id: Uuid,
+        session_id: Uuid,
+    ) -> Result<(), AuthVerifyError> {
+        if user_id != self.expected_user_id {
             return Err(AuthVerifyError::UserMismatch {
                 expected: self.expected_user_id,
-                received: identity.user_id,
+                received: user_id,
             });
         }
 
-        self.session_id = identity.session_id;
-        self.session_secret = identity.nonce;
+        self.session_id = session_id;
         self.validate_session().await
+    }
+
+    fn validate_token_expiry(&self) -> Result<(), AuthVerifyError> {
+        if self.token_expires_at + ws_leeway_duration() > Utc::now() {
+            return Ok(());
+        }
+        Err(AuthVerifyError::Expired)
     }
 
     async fn validate_session(&self) -> Result<(), AuthVerifyError> {
@@ -331,14 +347,6 @@ impl WsAuthState {
 
         if session.revoked_at.is_some() {
             return Err(AuthVerifyError::Revoked);
-        }
-
-        if !self
-            .jwt
-            .verify_session_secret(session.session_secret_hash.as_deref(), &self.session_secret)
-            .unwrap_or(false)
-        {
-            return Err(AuthVerifyError::SecretMismatch);
         }
 
         Ok(())
@@ -364,6 +372,10 @@ impl WsAuthState {
     }
 }
 
+fn ws_leeway_duration() -> ChronoDuration {
+    ChronoDuration::from_std(WS_TOKEN_EXPIRY_GRACE).unwrap()
+}
+
 #[derive(Debug, Error)]
 enum AuthVerifyError {
     #[error(transparent)]
@@ -374,10 +386,10 @@ enum AuthVerifyError {
     Session(#[from] AuthSessionError),
     #[error("session revoked")]
     Revoked,
-    #[error("session rotated")]
-    SecretMismatch,
     #[error("organization membership revoked")]
     MembershipRevoked,
+    #[error("access token expired")]
+    Expired,
 }
 
 #[allow(clippy::too_many_arguments)]

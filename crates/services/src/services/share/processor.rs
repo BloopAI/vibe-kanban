@@ -48,6 +48,10 @@ impl ActivityProcessor {
         }
     }
 
+    pub fn remote_client(&self) -> RemoteClient {
+        self.remote_client.clone()
+    }
+
     pub async fn process_event(&self, event: ActivityEvent) -> Result<(), ShareError> {
         let mut tx = self.db.pool.begin().await?;
         match event.event_type.as_str() {

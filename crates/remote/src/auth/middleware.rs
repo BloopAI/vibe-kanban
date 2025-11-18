@@ -6,7 +6,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use axum_extra::headers::{Authorization, HeaderMapExt, authorization::Bearer};
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use tracing::warn;
 use uuid::Uuid;
 
@@ -23,7 +23,7 @@ use crate::{
 pub struct RequestContext {
     pub user: User,
     pub session_id: Uuid,
-    pub session_secret: String,
+    pub access_token_expires_at: DateTime<Utc>,
 }
 
 pub async fn require_session(
@@ -37,10 +37,10 @@ pub async fn require_session(
     };
 
     let jwt = state.jwt();
-    let identity = match jwt.decode(&bearer) {
-        Ok(identity) => identity,
+    let identity = match jwt.decode_access_token(&bearer) {
+        Ok(details) => details,
         Err(error) => {
-            warn!(?error, "failed to decode session token");
+            warn!(?error, "failed to decode access token");
             return StatusCode::UNAUTHORIZED.into_response();
         }
     };
@@ -57,17 +57,14 @@ pub async fn require_session(
             warn!(?error, "failed to load session");
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
+        Err(_) => {
+            warn!("failed to load session for unknown reason");
+            return StatusCode::UNAUTHORIZED.into_response();
+        }
     };
 
-    let secrets_match = jwt
-        .verify_session_secret(session.session_secret_hash.as_deref(), &identity.nonce)
-        .unwrap_or(false);
-
-    if session.revoked_at.is_some() || !secrets_match {
-        warn!(
-            "session `{}` rejected (revoked or rotated)",
-            identity.session_id
-        );
+    if session.revoked_at.is_some() {
+        warn!("session `{}` rejected (revoked)", identity.session_id);
         return StatusCode::UNAUTHORIZED.into_response();
     }
 
@@ -104,7 +101,7 @@ pub async fn require_session(
     req.extensions_mut().insert(RequestContext {
         user,
         session_id: session.id,
-        session_secret: identity.nonce,
+        access_token_expires_at: identity.expires_at,
     });
 
     match session_repo.touch(session.id).await {
