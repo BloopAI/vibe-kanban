@@ -11,9 +11,15 @@ use deployment::{DeploymentError, RemoteClientNotConfigured};
 use executors::executors::ExecutorError;
 use git2::Error as Git2Error;
 use services::services::{
-    config::ConfigError, container::ContainerError, drafts::DraftsServiceError,
-    git::GitServiceError, github::GitHubServiceError, image::ImageError,
-    remote_client::RemoteClientError, share::ShareError, worktree_manager::WorktreeError,
+    config::{ConfigError, EditorOpenError},
+    container::ContainerError,
+    drafts::DraftsServiceError,
+    git::GitServiceError,
+    github_service::GitHubServiceError,
+    image::ImageError,
+    remote_client::RemoteClientError,
+    share::ShareError,
+    worktree_manager::WorktreeError,
 };
 use thiserror::Error;
 use utils::response::ApiResponse;
@@ -51,6 +57,8 @@ pub enum ApiError {
     Multipart(#[from] MultipartError),
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
+    #[error(transparent)]
+    EditorOpen(#[from] EditorOpenError),
     #[error(transparent)]
     RemoteClient(#[from] RemoteClientError),
     #[error("Unauthorized")]
@@ -129,6 +137,7 @@ impl IntoResponse for ApiError {
                 }
             },
             ApiError::Io(_) => (StatusCode::INTERNAL_SERVER_ERROR, "IoError"),
+            ApiError::EditorOpen(_) => (StatusCode::BAD_REQUEST, "EditorOpenError"),
             ApiError::Multipart(_) => (StatusCode::BAD_REQUEST, "MultipartError"),
             ApiError::RemoteClient(err) => match err {
                 RemoteClientError::Auth => (StatusCode::UNAUTHORIZED, "RemoteClientError"),

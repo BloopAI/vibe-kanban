@@ -414,7 +414,7 @@ pub async fn open_project_in_editor(
     Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<Option<OpenEditorRequest>>,
-) -> Result<ResponseJson<ApiResponse<OpenEditorResponse>>, StatusCode> {
+) -> Result<ResponseJson<ApiResponse<OpenEditorResponse>>, ApiError> {
     let path = project.git_repo_path;
 
     let editor_config = {
@@ -448,8 +448,8 @@ pub async fn open_project_in_editor(
             })))
         }
         Err(e) => {
-            tracing::error!("Failed to open editor for project {}: {}", project.id, e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            tracing::error!("Failed to open editor for project {}: {:?}", project.id, e);
+            Err(ApiError::EditorOpen(e))
         }
     }
 }

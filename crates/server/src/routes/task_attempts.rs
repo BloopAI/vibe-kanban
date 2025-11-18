@@ -952,13 +952,11 @@ pub async fn open_task_attempt_in_editor(
         }
         Err(e) => {
             tracing::error!(
-                "Failed to open editor for attempt {}: {}",
+                "Failed to open editor for attempt {}: {:?}",
                 task_attempt.id,
                 e
             );
-            Err(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
-                format!("Failed to open editor: {}", e),
-            )))
+            Err(ApiError::EditorOpen(e))
         }
     }
 }
