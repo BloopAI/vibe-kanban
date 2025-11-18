@@ -212,32 +212,19 @@ export function ProjectTasks() {
     if (!isLoaded || !isPanelOpen || seen) return;
 
     let cancelled = false;
-    const timer = window.setTimeout(() => {
-      if (cancelled) return;
 
-      FeatureShowcaseDialog.show({ config: showcases.taskPanel }).finally(
-        () => {
-          if (cancelled) return;
-          if (seenFeatures.includes(showcaseId)) return;
-          void updateAndSaveConfig({
-            showcases: { seen_features: [...seenFeatures, showcaseId] },
-          });
-        }
-      );
-    }, 300);
+    FeatureShowcaseDialog.show({ config: showcases.taskPanel }).finally(() => {
+      if (cancelled) return;
+      if (seenFeatures.includes(showcaseId)) return;
+      void updateAndSaveConfig({
+        showcases: { seen_features: [...seenFeatures, showcaseId] },
+      });
+    });
 
     return () => {
       cancelled = true;
-      clearTimeout(timer);
     };
-  }, [
-    isLoaded,
-    isPanelOpen,
-    seen,
-    showcaseId,
-    updateAndSaveConfig,
-    seenFeatures,
-  ]);
+  }, [isLoaded, isPanelOpen, seen, showcaseId, updateAndSaveConfig, seenFeatures]);
 
   const isLatest = attemptId === 'latest';
   const { data: attempts = [], isLoading: isAttemptsLoading } = useTaskAttempts(
