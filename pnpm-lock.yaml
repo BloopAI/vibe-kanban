@@ -255,6 +255,9 @@ importers:
       eslint-config-prettier:
         specifier: ^10.1.5
         version: 10.1.5(eslint@8.57.1)
+      eslint-plugin-eslint-comments:
+        specifier: ^3.2.0
+        version: 3.2.0(eslint@8.57.1)
       eslint-plugin-i18next:
         specifier: ^6.1.3
         version: 6.1.3
@@ -2321,6 +2324,10 @@ packages:
   escape-html@1.0.3:
     resolution: {integrity: sha512-NiSupZ4OeuGwr68lGIeym/ksIZMJodUGOSCZ/FSnTxcrekbvqrgdUxlJOMpijaKZVjAJrWrGs/6Jy8OMuyj9ow==}
 
+  escape-string-regexp@1.0.5:
+    resolution: {integrity: sha512-vbRorB5FUQWvla16U8R/qgaFIya2qGzwDrNmCZuYKrbdSUMG6I1ZCGQRefkRVhuOkIGVne7BQ35DSfo1qvJqFg==}
+    engines: {node: '>=0.8.0'}
+
   escape-string-regexp@4.0.0:
     resolution: {integrity: sha512-TtpcNJ3XAzx3Gq8sWRzJaVajRs0uVxA2YAkdb1jm2YkPz4G6egUFAyA3n5vtEIZefPk5Wa4UXbKuS5fKkJWdgA==}
     engines: {node: '>=10'}
@@ -2330,6 +2337,12 @@ packages:
     hasBin: true
     peerDependencies:
       eslint: '>=7.0.0'
+
+  eslint-plugin-eslint-comments@3.2.0:
+    resolution: {integrity: sha512-0jkOl0hfojIHHmEHgmNdqv4fmh7300NdpA9FFpF7zaoLvB/QeXOGNLIo86oAveJFrfB1p05kC8hpEMHM8DwWVQ==}
+    engines: {node: '>=6.5.0'}
+    peerDependencies:
+      eslint: '>=4.19.1'
 
   eslint-plugin-i18next@6.1.3:
     resolution: {integrity: sha512-z/h4oBRd9wI1ET60HqcLSU6XPeAh/EPOrBBTyCdkWeMoYrWAaUVA+DOQkWTiNIyCltG4NTmy62SQisVXxoXurw==}
@@ -5804,11 +5817,19 @@ snapshots:
 
   escape-html@1.0.3: {}
 
+  escape-string-regexp@1.0.5: {}
+
   escape-string-regexp@4.0.0: {}
 
   eslint-config-prettier@10.1.5(eslint@8.57.1):
     dependencies:
       eslint: 8.57.1
+
+  eslint-plugin-eslint-comments@3.2.0(eslint@8.57.1):
+    dependencies:
+      escape-string-regexp: 1.0.5
+      eslint: 8.57.1
+      ignore: 5.3.2
 
   eslint-plugin-i18next@6.1.3:
     dependencies:

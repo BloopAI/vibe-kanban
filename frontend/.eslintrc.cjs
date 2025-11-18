@@ -11,17 +11,19 @@ module.exports = {
     'plugin:@typescript-eslint/recommended',
     'plugin:react-hooks/recommended',
     'plugin:i18next/recommended',
+    'plugin:eslint-comments/recommended',
     'prettier',
   ],
   ignorePatterns: ['dist', '.eslintrc.cjs'],
   parser: '@typescript-eslint/parser',
-  plugins: ['react-refresh', '@typescript-eslint', 'unused-imports', 'i18next'],
+  plugins: ['react-refresh', '@typescript-eslint', 'unused-imports', 'i18next', 'eslint-comments'],
   parserOptions: {
     ecmaVersion: 'latest',
     sourceType: 'module',
     project: './tsconfig.json',
   },
   rules: {
+    'eslint-comments/no-use': ['error', { allow: [] }],
     'react-refresh/only-export-components': 'off',
     'unused-imports/no-unused-imports': 'error',
     'unused-imports/no-unused-vars': [

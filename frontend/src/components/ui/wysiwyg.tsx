@@ -193,13 +193,15 @@ function MarkdownDefaultValuePlugin({
   lastMdRef: React.MutableRefObject<string>;
 }) {
   const [editor] = useLexicalComposerContext();
+  const didInit = useRef(false);
   useEffect(() => {
-    // Apply once on mount
+    if (didInit.current) return;
+    didInit.current = true;
+
     editor.update(() => {
       $convertFromMarkdownString(defaultValue || '', importTransformers);
     });
     lastMdRef.current = defaultValue || '';
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor]); // do not depend on defaultValue to ensure it's one-time
+  }, [editor, defaultValue, importTransformers, lastMdRef]);
   return null;
 }

@@ -39,8 +39,7 @@ const ShareDialogImpl = NiceModal.create<ShareDialogProps>(({ task }) => {
   useEffect(() => {
     shareTask.reset();
     setShareError(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [task.id, shareTask.reset]);
+  }, [task.id, shareTask]);
 
   const handleClose = () => {
     modal.resolve(shareTask.isSuccess);
