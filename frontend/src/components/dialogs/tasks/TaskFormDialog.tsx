@@ -38,7 +38,7 @@ import {
   useImageUpload,
   useTaskMutations,
 } from '@/hooks';
-import { useKeySubmitTask, useKeyExit, Scope } from '@/keyboard';
+import { useKeySubmitTask, useKeySubmitTaskAlt, useKeyExit, Scope } from '@/keyboard';
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { cn } from '@/lib/utils';
 import type {
@@ -96,6 +96,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const [showDiscardWarning, setShowDiscardWarning] = useState(false);
   const imageUploadRef = useRef<ImageUploadSectionHandle>(null);
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
+  const forceCreateOnlyRef = useRef(false);
 
   const { data: branches, isLoading: branchesLoading } =
     useProjectBranches(projectId);
@@ -184,7 +185,8 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
         image_ids: imageIds,
         shared_task_id: null,
       };
-      if (value.autoStart) {
+      const shouldAutoStart = value.autoStart && !forceCreateOnlyRef.current;
+      if (shouldAutoStart) {
         await createAndStart.mutateAsync(
           {
             task,
@@ -201,7 +203,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
 
   const validator = (value: TaskFormValues): string | undefined => {
     if (!value.title.trim().length) return 'need title';
-    if (value.autoStart && (!value.executorProfileId || !value.branch)) {
+    if (value.autoStart && !forceCreateOnlyRef.current && (!value.executorProfileId || !value.branch)) {
       return 'need executor profile or branch;';
     }
   };
@@ -304,6 +306,26 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
 
   useKeySubmitTask(primaryAction, {
     enabled: shortcutsEnabled,
+    scope: Scope.DIALOG,
+    enableOnFormTags: ['input', 'INPUT', 'textarea', 'TEXTAREA'],
+    preventDefault: true,
+  });
+
+  const canSubmitAlt = useStore(
+    form.store,
+    (state) => state.values.title.trim().length > 0 && !state.isSubmitting
+  );
+
+  const handleSubmitCreateOnly = useCallback(() => {
+    forceCreateOnlyRef.current = true;
+    const promise = form.handleSubmit();
+    Promise.resolve(promise).finally(() => {
+      forceCreateOnlyRef.current = false;
+    });
+  }, [form]);
+
+  useKeySubmitTaskAlt(handleSubmitCreateOnly, {
+    enabled: modal.visible && canSubmitAlt && !showDiscardWarning,
     scope: Scope.DIALOG,
     enableOnFormTags: ['input', 'INPUT', 'textarea', 'TEXTAREA'],
     preventDefault: true,
