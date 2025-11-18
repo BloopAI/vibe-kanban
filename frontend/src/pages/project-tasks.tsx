@@ -10,7 +10,7 @@ import type { GitBranch } from 'shared/types';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { FeatureShowcaseDialog } from '@/components/dialogs/global/FeatureShowcaseDialog';
 import { showcases } from '@/config/showcases';
-import { useShowcaseTrigger } from '@/hooks/useShowcaseTrigger';
+import { useShowcasePersistence } from '@/hooks/useShowcasePersistence';
 import { usePostHog } from 'posthog-js/react';
 
 import { useSearch } from '@/contexts/search-context';
@@ -201,10 +201,26 @@ export function ProjectTasks() {
   const isSharedPanelOpen = Boolean(selectedSharedTask);
   const isPanelOpen = isTaskPanelOpen || isSharedPanelOpen;
 
-  useShowcaseTrigger(showcases.taskPanel, {
-    enabled: isPanelOpen,
-    onShow: () => FeatureShowcaseDialog.show({ config: showcases.taskPanel }),
-  });
+  const { isLoaded, hasSeen, markSeen } = useShowcasePersistence();
+  const showcaseId = showcases.taskPanel.id;
+  const seen = isLoaded && hasSeen(showcaseId);
+
+  useEffect(() => {
+    if (!isLoaded || !isPanelOpen || seen) return;
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      if (cancelled) return;
+      FeatureShowcaseDialog.show({ config: showcases.taskPanel }).finally(() => {
+        if (!cancelled) void markSeen(showcaseId);
+      });
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [isLoaded, isPanelOpen, seen, markSeen, showcaseId]);
 
   const isLatest = attemptId === 'latest';
   const { data: attempts = [], isLoading: isAttemptsLoading } = useTaskAttempts(
