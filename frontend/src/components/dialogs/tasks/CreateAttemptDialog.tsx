@@ -92,9 +92,19 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
 
     const defaultProfile: ExecutorProfileId | null = useMemo(() => {
       if (latestAttempt?.executor) {
+        const lastExec = latestAttempt.executor as BaseCodingAgent;
+        // If the last attempt used the same executor as the user's current preference,
+        // we assume they want to use their preferred variant as well.
+        // Otherwise, we default to the "default" variant (null) since we don't know
+        // what variant they used last time (TaskAttempt doesn't store it).
+        const variant =
+          config?.executor_profile?.executor === lastExec
+            ? config.executor_profile.variant
+            : null;
+
         return {
-          executor: latestAttempt.executor as BaseCodingAgent,
-          variant: null,
+          executor: lastExec,
+          variant,
         };
       }
       return config?.executor_profile ?? null;
