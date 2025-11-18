@@ -211,27 +211,13 @@ export function ProjectTasks() {
   useEffect(() => {
     if (!isLoaded || !isPanelOpen || seen) return;
 
-    let cancelled = false;
-
     FeatureShowcaseDialog.show({ config: showcases.taskPanel }).finally(() => {
-      if (cancelled) return;
       if (seenFeatures.includes(showcaseId)) return;
       void updateAndSaveConfig({
         showcases: { seen_features: [...seenFeatures, showcaseId] },
       });
     });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    isLoaded,
-    isPanelOpen,
-    seen,
-    showcaseId,
-    updateAndSaveConfig,
-    seenFeatures,
-  ]);
+  }, [isLoaded, isPanelOpen, seen, showcaseId, updateAndSaveConfig, seenFeatures]);
 
   const isLatest = attemptId === 'latest';
   const { data: attempts = [], isLoading: isAttemptsLoading } = useTaskAttempts(
