@@ -2,10 +2,10 @@ use std::path::PathBuf;
 
 use thiserror::Error;
 
-pub mod editor_error;
+pub mod editor;
 mod versions;
 
-pub use editor_error::EditorOpenError;
+pub use editor::EditorOpenError;
 
 #[derive(Debug, Error)]
 pub enum ConfigError {

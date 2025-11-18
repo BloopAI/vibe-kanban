@@ -1,16 +1,39 @@
-use std::{
-    path::{Path, PathBuf},
-    str::FromStr,
-};
+use std::path::PathBuf;
 
 use anyhow::Error;
-use executors::{command::CommandBuilder, executors::ExecutorError};
 use serde::{Deserialize, Serialize};
 use strum_macros::EnumString;
 use ts_rs::TS;
 use utils::{assets::SoundAssets, cache_dir};
 
-use crate::services::config::{editor_error::EditorOpenError, versions::v1};
+// Re-export editor config from the dedicated editor module
+pub use crate::services::config::editor::{EditorConfig, EditorType};
+use crate::services::config::versions::v1;
+
+// Keep the From conversions here since v1 types are only accessible within versions module
+impl From<v1::EditorConfig> for EditorConfig {
+    fn from(old: v1::EditorConfig) -> Self {
+        EditorConfig::new(
+            EditorType::from(old.editor_type),
+            old.custom_command,
+            None,
+            None,
+        )
+    }
+}
+
+impl From<v1::EditorType> for EditorType {
+    fn from(old: v1::EditorType) -> Self {
+        match old {
+            v1::EditorType::VsCode => EditorType::VsCode,
+            v1::EditorType::Cursor => EditorType::Cursor,
+            v1::EditorType::Windsurf => EditorType::Windsurf,
+            v1::EditorType::IntelliJ => EditorType::IntelliJ,
+            v1::EditorType::Zed => EditorType::Zed,
+            v1::EditorType::Custom => EditorType::Custom,
+        }
+    }
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
 pub struct Config {
@@ -265,161 +288,6 @@ impl From<v1::SoundFile> for SoundFile {
             v1::SoundFile::CowMooing => SoundFile::CowMooing,
             v1::SoundFile::PhoneVibration => SoundFile::PhoneVibration,
             v1::SoundFile::Rooster => SoundFile::Rooster,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct EditorConfig {
-    editor_type: EditorType,
-    custom_command: Option<String>,
-    #[serde(default)]
-    remote_ssh_host: Option<String>,
-    #[serde(default)]
-    remote_ssh_user: Option<String>,
-}
-
-impl From<v1::EditorConfig> for EditorConfig {
-    fn from(old: v1::EditorConfig) -> Self {
-        Self {
-            editor_type: EditorType::from(old.editor_type), // Now SCREAMING_SNAKE_CASE
-            custom_command: old.custom_command,
-            remote_ssh_host: None,
-            remote_ssh_user: None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS, EnumString)]
-#[ts(use_ts_enum)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
-pub enum EditorType {
-    VsCode,
-    Cursor,
-    Windsurf,
-    IntelliJ,
-    Zed,
-    Xcode,
-    Custom,
-}
-
-impl From<v1::EditorType> for EditorType {
-    fn from(old: v1::EditorType) -> Self {
-        match old {
-            v1::EditorType::VsCode => EditorType::VsCode,
-            v1::EditorType::Cursor => EditorType::Cursor,
-            v1::EditorType::Windsurf => EditorType::Windsurf,
-            v1::EditorType::IntelliJ => EditorType::IntelliJ,
-            v1::EditorType::Zed => EditorType::Zed,
-            v1::EditorType::Custom => EditorType::Custom,
-        }
-    }
-}
-
-impl Default for EditorConfig {
-    fn default() -> Self {
-        Self {
-            editor_type: EditorType::VsCode,
-            custom_command: None,
-            remote_ssh_host: None,
-            remote_ssh_user: None,
-        }
-    }
-}
-
-impl EditorConfig {
-    pub fn get_command(&self) -> CommandBuilder {
-        let base_command = match &self.editor_type {
-            EditorType::VsCode => "code",
-            EditorType::Cursor => "cursor",
-            EditorType::Windsurf => "windsurf",
-            EditorType::IntelliJ => "idea",
-            EditorType::Zed => "zed",
-            EditorType::Xcode => "xed",
-            EditorType::Custom => {
-                if let Some(custom) = &self.custom_command {
-                    custom.as_str()
-                } else {
-                    "code" // fallback to VSCode
-                }
-            }
-        };
-        CommandBuilder::new(base_command)
-    }
-
-    pub async fn open_file(&self, path: &Path) -> Result<Option<String>, EditorOpenError> {
-        if let Some(url) = self.remote_url(path) {
-            return Ok(Some(url));
-        }
-        self.spawn_local(path).await?;
-        Ok(None)
-    }
-
-    fn remote_url(&self, path: &Path) -> Option<String> {
-        let remote_host = self.remote_ssh_host.as_ref()?;
-        let scheme = match self.editor_type {
-            EditorType::VsCode => "vscode",
-            EditorType::Cursor => "cursor",
-            EditorType::Windsurf => "windsurf",
-            _ => return None,
-        };
-        let user_part = self
-            .remote_ssh_user
-            .as_ref()
-            .map(|u| format!("{u}@"))
-            .unwrap_or_default();
-        // files must contain a line and column number
-        let line_col = if path.is_file() { ":1:1" } else { "" };
-        let path = path.to_string_lossy();
-        Some(format!(
-            "{scheme}://vscode-remote/ssh-remote+{user_part}{remote_host}{path}{line_col}"
-        ))
-    }
-
-    pub async fn spawn_local(&self, path: &Path) -> Result<(), EditorOpenError> {
-        let command_builder = self.get_command();
-        let command_parts =
-            command_builder
-                .build_initial()
-                .map_err(|e| EditorOpenError::ExecutableNotFound {
-                    executable: e.to_string(),
-                    editor_type: format!("{:?}", self.editor_type),
-                })?;
-
-        let (executable, args) = command_parts.into_resolved().await.map_err(|e| match e {
-            ExecutorError::ExecutableNotFound { program } => EditorOpenError::ExecutableNotFound {
-                executable: program,
-                editor_type: format!("{:?}", self.editor_type),
-            },
-            _ => EditorOpenError::ExecutableNotFound {
-                executable: e.to_string(),
-                editor_type: format!("{:?}", self.editor_type),
-            },
-        })?;
-
-        let mut cmd = std::process::Command::new(executable);
-        cmd.args(&args).arg(path);
-        cmd.spawn()
-            .map_err(|e| EditorOpenError::ExecutableNotFound {
-                executable: e.to_string(),
-                editor_type: format!("{:?}", self.editor_type),
-            })?;
-        Ok(())
-    }
-
-    pub fn with_override(&self, editor_type_str: Option<&str>) -> Self {
-        if let Some(editor_type_str) = editor_type_str {
-            let editor_type =
-                EditorType::from_str(editor_type_str).unwrap_or(self.editor_type.clone());
-            EditorConfig {
-                editor_type,
-                custom_command: self.custom_command.clone(),
-                remote_ssh_host: self.remote_ssh_host.clone(),
-                remote_ssh_user: self.remote_ssh_user.clone(),
-            }
-        } else {
-            self.clone()
         }
     }
 }
