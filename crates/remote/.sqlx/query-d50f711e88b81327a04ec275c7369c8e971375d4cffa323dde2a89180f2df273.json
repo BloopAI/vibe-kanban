@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                project_id               AS \"project_id!: Uuid\",\n                user_id                  AS \"user_id!: Uuid\",\n                notify_on_status_updated AS \"notify_on_status_updated!\",\n                notify_on_completed      AS \"notify_on_completed!\"\n            FROM project_task_notification_preferences\n            WHERE project_id = $1 AND user_id = $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "project_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "notify_on_status_updated!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "notify_on_completed!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "d50f711e88b81327a04ec275c7369c8e971375d4cffa323dde2a89180f2df273"
+}
