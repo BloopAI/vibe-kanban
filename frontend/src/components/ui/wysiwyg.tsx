@@ -8,6 +8,7 @@ import {
   $convertToMarkdownString,
   $convertFromMarkdownString,
   TRANSFORMERS,
+  type Transformer,
 } from '@lexical/markdown';
 import { ImageChipNode, InsertImageChipPlugin } from './wysiwyg/ImageChipNode';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
@@ -62,11 +63,11 @@ export default function WYSIWYGEditor({
   // Shared ref to avoid update loops and redundant imports
   const lastMdRef = useRef<string>('');
 
-  const exportTransformers = useMemo(
+  const exportTransformers: Transformer[] = useMemo(
     () => [...TRANSFORMERS, IMAGE_CHIP_EXPORT],
     []
   );
-  const importTransformers = useMemo(
+  const importTransformers: Transformer[] = useMemo(
     () => [...TRANSFORMERS, IMAGE_CHIP_IMPORT],
     []
   );
@@ -132,7 +133,7 @@ function MarkdownOnChangePlugin({
 }: {
   onMarkdownChange?: (md: string) => void;
   onEditorStateChange?: (s: EditorState) => void;
-  exportTransformers: any[];
+  exportTransformers: Transformer[];
   lastMdRef: React.MutableRefObject<string>;
 }) {
   const [editor] = useLexicalComposerContext();
@@ -165,7 +166,7 @@ function MarkdownValuePlugin({
   lastMdRef,
 }: {
   value?: string;
-  importTransformers: any[];
+  importTransformers: Transformer[];
   lastMdRef: React.MutableRefObject<string>;
 }) {
   const [editor] = useLexicalComposerContext();
@@ -188,7 +189,7 @@ function MarkdownDefaultValuePlugin({
   lastMdRef,
 }: {
   defaultValue: string;
-  importTransformers: any[];
+  importTransformers: Transformer[];
   lastMdRef: React.MutableRefObject<string>;
 }) {
   const [editor] = useLexicalComposerContext();
