@@ -26,7 +26,7 @@ interface UseJsonPatchStreamResult<T> {
 /**
  * Generic hook for consuming WebSocket streams that send JSON messages with patches
  */
-export const useJsonPatchWsStream = <T>(
+export const useJsonPatchWsStream = <T extends object>(
   endpoint: string | undefined,
   enabled: boolean,
   initialData: () => T,
@@ -117,18 +117,17 @@ export const useJsonPatchWsStream = <T>(
               ? deduplicatePatches(patches)
               : patches;
 
-            if (!filtered.length || !dataRef.current) return;
+            const current = dataRef.current;
+            if (!filtered.length || !current) return;
 
             // Deep clone the current state before mutating it
-            dataRef.current = structuredClone(dataRef.current);
+            const next = structuredClone(current);
 
             // Apply patch (mutates the clone in place)
-            // rfc6902.applyPatch mutates in place and is typed as any
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            applyPatch(dataRef.current as any, filtered);
+            applyPatch(next, filtered);
 
-            // React re-render: dataRef.current is already a new object
-            setData(dataRef.current);
+            dataRef.current = next;
+            setData(next);
           }
 
           // Handle finished messages ({finished: true})
