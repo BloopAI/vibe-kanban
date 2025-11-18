@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { AlertTriangle, Plus, X } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { tasksApi } from '@/lib/api';
-import type { GitBranch } from 'shared/types';
+import type { GitBranch, TaskAttempt, BranchStatus } from 'shared/types';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { FeatureShowcaseModal } from '@/components/showcase/FeatureShowcaseModal';
 import { showcases } from '@/config/showcases';
@@ -106,10 +106,10 @@ function DiffsPanelContainer({
   branchStatus,
   branches,
 }: {
-  attempt: any;
-  selectedTask: any;
+  attempt: TaskAttempt | null;
+  selectedTask: TaskWithAttemptStatus | null;
   projectId: string;
-  branchStatus: any;
+  branchStatus: BranchStatus | null;
   branches: GitBranch[];
 }) {
   const { isAttemptRunning } = useAttemptExecution(attempt?.id);
@@ -994,7 +994,7 @@ export function ProjectTasks() {
             attempt={attempt}
             selectedTask={selectedTask}
             projectId={projectId!}
-            branchStatus={branchStatus}
+            branchStatus={branchStatus ?? null}
             branches={branches}
           />
         )}

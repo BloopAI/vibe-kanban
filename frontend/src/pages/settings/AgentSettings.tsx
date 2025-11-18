@@ -26,6 +26,12 @@ import { useProfiles } from '@/hooks/useProfiles';
 import { useUserSystem } from '@/components/config-provider';
 import { CreateConfigurationDialog } from '@/components/dialogs/settings/CreateConfigurationDialog';
 import { DeleteConfigurationDialog } from '@/components/dialogs/settings/DeleteConfigurationDialog';
+import type { BaseCodingAgent } from 'shared/types';
+
+type ProfilesDoc = {
+  executors: Record<string, Record<string, Record<string, unknown>>>;
+  [key: string]: unknown;
+};
 
 export function AgentSettings() {
   const { t } = useTranslation('settings');
@@ -49,10 +55,11 @@ export function AgentSettings() {
   // Form-based editor state
   const [useFormEditor, setUseFormEditor] = useState(true);
   const [selectedExecutorType, setSelectedExecutorType] =
-    useState<string>('CLAUDE_CODE');
+    useState<BaseCodingAgent>('CLAUDE_CODE' as BaseCodingAgent);
   const [selectedConfiguration, setSelectedConfiguration] =
     useState<string>('DEFAULT');
-  const [localParsedProfiles, setLocalParsedProfiles] = useState<any>(null);
+  const [localParsedProfiles, setLocalParsedProfiles] =
+    useState<ProfilesDoc | null>(null);
   const [isDirty, setIsDirty] = useState(false);
 
   // Sync server state to local state when not dirty
@@ -77,7 +84,7 @@ export function AgentSettings() {
 
   // Mark profiles as dirty
   const markDirty = (nextProfiles: unknown) => {
-    setLocalParsedProfiles(nextProfiles);
+    setLocalParsedProfiles(nextProfiles as ProfilesDoc);
     syncRawProfiles(nextProfiles);
     setIsDirty(true);
   };
@@ -406,7 +413,7 @@ export function AgentSettings() {
                   <Select
                     value={selectedExecutorType}
                     onValueChange={(value) => {
-                      setSelectedExecutorType(value);
+                      setSelectedExecutorType(value as BaseCodingAgent);
                       // Reset configuration selection when executor type changes
                       setSelectedConfiguration('DEFAULT');
                     }}
@@ -499,15 +506,15 @@ export function AgentSettings() {
                 </div>
               </div>
 
-              {localParsedProfiles.executors[selectedExecutorType]?.[
+              {!!localParsedProfiles.executors[selectedExecutorType]?.[
                 selectedConfiguration
               ]?.[selectedExecutorType] && (
                 <ExecutorConfigForm
-                  executor={selectedExecutorType as any}
+                  executor={selectedExecutorType}
                   value={
-                    localParsedProfiles.executors[selectedExecutorType][
+                    (localParsedProfiles.executors[selectedExecutorType][
                       selectedConfiguration
-                    ][selectedExecutorType] || {}
+                    ][selectedExecutorType] as Record<string, unknown>) || {}
                   }
                   onChange={(formData) =>
                     handleExecutorConfigChange(
