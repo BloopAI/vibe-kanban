@@ -105,6 +105,7 @@ fn generate_types_content() -> String {
         executors::command::CommandBuilder::decl(),
         executors::profile::ExecutorProfileId::decl(),
         executors::profile::ExecutorConfig::decl(),
+        executors::profile::ExecutorConfigs::decl(),
         executors::executors::BaseAgentCapability::decl(),
         executors::executors::claude::ClaudeCode::decl(),
         executors::executors::gemini::Gemini::decl(),

@@ -26,12 +26,9 @@ import { useProfiles } from '@/hooks/useProfiles';
 import { useUserSystem } from '@/components/config-provider';
 import { CreateConfigurationDialog } from '@/components/dialogs/settings/CreateConfigurationDialog';
 import { DeleteConfigurationDialog } from '@/components/dialogs/settings/DeleteConfigurationDialog';
-import type { BaseCodingAgent } from 'shared/types';
+import type { BaseCodingAgent, ExecutorConfigs } from 'shared/types';
 
-type ProfilesDoc = {
-  executors: Record<string, Record<string, Record<string, unknown>>>;
-  [key: string]: unknown;
-};
+type ExecutorsMap = Record<string, Record<string, Record<string, unknown>>>;
 
 export function AgentSettings() {
   const { t } = useTranslation('settings');
@@ -59,7 +56,7 @@ export function AgentSettings() {
   const [selectedConfiguration, setSelectedConfiguration] =
     useState<string>('DEFAULT');
   const [localParsedProfiles, setLocalParsedProfiles] =
-    useState<ProfilesDoc | null>(null);
+    useState<ExecutorConfigs | null>(null);
   const [isDirty, setIsDirty] = useState(false);
 
   // Sync server state to local state when not dirty
@@ -84,7 +81,7 @@ export function AgentSettings() {
 
   // Mark profiles as dirty
   const markDirty = (nextProfiles: unknown) => {
-    setLocalParsedProfiles(nextProfiles as ProfilesDoc);
+    setLocalParsedProfiles(nextProfiles as ExecutorConfigs);
     syncRawProfiles(nextProfiles);
     setIsDirty(true);
   };
@@ -119,10 +116,10 @@ export function AgentSettings() {
   ) => {
     if (!localParsedProfiles || !localParsedProfiles.executors) return;
 
+    const executorsMap = localParsedProfiles.executors as unknown as ExecutorsMap;
     const base =
-      baseConfig &&
-      localParsedProfiles.executors[executorType]?.[baseConfig]?.[executorType]
-        ? localParsedProfiles.executors[executorType][baseConfig][executorType]
+      baseConfig && executorsMap[executorType]?.[baseConfig]?.[executorType]
+        ? executorsMap[executorType][baseConfig][executorType]
         : {};
 
     const updatedProfiles = {
@@ -130,7 +127,7 @@ export function AgentSettings() {
       executors: {
         ...localParsedProfiles.executors,
         [executorType]: {
-          ...localParsedProfiles.executors[executorType],
+          ...executorsMap[executorType],
           [configName]: {
             [executorType]: base,
           },
@@ -197,9 +194,10 @@ export function AgentSettings() {
         },
       };
 
+      const executorsMap = updatedProfiles.executors as unknown as ExecutorsMap;
       // If no configurations left, create a blank DEFAULT (should not happen due to check above)
       if (Object.keys(remainingConfigs).length === 0) {
-        updatedProfiles.executors[selectedExecutorType] = {
+        executorsMap[selectedExecutorType] = {
           DEFAULT: { [selectedExecutorType]: {} },
         };
       }
@@ -215,7 +213,7 @@ export function AgentSettings() {
 
         // Select the next available configuration
         const nextConfigs = Object.keys(
-          updatedProfiles.executors[selectedExecutorType]
+          executorsMap[selectedExecutorType] || {}
         );
         const nextSelected = nextConfigs[0] || 'DEFAULT';
         setSelectedConfiguration(nextSelected);
@@ -286,13 +284,14 @@ export function AgentSettings() {
   ) => {
     if (!localParsedProfiles || !localParsedProfiles.executors) return;
 
+    const executorsMap = localParsedProfiles.executors as unknown as ExecutorsMap;
     // Update the parsed profiles with the new config
     const updatedProfiles = {
       ...localParsedProfiles,
       executors: {
         ...localParsedProfiles.executors,
         [executorType]: {
-          ...localParsedProfiles.executors[executorType],
+          ...executorsMap[executorType],
           [configuration]: {
             [executorType]: formData,
           },
@@ -506,16 +505,20 @@ export function AgentSettings() {
                 </div>
               </div>
 
-              {!!localParsedProfiles.executors[selectedExecutorType]?.[
-                selectedConfiguration
-              ]?.[selectedExecutorType] && (
-                <ExecutorConfigForm
-                  executor={selectedExecutorType}
-                  value={
-                    (localParsedProfiles.executors[selectedExecutorType][
-                      selectedConfiguration
-                    ][selectedExecutorType] as Record<string, unknown>) || {}
-                  }
+              {(() => {
+                const executorsMap =
+                  localParsedProfiles.executors as unknown as ExecutorsMap;
+                return (
+                  !!executorsMap[selectedExecutorType]?.[selectedConfiguration]?.[
+                    selectedExecutorType
+                  ] && (
+                    <ExecutorConfigForm
+                      executor={selectedExecutorType}
+                      value={
+                        (executorsMap[selectedExecutorType][selectedConfiguration][
+                          selectedExecutorType
+                        ] as Record<string, unknown>) || {}
+                      }
                   onChange={(formData) =>
                     handleExecutorConfigChange(
                       selectedExecutorType,
@@ -523,12 +526,14 @@ export function AgentSettings() {
                       formData
                     )
                   }
-                  onSave={handleExecutorConfigSave}
-                  disabled={profilesSaving}
-                  isSaving={profilesSaving}
-                  isDirty={isDirty}
-                />
-              )}
+                      onSave={handleExecutorConfigSave}
+                      disabled={profilesSaving}
+                      isSaving={profilesSaving}
+                      isDirty={isDirty}
+                    />
+                  )
+                );
+              })()}
             </div>
           ) : (
             // Raw JSON editor
