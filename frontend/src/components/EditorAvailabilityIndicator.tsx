@@ -1,12 +1,9 @@
 import { Check, AlertCircle, Loader2, ExternalLink } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { EditorAvailabilityState } from '@/hooks/useEditorAvailability';
-import { EditorType } from 'shared/types';
-import { getEditorInstallUrl } from '@/lib/editor-utils';
+import type { EditorAvailability } from '@/hooks/useEditorAvailability';
 
 interface EditorAvailabilityIndicatorProps {
-  availability: EditorAvailabilityState;
-  editorType?: EditorType;
+  availability: EditorAvailability;
 }
 
 /**
@@ -15,17 +12,16 @@ interface EditorAvailabilityIndicatorProps {
  */
 export function EditorAvailabilityIndicator({
   availability,
-  editorType,
 }: EditorAvailabilityIndicatorProps) {
   const { t } = useTranslation('settings');
 
-  if (!availability) return null;
+  if (!availability.status) return null;
 
-  const installUrl = editorType ? getEditorInstallUrl(editorType) : undefined;
+  const { status, installUrl } = availability;
 
   return (
     <div className="flex items-center gap-2 text-sm">
-      {availability === 'checking' && (
+      {status === 'checking' && (
         <>
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           <span className="text-muted-foreground">
@@ -33,7 +29,7 @@ export function EditorAvailabilityIndicator({
           </span>
         </>
       )}
-      {availability === 'available' && (
+      {status === 'available' && (
         <>
           <Check className="h-4 w-4 text-green-500" />
           <span className="text-green-600">
@@ -41,7 +37,7 @@ export function EditorAvailabilityIndicator({
           </span>
         </>
       )}
-      {availability === 'unavailable' && (
+      {status === 'unavailable' && (
         <>
           <AlertCircle className="h-4 w-4 text-orange-500" />
           <span className="text-orange-600">

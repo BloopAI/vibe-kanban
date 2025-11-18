@@ -202,7 +202,6 @@ const OnboardingDialogImpl = NiceModal.create<NoProps>(() => {
             {editorType !== EditorType.CUSTOM && (
               <EditorAvailabilityIndicator
                 availability={editorAvailability}
-                editorType={editorType}
               />
             )}
 

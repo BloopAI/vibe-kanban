@@ -2,7 +2,6 @@ import { useCallback } from 'react';
 import { attemptsApi } from '@/lib/api';
 import { EditorSelectionDialog } from '@/components/dialogs/tasks/EditorSelectionDialog';
 import { EditorType, type EditorOpenError } from 'shared/types';
-import { getEditorInstallUrl } from '@/lib/editor-utils';
 
 type OpenEditorOptions = {
   editorType?: EditorType;
@@ -29,13 +28,13 @@ export function useOpenInEditor(
         if (response.url) {
           window.open(response.url, '_blank');
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error('Failed to open editor:', err);
 
         // Handle executable not found error
-        const errorData = err?.error_data as EditorOpenError | undefined;
+        const errorData = (err as { error_data?: EditorOpenError })?.error_data;
         if (errorData?.type === 'executable_not_found') {
-          const installUrl = getEditorInstallUrl(errorData.editor_type);
+          const installUrl = errorData.install_url;
           if (installUrl) {
             if (
               window.confirm(

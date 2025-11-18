@@ -443,6 +443,7 @@ pub struct CheckEditorAvailabilityQuery {
 #[derive(Debug, Serialize, Deserialize, TS)]
 pub struct CheckEditorAvailabilityResponse {
     available: bool,
+    install_url: Option<String>,
 }
 
 async fn check_editor_availability(
@@ -451,14 +452,21 @@ async fn check_editor_availability(
 ) -> ResponseJson<ApiResponse<CheckEditorAvailabilityResponse>> {
     // Construct a minimal EditorConfig for checking
     let editor_config = EditorConfig::new(
-        query.editor_type,
+        query.editor_type.clone(),
         None, // custom_command
         None, // remote_ssh_host
         None, // remote_ssh_user
     );
 
     let available = editor_config.check_availability().await;
+    let install_url = if !available {
+        query.editor_type.install_url().map(|s| s.to_string())
+    } else {
+        None
+    };
+
     ResponseJson(ApiResponse::success(CheckEditorAvailabilityResponse {
         available,
+        install_url,
     }))
 }

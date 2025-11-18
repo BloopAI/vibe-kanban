@@ -15,6 +15,7 @@ pub enum EditorOpenError {
     ExecutableNotFound {
         executable: String,
         editor_type: EditorType,
+        install_url: Option<String>,
     },
     #[error("Editor command for {editor_type:?} is invalid: {details}")]
     InvalidCommand {
@@ -51,6 +52,20 @@ pub enum EditorType {
     Zed,
     Xcode,
     Custom,
+}
+
+impl EditorType {
+    pub fn install_url(&self) -> Option<&'static str> {
+        match self {
+            EditorType::VsCode => Some("https://code.visualstudio.com/"),
+            EditorType::Cursor => Some("https://cursor.sh/"),
+            EditorType::Windsurf => Some("https://codeium.com/windsurf"),
+            EditorType::IntelliJ => Some("https://www.jetbrains.com/idea/download/"),
+            EditorType::Zed => Some("https://zed.dev/"),
+            EditorType::Xcode => Some("https://developer.apple.com/xcode/"),
+            EditorType::Custom => None,
+        }
+    }
 }
 
 impl Default for EditorConfig {
@@ -111,6 +126,7 @@ impl EditorConfig {
         let (executable, args) = command_parts.into_resolved().await.map_err(|e| match e {
             ExecutorError::ExecutableNotFound { program } => EditorOpenError::ExecutableNotFound {
                 executable: program,
+                install_url: self.editor_type.install_url().map(|s| s.to_string()),
                 editor_type: self.editor_type.clone(),
             },
             _ => EditorOpenError::InvalidCommand {

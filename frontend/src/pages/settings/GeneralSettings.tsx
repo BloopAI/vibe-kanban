@@ -457,7 +457,6 @@ export function GeneralSettings() {
             {draft?.editor.editor_type !== EditorType.CUSTOM && (
               <EditorAvailabilityIndicator
                 availability={editorAvailability}
-                editorType={draft?.editor.editor_type}
               />
             )}
 

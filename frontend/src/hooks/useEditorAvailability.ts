@@ -2,38 +2,47 @@ import { useState, useEffect } from 'react';
 import { EditorType } from 'shared/types';
 import { configApi } from '@/lib/api';
 
-export type EditorAvailabilityState =
+export type EditorAvailabilityStatus =
   | 'checking'
   | 'available'
   | 'unavailable'
   | null;
 
+export interface EditorAvailability {
+  status: EditorAvailabilityStatus;
+  installUrl?: string | null;
+}
+
 /**
  * Hook to check if an editor is available on the system.
  * Automatically checks when the editor type changes.
- * Returns null for Custom editors (can't pre-validate).
+ * Returns an object with status and optional installUrl.
  */
 export function useEditorAvailability(
   editorType: EditorType | null | undefined
-): EditorAvailabilityState {
-  const [availability, setAvailability] =
-    useState<EditorAvailabilityState>(null);
+): EditorAvailability {
+  const [availability, setAvailability] = useState<EditorAvailability>({
+    status: null,
+  });
 
   useEffect(() => {
     // Don't check for Custom editor or if no editor type
     if (!editorType || editorType === EditorType.CUSTOM) {
-      setAvailability(null);
+      setAvailability({ status: null });
       return;
     }
 
     const checkAvailability = async () => {
-      setAvailability('checking');
+      setAvailability({ status: 'checking' });
       try {
         const result = await configApi.checkEditorAvailability(editorType);
-        setAvailability(result.available ? 'available' : 'unavailable');
+        setAvailability({
+          status: result.available ? 'available' : 'unavailable',
+          installUrl: result.install_url,
+        });
       } catch (error) {
         console.error('Failed to check editor availability:', error);
-        setAvailability(null);
+        setAvailability({ status: null });
       }
     };
 
