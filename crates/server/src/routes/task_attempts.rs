@@ -882,12 +882,11 @@ pub async fn create_github_pr(
                 task_attempt.id,
                 e
             );
-            let gh_error = GitHubServiceError::from(e);
-            if gh_error.is_api_data() {
-                Ok(ResponseJson(ApiResponse::error_with_data(gh_error)))
+            if e.is_api_data() {
+                Ok(ResponseJson(ApiResponse::error_with_data(e)))
             } else {
                 Ok(ResponseJson(ApiResponse::error(
-                    format!("Failed to create PR: {}", gh_error).as_str(),
+                    format!("Failed to create PR: {}", e).as_str(),
                 )))
             }
         }

@@ -5,11 +5,39 @@ use std::{
 };
 
 use services::services::{
-    git::{DiffTarget, GitService},
+    git::{DiffTarget, GitCli, GitService},
     github::{GitHubRepoInfo, GitHubServiceError},
 };
 use tempfile::TempDir;
 use utils::diff::DiffChangeKind;
+
+fn add_path(repo_path: &Path, path: &str) {
+    let git = GitCli::new();
+    git.git(repo_path, ["add", path]).unwrap();
+}
+
+fn get_commit_author(repo_path: &Path, commit_sha: &str) -> (Option<String>, Option<String>) {
+    let repo = git2::Repository::open(repo_path).unwrap();
+    let oid = git2::Oid::from_str(commit_sha).unwrap();
+    let commit = repo.find_commit(oid).unwrap();
+    let author = commit.author();
+    (
+        author.name().map(|s| s.to_string()),
+        author.email().map(|s| s.to_string()),
+    )
+}
+
+fn get_head_author(repo_path: &Path) -> (Option<String>, Option<String>) {
+    let repo = git2::Repository::open(repo_path).unwrap();
+    let head = repo.head().unwrap();
+    let oid = head.target().unwrap();
+    let commit = repo.find_commit(oid).unwrap();
+    let author = commit.author();
+    (
+        author.name().map(|s| s.to_string()),
+        author.email().map(|s| s.to_string()),
+    )
+}
 
 fn write_file<P: AsRef<Path>>(base: P, rel: &str, content: &str) {
     let path = base.as_ref().join(rel);
@@ -20,12 +48,18 @@ fn write_file<P: AsRef<Path>>(base: P, rel: &str, content: &str) {
     f.write_all(content.as_bytes()).unwrap();
 }
 
+fn configure_user(repo_path: &Path, name: &str, email: &str) {
+    let repo = git2::Repository::open(repo_path).unwrap();
+    let mut cfg = repo.config().unwrap();
+    cfg.set_str("user.name", name).unwrap();
+    cfg.set_str("user.email", email).unwrap();
+}
+
 fn init_repo_main(root: &TempDir) -> PathBuf {
     let path = root.path().join("repo");
     let s = GitService::new();
     s.initialize_repo_with_main_branch(&path).unwrap();
-    s.configure_user(&path, "Test User", "test@example.com")
-        .unwrap();
+    configure_user(&path, "Test User", "test@example.com");
     s.checkout_branch(&path, "main").unwrap();
     path
 }
@@ -65,7 +99,7 @@ fn initialize_repo_without_user_creates_initial_commit() {
     assert_eq!(head.branch, "main");
     assert!(!head.oid.is_empty());
     // Verify author is set: either global identity (if configured) or fallback
-    let (name, email) = s.get_head_author(&repo_path).unwrap();
+    let (name, email) = get_head_author(&repo_path);
     if has_global_git_identity() {
         assert!(name.is_some() && email.is_some());
     } else {
@@ -110,7 +144,7 @@ fn staged_but_uncommitted_changes_is_dirty() {
     let _ = s.commit(&repo_path, "seed").unwrap();
     // modify and stage
     write_file(&repo_path, "t1.txt", "b\n");
-    s.add_path(&repo_path, "t1.txt").unwrap();
+    add_path(&repo_path, "t1.txt");
     assert!(!s.is_worktree_clean(&repo_path).unwrap());
 }
 
@@ -252,7 +286,9 @@ fn commit_in_detached_head_succeeds_via_service() {
     let s = GitService::new();
     let _ = s.commit(&repo_path, "add a").unwrap();
     // detach via service
-    s.detach_head_current(&repo_path).unwrap();
+    let repo = git2::Repository::open(&repo_path).unwrap();
+    let oid = repo.head().unwrap().target().unwrap();
+    repo.set_head_detached(oid).unwrap();
     // commit while detached
     write_file(&repo_path, "b.txt", "b\n");
     let ok = s.commit(&repo_path, "detached commit").unwrap();
@@ -531,7 +567,7 @@ fn delete_file_commit_has_author_without_user() {
     let sha = s.delete_file_and_commit(&repo_path, "q.txt").unwrap();
 
     // Author should be present: either global identity or fallback
-    let (name, email) = s.get_commit_author(&repo_path, &sha).unwrap();
+    let (name, email) = get_commit_author(&repo_path, &sha);
     if has_global_git_identity() {
         assert!(name.is_some() && email.is_some());
     } else {
@@ -608,7 +644,7 @@ fn squash_merge_libgit2_sets_author_without_user() {
         .unwrap();
 
     // The squash commit author should not be the feature commit's author, and must be present.
-    let (name, email) = s.get_commit_author(&repo_path, &merge_sha).unwrap();
+    let (name, email) = get_commit_author(&repo_path, &merge_sha);
     assert_ne!(name.as_deref(), Some("Other Author"));
     assert_ne!(email.as_deref(), Some("other@example.com"));
     if has_global_git_identity() {

@@ -1036,23 +1036,6 @@ impl GitService {
         Ok(oid)
     }
 
-    /// Get the author name and email for the given commit OID (hex)
-    pub fn get_commit_author(
-        &self,
-        repo_path: &Path,
-        commit_sha: &str,
-    ) -> Result<(Option<String>, Option<String>), GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-        let oid = git2::Oid::from_str(commit_sha)
-            .map_err(|_| GitServiceError::InvalidRepository("Invalid commit SHA".into()))?;
-        let commit = repo.find_commit(oid)?;
-        let author = commit.author();
-        Ok((
-            author.name().map(|s| s.to_string()),
-            author.email().map(|s| s.to_string()),
-        ))
-    }
-
     /// Get the subject/summary line for a given commit OID
     pub fn get_commit_subject(
         &self,
@@ -1169,29 +1152,6 @@ impl GitService {
         Ok(())
     }
 
-    /// Convenience: Get author of HEAD commit
-    pub fn get_head_author(
-        &self,
-        repo_path: &Path,
-    ) -> Result<(Option<String>, Option<String>), GitServiceError> {
-        let head = self.get_head_info(repo_path)?;
-        self.get_commit_author(repo_path, &head.oid)
-    }
-
-    /// Configure local user identity for committing via CLI
-    pub fn configure_user(
-        &self,
-        repo_path: &Path,
-        name: &str,
-        email: &str,
-    ) -> Result<(), GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-        let mut cfg = repo.config()?;
-        cfg.set_str("user.name", name)?;
-        cfg.set_str("user.email", email)?;
-        Ok(())
-    }
-
     /// Create a local branch at the current HEAD
     pub fn create_branch(
         &self,
@@ -1268,25 +1228,6 @@ impl GitService {
                 repo.remote(name, url)?;
             }
         }
-        Ok(())
-    }
-
-    /// Stage a specific path (wrapper over git add)
-    pub fn add_path(&self, repo_path: &Path, path: &str) -> Result<(), GitServiceError> {
-        let git = GitCli::new();
-        git.git(repo_path, ["add", path])
-            .map(|_| ())
-            .map_err(|e| GitServiceError::InvalidRepository(e.to_string()))
-    }
-
-    /// Detach HEAD to the current commit (for testing commit on detached HEAD)
-    pub fn detach_head_current(&self, repo_path: &Path) -> Result<(), GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-        let oid = repo
-            .head()?
-            .target()
-            .ok_or_else(|| GitServiceError::InvalidRepository("HEAD has no target".into()))?;
-        repo.set_head_detached(oid)?;
         Ok(())
     }
 

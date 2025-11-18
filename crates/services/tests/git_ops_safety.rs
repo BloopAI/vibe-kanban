@@ -69,6 +69,11 @@ fn push_ref(repo: &Repository, local: &str, remote: &str) {
         .unwrap();
 }
 
+fn add_path(repo_path: &Path, path: &str) {
+    let git = GitCli::new();
+    git.git(repo_path, ["add", path]).unwrap();
+}
+
 use services::services::git::DiffTarget;
 
 // Non-conflicting setup used by several tests
@@ -559,7 +564,7 @@ fn merge_refuses_with_staged_changes_on_base() {
     commit_all(&wt_repo, "feat change");
     // main has staged change
     write_file(&repo_path, "staged.txt", "staged\n");
-    s.add_path(&repo_path, "staged.txt").unwrap();
+    add_path(&repo_path, "staged.txt");
     let res = s.merge_changes(&repo_path, &worktree_path, "feature", "main", "squash");
     assert!(res.is_err(), "should refuse merge due to staged changes");
     // staged file remains
@@ -910,8 +915,10 @@ fn merge_refreshes_main_worktree_when_on_base() {
     let repo_path = td.path().join("repo_refresh");
     let s = GitService::new();
     s.initialize_repo_with_main_branch(&repo_path).unwrap();
-    s.configure_user(&repo_path, "Test User", "test@example.com")
-        .unwrap();
+    {
+        let repo = Repository::open(&repo_path).unwrap();
+        configure_user(&repo);
+    }
     s.checkout_branch(&repo_path, "main").unwrap();
     // Baseline file
     write_file(&repo_path, "file.txt", "base\n");
@@ -943,8 +950,10 @@ fn sparse_checkout_respected_in_worktree_diffs_and_commit() {
     let repo_path = td.path().join("repo_sparse");
     let s = GitService::new();
     s.initialize_repo_with_main_branch(&repo_path).unwrap();
-    s.configure_user(&repo_path, "Test User", "test@example.com")
-        .unwrap();
+    {
+        let repo = Repository::open(&repo_path).unwrap();
+        configure_user(&repo);
+    }
     s.checkout_branch(&repo_path, "main").unwrap();
     // baseline content
     write_file(&repo_path, "included/a.txt", "A\n");
@@ -1023,8 +1032,10 @@ fn worktree_diff_ignores_commits_where_base_branch_is_ahead() {
     let repo_path = td.path().join("repo_base_ahead");
     let s = GitService::new();
     s.initialize_repo_with_main_branch(&repo_path).unwrap();
-    s.configure_user(&repo_path, "Test User", "test@example.com")
-        .unwrap();
+    {
+        let repo = Repository::open(&repo_path).unwrap();
+        configure_user(&repo);
+    }
     s.checkout_branch(&repo_path, "main").unwrap();
 
     write_file(&repo_path, "shared.txt", "base\n");
@@ -1066,8 +1077,10 @@ fn init_repo_only_service(root: &TempDir) -> PathBuf {
     let repo_path = root.path().join("repo_svc");
     let s = GitService::new();
     s.initialize_repo_with_main_branch(&repo_path).unwrap();
-    s.configure_user(&repo_path, "Test User", "test@example.com")
-        .unwrap();
+    {
+        let repo = Repository::open(&repo_path).unwrap();
+        configure_user(&repo);
+    }
     s.checkout_branch(&repo_path, "main").unwrap();
     repo_path
 }
