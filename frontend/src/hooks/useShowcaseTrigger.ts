@@ -29,7 +29,7 @@ export function useShowcaseTrigger(
     onShow,
   } = options;
 
-  const persistence = useShowcasePersistence();
+  const { isLoaded, hasSeen, markSeen } = useShowcasePersistence();
   const [isOpen, setIsOpen] = useState(false);
   const [hasSeenState, setHasSeenState] = useState(false);
   const timerRef = useRef<number | null>(null);
@@ -42,9 +42,9 @@ export function useShowcaseTrigger(
 
   // Keep 'hasSeenState' in sync if id change or config loads
   useEffect(() => {
-    if (!persistence.isLoaded) return;
-    setHasSeenState(persistence.hasSeen(config.id));
-  }, [persistence.isLoaded, config.id, persistence]);
+    if (!isLoaded) return;
+    setHasSeenState(hasSeen(config.id));
+  }, [isLoaded, config.id, hasSeen]);
 
   // Cleanup timers
   useEffect(() => {
@@ -58,9 +58,21 @@ export function useShowcaseTrigger(
     };
   }, []);
 
+  const close = useCallback(() => {
+    if (markSeenOnClose) {
+      void markSeen(config.id);
+      setHasSeenState(true);
+    }
+    if (timerRef.current !== null) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    setIsOpen(false);
+  }, [config.id, markSeenOnClose, markSeen]);
+
   // Handle enabled state changes
   useEffect(() => {
-    if (!persistence.isLoaded) return;
+    if (!isLoaded) return;
 
     if (enabled) {
       // Only show if not seen
@@ -105,23 +117,11 @@ export function useShowcaseTrigger(
         timerRef.current = null;
       }
     };
-  }, [persistence.isLoaded, enabled, hasSeenState, openDelay, resetOnDisable]);
+  }, [isLoaded, enabled, hasSeenState, openDelay, resetOnDisable, close]);
 
   const open = useCallback(() => {
     setIsOpen(true);
   }, []);
-
-  const close = useCallback(() => {
-    if (markSeenOnClose) {
-      persistence.markSeen(config.id);
-      setHasSeenState(true);
-    }
-    if (timerRef.current !== null) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-    setIsOpen(false);
-  }, [config.id, markSeenOnClose, persistence]);
 
   return { isOpen, open, close, hasSeen: hasSeenState };
 }
