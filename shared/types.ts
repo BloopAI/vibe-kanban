@@ -138,7 +138,7 @@ export type GetMcpServerResponse = { mcp_config: McpConfig, config_path: string,
 
 export type CheckEditorAvailabilityQuery = { editor_type: EditorType, };
 
-export type CheckEditorAvailabilityResponse = { available: boolean, install_url: string | null, };
+export type CheckEditorAvailabilityResponse = { "status": "available" } | { "status": "unavailable", install_url: string | null, };
 
 export type CreateFollowUpAttempt = { prompt: string, variant: string | null, image_ids: Array<string> | null, retry_process_id: string | null, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };
 

@@ -441,9 +441,10 @@ pub struct CheckEditorAvailabilityQuery {
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
-pub struct CheckEditorAvailabilityResponse {
-    available: bool,
-    install_url: Option<String>,
+#[serde(tag = "status", rename_all = "snake_case")]
+pub enum CheckEditorAvailabilityResponse {
+    Available,
+    Unavailable { install_url: Option<String> },
 }
 
 async fn check_editor_availability(
@@ -459,14 +460,13 @@ async fn check_editor_availability(
     );
 
     let available = editor_config.check_availability().await;
-    let install_url = if !available {
-        query.editor_type.install_url().map(|s| s.to_string())
+    let response = if available {
+        CheckEditorAvailabilityResponse::Available
     } else {
-        None
+        CheckEditorAvailabilityResponse::Unavailable {
+            install_url: query.editor_type.install_url().map(|s| s.to_string()),
+        }
     };
 
-    ResponseJson(ApiResponse::success(CheckEditorAvailabilityResponse {
-        available,
-        install_url,
-    }))
+    ResponseJson(ApiResponse::success(response))
 }

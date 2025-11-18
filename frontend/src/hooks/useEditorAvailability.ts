@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
-import { EditorType } from 'shared/types';
+import { EditorType, CheckEditorAvailabilityResponse } from 'shared/types';
 import { configApi } from '@/lib/api';
 
 export type EditorAvailabilityStatus =
+  | CheckEditorAvailabilityResponse['status']
   | 'checking'
-  | 'available'
-  | 'unavailable'
   | null;
 
 export interface EditorAvailability {
@@ -36,10 +35,17 @@ export function useEditorAvailability(
       setAvailability({ status: 'checking' });
       try {
         const result = await configApi.checkEditorAvailability(editorType);
-        setAvailability({
-          status: result.available ? 'available' : 'unavailable',
-          installUrl: result.install_url,
-        });
+        if (result.status === 'available') {
+          setAvailability({
+            status: 'available',
+            installUrl: null,
+          });
+        } else {
+          setAvailability({
+            status: 'unavailable',
+            installUrl: result.install_url,
+          });
+        }
       } catch (error) {
         console.error('Failed to check editor availability:', error);
         setAvailability({ status: null });
