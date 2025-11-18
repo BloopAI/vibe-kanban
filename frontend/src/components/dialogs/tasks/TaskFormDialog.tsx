@@ -38,7 +38,12 @@ import {
   useImageUpload,
   useTaskMutations,
 } from '@/hooks';
-import { useKeySubmitTask, useKeySubmitTaskAlt, useKeyExit, Scope } from '@/keyboard';
+import {
+  useKeySubmitTask,
+  useKeySubmitTaskAlt,
+  useKeyExit,
+  Scope,
+} from '@/keyboard';
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { cn } from '@/lib/utils';
 import type {
@@ -203,7 +208,11 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
 
   const validator = (value: TaskFormValues): string | undefined => {
     if (!value.title.trim().length) return 'need title';
-    if (value.autoStart && !forceCreateOnlyRef.current && (!value.executorProfileId || !value.branch)) {
+    if (
+      value.autoStart &&
+      !forceCreateOnlyRef.current &&
+      (!value.executorProfileId || !value.branch)
+    ) {
       return 'need executor profile or branch;';
     }
   };
