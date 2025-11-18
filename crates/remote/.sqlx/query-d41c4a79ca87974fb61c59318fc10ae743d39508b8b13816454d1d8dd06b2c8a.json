@@ -1,0 +1,93 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO sprints (\n                id, project_id, label, sequence_number, start_date, end_date, status, created_at\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)\n            RETURNING\n                id                  AS \"id!: Uuid\",\n                project_id          AS \"project_id!: Uuid\",\n                label               AS \"label!\",\n                sequence_number     AS \"sequence_number!\",\n                start_date          AS \"start_date!\",\n                end_date            AS \"end_date!\",\n                status              AS \"status!: SprintStatus\",\n                created_at          AS \"created_at!: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "label!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "sequence_number!",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "start_date!",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 5,
+        "name": "end_date!",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 6,
+        "name": "status!: SprintStatus",
+        "type_info": {
+          "Custom": {
+            "name": "sprint_status",
+            "kind": {
+              "Enum": [
+                "planned",
+                "active",
+                "completed"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Varchar",
+        "Int4",
+        "Date",
+        "Date",
+        {
+          "Custom": {
+            "name": "sprint_status",
+            "kind": {
+              "Enum": [
+                "planned",
+                "active",
+                "completed"
+              ]
+            }
+          }
+        },
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "d41c4a79ca87974fb61c59318fc10ae743d39508b8b13816454d1d8dd06b2c8a"
+}

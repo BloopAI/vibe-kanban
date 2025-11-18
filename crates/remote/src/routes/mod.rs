@@ -21,8 +21,14 @@ mod identity;
 mod oauth;
 pub(crate) mod organization_members;
 mod organizations;
+mod project_members;
+mod project_statuses;
 mod projects;
 mod review;
+mod sprints;
+mod tags;
+mod task_comment_reactions;
+mod task_comments;
 pub mod tasks;
 mod tokens;
 
@@ -64,6 +70,12 @@ pub fn router(state: AppState) -> Router {
         .merge(oauth::protected_router())
         .merge(electric_proxy::router())
         .merge(github_app::protected_router())
+        .merge(sprints::router())
+        .merge(project_statuses::router())
+        .merge(tags::router())
+        .merge(task_comments::router())
+        .merge(task_comment_reactions::router())
+        .merge(project_members::router())
         .layer(middleware::from_fn_with_state(
             state.clone(),
             require_session,
