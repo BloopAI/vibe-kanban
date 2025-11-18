@@ -74,6 +74,11 @@
             "placeholder": "예: 사용자 이름",
             "helper": "원격 연결을 위한 SSH 사용자 이름입니다. 설정하지 않으면 VS Code가 SSH 설정을 사용하거나 입력을 요청합니다."
           }
+        },
+        "availability": {
+          "checking": "사용 가능 여부 확인 중...",
+          "available": "사용 가능",
+          "notFound": "PATH에서 찾을 수 없음"
         }
       },
       "github": {

@@ -74,6 +74,11 @@
             "placeholder": "例: ユーザー名",
             "helper": "リモート接続のSSHユーザー名。設定されていない場合、VS CodeはSSH設定を使用するか、入力を求めます。"
           }
+        },
+        "availability": {
+          "checking": "利用可能性を確認中...",
+          "available": "利用可能",
+          "notFound": "PATHに見つかりません"
         }
       },
       "github": {

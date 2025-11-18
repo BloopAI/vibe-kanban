@@ -1,4 +1,5 @@
 import { Check, AlertCircle, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { EditorAvailabilityState } from '@/hooks/useEditorAvailability';
 
 interface EditorAvailabilityIndicatorProps {
@@ -12,6 +13,8 @@ interface EditorAvailabilityIndicatorProps {
 export function EditorAvailabilityIndicator({
   availability,
 }: EditorAvailabilityIndicatorProps) {
+  const { t } = useTranslation('settings');
+
   if (!availability) return null;
 
   return (
@@ -20,20 +23,24 @@ export function EditorAvailabilityIndicator({
         <>
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           <span className="text-muted-foreground">
-            Checking availability...
+            {t('settings.general.editor.availability.checking')}
           </span>
         </>
       )}
       {availability === 'available' && (
         <>
           <Check className="h-4 w-4 text-green-500" />
-          <span className="text-green-600">Available</span>
+          <span className="text-green-600">
+            {t('settings.general.editor.availability.available')}
+          </span>
         </>
       )}
       {availability === 'unavailable' && (
         <>
           <AlertCircle className="h-4 w-4 text-orange-500" />
-          <span className="text-orange-600">Not found in PATH</span>
+          <span className="text-orange-600">
+            {t('settings.general.editor.availability.notFound')}
+          </span>
         </>
       )}
     </div>
