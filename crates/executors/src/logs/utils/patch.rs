@@ -1,10 +1,12 @@
+use std::sync::Arc;
+
 use json_patch::Patch;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_value, json, to_value};
 use ts_rs::TS;
-use workspace_utils::diff::Diff;
+use workspace_utils::{diff::Diff, msg_store::MsgStore};
 
-use crate::logs::NormalizedEntry;
+use crate::logs::{NormalizedEntry, utils::EntryIndexProvider};
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, TS)]
 #[serde(rename_all = "lowercase")]
@@ -138,4 +140,38 @@ pub fn extract_normalized_entry_from_patch(patch: &Patch) -> Option<(usize, Norm
             .and_then(|c| from_value::<NormalizedEntry>(c.clone()).ok())
             .map(|entry| (entry_index, entry))
     })
+}
+
+pub fn upsert_normalized_entry(
+    msg_store: &Arc<MsgStore>,
+    index: usize,
+    normalized_entry: NormalizedEntry,
+    is_new: bool,
+) {
+    if is_new {
+        msg_store.push_patch(ConversationPatch::add_normalized_entry(
+            index,
+            normalized_entry,
+        ));
+    } else {
+        msg_store.push_patch(ConversationPatch::replace(index, normalized_entry));
+    }
+}
+
+pub fn add_normalized_entry(
+    msg_store: &Arc<MsgStore>,
+    index_provider: &EntryIndexProvider,
+    normalized_entry: NormalizedEntry,
+) -> usize {
+    let index = index_provider.next();
+    upsert_normalized_entry(msg_store, index, normalized_entry, true);
+    index
+}
+
+pub fn replace_normalized_entry(
+    msg_store: &Arc<MsgStore>,
+    index: usize,
+    normalized_entry: NormalizedEntry,
+) {
+    upsert_normalized_entry(msg_store, index, normalized_entry, false);
 }

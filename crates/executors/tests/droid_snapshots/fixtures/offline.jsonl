@@ -1,2 +1,0 @@
-{"type":"system","subtype":"init","cwd":"/Users/tempuser/projects/vibe-kanban","session_id":"57c91038-f04a-4a7a-9a50-a9c029c4c770","tools":["Read","LS","Execute","Edit","MultiEdit","ApplyPatch","Grep","Glob","Create","ExitSpecMode","WebSearch","TodoWrite","FetchUrl","slack_post_message"],"model":"gpt-5-codex"}
-{"type":"message","role":"user","id":"3fc9beab-585a-4c5d-a03f-31ca66061316","text":"testing droid while offline","timestamp":1760807575333,"session_id":"57c91038-f04a-4a7a-9a50-a9c029c4c770"}

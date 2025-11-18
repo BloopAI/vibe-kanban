@@ -23,6 +23,22 @@ pub struct ToolResult {
     pub value: serde_json::Value,
 }
 
+impl ToolResult {
+    pub fn markdown<S: Into<String>>(markdown: S) -> Self {
+        Self {
+            r#type: ToolResultValueType::Markdown,
+            value: serde_json::Value::String(markdown.into()),
+        }
+    }
+
+    pub fn json(value: serde_json::Value) -> Self {
+        Self {
+            r#type: ToolResultValueType::Json,
+            value,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(tag = "type", rename_all = "snake_case")]
 #[ts(export)]

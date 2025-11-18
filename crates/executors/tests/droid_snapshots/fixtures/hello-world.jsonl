@@ -1,3 +1,0 @@
-{"type":"system","subtype":"init","cwd":"/Users/tempuser/projects/vibe-kanban","session_id":"4ec398ce-0c7a-4d1d-9e53-588a0a52da81","tools":["Read","LS","Execute","Edit","MultiEdit","ApplyPatch","Grep","Glob","Create","ExitSpecMode","WebSearch","TodoWrite","FetchUrl","slack_post_message"],"model":"gpt-5-codex"}
-{"type":"message","role":"user","id":"0886d350-7fb6-4882-93a4-47206f0b3dae","text":"hello world","timestamp":1760806427595,"session_id":"4ec398ce-0c7a-4d1d-9e53-588a0a52da81"}
-{"type":"message","role":"assistant","id":"6ec8090b-22a7-4e7b-b74f-887840cd3921","text":"# Hello world!","timestamp":1760806437677,"session_id":"4ec398ce-0c7a-4d1d-9e53-588a0a52da81"}

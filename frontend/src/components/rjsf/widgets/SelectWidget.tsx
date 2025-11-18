@@ -39,15 +39,12 @@ export const SelectWidget = (props: WidgetProps) => {
   };
 
   // Convert enumOptions to the format expected by our Select component
-  // Filter out null from enumOptions since we add it ourselves for nullable fields
-  const selectOptions = (enumOptions || []).filter(
-    (opt) => opt.value !== null && opt.value !== 'null'
-  );
+  const selectOptions = enumOptions || [];
 
   // Handle nullable types by adding a null option
   const isNullable = Array.isArray(schema.type) && schema.type.includes('null');
   const allOptions = isNullable
-    ? [{ value: '__null__', label: 'Select an option...' }, ...selectOptions]
+    ? [{ value: '__null__', label: 'None' }, ...selectOptions]
     : selectOptions;
 
   return (

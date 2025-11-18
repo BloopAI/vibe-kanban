@@ -140,6 +140,48 @@
         "DROID": {
           "autonomy": "skip-permissions-unsafe"
         }
+      },
+      "GPT_5_1_CODEX": {
+        "DROID": {
+          "autonomy": "skip-permissions-unsafe",
+          "model": "gpt-5.1-codex"
+        }
+      },
+      "GPT_5_1": {
+        "DROID": {
+          "autonomy": "skip-permissions-unsafe",
+          "model": "gpt-5.1"
+        }
+      },
+      "GEMINI_3_PRO": {
+        "DROID": {
+          "autonomy": "skip-permissions-unsafe",
+          "model": "gemini-3-pro-preview"
+        }
+      },
+      "CLAUDE_SONNET_4_5": {
+        "DROID": {
+          "autonomy": "skip-permissions-unsafe",
+          "model": "claude-sonnet-4-5-20250929"
+        }
+      },
+      "CLAUDE_HAIKU_4_5": {
+        "DROID": {
+          "autonomy": "skip-permissions-unsafe",
+          "model": "claude-haiku-4-5-20251001"
+        }
+      },
+      "CLAUDE_OPUS_4_1": {
+        "DROID": {
+          "autonomy": "skip-permissions-unsafe",
+          "model": "claude-opus-4-1-20250805"
+        }
+      },
+      "GLM_4_6": {
+        "DROID": {
+          "autonomy": "skip-permissions-unsafe",
+          "model": "glm-4.6"
+        }
       }
     }
   }

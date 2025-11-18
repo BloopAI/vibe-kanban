@@ -29,7 +29,6 @@ enum_dispatch = "0.3.13"
 futures-io = "0.3.31"
 tokio-stream = { version = "0.1.17", features = ["io-util"] }
 futures = "0.3.31"
-async-stream = "0.3"
 bon = "3.6"
 fork_stream = "0.1.0"
 os_pipe = "1.2"
@@ -50,6 +49,3 @@ icu_provider = { version = "2.1.1", default-features = false, features = ["sync"
 
 [target.'cfg(windows)'.dependencies]
 winsplit = "0.1.0"
-
-[dev-dependencies]
-insta = { version = "1.40", features = ["yaml"] }

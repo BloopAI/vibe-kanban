@@ -58,10 +58,6 @@ export function AgentSettings() {
   const [localParsedProfiles, setLocalParsedProfiles] =
     useState<ExecutorConfigs | null>(null);
   const [isDirty, setIsDirty] = useState(false);
-  const selectedExecutorPayload =
-    localParsedProfiles?.executors?.[selectedExecutorType]?.[
-      selectedConfiguration
-    ]?.[selectedExecutorType] || null;
 
   // Sync server state to local state when not dirty
   useEffect(() => {

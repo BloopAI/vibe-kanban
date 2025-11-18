@@ -41,7 +41,10 @@ use crate::{
         NormalizedEntryError, NormalizedEntryType, TodoItem, ToolResult, ToolResultValueType,
         ToolStatus,
         stderr_processor::normalize_stderr_logs,
-        utils::{ConversationPatch, EntryIndexProvider},
+        utils::{
+            ConversationPatch, EntryIndexProvider,
+            patch::{add_normalized_entry, replace_normalized_entry, upsert_normalized_entry},
+        },
     },
 };
 
@@ -309,40 +312,6 @@ impl LogState {
 enum UpdateMode {
     Append,
     Set,
-}
-
-fn upsert_normalized_entry(
-    msg_store: &Arc<MsgStore>,
-    index: usize,
-    normalized_entry: NormalizedEntry,
-    is_new: bool,
-) {
-    if is_new {
-        msg_store.push_patch(ConversationPatch::add_normalized_entry(
-            index,
-            normalized_entry,
-        ));
-    } else {
-        msg_store.push_patch(ConversationPatch::replace(index, normalized_entry));
-    }
-}
-
-fn add_normalized_entry(
-    msg_store: &Arc<MsgStore>,
-    index_provider: &EntryIndexProvider,
-    normalized_entry: NormalizedEntry,
-) -> usize {
-    let index = index_provider.next();
-    upsert_normalized_entry(msg_store, index, normalized_entry, true);
-    index
-}
-
-fn replace_normalized_entry(
-    msg_store: &Arc<MsgStore>,
-    index: usize,
-    normalized_entry: NormalizedEntry,
-) {
-    upsert_normalized_entry(msg_store, index, normalized_entry, false);
 }
 
 fn normalize_file_changes(

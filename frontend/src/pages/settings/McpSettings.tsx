@@ -290,7 +290,6 @@ export function McpSettings() {
               <SelectContent>
                 {profiles &&
                   Object.entries(profiles)
-                    .filter(([key]) => key !== 'DROID')
                     .sort((a, b) => a[0].localeCompare(b[0]))
                     .map(([profileKey]) => (
                       <SelectItem key={profileKey} value={profileKey}>

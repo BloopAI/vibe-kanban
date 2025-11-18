@@ -9,7 +9,7 @@ pub struct ExecutorSession {
     pub id: Uuid,
     pub task_attempt_id: Uuid,
     pub execution_process_id: Uuid,
-    pub session_id: Option<String>, // External session ID from Claude/Amp/Droid
+    pub session_id: Option<String>, // External session ID from Claude/Amp
     pub prompt: Option<String>,     // The prompt sent to the executor
     pub summary: Option<String>,    // Final assistant message/summary
     pub created_at: DateTime<Utc>,
