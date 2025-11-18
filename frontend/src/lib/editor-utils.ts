@@ -9,6 +9,8 @@ export const EDITOR_INSTALL_URLS: Partial<Record<EditorType, string>> = {
   [EditorType.XCODE]: 'https://developer.apple.com/xcode/',
 };
 
-export function getEditorInstallUrl(editorType: EditorType): string | undefined {
+export function getEditorInstallUrl(
+  editorType: EditorType
+): string | undefined {
   return EDITOR_INSTALL_URLS[editorType];
 }
