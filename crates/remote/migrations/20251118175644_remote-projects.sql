@@ -5,7 +5,7 @@ CREATE TYPE task_priority AS ENUM ('high', 'medium', 'low');
 CREATE TYPE sprint_status AS ENUM ('planned', 'active', 'completed');
 
 -- 3. PROJECTS
-CREATE TABLE projects (
+CREATE TABLE remote_projects (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
@@ -22,7 +22,7 @@ CREATE TABLE projects (
 
 -- 4. PROJECT MEMBERS
 CREATE TABLE project_members (
-    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    project_id UUID NOT NULL REFERENCES remote_projects(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     
@@ -33,7 +33,7 @@ CREATE TABLE project_members (
 -- Configurable statuses per project (Backlog, Todo, etc.)
 CREATE TABLE project_statuses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    project_id UUID NOT NULL REFERENCES remote_projects(id) ON DELETE CASCADE,
     name VARCHAR(50) NOT NULL,
     color VARCHAR(7) NOT NULL,
     sort_order INTEGER NOT NULL DEFAULT 0,
@@ -47,7 +47,7 @@ CREATE TABLE project_statuses (
 
 -- 6. PROJECT NOTIFICATION PREFERENCES
 CREATE TABLE project_notification_preferences (
-    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    project_id UUID NOT NULL REFERENCES remote_projects(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     
     notify_on_task_created BOOLEAN NOT NULL DEFAULT TRUE,
@@ -58,7 +58,7 @@ CREATE TABLE project_notification_preferences (
 
 -- 6. PROJECT NOTIFICATION PREFERENCES
 CREATE TABLE project_task_notification_preferences (
-    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    project_id UUID NOT NULL REFERENCES remote_projects(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     
     notify_on_status_updated BOOLEAN NOT NULL DEFAULT TRUE,
@@ -70,7 +70,7 @@ CREATE TABLE project_task_notification_preferences (
 -- 7. SPRINTS
 CREATE TABLE sprints (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    project_id UUID NOT NULL REFERENCES remote_projects(id) ON DELETE CASCADE,
     
     label VARCHAR(100) NOT NULL, -- e.g. "Sprint 1"
     sequence_number INTEGER NOT NULL, -- e.g. 1
@@ -84,7 +84,7 @@ CREATE TABLE sprints (
 -- 8. TASKS
 CREATE TABLE tasks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    project_id UUID NOT NULL REFERENCES remote_projects(id) ON DELETE CASCADE,
     
     -- Status inherits from project_statuses
     status_id UUID NOT NULL REFERENCES project_statuses(id),
@@ -146,7 +146,7 @@ CREATE TABLE task_dependencies (
 -- 12. TAGS
 CREATE TABLE tags (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    project_id UUID NOT NULL REFERENCES remote_projects(id) ON DELETE CASCADE,
     name VARCHAR(50) NOT NULL,
     color VARCHAR(7) NOT NULL,
     
