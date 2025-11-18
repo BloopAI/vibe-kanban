@@ -11,7 +11,7 @@ import { Loader } from '@/components/ui/loader';
 import GitOperations from '@/components/tasks/Toolbar/GitOperations';
 import { useTaskAttempt } from '@/hooks/useTaskAttempt';
 import { useBranchStatus, useAttemptExecution } from '@/hooks';
-import { useProject } from '@/contexts/project-context';
+import { useProject } from '@/contexts/ProjectContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import {
   GitOperationsProvider,

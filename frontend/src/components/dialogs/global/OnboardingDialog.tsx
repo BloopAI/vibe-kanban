@@ -26,7 +26,7 @@ import { Input } from '@/components/ui/input';
 import { Sparkles, Code, ChevronDown, HandMetal } from 'lucide-react';
 import { BaseCodingAgent, EditorType } from 'shared/types';
 import type { EditorConfig, ExecutorProfileId } from 'shared/types';
-import { useUserSystem } from '@/components/config-provider';
+import { useUserSystem } from '@/components/ConfigProvider';
 
 import { toPrettyCase } from '@/utils/string';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';

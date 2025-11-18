@@ -20,8 +20,8 @@ import {
   useBranches,
   useTaskAttempts,
 } from '@/hooks';
-import { useProject } from '@/contexts/project-context';
-import { useUserSystem } from '@/components/config-provider';
+import { useProject } from '@/contexts/ProjectContext';
+import { useUserSystem } from '@/components/ConfigProvider';
 import { paths } from '@/lib/paths';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';

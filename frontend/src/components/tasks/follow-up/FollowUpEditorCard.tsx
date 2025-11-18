@@ -1,7 +1,7 @@
 import { Loader2 } from 'lucide-react';
 import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
 import { cn } from '@/lib/utils';
-import { useProject } from '@/contexts/project-context';
+import { useProject } from '@/contexts/ProjectContext';
 import { useCallback } from 'react';
 
 type Props = {

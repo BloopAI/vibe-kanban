@@ -4,7 +4,7 @@ import { json, jsonParseLinter } from '@codemirror/lang-json';
 import { linter } from '@codemirror/lint';
 import { indentOnInput } from '@codemirror/language';
 import { EditorView } from '@codemirror/view';
-import { useTheme } from '@/components/theme-provider';
+import { useTheme } from '@/components/ThemeProvider';
 import { ThemeMode } from 'shared/types';
 import { cn } from '@/lib/utils';
 

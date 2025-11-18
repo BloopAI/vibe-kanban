@@ -28,10 +28,10 @@ import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
 import {
   ImageUploadSection,
   type ImageUploadSectionHandle,
-} from '@/components/ui/ImageUploadSection';
+} from '@/components/ui/image-upload-section';
 import BranchSelector from '@/components/tasks/BranchSelector';
 import { ExecutorProfileSelector } from '@/components/settings';
-import { useUserSystem } from '@/components/config-provider';
+import { useUserSystem } from '@/components/ConfigProvider';
 import {
   useProjectBranches,
   useTaskImages,

@@ -14,7 +14,7 @@ import { defineModal } from '@/lib/modals';
 import { useTranslation } from 'react-i18next';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import { useTaskMutations } from '@/hooks/useTaskMutations';
-import { useProject } from '@/contexts/project-context';
+import { useProject } from '@/contexts/ProjectContext';
 
 export interface StopShareTaskDialogProps {
   sharedTask: SharedTaskRecord;

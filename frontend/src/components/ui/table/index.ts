@@ -7,6 +7,6 @@ export {
   TableCell,
   TableEmpty,
   TableLoading,
-} from './Table';
-export { DataTable } from './DataTable';
-export type { ColumnDef, DataTableProps } from './DataTable';
+} from './table';
+export { DataTable } from './data-table';
+export type { ColumnDef, DataTableProps } from './data-table';

@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { ProjectFormFields } from '@/components/projects/project-form-fields';
+import { ProjectFormFields } from '@/components/projects/ProjectFormFields';
 import { CreateProject } from 'shared/types';
 import { generateProjectNameFromPath } from '@/utils/string';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';

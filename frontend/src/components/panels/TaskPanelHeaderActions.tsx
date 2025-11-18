@@ -1,7 +1,7 @@
 import { Button } from '../ui/button';
 import { X } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
-import { ActionsDropdown } from '../ui/ActionsDropdown';
+import { ActionsDropdown } from '../ui/actions-dropdown';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 
 type Task = TaskWithAttemptStatus;

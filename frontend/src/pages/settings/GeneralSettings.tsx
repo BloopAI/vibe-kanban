@@ -38,8 +38,8 @@ import {
 import { getLanguageOptions } from '@/i18n/languages';
 
 import { toPrettyCase } from '@/utils/string';
-import { useTheme } from '@/components/theme-provider';
-import { useUserSystem } from '@/components/config-provider';
+import { useTheme } from '@/components/ThemeProvider';
+import { useUserSystem } from '@/components/ConfigProvider';
 import { TagManager } from '@/components/TagManager';
 
 export function GeneralSettings() {

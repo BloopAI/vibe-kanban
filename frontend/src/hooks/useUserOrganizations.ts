@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { organizationsApi } from '../lib/api';
-import { useUserSystem } from '@/components/config-provider';
+import { useUserSystem } from '@/components/ConfigProvider';
 import type { ListOrganizationsResponse } from 'shared/types';
 
 /**

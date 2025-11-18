@@ -4,7 +4,7 @@ import {
   $isImageChipNode,
   ImageChipNode,
   $createImageChipNode,
-} from './ImageChipNode';
+} from './image-chip-node';
 
 export const IMAGE_CHIP_EXPORT: TextMatchTransformer = {
   type: 'text-match',

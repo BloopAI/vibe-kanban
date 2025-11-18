@@ -7,7 +7,7 @@ import {
   TableCell,
   TableEmpty,
   TableLoading,
-} from './Table';
+} from './table';
 
 export type ColumnDef<T> = {
   id: string;

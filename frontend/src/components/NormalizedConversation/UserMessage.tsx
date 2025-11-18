@@ -4,7 +4,7 @@ import { Pencil } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useProcessRetry } from '@/hooks/useProcessRetry';
 import { TaskAttempt, BaseAgentCapability } from 'shared/types';
-import { useUserSystem } from '@/components/config-provider';
+import { useUserSystem } from '@/components/ConfigProvider';
 import { useDraftStream } from '@/hooks/follow-up/useDraftStream';
 import { RetryEditorInline } from './RetryEditorInline';
 import { useRetryUi } from '@/contexts/RetryUiContext';

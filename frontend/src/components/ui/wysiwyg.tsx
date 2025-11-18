@@ -10,7 +10,7 @@ import {
   TRANSFORMERS,
   type Transformer,
 } from '@lexical/markdown';
-import { ImageChipNode, InsertImageChipPlugin } from './wysiwyg/ImageChipNode';
+import { ImageChipNode, InsertImageChipPlugin } from './wysiwyg/image-chip-node';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { ListNode, ListItemNode } from '@lexical/list';
@@ -22,7 +22,7 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import {
   IMAGE_CHIP_EXPORT,
   IMAGE_CHIP_IMPORT,
-} from './wysiwyg/imageChipMarkdown';
+} from './wysiwyg/image-chip-markdown';
 
 type WysiwygProps = {
   placeholder: string;

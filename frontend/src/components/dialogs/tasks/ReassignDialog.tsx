@@ -23,7 +23,7 @@ import { tasksApi } from '@/lib/api';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import { useAuth } from '@/hooks';
 import { useMutation } from '@tanstack/react-query';
-import { useProject } from '@/contexts/project-context';
+import { useProject } from '@/contexts/ProjectContext';
 import { useProjectRemoteMembers } from '@/hooks/useProjectRemoteMembers';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 

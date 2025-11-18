@@ -130,6 +130,13 @@ module.exports = {
   },
   overrides: [
     {
+      // Entry point exception - main.tsx can stay lowercase
+      files: ['src/main.tsx', 'src/vite-env.d.ts'],
+      rules: {
+        'check-file/filename-naming-convention': 'off',
+      },
+    },
+    {
       // Shadcn UI components are an exception - keep kebab-case
       files: ['src/components/ui/**/*.{ts,tsx}'],
       rules: {

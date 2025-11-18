@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { useProject } from '@/contexts/project-context';
+import { useProject } from '@/contexts/ProjectContext';
 import { useTaskAttempts } from '@/hooks/useTaskAttempts';
 import { useTaskAttempt } from '@/hooks/useTaskAttempt';
 import { useNavigateWithSearch } from '@/hooks';
