@@ -205,7 +205,10 @@ export function ProjectTasks() {
 
   const isLoaded = !loading;
   const showcaseId = showcases.taskPanel.id;
-  const seenFeatures = config?.showcases?.seen_features ?? [];
+  const seenFeatures = useMemo(
+    () => config?.showcases?.seen_features ?? [],
+    [config?.showcases?.seen_features]
+  );
   const seen = isLoaded && seenFeatures.includes(showcaseId);
 
   useEffect(() => {
