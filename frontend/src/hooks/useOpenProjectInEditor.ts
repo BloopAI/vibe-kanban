@@ -1,7 +1,8 @@
 import { useCallback } from 'react';
 import { projectsApi } from '@/lib/api';
 import { ProjectEditorSelectionDialog } from '@/components/dialogs/projects/ProjectEditorSelectionDialog';
-import type { EditorType, Project } from 'shared/types';
+import { EditorType, type EditorOpenError, type Project } from 'shared/types';
+import { getEditorInstallUrl } from '@/lib/editor-utils';
 
 export function useOpenProjectInEditor(
   project: Project | null,
@@ -21,8 +22,25 @@ export function useOpenProjectInEditor(
         if (response.url) {
           window.open(response.url, '_blank');
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to open project in editor:', err);
+
+        // Handle executable not found error
+        const errorData = err?.error_data as EditorOpenError | undefined;
+        if (errorData?.type === 'executable_not_found') {
+          const installUrl = getEditorInstallUrl(errorData.editor_type);
+          if (installUrl) {
+            if (
+              window.confirm(
+                `Editor executable '${errorData.executable}' not found. Would you like to open the installation page?`
+              )
+            ) {
+              window.open(installUrl, '_blank');
+            }
+            return;
+          }
+        }
+
         if (!editorType) {
           if (onShowEditorDialog) {
             onShowEditorDialog();
