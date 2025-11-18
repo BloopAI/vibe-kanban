@@ -152,15 +152,15 @@ function cutFromInput(el: HTMLInputElement | HTMLTextAreaElement) {
       el.value = before + after;
       el.setSelectionRange(start, start);
     }
-    const ie =
-      typeof (window as any).InputEvent !== 'undefined'
-        ? new (window as any).InputEvent('input', {
+    const ie: Event =
+      typeof InputEvent === 'function'
+        ? new InputEvent('input', {
             bubbles: true,
             composed: true,
             inputType: 'deleteByCut',
           })
         : new Event('input', { bubbles: true });
-    el.dispatchEvent(ie as Event);
+    el.dispatchEvent(ie);
     el.dispatchEvent(new Event('change', { bubbles: true }));
   }
 }
@@ -182,16 +182,16 @@ function pasteIntoInput(
     el.setSelectionRange(caret, caret);
   }
   el.focus();
-  const ie =
-    typeof (window as any).InputEvent !== 'undefined'
-      ? new (window as any).InputEvent('input', {
+  const ie: Event =
+    typeof InputEvent === 'function'
+      ? new InputEvent('input', {
           bubbles: true,
           composed: true,
           inputType: 'insertFromPaste',
           data: text,
         })
       : new Event('input', { bubbles: true });
-  el.dispatchEvent(ie as Event);
+  el.dispatchEvent(ie);
   el.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
@@ -216,7 +216,7 @@ function insertTextAtCaretGeneric(text: string) {
   } else {
     try {
       document.execCommand('insertText', false, text);
-      (el as any).dispatchEvent?.(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('input', { bubbles: true }));
     } catch {
       (el as HTMLElement).innerText += text;
     }
