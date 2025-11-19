@@ -23,6 +23,47 @@ class FileTagOption extends MenuOption {
   }
 }
 
+const MAX_DIALOG_HEIGHT = 320;
+const VIEWPORT_MARGIN = 8;
+const VERTICAL_GAP = 4;
+const VERTICAL_GAP_ABOVE = 24;
+const MIN_WIDTH = 320;
+
+function getMenuPosition(anchorEl: HTMLElement) {
+  const rect = anchorEl.getBoundingClientRect();
+  const viewportHeight = window.innerHeight;
+  const viewportWidth = window.innerWidth;
+
+  const spaceAbove = rect.top;
+  const spaceBelow = viewportHeight - rect.bottom;
+
+  const showBelow = spaceBelow >= spaceAbove;
+
+  const availableVerticalSpace = showBelow ? spaceBelow : spaceAbove;
+
+  const maxHeight = Math.max(
+    0,
+    Math.min(MAX_DIALOG_HEIGHT, availableVerticalSpace - 2 * VIEWPORT_MARGIN)
+  );
+
+  let top: number | undefined;
+  let bottom: number | undefined;
+
+  if (showBelow) {
+    top = rect.bottom + VERTICAL_GAP;
+  } else {
+    bottom = viewportHeight - rect.top + VERTICAL_GAP_ABOVE;
+  }
+
+  let left = rect.left;
+  const maxLeft = viewportWidth - MIN_WIDTH - VIEWPORT_MARGIN;
+  if (left > maxLeft) {
+    left = Math.max(VIEWPORT_MARGIN, maxLeft);
+  }
+
+  return { top, bottom, left, maxHeight };
+}
+
 export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
   const [editor] = useLexicalComposerContext();
   const [options, setOptions] = useState<FileTagOption[]>([]);
@@ -89,6 +130,10 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
       ) => {
         if (!anchorRef.current) return null;
 
+        const { top, bottom, left, maxHeight } = getMenuPosition(
+          anchorRef.current
+        );
+
         const tagResults = options.filter((r) => r.item.type === 'tag');
         const fileResults = options.filter((r) => r.item.type === 'file');
 
@@ -96,10 +141,11 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
           <div
             className="fixed bg-background border border-border rounded-md shadow-lg overflow-y-auto"
             style={{
-              top: (anchorRef.current.getBoundingClientRect().bottom ?? 0) + 4,
-              left: anchorRef.current.getBoundingClientRect().left ?? 0,
-              maxHeight: 320,
-              minWidth: 320,
+              top,
+              bottom,
+              left,
+              maxHeight,
+              minWidth: MIN_WIDTH,
               zIndex: 10000,
             }}
           >
