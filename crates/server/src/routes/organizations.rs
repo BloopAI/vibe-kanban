@@ -101,7 +101,6 @@ async fn create_organization(
             "organization_created",
             serde_json::json!({
                 "org_id": response.organization.id.to_string(),
-                "is_personal": response.organization.is_personal,
             }),
         )
         .await;
