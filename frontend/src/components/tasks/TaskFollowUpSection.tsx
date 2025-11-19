@@ -25,6 +25,7 @@ import { useClickedElements } from '@/contexts/ClickedElementsProvider';
 import { useEntries } from '@/contexts/EntriesContext';
 import { useKeyCycleVariant, useKeySubmitFollowUp, Scope } from '@/keyboard';
 import { useHotkeysContext } from 'react-hotkeys-hook';
+import { useProject } from '@/contexts/ProjectContext';
 //
 import { VariantSelector } from '@/components/tasks/VariantSelector';
 import { FollowUpStatusRow } from '@/components/tasks/FollowUpStatusRow';
@@ -55,6 +56,7 @@ export function TaskFollowUpSection({
   jumpToLogsTab,
 }: TaskFollowUpSectionProps) {
   const { t } = useTranslation('tasks');
+  const { projectId } = useProject();
 
   const { isAttemptRunning, stopExecution, isStopping, processes } =
     useAttemptExecution(selectedAttemptId, task.id);
@@ -499,6 +501,7 @@ export function TaskFollowUpSection({
                   showLoadingOverlay={isUnqueuing || !isDraftLoaded}
                   onPasteFiles={handlePasteImages}
                   onFocusChange={setIsTextareaFocused}
+                  projectId={projectId}
                 />
                 <FollowUpStatusRow
                   status={{

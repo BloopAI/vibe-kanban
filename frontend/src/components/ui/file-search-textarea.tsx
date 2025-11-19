@@ -8,11 +8,12 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
-import { projectsApi, tagsApi } from '@/lib/api';
 import { Tag as TagIcon, FileText } from 'lucide-react';
 import { getCaretClientRect } from '@/lib/caretPosition';
-
-import type { SearchResult, Tag } from 'shared/types';
+import {
+  searchTagsAndFiles,
+  type SearchResultItem,
+} from '@/lib/searchTagsAndFiles';
 
 const DROPDOWN_MIN_WIDTH = 320;
 const DROPDOWN_MAX_HEIGHT = 320;
@@ -20,19 +21,6 @@ const DROPDOWN_MIN_HEIGHT = 120;
 const DROPDOWN_VIEWPORT_PADDING = 16;
 const DROPDOWN_VIEWPORT_PADDING_TOTAL = DROPDOWN_VIEWPORT_PADDING * 2;
 const DROPDOWN_GAP = 4;
-
-interface FileSearchResult extends SearchResult {
-  name: string;
-}
-
-// Unified result type for both tags and files
-interface SearchResultItem {
-  type: 'tag' | 'file';
-  // For tags
-  tag?: Tag;
-  // For files
-  file?: FileSearchResult;
-}
 
 interface FileSearchTextareaProps {
   value: string;
@@ -93,42 +81,12 @@ export const FileSearchTextarea = forwardRef<
       return;
     }
 
-    // Normal case: search both tags and files with query
+    // Search both tags and files with query
     const searchBoth = async () => {
       setIsLoading(true);
 
       try {
-        const results: SearchResultItem[] = [];
-
-        // Fetch all tags and filter client-side
-        const tags = await tagsApi.list();
-        const filteredTags = tags.filter((tag) =>
-          tag.tag_name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-        results.push(
-          ...filteredTags.map((tag) => ({ type: 'tag' as const, tag }))
-        );
-
-        // Fetch files (if projectId is available and query has content)
-        if (projectId && searchQuery.length > 0) {
-          const fileResults = await projectsApi.searchFiles(
-            projectId,
-            searchQuery
-          );
-          const fileSearchResults: FileSearchResult[] = fileResults.map(
-            (item) => ({
-              ...item,
-              name: item.path.split('/').pop() || item.path,
-            })
-          );
-          results.push(
-            ...fileSearchResults.map((file) => ({
-              type: 'file' as const,
-              file,
-            }))
-          );
-        }
-
+        const results = await searchTagsAndFiles(searchQuery, projectId);
         setSearchResults(results);
         setShowDropdown(results.length > 0);
         setSelectedIndex(-1);

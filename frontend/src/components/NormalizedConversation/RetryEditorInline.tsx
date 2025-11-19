@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FollowUpEditorCard } from '@/components/tasks/follow-up/FollowUpEditorCard';
+import { useProject } from '@/contexts/ProjectContext';
 import { FollowUpStatusRow } from '@/components/tasks/FollowUpStatusRow';
 import { ImageUploadSection } from '@/components/ui/image-upload-section';
 import { cn } from '@/lib/utils';
@@ -47,6 +48,7 @@ export function RetryEditorInline({
   const { isAttemptRunning, attemptData } = useAttemptExecution(attemptId);
   const { data: branchStatus } = useBranchStatus(attemptId);
   const { profiles } = useUserSystem();
+  const { projectId } = useProject();
 
   // Errors are now reserved for send/cancel; creation occurs outside via useProcessRetry
   const [initError] = useState<string | null>(null);
@@ -269,6 +271,7 @@ export function RetryEditorInline({
         disabled={isSending || !!isFinalizing}
         showLoadingOverlay={isSending || !!isFinalizing}
         textareaClassName="bg-background"
+        projectId={projectId}
       />
 
       {/* Draft save/load status (no queue/sending for retry) */}

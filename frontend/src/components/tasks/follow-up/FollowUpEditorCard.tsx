@@ -12,6 +12,7 @@ type Props = {
   onPasteFiles?: (files: File[]) => void;
   textareaClassName?: string;
   onFocusChange?: (isFocused: boolean) => void;
+  projectId?: string;
 };
 
 export function FollowUpEditorCard({
@@ -23,6 +24,7 @@ export function FollowUpEditorCard({
   onPasteFiles,
   textareaClassName,
   onFocusChange,
+  projectId,
 }: Props) {
   return (
     <div className="relative">
@@ -34,6 +36,7 @@ export function FollowUpEditorCard({
         onPasteFiles={onPasteFiles}
         onFocusChange={onFocusChange}
         className={cn('min-h-[40px]', textareaClassName)}
+        projectId={projectId}
       />
       {showLoadingOverlay && (
         <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-background/60">

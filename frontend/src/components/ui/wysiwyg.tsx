@@ -9,6 +9,7 @@ import {
   $convertFromMarkdownString,
   TRANSFORMERS,
 } from '@lexical/markdown';
+import { FileTagTypeaheadPlugin } from './wysiwyg/plugins/file-tag-typeahead-plugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { ListNode, ListItemNode } from '@lexical/list';
@@ -29,6 +30,7 @@ type WysiwygProps = {
   onPasteFiles?: (files: File[]) => void;
   onFocusChange?: (isFocused: boolean) => void;
   className?: string;
+  projectId?: string; // for file search in typeahead
 };
 
 export default function WYSIWYGEditor({
@@ -41,6 +43,7 @@ export default function WYSIWYGEditor({
   onPasteFiles,
   onFocusChange,
   className,
+  projectId,
 }: WysiwygProps) {
   const initialConfig = useMemo(
     () => ({
@@ -138,6 +141,7 @@ export default function WYSIWYGEditor({
         <ListPlugin />
         <HistoryPlugin />
         <MarkdownShortcutPlugin transformers={markdownTransformers} />
+        <FileTagTypeaheadPlugin projectId={projectId} />
 
         {/* Emit markdown on change */}
         <MarkdownOnChangePlugin
