@@ -25,9 +25,6 @@ pub enum GitHubServiceError {
     #[ts(skip)]
     #[error("Pull request error: {0}")]
     PullRequest(String),
-    #[ts(skip)]
-    #[error("Branch error: {0}")]
-    Branch(String),
     #[error("GitHub token is invalid or expired.")]
     TokenInvalid,
     #[error("Insufficient permissions")]
@@ -153,19 +150,6 @@ pub struct GitHubService {
     gh_cli: GhCli,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct RepositoryInfo {
-    pub id: i64,
-    pub name: String,
-    pub full_name: String,
-    pub owner: String,
-    pub description: Option<String>,
-    pub clone_url: String,
-    pub ssh_url: String,
-    pub default_branch: String,
-    pub private: bool,
-}
-
 impl GitHubService {
     /// Create a new GitHub service with authentication
     pub fn new() -> Result<Self, GitHubServiceError> {
@@ -218,26 +202,6 @@ impl GitHubService {
                 );
             })
             .await
-    }
-
-    pub async fn fetch_repository_id(
-        &self,
-        owner: &str,
-        repo: &str,
-    ) -> Result<i64, GitHubServiceError> {
-        let owner = owner.to_string();
-        let repo = repo.to_string();
-        let cli = self.gh_cli.clone();
-        let owner_for_cli = owner.clone();
-        let repo_for_cli = repo.clone();
-        task::spawn_blocking(move || cli.repo_database_id(&owner_for_cli, &repo_for_cli))
-            .await
-            .map_err(|err| {
-                GitHubServiceError::Repository(format!(
-                    "Failed to execute GitHub CLI for repo lookup: {err}"
-                ))
-            })?
-            .map_err(GitHubServiceError::from)
     }
 
     async fn create_pr_via_cli(
@@ -349,15 +313,5 @@ impl GitHubService {
             );
         })
         .await
-    }
-
-    #[cfg(feature = "cloud")]
-    pub async fn list_repositories(
-        &self,
-        _page: u8,
-    ) -> Result<Vec<RepositoryInfo>, GitHubServiceError> {
-        Err(GitHubServiceError::Repository(
-            "Listing repositories via GitHub CLI is not supported.".into(),
-        ))
     }
 }

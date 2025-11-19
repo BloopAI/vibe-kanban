@@ -101,7 +101,6 @@ fn generate_types_content() -> String {
         services::services::git::GitBranch::decl(),
         utils::diff::Diff::decl(),
         utils::diff::DiffChangeKind::decl(),
-        services::services::github::RepositoryInfo::decl(),
         executors::command::CommandBuilder::decl(),
         executors::profile::ExecutorProfileId::decl(),
         executors::profile::ExecutorConfig::decl(),
