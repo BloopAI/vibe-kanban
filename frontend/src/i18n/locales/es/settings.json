@@ -78,7 +78,8 @@
         "availability": {
           "checking": "Verificando disponibilidad...",
           "available": "Disponible",
-          "notFound": "No encontrado en PATH"
+          "notFound": "No encontrado en PATH",
+          "install": "Instalar"
         }
       },
       "github": {

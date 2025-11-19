@@ -78,7 +78,8 @@
         "availability": {
           "checking": "利用可能性を確認中...",
           "available": "利用可能",
-          "notFound": "PATHに見つかりません"
+          "notFound": "PATHに見つかりません",
+          "install": "インストール"
         }
       },
       "github": {

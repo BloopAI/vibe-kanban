@@ -78,7 +78,8 @@
         "availability": {
           "checking": "사용 가능 여부 확인 중...",
           "available": "사용 가능",
-          "notFound": "PATH에서 찾을 수 없음"
+          "notFound": "PATH에서 찾을 수 없음",
+          "install": "설치"
         }
       },
       "github": {

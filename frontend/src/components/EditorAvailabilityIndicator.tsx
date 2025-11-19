@@ -51,7 +51,7 @@ export function EditorAvailabilityIndicator({
                   rel="noopener noreferrer"
                   className="inline-flex items-center hover:underline"
                 >
-                  Install
+                  {t('settings.general.editor.availability.install')}
                   <ExternalLink className="ml-1 h-3 w-3" />
                 </a>
               </>
