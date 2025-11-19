@@ -132,9 +132,9 @@ impl Deployment for LocalDeployment {
         let profile_cache = Arc::new(RwLock::new(None));
         let auth_context = AuthContext::new(oauth_credentials.clone(), profile_cache.clone());
 
-        let api_base = option_env!("VK_SHARED_API_BASE")
-            .map(|s| s.to_string())
-            .or_else(|| std::env::var("VK_SHARED_API_BASE").ok());
+        let api_base = std::env::var("VK_SHARED_API_BASE")
+            .ok()
+            .or_else(|| option_env!("VK_SHARED_API_BASE").map(|s| s.to_string()));
 
         let remote_client = match api_base {
             Some(url) => match RemoteClient::new(&url, auth_context.clone()) {
