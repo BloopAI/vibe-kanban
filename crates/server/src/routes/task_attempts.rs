@@ -657,7 +657,10 @@ pub async fn create_github_pr(
         .fetch_and_check_branch_exists(&project.git_repo_path, &target_branch)
     {
         Ok(true) => {
-            tracing::info!("Target branch '{}' exists, proceeding with PR creation", target_branch);
+            tracing::info!(
+                "Target branch '{}' exists, proceeding with PR creation",
+                target_branch
+            );
         }
         Ok(false) => {
             let error_msg = format!(

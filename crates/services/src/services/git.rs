@@ -1421,7 +1421,8 @@ impl GitService {
         let repo = self.open_repo(repo_path)?;
 
         // Try to find the branch to determine which remote to fetch from
-        let branch_result = repo.find_branch(branch_name, BranchType::Local)
+        let branch_result = repo
+            .find_branch(branch_name, BranchType::Local)
             .or_else(|_| repo.find_branch(branch_name, BranchType::Remote));
 
         // If branch exists, get its remote and fetch
