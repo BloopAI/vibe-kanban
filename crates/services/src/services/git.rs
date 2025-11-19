@@ -3,7 +3,7 @@ use std::{collections::HashMap, path::Path};
 use chrono::{DateTime, Utc};
 use git2::{
     BranchType, Delta, DiffFindOptions, DiffOptions, Error as GitError, Reference, Remote,
-    Repository, Sort, build::CheckoutBuilder,
+    Repository, Sort,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -1077,16 +1077,6 @@ impl GitService {
         Ok((st.uncommitted_tracked, st.untracked))
     }
 
-    /// Expose full worktree status details (CLI porcelain parsing)
-    pub fn get_worktree_status(
-        &self,
-        worktree_path: &Path,
-    ) -> Result<cli::WorktreeStatus, GitServiceError> {
-        let cli = GitCli::new();
-        cli.get_worktree_status(worktree_path)
-            .map_err(|e| GitServiceError::InvalidRepository(format!("git status failed: {e}")))
-    }
-
     /// Evaluate whether any action is needed to reset to `target_commit_oid` and
     /// optionally perform the actions.
     pub fn reconcile_worktree_to_commit(
@@ -1151,33 +1141,6 @@ impl GitService {
         Ok(())
     }
 
-    /// Create a local branch at the current HEAD
-    pub fn create_branch(
-        &self,
-        repo_path: &Path,
-        branch_name: &str,
-    ) -> Result<(), GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-        let head_commit = repo.head()?.peel_to_commit()?;
-        repo.branch(branch_name, &head_commit, true)?;
-        Ok(())
-    }
-
-    /// Checkout a local branch in the given working tree
-    pub fn checkout_branch(
-        &self,
-        repo_path: &Path,
-        branch_name: &str,
-    ) -> Result<(), GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-        let refname = format!("refs/heads/{branch_name}");
-        repo.set_head(&refname)?;
-        let mut co = CheckoutBuilder::new();
-        co.force();
-        repo.checkout_head(Some(&mut co))?;
-        Ok(())
-    }
-
     /// Add a worktree for a branch, optionally creating the branch
     pub fn add_worktree(
         &self,
@@ -1209,23 +1172,6 @@ impl GitService {
         let git = GitCli::new();
         git.worktree_prune(repo_path)
             .map_err(|e| GitServiceError::InvalidRepository(e.to_string()))?;
-        Ok(())
-    }
-
-    /// Set or add a remote URL
-    pub fn set_remote(
-        &self,
-        repo_path: &Path,
-        name: &str,
-        url: &str,
-    ) -> Result<(), GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-        match repo.find_remote(name) {
-            Ok(_) => repo.remote_set_url(name, url)?,
-            Err(_) => {
-                repo.remote(name, url)?;
-            }
-        }
         Ok(())
     }
 
@@ -1585,69 +1531,6 @@ impl GitService {
                     Err(_) => Err(GitServiceError::BranchNotFound(branch_name.to_string())),
                 }
             }
-        }
-    }
-
-    /// Delete a file from the repository and commit the change
-    pub fn delete_file_and_commit(
-        &self,
-        worktree_path: &Path,
-        file_path: &str,
-    ) -> Result<String, GitServiceError> {
-        let repo = Repository::open(worktree_path)?;
-
-        // Get the absolute path to the file within the worktree
-        let file_full_path = worktree_path.join(file_path);
-
-        // Check if file exists and delete it
-        if file_full_path.exists() {
-            std::fs::remove_file(&file_full_path).map_err(|e| {
-                GitServiceError::IoError(std::io::Error::other(format!(
-                    "Failed to delete file {file_path}: {e}"
-                )))
-            })?;
-        }
-
-        // Stage the deletion
-        let mut index = repo.index()?;
-        index.remove_path(Path::new(file_path))?;
-        index.write()?;
-
-        // Create a commit for the file deletion
-        let signature = self.signature_with_fallback(&repo)?;
-        let tree_id = index.write_tree()?;
-        let tree = repo.find_tree(tree_id)?;
-
-        // Get the current HEAD commit
-        let head = repo.head()?;
-        let parent_commit = head.peel_to_commit()?;
-
-        let commit_message = format!("Delete file: {file_path}");
-        let commit_id = repo.commit(
-            Some("HEAD"),
-            &signature,
-            &signature,
-            &commit_message,
-            &tree,
-            &[&parent_commit],
-        )?;
-
-        Ok(commit_id.to_string())
-    }
-
-    /// Get the default branch name for the repository
-    pub fn get_default_branch_name(&self, repo_path: &Path) -> Result<String, GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-
-        match repo.head() {
-            Ok(head_ref) => Ok(head_ref.shorthand().unwrap_or("main").to_string()),
-            Err(e)
-                if e.class() == git2::ErrorClass::Reference
-                    && e.code() == git2::ErrorCode::UnbornBranch =>
-            {
-                Ok("main".to_string()) // Repository has no commits yet
-            }
-            Err(_) => Ok("main".to_string()), // Fallback
         }
     }
 

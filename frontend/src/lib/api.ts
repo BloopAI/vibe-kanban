@@ -557,21 +557,6 @@ export const attemptsApi = {
     return handleApiResponse<DraftResponse>(response);
   },
 
-  deleteFile: async (
-    attemptId: string,
-    fileToDelete: string
-  ): Promise<void> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/delete-file?file_path=${encodeURIComponent(
-        fileToDelete
-      )}`,
-      {
-        method: 'POST',
-      }
-    );
-    return handleApiResponse<void>(response);
-  },
-
   openEditor: async (
     attemptId: string,
     editorType?: EditorType,

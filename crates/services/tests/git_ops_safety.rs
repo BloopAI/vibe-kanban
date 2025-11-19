@@ -557,7 +557,8 @@ fn merge_refuses_with_staged_changes_on_base() {
     let (repo_path, worktree_path) = setup_repo_with_worktree(&td);
     let s = GitService::new();
     // ensure main is checked out
-    s.checkout_branch(&repo_path, "main").unwrap();
+    let repo = Repository::open(&repo_path).unwrap();
+    checkout_branch(&repo, "main");
     // feature adds change and commits
     write_file(&worktree_path, "m.txt", "feature\n");
     let wt_repo = Repository::open(&worktree_path).unwrap();
@@ -577,7 +578,8 @@ fn merge_preserves_unstaged_changes_on_base() {
     let td = TempDir::new().unwrap();
     let (repo_path, worktree_path) = setup_repo_with_worktree(&td);
     let s = GitService::new();
-    s.checkout_branch(&repo_path, "main").unwrap();
+    let repo = Repository::open(&repo_path).unwrap();
+    checkout_branch(&repo, "main");
     // modify unstaged
     write_file(&repo_path, "common.txt", "local edited\n");
     // feature modifies a different file
@@ -601,8 +603,9 @@ fn update_ref_does_not_destroy_feature_worktree_dirty_state() {
     let td = TempDir::new().unwrap();
     let (repo_path, worktree_path) = setup_repo_with_worktree(&td);
     let s = GitService::new();
+    let repo = Repository::open(&repo_path).unwrap();
     // ensure main is checked out
-    s.checkout_branch(&repo_path, "main").unwrap();
+    checkout_branch(&repo, "main");
     // feature makes an initial change and commits
     write_file(&worktree_path, "f.txt", "feat\n");
     let wt_repo = Repository::open(&worktree_path).unwrap();
@@ -915,17 +918,15 @@ fn merge_refreshes_main_worktree_when_on_base() {
     let repo_path = td.path().join("repo_refresh");
     let s = GitService::new();
     s.initialize_repo_with_main_branch(&repo_path).unwrap();
-    {
-        let repo = Repository::open(&repo_path).unwrap();
-        configure_user(&repo);
-    }
-    s.checkout_branch(&repo_path, "main").unwrap();
+    let repo = Repository::open(&repo_path).unwrap();
+    configure_user(&repo);
+    checkout_branch(&repo, "main");
     // Baseline file
     write_file(&repo_path, "file.txt", "base\n");
     let _ = s.commit(&repo_path, "add base").unwrap();
 
     // Create feature branch and worktree
-    s.create_branch(&repo_path, "feature").unwrap();
+    create_branch_from_head(&repo, "feature");
     let wt = td.path().join("wt_refresh");
     s.add_worktree(&repo_path, &wt, "feature", false).unwrap();
     // Modify file in worktree and commit
@@ -950,11 +951,9 @@ fn sparse_checkout_respected_in_worktree_diffs_and_commit() {
     let repo_path = td.path().join("repo_sparse");
     let s = GitService::new();
     s.initialize_repo_with_main_branch(&repo_path).unwrap();
-    {
-        let repo = Repository::open(&repo_path).unwrap();
-        configure_user(&repo);
-    }
-    s.checkout_branch(&repo_path, "main").unwrap();
+    let repo = Repository::open(&repo_path).unwrap();
+    configure_user(&repo);
+    checkout_branch(&repo, "main");
     // baseline content
     write_file(&repo_path, "included/a.txt", "A\n");
     write_file(&repo_path, "excluded/b.txt", "B\n");
@@ -968,7 +967,7 @@ fn sparse_checkout_respected_in_worktree_diffs_and_commit() {
         .unwrap();
 
     // create feature branch and worktree
-    s.create_branch(&repo_path, "feature").unwrap();
+    create_branch_from_head(&repo, "feature");
     let wt = td.path().join("wt_sparse");
     s.add_worktree(&repo_path, &wt, "feature", false).unwrap();
 
@@ -1032,16 +1031,14 @@ fn worktree_diff_ignores_commits_where_base_branch_is_ahead() {
     let repo_path = td.path().join("repo_base_ahead");
     let s = GitService::new();
     s.initialize_repo_with_main_branch(&repo_path).unwrap();
-    {
-        let repo = Repository::open(&repo_path).unwrap();
-        configure_user(&repo);
-    }
-    s.checkout_branch(&repo_path, "main").unwrap();
+    let repo = Repository::open(&repo_path).unwrap();
+    configure_user(&repo);
+    checkout_branch(&repo, "main");
 
     write_file(&repo_path, "shared.txt", "base\n");
     let _ = s.commit(&repo_path, "add shared").unwrap();
 
-    s.create_branch(&repo_path, "feature").unwrap();
+    create_branch_from_head(&repo, "feature");
     let wt = td.path().join("wt_base_ahead");
     s.add_worktree(&repo_path, &wt, "feature", false).unwrap();
 
@@ -1077,11 +1074,9 @@ fn init_repo_only_service(root: &TempDir) -> PathBuf {
     let repo_path = root.path().join("repo_svc");
     let s = GitService::new();
     s.initialize_repo_with_main_branch(&repo_path).unwrap();
-    {
-        let repo = Repository::open(&repo_path).unwrap();
-        configure_user(&repo);
-    }
-    s.checkout_branch(&repo_path, "main").unwrap();
+    let repo = Repository::open(&repo_path).unwrap();
+    configure_user(&repo);
+    checkout_branch(&repo, "main");
     repo_path
 }
 
@@ -1089,11 +1084,12 @@ fn init_repo_only_service(root: &TempDir) -> PathBuf {
 fn merge_binary_conflict_does_not_move_ref() {
     let td = TempDir::new().unwrap();
     let repo_path = init_repo_only_service(&td);
+    let repo = Repository::open(&repo_path).unwrap();
     let s = GitService::new();
     // seed
     let _ = s.commit(&repo_path, "seed").unwrap();
     // create feature branch and worktree
-    s.create_branch(&repo_path, "feature").unwrap();
+    create_branch_from_head(&repo, "feature");
     let worktree_path = td.path().join("wt_bin");
     s.add_worktree(&repo_path, &worktree_path, "feature", false)
         .unwrap();
@@ -1119,11 +1115,12 @@ fn merge_binary_conflict_does_not_move_ref() {
 fn merge_rename_vs_modify_conflict_does_not_move_ref() {
     let td = TempDir::new().unwrap();
     let repo_path = init_repo_only_service(&td);
+    let repo = Repository::open(&repo_path).unwrap();
     let s = GitService::new();
     // base file
     fs::write(repo_path.join("conflict.txt"), b"base\n").unwrap();
     let _ = s.commit(&repo_path, "base").unwrap();
-    s.create_branch(&repo_path, "feature").unwrap();
+    create_branch_from_head(&repo, "feature");
     let worktree_path = td.path().join("wt_ren");
     s.add_worktree(&repo_path, &worktree_path, "feature", false)
         .unwrap();
@@ -1185,7 +1182,8 @@ fn merge_leaves_no_staged_changes_on_target_branch() {
 
     // Ensure main repo is on the base branch (triggers CLI merge path)
     let s = GitService::new();
-    s.checkout_branch(&repo_path, "main").unwrap();
+    let repo = Repository::open(&repo_path).unwrap();
+    checkout_branch(&repo, "main");
 
     // Feature branch makes some changes
     write_file(&worktree_path, "feature_file.txt", "feature content\n");
@@ -1236,7 +1234,6 @@ fn worktree_to_worktree_merge_leaves_no_staged_changes() {
         .expect("init repo");
     let repo = Repository::open(&repo_path).unwrap();
     configure_user(&repo);
-    checkout_branch(&repo, "main");
 
     write_file(&repo_path, "base.txt", "base content\n");
     commit_all(&repo, "initial commit");
@@ -1308,7 +1305,7 @@ fn merge_into_orphaned_branch_uses_libgit2_fallback() {
         .unwrap();
 
     // Ensure main repo is on different branch and no worktree has orphaned-feature
-    service.checkout_branch(&repo_path, "main").unwrap();
+    checkout_branch(&repo, "main");
 
     // Make changes in source worktree
     write_file(
@@ -1369,7 +1366,6 @@ fn merge_base_ahead_of_task_should_error() {
         .expect("init repo");
     let repo = Repository::open(&repo_path).unwrap();
     configure_user(&repo);
-    checkout_branch(&repo, "main");
 
     // Initial commit on main
     write_file(&repo_path, "base.txt", "initial content\n");

@@ -1375,40 +1375,6 @@ pub async fn abort_conflicts_task_attempt(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
-#[derive(serde::Deserialize)]
-pub struct DeleteFileQuery {
-    file_path: String,
-}
-
-#[axum::debug_handler]
-pub async fn delete_task_attempt_file(
-    Extension(task_attempt): Extension<TaskAttempt>,
-    Query(query): Query<DeleteFileQuery>,
-    State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
-    let container_ref = deployment
-        .container()
-        .ensure_container_exists(&task_attempt)
-        .await?;
-    let worktree_path = std::path::Path::new(&container_ref);
-
-    // Use GitService to delete file and commit
-    let _commit_id = deployment
-        .git()
-        .delete_file_and_commit(worktree_path, &query.file_path)
-        .map_err(|e| {
-            tracing::error!(
-                "Failed to delete file '{}' from task attempt {}: {}",
-                query.file_path,
-                task_attempt.id,
-                e
-            );
-            ApiError::GitService(e)
-        })?;
-
-    Ok(ResponseJson(ApiResponse::success(())))
-}
-
 #[axum::debug_handler]
 pub async fn start_dev_server(
     Extension(task_attempt): Extension<TaskAttempt>,
@@ -1714,7 +1680,6 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/pr", post(create_github_pr))
         .route("/pr/attach", post(attach_existing_pr))
         .route("/open-editor", post(open_task_attempt_in_editor))
-        .route("/delete-file", post(delete_task_attempt_file))
         .route("/children", get(get_task_attempt_children))
         .route("/stop", post(stop_task_attempt_execution))
         .route("/change-target-branch", post(change_target_branch))

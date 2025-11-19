@@ -4,6 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use git2::{Repository, build::CheckoutBuilder};
 use services::services::{
     git::{DiffTarget, GitCli, GitService},
     github::{GitHubRepoInfo, GitHubServiceError},
@@ -60,8 +61,22 @@ fn init_repo_main(root: &TempDir) -> PathBuf {
     let s = GitService::new();
     s.initialize_repo_with_main_branch(&path).unwrap();
     configure_user(&path, "Test User", "test@example.com");
-    s.checkout_branch(&path, "main").unwrap();
+    checkout_branch(&path, "main");
     path
+}
+
+fn checkout_branch(repo_path: &Path, name: &str) {
+    let repo = Repository::open(repo_path).unwrap();
+    repo.set_head(&format!("refs/heads/{name}")).unwrap();
+    let mut co = CheckoutBuilder::new();
+    co.force();
+    repo.checkout_head(Some(&mut co)).unwrap();
+}
+
+fn create_branch(repo_path: &Path, name: &str) {
+    let repo = Repository::open(repo_path).unwrap();
+    let head = repo.head().unwrap().peel_to_commit().unwrap();
+    let _ = repo.branch(name, &head, true).unwrap();
 }
 
 #[test]
@@ -149,35 +164,6 @@ fn staged_but_uncommitted_changes_is_dirty() {
 }
 
 #[test]
-fn delete_nonexistent_file_creates_noop_commit() {
-    let td = TempDir::new().unwrap();
-    let repo_path = init_repo_main(&td);
-    // baseline commit first so we have HEAD
-    write_file(&repo_path, "seed.txt", "s\n");
-    let s = GitService::new();
-    let _ = s.commit(&repo_path, "seed").unwrap();
-    let before = s.get_head_info(&repo_path).unwrap().oid;
-    let res = s.delete_file_and_commit(&repo_path, "nope.txt").unwrap();
-    let after = s.get_head_info(&repo_path).unwrap().oid;
-    assert_ne!(before, after);
-    assert_eq!(after, res);
-}
-
-#[test]
-fn delete_directory_path_errors() {
-    let td = TempDir::new().unwrap();
-    let repo_path = init_repo_main(&td);
-    // create and commit a file so repo has history
-    write_file(&repo_path, "dir/file.txt", "z\n");
-    let s = GitService::new();
-    let _ = s.commit(&repo_path, "add file").unwrap();
-    // directory path should cause an error
-    let s = GitService::new();
-    let res = s.delete_file_and_commit(&repo_path, "dir");
-    assert!(res.is_err());
-}
-
-#[test]
 fn worktree_clean_detects_staged_deleted_and_renamed() {
     let td = TempDir::new().unwrap();
     let repo_path = init_repo_main(&td);
@@ -206,8 +192,8 @@ fn diff_added_binary_file_has_no_content() {
     let s = GitService::new();
     let _ = s.commit(&repo_path, "base").unwrap();
     // branch with binary file
-    s.create_branch(&repo_path, "feature").unwrap();
-    s.checkout_branch(&repo_path, "feature").unwrap();
+    create_branch(&repo_path, "feature");
+    checkout_branch(&repo_path, "feature");
     // write binary with null byte
     let mut f = fs::File::create(repo_path.join("bin.dat")).unwrap();
     f.write_all(&[0u8, 1, 2, 3]).unwrap();
@@ -236,11 +222,7 @@ fn initialize_and_default_branch_and_head_info() {
     let td = TempDir::new().unwrap();
     let repo_path = init_repo_main(&td);
 
-    // Default branch should be main
     let s = GitService::new();
-    let def = s.get_default_branch_name(&repo_path).unwrap();
-    assert_eq!(def, "main");
-
     // Head info branch should be main
     let head = s.get_head_info(&repo_path).unwrap();
     assert_eq!(head.branch, "main");
@@ -306,14 +288,14 @@ fn branch_status_ahead_and_behind() {
     let _ = s.commit(&repo_path, "base").unwrap();
 
     // create feature from main
-    s.create_branch(&repo_path, "feature").unwrap();
+    create_branch(&repo_path, "feature");
     // advance feature by 1
-    s.checkout_branch(&repo_path, "feature").unwrap();
+    checkout_branch(&repo_path, "feature");
     write_file(&repo_path, "feature.txt", "f1\n");
     let _ = s.commit(&repo_path, "f1").unwrap();
 
     // advance main by 1
-    s.checkout_branch(&repo_path, "main").unwrap();
+    checkout_branch(&repo_path, "main");
     write_file(&repo_path, "main.txt", "m1\n");
     let _ = s.commit(&repo_path, "m1").unwrap();
 
@@ -322,7 +304,7 @@ fn branch_status_ahead_and_behind() {
     assert_eq!((ahead, behind), (1, 1));
 
     // advance feature by one more (ahead 2, behind 1)
-    s.checkout_branch(&repo_path, "feature").unwrap();
+    checkout_branch(&repo_path, "feature");
     write_file(&repo_path, "feature2.txt", "f2\n");
     let _ = s.commit(&repo_path, "f2").unwrap();
     let (ahead2, behind2) = s.get_branch_status(&repo_path, "feature", "main").unwrap();
@@ -333,8 +315,7 @@ fn branch_status_ahead_and_behind() {
 fn get_all_branches_lists_current_and_others() {
     let td = TempDir::new().unwrap();
     let repo_path = init_repo_main(&td);
-    let s = GitService::new();
-    s.create_branch(&repo_path, "feature").unwrap();
+    create_branch(&repo_path, "feature");
 
     let s = GitService::new();
     let branches = s.get_all_branches(&repo_path).unwrap();
@@ -347,36 +328,6 @@ fn get_all_branches_lists_current_and_others() {
 }
 
 #[test]
-fn delete_file_and_commit_creates_new_commit() {
-    let td = TempDir::new().unwrap();
-    let repo_path = init_repo_main(&td);
-    write_file(&repo_path, "to_delete.txt", "bye\n");
-    let s = GitService::new();
-    let _ = s.commit(&repo_path, "add to_delete").unwrap();
-    let before = s.get_head_info(&repo_path).unwrap().oid;
-
-    let new_commit = s
-        .delete_file_and_commit(&repo_path, "to_delete.txt")
-        .unwrap();
-    let after = s.get_head_info(&repo_path).unwrap().oid;
-    assert_ne!(before, after);
-    assert_eq!(after, new_commit);
-    assert!(!repo_path.join("to_delete.txt").exists());
-}
-
-#[test]
-fn get_github_repo_info_parses_origin() {
-    let td = TempDir::new().unwrap();
-    let repo_path = init_repo_main(&td);
-    let s = GitService::new();
-    s.set_remote(&repo_path, "origin", "https://github.com/foo/bar.git")
-        .unwrap();
-    let info = s.get_github_repo_info(&repo_path).unwrap();
-    assert_eq!(info.owner, "foo");
-    assert_eq!(info.repo_name, "bar");
-}
-
-#[test]
 fn get_branch_diffs_between_branches() {
     let td = TempDir::new().unwrap();
     let repo_path = init_repo_main(&td);
@@ -386,8 +337,8 @@ fn get_branch_diffs_between_branches() {
     let _ = s.commit(&repo_path, "add a").unwrap();
 
     // create branch and add new file
-    s.create_branch(&repo_path, "feature").unwrap();
-    s.checkout_branch(&repo_path, "feature").unwrap();
+    create_branch(&repo_path, "feature");
+    checkout_branch(&repo_path, "feature");
     write_file(&repo_path, "b.txt", "b\n");
     let _ = s.commit(&repo_path, "add b").unwrap();
 
@@ -418,7 +369,7 @@ fn worktree_diff_respects_path_filter() {
     let _ = s.commit(&repo_path, "baseline").unwrap();
 
     // create feature and work in place (worktree is repo_path)
-    s.create_branch(&repo_path, "feature").unwrap();
+    create_branch(&repo_path, "feature");
 
     // modify files without committing
     write_file(&repo_path, "src/only.txt", "only\n");
@@ -466,7 +417,7 @@ fn create_unicode_branch_and_list() {
     let _ = s.commit(&repo_path, "base");
     // unicode/slash branch name (valid ref)
     let bname = "feature/ünicode";
-    s.create_branch(&repo_path, bname).unwrap();
+    create_branch(&repo_path, bname);
     let names: Vec<_> = s
         .get_all_branches(&repo_path)
         .unwrap()
@@ -487,7 +438,7 @@ fn worktree_diff_permission_only_change() {
     write_file(&repo_path, "p.sh", "echo hi\n");
     let _ = s.commit(&repo_path, "add p.sh").unwrap();
     // create a feature branch baseline at HEAD
-    s.create_branch(&repo_path, "feature").unwrap();
+    create_branch(&repo_path, "feature");
 
     // change only the permission (chmod +x)
     let mut perms = std::fs::metadata(repo_path.join("p.sh"))
@@ -513,67 +464,6 @@ fn worktree_diff_permission_only_change() {
         .expect("p.sh diff present");
     assert!(matches!(d.change, DiffChangeKind::PermissionChange));
     assert_eq!(d.old_content, d.new_content);
-}
-
-#[test]
-fn delete_with_uncommitted_changes_succeeds() {
-    let td = TempDir::new().unwrap();
-    let repo_path = init_repo_main(&td);
-    let s = GitService::new();
-    // baseline file and commit
-    write_file(&repo_path, "d.txt", "v1\n");
-    let _ = s.commit(&repo_path, "add d").unwrap();
-    let before = s.get_head_info(&repo_path).unwrap().oid;
-    // uncommitted change
-    write_file(&repo_path, "d.txt", "v2\n");
-    // delete and commit
-    let new_sha = s.delete_file_and_commit(&repo_path, "d.txt").unwrap();
-    assert_eq!(s.get_head_info(&repo_path).unwrap().oid, new_sha);
-    assert!(!repo_path.join("d.txt").exists());
-    assert_ne!(before, new_sha);
-}
-
-#[cfg(unix)]
-#[test]
-fn delete_symlink_and_commit() {
-    use std::os::unix::fs::symlink;
-    let td = TempDir::new().unwrap();
-    let repo_path = init_repo_main(&td);
-    let s = GitService::new();
-    // Create target and symlink, commit
-    write_file(&repo_path, "target.txt", "t\n");
-    let _ = s.commit(&repo_path, "add target").unwrap();
-    symlink(repo_path.join("target.txt"), repo_path.join("link.txt")).unwrap();
-    let _ = s.commit(&repo_path, "add symlink").unwrap();
-    let before = s.get_head_info(&repo_path).unwrap().oid;
-    // Delete symlink
-    let new_sha = s.delete_file_and_commit(&repo_path, "link.txt").unwrap();
-    assert_eq!(s.get_head_info(&repo_path).unwrap().oid, new_sha);
-    assert!(!repo_path.join("link.txt").exists());
-    assert_ne!(before, new_sha);
-}
-
-#[test]
-fn delete_file_commit_has_author_without_user() {
-    // Verify libgit2 path uses fallback author when no config exists
-    let td = TempDir::new().unwrap();
-    let repo_path = td.path().join("repo_fallback_delete");
-    let s = GitService::new();
-    // No configure_user call; initial commit uses fallback signature too
-    s.initialize_repo_with_main_branch(&repo_path).unwrap();
-
-    // Create then delete an untracked file via service
-    write_file(&repo_path, "q.txt", "temp\n");
-    let sha = s.delete_file_and_commit(&repo_path, "q.txt").unwrap();
-
-    // Author should be present: either global identity or fallback
-    let (name, email) = get_commit_author(&repo_path, &sha);
-    if has_global_git_identity() {
-        assert!(name.is_some() && email.is_some());
-    } else {
-        assert_eq!(name.as_deref(), Some("Vibe Kanban"));
-        assert_eq!(email.as_deref(), Some("noreply@vibekanban.com"));
-    }
 }
 
 #[test]
@@ -611,7 +501,7 @@ fn squash_merge_libgit2_sets_author_without_user() {
     s.initialize_repo_with_main_branch(&repo_path).unwrap();
 
     // Create feature branch and worktree
-    s.create_branch(&repo_path, "feature").unwrap();
+    create_branch(&repo_path, "feature");
     s.add_worktree(&repo_path, &worktree_path, "feature", false)
         .unwrap();
 
@@ -635,8 +525,8 @@ fn squash_merge_libgit2_sets_author_without_user() {
     }
 
     // Ensure main repo is NOT on base branch so merge_changes takes libgit2 path
-    s.create_branch(&repo_path, "dev").unwrap();
-    s.checkout_branch(&repo_path, "dev").unwrap();
+    create_branch(&repo_path, "dev");
+    checkout_branch(&repo_path, "dev");
 
     // Merge feature -> main (libgit2 squash)
     let merge_sha = s
