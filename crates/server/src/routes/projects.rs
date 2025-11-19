@@ -74,7 +74,7 @@ pub async fn link_project_to_existing_remote(
     let remote_project = client.get_project(payload.remote_project_id).await?;
 
     let updated_project =
-        apply_remote_project_link(&deployment, project_id, remote_project, "existing").await?;
+        apply_remote_project_link(&deployment, project_id, remote_project).await?;
 
     Ok(ResponseJson(ApiResponse::success(updated_project)))
 }
@@ -102,7 +102,7 @@ pub async fn create_and_link_remote_project(
         .await?;
 
     let updated_project =
-        apply_remote_project_link(&deployment, project_id, remote_project, "new").await?;
+        apply_remote_project_link(&deployment, project_id, remote_project).await?;
 
     Ok(ResponseJson(ApiResponse::success(updated_project)))
 }
@@ -169,7 +169,6 @@ async fn apply_remote_project_link(
     deployment: &DeploymentImpl,
     project_id: Uuid,
     remote_project: RemoteProject,
-    link_type: &str,
 ) -> Result<Project, ApiError> {
     let pool = &deployment.db().pool;
 
@@ -188,7 +187,6 @@ async fn apply_remote_project_link(
             "project_linked_to_remote",
             serde_json::json!({
                 "project_id": project_id.to_string(),
-                "link_type": link_type,
             }),
         )
         .await;
