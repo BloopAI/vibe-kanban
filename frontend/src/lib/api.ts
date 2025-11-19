@@ -667,15 +667,6 @@ export const commitsApi = {
 
 // Execution Process APIs
 export const executionProcessesApi = {
-  getExecutionProcesses: async (
-    attemptId: string
-  ): Promise<ExecutionProcess[]> => {
-    const response = await makeRequest(
-      `/api/execution-processes?task_attempt_id=${attemptId}`
-    );
-    return handleApiResponse<ExecutionProcess[]>(response);
-  },
-
   getDetails: async (processId: string): Promise<ExecutionProcess> => {
     const response = await makeRequest(`/api/execution-processes/${processId}`);
     return handleApiResponse<ExecutionProcess>(response);
