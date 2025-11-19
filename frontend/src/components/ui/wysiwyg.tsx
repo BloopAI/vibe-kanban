@@ -164,14 +164,16 @@ export default function WYSIWYGEditor({
         <JsonValuePlugin value={value} lastSerializedRef={lastSerializedRef} />
 
         {/* Apply defaultValue once in uncontrolled mode */}
-        {value === undefined && defaultValue ? (
-          <JsonDefaultValuePlugin
-            defaultValue={defaultValue}
-            lastSerializedRef={lastSerializedRef}
-          />
-        ) : null}
-      </LexicalComposer>
-    </div>
+        {
+          value === undefined && defaultValue ? (
+            <JsonDefaultValuePlugin
+              defaultValue={defaultValue}
+              lastSerializedRef={lastSerializedRef}
+            />
+          ) : null
+        }
+      </LexicalComposer >
+    </div >
   );
 }
 
