@@ -260,23 +260,30 @@ pub fn normalize_logs(
 
                             DroidToolData::MultiEdit { file_path, edits } => {
                                 let path = make_path_relative(&file_path, &worktree_path_str);
-                                let hunks: Vec<String> = edits
+                                let changes: Vec<FileChange> = edits
                                     .iter()
                                     .filter_map(|edit| {
                                         if edit.old_string.is_some() || edit.new_string.is_some() {
-                                            Some(workspace_utils::diff::create_unified_diff_hunk(
-                                                &edit.old_string.clone().unwrap_or_default(),
-                                                &edit.new_string.clone().unwrap_or_default(),
-                                            ))
+                                            Some(FileChange::Edit {
+                                                unified_diff:
+                                                    workspace_utils::diff::create_unified_diff(
+                                                        &file_path,
+                                                        &edit
+                                                            .old_string
+                                                            .clone()
+                                                            .unwrap_or_default(),
+                                                        &edit
+                                                            .new_string
+                                                            .clone()
+                                                            .unwrap_or_default(),
+                                                    ),
+                                                has_line_numbers: false,
+                                            })
                                         } else {
                                             None
                                         }
                                     })
                                     .collect();
-                                let changes = vec![FileChange::Edit {
-                                    unified_diff: concatenate_diff_hunks(&file_path, &hunks),
-                                    has_line_numbers: false,
-                                }];
 
                                 let tool_state = FileEditState {
                                     index: None,

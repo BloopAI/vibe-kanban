@@ -45,50 +45,28 @@ pub enum DiffChangeKind {
 // Unified diff utility functions
 // ==============================
 
-/// Converts a replace diff to a unified diff hunk without the hunk header.
-/// The hunk returned will have valid hunk, and diff lines.
-pub fn create_unified_diff_hunk(old: &str, new: &str) -> String {
-    // normalize ending line feed to optimize diff output
-    let mut old = old.to_string();
-    let mut new = new.to_string();
-    if !old.ends_with('\n') {
-        old.push('\n');
-    }
-    if !new.ends_with('\n') {
-        new.push('\n');
-    }
+/// Converts a replace diff to a list of unified diff hunks.
+/// Uses a context limit of 3 lines.
+fn create_unified_diff_hunks(old: &str, new: &str) -> Vec<String> {
+    let old = ensure_newline(old);
+    let new = ensure_newline(new);
 
     let diff = TextDiff::from_lines(&old, &new);
 
-    let mut out = String::new();
+    // Generate unified diff with context
+    let unified_diff = diff
+        .unified_diff()
+        .context_radius(3)
+        .header("a", "b")
+        .to_string();
 
-    // We need a valud hunk header. assume lines are 0. but - + count will be correct.
-
-    let old_count = diff.old_slices().len();
-    let new_count = diff.new_slices().len();
-
-    out.push_str(&format!("@@ -1,{old_count} +1,{new_count} @@\n"));
-
-    for change in diff.iter_all_changes() {
-        let sign = match change.tag() {
-            ChangeTag::Equal => ' ',
-            ChangeTag::Delete => '-',
-            ChangeTag::Insert => '+',
-        };
-        let val = change.value();
-        out.push(sign);
-        out.push_str(val);
-    }
-
-    out
+    extract_unified_diff_hunks(&unified_diff)
 }
 
 /// Creates a full unified diff with the file path in the header.
 pub fn create_unified_diff(file_path: &str, old: &str, new: &str) -> String {
-    let mut out = String::new();
-    out.push_str(format!("--- a/{file_path}\n+++ b/{file_path}\n").as_str());
-    out.push_str(&create_unified_diff_hunk(old, new));
-    out
+    let hunks = create_unified_diff_hunks(old, new);
+    concatenate_diff_hunks(file_path, &hunks)
 }
 
 /// Compute addition/deletion counts between two text snapshots.

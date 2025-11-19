@@ -9,10 +9,7 @@ use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
 use workspace_utils::{
-    diff::{
-        concatenate_diff_hunks, create_unified_diff, create_unified_diff_hunk,
-        extract_unified_diff_hunks,
-    },
+    diff::{concatenate_diff_hunks, create_unified_diff, extract_unified_diff_hunks},
     msg_store::MsgStore,
     path::make_path_relative,
     shell::resolve_executable_path,
@@ -727,15 +724,19 @@ impl CursorToolCall {
                 }
 
                 if let Some(multi_str_replace) = &args.multi_str_replace {
-                    let hunks: Vec<String> = multi_str_replace
+                    let edits: Vec<FileChange> = multi_str_replace
                         .edits
                         .iter()
-                        .map(|edit| create_unified_diff_hunk(&edit.old_text, &edit.new_text))
+                        .map(|edit| FileChange::Edit {
+                            unified_diff: create_unified_diff(
+                                &path,
+                                &edit.old_text,
+                                &edit.new_text,
+                            ),
+                            has_line_numbers: false,
+                        })
                         .collect();
-                    changes.push(FileChange::Edit {
-                        unified_diff: concatenate_diff_hunks(&path, &hunks),
-                        has_line_numbers: false,
-                    });
+                    changes.extend(edits);
                 }
 
                 if changes.is_empty()

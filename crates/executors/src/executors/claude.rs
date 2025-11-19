@@ -13,10 +13,7 @@ use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 use ts_rs::TS;
 use workspace_utils::{
-    approvals::ApprovalStatus,
-    diff::{concatenate_diff_hunks, create_unified_diff, create_unified_diff_hunk},
-    log_msg::LogMsg,
-    msg_store::MsgStore,
+    approvals::ApprovalStatus, diff::create_unified_diff, log_msg::LogMsg, msg_store::MsgStore,
     path::make_path_relative,
 };
 
@@ -568,25 +565,21 @@ impl ClaudeLogProcessor {
                 }
             }
             ClaudeToolData::MultiEdit { file_path, edits } => {
-                let hunks: Vec<String> = edits
+                let changes: Vec<FileChange> = edits
                     .iter()
-                    .filter_map(|edit| {
-                        if edit.old_string.is_some() || edit.new_string.is_some() {
-                            Some(create_unified_diff_hunk(
-                                &edit.old_string.clone().unwrap_or_default(),
-                                &edit.new_string.clone().unwrap_or_default(),
-                            ))
-                        } else {
-                            None
-                        }
+                    .filter(|edit| edit.old_string.is_some() || edit.new_string.is_some())
+                    .map(|edit| FileChange::Edit {
+                        unified_diff: create_unified_diff(
+                            file_path,
+                            &edit.old_string.clone().unwrap_or_default(),
+                            &edit.new_string.clone().unwrap_or_default(),
+                        ),
+                        has_line_numbers: false,
                     })
                     .collect();
                 ActionType::FileEdit {
                     path: make_path_relative(file_path, worktree_path),
-                    changes: vec![FileChange::Edit {
-                        unified_diff: concatenate_diff_hunks(file_path, &hunks),
-                        has_line_numbers: false,
-                    }],
+                    changes,
                 }
             }
             ClaudeToolData::Write { file_path, content } => {
