@@ -727,11 +727,6 @@ export const tagsApi = {
     return handleApiResponse<Tag[]>(response);
   },
 
-  get: async (tagId: string): Promise<Tag> => {
-    const response = await makeRequest(`/api/tags/${tagId}`);
-    return handleApiResponse<Tag>(response);
-  },
-
   create: async (data: CreateTag): Promise<Tag> => {
     const response = await makeRequest('/api/tags', {
       method: 'POST',
