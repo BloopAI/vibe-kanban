@@ -628,7 +628,14 @@ impl GitCli {
             .map_err(|e| GitCliError::CommandFailed(e.to_string()))?;
         if !out.status.success() {
             let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
-            return Err(GitCliError::CommandFailed(stderr));
+            let stdout = String::from_utf8_lossy(&out.stdout).trim().to_string();
+            let combined = match (stdout.is_empty(), stderr.is_empty()) {
+                (true, true) => "Command failed with no output".to_string(),
+                (false, false) => format!("--- stderr\n{stderr}\n--- stdout\n{stdout}"),
+                (false, true) => format!("--- stderr\n{stderr}"),
+                (true, false) => format!("--- stdout\n{stdout}"),
+            };
+            return Err(GitCliError::CommandFailed(combined));
         }
         Ok(String::from_utf8_lossy(&out.stdout).to_string())
     }
@@ -659,7 +666,14 @@ impl GitCli {
             .map_err(|e| GitCliError::CommandFailed(e.to_string()))?;
         if !out.status.success() {
             let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
-            return Err(GitCliError::CommandFailed(stderr));
+            let stdout = String::from_utf8_lossy(&out.stdout).trim().to_string();
+            let combined = match (stdout.is_empty(), stderr.is_empty()) {
+                (true, true) => "Command failed with no output".to_string(),
+                (false, false) => format!("--- stderr\n{stderr}\n--- stdout\n{stdout}"),
+                (false, true) => format!("--- stderr\n{stderr}"),
+                (true, false) => format!("--- stdout\n{stdout}"),
+            };
+            return Err(GitCliError::CommandFailed(combined));
         }
         Ok(String::from_utf8_lossy(&out.stdout).to_string())
     }
