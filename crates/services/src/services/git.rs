@@ -1205,7 +1205,6 @@ impl GitService {
         Ok(())
     }
 
-    /// Prune worktrees
     pub fn prune_worktrees(&self, repo_path: &Path) -> Result<(), GitServiceError> {
         let git = GitCli::new();
         git.worktree_prune(repo_path)
