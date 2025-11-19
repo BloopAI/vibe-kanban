@@ -19,11 +19,10 @@ export function useOpenInEditor(
       const { editorType, filePath } = options ?? {};
 
       try {
-        const response = await attemptsApi.openEditor(
-          attemptId,
-          editorType,
-          filePath
-        );
+        const response = await attemptsApi.openEditor(attemptId, {
+          editor_type: editorType ?? null,
+          file_path: filePath ?? null,
+        });
 
         // If a URL is returned, open it in a new window/tab
         if (response.url) {

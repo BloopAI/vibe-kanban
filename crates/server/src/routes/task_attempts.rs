@@ -75,13 +75,6 @@ pub struct CreateGitHubPrRequest {
     pub target_branch: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
-pub struct FollowUpResponse {
-    pub message: String,
-    pub actual_attempt_id: Uuid,
-    pub created_new_attempt: bool,
-}
-
 #[derive(Debug, Deserialize)]
 pub struct TaskAttemptQuery {
     pub task_id: Option<Uuid>,
@@ -741,7 +734,7 @@ pub async fn create_github_pr(
     }
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, TS)]
 pub struct OpenEditorRequest {
     editor_type: Option<String>,
     file_path: Option<String>,
@@ -755,14 +748,14 @@ pub struct OpenEditorResponse {
 pub async fn open_task_attempt_in_editor(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
-    Json(payload): Json<Option<OpenEditorRequest>>,
+    Json(payload): Json<OpenEditorRequest>,
 ) -> Result<ResponseJson<ApiResponse<OpenEditorResponse>>, ApiError> {
     // Get the task attempt to access the worktree path
     let base_path_buf = ensure_worktree_path(&deployment, &task_attempt).await?;
     let base_path = base_path_buf.as_path();
 
     // If a specific file path is provided, use it; otherwise use the base path
-    let path = if let Some(file_path) = payload.as_ref().and_then(|req| req.file_path.as_ref()) {
+    let path = if let Some(file_path) = payload.file_path.as_ref() {
         base_path.join(file_path)
     } else {
         base_path.to_path_buf()
@@ -770,7 +763,7 @@ pub async fn open_task_attempt_in_editor(
 
     let editor_config = {
         let config = deployment.config().read().await;
-        let editor_type_str = payload.as_ref().and_then(|req| req.editor_type.as_deref());
+        let editor_type_str = payload.editor_type.as_deref();
         config.editor.with_override(editor_type_str)
     };
 
@@ -788,7 +781,7 @@ pub async fn open_task_attempt_in_editor(
                     "task_attempt_editor_opened",
                     serde_json::json!({
                         "attempt_id": task_attempt.id.to_string(),
-                        "editor_type": payload.as_ref().and_then(|req| req.editor_type.as_ref()),
+                        "editor_type": payload.editor_type.as_ref(),
                         "remote_mode": url.is_some(),
                     }),
                 )

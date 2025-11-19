@@ -14,7 +14,6 @@ import {
   CreateTag,
   DirectoryListResponse,
   DirectoryEntry,
-  EditorType,
   ExecutionProcess,
   GitBranch,
   Project,
@@ -67,6 +66,9 @@ import {
   Invitation,
   RemoteProject,
   ListInvitationsResponse,
+  CommitCompareResult,
+  OpenEditorResponse,
+  OpenEditorRequest,
 } from 'shared/types';
 
 // Re-export types for convenience
@@ -103,16 +105,6 @@ const makeRequest = async (url: string, options: RequestInit = {}) => {
     headers,
   });
 };
-
-export interface FollowUpResponse {
-  message: string;
-  actual_attempt_id: string;
-  created_new_attempt: boolean;
-}
-
-export interface OpenEditorResponse {
-  url: string | null;
-}
 
 export type Ok<T> = { success: true; data: T };
 export type Err<E> = { success: false; error: E | undefined; message?: string };
@@ -270,16 +262,11 @@ export const projectsApi = {
 
   openEditor: async (
     id: string,
-    editorType?: EditorType
+    data: OpenEditorRequest
   ): Promise<OpenEditorResponse> => {
-    const requestBody: { editor_type?: EditorType } = {};
-    if (editorType) requestBody.editor_type = editorType;
-
     const response = await makeRequest(`/api/projects/${id}/open-editor`, {
       method: 'POST',
-      body: JSON.stringify(
-        Object.keys(requestBody).length > 0 ? requestBody : null
-      ),
+      body: JSON.stringify(data),
     });
     return handleApiResponse<OpenEditorResponse>(response);
   },
@@ -537,20 +524,13 @@ export const attemptsApi = {
 
   openEditor: async (
     attemptId: string,
-    editorType?: EditorType,
-    filePath?: string
+    data: OpenEditorRequest
   ): Promise<OpenEditorResponse> => {
-    const requestBody: { editor_type?: EditorType; file_path?: string } = {};
-    if (editorType) requestBody.editor_type = editorType;
-    if (filePath) requestBody.file_path = filePath;
-
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/open-editor`,
       {
         method: 'POST',
-        body: JSON.stringify(
-          Object.keys(requestBody).length > 0 ? requestBody : null
-        ),
+        body: JSON.stringify(data),
       }
     );
     return handleApiResponse<OpenEditorResponse>(response);
@@ -680,13 +660,7 @@ export const commitsApi = {
   compareToHead: async (
     attemptId: string,
     sha: string
-  ): Promise<{
-    head_oid: string;
-    target_oid: string;
-    ahead_from_head: number;
-    behind_from_head: number;
-    is_linear: boolean;
-  }> => {
+  ): Promise<CommitCompareResult> => {
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/commit-compare?sha=${encodeURIComponent(
         sha

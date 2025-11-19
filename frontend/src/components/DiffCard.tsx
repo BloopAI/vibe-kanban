@@ -246,11 +246,10 @@ export default function DiffCard({
     if (!selectedAttempt?.id) return;
     try {
       const openPath = newName || oldName;
-      const response = await attemptsApi.openEditor(
-        selectedAttempt.id,
-        undefined,
-        openPath || undefined
-      );
+      const response = await attemptsApi.openEditor(selectedAttempt.id, {
+        editor_type: null,
+        file_path: openPath ?? null,
+      });
 
       // If a URL is returned, open it in a new window/tab
       if (response.url) {

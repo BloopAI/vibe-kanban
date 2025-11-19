@@ -152,6 +152,12 @@ export type RenameBranchRequest = { new_branch_name: string, };
 
 export type RenameBranchResponse = { branch: string, };
 
+export type CommitCompareResult = { head_oid: string, target_oid: string, ahead_from_head: number, behind_from_head: number, is_linear: boolean, };
+
+export type OpenEditorRequest = { editor_type: string | null, file_path: string | null, };
+
+export type OpenEditorResponse = { url: string | null, };
+
 export type AssignSharedTaskRequest = { new_assignee_user_id: string | null, version: bigint | null, };
 
 export type AssignSharedTaskResponse = { shared_task: SharedTask, };
