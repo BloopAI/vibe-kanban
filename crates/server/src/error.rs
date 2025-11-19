@@ -15,7 +15,7 @@ use services::services::{
     container::ContainerError,
     drafts::DraftsServiceError,
     git::GitServiceError,
-    github_service::GitHubServiceError,
+    github::GitHubServiceError,
     image::ImageError,
     remote_client::RemoteClientError,
     share::ShareError,
