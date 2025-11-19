@@ -632,8 +632,8 @@ impl GitCli {
             let combined = match (stdout.is_empty(), stderr.is_empty()) {
                 (true, true) => "Command failed with no output".to_string(),
                 (false, false) => format!("--- stderr\n{stderr}\n--- stdout\n{stdout}"),
-                (false, true) => format!("--- stderr\n{stderr}"),
-                (true, false) => format!("--- stdout\n{stdout}"),
+                (false, true) => format!("--- stderr\n{stdout}"),
+                (true, false) => format!("--- stdout\n{stderr}"),
             };
             return Err(GitCliError::CommandFailed(combined));
         }
@@ -670,8 +670,8 @@ impl GitCli {
             let combined = match (stdout.is_empty(), stderr.is_empty()) {
                 (true, true) => "Command failed with no output".to_string(),
                 (false, false) => format!("--- stderr\n{stderr}\n--- stdout\n{stdout}"),
-                (false, true) => format!("--- stderr\n{stderr}"),
-                (true, false) => format!("--- stdout\n{stdout}"),
+                (false, true) => format!("--- stderr\n{stdout}"),
+                (true, false) => format!("--- stdout\n{stderr}"),
             };
             return Err(GitCliError::CommandFailed(combined));
         }
