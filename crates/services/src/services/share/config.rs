@@ -14,9 +14,9 @@ pub struct ShareConfig {
 
 impl ShareConfig {
     pub fn from_env() -> Option<Self> {
-        let raw_base = option_env!("VK_SHARED_API_BASE")
-            .map(|s| s.to_string())
-            .or_else(|| std::env::var("VK_SHARED_API_BASE").ok())?;
+        let raw_base = std::env::var("VK_SHARED_API_BASE")
+            .ok()
+            .or_else(|| option_env!("VK_SHARED_API_BASE").map(|s| s.to_string()))?;
         let api_base = Url::parse(raw_base.trim()).ok()?;
         let websocket_base = derive_ws_url(api_base.clone()).ok()?;
 
