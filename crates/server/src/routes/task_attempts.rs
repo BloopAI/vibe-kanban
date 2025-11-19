@@ -613,6 +613,7 @@ pub enum CreatePrError {
     GithubCliNotLoggedIn,
     GitCliNotLoggedIn,
     GitCliNotInstalled,
+    TargetBranchNotFound { branch: String },
 }
 
 pub async fn create_github_pr(
@@ -646,15 +647,29 @@ pub async fn create_github_pr(
 
     let workspace_path = ensure_worktree_path(&deployment, &task_attempt).await?;
 
-    if let Ok(false) = deployment
+    match deployment
         .git()
         .fetch_and_check_branch_exists(&project.git_repo_path, &target_branch)
     {
-        let error_msg = format!(
-            "Target branch '{}' does not exist on remote. Please ensure the branch exists before creating a pull request.",
-            target_branch
-        );
-        return Ok(ResponseJson(ApiResponse::error(&error_msg)));
+        Ok(false) => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                CreatePrError::TargetBranchNotFound {
+                    branch: target_branch.clone(),
+                },
+            )));
+        }
+        Err(GitServiceError::GitCLI(GitCliError::AuthFailed(_))) => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                CreatePrError::GitCliNotLoggedIn,
+            )));
+        }
+        Err(GitServiceError::GitCLI(GitCliError::NotAvailable)) => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                CreatePrError::GitCliNotInstalled,
+            )));
+        }
+        Err(e) => return Err(ApiError::GitService(e)),
+        Ok(true) => {}
     }
 
     // Push the branch to GitHub first

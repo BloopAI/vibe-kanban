@@ -1411,27 +1411,26 @@ impl GitService {
         }
     }
 
+    fn check_remote_branch_exists(
+        &self,
+        repo_path: &Path,
+        branch_name: &str,
+    ) -> Result<bool, GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
+        Ok(repo.find_branch(branch_name, BranchType::Remote).is_ok())
+    }
+
     pub fn fetch_and_check_branch_exists(
         &self,
         repo_path: &Path,
         branch_name: &str,
     ) -> Result<bool, GitServiceError> {
         let repo = self.open_repo(repo_path)?;
-
-        if self.check_branch_exists(repo_path, branch_name)? {
-            let branch = Self::find_branch(&repo, branch_name)?;
-            let branch_ref = branch.into_reference();
-            if let Ok(remote) = self.get_remote_from_branch_ref(&repo, &branch_ref) {
-                let _ = self.fetch_all_from_remote(&repo, &remote);
-            }
-        } else {
-            let default_remote_name = self.default_remote_name(&repo);
-            if let Ok(remote) = repo.find_remote(&default_remote_name) {
-                let _ = self.fetch_all_from_remote(&repo, &remote);
-            }
+        let default_remote_name = self.default_remote_name(&repo);
+        if let Ok(remote) = repo.find_remote(&default_remote_name) {
+            self.fetch_all_from_remote(&repo, &remote)?;
         }
-
-        self.check_branch_exists(repo_path, branch_name)
+        self.check_remote_branch_exists(repo_path, branch_name)
     }
 
     pub fn rename_local_branch(
