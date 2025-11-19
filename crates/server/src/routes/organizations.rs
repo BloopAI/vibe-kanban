@@ -5,6 +5,7 @@ use axum::{
     response::Json as ResponseJson,
     routing::{delete, get, patch, post},
 };
+use deployment::Deployment;
 use utils::{
     api::{
         organizations::{
@@ -95,6 +96,16 @@ async fn create_organization(
 
     let response = client.create_organization(&request).await?;
 
+    deployment
+        .track_if_analytics_allowed(
+            "organization_created",
+            serde_json::json!({
+                "org_id": response.organization.id.to_string(),
+                "is_personal": response.organization.is_personal,
+            }),
+        )
+        .await;
+
     Ok(ResponseJson(ApiResponse::success(response)))
 }
 
@@ -129,6 +140,17 @@ async fn create_invitation(
     let client = deployment.remote_client()?;
 
     let response = client.create_invitation(org_id, &request).await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "invitation_created",
+            serde_json::json!({
+                "invitation_id": response.invitation.id.to_string(),
+                "org_id": org_id.to_string(),
+                "role": response.invitation.role,
+            }),
+        )
+        .await;
 
     Ok(ResponseJson(ApiResponse::success(response)))
 }
