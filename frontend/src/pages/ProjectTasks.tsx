@@ -6,15 +6,15 @@ import { Card, CardContent } from '@/components/ui/card';
 import { AlertTriangle, Plus, X } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { tasksApi } from '@/lib/api';
-import type { GitBranch } from 'shared/types';
+import type { GitBranch, TaskAttempt, BranchStatus } from 'shared/types';
 import { openTaskForm } from '@/lib/openTaskForm';
-import { FeatureShowcaseModal } from '@/components/showcase/FeatureShowcaseModal';
+import { FeatureShowcaseDialog } from '@/components/dialogs/global/FeatureShowcaseDialog';
 import { showcases } from '@/config/showcases';
-import { useShowcaseTrigger } from '@/hooks/useShowcaseTrigger';
+import { useUserSystem } from '@/components/ConfigProvider';
 import { usePostHog } from 'posthog-js/react';
 
-import { useSearch } from '@/contexts/search-context';
-import { useProject } from '@/contexts/project-context';
+import { useSearch } from '@/contexts/SearchContext';
+import { useProject } from '@/contexts/ProjectContext';
 import { useTaskAttempts } from '@/hooks/useTaskAttempts';
 import { useTaskAttempt } from '@/hooks/useTaskAttempt';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -106,10 +106,10 @@ function DiffsPanelContainer({
   branchStatus,
   branches,
 }: {
-  attempt: any;
-  selectedTask: any;
+  attempt: TaskAttempt | null;
+  selectedTask: TaskWithAttemptStatus | null;
   projectId: string;
-  branchStatus: any;
+  branchStatus: BranchStatus | null;
   branches: GitBranch[];
 }) {
   const { isAttemptRunning } = useAttemptExecution(attempt?.id);
@@ -201,10 +201,34 @@ export function ProjectTasks() {
   const isSharedPanelOpen = Boolean(selectedSharedTask);
   const isPanelOpen = isTaskPanelOpen || isSharedPanelOpen;
 
-  const { isOpen: showTaskPanelShowcase, close: closeTaskPanelShowcase } =
-    useShowcaseTrigger(showcases.taskPanel, {
-      enabled: isPanelOpen,
+  const { config, updateAndSaveConfig, loading } = useUserSystem();
+
+  const isLoaded = !loading;
+  const showcaseId = showcases.taskPanel.id;
+  const seenFeatures = useMemo(
+    () => config?.showcases?.seen_features ?? [],
+    [config?.showcases?.seen_features]
+  );
+  const seen = isLoaded && seenFeatures.includes(showcaseId);
+
+  useEffect(() => {
+    if (!isLoaded || !isPanelOpen || seen) return;
+
+    FeatureShowcaseDialog.show({ config: showcases.taskPanel }).finally(() => {
+      FeatureShowcaseDialog.hide();
+      if (seenFeatures.includes(showcaseId)) return;
+      void updateAndSaveConfig({
+        showcases: { seen_features: [...seenFeatures, showcaseId] },
+      });
     });
+  }, [
+    isLoaded,
+    isPanelOpen,
+    seen,
+    showcaseId,
+    updateAndSaveConfig,
+    seenFeatures,
+  ]);
 
   const isLatest = attemptId === 'latest';
   const { data: attempts = [], isLoading: isAttemptsLoading } = useTaskAttempts(
@@ -843,7 +867,7 @@ export function ProjectTasks() {
         </Card>
       </div>
     ) : (
-      <div className="w-full h-full overflow-x-auto overflow-y-auto overscroll-x-contain touch-pan-y">
+      <div className="w-full h-full overflow-x-auto overflow-y-auto overscroll-x-contain">
         <TaskKanbanBoard
           columns={kanbanColumns}
           onDragEnd={handleDragEnd}
@@ -994,7 +1018,7 @@ export function ProjectTasks() {
             attempt={attempt}
             selectedTask={selectedTask}
             projectId={projectId!}
-            branchStatus={branchStatus}
+            branchStatus={branchStatus ?? null}
             branches={branches}
           />
         )}
@@ -1049,11 +1073,6 @@ export function ProjectTasks() {
       )}
 
       <div className="flex-1 min-h-0">{attemptArea}</div>
-      <FeatureShowcaseModal
-        isOpen={showTaskPanelShowcase}
-        onClose={closeTaskPanelShowcase}
-        config={showcases.taskPanel}
-      />
     </div>
   );
 }

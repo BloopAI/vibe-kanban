@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/shadcn-io/kanban';
 import { TaskCard } from './TaskCard';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
-import { statusBoardColors, statusLabels } from '@/utils/status-labels';
+import { statusBoardColors, statusLabels } from '@/utils/statusLabels';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import { SharedTaskCard } from './SharedTaskCard';
 

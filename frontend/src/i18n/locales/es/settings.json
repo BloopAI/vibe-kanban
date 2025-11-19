@@ -74,6 +74,11 @@
             "placeholder": "ej., nombre de usuario",
             "helper": "Nombre de usuario SSH para la conexión remota. Si no se establece, VS Code usará tu configuración SSH o te lo pedirá."
           }
+        },
+        "availability": {
+          "checking": "Verificando disponibilidad...",
+          "available": "Disponible",
+          "notFound": "No encontrado en PATH"
         }
       },
       "github": {

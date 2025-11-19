@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useTheme } from '@/components/theme-provider';
+import { useTheme } from '@/components/ThemeProvider';
 import { ThemeMode } from 'shared/types';
 
 interface VibeStyleOverrideMessage {

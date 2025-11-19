@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import {
   ImageUploadSection,
   type ImageUploadSectionHandle,
-} from '@/components/ui/ImageUploadSection';
+} from '@/components/ui/image-upload-section';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 //
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
@@ -17,7 +17,7 @@ import { imagesApi } from '@/lib/api.ts';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { useBranchStatus } from '@/hooks';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
-import { useUserSystem } from '@/components/config-provider';
+import { useUserSystem } from '@/components/ConfigProvider';
 import { cn } from '@/lib/utils';
 //
 import { useReview } from '@/contexts/ReviewProvider';

@@ -15,7 +15,7 @@ use serde_json::Value;
 use thiserror::Error;
 use utils::shell::resolve_executable_path_blocking;
 
-use crate::services::github_service::{CreatePrRequest, GitHubRepoInfo};
+use crate::services::github::{CreatePrRequest, GitHubRepoInfo};
 
 /// High-level errors originating from the GitHub CLI.
 #[derive(Debug, Error)]
@@ -41,9 +41,8 @@ impl GhCli {
 
     /// Ensure the GitHub CLI binary is discoverable.
     fn ensure_available(&self) -> Result<(), GhCliError> {
-        resolve_executable_path_blocking("gh")
-            .ok_or(GhCliError::NotAvailable)
-            .map(|_| ())
+        resolve_executable_path_blocking("gh").ok_or(GhCliError::NotAvailable)?;
+        Ok(())
     }
 
     /// Generic helper to execute `gh <args>` and return stdout on success.
@@ -126,21 +125,6 @@ impl GhCli {
             Err(GhCliError::CommandFailed(msg)) => Err(GhCliError::AuthFailed(msg)),
             Err(err) => Err(err),
         }
-    }
-
-    /// Fetch repository numeric ID via `gh api`.
-    pub fn repo_database_id(&self, owner: &str, repo: &str) -> Result<i64, GhCliError> {
-        let raw = self.run(["api", &format!("repos/{owner}/{repo}"), "--method", "GET"])?;
-        let value: Value = serde_json::from_str(raw.trim()).map_err(|err| {
-            GhCliError::UnexpectedOutput(format!(
-                "Failed to parse gh api repos response: {err}; raw: {raw}"
-            ))
-        })?;
-        value.get("id").and_then(Value::as_i64).ok_or_else(|| {
-            GhCliError::UnexpectedOutput(format!(
-                "gh api repos response missing numeric repository id: {value:#?}"
-            ))
-        })
     }
 
     /// Retrieve details for a single pull request.

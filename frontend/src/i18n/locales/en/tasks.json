@@ -366,6 +366,10 @@
       "pullRequest": {
         "title": "Create PR from Task",
         "description": "Merge your changes or create pull requests directly from task attempts. The PR dialog pre-fills title and description from your task details for streamlined workflows."
+      },
+      "tags": {
+        "title": "Custom Prompt Tags",
+        "description": "Save custom prompts as tags and embed them within new tasks or follow-up messages. Reuse common instructions to maintain consistency across your workflow."
       }
     },
     "buttons": {

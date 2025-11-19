@@ -3,7 +3,7 @@ use axum::{
     extract::{Query, State},
     middleware::from_fn_with_state,
     response::Json as ResponseJson,
-    routing::get,
+    routing::{get, put},
 };
 use db::models::tag::{CreateTag, Tag, UpdateTag};
 use deployment::Deployment;
@@ -32,12 +32,6 @@ pub async fn get_tags(
     }
 
     Ok(ResponseJson(ApiResponse::success(tags)))
-}
-
-pub async fn get_tag(
-    Extension(tag): Extension<Tag>,
-) -> Result<ResponseJson<ApiResponse<Tag>>, ApiError> {
-    Ok(Json(ApiResponse::success(tag)))
 }
 
 pub async fn create_tag(
@@ -93,7 +87,7 @@ pub async fn delete_tag(
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let tag_router = Router::new()
-        .route("/", get(get_tag).put(update_tag).delete(delete_tag))
+        .route("/", put(update_tag).delete(delete_tag))
         .layer(from_fn_with_state(deployment.clone(), load_tag_middleware));
 
     let inner = Router::new()

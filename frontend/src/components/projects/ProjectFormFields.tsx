@@ -12,7 +12,7 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { useScriptPlaceholders } from '@/hooks/useScriptPlaceholders';
-import { CopyFilesField } from './copy-files-field';
+import { CopyFilesField } from './CopyFilesField';
 // Removed collapsible sections for simplicity; show fields always in edit mode
 import { fileSystemApi } from '@/lib/api';
 import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';

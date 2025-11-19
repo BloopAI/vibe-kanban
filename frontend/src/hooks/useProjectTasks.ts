@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
-import { useProject } from '@/contexts/project-context';
+import { useProject } from '@/contexts/ProjectContext';
 import type {
   SharedTask,
   TaskStatus,

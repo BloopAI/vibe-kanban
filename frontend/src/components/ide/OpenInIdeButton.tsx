@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { useUserSystem } from '@/components/config-provider';
+import { useUserSystem } from '@/components/ConfigProvider';
 import { IdeIcon, getIdeName } from './IdeIcon';
 
 type OpenInIdeButtonProps = {

@@ -41,7 +41,7 @@ use uuid::Uuid;
 use crate::{
     RemoteClientError,
     services::{
-        auth::AuthContext, git::GitServiceError, github_service::GitHubServiceError,
+        auth::AuthContext, git::GitServiceError, github::GitHubServiceError,
         remote_client::RemoteClient,
     },
 };

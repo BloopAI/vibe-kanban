@@ -2,9 +2,9 @@ import { useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { I18nextProvider } from 'react-i18next';
 import i18n from '@/i18n';
-import { Projects } from '@/pages/projects';
-import { ProjectTasks } from '@/pages/project-tasks';
-import { FullAttemptLogsPage } from '@/pages/full-attempt-logs';
+import { Projects } from '@/pages/Projects';
+import { ProjectTasks } from '@/pages/ProjectTasks';
+import { FullAttemptLogsPage } from '@/pages/FullAttemptLogs';
 import { NormalLayout } from '@/components/layout/NormalLayout';
 import { usePostHog } from 'posthog-js/react';
 import { useAuth } from '@/hooks';
@@ -17,16 +17,13 @@ import {
   ProjectSettings,
   SettingsLayout,
 } from '@/pages/settings/';
-import {
-  UserSystemProvider,
-  useUserSystem,
-} from '@/components/config-provider';
-import { ThemeProvider } from '@/components/theme-provider';
-import { SearchProvider } from '@/contexts/search-context';
+import { UserSystemProvider, useUserSystem } from '@/components/ConfigProvider';
+import { ThemeProvider } from '@/components/ThemeProvider';
+import { SearchProvider } from '@/contexts/SearchContext';
 
 import { HotkeysProvider } from 'react-hotkeys-hook';
 
-import { ProjectProvider } from '@/contexts/project-context';
+import { ProjectProvider } from '@/contexts/ProjectContext';
 import { ThemeMode } from 'shared/types';
 import * as Sentry from '@sentry/react';
 import { Loader } from '@/components/ui/loader';

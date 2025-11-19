@@ -366,6 +366,10 @@
       "pullRequest": {
         "title": "Crear PR desde Tarea",
         "description": "Fusiona tus cambios o crea pull requests directamente desde los intentos de tarea. El diálogo de PR rellena previamente el título y la descripción desde los detalles de tu tarea para flujos de trabajo optimizados."
+      },
+      "tags": {
+        "title": "Etiquetas de Prompts Personalizados",
+        "description": "Guarda prompts personalizados como etiquetas e insértalos en nuevas tareas o mensajes de seguimiento. Reutiliza instrucciones comunes para mantener la consistencia en tu flujo de trabajo."
       }
     },
     "buttons": {

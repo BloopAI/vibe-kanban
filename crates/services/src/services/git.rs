@@ -3,17 +3,20 @@ use std::{collections::HashMap, path::Path};
 use chrono::{DateTime, Utc};
 use git2::{
     BranchType, Delta, DiffFindOptions, DiffOptions, Error as GitError, Reference, Remote,
-    Repository, Sort, build::CheckoutBuilder,
+    Repository, Sort,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ts_rs::TS;
 use utils::diff::{Diff, DiffChangeKind, FileDiffDetails};
 
-// Import for file ranking functionality
+mod cli;
+
+use cli::{ChangeType, StatusDiffEntry, StatusDiffOptions};
+pub use cli::{GitCli, GitCliError};
+
 use super::file_ranker::FileStat;
-use super::git_cli::{ChangeType, GitCli, GitCliError, StatusDiffEntry, StatusDiffOptions};
-use crate::services::github_service::GitHubRepoInfo;
+use crate::services::github::GitHubRepoInfo;
 
 #[derive(Debug, Error)]
 pub enum GitServiceError {
@@ -1032,23 +1035,6 @@ impl GitService {
         Ok(oid)
     }
 
-    /// Get the author name and email for the given commit OID (hex)
-    pub fn get_commit_author(
-        &self,
-        repo_path: &Path,
-        commit_sha: &str,
-    ) -> Result<(Option<String>, Option<String>), GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-        let oid = git2::Oid::from_str(commit_sha)
-            .map_err(|_| GitServiceError::InvalidRepository("Invalid commit SHA".into()))?;
-        let commit = repo.find_commit(oid)?;
-        let author = commit.author();
-        Ok((
-            author.name().map(|s| s.to_string()),
-            author.email().map(|s| s.to_string()),
-        ))
-    }
-
     /// Get the subject/summary line for a given commit OID
     pub fn get_commit_subject(
         &self,
@@ -1084,21 +1070,11 @@ impl GitService {
         &self,
         worktree_path: &Path,
     ) -> Result<(usize, usize), GitServiceError> {
-        let cli = super::git_cli::GitCli::new();
+        let cli = GitCli::new();
         let st = cli
             .get_worktree_status(worktree_path)
             .map_err(|e| GitServiceError::InvalidRepository(format!("git status failed: {e}")))?;
         Ok((st.uncommitted_tracked, st.untracked))
-    }
-
-    /// Expose full worktree status details (CLI porcelain parsing)
-    pub fn get_worktree_status(
-        &self,
-        worktree_path: &Path,
-    ) -> Result<super::git_cli::WorktreeStatus, GitServiceError> {
-        let cli = super::git_cli::GitCli::new();
-        cli.get_worktree_status(worktree_path)
-            .map_err(|e| GitServiceError::InvalidRepository(format!("git status failed: {e}")))
     }
 
     /// Evaluate whether any action is needed to reset to `target_commit_oid` and
@@ -1155,63 +1131,13 @@ impl GitService {
             // Avoid clobbering uncommitted changes unless explicitly forced
             self.check_worktree_clean(&repo)?;
         }
-        let cli = super::git_cli::GitCli::new();
+        let cli = GitCli::new();
         cli.git(worktree_path, ["reset", "--hard", commit_sha])
             .map_err(|e| {
                 GitServiceError::InvalidRepository(format!("git reset --hard failed: {e}"))
             })?;
         // Reapply sparse-checkout if configured (non-fatal)
         let _ = cli.git(worktree_path, ["sparse-checkout", "reapply"]);
-        Ok(())
-    }
-
-    /// Convenience: Get author of HEAD commit
-    pub fn get_head_author(
-        &self,
-        repo_path: &Path,
-    ) -> Result<(Option<String>, Option<String>), GitServiceError> {
-        let head = self.get_head_info(repo_path)?;
-        self.get_commit_author(repo_path, &head.oid)
-    }
-
-    /// Configure local user identity for committing via CLI
-    pub fn configure_user(
-        &self,
-        repo_path: &Path,
-        name: &str,
-        email: &str,
-    ) -> Result<(), GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-        let mut cfg = repo.config()?;
-        cfg.set_str("user.name", name)?;
-        cfg.set_str("user.email", email)?;
-        Ok(())
-    }
-
-    /// Create a local branch at the current HEAD
-    pub fn create_branch(
-        &self,
-        repo_path: &Path,
-        branch_name: &str,
-    ) -> Result<(), GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-        let head_commit = repo.head()?.peel_to_commit()?;
-        repo.branch(branch_name, &head_commit, true)?;
-        Ok(())
-    }
-
-    /// Checkout a local branch in the given working tree
-    pub fn checkout_branch(
-        &self,
-        repo_path: &Path,
-        branch_name: &str,
-    ) -> Result<(), GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-        let refname = format!("refs/heads/{branch_name}");
-        repo.set_head(&refname)?;
-        let mut co = CheckoutBuilder::new();
-        co.force();
-        repo.checkout_head(Some(&mut co))?;
         Ok(())
     }
 
@@ -1229,39 +1155,23 @@ impl GitService {
         Ok(())
     }
 
-    /// Set or add a remote URL
-    pub fn set_remote(
+    /// Remove a worktree
+    pub fn remove_worktree(
         &self,
         repo_path: &Path,
-        name: &str,
-        url: &str,
+        worktree_path: &Path,
+        force: bool,
     ) -> Result<(), GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-        match repo.find_remote(name) {
-            Ok(_) => repo.remote_set_url(name, url)?,
-            Err(_) => {
-                repo.remote(name, url)?;
-            }
-        }
+        let git = GitCli::new();
+        git.worktree_remove(repo_path, worktree_path, force)
+            .map_err(|e| GitServiceError::InvalidRepository(e.to_string()))?;
         Ok(())
     }
 
-    /// Stage a specific path (wrapper over git add)
-    pub fn add_path(&self, repo_path: &Path, path: &str) -> Result<(), GitServiceError> {
+    pub fn prune_worktrees(&self, repo_path: &Path) -> Result<(), GitServiceError> {
         let git = GitCli::new();
-        git.git(repo_path, ["add", path])
-            .map(|_| ())
-            .map_err(|e| GitServiceError::InvalidRepository(e.to_string()))
-    }
-
-    /// Detach HEAD to the current commit (for testing commit on detached HEAD)
-    pub fn detach_head_current(&self, repo_path: &Path) -> Result<(), GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-        let oid = repo
-            .head()?
-            .target()
-            .ok_or_else(|| GitServiceError::InvalidRepository("HEAD has no target".into()))?;
-        repo.set_head_detached(oid)?;
+        git.worktree_prune(repo_path)
+            .map_err(|e| GitServiceError::InvalidRepository(e.to_string()))?;
         Ok(())
     }
 
@@ -1624,69 +1534,6 @@ impl GitService {
         }
     }
 
-    /// Delete a file from the repository and commit the change
-    pub fn delete_file_and_commit(
-        &self,
-        worktree_path: &Path,
-        file_path: &str,
-    ) -> Result<String, GitServiceError> {
-        let repo = Repository::open(worktree_path)?;
-
-        // Get the absolute path to the file within the worktree
-        let file_full_path = worktree_path.join(file_path);
-
-        // Check if file exists and delete it
-        if file_full_path.exists() {
-            std::fs::remove_file(&file_full_path).map_err(|e| {
-                GitServiceError::IoError(std::io::Error::other(format!(
-                    "Failed to delete file {file_path}: {e}"
-                )))
-            })?;
-        }
-
-        // Stage the deletion
-        let mut index = repo.index()?;
-        index.remove_path(Path::new(file_path))?;
-        index.write()?;
-
-        // Create a commit for the file deletion
-        let signature = self.signature_with_fallback(&repo)?;
-        let tree_id = index.write_tree()?;
-        let tree = repo.find_tree(tree_id)?;
-
-        // Get the current HEAD commit
-        let head = repo.head()?;
-        let parent_commit = head.peel_to_commit()?;
-
-        let commit_message = format!("Delete file: {file_path}");
-        let commit_id = repo.commit(
-            Some("HEAD"),
-            &signature,
-            &signature,
-            &commit_message,
-            &tree,
-            &[&parent_commit],
-        )?;
-
-        Ok(commit_id.to_string())
-    }
-
-    /// Get the default branch name for the repository
-    pub fn get_default_branch_name(&self, repo_path: &Path) -> Result<String, GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-
-        match repo.head() {
-            Ok(head_ref) => Ok(head_ref.shorthand().unwrap_or("main").to_string()),
-            Err(e)
-                if e.class() == git2::ErrorClass::Reference
-                    && e.code() == git2::ErrorCode::UnbornBranch =>
-            {
-                Ok("main".to_string()) // Repository has no commits yet
-            }
-            Err(_) => Ok("main".to_string()), // Fallback
-        }
-    }
-
     /// Extract GitHub owner and repo name from git repo path
     pub fn get_github_repo_info(
         &self,
@@ -1961,42 +1808,3 @@ impl GitService {
         Ok(stats)
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use tempfile::TempDir;
-
-//     use super::*;
-
-//     fn create_test_repo() -> (TempDir, Repository) {
-//         let temp_dir = TempDir::new().unwrap();
-//         let repo = Repository::init(temp_dir.path()).unwrap();
-
-//         // Configure the repository
-//         let mut config = repo.config().unwrap();
-//         config.set_str("user.name", "Test User").unwrap();
-//         config.set_str("user.email", "test@example.com").unwrap();
-
-//         (temp_dir, repo)
-//     }
-
-//     #[test]
-//     fn test_git_service_creation() {
-//         let (temp_dir, _repo) = create_test_repo();
-//         let _git_service = GitService::new(temp_dir.path()).unwrap();
-//     }
-
-//     #[test]
-//     fn test_invalid_repository_path() {
-//         let result = GitService::new("/nonexistent/path");
-//         assert!(result.is_err());
-//     }
-
-//     #[test]
-//     fn test_default_branch_name() {
-//         let (temp_dir, _repo) = create_test_repo();
-//         let git_service = GitService::new(temp_dir.path()).unwrap();
-//         let branch_name = git_service.get_default_branch_name().unwrap();
-//         assert_eq!(branch_name, "main");
-//     }
-// }

@@ -74,6 +74,11 @@
             "placeholder": "e.g., username",
             "helper": "SSH username for the remote connection. If not set, VS Code will use your SSH config or prompt you."
           }
+        },
+        "availability": {
+          "checking": "Checking availability...",
+          "available": "Available",
+          "notFound": "Not found in PATH"
         }
       },
       "github": {

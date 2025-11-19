@@ -49,10 +49,10 @@ export function useTaskMutations(projectId?: string) {
     onSuccess: (createdTask: TaskWithAttemptStatus) => {
       invalidateQueries();
       // Invalidate parent's relationships cache if this is a subtask
-      if ((createdTask as any).parent_task_attempt) {
+      if (createdTask.parent_task_attempt) {
         queryClient.invalidateQueries({
           queryKey: taskRelationshipsKeys.byAttempt(
-            (createdTask as any).parent_task_attempt
+            createdTask.parent_task_attempt
           ),
         });
       }

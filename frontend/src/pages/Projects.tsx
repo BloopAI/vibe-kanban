@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ProjectList } from '@/components/projects/project-list';
-import { ProjectDetail } from '@/components/projects/project-detail';
+import { ProjectList } from '@/components/projects/ProjectList';
+import { ProjectDetail } from '@/components/projects/ProjectDetail';
 
 export function Projects() {
   const { projectId } = useParams<{ projectId: string }>();

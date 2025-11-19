@@ -19,9 +19,9 @@ import { useDiffSummary } from '@/hooks/useDiffSummary';
 import { useDevServer } from '@/hooks/useDevServer';
 import { Button } from '@/components/ui/button';
 import { IdeIcon } from '@/components/ide/IdeIcon';
-import { useUserSystem } from '@/components/config-provider';
+import { useUserSystem } from '@/components/ConfigProvider';
 import { getIdeName } from '@/components/ide/IdeIcon';
-import { useProject } from '@/contexts/project-context';
+import { useProject } from '@/contexts/ProjectContext';
 import { useQuery } from '@tanstack/react-query';
 import { attemptsApi } from '@/lib/api';
 import {

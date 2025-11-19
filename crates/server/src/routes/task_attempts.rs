@@ -36,9 +36,8 @@ use git2::BranchType;
 use serde::{Deserialize, Serialize};
 use services::services::{
     container::ContainerService,
-    gh_cli::GhCli,
     git::{ConflictOp, WorktreeResetOptions},
-    github_service::{CreatePrRequest, GitHubService, GitHubServiceError},
+    github::{CreatePrRequest, GitHubService, GitHubServiceError},
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
@@ -70,40 +69,10 @@ pub enum GitOperationError {
 }
 
 #[derive(Debug, Deserialize, Serialize, TS)]
-pub struct ReplaceProcessRequest {
-    /// Process to replace (delete this and later ones)
-    pub process_id: Uuid,
-    /// New prompt to use for the replacement follow-up
-    pub prompt: String,
-    /// Optional variant override
-    pub variant: Option<String>,
-    /// If true, allow resetting Git even when uncommitted changes exist
-    pub force_when_dirty: Option<bool>,
-    /// If false, skip performing the Git reset step (history drop still applies)
-    pub perform_git_reset: Option<bool>,
-}
-
-#[derive(Debug, Serialize, TS)]
-pub struct ReplaceProcessResult {
-    pub deleted_count: i64,
-    pub git_reset_needed: bool,
-    pub git_reset_applied: bool,
-    pub target_before_oid: Option<String>,
-    pub new_execution_id: Option<Uuid>,
-}
-
-#[derive(Debug, Deserialize, Serialize, TS)]
 pub struct CreateGitHubPrRequest {
     pub title: String,
     pub body: Option<String>,
     pub target_branch: Option<String>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct FollowUpResponse {
-    pub message: String,
-    pub actual_attempt_id: Uuid,
-    pub created_new_attempt: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -393,135 +362,6 @@ pub async fn follow_up(
     }
 
     Ok(ResponseJson(ApiResponse::success(execution_process)))
-}
-
-#[axum::debug_handler]
-pub async fn replace_process(
-    Extension(task_attempt): Extension<TaskAttempt>,
-    State(deployment): State<DeploymentImpl>,
-    Json(payload): Json<ReplaceProcessRequest>,
-) -> Result<ResponseJson<ApiResponse<ReplaceProcessResult>>, ApiError> {
-    let pool = &deployment.db().pool;
-    let proc_id = payload.process_id;
-    let force_when_dirty = payload.force_when_dirty.unwrap_or(false);
-    let perform_git_reset = payload.perform_git_reset.unwrap_or(true);
-
-    // Validate process belongs to attempt
-    let process =
-        ExecutionProcess::find_by_id(pool, proc_id)
-            .await?
-            .ok_or(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
-                "Process not found".to_string(),
-            )))?;
-    if process.task_attempt_id != task_attempt.id {
-        return Err(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
-            "Process does not belong to this attempt".to_string(),
-        )));
-    }
-
-    // Determine target reset OID: before the target process
-    let mut target_before_oid = process.before_head_commit.clone();
-    if target_before_oid.is_none() {
-        // Fallback: previous process's after_head_commit
-        target_before_oid =
-            ExecutionProcess::find_prev_after_head_commit(pool, task_attempt.id, proc_id).await?;
-    }
-
-    // Decide if Git reset is needed and apply it
-    let mut git_reset_needed = false;
-    let mut git_reset_applied = false;
-    if let Some(target_oid) = &target_before_oid {
-        let wt_buf = ensure_worktree_path(&deployment, &task_attempt).await?;
-        let wt = wt_buf.as_path();
-        let is_dirty = deployment
-            .container()
-            .is_container_clean(&task_attempt)
-            .await
-            .map(|is_clean| !is_clean)
-            .unwrap_or(false);
-
-        let outcome = deployment.git().reconcile_worktree_to_commit(
-            wt,
-            target_oid,
-            WorktreeResetOptions::new(perform_git_reset, force_when_dirty, is_dirty, false),
-        );
-        git_reset_needed = outcome.needed;
-        git_reset_applied = outcome.applied;
-    }
-
-    // Stop any running processes for this attempt
-    deployment.container().try_stop(&task_attempt).await;
-
-    // Soft-drop the target process and all later processes
-    let deleted_count = ExecutionProcess::drop_at_and_after(pool, task_attempt.id, proc_id).await?;
-
-    // Build follow-up executor action using the original process profile
-    let initial_executor_profile_id = match &process
-        .executor_action()
-        .map_err(|e| ApiError::TaskAttempt(TaskAttemptError::ValidationError(e.to_string())))?
-        .typ
-    {
-        ExecutorActionType::CodingAgentInitialRequest(request) => {
-            Ok(request.executor_profile_id.clone())
-        }
-        ExecutorActionType::CodingAgentFollowUpRequest(request) => {
-            Ok(request.executor_profile_id.clone())
-        }
-        _ => Err(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
-            "Couldn't find profile from executor action".to_string(),
-        ))),
-    }?;
-
-    let executor_profile_id = ExecutorProfileId {
-        executor: initial_executor_profile_id.executor,
-        variant: payload
-            .variant
-            .or(initial_executor_profile_id.variant.clone()),
-    };
-
-    // Use latest session_id from remaining (earlier) processes; if none exists, start a fresh initial request
-    let latest_session_id =
-        ExecutionProcess::find_latest_session_id_by_task_attempt(pool, task_attempt.id).await?;
-
-    let action = if let Some(session_id) = latest_session_id {
-        let follow_up_request = CodingAgentFollowUpRequest {
-            prompt: payload.prompt.clone(),
-            session_id,
-            executor_profile_id,
-        };
-        ExecutorAction::new(
-            ExecutorActionType::CodingAgentFollowUpRequest(follow_up_request),
-            None,
-        )
-    } else {
-        // No prior session (e.g., replacing the first run) → start a fresh initial request
-        ExecutorAction::new(
-            ExecutorActionType::CodingAgentInitialRequest(
-                executors::actions::coding_agent_initial::CodingAgentInitialRequest {
-                    prompt: payload.prompt.clone(),
-                    executor_profile_id,
-                },
-            ),
-            None,
-        )
-    };
-
-    let execution_process = deployment
-        .container()
-        .start_execution(
-            &task_attempt,
-            &action,
-            &ExecutionProcessRunReason::CodingAgent,
-        )
-        .await?;
-
-    Ok(ResponseJson(ApiResponse::success(ReplaceProcessResult {
-        deleted_count,
-        git_reset_needed,
-        git_reset_applied,
-        target_before_oid,
-        new_execution_id: Some(execution_process.id),
-    })))
 }
 
 #[axum::debug_handler]
@@ -843,9 +683,9 @@ pub async fn create_github_pr(
         .git()
         .get_github_repo_info(&project.git_repo_path)?;
 
-    // Use gh CLI to create the PR (uses native GitHub authentication)
-    let gh_cli = GhCli::new();
-    match gh_cli.create_pr(&pr_request, &repo_info) {
+    // Use GitHubService to create the PR
+    let github_service = GitHubService::new()?;
+    match github_service.create_pr(&repo_info, &pr_request).await {
         Ok(pr_info) => {
             // Update the task attempt with PR information
             if let Err(e) = Merge::create_pr(
@@ -883,19 +723,18 @@ pub async fn create_github_pr(
                 task_attempt.id,
                 e
             );
-            let gh_error = GitHubServiceError::from(e);
-            if gh_error.is_api_data() {
-                Ok(ResponseJson(ApiResponse::error_with_data(gh_error)))
+            if e.is_api_data() {
+                Ok(ResponseJson(ApiResponse::error_with_data(e)))
             } else {
                 Ok(ResponseJson(ApiResponse::error(
-                    format!("Failed to create PR: {}", gh_error).as_str(),
+                    format!("Failed to create PR: {}", e).as_str(),
                 )))
             }
         }
     }
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, TS)]
 pub struct OpenEditorRequest {
     editor_type: Option<String>,
     file_path: Option<String>,
@@ -909,14 +748,14 @@ pub struct OpenEditorResponse {
 pub async fn open_task_attempt_in_editor(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
-    Json(payload): Json<Option<OpenEditorRequest>>,
+    Json(payload): Json<OpenEditorRequest>,
 ) -> Result<ResponseJson<ApiResponse<OpenEditorResponse>>, ApiError> {
     // Get the task attempt to access the worktree path
     let base_path_buf = ensure_worktree_path(&deployment, &task_attempt).await?;
     let base_path = base_path_buf.as_path();
 
     // If a specific file path is provided, use it; otherwise use the base path
-    let path = if let Some(file_path) = payload.as_ref().and_then(|req| req.file_path.as_ref()) {
+    let path = if let Some(file_path) = payload.file_path.as_ref() {
         base_path.join(file_path)
     } else {
         base_path.to_path_buf()
@@ -924,7 +763,7 @@ pub async fn open_task_attempt_in_editor(
 
     let editor_config = {
         let config = deployment.config().read().await;
-        let editor_type_str = payload.as_ref().and_then(|req| req.editor_type.as_deref());
+        let editor_type_str = payload.editor_type.as_deref();
         config.editor.with_override(editor_type_str)
     };
 
@@ -942,7 +781,7 @@ pub async fn open_task_attempt_in_editor(
                     "task_attempt_editor_opened",
                     serde_json::json!({
                         "attempt_id": task_attempt.id.to_string(),
-                        "editor_type": payload.as_ref().and_then(|req| req.editor_type.as_ref()),
+                        "editor_type": payload.editor_type.as_ref(),
                         "remote_mode": url.is_some(),
                     }),
                 )
@@ -954,13 +793,11 @@ pub async fn open_task_attempt_in_editor(
         }
         Err(e) => {
             tracing::error!(
-                "Failed to open editor for attempt {}: {}",
+                "Failed to open editor for attempt {}: {:?}",
                 task_attempt.id,
                 e
             );
-            Err(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
-                format!("Failed to open editor: {}", e),
-            )))
+            Err(ApiError::EditorOpen(e))
         }
     }
 }
@@ -1377,40 +1214,6 @@ pub async fn abort_conflicts_task_attempt(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
-#[derive(serde::Deserialize)]
-pub struct DeleteFileQuery {
-    file_path: String,
-}
-
-#[axum::debug_handler]
-pub async fn delete_task_attempt_file(
-    Extension(task_attempt): Extension<TaskAttempt>,
-    Query(query): Query<DeleteFileQuery>,
-    State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
-    let container_ref = deployment
-        .container()
-        .ensure_container_exists(&task_attempt)
-        .await?;
-    let worktree_path = std::path::Path::new(&container_ref);
-
-    // Use GitService to delete file and commit
-    let _commit_id = deployment
-        .git()
-        .delete_file_and_commit(worktree_path, &query.file_path)
-        .map_err(|e| {
-            tracing::error!(
-                "Failed to delete file '{}' from task attempt {}: {}",
-                query.file_path,
-                task_attempt.id,
-                e
-            );
-            ApiError::GitService(e)
-        })?;
-
-    Ok(ResponseJson(ApiResponse::success(())))
-}
-
 #[axum::debug_handler]
 pub async fn start_dev_server(
     Extension(task_attempt): Extension<TaskAttempt>,
@@ -1703,7 +1506,6 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
                 .delete(drafts::delete_draft),
         )
         .route("/draft/queue", post(drafts::set_draft_queue))
-        .route("/replace-process", post(replace_process))
         .route("/commit-info", get(get_commit_info))
         .route("/commit-compare", get(compare_commit_to_head))
         .route("/start-dev-server", post(start_dev_server))
@@ -1716,7 +1518,6 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/pr", post(create_github_pr))
         .route("/pr/attach", post(attach_existing_pr))
         .route("/open-editor", post(open_task_attempt_in_editor))
-        .route("/delete-file", post(delete_task_attempt_file))
         .route("/children", get(get_task_attempt_children))
         .route("/stop", post(stop_task_attempt_execution))
         .route("/change-target-branch", post(change_target_branch))

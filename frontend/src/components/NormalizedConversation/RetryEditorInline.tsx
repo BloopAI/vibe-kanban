@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FollowUpEditorCard } from '@/components/tasks/follow-up/FollowUpEditorCard';
 import { FollowUpStatusRow } from '@/components/tasks/FollowUpStatusRow';
-import { ImageUploadSection } from '@/components/ui/ImageUploadSection';
+import { ImageUploadSection } from '@/components/ui/image-upload-section';
 import { cn } from '@/lib/utils';
 import { VariantSelector } from '@/components/tasks/VariantSelector';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,7 @@ import {
 } from '@/lib/api';
 import type { DraftResponse, TaskAttempt } from 'shared/types';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
-import { useUserSystem } from '@/components/config-provider';
+import { useUserSystem } from '@/components/ConfigProvider';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
 import { RestoreLogsDialog } from '@/components/dialogs/tasks/RestoreLogsDialog';
 import {

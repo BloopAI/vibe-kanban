@@ -36,7 +36,7 @@ import type {
   GhCliSupportVariant,
 } from '@/components/dialogs/auth/GhCliSetupDialog';
 import type { GhCliSetupError } from 'shared/types';
-import { useUserSystem } from '@/components/config-provider';
+import { useUserSystem } from '@/components/ConfigProvider';
 import { defineModal } from '@/lib/modals';
 
 interface CreatePRDialogProps {

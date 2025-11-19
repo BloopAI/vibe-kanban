@@ -18,6 +18,7 @@ import {
 import { useMemo, useState } from 'react';
 import type {
   BranchStatus,
+  Merge,
   GitBranch,
   TaskAttempt,
   TaskWithAttemptStatus,
@@ -102,15 +103,15 @@ function GitOperations({
       };
 
     const openPR = branchStatus.merges.find(
-      (m: any) => m.type === 'pr' && m.pr_info.status === 'open'
+      (m) => m.type === 'pr' && m.pr_info.status === 'open'
     );
 
     const mergedPR = branchStatus.merges.find(
-      (m: any) => m.type === 'pr' && m.pr_info.status === 'merged'
+      (m) => m.type === 'pr' && m.pr_info.status === 'merged'
     );
 
     const merges = branchStatus.merges.filter(
-      (m: any) =>
+      (m: Merge) =>
         m.type === 'direct' ||
         (m.type === 'pr' && m.pr_info.status === 'merged')
     );

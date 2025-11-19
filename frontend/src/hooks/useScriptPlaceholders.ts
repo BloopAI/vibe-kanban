@@ -1,9 +1,9 @@
-import { useUserSystem } from '@/components/config-provider';
+import { useUserSystem } from '@/components/ConfigProvider';
 import {
   createScriptPlaceholderStrategy,
   ScriptPlaceholderContext,
   type ScriptPlaceholders,
-} from '@/utils/script-placeholders';
+} from '@/utils/scriptPlaceholders';
 
 export function useScriptPlaceholders(): ScriptPlaceholders {
   const { system } = useUserSystem();

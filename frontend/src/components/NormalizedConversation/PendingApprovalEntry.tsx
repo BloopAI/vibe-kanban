@@ -22,7 +22,7 @@ import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { TabNavContext } from '@/contexts/TabNavigationContext';
 import { useKeyApproveRequest, useKeyDenyApproval, Scope } from '@/keyboard';
-import { useProject } from '@/contexts/project-context';
+import { useProject } from '@/contexts/ProjectContext';
 import { useApprovalForm } from '@/contexts/ApprovalFormContext';
 
 const DEFAULT_DENIAL_REASON = 'User denied this tool use request.';

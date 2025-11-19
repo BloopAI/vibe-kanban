@@ -28,9 +28,9 @@ import { JSONEditor } from '@/components/ui/json-editor';
 import { Loader2 } from 'lucide-react';
 import type { BaseCodingAgent, ExecutorConfig } from 'shared/types';
 import { McpConfig } from 'shared/types';
-import { useUserSystem } from '@/components/config-provider';
+import { useUserSystem } from '@/components/ConfigProvider';
 import { mcpServersApi } from '@/lib/api';
-import { McpConfigStrategyGeneral } from '@/lib/mcp-strategies';
+import { McpConfigStrategyGeneral } from '@/lib/mcpStrategies';
 
 export function McpSettings() {
   const { t } = useTranslation('settings');

@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { attemptsApi } from '@/lib/api';
-import type { ImageResponse } from 'shared/types';
+import type { ImageResponse, CreateFollowUpAttempt } from 'shared/types';
 
 type Args = {
   attemptId?: string;
@@ -57,14 +57,15 @@ export function useFollowUpSend({
           : images.length > 0
             ? images.map((img) => img.id)
             : null;
-      await attemptsApi.followUp(attemptId, {
+      const body: CreateFollowUpAttempt = {
         prompt: finalPrompt,
         variant: selectedVariant,
         image_ids,
         retry_process_id: null,
         force_when_dirty: null,
         perform_git_reset: null,
-      } as any);
+      };
+      await attemptsApi.followUp(attemptId, body);
       setMessage('');
       clearComments();
       clearClickedElements?.();

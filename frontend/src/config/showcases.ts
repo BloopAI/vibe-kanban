@@ -36,6 +36,14 @@ export const showcases = {
           src: 'https://vkcdn.britannio.dev/showcase/flat-task-panel/vk-onb-git-pr-3.mp4',
         },
       },
+      {
+        titleKey: 'showcases.taskPanel.tags.title',
+        descriptionKey: 'showcases.taskPanel.tags.description',
+        media: {
+          type: 'video',
+          src: 'https://vkcdn.britannio.dev/showcase/flat-task-panel/vk-tags.mp4',
+        },
+      },
     ],
   } satisfies ShowcaseConfig,
 } as const;

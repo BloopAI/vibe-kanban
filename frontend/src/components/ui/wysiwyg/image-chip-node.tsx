@@ -88,10 +88,10 @@ export class ImageChipNode extends DecoratorNode<JSX.Element> {
     return false;
   }
 
-  static importJSON(json: any): ImageChipNode {
-    return new ImageChipNode(json);
+  static importJSON(json: unknown): ImageChipNode {
+    return new ImageChipNode(json as ImageChipPayload);
   }
-  exportJSON(): any {
+  exportJSON(): ImageChipPayload & { type: string; version: number } {
     return {
       type: 'image-chip',
       version: 1,

@@ -20,11 +20,11 @@ import {
   LogOut,
   LogIn,
 } from 'lucide-react';
-import { Logo } from '@/components/logo';
-import { SearchBar } from '@/components/search-bar';
-import { useSearch } from '@/contexts/search-context';
+import { Logo } from '@/components/Logo';
+import { SearchBar } from '@/components/SearchBar';
+import { useSearch } from '@/contexts/SearchContext';
 import { openTaskForm } from '@/lib/openTaskForm';
-import { useProject } from '@/contexts/project-context';
+import { useProject } from '@/contexts/ProjectContext';
 import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
 import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
 import { useDiscordOnlineCount } from '@/hooks/useDiscordOnlineCount';
@@ -37,7 +37,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
-import { useUserSystem } from '@/components/config-provider';
+import { useUserSystem } from '@/components/ConfigProvider';
 import { oauthApi } from '@/lib/api';
 
 const INTERNAL_NAV = [{ label: 'Projects', icon: FolderOpen, to: '/projects' }];

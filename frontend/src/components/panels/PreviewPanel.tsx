@@ -10,7 +10,7 @@ import { useDevserverUrlFromLogs } from '@/hooks/useDevserverUrl';
 import { ClickToComponentListener } from '@/utils/previewBridge';
 import { useClickedElements } from '@/contexts/ClickedElementsProvider';
 import { Alert } from '@/components/ui/alert';
-import { useProject } from '@/contexts/project-context';
+import { useProject } from '@/contexts/ProjectContext';
 import { DevServerLogsView } from '@/components/tasks/TaskDetails/preview/DevServerLogsView';
 import { PreviewToolbar } from '@/components/tasks/TaskDetails/preview/PreviewToolbar';
 import { NoServerContent } from '@/components/tasks/TaskDetails/preview/NoServerContent';

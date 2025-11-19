@@ -136,6 +136,10 @@ export type UpdateMcpServersBody = { servers: { [key in string]?: JsonValue }, }
 
 export type GetMcpServerResponse = { mcp_config: McpConfig, config_path: string, };
 
+export type CheckEditorAvailabilityQuery = { editor_type: EditorType, };
+
+export type CheckEditorAvailabilityResponse = { available: boolean, };
+
 export type CreateFollowUpAttempt = { prompt: string, variant: string | null, image_ids: Array<string> | null, retry_process_id: string | null, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };
 
 export type DraftResponse = { task_attempt_id: string, draft_type: DraftType, retry_process_id: string | null, prompt: string, queued: boolean, variant: string | null, image_ids: Array<string> | null, version: bigint, };
@@ -151,6 +155,12 @@ export type ChangeTargetBranchResponse = { new_target_branch: string, status: [n
 export type RenameBranchRequest = { new_branch_name: string, };
 
 export type RenameBranchResponse = { branch: string, };
+
+export type CommitCompareResult = { head_oid: string, target_oid: string, ahead_from_head: number, behind_from_head: number, is_linear: boolean, };
+
+export type OpenEditorRequest = { editor_type: string | null, file_path: string | null, };
+
+export type OpenEditorResponse = { url: string | null, };
 
 export type AssignSharedTaskRequest = { new_assignee_user_id: string | null, version: bigint | null, };
 
@@ -176,6 +186,8 @@ export type EditorConfig = { editor_type: EditorType, custom_command: string | n
 
 export enum EditorType { VS_CODE = "VS_CODE", CURSOR = "CURSOR", WINDSURF = "WINDSURF", INTELLI_J = "INTELLI_J", ZED = "ZED", XCODE = "XCODE", CUSTOM = "CUSTOM" }
 
+export type EditorOpenError = { "type": "executable_not_found", executable: string, editor_type: EditorType, } | { "type": "invalid_command", details: string, editor_type: EditorType, } | { "type": "launch_failed", executable: string, details: string, editor_type: EditorType, };
+
 export type GitHubConfig = { pat: string | null, oauth_token: string | null, username: string | null, primary_email: string | null, default_pr_base: string | null, };
 
 export enum SoundFile { ABSTRACT_SOUND1 = "ABSTRACT_SOUND1", ABSTRACT_SOUND2 = "ABSTRACT_SOUND2", ABSTRACT_SOUND3 = "ABSTRACT_SOUND3", ABSTRACT_SOUND4 = "ABSTRACT_SOUND4", COW_MOOING = "COW_MOOING", PHONE_VIBRATION = "PHONE_VIBRATION", ROOSTER = "ROOSTER" }
@@ -198,8 +210,6 @@ additions: number | null, deletions: number | null, };
 
 export type DiffChangeKind = "added" | "deleted" | "modified" | "renamed" | "copied" | "permissionChange";
 
-export type RepositoryInfo = { id: bigint, name: string, full_name: string, owner: string, description: string | null, clone_url: string, ssh_url: string, default_branch: string, private: boolean, };
-
 export type CommandBuilder = { 
 /**
  * Base executable command (e.g., "npx -y @anthropic-ai/claude-code@latest")
@@ -221,6 +231,8 @@ executor: BaseCodingAgent,
 variant: string | null, };
 
 export type ExecutorConfig = { [key in string]?: { "CLAUDE_CODE": ClaudeCode } | { "AMP": Amp } | { "GEMINI": Gemini } | { "CODEX": Codex } | { "OPENCODE": Opencode } | { "CURSOR_AGENT": CursorAgent } | { "QWEN_CODE": QwenCode } | { "COPILOT": Copilot } | { "DROID": Droid } };
+
+export type ExecutorConfigs = { executors: { [key in BaseCodingAgent]?: ExecutorConfig }, };
 
 export enum BaseAgentCapability { SESSION_FORK = "SESSION_FORK", SETUP_HELPER = "SETUP_HELPER" }
 
@@ -287,28 +299,6 @@ export type GhCliSetupError = "BREW_MISSING" | "SETUP_HELPER_NOT_SUPPORTED" | { 
 export type RebaseTaskAttemptRequest = { old_base_branch: string | null, new_base_branch: string | null, };
 
 export type GitOperationError = { "type": "merge_conflicts", message: string, op: ConflictOp, } | { "type": "rebase_in_progress" };
-
-export type ReplaceProcessRequest = { 
-/**
- * Process to replace (delete this and later ones)
- */
-process_id: string, 
-/**
- * New prompt to use for the replacement follow-up
- */
-prompt: string, 
-/**
- * Optional variant override
- */
-variant: string | null, 
-/**
- * If true, allow resetting Git even when uncommitted changes exist
- */
-force_when_dirty: boolean | null, 
-/**
- * If false, skip performing the Git reset step (history drop still applies)
- */
-perform_git_reset: boolean | null, };
 
 export type CommitInfo = { sha: string, subject: string, };
 

@@ -1,6 +1,6 @@
 import { Outlet, useSearchParams } from 'react-router-dom';
 import { DevBanner } from '@/components/DevBanner';
-import { Navbar } from '@/components/layout/navbar';
+import { Navbar } from '@/components/layout/Navbar';
 
 export function NormalLayout() {
   const [searchParams] = useSearchParams();

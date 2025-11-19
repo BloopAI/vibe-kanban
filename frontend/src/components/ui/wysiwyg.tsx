@@ -8,8 +8,12 @@ import {
   $convertToMarkdownString,
   $convertFromMarkdownString,
   TRANSFORMERS,
+  type Transformer,
 } from '@lexical/markdown';
-import { ImageChipNode, InsertImageChipPlugin } from './wysiwyg/ImageChipNode';
+import {
+  ImageChipNode,
+  InsertImageChipPlugin,
+} from './wysiwyg/image-chip-node';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { ListNode, ListItemNode } from '@lexical/list';
@@ -21,7 +25,7 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import {
   IMAGE_CHIP_EXPORT,
   IMAGE_CHIP_IMPORT,
-} from './wysiwyg/imageChipMarkdown';
+} from './wysiwyg/image-chip-markdown';
 
 type WysiwygProps = {
   placeholder: string;
@@ -62,11 +66,11 @@ export default function WYSIWYGEditor({
   // Shared ref to avoid update loops and redundant imports
   const lastMdRef = useRef<string>('');
 
-  const exportTransformers = useMemo(
+  const exportTransformers: Transformer[] = useMemo(
     () => [...TRANSFORMERS, IMAGE_CHIP_EXPORT],
     []
   );
-  const importTransformers = useMemo(
+  const importTransformers: Transformer[] = useMemo(
     () => [...TRANSFORMERS, IMAGE_CHIP_IMPORT],
     []
   );
@@ -132,7 +136,7 @@ function MarkdownOnChangePlugin({
 }: {
   onMarkdownChange?: (md: string) => void;
   onEditorStateChange?: (s: EditorState) => void;
-  exportTransformers: any[];
+  exportTransformers: Transformer[];
   lastMdRef: React.MutableRefObject<string>;
 }) {
   const [editor] = useLexicalComposerContext();
@@ -165,7 +169,7 @@ function MarkdownValuePlugin({
   lastMdRef,
 }: {
   value?: string;
-  importTransformers: any[];
+  importTransformers: Transformer[];
   lastMdRef: React.MutableRefObject<string>;
 }) {
   const [editor] = useLexicalComposerContext();
@@ -188,17 +192,19 @@ function MarkdownDefaultValuePlugin({
   lastMdRef,
 }: {
   defaultValue: string;
-  importTransformers: any[];
+  importTransformers: Transformer[];
   lastMdRef: React.MutableRefObject<string>;
 }) {
   const [editor] = useLexicalComposerContext();
+  const didInit = useRef(false);
   useEffect(() => {
-    // Apply once on mount
+    if (didInit.current) return;
+    didInit.current = true;
+
     editor.update(() => {
       $convertFromMarkdownString(defaultValue || '', importTransformers);
     });
     lastMdRef.current = defaultValue || '';
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor]); // do not depend on defaultValue to ensure it's one-time
+  }, [editor, defaultValue, importTransformers, lastMdRef]);
   return null;
 }

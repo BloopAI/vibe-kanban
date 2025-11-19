@@ -13,7 +13,7 @@ import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useState, useRef, useEffect } from 'react';
 import { useAuthMutations } from '@/hooks/auth/useAuthMutations';
 import { useAuthStatus } from '@/hooks/auth/useAuthStatus';
-import { useUserSystem } from '@/components/config-provider';
+import { useUserSystem } from '@/components/ConfigProvider';
 import type { ProfileResponse } from 'shared/types';
 import { useTranslation } from 'react-i18next';
 import { defineModal, type NoProps } from '@/lib/modals';

@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { AlertCircle, ExternalLink } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
-import { useTheme } from '@/components/theme-provider';
+import { useTheme } from '@/components/ThemeProvider';
 import { getActualTheme } from '@/utils/theme';
 import { defineModal, type NoProps } from '@/lib/modals';
 

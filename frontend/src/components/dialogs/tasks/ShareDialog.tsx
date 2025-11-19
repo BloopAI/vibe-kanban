@@ -14,12 +14,12 @@ import { defineModal } from '@/lib/modals';
 import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
 import { LinkProjectDialog } from '@/components/dialogs/projects/LinkProjectDialog';
 import { useTranslation } from 'react-i18next';
-import { useUserSystem } from '@/components/config-provider';
+import { useUserSystem } from '@/components/ConfigProvider';
 import { Link as LinkIcon, Loader2 } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { LoginRequiredPrompt } from '@/components/dialogs/shared/LoginRequiredPrompt';
 import { useAuth } from '@/hooks';
-import { useProject } from '@/contexts/project-context';
+import { useProject } from '@/contexts/ProjectContext';
 import { useTaskMutations } from '@/hooks/useTaskMutations';
 
 export interface ShareDialogProps {
@@ -39,8 +39,7 @@ const ShareDialogImpl = NiceModal.create<ShareDialogProps>(({ task }) => {
   useEffect(() => {
     shareTask.reset();
     setShareError(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [task.id, shareTask.reset]);
+  }, [task.id, shareTask]);
 
   const handleClose = () => {
     modal.resolve(shareTask.isSuccess);

@@ -9,10 +9,7 @@ use thiserror::Error;
 use tracing::{debug, info};
 use utils::shell::resolve_executable_path;
 
-use super::{
-    git::{GitService, GitServiceError},
-    git_cli::GitCli,
-};
+use super::git::{GitService, GitServiceError};
 
 // Global synchronization for worktree creation to prevent race conditions
 lazy_static::lazy_static! {
@@ -200,10 +197,10 @@ impl WorktreeManager {
 
         let git_repo_path = Self::get_git_repo_path(repo)?;
 
-        // Step 1: Use Git CLI to remove the worktree registration (force) if present
+        // Step 1: Use GitService to remove the worktree registration (force) if present
         // The Git CLI is more robust than libgit2 for mutable worktree operations
-        let git = GitCli::new();
-        if let Err(e) = git.worktree_remove(&git_repo_path, worktree_path, true) {
+        let git_service = GitService::new();
+        if let Err(e) = git_service.remove_worktree(&git_repo_path, worktree_path, true) {
             debug!("git worktree remove non-fatal error: {}", e);
         }
 
@@ -222,7 +219,7 @@ impl WorktreeManager {
         }
 
         // Step 4: Good-practice to clean up any other stale admin entries
-        if let Err(e) = git.worktree_prune(&git_repo_path) {
+        if let Err(e) = git_service.prune_worktrees(&git_repo_path) {
             debug!("git worktree prune non-fatal error: {}", e);
         }
 
@@ -294,8 +291,8 @@ impl WorktreeManager {
 
         tokio::task::spawn_blocking(move || -> Result<(), WorktreeError> {
             // Prefer git CLI for worktree add to inherit sparse-checkout semantics
-            let git = GitCli::new();
-            match git.worktree_add(&git_repo_path, &worktree_path, &branch_name, false) {
+            let git_service = GitService::new();
+            match git_service.add_worktree(&git_repo_path, &worktree_path, &branch_name, false) {
                 Ok(()) => {
                     if !worktree_path.exists() {
                         return Err(WorktreeError::Repository(format!(
@@ -316,11 +313,14 @@ impl WorktreeManager {
                     // Force cleanup metadata and try one more time
                     Self::force_cleanup_worktree_metadata(&git_repo_path, &worktree_name)
                         .map_err(WorktreeError::Io)?;
-                    if let Err(e2) =
-                        git.worktree_add(&git_repo_path, &worktree_path, &branch_name, false)
-                    {
+                    if let Err(e2) = git_service.add_worktree(
+                        &git_repo_path,
+                        &worktree_path,
+                        &branch_name,
+                        false,
+                    ) {
                         debug!("Retry of git worktree add failed: {}", e2);
-                        return Err(WorktreeError::GitCli(e2.to_string()));
+                        return Err(WorktreeError::GitService(e2));
                     }
                     if !worktree_path.exists() {
                         return Err(WorktreeError::Repository(format!(

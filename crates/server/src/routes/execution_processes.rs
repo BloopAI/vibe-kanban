@@ -29,21 +29,6 @@ pub struct ExecutionProcessQuery {
     pub show_soft_deleted: Option<bool>,
 }
 
-pub async fn get_execution_processes(
-    State(deployment): State<DeploymentImpl>,
-    Query(query): Query<ExecutionProcessQuery>,
-) -> Result<ResponseJson<ApiResponse<Vec<ExecutionProcess>>>, ApiError> {
-    let pool = &deployment.db().pool;
-    let execution_processes = ExecutionProcess::find_by_task_attempt_id(
-        pool,
-        query.task_attempt_id,
-        query.show_soft_deleted.unwrap_or(false),
-    )
-    .await?;
-
-    Ok(ResponseJson(ApiResponse::success(execution_processes)))
-}
-
 pub async fn get_execution_process_by_id(
     Extension(execution_process): Extension<ExecutionProcess>,
     State(_deployment): State<DeploymentImpl>,
@@ -259,7 +244,6 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         ));
 
     let task_attempts_router = Router::new()
-        .route("/", get(get_execution_processes))
         .route("/stream/ws", get(stream_execution_processes_ws))
         .nest("/{id}", task_attempt_id_router);
 

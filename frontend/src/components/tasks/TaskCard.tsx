@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { KanbanCard } from '@/components/ui/shadcn-io/kanban';
 import { CheckCircle, Link, Loader2, XCircle } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
-import { ActionsDropdown } from '@/components/ui/ActionsDropdown';
+import { ActionsDropdown } from '@/components/ui/actions-dropdown';
 import { Button } from '@/components/ui/button';
 import { useNavigateWithSearch } from '@/hooks';
 import { paths } from '@/lib/paths';

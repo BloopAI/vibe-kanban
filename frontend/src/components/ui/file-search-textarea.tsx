@@ -10,7 +10,7 @@ import { createPortal } from 'react-dom';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { projectsApi, tagsApi } from '@/lib/api';
 import { Tag as TagIcon, FileText } from 'lucide-react';
-import { getCaretClientRect } from '@/lib/caret-position';
+import { getCaretClientRect } from '@/lib/caretPosition';
 
 import type { SearchResult, Tag } from 'shared/types';
 

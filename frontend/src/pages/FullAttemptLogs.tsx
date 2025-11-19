@@ -2,7 +2,7 @@
 import '@/vscode/bridge';
 
 import { useParams } from 'react-router-dom';
-import { AppWithStyleOverride } from '@/utils/style-override';
+import { AppWithStyleOverride } from '@/utils/StyleOverride';
 import { WebviewContextMenu } from '@/vscode/ContextMenu';
 import TaskAttemptPanel from '@/components/panels/TaskAttemptPanel';
 import { useTaskAttempt } from '@/hooks/useTaskAttempt';

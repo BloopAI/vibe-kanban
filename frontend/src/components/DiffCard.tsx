@@ -2,7 +2,7 @@ import { Diff } from 'shared/types';
 import { DiffModeEnum, DiffView, SplitSide } from '@git-diff-view/react';
 import { generateDiffFile, type DiffFile } from '@git-diff-view/file';
 import { useMemo } from 'react';
-import { useUserSystem } from '@/components/config-provider';
+import { useUserSystem } from '@/components/ConfigProvider';
 import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
 import { getActualTheme } from '@/utils/theme';
 import { stripLineEnding } from '@/utils/string';
@@ -33,7 +33,7 @@ import {
   useDiffViewMode,
   useIgnoreWhitespaceDiff,
 } from '@/stores/useDiffViewStore';
-import { useProject } from '@/contexts/project-context';
+import { useProject } from '@/contexts/ProjectContext';
 
 type Props = {
   diff: Diff;
@@ -246,11 +246,10 @@ export default function DiffCard({
     if (!selectedAttempt?.id) return;
     try {
       const openPath = newName || oldName;
-      const response = await attemptsApi.openEditor(
-        selectedAttempt.id,
-        undefined,
-        openPath || undefined
-      );
+      const response = await attemptsApi.openEditor(selectedAttempt.id, {
+        editor_type: null,
+        file_path: openPath ?? null,
+      });
 
       // If a URL is returned, open it in a new window/tab
       if (response.url) {

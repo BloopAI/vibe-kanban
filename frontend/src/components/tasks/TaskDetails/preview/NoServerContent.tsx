@@ -16,14 +16,14 @@ import { ExecutionProcess, Project } from 'shared/types';
 import {
   createScriptPlaceholderStrategy,
   ScriptPlaceholderContext,
-} from '@/utils/script-placeholders';
-import { useUserSystem } from '@/components/config-provider';
+} from '@/utils/scriptPlaceholders';
+import { useUserSystem } from '@/components/ConfigProvider';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { useTaskMutations } from '@/hooks/useTaskMutations';
 import {
   COMPANION_INSTALL_TASK_TITLE,
   COMPANION_INSTALL_TASK_DESCRIPTION,
-} from '@/utils/companion-install-task';
+} from '@/utils/companionInstallTask';
 
 interface NoServerContentProps {
   projectHasDevScript: boolean;
