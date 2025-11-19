@@ -306,20 +306,24 @@ impl WorktreeManager {
                     Ok(())
                 }
                 Err(e) => {
-                    debug!(
+                    tracing::info!(
                         "git worktree add failed; attempting metadata cleanup and retry: {}",
                         e
                     );
                     // Force cleanup metadata and try one more time
                     Self::force_cleanup_worktree_metadata(&git_repo_path, &worktree_name)
                         .map_err(WorktreeError::Io)?;
+                    // Clean up physical directory if it exists
+                    // Needed if previous attempt failed after directory creation
+                    if worktree_path.exists() {
+                        std::fs::remove_dir_all(&worktree_path).map_err(WorktreeError::Io)?;
+                    }
                     if let Err(e2) = git_service.add_worktree(
                         &git_repo_path,
                         &worktree_path,
                         &branch_name,
                         false,
                     ) {
-                        debug!("Retry of git worktree add failed: {}", e2);
                         return Err(WorktreeError::GitService(e2));
                     }
                     if !worktree_path.exists() {
