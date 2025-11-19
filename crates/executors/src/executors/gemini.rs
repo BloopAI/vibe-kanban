@@ -52,6 +52,7 @@ impl Gemini {
 
         if self.yolo.unwrap_or(false) {
             builder = builder.extend_params(["--yolo"]);
+            builder = builder.extend_params(["--allowed-tools", "run_shell_command"]);
         }
 
         builder = builder.extend_params(["--experimental-acp"]);
