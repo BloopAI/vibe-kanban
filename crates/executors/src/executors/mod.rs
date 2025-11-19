@@ -152,13 +152,14 @@ impl CodingAgent {
 
     pub fn capabilities(&self) -> Vec<BaseAgentCapability> {
         match self {
-            Self::ClaudeCode(_) => vec![BaseAgentCapability::SessionFork],
-            Self::Amp(_) => vec![BaseAgentCapability::SessionFork],
-            Self::Codex(_) => vec![BaseAgentCapability::SessionFork],
-            Self::Gemini(_) => vec![BaseAgentCapability::SessionFork],
-            Self::QwenCode(_) => vec![BaseAgentCapability::SessionFork],
+            Self::ClaudeCode(_)
+            | Self::Amp(_)
+            | Self::Codex(_)
+            | Self::Gemini(_)
+            | Self::QwenCode(_)
+            | Self::Droid(_) => vec![BaseAgentCapability::SessionFork],
             Self::CursorAgent(_) => vec![BaseAgentCapability::SetupHelper],
-            Self::Opencode(_) | Self::Copilot(_) | Self::Droid(_) => vec![],
+            Self::Opencode(_) | Self::Copilot(_) => vec![],
         }
     }
 }

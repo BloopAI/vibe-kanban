@@ -16,6 +16,7 @@ use workspace_utils::{
 use crate::logs::{
     ActionType, CommandExitStatus, CommandRunResult, FileChange, NormalizedEntry,
     NormalizedEntryError, NormalizedEntryType, TodoItem, ToolResult, ToolStatus,
+    plain_text_processor::PlainTextLogProcessor,
     utils::{
         EntryIndexProvider,
         patch::{add_normalized_entry, replace_normalized_entry},
@@ -27,6 +28,8 @@ pub fn normalize_logs(
     worktree_path: &Path,
     entry_index_provider: EntryIndexProvider,
 ) {
+    normalize_stderr_logs(msg_store.clone(), entry_index_provider.clone());
+
     let worktree_path = worktree_path.to_path_buf();
     tokio::spawn(async move {
         let mut state = ToolCallStates::new(entry_index_provider.clone());
@@ -655,6 +658,40 @@ pub fn normalize_logs(
                     };
                     add_normalized_entry(&msg_store, &state.entry_index, entry);
                 }
+            }
+        }
+    });
+}
+
+fn normalize_stderr_logs(msg_store: Arc<MsgStore>, entry_index_provider: EntryIndexProvider) {
+    tokio::spawn(async move {
+        let mut stderr = msg_store.stderr_chunked_stream();
+
+        let mut processor = PlainTextLogProcessor::builder()
+            .normalized_entry_producer(Box::new(|content: String| NormalizedEntry {
+                timestamp: None,
+                entry_type: NormalizedEntryType::ErrorMessage {
+                    error_type: NormalizedEntryError::Other,
+                },
+                content,
+                metadata: None,
+            }))
+            .transform_lines(Box::new(|lines| {
+                lines.iter_mut().for_each(|line| {
+                    *line = strip_ansi_escapes::strip_str(&line);
+                    // noisy, but seemingly harmless message happens when session is forked
+                    if line.starts_with("Error fetching session ") {
+                        line.clear();
+                    }
+                });
+            }))
+            .time_gap(std::time::Duration::from_secs(2))
+            .index_provider(entry_index_provider)
+            .build();
+
+        while let Some(Ok(chunk)) = stderr.next().await {
+            for patch in processor.process(chunk) {
+                msg_store.push_patch(patch);
             }
         }
     });
