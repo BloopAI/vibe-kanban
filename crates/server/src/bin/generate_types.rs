@@ -129,7 +129,6 @@ fn generate_types_content() -> String {
         server::routes::task_attempts::gh_cli_setup::GhCliSetupError::decl(),
         server::routes::task_attempts::RebaseTaskAttemptRequest::decl(),
         server::routes::task_attempts::GitOperationError::decl(),
-        server::routes::task_attempts::ReplaceProcessRequest::decl(),
         server::routes::task_attempts::CommitInfo::decl(),
         server::routes::task_attempts::BranchStatus::decl(),
         services::services::git::ConflictOp::decl(),

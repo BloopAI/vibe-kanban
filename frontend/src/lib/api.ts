@@ -19,7 +19,6 @@ import {
   GitBranch,
   Project,
   CreateProject,
-  RepositoryInfo,
   SearchResult,
   ShareTaskResponse,
   Task,
@@ -71,7 +70,6 @@ import {
 } from 'shared/types';
 
 // Re-export types for convenience
-export type { RepositoryInfo } from 'shared/types';
 export type {
   UpdateFollowUpDraftRequest,
   UpdateRetryFollowUpDraftRequest,
@@ -452,26 +450,6 @@ export const attemptsApi = {
     return handleApiResponse<void>(response);
   },
 
-  replaceProcess: async (
-    attemptId: string,
-    data: {
-      process_id: string;
-      prompt: string;
-      variant?: string | null;
-      force_when_dirty?: boolean;
-      perform_git_reset?: boolean;
-    }
-  ): Promise<unknown> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/replace-process`,
-      {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }
-    );
-    return handleApiResponse(response);
-  },
-
   followUp: async (
     attemptId: string,
     data: CreateFollowUpAttempt
@@ -776,14 +754,6 @@ export const configApi = {
       body: JSON.stringify(config),
     });
     return handleApiResponse<Config>(response);
-  },
-};
-
-// GitHub APIs (only available in cloud mode)
-export const githubApi = {
-  listRepositories: async (page: number = 1): Promise<RepositoryInfo[]> => {
-    const response = await makeRequest(`/api/github/repositories?page=${page}`);
-    return handleApiResponse<RepositoryInfo[]>(response);
   },
 };
 

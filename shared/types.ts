@@ -198,8 +198,6 @@ additions: number | null, deletions: number | null, };
 
 export type DiffChangeKind = "added" | "deleted" | "modified" | "renamed" | "copied" | "permissionChange";
 
-export type RepositoryInfo = { id: bigint, name: string, full_name: string, owner: string, description: string | null, clone_url: string, ssh_url: string, default_branch: string, private: boolean, };
-
 export type CommandBuilder = { 
 /**
  * Base executable command (e.g., "npx -y @anthropic-ai/claude-code@latest")
@@ -283,28 +281,6 @@ export type GhCliSetupError = "BREW_MISSING" | "SETUP_HELPER_NOT_SUPPORTED" | { 
 export type RebaseTaskAttemptRequest = { old_base_branch: string | null, new_base_branch: string | null, };
 
 export type GitOperationError = { "type": "merge_conflicts", message: string, op: ConflictOp, } | { "type": "rebase_in_progress" };
-
-export type ReplaceProcessRequest = { 
-/**
- * Process to replace (delete this and later ones)
- */
-process_id: string, 
-/**
- * New prompt to use for the replacement follow-up
- */
-prompt: string, 
-/**
- * Optional variant override
- */
-variant: string | null, 
-/**
- * If true, allow resetting Git even when uncommitted changes exist
- */
-force_when_dirty: boolean | null, 
-/**
- * If false, skip performing the Git reset step (history drop still applies)
- */
-perform_git_reset: boolean | null, };
 
 export type CommitInfo = { sha: string, subject: string, };
 
