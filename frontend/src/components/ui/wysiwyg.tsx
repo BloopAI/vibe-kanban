@@ -8,12 +8,7 @@ import {
   $convertToMarkdownString,
   $convertFromMarkdownString,
   TRANSFORMERS,
-  type Transformer,
 } from '@lexical/markdown';
-import {
-  ImageChipNode,
-  InsertImageChipPlugin,
-} from './wysiwyg/image-chip-node';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { ListNode, ListItemNode } from '@lexical/list';
@@ -22,10 +17,6 @@ import { CodeNode } from '@lexical/code';
 import { LinkNode } from '@lexical/link';
 import { EditorState } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import {
-  IMAGE_CHIP_EXPORT,
-  IMAGE_CHIP_IMPORT,
-} from './wysiwyg/image-chip-markdown';
 import { cn } from '@/lib/utils';
 
 type WysiwygProps = {
@@ -91,7 +82,6 @@ export default function WYSIWYGEditor({
         ListItemNode,
         CodeNode,
         LinkNode,
-        ImageChipNode,
       ],
     }),
     []
@@ -100,14 +90,9 @@ export default function WYSIWYGEditor({
   // Shared ref to avoid update loops and redundant imports
   const lastMdRef = useRef<string>('');
 
-  const exportTransformers: Transformer[] = useMemo(
-    () => [...TRANSFORMERS, IMAGE_CHIP_EXPORT],
-    []
-  );
-  const importTransformers: Transformer[] = useMemo(
-    () => [...TRANSFORMERS, IMAGE_CHIP_IMPORT],
-    []
-  );
+  // Basic markdown support using Lexical's built-in TRANSFORMERS.
+  // Note: image markdown (e.g. ![alt](src)) is treated as plain text.
+  const markdownTransformers = TRANSFORMERS;
 
   return (
     <div className="wysiwyg">
@@ -152,21 +137,20 @@ export default function WYSIWYGEditor({
 
         <ListPlugin />
         <HistoryPlugin />
-        <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
-        <InsertImageChipPlugin />
+        <MarkdownShortcutPlugin transformers={markdownTransformers} />
 
         {/* Emit markdown on change */}
         <MarkdownOnChangePlugin
           onMarkdownChange={onChange}
           onEditorStateChange={onEditorStateChange}
-          exportTransformers={exportTransformers}
+          exportTransformers={markdownTransformers}
           lastMdRef={lastMdRef}
         />
 
         {/* Apply external controlled value (markdown) */}
         <MarkdownValuePlugin
           value={value}
-          importTransformers={importTransformers}
+          importTransformers={markdownTransformers}
           lastMdRef={lastMdRef}
         />
 
@@ -174,7 +158,7 @@ export default function WYSIWYGEditor({
         {value === undefined && defaultValue ? (
           <MarkdownDefaultValuePlugin
             defaultValue={defaultValue}
-            importTransformers={importTransformers}
+            importTransformers={markdownTransformers}
             lastMdRef={lastMdRef}
           />
         ) : null}
@@ -199,7 +183,7 @@ function MarkdownOnChangePlugin({
 }: {
   onMarkdownChange?: (md: string) => void;
   onEditorStateChange?: (s: EditorState) => void;
-  exportTransformers: Transformer[];
+  exportTransformers: typeof TRANSFORMERS;
   lastMdRef: React.MutableRefObject<string>;
 }) {
   const [editor] = useLexicalComposerContext();
@@ -232,7 +216,7 @@ function MarkdownValuePlugin({
   lastMdRef,
 }: {
   value?: string;
-  importTransformers: Transformer[];
+  importTransformers: typeof TRANSFORMERS;
   lastMdRef: React.MutableRefObject<string>;
 }) {
   const [editor] = useLexicalComposerContext();
@@ -255,7 +239,7 @@ function MarkdownDefaultValuePlugin({
   lastMdRef,
 }: {
   defaultValue: string;
-  importTransformers: Transformer[];
+  importTransformers: typeof TRANSFORMERS;
   lastMdRef: React.MutableRefObject<string>;
 }) {
   const [editor] = useLexicalComposerContext();
