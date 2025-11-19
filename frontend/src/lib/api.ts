@@ -7,6 +7,7 @@ import {
   Config,
   CommitInfo,
   CreateFollowUpAttempt,
+  EditorType,
   CreateGitHubPrRequest,
   CreateTask,
   CreateAndStartTaskRequest,
