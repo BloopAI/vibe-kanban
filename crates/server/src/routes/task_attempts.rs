@@ -646,37 +646,15 @@ pub async fn create_github_pr(
 
     let workspace_path = ensure_worktree_path(&deployment, &task_attempt).await?;
 
-    // Pre-flight check: Fetch from remote and verify target branch exists before attempting PR creation
-    // This provides a clear early error instead of failing during the GitHub API call
-    tracing::info!(
-        "Pre-flight check: Fetching and verifying target branch '{}' exists",
-        target_branch
-    );
-    match deployment
+    if let Ok(false) = deployment
         .git()
         .fetch_and_check_branch_exists(&project.git_repo_path, &target_branch)
     {
-        Ok(true) => {
-            tracing::info!(
-                "Target branch '{}' exists, proceeding with PR creation",
-                target_branch
-            );
-        }
-        Ok(false) => {
-            let error_msg = format!(
-                "Target branch '{}' does not exist on remote. Please ensure the branch exists before creating a pull request.",
-                target_branch
-            );
-            tracing::error!("{}", error_msg);
-            return Ok(ResponseJson(ApiResponse::error(&error_msg)));
-        }
-        Err(e) => {
-            tracing::warn!(
-                "Failed to verify target branch existence (continuing anyway): {}",
-                e
-            );
-            // Continue with PR creation even if fetch/check fails - the GitHub API will catch it
-        }
+        let error_msg = format!(
+            "Target branch '{}' does not exist on remote. Please ensure the branch exists before creating a pull request.",
+            target_branch
+        );
+        return Ok(ResponseJson(ApiResponse::error(&error_msg)));
     }
 
     // Push the branch to GitHub first

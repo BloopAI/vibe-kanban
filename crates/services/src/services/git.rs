@@ -1411,8 +1411,6 @@ impl GitService {
         }
     }
 
-    /// Fetch from remote and check if a branch exists
-    /// This is useful for checking remote branch existence before operations like PR creation
     pub fn fetch_and_check_branch_exists(
         &self,
         repo_path: &Path,
@@ -1420,29 +1418,19 @@ impl GitService {
     ) -> Result<bool, GitServiceError> {
         let repo = self.open_repo(repo_path)?;
 
-        // Try to find the branch to determine which remote to fetch from
-        let branch_result = repo
-            .find_branch(branch_name, BranchType::Local)
-            .or_else(|_| repo.find_branch(branch_name, BranchType::Remote));
-
-        // If branch exists, get its remote and fetch
-        // If not, try to fetch from default remote anyway to update remote refs
-        if let Ok(branch) = branch_result {
+        if self.check_branch_exists(repo_path, branch_name)? {
+            let branch = Self::find_branch(&repo, branch_name)?;
             let branch_ref = branch.into_reference();
             if let Ok(remote) = self.get_remote_from_branch_ref(&repo, &branch_ref) {
-                // Best-effort fetch; don't fail if fetch fails
                 let _ = self.fetch_all_from_remote(&repo, &remote);
             }
         } else {
-            // Try default remote
             let default_remote_name = self.default_remote_name(&repo);
             if let Ok(remote) = repo.find_remote(&default_remote_name) {
-                // Best-effort fetch; don't fail if fetch fails
                 let _ = self.fetch_all_from_remote(&repo, &remote);
             }
         }
 
-        // Check again after fetch
         self.check_branch_exists(repo_path, branch_name)
     }
 
