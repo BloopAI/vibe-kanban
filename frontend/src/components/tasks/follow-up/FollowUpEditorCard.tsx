@@ -4,7 +4,9 @@ import { cn } from '@/lib/utils';
 
 type Props = {
   placeholder: string;
+  /** JSON string from the WYSIWYG editor */
   value: string;
+  /** Receives JSON string from the WYSIWYG editor */
   onChange: (v: string) => void;
   onKeyDown?: (e: React.KeyboardEvent<Element>) => void;
   disabled: boolean;

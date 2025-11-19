@@ -4,11 +4,7 @@ import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
-import {
-  $convertToMarkdownString,
-  $convertFromMarkdownString,
-  TRANSFORMERS,
-} from '@lexical/markdown';
+import { TRANSFORMERS } from '@lexical/markdown';
 import { FileTagTypeaheadPlugin } from './wysiwyg/plugins/file-tag-typeahead-plugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
@@ -20,11 +16,15 @@ import { EditorState } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { cn } from '@/lib/utils';
 
+export type SerializedEditorState = string;
+
 type WysiwygProps = {
   placeholder: string;
-  value?: string; // controlled markdown
-  onChange?: (md: string) => void;
-  defaultValue?: string; // uncontrolled initial markdown
+  /** JSON string from `JSON.stringify(editorState.toJSON())` */
+  value?: SerializedEditorState;
+  onChange?: (state: SerializedEditorState) => void;
+  /** Initial JSON string, used only in uncontrolled mode */
+  defaultValue?: SerializedEditorState;
   onEditorStateChange?: (s: EditorState) => void;
   disabled?: boolean;
   onPasteFiles?: (files: File[]) => void;
@@ -91,11 +91,12 @@ export default function WYSIWYGEditor({
   );
 
   // Shared ref to avoid update loops and redundant imports
-  const lastMdRef = useRef<string>('');
+  const lastSerializedRef = useRef<SerializedEditorState | undefined>(
+    undefined
+  );
 
-  // Basic markdown support using Lexical's built-in TRANSFORMERS.
-  // Note: image markdown (e.g. ![alt](src)) is treated as plain text.
-  const markdownTransformers = TRANSFORMERS;
+  // Markdown shortcuts for typing UX (e.g., typing `*` creates bullet lists)
+  const markdownShortcuts = TRANSFORMERS;
 
   return (
     <div className="wysiwyg">
@@ -140,30 +141,24 @@ export default function WYSIWYGEditor({
 
         <ListPlugin />
         <HistoryPlugin />
-        <MarkdownShortcutPlugin transformers={markdownTransformers} />
+        <MarkdownShortcutPlugin transformers={markdownShortcuts} />
         <FileTagTypeaheadPlugin projectId={projectId} />
 
-        {/* Emit markdown on change */}
-        <MarkdownOnChangePlugin
-          onMarkdownChange={onChange}
+        {/* Emit JSON on change */}
+        <JsonOnChangePlugin
+          onSerializedChange={onChange}
           onEditorStateChange={onEditorStateChange}
-          exportTransformers={markdownTransformers}
-          lastMdRef={lastMdRef}
+          lastSerializedRef={lastSerializedRef}
         />
 
-        {/* Apply external controlled value (markdown) */}
-        <MarkdownValuePlugin
-          value={value}
-          importTransformers={markdownTransformers}
-          lastMdRef={lastMdRef}
-        />
+        {/* Apply external controlled value (JSON) */}
+        <JsonValuePlugin value={value} lastSerializedRef={lastSerializedRef} />
 
         {/* Apply defaultValue once in uncontrolled mode */}
         {value === undefined && defaultValue ? (
-          <MarkdownDefaultValuePlugin
+          <JsonDefaultValuePlugin
             defaultValue={defaultValue}
-            importTransformers={markdownTransformers}
-            lastMdRef={lastMdRef}
+            lastSerializedRef={lastSerializedRef}
           />
         ) : null}
       </LexicalComposer>
@@ -179,72 +174,63 @@ function EditablePlugin({ editable }: { editable: boolean }) {
   return null;
 }
 
-function MarkdownOnChangePlugin({
-  onMarkdownChange,
+function JsonOnChangePlugin({
+  onSerializedChange,
   onEditorStateChange,
-  exportTransformers,
-  lastMdRef,
+  lastSerializedRef,
 }: {
-  onMarkdownChange?: (md: string) => void;
+  onSerializedChange?: (state: SerializedEditorState) => void;
   onEditorStateChange?: (s: EditorState) => void;
-  exportTransformers: typeof TRANSFORMERS;
-  lastMdRef: React.MutableRefObject<string>;
+  lastSerializedRef: React.MutableRefObject<SerializedEditorState | undefined>;
 }) {
   const [editor] = useLexicalComposerContext();
   useEffect(() => {
     return editor.registerUpdateListener(({ editorState }) => {
-      // Tap editor state if requested
-      if (onEditorStateChange) {
-        onEditorStateChange(editorState);
-      }
-      // Emit markdown
-      editorState.read(() => {
-        const md = $convertToMarkdownString(exportTransformers);
-        lastMdRef.current = md;
-        if (onMarkdownChange) onMarkdownChange(md);
-      });
+      onEditorStateChange?.(editorState);
+
+      if (!onSerializedChange) return;
+
+      const json = editorState.toJSON();
+      const serialized = JSON.stringify(json);
+
+      if (serialized === lastSerializedRef.current) return;
+
+      lastSerializedRef.current = serialized;
+      onSerializedChange(serialized);
     });
-  }, [
-    editor,
-    onMarkdownChange,
-    onEditorStateChange,
-    exportTransformers,
-    lastMdRef,
-  ]);
+  }, [editor, onSerializedChange, onEditorStateChange, lastSerializedRef]);
   return null;
 }
 
-function MarkdownValuePlugin({
+function JsonValuePlugin({
   value,
-  importTransformers,
-  lastMdRef,
+  lastSerializedRef,
 }: {
-  value?: string;
-  importTransformers: typeof TRANSFORMERS;
-  lastMdRef: React.MutableRefObject<string>;
+  value?: SerializedEditorState;
+  lastSerializedRef: React.MutableRefObject<SerializedEditorState | undefined>;
 }) {
   const [editor] = useLexicalComposerContext();
   useEffect(() => {
-    if (value === undefined) return; // uncontrolled mode
-    if (value === lastMdRef.current) return; // avoid redundant imports
+    if (value === undefined || value.trim() === '') return;
+    if (value === lastSerializedRef.current) return;
 
-    editor.update(() => {
-      // Replace content with external value
-      $convertFromMarkdownString(value || '', importTransformers);
-    });
-    lastMdRef.current = value || '';
-  }, [editor, value, importTransformers, lastMdRef]);
+    try {
+      const editorState = editor.parseEditorState(value);
+      editor.setEditorState(editorState);
+      lastSerializedRef.current = value;
+    } catch (err) {
+      console.error('Failed to parse editor state JSON', err);
+    }
+  }, [editor, value, lastSerializedRef]);
   return null;
 }
 
-function MarkdownDefaultValuePlugin({
+function JsonDefaultValuePlugin({
   defaultValue,
-  importTransformers,
-  lastMdRef,
+  lastSerializedRef,
 }: {
-  defaultValue: string;
-  importTransformers: typeof TRANSFORMERS;
-  lastMdRef: React.MutableRefObject<string>;
+  defaultValue: SerializedEditorState;
+  lastSerializedRef: React.MutableRefObject<SerializedEditorState | undefined>;
 }) {
   const [editor] = useLexicalComposerContext();
   const didInit = useRef(false);
@@ -252,10 +238,15 @@ function MarkdownDefaultValuePlugin({
     if (didInit.current) return;
     didInit.current = true;
 
-    editor.update(() => {
-      $convertFromMarkdownString(defaultValue || '', importTransformers);
-    });
-    lastMdRef.current = defaultValue || '';
-  }, [editor, defaultValue, importTransformers, lastMdRef]);
+    if (defaultValue.trim() === '') return;
+
+    try {
+      const editorState = editor.parseEditorState(defaultValue);
+      editor.setEditorState(editorState);
+      lastSerializedRef.current = defaultValue;
+    } catch (err) {
+      console.error('Failed to parse default editor state JSON', err);
+    }
+  }, [editor, defaultValue, lastSerializedRef]);
   return null;
 }
