@@ -24,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
+import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import {
   ImageUploadSection,
   type ImageUploadSectionHandle,
@@ -428,17 +428,14 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
             <div>
               <form.Field name="description">
                 {(field) => (
-                  <FileSearchTextarea
+                  <WYSIWYGEditor
+                    placeholder={t('taskFormDialog.descriptionPlaceholder')}
                     value={field.state.value}
                     onChange={(desc) => field.handleChange(desc)}
-                    rows={20}
-                    maxRows={35}
-                    placeholder={t('taskFormDialog.descriptionPlaceholder')}
-                    className="border-none shadow-none px-0 resize-none placeholder:text-muted-foreground/60 focus-visible:ring-0 text-md font-normal"
                     disabled={isSubmitting}
                     projectId={projectId}
                     onPasteFiles={onDrop}
-                    disableScroll={true}
+                    className="border-none shadow-none px-0 text-md font-normal"
                   />
                 )}
               </form.Field>

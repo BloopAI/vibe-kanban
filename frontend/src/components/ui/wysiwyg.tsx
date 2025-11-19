@@ -61,8 +61,8 @@ export default function WYSIWYGEditor({
         },
         quote: 'my-3 border-l-2 border-muted pl-3 text-muted-foreground italic',
         list: {
-          ul: 'my-2 ml-5 list-disc space-y-1',
-          ol: 'my-2 ml-5 list-decimal space-y-1',
+          ul: 'my-2 ml-6 list-disc space-y-1',
+          ol: 'my-2 ml-6 list-decimal space-y-1',
           listitem: 'ml-1',
           nested: {
             listitem: 'ml-4 list-none',
@@ -131,7 +131,7 @@ export default function WYSIWYGEditor({
               />
             }
             placeholder={
-              <div className="absolute top-0 left-0 text-gray-400 pointer-events-none">
+              <div className="absolute top-0 left-0 text-secondary-foreground pointer-events-none">
                 {placeholder}
               </div>
             }
