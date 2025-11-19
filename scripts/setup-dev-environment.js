@@ -83,6 +83,26 @@ async function verifyPorts(ports) {
  * Allocate ports for development
  */
 async function allocatePorts() {
+  // If PORT env is set, use it for frontend and PORT+1 for backend
+  if (process.env.PORT) {
+    const frontendPort = parseInt(process.env.PORT, 10);
+    const backendPort = frontendPort + 1;
+
+    const ports = {
+      frontend: frontendPort,
+      backend: backendPort,
+      timestamp: new Date().toISOString(),
+    };
+
+    if (process.argv[2] === "get") {
+      console.log("Using PORT environment variable:");
+      console.log(`Frontend: ${ports.frontend}`);
+      console.log(`Backend: ${ports.backend}`);
+    }
+
+    return ports;
+  }
+
   // Try to load existing ports first
   const existingPorts = loadPorts();
 

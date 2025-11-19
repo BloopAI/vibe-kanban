@@ -1,0 +1,36 @@
+[package]
+name = "remote"
+version = "0.0.118"
+edition = "2024"
+publish = false
+
+[dependencies]
+anyhow = { workspace = true }
+axum = { workspace = true }
+axum-extra = { version = "0.10.3", features = ["typed-header"] }
+chrono = { version = "0.4", features = ["serde"] }
+futures = "0.3"
+async-trait = "0.1"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+secrecy = "0.10.3"
+sentry = { version = "0.41.0", features = ["anyhow", "backtrace", "panic", "debug-images"] }
+sentry-tracing = { version = "0.41.0", features = ["backtrace"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sqlx = { version = "0.8.6", default-features = false, features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json", "macros", "migrate"] }
+tokio = { workspace = true }
+tokio-stream = { version = "0.1.17", features = ["sync"] }
+tower-http = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-error = "0.2"
+thiserror = { workspace = true }
+utils = { path = "../utils" }
+uuid = { version = "1", features = ["serde", "v4"] }
+jsonwebtoken = "9"
+rand = "0.9"
+sha2 = "0.10"
+url = "2.5"
+base64 = "0.22"
+hmac = "0.12"
+subtle = "2.6"

@@ -19,7 +19,7 @@ use serde_json::Value;
 use services::services::config::{Config, ConfigError, SoundFile, save_config_to_file};
 use tokio::fs;
 use ts_rs::TS;
-use utils::{assets::config_path, response::ApiResponse};
+use utils::{api::oauth::LoginStatus, assets::config_path, response::ApiResponse};
 
 use crate::{DeploymentImpl, error::ApiError};
 
@@ -62,6 +62,7 @@ impl Environment {
 pub struct UserSystemInfo {
     pub config: Config,
     pub analytics_user_id: String,
+    pub login_status: LoginStatus,
     #[serde(flatten)]
     pub profiles: ExecutorConfigs,
     pub environment: Environment,
@@ -75,10 +76,12 @@ async fn get_user_system_info(
     State(deployment): State<DeploymentImpl>,
 ) -> ResponseJson<ApiResponse<UserSystemInfo>> {
     let config = deployment.config().read().await;
+    let login_status = deployment.get_login_status().await;
 
     let user_system_info = UserSystemInfo {
         config: config.clone(),
         analytics_user_id: deployment.user_id().to_string(),
+        login_status,
         profiles: ExecutorConfigs::get_cached(),
         environment: Environment::new(),
         capabilities: {
@@ -144,25 +147,7 @@ async fn track_config_events(deployment: &DeploymentImpl, old: &Config, new: &Co
             }),
         ),
         (
-            !old.github_login_acknowledged && new.github_login_acknowledged,
-            "onboarding_github_login_completed",
-            serde_json::json!({
-                "username": new.github.username,
-                "email": new.github.primary_email,
-                "auth_method": if new.github.oauth_token.is_some() { "oauth" }
-                              else if new.github.pat.is_some() { "pat" }
-                              else { "none" },
-                "has_default_pr_base": new.github.default_pr_base.is_some(),
-                "skipped": new.github.username.is_none()
-            }),
-        ),
-        (
-            !old.telemetry_acknowledged && new.telemetry_acknowledged,
-            "onboarding_telemetry_choice",
-            serde_json::json!({}),
-        ),
-        (
-            !old.analytics_enabled.unwrap_or(false) && new.analytics_enabled.unwrap_or(false),
+            !old.analytics_enabled && new.analytics_enabled,
             "analytics_session_start",
             serde_json::json!({}),
         ),

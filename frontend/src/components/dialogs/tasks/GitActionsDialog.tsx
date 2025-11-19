@@ -13,6 +13,10 @@ import { useTaskAttempt } from '@/hooks/useTaskAttempt';
 import { useBranchStatus, useAttemptExecution } from '@/hooks';
 import { useProject } from '@/contexts/project-context';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
+import {
+  GitOperationsProvider,
+  useGitOperationsError,
+} from '@/contexts/GitOperationsContext';
 import { projectsApi } from '@/lib/api';
 import type {
   GitBranch,
@@ -20,6 +24,7 @@ import type {
   TaskWithAttemptStatus,
 } from 'shared/types';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { defineModal } from '@/lib/modals';
 
 export interface GitActionsDialogProps {
   attemptId: string;
@@ -32,8 +37,6 @@ interface GitActionsDialogContentProps {
   task: TaskWithAttemptStatus;
   projectId: string;
   branches: GitBranch[];
-  gitError: string | null;
-  setGitError: (error: string | null) => void;
 }
 
 function GitActionsDialogContent({
@@ -41,20 +44,19 @@ function GitActionsDialogContent({
   task,
   projectId,
   branches,
-  gitError,
-  setGitError,
 }: GitActionsDialogContentProps) {
   const { t } = useTranslation('tasks');
   const { data: branchStatus } = useBranchStatus(attempt.id);
   const { isAttemptRunning } = useAttemptExecution(attempt.id);
+  const { error: gitError } = useGitOperationsError();
 
   const mergedPR = branchStatus?.merges?.find(
     (m) => m.type === 'pr' && m.pr_info?.status === 'merged'
   );
 
-  if (mergedPR && mergedPR.type === 'pr') {
-    return (
-      <div className="space-y-4 py-4">
+  return (
+    <div className="space-y-4">
+      {mergedPR && mergedPR.type === 'pr' && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>
             {t('git.actions.prMerged', {
@@ -76,14 +78,9 @@ function GitActionsDialogContent({
             </a>
           )}
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
+      )}
       {gitError && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded text-destructive text-sm">
+        <div className="p-3 border border-destructive rounded text-destructive text-sm">
           {gitError}
         </div>
       )}
@@ -94,7 +91,6 @@ function GitActionsDialogContent({
         branchStatus={branchStatus ?? null}
         branches={branches}
         isAttemptRunning={isAttemptRunning}
-        setError={setGitError}
         selectedBranch={branchStatus?.target_branch_name ?? null}
         layout="vertical"
       />
@@ -102,7 +98,7 @@ function GitActionsDialogContent({
   );
 }
 
-export const GitActionsDialog = NiceModal.create<GitActionsDialogProps>(
+const GitActionsDialogImpl = NiceModal.create<GitActionsDialogProps>(
   ({ attemptId, task, projectId: providedProjectId }) => {
     const modal = useModal();
     const { t } = useTranslation('tasks');
@@ -112,7 +108,6 @@ export const GitActionsDialog = NiceModal.create<GitActionsDialogProps>(
     const { data: attempt } = useTaskAttempt(attemptId);
 
     const [branches, setBranches] = useState<GitBranch[]>([]);
-    const [gitError, setGitError] = useState<string | null>(null);
     const [loadingBranches, setLoadingBranches] = useState(true);
 
     useEffect(() => {
@@ -125,15 +120,8 @@ export const GitActionsDialog = NiceModal.create<GitActionsDialogProps>(
         .finally(() => setLoadingBranches(false));
     }, [effectiveProjectId]);
 
-    useEffect(() => {
-      if (!modal.visible) {
-        setGitError(null);
-      }
-    }, [modal.visible, attemptId]);
-
     const handleOpenChange = (open: boolean) => {
       if (!open) {
-        setGitError(null);
         modal.hide();
       }
     };
@@ -153,19 +141,26 @@ export const GitActionsDialog = NiceModal.create<GitActionsDialogProps>(
               <Loader size={24} />
             </div>
           ) : (
-            <ExecutionProcessesProvider key={attempt.id} attemptId={attempt.id}>
-              <GitActionsDialogContent
-                attempt={attempt}
-                task={task}
-                projectId={effectiveProjectId}
-                branches={branches}
-                gitError={gitError}
-                setGitError={setGitError}
-              />
-            </ExecutionProcessesProvider>
+            <GitOperationsProvider attemptId={attempt.id}>
+              <ExecutionProcessesProvider
+                key={attempt.id}
+                attemptId={attempt.id}
+              >
+                <GitActionsDialogContent
+                  attempt={attempt}
+                  task={task}
+                  projectId={effectiveProjectId}
+                  branches={branches}
+                />
+              </ExecutionProcessesProvider>
+            </GitOperationsProvider>
           )}
         </DialogContent>
       </Dialog>
     );
   }
+);
+
+export const GitActionsDialog = defineModal<GitActionsDialogProps, void>(
+  GitActionsDialogImpl
 );

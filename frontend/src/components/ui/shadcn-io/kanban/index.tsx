@@ -53,7 +53,7 @@ export const KanbanBoard = ({ id, children, className }: KanbanBoardProps) => {
   return (
     <div
       className={cn(
-        'flex h-full min-h-40 flex-col',
+        'flex min-h-40 flex-col',
         isOver ? 'outline-primary' : 'outline-black',
         className
       )}
@@ -74,6 +74,7 @@ export type KanbanCardProps = Pick<Feature, 'id' | 'name'> & {
   forwardedRef?: Ref<HTMLDivElement>;
   onKeyDown?: (e: KeyboardEvent) => void;
   isOpen?: boolean;
+  dragDisabled?: boolean;
 };
 
 export const KanbanCard = ({
@@ -88,11 +89,13 @@ export const KanbanCard = ({
   forwardedRef,
   onKeyDown,
   isOpen,
+  dragDisabled = false,
 }: KanbanCardProps) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id,
       data: { index, parent },
+      disabled: dragDisabled,
     });
 
   // Combine DnD ref and forwarded ref
@@ -203,7 +206,6 @@ function restrictToBoundingRectWithRightPadding(
   boundingRect: ClientRect,
   rightPadding: number
 ): Transform {
-  console.log(rect, boundingRect);
   const value = {
     ...transform,
   };
@@ -283,7 +285,7 @@ export const KanbanProvider = ({
     >
       <div
         className={cn(
-          'inline-grid grid-flow-col auto-cols-[minmax(200px,400px)] divide-x border-x h-full',
+          'inline-grid grid-flow-col auto-cols-[minmax(200px,400px)] divide-x border-x items-stretch min-h-full',
           className
         )}
       >

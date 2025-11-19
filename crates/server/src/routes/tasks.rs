@@ -10,7 +10,7 @@ use axum::{
     http::StatusCode,
     middleware::from_fn_with_state,
     response::{IntoResponse, Json as ResponseJson},
-    routing::{get, post},
+    routing::{delete, get, post, put},
 };
 use db::models::{
     image::TaskImage,
@@ -21,8 +21,9 @@ use deployment::Deployment;
 use executors::profile::ExecutorProfileId;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use serde::{Deserialize, Serialize};
-use services::services::container::{
-    ContainerService, WorktreeCleanupData, cleanup_worktrees_direct,
+use services::services::{
+    container::{ContainerService, WorktreeCleanupData, cleanup_worktrees_direct},
+    share::ShareError,
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
@@ -180,10 +181,12 @@ pub async fn create_task_and_start(
         task.id,
     )
     .await?;
-    let execution_process = deployment
+    let is_attempt_running = deployment
         .container()
         .start_attempt(&task_attempt, payload.executor_profile_id.clone())
-        .await?;
+        .await
+        .inspect_err(|err| tracing::error!("Failed to start task attempt: {}", err))
+        .is_ok();
     deployment
         .track_if_analytics_allowed(
             "task_attempt_started",
@@ -200,10 +203,10 @@ pub async fn create_task_and_start(
         .await?
         .ok_or(ApiError::Database(SqlxError::RowNotFound))?;
 
-    tracing::info!("Started execution process {}", execution_process.id);
+    tracing::info!("Started attempt for task {}", task.id);
     Ok(ResponseJson(ApiResponse::success(TaskWithAttemptStatus {
         task,
-        has_in_progress_attempt: true,
+        has_in_progress_attempt: is_attempt_running,
         has_merged_attempt: false,
         last_attempt_failed: false,
         executor: task_attempt.executor,
@@ -213,6 +216,7 @@ pub async fn create_task_and_start(
 pub async fn update_task(
     Extension(existing_task): Extension<Task>,
     State(deployment): State<DeploymentImpl>,
+
     Json(payload): Json<UpdateTask>,
 ) -> Result<ResponseJson<ApiResponse<Task>>, ApiError> {
     // Use existing values if not provided in update
@@ -241,6 +245,14 @@ pub async fn update_task(
     if let Some(image_ids) = &payload.image_ids {
         TaskImage::delete_by_task_id(&deployment.db().pool, task.id).await?;
         TaskImage::associate_many_dedup(&deployment.db().pool, task.id, image_ids).await?;
+    }
+
+    // If task has been shared, broadcast update
+    if task.shared_task_id.is_some() {
+        let Ok(publisher) = deployment.share_publisher() else {
+            return Err(ShareError::MissingConfig("share publisher unavailable").into());
+        };
+        publisher.update_shared_task(&task).await?;
     }
 
     Ok(ResponseJson(ApiResponse::success(task)))
@@ -286,6 +298,13 @@ pub async fn delete_task(
                 })
         })
         .collect();
+
+    if let Some(shared_task_id) = task.shared_task_id {
+        let Ok(publisher) = deployment.share_publisher() else {
+            return Err(ShareError::MissingConfig("share publisher unavailable").into());
+        };
+        publisher.delete_shared_task(shared_task_id).await?;
+    }
 
     // Use a transaction to ensure atomicity: either all operations succeed or all are rolled back
     let mut tx = deployment.db().pool.begin().await?;
@@ -354,9 +373,47 @@ pub async fn delete_task(
     Ok((StatusCode::ACCEPTED, ResponseJson(ApiResponse::success(()))))
 }
 
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct ShareTaskResponse {
+    pub shared_task_id: Uuid,
+}
+
+pub async fn share_task(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<ShareTaskResponse>>, ApiError> {
+    let Ok(publisher) = deployment.share_publisher() else {
+        return Err(ShareError::MissingConfig("share publisher unavailable").into());
+    };
+    let profile = deployment
+        .auth_context()
+        .cached_profile()
+        .await
+        .ok_or(ShareError::MissingAuth)?;
+    let shared_task_id = publisher.share_task(task.id, profile.user_id).await?;
+
+    let props = serde_json::json!({
+        "task_id": task.id,
+        "shared_task_id": shared_task_id,
+    });
+    deployment
+        .track_if_analytics_allowed("start_sharing_task", props)
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(ShareTaskResponse {
+        shared_task_id,
+    })))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
+    let task_actions_router = Router::new()
+        .route("/", put(update_task))
+        .route("/", delete(delete_task))
+        .route("/share", post(share_task));
+
     let task_id_router = Router::new()
-        .route("/", get(get_task).put(update_task).delete(delete_task))
+        .route("/", get(get_task))
+        .merge(task_actions_router)
         .layer(from_fn_with_state(deployment.clone(), load_task_middleware));
 
     let inner = Router::new()

@@ -24,7 +24,7 @@ use db::{
         task_attempt::TaskAttempt,
     },
 };
-use deployment::DeploymentError;
+use deployment::{DeploymentError, RemoteClientNotConfigured};
 use executors::{
     actions::{Executable, ExecutorAction},
     approvals::{ExecutorApprovalService, NoopExecutorApprovalService},
@@ -48,6 +48,7 @@ use services::services::{
     git::{Commit, DiffTarget, GitService},
     image::ImageService,
     notification::NotificationService,
+    share::SharePublisher,
     worktree_manager::WorktreeManager,
 };
 use tokio::{sync::RwLock, task::JoinHandle};
@@ -71,9 +72,11 @@ pub struct LocalContainerService {
     image_service: ImageService,
     analytics: Option<AnalyticsContext>,
     approvals: Approvals,
+    publisher: Result<SharePublisher, RemoteClientNotConfigured>,
 }
 
 impl LocalContainerService {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         db: DBService,
         msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
@@ -82,6 +85,7 @@ impl LocalContainerService {
         image_service: ImageService,
         analytics: Option<AnalyticsContext>,
         approvals: Approvals,
+        publisher: Result<SharePublisher, RemoteClientNotConfigured>,
     ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
 
@@ -94,6 +98,7 @@ impl LocalContainerService {
             image_service,
             analytics,
             approvals,
+            publisher,
         }
     }
 
@@ -128,9 +133,27 @@ impl LocalContainerService {
     }
 
     /// Finalize task execution by updating status to InReview and sending notifications
-    async fn finalize_task(db: &DBService, config: &Arc<RwLock<Config>>, ctx: &ExecutionContext) {
-        if let Err(e) = Task::update_status(&db.pool, ctx.task.id, TaskStatus::InReview).await {
-            tracing::error!("Failed to update task status to InReview: {e}");
+    async fn finalize_task(
+        db: &DBService,
+        config: &Arc<RwLock<Config>>,
+        share: &Result<SharePublisher, RemoteClientNotConfigured>,
+        ctx: &ExecutionContext,
+    ) {
+        match Task::update_status(&db.pool, ctx.task.id, TaskStatus::InReview).await {
+            Ok(_) => {
+                if let Ok(publisher) = share
+                    && let Err(err) = publisher.update_shared_task_by_id(ctx.task.id).await
+                {
+                    tracing::warn!(
+                        ?err,
+                        "Failed to propagate shared task update for {}",
+                        ctx.task.id
+                    );
+                }
+            }
+            Err(e) => {
+                tracing::error!("Failed to update task status to InReview: {e}");
+            }
         }
         let notify_cfg = config.read().await.notifications.clone();
         NotificationService::notify_execution_halted(notify_cfg, ctx).await;
@@ -303,6 +326,7 @@ impl LocalContainerService {
         let config = self.config.clone();
         let container = self.clone();
         let analytics = self.analytics.clone();
+        let publisher = self.publisher.clone();
 
         let mut process_exit_rx = self.spawn_os_exit_watcher(exec_id);
 
@@ -405,12 +429,12 @@ impl LocalContainerService {
                         );
 
                         // Manually finalize task since we're bypassing normal execution flow
-                        Self::finalize_task(&db, &config, &ctx).await;
+                        Self::finalize_task(&db, &config, &publisher, &ctx).await;
                     }
                 }
 
                 if Self::should_finalize(&ctx) {
-                    Self::finalize_task(&db, &config, &ctx).await;
+                    Self::finalize_task(&db, &config, &publisher, &ctx).await;
                     // After finalization, check if a queued follow-up exists and start it
                     if let Err(e) = container.try_consume_queued_followup(&ctx).await {
                         tracing::error!(
@@ -422,7 +446,7 @@ impl LocalContainerService {
                 }
 
                 // Fire analytics event when CodingAgent execution has finished
-                if config.read().await.analytics_enabled == Some(true)
+                if config.read().await.analytics_enabled
                     && matches!(
                         &ctx.execution_process.run_reason,
                         ExecutionProcessRunReason::CodingAgent
@@ -627,444 +651,7 @@ impl LocalContainerService {
         .await
         .map_err(|e| ContainerError::Other(anyhow!("{e}")))
     }
-}
 
-fn success_exit_status() -> std::process::ExitStatus {
-    #[cfg(unix)]
-    {
-        use std::os::unix::process::ExitStatusExt;
-        ExitStatusExt::from_raw(0)
-    }
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::ExitStatusExt;
-        ExitStatusExt::from_raw(0)
-    }
-}
-
-#[async_trait]
-impl ContainerService for LocalContainerService {
-    fn msg_stores(&self) -> &Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>> {
-        &self.msg_stores
-    }
-
-    fn db(&self) -> &DBService {
-        &self.db
-    }
-
-    fn git(&self) -> &GitService {
-        &self.git
-    }
-
-    async fn git_branch_prefix(&self) -> String {
-        self.config.read().await.git_branch_prefix.clone()
-    }
-
-    fn task_attempt_to_current_dir(&self, task_attempt: &TaskAttempt) -> PathBuf {
-        PathBuf::from(task_attempt.container_ref.clone().unwrap_or_default())
-    }
-    /// Create a container
-    async fn create(&self, task_attempt: &TaskAttempt) -> Result<ContainerRef, ContainerError> {
-        let task = task_attempt
-            .parent_task(&self.db.pool)
-            .await?
-            .ok_or(sqlx::Error::RowNotFound)?;
-
-        let worktree_dir_name =
-            LocalContainerService::dir_name_from_task_attempt(&task_attempt.id, &task.title);
-        let worktree_path = WorktreeManager::get_worktree_base_dir().join(&worktree_dir_name);
-
-        let project = task
-            .parent_project(&self.db.pool)
-            .await?
-            .ok_or(sqlx::Error::RowNotFound)?;
-
-        WorktreeManager::create_worktree(
-            &project.git_repo_path,
-            &task_attempt.branch,
-            &worktree_path,
-            &task_attempt.target_branch,
-            true, // create new branch
-        )
-        .await?;
-
-        // Copy files specified in the project's copy_files field
-        if let Some(copy_files) = &project.copy_files
-            && !copy_files.trim().is_empty()
-        {
-            self.copy_project_files(&project.git_repo_path, &worktree_path, copy_files)
-                .await
-                .unwrap_or_else(|e| {
-                    tracing::warn!("Failed to copy project files: {}", e);
-                });
-        }
-
-        // Copy task images from cache to worktree
-        if let Err(e) = self
-            .image_service
-            .copy_images_by_task_to_worktree(&worktree_path, task.id)
-            .await
-        {
-            tracing::warn!("Failed to copy task images to worktree: {}", e);
-        }
-
-        // Update both container_ref and branch in the database
-        TaskAttempt::update_container_ref(
-            &self.db.pool,
-            task_attempt.id,
-            &worktree_path.to_string_lossy(),
-        )
-        .await?;
-
-        Ok(worktree_path.to_string_lossy().to_string())
-    }
-
-    async fn delete_inner(&self, task_attempt: &TaskAttempt) -> Result<(), ContainerError> {
-        // cleanup the container, here that means deleting the worktree
-        let task = task_attempt
-            .parent_task(&self.db.pool)
-            .await?
-            .ok_or(sqlx::Error::RowNotFound)?;
-        let git_repo_path = match Project::find_by_id(&self.db.pool, task.project_id).await {
-            Ok(Some(project)) => Some(project.git_repo_path.clone()),
-            Ok(None) => None,
-            Err(e) => {
-                tracing::error!("Failed to fetch project {}: {}", task.project_id, e);
-                None
-            }
-        };
-        WorktreeManager::cleanup_worktree(
-            &PathBuf::from(task_attempt.container_ref.clone().unwrap_or_default()),
-            git_repo_path.as_deref(),
-        )
-        .await
-        .unwrap_or_else(|e| {
-            tracing::warn!(
-                "Failed to clean up worktree for task attempt {}: {}",
-                task_attempt.id,
-                e
-            );
-        });
-        Ok(())
-    }
-
-    async fn ensure_container_exists(
-        &self,
-        task_attempt: &TaskAttempt,
-    ) -> Result<ContainerRef, ContainerError> {
-        // Get required context
-        let task = task_attempt
-            .parent_task(&self.db.pool)
-            .await?
-            .ok_or(sqlx::Error::RowNotFound)?;
-
-        let project = task
-            .parent_project(&self.db.pool)
-            .await?
-            .ok_or(sqlx::Error::RowNotFound)?;
-
-        let container_ref = task_attempt.container_ref.as_ref().ok_or_else(|| {
-            ContainerError::Other(anyhow!("Container ref not found for task attempt"))
-        })?;
-        let worktree_path = PathBuf::from(container_ref);
-
-        WorktreeManager::ensure_worktree_exists(
-            &project.git_repo_path,
-            &task_attempt.branch,
-            &worktree_path,
-        )
-        .await?;
-
-        Ok(container_ref.to_string())
-    }
-
-    async fn is_container_clean(&self, task_attempt: &TaskAttempt) -> Result<bool, ContainerError> {
-        if let Some(container_ref) = &task_attempt.container_ref {
-            // If container_ref is set, check if the worktree exists
-            let path = PathBuf::from(container_ref);
-            if path.exists() {
-                self.git().is_worktree_clean(&path).map_err(|e| e.into())
-            } else {
-                return Ok(true); // No worktree means it's clean
-            }
-        } else {
-            return Ok(true); // No container_ref means no worktree, so it's clean
-        }
-    }
-
-    async fn start_execution_inner(
-        &self,
-        task_attempt: &TaskAttempt,
-        execution_process: &ExecutionProcess,
-        executor_action: &ExecutorAction,
-    ) -> Result<(), ContainerError> {
-        // Get the worktree path
-        let container_ref = task_attempt
-            .container_ref
-            .as_ref()
-            .ok_or(ContainerError::Other(anyhow!(
-                "Container ref not found for task attempt"
-            )))?;
-        let current_dir = PathBuf::from(container_ref);
-
-        let approvals_service: Arc<dyn ExecutorApprovalService> =
-            match executor_action.base_executor() {
-                Some(BaseCodingAgent::Codex) | Some(BaseCodingAgent::ClaudeCode) => {
-                    ExecutorApprovalBridge::new(
-                        self.approvals.clone(),
-                        self.db.clone(),
-                        execution_process.id,
-                    )
-                }
-                _ => Arc::new(NoopExecutorApprovalService {}),
-            };
-
-        // Create the child and stream, add to execution tracker
-        let mut spawned = executor_action
-            .spawn(&current_dir, approvals_service)
-            .await?;
-
-        self.track_child_msgs_in_store(execution_process.id, &mut spawned.child)
-            .await;
-
-        self.add_child_to_store(execution_process.id, spawned.child)
-            .await;
-
-        // Spawn unified exit monitor: watches OS exit and optional executor signal
-        let _hn = self.spawn_exit_monitor(&execution_process.id, spawned.exit_signal);
-
-        Ok(())
-    }
-
-    async fn stop_execution(
-        &self,
-        execution_process: &ExecutionProcess,
-        status: ExecutionProcessStatus,
-    ) -> Result<(), ContainerError> {
-        let child = self
-            .get_child_from_store(&execution_process.id)
-            .await
-            .ok_or_else(|| {
-                ContainerError::Other(anyhow!("Child process not found for execution"))
-            })?;
-        let exit_code = if status == ExecutionProcessStatus::Completed {
-            Some(0)
-        } else {
-            None
-        };
-
-        ExecutionProcess::update_completion(&self.db.pool, execution_process.id, status, exit_code)
-            .await?;
-
-        // Kill the child process and remove from the store
-        {
-            let mut child_guard = child.write().await;
-            if let Err(e) = command::kill_process_group(&mut child_guard).await {
-                tracing::error!(
-                    "Failed to stop execution process {}: {}",
-                    execution_process.id,
-                    e
-                );
-                return Err(e);
-            }
-        }
-        self.remove_child_from_store(&execution_process.id).await;
-
-        // Mark the process finished in the MsgStore
-        if let Some(msg) = self.msg_stores.write().await.remove(&execution_process.id) {
-            msg.push_finished();
-        }
-
-        // Update task status to InReview when execution is stopped
-        if let Ok(ctx) = ExecutionProcess::load_context(&self.db.pool, execution_process.id).await
-            && !matches!(
-                ctx.execution_process.run_reason,
-                ExecutionProcessRunReason::DevServer
-            )
-            && let Err(e) =
-                Task::update_status(&self.db.pool, ctx.task.id, TaskStatus::InReview).await
-        {
-            tracing::error!("Failed to update task status to InReview: {e}");
-        }
-
-        tracing::debug!(
-            "Execution process {} stopped successfully",
-            execution_process.id
-        );
-
-        // Record after-head commit OID (best-effort)
-        if let Ok(ctx) = ExecutionProcess::load_context(&self.db.pool, execution_process.id).await {
-            let worktree = self.task_attempt_to_current_dir(&ctx.task_attempt);
-            if let Ok(head) = self.git().get_head_info(&worktree) {
-                let _ = ExecutionProcess::update_after_head_commit(
-                    &self.db.pool,
-                    execution_process.id,
-                    &head.oid,
-                )
-                .await;
-            }
-        }
-
-        Ok(())
-    }
-
-    async fn stream_diff(
-        &self,
-        task_attempt: &TaskAttempt,
-        stats_only: bool,
-    ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, ContainerError>
-    {
-        let project_repo_path = self.get_project_repo_path(task_attempt).await?;
-        let latest_merge =
-            Merge::find_latest_by_task_attempt_id(&self.db.pool, task_attempt.id).await?;
-
-        let is_ahead = if let Ok((ahead, _)) = self.git().get_branch_status(
-            &project_repo_path,
-            &task_attempt.branch,
-            &task_attempt.target_branch,
-        ) {
-            ahead > 0
-        } else {
-            false
-        };
-
-        if let Some(merge) = &latest_merge
-            && let Some(commit) = merge.merge_commit()
-            && self.is_container_clean(task_attempt).await?
-            && !is_ahead
-        {
-            let wrapper =
-                self.create_merged_diff_stream(&project_repo_path, &commit, stats_only)?;
-            return Ok(Box::pin(wrapper));
-        }
-
-        let container_ref = self.ensure_container_exists(task_attempt).await?;
-        let worktree_path = PathBuf::from(container_ref);
-        let base_commit = self.git().get_base_commit(
-            &project_repo_path,
-            &task_attempt.branch,
-            &task_attempt.target_branch,
-        )?;
-
-        let wrapper = self
-            .create_live_diff_stream(&worktree_path, &base_commit, stats_only)
-            .await?;
-        Ok(Box::pin(wrapper))
-    }
-
-    async fn try_commit_changes(&self, ctx: &ExecutionContext) -> Result<bool, ContainerError> {
-        if !matches!(
-            ctx.execution_process.run_reason,
-            ExecutionProcessRunReason::CodingAgent | ExecutionProcessRunReason::CleanupScript,
-        ) {
-            return Ok(false);
-        }
-
-        let message = match ctx.execution_process.run_reason {
-            ExecutionProcessRunReason::CodingAgent => {
-                // Try to retrieve the task summary from the executor session
-                // otherwise fallback to default message
-                match ExecutorSession::find_by_execution_process_id(
-                    &self.db().pool,
-                    ctx.execution_process.id,
-                )
-                .await
-                {
-                    Ok(Some(session)) if session.summary.is_some() => session.summary.unwrap(),
-                    Ok(_) => {
-                        tracing::debug!(
-                            "No summary found for execution process {}, using default message",
-                            ctx.execution_process.id
-                        );
-                        format!(
-                            "Commit changes from coding agent for task attempt {}",
-                            ctx.task_attempt.id
-                        )
-                    }
-                    Err(e) => {
-                        tracing::debug!(
-                            "Failed to retrieve summary for execution process {}: {}",
-                            ctx.execution_process.id,
-                            e
-                        );
-                        format!(
-                            "Commit changes from coding agent for task attempt {}",
-                            ctx.task_attempt.id
-                        )
-                    }
-                }
-            }
-            ExecutionProcessRunReason::CleanupScript => {
-                format!(
-                    "Cleanup script changes for task attempt {}",
-                    ctx.task_attempt.id
-                )
-            }
-            _ => Err(ContainerError::Other(anyhow::anyhow!(
-                "Invalid run reason for commit"
-            )))?,
-        };
-
-        let container_ref = ctx.task_attempt.container_ref.as_ref().ok_or_else(|| {
-            ContainerError::Other(anyhow::anyhow!("Container reference not found"))
-        })?;
-
-        tracing::debug!(
-            "Committing changes for task attempt {} at path {:?}: '{}'",
-            ctx.task_attempt.id,
-            &container_ref,
-            message
-        );
-
-        let changes_committed = self.git().commit(Path::new(container_ref), &message)?;
-        Ok(changes_committed)
-    }
-
-    /// Copy files from the original project directory to the worktree
-    async fn copy_project_files(
-        &self,
-        source_dir: &Path,
-        target_dir: &Path,
-        copy_files: &str,
-    ) -> Result<(), ContainerError> {
-        let files: Vec<&str> = copy_files
-            .split(',')
-            .map(|s| s.trim())
-            .filter(|s| !s.is_empty())
-            .collect();
-
-        for file_path in files {
-            let source_file = source_dir.join(file_path);
-            let target_file = target_dir.join(file_path);
-
-            // Create parent directories if needed
-            if let Some(parent) = target_file.parent()
-                && !parent.exists()
-            {
-                std::fs::create_dir_all(parent).map_err(|e| {
-                    ContainerError::Other(anyhow!("Failed to create directory {parent:?}: {e}"))
-                })?;
-            }
-
-            // Copy the file
-            if source_file.exists() {
-                std::fs::copy(&source_file, &target_file).map_err(|e| {
-                    ContainerError::Other(anyhow!(
-                        "Failed to copy file {source_file:?} to {target_file:?}: {e}"
-                    ))
-                })?;
-                tracing::info!("Copied file {:?} to worktree", file_path);
-            } else {
-                return Err(ContainerError::Other(anyhow!(
-                    "File {source_file:?} does not exist in the project directory"
-                )));
-            }
-        }
-        Ok(())
-    }
-}
-
-impl LocalContainerService {
     /// Extract the last assistant message from the MsgStore history
     fn extract_last_assistant_message(&self, exec_id: &Uuid) -> Option<String> {
         // Get the MsgStore for this execution
@@ -1269,6 +856,472 @@ impl LocalContainerService {
     }
 }
 
+#[async_trait]
+impl ContainerService for LocalContainerService {
+    fn msg_stores(&self) -> &Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>> {
+        &self.msg_stores
+    }
+
+    fn db(&self) -> &DBService {
+        &self.db
+    }
+
+    fn git(&self) -> &GitService {
+        &self.git
+    }
+
+    fn share_publisher(&self) -> Option<&SharePublisher> {
+        self.publisher.as_ref().ok()
+    }
+
+    async fn git_branch_prefix(&self) -> String {
+        self.config.read().await.git_branch_prefix.clone()
+    }
+
+    fn task_attempt_to_current_dir(&self, task_attempt: &TaskAttempt) -> PathBuf {
+        PathBuf::from(task_attempt.container_ref.clone().unwrap_or_default())
+    }
+    /// Create a container
+    async fn create(&self, task_attempt: &TaskAttempt) -> Result<ContainerRef, ContainerError> {
+        let task = task_attempt
+            .parent_task(&self.db.pool)
+            .await?
+            .ok_or(sqlx::Error::RowNotFound)?;
+
+        let worktree_dir_name =
+            LocalContainerService::dir_name_from_task_attempt(&task_attempt.id, &task.title);
+        let worktree_path = WorktreeManager::get_worktree_base_dir().join(&worktree_dir_name);
+
+        let project = task
+            .parent_project(&self.db.pool)
+            .await?
+            .ok_or(sqlx::Error::RowNotFound)?;
+
+        WorktreeManager::create_worktree(
+            &project.git_repo_path,
+            &task_attempt.branch,
+            &worktree_path,
+            &task_attempt.target_branch,
+            true, // create new branch
+        )
+        .await?;
+
+        // Copy files specified in the project's copy_files field
+        if let Some(copy_files) = &project.copy_files
+            && !copy_files.trim().is_empty()
+        {
+            self.copy_project_files(&project.git_repo_path, &worktree_path, copy_files)
+                .await
+                .unwrap_or_else(|e| {
+                    tracing::warn!("Failed to copy project files: {}", e);
+                });
+        }
+
+        // Copy task images from cache to worktree
+        if let Err(e) = self
+            .image_service
+            .copy_images_by_task_to_worktree(&worktree_path, task.id)
+            .await
+        {
+            tracing::warn!("Failed to copy task images to worktree: {}", e);
+        }
+
+        // Update both container_ref and branch in the database
+        TaskAttempt::update_container_ref(
+            &self.db.pool,
+            task_attempt.id,
+            &worktree_path.to_string_lossy(),
+        )
+        .await?;
+
+        Ok(worktree_path.to_string_lossy().to_string())
+    }
+
+    async fn delete_inner(&self, task_attempt: &TaskAttempt) -> Result<(), ContainerError> {
+        // cleanup the container, here that means deleting the worktree
+        let task = task_attempt
+            .parent_task(&self.db.pool)
+            .await?
+            .ok_or(sqlx::Error::RowNotFound)?;
+        let git_repo_path = match Project::find_by_id(&self.db.pool, task.project_id).await {
+            Ok(Some(project)) => Some(project.git_repo_path.clone()),
+            Ok(None) => None,
+            Err(e) => {
+                tracing::error!("Failed to fetch project {}: {}", task.project_id, e);
+                None
+            }
+        };
+        WorktreeManager::cleanup_worktree(
+            &PathBuf::from(task_attempt.container_ref.clone().unwrap_or_default()),
+            git_repo_path.as_deref(),
+        )
+        .await
+        .unwrap_or_else(|e| {
+            tracing::warn!(
+                "Failed to clean up worktree for task attempt {}: {}",
+                task_attempt.id,
+                e
+            );
+        });
+        Ok(())
+    }
+
+    async fn ensure_container_exists(
+        &self,
+        task_attempt: &TaskAttempt,
+    ) -> Result<ContainerRef, ContainerError> {
+        // Get required context
+        let task = task_attempt
+            .parent_task(&self.db.pool)
+            .await?
+            .ok_or(sqlx::Error::RowNotFound)?;
+
+        let project = task
+            .parent_project(&self.db.pool)
+            .await?
+            .ok_or(sqlx::Error::RowNotFound)?;
+
+        let container_ref = task_attempt.container_ref.as_ref().ok_or_else(|| {
+            ContainerError::Other(anyhow!("Container ref not found for task attempt"))
+        })?;
+        let worktree_path = PathBuf::from(container_ref);
+
+        WorktreeManager::ensure_worktree_exists(
+            &project.git_repo_path,
+            &task_attempt.branch,
+            &worktree_path,
+        )
+        .await?;
+
+        Ok(container_ref.to_string())
+    }
+
+    async fn is_container_clean(&self, task_attempt: &TaskAttempt) -> Result<bool, ContainerError> {
+        if let Some(container_ref) = &task_attempt.container_ref {
+            // If container_ref is set, check if the worktree exists
+            let path = PathBuf::from(container_ref);
+            if path.exists() {
+                self.git().is_worktree_clean(&path).map_err(|e| e.into())
+            } else {
+                return Ok(true); // No worktree means it's clean
+            }
+        } else {
+            return Ok(true); // No container_ref means no worktree, so it's clean
+        }
+    }
+
+    async fn start_execution_inner(
+        &self,
+        task_attempt: &TaskAttempt,
+        execution_process: &ExecutionProcess,
+        executor_action: &ExecutorAction,
+    ) -> Result<(), ContainerError> {
+        // Get the worktree path
+        let container_ref = task_attempt
+            .container_ref
+            .as_ref()
+            .ok_or(ContainerError::Other(anyhow!(
+                "Container ref not found for task attempt"
+            )))?;
+        let current_dir = PathBuf::from(container_ref);
+
+        let approvals_service: Arc<dyn ExecutorApprovalService> =
+            match executor_action.base_executor() {
+                Some(BaseCodingAgent::Codex) | Some(BaseCodingAgent::ClaudeCode) => {
+                    ExecutorApprovalBridge::new(
+                        self.approvals.clone(),
+                        self.db.clone(),
+                        execution_process.id,
+                    )
+                }
+                _ => Arc::new(NoopExecutorApprovalService {}),
+            };
+
+        // Create the child and stream, add to execution tracker with timeout
+        let mut spawned = tokio::time::timeout(
+            Duration::from_secs(30),
+            executor_action.spawn(&current_dir, approvals_service),
+        )
+        .await
+        .map_err(|_| {
+            ContainerError::Other(anyhow!(
+                "Timeout: process took more than 30 seconds to start"
+            ))
+        })??;
+
+        self.track_child_msgs_in_store(execution_process.id, &mut spawned.child)
+            .await;
+
+        self.add_child_to_store(execution_process.id, spawned.child)
+            .await;
+
+        // Spawn unified exit monitor: watches OS exit and optional executor signal
+        let _hn = self.spawn_exit_monitor(&execution_process.id, spawned.exit_signal);
+
+        Ok(())
+    }
+
+    async fn stop_execution(
+        &self,
+        execution_process: &ExecutionProcess,
+        status: ExecutionProcessStatus,
+    ) -> Result<(), ContainerError> {
+        let child = self
+            .get_child_from_store(&execution_process.id)
+            .await
+            .ok_or_else(|| {
+                ContainerError::Other(anyhow!("Child process not found for execution"))
+            })?;
+        let exit_code = if status == ExecutionProcessStatus::Completed {
+            Some(0)
+        } else {
+            None
+        };
+
+        ExecutionProcess::update_completion(&self.db.pool, execution_process.id, status, exit_code)
+            .await?;
+
+        // Kill the child process and remove from the store
+        {
+            let mut child_guard = child.write().await;
+            if let Err(e) = command::kill_process_group(&mut child_guard).await {
+                tracing::error!(
+                    "Failed to stop execution process {}: {}",
+                    execution_process.id,
+                    e
+                );
+                return Err(e);
+            }
+        }
+        self.remove_child_from_store(&execution_process.id).await;
+
+        // Mark the process finished in the MsgStore
+        if let Some(msg) = self.msg_stores.write().await.remove(&execution_process.id) {
+            msg.push_finished();
+        }
+
+        // Update task status to InReview when execution is stopped
+        if let Ok(ctx) = ExecutionProcess::load_context(&self.db.pool, execution_process.id).await
+            && !matches!(
+                ctx.execution_process.run_reason,
+                ExecutionProcessRunReason::DevServer
+            )
+        {
+            match Task::update_status(&self.db.pool, ctx.task.id, TaskStatus::InReview).await {
+                Ok(_) => {
+                    if let Some(publisher) = self.share_publisher()
+                        && let Err(err) = publisher.update_shared_task_by_id(ctx.task.id).await
+                    {
+                        tracing::warn!(
+                            ?err,
+                            "Failed to propagate shared task update for {}",
+                            ctx.task.id
+                        );
+                    }
+                }
+                Err(e) => {
+                    tracing::error!("Failed to update task status to InReview: {e}");
+                }
+            }
+        }
+
+        tracing::debug!(
+            "Execution process {} stopped successfully",
+            execution_process.id
+        );
+
+        // Record after-head commit OID (best-effort)
+        if let Ok(ctx) = ExecutionProcess::load_context(&self.db.pool, execution_process.id).await {
+            let worktree = self.task_attempt_to_current_dir(&ctx.task_attempt);
+            if let Ok(head) = self.git().get_head_info(&worktree) {
+                let _ = ExecutionProcess::update_after_head_commit(
+                    &self.db.pool,
+                    execution_process.id,
+                    &head.oid,
+                )
+                .await;
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn stream_diff(
+        &self,
+        task_attempt: &TaskAttempt,
+        stats_only: bool,
+    ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, ContainerError>
+    {
+        let project_repo_path = self.get_project_repo_path(task_attempt).await?;
+        let latest_merge =
+            Merge::find_latest_by_task_attempt_id(&self.db.pool, task_attempt.id).await?;
+
+        let is_ahead = if let Ok((ahead, _)) = self.git().get_branch_status(
+            &project_repo_path,
+            &task_attempt.branch,
+            &task_attempt.target_branch,
+        ) {
+            ahead > 0
+        } else {
+            false
+        };
+
+        if let Some(merge) = &latest_merge
+            && let Some(commit) = merge.merge_commit()
+            && self.is_container_clean(task_attempt).await?
+            && !is_ahead
+        {
+            let wrapper =
+                self.create_merged_diff_stream(&project_repo_path, &commit, stats_only)?;
+            return Ok(Box::pin(wrapper));
+        }
+
+        let container_ref = self.ensure_container_exists(task_attempt).await?;
+        let worktree_path = PathBuf::from(container_ref);
+        let base_commit = self.git().get_base_commit(
+            &project_repo_path,
+            &task_attempt.branch,
+            &task_attempt.target_branch,
+        )?;
+
+        let wrapper = self
+            .create_live_diff_stream(&worktree_path, &base_commit, stats_only)
+            .await?;
+        Ok(Box::pin(wrapper))
+    }
+
+    async fn try_commit_changes(&self, ctx: &ExecutionContext) -> Result<bool, ContainerError> {
+        if !matches!(
+            ctx.execution_process.run_reason,
+            ExecutionProcessRunReason::CodingAgent | ExecutionProcessRunReason::CleanupScript,
+        ) {
+            return Ok(false);
+        }
+
+        let message = match ctx.execution_process.run_reason {
+            ExecutionProcessRunReason::CodingAgent => {
+                // Try to retrieve the task summary from the executor session
+                // otherwise fallback to default message
+                match ExecutorSession::find_by_execution_process_id(
+                    &self.db().pool,
+                    ctx.execution_process.id,
+                )
+                .await
+                {
+                    Ok(Some(session)) if session.summary.is_some() => session.summary.unwrap(),
+                    Ok(_) => {
+                        tracing::debug!(
+                            "No summary found for execution process {}, using default message",
+                            ctx.execution_process.id
+                        );
+                        format!(
+                            "Commit changes from coding agent for task attempt {}",
+                            ctx.task_attempt.id
+                        )
+                    }
+                    Err(e) => {
+                        tracing::debug!(
+                            "Failed to retrieve summary for execution process {}: {}",
+                            ctx.execution_process.id,
+                            e
+                        );
+                        format!(
+                            "Commit changes from coding agent for task attempt {}",
+                            ctx.task_attempt.id
+                        )
+                    }
+                }
+            }
+            ExecutionProcessRunReason::CleanupScript => {
+                format!(
+                    "Cleanup script changes for task attempt {}",
+                    ctx.task_attempt.id
+                )
+            }
+            _ => Err(ContainerError::Other(anyhow::anyhow!(
+                "Invalid run reason for commit"
+            )))?,
+        };
+
+        let container_ref = ctx.task_attempt.container_ref.as_ref().ok_or_else(|| {
+            ContainerError::Other(anyhow::anyhow!("Container reference not found"))
+        })?;
+
+        tracing::debug!(
+            "Committing changes for task attempt {} at path {:?}: '{}'",
+            ctx.task_attempt.id,
+            &container_ref,
+            message
+        );
+
+        let changes_committed = self.git().commit(Path::new(container_ref), &message)?;
+        Ok(changes_committed)
+    }
+
+    /// Copy files from the original project directory to the worktree
+    async fn copy_project_files(
+        &self,
+        source_dir: &Path,
+        target_dir: &Path,
+        copy_files: &str,
+    ) -> Result<(), ContainerError> {
+        let files: Vec<&str> = copy_files
+            .split(',')
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        for file_path in files {
+            let source_file = source_dir.join(file_path);
+            let target_file = target_dir.join(file_path);
+
+            // Create parent directories if needed
+            if let Some(parent) = target_file.parent()
+                && !parent.exists()
+            {
+                std::fs::create_dir_all(parent).map_err(|e| {
+                    ContainerError::Other(anyhow!("Failed to create directory {parent:?}: {e}"))
+                })?;
+            }
+
+            // Copy the file
+            if source_file.exists() {
+                std::fs::copy(&source_file, &target_file).map_err(|e| {
+                    ContainerError::Other(anyhow!(
+                        "Failed to copy file {source_file:?} to {target_file:?}: {e}"
+                    ))
+                })?;
+                tracing::info!("Copied file {:?} to worktree", file_path);
+            } else {
+                return Err(ContainerError::Other(anyhow!(
+                    "File {source_file:?} does not exist in the project directory"
+                )));
+            }
+        }
+        Ok(())
+    }
+
+    async fn kill_all_running_processes(&self) -> Result<(), ContainerError> {
+        tracing::info!("Killing all running processes");
+        let running_processes = ExecutionProcess::find_running(&self.db.pool).await?;
+
+        for process in running_processes {
+            if let Err(error) = self
+                .stop_execution(&process, ExecutionProcessStatus::Killed)
+                .await
+            {
+                tracing::error!(
+                    "Failed to cleanly kill running execution process {:?}: {:?}",
+                    process,
+                    error
+                );
+            }
+        }
+
+        Ok(())
+    }
+}
+
 fn truncate_to_char_boundary(content: &str, max_len: usize) -> &str {
     if content.len() <= max_len {
         return content;
@@ -1284,6 +1337,19 @@ fn truncate_to_char_boundary(content: &str, max_len: usize) -> &str {
 
     debug_assert!(content.is_char_boundary(cutoff));
     &content[..cutoff]
+}
+
+fn success_exit_status() -> std::process::ExitStatus {
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::ExitStatusExt;
+        ExitStatusExt::from_raw(0)
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::ExitStatusExt;
+        ExitStatusExt::from_raw(0)
+    }
 }
 
 #[cfg(test)]

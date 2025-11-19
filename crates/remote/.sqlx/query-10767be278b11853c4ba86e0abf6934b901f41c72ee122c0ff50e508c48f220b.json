@@ -1,0 +1,68 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                o.id AS \"id!: Uuid\",\n                o.name AS \"name!\",\n                o.slug AS \"slug!\",\n                o.is_personal AS \"is_personal!\",\n                o.created_at AS \"created_at!\",\n                o.updated_at AS \"updated_at!\",\n                m.role AS \"user_role!: MemberRole\"\n            FROM organizations o\n            JOIN organization_member_metadata m ON m.organization_id = o.id\n            WHERE m.user_id = $1\n            ORDER BY o.created_at DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "slug!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "is_personal!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "updated_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "user_role!: MemberRole",
+        "type_info": {
+          "Custom": {
+            "name": "member_role",
+            "kind": {
+              "Enum": [
+                "admin",
+                "member"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "10767be278b11853c4ba86e0abf6934b901f41c72ee122c0ff50e508c48f220b"
+}

@@ -1,0 +1,113 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO organization_invitations (\n                organization_id, invited_by_user_id, email, role, token, expires_at\n            )\n            VALUES ($1, $2, $3, $4, $5, $6)\n            RETURNING\n                id AS \"id!\",\n                organization_id AS \"organization_id!: Uuid\",\n                invited_by_user_id AS \"invited_by_user_id?: Uuid\",\n                email AS \"email!\",\n                role AS \"role!: MemberRole\",\n                status AS \"status!: InvitationStatus\",\n                token AS \"token!\",\n                expires_at AS \"expires_at!\",\n                created_at AS \"created_at!\",\n                updated_at AS \"updated_at!\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "organization_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "invited_by_user_id?: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "email!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "role!: MemberRole",
+        "type_info": {
+          "Custom": {
+            "name": "member_role",
+            "kind": {
+              "Enum": [
+                "admin",
+                "member"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "status!: InvitationStatus",
+        "type_info": {
+          "Custom": {
+            "name": "invitation_status",
+            "kind": {
+              "Enum": [
+                "pending",
+                "accepted",
+                "declined",
+                "expired"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "token!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "expires_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at!",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        {
+          "Custom": {
+            "name": "member_role",
+            "kind": {
+              "Enum": [
+                "admin",
+                "member"
+              ]
+            }
+          }
+        },
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "7def4e455b1290e624cf7bb52819074dadebc72a22ddfc8f4ba2513eb2992c17"
+}

@@ -27,6 +27,7 @@ use executors::{
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     },
     executors::{ExecutorError, StandardCodingAgentExecutor},
+    logs::{NormalizedEntry, NormalizedEntryError, NormalizedEntryType, utils::ConversationPatch},
     profile::{ExecutorConfigs, ExecutorProfileId, to_default_variant},
 };
 use futures::{StreamExt, future};
@@ -43,6 +44,7 @@ use uuid::Uuid;
 use crate::services::{
     git::{GitService, GitServiceError},
     image::ImageService,
+    share::SharePublisher,
     worktree_manager::{WorktreeError, WorktreeManager},
 };
 pub type ContainerRef = String;
@@ -109,9 +111,13 @@ pub trait ContainerService {
 
     fn git(&self) -> &GitService;
 
+    fn share_publisher(&self) -> Option<&SharePublisher>;
+
     fn task_attempt_to_current_dir(&self, task_attempt: &TaskAttempt) -> PathBuf;
 
     async fn create(&self, task_attempt: &TaskAttempt) -> Result<ContainerRef, ContainerError>;
+
+    async fn kill_all_running_processes(&self) -> Result<(), ContainerError>;
 
     async fn delete(&self, task_attempt: &TaskAttempt) -> Result<(), ContainerError> {
         self.try_stop(task_attempt).await;
@@ -189,6 +195,7 @@ pub trait ContainerService {
         &self,
         task_attempt: &TaskAttempt,
     ) -> Result<ContainerRef, ContainerError>;
+
     async fn is_container_clean(&self, task_attempt: &TaskAttempt) -> Result<bool, ContainerError>;
 
     async fn start_execution_inner(
@@ -258,17 +265,17 @@ pub trait ContainerService {
             );
         } else {
             // Fallback: load from DB and create direct stream
-            let logs_record =
+            let log_records =
                 match ExecutionProcessLogs::find_by_execution_id(&self.db().pool, *id).await {
-                    Ok(Some(record)) => record,
-                    Ok(None) => return None, // No logs exist
+                    Ok(records) if !records.is_empty() => records,
+                    Ok(_) => return None, // No logs exist
                     Err(e) => {
                         tracing::error!("Failed to fetch logs for execution {}: {}", id, e);
                         return None;
                     }
                 };
 
-            let messages = match logs_record.parse_logs() {
+            let messages = match ExecutionProcessLogs::parse_logs(&log_records) {
                 Ok(msgs) => msgs,
                 Err(e) => {
                     tracing::error!("Failed to parse logs for execution {}: {}", id, e);
@@ -307,17 +314,17 @@ pub trait ContainerService {
             )
         } else {
             // Fallback: load from DB and normalize
-            let logs_record =
+            let log_records =
                 match ExecutionProcessLogs::find_by_execution_id(&self.db().pool, *id).await {
-                    Ok(Some(record)) => record,
-                    Ok(None) => return None, // No logs exist
+                    Ok(records) if !records.is_empty() => records,
+                    Ok(_) => return None, // No logs exist
                     Err(e) => {
                         tracing::error!("Failed to fetch logs for execution {}: {}", id, e);
                         return None;
                     }
                 };
 
-            let raw_messages = match logs_record.parse_logs() {
+            let raw_messages = match ExecutionProcessLogs::parse_logs(&log_records) {
                 Ok(msgs) => msgs,
                 Err(e) => {
                     tracing::error!("Failed to parse logs for execution {}: {}", id, e);
@@ -326,9 +333,13 @@ pub trait ContainerService {
             };
 
             // Create temporary store and populate
+            // Include JsonPatch messages (already normalized) and Stdout/Stderr (need normalization)
             let temp_store = Arc::new(MsgStore::new());
             for msg in raw_messages {
-                if matches!(msg, LogMsg::Stdout(_) | LogMsg::Stderr(_)) {
+                if matches!(
+                    msg,
+                    LogMsg::Stdout(_) | LogMsg::Stderr(_) | LogMsg::JsonPatch(_)
+                ) {
                     temp_store.push(msg);
                 }
             }
@@ -583,6 +594,16 @@ pub trait ContainerService {
             && run_reason != &ExecutionProcessRunReason::DevServer
         {
             Task::update_status(&self.db().pool, task.id, TaskStatus::InProgress).await?;
+
+            if let Some(publisher) = self.share_publisher()
+                && let Err(err) = publisher.update_shared_task_by_id(task.id).await
+            {
+                tracing::warn!(
+                    ?err,
+                    "Failed to propagate shared task update for {}",
+                    task.id
+                );
+            }
         }
         // Create new execution process record
         // Capture current HEAD as the "before" commit for this execution
@@ -652,65 +673,68 @@ pub trait ContainerService {
                     update_error
                 );
             }
+            Task::update_status(&self.db().pool, task.id, TaskStatus::InReview).await?;
 
-            // Persist the error to process stderr logs
+            // Emit stderr error message
             let log_message = LogMsg::Stderr(format!("Failed to start execution: {start_error}"));
-            if let Ok(json_line) = serde_json::to_string(&log_message)
-                && let Err(err) = ExecutionProcessLogs::append_log_line(
+            if let Ok(json_line) = serde_json::to_string(&log_message) {
+                let _ = ExecutionProcessLogs::append_log_line(
                     &self.db().pool,
                     execution_process.id,
                     &format!("{json_line}\n"),
                 )
-                .await
-            {
-                tracing::error!(
-                    "Failed to write to process log table {}: {}",
-                    execution_process.id,
-                    err
-                );
+                .await;
             }
 
+            // Emit NextAction with failure context for coding agent requests
+            if let ContainerError::ExecutorError(ExecutorError::ExecutableNotFound { program }) =
+                &start_error
+            {
+                let help_text = format!("The required executable `{program}` is not installed.");
+                let error_message = NormalizedEntry {
+                    timestamp: None,
+                    entry_type: NormalizedEntryType::ErrorMessage {
+                        error_type: NormalizedEntryError::SetupRequired,
+                    },
+                    content: help_text,
+                    metadata: None,
+                };
+                let patch = ConversationPatch::add_normalized_entry(2, error_message);
+                if let Ok(json_line) = serde_json::to_string::<LogMsg>(&LogMsg::JsonPatch(patch)) {
+                    let _ = ExecutionProcessLogs::append_log_line(
+                        &self.db().pool,
+                        execution_process.id,
+                        &format!("{json_line}\n"),
+                    )
+                    .await;
+                }
+            };
             return Err(start_error);
         }
 
         // Start processing normalised logs for executor requests and follow ups
-        match executor_action.typ() {
-            ExecutorActionType::CodingAgentInitialRequest(request) => {
-                if let Some(msg_store) = self.get_msg_store_by_id(&execution_process.id).await {
-                    if let Some(executor) =
-                        ExecutorConfigs::get_cached().get_coding_agent(&request.executor_profile_id)
-                    {
-                        executor.normalize_logs(
-                            msg_store,
-                            &self.task_attempt_to_current_dir(task_attempt),
-                        );
-                    } else {
-                        tracing::error!(
-                            "Failed to resolve profile '{:?}' for normalization",
-                            request.executor_profile_id
-                        );
-                    }
+        if let Some(msg_store) = self.get_msg_store_by_id(&execution_process.id).await
+            && let Some(executor_profile_id) = match executor_action.typ() {
+                ExecutorActionType::CodingAgentInitialRequest(request) => {
+                    Some(&request.executor_profile_id)
                 }
-            }
-            ExecutorActionType::CodingAgentFollowUpRequest(request) => {
-                if let Some(msg_store) = self.get_msg_store_by_id(&execution_process.id).await {
-                    if let Some(executor) =
-                        ExecutorConfigs::get_cached().get_coding_agent(&request.executor_profile_id)
-                    {
-                        executor.normalize_logs(
-                            msg_store,
-                            &self.task_attempt_to_current_dir(task_attempt),
-                        );
-                    } else {
-                        tracing::error!(
-                            "Failed to resolve profile '{:?}' for normalization",
-                            request.get_executor_profile_id()
-                        );
-                    }
+                ExecutorActionType::CodingAgentFollowUpRequest(request) => {
+                    Some(&request.executor_profile_id)
                 }
+                _ => None,
             }
-            _ => {}
-        };
+        {
+            if let Some(executor) =
+                ExecutorConfigs::get_cached().get_coding_agent(executor_profile_id)
+            {
+                executor.normalize_logs(msg_store, &self.task_attempt_to_current_dir(task_attempt));
+            } else {
+                tracing::error!(
+                    "Failed to resolve profile '{:?}' for normalization",
+                    executor_profile_id
+                );
+            }
+        }
 
         self.spawn_stream_raw_logs_to_db(&execution_process.id);
         Ok(execution_process)
@@ -720,29 +744,26 @@ pub trait ContainerService {
         let action = ctx.execution_process.executor_action()?;
         let next_action = if let Some(next_action) = action.next_action() {
             next_action
-        } else if matches!(
-            ctx.execution_process.run_reason,
-            ExecutionProcessRunReason::SetupScript
-        ) {
-            return Err(ContainerError::Other(anyhow::anyhow!(
-                "No next action configured for SetupScript"
-            )));
         } else {
             tracing::debug!("No next action configured");
             return Ok(());
         };
 
         // Determine the run reason of the next action
-        let next_run_reason = match ctx.execution_process.run_reason {
-            ExecutionProcessRunReason::SetupScript => ExecutionProcessRunReason::CodingAgent,
-            ExecutionProcessRunReason::CodingAgent => ExecutionProcessRunReason::CleanupScript,
-            _ => {
-                tracing::warn!(
-                    "Unexpected run reason: {:?}, defaulting to current reason",
-                    ctx.execution_process.run_reason
-                );
-                ctx.execution_process.run_reason.clone()
+        let next_run_reason = match (action.typ(), next_action.typ()) {
+            (ExecutorActionType::ScriptRequest(_), ExecutorActionType::ScriptRequest(_)) => {
+                ExecutionProcessRunReason::SetupScript
             }
+            (
+                ExecutorActionType::CodingAgentInitialRequest(_)
+                | ExecutorActionType::CodingAgentFollowUpRequest(_),
+                ExecutorActionType::ScriptRequest(_),
+            ) => ExecutionProcessRunReason::CleanupScript,
+            (
+                _,
+                ExecutorActionType::CodingAgentFollowUpRequest(_)
+                | ExecutorActionType::CodingAgentInitialRequest(_),
+            ) => ExecutionProcessRunReason::CodingAgent,
         };
 
         self.start_execution(&ctx.task_attempt, next_action, &next_run_reason)

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ import { useScriptPlaceholders } from '@/hooks/useScriptPlaceholders';
 import { CopyFilesField } from './copy-files-field';
 // Removed collapsible sections for simplicity; show fields always in edit mode
 import { fileSystemApi } from '@/lib/api';
-import { showFolderPicker } from '@/lib/modals';
+import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
 import { DirectoryEntry } from 'shared/types';
 import { generateProjectNameFromPath } from '@/utils/string';
 
@@ -77,14 +77,7 @@ export function ProjectFormFields({
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [showRecentRepos, setShowRecentRepos] = useState(false);
 
-  // Lazy-load repositories when the user navigates to the repo list
-  useEffect(() => {
-    if (!isEditing && showRecentRepos && !loading && allRepos.length === 0) {
-      loadRecentRepos();
-    }
-  }, [isEditing, showRecentRepos]);
-
-  const loadRecentRepos = async () => {
+  const loadRecentRepos = useCallback(async () => {
     setLoading(true);
     setReposError('');
 
@@ -97,7 +90,14 @@ export function ProjectFormFields({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Lazy-load repositories when the user navigates to the repo list
+  useEffect(() => {
+    if (!isEditing && showRecentRepos && !loading && allRepos.length === 0) {
+      loadRecentRepos();
+    }
+  }, [isEditing, showRecentRepos, loading, allRepos.length, loadRecentRepos]);
 
   return (
     <>
@@ -244,7 +244,7 @@ export function ProjectFormFields({
                   className="p-4 border border-dashed cursor-pointer hover:shadow-md transition-shadow rounded-lg bg-card"
                   onClick={async () => {
                     setError('');
-                    const selectedPath = await showFolderPicker({
+                    const selectedPath = await FolderPickerDialog.show({
                       title: 'Select Git Repository',
                       description: 'Choose an existing git repository',
                     });
@@ -341,7 +341,7 @@ export function ProjectFormFields({
                   variant="ghost"
                   size="icon"
                   onClick={async () => {
-                    const selectedPath = await showFolderPicker({
+                    const selectedPath = await FolderPickerDialog.show({
                       title: 'Select Parent Directory',
                       description: 'Choose where to create the new repository',
                       value: parentPath,
@@ -381,7 +381,7 @@ export function ProjectFormFields({
                 type="button"
                 variant="outline"
                 onClick={async () => {
-                  const selectedPath = await showFolderPicker({
+                  const selectedPath = await FolderPickerDialog.show({
                     title: 'Select Git Repository',
                     description: 'Choose an existing git repository',
                     value: gitRepoPath,

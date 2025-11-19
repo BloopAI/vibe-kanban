@@ -265,9 +265,11 @@ const PendingApprovalEntry = ({
         });
         setHasResponded(true);
         clear();
-      } catch (e: any) {
+      } catch (e: unknown) {
         console.error('Approval respond failed:', e);
-        setError(e?.message || 'Failed to send response');
+        const errorMessage =
+          e instanceof Error ? e.message : 'Failed to send response';
+        setError(errorMessage);
       } finally {
         setIsResponding(false);
       }

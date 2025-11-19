@@ -27,7 +27,66 @@ You can override the default agent configuration per attempt in the create attem
 
 ## Editor Integration
 
-Configure integration with your preferred code editor (e.g., VS Code) for a seamless development workflow.
+Configure integration with your preferred code editor for a seamless development workflow.
+
+### Selecting Your Editor
+
+Choose from various supported editors:
+- **VS Code** - Microsoft's popular code editor
+- **Cursor** - VSCode fork with AI-native features
+- **Windsurf** - VSCode fork optimized for collaborative development
+- **Neovim**, **Emacs**, **Sublime Text** - Other popular editors
+- **Custom** - Use a custom shell command
+
+### Remote SSH Configuration
+
+<Frame>
+<img src="/images/vk-editor-ssh.png" alt="Vibe Kanban settings editor section showing ssh configuration options." />
+</Frame>
+
+When running Vibe Kanban on a remote server (e.g., accessed via Cloudflare tunnel, ngrok, or as a systemctl service), you can configure VSCode-based editors to open projects via SSH instead of assuming localhost.
+
+This feature is available for **VS Code**, **Cursor**, and **Windsurf** editors.
+
+#### When to Use Remote SSH
+
+Enable remote SSH configuration when:
+- Vibe Kanban runs on a remote server (VPS, cloud instance, etc.)
+- You access the web UI through a tunnel or reverse proxy
+- Your code files are on a different machine than your browser
+- You want your local editor to connect to the remote server via SSH
+
+#### Configuration Fields
+
+1. **Remote SSH Host** (Optional)
+   - The hostname or IP address of your remote server
+   - Examples: `example.com`, `192.168.1.100`, `my-server`
+   - Must be accessible via SSH from your local machine
+
+2. **Remote SSH User** (Optional)
+   - The SSH username for connecting to the remote server
+   - If not specified, SSH will use your default user or SSH config
+
+#### How It Works
+
+When remote SSH is configured, clicking "Open in VSCode" (or Cursor/Windsurf):
+1. Generates a special protocol URL like: `vscode://vscode-remote/ssh-remote+user@host/path/to/project`
+2. Opens in your default browser, which launches your local editor
+3. Your editor connects to the remote server via SSH
+4. The project or task worktree opens in the remote context
+
+This works for both project-level and task worktree opening.
+
+#### Prerequisites
+
+- SSH access configured between your local machine and remote server
+- SSH keys or credentials set up (no password prompts)
+- VSCode Remote-SSH extension installed (or equivalent for Cursor/Windsurf)
+- The remote server path must be accessible via SSH
+
+<Tip>
+Test your SSH connection first with `ssh user@host` to ensure it works without prompting for passwords.
+</Tip>
 
 ## GitHub Integration
 
@@ -45,12 +104,12 @@ Toggle sound effects and push notifications to stay informed about task status c
 
 Enable or disable telemetry data collection to help improve Vibe Kanban.
 
-## Task Templates
+## Task Tags
 
-Manage global task templates to accelerate task creation across all projects. Templates allow you to define reusable titles and descriptions for common tasks.
+Manage global task tags to accelerate task creation across all projects. Task tags allow you to define reusable text snippets that can be inserted into task descriptions using @mentions.
 
-<Card title="Learn more about task templates" icon="clone" href="/configuration-customisation/creating-task-templates">
-  Complete guide to creating and managing task templates
+<Card title="Learn more about task tags" icon="tag" href="/configuration-customisation/creating-task-tags">
+  Complete guide to creating and managing task tags
 </Card>
 
 ## Agent Settings (Profiles & Variants)

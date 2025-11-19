@@ -6,6 +6,8 @@ import {
   TaskAttempt,
   ToolStatus,
   type NormalizedEntryType,
+  type TaskWithAttemptStatus,
+  type JsonValue,
 } from 'shared/types.ts';
 import type { ProcessStartPayload } from '@/types/logs';
 import FileChangeRenderer from './FileChangeRenderer';
@@ -39,11 +41,10 @@ type Props = {
   diffDeletable?: boolean;
   executionProcessId?: string;
   taskAttempt?: TaskAttempt;
-  task?: any;
+  task?: TaskWithAttemptStatus;
 };
 
 type FileEditAction = Extract<ActionType, { action: 'file_edit' }>;
-type JsonValue = any;
 
 const renderJson = (v: JsonValue) => (
   <pre className="whitespace-pre-wrap">{JSON.stringify(v, null, 2)}</pre>
@@ -419,59 +420,55 @@ const PlanPresentationCard: React.FC<{
 };
 
 const ToolCallCard: React.FC<{
-  entryType?: Extract<NormalizedEntryType, { type: 'tool_use' }>;
-  action?: any;
+  entry: NormalizedEntry | ProcessStartPayload;
   expansionKey: string;
-  content?: string;
-  entryContent?: string;
-  highlighted?: boolean;
-  defaultExpanded?: boolean;
-  statusAppearance?: ToolStatusAppearance;
   forceExpanded?: boolean;
-}> = ({
-  entryType,
-  action,
-  expansionKey,
-  content,
-  entryContent,
-  defaultExpanded = false,
-  forceExpanded = false,
-}) => {
+}> = ({ entry, expansionKey, forceExpanded = false }) => {
   const { t } = useTranslation('common');
-  const at: any = entryType?.action_type || action;
+
+  // Determine if this is a NormalizedEntry with tool_use
+  const isNormalizedEntry = 'entry_type' in entry;
+  const entryType =
+    isNormalizedEntry && entry.entry_type.type === 'tool_use'
+      ? entry.entry_type
+      : undefined;
+
+  // Compute defaults from entry
+  const linkifyUrls = entryType?.tool_name === 'GitHub CLI Setup Script';
+  const defaultExpanded = linkifyUrls;
+
   const [expanded, toggle] = useExpandable(
     `tool-entry:${expansionKey}`,
     defaultExpanded
   );
   const effectiveExpanded = forceExpanded || expanded;
 
-  const label =
-    at?.action === 'command_run'
-      ? 'Ran'
-      : entryType?.tool_name || at?.tool_name || 'Tool';
+  // Extract action details
+  const actionType = entryType?.action_type;
+  const isCommand = actionType?.action === 'command_run';
+  const isTool = actionType?.action === 'tool';
 
-  const isCommand = at?.action === 'command_run';
+  // Label and content
+  const label = isCommand ? 'Ran' : entryType?.tool_name || 'Tool';
 
-  const inlineText = (entryContent || content || '').trim();
+  const inlineText = isNormalizedEntry ? entry.content.trim() : '';
   const isSingleLine = inlineText !== '' && !/\r?\n/.test(inlineText);
   const showInlineSummary = isSingleLine;
 
-  const hasArgs = at?.action === 'tool' && !!at?.arguments;
-  const hasResult = at?.action === 'tool' && !!at?.result;
-
-  const output: string | null = isCommand ? (at?.result?.output ?? null) : null;
+  // Command details
+  const commandResult = isCommand ? actionType.result : null;
+  const output = commandResult?.output ?? null;
   let argsText: string | null = null;
   if (isCommand) {
     const fromArgs =
-      typeof at?.arguments === 'string'
-        ? at.arguments
-        : at?.arguments != null
-          ? JSON.stringify(at.arguments, null, 2)
-          : '';
-
-    const fallback = (entryContent || content || '').trim();
+      typeof actionType.command === 'string' ? actionType.command : '';
+    const fallback = inlineText;
     argsText = (fromArgs || fallback).trim();
   }
+
+  // Tool details
+  const hasArgs = isTool && !!actionType.arguments;
+  const hasResult = isTool && !!actionType.result;
 
   const hasExpandableDetails = isCommand
     ? Boolean(argsText) || Boolean(output)
@@ -495,6 +492,7 @@ const ToolCallCard: React.FC<{
   const headerClassName = cn(
     'w-full flex items-center gap-1.5 text-left text-secondary-foreground'
   );
+
   return (
     <div className="inline-block w-full flex flex-col gap-4">
       <HeaderWrapper {...headerProps} className={headerClassName}>
@@ -530,33 +528,33 @@ const ToolCallCard: React.FC<{
                     {t('conversation.output')}
                   </div>
                   <div className="px-2 py-1">
-                    <RawLogText content={output} />
+                    <RawLogText content={output} linkifyUrls={linkifyUrls} />
                   </div>
                 </>
               )}
             </>
           ) : (
             <>
-              {entryType?.action_type.action === 'tool' && (
+              {isTool && actionType && (
                 <>
                   <div className="font-normal uppercase bg-background border-b border-dashed px-2 py-1">
                     {t('conversation.args')}
                   </div>
                   <div className="px-2 py-1">
-                    {renderJson(entryType.action_type.arguments)}
+                    {renderJson(actionType.arguments)}
                   </div>
                   <div className="font-normal uppercase bg-background border-y border-dashed px-2 py-1">
                     {t('conversation.result')}
                   </div>
                   <div className="px-2 py-1">
-                    {entryType.action_type.result?.type.type === 'markdown' &&
-                      entryType.action_type.result.value && (
+                    {actionType.result?.type.type === 'markdown' &&
+                      actionType.result.value && (
                         <MarkdownRenderer
-                          content={entryType.action_type.result.value?.toString()}
+                          content={actionType.result.value?.toString()}
                         />
                       )}
-                    {entryType.action_type.result?.type.type === 'json' &&
-                      renderJson(entryType.action_type.result.value)}
+                    {actionType.result?.type.type === 'json' &&
+                      renderJson(actionType.result.value)}
                   </div>
                 </>
               )}
@@ -622,14 +620,9 @@ function DisplayConversationEntry({
   const greyed = isProcessGreyed(executionProcessId);
 
   if (isProcessStart(entry)) {
-    const toolAction: any = entry.action ?? null;
     return (
       <div className={greyed ? 'opacity-50 pointer-events-none' : undefined}>
-        <ToolCallCard
-          action={toolAction}
-          expansionKey={expansionKey}
-          content={toolAction?.message ?? toolAction?.summary ?? undefined}
-        />
+        <ToolCallCard entry={entry} expansionKey={expansionKey} />
       </div>
     );
   }
@@ -724,11 +717,8 @@ function DisplayConversationEntry({
 
       return (
         <ToolCallCard
-          entryType={toolEntry}
+          entry={entry}
           expansionKey={expansionKey}
-          entryContent={entry.content}
-          defaultExpanded={defaultExpanded}
-          statusAppearance={statusAppearance}
           forceExpanded={isPendingApproval}
         />
       );
@@ -793,6 +783,7 @@ function DisplayConversationEntry({
           failed={entry.entry_type.failed}
           execution_processes={entry.entry_type.execution_processes}
           task={task}
+          needsSetup={entry.entry_type.needs_setup}
         />
       </div>
     );

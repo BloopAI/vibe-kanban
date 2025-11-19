@@ -51,5 +51,38 @@
     "reconnecting": "再接続中",
     "saving": "保存中...",
     "success": "成功"
+  },
+  "orgMembers": {
+    "moreCount": "他 {{count}} 人"
+  },
+  "orgSwitcher": {
+    "title": "組織を切り替える",
+    "description": "切り替える組織を選択してください。",
+    "loadError": "組織の読み込みに失敗しました。もう一度お試しください。",
+    "noOrganizations": "あなたはどの組織にも所属していません。",
+    "menuItem": "組織",
+    "loadingPlaceholder": "組織を読み込み中...",
+    "selectPlaceholder": "組織を選択",
+    "currentBadge": " (現在)"
+  },
+  "signOut": "サインアウト",
+  "devMode": {
+    "banner": "開発モード - これは開発ビルドです"
+  },
+  "oauth": {
+    "title": "Vibe Kanbanにサインイン",
+    "description": "サインインして組織に参加し、チームとタスクを共有します",
+    "continueWithGitHub": "GitHubで続行",
+    "continueWithGoogle": "Googleで続行",
+    "waitingTitle": "認証を完了",
+    "waitingDescription": "認証用のポップアップウィンドウが開きました",
+    "waitingForAuth": "認証を待っています...",
+    "popupInstructions": "ポップアップウィンドウが開かない場合は、ポップアップブロックの設定を確認してください。",
+    "back": "戻る",
+    "successTitle": "認証成功！",
+    "welcomeBack": "おかえりなさい、{{name}}",
+    "errorTitle": "認証失敗",
+    "errorDescription": "アカウントの認証中に問題が発生しました",
+    "tryAgain": "再試行"
   }
 }

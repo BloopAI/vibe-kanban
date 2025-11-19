@@ -18,19 +18,19 @@ use workspace_utils::{
     log_msg::LogMsg,
     msg_store::MsgStore,
     path::make_path_relative,
-    shell::get_shell_command,
 };
 
 use self::{client::ClaudeAgentClient, protocol::ProtocolPeer, types::PermissionMode};
 use crate::{
     approvals::ExecutorApprovalService,
-    command::{CmdOverrides, CommandBuilder, apply_overrides},
+    command::{CmdOverrides, CommandBuilder, CommandParts, apply_overrides},
     executors::{
         AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
         codex::client::LogWriter,
     },
     logs::{
-        ActionType, FileChange, NormalizedEntry, NormalizedEntryType, TodoItem, ToolStatus,
+        ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
+        TodoItem, ToolStatus,
         stderr_processor::normalize_stderr_logs,
         utils::{EntryIndexProvider, patch::ConversationPatch},
     },
@@ -39,9 +39,9 @@ use crate::{
 
 fn base_command(claude_code_router: bool) -> &'static str {
     if claude_code_router {
-        "npx -y @musistudio/claude-code-router@1.0.58 code"
+        "npx -y @musistudio/claude-code-router@1.0.66 code"
     } else {
-        "npx -y @anthropic-ai/claude-code@2.0.17"
+        "npx -y @anthropic-ai/claude-code@2.0.42"
     }
 }
 
@@ -156,8 +156,9 @@ impl StandardCodingAgentExecutor for ClaudeCode {
 
     async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
         let command_builder = self.build_command_builder().await;
-        let base_command = command_builder.build_initial();
-        self.spawn_internal(current_dir, prompt, base_command).await
+        let command_parts = command_builder.build_initial()?;
+        self.spawn_internal(current_dir, prompt, command_parts)
+            .await
     }
 
     async fn spawn_follow_up(
@@ -167,12 +168,13 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         session_id: &str,
     ) -> Result<SpawnedChild, ExecutorError> {
         let command_builder = self.build_command_builder().await;
-        let base_command = command_builder.build_follow_up(&[
+        let command_parts = command_builder.build_follow_up(&[
             "--fork-session".to_string(),
             "--resume".to_string(),
             session_id.to_string(),
-        ]);
-        self.spawn_internal(current_dir, prompt, base_command).await
+        ])?;
+        self.spawn_internal(current_dir, prompt, command_parts)
+            .await
     }
 
     fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &Path) {
@@ -201,20 +203,19 @@ impl ClaudeCode {
         &self,
         current_dir: &Path,
         prompt: &str,
-        base_command: String,
+        command_parts: CommandParts,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let (shell_cmd, shell_arg) = get_shell_command();
+        let (program_path, args) = command_parts.into_resolved().await?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
-        let mut command = Command::new(shell_cmd);
+        let mut command = Command::new(program_path);
         command
             .kill_on_drop(true)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(current_dir)
-            .arg(shell_arg)
-            .arg(&base_command);
+            .args(&args);
 
         let mut child = command.group_spawn()?;
         let child_stdout = child.inner().stdout.take().ok_or_else(|| {
@@ -427,7 +428,8 @@ impl ClaudeLogProcessor {
                 );
                 Some(NormalizedEntry {
                     timestamp: None,
-                    entry_type: NormalizedEntryType::ErrorMessage,
+                    entry_type: NormalizedEntryType::ErrorMessage { error_type: NormalizedEntryError::Other,
+                    },
                     content: "Claude Code + ANTHROPIC_API_KEY detected. Usage will be billed via Anthropic pay-as-you-go instead of your Claude subscription.".to_string(),
                     metadata: None,
                 })
@@ -1079,7 +1081,9 @@ impl ClaudeLogProcessor {
                 {
                     let entry = NormalizedEntry {
                         timestamp: None,
-                        entry_type: NormalizedEntryType::ErrorMessage,
+                        entry_type: NormalizedEntryType::ErrorMessage {
+                            error_type: NormalizedEntryError::Other,
+                        },
                         content: serde_json::to_string(claude_json)
                             .unwrap_or_else(|_| "error".to_string()),
                         metadata: Some(
@@ -1113,7 +1117,9 @@ impl ClaudeLogProcessor {
                     }),
                     ApprovalStatus::TimedOut => Some(NormalizedEntry {
                         timestamp: None,
-                        entry_type: NormalizedEntryType::ErrorMessage,
+                        entry_type: NormalizedEntryType::ErrorMessage {
+                            error_type: NormalizedEntryError::Other,
+                        },
                         content: format!("Approval timed out for tool {tool_name}"),
                         metadata: None,
                     }),
@@ -2238,7 +2244,9 @@ mod tests {
         assert_eq!(entries.len(), 1);
         assert!(matches!(
             entries[0].entry_type,
-            NormalizedEntryType::ErrorMessage
+            NormalizedEntryType::ErrorMessage {
+                error_type: NormalizedEntryError::Other,
+            },
         ));
         assert_eq!(
             entries[0].content,

@@ -4,7 +4,6 @@ import {
   ApprovalStatus,
   ApiResponse,
   BranchStatus,
-  CheckTokenResponse,
   Config,
   CommitInfo,
   CreateFollowUpAttempt,
@@ -13,8 +12,6 @@ import {
   CreateAndStartTaskRequest,
   CreateTaskAttemptBody,
   CreateTag,
-  DeviceFlowStartResponse,
-  DevicePollStatus,
   DirectoryListResponse,
   DirectoryEntry,
   EditorType,
@@ -24,12 +21,14 @@ import {
   CreateProject,
   RepositoryInfo,
   SearchResult,
+  ShareTaskResponse,
   Task,
   TaskAttempt,
   TaskRelationships,
   Tag,
   TagSearchParams,
   TaskWithAttemptStatus,
+  AssignSharedTaskResponse,
   UpdateProject,
   UpdateTask,
   UpdateTag,
@@ -47,6 +46,28 @@ import {
   RebaseTaskAttemptRequest,
   ChangeTargetBranchRequest,
   ChangeTargetBranchResponse,
+  RenameBranchRequest,
+  RenameBranchResponse,
+  RunAgentSetupRequest,
+  RunAgentSetupResponse,
+  GhCliSetupError,
+  StatusResponse,
+  ListOrganizationsResponse,
+  OrganizationMemberWithProfile,
+  ListMembersResponse,
+  RemoteProjectMembersResponse,
+  CreateOrganizationRequest,
+  CreateOrganizationResponse,
+  CreateInvitationRequest,
+  CreateInvitationResponse,
+  RevokeInvitationRequest,
+  UpdateMemberRoleRequest,
+  CreateRemoteProjectRequest,
+  LinkToExistingRequest,
+  UpdateMemberRoleResponse,
+  Invitation,
+  RemoteProject,
+  ListInvitationsResponse,
 } from 'shared/types';
 
 // Re-export types for convenience
@@ -74,10 +95,10 @@ class ApiError<E = unknown> extends Error {
 }
 
 const makeRequest = async (url: string, options: RequestInit = {}) => {
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(options.headers || {}),
-  };
+  const headers = new Headers(options.headers ?? {});
+  if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
 
   return fetch(url, {
     ...options,
@@ -89,6 +110,10 @@ export interface FollowUpResponse {
   message: string;
   actual_attempt_id: string;
   created_new_attempt: boolean;
+}
+
+export interface OpenEditorResponse {
+  url: string | null;
 }
 
 export type Ok<T> = { success: true; data: T };
@@ -158,6 +183,10 @@ const handleApiResponse = async <T, E = T>(response: Response): Promise<T> => {
     throw new ApiError<E>(errorMessage, response.status, response);
   }
 
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
   const result: ApiResponse<T, E> = await response.json();
 
   if (!result.success) {
@@ -225,6 +254,15 @@ export const projectsApi = {
     return handleApiResponse<Project>(response);
   },
 
+  getRemoteMembers: async (
+    projectId: string
+  ): Promise<RemoteProjectMembersResponse> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/remote/members`
+    );
+    return handleApiResponse<RemoteProjectMembersResponse>(response);
+  },
+
   delete: async (id: string): Promise<void> => {
     const response = await makeRequest(`/api/projects/${id}`, {
       method: 'DELETE',
@@ -232,8 +270,11 @@ export const projectsApi = {
     return handleApiResponse<void>(response);
   },
 
-  openEditor: async (id: string, editorType?: EditorType): Promise<void> => {
-    const requestBody: any = {};
+  openEditor: async (
+    id: string,
+    editorType?: EditorType
+  ): Promise<OpenEditorResponse> => {
+    const requestBody: { editor_type?: EditorType } = {};
     if (editorType) requestBody.editor_type = editorType;
 
     const response = await makeRequest(`/api/projects/${id}/open-editor`, {
@@ -242,7 +283,7 @@ export const projectsApi = {
         Object.keys(requestBody).length > 0 ? requestBody : null
       ),
     });
-    return handleApiResponse<void>(response);
+    return handleApiResponse<OpenEditorResponse>(response);
   },
 
   getBranches: async (id: string): Promise<GitBranch[]> => {
@@ -262,6 +303,38 @@ export const projectsApi = {
       options
     );
     return handleApiResponse<SearchResult[]>(response);
+  },
+
+  linkToExisting: async (
+    localProjectId: string,
+    data: LinkToExistingRequest
+  ): Promise<Project> => {
+    const response = await makeRequest(`/api/projects/${localProjectId}/link`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<Project>(response);
+  },
+
+  createAndLink: async (
+    localProjectId: string,
+    data: CreateRemoteProjectRequest
+  ): Promise<Project> => {
+    const response = await makeRequest(
+      `/api/projects/${localProjectId}/link/create`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse<Project>(response);
+  },
+
+  unlink: async (projectId: string): Promise<Project> => {
+    const response = await makeRequest(`/api/projects/${projectId}/link`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<Project>(response);
   },
 };
 
@@ -305,6 +378,40 @@ export const tasksApi = {
 
   delete: async (taskId: string): Promise<void> => {
     const response = await makeRequest(`/api/tasks/${taskId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  share: async (taskId: string): Promise<ShareTaskResponse> => {
+    const response = await makeRequest(`/api/tasks/${taskId}/share`, {
+      method: 'POST',
+    });
+    return handleApiResponse<ShareTaskResponse>(response);
+  },
+
+  reassign: async (
+    sharedTaskId: string,
+    data: { new_assignee_user_id: string | null; version?: number | null }
+  ): Promise<AssignSharedTaskResponse> => {
+    const payload = {
+      new_assignee_user_id: data.new_assignee_user_id,
+      version: data.version ?? null,
+    };
+
+    const response = await makeRequest(
+      `/api/shared-tasks/${sharedTaskId}/assign`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    );
+
+    return handleApiResponse<AssignSharedTaskResponse>(response);
+  },
+
+  unshare: async (sharedTaskId: string): Promise<void> => {
+    const response = await makeRequest(`/api/shared-tasks/${sharedTaskId}`, {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
@@ -377,6 +484,20 @@ export const attemptsApi = {
       }
     );
     return handleApiResponse<void>(response);
+  },
+
+  runAgentSetup: async (
+    attemptId: string,
+    data: RunAgentSetupRequest
+  ): Promise<RunAgentSetupResponse> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/run-agent-setup`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse<RunAgentSetupResponse>(response);
   },
 
   getDraft: async (
@@ -455,7 +576,7 @@ export const attemptsApi = {
     attemptId: string,
     editorType?: EditorType,
     filePath?: string
-  ): Promise<void> => {
+  ): Promise<OpenEditorResponse> => {
     const requestBody: { editor_type?: EditorType; file_path?: string } = {};
     if (editorType) requestBody.editor_type = editorType;
     if (filePath) requestBody.file_path = filePath;
@@ -469,7 +590,7 @@ export const attemptsApi = {
         ),
       }
     );
-    return handleApiResponse<void>(response);
+    return handleApiResponse<OpenEditorResponse>(response);
   },
 
   getBranchStatus: async (attemptId: string): Promise<BranchStatus> => {
@@ -524,6 +645,23 @@ export const attemptsApi = {
     return handleApiResponse<ChangeTargetBranchResponse>(response);
   },
 
+  renameBranch: async (
+    attemptId: string,
+    newBranchName: string
+  ): Promise<RenameBranchResponse> => {
+    const payload: RenameBranchRequest = {
+      new_branch_name: newBranchName,
+    };
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/rename-branch`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    );
+    return handleApiResponse<RenameBranchResponse>(response);
+  },
+
   abortConflicts: async (attemptId: string): Promise<void> => {
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/conflicts/abort`,
@@ -553,6 +691,16 @@ export const attemptsApi = {
       }
     );
     return handleApiResponse<void>(response);
+  },
+
+  setupGhCli: async (attemptId: string): Promise<ExecutionProcess> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/gh-cli-setup`,
+      {
+        method: 'POST',
+      }
+    );
+    return handleApiResponse<ExecutionProcess, GhCliSetupError>(response);
   },
 };
 
@@ -643,26 +791,6 @@ export const configApi = {
       body: JSON.stringify(config),
     });
     return handleApiResponse<Config>(response);
-  },
-};
-
-// GitHub Device Auth APIs
-export const githubAuthApi = {
-  checkGithubToken: async (): Promise<CheckTokenResponse> => {
-    const response = await makeRequest('/api/auth/github/check');
-    return handleApiResponse<CheckTokenResponse>(response);
-  },
-  start: async (): Promise<DeviceFlowStartResponse> => {
-    const response = await makeRequest('/api/auth/github/device/start', {
-      method: 'POST',
-    });
-    return handleApiResponse<DeviceFlowStartResponse>(response);
-  },
-  poll: async (): Promise<DevicePollStatus> => {
-    const response = await makeRequest('/api/auth/github/device/poll', {
-      method: 'POST',
-    });
-    return handleApiResponse<DevicePollStatus>(response);
   },
 };
 
@@ -843,5 +971,143 @@ export const approvalsApi = {
     });
 
     return handleApiResponse<ApprovalStatus>(res);
+  },
+};
+
+// OAuth API
+export const oauthApi = {
+  handoffInit: async (
+    provider: string,
+    returnTo: string
+  ): Promise<{ handoff_id: string; authorize_url: string }> => {
+    const response = await makeRequest('/api/auth/handoff/init', {
+      method: 'POST',
+      body: JSON.stringify({ provider, return_to: returnTo }),
+    });
+    return handleApiResponse<{ handoff_id: string; authorize_url: string }>(
+      response
+    );
+  },
+
+  status: async (): Promise<StatusResponse> => {
+    const response = await makeRequest('/api/auth/status');
+    return handleApiResponse<StatusResponse>(response);
+  },
+
+  logout: async (): Promise<void> => {
+    const response = await makeRequest('/api/auth/logout', {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      throw new ApiError(
+        `Logout failed with status ${response.status}`,
+        response.status,
+        response
+      );
+    }
+  },
+};
+
+// Organizations API
+export const organizationsApi = {
+  getMembers: async (
+    orgId: string
+  ): Promise<OrganizationMemberWithProfile[]> => {
+    const response = await makeRequest(`/api/organizations/${orgId}/members`);
+    const result = await handleApiResponse<ListMembersResponse>(response);
+    return result.members;
+  },
+
+  getUserOrganizations: async (): Promise<ListOrganizationsResponse> => {
+    const response = await makeRequest('/api/organizations');
+    return handleApiResponse<ListOrganizationsResponse>(response);
+  },
+
+  getProjects: async (orgId: string): Promise<RemoteProject[]> => {
+    const response = await makeRequest(`/api/organizations/${orgId}/projects`);
+    return handleApiResponse<RemoteProject[]>(response);
+  },
+
+  createOrganization: async (
+    data: CreateOrganizationRequest
+  ): Promise<CreateOrganizationResponse> => {
+    const response = await makeRequest('/api/organizations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<CreateOrganizationResponse>(response);
+  },
+
+  createInvitation: async (
+    orgId: string,
+    data: CreateInvitationRequest
+  ): Promise<CreateInvitationResponse> => {
+    const response = await makeRequest(
+      `/api/organizations/${orgId}/invitations`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse<CreateInvitationResponse>(response);
+  },
+
+  removeMember: async (orgId: string, userId: string): Promise<void> => {
+    const response = await makeRequest(
+      `/api/organizations/${orgId}/members/${userId}`,
+      {
+        method: 'DELETE',
+      }
+    );
+    return handleApiResponse<void>(response);
+  },
+
+  updateMemberRole: async (
+    orgId: string,
+    userId: string,
+    data: UpdateMemberRoleRequest
+  ): Promise<UpdateMemberRoleResponse> => {
+    const response = await makeRequest(
+      `/api/organizations/${orgId}/members/${userId}/role`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse<UpdateMemberRoleResponse>(response);
+  },
+
+  listInvitations: async (orgId: string): Promise<Invitation[]> => {
+    const response = await makeRequest(
+      `/api/organizations/${orgId}/invitations`
+    );
+    const result = await handleApiResponse<ListInvitationsResponse>(response);
+    return result.invitations;
+  },
+
+  revokeInvitation: async (
+    orgId: string,
+    invitationId: string
+  ): Promise<void> => {
+    const body: RevokeInvitationRequest = { invitation_id: invitationId };
+    const response = await makeRequest(
+      `/api/organizations/${orgId}/invitations/revoke`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }
+    );
+    return handleApiResponse<void>(response);
+  },
+
+  deleteOrganization: async (orgId: string): Promise<void> => {
+    const response = await makeRequest(`/api/organizations/${orgId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
   },
 };

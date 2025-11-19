@@ -12,13 +12,14 @@ import { Alert } from '@/components/ui/alert';
 import { tasksApi } from '@/lib/api';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { defineModal } from '@/lib/modals';
 
 export interface DeleteTaskConfirmationDialogProps {
   task: TaskWithAttemptStatus;
   projectId: string;
 }
 
-const DeleteTaskConfirmationDialog =
+const DeleteTaskConfirmationDialogImpl =
   NiceModal.create<DeleteTaskConfirmationDialogProps>(({ task }) => {
     const modal = useModal();
     const [isDeleting, setIsDeleting] = useState(false);
@@ -93,4 +94,7 @@ const DeleteTaskConfirmationDialog =
     );
   });
 
-export { DeleteTaskConfirmationDialog };
+export const DeleteTaskConfirmationDialog = defineModal<
+  DeleteTaskConfirmationDialogProps,
+  void
+>(DeleteTaskConfirmationDialogImpl);

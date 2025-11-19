@@ -6,63 +6,11 @@ import { ClickToComponent } from 'click-to-react-component';
 import { VibeKanbanWebCompanion } from 'vibe-kanban-web-companion';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as Sentry from '@sentry/react';
-import NiceModal from '@ebay/nice-modal-react';
 import i18n from './i18n';
 import posthog from 'posthog-js';
 import { PostHogProvider } from 'posthog-js/react';
 // Import modal type definitions
 import './types/modals';
-// Import and register modals
-import {
-  GitHubLoginDialog,
-  CreatePRDialog,
-  ConfirmDialog,
-  DisclaimerDialog,
-  OnboardingDialog,
-  PrivacyOptInDialog,
-  ProvidePatDialog,
-  ReleaseNotesDialog,
-  TaskFormDialog,
-  EditorSelectionDialog,
-  DeleteTaskConfirmationDialog,
-  FolderPickerDialog,
-  TagEditDialog,
-  ChangeTargetBranchDialog,
-  RebaseDialog,
-  CreateConfigurationDialog,
-  DeleteConfigurationDialog,
-  ProjectFormDialog,
-  ProjectEditorSelectionDialog,
-  RestoreLogsDialog,
-  ViewProcessesDialog,
-  GitActionsDialog,
-} from './components/dialogs';
-import { CreateAttemptDialog } from './components/dialogs/tasks/CreateAttemptDialog';
-
-// Register modals
-NiceModal.register('github-login', GitHubLoginDialog);
-NiceModal.register('create-pr', CreatePRDialog);
-NiceModal.register('confirm', ConfirmDialog);
-NiceModal.register('disclaimer', DisclaimerDialog);
-NiceModal.register('onboarding', OnboardingDialog);
-NiceModal.register('privacy-opt-in', PrivacyOptInDialog);
-NiceModal.register('provide-pat', ProvidePatDialog);
-NiceModal.register('release-notes', ReleaseNotesDialog);
-NiceModal.register('delete-task-confirmation', DeleteTaskConfirmationDialog);
-NiceModal.register('task-form', TaskFormDialog);
-NiceModal.register('editor-selection', EditorSelectionDialog);
-NiceModal.register('folder-picker', FolderPickerDialog);
-NiceModal.register('tag-edit', TagEditDialog);
-NiceModal.register('change-target-branch-dialog', ChangeTargetBranchDialog);
-NiceModal.register('rebase-dialog', RebaseDialog);
-NiceModal.register('create-configuration', CreateConfigurationDialog);
-NiceModal.register('delete-configuration', DeleteConfigurationDialog);
-NiceModal.register('project-form', ProjectFormDialog);
-NiceModal.register('project-editor-selection', ProjectEditorSelectionDialog);
-NiceModal.register('restore-logs', RestoreLogsDialog);
-NiceModal.register('view-processes', ViewProcessesDialog);
-NiceModal.register('create-attempt', CreateAttemptDialog);
-NiceModal.register('git-actions', GitActionsDialog);
 
 import {
   useLocation,
@@ -125,6 +73,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <ClickToComponent />
           <VibeKanbanWebCompanion />
           <App />
+          {/*<TanStackDevtools plugins={[FormDevtoolsPlugin()]} />*/}
           {/* <ReactQueryDevtools initialIsOpen={false} /> */}
         </Sentry.ErrorBoundary>
       </PostHogProvider>

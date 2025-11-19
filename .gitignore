@@ -15,6 +15,7 @@ yarn-error.log*
 
 # Environment variables
 .env
+.env.remote
 .env.local
 .env.development.local
 .env.test.local
@@ -67,6 +68,7 @@ frontend/dist
 crates/executors/bindings
 crates/utils/bindings
 crates/services/bindings
+crates/server/bindings
 
 build-npm-package-codesign.sh
 
@@ -82,3 +84,4 @@ dev_assets
 .ssh
 
 vibe-kanban-cloud/
+remote-frontend/dist

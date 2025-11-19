@@ -21,9 +21,8 @@ use std::{
     process::Command,
 };
 
-use base64::{Engine, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use thiserror::Error;
-use utils::shell::resolve_executable_path;
+use utils::shell::resolve_executable_path_blocking; // TODO: make GitCli async
 
 use crate::services::git::Commit;
 
@@ -298,22 +297,16 @@ impl GitCli {
         self.git(worktree_path, ["commit", "-m", message])?;
         Ok(())
     }
-    /// Fetch a branch to the given remote using an HTTPS token for authentication.
-    pub fn fetch_with_token_and_refspec(
+    /// Fetch a branch to the given remote using native git authentication.
+    pub fn fetch_with_refspec(
         &self,
         repo_path: &Path,
         remote_url: &str,
         refspec: &str,
-        token: &str,
     ) -> Result<(), GitCliError> {
-        let auth_header = self.build_auth_header(token);
-        let envs = self.build_token_env(&auth_header);
+        let envs = vec![(OsString::from("GIT_TERMINAL_PROMPT"), OsString::from("0"))];
 
         let args = [
-            OsString::from("-c"),
-            OsString::from("credential.helper="),
-            OsString::from("--config-env"),
-            OsString::from("http.extraHeader=GIT_HTTP_EXTRAHEADER"),
             OsString::from("fetch"),
             OsString::from(remote_url),
             OsString::from(refspec),
@@ -326,23 +319,17 @@ impl GitCli {
         }
     }
 
-    /// Push a branch to the given remote using an HTTPS token for authentication.
-    pub fn push_with_token(
+    /// Push a branch to the given remote using native git authentication.
+    pub fn push(
         &self,
         repo_path: &Path,
         remote_url: &str,
         branch: &str,
-        token: &str,
     ) -> Result<(), GitCliError> {
         let refspec = format!("refs/heads/{branch}:refs/heads/{branch}");
-        let auth_header = self.build_auth_header(token);
-        let envs = self.build_token_env(&auth_header);
+        let envs = vec![(OsString::from("GIT_TERMINAL_PROMPT"), OsString::from("0"))];
 
         let args = [
-            OsString::from("-c"),
-            OsString::from("credential.helper="),
-            OsString::from("--config-env"),
-            OsString::from("http.extraHeader=GIT_HTTP_EXTRAHEADER"),
             OsString::from("push"),
             OsString::from(remote_url),
             OsString::from(refspec),
@@ -497,14 +484,15 @@ impl GitCli {
     /// Return true if there are staged changes (index differs from HEAD)
     pub fn has_staged_changes(&self, repo_path: &Path) -> Result<bool, GitCliError> {
         // `git diff --cached --quiet` returns exit code 1 if there are differences
-        let out = Command::new(resolve_executable_path("git").ok_or(GitCliError::NotAvailable)?)
-            .arg("-C")
-            .arg(repo_path)
-            .arg("diff")
-            .arg("--cached")
-            .arg("--quiet")
-            .output()
-            .map_err(|e| GitCliError::CommandFailed(e.to_string()))?;
+        let out =
+            Command::new(resolve_executable_path_blocking("git").ok_or(GitCliError::NotAvailable)?)
+                .arg("-C")
+                .arg(repo_path)
+                .arg("diff")
+                .arg("--cached")
+                .arg("--quiet")
+                .output()
+                .map_err(|e| GitCliError::CommandFailed(e.to_string()))?;
         match out.status.code() {
             Some(0) => Ok(false),
             Some(1) => Ok(true),
@@ -606,26 +594,9 @@ impl GitCli {
         }
     }
 
-    fn build_auth_header(&self, token: &str) -> String {
-        let auth_value = BASE64_STANDARD.encode(format!("x-access-token:{token}"));
-        format!("Authorization: Basic {auth_value}")
-    }
-
-    fn build_token_env(&self, auth_header: &str) -> Vec<(OsString, OsString)> {
-        vec![
-            (OsString::from("GIT_TERMINAL_PROMPT"), OsString::from("0")),
-            (OsString::from("GIT_ASKPASS"), OsString::from("")),
-            (OsString::from("SSH_ASKPASS"), OsString::from("")),
-            (
-                OsString::from("GIT_HTTP_EXTRAHEADER"),
-                OsString::from(auth_header),
-            ),
-        ]
-    }
-
     /// Ensure `git` is available on PATH
     fn ensure_available(&self) -> Result<(), GitCliError> {
-        let git = resolve_executable_path("git").ok_or(GitCliError::NotAvailable)?;
+        let git = resolve_executable_path_blocking("git").ok_or(GitCliError::NotAvailable)?;
         let out = Command::new(&git)
             .arg("--version")
             .output()
@@ -656,7 +627,7 @@ impl GitCli {
         S: AsRef<OsStr>,
     {
         self.ensure_available()?;
-        let git = resolve_executable_path("git").ok_or(GitCliError::NotAvailable)?;
+        let git = resolve_executable_path_blocking("git").ok_or(GitCliError::NotAvailable)?;
         let mut cmd = Command::new(&git);
         cmd.arg("-C").arg(repo_path);
         for a in args {
@@ -684,7 +655,7 @@ impl GitCli {
         S: AsRef<OsStr>,
     {
         self.ensure_available()?;
-        let git = resolve_executable_path("git").ok_or(GitCliError::NotAvailable)?;
+        let git = resolve_executable_path_blocking("git").ok_or(GitCliError::NotAvailable)?;
         let mut cmd = Command::new(&git);
         cmd.arg("-C").arg(repo_path);
         for (k, v) in envs {

@@ -35,7 +35,7 @@ export function createSemanticHook<A extends Action>(action: A) {
     const isEnabled = when !== undefined ? when : enabled;
 
     // Memoize to get stable array references and prevent unnecessary re-registrations
-    const keys = useMemo(() => getKeysFor(action, scope), [action, scope]);
+    const keys = useMemo(() => getKeysFor(action, scope), [scope]);
 
     useHotkeys(
       keys,

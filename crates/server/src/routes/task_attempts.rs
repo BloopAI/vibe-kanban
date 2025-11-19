@@ -1,4 +1,6 @@
+pub mod cursor_setup;
 pub mod drafts;
+pub mod gh_cli_setup;
 pub mod util;
 
 use axum::{
@@ -27,12 +29,14 @@ use executors::{
         coding_agent_follow_up::CodingAgentFollowUpRequest,
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     },
-    profile::ExecutorProfileId,
+    executors::{CodingAgent, ExecutorError},
+    profile::{ExecutorConfigs, ExecutorProfileId},
 };
 use git2::BranchType;
 use serde::{Deserialize, Serialize};
 use services::services::{
     container::ContainerService,
+    gh_cli::GhCli,
     git::{ConflictOp, WorktreeResetOptions},
     github_service::{CreatePrRequest, GitHubService, GitHubServiceError},
 };
@@ -45,7 +49,10 @@ use crate::{
     DeploymentImpl,
     error::ApiError,
     middleware::load_task_attempt_middleware,
-    routes::task_attempts::util::{ensure_worktree_path, handle_images_for_prompt},
+    routes::task_attempts::{
+        gh_cli_setup::GhCliSetupError,
+        util::{ensure_worktree_path, handle_images_for_prompt},
+    },
 };
 
 #[derive(Debug, Deserialize, Serialize, TS)]
@@ -141,6 +148,14 @@ impl CreateTaskAttemptBody {
     }
 }
 
+#[derive(Debug, Deserialize, Serialize, TS)]
+pub struct RunAgentSetupRequest {
+    pub executor_profile_id: ExecutorProfileId,
+}
+
+#[derive(Debug, Serialize, TS)]
+pub struct RunAgentSetupResponse {}
+
 #[axum::debug_handler]
 pub async fn create_task_attempt(
     State(deployment): State<DeploymentImpl>,
@@ -169,10 +184,13 @@ pub async fn create_task_attempt(
     )
     .await?;
 
-    let execution_process = deployment
+    if let Err(err) = deployment
         .container()
         .start_attempt(&task_attempt, executor_profile_id.clone())
-        .await?;
+        .await
+    {
+        tracing::error!("Failed to start task attempt: {}", err);
+    }
 
     deployment
         .track_if_analytics_allowed(
@@ -186,9 +204,38 @@ pub async fn create_task_attempt(
         )
         .await;
 
-    tracing::info!("Started execution process {}", execution_process.id);
+    tracing::info!("Created attempt for task {}", task.id);
 
     Ok(ResponseJson(ApiResponse::success(task_attempt)))
+}
+
+#[axum::debug_handler]
+pub async fn run_agent_setup(
+    Extension(task_attempt): Extension<TaskAttempt>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<RunAgentSetupRequest>,
+) -> Result<ResponseJson<ApiResponse<RunAgentSetupResponse>>, ApiError> {
+    let executor_profile_id = payload.executor_profile_id;
+    let config = ExecutorConfigs::get_cached();
+    let coding_agent = config.get_coding_agent_or_default(&executor_profile_id);
+    match coding_agent {
+        CodingAgent::CursorAgent(_) => {
+            cursor_setup::run_cursor_setup(&deployment, &task_attempt).await?;
+        }
+        _ => return Err(ApiError::Executor(ExecutorError::SetupHelperNotSupported)),
+    }
+
+    deployment
+        .track_if_analytics_allowed(
+            "agent_setup_script_executed",
+            serde_json::json!({
+                "executor_profile_id": executor_profile_id.to_string(),
+                "attempt_id": task_attempt.id.to_string(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(RunAgentSetupResponse {})))
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -648,6 +695,47 @@ pub async fn merge_task_attempt(
     .await?;
     Task::update_status(pool, ctx.task.id, TaskStatus::Done).await?;
 
+    // Stop any running dev servers for this task attempt
+    let dev_servers =
+        ExecutionProcess::find_running_dev_servers_by_task_attempt(pool, task_attempt.id).await?;
+
+    for dev_server in dev_servers {
+        tracing::info!(
+            "Stopping dev server {} for completed task attempt {}",
+            dev_server.id,
+            task_attempt.id
+        );
+
+        if let Err(e) = deployment
+            .container()
+            .stop_execution(&dev_server, ExecutionProcessStatus::Killed)
+            .await
+        {
+            tracing::error!(
+                "Failed to stop dev server {} for task attempt {}: {}",
+                dev_server.id,
+                task_attempt.id,
+                e
+            );
+        }
+    }
+
+    // Try broadcast update to other users in organization
+    if let Ok(publisher) = deployment.share_publisher() {
+        if let Err(err) = publisher.update_shared_task_by_id(ctx.task.id).await {
+            tracing::warn!(
+                ?err,
+                "Failed to propagate shared task update for {}",
+                ctx.task.id
+            );
+        }
+    } else {
+        tracing::debug!(
+            "Share publisher unavailable; skipping remote update for {}",
+            ctx.task.id
+        );
+    }
+
     deployment
         .track_if_analytics_allowed(
             "task_attempt_merged",
@@ -666,19 +754,14 @@ pub async fn push_task_attempt_branch(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
-    let github_config = deployment.config().read().await.github.clone();
-    let Some(github_token) = github_config.token() else {
-        return Err(GitHubServiceError::TokenInvalid.into());
-    };
-
-    let github_service = GitHubService::new(&github_token)?;
+    let github_service = GitHubService::new()?;
     github_service.check_token().await?;
 
     let ws_path = ensure_worktree_path(&deployment, &task_attempt).await?;
 
     deployment
         .git()
-        .push_to_github(&ws_path, &task_attempt.branch, &github_token)?;
+        .push_to_github(&ws_path, &task_attempt.branch)?;
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
@@ -688,13 +771,6 @@ pub async fn create_github_pr(
     Json(request): Json<CreateGitHubPrRequest>,
 ) -> Result<ResponseJson<ApiResponse<String, GitHubServiceError>>, ApiError> {
     let github_config = deployment.config().read().await.github.clone();
-    let Some(github_token) = github_config.token() else {
-        return Ok(ResponseJson(ApiResponse::error_with_data(
-            GitHubServiceError::TokenInvalid,
-        )));
-    };
-    // Create GitHub service instance
-    let github_service = GitHubService::new(&github_token)?;
     // Get the task attempt to access the stored target branch
     let target_branch = request.target_branch.unwrap_or_else(|| {
         // Use the stored target branch from the task attempt as the default
@@ -721,10 +797,9 @@ pub async fn create_github_pr(
     let workspace_path = ensure_worktree_path(&deployment, &task_attempt).await?;
 
     // Push the branch to GitHub first
-    if let Err(e) =
-        deployment
-            .git()
-            .push_to_github(&workspace_path, &task_attempt.branch, &github_token)
+    if let Err(e) = deployment
+        .git()
+        .push_to_github(&workspace_path, &task_attempt.branch)
     {
         tracing::error!("Failed to push branch to GitHub: {}", e);
         let gh_e = GitHubServiceError::from(e);
@@ -768,7 +843,9 @@ pub async fn create_github_pr(
         .git()
         .get_github_repo_info(&project.git_repo_path)?;
 
-    match github_service.create_pr(&repo_info, &pr_request).await {
+    // Use gh CLI to create the PR (uses native GitHub authentication)
+    let gh_cli = GhCli::new();
+    match gh_cli.create_pr(&pr_request, &repo_info) {
         Ok(pr_info) => {
             // Update the task attempt with PR information
             if let Err(e) = Merge::create_pr(
@@ -806,11 +883,12 @@ pub async fn create_github_pr(
                 task_attempt.id,
                 e
             );
-            if e.is_api_data() {
-                Ok(ResponseJson(ApiResponse::error_with_data(e)))
+            let gh_error = GitHubServiceError::from(e);
+            if gh_error.is_api_data() {
+                Ok(ResponseJson(ApiResponse::error_with_data(gh_error)))
             } else {
                 Ok(ResponseJson(ApiResponse::error(
-                    format!("Failed to create PR: {}", e).as_str(),
+                    format!("Failed to create PR: {}", gh_error).as_str(),
                 )))
             }
         }
@@ -823,11 +901,16 @@ pub struct OpenEditorRequest {
     file_path: Option<String>,
 }
 
+#[derive(Debug, Serialize, TS)]
+pub struct OpenEditorResponse {
+    pub url: Option<String>,
+}
+
 pub async fn open_task_attempt_in_editor(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<Option<OpenEditorRequest>>,
-) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<OpenEditorResponse>>, ApiError> {
     // Get the task attempt to access the worktree path
     let base_path_buf = ensure_worktree_path(&deployment, &task_attempt).await?;
     let base_path = base_path_buf.as_path();
@@ -845,12 +928,13 @@ pub async fn open_task_attempt_in_editor(
         config.editor.with_override(editor_type_str)
     };
 
-    match editor_config.open_file(&path.to_string_lossy()) {
-        Ok(_) => {
+    match editor_config.open_file(path.as_path()).await {
+        Ok(url) => {
             tracing::info!(
-                "Opened editor for task attempt {} at path: {}",
+                "Opened editor for task attempt {} at path: {}{}",
                 task_attempt.id,
-                path.display()
+                path.display(),
+                if url.is_some() { " (remote mode)" } else { "" }
             );
 
             deployment
@@ -859,11 +943,14 @@ pub async fn open_task_attempt_in_editor(
                     serde_json::json!({
                         "attempt_id": task_attempt.id.to_string(),
                         "editor_type": payload.as_ref().and_then(|req| req.editor_type.as_ref()),
+                        "remote_mode": url.is_some(),
                     }),
                 )
                 .await;
 
-            Ok(ResponseJson(ApiResponse::success(())))
+            Ok(ResponseJson(ApiResponse::success(OpenEditorResponse {
+                url,
+            })))
         }
         Err(e) => {
             tracing::error!(
@@ -959,16 +1046,11 @@ pub async fn get_task_attempt_branch_status(
             (Some(a), Some(b))
         }
         BranchType::Remote => {
-            let github_config = deployment.config().read().await.github.clone();
-            let token = github_config
-                .token()
-                .ok_or(ApiError::GitHubService(GitHubServiceError::TokenInvalid))?;
             let (remote_commits_ahead, remote_commits_behind) =
                 deployment.git().get_remote_branch_status(
                     &ctx.project.git_repo_path,
                     &task_attempt.branch,
                     Some(&task_attempt.target_branch),
-                    token,
                 )?;
             (Some(remote_commits_ahead), Some(remote_commits_behind))
         }
@@ -984,17 +1066,9 @@ pub async fn get_task_attempt_branch_status(
     })) = merges.first()
     {
         // check remote status if the attempt has an open PR
-        let github_config = deployment.config().read().await.github.clone();
-        let token = github_config
-            .token()
-            .ok_or(ApiError::GitHubService(GitHubServiceError::TokenInvalid))?;
-        let (remote_commits_ahead, remote_commits_behind) =
-            deployment.git().get_remote_branch_status(
-                &ctx.project.git_repo_path,
-                &task_attempt.branch,
-                None,
-                token,
-            )?;
+        let (remote_commits_ahead, remote_commits_behind) = deployment
+            .git()
+            .get_remote_branch_status(&ctx.project.git_repo_path, &task_attempt.branch, None)?;
         (Some(remote_commits_ahead), Some(remote_commits_behind))
     } else {
         (None, None)
@@ -1027,6 +1101,16 @@ pub struct ChangeTargetBranchRequest {
 pub struct ChangeTargetBranchResponse {
     pub new_target_branch: String,
     pub status: (usize, usize),
+}
+
+#[derive(serde::Deserialize, Debug, TS)]
+pub struct RenameBranchRequest {
+    pub new_branch_name: String,
+}
+
+#[derive(serde::Serialize, Debug, TS)]
+pub struct RenameBranchResponse {
+    pub branch: String,
 }
 
 #[axum::debug_handler]
@@ -1090,6 +1174,107 @@ pub async fn change_target_branch(
 }
 
 #[axum::debug_handler]
+pub async fn rename_branch(
+    Extension(task_attempt): Extension<TaskAttempt>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<RenameBranchRequest>,
+) -> Result<ResponseJson<ApiResponse<RenameBranchResponse>>, ApiError> {
+    let new_branch_name = payload.new_branch_name.trim();
+
+    if new_branch_name.is_empty() {
+        return Ok(ResponseJson(ApiResponse::error(
+            "Branch name cannot be empty",
+        )));
+    }
+
+    if new_branch_name == task_attempt.branch {
+        return Ok(ResponseJson(ApiResponse::success(RenameBranchResponse {
+            branch: task_attempt.branch.clone(),
+        })));
+    }
+
+    if !git2::Branch::name_is_valid(new_branch_name)? {
+        return Ok(ResponseJson(ApiResponse::error(
+            "Invalid branch name format",
+        )));
+    }
+
+    let pool = &deployment.db().pool;
+    let task = task_attempt
+        .parent_task(pool)
+        .await?
+        .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
+
+    let project = Project::find_by_id(pool, task.project_id)
+        .await?
+        .ok_or(ApiError::Project(ProjectError::ProjectNotFound))?;
+
+    if deployment
+        .git()
+        .check_branch_exists(&project.git_repo_path, new_branch_name)?
+    {
+        return Ok(ResponseJson(ApiResponse::error(
+            "A branch with this name already exists",
+        )));
+    }
+
+    let worktree_path_buf = ensure_worktree_path(&deployment, &task_attempt).await?;
+    let worktree_path = worktree_path_buf.as_path();
+
+    if deployment.git().is_rebase_in_progress(worktree_path)? {
+        return Ok(ResponseJson(ApiResponse::error(
+            "Cannot rename branch while rebase is in progress. Please complete or abort the rebase first.",
+        )));
+    }
+
+    if let Some(merge) = Merge::find_latest_by_task_attempt_id(pool, task_attempt.id).await?
+        && let Merge::Pr(pr_merge) = merge
+        && matches!(pr_merge.pr_info.status, MergeStatus::Open)
+    {
+        return Ok(ResponseJson(ApiResponse::error(
+            "Cannot rename branch with an open pull request. Please close the PR first or create a new attempt.",
+        )));
+    }
+
+    deployment
+        .git()
+        .rename_local_branch(worktree_path, &task_attempt.branch, new_branch_name)?;
+
+    let old_branch = task_attempt.branch.clone();
+
+    TaskAttempt::update_branch_name(pool, task_attempt.id, new_branch_name).await?;
+
+    let updated_children_count = TaskAttempt::update_target_branch_for_children_of_attempt(
+        pool,
+        task_attempt.id,
+        &old_branch,
+        new_branch_name,
+    )
+    .await?;
+
+    if updated_children_count > 0 {
+        tracing::info!(
+            "Updated {} child task attempts to target new branch '{}'",
+            updated_children_count,
+            new_branch_name
+        );
+    }
+
+    deployment
+        .track_if_analytics_allowed(
+            "task_attempt_branch_renamed",
+            serde_json::json!({
+                "updated_children": updated_children_count,
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(RenameBranchResponse {
+        branch: new_branch_name.to_string(),
+    })))
+}
+
+#[axum::debug_handler]
 pub async fn rebase_task_attempt(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
@@ -1101,7 +1286,6 @@ pub async fn rebase_task_attempt(
     let new_base_branch = payload
         .new_base_branch
         .unwrap_or(task_attempt.target_branch.clone());
-    let github_config = deployment.config().read().await.github.clone();
 
     let pool = &deployment.db().pool;
 
@@ -1142,7 +1326,6 @@ pub async fn rebase_task_attempt(
         &new_base_branch,
         &old_base_branch,
         &task_attempt.branch.clone(),
-        github_config.token(),
     );
     if let Err(e) = result {
         use services::services::git::GitServiceError;
@@ -1392,12 +1575,6 @@ pub async fn attach_existing_pr(
         })));
     }
 
-    // Get GitHub token
-    let github_config = deployment.config().read().await.github.clone();
-    let Some(github_token) = github_config.token() else {
-        return Err(ApiError::GitHubService(GitHubServiceError::TokenInvalid));
-    };
-
     // Get project and repo info
     let Some(task) = task_attempt.parent_task(pool).await? else {
         return Err(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound));
@@ -1406,7 +1583,7 @@ pub async fn attach_existing_pr(
         return Err(ApiError::Project(ProjectError::ProjectNotFound));
     };
 
-    let github_service = GitHubService::new(&github_token)?;
+    let github_service = GitHubService::new()?;
     let repo_info = deployment
         .git()
         .get_github_repo_info(&project.git_repo_path)?;
@@ -1442,6 +1619,22 @@ pub async fn attach_existing_pr(
         // If PR is merged, mark task as done
         if matches!(pr_info.status, MergeStatus::Merged) {
             Task::update_status(pool, task.id, TaskStatus::Done).await?;
+
+            // Try broadcast update to other users in organization
+            if let Ok(publisher) = deployment.share_publisher() {
+                if let Err(err) = publisher.update_shared_task_by_id(task.id).await {
+                    tracing::warn!(
+                        ?err,
+                        "Failed to propagate shared task update for {}",
+                        task.id
+                    );
+                }
+            } else {
+                tracing::debug!(
+                    "Share publisher unavailable; skipping remote update for {}",
+                    task.id
+                );
+            }
         }
 
         Ok(ResponseJson(ApiResponse::success(AttachPrResponse {
@@ -1460,10 +1653,49 @@ pub async fn attach_existing_pr(
     }
 }
 
+#[axum::debug_handler]
+pub async fn gh_cli_setup_handler(
+    Extension(task_attempt): Extension<TaskAttempt>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<ExecutionProcess, GhCliSetupError>>, ApiError> {
+    match gh_cli_setup::run_gh_cli_setup(&deployment, &task_attempt).await {
+        Ok(execution_process) => {
+            deployment
+                .track_if_analytics_allowed(
+                    "gh_cli_setup_executed",
+                    serde_json::json!({
+                        "attempt_id": task_attempt.id.to_string(),
+                    }),
+                )
+                .await;
+
+            Ok(ResponseJson(ApiResponse::success(execution_process)))
+        }
+        Err(ApiError::Executor(ExecutorError::ExecutableNotFound { program }))
+            if program == "brew" =>
+        {
+            Ok(ResponseJson(ApiResponse::error_with_data(
+                GhCliSetupError::BrewMissing,
+            )))
+        }
+        Err(ApiError::Executor(ExecutorError::SetupHelperNotSupported)) => Ok(ResponseJson(
+            ApiResponse::error_with_data(GhCliSetupError::SetupHelperNotSupported),
+        )),
+        Err(ApiError::Executor(err)) => Ok(ResponseJson(ApiResponse::error_with_data(
+            GhCliSetupError::Other {
+                message: err.to_string(),
+            },
+        ))),
+        Err(err) => Err(err),
+    }
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_attempt_id_router = Router::new()
         .route("/", get(get_task_attempt))
         .route("/follow-up", post(follow_up))
+        .route("/run-agent-setup", post(run_agent_setup))
+        .route("/gh-cli-setup", post(gh_cli_setup_handler))
         .route(
             "/draft",
             get(drafts::get_draft)
@@ -1488,6 +1720,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/children", get(get_task_attempt_children))
         .route("/stop", post(stop_task_attempt_execution))
         .route("/change-target-branch", post(change_target_branch))
+        .route("/rename-branch", post(rename_branch))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_task_attempt_middleware,

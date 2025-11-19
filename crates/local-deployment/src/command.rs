@@ -5,6 +5,7 @@ use nix::{
     unistd::{Pid, getpgid},
 };
 use services::services::container::ContainerError;
+#[cfg(unix)]
 use tokio::time::Duration;
 
 pub async fn kill_process_group(child: &mut AsyncGroupChild) -> Result<(), ContainerError> {

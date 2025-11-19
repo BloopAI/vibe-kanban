@@ -7,7 +7,7 @@ use std::{
 use git2::{Error as GitError, Repository};
 use thiserror::Error;
 use tracing::{debug, info};
-use utils::shell::get_shell_command;
+use utils::shell::resolve_executable_path;
 
 use super::{
     git::{GitService, GitServiceError},
@@ -429,35 +429,30 @@ impl WorktreeManager {
         // Try using git rev-parse --git-common-dir from within the worktree
         let worktree_path_owned = worktree_path.to_path_buf();
 
-        tokio::task::spawn_blocking(move || {
-            let (shell_cmd, shell_arg) = get_shell_command();
-            let git_command = "git rev-parse --git-common-dir";
+        let git_path = resolve_executable_path("git").await?;
 
-            let output = std::process::Command::new(shell_cmd)
-                .args([shell_arg, git_command])
-                .current_dir(&worktree_path_owned)
-                .output()
-                .ok()?;
+        let output = tokio::process::Command::new(git_path)
+            .args(["rev-parse", "--git-common-dir"])
+            .current_dir(&worktree_path_owned)
+            .output()
+            .await
+            .ok()?;
 
-            if output.status.success() {
-                let git_common_dir = String::from_utf8(output.stdout).ok()?.trim().to_string();
+        if output.status.success() {
+            let git_common_dir = String::from_utf8(output.stdout).ok()?.trim().to_string();
 
-                // git-common-dir gives us the path to the .git directory
-                // We need the working directory (parent of .git)
-                let git_dir_path = Path::new(&git_common_dir);
-                if git_dir_path.file_name() == Some(std::ffi::OsStr::new(".git")) {
-                    git_dir_path.parent()?.to_str().map(PathBuf::from)
-                } else {
-                    // In case of bare repo or unusual setup, use the git-common-dir as is
-                    Some(PathBuf::from(git_common_dir))
-                }
+            // git-common-dir gives us the path to the .git directory
+            // We need the working directory (parent of .git)
+            let git_dir_path = Path::new(&git_common_dir);
+            if git_dir_path.file_name() == Some(std::ffi::OsStr::new(".git")) {
+                git_dir_path.parent()?.to_str().map(PathBuf::from)
             } else {
-                None
+                // In case of bare repo or unusual setup, use the git-common-dir as is
+                Some(PathBuf::from(git_common_dir))
             }
-        })
-        .await
-        .ok()
-        .flatten()
+        } else {
+            None
+        }
     }
 
     /// Simple worktree cleanup when we can't determine the main repo

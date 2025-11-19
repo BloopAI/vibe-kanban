@@ -1,27 +1,47 @@
-use std::path::Path;
+use std::path::Path as StdPath;
 
 use axum::{
     Extension, Json, Router,
-    extract::{Query, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     middleware::from_fn_with_state,
     response::Json as ResponseJson,
     routing::{get, post},
 };
-use db::models::project::{
-    CreateProject, Project, ProjectError, SearchMatchType, SearchResult, UpdateProject,
+use db::models::{
+    project::{CreateProject, Project, ProjectError, SearchMatchType, SearchResult, UpdateProject},
+    task::Task,
 };
 use deployment::Deployment;
 use ignore::WalkBuilder;
+use serde::Deserialize;
 use services::services::{
     file_ranker::FileRanker,
     file_search_cache::{CacheError, SearchMode, SearchQuery},
     git::GitBranch,
+    remote_client::CreateRemoteProjectPayload,
+    share::link_shared_tasks_to_project,
 };
-use utils::{path::expand_tilde, response::ApiResponse};
+use ts_rs::TS;
+use utils::{
+    api::projects::{RemoteProject, RemoteProjectMembersResponse},
+    path::expand_tilde,
+    response::ApiResponse,
+};
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError, middleware::load_project_middleware};
+
+#[derive(Deserialize, TS)]
+pub struct LinkToExistingRequest {
+    pub remote_project_id: Uuid,
+}
+
+#[derive(Deserialize, TS)]
+pub struct CreateRemoteProjectRequest {
+    pub organization_id: Uuid,
+    pub name: String,
+}
 
 pub async fn get_projects(
     State(deployment): State<DeploymentImpl>,
@@ -42,6 +62,127 @@ pub async fn get_project_branches(
 ) -> Result<ResponseJson<ApiResponse<Vec<GitBranch>>>, ApiError> {
     let branches = deployment.git().get_all_branches(&project.git_repo_path)?;
     Ok(ResponseJson(ApiResponse::success(branches)))
+}
+
+pub async fn link_project_to_existing_remote(
+    Path(project_id): Path<Uuid>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<LinkToExistingRequest>,
+) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
+    let client = deployment.remote_client()?;
+
+    let remote_project = client.get_project(payload.remote_project_id).await?;
+
+    let updated_project =
+        apply_remote_project_link(&deployment, project_id, remote_project).await?;
+
+    Ok(ResponseJson(ApiResponse::success(updated_project)))
+}
+
+pub async fn create_and_link_remote_project(
+    Path(project_id): Path<Uuid>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<CreateRemoteProjectRequest>,
+) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
+    let repo_name = payload.name.trim().to_string();
+    if repo_name.trim().is_empty() {
+        return Err(ApiError::Conflict(
+            "Remote project name cannot be empty.".to_string(),
+        ));
+    }
+
+    let client = deployment.remote_client()?;
+
+    let remote_project = client
+        .create_project(&CreateRemoteProjectPayload {
+            organization_id: payload.organization_id,
+            name: repo_name,
+            metadata: None,
+        })
+        .await?;
+
+    let updated_project =
+        apply_remote_project_link(&deployment, project_id, remote_project).await?;
+
+    Ok(ResponseJson(ApiResponse::success(updated_project)))
+}
+
+pub async fn unlink_project(
+    Extension(project): Extension<Project>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
+    let pool = &deployment.db().pool;
+
+    if let Some(remote_project_id) = project.remote_project_id {
+        let mut tx = pool.begin().await?;
+
+        Task::clear_shared_task_ids_for_remote_project(&mut *tx, remote_project_id).await?;
+
+        Project::set_remote_project_id_tx(&mut *tx, project.id, None).await?;
+
+        tx.commit().await?;
+    }
+
+    let updated_project = Project::find_by_id(pool, project.id)
+        .await?
+        .ok_or(ProjectError::ProjectNotFound)?;
+
+    Ok(ResponseJson(ApiResponse::success(updated_project)))
+}
+
+pub async fn get_remote_project_by_id(
+    State(deployment): State<DeploymentImpl>,
+    Path(remote_project_id): Path<Uuid>,
+) -> Result<ResponseJson<ApiResponse<RemoteProject>>, ApiError> {
+    let client = deployment.remote_client()?;
+
+    let remote_project = client.get_project(remote_project_id).await?;
+
+    Ok(ResponseJson(ApiResponse::success(remote_project)))
+}
+
+pub async fn get_project_remote_members(
+    State(deployment): State<DeploymentImpl>,
+    Extension(project): Extension<Project>,
+) -> Result<ResponseJson<ApiResponse<RemoteProjectMembersResponse>>, ApiError> {
+    let remote_project_id = project.remote_project_id.ok_or_else(|| {
+        ApiError::Conflict("Project is not linked to a remote project".to_string())
+    })?;
+
+    let client = deployment.remote_client()?;
+
+    let remote_project = client.get_project(remote_project_id).await?;
+    let members = client
+        .list_members(remote_project.organization_id)
+        .await?
+        .members;
+
+    Ok(ResponseJson(ApiResponse::success(
+        RemoteProjectMembersResponse {
+            organization_id: remote_project.organization_id,
+            members,
+        },
+    )))
+}
+
+async fn apply_remote_project_link(
+    deployment: &DeploymentImpl,
+    project_id: Uuid,
+    remote_project: RemoteProject,
+) -> Result<Project, ApiError> {
+    let pool = &deployment.db().pool;
+
+    Project::set_remote_project_id(pool, project_id, Some(remote_project.id)).await?;
+
+    let updated_project = Project::find_by_id(pool, project_id)
+        .await?
+        .ok_or(ProjectError::ProjectNotFound)?;
+
+    let current_profile = deployment.auth_context().cached_profile().await;
+    let current_user_id = current_profile.as_ref().map(|p| p.user_id);
+    link_shared_tasks_to_project(pool, current_user_id, project_id, remote_project.id).await?;
+
+    Ok(updated_project)
 }
 
 pub async fn create_project(
@@ -264,12 +405,17 @@ pub struct OpenEditorRequest {
     editor_type: Option<String>,
 }
 
+#[derive(Debug, serde::Serialize, ts_rs::TS)]
+pub struct OpenEditorResponse {
+    pub url: Option<String>,
+}
+
 pub async fn open_project_in_editor(
     Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<Option<OpenEditorRequest>>,
-) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
-    let path = project.git_repo_path.to_string_lossy();
+) -> Result<ResponseJson<ApiResponse<OpenEditorResponse>>, StatusCode> {
+    let path = project.git_repo_path;
 
     let editor_config = {
         let config = deployment.config().read().await;
@@ -277,9 +423,14 @@ pub async fn open_project_in_editor(
         config.editor.with_override(editor_type_str)
     };
 
-    match editor_config.open_file(&path) {
-        Ok(_) => {
-            tracing::info!("Opened editor for project {} at path: {}", project.id, path);
+    match editor_config.open_file(&path).await {
+        Ok(url) => {
+            tracing::info!(
+                "Opened editor for project {} at path: {}{}",
+                project.id,
+                path.to_string_lossy(),
+                if url.is_some() { " (remote mode)" } else { "" }
+            );
 
             deployment
                 .track_if_analytics_allowed(
@@ -287,11 +438,14 @@ pub async fn open_project_in_editor(
                     serde_json::json!({
                         "project_id": project.id.to_string(),
                         "editor_type": payload.as_ref().and_then(|req| req.editor_type.as_ref()),
+                        "remote_mode": url.is_some(),
                     }),
                 )
                 .await;
 
-            Ok(ResponseJson(ApiResponse::success(())))
+            Ok(ResponseJson(ApiResponse::success(OpenEditorResponse {
+                url,
+            })))
         }
         Err(e) => {
             tracing::error!("Failed to open editor for project {}: {}", project.id, e);
@@ -368,7 +522,7 @@ async fn search_files_in_repo(
     query: &str,
     mode: SearchMode,
 ) -> Result<Vec<SearchResult>, Box<dyn std::error::Error + Send + Sync>> {
-    let repo_path = Path::new(repo_path);
+    let repo_path = StdPath::new(repo_path);
 
     if !repo_path.exists() {
         return Err("Repository path does not exist".into());
@@ -497,9 +651,15 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             "/",
             get(get_project).put(update_project).delete(delete_project),
         )
+        .route("/remote/members", get(get_project_remote_members))
         .route("/branches", get(get_project_branches))
         .route("/search", get(search_project_files))
         .route("/open-editor", post(open_project_in_editor))
+        .route(
+            "/link",
+            post(link_project_to_existing_remote).delete(unlink_project),
+        )
+        .route("/link/create", post(create_and_link_remote_project))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_project_middleware,
@@ -509,5 +669,8 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/", get(get_projects).post(create_project))
         .nest("/{id}", project_id_router);
 
-    Router::new().nest("/projects", projects_router)
+    Router::new().nest("/projects", projects_router).route(
+        "/remote-projects/{remote_project_id}",
+        get(get_remote_project_by_id),
+    )
 }

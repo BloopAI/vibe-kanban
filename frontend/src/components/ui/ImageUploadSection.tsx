@@ -30,6 +30,7 @@ interface ImageUploadSectionProps {
   readOnly?: boolean;
   collapsible?: boolean;
   defaultExpanded?: boolean;
+  hideDropZone?: boolean; // Hide the drag and drop area
   className?: string;
 }
 
@@ -64,6 +65,7 @@ export const ImageUploadSection = forwardRef<
       readOnly = false,
       collapsible = true,
       defaultExpanded = false,
+      hideDropZone = false,
       className,
     },
     ref
@@ -87,7 +89,7 @@ export const ImageUploadSection = forwardRef<
       if (collapsible && images.length > 0 && !isExpanded) {
         setIsExpanded(true);
       }
-    }, [collapsible, images.length]);
+    }, [collapsible, images.length, isExpanded]);
 
     const handleFiles = useCallback(
       async (filesInput: FileList | File[] | null) => {
@@ -149,10 +151,12 @@ export const ImageUploadSection = forwardRef<
             }
 
             setErrorMessage(null);
-          } catch (error: any) {
+          } catch (error: unknown) {
             console.error('Failed to upload image:', error);
             const message =
-              error.message || 'Failed to upload image. Please try again.';
+              error instanceof Error
+                ? error.message
+                : 'Failed to upload image. Please try again.';
             setErrorMessage(message);
           } finally {
             setUploadingFiles((prev) => {
@@ -232,8 +236,8 @@ export const ImageUploadSection = forwardRef<
           <p className="text-sm text-muted-foreground">No images attached</p>
         )}
 
-        {/* Drop zone - only show when not read-only */}
-        {!readOnly && (
+        {/* Drop zone - only show when not read-only and not hidden */}
+        {!readOnly && !hideDropZone && (
           <div
             className={cn(
               'border-2 border-dashed rounded-lg p-6 text-center transition-colors',

@@ -1,4 +1,8 @@
-import { ExecutionProcess } from 'shared/types';
+import {
+  ExecutionProcess,
+  NormalizedEntry,
+  ExecutionProcessStatus,
+} from 'shared/types';
 
 export type AttemptData = {
   processes: ExecutionProcess[];
@@ -6,12 +10,12 @@ export type AttemptData = {
 };
 
 export interface ConversationEntryDisplayType {
-  entry: any;
+  entry: NormalizedEntry;
   processId: string;
   processPrompt?: string;
-  processStatus: string;
+  processStatus: ExecutionProcessStatus;
   processIsRunning: boolean;
-  process: any;
+  process: ExecutionProcess;
   isFirstInProcess: boolean;
   processIndex: number;
   entryIndex: number;

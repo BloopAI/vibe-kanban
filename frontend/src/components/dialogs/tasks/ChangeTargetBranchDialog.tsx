@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import BranchSelector from '@/components/tasks/BranchSelector';
 import type { GitBranch } from 'shared/types';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { defineModal } from '@/lib/modals';
 
 export interface ChangeTargetBranchDialogProps {
   branches: GitBranch[];
@@ -23,7 +24,7 @@ export type ChangeTargetBranchDialogResult = {
   branchName?: string;
 };
 
-export const ChangeTargetBranchDialog =
+const ChangeTargetBranchDialogImpl =
   NiceModal.create<ChangeTargetBranchDialogProps>(
     ({ branches, isChangingTargetBranch: isChangingTargetBranch = false }) => {
       const modal = useModal();
@@ -100,3 +101,8 @@ export const ChangeTargetBranchDialog =
       );
     }
   );
+
+export const ChangeTargetBranchDialog = defineModal<
+  ChangeTargetBranchDialogProps,
+  ChangeTargetBranchDialogResult
+>(ChangeTargetBranchDialogImpl);

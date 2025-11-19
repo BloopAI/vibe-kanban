@@ -85,7 +85,11 @@ function LinkOverride({
   );
 }
 
-function InlineCodeOverride({ children, className, ...props }: any) {
+function InlineCodeOverride({
+  children,
+  className,
+  ...props
+}: React.ComponentProps<'code'>) {
   // Only highlight inline code, not fenced code blocks
   const hasLanguage =
     typeof className === 'string' && /\blanguage-/.test(className);
@@ -123,28 +127,28 @@ function MarkdownRenderer({
       a: { component: LinkOverride },
       code: { component: InlineCodeOverride },
       strong: {
-        component: ({ children, ...props }: any) => (
+        component: ({ children, ...props }: React.ComponentProps<'strong'>) => (
           <span {...props} className="">
             {children}
           </span>
         ),
       },
       em: {
-        component: ({ children, ...props }: any) => (
+        component: ({ children, ...props }: React.ComponentProps<'em'>) => (
           <em {...props} className="italic">
             {children}
           </em>
         ),
       },
       p: {
-        component: ({ children, ...props }: any) => (
+        component: ({ children, ...props }: React.ComponentProps<'p'>) => (
           <p {...props} className="leading-tight my-2">
             {children}
           </p>
         ),
       },
       h1: {
-        component: ({ children, ...props }: any) => (
+        component: ({ children, ...props }: React.ComponentProps<'h1'>) => (
           <h1
             {...props}
             className="text-lg font-medium leading-tight mt-4 mb-2"
@@ -154,7 +158,7 @@ function MarkdownRenderer({
         ),
       },
       h2: {
-        component: ({ children, ...props }: any) => (
+        component: ({ children, ...props }: React.ComponentProps<'h2'>) => (
           <h2
             {...props}
             className="text-base font-medium leading-tight mt-4 mb-2"
@@ -164,14 +168,14 @@ function MarkdownRenderer({
         ),
       },
       h3: {
-        component: ({ children, ...props }: any) => (
+        component: ({ children, ...props }: React.ComponentProps<'h3'>) => (
           <h3 {...props} className="text-sm leading-tight mt-3 mb-2">
             {children}
           </h3>
         ),
       },
       ul: {
-        component: ({ children, ...props }: any) => (
+        component: ({ children, ...props }: React.ComponentProps<'ul'>) => (
           <ul
             {...props}
             className="list-disc list-outside ps-6 my-3 space-y-1.5"
@@ -181,7 +185,7 @@ function MarkdownRenderer({
         ),
       },
       ol: {
-        component: ({ children, ...props }: any) => (
+        component: ({ children, ...props }: React.ComponentProps<'ol'>) => (
           <ol
             {...props}
             className="list-decimal list-outside ps-6 my-3 space-y-1.5"
@@ -191,14 +195,14 @@ function MarkdownRenderer({
         ),
       },
       li: {
-        component: ({ children, ...props }: any) => (
+        component: ({ children, ...props }: React.ComponentProps<'li'>) => (
           <li {...props} className="leading-tight">
             {children}
           </li>
         ),
       },
       pre: {
-        component: ({ children, ...props }: any) => (
+        component: ({ children, ...props }: React.ComponentProps<'pre'>) => (
           <pre
             {...props}
             className="overflow-x-auto whitespace-pre-wrap break-words font-mono text-sm bg-muted/50 rounded-sm p-2 my-2"

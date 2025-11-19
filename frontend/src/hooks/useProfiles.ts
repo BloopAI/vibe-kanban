@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { profilesApi } from '@/lib/api';
+import type { JsonValue } from 'shared/types';
 
 export type UseProfilesReturn = {
   // data
   profilesContent: string;
-  parsedProfiles: any | null;
+  parsedProfiles: JsonValue | null;
   profilesPath: string;
 
   // status
@@ -33,8 +34,9 @@ export function useProfiles(): UseProfilesReturn {
     mutationFn: (content: string) => profilesApi.save(content),
     onSuccess: (_, content) => {
       // Optimistically update cache with new content
-      queryClient.setQueryData(['profiles'], (old: any) =>
-        old ? { ...old, content } : old
+      queryClient.setQueryData<{ content: string; path: string }>(
+        ['profiles'],
+        (old) => (old ? { ...old, content } : old)
       );
     },
   });

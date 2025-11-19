@@ -1,4 +1,8 @@
-use std::{path::PathBuf, str::FromStr};
+use std::{
+    io,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 use anyhow::Error;
 use serde::{Deserialize, Serialize};
@@ -269,6 +273,10 @@ impl From<v1::SoundFile> for SoundFile {
 pub struct EditorConfig {
     editor_type: EditorType,
     custom_command: Option<String>,
+    #[serde(default)]
+    remote_ssh_host: Option<String>,
+    #[serde(default)]
+    remote_ssh_user: Option<String>,
 }
 
 impl From<v1::EditorConfig> for EditorConfig {
@@ -276,6 +284,8 @@ impl From<v1::EditorConfig> for EditorConfig {
         Self {
             editor_type: EditorType::from(old.editor_type), // Now SCREAMING_SNAKE_CASE
             custom_command: old.custom_command,
+            remote_ssh_host: None,
+            remote_ssh_user: None,
         }
     }
 }
@@ -312,6 +322,8 @@ impl Default for EditorConfig {
         Self {
             editor_type: EditorType::VsCode,
             custom_command: None,
+            remote_ssh_host: None,
+            remote_ssh_user: None,
         }
     }
 }
@@ -335,29 +347,64 @@ impl EditorConfig {
         }
     }
 
-    pub fn open_file(&self, path: &str) -> Result<(), std::io::Error> {
-        let mut command = self.get_command();
+    pub async fn open_file(&self, path: &Path) -> Result<Option<String>, io::Error> {
+        if let Some(url) = self.remote_url(path) {
+            return Ok(Some(url));
+        }
+        self.spawn_local(path).await?;
+        Ok(None)
+    }
 
+    fn remote_url(&self, path: &Path) -> Option<String> {
+        let remote_host = self.remote_ssh_host.as_ref()?;
+        let scheme = match self.editor_type {
+            EditorType::VsCode => "vscode",
+            EditorType::Cursor => "cursor",
+            EditorType::Windsurf => "windsurf",
+            _ => return None,
+        };
+        let user_part = self
+            .remote_ssh_user
+            .as_ref()
+            .map(|u| format!("{u}@"))
+            .unwrap_or_default();
+        // files must contain a line and column number
+        let line_col = if path.is_file() { ":1:1" } else { "" };
+        let path = path.to_string_lossy();
+        Some(format!(
+            "{scheme}://vscode-remote/ssh-remote+{user_part}{remote_host}{path}{line_col}"
+        ))
+    }
+
+    pub async fn spawn_local(&self, path: &Path) -> io::Result<()> {
+        let command = self.get_command();
         if command.is_empty() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
                 "No editor command configured",
             ));
         }
 
-        if cfg!(windows) {
-            command[0] =
-                utils::shell::resolve_executable_path(&command[0]).ok_or(std::io::Error::new(
-                    std::io::ErrorKind::NotFound,
-                    format!("Editor command '{}' not found", command[0]),
-                ))?;
-        }
+        let executable = {
+            #[cfg(windows)]
+            {
+                utils::shell::resolve_executable_path(&command[0])
+                    .await
+                    .ok_or_else(|| {
+                        io::Error::new(
+                            io::ErrorKind::NotFound,
+                            format!("Editor command '{}' not found", command[0]),
+                        )
+                    })?
+            }
+            #[cfg(not(windows))]
+            {
+                command[0].clone()
+            }
+        };
 
-        let mut cmd = std::process::Command::new(&command[0]);
-        for arg in &command[1..] {
-            cmd.arg(arg);
-        }
-        cmd.arg(path);
+        let mut cmd = std::process::Command::new(executable);
+        cmd.args(&command[1..]).arg(path);
         cmd.spawn()?;
         Ok(())
     }
@@ -369,6 +416,8 @@ impl EditorConfig {
             EditorConfig {
                 editor_type,
                 custom_command: self.custom_command.clone(),
+                remote_ssh_host: self.remote_ssh_host.clone(),
+                remote_ssh_user: self.remote_ssh_user.clone(),
             }
         } else {
             self.clone()

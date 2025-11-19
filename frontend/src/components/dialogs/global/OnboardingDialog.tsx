@@ -25,18 +25,19 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Sparkles, Code, ChevronDown, HandMetal } from 'lucide-react';
 import { BaseCodingAgent, EditorType } from 'shared/types';
-import type { ExecutorProfileId } from 'shared/types';
+import type { EditorConfig, ExecutorProfileId } from 'shared/types';
 import { useUserSystem } from '@/components/config-provider';
 
 import { toPrettyCase } from '@/utils/string';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { defineModal, type NoProps } from '@/lib/modals';
 
 export type OnboardingResult = {
   profile: ExecutorProfileId;
-  editor: { editor_type: EditorType; custom_command: string | null };
+  editor: EditorConfig;
 };
 
-const OnboardingDialog = NiceModal.create(() => {
+const OnboardingDialogImpl = NiceModal.create<NoProps>(() => {
   const modal = useModal();
   const { profiles, config } = useUserSystem();
 
@@ -56,6 +57,8 @@ const OnboardingDialog = NiceModal.create(() => {
         editor_type: editorType,
         custom_command:
           editorType === EditorType.CUSTOM ? customCommand || null : null,
+        remote_ssh_host: null,
+        remote_ssh_user: null,
       },
     } as OnboardingResult);
   };
@@ -225,4 +228,6 @@ const OnboardingDialog = NiceModal.create(() => {
   );
 });
 
-export { OnboardingDialog };
+export const OnboardingDialog = defineModal<void, OnboardingResult>(
+  OnboardingDialogImpl
+);

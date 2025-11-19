@@ -267,6 +267,40 @@ impl ExecutionProcess {
         .await
     }
 
+    /// Find running dev servers for a specific task attempt
+    pub async fn find_running_dev_servers_by_task_attempt(
+        pool: &SqlitePool,
+        task_attempt_id: Uuid,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            ExecutionProcess,
+            r#"
+        SELECT
+            id as "id!: Uuid",
+            task_attempt_id as "task_attempt_id!: Uuid",
+            run_reason as "run_reason!: ExecutionProcessRunReason",
+            executor_action as "executor_action!: sqlx::types::Json<ExecutorActionField>",
+            before_head_commit,
+            after_head_commit,
+            status as "status!: ExecutionProcessStatus",
+            exit_code,
+            dropped,
+            started_at as "started_at!: DateTime<Utc>",
+            completed_at as "completed_at?: DateTime<Utc>",
+            created_at as "created_at!: DateTime<Utc>",
+            updated_at as "updated_at!: DateTime<Utc>"
+        FROM execution_processes
+        WHERE status = 'running'
+          AND run_reason = 'devserver'
+          AND task_attempt_id = ?
+        ORDER BY created_at DESC
+        "#,
+            task_attempt_id
+        )
+        .fetch_all(pool)
+        .await
+    }
+
     /// Find latest session_id by task attempt (simple scalar query)
     pub async fn find_latest_session_id_by_task_attempt(
         pool: &SqlitePool,

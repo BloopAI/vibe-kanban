@@ -19,7 +19,7 @@ use serde_json::Value;
 use services::services::{
     analytics::{AnalyticsContext, AnalyticsService},
     approvals::Approvals,
-    auth::{AuthError, AuthService},
+    auth::AuthContext,
     config::{Config, ConfigError},
     container::{ContainerError, ContainerService},
     drafts::DraftsService,
@@ -30,12 +30,17 @@ use services::services::{
     git::{GitService, GitServiceError},
     image::{ImageError, ImageService},
     pr_monitor::PrMonitorService,
+    share::{RemoteSync, RemoteSyncHandle, ShareConfig, SharePublisher},
     worktree_manager::WorktreeError,
 };
 use sqlx::{Error as SqlxError, types::Uuid};
 use thiserror::Error;
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 use utils::{msg_store::MsgStore, sentry as sentry_utils};
+
+#[derive(Debug, Clone, Copy, Error)]
+#[error("Remote client not configured")]
+pub struct RemoteClientNotConfigured;
 
 #[derive(Debug, Error)]
 pub enum DeploymentError {
@@ -56,8 +61,6 @@ pub enum DeploymentError {
     #[error(transparent)]
     Executor(#[from] ExecutorError),
     #[error(transparent)]
-    Auth(#[from] AuthError),
-    #[error(transparent)]
     Image(#[from] ImageError),
     #[error(transparent)]
     Filesystem(#[from] FilesystemError),
@@ -67,6 +70,8 @@ pub enum DeploymentError {
     Event(#[from] EventError),
     #[error(transparent)]
     Config(#[from] ConfigError),
+    #[error("Remote client not configured")]
+    RemoteClientNotConfigured,
     #[error(transparent)]
     Other(#[from] AnyhowError),
 }
@@ -87,8 +92,6 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     fn container(&self) -> &impl ContainerService;
 
-    fn auth(&self) -> &AuthService;
-
     fn git(&self) -> &GitService;
 
     fn image(&self) -> &ImageService;
@@ -105,6 +108,30 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     fn drafts(&self) -> &DraftsService;
 
+    fn auth_context(&self) -> &AuthContext;
+
+    fn share_publisher(&self) -> Result<SharePublisher, RemoteClientNotConfigured>;
+
+    fn share_sync_handle(&self) -> &Arc<Mutex<Option<RemoteSyncHandle>>>;
+
+    fn spawn_remote_sync(&self, config: ShareConfig) {
+        let deployment = self.clone();
+        let handle_slot = self.share_sync_handle().clone();
+        tokio::spawn(async move {
+            tracing::info!("Starting shared task sync");
+
+            let remote_sync_handle = RemoteSync::spawn(
+                deployment.db().clone(),
+                config,
+                deployment.auth_context().clone(),
+            );
+            {
+                let mut guard = handle_slot.lock().await;
+                *guard = Some(remote_sync_handle);
+            }
+        });
+    }
+
     async fn update_sentry_scope(&self) -> Result<(), DeploymentError> {
         let user_id = self.user_id();
         let config = self.config().read().await;
@@ -117,7 +144,6 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     async fn spawn_pr_monitor_service(&self) -> tokio::task::JoinHandle<()> {
         let db = self.db().clone();
-        let config = self.config().clone();
         let analytics = self
             .analytics()
             .as_ref()
@@ -125,16 +151,14 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                 user_id: self.user_id().to_string(),
                 analytics_service: analytics_service.clone(),
             });
-        PrMonitorService::spawn(db, config, analytics).await
+        let publisher = self.share_publisher().ok();
+        PrMonitorService::spawn(db, analytics, publisher).await
     }
 
     async fn track_if_analytics_allowed(&self, event_name: &str, properties: Value) {
         let analytics_enabled = self.config().read().await.analytics_enabled;
-        // Only skip tracking if user explicitly opted out (Some(false))
-        // Send for None (undecided) and Some(true) (opted in)
-        if analytics_enabled != Some(false)
-            && let Some(analytics) = self.analytics()
-        {
+        // Track events unless user has explicitly opted out
+        if analytics_enabled && let Some(analytics) = self.analytics() {
             analytics.track_event(self.user_id(), event_name, Some(properties.clone()));
         }
     }
@@ -190,13 +214,26 @@ pub trait Deployment: Clone + Send + Sync + 'static {
             ) && let Ok(Some(task_attempt)) =
                 TaskAttempt::find_by_id(&self.db().pool, process.task_attempt_id).await
                 && let Ok(Some(task)) = task_attempt.parent_task(&self.db().pool).await
-                && let Err(e) =
-                    Task::update_status(&self.db().pool, task.id, TaskStatus::InReview).await
             {
-                tracing::error!(
-                    "Failed to update task status to InReview for orphaned attempt: {}",
-                    e
-                );
+                match Task::update_status(&self.db().pool, task.id, TaskStatus::InReview).await {
+                    Ok(_) => {
+                        if let Ok(publisher) = self.share_publisher()
+                            && let Err(err) = publisher.update_shared_task_by_id(task.id).await
+                        {
+                            tracing::warn!(
+                                ?err,
+                                "Failed to propagate shared task update for {}",
+                                task.id
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!(
+                            "Failed to update task status to InReview for orphaned attempt: {}",
+                            e
+                        );
+                    }
+                }
             }
         }
         Ok(())
@@ -288,6 +325,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
                     // Create project (ignore individual failures)
                     let project_id = Uuid::new_v4();
+
                     match Project::create(&self.db().pool, &create_data, project_id).await {
                         Ok(project) => {
                             tracing::info!(

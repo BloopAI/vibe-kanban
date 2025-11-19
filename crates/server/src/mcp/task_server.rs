@@ -3,7 +3,7 @@ use std::{future::Future, path::PathBuf, str::FromStr};
 use db::models::{
     project::Project,
     task::{CreateTask, Task, TaskStatus, TaskWithAttemptStatus, UpdateTask},
-    task_attempt::TaskAttempt,
+    task_attempt::{TaskAttempt, TaskAttemptContext},
 };
 use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
 use rmcp::{
@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json;
 use uuid::Uuid;
 
-use crate::routes::task_attempts::CreateTaskAttemptBody;
+use crate::routes::{containers::ContainerQuery, task_attempts::CreateTaskAttemptBody};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct CreateTaskRequest {
@@ -239,6 +239,18 @@ pub struct TaskServer {
     client: reqwest::Client,
     base_url: String,
     tool_router: ToolRouter<TaskServer>,
+    context: Option<McpContext>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, schemars::JsonSchema)]
+pub struct McpContext {
+    pub project_id: Uuid,
+    pub task_id: Uuid,
+    pub task_title: String,
+    pub attempt_id: Uuid,
+    pub attempt_branch: String,
+    pub attempt_target_branch: String,
+    pub executor: String,
 }
 
 impl TaskServer {
@@ -247,7 +259,62 @@ impl TaskServer {
             client: reqwest::Client::new(),
             base_url: base_url.to_string(),
             tool_router: Self::tool_router(),
+            context: None,
         }
+    }
+
+    pub async fn init(mut self) -> Self {
+        let context = self.fetch_context_at_startup().await;
+
+        if context.is_none() {
+            self.tool_router.map.remove("get_context");
+            tracing::debug!("VK context not available, get_context tool will not be registered");
+        } else {
+            tracing::info!("VK context loaded, get_context tool available");
+        }
+
+        self.context = context;
+        self
+    }
+
+    async fn fetch_context_at_startup(&self) -> Option<McpContext> {
+        let current_dir = std::env::current_dir().ok()?;
+        let canonical_path = current_dir.canonicalize().unwrap_or(current_dir);
+        let normalized_path = utils::path::normalize_macos_private_alias(&canonical_path);
+
+        let url = self.url("/api/containers/attempt-context");
+        let query = ContainerQuery {
+            container_ref: normalized_path.to_string_lossy().to_string(),
+        };
+
+        let response = tokio::time::timeout(
+            std::time::Duration::from_millis(500),
+            self.client.get(&url).query(&query).send(),
+        )
+        .await
+        .ok()?
+        .ok()?;
+
+        if !response.status().is_success() {
+            return None;
+        }
+
+        let api_response: ApiResponseEnvelope<TaskAttemptContext> = response.json().await.ok()?;
+
+        if !api_response.success {
+            return None;
+        }
+
+        let ctx = api_response.data?;
+        Some(McpContext {
+            project_id: ctx.project.id,
+            task_id: ctx.task.id,
+            task_title: ctx.task.title,
+            attempt_id: ctx.task_attempt.id,
+            attempt_branch: ctx.task_attempt.branch,
+            attempt_target_branch: ctx.task_attempt.target_branch,
+            executor: ctx.task_attempt.executor,
+        })
     }
 }
 
@@ -322,6 +389,15 @@ impl TaskServer {
 
 #[tool_router]
 impl TaskServer {
+    #[tool(
+        description = "Return project, task, and attempt metadata for the current task attempt context."
+    )]
+    async fn get_context(&self) -> Result<CallToolResult, ErrorData> {
+        // Context was fetched at startup and cached
+        // This tool is only registered if context exists, so unwrap is safe
+        let context = self.context.as_ref().expect("VK context should exist");
+        TaskServer::success(context)
+    }
     #[tool(
         description = "Create a new task/ticket in a project. Always pass the `project_id` of the project you want to create the task in - it is required!"
     )]
@@ -591,16 +667,20 @@ impl TaskServer {
 #[tool_handler]
 impl ServerHandler for TaskServer {
     fn get_info(&self) -> ServerInfo {
+        let mut instruction = "A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list projects`. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project`.. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'start_task_attempt', 'get_task', 'update_task', 'delete_task'. Make sure to pass `project_id` or `task_id` where required. You can use list tools to get the available ids.".to_string();
+        if self.context.is_some() {
+            let context_instruction = "Use 'get_context' to fetch project/task/attempt metadata for the active Vibe Kanban attempt when available.";
+            instruction = format!("{} {}", context_instruction, instruction);
+        }
+
         ServerInfo {
             protocol_version: ProtocolVersion::V_2025_03_26,
-            capabilities: ServerCapabilities::builder()
-                .enable_tools()
-                .build(),
+            capabilities: ServerCapabilities::builder().enable_tools().build(),
             server_info: Implementation {
                 name: "vibe-kanban".to_string(),
                 version: "1.0.0".to_string(),
             },
-            instructions: Some("A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. This should be provided to you. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project`. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'start_task_attempt', 'get_task', 'update_task', 'delete_task'. Make sure to pass `project_id` or `task_id` where required. You can use list tools to get the available ids.".to_string()),
+            instructions: Some(instruction),
         }
     }
 }

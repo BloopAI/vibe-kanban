@@ -26,11 +26,11 @@ interface UseJsonPatchStreamResult<T> {
 /**
  * Generic hook for consuming WebSocket streams that send JSON messages with patches
  */
-export const useJsonPatchWsStream = <T>(
+export const useJsonPatchWsStream = <T extends object>(
   endpoint: string | undefined,
   enabled: boolean,
   initialData: () => T,
-  options: UseJsonPatchStreamOptions<T> = {}
+  options?: UseJsonPatchStreamOptions<T>
 ): UseJsonPatchStreamResult<T> => {
   const [data, setData] = useState<T | undefined>(undefined);
   const [isConnected, setIsConnected] = useState(false);
@@ -41,6 +41,9 @@ export const useJsonPatchWsStream = <T>(
   const retryAttemptsRef = useRef<number>(0);
   const [retryNonce, setRetryNonce] = useState(0);
   const finishedRef = useRef<boolean>(false);
+
+  const injectInitialEntry = options?.injectInitialEntry;
+  const deduplicatePatches = options?.deduplicatePatches;
 
   function scheduleReconnect() {
     if (retryTimerRef.current) return; // already scheduled
@@ -78,8 +81,8 @@ export const useJsonPatchWsStream = <T>(
       dataRef.current = initialData();
 
       // Inject initial entry if provided
-      if (options.injectInitialEntry) {
-        options.injectInitialEntry(dataRef.current);
+      if (injectInitialEntry) {
+        injectInitialEntry(dataRef.current);
       }
     }
 
@@ -110,20 +113,21 @@ export const useJsonPatchWsStream = <T>(
           // Handle JsonPatch messages (same as SSE json_patch event)
           if ('JsonPatch' in msg) {
             const patches: Operation[] = msg.JsonPatch;
-            const filtered = options.deduplicatePatches
-              ? options.deduplicatePatches(patches)
+            const filtered = deduplicatePatches
+              ? deduplicatePatches(patches)
               : patches;
 
-            if (!filtered.length || !dataRef.current) return;
+            const current = dataRef.current;
+            if (!filtered.length || !current) return;
 
             // Deep clone the current state before mutating it
-            dataRef.current = structuredClone(dataRef.current);
+            const next = structuredClone(current);
 
             // Apply patch (mutates the clone in place)
-            applyPatch(dataRef.current as any, filtered);
+            applyPatch(next, filtered);
 
-            // React re-render: dataRef.current is already a new object
-            setData(dataRef.current);
+            dataRef.current = next;
+            setData(next);
           }
 
           // Handle finished messages ({finished: true})
@@ -187,8 +191,8 @@ export const useJsonPatchWsStream = <T>(
     endpoint,
     enabled,
     initialData,
-    options.injectInitialEntry,
-    options.deduplicatePatches,
+    injectInitialEntry,
+    deduplicatePatches,
     retryNonce,
   ]);
 

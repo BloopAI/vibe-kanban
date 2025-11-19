@@ -40,6 +40,11 @@ export function useRebase(
           queryKey: ['branchStatus', attemptId],
         });
 
+        // Invalidate taskAttempt query to refresh attempt.target_branch
+        queryClient.invalidateQueries({
+          queryKey: ['taskAttempt', attemptId],
+        });
+
         // Refresh branch list used by PR dialog
         if (projectId) {
           queryClient.invalidateQueries({

@@ -16,7 +16,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
-use workspace_utils::{msg_store::MsgStore, path::make_path_relative, shell::get_shell_command};
+use workspace_utils::{msg_store::MsgStore, path::make_path_relative};
 
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
@@ -25,8 +25,8 @@ use crate::{
         opencode::share_bridge::Bridge as ShareBridge,
     },
     logs::{
-        ActionType, FileChange, NormalizedEntry, NormalizedEntryType, TodoItem, ToolStatus,
-        utils::EntryIndexProvider,
+        ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
+        TodoItem, ToolStatus, utils::EntryIndexProvider,
     },
     stdout_dup,
 };
@@ -108,7 +108,7 @@ pub struct Opencode {
 
 impl Opencode {
     fn build_command_builder(&self) -> CommandBuilder {
-        let mut builder = CommandBuilder::new("npx -y opencode-ai@0.15.8 run").params([
+        let mut builder = CommandBuilder::new("npx -y opencode-ai@1.0.68 run").params([
             "--print-logs",
             "--log-level",
             "ERROR",
@@ -131,20 +131,19 @@ impl StandardCodingAgentExecutor for Opencode {
     async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
         // Start a dedicated local share bridge bound to this opencode process
         let bridge = ShareBridge::start().await.map_err(ExecutorError::Io)?;
-        let (shell_cmd, shell_arg) = get_shell_command();
-        let opencode_command = self.build_command_builder().build_initial();
+        let command_parts = self.build_command_builder().build_initial()?;
+        let (program_path, args) = command_parts.into_resolved().await?;
 
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
-        let mut command = Command::new(shell_cmd);
+        let mut command = Command::new(program_path);
         command
             .kill_on_drop(true)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped()) // Keep stdout but we won't use it
             .stderr(Stdio::piped())
             .current_dir(current_dir)
-            .arg(shell_arg)
-            .arg(opencode_command)
+            .args(&args)
             .env("NODE_NO_WARNINGS", "1")
             .env("OPENCODE_AUTO_SHARE", "1")
             .env("OPENCODE_API", bridge.base_url.clone());
@@ -196,22 +195,21 @@ impl StandardCodingAgentExecutor for Opencode {
     ) -> Result<SpawnedChild, ExecutorError> {
         // Start a dedicated local share bridge bound to this opencode process
         let bridge = ShareBridge::start().await.map_err(ExecutorError::Io)?;
-        let (shell_cmd, shell_arg) = get_shell_command();
-        let opencode_command = self
+        let command_parts = self
             .build_command_builder()
-            .build_follow_up(&["--session".to_string(), session_id.to_string()]);
+            .build_follow_up(&["--session".to_string(), session_id.to_string()])?;
+        let (program_path, args) = command_parts.into_resolved().await?;
 
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
-        let mut command = Command::new(shell_cmd);
+        let mut command = Command::new(program_path);
         command
             .kill_on_drop(true)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped()) // Keep stdout but we won't use it
             .stderr(Stdio::piped())
             .current_dir(current_dir)
-            .arg(shell_arg)
-            .arg(&opencode_command)
+            .args(&args)
             .env("NODE_NO_WARNINGS", "1")
             .env("OPENCODE_AUTO_SHARE", "1")
             .env("OPENCODE_API", bridge.base_url.clone());
@@ -325,7 +323,9 @@ impl Opencode {
             if line.starts_with("ERROR") || LogUtils::is_error_line(&line) {
                 let entry = NormalizedEntry {
                     timestamp: None,
-                    entry_type: NormalizedEntryType::ErrorMessage,
+                    entry_type: NormalizedEntryType::ErrorMessage {
+                        error_type: NormalizedEntryError::Other,
+                    },
                     content: line.clone(),
                     metadata: None,
                 };

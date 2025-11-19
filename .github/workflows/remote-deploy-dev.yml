@@ -1,0 +1,30 @@
+name: Remote Deploy Dev
+
+on:
+  push:
+    branches:
+      - gabriel/share
+      - main
+    paths:
+      - crates/remote/**
+      - remote-frontend/**
+  workflow_dispatch:
+
+jobs:
+  run-remote-deploy:
+    name: Deploy Remote Dev
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Dispatch dev remote deployment workflow
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.REMOTE_DEPLOYMENT_TOKEN }}
+          repository: BloopAI/vibe-kanban-remote-deployment
+          event-type: vibe-kanban-remote-deploy-dev
+          client-payload: |
+            {
+              "ref": "${{ github.ref_name }}",
+              "sha": "${{ github.sha }}"
+            }

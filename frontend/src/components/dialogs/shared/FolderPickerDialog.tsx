@@ -22,6 +22,7 @@ import {
 import { fileSystemApi } from '@/lib/api';
 import { DirectoryEntry, DirectoryListResponse } from 'shared/types';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { defineModal } from '@/lib/modals';
 
 export interface FolderPickerDialogProps {
   value?: string;
@@ -29,7 +30,7 @@ export interface FolderPickerDialogProps {
   description?: string;
 }
 
-export const FolderPickerDialog = NiceModal.create<FolderPickerDialogProps>(
+const FolderPickerDialogImpl = NiceModal.create<FolderPickerDialogProps>(
   ({
     value = '',
     title = 'Select Folder',
@@ -288,3 +289,8 @@ export const FolderPickerDialog = NiceModal.create<FolderPickerDialogProps>(
     );
   }
 );
+
+export const FolderPickerDialog = defineModal<
+  FolderPickerDialogProps,
+  string | null
+>(FolderPickerDialogImpl);

@@ -2,15 +2,34 @@
   "actions": {
     "addTask": "Agregar tarea"
   },
+  "filters": {
+    "sharedToggleAria": "Alternar tareas compartidas",
+    "sharedToggleTooltip": "Mostrar/ocultar contenido compartido"
+  },
   "actionsMenu": {
     "attempt": "Attempt",
     "createNewAttempt": "Create new attempt",
     "createSubtask": "Create subtask",
+    "share": "Compartir tarea",
+    "reassign": "Reasignar",
+    "stopShare": "Dejar de compartir",
     "duplicate": "Duplicate",
+    "editBranchName": "Editar nombre de rama",
     "gitActions": "Acciones de Git",
     "openInIde": "Open attempt in IDE",
     "task": "Task",
-    "viewProcesses": "View processes"
+    "viewProcesses": "View processes",
+    "viewRelatedTasks": "View related tasks"
+  },
+  "editBranchName": {
+    "dialog": {
+      "title": "Editar nombre de rama",
+      "description": "Ingrese un nuevo nombre para la rama. No se puede renombrar si existe un PR abierto.",
+      "branchNameLabel": "Nombre de rama",
+      "placeholder": "ej., feature/mi-rama",
+      "renaming": "Renombrando...",
+      "action": "Renombrar rama"
+    }
   },
   "attempt": {
     "actions": {
@@ -44,11 +63,72 @@
     "viewDevLogs": "View dev server logs",
     "viewHistory": "View attempt history",
     "tryAgain": "Try Again",
+    "runSetup": "Ejecutar Configuración",
+    "setupHelpText": "{{agent}} no está configurado correctamente. Haz clic en 'Ejecutar Configuración' para instalarlo e iniciar sesión.",
     "devScriptMissingTooltip": "To start the dev server, add a dev script to this project"
+  },
+  "stopShareDialog": {
+    "title": "Detener uso compartido de la tarea",
+    "description": "¿Detener el uso compartido de \"{{title}}\" con tu organización?",
+    "warning": "Detiene el uso compartido de la tarea con tu organización, pero mantiene tu tarea local.",
+    "confirm": "Dejar de compartir tarea",
+    "inProgress": "Deteniendo el uso compartido...",
+    "genericError": "No se pudo dejar de compartir la tarea. Inténtalo de nuevo."
+  },
+  "shareDialog": {
+    "title": "Compartir tarea",
+    "description": "¿Compartir \"{{title}}\" con tu organización?",
+    "success": "Tarea compartida correctamente.",
+    "genericError": "No se pudo compartir la tarea. Inténtalo de nuevo.",
+    "loadingSystem": "Cargando estado de cuenta…",
+    "loginRequired": {
+      "title": "Inicia sesión para continuar",
+      "description": "Debes iniciar sesión antes de poder compartir tareas. Te redirigiremos a la página de inicio de sesión.",
+      "action": "Ir a iniciar sesión"
+    },
+    "githubRequired": {
+      "title": "Conecta GitHub",
+      "description": "Conecta tu cuenta de GitHub para que podamos publicar tareas compartidas por ti.",
+      "action": "Conectar GitHub"
+    },
+    "linkProjectRequired": {
+      "description": "Vincula este proyecto a una organización antes de compartir tareas.",
+      "action": "Vincular Proyecto"
+    },
+    "confirmationTitle": "Confirma el uso compartido",
+    "confirmationBody": "Compartir publicará esta tarea en tu espacio de trabajo compartido.",
+    "cancel": "Cancelar",
+    "confirm": "Compartir tarea",
+    "inProgress": "Compartiendo…",
+    "closeButton": "Cerrar"
+  },
+  "createPrDialog": {
+    "title": "Crear Pull Request de GitHub",
+    "description": "Crea un pull request para este intento de tarea en GitHub.",
+    "titleLabel": "Título",
+    "titlePlaceholder": "Ingresar título del PR",
+    "descriptionLabel": "Descripción (opcional)",
+    "descriptionPlaceholder": "Ingresar descripción del PR",
+    "baseBranchLabel": "Rama Base",
+    "loadingBranches": "Cargando ramas...",
+    "selectBaseBranch": "Seleccionar rama base",
+    "creating": "Creando...",
+    "createButton": "Crear PR",
+    "errors": {
+      "insufficientPermissions": "Permisos insuficientes. Por favor asegúrate de que la CLI de GitHub tenga los permisos necesarios.",
+      "repoNotFoundOrNoAccess": "Repositorio no encontrado o sin acceso. Por favor verifica el acceso al repositorio y asegúrate de estar autenticado.",
+      "failedToCreate": "Error al crear PR de GitHub"
+    },
+    "loginRequired": {
+      "title": "Inicia sesión para crear un pull request",
+      "description": "Debes iniciar sesión antes de poder abrir un pull request para esta tarea. Te llevaremos a la página de inicio de sesión.",
+      "action": "Iniciar sesión"
+    }
   },
   "attemptHeaderActions": {
     "diffs": "Diffs",
-    "preview": "Preview"
+    "preview": "Preview",
+    "relatedTasks": "Related tasks"
   },
   "branches": {
     "changeTarget": {
@@ -118,7 +198,12 @@
     },
     "actions": {
       "title": "Acciones de Git",
-      "prMerged": "PR #{{number}} ya está fusionado"
+      "prMerged": "PR #{{number}} ya está fusionado",
+      "loginRequired": {
+        "title": "Inicia sesión para gestionar acciones de Git",
+        "description": "Inicia sesión en Vibe Kanban para enviar ramas, fusionar cambios o abrir pull requests para esta tarea.",
+        "action": "Iniciar sesión"
+      }
     },
     "states": {
       "createPr": "Crear PR",
@@ -232,6 +317,7 @@
     "deleteTask": "Delete task",
     "editTask": "Edit task"
   },
+  "navigateToParent": "Navegar al intento de tarea padre",
   "taskPanel": {
     "attemptsCount": "Attempts ({{count}})",
     "errorLoadingAttempts": "Failed to load attempts",
@@ -251,6 +337,17 @@
   },
   "viewProcessesDialog": {
     "title": "Execution processes"
+  },
+  "viewRelatedTasksDialog": {
+    "title": "Related tasks",
+    "empty": "No related tasks for this attempt",
+    "error": "Failed to load related tasks",
+    "tasksCount": "Tasks ({{count}})",
+    "columns": {
+      "title": "Title",
+      "description": "Description",
+      "status": "Status"
+    }
   },
   "showcases": {
     "taskPanel": {
@@ -275,6 +372,34 @@
       "previous": "Anterior",
       "next": "Siguiente",
       "finish": "Finalizar"
+    }
+  },
+  "taskFormDialog": {
+    "createTitle": "Crear Nueva Tarea",
+    "editTitle": "Editar Tarea",
+    "titlePlaceholder": "Título de la tarea",
+    "descriptionPlaceholder": "Agrega más detalles (opcional). Escribe @ para buscar archivos.",
+    "statusLabel": "Estado",
+    "statusOptions": {
+      "todo": "Por Hacer",
+      "inprogress": "En Progreso",
+      "inreview": "En Revisión",
+      "done": "Completado",
+      "cancelled": "Cancelado"
+    },
+    "startLabel": "Iniciar",
+    "attachImage": "Adjuntar imagen",
+    "dropImagesHere": "Suelta las imágenes aquí",
+    "updating": "Actualizando...",
+    "updateTask": "Actualizar Tarea",
+    "starting": "Iniciando...",
+    "creating": "Creando...",
+    "create": "Crear",
+    "discardDialog": {
+      "title": "¿Descartar cambios sin guardar?",
+      "description": "Tienes cambios sin guardar. ¿Estás seguro de que deseas descartarlos?",
+      "continueEditing": "Continuar Editando",
+      "discardChanges": "Descartar Cambios"
     }
   }
 }

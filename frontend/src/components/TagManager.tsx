@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
 import { tagsApi } from '@/lib/api';
-import { showTagEdit } from '@/lib/modals';
+import { TagEditDialog } from '@/components/dialogs/tasks/TagEditDialog';
 import type { Tag } from 'shared/types';
 
 export function TagManager() {
@@ -30,7 +30,7 @@ export function TagManager() {
   const handleOpenDialog = useCallback(
     async (tag?: Tag) => {
       try {
-        const result = await showTagEdit({
+        const result = await TagEditDialog.show({
           tag: tag || null,
         });
 

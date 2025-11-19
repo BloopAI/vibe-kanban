@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { attemptsApi } from '@/lib/api';
-import NiceModal from '@ebay/nice-modal-react';
+import { EditorSelectionDialog } from '@/components/dialogs/tasks/EditorSelectionDialog';
 import type { EditorType } from 'shared/types';
 
 type OpenEditorOptions = {
@@ -19,21 +19,15 @@ export function useOpenInEditor(
       const { editorType, filePath } = options ?? {};
 
       try {
-        const result = await attemptsApi.openEditor(
+        const response = await attemptsApi.openEditor(
           attemptId,
           editorType,
           filePath
         );
 
-        if (result === undefined && !editorType) {
-          if (onShowEditorDialog) {
-            onShowEditorDialog();
-          } else {
-            NiceModal.show('editor-selection', {
-              selectedAttemptId: attemptId,
-              filePath,
-            });
-          }
+        // If a URL is returned, open it in a new window/tab
+        if (response.url) {
+          window.open(response.url, '_blank');
         }
       } catch (err) {
         console.error('Failed to open editor:', err);
@@ -41,7 +35,7 @@ export function useOpenInEditor(
           if (onShowEditorDialog) {
             onShowEditorDialog();
           } else {
-            NiceModal.show('editor-selection', {
+            EditorSelectionDialog.show({
               selectedAttemptId: attemptId,
               filePath,
             });

@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { projectsApi } from '@/lib/api';
-import NiceModal from '@ebay/nice-modal-react';
+import { ProjectEditorSelectionDialog } from '@/components/dialogs/projects/ProjectEditorSelectionDialog';
 import type { EditorType, Project } from 'shared/types';
 
 export function useOpenProjectInEditor(
@@ -12,14 +12,19 @@ export function useOpenProjectInEditor(
       if (!project) return;
 
       try {
-        await projectsApi.openEditor(project.id, editorType);
+        const response = await projectsApi.openEditor(project.id, editorType);
+
+        // If a URL is returned, open it in a new window/tab
+        if (response.url) {
+          window.open(response.url, '_blank');
+        }
       } catch (err) {
         console.error('Failed to open project in editor:', err);
         if (!editorType) {
           if (onShowEditorDialog) {
             onShowEditorDialog();
           } else {
-            NiceModal.show('project-editor-selection', {
+            ProjectEditorSelectionDialog.show({
               selectedProject: project,
             });
           }

@@ -26,7 +26,7 @@ import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { useScriptPlaceholders } from '@/hooks/useScriptPlaceholders';
 import { CopyFilesField } from '@/components/projects/copy-files-field';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
-import { showFolderPicker } from '@/lib/modals';
+import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
 import type { Project, UpdateProject } from 'shared/types';
 
 interface ProjectFormState {
@@ -369,7 +369,7 @@ export function ProjectSettings() {
                     type="button"
                     variant="outline"
                     onClick={async () => {
-                      const selectedPath = await showFolderPicker({
+                      const selectedPath = await FolderPickerDialog.show({
                         title: 'Select Git Repository',
                         description: 'Choose an existing git repository',
                         value: draft.git_repo_path,

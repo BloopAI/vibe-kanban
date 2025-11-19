@@ -14,7 +14,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import type { TaskAttempt } from 'shared/types';
+import type { TaskAttempt, Diff } from 'shared/types';
 import GitOperations, {
   type GitOperationsInputs,
 } from '@/components/tasks/Toolbar/GitOperations.tsx';
@@ -125,7 +125,7 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
 }
 
 interface DiffsPanelContentProps {
-  diffs: any[];
+  diffs: Diff[];
   fileCount: number;
   added: number;
   deleted: number;
@@ -136,7 +136,7 @@ interface DiffsPanelContentProps {
   selectedAttempt: TaskAttempt | null;
   gitOps?: GitOperationsInputs;
   loading: boolean;
-  t: (key: string, params?: any) => string;
+  t: (key: string, params?: Record<string, unknown>) => string;
 }
 
 function DiffsPanelContent({

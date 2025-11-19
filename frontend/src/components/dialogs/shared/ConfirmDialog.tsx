@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { AlertTriangle, Info, CheckCircle, XCircle } from 'lucide-react';
-import type { ConfirmResult } from '@/lib/modals';
+import { defineModal, type ConfirmResult } from '@/lib/modals';
 
 export interface ConfirmDialogProps {
   title: string;
@@ -20,7 +20,7 @@ export interface ConfirmDialogProps {
   icon?: boolean;
 }
 
-const ConfirmDialog = NiceModal.create<ConfirmDialogProps>((props) => {
+const ConfirmDialogImpl = NiceModal.create<ConfirmDialogProps>((props) => {
   const modal = useModal();
   const {
     title,
@@ -83,4 +83,6 @@ const ConfirmDialog = NiceModal.create<ConfirmDialogProps>((props) => {
   );
 });
 
-export { ConfirmDialog };
+export const ConfirmDialog = defineModal<ConfirmDialogProps, ConfirmResult>(
+  ConfirmDialogImpl
+);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Project } from 'shared/types';
-import { showProjectForm } from '@/lib/modals';
+import { ProjectFormDialog } from '@/components/dialogs/projects/ProjectFormDialog';
 import { projectsApi } from '@/lib/api';
 import { AlertCircle, Loader2, Plus } from 'lucide-react';
 import ProjectCard from '@/components/projects/ProjectCard.tsx';
@@ -20,7 +20,7 @@ export function ProjectList() {
   const [error, setError] = useState('');
   const [focusedProjectId, setFocusedProjectId] = useState<string | null>(null);
 
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => {
     setLoading(true);
     setError('');
 
@@ -33,11 +33,11 @@ export function ProjectList() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   const handleCreateProject = async () => {
     try {
-      const result = await showProjectForm();
+      const result = await ProjectFormDialog.show({});
       if (result === 'saved') {
         fetchProjects();
       }
@@ -62,7 +62,7 @@ export function ProjectList() {
 
   useEffect(() => {
     fetchProjects();
-  }, []);
+  }, [fetchProjects]);
 
   return (
     <div className="space-y-6 p-8 pb-16 md:pb-8 h-full overflow-auto">

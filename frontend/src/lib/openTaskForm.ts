@@ -1,4 +1,4 @@
-import NiceModal from '@ebay/nice-modal-react';
+import { TaskFormDialog } from '@/components/dialogs/tasks/TaskFormDialog';
 import type { TaskFormDialogProps } from '@/components/dialogs/tasks/TaskFormDialog';
 
 /**
@@ -6,5 +6,5 @@ import type { TaskFormDialogProps } from '@/components/dialogs/tasks/TaskFormDia
  * This replaces the previous TaskFormDialogContainer pattern
  */
 export function openTaskForm(props: TaskFormDialogProps) {
-  return NiceModal.show('task-form', props);
+  return TaskFormDialog.show(props);
 }

@@ -2,15 +2,34 @@
   "actions": {
     "addTask": "タスクを追加"
   },
+  "filters": {
+    "sharedToggleAria": "共有タスクを切り替える",
+    "sharedToggleTooltip": "共有コンテンツを表示/非表示"
+  },
   "actionsMenu": {
     "attempt": "Attempt",
     "createNewAttempt": "Create new attempt",
     "createSubtask": "Create subtask",
+    "share": "タスクを共有",
+    "reassign": "再割り当て",
+    "stopShare": "共有を停止",
     "duplicate": "Duplicate",
+    "editBranchName": "ブランチ名を編集",
     "gitActions": "Gitアクション",
     "openInIde": "Open attempt in IDE",
     "task": "Task",
-    "viewProcesses": "View processes"
+    "viewProcesses": "View processes",
+    "viewRelatedTasks": "View related tasks"
+  },
+  "editBranchName": {
+    "dialog": {
+      "title": "ブランチ名を編集",
+      "description": "ブランチの新しい名前を入力してください。オープンなPRが存在する場合は名前を変更できません。",
+      "branchNameLabel": "ブランチ名",
+      "placeholder": "例: feature/my-branch",
+      "renaming": "名前を変更中...",
+      "action": "ブランチ名を変更"
+    }
   },
   "attempt": {
     "actions": {
@@ -44,11 +63,72 @@
     "viewDevLogs": "View dev server logs",
     "viewHistory": "View attempt history",
     "tryAgain": "Try Again",
+    "runSetup": "セットアップを実行",
+    "setupHelpText": "{{agent}}が正しく設定されていません。「セットアップを実行」をクリックしてインストールとログインを行ってください。",
     "devScriptMissingTooltip": "To start the dev server, add a dev script to this project"
+  },
+  "stopShareDialog": {
+    "title": "タスクの共有を停止",
+    "description": "「{{title}}」の共有を組織向けに停止しますか？",
+    "warning": "組織との共有は停止しますが、ローカルのタスクは保持されます。",
+    "confirm": "共有を停止",
+    "inProgress": "共有を停止中…",
+    "genericError": "タスクの共有を停止できませんでした。もう一度お試しください。"
+  },
+  "shareDialog": {
+    "title": "タスクを共有",
+    "description": "「{{title}}」を組織と共有しますか？",
+    "success": "タスクの共有に成功しました。",
+    "genericError": "タスクを共有できませんでした。もう一度お試しください。",
+    "loadingSystem": "アカウント状態を読み込み中…",
+    "loginRequired": {
+      "title": "続行するにはサインインしてください",
+      "description": "タスクを共有する前にサインインが必要です。サインインページへリダイレクトします。",
+      "action": "サインインへ移動"
+    },
+    "githubRequired": {
+      "title": "GitHub を接続",
+      "description": "共有タスクを公開できるよう、GitHub アカウントを接続してください。",
+      "action": "GitHub を接続"
+    },
+    "linkProjectRequired": {
+      "description": "タスクを共有する前に、このプロジェクトを組織にリンクしてください。",
+      "action": "プロジェクトをリンク"
+    },
+    "confirmationTitle": "共有を確認",
+    "confirmationBody": "共有すると、このタスクが共有ワークスペースに公開されます。",
+    "cancel": "キャンセル",
+    "confirm": "タスクを共有",
+    "inProgress": "共有中…",
+    "closeButton": "閉じる"
+  },
+  "createPrDialog": {
+    "title": "GitHub プルリクエストを作成",
+    "description": "このタスク試行のプルリクエストをGitHubで作成します。",
+    "titleLabel": "タイトル",
+    "titlePlaceholder": "PRタイトルを入力",
+    "descriptionLabel": "説明 (オプション)",
+    "descriptionPlaceholder": "PR説明を入力",
+    "baseBranchLabel": "ベースブランチ",
+    "loadingBranches": "ブランチを読み込み中...",
+    "selectBaseBranch": "ベースブランチを選択",
+    "creating": "作成中...",
+    "createButton": "PRを作成",
+    "errors": {
+      "insufficientPermissions": "権限が不足しています。GitHub CLIに必要な権限があることを確認してください。",
+      "repoNotFoundOrNoAccess": "リポジトリが見つからないか、アクセス権がありません。リポジトリへのアクセス権を確認し、認証されていることを確認してください。",
+      "failedToCreate": "GitHub PRの作成に失敗しました"
+    },
+    "loginRequired": {
+      "title": "プルリクエストを作成するにはサインインしてください",
+      "description": "このタスクでプルリクエストを開く前にサインインが必要です。サインインページに移動します。",
+      "action": "サインイン"
+    }
   },
   "attemptHeaderActions": {
     "diffs": "Diffs",
-    "preview": "Preview"
+    "preview": "Preview",
+    "relatedTasks": "Related tasks"
   },
   "branches": {
     "changeTarget": {
@@ -118,7 +198,12 @@
     },
     "actions": {
       "title": "Gitアクション",
-      "prMerged": "PR #{{number}} は既にマージされています"
+      "prMerged": "PR #{{number}} は既にマージされています",
+      "loginRequired": {
+        "title": "Git アクションを管理するにはサインインしてください",
+        "description": "このタスクでブランチのプッシュ、変更のマージ、プルリクエストの作成を行うには Vibe Kanban にサインインしてください。",
+        "action": "サインイン"
+      }
     },
     "states": {
       "createPr": "PRを作成",
@@ -232,6 +317,7 @@
     "deleteTask": "Delete task",
     "editTask": "Edit task"
   },
+  "navigateToParent": "親タスクの試行に移動",
   "taskPanel": {
     "attemptsCount": "Attempts ({{count}})",
     "errorLoadingAttempts": "Failed to load attempts",
@@ -251,6 +337,17 @@
   },
   "viewProcessesDialog": {
     "title": "Execution processes"
+  },
+  "viewRelatedTasksDialog": {
+    "title": "Related tasks",
+    "empty": "No related tasks for this attempt",
+    "error": "Failed to load related tasks",
+    "tasksCount": "Tasks ({{count}})",
+    "columns": {
+      "title": "Title",
+      "description": "Description",
+      "status": "Status"
+    }
   },
   "showcases": {
     "taskPanel": {
@@ -275,6 +372,34 @@
       "previous": "前へ",
       "next": "次へ",
       "finish": "完了"
+    }
+  },
+  "taskFormDialog": {
+    "createTitle": "新規タスクを作成",
+    "editTitle": "タスクを編集",
+    "titlePlaceholder": "タスクのタイトル",
+    "descriptionPlaceholder": "詳細を追加（オプション）。@でファイルを検索できます。",
+    "statusLabel": "ステータス",
+    "statusOptions": {
+      "todo": "未着手",
+      "inprogress": "進行中",
+      "inreview": "レビュー中",
+      "done": "完了",
+      "cancelled": "キャンセル"
+    },
+    "startLabel": "開始",
+    "attachImage": "画像を添付",
+    "dropImagesHere": "画像をここにドロップ",
+    "updating": "更新中...",
+    "updateTask": "タスクを更新",
+    "starting": "開始中...",
+    "creating": "作成中...",
+    "create": "作成",
+    "discardDialog": {
+      "title": "未保存の変更を破棄しますか？",
+      "description": "未保存の変更があります。本当に破棄してもよろしいですか？",
+      "continueEditing": "編集を続ける",
+      "discardChanges": "変更を破棄"
     }
   }
 }

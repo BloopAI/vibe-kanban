@@ -11,37 +11,60 @@ import {
 import { MoreHorizontal } from 'lucide-react';
 import type { TaskWithAttemptStatus, TaskAttempt } from 'shared/types';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
-import NiceModal from '@ebay/nice-modal-react';
+import { DeleteTaskConfirmationDialog } from '@/components/dialogs/tasks/DeleteTaskConfirmationDialog';
+import { ViewProcessesDialog } from '@/components/dialogs/tasks/ViewProcessesDialog';
+import { ViewRelatedTasksDialog } from '@/components/dialogs/tasks/ViewRelatedTasksDialog';
+import { CreateAttemptDialog } from '@/components/dialogs/tasks/CreateAttemptDialog';
+import { GitActionsDialog } from '@/components/dialogs/tasks/GitActionsDialog';
+import { EditBranchNameDialog } from '@/components/dialogs/tasks/EditBranchNameDialog';
+import { ShareDialog } from '@/components/dialogs/tasks/ShareDialog';
+import { ReassignDialog } from '@/components/dialogs/tasks/ReassignDialog';
+import { StopShareTaskDialog } from '@/components/dialogs/tasks/StopShareTaskDialog';
 import { useProject } from '@/contexts/project-context';
 import { openTaskForm } from '@/lib/openTaskForm';
+
+import { useNavigate } from 'react-router-dom';
+import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
+import { useAuth } from '@/hooks';
 
 interface ActionsDropdownProps {
   task?: TaskWithAttemptStatus | null;
   attempt?: TaskAttempt | null;
+  sharedTask?: SharedTaskRecord;
 }
 
-export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
+export function ActionsDropdown({
+  task,
+  attempt,
+  sharedTask,
+}: ActionsDropdownProps) {
   const { t } = useTranslation('tasks');
   const { projectId } = useProject();
   const openInEditor = useOpenInEditor(attempt?.id);
+  const navigate = useNavigate();
+  const { userId } = useAuth();
 
   const hasAttemptActions = Boolean(attempt);
   const hasTaskActions = Boolean(task);
+  const isShared = Boolean(sharedTask);
 
-  const handleEdit = () => {
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!projectId || !task) return;
-    openTaskForm({ projectId, task });
+    openTaskForm({ mode: 'edit', projectId, task });
   };
 
-  const handleDuplicate = () => {
+  const handleDuplicate = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!projectId || !task) return;
-    openTaskForm({ projectId, initialTask: task });
+    openTaskForm({ mode: 'duplicate', projectId, initialTask: task });
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!projectId || !task) return;
     try {
-      await NiceModal.show('delete-task-confirmation', {
+      await DeleteTaskConfirmationDialog.show({
         task,
         projectId,
       });
@@ -59,37 +82,87 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
   const handleViewProcesses = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!attempt?.id) return;
-    NiceModal.show('view-processes', { attemptId: attempt.id });
+    ViewProcessesDialog.show({ attemptId: attempt.id });
+  };
+
+  const handleViewRelatedTasks = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!attempt?.id || !projectId) return;
+    ViewRelatedTasksDialog.show({
+      attemptId: attempt.id,
+      projectId,
+      attempt,
+      onNavigateToTask: (taskId: string) => {
+        if (projectId) {
+          navigate(`/projects/${projectId}/tasks/${taskId}/attempts/latest`);
+        }
+      },
+    });
   };
 
   const handleCreateNewAttempt = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!task?.id) return;
-    NiceModal.show('create-attempt', {
+    CreateAttemptDialog.show({
       taskId: task.id,
-      latestAttempt: null,
     });
   };
 
   const handleCreateSubtask = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!projectId || !attempt) return;
+    const baseBranch = attempt.branch || attempt.target_branch;
+    if (!baseBranch) return;
     openTaskForm({
+      mode: 'subtask',
       projectId,
       parentTaskAttemptId: attempt.id,
-      initialBaseBranch: attempt.branch || attempt.target_branch,
+      initialBaseBranch: baseBranch,
     });
   };
 
   const handleGitActions = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!attempt?.id || !task) return;
-    NiceModal.show('git-actions', {
+    GitActionsDialog.show({
       attemptId: attempt.id,
       task,
       projectId,
     });
   };
+
+  const handleEditBranchName = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!attempt?.id) return;
+    EditBranchNameDialog.show({
+      attemptId: attempt.id,
+      currentBranchName: attempt.branch,
+    });
+  };
+  const handleShare = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!task || isShared) return;
+    ShareDialog.show({ task });
+  };
+
+  const handleReassign = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!sharedTask) return;
+    ReassignDialog.show({ sharedTask });
+  };
+
+  const handleStopShare = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!sharedTask) return;
+    StopShareTaskDialog.show({ sharedTask });
+  };
+
+  const canReassign =
+    Boolean(task) &&
+    Boolean(sharedTask) &&
+    sharedTask?.assignee_user_id === userId;
+  const canStopShare =
+    Boolean(sharedTask) && sharedTask?.assignee_user_id === userId;
 
   return (
     <>
@@ -98,6 +171,8 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
           <Button
             variant="icon"
             aria-label="Actions"
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
             <MoreHorizontal className="h-4 w-4" />
@@ -119,6 +194,12 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
               >
                 {t('actionsMenu.viewProcesses')}
               </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!attempt?.id}
+                onClick={handleViewRelatedTasks}
+              >
+                {t('actionsMenu.viewRelatedTasks')}
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={handleCreateNewAttempt}>
                 {t('actionsMenu.createNewAttempt')}
               </DropdownMenuItem>
@@ -134,6 +215,12 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
               >
                 {t('actionsMenu.gitActions')}
               </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!attempt?.id}
+                onClick={handleEditBranchName}
+              >
+                {t('actionsMenu.editBranchName')}
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
             </>
           )}
@@ -141,6 +228,26 @@ export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
           {hasTaskActions && (
             <>
               <DropdownMenuLabel>{t('actionsMenu.task')}</DropdownMenuLabel>
+              <DropdownMenuItem
+                disabled={!task || isShared}
+                onClick={handleShare}
+              >
+                {t('actionsMenu.share')}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!canReassign}
+                onClick={handleReassign}
+              >
+                {t('actionsMenu.reassign')}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!canStopShare}
+                onClick={handleStopShare}
+                className="text-destructive"
+              >
+                {t('actionsMenu.stopShare')}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem disabled={!projectId} onClick={handleEdit}>
                 {t('common:buttons.edit')}
               </DropdownMenuItem>

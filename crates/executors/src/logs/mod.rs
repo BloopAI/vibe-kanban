@@ -47,6 +47,13 @@ pub struct NormalizedConversation {
     pub summary: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, TS, PartialEq)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum NormalizedEntryError {
+    SetupRequired,
+    Other,
+}
+
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -62,12 +69,15 @@ pub enum NormalizedEntryType {
         status: ToolStatus,
     },
     SystemMessage,
-    ErrorMessage,
+    ErrorMessage {
+        error_type: NormalizedEntryError,
+    },
     Thinking,
     Loading,
     NextAction {
         failed: bool,
         execution_processes: usize,
+        needs_setup: bool,
     },
 }
 

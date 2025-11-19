@@ -24,7 +24,8 @@ import { Loader2 } from 'lucide-react';
 import { ExecutorConfigForm } from '@/components/ExecutorConfigForm';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useUserSystem } from '@/components/config-provider';
-import { showModal } from '@/lib/modals';
+import { CreateConfigurationDialog } from '@/components/dialogs/settings/CreateConfigurationDialog';
+import { DeleteConfigurationDialog } from '@/components/dialogs/settings/DeleteConfigurationDialog';
 
 export function AgentSettings() {
   const { t } = useTranslation('settings');
@@ -88,11 +89,7 @@ export function AgentSettings() {
   // Open create dialog
   const openCreateDialog = async () => {
     try {
-      const result = await showModal<{
-        action: 'created' | 'canceled';
-        configName?: string;
-        cloneFrom?: string | null;
-      }>('create-configuration', {
+      const result = await CreateConfigurationDialog.show({
         executorType: selectedExecutorType,
         existingConfigs: Object.keys(
           localParsedProfiles?.executors?.[selectedExecutorType] || {}
@@ -145,13 +142,10 @@ export function AgentSettings() {
   // Open delete dialog
   const openDeleteDialog = async (configName: string) => {
     try {
-      const result = await showModal<'deleted' | 'canceled'>(
-        'delete-configuration',
-        {
-          configName,
-          executorType: selectedExecutorType,
-        }
-      );
+      const result = await DeleteConfigurationDialog.show({
+        configName,
+        executorType: selectedExecutorType,
+      });
 
       if (result === 'deleted') {
         await handleDeleteConfiguration(configName);
@@ -371,7 +365,7 @@ export function AgentSettings() {
       )}
 
       {profilesSuccess && (
-        <Alert className="border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
+        <Alert variant="success">
           <AlertDescription className="font-medium">
             {t('settings.agents.save.success')}
           </AlertDescription>

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE task_attempts SET branch = $1, updated_at = datetime('now') WHERE id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "6e553d3a71f3a3e33dd2418ac62babe4b75fc734a135cb45f5127a0411eeb89b"
+}

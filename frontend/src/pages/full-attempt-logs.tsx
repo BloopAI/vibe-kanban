@@ -41,12 +41,12 @@ export function FullAttemptLogsPage() {
                 >
                   <TaskAttemptPanel attempt={attempt} task={task}>
                     {({ logs, followUp }) => (
-                      <div className="h-full flex flex-col">
+                      <div className="h-full min-h-0 flex flex-col">
                         <div className="flex-1 min-h-0 flex flex-col">
                           {logs}
                         </div>
-                        <div className="border-t shrink-0">
-                          <div className="mx-auto w-full max-w-[50rem]">
+                        <div className="min-h-0 max-h-[50%] border-t overflow-hidden">
+                          <div className="mx-auto w-full max-w-[50rem] h-full min-h-0">
                             {followUp}
                           </div>
                         </div>
@@ -59,10 +59,10 @@ export function FullAttemptLogsPage() {
           ) : (
             <TaskAttemptPanel attempt={attempt} task={task}>
               {({ logs, followUp }) => (
-                <div className="h-full flex flex-col">
+                <div className="h-full min-h-0 flex flex-col">
                   <div className="flex-1 min-h-0 flex flex-col">{logs}</div>
-                  <div className="border-t shrink-0">
-                    <div className="mx-auto w-full max-w-[50rem]">
+                  <div className="min-h-0 max-h-[50%] border-t overflow-hidden">
+                    <div className="mx-auto w-full max-w-[50rem] h-full min-h-0">
                       {followUp}
                     </div>
                   </div>

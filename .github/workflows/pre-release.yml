@@ -25,7 +25,7 @@ permissions:
 
 env:
   NODE_VERSION: 22
-  PNPM_VERSION: 10.8.1
+  PNPM_VERSION: 10.13.1
   RUST_TOOLCHAIN: nightly-2025-05-18
 
 jobs:
@@ -46,7 +46,7 @@ jobs:
       - name: Install cargo-edit
         if: steps.cache-cargo-edit.outputs.cache-hit != 'true'
         run: cargo install cargo-edit
-      
+
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -111,7 +111,7 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add package.json pnpm-lock.yaml npx-cli/package.json frontend/package.json Cargo.lock
-          git add $(find . -name Cargo.toml) 
+          git add $(find . -name Cargo.toml)
           git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
           git tag -a ${{ steps.version.outputs.new_tag }} -m "Release ${{ steps.version.outputs.new_tag }}"
           git push
@@ -235,6 +235,7 @@ jobs:
         env:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
+          VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
 
       - name: Build backend (non-Linux)
         if: runner.os != 'Linux'
@@ -244,6 +245,7 @@ jobs:
         env:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
+          VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
 
       - name: Setup Sentry CLI
         uses: matbour/setup-sentry-cli@v2

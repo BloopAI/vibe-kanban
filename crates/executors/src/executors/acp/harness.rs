@@ -14,10 +14,13 @@ use tokio_util::{
     io::ReaderStream,
 };
 use tracing::error;
-use workspace_utils::{shell::get_shell_command, stream_lines::LinesStreamExt};
+use workspace_utils::stream_lines::LinesStreamExt;
 
 use super::{AcpClient, SessionManager};
-use crate::executors::{ExecutorError, SpawnedChild, acp::AcpEvent};
+use crate::{
+    command::CommandParts,
+    executors::{ExecutorError, SpawnedChild, acp::AcpEvent},
+};
 
 /// Reusable harness for ACP-based conns (Gemini, Qwen, etc.)
 pub struct AcpAgentHarness {
@@ -50,18 +53,17 @@ impl AcpAgentHarness {
         &self,
         current_dir: &Path,
         prompt: String,
-        full_command: String,
+        command_parts: CommandParts,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let (shell_cmd, shell_arg) = get_shell_command();
-        let mut command = Command::new(shell_cmd);
+        let (program_path, args) = command_parts.into_resolved().await?;
+        let mut command = Command::new(program_path);
         command
             .kill_on_drop(true)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(current_dir)
-            .arg(shell_arg)
-            .arg(full_command)
+            .args(&args)
             .env("NODE_NO_WARNINGS", "1");
 
         let mut child = command.group_spawn()?;
@@ -88,18 +90,17 @@ impl AcpAgentHarness {
         current_dir: &Path,
         prompt: String,
         session_id: &str,
-        full_command: String,
+        command_parts: CommandParts,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let (shell_cmd, shell_arg) = get_shell_command();
-        let mut command = Command::new(shell_cmd);
+        let (program_path, args) = command_parts.into_resolved().await?;
+        let mut command = Command::new(program_path);
         command
             .kill_on_drop(true)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(current_dir)
-            .arg(shell_arg)
-            .arg(full_command)
+            .args(&args)
             .env("NODE_NO_WARNINGS", "1");
 
         let mut child = command.group_spawn()?;

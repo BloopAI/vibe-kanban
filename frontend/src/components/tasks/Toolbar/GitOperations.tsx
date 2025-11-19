@@ -22,15 +22,11 @@ import type {
   TaskAttempt,
   TaskWithAttemptStatus,
 } from 'shared/types';
-import { useRebase } from '@/hooks/useRebase';
-import { useMerge } from '@/hooks/useMerge';
-import { usePush } from '@/hooks/usePush';
-import { useChangeTargetBranch } from '@/hooks/useChangeTargetBranch';
-import NiceModal from '@ebay/nice-modal-react';
-import { Err } from '@/lib/api';
-import type { GitOperationError } from 'shared/types';
-import { showModal } from '@/lib/modals';
+import { ChangeTargetBranchDialog } from '@/components/dialogs/tasks/ChangeTargetBranchDialog';
+import { RebaseDialog } from '@/components/dialogs/tasks/RebaseDialog';
+import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
 import { useTranslation } from 'react-i18next';
+import { useGitOperations } from '@/hooks/useGitOperations';
 
 interface GitOperationsProps {
   selectedAttempt: TaskAttempt;
@@ -39,7 +35,6 @@ interface GitOperationsProps {
   branchStatus: BranchStatus | null;
   branches: GitBranch[];
   isAttemptRunning: boolean;
-  setError: (error: string | null) => void;
   selectedBranch: string | null;
   layout?: 'horizontal' | 'vertical';
 }
@@ -53,21 +48,13 @@ function GitOperations({
   branchStatus,
   branches,
   isAttemptRunning,
-  setError,
   selectedBranch,
   layout = 'horizontal',
 }: GitOperationsProps) {
   const { t } = useTranslation('tasks');
 
-  // Git operation hooks
-  const rebaseMutation = useRebase(selectedAttempt.id, projectId);
-  const mergeMutation = useMerge(selectedAttempt.id);
-  const pushMutation = usePush(selectedAttempt.id);
-  const changeTargetBranchMutation = useChangeTargetBranch(
-    selectedAttempt.id,
-    projectId
-  );
-  const isChangingTargetBranch = changeTargetBranchMutation.isPending;
+  const git = useGitOperations(selectedAttempt.id, projectId);
+  const isChangingTargetBranch = git.states.changeTargetBranchPending;
 
   // Git status calculations
   const hasConflictsCalculated = useMemo(
@@ -84,20 +71,12 @@ function GitOperations({
 
   // Target branch change handlers
   const handleChangeTargetBranchClick = async (newBranch: string) => {
-    await changeTargetBranchMutation
-      .mutateAsync(newBranch)
-      .then(() => setError(null))
-      .catch((error) => {
-        setError(error.message || t('git.errors.changeTargetBranch'));
-      });
+    await git.actions.changeTargetBranch(newBranch);
   };
 
   const handleChangeTargetBranchDialogOpen = async () => {
     try {
-      const result = await showModal<{
-        action: 'confirmed' | 'canceled';
-        branchName: string;
-      }>('change-target-branch-dialog', {
+      const result = await ChangeTargetBranchDialog.show({
         branches,
         isChangingTargetBranch: isChangingTargetBranch,
       });
@@ -176,12 +155,9 @@ function GitOperations({
   const handlePushClick = async () => {
     try {
       setPushing(true);
-      await pushMutation.mutateAsync();
-      setError(null); // Clear any previous errors on success
+      await git.actions.push();
       setPushSuccess(true);
       setTimeout(() => setPushSuccess(false), 2000);
-    } catch (error: any) {
-      setError(error.message || t('git.errors.pushChanges'));
     } finally {
       setPushing(false);
     }
@@ -190,13 +166,9 @@ function GitOperations({
   const performMerge = async () => {
     try {
       setMerging(true);
-      await mergeMutation.mutateAsync();
-      setError(null); // Clear any previous errors on success
+      await git.actions.merge();
       setMergeSuccess(true);
       setTimeout(() => setMergeSuccess(false), 2000);
-    } catch (error) {
-      // @ts-expect-error it is type ApiError
-      setError(error.message || t('git.errors.mergeChanges'));
     } finally {
       setMerging(false);
     }
@@ -207,30 +179,20 @@ function GitOperations({
     selectedUpstream: string
   ) => {
     setRebasing(true);
-    await rebaseMutation
-      .mutateAsync({
+    try {
+      await git.actions.rebase({
         newBaseBranch: newBaseBranch,
         oldBaseBranch: selectedUpstream,
-      })
-      .then(() => setError(null))
-      .catch((err: Err<GitOperationError>) => {
-        const data = err?.error;
-        const isConflict =
-          data?.type === 'merge_conflicts' ||
-          data?.type === 'rebase_in_progress';
-        if (!isConflict) setError(err.message || t('git.errors.rebaseBranch'));
       });
-    setRebasing(false);
+    } finally {
+      setRebasing(false);
+    }
   };
 
   const handleRebaseDialogOpen = async () => {
     try {
       const defaultTargetBranch = selectedAttempt.target_branch;
-      const result = await showModal<{
-        action: 'confirmed' | 'canceled';
-        branchName?: string;
-        upstreamBranch?: string;
-      }>('rebase-dialog', {
+      const result = await RebaseDialog.show({
         branches,
         isRebasing: rebasing,
         initialTargetBranch: defaultTargetBranch,
@@ -258,17 +220,12 @@ function GitOperations({
       return;
     }
 
-    NiceModal.show('create-pr', {
+    CreatePRDialog.show({
       attempt: selectedAttempt,
       task,
       projectId,
     });
   };
-
-  // Hide entire panel only if PR is merged
-  if (mergeInfo.hasMergedPR) {
-    return null;
-  }
 
   const isVertical = layout === 'vertical';
 
@@ -443,6 +400,7 @@ function GitOperations({
             <Button
               onClick={handleMergeClick}
               disabled={
+                mergeInfo.hasMergedPR ||
                 mergeInfo.hasOpenPR ||
                 merging ||
                 hasConflictsCalculated ||
@@ -463,6 +421,7 @@ function GitOperations({
             <Button
               onClick={handlePRButtonClick}
               disabled={
+                mergeInfo.hasMergedPR ||
                 pushing ||
                 isAttemptRunning ||
                 hasConflictsCalculated ||
@@ -484,7 +443,12 @@ function GitOperations({
 
             <Button
               onClick={handleRebaseDialogOpen}
-              disabled={rebasing || isAttemptRunning || hasConflictsCalculated}
+              disabled={
+                mergeInfo.hasMergedPR ||
+                rebasing ||
+                isAttemptRunning ||
+                hasConflictsCalculated
+              }
               variant="outline"
               size="xs"
               className="border-warning text-warning hover:bg-warning gap-1 shrink-0"

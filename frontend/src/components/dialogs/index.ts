@@ -1,15 +1,21 @@
 // Global app dialogs
 export { DisclaimerDialog } from './global/DisclaimerDialog';
-export { OnboardingDialog } from './global/OnboardingDialog';
-export { PrivacyOptInDialog } from './global/PrivacyOptInDialog';
-export { ReleaseNotesDialog } from './global/ReleaseNotesDialog';
-
-// Authentication dialogs
-export { GitHubLoginDialog } from './auth/GitHubLoginDialog';
 export {
-  ProvidePatDialog,
-  type ProvidePatDialogProps,
-} from './auth/ProvidePatDialog';
+  OnboardingDialog,
+  type OnboardingResult,
+} from './global/OnboardingDialog';
+export { ReleaseNotesDialog } from './global/ReleaseNotesDialog';
+export { OAuthDialog } from './global/OAuthDialog';
+
+// Organization dialogs
+export {
+  CreateOrganizationDialog,
+  type CreateOrganizationResult,
+} from './org/CreateOrganizationDialog';
+export {
+  InviteMemberDialog,
+  type InviteMemberResult,
+} from './org/InviteMemberDialog';
 
 // Project-related dialogs
 export {
@@ -21,6 +27,10 @@ export {
   ProjectEditorSelectionDialog,
   type ProjectEditorSelectionDialogProps,
 } from './projects/ProjectEditorSelectionDialog';
+export {
+  LinkProjectDialog,
+  type LinkProjectResult,
+} from './projects/LinkProjectDialog';
 
 // Task-related dialogs
 export {
@@ -37,6 +47,7 @@ export {
   DeleteTaskConfirmationDialog,
   type DeleteTaskConfirmationDialogProps,
 } from './tasks/DeleteTaskConfirmationDialog';
+export { ShareDialog, type ShareDialogProps } from './tasks/ShareDialog';
 export {
   TagEditDialog,
   type TagEditDialogProps,
@@ -62,9 +73,29 @@ export {
   type ViewProcessesDialogProps,
 } from './tasks/ViewProcessesDialog';
 export {
+  ViewRelatedTasksDialog,
+  type ViewRelatedTasksDialogProps,
+} from './tasks/ViewRelatedTasksDialog';
+export {
   GitActionsDialog,
   type GitActionsDialogProps,
 } from './tasks/GitActionsDialog';
+export {
+  ReassignDialog,
+  type ReassignDialogProps,
+} from './tasks/ReassignDialog';
+export {
+  StopShareTaskDialog,
+  type StopShareTaskDialogProps,
+} from './tasks/StopShareTaskDialog';
+export {
+  EditBranchNameDialog,
+  type EditBranchNameDialogResult,
+} from './tasks/EditBranchNameDialog';
+export { CreateAttemptDialog } from './tasks/CreateAttemptDialog';
+
+// Auth dialogs
+export { GhCliSetupDialog } from './auth/GhCliSetupDialog';
 
 // Settings dialogs
 export {

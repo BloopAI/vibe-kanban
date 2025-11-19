@@ -80,7 +80,7 @@ pub fn make_path_relative(path: &str, worktree_path: &str) -> String {
 
 /// Normalize macOS prefix /private/var/ and /private/tmp/ to their public aliases without resolving paths.
 /// This allows prefix normalization to work when the full paths don't exist.
-fn normalize_macos_private_alias<P: AsRef<Path>>(p: P) -> PathBuf {
+pub fn normalize_macos_private_alias<P: AsRef<Path>>(p: P) -> PathBuf {
     let p = p.as_ref();
     if cfg!(target_os = "macos")
         && let Some(s) = p.to_str()

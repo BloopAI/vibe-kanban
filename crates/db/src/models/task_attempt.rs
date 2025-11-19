@@ -72,7 +72,7 @@ pub struct AttemptResumeContext {
     pub cumulative_diffs: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TaskAttemptContext {
     pub task_attempt: TaskAttempt,
     pub task: Task,
@@ -402,6 +402,46 @@ impl TaskAttempt {
         .await?;
 
         Ok(())
+    }
+
+    pub async fn update_branch_name(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+        new_branch_name: &str,
+    ) -> Result<(), TaskAttemptError> {
+        sqlx::query!(
+            "UPDATE task_attempts SET branch = $1, updated_at = datetime('now') WHERE id = $2",
+            new_branch_name,
+            attempt_id,
+        )
+        .execute(pool)
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn update_target_branch_for_children_of_attempt(
+        pool: &SqlitePool,
+        parent_attempt_id: Uuid,
+        old_branch: &str,
+        new_branch: &str,
+    ) -> Result<u64, TaskAttemptError> {
+        let result = sqlx::query!(
+            r#"UPDATE task_attempts
+               SET target_branch = $3, updated_at = datetime('now')
+               WHERE target_branch = $2
+                 AND task_id IN (
+                   SELECT id FROM tasks 
+                   WHERE parent_task_attempt = $1
+                 )"#,
+            parent_attempt_id,
+            old_branch,
+            new_branch
+        )
+        .execute(pool)
+        .await?;
+
+        Ok(result.rows_affected())
     }
 
     pub async fn resolve_container_ref(

@@ -1,0 +1,53 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO auth_sessions (user_id, session_secret_hash)\n            VALUES ($1, $2)\n            RETURNING\n                id                  AS \"id!\",\n                user_id             AS \"user_id!: Uuid\",\n                session_secret_hash AS \"session_secret_hash?\",\n                created_at          AS \"created_at!\",\n                last_used_at        AS \"last_used_at?\",\n                revoked_at          AS \"revoked_at?\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "session_secret_hash?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "last_used_at?",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "revoked_at?",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "f40c7ea0e0692e2ee7eead2027260104616026d32f312f8633236cc9438cd958"
+}
