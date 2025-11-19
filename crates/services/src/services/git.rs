@@ -12,7 +12,6 @@ use utils::diff::{Diff, DiffChangeKind, FileDiffDetails};
 
 mod cli;
 
-// Import for file ranking functionality
 use cli::{ChangeType, StatusDiffEntry, StatusDiffOptions};
 pub use cli::{GitCli, GitCliError};
 
