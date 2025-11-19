@@ -1,8 +1,6 @@
 import { Loader2 } from 'lucide-react';
-import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
+import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { cn } from '@/lib/utils';
-import { useProject } from '@/contexts/ProjectContext';
-import { useCallback } from 'react';
 
 type Props = {
   placeholder: string;
@@ -10,7 +8,6 @@ type Props = {
   onChange: (v: string) => void;
   onKeyDown?: (e: React.KeyboardEvent<Element>) => void;
   disabled: boolean;
-  // Loading overlay
   showLoadingOverlay: boolean;
   onPasteFiles?: (files: File[]) => void;
   textareaClassName?: string;
@@ -21,38 +18,22 @@ export function FollowUpEditorCard({
   placeholder,
   value,
   onChange,
-  onKeyDown,
   disabled,
   showLoadingOverlay,
   onPasteFiles,
   textareaClassName,
   onFocusChange,
 }: Props) {
-  const { projectId } = useProject();
-
-  const handleFocus = useCallback(() => {
-    onFocusChange?.(true);
-  }, [onFocusChange]);
-
-  const handleBlur = useCallback(() => {
-    onFocusChange?.(false);
-  }, [onFocusChange]);
-
   return (
     <div className="relative">
-      <FileSearchTextarea
+      <WYSIWYGEditor
         placeholder={placeholder}
         value={value}
         onChange={onChange}
-        onKeyDown={onKeyDown}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        className={cn('flex-1 min-h-[40px] resize-none', textareaClassName)}
         disabled={disabled}
-        projectId={projectId}
-        rows={1}
-        maxRows={80}
         onPasteFiles={onPasteFiles}
+        onFocusChange={onFocusChange}
+        className={cn('min-h-[40px]', textareaClassName)}
       />
       {showLoadingOverlay && (
         <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-background/60">

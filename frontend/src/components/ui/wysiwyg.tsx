@@ -26,6 +26,7 @@ import {
   IMAGE_CHIP_EXPORT,
   IMAGE_CHIP_IMPORT,
 } from './wysiwyg/image-chip-markdown';
+import { cn } from '@/lib/utils';
 
 type WysiwygProps = {
   placeholder: string;
@@ -33,6 +34,10 @@ type WysiwygProps = {
   onChange?: (md: string) => void;
   defaultValue?: string; // uncontrolled initial markdown
   onEditorStateChange?: (s: EditorState) => void;
+  disabled?: boolean;
+  onPasteFiles?: (files: File[]) => void;
+  onFocusChange?: (isFocused: boolean) => void;
+  className?: string;
 };
 
 export default function WYSIWYGEditor({
@@ -41,14 +46,43 @@ export default function WYSIWYGEditor({
   onChange,
   defaultValue,
   onEditorStateChange,
+  disabled = false,
+  onPasteFiles,
+  onFocusChange,
+  className,
 }: WysiwygProps) {
   const initialConfig = useMemo(
     () => ({
       namespace: 'md-wysiwyg',
       onError: console.error,
       theme: {
-        heading: { h1: 'text-2xl font-semibold', h2: 'text-xl font-semibold' },
-        text: { bold: 'font-bold', italic: 'italic' },
+        paragraph: 'mb-2 last:mb-0',
+        heading: {
+          h1: 'mt-4 mb-2 text-2xl font-semibold',
+          h2: 'mt-3 mb-2 text-xl font-semibold',
+          h3: 'mt-3 mb-2 text-lg font-semibold',
+          h4: 'mt-2 mb-1 text-base font-medium',
+          h5: 'mt-2 mb-1 text-sm font-medium',
+          h6: 'mt-2 mb-1 text-xs font-medium uppercase tracking-wide',
+        },
+        quote: 'my-3 border-l-2 border-muted pl-3 text-muted-foreground italic',
+        list: {
+          ul: 'my-2 ml-5 list-disc space-y-1',
+          ol: 'my-2 ml-5 list-decimal space-y-1',
+          listitem: 'ml-1',
+          nested: {
+            listitem: 'ml-4 list-none',
+          },
+        },
+        link: 'text-primary underline underline-offset-2 cursor-pointer hover:text-primary/80',
+        text: {
+          bold: 'font-semibold',
+          italic: 'italic',
+          underline: 'underline underline-offset-2',
+          strikethrough: 'line-through',
+          code: 'font-mono text-xs bg-muted px-1 py-0.5 rounded',
+        },
+        code: 'block font-mono text-xs bg-muted rounded-md px-3 py-2 my-2 overflow-x-auto',
       },
       nodes: [
         HeadingNode,
@@ -78,12 +112,33 @@ export default function WYSIWYGEditor({
   return (
     <div className="wysiwyg">
       <LexicalComposer initialConfig={initialConfig}>
+        <EditablePlugin editable={!disabled} />
         <div className="relative">
           <RichTextPlugin
             contentEditable={
               <ContentEditable
-                className="min-h-[200px] outline-none"
+                className={cn(
+                  'min-h-[200px] outline-none text-base leading-relaxed',
+                  disabled && 'cursor-not-allowed opacity-70',
+                  className
+                )}
                 aria-label="Markdown editor"
+                onPaste={(event) => {
+                  if (!onPasteFiles) return;
+
+                  const dt = event.clipboardData;
+                  if (!dt) return;
+
+                  const files: File[] = Array.from(dt.files || []).filter((f) =>
+                    f.type.startsWith('image/')
+                  );
+
+                  if (files.length > 0) {
+                    onPasteFiles(files);
+                  }
+                }}
+                onFocus={() => onFocusChange?.(true)}
+                onBlur={() => onFocusChange?.(false)}
               />
             }
             placeholder={
@@ -126,6 +181,14 @@ export default function WYSIWYGEditor({
       </LexicalComposer>
     </div>
   );
+}
+
+function EditablePlugin({ editable }: { editable: boolean }) {
+  const [editor] = useLexicalComposerContext();
+  useEffect(() => {
+    editor.setEditable(editable);
+  }, [editor, editable]);
+  return null;
 }
 
 function MarkdownOnChangePlugin({
