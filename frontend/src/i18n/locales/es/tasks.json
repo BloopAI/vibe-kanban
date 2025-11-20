@@ -399,6 +399,9 @@
     "starting": "Iniciando...",
     "creating": "Creando...",
     "create": "Crear",
+    "errors": {
+      "titleRequired": "El título es obligatorio"
+    },
     "discardDialog": {
       "title": "¿Descartar cambios sin guardar?",
       "description": "Tienes cambios sin guardar. ¿Estás seguro de que deseas descartarlos?",

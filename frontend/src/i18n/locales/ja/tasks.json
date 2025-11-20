@@ -399,6 +399,9 @@
     "starting": "開始中...",
     "creating": "作成中...",
     "create": "作成",
+    "errors": {
+      "titleRequired": "タイトルは必須です"
+    },
     "discardDialog": {
       "title": "未保存の変更を破棄しますか？",
       "description": "未保存の変更があります。本当に破棄してもよろしいですか？",

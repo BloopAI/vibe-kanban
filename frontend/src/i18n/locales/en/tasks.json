@@ -399,6 +399,9 @@
     "starting": "Starting...",
     "creating": "Creating...",
     "create": "Create",
+    "errors": {
+      "titleRequired": "Title is required"
+    },
     "discardDialog": {
       "title": "Discard unsaved changes?",
       "description": "You have unsaved changes. Are you sure you want to discard them?",

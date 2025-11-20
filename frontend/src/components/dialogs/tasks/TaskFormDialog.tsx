@@ -207,7 +207,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   };
 
   const validator = (value: TaskFormValues): string | undefined => {
-    if (!value.title.trim().length) return 'need title';
+    // Title is validated in a field level validator
     if (
       value.autoStart &&
       !forceCreateOnlyRef.current &&
@@ -222,9 +222,6 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
     defaultValues: defaultValues,
     onSubmit: handleSubmit,
     validators: {
-      // we use an onMount validator so that the primary action button can
-      // enable/disable itself based on `canSubmit`
-      onMount: ({ value }) => validator(value),
       onChange: ({ value }) => validator(value),
     },
   });
@@ -408,17 +405,32 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
 
           {/* Title */}
           <div className="flex-none pr-8 pt-3">
-            <form.Field name="title">
+            <form.Field
+              name="title"
+              validators={{
+                onSubmit: ({ value }) =>
+                  !value.trim().length
+                    ? t('taskFormDialog.errors.titleRequired')
+                    : undefined,
+              }}
+            >
               {(field) => (
-                <Input
-                  id="task-title"
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder={t('taskFormDialog.titlePlaceholder')}
-                  className="text-lg font-medium border-none shadow-none px-0 placeholder:text-muted-foreground/60 focus-visible:ring-0"
-                  disabled={isSubmitting}
-                  autoFocus
-                />
+                <>
+                  <Input
+                    id="task-title"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    placeholder={t('taskFormDialog.titlePlaceholder')}
+                    className="text-xl font-medium border-none shadow-none px-0 placeholder:text-muted-foreground/60 focus-visible:ring-0"
+                    disabled={isSubmitting}
+                    autoFocus
+                  />
+                  {!field.state.meta.isValid && (
+                    <em role="alert" className="text-destructive">
+                      {field.state.meta.errors.join(', ')}
+                    </em>
+                  )}
+                </>
               )}
             </form.Field>
           </div>
@@ -594,26 +606,23 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
               {/* Create/Start/Update button*/}
               <form.Subscribe
                 selector={(state) => ({
-                  canSubmit: state.canSubmit,
                   isSubmitting: state.isSubmitting,
-                  values: state.values,
+                  autoStart: state.values.autoStart,
                 })}
               >
-                {({ canSubmit, isSubmitting, values }) => {
+                {({ isSubmitting, autoStart }) => {
                   const buttonText = editMode
                     ? isSubmitting
                       ? t('taskFormDialog.updating')
                       : t('taskFormDialog.updateTask')
                     : isSubmitting
-                      ? values.autoStart
+                      ? autoStart
                         ? t('taskFormDialog.starting')
                         : t('taskFormDialog.creating')
                       : t('taskFormDialog.create');
 
                   return (
-                    <Button onClick={form.handleSubmit} disabled={!canSubmit}>
-                      {buttonText}
-                    </Button>
+                    <Button onClick={form.handleSubmit}>{buttonText}</Button>
                   );
                 }}
               </form.Subscribe>
