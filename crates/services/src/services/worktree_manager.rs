@@ -17,6 +17,21 @@ lazy_static::lazy_static! {
         Arc::new(Mutex::new(HashMap::new()));
 }
 
+#[derive(Debug, Clone)]
+pub struct WorktreeCleanup {
+    pub worktree_path: PathBuf,
+    pub git_repo_path: Option<PathBuf>,
+}
+
+impl WorktreeCleanup {
+    pub fn new(worktree_path: PathBuf, git_repo_path: Option<PathBuf>) -> Self {
+        Self {
+            worktree_path,
+            git_repo_path,
+        }
+    }
+}
+
 #[derive(Debug, Error)]
 pub enum WorktreeError {
     #[error(transparent)]
@@ -377,13 +392,22 @@ impl WorktreeManager {
         Ok(())
     }
 
+    /// Clean up multiple worktrees
+    pub async fn batch_cleanup_worktrees(data: &[WorktreeCleanup]) -> Result<(), WorktreeError> {
+        for cleanup_data in data {
+            tracing::debug!("Cleaning up worktree: {:?}", cleanup_data.worktree_path);
+
+            if let Err(e) = Self::cleanup_worktree(cleanup_data).await {
+                tracing::error!("Failed to cleanup worktree: {}", e);
+            }
+        }
+        Ok(())
+    }
+
     /// Clean up a worktree path and its git metadata (non-blocking)
     /// If git_repo_path is None, attempts to infer it from the worktree itself
-    pub async fn cleanup_worktree(
-        worktree_path: &Path,
-        git_repo_path: Option<&Path>,
-    ) -> Result<(), WorktreeError> {
-        let path_str = worktree_path.to_string_lossy().to_string();
+    pub async fn cleanup_worktree(worktree: &WorktreeCleanup) -> Result<(), WorktreeError> {
+        let path_str = worktree.worktree_path.to_string_lossy().to_string();
 
         // Get the same lock to ensure we don't interfere with creation
         let lock = {
@@ -396,18 +420,18 @@ impl WorktreeManager {
 
         let _guard = lock.lock().await;
 
-        if let Some(worktree_name) = worktree_path.file_name().and_then(|n| n.to_str()) {
+        if let Some(worktree_name) = worktree.worktree_path.file_name().and_then(|n| n.to_str()) {
             // Try to determine the git repo path if not provided
-            let resolved_repo_path = if let Some(repo_path) = git_repo_path {
+            let resolved_repo_path = if let Some(repo_path) = &worktree.git_repo_path {
                 Some(repo_path.to_path_buf())
             } else {
-                Self::infer_git_repo_path(worktree_path).await
+                Self::infer_git_repo_path(&worktree.worktree_path).await
             };
 
             if let Some(repo_path) = resolved_repo_path {
                 Self::comprehensive_worktree_cleanup_async(
                     &repo_path,
-                    worktree_path,
+                    &worktree.worktree_path,
                     worktree_name,
                 )
                 .await?;
@@ -417,7 +441,7 @@ impl WorktreeManager {
                     "Cannot determine git repo path for worktree {}, performing simple cleanup",
                     path_str
                 );
-                Self::simple_worktree_cleanup(worktree_path).await?;
+                Self::simple_worktree_cleanup(&worktree.worktree_path).await?;
             }
         } else {
             return Err(WorktreeError::InvalidPath(

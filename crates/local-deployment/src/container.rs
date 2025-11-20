@@ -47,16 +47,15 @@ use services::services::{
     diff_stream::{self, DiffStreamHandle},
     git::{Commit, DiffTarget, GitService},
     image::ImageService,
-    notification::NotificationService,
     share::SharePublisher,
-    worktree_manager::WorktreeManager,
+    worktree_manager::{WorktreeCleanup, WorktreeManager},
 };
 use tokio::{sync::RwLock, task::JoinHandle};
 use tokio_util::io::ReaderStream;
 use utils::{
     log_msg::LogMsg,
     msg_store::MsgStore,
-    text::{git_branch_id, short_uuid},
+    text::{git_branch_id, short_uuid, truncate_to_char_boundary},
 };
 use uuid::Uuid;
 
@@ -77,7 +76,7 @@ pub struct LocalContainerService {
 
 impl LocalContainerService {
     #[allow(clippy::too_many_arguments)]
-    pub fn new(
+    pub async fn new(
         db: DBService,
         msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
         config: Arc<RwLock<Config>>,
@@ -89,7 +88,7 @@ impl LocalContainerService {
     ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
 
-        LocalContainerService {
+        let container = LocalContainerService {
             db,
             child_store,
             msg_stores,
@@ -99,7 +98,11 @@ impl LocalContainerService {
             analytics,
             approvals,
             publisher,
-        }
+        };
+
+        container.spawn_worktree_cleanup().await;
+
+        container
     }
 
     pub async fn get_child_from_store(&self, id: &Uuid) -> Option<Arc<RwLock<AsyncGroupChild>>> {
@@ -115,48 +118,6 @@ impl LocalContainerService {
     pub async fn remove_child_from_store(&self, id: &Uuid) {
         let mut map = self.child_store.write().await;
         map.remove(id);
-    }
-
-    /// A context is finalized when
-    /// - The next action is None (no follow-up actions)
-    /// - The run reason is not DevServer
-    fn should_finalize(ctx: &ExecutionContext) -> bool {
-        ctx.execution_process
-            .executor_action()
-            .unwrap()
-            .next_action
-            .is_none()
-            && (!matches!(
-                ctx.execution_process.run_reason,
-                ExecutionProcessRunReason::DevServer
-            ))
-    }
-
-    /// Finalize task execution by updating status to InReview and sending notifications
-    async fn finalize_task(
-        db: &DBService,
-        config: &Arc<RwLock<Config>>,
-        share: &Result<SharePublisher, RemoteClientNotConfigured>,
-        ctx: &ExecutionContext,
-    ) {
-        match Task::update_status(&db.pool, ctx.task.id, TaskStatus::InReview).await {
-            Ok(_) => {
-                if let Ok(publisher) = share
-                    && let Err(err) = publisher.update_shared_task_by_id(ctx.task.id).await
-                {
-                    tracing::warn!(
-                        ?err,
-                        "Failed to propagate shared task update for {}",
-                        ctx.task.id
-                    );
-                }
-            }
-            Err(e) => {
-                tracing::error!("Failed to update task status to InReview: {e}");
-            }
-        }
-        let notify_cfg = config.read().await.notifications.clone();
-        NotificationService::notify_execution_halted(notify_cfg, ctx).await;
     }
 
     /// Defensively check for externally deleted worktrees and mark them as deleted in the database
@@ -236,7 +197,9 @@ impl LocalContainerService {
             {
                 // This is an orphaned worktree - delete it
                 tracing::info!("Found orphaned worktree: {}", worktree_path_str);
-                if let Err(e) = WorktreeManager::cleanup_worktree(&path, None).await {
+                if let Err(e) =
+                    WorktreeManager::cleanup_worktree(&WorktreeCleanup::new(path, None)).await
+                {
                     tracing::error!(
                         "Failed to remove orphaned worktree {}: {}",
                         worktree_path_str,
@@ -258,7 +221,11 @@ impl LocalContainerService {
         worktree_path: PathBuf,
         git_repo_path: PathBuf,
     ) -> Result<(), DeploymentError> {
-        WorktreeManager::cleanup_worktree(&worktree_path, Some(&git_repo_path)).await?;
+        WorktreeManager::cleanup_worktree(&WorktreeCleanup::new(
+            worktree_path,
+            Some(git_repo_path),
+        ))
+        .await?;
         // Mark worktree as deleted in database after successful cleanup
         TaskAttempt::mark_worktree_deleted(&db.pool, attempt_id).await?;
         tracing::info!("Successfully marked worktree as deleted for attempt {attempt_id}",);
@@ -429,12 +396,16 @@ impl LocalContainerService {
                         );
 
                         // Manually finalize task since we're bypassing normal execution flow
-                        Self::finalize_task(&db, &config, &publisher, &ctx).await;
+                        container
+                            .finalize_task(&config, publisher.as_ref().ok(), &ctx)
+                            .await;
                     }
                 }
 
-                if Self::should_finalize(&ctx) {
-                    Self::finalize_task(&db, &config, &publisher, &ctx).await;
+                if container.should_finalize(&ctx) {
+                    container
+                        .finalize_task(&config, publisher.as_ref().ok(), &ctx)
+                        .await;
                     // After finalization, check if a queued follow-up exists and start it
                     if let Err(e) = container.try_consume_queued_followup(&ctx).await {
                         tracing::error!(
@@ -562,23 +533,6 @@ impl LocalContainerService {
         map.insert(id, store);
     }
 
-    /// Get the worktree path for a task attempt
-    #[allow(dead_code)]
-    async fn get_worktree_path(
-        &self,
-        task_attempt: &TaskAttempt,
-    ) -> Result<PathBuf, ContainerError> {
-        let container_ref = self.ensure_container_exists(task_attempt).await?;
-        let worktree_dir = PathBuf::from(&container_ref);
-
-        if !worktree_dir.exists() {
-            return Err(ContainerError::Other(anyhow!(
-                "Worktree directory not found"
-            )));
-        }
-
-        Ok(worktree_dir)
-    }
     /// Get the project repository path for a task attempt
     async fn get_project_repo_path(
         &self,
@@ -951,10 +905,10 @@ impl ContainerService for LocalContainerService {
                 None
             }
         };
-        WorktreeManager::cleanup_worktree(
-            &PathBuf::from(task_attempt.container_ref.clone().unwrap_or_default()),
-            git_repo_path.as_deref(),
-        )
+        WorktreeManager::cleanup_worktree(&WorktreeCleanup::new(
+            PathBuf::from(task_attempt.container_ref.clone().unwrap_or_default()),
+            git_repo_path,
+        ))
         .await
         .unwrap_or_else(|e| {
             tracing::warn!(
@@ -1322,23 +1276,6 @@ impl ContainerService for LocalContainerService {
     }
 }
 
-fn truncate_to_char_boundary(content: &str, max_len: usize) -> &str {
-    if content.len() <= max_len {
-        return content;
-    }
-
-    let cutoff = content
-        .char_indices()
-        .map(|(idx, _)| idx)
-        .chain(std::iter::once(content.len()))
-        .take_while(|&idx| idx <= max_len)
-        .last()
-        .unwrap_or(0);
-
-    debug_assert!(content.is_char_boundary(cutoff));
-    &content[..cutoff]
-}
-
 fn success_exit_status() -> std::process::ExitStatus {
     #[cfg(unix)]
     {
@@ -1349,24 +1286,5 @@ fn success_exit_status() -> std::process::ExitStatus {
     {
         use std::os::windows::process::ExitStatusExt;
         ExitStatusExt::from_raw(0)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-
-    #[test]
-    fn test_truncate_to_char_boundary() {
-        use super::truncate_to_char_boundary;
-
-        let input = "a".repeat(10);
-        assert_eq!(truncate_to_char_boundary(&input, 7), "a".repeat(7));
-
-        let input = "hello world";
-        assert_eq!(truncate_to_char_boundary(input, input.len()), input);
-
-        let input = "🔥🔥🔥"; // each fire emoji is 4 bytes
-        assert_eq!(truncate_to_char_boundary(input, 5), "🔥");
-        assert_eq!(truncate_to_char_boundary(input, 3), "");
     }
 }

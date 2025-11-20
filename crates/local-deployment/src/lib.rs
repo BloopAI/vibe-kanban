@@ -38,7 +38,6 @@ pub struct LocalDeployment {
     user_id: String,
     db: DBService,
     analytics: Option<AnalyticsService>,
-    msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
     container: LocalContainerService,
     git: GitService,
     image: ImageService,
@@ -183,8 +182,8 @@ impl Deployment for LocalDeployment {
             analytics_ctx,
             approvals.clone(),
             share_publisher.clone(),
-        );
-        container.spawn_worktree_cleanup().await;
+        )
+        .await;
 
         let events = EventService::new(db.clone(), events_msg_store, events_entry_count);
 
@@ -196,7 +195,6 @@ impl Deployment for LocalDeployment {
             user_id,
             db,
             analytics,
-            msg_stores,
             container,
             git,
             image,
@@ -222,10 +220,6 @@ impl Deployment for LocalDeployment {
 
     fn user_id(&self) -> &str {
         &self.user_id
-    }
-
-    fn shared_types() -> Vec<String> {
-        vec![]
     }
 
     fn config(&self) -> &Arc<RwLock<Config>> {
@@ -254,10 +248,6 @@ impl Deployment for LocalDeployment {
 
     fn filesystem(&self) -> &FilesystemService {
         &self.filesystem
-    }
-
-    fn msg_stores(&self) -> &Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>> {
-        &self.msg_stores
     }
 
     fn events(&self) -> &EventService {
