@@ -28,7 +28,7 @@ export type McpConfig = { servers: { [key in string]?: JsonValue }, servers_path
 
 export type ExecutorActionType = { "type": "CodingAgentInitialRequest" } & CodingAgentInitialRequest | { "type": "CodingAgentFollowUpRequest" } & CodingAgentFollowUpRequest | { "type": "ScriptRequest" } & ScriptRequest;
 
-export type ScriptContext = "SetupScript" | "CleanupScript" | "DevServer" | "GithubCliSetupScript";
+export type ScriptContext = "SetupScript" | "CleanupScript" | "DevServer" | "ToolInstallScript";
 
 export type ScriptRequest = { script: string, language: ScriptRequestLanguage, context: ScriptContext, };
 

@@ -434,7 +434,7 @@ const ToolCallCard: React.FC<{
       : undefined;
 
   // Compute defaults from entry
-  const linkifyUrls = entryType?.tool_name === 'GitHub CLI Setup Script';
+  const linkifyUrls = entryType?.tool_name === 'Tool Install Script';
   const defaultExpanded = linkifyUrls;
 
   const [expanded, toggle] = useExpandable(

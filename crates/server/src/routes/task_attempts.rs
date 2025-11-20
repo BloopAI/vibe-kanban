@@ -1,3 +1,4 @@
+pub mod codex_setup;
 pub mod cursor_setup;
 pub mod drafts;
 pub mod gh_cli_setup;
@@ -190,6 +191,9 @@ pub async fn run_agent_setup(
     match coding_agent {
         CodingAgent::CursorAgent(_) => {
             cursor_setup::run_cursor_setup(&deployment, &task_attempt).await?;
+        }
+        CodingAgent::Codex(_) => {
+            codex_setup::run_codex_setup(&deployment, &task_attempt).await?;
         }
         _ => return Err(ApiError::Executor(ExecutorError::SetupHelperNotSupported)),
     }
