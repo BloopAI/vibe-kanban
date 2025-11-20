@@ -1,5 +1,6 @@
 // streamJsonPatchEntries.ts - WebSocket JSON patch streaming utility
 import { applyPatch, type Operation } from 'rfc6902';
+import { toWsUrl } from '@/utils/websocket';
 
 type PatchContainer<E = unknown> = { entries: E[] };
 
@@ -46,7 +47,7 @@ export function streamJsonPatchEntries<E = unknown>(
   if (opts.onEntries) subscribers.add(opts.onEntries);
 
   // Convert HTTP endpoint to WebSocket endpoint
-  const wsUrl = url.replace(/^http/, 'ws');
+  const wsUrl = toWsUrl(url) ?? url;
   const ws = new WebSocket(wsUrl);
 
   const notify = () => {
