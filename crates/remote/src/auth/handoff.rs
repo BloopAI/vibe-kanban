@@ -464,12 +464,19 @@ fn is_allowed_return_to(url: &Url, public_origin: &str) -> bool {
         return true;
     }
 
-    url.scheme() == "https"
+    if url.scheme() == "https"
         && Url::parse(public_origin).ok().is_some_and(|public_url| {
             public_url.scheme() == "https"
                 && public_url.host_str().is_some()
                 && url.host_str() == public_url.host_str()
         })
+    {
+        return true;
+    }
+
+    // Log and allow web-hosted clients. Rely on PKCE for security.
+    tracing::info!(%url, "allowing external redirect URL");
+    true
 }
 
 fn hash_sha256_hex(input: &str) -> String {
