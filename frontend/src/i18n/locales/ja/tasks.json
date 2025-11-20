@@ -117,7 +117,9 @@
     "errors": {
       "insufficientPermissions": "権限が不足しています。GitHub CLIに必要な権限があることを確認してください。",
       "repoNotFoundOrNoAccess": "リポジトリが見つからないか、アクセス権がありません。リポジトリへのアクセス権を確認し、認証されていることを確認してください。",
-      "failedToCreate": "GitHub PRの作成に失敗しました"
+      "failedToCreate": "GitHub PRの作成に失敗しました",
+      "gitCliNotLoggedIn": "Gitが認証されていません。\"gh auth login\" を実行するかGitの認証情報を設定してから再試行してください。",
+      "gitCliNotInstalled": "Git CLIがインストールされていません。PRを作成するにはGitをインストールしてください。"
     },
     "loginRequired": {
       "title": "プルリクエストを作成するにはサインインしてください",

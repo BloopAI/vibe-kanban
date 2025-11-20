@@ -341,7 +341,9 @@
     "errors": {
       "insufficientPermissions": "Insufficient permissions. Please ensure the GitHub CLI has the necessary permissions.",
       "repoNotFoundOrNoAccess": "Repository not found or no access. Please check your repository access and ensure you are authenticated.",
-      "failedToCreate": "Failed to create GitHub PR"
+      "failedToCreate": "Failed to create GitHub PR",
+      "gitCliNotLoggedIn": "Git is not authenticated. Run \"gh auth login\" (or configure Git credentials) and try again.",
+      "gitCliNotInstalled": "Git CLI is not installed. Install Git to create a PR."
     },
     "loginRequired": {
       "title": "Sign in to create a pull request",

@@ -181,7 +181,12 @@ const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
           result.error.type === 'git_cli_not_installed' ||
           result.error.type === 'git_cli_not_logged_in'
         ) {
-          setError(result.message || t('createPrDialog.errors.failedToCreate'));
+          const gitCliErrorKey =
+            result.error.type === 'git_cli_not_logged_in'
+              ? 'createPrDialog.errors.gitCliNotLoggedIn'
+              : 'createPrDialog.errors.gitCliNotInstalled';
+
+          setError(result.message || t(gitCliErrorKey));
           setGhCliHelp(null);
           return;
         }
