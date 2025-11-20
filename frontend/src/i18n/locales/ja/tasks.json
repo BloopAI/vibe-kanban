@@ -119,7 +119,8 @@
       "repoNotFoundOrNoAccess": "リポジトリが見つからないか、アクセス権がありません。リポジトリへのアクセス権を確認し、認証されていることを確認してください。",
       "failedToCreate": "GitHub PRの作成に失敗しました",
       "gitCliNotLoggedIn": "Gitが認証されていません。\"gh auth login\" を実行するかGitの認証情報を設定してから再試行してください。",
-      "gitCliNotInstalled": "Git CLIがインストールされていません。PRを作成するにはGitをインストールしてください。"
+      "gitCliNotInstalled": "Git CLIがインストールされていません。PRを作成するにはGitをインストールしてください。",
+      "targetBranchNotFound": "ターゲットブランチ '{{branch}}' がリモートに存在しません。プルリクエストを作成する前にブランチが存在することを確認してください。"
     },
     "loginRequired": {
       "title": "プルリクエストを作成するにはサインインしてください",
