@@ -320,8 +320,13 @@ impl GitCli {
         repo_path: &Path,
         remote_url: &str,
         branch: &str,
+        force: bool,
     ) -> Result<(), GitCliError> {
-        let refspec = format!("refs/heads/{branch}:refs/heads/{branch}");
+        let refspec = if force {
+            format!("+refs/heads/{branch}:refs/heads/{branch}")
+        } else {
+            format!("refs/heads/{branch}:refs/heads/{branch}")
+        };
         let envs = vec![(OsString::from("GIT_TERMINAL_PROMPT"), OsString::from("0"))];
 
         let args = [

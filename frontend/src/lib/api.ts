@@ -71,6 +71,7 @@ import {
   OpenEditorResponse,
   OpenEditorRequest,
   CreatePrError,
+  PushError,
 } from 'shared/types';
 
 // Re-export types for convenience
@@ -550,11 +551,21 @@ export const attemptsApi = {
     return handleApiResponse<void>(response);
   },
 
-  push: async (attemptId: string): Promise<void> => {
+  push: async (attemptId: string): Promise<Result<void, PushError>> => {
     const response = await makeRequest(`/api/task-attempts/${attemptId}/push`, {
       method: 'POST',
     });
-    return handleApiResponse<void>(response);
+    return handleApiResponseAsResult<void, PushError>(response);
+  },
+
+  forcePush: async (attemptId: string): Promise<Result<void, PushError>> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/push/force`,
+      {
+        method: 'POST',
+      }
+    );
+    return handleApiResponseAsResult<void, PushError>(response);
   },
 
   rebase: async (

@@ -1,10 +1,12 @@
 import { useRebase } from './useRebase';
 import { useMerge } from './useMerge';
 import { usePush } from './usePush';
+import { useForcePush } from './useForcePush';
 import { useChangeTargetBranch } from './useChangeTargetBranch';
 import { useGitOperationsError } from '@/contexts/GitOperationsContext';
 import { Result } from '@/lib/api';
 import type { GitOperationError } from 'shared/types';
+import { ForcePushDialog } from '@/components/dialogs/git/ForcePushDialog';
 
 export function useGitOperations(
   attemptId: string | undefined,
@@ -41,10 +43,31 @@ export function useGitOperations(
     }
   );
 
-  const push = usePush(
+  const forcePush = useForcePush(
     attemptId,
     () => setError(null),
     (err: unknown) => {
+      const message =
+        err && typeof err === 'object' && 'message' in err
+          ? String(err.message)
+          : 'Failed to force push';
+      setError(message);
+    }
+  );
+
+  const push = usePush(
+    attemptId,
+    () => setError(null),
+    async (err: unknown, errorData) => {
+      // Handle typed push errors
+      if (errorData?.type === 'force_push_required') {
+        // Show confirmation dialog - dialog handles the force push internally
+        if (attemptId) {
+          await ForcePushDialog.show({ attemptId });
+        }
+        return;
+      }
+
       const message =
         err && typeof err === 'object' && 'message' in err
           ? String(err.message)
@@ -70,6 +93,7 @@ export function useGitOperations(
     rebase.isPending ||
     merge.isPending ||
     push.isPending ||
+    forcePush.isPending ||
     changeTargetBranch.isPending;
 
   return {
@@ -77,6 +101,7 @@ export function useGitOperations(
       rebase: rebase.mutateAsync,
       merge: merge.mutateAsync,
       push: push.mutateAsync,
+      forcePush: forcePush.mutateAsync,
       changeTargetBranch: changeTargetBranch.mutateAsync,
     },
     isAnyLoading,
@@ -84,6 +109,7 @@ export function useGitOperations(
       rebasePending: rebase.isPending,
       mergePending: merge.isPending,
       pushPending: push.isPending,
+      forcePushPending: forcePush.isPending,
       changeTargetBranchPending: changeTargetBranch.isPending,
     },
   };
