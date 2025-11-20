@@ -37,8 +37,7 @@ pub fn fork_session(session_id: &str) -> io::Result<String> {
         .join(format!("{new_session_id}.jsonl"));
     fs::write(&destination, output)?;
 
-    if let Ok(settings_source) = find_session_file(&root, &format!("{session_id}.settings.json"))
-    {
+    if let Ok(settings_source) = find_session_file(&root, &format!("{session_id}.settings.json")) {
         let settings_destination = settings_source
             .parent()
             .unwrap_or(root.as_path())

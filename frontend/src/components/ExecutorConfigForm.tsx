@@ -9,20 +9,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { shadcnTheme } from './rjsf';
+import { BaseCodingAgent } from 'shared/types';
 // Using custom shadcn/ui widgets instead of @rjsf/shadcn theme
 
-type ExecutorType =
-  | 'AMP'
-  | 'CLAUDE_CODE'
-  | 'GEMINI'
-  | 'CODEX'
-  | 'CURSOR_AGENT'
-  | 'COPILOT'
-  | 'OPENCODE'
-  | 'QWEN_CODE';
-
 interface ExecutorConfigFormProps {
-  executor: ExecutorType;
+  executor: BaseCodingAgent;
   value: unknown;
   onSubmit?: (formData: unknown) => void;
   onChange?: (formData: unknown) => void;
