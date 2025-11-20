@@ -1423,7 +1423,7 @@ impl GitService {
         }
 
         let default_remote = self.default_remote_name(&repo);
-        let with_remote = format!("{}/{}", default_remote, branch_name);
+        let with_remote = format!("{default_remote}/{branch_name}");
         Ok(repo.find_branch(&with_remote, BranchType::Remote).is_ok())
     }
 
