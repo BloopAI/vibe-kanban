@@ -288,35 +288,27 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                         completed,
                         command
                     );
-                    let mut result = if let Some(out_val) = tc.raw_output.as_ref() {
-                        serde_json::from_value::<ShellOutput>(out_val.clone())
-                            .ok()
-                            .map(|out| {
-                                let mut exit_status = out
-                                    .exit_code
-                                    .map(|code| crate::logs::CommandExitStatus::ExitCode { code });
-                                let output = out.stdout.or(out.stderr).unwrap_or_default();
-                                if exit_status.is_none() && completed {
-                                    exit_status = Some(crate::logs::CommandExitStatus::Success {
-                                        success: true,
-                                    });
-                                }
-                                crate::logs::CommandRunResult {
-                                    exit_status,
-                                    output: Some(output),
-                                }
-                            })
-                    } else {
-                        None
+                    let tc_exit_status = match tc.status {
+                        agent_client_protocol::ToolCallStatus::Completed => {
+                            Some(crate::logs::CommandExitStatus::Success { success: true })
+                        }
+                        agent_client_protocol::ToolCallStatus::Failed => {
+                            Some(crate::logs::CommandExitStatus::Success { success: false })
+                        }
+                        _ => None,
                     };
-                    if result.is_none() && completed {
-                        result = Some(crate::logs::CommandRunResult {
-                            exit_status: Some(crate::logs::CommandExitStatus::Success {
-                                success: true,
-                            }),
+
+                    let result = if let Some(text) = collect_text_content(&tc.content) {
+                        Some(crate::logs::CommandRunResult {
+                            exit_status: tc_exit_status,
+                            output: Some(text),
+                        })
+                    } else {
+                        Some(crate::logs::CommandRunResult {
+                            exit_status: tc_exit_status,
                             output: None,
-                        });
-                    }
+                        })
+                    };
                     ActionType::CommandRun { command, result }
                 }
                 agent_client_protocol::ToolKind::Delete => ActionType::FileEdit {
@@ -606,7 +598,13 @@ impl AcpEventParser {
 
     /// Parse command from tool title (for execute tools)
     pub fn parse_execute_command(title: &str) -> String {
-        title.split(" (").next().unwrap_or(title).trim().to_string()
+        if let Some(command) = title.split(" [current working directory ").next() {
+            command.trim().to_string()
+        } else if let Some(command) = title.split(" (").next() {
+            command.trim().to_string()
+        } else {
+            title.trim().to_string()
+        }
     }
 }
 
@@ -650,16 +648,6 @@ struct SearchArgs {
 #[derive(Debug, Clone, Deserialize)]
 struct FetchArgs {
     url: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct ShellOutput {
-    #[serde(default)]
-    exit_code: Option<i32>,
-    #[serde(default)]
-    stdout: Option<String>,
-    #[serde(default)]
-    stderr: Option<String>,
 }
 
 #[derive(Debug, Clone, Default)]
