@@ -226,7 +226,16 @@
       "loading": "Cargando configuraciones de agentes...",
       "save": {
         "button": "Guardar Configuraciones de Agentes",
-        "success": "✓ ¡Configuración guardada con éxito”!"
+        "success": "✓ ¡Configuración guardada con éxito!"
+      },
+      "availability": {
+        "checking": "Comprobando...",
+        "loginDetected": "Inicio de sesión detectado",
+        "loginDetectedTooltip": "Se encontraron credenciales de autenticación recientes para este agente",
+        "installationFound": "Instalación encontrada",
+        "installationFoundTooltip": "Se encontró la configuración del agente. Es posible que debas iniciar sesión para usarlo.",
+        "notFound": "No encontrado",
+        "notFoundTooltip": "No se detectaron credenciales. El agente aún puede funcionar si está configurado de manera diferente."
       },
       "editor": {
         "formLabel": "Editar JSON",

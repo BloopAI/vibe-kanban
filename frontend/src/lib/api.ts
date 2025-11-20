@@ -47,6 +47,8 @@ import {
   RenameBranchRequest,
   RenameBranchResponse,
   CheckEditorAvailabilityResponse,
+  CheckAgentAvailabilityResponse,
+  BaseCodingAgent,
   RunAgentSetupRequest,
   RunAgentSetupResponse,
   GhCliSetupError,
@@ -724,6 +726,14 @@ export const configApi = {
       `/api/editors/check-availability?editor_type=${encodeURIComponent(editorType)}`
     );
     return handleApiResponse<CheckEditorAvailabilityResponse>(response);
+  },
+  checkAgentAvailability: async (
+    agent: BaseCodingAgent
+  ): Promise<CheckAgentAvailabilityResponse> => {
+    const response = await makeRequest(
+      `/api/agents/check-availability?executor=${encodeURIComponent(agent)}`
+    );
+    return handleApiResponse<CheckAgentAvailabilityResponse>(response);
   },
 };
 

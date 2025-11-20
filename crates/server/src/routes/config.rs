@@ -38,6 +38,7 @@ pub fn router() -> Router<DeploymentImpl> {
             "/editors/check-availability",
             get(check_editor_availability),
         )
+        .route("/agents/check-availability", get(check_agent_availability))
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -461,4 +462,45 @@ async fn check_editor_availability(
     ResponseJson(ApiResponse::success(CheckEditorAvailabilityResponse {
         available,
     }))
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct CheckAgentAvailabilityQuery {
+    executor: BaseCodingAgent,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct CheckAgentAvailabilityResponse {
+    available: bool,
+    /// Whether the MCP config file exists
+    mcp_config_found: bool,
+    /// Unix timestamp (seconds since epoch) of when auth credential file was last modified.
+    /// If Some(_), auth config exists. If None, no auth config found.
+    credential_last_modified: Option<i64>,
+}
+
+async fn check_agent_availability(
+    State(_deployment): State<DeploymentImpl>,
+    Query(query): Query<CheckAgentAvailabilityQuery>,
+) -> ResponseJson<ApiResponse<CheckAgentAvailabilityResponse>> {
+    let profiles = ExecutorConfigs::get_cached();
+    let profile_id = ExecutorProfileId::new(query.executor);
+
+    let response = match profiles.get_coding_agent(&profile_id) {
+        Some(agent) => {
+            let info = agent.get_availability_info();
+            CheckAgentAvailabilityResponse {
+                available: info.is_available(),
+                mcp_config_found: info.mcp_config_found,
+                credential_last_modified: info.auth_last_edited,
+            }
+        }
+        None => CheckAgentAvailabilityResponse {
+            available: false,
+            mcp_config_found: false,
+            credential_last_modified: None,
+        },
+    };
+
+    ResponseJson(ApiResponse::success(response))
 }

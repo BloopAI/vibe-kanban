@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -33,6 +33,9 @@ import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal, type NoProps } from '@/lib/modals';
 import { useEditorAvailability } from '@/hooks/useEditorAvailability';
 import { EditorAvailabilityIndicator } from '@/components/EditorAvailabilityIndicator';
+import { useAgentAvailability } from '@/hooks/useAgentAvailability';
+import { AgentAvailabilityIndicator } from '@/components/AgentAvailabilityIndicator';
+import { configApi } from '@/lib/api';
 
 export type OnboardingResult = {
   profile: ExecutorProfileId;
@@ -51,9 +54,94 @@ const OnboardingDialogImpl = NiceModal.create<NoProps>(() => {
   );
   const [editorType, setEditorType] = useState<EditorType>(EditorType.VS_CODE);
   const [customCommand, setCustomCommand] = useState<string>('');
+  const [agentAvailabilityMap, setAgentAvailabilityMap] = useState<
+    Record<
+      string,
+      {
+        available: boolean;
+        mcp_config_found: boolean;
+        credential_last_modified: number | null;
+      }
+    >
+  >({});
 
-  // Check editor availability when selection changes
   const editorAvailability = useEditorAvailability(editorType);
+  const agentAvailability = useAgentAvailability(profile.executor);
+
+  useEffect(() => {
+    if (!profiles) {
+      return;
+    }
+
+    const checkAllAgents = async () => {
+      const agents = Object.keys(profiles) as BaseCodingAgent[];
+      const results = await Promise.all(
+        agents.map(async (agent) => {
+          try {
+            const result = await configApi.checkAgentAvailability(agent);
+            return {
+              agent,
+              available: result.available,
+              mcp_config_found: result.mcp_config_found,
+              credential_last_modified: result.credential_last_modified,
+            };
+          } catch (error) {
+            console.error(`Failed to check availability for ${agent}:`, error);
+            return {
+              agent,
+              available: false,
+              mcp_config_found: false,
+              credential_last_modified: null,
+            };
+          }
+        })
+      );
+
+      const availabilityMap: Record<
+        string,
+        {
+          available: boolean;
+          mcp_config_found: boolean;
+          credential_last_modified: number | null;
+        }
+      > = {};
+      results.forEach((r) => {
+        availabilityMap[r.agent] = {
+          available: r.available,
+          mcp_config_found: r.mcp_config_found,
+          credential_last_modified:
+            r.credential_last_modified !== null
+              ? Number(r.credential_last_modified)
+              : null,
+        };
+      });
+      setAgentAvailabilityMap(availabilityMap);
+
+      if (!config?.executor_profile) {
+        const availableWithCreds = results.filter(
+          (r) => r.available && r.credential_last_modified !== null
+        );
+
+        if (availableWithCreds.length > 0) {
+          // Sort by most recent modification time
+          availableWithCreds.sort((a, b) => {
+            const timeA = Number(a.credential_last_modified ?? 0);
+            const timeB = Number(b.credential_last_modified ?? 0);
+            return timeB - timeA; // Most recent first
+          });
+
+          // Auto-select the most recently used agent
+          const mostRecent = availableWithCreds[0];
+          setProfile({
+            executor: mostRecent.agent,
+            variant: null,
+          });
+        }
+      }
+    };
+
+    checkAllAgents();
+  }, [profiles, config?.executor_profile]);
 
   const handleComplete = () => {
     modal.resolve({
@@ -104,13 +192,53 @@ const OnboardingDialogImpl = NiceModal.create<NoProps>(() => {
                 </SelectTrigger>
                 <SelectContent>
                   {profiles &&
-                    (Object.keys(profiles) as BaseCodingAgent[]).map(
-                      (agent) => (
+                    (Object.keys(profiles) as BaseCodingAgent[])
+                      .sort((a, b) => {
+                        const infoA = agentAvailabilityMap[a];
+                        const infoB = agentAvailabilityMap[b];
+
+                        // If no availability info yet, fallback to alphabetical
+                        if (!infoA || !infoB) {
+                          return a.localeCompare(b);
+                        }
+
+                        // Tier 1: Both have auth config - sort by most recent
+                        const hasAuthA =
+                          infoA.credential_last_modified !== null;
+                        const hasAuthB =
+                          infoB.credential_last_modified !== null;
+
+                        if (hasAuthA && hasAuthB) {
+                          const timeA = Number(
+                            infoA.credential_last_modified ?? 0
+                          );
+                          const timeB = Number(
+                            infoB.credential_last_modified ?? 0
+                          );
+                          return timeB - timeA;
+                        }
+
+                        // Tier 2: Only one has auth - it wins
+                        if (hasAuthA) return -1;
+                        if (hasAuthB) return 1;
+
+                        // Tier 3: Both have MCP only - alphabetical
+                        if (infoA.mcp_config_found && infoB.mcp_config_found) {
+                          return a.localeCompare(b);
+                        }
+
+                        // One has MCP, other doesn't
+                        if (infoA.mcp_config_found) return -1;
+                        if (infoB.mcp_config_found) return 1;
+
+                        // Neither available - alphabetical
+                        return a.localeCompare(b);
+                      })
+                      .map((agent) => (
                         <SelectItem key={agent} value={agent}>
                           {agent}
                         </SelectItem>
-                      )
-                    )}
+                      ))}
                 </SelectContent>
               </Select>
 
@@ -171,6 +299,7 @@ const OnboardingDialogImpl = NiceModal.create<NoProps>(() => {
                 return null;
               })()}
             </div>
+            <AgentAvailabilityIndicator availability={agentAvailability} />
           </div>
         </div>
 

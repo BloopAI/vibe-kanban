@@ -164,6 +164,25 @@ impl StandardCodingAgentExecutor for Codex {
     fn default_mcp_config_path(&self) -> Option<PathBuf> {
         dirs::home_dir().map(|home| home.join(".codex").join("config.toml"))
     }
+
+    fn get_availability_info(&self) -> crate::executors::AvailabilityInfo {
+        let mcp_config_found = self
+            .default_mcp_config_path()
+            .map(|p| p.exists())
+            .unwrap_or(false);
+
+        let auth_last_edited = dirs::home_dir()
+            .map(|home| home.join(".codex").join("auth.json"))
+            .and_then(|path| std::fs::metadata(&path).ok())
+            .and_then(|m| m.modified().ok())
+            .and_then(|modified| modified.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_secs() as i64);
+
+        crate::executors::AvailabilityInfo {
+            mcp_config_found,
+            auth_last_edited,
+        }
+    }
 }
 
 impl Codex {

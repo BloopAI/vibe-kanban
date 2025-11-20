@@ -164,6 +164,33 @@ impl CodingAgent {
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct AvailabilityInfo {
+    pub mcp_config_found: bool,
+    pub auth_last_edited: Option<i64>,
+}
+
+impl AvailabilityInfo {
+    pub fn is_available(&self) -> bool {
+        if self.mcp_config_found {
+            return true;
+        }
+
+        if let Some(last_edited) = self.auth_last_edited {
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs() as i64)
+                .unwrap_or(0);
+            const STALE_THRESHOLD_DAYS: i64 = 60;
+            let stale_threshold_secs = STALE_THRESHOLD_DAYS * 24 * 60 * 60;
+            let age = now - last_edited;
+            return age < stale_threshold_secs;
+        }
+
+        false
+    }
+}
+
 #[async_trait]
 #[enum_dispatch(CodingAgent)]
 pub trait StandardCodingAgentExecutor {
@@ -185,10 +212,20 @@ pub trait StandardCodingAgentExecutor {
         Err(ExecutorError::SetupHelperNotSupported)
     }
 
-    async fn check_availability(&self) -> bool {
-        self.default_mcp_config_path()
+    fn get_availability_info(&self) -> AvailabilityInfo {
+        let mcp_config_found = self
+            .default_mcp_config_path()
             .map(|path| path.exists())
-            .unwrap_or(false)
+            .unwrap_or(false);
+
+        AvailabilityInfo {
+            mcp_config_found,
+            auth_last_edited: None,
+        }
+    }
+
+    async fn check_availability(&self) -> bool {
+        self.get_availability_info().is_available()
     }
 }
 
