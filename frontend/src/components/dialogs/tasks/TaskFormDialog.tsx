@@ -317,11 +317,6 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
     preventDefault: true,
   });
 
-  const canSubmitAlt = useStore(
-    form.store,
-    (state) => state.values.title.trim().length > 0 && !state.isSubmitting
-  );
-
   const handleSubmitCreateOnly = useCallback(() => {
     forceCreateOnlyRef.current = true;
     const promise = form.handleSubmit();
@@ -331,7 +326,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   }, [form]);
 
   useKeySubmitTaskAlt(handleSubmitCreateOnly, {
-    enabled: modal.visible && canSubmitAlt && !showDiscardWarning,
+    enabled: shortcutsEnabled,
     scope: Scope.DIALOG,
     enableOnFormTags: ['input', 'INPUT', 'textarea', 'TEXTAREA'],
     preventDefault: true,
