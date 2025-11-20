@@ -186,6 +186,13 @@
     "branch": {
       "current": "현재"
     },
+    "forcePushDialog": {
+      "title": "강제 푸시가 필요합니다",
+      "description": "원격 브랜치{{branchLabel}}가 로컬 브랜치와 분기되었습니다. 일반 푸시가 거부되었습니다.",
+      "warning": "강제 푸시는 로컬 변경 사항으로 원격 변경을 덮어씁니다. 이 동작은 되돌릴 수 없습니다.",
+      "note": "원격 브랜치 기록을 대체해도 확실한 경우에만 계속하세요.",
+      "error": "강제 푸시에 실패했습니다"
+    },
     "errors": {
       "changeTargetBranch": "대상 브랜치를 변경하지 못했습니다",
       "mergeChanges": "변경사항을 병합하지 못했습니다",
@@ -217,6 +224,8 @@
       "push": "푸시",
       "pushed": "푸시됨!",
       "pushing": "푸시 중...",
+      "forcePush": "강제 푸시",
+      "forcePushing": "강제 푸시 중...",
       "rebase": "리베이스",
       "rebasing": "리베이스 중..."
     },
