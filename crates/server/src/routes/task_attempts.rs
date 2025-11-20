@@ -593,7 +593,28 @@ pub async fn merge_task_attempt(
 pub async fn push_task_attempt_branch(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<(), PushError>>, ApiError> {
+    let github_service = GitHubService::new()?;
+    github_service.check_token().await?;
+
+    let ws_path = ensure_worktree_path(&deployment, &task_attempt).await?;
+
+    match deployment
+        .git()
+        .push_to_github(&ws_path, &task_attempt.branch, false)
+    {
+        Ok(_) => Ok(ResponseJson(ApiResponse::success(()))),
+        Err(GitServiceError::GitCLI(GitCliError::PushRejected(_))) => Ok(ResponseJson(
+            ApiResponse::error_with_data(PushError::ForcePushRequired),
+        )),
+        Err(e) => Err(ApiError::GitService(e)),
+    }
+}
+
+pub async fn force_push_task_attempt_branch(
+    Extension(task_attempt): Extension<TaskAttempt>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<(), PushError>>, ApiError> {
     let github_service = GitHubService::new()?;
     github_service.check_token().await?;
 
@@ -601,8 +622,15 @@ pub async fn push_task_attempt_branch(
 
     deployment
         .git()
-        .push_to_github(&ws_path, &task_attempt.branch)?;
+        .push_to_github(&ws_path, &task_attempt.branch, true)?;
     Ok(ResponseJson(ApiResponse::success(())))
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[serde(tag = "type", rename_all = "snake_case")]
+#[ts(tag = "type", rename_all = "snake_case")]
+pub enum PushError {
+    ForcePushRequired,
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -675,7 +703,7 @@ pub async fn create_github_pr(
     // Push the branch to GitHub first
     if let Err(e) = deployment
         .git()
-        .push_to_github(&workspace_path, &task_attempt.branch)
+        .push_to_github(&workspace_path, &task_attempt.branch, false)
     {
         tracing::error!("Failed to push branch to GitHub: {}", e);
         match e {
@@ -1556,6 +1584,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/diff/ws", get(stream_task_attempt_diff_ws))
         .route("/merge", post(merge_task_attempt))
         .route("/push", post(push_task_attempt_branch))
+        .route("/push/force", post(force_push_task_attempt_branch))
         .route("/rebase", post(rebase_task_attempt))
         .route("/conflicts/abort", post(abort_conflicts_task_attempt))
         .route("/pr", post(create_github_pr))

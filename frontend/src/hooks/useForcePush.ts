@@ -2,17 +2,17 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { attemptsApi } from '@/lib/api';
 import type { PushError } from 'shared/types';
 
-class PushErrorWithData extends Error {
+class ForcePushErrorWithData extends Error {
   constructor(
     message: string,
     public errorData?: PushError
   ) {
     super(message);
-    this.name = 'PushErrorWithData';
+    this.name = 'ForcePushErrorWithData';
   }
 }
 
-export function usePush(
+export function useForcePush(
   attemptId?: string,
   onSuccess?: () => void,
   onError?: (err: unknown, errorData?: PushError) => void
@@ -22,23 +22,23 @@ export function usePush(
   return useMutation({
     mutationFn: async () => {
       if (!attemptId) return;
-      const result = await attemptsApi.push(attemptId);
+      const result = await attemptsApi.forcePush(attemptId);
       if (!result.success) {
-        throw new PushErrorWithData(
-          result.message || 'Push failed',
+        throw new ForcePushErrorWithData(
+          result.message || 'Force push failed',
           result.error
         );
       }
     },
     onSuccess: () => {
-      // A push only affects remote status; invalidate the same branchStatus
+      // A force push affects remote status; invalidate the same branchStatus
       queryClient.invalidateQueries({ queryKey: ['branchStatus', attemptId] });
       onSuccess?.();
     },
     onError: (err) => {
-      console.error('Failed to push:', err);
+      console.error('Failed to force push:', err);
       const errorData =
-        err instanceof PushErrorWithData ? err.errorData : undefined;
+        err instanceof ForcePushErrorWithData ? err.errorData : undefined;
       onError?.(err, errorData);
     },
   });
