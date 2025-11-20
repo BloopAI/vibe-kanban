@@ -186,6 +186,13 @@
     "branch": {
       "current": "actual"
     },
+    "forcePushDialog": {
+      "title": "Se requiere push forzado",
+      "description": "La rama remota{{branchLabel}} se ha desviado de tu rama local. Se rechazó un push normal.",
+      "warning": "El push forzado sobrescribirá los cambios remotos con tus cambios locales. Esta acción no se puede deshacer.",
+      "note": "Solo continúa si estás seguro de que deseas reemplazar el historial remoto de la rama.",
+      "error": "No se pudo hacer el push forzado"
+    },
     "errors": {
       "changeTargetBranch": "Error al cambiar rama de destino",
       "mergeChanges": "Error al fusionar cambios",
@@ -210,6 +217,8 @@
     },
     "states": {
       "createPr": "Crear PR",
+      "forcePush": "Push forzado",
+      "forcePushing": "Push forzado en curso...",
       "creating": "Creando...",
       "merge": "Fusionar",
       "merged": "¡Fusionado!",

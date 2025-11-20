@@ -13,6 +13,7 @@ import { defineModal } from '@/lib/modals';
 import { useForcePush } from '@/hooks/useForcePush';
 import { useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useTranslation } from 'react-i18next';
 
 export interface ForcePushDialogProps {
   attemptId: string;
@@ -23,6 +24,8 @@ const ForcePushDialogImpl = NiceModal.create<ForcePushDialogProps>((props) => {
   const modal = useModal();
   const { attemptId, branchName } = props;
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation(['tasks', 'common']);
+  const branchLabel = branchName ? ` "${branchName}"` : '';
 
   const forcePush = useForcePush(
     attemptId,
@@ -36,7 +39,7 @@ const ForcePushDialogImpl = NiceModal.create<ForcePushDialogProps>((props) => {
       const message =
         err && typeof err === 'object' && 'message' in err
           ? String(err.message)
-          : 'Failed to force push';
+          : t('tasks:git.forcePushDialog.error');
       setError(message);
     }
   );
@@ -63,20 +66,15 @@ const ForcePushDialogImpl = NiceModal.create<ForcePushDialogProps>((props) => {
         <DialogHeader>
           <div className="flex items-center gap-3">
             <AlertTriangle className="h-6 w-6 text-destructive" />
-            <DialogTitle>Force Push Required</DialogTitle>
+            <DialogTitle>{t('tasks:git.forcePushDialog.title')}</DialogTitle>
           </div>
           <DialogDescription className="text-left pt-2 space-y-2">
-            <p>
-              The remote branch{branchName ? ` "${branchName}"` : ''} has
-              diverged from your local branch. A regular push was rejected.
-            </p>
+            <p>{t('tasks:git.forcePushDialog.description', { branchLabel })}</p>
             <p className="font-medium">
-              Force pushing will overwrite the remote changes with your local
-              changes. This action cannot be undone.
+              {t('tasks:git.forcePushDialog.warning')}
             </p>
             <p className="text-sm text-muted-foreground">
-              Only proceed if you're certain you want to replace the remote
-              branch history.
+              {t('tasks:git.forcePushDialog.note')}
             </p>
           </DialogDescription>
         </DialogHeader>
@@ -91,7 +89,7 @@ const ForcePushDialogImpl = NiceModal.create<ForcePushDialogProps>((props) => {
             onClick={handleCancel}
             disabled={isProcessing}
           >
-            Cancel
+            {t('common:buttons.cancel')}
           </Button>
           <Button
             variant="destructive"
@@ -99,7 +97,9 @@ const ForcePushDialogImpl = NiceModal.create<ForcePushDialogProps>((props) => {
             disabled={isProcessing}
           >
             {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isProcessing ? 'Force Pushing...' : 'Force Push'}
+            {isProcessing
+              ? t('tasks:git.states.forcePushing')
+              : t('tasks:git.states.forcePush')}
           </Button>
         </DialogFooter>
       </DialogContent>
