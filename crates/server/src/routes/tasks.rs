@@ -22,8 +22,9 @@ use executors::profile::ExecutorProfileId;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use serde::{Deserialize, Serialize};
 use services::services::{
-    container::{ContainerService, WorktreeCleanupData, cleanup_worktrees_direct},
+    container::ContainerService,
     share::ShareError,
+    worktree_manager::{WorktreeCleanup, WorktreeManager},
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
@@ -285,14 +286,13 @@ pub async fn delete_task(
         .await?
         .ok_or_else(|| ApiError::Database(SqlxError::RowNotFound))?;
 
-    let cleanup_data: Vec<WorktreeCleanupData> = attempts
+    let cleanup_args: Vec<WorktreeCleanup> = attempts
         .iter()
         .filter_map(|attempt| {
             attempt
                 .container_ref
                 .as_ref()
-                .map(|worktree_path| WorktreeCleanupData {
-                    attempt_id: attempt.id,
+                .map(|worktree_path| WorktreeCleanup {
                     worktree_path: PathBuf::from(worktree_path),
                     git_repo_path: Some(project.git_repo_path.clone()),
                 })
@@ -355,10 +355,10 @@ pub async fn delete_task(
         tracing::info!(
             "Starting background cleanup for task {} ({} worktrees)",
             task_id,
-            cleanup_data.len()
+            cleanup_args.len()
         );
 
-        if let Err(e) = cleanup_worktrees_direct(&cleanup_data).await {
+        if let Err(e) = WorktreeManager::batch_cleanup_worktrees(&cleanup_args).await {
             tracing::error!(
                 "Background worktree cleanup failed for task {}: {}",
                 task_id,

@@ -22,13 +22,12 @@ use db::{
 use executors::{
     actions::{
         ExecutorAction, ExecutorActionType,
-        coding_agent_follow_up::CodingAgentFollowUpRequest,
         coding_agent_initial::CodingAgentInitialRequest,
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     },
     executors::{ExecutorError, StandardCodingAgentExecutor},
     logs::{NormalizedEntry, NormalizedEntryError, NormalizedEntryType, utils::ConversationPatch},
-    profile::{ExecutorConfigs, ExecutorProfileId, to_default_variant},
+    profile::{ExecutorConfigs, ExecutorProfileId},
 };
 use futures::{StreamExt, future};
 use sqlx::Error as SqlxError;
@@ -42,46 +41,14 @@ use utils::{
 use uuid::Uuid;
 
 use crate::services::{
+    config::Config,
     git::{GitService, GitServiceError},
     image::ImageService,
+    notification::NotificationService,
     share::SharePublisher,
-    worktree_manager::{WorktreeError, WorktreeManager},
+    worktree_manager::WorktreeError,
 };
 pub type ContainerRef = String;
-
-/// Data needed for background worktree cleanup (doesn't require DB access)
-#[derive(Debug, Clone)]
-pub struct WorktreeCleanupData {
-    pub attempt_id: Uuid,
-    pub worktree_path: PathBuf,
-    pub git_repo_path: Option<PathBuf>,
-}
-
-/// Cleanup worktrees without requiring database access
-pub async fn cleanup_worktrees_direct(data: &[WorktreeCleanupData]) -> Result<(), ContainerError> {
-    for cleanup_data in data {
-        tracing::debug!(
-            "Cleaning up worktree for attempt {}: {:?}",
-            cleanup_data.attempt_id,
-            cleanup_data.worktree_path
-        );
-
-        if let Err(e) = WorktreeManager::cleanup_worktree(
-            &cleanup_data.worktree_path,
-            cleanup_data.git_repo_path.as_deref(),
-        )
-        .await
-        {
-            tracing::error!(
-                "Failed to cleanup worktree for task attempt {}: {}",
-                cleanup_data.attempt_id,
-                e
-            );
-            // Continue with other cleanups even if one fails
-        }
-    }
-    Ok(())
-}
 
 #[derive(Debug, Error)]
 pub enum ContainerError {
@@ -151,6 +118,172 @@ pub trait ContainerService {
         for attempt in task_attempts {
             self.try_stop(attempt).await;
         }
+        Ok(())
+    }
+
+    /// A context is finalized when
+    /// - The next action is None (no follow-up actions)
+    /// - The run reason is not DevServer
+    fn should_finalize(&self, ctx: &ExecutionContext) -> bool {
+        ctx.execution_process
+            .executor_action()
+            .unwrap()
+            .next_action
+            .is_none()
+            && (!matches!(
+                ctx.execution_process.run_reason,
+                ExecutionProcessRunReason::DevServer
+            ))
+    }
+
+    /// Finalize task execution by updating status to InReview and sending notifications
+    async fn finalize_task(
+        &self,
+        config: &Arc<RwLock<Config>>,
+        share_publisher: Option<&SharePublisher>,
+        ctx: &ExecutionContext,
+    ) {
+        match Task::update_status(&self.db().pool, ctx.task.id, TaskStatus::InReview).await {
+            Ok(_) => {
+                if let Some(publisher) = share_publisher
+                    && let Err(err) = publisher.update_shared_task_by_id(ctx.task.id).await
+                {
+                    tracing::warn!(
+                        ?err,
+                        "Failed to propagate shared task update for {}",
+                        ctx.task.id
+                    );
+                }
+            }
+            Err(e) => {
+                tracing::error!("Failed to update task status to InReview: {e}");
+            }
+        }
+        let notify_cfg = config.read().await.notifications.clone();
+        NotificationService::notify_execution_halted(notify_cfg, ctx).await;
+    }
+
+    /// Cleanup executions marked as running in the db, call at startup
+    async fn cleanup_orphan_executions(&self) -> Result<(), ContainerError> {
+        let running_processes = ExecutionProcess::find_running(&self.db().pool).await?;
+        for process in running_processes {
+            tracing::info!(
+                "Found orphaned execution process {} for task attempt {}",
+                process.id,
+                process.task_attempt_id
+            );
+            // Update the execution process status first
+            if let Err(e) = ExecutionProcess::update_completion(
+                &self.db().pool,
+                process.id,
+                ExecutionProcessStatus::Failed,
+                None, // No exit code for orphaned processes
+            )
+            .await
+            {
+                tracing::error!(
+                    "Failed to update orphaned execution process {} status: {}",
+                    process.id,
+                    e
+                );
+                continue;
+            }
+            // Capture after-head commit OID (best-effort)
+            if let Ok(Some(task_attempt)) =
+                TaskAttempt::find_by_id(&self.db().pool, process.task_attempt_id).await
+                && let Some(container_ref) = task_attempt.container_ref
+            {
+                let wt = std::path::PathBuf::from(container_ref);
+                if let Ok(head) = self.git().get_head_info(&wt) {
+                    let _ = ExecutionProcess::update_after_head_commit(
+                        &self.db().pool,
+                        process.id,
+                        &head.oid,
+                    )
+                    .await;
+                }
+            }
+            // Process marked as failed
+            tracing::info!("Marked orphaned execution process {} as failed", process.id);
+            // Update task status to InReview for coding agent and setup script failures
+            if matches!(
+                process.run_reason,
+                ExecutionProcessRunReason::CodingAgent
+                    | ExecutionProcessRunReason::SetupScript
+                    | ExecutionProcessRunReason::CleanupScript
+            ) && let Ok(Some(task_attempt)) =
+                TaskAttempt::find_by_id(&self.db().pool, process.task_attempt_id).await
+                && let Ok(Some(task)) = task_attempt.parent_task(&self.db().pool).await
+            {
+                match Task::update_status(&self.db().pool, task.id, TaskStatus::InReview).await {
+                    Ok(_) => {
+                        if let Some(publisher) = self.share_publisher()
+                            && let Err(err) = publisher.update_shared_task_by_id(task.id).await
+                        {
+                            tracing::warn!(
+                                ?err,
+                                "Failed to propagate shared task update for {}",
+                                task.id
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!(
+                            "Failed to update task status to InReview for orphaned attempt: {}",
+                            e
+                        );
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Backfill before_head_commit for legacy execution processes.
+    /// Rules:
+    /// - If a process has after_head_commit and missing before_head_commit,
+    ///   then set before_head_commit to the previous process's after_head_commit.
+    /// - If there is no previous process, set before_head_commit to the base branch commit.
+    async fn backfill_before_head_commits(&self) -> Result<(), ContainerError> {
+        let pool = &self.db().pool;
+        let rows = ExecutionProcess::list_missing_before_context(pool).await?;
+        for row in rows {
+            // Skip if no after commit at all (shouldn't happen due to WHERE)
+            // Prefer previous process after-commit if present
+            let mut before = row.prev_after_head_commit.clone();
+
+            // Fallback to base branch commit OID
+            if before.is_none() {
+                let repo_path =
+                    std::path::Path::new(row.git_repo_path.as_deref().unwrap_or_default());
+                match self
+                    .git()
+                    .get_branch_oid(repo_path, row.target_branch.as_str())
+                {
+                    Ok(oid) => before = Some(oid),
+                    Err(e) => {
+                        tracing::warn!(
+                            "Backfill: Failed to resolve base branch OID for attempt {} (branch {}): {}",
+                            row.task_attempt_id,
+                            row.target_branch,
+                            e
+                        );
+                    }
+                }
+            }
+
+            if let Some(before_oid) = before
+                && let Err(e) =
+                    ExecutionProcess::update_before_head_commit(pool, row.id, &before_oid).await
+            {
+                tracing::warn!(
+                    "Backfill: Failed to update before_head_commit for process {}: {}",
+                    row.id,
+                    e
+                );
+            }
+        }
+
         Ok(())
     }
 
@@ -770,65 +903,6 @@ pub trait ContainerService {
             .await?;
 
         tracing::debug!("Started next action: {:?}", next_action);
-        Ok(())
-    }
-
-    async fn exit_plan_mode_tool(&self, ctx: ExecutionContext) -> Result<(), ContainerError> {
-        let execution_id = ctx.execution_process.id;
-
-        if let Err(err) = self
-            .stop_execution(&ctx.execution_process, ExecutionProcessStatus::Completed)
-            .await
-        {
-            tracing::error!("Failed to stop execution process {}: {}", execution_id, err);
-            return Err(err);
-        }
-
-        let action = ctx.execution_process.executor_action()?;
-        let executor_profile_id = match action.typ() {
-            ExecutorActionType::CodingAgentInitialRequest(req) => req.executor_profile_id.clone(),
-            ExecutorActionType::CodingAgentFollowUpRequest(req) => req.executor_profile_id.clone(),
-            _ => {
-                return Err(ContainerError::Other(anyhow::anyhow!(
-                    "exit plan mode tool called on non-coding agent action"
-                )));
-            }
-        };
-        let cleanup_chain = action.next_action().cloned();
-
-        let session_id =
-            ExecutorSession::find_by_execution_process_id(&self.db().pool, execution_id)
-                .await?
-                .and_then(|s| s.session_id);
-
-        if session_id.is_none() {
-            tracing::warn!(
-                "No executor session found for execution process {}",
-                execution_id
-            );
-            return Err(ContainerError::Other(anyhow::anyhow!(
-                "No executor session found"
-            )));
-        }
-
-        let default_profile = to_default_variant(&executor_profile_id);
-        let follow_up = CodingAgentFollowUpRequest {
-            prompt: String::from("The plan has been approved, please execute it."),
-            session_id: session_id.unwrap(),
-            executor_profile_id: default_profile,
-        };
-        let action = ExecutorAction::new(
-            ExecutorActionType::CodingAgentFollowUpRequest(follow_up),
-            cleanup_chain.map(Box::new),
-        );
-
-        let _ = self
-            .start_execution(
-                &ctx.task_attempt,
-                &action,
-                &ExecutionProcessRunReason::CodingAgent,
-            )
-            .await?;
         Ok(())
     }
 }

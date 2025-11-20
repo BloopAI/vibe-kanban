@@ -47,8 +47,16 @@ async fn main() -> Result<(), VibeKanbanError> {
 
     let deployment = DeploymentImpl::new().await?;
     deployment.update_sentry_scope().await?;
-    deployment.cleanup_orphan_executions().await?;
-    deployment.backfill_before_head_commits().await?;
+    deployment
+        .container()
+        .cleanup_orphan_executions()
+        .await
+        .map_err(DeploymentError::from)?;
+    deployment
+        .container()
+        .backfill_before_head_commits()
+        .await
+        .map_err(DeploymentError::from)?;
     deployment.spawn_pr_monitor_service().await;
     deployment
         .track_if_analytics_allowed("session_start", serde_json::json!({}))
