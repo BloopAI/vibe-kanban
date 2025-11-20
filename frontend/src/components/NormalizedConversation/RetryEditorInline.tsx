@@ -267,7 +267,6 @@ export function RetryEditorInline({
         placeholder="Edit and resend your message…"
         value={message}
         onChange={setMessage}
-        onKeyDown={() => void 0}
         disabled={isSending || !!isFinalizing}
         showLoadingOverlay={isSending || !!isFinalizing}
         textareaClassName="bg-background"

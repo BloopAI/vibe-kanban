@@ -6,6 +6,7 @@ import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
 import { TRANSFORMERS } from '@lexical/markdown';
 import { FileTagTypeaheadPlugin } from './wysiwyg/plugins/file-tag-typeahead-plugin';
+import { KeyboardCommandsPlugin } from './wysiwyg/plugins/keyboard-commands-plugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { ListNode, ListItemNode } from '@lexical/list';
@@ -31,6 +32,8 @@ type WysiwygProps = {
   onFocusChange?: (isFocused: boolean) => void;
   className?: string;
   projectId?: string; // for file search in typeahead
+  onCmdEnter?: () => void;
+  onShiftCmdEnter?: () => void;
 };
 
 export default function WYSIWYGEditor({
@@ -44,6 +47,8 @@ export default function WYSIWYGEditor({
   onFocusChange,
   className,
   projectId,
+  onCmdEnter,
+  onShiftCmdEnter,
 }: WysiwygProps) {
   const initialConfig = useMemo(
     () => ({
@@ -143,6 +148,10 @@ export default function WYSIWYGEditor({
         <HistoryPlugin />
         <MarkdownShortcutPlugin transformers={markdownShortcuts} />
         <FileTagTypeaheadPlugin projectId={projectId} />
+        <KeyboardCommandsPlugin
+          onCmdEnter={onCmdEnter}
+          onShiftCmdEnter={onShiftCmdEnter}
+        />
 
         {/* Emit JSON on change */}
         <JsonOnChangePlugin

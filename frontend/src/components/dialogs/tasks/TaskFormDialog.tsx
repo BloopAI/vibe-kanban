@@ -436,6 +436,8 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                     projectId={projectId}
                     onPasteFiles={onDrop}
                     className="border-none shadow-none px-0 text-md font-normal"
+                    onCmdEnter={primaryAction}
+                    onShiftCmdEnter={handleSubmitCreateOnly}
                   />
                 )}
               </form.Field>

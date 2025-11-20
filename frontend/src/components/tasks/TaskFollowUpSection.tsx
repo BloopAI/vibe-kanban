@@ -502,6 +502,7 @@ export function TaskFollowUpSection({
                   onPasteFiles={handlePasteImages}
                   onFocusChange={setIsTextareaFocused}
                   projectId={projectId}
+                  onCmdEnter={handleSubmitShortcut}
                 />
                 <FollowUpStatusRow
                   status={{
