@@ -189,6 +189,14 @@ const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
           setError(result.message || t(gitCliErrorKey));
           setGhCliHelp(null);
           return;
+        } else if (result.error.type === 'target_branch_not_found') {
+          setError(
+            t('createPrDialog.errors.targetBranchNotFound', {
+              branch: result.error.branch,
+            })
+          );
+          setGhCliHelp(null);
+          return;
         }
       }
 
