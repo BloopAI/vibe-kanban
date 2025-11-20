@@ -58,6 +58,12 @@
           "sandbox": "workspace-write",
           "ask_for_approval": "unless-trusted"
         }
+      },
+      "MAX": {
+        "CODEX": {
+          "model": "gpt-5.1-codex-max",
+          "sandbox": "danger-full-access"
+        }
       }
     },
     "OPENCODE": {
