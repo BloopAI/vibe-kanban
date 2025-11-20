@@ -81,7 +81,18 @@ function extractAndRun(baseName, launch) {
   const zipPath = path.join(extractDir, zipName);
 
   // clean old binary
-  if (fs.existsSync(binPath)) fs.unlinkSync(binPath);
+  try {
+    if (fs.existsSync(binPath)) {
+      fs.unlinkSync(binPath);
+    }
+  } catch (err) {
+    // If the binary is in use, we can't delete it.
+    // We'll skip extraction and try to use the existing one.
+    if (process.env.VIBE_KANBAN_DEBUG) {
+      console.warn(`⚠️  Could not delete existing binary (likely in use): ${err.message}`);
+    }
+  }
+  
   if (!fs.existsSync(zipPath)) {
     console.error(`❌ ${zipName} not found at: ${zipPath}`);
     console.error(`Current platform: ${platform}-${arch} (${platformDir})`);
@@ -90,8 +101,10 @@ function extractAndRun(baseName, launch) {
 
   // extract
   try {
-    const zip = new AdmZip(zipPath);
-    zip.extractAllTo(extractDir, true);
+    if (!fs.existsSync(binPath)) {
+        const zip = new AdmZip(zipPath);
+        zip.extractAllTo(extractDir, true);
+    }
   } catch (err) {
     console.error("❌ Failed to extract vibe-kanban archive:", err.message);
     if (process.env.VIBE_KANBAN_DEBUG) {
