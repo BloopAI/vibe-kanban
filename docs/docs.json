@@ -73,6 +73,13 @@
         ]
       },
       {
+        "group": "Team Collaboration",
+        "pages": [
+          "collaboration/logging-into-organizations",
+          "collaboration/inviting-team-members"
+        ]
+      },
+      {
         "group": "Integrations",
         "pages": [
           "integrations/github-integration",
@@ -101,16 +108,7 @@
     }
   },
   "contextual": {
-    "options": [
-      "copy",
-      "view",
-      "chatgpt",
-      "claude",
-      "perplexity",
-      "mcp",
-      "cursor",
-      "vscode"
-    ]
+    "options": ["copy", "view", "chatgpt", "claude", "mcp"]
   },
   "integrations": {
     "posthog": {
