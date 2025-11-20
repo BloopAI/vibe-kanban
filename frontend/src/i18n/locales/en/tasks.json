@@ -197,6 +197,13 @@
     "branch": {
       "current": "current"
     },
+    "forcePushDialog": {
+      "title": "Force Push Required",
+      "description": "The remote branch{{branchLabel}} has diverged from your local branch. A regular push was rejected.",
+      "warning": "Force pushing will overwrite the remote changes with your local changes. This action cannot be undone.",
+      "note": "Only proceed if you're certain you want to replace the remote branch history.",
+      "error": "Failed to force push"
+    },
     "status": {
       "commits_one": "commit",
       "commits_other": "commits",
@@ -214,6 +221,8 @@
       "pushed": "Pushed!",
       "pushing": "Pushing...",
       "push": "Push",
+      "forcePush": "Force Push",
+      "forcePushing": "Force Pushing...",
       "creating": "Creating...",
       "createPr": "Create PR"
     },
