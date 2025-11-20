@@ -114,7 +114,6 @@ fn generate_types_content() -> String {
         executors::executors::BaseAgentCapability::decl(),
         executors::executors::claude::ClaudeCode::decl(),
         executors::executors::gemini::Gemini::decl(),
-        executors::executors::gemini::GeminiModel::decl(),
         executors::executors::amp::Amp::decl(),
         executors::executors::codex::Codex::decl(),
         executors::executors::codex::SandboxMode::decl(),

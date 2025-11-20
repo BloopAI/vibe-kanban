@@ -238,9 +238,7 @@ export enum BaseAgentCapability { SESSION_FORK = "SESSION_FORK", SETUP_HELPER = 
 
 export type ClaudeCode = { append_prompt: AppendPrompt, claude_code_router?: boolean | null, plan?: boolean | null, approvals?: boolean | null, model?: string | null, dangerously_skip_permissions?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, };
 
-export type Gemini = { append_prompt: AppendPrompt, model: GeminiModel, yolo?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, };
-
-export type GeminiModel = "default" | "flash";
+export type Gemini = { append_prompt: AppendPrompt, model?: string | null, yolo?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, };
 
 export type Amp = { append_prompt: AppendPrompt, dangerously_allow_all?: boolean | null, base_command_override?: string | null, additional_params?: Array<string> | null, };
 

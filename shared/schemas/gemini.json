@@ -1,9 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "required": [
-    "model"
-  ],
-  "type": "object",
   "properties": {
     "append_prompt": {
       "title": "Append Prompt",
@@ -16,10 +12,9 @@
       "default": null
     },
     "model": {
-      "type": "string",
-      "enum": [
-        "default",
-        "flash"
+      "type": [
+        "string",
+        "null"
       ]
     },
     "yolo": {
@@ -47,5 +42,6 @@
         "type": "string"
       }
     }
-  }
+  },
+  "type": "object"
 }

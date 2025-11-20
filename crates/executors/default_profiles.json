@@ -27,13 +27,18 @@
     "GEMINI": {
       "DEFAULT": {
         "GEMINI": {
-          "model": "default",
           "yolo": true
         }
       },
       "FLASH": {
         "GEMINI": {
-          "model": "flash",
+          "model": "gemini-2.5-flash",
+          "yolo": true
+        }
+      },
+      "PRO": {
+        "GEMINI": {
+          "model": "gemini-3-pro-preview",
           "yolo": true
         }
       }
