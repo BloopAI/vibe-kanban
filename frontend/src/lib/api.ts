@@ -32,7 +32,6 @@ import {
   UpdateTask,
   UpdateTag,
   UserSystemInfo,
-  GitHubServiceError,
   UpdateRetryFollowUpDraftRequest,
   McpServerQuery,
   UpdateMcpServersBody,
@@ -71,6 +70,7 @@ import {
   CommitCompareResult,
   OpenEditorResponse,
   OpenEditorRequest,
+  CreatePrError,
 } from 'shared/types';
 
 // Re-export types for convenience
@@ -615,12 +615,12 @@ export const attemptsApi = {
   createPR: async (
     attemptId: string,
     data: CreateGitHubPrRequest
-  ): Promise<Result<string, GitHubServiceError>> => {
+  ): Promise<Result<string, CreatePrError>> => {
     const response = await makeRequest(`/api/task-attempts/${attemptId}/pr`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    return handleApiResponseAsResult<string, GitHubServiceError>(response);
+    return handleApiResponseAsResult<string, CreatePrError>(response);
   },
 
   startDevServer: async (attemptId: string): Promise<void> => {

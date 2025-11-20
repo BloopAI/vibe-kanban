@@ -16,12 +16,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { attemptsApi } from '@/lib/api.ts';
 import { useTranslation } from 'react-i18next';
 
-import {
-  GitBranch,
-  GitHubServiceError,
-  TaskAttempt,
-  TaskWithAttemptStatus,
-} from 'shared/types';
+import { GitBranch, TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
 import { projectsApi } from '@/lib/api.ts';
 import { Loader2 } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
@@ -166,49 +161,29 @@ const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
       };
 
       if (result.error) {
-        switch (result.error) {
-          case GitHubServiceError.GH_CLI_NOT_INSTALLED: {
-            if (isMacEnvironment) {
-              await showGhCliSetupDialog();
-            } else {
-              const ui = mapGhCliErrorToUi(
-                'SETUP_HELPER_NOT_SUPPORTED',
-                defaultGhCliErrorMessage,
-                t
-              );
-              setGhCliHelp(ui.variant ? ui : null);
-              setError(ui.variant ? null : ui.message);
-            }
-            return;
-          }
-          case GitHubServiceError.TOKEN_INVALID: {
-            if (isMacEnvironment) {
-              await showGhCliSetupDialog();
-            } else {
-              const ui = mapGhCliErrorToUi(
-                'SETUP_HELPER_NOT_SUPPORTED',
-                defaultGhCliErrorMessage,
-                t
-              );
-              setGhCliHelp(ui.variant ? ui : null);
-              setError(ui.variant ? null : ui.message);
-            }
-            return;
-          }
-          case GitHubServiceError.INSUFFICIENT_PERMISSIONS:
-            setError(t('createPrDialog.errors.insufficientPermissions'));
-            setGhCliHelp(null);
-            return;
-          case GitHubServiceError.REPO_NOT_FOUND_OR_NO_ACCESS:
-            setError(t('createPrDialog.errors.repoNotFoundOrNoAccess'));
-            setGhCliHelp(null);
-            return;
-          default:
-            setError(
-              result.message || t('createPrDialog.errors.failedToCreate')
+        if (
+          result.error.type === 'github_cli_not_installed' ||
+          result.error.type === 'github_cli_not_logged_in'
+        ) {
+          if (isMacEnvironment) {
+            await showGhCliSetupDialog();
+          } else {
+            const ui = mapGhCliErrorToUi(
+              'SETUP_HELPER_NOT_SUPPORTED',
+              defaultGhCliErrorMessage,
+              t
             );
-            setGhCliHelp(null);
-            return;
+            setGhCliHelp(ui.variant ? ui : null);
+            setError(ui.variant ? null : ui.message);
+          }
+          return;
+        } else if (
+          result.error.type === 'git_cli_not_installed' ||
+          result.error.type === 'git_cli_not_logged_in'
+        ) {
+          setError(result.message || t('createPrDialog.errors.failedToCreate'));
+          setGhCliHelp(null);
+          return;
         }
       }
 

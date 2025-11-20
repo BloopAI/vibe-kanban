@@ -3,96 +3,61 @@ use std::time::Duration;
 use backon::{ExponentialBuilder, Retryable};
 use db::models::merge::PullRequestInfo;
 use regex::Regex;
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio::task;
 use tracing::info;
-use ts_rs::TS;
 
 mod cli;
 
 use cli::{GhCli, GhCliError};
 
-use crate::services::git::{GitCliError, GitServiceError};
-
-#[derive(Debug, Error, Serialize, Deserialize, TS)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-#[ts(use_ts_enum)]
+#[derive(Debug, Error)]
 pub enum GitHubServiceError {
-    #[ts(skip)]
     #[error("Repository error: {0}")]
     Repository(String),
-    #[ts(skip)]
     #[error("Pull request error: {0}")]
     PullRequest(String),
-    #[error("GitHub token is invalid or expired.")]
-    TokenInvalid,
-    #[error("Insufficient permissions")]
-    InsufficientPermissions,
-    #[error("GitHub repository not found or no access")]
-    RepoNotFoundOrNoAccess,
+    #[error("GitHub authentication failed: {0}")]
+    AuthFailed(GhCliError),
+    #[error("Insufficient permissions: {0}")]
+    InsufficientPermissions(GhCliError),
+    #[error("GitHub repository not found or no access: {0}")]
+    RepoNotFoundOrNoAccess(GhCliError),
     #[error(
         "GitHub CLI is not installed or not available in PATH. Please install it from https://cli.github.com/ and authenticate with 'gh auth login'"
     )]
-    GhCliNotInstalled,
-    #[ts(skip)]
-    #[serde(skip)]
-    #[error(transparent)]
-    GitService(GitServiceError),
+    GhCliNotInstalled(GhCliError),
 }
 
 impl From<GhCliError> for GitHubServiceError {
     fn from(error: GhCliError) -> Self {
-        match error {
-            GhCliError::AuthFailed(_) => Self::TokenInvalid,
-            GhCliError::NotAvailable => Self::GhCliNotInstalled,
+        match &error {
+            GhCliError::AuthFailed(_) => Self::AuthFailed(error),
+            GhCliError::NotAvailable => Self::GhCliNotInstalled(error),
             GhCliError::CommandFailed(msg) => {
                 let lower = msg.to_ascii_lowercase();
                 if lower.contains("403") || lower.contains("forbidden") {
-                    Self::InsufficientPermissions
+                    Self::InsufficientPermissions(error)
                 } else if lower.contains("404") || lower.contains("not found") {
-                    Self::RepoNotFoundOrNoAccess
+                    Self::RepoNotFoundOrNoAccess(error)
                 } else {
-                    Self::PullRequest(msg)
+                    Self::PullRequest(msg.to_string())
                 }
             }
-            GhCliError::UnexpectedOutput(msg) => Self::PullRequest(msg),
-        }
-    }
-}
-
-impl From<GitServiceError> for GitHubServiceError {
-    fn from(error: GitServiceError) -> Self {
-        match error {
-            GitServiceError::GitCLI(GitCliError::AuthFailed(_)) => Self::TokenInvalid,
-            GitServiceError::GitCLI(GitCliError::CommandFailed(msg)) => {
-                let lower = msg.to_ascii_lowercase();
-                if lower.contains("the requested url returned error: 403") {
-                    Self::InsufficientPermissions
-                } else if lower.contains("the requested url returned error: 404") {
-                    Self::RepoNotFoundOrNoAccess
-                } else {
-                    Self::GitService(GitServiceError::GitCLI(GitCliError::CommandFailed(msg)))
-                }
-            }
-            other => Self::GitService(other),
+            GhCliError::UnexpectedOutput(msg) => Self::PullRequest(msg.to_string()),
         }
     }
 }
 
 impl GitHubServiceError {
-    pub fn is_api_data(&self) -> bool {
-        matches!(
-            self,
-            GitHubServiceError::TokenInvalid
-                | GitHubServiceError::InsufficientPermissions
-                | GitHubServiceError::RepoNotFoundOrNoAccess
-                | GitHubServiceError::GhCliNotInstalled
-        )
-    }
-
     pub fn should_retry(&self) -> bool {
-        !self.is_api_data()
+        !matches!(
+            self,
+            GitHubServiceError::AuthFailed(_)
+                | GitHubServiceError::InsufficientPermissions(_)
+                | GitHubServiceError::RepoNotFoundOrNoAccess(_)
+                | GitHubServiceError::GhCliNotInstalled(_)
+        )
     }
 }
 
@@ -168,8 +133,8 @@ impl GitHubService {
                 ))
             })?
             .map_err(|err| match err {
-                GhCliError::NotAvailable => GitHubServiceError::GhCliNotInstalled,
-                GhCliError::AuthFailed(_) => GitHubServiceError::TokenInvalid,
+                GhCliError::NotAvailable => GitHubServiceError::GhCliNotInstalled(err),
+                GhCliError::AuthFailed(_) => GitHubServiceError::AuthFailed(err),
                 GhCliError::CommandFailed(msg) => {
                     GitHubServiceError::Repository(format!("GitHub CLI auth check failed: {msg}"))
                 }

@@ -36,7 +36,7 @@ use git2::BranchType;
 use serde::{Deserialize, Serialize};
 use services::services::{
     container::ContainerService,
-    git::{ConflictOp, WorktreeResetOptions},
+    git::{ConflictOp, GitCliError, GitServiceError, WorktreeResetOptions},
     github::{CreatePrRequest, GitHubService, GitHubServiceError},
 };
 use sqlx::Error as SqlxError;
@@ -605,11 +605,21 @@ pub async fn push_task_attempt_branch(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[serde(tag = "type", rename_all = "snake_case")]
+#[ts(tag = "type", rename_all = "snake_case")]
+pub enum CreatePrError {
+    GithubCliNotInstalled,
+    GithubCliNotLoggedIn,
+    GitCliNotLoggedIn,
+    GitCliNotInstalled,
+}
+
 pub async fn create_github_pr(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
     Json(request): Json<CreateGitHubPrRequest>,
-) -> Result<ResponseJson<ApiResponse<String, GitHubServiceError>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<String, CreatePrError>>, ApiError> {
     let github_config = deployment.config().read().await.github.clone();
     // Get the task attempt to access the stored target branch
     let target_branch = request.target_branch.unwrap_or_else(|| {
@@ -642,13 +652,18 @@ pub async fn create_github_pr(
         .push_to_github(&workspace_path, &task_attempt.branch)
     {
         tracing::error!("Failed to push branch to GitHub: {}", e);
-        let gh_e = GitHubServiceError::from(e);
-        if gh_e.is_api_data() {
-            return Ok(ResponseJson(ApiResponse::error_with_data(gh_e)));
-        } else {
-            return Ok(ResponseJson(ApiResponse::error(
-                format!("Failed to push branch to GitHub: {}", gh_e).as_str(),
-            )));
+        match e {
+            GitServiceError::GitCLI(GitCliError::AuthFailed(_)) => {
+                return Ok(ResponseJson(ApiResponse::error_with_data(
+                    CreatePrError::GitCliNotLoggedIn,
+                )));
+            }
+            GitServiceError::GitCLI(GitCliError::NotAvailable) => {
+                return Ok(ResponseJson(ApiResponse::error_with_data(
+                    CreatePrError::GitCliNotInstalled,
+                )));
+            }
+            _ => return Err(ApiError::GitService(e)),
         }
     }
 
@@ -723,12 +738,14 @@ pub async fn create_github_pr(
                 task_attempt.id,
                 e
             );
-            if e.is_api_data() {
-                Ok(ResponseJson(ApiResponse::error_with_data(e)))
-            } else {
-                Ok(ResponseJson(ApiResponse::error(
-                    format!("Failed to create PR: {}", e).as_str(),
-                )))
+            match &e {
+                GitHubServiceError::GhCliNotInstalled(_) => Ok(ResponseJson(
+                    ApiResponse::error_with_data(CreatePrError::GithubCliNotInstalled),
+                )),
+                GitHubServiceError::AuthFailed(_) => Ok(ResponseJson(
+                    ApiResponse::error_with_data(CreatePrError::GithubCliNotLoggedIn),
+                )),
+                _ => Err(ApiError::GitHubService(e)),
             }
         }
     }
