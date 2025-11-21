@@ -235,7 +235,7 @@
         "installationFound": "Installation Found",
         "installationFoundTooltip": "Agent configuration found. You may need to log in to use it.",
         "notFound": "Not Found",
-        "notFoundTooltip": "No credentials detected. The agent may still work if configured differently."
+        "notFoundTooltip": "No credentials detected in the expected location. The agent may still work if configured differently."
       },
       "editor": {
         "formLabel": "Edit JSON",
