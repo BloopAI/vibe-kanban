@@ -79,6 +79,22 @@ export function ActionsDropdown({
     openInEditor();
   };
 
+  const handleOpenInTerminal = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!attempt?.id) return;
+    try {
+      await NiceModal.show('loading-dialog', {
+        promise: async () => {
+          const { attemptsApi } = await import('@/lib/api');
+          await attemptsApi.openTerminal(attempt.id);
+        },
+        loadingMessage: 'Opening terminal...',
+      });
+    } catch (error) {
+      console.error('Failed to open terminal:', error);
+    }
+  };
+
   const handleViewProcesses = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!attempt?.id) return;
@@ -187,6 +203,12 @@ export function ActionsDropdown({
                 onClick={handleOpenInEditor}
               >
                 {t('actionsMenu.openInIde')}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!attempt?.id}
+                onClick={handleOpenInTerminal}
+              >
+                {t('actionsMenu.openInTerminal')}
               </DropdownMenuItem>
               <DropdownMenuItem
                 disabled={!attempt?.id}

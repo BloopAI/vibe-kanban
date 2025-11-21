@@ -17,6 +17,7 @@
     "editBranchName": "ブランチ名を編集",
     "gitActions": "Gitアクション",
     "openInIde": "Open attempt in IDE",
+    "openInTerminal": "ターミナルで開く",
     "task": "Task",
     "viewProcesses": "View processes",
     "viewRelatedTasks": "View related tasks"
