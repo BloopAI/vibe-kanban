@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -35,7 +35,6 @@ import { useEditorAvailability } from '@/hooks/useEditorAvailability';
 import { EditorAvailabilityIndicator } from '@/components/EditorAvailabilityIndicator';
 import { useAgentAvailability } from '@/hooks/useAgentAvailability';
 import { AgentAvailabilityIndicator } from '@/components/AgentAvailabilityIndicator';
-import { configApi } from '@/lib/api';
 
 export type OnboardingResult = {
   profile: ExecutorProfileId;
@@ -54,86 +53,9 @@ const OnboardingDialogImpl = NiceModal.create<NoProps>(() => {
   );
   const [editorType, setEditorType] = useState<EditorType>(EditorType.VS_CODE);
   const [customCommand, setCustomCommand] = useState<string>('');
-  const [agentAvailabilityMap, setAgentAvailabilityMap] = useState<
-    Record<
-      string,
-      {
-        mcp_config_found: boolean;
-        auth_last_edited: number | null;
-      }
-    >
-  >({});
 
   const editorAvailability = useEditorAvailability(editorType);
   const agentAvailability = useAgentAvailability(profile.executor);
-
-  useEffect(() => {
-    if (!profiles) {
-      return;
-    }
-
-    const checkAllAgents = async () => {
-      const agents = Object.keys(profiles) as BaseCodingAgent[];
-      const results = await Promise.all(
-        agents.map(async (agent) => {
-          try {
-            const info = await configApi.checkAgentAvailability(agent);
-            return {
-              agent,
-              mcp_config_found: info.mcp_config_found,
-              auth_last_edited: info.auth_last_edited,
-            };
-          } catch (error) {
-            console.error(`Failed to check availability for ${agent}:`, error);
-            return {
-              agent,
-              mcp_config_found: false,
-              auth_last_edited: null,
-            };
-          }
-        })
-      );
-
-      const availabilityMap: Record<
-        string,
-        {
-          mcp_config_found: boolean;
-          auth_last_edited: number | null;
-        }
-      > = {};
-      results.forEach((r) => {
-        availabilityMap[r.agent] = {
-          mcp_config_found: r.mcp_config_found,
-          auth_last_edited:
-            r.auth_last_edited !== null ? Number(r.auth_last_edited) : null,
-        };
-      });
-      setAgentAvailabilityMap(availabilityMap);
-
-      if (!config?.executor_profile) {
-        const availableWithCreds = results.filter(
-          (r) => r.auth_last_edited !== null
-        );
-
-        if (availableWithCreds.length > 0) {
-          availableWithCreds.sort((a, b) => {
-            const timeA = Number(a.auth_last_edited ?? 0);
-            const timeB = Number(b.auth_last_edited ?? 0);
-            return timeB - timeA;
-          });
-
-          // Auto-select the most recently used agent
-          const mostRecent = availableWithCreds[0];
-          setProfile({
-            executor: mostRecent.agent,
-            variant: null,
-          });
-        }
-      }
-    };
-
-    checkAllAgents();
-  }, [profiles, config?.executor_profile]);
 
   const handleComplete = () => {
     modal.resolve({
@@ -185,39 +107,7 @@ const OnboardingDialogImpl = NiceModal.create<NoProps>(() => {
                 <SelectContent>
                   {profiles &&
                     (Object.keys(profiles) as BaseCodingAgent[])
-                      .sort((a, b) => {
-                        const infoA = agentAvailabilityMap[a];
-                        const infoB = agentAvailabilityMap[b];
-
-                        // If no availability info yet, fallback to alphabetical
-                        if (!infoA || !infoB) {
-                          return a.localeCompare(b);
-                        }
-
-                        const hasAuthA = infoA.auth_last_edited !== null;
-                        const hasAuthB = infoB.auth_last_edited !== null;
-
-                        if (hasAuthA && hasAuthB) {
-                          const timeA = Number(infoA.auth_last_edited ?? 0);
-                          const timeB = Number(infoB.auth_last_edited ?? 0);
-                          return timeB - timeA;
-                        }
-
-                        if (hasAuthA) return -1;
-                        if (hasAuthB) return 1;
-
-                        // Tier 3: Both have MCP only - alphabetical
-                        if (infoA.mcp_config_found && infoB.mcp_config_found) {
-                          return a.localeCompare(b);
-                        }
-
-                        // One has MCP, other doesn't
-                        if (infoA.mcp_config_found) return -1;
-                        if (infoB.mcp_config_found) return 1;
-
-                        // Neither available - alphabetical
-                        return a.localeCompare(b);
-                      })
+                      .sort()
                       .map((agent) => (
                         <SelectItem key={agent} value={agent}>
                           {agent}
