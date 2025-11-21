@@ -194,6 +194,11 @@ pub trait StandardCodingAgentExecutor {
     // MCP configuration methods
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf>;
 
+    // Auth configuration methods
+    fn default_auth_file_path(&self) -> Option<std::path::PathBuf> {
+        None
+    }
+
     async fn get_setup_helper_action(&self) -> Result<ExecutorAction, ExecutorError> {
         Err(ExecutorError::SetupHelperNotSupported)
     }
@@ -204,9 +209,16 @@ pub trait StandardCodingAgentExecutor {
             .map(|path| path.exists())
             .unwrap_or(false);
 
+        let auth_last_edited = self
+            .default_auth_file_path()
+            .and_then(|path| std::fs::metadata(&path).ok())
+            .and_then(|m| m.modified().ok())
+            .and_then(|modified| modified.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_secs() as i64);
+
         AvailabilityInfo {
             mcp_config_found,
-            auth_last_edited: None,
+            auth_last_edited,
         }
     }
 }
