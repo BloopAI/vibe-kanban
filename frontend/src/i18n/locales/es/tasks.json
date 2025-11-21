@@ -119,7 +119,8 @@
       "repoNotFoundOrNoAccess": "Repositorio no encontrado o sin acceso. Por favor verifica el acceso al repositorio y asegúrate de estar autenticado.",
       "failedToCreate": "Error al crear PR de GitHub",
       "gitCliNotLoggedIn": "Git no está autenticado. Ejecuta \"gh auth login\" (o configura las credenciales de Git) e inténtalo de nuevo.",
-      "gitCliNotInstalled": "Git CLI no está instalado. Instala Git para crear una PR."
+      "gitCliNotInstalled": "Git CLI no está instalado. Instala Git para crear una PR.",
+      "targetBranchNotFound": "La rama objetivo '{{branch}}' no existe en el remoto. Por favor, asegúrese de que la rama exista antes de crear una solicitud de extracción."
     },
     "loginRequired": {
       "title": "Inicia sesión para crear un pull request",
