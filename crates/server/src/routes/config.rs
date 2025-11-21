@@ -10,7 +10,9 @@ use axum::{
 };
 use deployment::{Deployment, DeploymentError};
 use executors::{
-    executors::{BaseAgentCapability, BaseCodingAgent, StandardCodingAgentExecutor},
+    executors::{
+        AvailabilityInfo, BaseAgentCapability, BaseCodingAgent, StandardCodingAgentExecutor,
+    },
     mcp_config::{McpConfig, read_agent_config, write_agent_config},
     profile::{ExecutorConfigs, ExecutorProfileId},
 };
@@ -38,6 +40,7 @@ pub fn router() -> Router<DeploymentImpl> {
             "/editors/check-availability",
             get(check_editor_availability),
         )
+        .route("/agents/check-availability", get(check_agent_availability))
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -461,4 +464,24 @@ async fn check_editor_availability(
     ResponseJson(ApiResponse::success(CheckEditorAvailabilityResponse {
         available,
     }))
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct CheckAgentAvailabilityQuery {
+    executor: BaseCodingAgent,
+}
+
+async fn check_agent_availability(
+    State(_deployment): State<DeploymentImpl>,
+    Query(query): Query<CheckAgentAvailabilityQuery>,
+) -> ResponseJson<ApiResponse<AvailabilityInfo>> {
+    let profiles = ExecutorConfigs::get_cached();
+    let profile_id = ExecutorProfileId::new(query.executor);
+
+    let info = match profiles.get_coding_agent(&profile_id) {
+        Some(agent) => agent.get_availability_info(),
+        None => AvailabilityInfo::default(),
+    };
+
+    ResponseJson(ApiResponse::success(info))
 }

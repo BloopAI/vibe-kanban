@@ -228,6 +228,15 @@
         "button": "Save Agent Configurations",
         "success": "✓ Executor configurations saved successfully!"
       },
+      "availability": {
+        "checking": "Checking...",
+        "loginDetected": "Login Detected",
+        "loginDetectedTooltip": "Recent authentication credentials found for this agent",
+        "installationFound": "Installation Found",
+        "installationFoundTooltip": "Agent configuration found. You may need to log in to use it.",
+        "notFound": "Not Found",
+        "notFoundTooltip": "No credentials detected. The agent may still work if configured differently."
+      },
       "editor": {
         "formLabel": "Edit JSON",
         "agentLabel": "Agent",

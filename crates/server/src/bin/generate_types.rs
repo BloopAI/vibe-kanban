@@ -76,6 +76,8 @@ fn generate_types_content() -> String {
         server::routes::config::GetMcpServerResponse::decl(),
         server::routes::config::CheckEditorAvailabilityQuery::decl(),
         server::routes::config::CheckEditorAvailabilityResponse::decl(),
+        server::routes::config::CheckAgentAvailabilityQuery::decl(),
+        executors::executors::AvailabilityInfo::decl(),
         server::routes::task_attempts::CreateFollowUpAttempt::decl(),
         services::services::drafts::DraftResponse::decl(),
         services::services::drafts::UpdateFollowUpDraftRequest::decl(),

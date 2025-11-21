@@ -164,6 +164,19 @@ impl CodingAgent {
     }
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct AvailabilityInfo {
+    pub mcp_config_found: bool,
+    pub auth_last_edited: Option<i64>,
+}
+
+impl AvailabilityInfo {
+    pub fn is_available(&self) -> bool {
+        self.mcp_config_found || self.auth_last_edited.is_some()
+    }
+}
+
 #[async_trait]
 #[enum_dispatch(CodingAgent)]
 pub trait StandardCodingAgentExecutor {
@@ -185,10 +198,16 @@ pub trait StandardCodingAgentExecutor {
         Err(ExecutorError::SetupHelperNotSupported)
     }
 
-    async fn check_availability(&self) -> bool {
-        self.default_mcp_config_path()
+    fn get_availability_info(&self) -> AvailabilityInfo {
+        let mcp_config_found = self
+            .default_mcp_config_path()
             .map(|path| path.exists())
-            .unwrap_or(false)
+            .unwrap_or(false);
+
+        AvailabilityInfo {
+            mcp_config_found,
+            auth_last_edited: None,
+        }
     }
 }
 

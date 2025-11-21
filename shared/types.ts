@@ -140,6 +140,10 @@ export type CheckEditorAvailabilityQuery = { editor_type: EditorType, };
 
 export type CheckEditorAvailabilityResponse = { available: boolean, };
 
+export type CheckAgentAvailabilityQuery = { executor: BaseCodingAgent, };
+
+export type AvailabilityInfo = { mcp_config_found: boolean, auth_last_edited: bigint | null, };
+
 export type CreateFollowUpAttempt = { prompt: string, variant: string | null, image_ids: Array<string> | null, retry_process_id: string | null, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };
 
 export type DraftResponse = { task_attempt_id: string, draft_type: DraftType, retry_process_id: string | null, prompt: string, queued: boolean, variant: string | null, image_ids: Array<string> | null, version: bigint, };

@@ -33,6 +33,8 @@ import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal, type NoProps } from '@/lib/modals';
 import { useEditorAvailability } from '@/hooks/useEditorAvailability';
 import { EditorAvailabilityIndicator } from '@/components/EditorAvailabilityIndicator';
+import { useAgentAvailability } from '@/hooks/useAgentAvailability';
+import { AgentAvailabilityIndicator } from '@/components/AgentAvailabilityIndicator';
 
 export type OnboardingResult = {
   profile: ExecutorProfileId;
@@ -52,8 +54,8 @@ const OnboardingDialogImpl = NiceModal.create<NoProps>(() => {
   const [editorType, setEditorType] = useState<EditorType>(EditorType.VS_CODE);
   const [customCommand, setCustomCommand] = useState<string>('');
 
-  // Check editor availability when selection changes
   const editorAvailability = useEditorAvailability(editorType);
+  const agentAvailability = useAgentAvailability(profile.executor);
 
   const handleComplete = () => {
     modal.resolve({
@@ -104,13 +106,13 @@ const OnboardingDialogImpl = NiceModal.create<NoProps>(() => {
                 </SelectTrigger>
                 <SelectContent>
                   {profiles &&
-                    (Object.keys(profiles) as BaseCodingAgent[]).map(
-                      (agent) => (
+                    (Object.keys(profiles) as BaseCodingAgent[])
+                      .sort()
+                      .map((agent) => (
                         <SelectItem key={agent} value={agent}>
                           {agent}
                         </SelectItem>
-                      )
-                    )}
+                      ))}
                 </SelectContent>
               </Select>
 
@@ -171,6 +173,7 @@ const OnboardingDialogImpl = NiceModal.create<NoProps>(() => {
                 return null;
               })()}
             </div>
+            <AgentAvailabilityIndicator availability={agentAvailability} />
           </div>
         </div>
 

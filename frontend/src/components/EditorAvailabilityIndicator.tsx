@@ -29,16 +29,16 @@ export function EditorAvailabilityIndicator({
       )}
       {availability === 'available' && (
         <>
-          <Check className="h-4 w-4 text-green-500" />
-          <span className="text-green-600">
+          <Check className="h-4 w-4 text-success" />
+          <span className="text-success">
             {t('settings.general.editor.availability.available')}
           </span>
         </>
       )}
       {availability === 'unavailable' && (
         <>
-          <AlertCircle className="h-4 w-4 text-orange-500" />
-          <span className="text-orange-600">
+          <AlertCircle className="h-4 w-4 text-warning" />
+          <span className="text-warning">
             {t('settings.general.editor.availability.notFound')}
           </span>
         </>

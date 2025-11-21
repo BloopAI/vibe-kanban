@@ -40,6 +40,8 @@ import { getLanguageOptions } from '@/i18n/languages';
 import { toPrettyCase } from '@/utils/string';
 import { useEditorAvailability } from '@/hooks/useEditorAvailability';
 import { EditorAvailabilityIndicator } from '@/components/EditorAvailabilityIndicator';
+import { useAgentAvailability } from '@/hooks/useAgentAvailability';
+import { AgentAvailabilityIndicator } from '@/components/AgentAvailabilityIndicator';
 import { useTheme } from '@/components/ThemeProvider';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { TagManager } from '@/components/TagManager';
@@ -74,6 +76,11 @@ export function GeneralSettings() {
 
   // Check editor availability when draft editor changes
   const editorAvailability = useEditorAvailability(draft?.editor.editor_type);
+
+  // Check agent availability when draft executor changes
+  const agentAvailability = useAgentAvailability(
+    draft?.executor_profile?.executor
+  );
 
   const validateBranchPrefix = useCallback(
     (prefix: string): string | null => {
@@ -412,6 +419,7 @@ export function GeneralSettings() {
                 return null;
               })()}
             </div>
+            <AgentAvailabilityIndicator availability={agentAvailability} />
             <p className="text-sm text-muted-foreground">
               {t('settings.general.taskExecution.executor.helper')}
             </p>

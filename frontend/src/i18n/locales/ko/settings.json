@@ -228,6 +228,15 @@
         "button": "에이전트 구성 저장",
         "success": "✓ 실행자 구성이 성공적으로 저장되었습니다!"
       },
+      "availability": {
+        "checking": "확인 중...",
+        "loginDetected": "로그인 감지됨",
+        "loginDetectedTooltip": "이 에이전트에 대한 최근 인증 자격 증명이 발견되었습니다",
+        "installationFound": "설치 발견됨",
+        "installationFoundTooltip": "에이전트 구성이 발견되었습니다. 사용하려면 로그인해야 할 수 있습니다.",
+        "notFound": "찾을 수 없음",
+        "notFoundTooltip": "자격 증명이 감지되지 않았습니다. 다르게 구성된 경우 에이전트가 여전히 작동할 수 있습니다."
+      },
       "editor": {
         "formLabel": "JSON 편집",
         "agentLabel": "에이전트",
