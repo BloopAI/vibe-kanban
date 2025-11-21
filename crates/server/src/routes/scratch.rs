@@ -66,18 +66,23 @@ pub async fn delete_scratch(
 pub async fn stream_scratch_ws(
     ws: WebSocketUpgrade,
     State(deployment): State<DeploymentImpl>,
+    Path(id): Path<Uuid>,
 ) -> impl IntoResponse {
     ws.on_upgrade(move |socket| async move {
-        if let Err(e) = handle_scratch_ws(socket, deployment).await {
+        if let Err(e) = handle_scratch_ws(socket, deployment, id).await {
             tracing::warn!("scratch WS closed: {}", e);
         }
     })
 }
 
-async fn handle_scratch_ws(socket: WebSocket, deployment: DeploymentImpl) -> anyhow::Result<()> {
+async fn handle_scratch_ws(
+    socket: WebSocket,
+    deployment: DeploymentImpl,
+    id: Uuid,
+) -> anyhow::Result<()> {
     let mut stream = deployment
         .events()
-        .stream_scratch_raw()
+        .stream_scratch_raw(id)
         .await?
         .map_ok(|msg| msg.to_ws_message_unchecked());
 
@@ -104,9 +109,9 @@ async fn handle_scratch_ws(socket: WebSocket, deployment: DeploymentImpl) -> any
 pub fn router(_deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     Router::new()
         .route("/scratch", get(list_scratch).post(create_scratch))
-        .route("/scratch/stream/ws", get(stream_scratch_ws))
         .route(
             "/scratch/{id}",
             get(get_scratch).put(update_scratch).delete(delete_scratch),
         )
+        .route("/scratch/{id}/stream/ws", get(stream_scratch_ws))
 }

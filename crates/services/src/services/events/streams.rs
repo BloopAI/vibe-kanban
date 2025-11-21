@@ -449,26 +449,24 @@ impl EventService {
         Ok(combined_stream)
     }
 
-    /// Stream all scratch items with initial snapshot
+    /// Stream a single scratch item with initial snapshot (raw LogMsg format for WebSocket)
     pub async fn stream_scratch_raw(
         &self,
+        scratch_id: Uuid,
     ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, EventError>
     {
-        // Get initial snapshot of all scratch items
-        let scratch_items = Scratch::find_all(&self.db.pool)
+        // Get initial snapshot for this scratch
+        let scratch = Scratch::find_by_id(&self.db.pool, scratch_id)
             .await
-            .map_err(|_| EventError::Other(anyhow!("Failed to get scratch items")))?;
+            .map_err(|_| EventError::Other(anyhow!("Failed to get scratch item")))?
+            .ok_or_else(|| EventError::Other(anyhow!("Scratch not found")))?;
 
-        // Convert scratch array to object keyed by scratch ID
-        let scratch_map: serde_json::Map<String, serde_json::Value> = scratch_items
-            .into_iter()
-            .map(|scratch| {
-                (
-                    scratch.id.to_string(),
-                    serde_json::to_value(scratch).unwrap(),
-                )
-            })
-            .collect();
+        // Convert scratch to map with single entry
+        let mut scratch_map = serde_json::Map::new();
+        scratch_map.insert(
+            scratch.id.to_string(),
+            serde_json::to_value(scratch).unwrap(),
+        );
 
         let initial_patch = json!([{
             "op": "replace",
@@ -477,17 +475,26 @@ impl EventService {
         }]);
         let initial_msg = LogMsg::JsonPatch(serde_json::from_value(initial_patch).unwrap());
 
-        // Filter to only scratch events
+        let id_str = scratch_id.to_string();
+
+        // Filter to only this scratch's events
         let filtered_stream =
             BroadcastStream::new(self.msg_store.get_receiver()).filter_map(move |msg_result| {
+                let id_str = id_str.clone();
                 async move {
                     match msg_result {
                         Ok(LogMsg::JsonPatch(patch)) => {
-                            // Only pass through scratch patches
-                            if let Some(patch_op) = patch.0.first()
-                                && patch_op.path().starts_with("/scratch/")
-                            {
-                                return Some(Ok(LogMsg::JsonPatch(patch)));
+                            if let Some(op) = patch.0.first() {
+                                let path = op.path();
+                                if let Some(rest) = path.strip_prefix("/scratch/") {
+                                    if let Some((found_id, _)) = rest.split_once('/') {
+                                        if found_id == id_str {
+                                            return Some(Ok(LogMsg::JsonPatch(patch)));
+                                        }
+                                    } else if rest == id_str {
+                                        return Some(Ok(LogMsg::JsonPatch(patch)));
+                                    }
+                                }
                             }
                             None
                         }

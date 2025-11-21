@@ -6,8 +6,7 @@ interface ScratchEditorProps {
 }
 
 export const ScratchEditor = ({ scratchId }: ScratchEditorProps) => {
-  const { scratchById, isConnected, updateScratch } = useScratch();
-  const scratch = scratchById[scratchId];
+  const { scratch, isConnected, updateScratch } = useScratch(scratchId);
 
   const [localContent, setLocalContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -30,7 +29,7 @@ export const ScratchEditor = ({ scratchId }: ScratchEditorProps) => {
       setSaveError(null);
 
       try {
-        await updateScratch(scratchId, {
+        await updateScratch({
           payload: {
             type: scratch.payload.type,
             data: {

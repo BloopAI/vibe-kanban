@@ -113,7 +113,7 @@ impl Scratch {
         .fetch_one(pool)
         .await?;
 
-        Ok(Scratch::try_from(row)?)
+        Scratch::try_from(row)
     }
 
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, ScratchError> {
