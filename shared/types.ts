@@ -60,6 +60,16 @@ export type UpdateTask = { title: string | null, description: string | null, sta
 
 export type SharedTask = { id: string, remote_project_id: string, title: string, description: string | null, status: TaskStatus, assignee_user_id: string | null, assignee_first_name: string | null, assignee_last_name: string | null, assignee_username: string | null, version: bigint, last_event_seq: bigint | null, created_at: Date, updated_at: Date, };
 
+export type RichText = { json: JsonValue, md: string, };
+
+export type ScratchPayload = { "type": "draft_task", "data": RichText } | { "type": "draft_follow_up", "data": RichText };
+
+export type Scratch = { id: string, payload: ScratchPayload, created_at: string, updated_at: string, };
+
+export type CreateScratch = { payload: ScratchPayload, };
+
+export type UpdateScratch = { payload: ScratchPayload | null, };
+
 export type Image = { id: string, file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, created_at: string, updated_at: string, };
 
 export type CreateImage = { file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, };

@@ -19,6 +19,7 @@ pub mod images;
 pub mod oauth;
 pub mod organizations;
 pub mod projects;
+pub mod scratch;
 pub mod shared_tasks;
 pub mod tags;
 pub mod task_attempts;
@@ -42,6 +43,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(filesystem::router())
         .merge(events::router(&deployment))
         .merge(approvals::router())
+        .merge(scratch::router(&deployment))
         .nest("/images", images::routes())
         .with_state(deployment);
 

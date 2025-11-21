@@ -1,6 +1,7 @@
 use db::models::{
     draft::{Draft, DraftType},
     execution_process::ExecutionProcess,
+    scratch::Scratch,
     shared_task::SharedTask as DbSharedTask,
     task::TaskWithAttemptStatus,
     task_attempt::TaskAttempt,
@@ -238,6 +239,47 @@ pub mod task_attempt_patch {
             path: attempt_path(attempt_id)
                 .try_into()
                 .expect("Task attempt path should be valid"),
+        })])
+    }
+}
+
+/// Helper functions for creating scratch-specific patches
+pub mod scratch_patch {
+    use super::*;
+
+    fn scratch_path(scratch_id: Uuid) -> String {
+        format!(
+            "/scratch/{}",
+            escape_pointer_segment(&scratch_id.to_string())
+        )
+    }
+
+    /// Create patch for adding a new scratch
+    pub fn add(scratch: &Scratch) -> Patch {
+        Patch(vec![PatchOperation::Add(AddOperation {
+            path: scratch_path(scratch.id)
+                .try_into()
+                .expect("Scratch path should be valid"),
+            value: serde_json::to_value(scratch).expect("Scratch serialization should not fail"),
+        })])
+    }
+
+    /// Create patch for updating an existing scratch
+    pub fn replace(scratch: &Scratch) -> Patch {
+        Patch(vec![PatchOperation::Replace(ReplaceOperation {
+            path: scratch_path(scratch.id)
+                .try_into()
+                .expect("Scratch path should be valid"),
+            value: serde_json::to_value(scratch).expect("Scratch serialization should not fail"),
+        })])
+    }
+
+    /// Create patch for removing a scratch
+    pub fn remove(scratch_id: Uuid) -> Patch {
+        Patch(vec![PatchOperation::Remove(RemoveOperation {
+            path: scratch_path(scratch_id)
+                .try_into()
+                .expect("Scratch path should be valid"),
         })])
     }
 }
