@@ -279,6 +279,13 @@ export const projectsApi = {
     return handleApiResponse<OpenEditorResponse>(response);
   },
 
+  openTerminal: async (id: string): Promise<void> => {
+    const response = await makeRequest(`/api/projects/${id}/open-terminal`, {
+      method: 'POST',
+    });
+    return handleApiResponse<void>(response);
+  },
+
   searchFiles: async (
     id: string,
     query: string,
@@ -573,6 +580,16 @@ export const attemptsApi = {
       }
     );
     return handleApiResponse<OpenEditorResponse>(response);
+  },
+
+  openTerminal: async (attemptId: string): Promise<void> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/open-terminal`,
+      {
+        method: 'POST',
+      }
+    );
+    return handleApiResponse<void>(response);
   },
 
   getBranchStatus: async (attemptId: string): Promise<RepoBranchStatus[]> => {

@@ -316,6 +316,7 @@
   "actionsMenu": {
     "attempt": "Attempt",
     "openInIde": "Open attempt in IDE",
+    "openInTerminal": "Open attempt in Terminal",
     "viewProcesses": "View processes",
     "viewRelatedTasks": "View related tasks",
     "createNewAttempt": "Create new attempt",
