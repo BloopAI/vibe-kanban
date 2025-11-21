@@ -11,6 +11,7 @@ import {
 import { MoreHorizontal } from 'lucide-react';
 import type { TaskWithAttemptStatus, TaskAttempt } from 'shared/types';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
+import { useOpenInTerminal } from '@/hooks/useOpenInTerminal';
 import { DeleteTaskConfirmationDialog } from '@/components/dialogs/tasks/DeleteTaskConfirmationDialog';
 import { ViewProcessesDialog } from '@/components/dialogs/tasks/ViewProcessesDialog';
 import { ViewRelatedTasksDialog } from '@/components/dialogs/tasks/ViewRelatedTasksDialog';
@@ -41,6 +42,7 @@ export function ActionsDropdown({
   const { t } = useTranslation('tasks');
   const { projectId } = useProject();
   const openInEditor = useOpenInEditor(attempt?.id);
+  const openInTerminal = useOpenInTerminal(attempt?.id);
   const navigate = useNavigate();
   const { userId } = useAuth();
 
@@ -79,20 +81,10 @@ export function ActionsDropdown({
     openInEditor();
   };
 
-  const handleOpenInTerminal = async (e: React.MouseEvent) => {
+  const handleOpenInTerminal = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!attempt?.id) return;
-    try {
-      await NiceModal.show('loading-dialog', {
-        promise: async () => {
-          const { attemptsApi } = await import('@/lib/api');
-          await attemptsApi.openTerminal(attempt.id);
-        },
-        loadingMessage: 'Opening terminal...',
-      });
-    } catch (error) {
-      console.error('Failed to open terminal:', error);
-    }
+    openInTerminal();
   };
 
   const handleViewProcesses = (e: React.MouseEvent) => {
