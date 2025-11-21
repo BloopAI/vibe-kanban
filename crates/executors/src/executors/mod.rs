@@ -164,7 +164,8 @@ impl CodingAgent {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct AvailabilityInfo {
     pub mcp_config_found: bool,
     pub auth_last_edited: Option<i64>,
@@ -222,10 +223,6 @@ pub trait StandardCodingAgentExecutor {
             mcp_config_found,
             auth_last_edited: None,
         }
-    }
-
-    async fn check_availability(&self) -> bool {
-        self.get_availability_info().is_available()
     }
 }
 

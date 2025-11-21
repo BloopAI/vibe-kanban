@@ -142,16 +142,7 @@ export type CheckEditorAvailabilityResponse = { available: boolean, };
 
 export type CheckAgentAvailabilityQuery = { executor: BaseCodingAgent, };
 
-export type CheckAgentAvailabilityResponse = { available: boolean, 
-/**
- * Whether the MCP config file exists
- */
-mcp_config_found: boolean, 
-/**
- * Unix timestamp (seconds since epoch) of when auth credential file was last modified.
- * If Some(_), auth config exists. If None, no auth config found.
- */
-credential_last_modified: bigint | null, };
+export type AvailabilityInfo = { mcp_config_found: boolean, auth_last_edited: bigint | null, };
 
 export type CreateFollowUpAttempt = { prompt: string, variant: string | null, image_ids: Array<string> | null, retry_process_id: string | null, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };
 

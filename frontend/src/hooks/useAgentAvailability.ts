@@ -24,14 +24,14 @@ export function useAgentAvailability(
     const checkAvailability = async () => {
       setAvailability({ status: 'checking' });
       try {
-        const result = await configApi.checkAgentAvailability(agent);
+        const info = await configApi.checkAgentAvailability(agent);
 
-        if (result.credential_last_modified !== null) {
+        if (info.auth_last_edited !== null) {
           setAvailability({
             status: 'login_detected',
-            lastModified: Number(result.credential_last_modified),
+            lastModified: Number(info.auth_last_edited),
           });
-        } else if (result.mcp_config_found) {
+        } else if (info.mcp_config_found) {
           setAvailability({ status: 'installation_found' });
         } else {
           setAvailability({ status: 'not_found' });

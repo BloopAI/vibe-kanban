@@ -416,7 +416,7 @@ impl ExecutorConfigs {
         for &base_agent in self.executors.keys() {
             let profile_id = ExecutorProfileId::new(base_agent);
             if let Some(coding_agent) = self.get_coding_agent(&profile_id)
-                && coding_agent.check_availability().await
+                && coding_agent.get_availability_info().is_available()
             {
                 tracing::info!("Detected available executor: {}", base_agent);
                 return Ok(profile_id);

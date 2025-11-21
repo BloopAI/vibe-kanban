@@ -58,9 +58,8 @@ const OnboardingDialogImpl = NiceModal.create<NoProps>(() => {
     Record<
       string,
       {
-        available: boolean;
         mcp_config_found: boolean;
-        credential_last_modified: number | null;
+        auth_last_edited: number | null;
       }
     >
   >({});
@@ -78,20 +77,18 @@ const OnboardingDialogImpl = NiceModal.create<NoProps>(() => {
       const results = await Promise.all(
         agents.map(async (agent) => {
           try {
-            const result = await configApi.checkAgentAvailability(agent);
+            const info = await configApi.checkAgentAvailability(agent);
             return {
               agent,
-              available: result.available,
-              mcp_config_found: result.mcp_config_found,
-              credential_last_modified: result.credential_last_modified,
+              mcp_config_found: info.mcp_config_found,
+              auth_last_edited: info.auth_last_edited,
             };
           } catch (error) {
             console.error(`Failed to check availability for ${agent}:`, error);
             return {
               agent,
-              available: false,
               mcp_config_found: false,
-              credential_last_modified: null,
+              auth_last_edited: null,
             };
           }
         })
@@ -100,34 +97,29 @@ const OnboardingDialogImpl = NiceModal.create<NoProps>(() => {
       const availabilityMap: Record<
         string,
         {
-          available: boolean;
           mcp_config_found: boolean;
-          credential_last_modified: number | null;
+          auth_last_edited: number | null;
         }
       > = {};
       results.forEach((r) => {
         availabilityMap[r.agent] = {
-          available: r.available,
           mcp_config_found: r.mcp_config_found,
-          credential_last_modified:
-            r.credential_last_modified !== null
-              ? Number(r.credential_last_modified)
-              : null,
+          auth_last_edited:
+            r.auth_last_edited !== null ? Number(r.auth_last_edited) : null,
         };
       });
       setAgentAvailabilityMap(availabilityMap);
 
       if (!config?.executor_profile) {
         const availableWithCreds = results.filter(
-          (r) => r.available && r.credential_last_modified !== null
+          (r) => r.auth_last_edited !== null
         );
 
         if (availableWithCreds.length > 0) {
-          // Sort by most recent modification time
           availableWithCreds.sort((a, b) => {
-            const timeA = Number(a.credential_last_modified ?? 0);
-            const timeB = Number(b.credential_last_modified ?? 0);
-            return timeB - timeA; // Most recent first
+            const timeA = Number(a.auth_last_edited ?? 0);
+            const timeB = Number(b.auth_last_edited ?? 0);
+            return timeB - timeA;
           });
 
           // Auto-select the most recently used agent
@@ -202,23 +194,15 @@ const OnboardingDialogImpl = NiceModal.create<NoProps>(() => {
                           return a.localeCompare(b);
                         }
 
-                        // Tier 1: Both have auth config - sort by most recent
-                        const hasAuthA =
-                          infoA.credential_last_modified !== null;
-                        const hasAuthB =
-                          infoB.credential_last_modified !== null;
+                        const hasAuthA = infoA.auth_last_edited !== null;
+                        const hasAuthB = infoB.auth_last_edited !== null;
 
                         if (hasAuthA && hasAuthB) {
-                          const timeA = Number(
-                            infoA.credential_last_modified ?? 0
-                          );
-                          const timeB = Number(
-                            infoB.credential_last_modified ?? 0
-                          );
+                          const timeA = Number(infoA.auth_last_edited ?? 0);
+                          const timeB = Number(infoB.auth_last_edited ?? 0);
                           return timeB - timeA;
                         }
 
-                        // Tier 2: Only one has auth - it wins
                         if (hasAuthA) return -1;
                         if (hasAuthB) return 1;
 

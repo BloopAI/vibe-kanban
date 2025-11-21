@@ -12,7 +12,6 @@ use workspace_utils::{
     diff::{concatenate_diff_hunks, create_unified_diff, extract_unified_diff_hunks},
     msg_store::MsgStore,
     path::make_path_relative,
-    shell::resolve_executable_path,
 };
 
 use crate::{
@@ -467,13 +466,20 @@ impl StandardCodingAgentExecutor for CursorAgent {
         });
     }
 
-    // MCP configuration methods
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
         dirs::home_dir().map(|home| home.join(".cursor").join("mcp.json"))
     }
 
-    async fn check_availability(&self) -> bool {
-        resolve_executable_path("cursor-agent").await.is_some()
+    fn get_availability_info(&self) -> crate::executors::AvailabilityInfo {
+        let mcp_config_found = self
+            .default_mcp_config_path()
+            .map(|p| p.exists())
+            .unwrap_or(false);
+
+        crate::executors::AvailabilityInfo {
+            mcp_config_found,
+            auth_last_edited: None,
+        }
     }
 }
 /* ===========================

@@ -47,7 +47,7 @@ import {
   RenameBranchRequest,
   RenameBranchResponse,
   CheckEditorAvailabilityResponse,
-  CheckAgentAvailabilityResponse,
+  AvailabilityInfo,
   BaseCodingAgent,
   RunAgentSetupRequest,
   RunAgentSetupResponse,
@@ -729,11 +729,11 @@ export const configApi = {
   },
   checkAgentAvailability: async (
     agent: BaseCodingAgent
-  ): Promise<CheckAgentAvailabilityResponse> => {
+  ): Promise<AvailabilityInfo> => {
     const response = await makeRequest(
       `/api/agents/check-availability?executor=${encodeURIComponent(agent)}`
     );
-    return handleApiResponse<CheckAgentAvailabilityResponse>(response);
+    return handleApiResponse<AvailabilityInfo>(response);
   },
 };
 

@@ -10,7 +10,9 @@ use axum::{
 };
 use deployment::{Deployment, DeploymentError};
 use executors::{
-    executors::{BaseAgentCapability, BaseCodingAgent, StandardCodingAgentExecutor},
+    executors::{
+        AvailabilityInfo, BaseAgentCapability, BaseCodingAgent, StandardCodingAgentExecutor,
+    },
     mcp_config::{McpConfig, read_agent_config, write_agent_config},
     profile::{ExecutorConfigs, ExecutorProfileId},
 };
@@ -469,38 +471,17 @@ pub struct CheckAgentAvailabilityQuery {
     executor: BaseCodingAgent,
 }
 
-#[derive(Debug, Serialize, Deserialize, TS)]
-pub struct CheckAgentAvailabilityResponse {
-    available: bool,
-    /// Whether the MCP config file exists
-    mcp_config_found: bool,
-    /// Unix timestamp (seconds since epoch) of when auth credential file was last modified.
-    /// If Some(_), auth config exists. If None, no auth config found.
-    credential_last_modified: Option<i64>,
-}
-
 async fn check_agent_availability(
     State(_deployment): State<DeploymentImpl>,
     Query(query): Query<CheckAgentAvailabilityQuery>,
-) -> ResponseJson<ApiResponse<CheckAgentAvailabilityResponse>> {
+) -> ResponseJson<ApiResponse<AvailabilityInfo>> {
     let profiles = ExecutorConfigs::get_cached();
     let profile_id = ExecutorProfileId::new(query.executor);
 
-    let response = match profiles.get_coding_agent(&profile_id) {
-        Some(agent) => {
-            let info = agent.get_availability_info();
-            CheckAgentAvailabilityResponse {
-                available: info.is_available(),
-                mcp_config_found: info.mcp_config_found,
-                credential_last_modified: info.auth_last_edited,
-            }
-        }
-        None => CheckAgentAvailabilityResponse {
-            available: false,
-            mcp_config_found: false,
-            credential_last_modified: None,
-        },
+    let info = match profiles.get_coding_agent(&profile_id) {
+        Some(agent) => agent.get_availability_info(),
+        None => AvailabilityInfo::default(),
     };
 
-    ResponseJson(ApiResponse::success(response))
+    ResponseJson(ApiResponse::success(info))
 }
