@@ -12,6 +12,7 @@ use workspace_utils::{
     diff::{concatenate_diff_hunks, create_unified_diff, extract_unified_diff_hunks},
     msg_store::MsgStore,
     path::make_path_relative,
+    shell::resolve_executable_path_blocking,
 };
 
 use crate::{
@@ -471,6 +472,11 @@ impl StandardCodingAgentExecutor for CursorAgent {
     }
 
     fn get_availability_info(&self) -> crate::executors::AvailabilityInfo {
+        let binary_found = resolve_executable_path_blocking(Self::base_command()).is_some();
+        if !binary_found {
+            return crate::executors::AvailabilityInfo::default();
+        }
+
         let mcp_config_found = self
             .default_mcp_config_path()
             .map(|p| p.exists())
