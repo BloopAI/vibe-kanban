@@ -409,20 +409,36 @@ impl ExecutorConfigs {
                     .expect("No default variant found")
             })
     }
-    /// Get the first available executor profile for new users
     pub async fn get_recommended_executor_profile(
         &self,
     ) -> Result<ExecutorProfileId, ProfileError> {
+        let mut agents_with_info: Vec<(BaseCodingAgent, crate::executors::AvailabilityInfo)> =
+            Vec::new();
+
         for &base_agent in self.executors.keys() {
             let profile_id = ExecutorProfileId::new(base_agent);
-            if let Some(coding_agent) = self.get_coding_agent(&profile_id)
-                && coding_agent.get_availability_info().is_available()
-            {
-                tracing::info!("Detected available executor: {}", base_agent);
-                return Ok(profile_id);
+            if let Some(coding_agent) = self.get_coding_agent(&profile_id) {
+                let info = coding_agent.get_availability_info();
+                if info.is_available() {
+                    agents_with_info.push((base_agent, info));
+                }
             }
         }
-        Err(ProfileError::NoAvailableExecutorProfile)
+
+        if agents_with_info.is_empty() {
+            return Err(ProfileError::NoAvailableExecutorProfile);
+        }
+
+        agents_with_info.sort_by(|a, b| match (a.1.auth_last_edited, b.1.auth_last_edited) {
+            (Some(time_a), Some(time_b)) => time_b.cmp(&time_a),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => std::cmp::Ordering::Equal,
+        });
+
+        let selected = agents_with_info[0].0;
+        tracing::info!("Recommended executor: {}", selected);
+        Ok(ExecutorProfileId::new(selected))
     }
 }
 
