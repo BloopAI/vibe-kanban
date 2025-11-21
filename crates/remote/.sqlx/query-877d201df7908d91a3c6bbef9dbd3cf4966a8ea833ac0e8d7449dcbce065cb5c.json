@@ -1,0 +1,43 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO tags (id, project_id, name, color)\n            VALUES ($1, $2, $3, $4)\n            RETURNING\n                id          AS \"id!: Uuid\",\n                project_id  AS \"project_id!: Uuid\",\n                name        AS \"name!\",\n                color       AS \"color!\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "name!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "color!",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "877d201df7908d91a3c6bbef9dbd3cf4966a8ea833ac0e8d7449dcbce065cb5c"
+}
