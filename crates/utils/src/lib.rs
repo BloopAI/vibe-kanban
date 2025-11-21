@@ -18,6 +18,7 @@ pub mod sentry;
 pub mod shell;
 pub mod stream_ext;
 pub mod stream_lines;
+pub mod terminal;
 pub mod text;
 pub mod tokio;
 pub mod version;

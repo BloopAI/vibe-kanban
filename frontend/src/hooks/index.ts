@@ -1,6 +1,9 @@
 export { useBranchStatus } from './useBranchStatus';
 export { useAttemptExecution } from './useAttemptExecution';
 export { useOpenInEditor } from './useOpenInEditor';
+export { useOpenInTerminal } from './useOpenInTerminal';
+export { useOpenProjectInEditor } from './useOpenProjectInEditor';
+export { useOpenProjectInTerminal } from './useOpenProjectInTerminal';
 export { useProjectBranches } from './useProjectBranches';
 export { useTaskAttempt } from './useTaskAttempt';
 export { useTaskImages } from './useTaskImages';

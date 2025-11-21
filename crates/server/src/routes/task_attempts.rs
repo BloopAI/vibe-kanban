@@ -819,6 +819,46 @@ pub async fn open_task_attempt_in_editor(
     }
 }
 
+pub async fn open_task_attempt_in_terminal(
+    Extension(task_attempt): Extension<TaskAttempt>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    // Get the task attempt to access the worktree path
+    let base_path_buf = ensure_worktree_path(&deployment, &task_attempt).await?;
+    let base_path = base_path_buf.as_path();
+
+    match utils::terminal::open_terminal(base_path).await {
+        Ok(()) => {
+            tracing::info!(
+                "Opened terminal for task attempt {} at path: {}",
+                task_attempt.id,
+                base_path.display()
+            );
+
+            deployment
+                .track_if_analytics_allowed(
+                    "task_attempt_terminal_opened",
+                    serde_json::json!({
+                        "attempt_id": task_attempt.id.to_string(),
+                    }),
+                )
+                .await;
+
+            Ok(ResponseJson(ApiResponse::success(())))
+        }
+        Err(e) => {
+            tracing::error!(
+                "Failed to open terminal for attempt {}: {}",
+                task_attempt.id,
+                e
+            );
+            Err(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
+                format!("Failed to open terminal: {}", e),
+            )))
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct BranchStatus {
     pub commits_behind: Option<usize>,
@@ -1535,6 +1575,8 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/pr", post(create_github_pr))
         .route("/pr/attach", post(attach_existing_pr))
         .route("/open-editor", post(open_task_attempt_in_editor))
+        .route("/open-terminal", post(open_task_attempt_in_terminal))
+        .route("/delete-file", post(delete_task_attempt_file))
         .route("/children", get(get_task_attempt_children))
         .route("/stop", post(stop_task_attempt_execution))
         .route("/change-target-branch", post(change_target_branch))

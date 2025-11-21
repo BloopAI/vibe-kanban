@@ -463,6 +463,38 @@ pub async fn open_project_in_editor(
     }
 }
 
+pub async fn open_project_in_terminal(
+    Extension(project): Extension<Project>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
+    let path = project.git_repo_path;
+
+    match utils::terminal::open_terminal(&path).await {
+        Ok(()) => {
+            tracing::info!(
+                "Opened terminal for project {} at path: {}",
+                project.id,
+                path.to_string_lossy()
+            );
+
+            deployment
+                .track_if_analytics_allowed(
+                    "project_terminal_opened",
+                    serde_json::json!({
+                        "project_id": project.id.to_string(),
+                    }),
+                )
+                .await;
+
+            Ok(ResponseJson(ApiResponse::success(())))
+        }
+        Err(e) => {
+            tracing::error!("Failed to open terminal for project {}: {}", project.id, e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
 pub async fn search_project_files(
     State(deployment): State<DeploymentImpl>,
     Extension(project): Extension<Project>,
@@ -664,6 +696,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/branches", get(get_project_branches))
         .route("/search", get(search_project_files))
         .route("/open-editor", post(open_project_in_editor))
+        .route("/open-terminal", post(open_project_in_terminal))
         .route(
             "/link",
             post(link_project_to_existing_remote).delete(unlink_project),
