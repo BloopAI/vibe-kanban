@@ -7,7 +7,8 @@ use crate::{
     AppState,
     activity::ActivityBroker,
     auth::{
-        GitHubOAuthProvider, GoogleOAuthProvider, JwtService, OAuthHandoffService, ProviderRegistry,
+        GitHubOAuthProvider, GoogleOAuthProvider, JwtService, OAuthHandoffService,
+        OAuthTokenValidator, ProviderRegistry,
     },
     config::RemoteServerConfig,
     db,
@@ -70,6 +71,9 @@ impl Server {
             auth_config.public_base_url().to_string(),
         ));
 
+        let oauth_token_validator =
+            Arc::new(OAuthTokenValidator::new(pool.clone(), registry.clone()));
+
         let api_key = std::env::var("LOOPS_EMAIL_API_KEY")
             .context("LOOPS_EMAIL_API_KEY environment variable is required")?;
         let mailer = Arc::new(LoopsMailer::new(api_key));
@@ -86,6 +90,7 @@ impl Server {
             config.clone(),
             jwt,
             handoff_service,
+            oauth_token_validator,
             mailer,
             server_public_base_url,
         );

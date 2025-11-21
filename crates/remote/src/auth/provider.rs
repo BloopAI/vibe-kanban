@@ -5,10 +5,16 @@ use async_trait::async_trait;
 use chrono::Duration;
 use reqwest::Client;
 use secrecy::{ExposeSecret, SecretString};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+use tracing::info;
 use url::Url;
 
 const USER_AGENT: &str = "VibeKanbanRemote/1.0";
+
+const TOKEN_EXPIRATION_LEEWAY_SECONDS: i64 = 20;
+pub const VALIDATE_TOKEN_MAX_RETRIES: u32 = 3;
+const RETRY_INTERVAL_SECONDS: u64 = 2;
 
 #[derive(Debug, Clone)]
 pub struct AuthorizationGrant {
@@ -29,6 +35,28 @@ pub struct ProviderUser {
     pub avatar_url: Option<String>,
 }
 
+#[derive(Debug, Error)]
+pub enum TokenValidationError {
+    #[error("provider token invalid or revoked")]
+    InvalidOrRevoked,
+    #[error("provider validation temporarily unavailable: {0}")]
+    Temporary(String),
+}
+
+impl TokenValidationError {
+    fn temporary(message: impl Into<String>) -> Self {
+        Self::Temporary(message.into())
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProviderTokenDetails {
+    pub provider: String,
+    pub access_token: String,
+    pub refresh_token: Option<String>,
+    pub expires_at: Option<i64>,
+}
+
 #[async_trait]
 pub trait AuthorizationProvider: Send + Sync {
     fn name(&self) -> &'static str;
@@ -36,6 +64,11 @@ pub trait AuthorizationProvider: Send + Sync {
     fn authorize_url(&self, state: &str, redirect_uri: &str) -> Result<Url>;
     async fn exchange_code(&self, code: &str, redirect_uri: &str) -> Result<AuthorizationGrant>;
     async fn fetch_user(&self, access_token: &SecretString) -> Result<ProviderUser>;
+    async fn validate_token(
+        &self,
+        token_details: &ProviderTokenDetails,
+        max_retries: u32,
+    ) -> Result<Option<ProviderTokenDetails>, TokenValidationError>;
 }
 
 #[derive(Default)]
@@ -232,6 +265,99 @@ impl AuthorizationProvider for GitHubOAuthProvider {
             avatar_url: user.avatar_url,
         })
     }
+
+    async fn validate_token(
+        &self,
+        token_details: &ProviderTokenDetails,
+        max_retries: u32,
+    ) -> Result<Option<ProviderTokenDetails>, TokenValidationError> {
+        let mut attempt = 0;
+        let access_token = SecretString::new(token_details.access_token.clone().into_boxed_str());
+
+        loop {
+            attempt += 1;
+
+            let response = match self
+                .client
+                .get("https://api.github.com/rate_limit")
+                .header(
+                    "Authorization",
+                    format!("Bearer {}", access_token.expose_secret()),
+                )
+                .header("Accept", "application/vnd.github+json")
+                .send()
+                .await
+            {
+                Ok(resp) => resp,
+                Err(err) => {
+                    if attempt >= max_retries {
+                        return Err(TokenValidationError::temporary(format!(
+                            "request failed: {err}"
+                        )));
+                    }
+                    tokio::time::sleep(tokio::time::Duration::from_secs(RETRY_INTERVAL_SECONDS))
+                        .await;
+                    continue;
+                }
+            };
+
+            match response.status() {
+                reqwest::StatusCode::OK => {
+                    // GitHub tokens don't expire
+                    return Ok(None);
+                }
+                reqwest::StatusCode::UNAUTHORIZED => {
+                    return Err(TokenValidationError::InvalidOrRevoked);
+                }
+                reqwest::StatusCode::FORBIDDEN => {
+                    // Check if rate limited
+                    let rate_limit_remaining = response
+                        .headers()
+                        .get("x-ratelimit-remaining")
+                        .and_then(|v| v.to_str().ok())
+                        .and_then(|v| v.parse::<i32>().ok())
+                        .unwrap_or(1);
+
+                    if rate_limit_remaining == 0 {
+                        if attempt <= max_retries {
+                            // Get reset time and wait
+                            if let Some(reset_str) = response
+                                .headers()
+                                .get("x-ratelimit-reset")
+                                .and_then(|v| v.to_str().ok())
+                                && let Ok(reset_time) = reset_str.parse::<i64>()
+                            {
+                                let now = chrono::Utc::now().timestamp();
+                                let wait_seconds = (reset_time - now).clamp(0, 5);
+                                tokio::time::sleep(tokio::time::Duration::from_secs(
+                                    wait_seconds as u64,
+                                ))
+                                .await;
+                                continue;
+                            }
+                        }
+                        return Err(TokenValidationError::temporary("rate limited by GitHub"));
+                    } else {
+                        return Err(TokenValidationError::temporary(
+                            "access forbidden during validation",
+                        ));
+                    }
+                }
+                status => {
+                    if status.is_server_error() && attempt <= max_retries {
+                        tokio::time::sleep(tokio::time::Duration::from_secs(
+                            RETRY_INTERVAL_SECONDS,
+                        ))
+                        .await;
+                        continue;
+                    }
+                    return Err(TokenValidationError::temporary(format!(
+                        "unexpected validation status: {status}"
+                    )));
+                }
+            }
+        }
+    }
 }
 
 pub struct GoogleOAuthProvider {
@@ -248,6 +374,92 @@ impl GoogleOAuthProvider {
             client_id,
             client_secret,
         })
+    }
+
+    async fn try_refresh_access_token(
+        &self,
+        refresh_token: &str,
+    ) -> Result<ProviderTokenDetails, TokenValidationError> {
+        let response = match self
+            .client
+            .post("https://oauth2.googleapis.com/token")
+            .form(&[
+                ("client_id", self.client_id.as_str()),
+                ("client_secret", self.client_secret.expose_secret()),
+                ("refresh_token", refresh_token),
+                ("grant_type", "refresh_token"),
+            ])
+            .send()
+            .await
+        {
+            Ok(resp) => resp,
+            Err(err) => {
+                return Err(TokenValidationError::temporary(format!(
+                    "refresh request failed: {err}"
+                )));
+            }
+        };
+
+        match response.status() {
+            reqwest::StatusCode::OK => {
+                #[derive(Debug, Deserialize)]
+                struct RefreshResponse {
+                    access_token: String,
+                    expires_in: i64,
+                    #[serde(default)]
+                    refresh_token: Option<String>,
+                }
+
+                let refresh_data: RefreshResponse = response
+                    .json()
+                    .await
+                    .map_err(|err| TokenValidationError::temporary(format!("{err}")))?;
+                let expires_at = chrono::Utc::now().timestamp() + refresh_data.expires_in;
+
+                let new_refresh_token = refresh_data
+                    .refresh_token
+                    .unwrap_or_else(|| refresh_token.to_string());
+
+                Ok(ProviderTokenDetails {
+                    provider: self.name().to_string(),
+                    access_token: refresh_data.access_token,
+                    refresh_token: Some(new_refresh_token),
+                    expires_at: Some(expires_at),
+                })
+            }
+            reqwest::StatusCode::BAD_REQUEST => Err(TokenValidationError::InvalidOrRevoked),
+            status if status.is_server_error() => Err(TokenValidationError::temporary(format!(
+                "token refresh server error: {status}"
+            ))),
+            status => Err(TokenValidationError::temporary(format!(
+                "unexpected token refresh status: {status}"
+            ))),
+        }
+    }
+
+    async fn refresh_token(
+        &self,
+        refresh_token: &str,
+        max_retries: u32,
+    ) -> Result<ProviderTokenDetails, TokenValidationError> {
+        let mut attempt = 0;
+        loop {
+            attempt += 1;
+
+            match self.try_refresh_access_token(refresh_token).await {
+                Ok(new_token_details) => return Ok(new_token_details),
+                Err(TokenValidationError::InvalidOrRevoked) => {
+                    return Err(TokenValidationError::InvalidOrRevoked);
+                }
+                Err(TokenValidationError::Temporary(err)) => {
+                    if attempt >= max_retries {
+                        return Err(TokenValidationError::Temporary(err));
+                    }
+                    tokio::time::sleep(tokio::time::Duration::from_secs(RETRY_INTERVAL_SECONDS))
+                        .await;
+                }
+            }
+        }
     }
 }
 
@@ -385,5 +597,96 @@ impl AuthorizationProvider for GoogleOAuthProvider {
             name,
             avatar_url: profile.picture,
         })
+    }
+
+    async fn validate_token(
+        &self,
+        token_details: &ProviderTokenDetails,
+        max_retries: u32,
+    ) -> Result<Option<ProviderTokenDetails>, TokenValidationError> {
+        let mut attempt = 0;
+        let access_token = SecretString::new(token_details.access_token.clone().into_boxed_str());
+
+        loop {
+            attempt += 1;
+
+            if let Some(expires_at) = token_details.expires_at
+                && let now = chrono::Utc::now().timestamp()
+                && now >= expires_at - TOKEN_EXPIRATION_LEEWAY_SECONDS
+            {
+                let Some(refresh_token) = &token_details.refresh_token else {
+                    return Err(TokenValidationError::InvalidOrRevoked);
+                };
+
+                info!("Token expired, attempting refresh for Google OAuth");
+                return self
+                    .refresh_token(refresh_token, max_retries)
+                    .await
+                    .map(Some);
+            }
+
+            let response = match self
+                .client
+                .get("https://www.googleapis.com/oauth2/v2/tokeninfo")
+                .query(&[("access_token", access_token.expose_secret())])
+                .send()
+                .await
+            {
+                Ok(resp) => resp,
+                Err(err) => {
+                    if attempt >= max_retries {
+                        return Err(TokenValidationError::temporary(format!(
+                            "tokeninfo request failed: {err}"
+                        )));
+                    }
+                    tokio::time::sleep(tokio::time::Duration::from_secs(RETRY_INTERVAL_SECONDS))
+                        .await;
+                    continue;
+                }
+            };
+
+            match response.status() {
+                reqwest::StatusCode::OK => {
+                    return Ok(None);
+                }
+                reqwest::StatusCode::BAD_REQUEST => {
+                    let Some(refresh_token) = &token_details.refresh_token else {
+                        return Err(TokenValidationError::InvalidOrRevoked);
+                    };
+                    info!("Token expired during validation, attempting refresh");
+                    return self
+                        .refresh_token(refresh_token, max_retries)
+                        .await
+                        .map(Some);
+                }
+                reqwest::StatusCode::TOO_MANY_REQUESTS => {
+                    if attempt >= max_retries {
+                        return Err(TokenValidationError::temporary(
+                            "rate limited by Google".to_string(),
+                        ));
+                    }
+                    tokio::time::sleep(tokio::time::Duration::from_secs(RETRY_INTERVAL_SECONDS))
+                        .await;
+                }
+                status if status.is_server_error() => {
+                    if attempt >= max_retries {
+                        return Err(TokenValidationError::temporary(format!(
+                            "google tokeninfo server error: {status}"
+                        )));
+                    }
+                    tokio::time::sleep(tokio::time::Duration::from_secs(RETRY_INTERVAL_SECONDS))
+                        .await;
+                }
+                status => {
+                    if attempt >= max_retries {
+                        return Err(TokenValidationError::temporary(format!(
+                            "unexpected tokeninfo status: {status}"
+                        )));
+                    }
+                    tokio::time::sleep(tokio::time::Duration::from_secs(RETRY_INTERVAL_SECONDS))
+                        .await;
+                }
+            }
+        }
     }
 }
