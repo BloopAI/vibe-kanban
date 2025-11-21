@@ -8,6 +8,7 @@ use std::{
 use async_trait::async_trait;
 use command_group::AsyncCommandGroup;
 use futures::StreamExt;
+use regex::Regex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tokio::{
@@ -234,19 +235,24 @@ impl Copilot {
         Ok(run_log_dir)
     }
 
-    // Scan the log directory for a file named `<UUID>.log` and extract the UUID as session ID.
+    // Scan the log directory for a file named `<UUID>.log` or `session-<UUID>.log` and extract the UUID as session ID.
     async fn watch_session_id(log_dir_path: PathBuf) -> Result<String, String> {
         let mut ticker = interval(Duration::from_millis(200));
+        let re =
+            Regex::new(r"^(?:session-)?([0-9a-fA-F-]{36})\.log$").map_err(|e| e.to_string())?;
 
         timeout(Duration::from_secs(600), async {
             loop {
                 if let Ok(mut rd) = fs::read_dir(&log_dir_path).await {
                     while let Ok(Some(e)) = rd.next_entry().await {
-                        if let Some(name) =
-                            e.file_name().to_str().and_then(|n| n.strip_suffix(".log"))
-                            && Uuid::parse_str(name).is_ok()
+                        if let Some(file_name) = e.file_name().to_str()
+                            && let Some(caps) = re.captures(file_name)
+                            && let Some(matched) = caps.get(1)
                         {
-                            return name.to_string();
+                            let uuid_str = matched.as_str();
+                            if Uuid::parse_str(uuid_str).is_ok() {
+                                return uuid_str.to_string();
+                            }
                         }
                     }
                 }
@@ -254,7 +260,7 @@ impl Copilot {
             }
         })
         .await
-        .map_err(|_| format!("No <uuid>.log found in {log_dir_path:?}"))
+        .map_err(|_| format!("No [session-]<uuid>.log found in {log_dir_path:?}"))
     }
 
     const SESSION_PREFIX: &'static str = "[copilot-session] ";
