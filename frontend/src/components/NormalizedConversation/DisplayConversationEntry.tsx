@@ -34,6 +34,7 @@ import PendingApprovalEntry from './PendingApprovalEntry';
 import { NextActionCard } from './NextActionCard';
 import { cn } from '@/lib/utils';
 import { useRetryUi } from '@/contexts/RetryUiContext';
+import { useUserSystem } from '@/components/ConfigProvider';
 
 type Props = {
   entry: NormalizedEntry | ProcessStartPayload;
@@ -217,9 +218,8 @@ const MessageCard: React.FC<{
 
   return (
     <div
-      className={`${frameBase} ${
-        variant === 'system' ? systemTheme : errorTheme
-      }`}
+      className={`${frameBase} ${variant === 'system' ? systemTheme : errorTheme
+        }`}
       onClick={onToggle}
     >
       <div className="flex items-center gap-1.5">
@@ -255,9 +255,8 @@ const ExpandChevron: React.FC<{
   return (
     <ChevronDown
       onClick={onClick}
-      className={`h-4 w-4 cursor-pointer transition-transform ${color} ${
-        expanded ? '' : '-rotate-90'
-      }`}
+      className={`h-4 w-4 cursor-pointer transition-transform ${color} ${expanded ? '' : '-rotate-90'
+        }`}
     />
   );
 };
@@ -362,62 +361,62 @@ const PlanPresentationCard: React.FC<{
   defaultExpanded = false,
   statusAppearance = 'default',
 }) => {
-  const { t } = useTranslation('common');
-  const [expanded, toggle] = useExpandable(
-    `plan-entry:${expansionKey}`,
-    defaultExpanded
-  );
-  const tone = PLAN_APPEARANCE[statusAppearance];
+    const { t } = useTranslation('common');
+    const [expanded, toggle] = useExpandable(
+      `plan-entry:${expansionKey}`,
+      defaultExpanded
+    );
+    const tone = PLAN_APPEARANCE[statusAppearance];
 
-  return (
-    <div className="inline-block w-full">
-      <div
-        className={cn('border w-full overflow-hidden rounded-sm', tone.border)}
-      >
-        <button
-          onClick={(e: React.MouseEvent) => {
-            e.preventDefault();
-            toggle();
-          }}
-          title={
-            expanded
-              ? t('conversation.planToggle.hide')
-              : t('conversation.planToggle.show')
-          }
-          className={cn(
-            'w-full px-2 py-1.5 flex items-center gap-1.5 text-left border-b',
-            tone.headerBg,
-            tone.headerText,
-            tone.border
-          )}
+    return (
+      <div className="inline-block w-full">
+        <div
+          className={cn('border w-full overflow-hidden rounded-sm', tone.border)}
         >
-          <span className=" min-w-0 truncate">
-            <span className="font-semibold">{t('conversation.plan')}</span>
-          </span>
-          <div className="ml-auto flex items-center gap-2">
-            <ExpandChevron
-              expanded={expanded}
-              onClick={toggle}
-              variant={statusAppearance === 'denied' ? 'error' : 'system'}
-            />
-          </div>
-        </button>
-
-        {expanded && (
-          <div className={cn('px-3 py-2', tone.contentBg)}>
-            <div className={cn('text-sm', tone.contentText)}>
-              <MarkdownRenderer
-                content={plan}
-                className="whitespace-pre-wrap break-words"
-                enableCopyButton
+          <button
+            onClick={(e: React.MouseEvent) => {
+              e.preventDefault();
+              toggle();
+            }}
+            title={
+              expanded
+                ? t('conversation.planToggle.hide')
+                : t('conversation.planToggle.show')
+            }
+            className={cn(
+              'w-full px-2 py-1.5 flex items-center gap-1.5 text-left border-b',
+              tone.headerBg,
+              tone.headerText,
+              tone.border
+            )}
+          >
+            <span className=" min-w-0 truncate">
+              <span className="font-semibold">{t('conversation.plan')}</span>
+            </span>
+            <div className="ml-auto flex items-center gap-2">
+              <ExpandChevron
+                expanded={expanded}
+                onClick={toggle}
+                variant={statusAppearance === 'denied' ? 'error' : 'system'}
               />
             </div>
-          </div>
-        )}
+          </button>
+
+          {expanded && (
+            <div className={cn('px-3 py-2', tone.contentBg)}>
+              <div className={cn('text-sm', tone.contentText)}>
+                <MarkdownRenderer
+                  content={plan}
+                  className="whitespace-pre-wrap break-words"
+                  enableCopyButton
+                />
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
 const ToolCallCard: React.FC<{
   entry: NormalizedEntry | ProcessStartPayload;
@@ -479,14 +478,14 @@ const ToolCallCard: React.FC<{
     : 'div';
   const headerProps = hasExpandableDetails
     ? {
-        onClick: (e: React.MouseEvent) => {
-          e.preventDefault();
-          toggle();
-        },
-        title: effectiveExpanded
-          ? t('conversation.toolDetailsToggle.hide')
-          : t('conversation.toolDetailsToggle.show'),
-      }
+      onClick: (e: React.MouseEvent) => {
+        e.preventDefault();
+        toggle();
+      },
+      title: effectiveExpanded
+        ? t('conversation.toolDetailsToggle.hide')
+        : t('conversation.toolDetailsToggle.show'),
+    }
     : {};
 
   const headerClassName = cn(
@@ -802,6 +801,11 @@ function DisplayConversationEntry({
           entry.content
         ) : (
           ''
+        )}
+        {showTimestamps && entry.timestamp && (
+          <div className="text-xs text-muted-foreground self-end mt-1">
+            {formatTimestamp(entry.timestamp)}
+          </div>
         )}
       </div>
     </div>

@@ -289,6 +289,28 @@ export function GeneralSettings() {
               {t('settings.general.appearance.language.helper')}
             </p>
           </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="show-chat-timestamps"
+              checked={draft?.show_chat_timestamps ?? false}
+              onCheckedChange={(checked: boolean) =>
+                updateDraft({ show_chat_timestamps: checked })
+              }
+            />
+            <div className="space-y-0.5">
+              <Label htmlFor="show-chat-timestamps" className="cursor-pointer">
+                {t('settings.general.appearance.timestamps.label', {
+                  defaultValue: 'Show Chat Timestamps',
+                })}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t('settings.general.appearance.timestamps.helper', {
+                  defaultValue: 'Display timestamps for chat messages',
+                })}
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -492,58 +514,58 @@ export function GeneralSettings() {
           {(draft?.editor.editor_type === EditorType.VS_CODE ||
             draft?.editor.editor_type === EditorType.CURSOR ||
             draft?.editor.editor_type === EditorType.WINDSURF) && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="remote-ssh-host">
-                  {t('settings.general.editor.remoteSsh.host.label')}
-                </Label>
-                <Input
-                  id="remote-ssh-host"
-                  placeholder={t(
-                    'settings.general.editor.remoteSsh.host.placeholder'
-                  )}
-                  value={draft?.editor.remote_ssh_host || ''}
-                  onChange={(e) =>
-                    updateDraft({
-                      editor: {
-                        ...draft!.editor,
-                        remote_ssh_host: e.target.value || null,
-                      },
-                    })
-                  }
-                />
-                <p className="text-sm text-muted-foreground">
-                  {t('settings.general.editor.remoteSsh.host.helper')}
-                </p>
-              </div>
-
-              {draft?.editor.remote_ssh_host && (
+              <>
                 <div className="space-y-2">
-                  <Label htmlFor="remote-ssh-user">
-                    {t('settings.general.editor.remoteSsh.user.label')}
+                  <Label htmlFor="remote-ssh-host">
+                    {t('settings.general.editor.remoteSsh.host.label')}
                   </Label>
                   <Input
-                    id="remote-ssh-user"
+                    id="remote-ssh-host"
                     placeholder={t(
-                      'settings.general.editor.remoteSsh.user.placeholder'
+                      'settings.general.editor.remoteSsh.host.placeholder'
                     )}
-                    value={draft?.editor.remote_ssh_user || ''}
+                    value={draft?.editor.remote_ssh_host || ''}
                     onChange={(e) =>
                       updateDraft({
                         editor: {
                           ...draft!.editor,
-                          remote_ssh_user: e.target.value || null,
+                          remote_ssh_host: e.target.value || null,
                         },
                       })
                     }
                   />
                   <p className="text-sm text-muted-foreground">
-                    {t('settings.general.editor.remoteSsh.user.helper')}
+                    {t('settings.general.editor.remoteSsh.host.helper')}
                   </p>
                 </div>
-              )}
-            </>
-          )}
+
+                {draft?.editor.remote_ssh_host && (
+                  <div className="space-y-2">
+                    <Label htmlFor="remote-ssh-user">
+                      {t('settings.general.editor.remoteSsh.user.label')}
+                    </Label>
+                    <Input
+                      id="remote-ssh-user"
+                      placeholder={t(
+                        'settings.general.editor.remoteSsh.user.placeholder'
+                      )}
+                      value={draft?.editor.remote_ssh_user || ''}
+                      onChange={(e) =>
+                        updateDraft({
+                          editor: {
+                            ...draft!.editor,
+                            remote_ssh_user: e.target.value || null,
+                          },
+                        })
+                      }
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      {t('settings.general.editor.remoteSsh.user.helper')}
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
         </CardContent>
       </Card>
 
