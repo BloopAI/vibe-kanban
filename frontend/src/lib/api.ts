@@ -73,6 +73,7 @@ import {
   OpenEditorResponse,
   OpenEditorRequest,
   CreatePrError,
+  UpdateScratch,
   PushError,
 } from 'shared/types';
 
@@ -1051,4 +1052,17 @@ export const organizationsApi = {
     });
     return handleApiResponse<void>(response);
   },
+};
+
+// Scratch API
+export const scratchApi = {
+  update: async (id: string, data: UpdateScratch): Promise<void> => {
+    const response = await makeRequest(`/api/scratch/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  getStreamUrl: (id: string): string => `/api/scratch/${id}/stream/ws`,
 };

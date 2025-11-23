@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
+import { scratchApi } from '@/lib/api';
 import type { Scratch, UpdateScratch } from 'shared/types';
 
 type ScratchState = {
@@ -19,7 +20,7 @@ export interface UseScratchResult {
  * Server sends initial snapshot at /scratch with single entry, then live updates at /scratch/{id}.
  */
 export const useScratch = (id: string): UseScratchResult => {
-  const endpoint = `/api/scratch/${id}/stream/ws`;
+  const endpoint = scratchApi.getStreamUrl(id);
 
   const initialData = useCallback((): ScratchState => ({ scratch: {} }), []);
 
@@ -38,15 +39,7 @@ export const useScratch = (id: string): UseScratchResult => {
 
   const updateScratch = useCallback(
     async (update: UpdateScratch) => {
-      const response = await fetch(`/api/scratch/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(update),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Save failed: ${response.statusText}`);
-      }
+      await scratchApi.update(id, update);
     },
     [id]
   );
