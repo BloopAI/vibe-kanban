@@ -337,6 +337,30 @@ impl GitCli {
         }
     }
 
+    /// Check if a branch exists on the remote using git ls-remote.
+    /// This directly queries the remote without fetching.
+    pub fn check_remote_branch_exists(
+        &self,
+        repo_path: &Path,
+        remote_url: &str,
+        branch_name: &str,
+    ) -> Result<bool, GitCliError> {
+        let envs = vec![(OsString::from("GIT_TERMINAL_PROMPT"), OsString::from("0"))];
+
+        let args = [
+            OsString::from("ls-remote"),
+            OsString::from("--heads"),
+            OsString::from(remote_url),
+            OsString::from(format!("refs/heads/{branch_name}")),
+        ];
+
+        match self.git_with_env(repo_path, args, &envs) {
+            Ok(output) => Ok(!output.trim().is_empty()),
+            Err(GitCliError::CommandFailed(msg)) => Err(self.classify_cli_error(msg)),
+            Err(err) => Err(err),
+        }
+    }
+
     // Parse `git diff --name-status` output into structured entries.
     // Handles rename/copy scores like `R100` by matching the first letter.
     fn parse_name_status(output: &str) -> Vec<StatusDiffEntry> {

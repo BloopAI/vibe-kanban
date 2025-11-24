@@ -1411,33 +1411,23 @@ impl GitService {
         }
     }
 
-    fn check_remote_branch_exists(
-        &self,
-        repo_path: &Path,
-        branch_name: &str,
-    ) -> Result<bool, GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-
-        if repo.find_branch(branch_name, BranchType::Remote).is_ok() {
-            return Ok(true);
-        }
-
-        let default_remote = self.default_remote_name(&repo);
-        let with_remote = format!("{default_remote}/{branch_name}");
-        Ok(repo.find_branch(&with_remote, BranchType::Remote).is_ok())
-    }
-
-    pub fn fetch_and_check_branch_exists(
+    pub fn check_remote_branch_exists(
         &self,
         repo_path: &Path,
         branch_name: &str,
     ) -> Result<bool, GitServiceError> {
         let repo = self.open_repo(repo_path)?;
         let default_remote_name = self.default_remote_name(&repo);
-        if let Ok(remote) = repo.find_remote(&default_remote_name) {
-            self.fetch_all_from_remote(&repo, &remote)?;
-        }
-        self.check_remote_branch_exists(repo_path, branch_name)
+        let remote = repo.find_remote(&default_remote_name)?;
+
+        let remote_url = remote
+            .url()
+            .ok_or_else(|| GitServiceError::InvalidRepository("Remote has no URL".to_string()))?;
+
+        let git_cli = GitCli::new();
+        git_cli
+            .check_remote_branch_exists(repo_path, remote_url, branch_name)
+            .map_err(|e| e.into())
     }
 
     pub fn rename_local_branch(

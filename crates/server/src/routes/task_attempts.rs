@@ -649,7 +649,7 @@ pub async fn create_github_pr(
 
     match deployment
         .git()
-        .fetch_and_check_branch_exists(&project.git_repo_path, &target_branch)
+        .check_remote_branch_exists(&project.git_repo_path, &target_branch)
     {
         Ok(false) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
