@@ -279,7 +279,7 @@ fn push_reports_non_fast_forward() {
     let remote_url_string = remote.url().expect("origin url").to_string();
 
     let git_cli = GitCli::new();
-    let result = git_cli.push(&local_path, &remote_url_string, "main");
+    let result = git_cli.push(&local_path, &remote_url_string, "main", false);
     match result {
         Err(GitCliError::PushRejected(msg)) => {
             let lower = msg.to_ascii_lowercase();
@@ -377,7 +377,7 @@ fn push_and_fetch_roundtrip_updates_tracking_branch() {
 
     let git_cli = GitCli::new();
     git_cli
-        .push(&producer_path, &remote_url_string, "main")
+        .push(&producer_path, &remote_url_string, "main", false)
         .expect("push succeeded");
 
     let new_oid = producer_repo
