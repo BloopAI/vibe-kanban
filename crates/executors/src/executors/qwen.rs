@@ -80,11 +80,10 @@ impl StandardCodingAgentExecutor for QwenCode {
             .map(|home| home.join(".qwen").join("installation_id").exists())
             .unwrap_or(false);
 
-        let config_files_found = mcp_config_found || installation_indicator_found;
-
-        crate::executors::AvailabilityInfo {
-            config_files_found,
-            auth_last_edited: None,
+        if mcp_config_found || installation_indicator_found {
+            crate::executors::AvailabilityInfo::InstallationFound
+        } else {
+            crate::executors::AvailabilityInfo::NotFound
         }
     }
 }

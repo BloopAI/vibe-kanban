@@ -474,7 +474,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
     fn get_availability_info(&self) -> crate::executors::AvailabilityInfo {
         let binary_found = resolve_executable_path_blocking(Self::base_command()).is_some();
         if !binary_found {
-            return crate::executors::AvailabilityInfo::default();
+            return crate::executors::AvailabilityInfo::NotFound;
         }
 
         let config_files_found = self
@@ -482,9 +482,10 @@ impl StandardCodingAgentExecutor for CursorAgent {
             .map(|p| p.exists())
             .unwrap_or(false);
 
-        crate::executors::AvailabilityInfo {
-            config_files_found,
-            auth_last_edited: None,
+        if config_files_found {
+            crate::executors::AvailabilityInfo::InstallationFound
+        } else {
+            crate::executors::AvailabilityInfo::NotFound
         }
     }
 }

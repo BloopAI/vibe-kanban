@@ -4,7 +4,7 @@ import { configApi } from '../lib/api';
 
 export type AgentAvailabilityState =
   | { status: 'checking' }
-  | { status: 'login_detected'; lastModified: number }
+  | { status: 'login_detected' }
   | { status: 'installation_found' }
   | { status: 'not_found' }
   | null;
@@ -26,15 +26,17 @@ export function useAgentAvailability(
       try {
         const info = await configApi.checkAgentAvailability(agent);
 
-        if (info.auth_last_edited !== null) {
-          setAvailability({
-            status: 'login_detected',
-            lastModified: Number(info.auth_last_edited),
-          });
-        } else if (info.config_files_found) {
-          setAvailability({ status: 'installation_found' });
-        } else {
-          setAvailability({ status: 'not_found' });
+        // Map backend enum to frontend state
+        switch (info.type) {
+          case 'LOGIN_DETECTED':
+            setAvailability({ status: 'login_detected' });
+            break;
+          case 'INSTALLATION_FOUND':
+            setAvailability({ status: 'installation_found' });
+            break;
+          case 'NOT_FOUND':
+            setAvailability({ status: 'not_found' });
+            break;
         }
       } catch (error) {
         console.error('Failed to check agent availability:', error);

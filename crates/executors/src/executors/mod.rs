@@ -164,16 +164,21 @@ impl CodingAgent {
     }
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")]
 #[ts(export)]
-pub struct AvailabilityInfo {
-    pub config_files_found: bool,
-    pub auth_last_edited: Option<i64>,
+pub enum AvailabilityInfo {
+    LoginDetected { last_auth_timestamp: i64 },
+    InstallationFound,
+    NotFound,
 }
 
 impl AvailabilityInfo {
     pub fn is_available(&self) -> bool {
-        self.config_files_found || self.auth_last_edited.is_some()
+        matches!(
+            self,
+            AvailabilityInfo::LoginDetected { .. } | AvailabilityInfo::InstallationFound
+        )
     }
 }
 
@@ -204,9 +209,10 @@ pub trait StandardCodingAgentExecutor {
             .map(|path| path.exists())
             .unwrap_or(false);
 
-        AvailabilityInfo {
-            config_files_found,
-            auth_last_edited: None,
+        if config_files_found {
+            AvailabilityInfo::InstallationFound
+        } else {
+            AvailabilityInfo::NotFound
         }
     }
 }

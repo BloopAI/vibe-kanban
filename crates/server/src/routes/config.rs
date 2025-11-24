@@ -480,7 +480,7 @@ async fn check_agent_availability(
 
     let info = match profiles.get_coding_agent(&profile_id) {
         Some(agent) => agent.get_availability_info(),
-        None => AvailabilityInfo::default(),
+        None => AvailabilityInfo::NotFound,
     };
 
     ResponseJson(ApiResponse::success(info))

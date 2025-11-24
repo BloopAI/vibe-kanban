@@ -166,6 +166,19 @@ impl StandardCodingAgentExecutor for Codex {
     }
 
     fn get_availability_info(&self) -> crate::executors::AvailabilityInfo {
+        // Check for auth file with timestamp
+        if let Some(timestamp) = dirs::home_dir()
+            .and_then(|home| std::fs::metadata(home.join(".codex").join("auth.json")).ok())
+            .and_then(|m| m.modified().ok())
+            .and_then(|modified| modified.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_secs() as i64)
+        {
+            return crate::executors::AvailabilityInfo::LoginDetected {
+                last_auth_timestamp: timestamp,
+            };
+        }
+
+        // Check for installation indicators
         let mcp_config_found = self
             .default_mcp_config_path()
             .map(|p| p.exists())
@@ -175,17 +188,10 @@ impl StandardCodingAgentExecutor for Codex {
             .map(|home| home.join(".codex").join("version.json").exists())
             .unwrap_or(false);
 
-        let config_files_found = mcp_config_found || installation_indicator_found;
-
-        let auth_last_edited = dirs::home_dir()
-            .and_then(|home| std::fs::metadata(home.join(".codex").join("auth.json")).ok())
-            .and_then(|m| m.modified().ok())
-            .and_then(|modified| modified.duration_since(std::time::UNIX_EPOCH).ok())
-            .map(|d| d.as_secs() as i64);
-
-        crate::executors::AvailabilityInfo {
-            config_files_found,
-            auth_last_edited,
+        if mcp_config_found || installation_indicator_found {
+            crate::executors::AvailabilityInfo::InstallationFound
+        } else {
+            crate::executors::AvailabilityInfo::NotFound
         }
     }
 }

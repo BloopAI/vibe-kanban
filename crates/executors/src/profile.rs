@@ -429,11 +429,42 @@ impl ExecutorConfigs {
             return Err(ProfileError::NoAvailableExecutorProfile);
         }
 
-        agents_with_info.sort_by(|a, b| match (a.1.auth_last_edited, b.1.auth_last_edited) {
-            (Some(time_a), Some(time_b)) => time_b.cmp(&time_a),
-            (Some(_), None) => std::cmp::Ordering::Less,
-            (None, Some(_)) => std::cmp::Ordering::Greater,
-            (None, None) => std::cmp::Ordering::Equal,
+        agents_with_info.sort_by(|a, b| {
+            use crate::executors::AvailabilityInfo;
+            match (&a.1, &b.1) {
+                // Both have login detected - compare timestamps (most recent first)
+                (
+                    AvailabilityInfo::LoginDetected {
+                        last_auth_timestamp: time_a,
+                    },
+                    AvailabilityInfo::LoginDetected {
+                        last_auth_timestamp: time_b,
+                    },
+                ) => time_b.cmp(time_a),
+                // LoginDetected > InstallationFound
+                (AvailabilityInfo::LoginDetected { .. }, AvailabilityInfo::InstallationFound) => {
+                    std::cmp::Ordering::Less
+                }
+                (AvailabilityInfo::InstallationFound, AvailabilityInfo::LoginDetected { .. }) => {
+                    std::cmp::Ordering::Greater
+                }
+                // LoginDetected > NotFound
+                (AvailabilityInfo::LoginDetected { .. }, AvailabilityInfo::NotFound) => {
+                    std::cmp::Ordering::Less
+                }
+                (AvailabilityInfo::NotFound, AvailabilityInfo::LoginDetected { .. }) => {
+                    std::cmp::Ordering::Greater
+                }
+                // InstallationFound > NotFound
+                (AvailabilityInfo::InstallationFound, AvailabilityInfo::NotFound) => {
+                    std::cmp::Ordering::Less
+                }
+                (AvailabilityInfo::NotFound, AvailabilityInfo::InstallationFound) => {
+                    std::cmp::Ordering::Greater
+                }
+                // Same state - equal
+                _ => std::cmp::Ordering::Equal,
+            }
         });
 
         let selected = agents_with_info[0].0;
