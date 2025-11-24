@@ -310,6 +310,24 @@ impl StandardCodingAgentExecutor for Opencode {
             dirs::config_dir().map(|config| config.join("opencode").join("opencode.json"))
         }
     }
+
+    fn get_availability_info(&self) -> crate::executors::AvailabilityInfo {
+        let mcp_config_found = self
+            .default_mcp_config_path()
+            .map(|p| p.exists())
+            .unwrap_or(false);
+
+        let installation_indicator_found = dirs::config_dir()
+            .map(|config| config.join("opencode").exists())
+            .unwrap_or(false);
+
+        let config_files_found = mcp_config_found || installation_indicator_found;
+
+        crate::executors::AvailabilityInfo {
+            config_files_found,
+            auth_last_edited: None,
+        }
+    }
 }
 impl Opencode {
     const SHARE_PREFIX: &'static str = "[oc-share] ";

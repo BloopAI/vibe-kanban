@@ -477,13 +477,13 @@ impl StandardCodingAgentExecutor for CursorAgent {
             return crate::executors::AvailabilityInfo::default();
         }
 
-        let mcp_config_found = self
+        let config_files_found = self
             .default_mcp_config_path()
             .map(|p| p.exists())
             .unwrap_or(false);
 
         crate::executors::AvailabilityInfo {
-            mcp_config_found,
+            config_files_found,
             auth_last_edited: None,
         }
     }

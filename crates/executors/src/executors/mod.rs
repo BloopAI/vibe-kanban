@@ -167,13 +167,13 @@ impl CodingAgent {
 #[derive(Debug, Clone, Default, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct AvailabilityInfo {
-    pub mcp_config_found: bool,
+    pub config_files_found: bool,
     pub auth_last_edited: Option<i64>,
 }
 
 impl AvailabilityInfo {
     pub fn is_available(&self) -> bool {
-        self.mcp_config_found || self.auth_last_edited.is_some()
+        self.config_files_found || self.auth_last_edited.is_some()
     }
 }
 
@@ -194,31 +194,19 @@ pub trait StandardCodingAgentExecutor {
     // MCP configuration methods
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf>;
 
-    // Auth configuration methods
-    fn default_auth_file_path(&self) -> Option<std::path::PathBuf> {
-        None
-    }
-
     async fn get_setup_helper_action(&self) -> Result<ExecutorAction, ExecutorError> {
         Err(ExecutorError::SetupHelperNotSupported)
     }
 
     fn get_availability_info(&self) -> AvailabilityInfo {
-        let mcp_config_found = self
+        let config_files_found = self
             .default_mcp_config_path()
             .map(|path| path.exists())
             .unwrap_or(false);
 
-        let auth_last_edited = self
-            .default_auth_file_path()
-            .and_then(|path| std::fs::metadata(&path).ok())
-            .and_then(|m| m.modified().ok())
-            .and_then(|modified| modified.duration_since(std::time::UNIX_EPOCH).ok())
-            .map(|d| d.as_secs() as i64);
-
         AvailabilityInfo {
-            mcp_config_found,
-            auth_last_edited,
+            config_files_found,
+            auth_last_edited: None,
         }
     }
 }

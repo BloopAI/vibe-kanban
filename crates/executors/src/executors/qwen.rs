@@ -69,4 +69,22 @@ impl StandardCodingAgentExecutor for QwenCode {
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
         dirs::home_dir().map(|home| home.join(".qwen").join("settings.json"))
     }
+
+    fn get_availability_info(&self) -> crate::executors::AvailabilityInfo {
+        let mcp_config_found = self
+            .default_mcp_config_path()
+            .map(|p| p.exists())
+            .unwrap_or(false);
+
+        let installation_indicator_found = dirs::home_dir()
+            .map(|home| home.join(".qwen").join("installation_id").exists())
+            .unwrap_or(false);
+
+        let config_files_found = mcp_config_found || installation_indicator_found;
+
+        crate::executors::AvailabilityInfo {
+            config_files_found,
+            auth_last_edited: None,
+        }
+    }
 }

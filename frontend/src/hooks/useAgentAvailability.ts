@@ -31,7 +31,7 @@ export function useAgentAvailability(
             status: 'login_detected',
             lastModified: Number(info.auth_last_edited),
           });
-        } else if (info.mcp_config_found) {
+        } else if (info.config_files_found) {
           setAvailability({ status: 'installation_found' });
         } else {
           setAvailability({ status: 'not_found' });

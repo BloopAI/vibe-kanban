@@ -194,21 +194,19 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         dirs::home_dir().map(|home| home.join(".claude.json"))
     }
 
-    // Auth configuration methods
-    fn default_auth_file_path(&self) -> Option<std::path::PathBuf> {
-        dirs::home_dir().map(|home| home.join(".claude.json"))
-    }
-
     fn get_availability_info(&self) -> crate::executors::AvailabilityInfo {
-        let auth_last_edited = self
-            .default_auth_file_path()
-            .and_then(|path| std::fs::metadata(&path).ok())
+        let config_files_found = dirs::home_dir()
+            .map(|home| home.join(".claude.json").exists())
+            .unwrap_or(false);
+
+        let auth_last_edited = dirs::home_dir()
+            .and_then(|home| std::fs::metadata(home.join(".claude.json")).ok())
             .and_then(|m| m.modified().ok())
             .and_then(|modified| modified.duration_since(std::time::UNIX_EPOCH).ok())
             .map(|d| d.as_secs() as i64);
 
         crate::executors::AvailabilityInfo {
-            mcp_config_found: false, // Claude Code doesn't use separate MCP config
+            config_files_found,
             auth_last_edited,
         }
     }
