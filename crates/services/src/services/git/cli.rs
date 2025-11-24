@@ -337,7 +337,6 @@ impl GitCli {
         }
     }
 
-    /// Check if a branch exists on the remote using git ls-remote.
     /// This directly queries the remote without fetching.
     pub fn check_remote_branch_exists(
         &self,
