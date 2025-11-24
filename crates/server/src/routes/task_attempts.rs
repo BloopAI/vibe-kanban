@@ -192,8 +192,8 @@ pub async fn run_agent_setup(
         CodingAgent::CursorAgent(_) => {
             cursor_setup::run_cursor_setup(&deployment, &task_attempt).await?;
         }
-        CodingAgent::Codex(_) => {
-            codex_setup::run_codex_setup(&deployment, &task_attempt).await?;
+        CodingAgent::Codex(codex) => {
+            codex_setup::run_codex_setup(&deployment, &task_attempt, &codex).await?;
         }
         _ => return Err(ApiError::Executor(ExecutorError::SetupHelperNotSupported)),
     }

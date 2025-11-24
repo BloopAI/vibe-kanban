@@ -11,6 +11,7 @@ use executors::{
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     },
     command::CommandBuilder,
+    command::apply_overrides,
     executors::codex::Codex,
 };
 use services::services::container::ContainerService;
@@ -20,6 +21,7 @@ use crate::{error::ApiError, routes::task_attempts::ensure_worktree_path};
 pub async fn run_codex_setup(
     deployment: &crate::DeploymentImpl,
     task_attempt: &TaskAttempt,
+    codex: &Codex,
 ) -> Result<ExecutionProcess, ApiError> {
     let latest_process = ExecutionProcess::find_latest_by_task_attempt_and_run_reason(
         &deployment.db().pool,
@@ -32,11 +34,11 @@ pub async fn run_codex_setup(
         let latest_action = latest_process
             .executor_action()
             .map_err(|e| ApiError::TaskAttempt(TaskAttemptError::ValidationError(e.to_string())))?;
-        get_setup_helper_action()
+        get_setup_helper_action(codex)
             .await?
             .append_action(latest_action.to_owned())
     } else {
-        get_setup_helper_action().await?
+        get_setup_helper_action(codex).await?
     };
 
     let _ = ensure_worktree_path(deployment, task_attempt).await?;
@@ -52,8 +54,11 @@ pub async fn run_codex_setup(
     Ok(execution_process)
 }
 
-async fn get_setup_helper_action() -> Result<ExecutorAction, ApiError> {
-    let login_command = CommandBuilder::new(format!("{} login", Codex::base_command()));
+async fn get_setup_helper_action(codex: &Codex) -> Result<ExecutorAction, ApiError> {
+    let mut login_command = CommandBuilder::new(Codex::base_command());
+    login_command = login_command.extend_params(["login"]);
+    login_command = apply_overrides(login_command, &codex.cmd);
+
     let (program_path, args) = login_command
         .build_initial()
         .map_err(|err| ApiError::Executor(ExecutorError::from(err)))?
