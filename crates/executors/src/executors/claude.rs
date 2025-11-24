@@ -22,7 +22,7 @@ use crate::{
     approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuilder, CommandParts, apply_overrides},
     executors::{
-        AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
+        AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
         codex::client::LogWriter,
     },
     logs::{
@@ -194,7 +194,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         dirs::home_dir().map(|home| home.join(".claude.json"))
     }
 
-    fn get_availability_info(&self) -> crate::executors::AvailabilityInfo {
+    fn get_availability_info(&self) -> AvailabilityInfo {
         let auth_file_path = dirs::home_dir().map(|home| home.join(".claude.json"));
 
         if let Some(path) = auth_file_path
@@ -204,11 +204,11 @@ impl StandardCodingAgentExecutor for ClaudeCode {
                 .and_then(|modified| modified.duration_since(std::time::UNIX_EPOCH).ok())
                 .map(|d| d.as_secs() as i64)
         {
-            return crate::executors::AvailabilityInfo::LoginDetected {
+            return AvailabilityInfo::LoginDetected {
                 last_auth_timestamp: timestamp,
             };
         }
-        crate::executors::AvailabilityInfo::NotFound
+        AvailabilityInfo::NotFound
     }
 }
 

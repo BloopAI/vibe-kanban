@@ -22,7 +22,9 @@ use workspace_utils::{msg_store::MsgStore, path::get_vibe_kanban_temp_dir};
 
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
-    executors::{AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
+    executors::{
+        AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
+    },
     logs::{
         NormalizedEntry, NormalizedEntryType, plain_text_processor::PlainTextLogProcessor,
         stderr_processor::normalize_stderr_logs, utils::EntryIndexProvider,
@@ -197,7 +199,7 @@ impl StandardCodingAgentExecutor for Copilot {
         dirs::home_dir().map(|home| home.join(".copilot").join("mcp-config.json"))
     }
 
-    fn get_availability_info(&self) -> crate::executors::AvailabilityInfo {
+    fn get_availability_info(&self) -> AvailabilityInfo {
         let mcp_config_found = self
             .default_mcp_config_path()
             .map(|p| p.exists())
@@ -208,9 +210,9 @@ impl StandardCodingAgentExecutor for Copilot {
             .unwrap_or(false);
 
         if mcp_config_found || installation_indicator_found {
-            crate::executors::AvailabilityInfo::InstallationFound
+            AvailabilityInfo::InstallationFound
         } else {
-            crate::executors::AvailabilityInfo::NotFound
+            AvailabilityInfo::NotFound
         }
     }
 }

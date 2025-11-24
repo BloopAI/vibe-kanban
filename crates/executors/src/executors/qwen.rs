@@ -9,7 +9,7 @@ use workspace_utils::msg_store::MsgStore;
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
     executors::{
-        AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
+        AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
         gemini::AcpAgentHarness,
     },
 };
@@ -70,7 +70,7 @@ impl StandardCodingAgentExecutor for QwenCode {
         dirs::home_dir().map(|home| home.join(".qwen").join("settings.json"))
     }
 
-    fn get_availability_info(&self) -> crate::executors::AvailabilityInfo {
+    fn get_availability_info(&self) -> AvailabilityInfo {
         let mcp_config_found = self
             .default_mcp_config_path()
             .map(|p| p.exists())
@@ -81,9 +81,9 @@ impl StandardCodingAgentExecutor for QwenCode {
             .unwrap_or(false);
 
         if mcp_config_found || installation_indicator_found {
-            crate::executors::AvailabilityInfo::InstallationFound
+            AvailabilityInfo::InstallationFound
         } else {
-            crate::executors::AvailabilityInfo::NotFound
+            AvailabilityInfo::NotFound
         }
     }
 }

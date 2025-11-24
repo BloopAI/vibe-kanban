@@ -17,7 +17,9 @@ use workspace_utils::{
 
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
-    executors::{AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
+    executors::{
+        AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
+    },
     logs::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
         TodoItem, ToolStatus,
@@ -471,10 +473,10 @@ impl StandardCodingAgentExecutor for CursorAgent {
         dirs::home_dir().map(|home| home.join(".cursor").join("mcp.json"))
     }
 
-    fn get_availability_info(&self) -> crate::executors::AvailabilityInfo {
+    fn get_availability_info(&self) -> AvailabilityInfo {
         let binary_found = resolve_executable_path_blocking(Self::base_command()).is_some();
         if !binary_found {
-            return crate::executors::AvailabilityInfo::NotFound;
+            return AvailabilityInfo::NotFound;
         }
 
         let config_files_found = self
@@ -483,9 +485,9 @@ impl StandardCodingAgentExecutor for CursorAgent {
             .unwrap_or(false);
 
         if config_files_found {
-            crate::executors::AvailabilityInfo::InstallationFound
+            AvailabilityInfo::InstallationFound
         } else {
-            crate::executors::AvailabilityInfo::NotFound
+            AvailabilityInfo::NotFound
         }
     }
 }

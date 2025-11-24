@@ -33,7 +33,7 @@ use crate::{
     approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuilder, CommandParts, apply_overrides},
     executors::{
-        AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
+        AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
         codex::{jsonrpc::ExitSignalSender, normalize_logs::Error},
     },
     stdout_dup::create_stdout_pipe_writer,
@@ -165,20 +165,18 @@ impl StandardCodingAgentExecutor for Codex {
         dirs::home_dir().map(|home| home.join(".codex").join("config.toml"))
     }
 
-    fn get_availability_info(&self) -> crate::executors::AvailabilityInfo {
-        // Check for auth file with timestamp
+    fn get_availability_info(&self) -> AvailabilityInfo {
         if let Some(timestamp) = dirs::home_dir()
             .and_then(|home| std::fs::metadata(home.join(".codex").join("auth.json")).ok())
             .and_then(|m| m.modified().ok())
             .and_then(|modified| modified.duration_since(std::time::UNIX_EPOCH).ok())
             .map(|d| d.as_secs() as i64)
         {
-            return crate::executors::AvailabilityInfo::LoginDetected {
+            return AvailabilityInfo::LoginDetected {
                 last_auth_timestamp: timestamp,
             };
         }
 
-        // Check for installation indicators
         let mcp_config_found = self
             .default_mcp_config_path()
             .map(|p| p.exists())
@@ -189,9 +187,9 @@ impl StandardCodingAgentExecutor for Codex {
             .unwrap_or(false);
 
         if mcp_config_found || installation_indicator_found {
-            crate::executors::AvailabilityInfo::InstallationFound
+            AvailabilityInfo::InstallationFound
         } else {
-            crate::executors::AvailabilityInfo::NotFound
+            AvailabilityInfo::NotFound
         }
     }
 }

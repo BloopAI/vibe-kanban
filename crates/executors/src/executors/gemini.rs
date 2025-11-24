@@ -9,7 +9,9 @@ use workspace_utils::msg_store::MsgStore;
 pub use super::acp::AcpAgentHarness;
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
-    executors::{AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
+    executors::{
+        AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
+    },
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
@@ -76,20 +78,18 @@ impl StandardCodingAgentExecutor for Gemini {
         dirs::home_dir().map(|home| home.join(".gemini").join("settings.json"))
     }
 
-    fn get_availability_info(&self) -> crate::executors::AvailabilityInfo {
-        // Check for auth file with timestamp
+    fn get_availability_info(&self) -> AvailabilityInfo {
         if let Some(timestamp) = dirs::home_dir()
             .and_then(|home| std::fs::metadata(home.join(".gemini").join("oauth_creds.json")).ok())
             .and_then(|m| m.modified().ok())
             .and_then(|modified| modified.duration_since(std::time::UNIX_EPOCH).ok())
             .map(|d| d.as_secs() as i64)
         {
-            return crate::executors::AvailabilityInfo::LoginDetected {
+            return AvailabilityInfo::LoginDetected {
                 last_auth_timestamp: timestamp,
             };
         }
 
-        // Check for installation indicators
         let mcp_config_found = self
             .default_mcp_config_path()
             .map(|p| p.exists())
@@ -100,9 +100,9 @@ impl StandardCodingAgentExecutor for Gemini {
             .unwrap_or(false);
 
         if mcp_config_found || installation_indicator_found {
-            crate::executors::AvailabilityInfo::InstallationFound
+            AvailabilityInfo::InstallationFound
         } else {
-            crate::executors::AvailabilityInfo::NotFound
+            AvailabilityInfo::NotFound
         }
     }
 }

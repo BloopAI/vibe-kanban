@@ -6,7 +6,9 @@ use serde::{Deserialize, Deserializer, Serialize, de::Error as DeError};
 use thiserror::Error;
 use ts_rs::TS;
 
-use crate::executors::{BaseCodingAgent, CodingAgent, StandardCodingAgentExecutor};
+use crate::executors::{
+    AvailabilityInfo, BaseCodingAgent, CodingAgent, StandardCodingAgentExecutor,
+};
 
 /// Return the canonical form for variant keys.
 /// – "DEFAULT" is kept as-is  
@@ -412,8 +414,7 @@ impl ExecutorConfigs {
     pub async fn get_recommended_executor_profile(
         &self,
     ) -> Result<ExecutorProfileId, ProfileError> {
-        let mut agents_with_info: Vec<(BaseCodingAgent, crate::executors::AvailabilityInfo)> =
-            Vec::new();
+        let mut agents_with_info: Vec<(BaseCodingAgent, AvailabilityInfo)> = Vec::new();
 
         for &base_agent in self.executors.keys() {
             let profile_id = ExecutorProfileId::new(base_agent);
