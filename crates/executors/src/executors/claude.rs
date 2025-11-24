@@ -197,19 +197,17 @@ impl StandardCodingAgentExecutor for ClaudeCode {
     fn get_availability_info(&self) -> crate::executors::AvailabilityInfo {
         let auth_file_path = dirs::home_dir().map(|home| home.join(".claude.json"));
 
-        if let Some(path) = auth_file_path {
-            if let Some(timestamp) = std::fs::metadata(&path)
+        if let Some(path) = auth_file_path
+            && let Some(timestamp) = std::fs::metadata(&path)
                 .ok()
                 .and_then(|m| m.modified().ok())
                 .and_then(|modified| modified.duration_since(std::time::UNIX_EPOCH).ok())
                 .map(|d| d.as_secs() as i64)
-            {
-                return crate::executors::AvailabilityInfo::LoginDetected {
-                    last_auth_timestamp: timestamp,
-                };
-            }
+        {
+            return crate::executors::AvailabilityInfo::LoginDetected {
+                last_auth_timestamp: timestamp,
+            };
         }
-
         crate::executors::AvailabilityInfo::NotFound
     }
 }
