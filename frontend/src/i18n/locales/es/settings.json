@@ -230,12 +230,12 @@
       },
       "availability": {
         "checking": "Comprobando...",
-        "loginDetected": "Inicio de sesión detectado",
+        "loginDetected": "Uso reciente detectado",
         "loginDetectedTooltip": "Se encontraron credenciales de autenticación recientes para este agente",
-        "installationFound": "Instalación encontrada",
+        "installationFound": "Uso previo detectado",
         "installationFoundTooltip": "Se encontró la configuración del agente. Es posible que debas iniciar sesión para usarlo.",
         "notFound": "No encontrado",
-        "notFoundTooltip": "No se detectaron credenciales. El agente aún puede funcionar si está configurado de manera diferente."
+        "notFoundTooltip": "No se detectó uso previo. El agente puede requerir instalación y/o inicio de sesión."
       },
       "editor": {
         "formLabel": "Editar JSON",

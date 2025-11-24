@@ -230,12 +230,12 @@
       },
       "availability": {
         "checking": "Checking...",
-        "loginDetected": "Login Detected",
+        "loginDetected": "Recent Usage Detected",
         "loginDetectedTooltip": "Recent authentication credentials found for this agent",
-        "installationFound": "Installation Found",
+        "installationFound": "Previous Usage Detected",
         "installationFoundTooltip": "Agent configuration found. You may need to log in to use it.",
         "notFound": "Not Found",
-        "notFoundTooltip": "No credentials detected in the expected location. The agent may still work if configured differently."
+        "notFoundTooltip": "No previous usage detected. Agent may require installation and/or login."
       },
       "editor": {
         "formLabel": "Edit JSON",
