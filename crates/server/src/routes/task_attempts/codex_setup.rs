@@ -52,7 +52,7 @@ pub async fn run_codex_setup(
 }
 
 async fn get_setup_helper_action(codex: &Codex) -> Result<ExecutorAction, ApiError> {
-    let mut login_command = CommandBuilder::new(Codex::base_command());
+    let mut login_command = CommandBuilder::new(Codex::base_command(codex.version.as_deref()));
     login_command = login_command.extend_params(["login"]);
     login_command = apply_overrides(login_command, &codex.cmd);
 

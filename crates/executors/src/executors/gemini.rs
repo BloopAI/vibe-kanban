@@ -14,10 +14,18 @@ use crate::{
     },
 };
 
+const DEFAULT_GEMINI_VERSION: &str = "latest";
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct Gemini {
     #[serde(default)]
     pub append_prompt: AppendPrompt,
+    #[schemars(
+        title = "Version",
+        description = "Gemini CLI version to use (e.g., '0.16.0', 'latest'). Defaults to 'latest'."
+    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -28,7 +36,8 @@ pub struct Gemini {
 
 impl Gemini {
     fn build_command_builder(&self) -> CommandBuilder {
-        let mut builder = CommandBuilder::new("npx -y @google/gemini-cli@0.16.0");
+        let ver = self.version.as_deref().unwrap_or(DEFAULT_GEMINI_VERSION);
+        let mut builder = CommandBuilder::new(format!("npx -y @google/gemini-cli@{}", ver));
 
         if let Some(model) = &self.model {
             builder = builder.extend_params(["--model", model.as_str()]);
