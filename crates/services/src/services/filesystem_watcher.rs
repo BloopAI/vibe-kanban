@@ -42,24 +42,9 @@ fn canonicalize_lossy(path: &Path) -> PathBuf {
     dunce::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
 }
 
-/// Directories that should always be skipped during gitignore collection and watching.
-/// These are typically large directories with many files/symlinks that cause high memory usage.
-const ALWAYS_SKIP_DIRS: &[&str] = &[
-    "node_modules",
-    ".git",
-    "target",
-    "dist",
-    "build",
-    ".next",
-    ".nuxt",
-    ".output",
-    ".venv",
-    "venv",
-    "__pycache__",
-    ".cache",
-    ".parcel-cache",
-    ".turbo",
-];
+/// Directories that should always be skipped regardless of gitignore.
+/// .git is not in .gitignore but should never be watched.
+const ALWAYS_SKIP_DIRS: &[&str] = &[".git"];
 
 fn should_skip_dir(name: &str) -> bool {
     ALWAYS_SKIP_DIRS.contains(&name)
@@ -69,14 +54,15 @@ fn build_gitignore_set(root: &Path) -> Result<Gitignore, FilesystemWatcherError>
     let mut builder = GitignoreBuilder::new(root);
 
     // Walk once to collect all .gitignore files under root
-    // Skip directories that are known to be large and typically gitignored
+    // Use git_ignore(true) to avoid walking into gitignored directories
     WalkBuilder::new(root)
         .follow_links(false)
         .hidden(false) // we *want* to see .gitignore
+        .git_ignore(true) // Respect gitignore to skip heavy directories
         .filter_entry(|entry| {
             let is_dir = entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false);
 
-            // Skip known heavy directories entirely
+            // Skip .git directory
             if is_dir {
                 if let Some(name) = entry.file_name().to_str() {
                     if should_skip_dir(name) {
@@ -168,7 +154,7 @@ fn debounced_should_forward(event: &DebouncedEvent, gi: &Gitignore, canonical_ro
         .all(|path| path_allowed(path, gi, canonical_root))
 }
 
-/// Collect directories to watch, excluding ALWAYS_SKIP_DIRS.
+/// Collect directories to watch, respecting gitignore and excluding .git.
 /// This prevents OS-level watchers from being set up on heavy directories like node_modules.
 fn collect_watch_directories(root: &Path) -> Vec<PathBuf> {
     let mut dirs = Vec::new();
@@ -176,14 +162,14 @@ fn collect_watch_directories(root: &Path) -> Vec<PathBuf> {
     WalkBuilder::new(root)
         .follow_links(false)
         .hidden(false)
-        .git_ignore(false) // Don't use gitignore here, we handle it in event filtering
+        .git_ignore(true) // Respect gitignore to skip node_modules, target, etc.
         .filter_entry(|entry| {
             let is_dir = entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false);
             if !is_dir {
                 return false;
             }
 
-            // Skip known heavy directories
+            // Skip .git directory (not in .gitignore but should never be watched)
             if let Some(name) = entry.file_name().to_str() {
                 if should_skip_dir(name) {
                     return false;
@@ -239,13 +225,12 @@ pub fn async_watcher(root: PathBuf) -> Result<WatcherComponents, FilesystemWatch
         },
     )?;
 
-    // Collect directories to watch, excluding heavy directories like node_modules.
+    // Collect directories to watch, respecting gitignore and excluding .git.
     // Use NonRecursive mode for each directory to avoid OS-level watching of excluded dirs.
     let watch_dirs = collect_watch_directories(&canonical_root);
     tracing::debug!(
-        "Setting up file watcher for {} directories (excluding {:?})",
-        watch_dirs.len(),
-        ALWAYS_SKIP_DIRS
+        "Setting up file watcher for {} directories (respecting gitignore)",
+        watch_dirs.len()
     );
 
     for dir in watch_dirs {
