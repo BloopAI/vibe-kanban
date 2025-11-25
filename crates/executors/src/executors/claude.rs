@@ -38,7 +38,7 @@ fn base_command(claude_code_router: bool) -> &'static str {
     if claude_code_router {
         "npx -y @musistudio/claude-code-router@1.0.66 code"
     } else {
-        "npx -y @anthropic-ai/claude-code@2.0.42"
+        "npx -y @anthropic-ai/claude-code@2.0.53"
     }
 }
 
