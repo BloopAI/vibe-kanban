@@ -429,6 +429,7 @@ impl ClaudeLogProcessor {
             ClaudeJson::StreamEvent { session_id, .. } => session_id.clone(),
             ClaudeJson::Result { session_id, .. } => session_id.clone(),
             ClaudeJson::ApprovalResponse { .. } => None,
+            ClaudeJson::ExitPlanModeContent { .. } => None,
             ClaudeJson::Unknown { .. } => None,
         }
     }
@@ -1140,6 +1141,22 @@ impl ClaudeLogProcessor {
                     patches.push(ConversationPatch::add_normalized_entry(idx, entry));
                 }
             }
+            ClaudeJson::ExitPlanModeContent { plan, tool_use_id } => {
+                // Replace the ExitPlanMode tool entry with the plan content from the control request
+                if let Some(info) = self.tool_map.get(tool_use_id).cloned() {
+                    let entry = NormalizedEntry {
+                        timestamp: None,
+                        entry_type: NormalizedEntryType::ToolUse {
+                            tool_name: info.tool_name.clone(),
+                            action_type: ActionType::PlanPresentation { plan: plan.clone() },
+                            status: ToolStatus::Created,
+                        },
+                        content: plan.clone(),
+                        metadata: None,
+                    };
+                    patches.push(ConversationPatch::replace(info.entry_index, entry));
+                }
+            }
             ClaudeJson::Unknown { data } => {
                 let entry = NormalizedEntry {
                     timestamp: None,
@@ -1477,6 +1494,8 @@ pub enum ClaudeJson {
         tool_name: String,
         approval_status: ApprovalStatus,
     },
+    #[serde(rename = "exit_plan_mode_content")]
+    ExitPlanModeContent { plan: String, tool_use_id: String },
     // Catch-all for unknown message types
     #[serde(untagged)]
     Unknown {

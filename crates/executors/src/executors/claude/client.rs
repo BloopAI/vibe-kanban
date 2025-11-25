@@ -122,9 +122,24 @@ impl ClaudeAgentClient {
                 updated_input: input,
                 updated_permissions: None,
             })
-        } else if let Some(latest_tool_use_id) = tool_use_id {
-            self.handle_approval(latest_tool_use_id, tool_name, input)
-                .await
+        } else if let Some(tool_use_id) = tool_use_id {
+            // For ExitPlanMode, log the plan content from the control request for persistence.
+            // The approval system will inject the plan for live updates, but this ensures
+            // the plan is available on restart/replay.
+            if tool_name == EXIT_PLAN_MODE_NAME
+                && let Some(plan) = input.get("plan").and_then(|p| p.as_str())
+            {
+                let plan_log = serde_json::to_string(&ClaudeJson::ExitPlanModeContent {
+                    plan: plan.to_string(),
+                    tool_use_id: tool_use_id.clone(),
+                })
+                .unwrap();
+                if let Err(e) = self.log_writer.log_raw(&plan_log).await {
+                    tracing::warn!("Failed to log ExitPlanMode content: {}", e);
+                }
+            }
+
+            self.handle_approval(tool_use_id, tool_name, input).await
         } else {
             // Auto approve tools with no matching tool_use_id
             // tool_use_id is undocumented so this may not be possible

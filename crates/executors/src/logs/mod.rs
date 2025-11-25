@@ -134,10 +134,9 @@ impl NormalizedEntry {
             ref mut action_type,
             ..
         } = self.entry_type
+            && let ActionType::PlanPresentation { plan: p } = action_type
         {
-            if let ActionType::PlanPresentation { plan: p } = action_type {
-                *p = plan.clone();
-            }
+            *p = plan.clone();
         }
         self.content = plan;
         self
