@@ -16,7 +16,6 @@ pub mod port_file;
 pub mod response;
 pub mod sentry;
 pub mod shell;
-pub mod stream_ext;
 pub mod stream_lines;
 pub mod text;
 pub mod tokio;

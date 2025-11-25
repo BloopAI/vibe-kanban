@@ -532,8 +532,7 @@ impl LocalContainerService {
 
         // Merge and forward into the store
         let merged = select(out, err); // Stream<Item = Result<LogMsg, io::Error>>
-        let debounced = utils::stream_ext::debounce_logs(merged);
-        store.clone().spawn_forwarder(debounced);
+        store.clone().spawn_forwarder(merged);
 
         let mut map = self.msg_stores().write().await;
         map.insert(id, store);
