@@ -42,16 +42,51 @@ fn canonicalize_lossy(path: &Path) -> PathBuf {
     dunce::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
 }
 
+/// Directories that should always be skipped during gitignore collection and watching.
+/// These are typically large directories with many files/symlinks that cause high memory usage.
+const ALWAYS_SKIP_DIRS: &[&str] = &[
+    "node_modules",
+    ".git",
+    "target",
+    "dist",
+    "build",
+    ".next",
+    ".nuxt",
+    ".output",
+    ".venv",
+    "venv",
+    "__pycache__",
+    ".cache",
+    ".parcel-cache",
+    ".turbo",
+];
+
+fn should_skip_dir(name: &str) -> bool {
+    ALWAYS_SKIP_DIRS.contains(&name)
+}
+
 fn build_gitignore_set(root: &Path) -> Result<Gitignore, FilesystemWatcherError> {
     let mut builder = GitignoreBuilder::new(root);
 
     // Walk once to collect all .gitignore files under root
+    // Skip directories that are known to be large and typically gitignored
     WalkBuilder::new(root)
         .follow_links(false)
         .hidden(false) // we *want* to see .gitignore
         .filter_entry(|entry| {
+            let is_dir = entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false);
+
+            // Skip known heavy directories entirely
+            if is_dir {
+                if let Some(name) = entry.file_name().to_str() {
+                    if should_skip_dir(name) {
+                        return false;
+                    }
+                }
+            }
+
             // only recurse into directories and .gitignore files
-            entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false)
+            is_dir
                 || entry
                     .file_name()
                     .to_str()
@@ -101,6 +136,17 @@ fn path_allowed(path: &Path, gi: &Gitignore, canonical_root: &Path) -> bool {
         }
     };
 
+    // Check if path is inside any of the always-skip directories
+    for component in relative_path.components() {
+        if let std::path::Component::Normal(name) = component {
+            if let Some(name_str) = name.to_str() {
+                if should_skip_dir(name_str) {
+                    return false;
+                }
+            }
+        }
+    }
+
     // Heuristic: assume paths without extensions are directories
     // This works for most cases and avoids filesystem syscalls
     let is_dir = relative_path.extension().is_none();
@@ -120,6 +166,40 @@ fn debounced_should_forward(event: &DebouncedEvent, gi: &Gitignore, canonical_ro
         .paths
         .iter()
         .all(|path| path_allowed(path, gi, canonical_root))
+}
+
+/// Collect directories to watch, excluding ALWAYS_SKIP_DIRS.
+/// This prevents OS-level watchers from being set up on heavy directories like node_modules.
+fn collect_watch_directories(root: &Path) -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+
+    WalkBuilder::new(root)
+        .follow_links(false)
+        .hidden(false)
+        .git_ignore(false) // Don't use gitignore here, we handle it in event filtering
+        .filter_entry(|entry| {
+            let is_dir = entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false);
+            if !is_dir {
+                return false;
+            }
+
+            // Skip known heavy directories
+            if let Some(name) = entry.file_name().to_str() {
+                if should_skip_dir(name) {
+                    return false;
+                }
+            }
+
+            true
+        })
+        .build()
+        .filter_map(|result| result.ok())
+        .filter(|entry| entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false))
+        .for_each(|entry| {
+            dirs.push(entry.into_path());
+        });
+
+    dirs
 }
 
 pub fn async_watcher(root: PathBuf) -> Result<WatcherComponents, FilesystemWatcherError> {
@@ -159,8 +239,20 @@ pub fn async_watcher(root: PathBuf) -> Result<WatcherComponents, FilesystemWatch
         },
     )?;
 
-    // Start watching the root directory
-    debouncer.watch(&canonical_root, RecursiveMode::Recursive)?;
+    // Collect directories to watch, excluding heavy directories like node_modules.
+    // Use NonRecursive mode for each directory to avoid OS-level watching of excluded dirs.
+    let watch_dirs = collect_watch_directories(&canonical_root);
+    tracing::debug!(
+        "Setting up file watcher for {} directories (excluding {:?})",
+        watch_dirs.len(),
+        ALWAYS_SKIP_DIRS
+    );
+
+    for dir in watch_dirs {
+        if let Err(e) = debouncer.watch(&dir, RecursiveMode::NonRecursive) {
+            tracing::warn!("Failed to watch directory {:?}: {}", dir, e);
+        }
+    }
 
     Ok((debouncer, rx, canonical_root))
 }
