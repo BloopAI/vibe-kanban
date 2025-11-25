@@ -14,10 +14,18 @@ use crate::{
     },
 };
 
+const DEFAULT_QWEN_VERSION: &str = "latest";
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct QwenCode {
     #[serde(default)]
     pub append_prompt: AppendPrompt,
+    #[schemars(
+        title = "Version",
+        description = "Qwen Code version to use (e.g., '0.2.1', 'latest'). Defaults to 'latest'."
+    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub yolo: Option<bool>,
     #[serde(flatten)]
@@ -26,7 +34,8 @@ pub struct QwenCode {
 
 impl QwenCode {
     fn build_command_builder(&self) -> CommandBuilder {
-        let mut builder = CommandBuilder::new("npx -y @qwen-code/qwen-code@0.2.1");
+        let ver = self.version.as_deref().unwrap_or(DEFAULT_QWEN_VERSION);
+        let mut builder = CommandBuilder::new(format!("npx -y @qwen-code/qwen-code@{}", ver));
 
         if self.yolo.unwrap_or(false) {
             builder = builder.extend_params(["--yolo"]);

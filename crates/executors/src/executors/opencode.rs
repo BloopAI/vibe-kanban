@@ -94,10 +94,18 @@ struct OcToolState {
     title: Option<String>,
 }
 
+const DEFAULT_OPENCODE_VERSION: &str = "latest";
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
 pub struct Opencode {
     #[serde(default)]
     pub append_prompt: AppendPrompt,
+    #[schemars(
+        title = "Version",
+        description = "OpenCode version to use (e.g., '1.0.68', 'latest'). Defaults to 'latest'."
+    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -108,7 +116,8 @@ pub struct Opencode {
 
 impl Opencode {
     fn build_command_builder(&self) -> CommandBuilder {
-        let mut builder = CommandBuilder::new("npx -y opencode-ai@1.0.68 run").params([
+        let ver = self.version.as_deref().unwrap_or(DEFAULT_OPENCODE_VERSION);
+        let mut builder = CommandBuilder::new(format!("npx -y opencode-ai@{} run", ver)).params([
             "--print-logs",
             "--log-level",
             "ERROR",

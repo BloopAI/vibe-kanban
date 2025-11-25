@@ -105,6 +105,12 @@ pub enum ReasoningSummaryFormat {
 pub struct Codex {
     #[serde(default)]
     pub append_prompt: AppendPrompt,
+    #[schemars(
+        title = "Version",
+        description = "Codex version to use (e.g., '0.60.1', 'latest'). Defaults to 'latest'."
+    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sandbox: Option<SandboxMode>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -195,13 +201,16 @@ impl StandardCodingAgentExecutor for Codex {
     }
 }
 
+const DEFAULT_CODEX_VERSION: &str = "latest";
+
 impl Codex {
-    pub fn base_command() -> &'static str {
-        "npx -y @openai/codex@0.60.1"
+    pub fn base_command(version: Option<&str>) -> String {
+        let ver = version.unwrap_or(DEFAULT_CODEX_VERSION);
+        format!("npx -y @openai/codex@{}", ver)
     }
 
     fn build_command_builder(&self) -> CommandBuilder {
-        let mut builder = CommandBuilder::new(Self::base_command());
+        let mut builder = CommandBuilder::new(Self::base_command(self.version.as_deref()));
         builder = builder.extend_params(["app-server"]);
         if self.oss.unwrap_or(false) {
             builder = builder.extend_params(["--oss"]);

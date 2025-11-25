@@ -11,6 +11,14 @@
       "format": "textarea",
       "default": null
     },
+    "version": {
+      "title": "Version",
+      "description": "Codex version to use (e.g., '0.60.1', 'latest'). Defaults to 'latest'.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "sandbox": {
       "description": "Sandbox policy modes for Codex",
       "type": [

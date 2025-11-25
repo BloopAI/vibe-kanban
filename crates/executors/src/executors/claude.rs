@@ -34,11 +34,16 @@ use crate::{
     stdout_dup::create_stdout_pipe_writer,
 };
 
-fn base_command(claude_code_router: bool) -> &'static str {
+const DEFAULT_CLAUDE_CODE_VERSION: &str = "latest";
+const DEFAULT_CLAUDE_CODE_ROUTER_VERSION: &str = "latest";
+
+fn base_command(claude_code_router: bool, version: Option<&str>) -> String {
     if claude_code_router {
-        "npx -y @musistudio/claude-code-router@1.0.66 code"
+        let ver = version.unwrap_or(DEFAULT_CLAUDE_CODE_ROUTER_VERSION);
+        format!("npx -y @musistudio/claude-code-router@{} code", ver)
     } else {
-        "npx -y @anthropic-ai/claude-code@2.0.42"
+        let ver = version.unwrap_or(DEFAULT_CLAUDE_CODE_VERSION);
+        format!("npx -y @anthropic-ai/claude-code@{}", ver)
     }
 }
 
@@ -49,6 +54,12 @@ use derivative::Derivative;
 pub struct ClaudeCode {
     #[serde(default)]
     pub append_prompt: AppendPrompt,
+    #[schemars(
+        title = "Version",
+        description = "Claude Code version to use (e.g., '2.0.42', 'latest'). Defaults to 'latest'."
+    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub claude_code_router: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -77,9 +88,11 @@ impl ClaudeCode {
             );
         }
 
-        let mut builder =
-            CommandBuilder::new(base_command(self.claude_code_router.unwrap_or(false)))
-                .params(["-p"]);
+        let mut builder = CommandBuilder::new(base_command(
+            self.claude_code_router.unwrap_or(false),
+            self.version.as_deref(),
+        ))
+        .params(["-p"]);
 
         let plan = self.plan.unwrap_or(false);
         let approvals = self.approvals.unwrap_or(false);
@@ -1976,6 +1989,7 @@ mod tests {
         use workspace_utils::msg_store::MsgStore;
 
         let executor = ClaudeCode {
+            version: None,
             claude_code_router: Some(false),
             plan: None,
             approvals: None,
