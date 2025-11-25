@@ -359,7 +359,6 @@ impl ClaudeLogProcessor {
                     {
                         continue;
                     }
-
                     match serde_json::from_str::<ClaudeJson>(trimmed) {
                         Ok(claude_json) => {
                             // Extract session ID if present
