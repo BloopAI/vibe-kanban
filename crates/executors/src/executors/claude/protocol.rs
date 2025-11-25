@@ -96,9 +96,10 @@ impl ProtocolPeer {
                 tool_name,
                 input,
                 permission_suggestions,
+                tool_use_id,
             } => {
                 match client
-                    .on_can_use_tool(tool_name, input, permission_suggestions)
+                    .on_can_use_tool(tool_name, input, permission_suggestions, tool_use_id)
                     .await
                 {
                     Ok(result) => {

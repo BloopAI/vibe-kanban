@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use tokio::sync::Mutex;
 use workspace_utils::approvals::ApprovalStatus;
 
 use super::types::PermissionMode;
@@ -26,7 +25,6 @@ pub struct ClaudeAgentClient {
     log_writer: LogWriter,
     approvals: Option<Arc<dyn ExecutorApprovalService>>,
     auto_approve: bool, // true when approvals is None
-    latest_unhandled_tool_use_id: Mutex<Option<String>>,
 }
 
 impl ClaudeAgentClient {
@@ -40,23 +38,7 @@ impl ClaudeAgentClient {
             log_writer,
             approvals,
             auto_approve,
-            latest_unhandled_tool_use_id: Mutex::new(None),
         })
-    }
-    async fn set_latest_unhandled_tool_use_id(&self, tool_use_id: String) {
-        if self.latest_unhandled_tool_use_id.lock().await.is_some() {
-            tracing::warn!(
-                "Overwriting unhandled tool_use_id: {} with new tool_use_id: {}",
-                self.latest_unhandled_tool_use_id
-                    .lock()
-                    .await
-                    .as_ref()
-                    .unwrap(),
-                tool_use_id
-            );
-        }
-        let mut guard = self.latest_unhandled_tool_use_id.lock().await;
-        guard.replace(tool_use_id);
     }
 
     async fn handle_approval(
@@ -133,34 +115,27 @@ impl ClaudeAgentClient {
         tool_name: String,
         input: serde_json::Value,
         _permission_suggestions: Option<Vec<PermissionUpdate>>,
+        tool_use_id: Option<String>,
     ) -> Result<PermissionResult, ExecutorError> {
         if self.auto_approve {
             Ok(PermissionResult::Allow {
                 updated_input: input,
                 updated_permissions: None,
             })
+        } else if let Some(latest_tool_use_id) = tool_use_id {
+            self.handle_approval(latest_tool_use_id, tool_name, input)
+                .await
         } else {
-            let latest_tool_use_id = {
-                let guard = self.latest_unhandled_tool_use_id.lock().await.take();
-                guard.clone()
-            };
-
-            if let Some(latest_tool_use_id) = latest_tool_use_id {
-                self.handle_approval(latest_tool_use_id, tool_name, input)
-                    .await
-            } else {
-                // Auto approve tools with no matching tool_use_id.
-                // This rare edge case happens if a tool call triggers no hook callback,
-                // so no tool_use_id is available to match the approval request to.
-                tracing::warn!(
-                    "No unhandled tool_use_id available for tool '{}', cannot request approval",
-                    tool_name
-                );
-                Ok(PermissionResult::Allow {
-                    updated_input: input,
-                    updated_permissions: None,
-                })
-            }
+            // Auto approve tools with no matching tool_use_id
+            // tool_use_id is undocumented so this may not be possible
+            tracing::warn!(
+                "No tool_use_id available for tool '{}', cannot request approval",
+                tool_name
+            );
+            Ok(PermissionResult::Allow {
+                updated_input: input,
+                updated_permissions: None,
+            })
         }
     }
 
@@ -168,7 +143,7 @@ impl ClaudeAgentClient {
         &self,
         _callback_id: String,
         _input: serde_json::Value,
-        tool_use_id: Option<String>,
+        _tool_use_id: Option<String>,
     ) -> Result<serde_json::Value, ExecutorError> {
         if self.auto_approve {
             Ok(serde_json::json!({
@@ -179,16 +154,9 @@ impl ClaudeAgentClient {
                 }
             }))
         } else {
-            // Hook callbacks is only used to store tool_use_id for later approval request
-            // Both hook callback and can_use_tool are needed.
-            // - Hook callbacks have a constant 60s timeout, so cannot be used for long approvals
-            // - can_use_tool does not provide tool_use_id, so cannot be used alone
-            // Together they allow matching approval requests to tool uses.
+            // Hook callbacks is only used to forward approval requests to can_use_tool.
             // This works because `ask` decision in hook callback triggers a can_use_tool request
             // https://docs.claude.com/en/api/agent-sdk/permissions#permission-flow-diagram
-            if let Some(tool_use_id) = tool_use_id.clone() {
-                self.set_latest_unhandled_tool_use_id(tool_use_id).await;
-            }
             Ok(serde_json::json!({
                 "hookSpecificOutput": {
                     "hookEventName": "PreToolUse",

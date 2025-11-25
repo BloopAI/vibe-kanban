@@ -67,6 +67,8 @@ pub enum ControlRequestType {
         input: Value,
         #[serde(skip_serializing_if = "Option::is_none")]
         permission_suggestions: Option<Vec<PermissionUpdate>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        tool_use_id: Option<String>,
     },
     HookCallback {
         #[serde(rename = "callback_id")]
