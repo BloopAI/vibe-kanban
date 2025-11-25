@@ -126,6 +126,22 @@ impl NormalizedEntry {
             None
         }
     }
+
+    /// Update the plan content for a PlanPresentation action type.
+    /// Used to inject plan content from the control request into ExitPlanMode entries.
+    pub fn with_plan_content(mut self, plan: String) -> Self {
+        if let NormalizedEntryType::ToolUse {
+            ref mut action_type,
+            ..
+        } = self.entry_type
+        {
+            if let ActionType::PlanPresentation { plan: p } = action_type {
+                *p = plan.clone();
+            }
+        }
+        self.content = plan;
+        self
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS, Default)]

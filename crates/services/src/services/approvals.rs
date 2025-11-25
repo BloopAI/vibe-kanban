@@ -89,7 +89,17 @@ impl Approvals {
             // Find the matching tool use entry by name and input
             let matching_tool = find_matching_tool_use(store.clone(), &request.tool_call_id);
 
-            if let Some((idx, matching_tool)) = matching_tool {
+            if let Some((idx, mut matching_tool)) = matching_tool {
+                // For ExitPlanMode, inject the plan content from the request.
+                // The assistant message has empty plan, but the control request has it.
+                // Needed because claude code specific issue where tool call doesn't have plan content.
+                // https://github.com/anthropics/claude-code/issues/12288
+                if request.tool_name == "ExitPlanMode" {
+                    if let Some(plan) = request.tool_input.get("plan").and_then(|p| p.as_str()) {
+                        matching_tool = matching_tool.with_plan_content(plan.to_string());
+                    }
+                }
+
                 let approval_entry = matching_tool
                     .with_tool_status(ToolStatus::PendingApproval {
                         approval_id: req_id.clone(),

@@ -631,9 +631,9 @@ impl ClaudeLogProcessor {
                     description: task_description,
                 }
             }
-            ClaudeToolData::ExitPlanMode { plan } => {
-                ActionType::PlanPresentation { plan: plan.clone() }
-            }
+            ClaudeToolData::ExitPlanMode { plan } => ActionType::PlanPresentation {
+                plan: plan.clone().unwrap_or_default(),
+            },
             ClaudeToolData::NotebookEdit { .. } => ActionType::Tool {
                 tool_name: "NotebookEdit".to_string(),
                 arguments: Some(serde_json::to_value(tool_data).unwrap_or(serde_json::Value::Null)),
@@ -1585,9 +1585,7 @@ pub struct ClaudeUsage {
 #[serde(tag = "name", content = "input")]
 pub enum ClaudeToolData {
     #[serde(rename = "TodoWrite", alias = "todo_write")]
-    TodoWrite {
-        todos: Vec<ClaudeTodoItem>,
-    },
+    TodoWrite { todos: Vec<ClaudeTodoItem> },
     #[serde(rename = "Task", alias = "task")]
     Task {
         subagent_type: Option<String>,
@@ -1604,9 +1602,7 @@ pub enum ClaudeToolData {
         limit: Option<u32>,
     },
     #[serde(rename = "LS", alias = "list_directory", alias = "ls")]
-    LS {
-        path: String,
-    },
+    LS { path: String },
     #[serde(rename = "Read", alias = "read")]
     Read {
         #[serde(alias = "path")]
@@ -1628,7 +1624,8 @@ pub enum ClaudeToolData {
         path: Option<String>,
     },
     ExitPlanMode {
-        plan: String,
+        #[serde(default)]
+        plan: Option<String>,
     },
     #[serde(rename = "Edit", alias = "edit_file")]
     Edit {
@@ -1682,9 +1679,7 @@ pub enum ClaudeToolData {
         context: Option<String>,
     },
     #[serde(rename = "Mermaid", alias = "mermaid")]
-    Mermaid {
-        code: String,
-    },
+    Mermaid { code: String },
     #[serde(rename = "CodebaseSearchAgent", alias = "codebase_search_agent")]
     CodebaseSearchAgent {
         #[serde(default)]
