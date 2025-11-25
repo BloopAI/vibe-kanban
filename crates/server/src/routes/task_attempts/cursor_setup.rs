@@ -13,8 +13,6 @@ use executors::{
     executors::cursor::CursorAgent,
 };
 use services::services::container::ContainerService;
-use shlex::try_quote;
-use utils::shell::UnixShell;
 
 use crate::{error::ApiError, routes::task_attempts::ensure_worktree_path};
 
@@ -56,6 +54,8 @@ pub async fn run_cursor_setup(
 async fn get_setup_helper_action() -> Result<ExecutorAction, ApiError> {
     #[cfg(unix)]
     {
+        use shlex::try_quote;
+        use utils::shell::UnixShell;
         let base_command = CursorAgent::base_command();
 
         // Install script with PATH setup

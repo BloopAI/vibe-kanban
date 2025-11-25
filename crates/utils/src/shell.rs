@@ -5,7 +5,6 @@ use std::{
     env::{join_paths, split_paths},
     ffi::{OsStr, OsString},
     path::{Path, PathBuf},
-    process::Stdio,
 };
 
 use crate::tokio::block_on;
@@ -183,7 +182,7 @@ impl UnixShell {
 
 #[cfg(not(windows))]
 async fn get_fresh_path() -> Option<String> {
-    use std::time::Duration;
+    use std::{process::Stdio, time::Duration};
 
     use tokio::process::Command;
 

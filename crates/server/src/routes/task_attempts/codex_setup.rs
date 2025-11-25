@@ -3,16 +3,13 @@ use db::models::{
     task_attempt::{TaskAttempt, TaskAttemptError},
 };
 use deployment::Deployment;
-use executors::{actions::ExecutorAction, executors::ExecutorError};
-#[cfg(unix)]
 use executors::{
     actions::{
-        ExecutorActionType,
+        ExecutorAction, ExecutorActionType,
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     },
-    command::CommandBuilder,
-    command::apply_overrides,
-    executors::codex::Codex,
+    command::{CommandBuilder, apply_overrides},
+    executors::{ExecutorError, codex::Codex},
 };
 use services::services::container::ContainerService;
 
