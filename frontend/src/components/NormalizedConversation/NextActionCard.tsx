@@ -15,7 +15,7 @@ import { ViewProcessesDialog } from '@/components/dialogs/tasks/ViewProcessesDia
 import { CreateAttemptDialog } from '@/components/dialogs/tasks/CreateAttemptDialog';
 import { GitActionsDialog } from '@/components/dialogs/tasks/GitActionsDialog';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
-import { useDiffSummary } from '@/hooks/useDiffSummary';
+import { useDiffSummaryContext } from '@/contexts/DiffSummaryContext';
 import { useDevServer } from '@/hooks/useDevServer';
 import { Button } from '@/components/ui/button';
 import { IdeIcon } from '@/components/ide/IdeIcon';
@@ -67,9 +67,7 @@ export function NextActionCard({
   const { capabilities } = useUserSystem();
 
   const openInEditor = useOpenInEditor(attemptId);
-  const { fileCount, added, deleted, error } = useDiffSummary(
-    attemptId ?? null
-  );
+  const { fileCount, added, deleted, error } = useDiffSummaryContext();
   const {
     start,
     stop,

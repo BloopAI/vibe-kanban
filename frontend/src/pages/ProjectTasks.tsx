@@ -22,6 +22,7 @@ import { useBranchStatus, useAttemptExecution } from '@/hooks';
 import { projectsApi } from '@/lib/api';
 import { paths } from '@/lib/paths';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
+import { DiffSummaryProvider } from '@/contexts/DiffSummaryContext';
 import { ClickedElementsProvider } from '@/contexts/ClickedElementsProvider';
 import { ReviewProvider } from '@/contexts/ReviewProvider';
 import {
@@ -1034,17 +1035,22 @@ export function ProjectTasks() {
       <GitOperationsProvider attemptId={attempt.id}>
         <ClickedElementsProvider attempt={attempt}>
           <ReviewProvider key={attempt.id}>
-            <ExecutionProcessesProvider key={attempt.id} attemptId={attempt.id}>
-              <TasksLayout
-                kanban={kanbanContent}
-                attempt={attemptContent}
-                aux={auxContent}
-                isPanelOpen={isPanelOpen}
-                mode={effectiveMode}
-                isMobile={isMobile}
-                rightHeader={rightHeader}
-              />
-            </ExecutionProcessesProvider>
+            <DiffSummaryProvider key={attempt.id} attemptId={attempt.id}>
+              <ExecutionProcessesProvider
+                key={attempt.id}
+                attemptId={attempt.id}
+              >
+                <TasksLayout
+                  kanban={kanbanContent}
+                  attempt={attemptContent}
+                  aux={auxContent}
+                  isPanelOpen={isPanelOpen}
+                  mode={effectiveMode}
+                  isMobile={isMobile}
+                  rightHeader={rightHeader}
+                />
+              </ExecutionProcessesProvider>
+            </DiffSummaryProvider>
           </ReviewProvider>
         </ClickedElementsProvider>
       </GitOperationsProvider>
