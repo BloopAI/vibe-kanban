@@ -14,7 +14,6 @@ use tracing::{Level, field};
 
 use crate::{AppState, auth::require_session};
 
-pub mod activity;
 mod error;
 mod identity;
 mod oauth;
@@ -53,13 +52,11 @@ pub fn router(state: AppState) -> Router {
 
     let v1_protected = Router::<AppState>::new()
         .merge(identity::router())
-        .merge(activity::router())
         .merge(projects::router())
         .merge(tasks::router())
         .merge(organizations::router())
         .merge(organization_members::protected_router())
         .merge(oauth::protected_router())
-        .merge(crate::ws::router())
         .layer(middleware::from_fn_with_state(
             state.clone(),
             require_session,

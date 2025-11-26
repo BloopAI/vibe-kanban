@@ -188,36 +188,12 @@ async fn handoff_complete(
         );
     }
 
-    // Start remote sync if not already running
-    {
-        let handle_guard = deployment.share_sync_handle().lock().await;
-        let should_start = handle_guard.is_none();
-        drop(handle_guard);
-
-        if should_start {
-            if let Some(share_config) = deployment.share_config() {
-                tracing::info!("Starting remote sync after login");
-                deployment.spawn_remote_sync(share_config.clone());
-            } else {
-                tracing::debug!(
-                    "Share config not available; skipping remote sync spawn after login"
-                );
-            }
-        }
-    }
-
     Ok(close_window_response(format!(
         "Signed in with {provider}. You can return to the app."
     )))
 }
 
 async fn logout(State(deployment): State<DeploymentImpl>) -> Result<StatusCode, ApiError> {
-    // Stop remote sync if running
-    if let Some(handle) = deployment.share_sync_handle().lock().await.take() {
-        tracing::info!("Stopping remote sync due to logout");
-        handle.shutdown().await;
-    }
-
     let auth_context = deployment.auth_context();
 
     if let Ok(client) = deployment.remote_client() {

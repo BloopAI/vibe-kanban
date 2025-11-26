@@ -25,6 +25,7 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 tracing-error = "0.2"
 thiserror = { workspace = true }
+ts-rs = { workspace = true }
 utils = { path = "../utils" }
 uuid = { version = "1", features = ["serde", "v4"] }
 jsonwebtoken = "9"
