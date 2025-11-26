@@ -6,10 +6,11 @@ use axum::{
     http::StatusCode,
     middleware::from_fn_with_state,
     response::Json as ResponseJson,
-    routing::{get, post},
+    routing::{delete, get, post},
 };
 use db::models::{
     project::{CreateProject, Project, ProjectError, SearchMatchType, SearchResult, UpdateProject},
+    project_repository::{CreateProjectRepository, ProjectRepository},
     task::Task,
 };
 use deployment::Deployment;
@@ -654,6 +655,100 @@ async fn search_files_in_repo(
     Ok(results)
 }
 
+pub async fn get_project_repositories(
+    Extension(project): Extension<Project>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<ProjectRepository>>>, ApiError> {
+    let repositories =
+        ProjectRepository::find_by_project_id(&deployment.db().pool, project.id).await?;
+    Ok(ResponseJson(ApiResponse::success(repositories)))
+}
+
+pub async fn add_project_repository(
+    Extension(project): Extension<Project>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<CreateProjectRepository>,
+) -> Result<ResponseJson<ApiResponse<ProjectRepository>>, ApiError> {
+    let path = std::path::absolute(expand_tilde(&payload.git_repo_path))?;
+
+    if !path.exists() {
+        return Ok(ResponseJson(ApiResponse::error(
+            "The specified path does not exist",
+        )));
+    }
+
+    if !path.is_dir() {
+        return Ok(ResponseJson(ApiResponse::error(
+            "The specified path is not a directory",
+        )));
+    }
+
+    if !path.join(".git").exists() {
+        return Ok(ResponseJson(ApiResponse::error(
+            "The specified directory is not a git repository",
+        )));
+    }
+
+    if ProjectRepository::find_by_project_and_name(&deployment.db().pool, project.id, &payload.name)
+        .await?
+        .is_some()
+    {
+        return Ok(ResponseJson(ApiResponse::error(
+            "A repository with this name already exists in the project",
+        )));
+    }
+
+    if ProjectRepository::find_by_project_and_path(
+        &deployment.db().pool,
+        project.id,
+        &path.to_string_lossy(),
+    )
+    .await?
+    .is_some()
+    {
+        return Ok(ResponseJson(ApiResponse::error(
+            "A repository with this path already exists in the project",
+        )));
+    }
+
+    let repository = ProjectRepository::create(
+        &deployment.db().pool,
+        project.id,
+        &CreateProjectRepository {
+            name: payload.name,
+            git_repo_path: path.to_string_lossy().to_string(),
+        },
+    )
+    .await?;
+
+    Ok(ResponseJson(ApiResponse::success(repository)))
+}
+
+pub async fn delete_project_repository(
+    Extension(project): Extension<Project>,
+    State(deployment): State<DeploymentImpl>,
+    Path((_project_id, repo_id)): Path<(Uuid, Uuid)>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    let existing = match ProjectRepository::find_by_id(&deployment.db().pool, repo_id).await? {
+        Some(repo) => repo,
+        None => return Ok(ResponseJson(ApiResponse::error("Repository not found"))),
+    };
+
+    if existing.project_id != project.id {
+        return Ok(ResponseJson(ApiResponse::error("Repository not found")));
+    }
+
+    let count = ProjectRepository::count_by_project_id(&deployment.db().pool, project.id).await?;
+    if count <= 1 {
+        return Ok(ResponseJson(ApiResponse::error(
+            "Cannot delete the last repository in a project",
+        )));
+    }
+
+    ProjectRepository::delete(&deployment.db().pool, repo_id).await?;
+    Ok(ResponseJson(ApiResponse::success(())))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let project_id_router = Router::new()
         .route(
@@ -669,6 +764,12 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             post(link_project_to_existing_remote).delete(unlink_project),
         )
         .route("/link/create", post(create_and_link_remote_project))
+        // Repository management routes
+        .route(
+            "/repositories",
+            get(get_project_repositories).post(add_project_repository),
+        )
+        .route("/repositories/{repo_id}", delete(delete_project_repository))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_project_middleware,

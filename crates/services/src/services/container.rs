@@ -46,6 +46,7 @@ use crate::services::{
     image::ImageService,
     notification::NotificationService,
     share::SharePublisher,
+    workspace_manager::WorkspaceError,
     worktree_manager::WorktreeError,
 };
 pub type ContainerRef = String;
@@ -60,6 +61,8 @@ pub enum ContainerError {
     ExecutorError(#[from] ExecutorError),
     #[error(transparent)]
     Worktree(#[from] WorktreeError),
+    #[error(transparent)]
+    Workspace(#[from] WorkspaceError),
     #[error("Io error: {0}")]
     Io(#[from] std::io::Error),
     #[error("Failed to kill process: {0}")]

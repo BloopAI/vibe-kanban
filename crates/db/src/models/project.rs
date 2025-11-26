@@ -7,6 +7,8 @@ use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
 
+use super::project_repository::ProjectRepository;
+
 #[derive(Debug, Error)]
 pub enum ProjectError {
     #[error(transparent)]
@@ -361,5 +363,13 @@ impl Project {
         .await?;
 
         Ok(result.count > 0)
+    }
+
+    /// Get all repositories associated with this project
+    pub async fn repositories(
+        &self,
+        pool: &SqlitePool,
+    ) -> Result<Vec<ProjectRepository>, sqlx::Error> {
+        ProjectRepository::find_by_project_id(pool, self.id).await
     }
 }

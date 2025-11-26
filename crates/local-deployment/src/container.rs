@@ -48,6 +48,7 @@ use services::services::{
     git::{Commit, DiffTarget, GitService},
     image::ImageService,
     share::SharePublisher,
+    workspace_manager::WorkspaceManager,
     worktree_manager::{WorktreeCleanup, WorktreeManager},
 };
 use tokio::{sync::RwLock, task::JoinHandle};
@@ -853,88 +854,121 @@ impl ContainerService for LocalContainerService {
     fn task_attempt_to_current_dir(&self, task_attempt: &TaskAttempt) -> PathBuf {
         PathBuf::from(task_attempt.container_ref.clone().unwrap_or_default())
     }
-    /// Create a container
+
     async fn create(&self, task_attempt: &TaskAttempt) -> Result<ContainerRef, ContainerError> {
         let task = task_attempt
             .parent_task(&self.db.pool)
             .await?
             .ok_or(sqlx::Error::RowNotFound)?;
 
-        let worktree_dir_name =
+        let workspace_dir_name =
             LocalContainerService::dir_name_from_task_attempt(&task_attempt.id, &task.title);
-        let worktree_path = WorktreeManager::get_worktree_base_dir().join(&worktree_dir_name);
+        let workspace_dir = WorkspaceManager::get_workspace_base_dir().join(&workspace_dir_name);
 
         let project = task
             .parent_project(&self.db.pool)
             .await?
             .ok_or(sqlx::Error::RowNotFound)?;
 
-        WorktreeManager::create_worktree(
-            &project.git_repo_path,
+        let repositories = project.repositories(&self.db.pool).await?;
+
+        if repositories.is_empty() {
+            return Err(ContainerError::Other(anyhow!(
+                "Project has no repositories configured"
+            )));
+        }
+
+        let workspace = WorkspaceManager::create_workspace(
+            &workspace_dir,
+            &repositories,
             &task_attempt.branch,
-            &worktree_path,
             &task_attempt.target_branch,
-            true, // create new branch
         )
         .await?;
 
-        // Copy files specified in the project's copy_files field
         if let Some(copy_files) = &project.copy_files
             && !copy_files.trim().is_empty()
         {
-            self.copy_project_files(&project.git_repo_path, &worktree_path, copy_files)
+            for worktree in &workspace.worktrees {
+                self.copy_project_files(
+                    &worktree.source_repo_path,
+                    &worktree.worktree_path,
+                    copy_files,
+                )
                 .await
                 .unwrap_or_else(|e| {
-                    tracing::warn!("Failed to copy project files: {}", e);
+                    tracing::warn!(
+                        "Failed to copy project files to repo '{}': {}",
+                        worktree.repo_name,
+                        e
+                    );
                 });
+            }
         }
 
-        // Copy task images from cache to worktree
         if let Err(e) = self
             .image_service
-            .copy_images_by_task_to_worktree(&worktree_path, task.id)
+            .copy_images_by_task_to_worktree(&workspace.workspace_dir, task.id)
             .await
         {
-            tracing::warn!("Failed to copy task images to worktree: {}", e);
+            tracing::warn!("Failed to copy task images to workspace: {}", e);
         }
 
-        // Update both container_ref and branch in the database
         TaskAttempt::update_container_ref(
             &self.db.pool,
             task_attempt.id,
-            &worktree_path.to_string_lossy(),
+            &workspace.workspace_dir.to_string_lossy(),
         )
         .await?;
 
-        Ok(worktree_path.to_string_lossy().to_string())
+        Ok(workspace.workspace_dir.to_string_lossy().to_string())
     }
 
     async fn delete_inner(&self, task_attempt: &TaskAttempt) -> Result<(), ContainerError> {
-        // cleanup the container, here that means deleting the worktree
+        // cleanup the container, here that means deleting the workspace with all worktrees
         let task = task_attempt
             .parent_task(&self.db.pool)
             .await?
             .ok_or(sqlx::Error::RowNotFound)?;
-        let git_repo_path = match Project::find_by_id(&self.db.pool, task.project_id).await {
-            Ok(Some(project)) => Some(project.git_repo_path.clone()),
-            Ok(None) => None,
+
+        let workspace_dir = PathBuf::from(task_attempt.container_ref.clone().unwrap_or_default());
+
+        // Get repositories for cleanup
+        let repositories = match Project::find_by_id(&self.db.pool, task.project_id).await {
+            Ok(Some(project)) => project
+                .repositories(&self.db.pool)
+                .await
+                .unwrap_or_default(),
+            Ok(None) => Vec::new(),
             Err(e) => {
                 tracing::error!("Failed to fetch project {}: {}", task.project_id, e);
-                None
+                Vec::new()
             }
         };
-        WorktreeManager::cleanup_worktree(&WorktreeCleanup::new(
-            PathBuf::from(task_attempt.container_ref.clone().unwrap_or_default()),
-            git_repo_path,
-        ))
-        .await
-        .unwrap_or_else(|e| {
+
+        if repositories.is_empty() {
+            // Fallback: just clean up the workspace directory if no repos found
             tracing::warn!(
-                "Failed to clean up worktree for task attempt {}: {}",
-                task_attempt.id,
-                e
+                "No repositories found for project {}, cleaning up workspace directory only",
+                task.project_id
             );
-        });
+            if workspace_dir.exists() {
+                if let Err(e) = tokio::fs::remove_dir_all(&workspace_dir).await {
+                    tracing::warn!("Failed to remove workspace directory: {}", e);
+                }
+            }
+        } else {
+            WorkspaceManager::cleanup_workspace(&workspace_dir, &repositories)
+                .await
+                .unwrap_or_else(|e| {
+                    tracing::warn!(
+                        "Failed to clean up workspace for task attempt {}: {}",
+                        task_attempt.id,
+                        e
+                    );
+                });
+        }
+
         Ok(())
     }
 
@@ -956,12 +990,21 @@ impl ContainerService for LocalContainerService {
         let container_ref = task_attempt.container_ref.as_ref().ok_or_else(|| {
             ContainerError::Other(anyhow!("Container ref not found for task attempt"))
         })?;
-        let worktree_path = PathBuf::from(container_ref);
+        let workspace_dir = PathBuf::from(container_ref);
 
-        WorktreeManager::ensure_worktree_exists(
-            &project.git_repo_path,
+        // Get all repositories for the project
+        let repositories = project.repositories(&self.db.pool).await?;
+
+        if repositories.is_empty() {
+            return Err(ContainerError::Other(anyhow!(
+                "Project has no repositories configured"
+            )));
+        }
+
+        WorkspaceManager::ensure_workspace_exists(
+            &workspace_dir,
+            &repositories,
             &task_attempt.branch,
-            &worktree_path,
         )
         .await?;
 

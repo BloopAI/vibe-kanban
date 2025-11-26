@@ -18,6 +18,10 @@ export type SearchResult = { path: string, is_file: boolean, match_type: SearchM
 
 export type SearchMatchType = "FileName" | "DirectoryName" | "FullPath";
 
+export type ProjectRepository = { id: string, project_id: string, name: string, git_repo_path: string, created_at: Date, updated_at: Date, };
+
+export type CreateProjectRepository = { name: string, git_repo_path: string, };
+
 export type CreateRemoteProjectRequest = { organization_id: string, name: string, };
 
 export type LinkToExistingRequest = { remote_project_id: string, };
