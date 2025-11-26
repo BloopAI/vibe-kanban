@@ -12,7 +12,7 @@ use futures::TryStreamExt;
 use secrecy::ExposeSecret;
 use tracing::error;
 
-use crate::AppState;
+use crate::{AppState, auth::RequestContext, db::organizations::OrganizationRepository};
 
 pub fn router() -> Router<AppState> {
     Router::new().route("/shape/shared_tasks", get(proxy_shared_tasks))
@@ -20,7 +20,18 @@ pub fn router() -> Router<AppState> {
 
 /// Electric protocol query parameters that are safe to forward.
 /// Based on https://electric-sql.com/docs/guides/auth#proxy-auth
-const ELECTRIC_PARAMS: &[&str] = &["offset", "handle", "live", "cursor", "where", "columns"];
+/// Note: "where" is NOT included because it's controlled server-side for security.
+const ELECTRIC_PARAMS: &[&str] = &["offset", "handle", "live", "cursor", "columns"];
+
+/// Returns an empty shape response for users with no organization memberships.
+fn empty_shape_response() -> Response {
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        header::CONTENT_TYPE,
+        HeaderValue::from_static("application/json"),
+    );
+    (StatusCode::OK, headers, "[]").into_response()
+}
 
 /// Proxy Shape requests for the `shared_tasks` table.
 ///
@@ -30,19 +41,37 @@ const ELECTRIC_PARAMS: &[&str] = &["offset", "handle", "live", "cursor", "where"
 /// before this handler is called.
 pub async fn proxy_shared_tasks(
     State(state): State<AppState>,
+    axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Response, ProxyError> {
-    proxy_table(&state, "shared_tasks", &params).await
+    // Get user's organization memberships
+    let org_repo = OrganizationRepository::new(state.pool());
+    let orgs = org_repo
+        .list_user_organizations(ctx.user.id)
+        .await
+        .map_err(|e| ProxyError::Authorization(format!("failed to fetch organizations: {e}")))?;
+
+    if orgs.is_empty() {
+        // User has no org memberships - return empty result
+        return Ok(empty_shape_response());
+    }
+
+    // Build org_id filter: "organization_id" IN ('uuid1','uuid2',...)
+    let org_ids: Vec<String> = orgs.iter().map(|o| format!("'{}'", o.id)).collect();
+    let where_clause = format!("\"organization_id\" IN ({})", org_ids.join(","));
+
+    proxy_table(&state, "shared_tasks", &params, Some(&where_clause)).await
 }
 
 /// Proxy a Shape request to Electric for a specific table.
 ///
-/// The table is set server-side (not from client params) to prevent
-/// unauthorized access to other tables.
+/// The table and where clause are set server-side (not from client params)
+/// to prevent unauthorized access to other tables or data.
 async fn proxy_table(
     state: &AppState,
     table: &str,
     params: &HashMap<String, String>,
+    server_where: Option<&str>,
 ) -> Result<Response, ProxyError> {
     // Build the Electric URL
     let mut origin_url = url::Url::parse(&state.config.electric_url)
@@ -52,6 +81,10 @@ async fn proxy_table(
 
     // Set table server-side (security: client can't override)
     origin_url.query_pairs_mut().append_pair("table", table);
+
+    if let Some(w) = server_where {
+        origin_url.query_pairs_mut().append_pair("where", w);
+    }
 
     for (key, value) in params {
         if ELECTRIC_PARAMS.contains(&key.as_str()) {
@@ -95,6 +128,7 @@ async fn proxy_table(
 pub enum ProxyError {
     Connection(reqwest::Error),
     InvalidConfig(String),
+    Authorization(String),
 }
 
 impl IntoResponse for ProxyError {
@@ -111,6 +145,10 @@ impl IntoResponse for ProxyError {
             ProxyError::InvalidConfig(msg) => {
                 error!(%msg, "invalid Electric proxy configuration");
                 (StatusCode::INTERNAL_SERVER_ERROR, "internal server error").into_response()
+            }
+            ProxyError::Authorization(msg) => {
+                error!(%msg, "authorization failed for Electric proxy");
+                (StatusCode::FORBIDDEN, "forbidden").into_response()
             }
         }
     }
