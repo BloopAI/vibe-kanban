@@ -9,6 +9,7 @@ use axum::{
     routing::get,
 };
 use futures::TryStreamExt;
+use secrecy::ExposeSecret;
 use tracing::error;
 
 use crate::AppState;
@@ -58,12 +59,12 @@ async fn proxy_table(
         }
     }
 
-    let response = state
-        .http_client
-        .get(origin_url.as_str())
-        .send()
-        .await
-        .map_err(ProxyError::Connection)?;
+    let mut request = state.http_client.get(origin_url.as_str());
+    if let Some(token) = &state.config.electric_token {
+        request = request.bearer_auth(token.expose_secret());
+    }
+
+    let response = request.send().await.map_err(ProxyError::Connection)?;
 
     let status = response.status();
 
@@ -84,7 +85,7 @@ async fn proxy_table(
     // Stream the response body directly without buffering
     let body_stream = response
         .bytes_stream()
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e));
+        .map_err(|e| std::io::Error::other(e));
     let body = Body::from_stream(body_stream);
 
     Ok((status, headers, body).into_response())

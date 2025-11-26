@@ -11,6 +11,7 @@ pub struct RemoteServerConfig {
     pub server_public_base_url: Option<String>,
     pub auth: AuthConfig,
     pub electric_url: String,
+    pub electric_token: Option<SecretString>,
 }
 
 #[derive(Debug, Error)]
@@ -36,8 +37,12 @@ impl RemoteServerConfig {
 
         let auth = AuthConfig::from_env()?;
 
-        let electric_url = env::var("ELECTRIC_INTERNAL_URL")
-            .map_err(|_| ConfigError::MissingVar("ELECTRIC_INTERNAL_URL"))?;
+        let electric_url = env::var("ELECTRIC_URL")
+            .map_err(|_| ConfigError::MissingVar("ELECTRIC_URL"))?;
+
+        let electric_token = env::var("ELECTRIC_TOKEN")
+            .map(|s| SecretString::new(s.into()))
+            .ok();
 
         Ok(Self {
             database_url,
@@ -45,6 +50,7 @@ impl RemoteServerConfig {
             server_public_base_url,
             auth,
             electric_url,
+            electric_token,
         })
     }
 }
