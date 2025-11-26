@@ -63,7 +63,7 @@ pub struct ClaudeCode {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dangerously_skip_permissions: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub use_claude_subscription: Option<bool>,
+    pub disable_api_key: Option<bool>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
 
@@ -219,10 +219,10 @@ impl ClaudeCode {
             .current_dir(current_dir)
             .args(&args);
 
-        // Remove ANTHROPIC_API_KEY if use_claude_subscription is enabled
-        if self.use_claude_subscription.unwrap_or(false) {
+        // Remove ANTHROPIC_API_KEY if disable_api_key is enabled
+        if self.disable_api_key.unwrap_or(false) {
             command.env_remove("ANTHROPIC_API_KEY");
-            tracing::info!("ANTHROPIC_API_KEY removed from environment - using Claude subscription");
+            tracing::info!("ANTHROPIC_API_KEY removed from environment");
         }
 
         let mut child = command.group_spawn()?;
@@ -1985,6 +1985,7 @@ mod tests {
                 additional_params: None,
             },
             approvals_service: None,
+            disable_api_key: None,
         };
         let msg_store = Arc::new(MsgStore::new());
         let current_dir = std::path::PathBuf::from("/tmp/test-worktree");
