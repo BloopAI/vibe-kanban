@@ -28,6 +28,7 @@ use services::services::{
     git::{GitService, GitServiceError},
     image::{ImageError, ImageService},
     pr_monitor::PrMonitorService,
+    project::ProjectService,
     share::{RemoteSync, RemoteSyncHandle, ShareConfig, SharePublisher},
     worktree_manager::WorktreeError,
 };
@@ -89,6 +90,8 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     fn container(&self) -> &impl ContainerService;
 
     fn git(&self) -> &GitService;
+
+    fn project(&self) -> &ProjectService;
 
     fn image(&self) -> &ImageService;
 

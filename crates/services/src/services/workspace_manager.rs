@@ -172,14 +172,14 @@ impl WorkspaceManager {
         WorktreeManager::batch_cleanup_worktrees(&cleanup_data).await?;
 
         // Remove the workspace directory itself
-        if workspace_dir.exists() {
-            if let Err(e) = tokio::fs::remove_dir_all(workspace_dir).await {
-                debug!(
-                    "Could not remove workspace directory {}: {}",
-                    workspace_dir.display(),
-                    e
-                );
-            }
+        if workspace_dir.exists()
+            && let Err(e) = tokio::fs::remove_dir_all(workspace_dir).await
+        {
+            debug!(
+                "Could not remove workspace directory {}: {}",
+                workspace_dir.display(),
+                e
+            );
         }
 
         Ok(())

@@ -17,6 +17,7 @@ use services::services::{
     git::GitService,
     image::ImageService,
     oauth_credentials::OAuthCredentials,
+    project::ProjectService,
     remote_client::{RemoteClient, RemoteClientError},
     share::{RemoteSyncHandle, ShareConfig, SharePublisher},
 };
@@ -40,6 +41,7 @@ pub struct LocalDeployment {
     analytics: Option<AnalyticsService>,
     container: LocalContainerService,
     git: GitService,
+    project: ProjectService,
     image: ImageService,
     filesystem: FilesystemService,
     events: EventService,
@@ -91,6 +93,7 @@ impl Deployment for LocalDeployment {
         let user_id = generate_user_id();
         let analytics = AnalyticsConfig::new().map(AnalyticsService::new);
         let git = GitService::new();
+        let project = ProjectService::new();
         let msg_stores = Arc::new(RwLock::new(HashMap::new()));
         let filesystem = FilesystemService::new();
 
@@ -197,6 +200,7 @@ impl Deployment for LocalDeployment {
             analytics,
             container,
             git,
+            project,
             image,
             filesystem,
             events,
@@ -240,6 +244,10 @@ impl Deployment for LocalDeployment {
 
     fn git(&self) -> &GitService {
         &self.git
+    }
+
+    fn project(&self) -> &ProjectService {
+        &self.project
     }
 
     fn image(&self) -> &ImageService {

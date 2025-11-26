@@ -16,6 +16,7 @@ pub mod image;
 pub mod notification;
 pub mod oauth_credentials;
 pub mod pr_monitor;
+pub mod project;
 pub mod remote_client;
 pub mod share;
 pub mod workspace_manager;

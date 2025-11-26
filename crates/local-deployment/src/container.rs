@@ -952,10 +952,10 @@ impl ContainerService for LocalContainerService {
                 "No repositories found for project {}, cleaning up workspace directory only",
                 task.project_id
             );
-            if workspace_dir.exists() {
-                if let Err(e) = tokio::fs::remove_dir_all(&workspace_dir).await {
-                    tracing::warn!("Failed to remove workspace directory: {}", e);
-                }
+            if workspace_dir.exists()
+                && let Err(e) = tokio::fs::remove_dir_all(&workspace_dir).await
+            {
+                tracing::warn!("Failed to remove workspace directory: {}", e);
             }
         } else {
             WorkspaceManager::cleanup_workspace(&workspace_dir, &repositories)
