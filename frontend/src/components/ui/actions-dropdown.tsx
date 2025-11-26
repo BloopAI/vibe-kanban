@@ -112,7 +112,7 @@ export function ActionsDropdown({
   const handleCreateSubtask = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!projectId || !attempt) return;
-    const baseBranch = attempt.branch || attempt.target_branch;
+    const baseBranch = attempt.branch;
     if (!baseBranch) return;
     openTaskForm({
       mode: 'subtask',

@@ -2,7 +2,7 @@ use std::{
     collections::HashMap,
     io,
     path::{Path, PathBuf},
-    sync::{Arc, atomic::AtomicUsize},
+    sync::Arc,
     time::Duration,
 };
 
@@ -12,12 +12,15 @@ use command_group::AsyncGroupChild;
 use db::{
     DBService,
     models::{
+        attempt_repo::AttemptRepo,
         execution_process::{
             ExecutionContext, ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus,
         },
+        execution_process_repo_state::ExecutionProcessRepoState,
         executor_session::ExecutorSession,
-        merge::Merge,
         project::Project,
+        project_repo::ProjectRepo,
+        repo::Repo,
         scratch::{DraftFollowUpData, Scratch, ScratchType},
         task::{Task, TaskStatus},
         task_attempt::TaskAttempt,
@@ -33,16 +36,10 @@ use executors::{
     approvals::{ExecutorApprovalService, NoopExecutorApprovalService},
     env::ExecutionEnv,
     executors::{BaseCodingAgent, ExecutorExitResult, ExecutorExitSignal, InterruptSender},
-    logs::{
-        NormalizedEntryType,
-        utils::{
-            ConversationPatch,
-            patch::{escape_json_pointer_segment, extract_normalized_entry_from_patch},
-        },
-    },
+    logs::{NormalizedEntryType, utils::patch::extract_normalized_entry_from_patch},
     profile::ExecutorProfileId,
 };
-use futures::{FutureExt, StreamExt, TryStreamExt, stream::select};
+use futures::{FutureExt, TryStreamExt, stream::select};
 use serde_json::json;
 use services::services::{
     analytics::AnalyticsContext,
@@ -50,11 +47,12 @@ use services::services::{
     config::Config,
     container::{ContainerError, ContainerRef, ContainerService},
     diff_stream::{self, DiffStreamHandle},
-    git::{Commit, DiffTarget, GitService},
+    git::{Commit, GitCli, GitService},
     image::ImageService,
     notification::NotificationService,
     queued_message::QueuedMessageService,
     share::SharePublisher,
+    workspace_manager::{RepoWorkspaceInput, WorkspaceManager},
     worktree_manager::{WorktreeCleanup, WorktreeManager},
 };
 use tokio::{sync::RwLock, task::JoinHandle};
@@ -305,6 +303,136 @@ impl LocalContainerService {
         });
     }
 
+    /// Record the current HEAD commit for each repository as the "after" state.
+    /// Errors are silently ignored since this runs after the main execution completes
+    /// and failure should not block process finalization.
+    async fn update_after_head_commits(&self, exec_id: Uuid) {
+        if let Ok(ctx) = ExecutionProcess::load_context(&self.db.pool, exec_id).await {
+            let workspace_root = self.task_attempt_to_current_dir(&ctx.task_attempt);
+            for repo in &ctx.repos {
+                let repo_path = workspace_root.join(&repo.name);
+                if let Ok(head) = self.git().get_head_info(&repo_path) {
+                    let _ = ExecutionProcessRepoState::update_after_head_commit(
+                        &self.db.pool,
+                        exec_id,
+                        repo.id,
+                        &head.oid,
+                    )
+                    .await;
+                }
+            }
+        }
+    }
+
+    /// Get the commit message based on the execution run reason.
+    async fn get_commit_message(&self, ctx: &ExecutionContext) -> String {
+        match ctx.execution_process.run_reason {
+            ExecutionProcessRunReason::CodingAgent => {
+                // Try to retrieve the task summary from the executor session
+                // otherwise fallback to default message
+                match ExecutorSession::find_by_execution_process_id(
+                    &self.db().pool,
+                    ctx.execution_process.id,
+                )
+                .await
+                {
+                    Ok(Some(session)) if session.summary.is_some() => session.summary.unwrap(),
+                    Ok(_) => {
+                        tracing::debug!(
+                            "No summary found for execution process {}, using default message",
+                            ctx.execution_process.id
+                        );
+                        format!(
+                            "Commit changes from coding agent for task attempt {}",
+                            ctx.task_attempt.id
+                        )
+                    }
+                    Err(e) => {
+                        tracing::debug!(
+                            "Failed to retrieve summary for execution process {}: {}",
+                            ctx.execution_process.id,
+                            e
+                        );
+                        format!(
+                            "Commit changes from coding agent for task attempt {}",
+                            ctx.task_attempt.id
+                        )
+                    }
+                }
+            }
+            ExecutionProcessRunReason::CleanupScript => {
+                format!(
+                    "Cleanup script changes for task attempt {}",
+                    ctx.task_attempt.id
+                )
+            }
+            _ => format!(
+                "Changes from execution process {}",
+                ctx.execution_process.id
+            ),
+        }
+    }
+
+    /// Check which repos have uncommitted changes. Fails if any repo is inaccessible.
+    fn check_repos_for_changes(
+        &self,
+        workspace_root: &Path,
+        repos: &[Repo],
+    ) -> Result<Vec<(Repo, PathBuf)>, ContainerError> {
+        let git = GitCli::new();
+        let mut repos_with_changes = Vec::new();
+
+        for repo in repos {
+            let worktree_path = workspace_root.join(&repo.name);
+
+            match git.has_changes(&worktree_path) {
+                Ok(true) => {
+                    repos_with_changes.push((repo.clone(), worktree_path));
+                }
+                Ok(false) => {
+                    tracing::debug!("No changes in repo '{}'", repo.name);
+                }
+                Err(e) => {
+                    return Err(ContainerError::Other(anyhow!(
+                        "Pre-flight check failed for repo '{}': {}",
+                        repo.name,
+                        e
+                    )));
+                }
+            }
+        }
+
+        Ok(repos_with_changes)
+    }
+
+    /// Commit changes to each repo. Logs failures but continues with other repos.
+    fn commit_repos(&self, repos_with_changes: Vec<(Repo, PathBuf)>, message: &str) -> bool {
+        let mut any_committed = false;
+
+        for (repo, worktree_path) in repos_with_changes {
+            tracing::debug!(
+                "Committing changes for repo '{}' at {:?}",
+                repo.name,
+                &worktree_path
+            );
+
+            match self.git().commit(&worktree_path, message) {
+                Ok(true) => {
+                    any_committed = true;
+                    tracing::info!("Committed changes in repo '{}'", repo.name);
+                }
+                Ok(false) => {
+                    tracing::warn!("No changes committed in repo '{}' (unexpected)", repo.name);
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to commit in repo '{}': {}", repo.name, e);
+                }
+            }
+        }
+
+        any_committed
+    }
+
     /// Spawn a background task that polls the child process for completion and
     /// cleans up the execution entry when it exits.
     pub fn spawn_exit_monitor(
@@ -507,16 +635,7 @@ impl LocalContainerService {
 
             // Now that commit/next-action/finalization steps for this process are complete,
             // capture the HEAD OID as the definitive "after" state (best-effort).
-            if let Ok(ctx) = ExecutionProcess::load_context(&db.pool, exec_id).await {
-                let worktree_dir = container.task_attempt_to_current_dir(&ctx.task_attempt);
-                if let Ok(head) = container.git().get_head_info(&worktree_dir)
-                    && let Err(e) =
-                        ExecutionProcess::update_after_head_commit(&db.pool, exec_id, &head.oid)
-                            .await
-                {
-                    tracing::warn!("Failed to update after_head_commit for {}: {}", exec_id, e);
-                }
-            }
+            container.update_after_head_commits(exec_id).await;
 
             // Cleanup msg store
             if let Some(msg_arc) = msg_stores.write().await.remove(&exec_id) {
@@ -603,61 +722,6 @@ impl LocalContainerService {
         map.insert(id, store);
     }
 
-    /// Get the project repository path for a task attempt
-    async fn get_project_repo_path(
-        &self,
-        task_attempt: &TaskAttempt,
-    ) -> Result<PathBuf, ContainerError> {
-        let project_repo_path = task_attempt
-            .parent_task(&self.db().pool)
-            .await?
-            .ok_or(ContainerError::Other(anyhow!("Parent task not found")))?
-            .parent_project(&self.db().pool)
-            .await?
-            .ok_or(ContainerError::Other(anyhow!("Parent project not found")))?
-            .git_repo_path;
-
-        Ok(project_repo_path)
-    }
-
-    /// Create a diff log stream for merged attempts (never changes) for WebSocket
-    fn create_merged_diff_stream(
-        &self,
-        project_repo_path: &Path,
-        merge_commit_id: &str,
-        stats_only: bool,
-    ) -> Result<DiffStreamHandle, ContainerError> {
-        let diffs = self.git().get_diffs(
-            DiffTarget::Commit {
-                repo_path: project_repo_path,
-                commit_sha: merge_commit_id,
-            },
-            None,
-        )?;
-
-        let cum = Arc::new(AtomicUsize::new(0));
-        let diffs: Vec<_> = diffs
-            .into_iter()
-            .map(|mut d| {
-                diff_stream::apply_stream_omit_policy(&mut d, &cum, stats_only);
-                d
-            })
-            .collect();
-
-        let stream = futures::stream::iter(diffs.into_iter().map(|diff| {
-            let entry_index = GitService::diff_path(&diff);
-            let patch =
-                ConversationPatch::add_diff(escape_json_pointer_segment(&entry_index), diff);
-            Ok::<_, std::io::Error>(LogMsg::JsonPatch(patch))
-        }))
-        .chain(futures::stream::once(async {
-            Ok::<_, std::io::Error>(LogMsg::Finished)
-        }))
-        .boxed();
-
-        Ok(diff_stream::DiffStreamHandle::new(stream, None))
-    }
-
     /// Create a live diff log stream for ongoing attempts for WebSocket
     /// Returns a stream that owns the filesystem watcher - when dropped, watcher is cleaned up
     async fn create_live_diff_stream(
@@ -665,12 +729,14 @@ impl LocalContainerService {
         worktree_path: &Path,
         base_commit: &Commit,
         stats_only: bool,
+        path_prefix: Option<String>,
     ) -> Result<DiffStreamHandle, ContainerError> {
         diff_stream::create(
             self.git().clone(),
             worktree_path.to_path_buf(),
             base_commit.clone(),
             stats_only,
+            path_prefix,
         )
         .await
         .map_err(|e| ContainerError::Other(anyhow!("{e}")))
@@ -753,12 +819,7 @@ impl LocalContainerService {
         )
         .await?;
 
-        // Get project for cleanup script
-        let project = Project::find_by_id(&self.db.pool, ctx.task.project_id)
-            .await?
-            .ok_or_else(|| ContainerError::Other(anyhow!("Project not found")))?;
-
-        let cleanup_action = self.cleanup_action(project.cleanup_script);
+        let cleanup_action = self.cleanup_action(ctx.project.cleanup_script.clone());
 
         let action_type = if let Some(session_id) = latest_session_id {
             ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
@@ -826,88 +887,134 @@ impl ContainerService for LocalContainerService {
     fn task_attempt_to_current_dir(&self, task_attempt: &TaskAttempt) -> PathBuf {
         PathBuf::from(task_attempt.container_ref.clone().unwrap_or_default())
     }
-    /// Create a container
+
     async fn create(&self, task_attempt: &TaskAttempt) -> Result<ContainerRef, ContainerError> {
         let task = task_attempt
             .parent_task(&self.db.pool)
             .await?
             .ok_or(sqlx::Error::RowNotFound)?;
 
-        let worktree_dir_name =
+        let workspace_dir_name =
             LocalContainerService::dir_name_from_task_attempt(&task_attempt.id, &task.title);
-        let worktree_path = WorktreeManager::get_worktree_base_dir().join(&worktree_dir_name);
+        let workspace_dir = WorkspaceManager::get_workspace_base_dir().join(&workspace_dir_name);
 
         let project = task
             .parent_project(&self.db.pool)
             .await?
             .ok_or(sqlx::Error::RowNotFound)?;
 
-        WorktreeManager::create_worktree(
-            &project.git_repo_path,
+        let repositories = ProjectRepo::find_repos_for_project(&self.db.pool, project.id).await?;
+
+        if repositories.is_empty() {
+            return Err(ContainerError::Other(anyhow!(
+                "Project has no repositories configured"
+            )));
+        }
+
+        let attempt_repos = AttemptRepo::find_by_attempt_id(&self.db.pool, task_attempt.id).await?;
+        let target_branches: HashMap<_, _> = attempt_repos
+            .iter()
+            .map(|ar| (ar.repo_id, ar.target_branch.clone()))
+            .collect();
+
+        let workspace_inputs: Vec<RepoWorkspaceInput> = repositories
+            .iter()
+            .filter_map(|repo| {
+                target_branches
+                    .get(&repo.id)
+                    .map(|tb| RepoWorkspaceInput::new(repo.clone(), tb.clone()))
+            })
+            .collect();
+
+        let workspace = WorkspaceManager::create_workspace(
+            &workspace_dir,
+            &workspace_inputs,
             &task_attempt.branch,
-            &worktree_path,
-            &task_attempt.target_branch,
-            true, // create new branch
         )
         .await?;
 
-        // Copy files specified in the project's copy_files field
         if let Some(copy_files) = &project.copy_files
             && !copy_files.trim().is_empty()
         {
-            self.copy_project_files(&project.git_repo_path, &worktree_path, copy_files)
+            for worktree in &workspace.worktrees {
+                // TODO: Change into per-repo copy files
+                self.copy_project_files(
+                    &worktree.source_repo_path,
+                    &worktree.worktree_path,
+                    copy_files,
+                )
                 .await
                 .unwrap_or_else(|e| {
-                    tracing::warn!("Failed to copy project files: {}", e);
+                    tracing::warn!(
+                        "Failed to copy project files to repo '{}': {}",
+                        worktree.repo_name,
+                        e
+                    );
                 });
+            }
         }
 
-        // Copy task images from cache to worktree
         if let Err(e) = self
             .image_service
-            .copy_images_by_task_to_worktree(&worktree_path, task.id)
+            .copy_images_by_task_to_worktree(&workspace.workspace_dir, task.id)
             .await
         {
-            tracing::warn!("Failed to copy task images to worktree: {}", e);
+            tracing::warn!("Failed to copy task images to workspace: {}", e);
         }
 
-        // Update both container_ref and branch in the database
         TaskAttempt::update_container_ref(
             &self.db.pool,
             task_attempt.id,
-            &worktree_path.to_string_lossy(),
+            &workspace.workspace_dir.to_string_lossy(),
         )
         .await?;
 
-        Ok(worktree_path.to_string_lossy().to_string())
+        Ok(workspace.workspace_dir.to_string_lossy().to_string())
     }
 
     async fn delete_inner(&self, task_attempt: &TaskAttempt) -> Result<(), ContainerError> {
-        // cleanup the container, here that means deleting the worktree
+        // cleanup the container, here that means deleting the workspace with all worktrees
         let task = task_attempt
             .parent_task(&self.db.pool)
             .await?
             .ok_or(sqlx::Error::RowNotFound)?;
-        let git_repo_path = match Project::find_by_id(&self.db.pool, task.project_id).await {
-            Ok(Some(project)) => Some(project.git_repo_path.clone()),
-            Ok(None) => None,
+
+        let workspace_dir = PathBuf::from(task_attempt.container_ref.clone().unwrap_or_default());
+
+        // Get repositories for cleanup
+        let repositories = match Project::find_by_id(&self.db.pool, task.project_id).await {
+            Ok(Some(project)) => ProjectRepo::find_repos_for_project(&self.db.pool, project.id)
+                .await
+                .unwrap_or_default(),
+            Ok(None) => Vec::new(),
             Err(e) => {
                 tracing::error!("Failed to fetch project {}: {}", task.project_id, e);
-                None
+                Vec::new()
             }
         };
-        WorktreeManager::cleanup_worktree(&WorktreeCleanup::new(
-            PathBuf::from(task_attempt.container_ref.clone().unwrap_or_default()),
-            git_repo_path,
-        ))
-        .await
-        .unwrap_or_else(|e| {
+
+        if repositories.is_empty() {
             tracing::warn!(
-                "Failed to clean up worktree for task attempt {}: {}",
-                task_attempt.id,
-                e
+                "No repositories found for project {}, cleaning up workspace directory only",
+                task.project_id
             );
-        });
+            if workspace_dir.exists()
+                && let Err(e) = tokio::fs::remove_dir_all(&workspace_dir).await
+            {
+                tracing::warn!("Failed to remove workspace directory: {}", e);
+            }
+        } else {
+            WorkspaceManager::cleanup_workspace(&workspace_dir, &repositories)
+                .await
+                .unwrap_or_else(|e| {
+                    tracing::warn!(
+                        "Failed to clean up workspace for task attempt {}: {}",
+                        task_attempt.id,
+                        e
+                    );
+                });
+        }
+
         Ok(())
     }
 
@@ -929,12 +1036,20 @@ impl ContainerService for LocalContainerService {
         let container_ref = task_attempt.container_ref.as_ref().ok_or_else(|| {
             ContainerError::Other(anyhow!("Container ref not found for task attempt"))
         })?;
-        let worktree_path = PathBuf::from(container_ref);
+        let workspace_dir = PathBuf::from(container_ref);
 
-        WorktreeManager::ensure_worktree_exists(
-            &project.git_repo_path,
+        let repositories = ProjectRepo::find_repos_for_project(&self.db.pool, project.id).await?;
+
+        if repositories.is_empty() {
+            return Err(ContainerError::Other(anyhow!(
+                "Project has no repositories configured"
+            )));
+        }
+
+        WorkspaceManager::ensure_workspace_exists(
+            &workspace_dir,
+            &repositories,
             &task_attempt.branch,
-            &worktree_path,
         )
         .await?;
 
@@ -942,17 +1057,35 @@ impl ContainerService for LocalContainerService {
     }
 
     async fn is_container_clean(&self, task_attempt: &TaskAttempt) -> Result<bool, ContainerError> {
-        if let Some(container_ref) = &task_attempt.container_ref {
-            // If container_ref is set, check if the worktree exists
-            let path = PathBuf::from(container_ref);
-            if path.exists() {
-                self.git().is_worktree_clean(&path).map_err(|e| e.into())
-            } else {
-                return Ok(true); // No worktree means it's clean
-            }
-        } else {
-            return Ok(true); // No container_ref means no worktree, so it's clean
+        let Some(container_ref) = &task_attempt.container_ref else {
+            return Ok(true);
+        };
+
+        let workspace_dir = PathBuf::from(container_ref);
+        if !workspace_dir.exists() {
+            return Ok(true);
         }
+
+        let task = task_attempt
+            .parent_task(&self.db.pool)
+            .await?
+            .ok_or(ContainerError::Other(anyhow!("Task not found")))?;
+
+        let project = task
+            .parent_project(&self.db.pool)
+            .await?
+            .ok_or(ContainerError::Other(anyhow!("Project not found")))?;
+
+        let repositories = ProjectRepo::find_repos_for_project(&self.db.pool, project.id).await?;
+
+        for repo in &repositories {
+            let worktree_path = workspace_dir.join(&repo.name);
+            if worktree_path.exists() && !self.git().is_worktree_clean(&worktree_path)? {
+                return Ok(false);
+            }
+        }
+
+        Ok(true)
     }
 
     async fn start_execution_inner(
@@ -1134,17 +1267,7 @@ impl ContainerService for LocalContainerService {
         );
 
         // Record after-head commit OID (best-effort)
-        if let Ok(ctx) = ExecutionProcess::load_context(&self.db.pool, execution_process.id).await {
-            let worktree = self.task_attempt_to_current_dir(&ctx.task_attempt);
-            if let Ok(head) = self.git().get_head_info(&worktree) {
-                let _ = ExecutionProcess::update_after_head_commit(
-                    &self.db.pool,
-                    execution_process.id,
-                    &head.oid,
-                )
-                .await;
-            }
-        }
+        self.update_after_head_commits(execution_process.id).await;
 
         Ok(())
     }
@@ -1155,42 +1278,75 @@ impl ContainerService for LocalContainerService {
         stats_only: bool,
     ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, ContainerError>
     {
-        let project_repo_path = self.get_project_repo_path(task_attempt).await?;
-        let latest_merge =
-            Merge::find_latest_by_task_attempt_id(&self.db.pool, task_attempt.id).await?;
+        // Get the task and project to fetch repositories
+        let task = task_attempt
+            .parent_task(&self.db.pool)
+            .await?
+            .ok_or(ContainerError::Other(anyhow!("Task not found")))?;
 
-        let is_ahead = if let Ok((ahead, _)) = self.git().get_branch_status(
-            &project_repo_path,
-            &task_attempt.branch,
-            &task_attempt.target_branch,
-        ) {
-            ahead > 0
-        } else {
-            false
-        };
+        let project = task
+            .parent_project(&self.db.pool)
+            .await?
+            .ok_or(ContainerError::Other(anyhow!("Project not found")))?;
 
-        if let Some(merge) = &latest_merge
-            && let Some(commit) = merge.merge_commit()
-            && self.is_container_clean(task_attempt).await?
-            && !is_ahead
-        {
-            let wrapper =
-                self.create_merged_diff_stream(&project_repo_path, &commit, stats_only)?;
-            return Ok(Box::pin(wrapper));
-        }
+        let repositories = ProjectRepo::find_repos_for_project(&self.db.pool, project.id).await?;
+
+        let attempt_repos = AttemptRepo::find_by_attempt_id(&self.db.pool, task_attempt.id).await?;
+        let target_branches: HashMap<_, _> = attempt_repos
+            .iter()
+            .map(|ar| (ar.repo_id, ar.target_branch.clone()))
+            .collect();
+
+        let mut streams = Vec::new();
 
         let container_ref = self.ensure_container_exists(task_attempt).await?;
-        let worktree_path = PathBuf::from(container_ref);
-        let base_commit = self.git().get_base_commit(
-            &project_repo_path,
-            &task_attempt.branch,
-            &task_attempt.target_branch,
-        )?;
+        let workspace_root = PathBuf::from(container_ref);
 
-        let wrapper = self
-            .create_live_diff_stream(&worktree_path, &base_commit, stats_only)
-            .await?;
-        Ok(Box::pin(wrapper))
+        for repo in repositories {
+            let worktree_path = workspace_root.join(&repo.name);
+            let branch = &task_attempt.branch;
+
+            let Some(target_branch) = target_branches.get(&repo.id) else {
+                tracing::warn!(
+                    "Skipping diff stream for repo {}: no target branch configured",
+                    repo.name
+                );
+                continue;
+            };
+
+            let base_commit = match self
+                .git()
+                .get_base_commit(&repo.path, branch, target_branch)
+            {
+                Ok(c) => c,
+                Err(e) => {
+                    tracing::warn!(
+                        "Skipping diff stream for repo {}: failed to get base commit: {}",
+                        repo.name,
+                        e
+                    );
+                    continue;
+                }
+            };
+
+            let stream = self
+                .create_live_diff_stream(
+                    &worktree_path,
+                    &base_commit,
+                    stats_only,
+                    Some(repo.name.clone()),
+                )
+                .await?;
+
+            streams.push(Box::pin(stream));
+        }
+
+        if streams.is_empty() {
+            return Ok(Box::pin(futures::stream::empty()));
+        }
+
+        // Merge all streams into one
+        Ok(Box::pin(futures::stream::select_all(streams)))
     }
 
     async fn try_commit_changes(&self, ctx: &ExecutionContext) -> Result<bool, ContainerError> {
@@ -1201,64 +1357,22 @@ impl ContainerService for LocalContainerService {
             return Ok(false);
         }
 
-        let message = match ctx.execution_process.run_reason {
-            ExecutionProcessRunReason::CodingAgent => {
-                // Try to retrieve the task summary from the executor session
-                // otherwise fallback to default message
-                match ExecutorSession::find_by_execution_process_id(
-                    &self.db().pool,
-                    ctx.execution_process.id,
-                )
-                .await
-                {
-                    Ok(Some(session)) if session.summary.is_some() => session.summary.unwrap(),
-                    Ok(_) => {
-                        tracing::debug!(
-                            "No summary found for execution process {}, using default message",
-                            ctx.execution_process.id
-                        );
-                        format!(
-                            "Commit changes from coding agent for task attempt {}",
-                            ctx.task_attempt.id
-                        )
-                    }
-                    Err(e) => {
-                        tracing::debug!(
-                            "Failed to retrieve summary for execution process {}: {}",
-                            ctx.execution_process.id,
-                            e
-                        );
-                        format!(
-                            "Commit changes from coding agent for task attempt {}",
-                            ctx.task_attempt.id
-                        )
-                    }
-                }
-            }
-            ExecutionProcessRunReason::CleanupScript => {
-                format!(
-                    "Cleanup script changes for task attempt {}",
-                    ctx.task_attempt.id
-                )
-            }
-            _ => Err(ContainerError::Other(anyhow::anyhow!(
-                "Invalid run reason for commit"
-            )))?,
-        };
+        let message = self.get_commit_message(ctx).await;
 
-        let container_ref = ctx.task_attempt.container_ref.as_ref().ok_or_else(|| {
-            ContainerError::Other(anyhow::anyhow!("Container reference not found"))
-        })?;
+        let container_ref = ctx
+            .task_attempt
+            .container_ref
+            .as_ref()
+            .ok_or_else(|| ContainerError::Other(anyhow!("Container reference not found")))?;
+        let workspace_root = PathBuf::from(container_ref);
 
-        tracing::debug!(
-            "Committing changes for task attempt {} at path {:?}: '{}'",
-            ctx.task_attempt.id,
-            &container_ref,
-            message
-        );
+        let repos_with_changes = self.check_repos_for_changes(&workspace_root, &ctx.repos)?;
+        if repos_with_changes.is_empty() {
+            tracing::debug!("No changes to commit in any repository");
+            return Ok(false);
+        }
 
-        let changes_committed = self.git().commit(Path::new(container_ref), &message)?;
-        Ok(changes_committed)
+        Ok(self.commit_repos(repos_with_changes, &message))
     }
 
     /// Copy files from the original project directory to the worktree

@@ -78,6 +78,22 @@ pub struct CreateTask {
 }
 
 impl CreateTask {
+    pub fn from_title_description(
+        project_id: Uuid,
+        title: String,
+        description: Option<String>,
+    ) -> Self {
+        Self {
+            project_id,
+            title,
+            description,
+            status: Some(TaskStatus::Todo),
+            parent_task_attempt: None,
+            image_ids: None,
+            shared_task_id: None,
+        }
+    }
+
     pub fn from_shared_task(
         project_id: Uuid,
         title: String,
@@ -94,23 +110,6 @@ impl CreateTask {
             image_ids: None,
             shared_task_id: Some(shared_task_id),
         }
-    }
-
-    /// Resolves parent_task_attempt from base_branch if not already set.
-    /// If base_branch matches an existing task attempt's branch, sets that as parent.
-    pub async fn with_parent_from_branch(
-        mut self,
-        pool: &SqlitePool,
-        base_branch: &str,
-    ) -> Result<Self, sqlx::Error> {
-        // Only resolve if parent not already set (explicit parent takes precedence)
-        if self.parent_task_attempt.is_none()
-            && let Some(parent) =
-                TaskAttempt::find_by_branch(pool, self.project_id, base_branch).await?
-        {
-            self.parent_task_attempt = Some(parent.id);
-        }
-        Ok(self)
     }
 }
 

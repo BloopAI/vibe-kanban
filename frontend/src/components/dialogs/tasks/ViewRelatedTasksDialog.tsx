@@ -95,7 +95,7 @@ const ViewRelatedTasksDialogImpl =
             mode: 'subtask',
             projectId,
             parentTaskAttemptId: attempt.id,
-            initialBaseBranch: attempt.branch || attempt.target_branch,
+            initialBaseBranch: attempt.branch,
           });
         } catch {
           // User cancelled or error occurred

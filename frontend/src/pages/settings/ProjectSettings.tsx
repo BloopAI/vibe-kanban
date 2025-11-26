@@ -21,18 +21,18 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Folder } from 'lucide-react';
+import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { useProjects } from '@/hooks/useProjects';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { useScriptPlaceholders } from '@/hooks/useScriptPlaceholders';
 import { CopyFilesField } from '@/components/projects/CopyFilesField';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
-import type { Project, UpdateProject } from 'shared/types';
+import { projectsApi } from '@/lib/api';
+import type { Project, Repo, UpdateProject } from 'shared/types';
 
 interface ProjectFormState {
   name: string;
-  git_repo_path: string;
   setup_script: string;
   parallel_setup_script: boolean;
   dev_script: string;
@@ -43,7 +43,6 @@ interface ProjectFormState {
 function projectToFormState(project: Project): ProjectFormState {
   return {
     name: project.name,
-    git_repo_path: project.git_repo_path,
     setup_script: project.setup_script ?? '',
     parallel_setup_script: project.parallel_setup_script ?? false,
     dev_script: project.dev_script ?? '',
@@ -75,6 +74,13 @@ export function ProjectSettings() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  // Repositories state
+  const [repositories, setRepositories] = useState<Repo[]>([]);
+  const [loadingRepos, setLoadingRepos] = useState(false);
+  const [repoError, setRepoError] = useState<string | null>(null);
+  const [addingRepo, setAddingRepo] = useState(false);
+  const [deletingRepoId, setDeletingRepoId] = useState<string | null>(null);
 
   // Get OS-appropriate script placeholders
   const placeholders = useScriptPlaceholders();
@@ -185,6 +191,75 @@ export function ProjectSettings() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [hasUnsavedChanges]);
 
+  // Fetch repositories when project changes
+  useEffect(() => {
+    if (!selectedProjectId) {
+      setRepositories([]);
+      return;
+    }
+
+    setLoadingRepos(true);
+    setRepoError(null);
+    projectsApi
+      .getRepositories(selectedProjectId)
+      .then(setRepositories)
+      .catch((err) => {
+        setRepoError(
+          err instanceof Error ? err.message : 'Failed to load repositories'
+        );
+        setRepositories([]);
+      })
+      .finally(() => setLoadingRepos(false));
+  }, [selectedProjectId]);
+
+  const handleAddRepository = async () => {
+    if (!selectedProjectId) return;
+
+    const selectedPath = await FolderPickerDialog.show({
+      title: 'Select Git Repository',
+      description: 'Choose a git repository to add to this project',
+      value: '',
+    });
+
+    if (!selectedPath) return;
+
+    // Extract directory name from path
+    const name = selectedPath.split('/').pop() || selectedPath;
+
+    setAddingRepo(true);
+    setRepoError(null);
+    try {
+      const newRepo = await projectsApi.addRepository(selectedProjectId, {
+        name,
+        git_repo_path: selectedPath,
+      });
+      setRepositories((prev) => [...prev, newRepo]);
+    } catch (err) {
+      setRepoError(
+        err instanceof Error ? err.message : 'Failed to add repository'
+      );
+    } finally {
+      setAddingRepo(false);
+    }
+  };
+
+  const handleDeleteRepository = async (repoId: string) => {
+    if (!selectedProjectId) return;
+
+    setDeletingRepoId(repoId);
+    setRepoError(null);
+    try {
+      await projectsApi.deleteRepository(selectedProjectId, repoId);
+      setRepositories((prev) => prev.filter((r) => r.id !== repoId));
+    } catch (err) {
+      setRepoError(
+        err instanceof Error ? err.message : 'Failed to delete repository'
+      );
+    } finally {
+      setDeletingRepoId(null);
+    }
+  };
+
   const { updateProject } = useProjectMutations({
     onUpdateSuccess: (updatedProject: Project) => {
       // Update local state with fresh data from server
@@ -212,7 +287,6 @@ export function ProjectSettings() {
     try {
       const updateData: UpdateProject = {
         name: draft.name.trim(),
-        git_repo_path: draft.git_repo_path.trim(),
         setup_script: draft.setup_script.trim() || null,
         parallel_setup_script: draft.parallel_setup_script,
         dev_script: draft.dev_script.trim() || null,
@@ -350,46 +424,82 @@ export function ProjectSettings() {
                   {t('settings.projects.general.name.helper')}
                 </p>
               </div>
+            </CardContent>
+          </Card>
 
-              <div className="space-y-2">
-                <Label htmlFor="git-repo-path">
-                  {t('settings.projects.general.repoPath.label')}
-                </Label>
-                <div className="flex space-x-2">
-                  <Input
-                    id="git-repo-path"
-                    type="text"
-                    value={draft.git_repo_path}
-                    onChange={(e) =>
-                      updateDraft({ git_repo_path: e.target.value })
-                    }
-                    placeholder={t(
-                      'settings.projects.general.repoPath.placeholder'
-                    )}
-                    required
-                    className="flex-1"
-                  />
+          {/* Repositories Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Repositories</CardTitle>
+              <CardDescription>
+                Manage the git repositories in this project
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {repoError && (
+                <Alert variant="destructive">
+                  <AlertDescription>{repoError}</AlertDescription>
+                </Alert>
+              )}
+
+              {loadingRepos ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span className="ml-2 text-sm text-muted-foreground">
+                    Loading repositories...
+                  </span>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {repositories.map((repo) => (
+                    <div
+                      key={repo.id}
+                      className="flex items-center justify-between p-3 border rounded-md"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium">{repo.name}</div>
+                        <div className="text-sm text-muted-foreground truncate">
+                          {repo.path}
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteRepository(repo.id)}
+                        disabled={deletingRepoId === repo.id}
+                        title="Delete repository"
+                      >
+                        {deletingRepoId === repo.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  ))}
+
+                  {repositories.length === 0 && !loadingRepos && (
+                    <div className="text-center py-4 text-sm text-muted-foreground">
+                      No repositories configured
+                    </div>
+                  )}
+
                   <Button
-                    type="button"
                     variant="outline"
-                    onClick={async () => {
-                      const selectedPath = await FolderPickerDialog.show({
-                        title: 'Select Git Repository',
-                        description: 'Choose an existing git repository',
-                        value: draft.git_repo_path,
-                      });
-                      if (selectedPath) {
-                        updateDraft({ git_repo_path: selectedPath });
-                      }
-                    }}
+                    size="sm"
+                    onClick={handleAddRepository}
+                    disabled={addingRepo}
+                    className="w-full"
                   >
-                    <Folder className="h-4 w-4" />
+                    {addingRepo ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Plus className="h-4 w-4 mr-2" />
+                    )}
+                    Add Repository
                   </Button>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  {t('settings.projects.general.repoPath.helper')}
-                </p>
-              </div>
+              )}
             </CardContent>
           </Card>
 

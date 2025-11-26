@@ -20,6 +20,7 @@ import {
 import { projectsApi } from '@/lib/api';
 import type {
   GitBranch,
+  Merge,
   TaskAttempt,
   TaskWithAttemptStatus,
 } from 'shared/types';
@@ -50,8 +51,9 @@ function GitActionsDialogContent({
   const { isAttemptRunning } = useAttemptExecution(attempt.id);
   const { error: gitError } = useGitOperationsError();
 
-  const mergedPR = branchStatus?.merges?.find(
-    (m) => m.type === 'pr' && m.pr_info?.status === 'merged'
+  const firstRepoStatus = branchStatus?.[0];
+  const mergedPR = firstRepoStatus?.merges?.find(
+    (m: Merge) => m.type === 'pr' && m.pr_info?.status === 'merged'
   );
 
   return (
@@ -91,7 +93,7 @@ function GitActionsDialogContent({
         branchStatus={branchStatus ?? null}
         branches={branches}
         isAttemptRunning={isAttemptRunning}
-        selectedBranch={branchStatus?.target_branch_name ?? null}
+        selectedBranch={firstRepoStatus?.target_branch_name ?? null}
         layout="vertical"
       />
     </div>

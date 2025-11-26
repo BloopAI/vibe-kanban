@@ -23,14 +23,6 @@ pub struct CreateExecutorSession {
     pub prompt: Option<String>,
 }
 
-#[derive(Debug, Deserialize, TS)]
-#[allow(dead_code)]
-pub struct UpdateExecutorSession {
-    pub session_id: Option<String>,
-    pub prompt: Option<String>,
-    pub summary: Option<String>,
-}
-
 impl ExecutorSession {
     /// Find executor session by execution process ID
     pub async fn find_by_execution_process_id(
@@ -51,6 +43,31 @@ impl ExecutorSession {
                FROM executor_sessions
                WHERE execution_process_id = $1"#,
             execution_process_id
+        )
+        .fetch_optional(pool)
+        .await
+    }
+
+    pub async fn find_by_session_id(
+        pool: &SqlitePool,
+        session_id: &str,
+    ) -> Result<Option<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            ExecutorSession,
+            r#"SELECT
+                id as "id!: Uuid",
+                task_attempt_id as "task_attempt_id!: Uuid",
+                execution_process_id as "execution_process_id!: Uuid",
+                session_id,
+                prompt,
+                summary,
+                created_at as "created_at!: DateTime<Utc>",
+                updated_at as "updated_at!: DateTime<Utc>"
+               FROM executor_sessions
+               WHERE session_id = ?
+               ORDER BY updated_at DESC
+               LIMIT 1"#,
+            session_id
         )
         .fetch_optional(pool)
         .await

@@ -4,7 +4,7 @@ use std::{
     sync::Arc,
 };
 
-use anyhow::Error as AnyhowError;
+use anyhow::{Error as AnyhowError, anyhow};
 use async_trait::async_trait;
 use db::{
     DBService,
@@ -14,7 +14,11 @@ use db::{
             ExecutionProcessStatus,
         },
         execution_process_logs::ExecutionProcessLogs,
+        execution_process_repo_state::{
+            CreateExecutionProcessRepoState, ExecutionProcessRepoState,
+        },
         executor_session::{CreateExecutorSession, ExecutorSession},
+        project_repo::ProjectRepo,
         task::{Task, TaskStatus},
         task_attempt::{TaskAttempt, TaskAttemptError},
     },
@@ -44,6 +48,7 @@ use crate::services::{
     git::{GitService, GitServiceError},
     notification::NotificationService,
     share::SharePublisher,
+    workspace_manager::WorkspaceError,
     worktree_manager::WorktreeError,
 };
 pub type ContainerRef = String;
@@ -58,6 +63,8 @@ pub enum ContainerError {
     ExecutorError(#[from] ExecutorError),
     #[error(transparent)]
     Worktree(#[from] WorktreeError),
+    #[error(transparent)]
+    Workspace(#[from] WorkspaceError),
     #[error("Io error: {0}")]
     Io(#[from] std::io::Error),
     #[error("Failed to kill process: {0}")]
@@ -222,19 +229,29 @@ pub trait ContainerService {
                 );
                 continue;
             }
-            // Capture after-head commit OID (best-effort)
-            if let Ok(Some(task_attempt)) =
-                TaskAttempt::find_by_id(&self.db().pool, process.task_attempt_id).await
-                && let Some(container_ref) = task_attempt.container_ref
+            // Capture after-head commit OID per repository
+            if let Ok(ctx) = ExecutionProcess::load_context(&self.db().pool, process.id).await
+                && let Some(ref container_ref) = ctx.task_attempt.container_ref
             {
-                let wt = std::path::PathBuf::from(container_ref);
-                if let Ok(head) = self.git().get_head_info(&wt) {
-                    let _ = ExecutionProcess::update_after_head_commit(
-                        &self.db().pool,
-                        process.id,
-                        &head.oid,
-                    )
-                    .await;
+                let workspace_root = PathBuf::from(container_ref);
+                for repo in &ctx.repos {
+                    let repo_path = workspace_root.join(&repo.name);
+                    if let Ok(head) = self.git().get_head_info(&repo_path)
+                        && let Err(err) = ExecutionProcessRepoState::update_after_head_commit(
+                            &self.db().pool,
+                            process.id,
+                            repo.id,
+                            &head.oid,
+                        )
+                        .await
+                    {
+                        tracing::warn!(
+                            "Failed to update after_head_commit for repo {} on process {}: {}",
+                            repo.id,
+                            process.id,
+                            err
+                        );
+                    }
                 }
             }
             // Process marked as failed
@@ -288,8 +305,7 @@ pub trait ContainerService {
 
             // Fallback to base branch commit OID
             if before.is_none() {
-                let repo_path =
-                    std::path::Path::new(row.git_repo_path.as_deref().unwrap_or_default());
+                let repo_path = std::path::Path::new(row.repo_path.as_deref().unwrap_or_default());
                 match self
                     .git()
                     .get_branch_oid(repo_path, row.target_branch.as_str())
@@ -307,8 +323,13 @@ pub trait ContainerService {
             }
 
             if let Some(before_oid) = before
-                && let Err(e) =
-                    ExecutionProcess::update_before_head_commit(pool, row.id, &before_oid).await
+                && let Err(e) = ExecutionProcessRepoState::update_before_head_commit(
+                    pool,
+                    row.id,
+                    row.repo_id,
+                    &before_oid,
+                )
+                .await
             {
                 tracing::warn!(
                     "Backfill: Failed to update before_head_commit for process {}: {}",
@@ -813,15 +834,36 @@ pub trait ContainerService {
             }
         }
         // Create new execution process record
-        // Capture current HEAD as the "before" commit for this execution
-        let before_head_commit = {
-            if let Some(container_ref) = &task_attempt.container_ref {
-                let wt = std::path::Path::new(container_ref);
-                self.git().get_head_info(wt).ok().map(|h| h.oid)
-            } else {
-                None
-            }
-        };
+        // Capture current HEAD per repository as the "before" commit for this execution
+        let project = task
+            .parent_project(&self.db().pool)
+            .await?
+            .ok_or(SqlxError::RowNotFound)?;
+
+        let repositories = ProjectRepo::find_repos_for_project(&self.db().pool, project.id).await?;
+        if repositories.is_empty() {
+            return Err(ContainerError::Other(anyhow!(
+                "Project has no repositories configured"
+            )));
+        }
+
+        let workspace_root = task_attempt
+            .container_ref
+            .as_ref()
+            .map(std::path::PathBuf::from)
+            .ok_or_else(|| ContainerError::Other(anyhow!("Container ref not found")))?;
+
+        let mut repo_states = Vec::with_capacity(repositories.len());
+        for repo in &repositories {
+            let repo_path = workspace_root.join(&repo.name);
+            let before_head_commit = self.git().get_head_info(&repo_path).ok().map(|h| h.oid);
+            repo_states.push(CreateExecutionProcessRepoState {
+                repo_id: repo.id,
+                before_head_commit,
+                after_head_commit: None,
+                merge_commit: None,
+            });
+        }
         let create_execution_process = CreateExecutionProcess {
             task_attempt_id: task_attempt.id,
             executor_action: executor_action.clone(),
@@ -832,7 +874,7 @@ pub trait ContainerService {
             &self.db().pool,
             &create_execution_process,
             Uuid::new_v4(),
-            before_head_commit.as_deref(),
+            &repo_states,
         )
         .await?;
 
