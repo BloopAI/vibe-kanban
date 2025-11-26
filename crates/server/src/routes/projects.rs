@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use axum::{
     Extension, Json, Router,
     extract::{Path, Query, State},
@@ -11,7 +13,7 @@ use db::models::{
     project_repository::{CreateProjectRepository, ProjectRepository},
 };
 use deployment::Deployment;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use services::services::{
     file_search_cache::SearchQuery,
     git::GitBranch,
@@ -26,6 +28,20 @@ use utils::{
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError, middleware::load_project_middleware};
+
+/// Branches for a single repository
+#[derive(Debug, Serialize, TS)]
+pub struct RepositoryBranches {
+    pub repository_id: Uuid,
+    pub repository_name: String,
+    pub branches: Vec<GitBranch>,
+}
+
+/// Response containing branches grouped by repository
+#[derive(Debug, Serialize, TS)]
+pub struct ProjectBranchesResponse {
+    pub repositories: Vec<RepositoryBranches>,
+}
 
 #[derive(Deserialize, TS)]
 pub struct LinkToExistingRequest {
@@ -54,9 +70,26 @@ pub async fn get_project(
 pub async fn get_project_branches(
     Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<Vec<GitBranch>>>, ApiError> {
-    let branches = deployment.git().get_all_branches(&project.git_repo_path)?;
-    Ok(ResponseJson(ApiResponse::success(branches)))
+) -> Result<ResponseJson<ApiResponse<ProjectBranchesResponse>>, ApiError> {
+    let repositories = deployment
+        .project()
+        .get_repositories(&deployment.db().pool, project.id)
+        .await?;
+
+    let mut repo_branches = Vec::with_capacity(repositories.len());
+
+    for repo in repositories {
+        let branches = deployment.git().get_all_branches(&repo.git_repo_path)?;
+        repo_branches.push(RepositoryBranches {
+            repository_id: repo.id,
+            repository_name: repo.name,
+            branches,
+        });
+    }
+
+    Ok(ResponseJson(ApiResponse::success(ProjectBranchesResponse {
+        repositories: repo_branches,
+    })))
 }
 
 pub async fn link_project_to_existing_remote(
@@ -283,6 +316,7 @@ pub async fn delete_project(
 #[derive(serde::Deserialize)]
 pub struct OpenEditorRequest {
     editor_type: Option<String>,
+    git_repo_path: Option<PathBuf>,
 }
 
 #[derive(Debug, serde::Serialize, ts_rs::TS)]
@@ -295,7 +329,21 @@ pub async fn open_project_in_editor(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<Option<OpenEditorRequest>>,
 ) -> Result<ResponseJson<ApiResponse<OpenEditorResponse>>, ApiError> {
-    let path = project.git_repo_path;
+    let path = if let Some(ref req) = payload
+        && let Some(ref specified_path) = req.git_repo_path
+    {
+        specified_path.clone()
+    } else {
+        let repositories = deployment
+            .project()
+            .get_repositories(&deployment.db().pool, project.id)
+            .await?;
+
+        repositories
+            .first()
+            .map(|r| r.git_repo_path.clone())
+            .ok_or_else(|| ApiError::BadRequest("Project has no repositories".to_string()))?
+    };
 
     let editor_config = {
         let config = deployment.config().read().await;

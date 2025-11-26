@@ -21,6 +21,8 @@ fn generate_types_content() -> String {
         db::models::project_repository::CreateProjectRepository::decl(),
         server::routes::projects::CreateRemoteProjectRequest::decl(),
         server::routes::projects::LinkToExistingRequest::decl(),
+        server::routes::projects::RepositoryBranches::decl(),
+        server::routes::projects::ProjectBranchesResponse::decl(),
         executors::actions::ExecutorAction::decl(),
         executors::mcp_config::McpConfig::decl(),
         executors::actions::ExecutorActionType::decl(),
