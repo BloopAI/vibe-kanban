@@ -24,7 +24,23 @@ mod projects;
 pub mod tasks;
 mod tokens;
 
+/// Response headers that must be exposed to the browser so Electric clients can
+/// read replication metadata (offset, handle, schema, etc.). Without these the
+/// frontend treats the Shape response as invalid and logs MissingHeadersError.
+const ELECTRIC_EXPOSED_HEADERS: &[&str] = &[
+    "electric-offset",
+    "electric-handle",
+    "electric-schema",
+];
+
 pub fn router(state: AppState) -> Router {
+    let cors_layer = CorsLayer::permissive().expose_headers(
+        ELECTRIC_EXPOSED_HEADERS
+            .iter()
+            .copied()
+            .map(HeaderName::from_static),
+    );
+
     let trace_layer = TraceLayer::new_for_http()
         .make_span_with(|request: &Request<_>| {
             let request_id = request
@@ -72,7 +88,7 @@ pub fn router(state: AppState) -> Router {
         .nest("/v1", v1_public)
         .nest("/v1", v1_protected)
         .fallback_service(spa)
-        .layer(CorsLayer::permissive())
+        .layer(cors_layer)
         .layer(trace_layer)
         .layer(PropagateRequestIdLayer::new(HeaderName::from_static(
             "x-request-id",
