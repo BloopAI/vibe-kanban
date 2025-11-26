@@ -46,6 +46,7 @@ export function RetryEditorInline({
   const { retryDraft, isRetryLoaded } = useDraftStream(attemptId);
   const { isAttemptRunning, attemptData } = useAttemptExecution(attemptId);
   const { data: branchStatus } = useBranchStatus(attemptId);
+  const firstRepoStatus = branchStatus?.[0];
   const { profiles } = useUserSystem();
 
   // Errors are now reserved for send/cancel; creation occurs outside via useProcessRetry
@@ -166,8 +167,8 @@ export function RetryEditorInline({
         }
       }
 
-      const head = branchStatus?.head_oid || null;
-      const dirty = !!branchStatus?.has_uncommitted_changes;
+      const head = firstRepoStatus?.head_oid || null;
+      const dirty = !!firstRepoStatus?.has_uncommitted_changes;
       const needReset = !!(before && (before !== head || dirty));
       const canGitReset = needReset && !dirty;
 
@@ -203,8 +204,8 @@ export function RetryEditorInline({
           needGitReset: needReset,
           canGitReset,
           hasRisk: dirty,
-          uncommittedCount: branchStatus?.uncommitted_count ?? 0,
-          untrackedCount: branchStatus?.untracked_count ?? 0,
+          uncommittedCount: firstRepoStatus?.uncommitted_count ?? 0,
+          untrackedCount: firstRepoStatus?.untracked_count ?? 0,
           initialWorktreeResetOn: true,
           initialForceReset: false,
         });

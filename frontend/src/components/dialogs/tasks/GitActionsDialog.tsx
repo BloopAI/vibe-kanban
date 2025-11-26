@@ -50,7 +50,8 @@ function GitActionsDialogContent({
   const { isAttemptRunning } = useAttemptExecution(attempt.id);
   const { error: gitError } = useGitOperationsError();
 
-  const mergedPR = branchStatus?.merges?.find(
+  const firstRepoStatus = branchStatus?.[0];
+  const mergedPR = firstRepoStatus?.merges?.find(
     (m) => m.type === 'pr' && m.pr_info?.status === 'merged'
   );
 
@@ -91,7 +92,7 @@ function GitActionsDialogContent({
         branchStatus={branchStatus ?? null}
         branches={branches}
         isAttemptRunning={isAttemptRunning}
-        selectedBranch={branchStatus?.target_branch_name ?? null}
+        selectedBranch={firstRepoStatus?.target_branch_name ?? null}
         layout="vertical"
       />
     </div>

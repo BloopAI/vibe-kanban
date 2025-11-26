@@ -2,7 +2,7 @@ use std::{
     collections::HashMap,
     io,
     path::{Path, PathBuf},
-    sync::{Arc, atomic::AtomicUsize},
+    sync::Arc,
     time::Duration,
 };
 
@@ -16,9 +16,9 @@ use db::{
         execution_process::{
             ExecutionContext, ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus,
         },
+        execution_process_repo_state::ExecutionProcessRepoState,
         executor_session::ExecutorSession,
         image::TaskImage,
-        merge::Merge,
         project::Project,
         task::{Task, TaskStatus},
         task_attempt::TaskAttempt,
@@ -31,13 +31,10 @@ use executors::{
     executors::{BaseCodingAgent, ExecutorExitResult, ExecutorExitSignal},
     logs::{
         NormalizedEntryType,
-        utils::{
-            ConversationPatch,
-            patch::{escape_json_pointer_segment, extract_normalized_entry_from_patch},
-        },
+        utils::patch::extract_normalized_entry_from_patch,
     },
 };
-use futures::{FutureExt, StreamExt, TryStreamExt, stream::select};
+use futures::{FutureExt, TryStreamExt, stream::select};
 use serde_json::json;
 use services::services::{
     analytics::AnalyticsContext,
@@ -45,7 +42,7 @@ use services::services::{
     config::Config,
     container::{ContainerError, ContainerRef, ContainerService},
     diff_stream::{self, DiffStreamHandle},
-    git::{Commit, DiffTarget, GitService},
+    git::{Commit, GitService},
     image::ImageService,
     share::SharePublisher,
     workspace_manager::WorkspaceManager,
@@ -280,6 +277,28 @@ impl LocalContainerService {
         });
     }
 
+    async fn update_after_head_commits(&self, exec_id: Uuid) {
+        if let Ok(ctx) = ExecutionProcess::load_context(&self.db.pool, exec_id).await {
+            let workspace_root = self.task_attempt_to_current_dir(&ctx.task_attempt);
+            if let Ok(Some(project)) = Project::find_by_id(&self.db.pool, ctx.task.project_id).await
+                && let Ok(repos) = project.repositories(&self.db.pool).await
+            {
+                for repo in repos {
+                    let repo_path = workspace_root.join(&repo.name);
+                    if let Ok(head) = self.git().get_head_info(&repo_path) {
+                        let _ = ExecutionProcessRepoState::update_after_head_commit(
+                            &self.db.pool,
+                            exec_id,
+                            repo.id,
+                            &head.oid,
+                        )
+                        .await;
+                    }
+                }
+            }
+        }
+    }
+
     /// Spawn a background task that polls the child process for completion and
     /// cleans up the execution entry when it exits.
     pub fn spawn_exit_monitor(
@@ -443,16 +462,7 @@ impl LocalContainerService {
 
             // Now that commit/next-action/finalization steps for this process are complete,
             // capture the HEAD OID as the definitive "after" state (best-effort).
-            if let Ok(ctx) = ExecutionProcess::load_context(&db.pool, exec_id).await {
-                let worktree_dir = container.task_attempt_to_current_dir(&ctx.task_attempt);
-                if let Ok(head) = container.git().get_head_info(&worktree_dir)
-                    && let Err(e) =
-                        ExecutionProcess::update_after_head_commit(&db.pool, exec_id, &head.oid)
-                            .await
-                {
-                    tracing::warn!("Failed to update after_head_commit for {}: {}", exec_id, e);
-                }
-            }
+            container.update_after_head_commits(exec_id).await;
 
             // Cleanup msg store
             if let Some(msg_arc) = msg_stores.write().await.remove(&exec_id) {
@@ -539,61 +549,6 @@ impl LocalContainerService {
         map.insert(id, store);
     }
 
-    /// Get the project repository path for a task attempt
-    async fn get_project_repo_path(
-        &self,
-        task_attempt: &TaskAttempt,
-    ) -> Result<PathBuf, ContainerError> {
-        let project_repo_path = task_attempt
-            .parent_task(&self.db().pool)
-            .await?
-            .ok_or(ContainerError::Other(anyhow!("Parent task not found")))?
-            .parent_project(&self.db().pool)
-            .await?
-            .ok_or(ContainerError::Other(anyhow!("Parent project not found")))?
-            .git_repo_path;
-
-        Ok(project_repo_path)
-    }
-
-    /// Create a diff log stream for merged attempts (never changes) for WebSocket
-    fn create_merged_diff_stream(
-        &self,
-        project_repo_path: &Path,
-        merge_commit_id: &str,
-        stats_only: bool,
-    ) -> Result<DiffStreamHandle, ContainerError> {
-        let diffs = self.git().get_diffs(
-            DiffTarget::Commit {
-                repo_path: project_repo_path,
-                commit_sha: merge_commit_id,
-            },
-            None,
-        )?;
-
-        let cum = Arc::new(AtomicUsize::new(0));
-        let diffs: Vec<_> = diffs
-            .into_iter()
-            .map(|mut d| {
-                diff_stream::apply_stream_omit_policy(&mut d, &cum, stats_only);
-                d
-            })
-            .collect();
-
-        let stream = futures::stream::iter(diffs.into_iter().map(|diff| {
-            let entry_index = GitService::diff_path(&diff);
-            let patch =
-                ConversationPatch::add_diff(escape_json_pointer_segment(&entry_index), diff);
-            Ok::<_, std::io::Error>(LogMsg::JsonPatch(patch))
-        }))
-        .chain(futures::stream::once(async {
-            Ok::<_, std::io::Error>(LogMsg::Finished)
-        }))
-        .boxed();
-
-        Ok(diff_stream::DiffStreamHandle::new(stream, None))
-    }
-
     /// Create a live diff log stream for ongoing attempts for WebSocket
     /// Returns a stream that owns the filesystem watcher - when dropped, watcher is cleaned up
     async fn create_live_diff_stream(
@@ -601,12 +556,14 @@ impl LocalContainerService {
         worktree_path: &Path,
         base_commit: &Commit,
         stats_only: bool,
+        path_prefix: Option<String>,
     ) -> Result<DiffStreamHandle, ContainerError> {
         diff_stream::create(
             self.git().clone(),
             worktree_path.to_path_buf(),
             base_commit.clone(),
             stats_only,
+            path_prefix,
         )
         .await
         .map_err(|e| ContainerError::Other(anyhow!("{e}")))
@@ -1146,17 +1103,7 @@ impl ContainerService for LocalContainerService {
         );
 
         // Record after-head commit OID (best-effort)
-        if let Ok(ctx) = ExecutionProcess::load_context(&self.db.pool, execution_process.id).await {
-            let worktree = self.task_attempt_to_current_dir(&ctx.task_attempt);
-            if let Ok(head) = self.git().get_head_info(&worktree) {
-                let _ = ExecutionProcess::update_after_head_commit(
-                    &self.db.pool,
-                    execution_process.id,
-                    &head.oid,
-                )
-                .await;
-            }
-        }
+        self.update_after_head_commits(execution_process.id).await;
 
         Ok(())
     }
@@ -1167,42 +1114,68 @@ impl ContainerService for LocalContainerService {
         stats_only: bool,
     ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, ContainerError>
     {
-        let project_repo_path = self.get_project_repo_path(task_attempt).await?;
-        let latest_merge =
-            Merge::find_latest_by_task_attempt_id(&self.db.pool, task_attempt.id).await?;
+        // Get the task and project to fetch repositories
+        let task = task_attempt
+            .parent_task(&self.db.pool)
+            .await?
+            .ok_or(ContainerError::Other(anyhow!("Task not found")))?;
 
-        let is_ahead = if let Ok((ahead, _)) = self.git().get_branch_status(
-            &project_repo_path,
-            &task_attempt.branch,
-            &task_attempt.target_branch,
-        ) {
-            ahead > 0
-        } else {
-            false
-        };
+        let project = task
+            .parent_project(&self.db.pool)
+            .await?
+            .ok_or(ContainerError::Other(anyhow!("Project not found")))?;
 
-        if let Some(merge) = &latest_merge
-            && let Some(commit) = merge.merge_commit()
-            && self.is_container_clean(task_attempt).await?
-            && !is_ahead
-        {
-            let wrapper =
-                self.create_merged_diff_stream(&project_repo_path, &commit, stats_only)?;
-            return Ok(Box::pin(wrapper));
-        }
+        let repositories = project.repositories(&self.db.pool).await?;
+
+        let mut streams = Vec::new();
 
         let container_ref = self.ensure_container_exists(task_attempt).await?;
-        let worktree_path = PathBuf::from(container_ref);
-        let base_commit = self.git().get_base_commit(
-            &project_repo_path,
-            &task_attempt.branch,
-            &task_attempt.target_branch,
-        )?;
+        let workspace_root = PathBuf::from(container_ref);
 
-        let wrapper = self
-            .create_live_diff_stream(&worktree_path, &base_commit, stats_only)
-            .await?;
-        Ok(Box::pin(wrapper))
+        for repo in repositories {
+            let project_repo_path = &repo.git_repo_path;
+            let worktree_path = workspace_root.join(&repo.name);
+
+            // We currently treat the branch names as global across all repos
+            let branch = &task_attempt.branch;
+            let target_branch = &task_attempt.target_branch;
+
+            // Try to get base commit.
+            // If this fails (e.g. branch doesn't exist in this repo), log warning and continue.
+            let base_commit =
+                match self
+                    .git()
+                    .get_base_commit(project_repo_path, branch, target_branch)
+                {
+                    Ok(c) => c,
+                    Err(e) => {
+                        tracing::warn!(
+                            "Skipping diff stream for repo {}: failed to get base commit: {}",
+                            repo.name,
+                            e
+                        );
+                        continue;
+                    }
+                };
+
+            let stream = self
+                .create_live_diff_stream(
+                    &worktree_path,
+                    &base_commit,
+                    stats_only,
+                    Some(repo.name.clone()),
+                )
+                .await?;
+
+            streams.push(Box::pin(stream));
+        }
+
+        if streams.is_empty() {
+            return Ok(Box::pin(futures::stream::empty()));
+        }
+
+        // Merge all streams into one
+        Ok(Box::pin(futures::stream::select_all(streams)))
     }
 
     async fn try_commit_changes(&self, ctx: &ExecutionContext) -> Result<bool, ContainerError> {

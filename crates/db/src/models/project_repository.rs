@@ -136,7 +136,7 @@ impl ProjectRepository {
     }
 
     pub async fn create(
-        pool: &SqlitePool,
+        executor: impl sqlx::Executor<'_, Database = sqlx::Sqlite>,
         project_id: Uuid,
         data: &CreateProjectRepository,
     ) -> Result<Self, sqlx::Error> {
@@ -163,7 +163,7 @@ impl ProjectRepository {
             data.name,
             data.git_repo_path,
         )
-        .fetch_one(pool)
+        .fetch_one(executor)
         .await
     }
 

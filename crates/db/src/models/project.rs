@@ -39,7 +39,7 @@ pub struct Project {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize, TS)]
+#[derive(Debug, Clone, Deserialize, TS)]
 pub struct CreateProject {
     pub name: String,
     pub git_repo_path: String,
@@ -221,7 +221,7 @@ impl Project {
     }
 
     pub async fn create(
-        pool: &SqlitePool,
+        executor: impl Executor<'_, Database = Sqlite>,
         data: &CreateProject,
         project_id: Uuid,
     ) -> Result<Self, sqlx::Error> {
@@ -256,7 +256,7 @@ impl Project {
             data.cleanup_script,
             data.copy_files,
         )
-        .fetch_one(pool)
+        .fetch_one(executor)
         .await
     }
 

@@ -18,8 +18,10 @@ use axum::{
 use db::models::{
     draft::{Draft, DraftType},
     execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
+    execution_process_repo_state::ExecutionProcessRepoState,
     merge::{Merge, MergeStatus, PrMerge, PullRequestInfo},
     project::{Project, ProjectError},
+    project_repository::ProjectRepository,
     task::{Task, TaskRelationships, TaskStatus},
     task_attempt::{CreateTaskAttempt, TaskAttempt, TaskAttemptError},
 };
@@ -272,7 +274,11 @@ pub async fn follow_up(
         }
 
         // Determine target reset OID: before the target process
-        let mut target_before_oid = process.before_head_commit.clone();
+        let mut target_before_oid =
+            ExecutionProcessRepoState::find_first_by_execution_process_id(pool, proc_id)
+                .await?
+                .and_then(|state| state.before_head_commit);
+
         if target_before_oid.is_none() {
             target_before_oid =
                 ExecutionProcess::find_prev_after_head_commit(pool, task_attempt.id, proc_id)
@@ -897,111 +903,133 @@ pub struct BranchStatus {
     pub conflicted_files: Vec<String>,
 }
 
+#[derive(Debug, Clone, Serialize, TS)]
+pub struct RepoBranchStatus {
+    pub repo_id: Uuid,
+    pub repo_name: String,
+    #[serde(flatten)]
+    pub status: BranchStatus,
+}
+
 pub async fn get_task_attempt_branch_status(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<BranchStatus>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<Vec<RepoBranchStatus>>>, ApiError> {
     let pool = &deployment.db().pool;
 
     let task = task_attempt
         .parent_task(pool)
         .await?
         .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
-    let ctx = TaskAttempt::load_context(pool, task_attempt.id, task.id, task.project_id).await?;
-    let has_uncommitted_changes = deployment
-        .container()
-        .is_container_clean(&task_attempt)
-        .await
-        .ok()
-        .map(|is_clean| !is_clean);
-    let head_oid = {
-        let wt_buf = ensure_worktree_path(&deployment, &task_attempt).await?;
-        let wt = wt_buf.as_path();
-        deployment.git().get_head_info(wt).ok().map(|h| h.oid)
-    };
-    // Detect conflicts and operation in progress (best-effort)
-    let (is_rebase_in_progress, conflicted_files, conflict_op) = {
-        let wt_buf = ensure_worktree_path(&deployment, &task_attempt).await?;
-        let wt = wt_buf.as_path();
-        let in_rebase = deployment.git().is_rebase_in_progress(wt).unwrap_or(false);
-        let conflicts = deployment
+
+    let repositories = ProjectRepository::find_by_project_id(pool, task.project_id).await?;
+    let workspace_dir = ensure_worktree_path(&deployment, &task_attempt).await?;
+    let merges = Merge::find_by_task_attempt_id(pool, task_attempt.id).await?;
+
+    let mut results = Vec::with_capacity(repositories.len());
+
+    for repo in repositories {
+        let worktree_path = workspace_dir.join(&repo.name);
+
+        let head_oid = deployment
             .git()
-            .get_conflicted_files(wt)
-            .unwrap_or_default();
-        let op = if conflicts.is_empty() {
-            None
-        } else {
-            deployment.git().detect_conflict_op(wt).unwrap_or(None)
+            .get_head_info(&worktree_path)
+            .ok()
+            .map(|h| h.oid);
+
+        let (is_rebase_in_progress, conflicted_files, conflict_op) = {
+            let in_rebase = deployment
+                .git()
+                .is_rebase_in_progress(&worktree_path)
+                .unwrap_or(false);
+            let conflicts = deployment
+                .git()
+                .get_conflicted_files(&worktree_path)
+                .unwrap_or_default();
+            let op = if conflicts.is_empty() {
+                None
+            } else {
+                deployment
+                    .git()
+                    .detect_conflict_op(&worktree_path)
+                    .unwrap_or(None)
+            };
+            (in_rebase, conflicts, op)
         };
-        (in_rebase, conflicts, op)
-    };
-    let (uncommitted_count, untracked_count) = {
-        let wt_buf = ensure_worktree_path(&deployment, &task_attempt).await?;
-        let wt = wt_buf.as_path();
-        match deployment.git().get_worktree_change_counts(wt) {
-            Ok((a, b)) => (Some(a), Some(b)),
-            Err(_) => (None, None),
-        }
-    };
 
-    let target_branch_type = deployment
-        .git()
-        .find_branch_type(&ctx.project.git_repo_path, &task_attempt.target_branch)?;
+        let (uncommitted_count, untracked_count) =
+            match deployment.git().get_worktree_change_counts(&worktree_path) {
+                Ok((a, b)) => (Some(a), Some(b)),
+                Err(_) => (None, None),
+            };
 
-    let (commits_ahead, commits_behind) = match target_branch_type {
-        BranchType::Local => {
-            let (a, b) = deployment.git().get_branch_status(
-                &ctx.project.git_repo_path,
-                &task_attempt.branch,
-                &task_attempt.target_branch,
-            )?;
-            (Some(a), Some(b))
-        }
-        BranchType::Remote => {
-            let (remote_commits_ahead, remote_commits_behind) =
-                deployment.git().get_remote_branch_status(
-                    &ctx.project.git_repo_path,
+        let has_uncommitted_changes = uncommitted_count.map(|c| c > 0);
+
+        let target_branch_type = deployment
+            .git()
+            .find_branch_type(&repo.git_repo_path, &task_attempt.target_branch)?;
+
+        let (commits_ahead, commits_behind) = match target_branch_type {
+            BranchType::Local => {
+                let (a, b) = deployment.git().get_branch_status(
+                    &repo.git_repo_path,
+                    &task_attempt.branch,
+                    &task_attempt.target_branch,
+                )?;
+                (Some(a), Some(b))
+            }
+            BranchType::Remote => {
+                let (ahead, behind) = deployment.git().get_remote_branch_status(
+                    &repo.git_repo_path,
                     &task_attempt.branch,
                     Some(&task_attempt.target_branch),
                 )?;
-            (Some(remote_commits_ahead), Some(remote_commits_behind))
-        }
-    };
-    // Fetch merges for this task attempt and add to branch status
-    let merges = Merge::find_by_task_attempt_id(pool, task_attempt.id).await?;
-    let (remote_ahead, remote_behind) = if let Some(Merge::Pr(PrMerge {
-        pr_info: PullRequestInfo {
-            status: MergeStatus::Open,
-            ..
-        },
-        ..
-    })) = merges.first()
-    {
-        // check remote status if the attempt has an open PR
-        let (remote_commits_ahead, remote_commits_behind) = deployment
-            .git()
-            .get_remote_branch_status(&ctx.project.git_repo_path, &task_attempt.branch, None)?;
-        (Some(remote_commits_ahead), Some(remote_commits_behind))
-    } else {
-        (None, None)
-    };
+                (Some(ahead), Some(behind))
+            }
+        };
 
-    let branch_status = BranchStatus {
-        commits_ahead,
-        commits_behind,
-        has_uncommitted_changes,
-        head_oid,
-        uncommitted_count,
-        untracked_count,
-        remote_commits_ahead: remote_ahead,
-        remote_commits_behind: remote_behind,
-        merges,
-        target_branch_name: task_attempt.target_branch,
-        is_rebase_in_progress,
-        conflict_op,
-        conflicted_files,
-    };
-    Ok(ResponseJson(ApiResponse::success(branch_status)))
+        let (remote_ahead, remote_behind) = if let Some(Merge::Pr(PrMerge {
+            pr_info: PullRequestInfo {
+                status: MergeStatus::Open,
+                ..
+            },
+            ..
+        })) = merges.first()
+        {
+            match deployment.git().get_remote_branch_status(
+                &repo.git_repo_path,
+                &task_attempt.branch,
+                None,
+            ) {
+                Ok((ahead, behind)) => (Some(ahead), Some(behind)),
+                Err(_) => (None, None),
+            }
+        } else {
+            (None, None)
+        };
+
+        results.push(RepoBranchStatus {
+            repo_id: repo.id,
+            repo_name: repo.name,
+            status: BranchStatus {
+                commits_ahead,
+                commits_behind,
+                has_uncommitted_changes,
+                head_oid,
+                uncommitted_count,
+                untracked_count,
+                remote_commits_ahead: remote_ahead,
+                remote_commits_behind: remote_behind,
+                merges: merges.clone(),
+                target_branch_name: task_attempt.target_branch.clone(),
+                is_rebase_in_progress,
+                conflict_op,
+                conflicted_files,
+            },
+        });
+    }
+
+    Ok(ResponseJson(ApiResponse::success(results)))
 }
 
 #[derive(serde::Deserialize, Debug, TS)]

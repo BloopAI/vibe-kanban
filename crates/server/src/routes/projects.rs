@@ -428,7 +428,12 @@ pub async fn add_project_repository(
 ) -> Result<ResponseJson<ApiResponse<ProjectRepository>>, ApiError> {
     match deployment
         .project()
-        .add_repository(&deployment.db().pool, project.id, &payload)
+        .add_repository(
+            &deployment.db().pool,
+            deployment.git(),
+            project.id,
+            &payload,
+        )
         .await
     {
         Ok(repository) => Ok(ResponseJson(ApiResponse::success(repository))),

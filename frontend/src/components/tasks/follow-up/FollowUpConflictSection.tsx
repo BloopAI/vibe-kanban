@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { ConflictBanner } from '@/components/tasks/ConflictBanner';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import { useAttemptConflicts } from '@/hooks/useAttemptConflicts';
-import type { BranchStatus } from 'shared/types';
+import type { RepoBranchStatus } from 'shared/types';
 
 type Props = {
   selectedAttemptId?: string;
   attemptBranch: string | null;
-  branchStatus: BranchStatus;
+  branchStatus: RepoBranchStatus;
   isEditable: boolean;
   onResolve?: () => void;
   enableResolve: boolean;

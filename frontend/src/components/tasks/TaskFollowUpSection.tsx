@@ -60,6 +60,7 @@ export function TaskFollowUpSection({
     useAttemptExecution(selectedAttemptId, task.id);
   const { data: branchStatus, refetch: refetchBranchStatus } =
     useBranchStatus(selectedAttemptId);
+  const firstRepoStatus = branchStatus?.[0];
   const { branch: attemptBranch, refetch: refetchAttemptBranch } =
     useAttemptBranch(selectedAttemptId);
   const { profiles } = useUserSystem();
@@ -82,19 +83,19 @@ export function TaskFollowUpSection({
 
   // Non-editable conflict resolution instructions (derived, like review comments)
   const conflictResolutionInstructions = useMemo(() => {
-    const hasConflicts = (branchStatus?.conflicted_files?.length ?? 0) > 0;
+    const hasConflicts = (firstRepoStatus?.conflicted_files?.length ?? 0) > 0;
     if (!hasConflicts) return null;
     return buildResolveConflictsInstructions(
       attemptBranch,
-      branchStatus?.target_branch_name,
-      branchStatus?.conflicted_files || [],
-      branchStatus?.conflict_op ?? null
+      firstRepoStatus?.target_branch_name,
+      firstRepoStatus?.conflicted_files || [],
+      firstRepoStatus?.conflict_op ?? null
     );
   }, [
     attemptBranch,
-    branchStatus?.target_branch_name,
-    branchStatus?.conflicted_files,
-    branchStatus?.conflict_op,
+    firstRepoStatus?.target_branch_name,
+    firstRepoStatus?.conflicted_files,
+    firstRepoStatus?.conflict_op,
   ]);
 
   // Draft stream and synchronization
@@ -229,8 +230,8 @@ export function TaskFollowUpSection({
     }
 
     // Check if PR is merged - if so, block follow-ups
-    if (branchStatus?.merges) {
-      const mergedPR = branchStatus.merges.find(
+    if (firstRepoStatus?.merges) {
+      const mergedPR = firstRepoStatus.merges.find(
         (m) => m.type === 'pr' && m.pr_info.status === 'merged'
       );
       if (mergedPR) {
@@ -245,7 +246,7 @@ export function TaskFollowUpSection({
     selectedAttemptId,
     processes.length,
     isSendingFollowUp,
-    branchStatus?.merges,
+    firstRepoStatus?.merges,
     isRetryActive,
     hasPendingApproval,
   ]);
@@ -461,11 +462,11 @@ export function TaskFollowUpSection({
               )}
 
               {/* Conflict notice and actions (optional UI) */}
-              {branchStatus && (
+              {firstRepoStatus && (
                 <FollowUpConflictSection
                   selectedAttemptId={selectedAttemptId}
                   attemptBranch={attemptBranch}
-                  branchStatus={branchStatus}
+                  branchStatus={firstRepoStatus}
                   isEditable={isEditable}
                   onResolve={onSendFollowUp}
                   enableResolve={

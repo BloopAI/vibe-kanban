@@ -117,10 +117,14 @@ impl ProjectService {
         }
 
         let id = Uuid::new_v4();
+        
+        // Start transaction
+        let mut tx = pool.begin().await?;
+        
         let project = Project::create(
-            pool,
+            &mut *tx,
             &CreateProject {
-                name: payload.name,
+                name: payload.name.clone(),
                 git_repo_path: path.to_string_lossy().to_string(),
                 use_existing_repo: payload.use_existing_repo,
                 setup_script: payload.setup_script,
@@ -132,6 +136,18 @@ impl ProjectService {
         )
         .await
         .map_err(|e| ProjectServiceError::Project(ProjectError::CreateFailed(e.to_string())))?;
+
+        // Automatically create the default repository for this project
+        ProjectRepository::create(
+            &mut *tx,
+            project.id,
+            &CreateProjectRepository {
+                name: project.name.clone(),
+                git_repo_path: project.git_repo_path.to_string_lossy().to_string(),
+            },
+        ).await?;
+
+        tx.commit().await?;
 
         Ok(project)
     }
@@ -222,6 +238,7 @@ impl ProjectService {
     pub async fn add_repository(
         &self,
         pool: &SqlitePool,
+        _git_service: &GitService,
         project_id: Uuid,
         payload: &CreateProjectRepository,
     ) -> Result<ProjectRepository> {

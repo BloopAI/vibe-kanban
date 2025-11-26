@@ -20,14 +20,15 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Folder } from 'lucide-react';
+import { Loader2, Folder, Plus, Trash2 } from 'lucide-react';
 import { useProjects } from '@/hooks/useProjects';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { useScriptPlaceholders } from '@/hooks/useScriptPlaceholders';
 import { CopyFilesField } from '@/components/projects/CopyFilesField';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
-import type { Project, UpdateProject } from 'shared/types';
+import { projectsApi } from '@/lib/api';
+import type { Project, ProjectRepository, UpdateProject } from 'shared/types';
 
 interface ProjectFormState {
   name: string;
@@ -72,6 +73,13 @@ export function ProjectSettings() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  // Repositories state
+  const [repositories, setRepositories] = useState<ProjectRepository[]>([]);
+  const [loadingRepos, setLoadingRepos] = useState(false);
+  const [repoError, setRepoError] = useState<string | null>(null);
+  const [addingRepo, setAddingRepo] = useState(false);
+  const [deletingRepoId, setDeletingRepoId] = useState<string | null>(null);
 
   // Get OS-appropriate script placeholders
   const placeholders = useScriptPlaceholders();
@@ -181,6 +189,70 @@ export function ProjectSettings() {
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
   }, [hasUnsavedChanges]);
+
+  // Fetch repositories when project changes
+  useEffect(() => {
+    if (!selectedProjectId) {
+      setRepositories([]);
+      return;
+    }
+
+    setLoadingRepos(true);
+    setRepoError(null);
+    projectsApi
+      .getRepositories(selectedProjectId)
+      .then(setRepositories)
+      .catch((err) => {
+        setRepoError(err instanceof Error ? err.message : 'Failed to load repositories');
+        setRepositories([]);
+      })
+      .finally(() => setLoadingRepos(false));
+  }, [selectedProjectId]);
+
+  const handleAddRepository = async () => {
+    if (!selectedProjectId) return;
+
+    const selectedPath = await FolderPickerDialog.show({
+      title: 'Select Git Repository',
+      description: 'Choose a git repository to add to this project',
+      value: '',
+    });
+
+    if (!selectedPath) return;
+
+    // Extract directory name from path
+    const name = selectedPath.split('/').pop() || selectedPath;
+
+    setAddingRepo(true);
+    setRepoError(null);
+    try {
+      const newRepo = await projectsApi.addRepository(selectedProjectId, {
+        name,
+        git_repo_path: selectedPath,
+        default_target_branch: null,
+      });
+      setRepositories((prev) => [...prev, newRepo]);
+    } catch (err) {
+      setRepoError(err instanceof Error ? err.message : 'Failed to add repository');
+    } finally {
+      setAddingRepo(false);
+    }
+  };
+
+  const handleDeleteRepository = async (repoId: string) => {
+    if (!selectedProjectId) return;
+
+    setDeletingRepoId(repoId);
+    setRepoError(null);
+    try {
+      await projectsApi.deleteRepository(selectedProjectId, repoId);
+      setRepositories((prev) => prev.filter((r) => r.id !== repoId));
+    } catch (err) {
+      setRepoError(err instanceof Error ? err.message : 'Failed to delete repository');
+    } finally {
+      setDeletingRepoId(null);
+    }
+  };
 
   const { updateProject } = useProjectMutations({
     onUpdateSuccess: (updatedProject: Project) => {
@@ -386,6 +458,94 @@ export function ProjectSettings() {
                   {t('settings.projects.general.repoPath.helper')}
                 </p>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Repositories Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Repositories</CardTitle>
+              <CardDescription>
+                Manage the git repositories in this project
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {repoError && (
+                <Alert variant="destructive">
+                  <AlertDescription>{repoError}</AlertDescription>
+                </Alert>
+              )}
+
+              {loadingRepos ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span className="ml-2 text-sm text-muted-foreground">
+                    Loading repositories...
+                  </span>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {repositories.map((repo) => (
+                    <div
+                      key={repo.id}
+                      className="flex items-center justify-between p-3 border rounded-md"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{repo.name}</span>
+                          <span className="text-xs px-2 py-0.5 bg-muted rounded">
+                            {repo.default_target_branch}
+                          </span>
+                        </div>
+                        <div className="text-sm text-muted-foreground truncate">
+                          {repo.git_repo_path}
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteRepository(repo.id)}
+                        disabled={
+                          repositories.length <= 1 ||
+                          deletingRepoId === repo.id
+                        }
+                        title={
+                          repositories.length <= 1
+                            ? 'Cannot delete the last repository'
+                            : 'Delete repository'
+                        }
+                      >
+                        {deletingRepoId === repo.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  ))}
+
+                  {repositories.length === 0 && !loadingRepos && (
+                    <div className="text-center py-4 text-sm text-muted-foreground">
+                      No repositories configured
+                    </div>
+                  )}
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddRepository}
+                    disabled={addingRepo}
+                    className="w-full"
+                  >
+                    {addingRepo ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Plus className="h-4 w-4 mr-2" />
+                    )}
+                    Add Repository
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 

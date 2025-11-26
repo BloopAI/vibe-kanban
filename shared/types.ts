@@ -328,19 +328,25 @@ conflict_op: ConflictOp | null,
  */
 conflicted_files: Array<string>, };
 
+export type RepoBranchStatus = { repo_id: string, repo_name: string, commits_behind: number | null, commits_ahead: number | null, has_uncommitted_changes: boolean | null, head_oid: string | null, uncommitted_count: number | null, untracked_count: number | null, target_branch_name: string, remote_commits_behind: number | null, remote_commits_ahead: number | null, merges: Array<Merge>, 
+/**
+ * True if a `git rebase` is currently in progress in this worktree
+ */
+is_rebase_in_progress: boolean, 
+/**
+ * Current conflict operation if any
+ */
+conflict_op: ConflictOp | null, 
+/**
+ * List of files currently in conflicted (unmerged) state
+ */
+conflicted_files: Array<string>, };
+
 export type ConflictOp = "rebase" | "merge" | "cherry_pick" | "revert";
 
 export type TaskAttempt = { id: string, task_id: string, container_ref: string | null, branch: string, target_branch: string, executor: string, worktree_deleted: boolean, setup_completed_at: string | null, created_at: string, updated_at: string, };
 
-export type ExecutionProcess = { id: string, task_attempt_id: string, run_reason: ExecutionProcessRunReason, executor_action: ExecutorAction, 
-/**
- * Git HEAD commit OID captured before the process starts
- */
-before_head_commit: string | null, 
-/**
- * Git HEAD commit OID captured after the process ends
- */
-after_head_commit: string | null, status: ExecutionProcessStatus, exit_code: bigint | null, 
+export type ExecutionProcess = { id: string, task_attempt_id: string, run_reason: ExecutionProcessRunReason, executor_action: ExecutorAction, status: ExecutionProcessStatus, exit_code: bigint | null, 
 /**
  * dropped: true if this process is excluded from the current
  * history view (due to restore/trimming). Hidden from logs/timeline;

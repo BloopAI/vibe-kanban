@@ -13,6 +13,9 @@ use db::{
             CreateExecutionProcess, ExecutionContext, ExecutionProcess, ExecutionProcessRunReason,
             ExecutionProcessStatus,
         },
+        execution_process_repo_state::{
+            CreateExecutionProcessRepoState, ExecutionProcessRepoState,
+        },
         execution_process_logs::ExecutionProcessLogs,
         executor_session::{CreateExecutorSession, ExecutorSession},
         task::{Task, TaskStatus},
@@ -199,19 +202,34 @@ pub trait ContainerService {
                 );
                 continue;
             }
-            // Capture after-head commit OID (best-effort)
+            // Capture after-head commit OID (best-effort) per repository
             if let Ok(Some(task_attempt)) =
                 TaskAttempt::find_by_id(&self.db().pool, process.task_attempt_id).await
-                && let Some(container_ref) = task_attempt.container_ref
+                && let Some(ref container_ref) = task_attempt.container_ref
+                && let Ok(Some(task)) = task_attempt.parent_task(&self.db().pool).await
+                && let Ok(Some(project)) = task.parent_project(&self.db().pool).await
+                && let Ok(repos) = project.repositories(&self.db().pool).await
             {
-                let wt = std::path::PathBuf::from(container_ref);
-                if let Ok(head) = self.git().get_head_info(&wt) {
-                    let _ = ExecutionProcess::update_after_head_commit(
-                        &self.db().pool,
-                        process.id,
-                        &head.oid,
-                    )
-                    .await;
+                let workspace_root = std::path::PathBuf::from(container_ref);
+                for repo in repos {
+                    let repo_path = workspace_root.join(&repo.name);
+                    if let Ok(head) = self.git().get_head_info(&repo_path) {
+                        if let Err(err) = ExecutionProcessRepoState::update_after_head_commit(
+                            &self.db().pool,
+                            process.id,
+                            repo.id,
+                            &head.oid,
+                        )
+                        .await
+                        {
+                            tracing::warn!(
+                                "Failed to update after_head_commit for repo {} on process {}: {}",
+                                repo.id,
+                                process.id,
+                                err
+                            );
+                        }
+                    }
                 }
             }
             // Process marked as failed
@@ -284,8 +302,13 @@ pub trait ContainerService {
             }
 
             if let Some(before_oid) = before
-                && let Err(e) =
-                    ExecutionProcess::update_before_head_commit(pool, row.id, &before_oid).await
+                && let Err(e) = ExecutionProcessRepoState::update_before_head_commit(
+                    pool,
+                    row.id,
+                    row.project_repository_id,
+                    &before_oid,
+                )
+                .await
             {
                 tracing::warn!(
                     "Backfill: Failed to update before_head_commit for process {}: {}",
@@ -750,15 +773,36 @@ pub trait ContainerService {
             }
         }
         // Create new execution process record
-        // Capture current HEAD as the "before" commit for this execution
-        let before_head_commit = {
-            if let Some(container_ref) = &task_attempt.container_ref {
-                let wt = std::path::Path::new(container_ref);
-                self.git().get_head_info(wt).ok().map(|h| h.oid)
-            } else {
-                None
-            }
-        };
+        // Capture current HEAD per repository as the "before" commit for this execution
+        let project = task
+            .parent_project(&self.db().pool)
+            .await?
+            .ok_or(SqlxError::RowNotFound)?;
+
+        let repositories = project.repositories(&self.db().pool).await?;
+        if repositories.is_empty() {
+            return Err(ContainerError::Other(anyhow!(
+                "Project has no repositories configured"
+            )));
+        }
+
+        let workspace_root = task_attempt
+            .container_ref
+            .as_ref()
+            .map(std::path::PathBuf::from)
+            .ok_or_else(|| ContainerError::Other(anyhow!("Container ref not found")))?;
+
+        let mut repo_states = Vec::with_capacity(repositories.len());
+        for repo in &repositories {
+            let repo_path = workspace_root.join(&repo.name);
+            let before_head_commit = self.git().get_head_info(&repo_path).ok().map(|h| h.oid);
+            repo_states.push(CreateExecutionProcessRepoState {
+                project_repository_id: repo.id,
+                before_head_commit,
+                after_head_commit: None,
+                merge_commit: None,
+            });
+        }
         let create_execution_process = CreateExecutionProcess {
             task_attempt_id: task_attempt.id,
             executor_action: executor_action.clone(),
@@ -769,7 +813,7 @@ pub trait ContainerService {
             &self.db().pool,
             &create_execution_process,
             Uuid::new_v4(),
-            before_head_commit.as_deref(),
+            &repo_states,
         )
         .await?;
 

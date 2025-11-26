@@ -32,7 +32,7 @@ use services::services::{
     share::{RemoteSync, RemoteSyncHandle, ShareConfig, SharePublisher},
     worktree_manager::WorktreeError,
 };
-use sqlx::{Error as SqlxError, types::Uuid};
+use sqlx::Error as SqlxError;
 use thiserror::Error;
 use tokio::sync::{Mutex, RwLock};
 use utils::sentry as sentry_utils;
@@ -190,21 +190,17 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                         cleanup_script: None,
                         copy_files: None,
                     };
-                    // Ensure existing repo has a main branch if it's empty
-                    if let Err(e) = self.git().ensure_main_branch_exists(&repo.path) {
-                        tracing::error!("Failed to ensure main branch exists: {}", e);
-                        continue;
-                    }
 
-                    // Create project (ignore individual failures)
-                    let project_id = Uuid::new_v4();
-
-                    match Project::create(&self.db().pool, &create_data, project_id).await {
+                    match self
+                        .project()
+                        .create_project(&self.db().pool, self.git(), create_data.clone())
+                        .await
+                    {
                         Ok(project) => {
                             tracing::info!(
                                 "Auto-created project '{}' from {}",
-                                create_data.name,
-                                create_data.git_repo_path
+                                project.name,
+                                project.git_repo_path.display()
                             );
 
                             // Track project creation event
@@ -222,8 +218,8 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                         }
                         Err(e) => {
                             tracing::warn!(
-                                "Failed to auto-create project '{}': {}",
-                                create_data.name,
+                                "Failed to auto-create project from {}: {}",
+                                repo.path.display(),
                                 e
                             );
                         }
