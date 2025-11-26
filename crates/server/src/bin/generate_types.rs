@@ -45,6 +45,7 @@ fn generate_types_content() -> String {
         utils::api::oauth::ProfileResponse::decl(),
         utils::api::oauth::ProviderProfile::decl(),
         utils::api::oauth::StatusResponse::decl(),
+        server::routes::oauth::TokenResponse::decl(),
         utils::api::organizations::MemberRole::decl(),
         utils::api::organizations::InvitationStatus::decl(),
         utils::api::organizations::Organization::decl(),

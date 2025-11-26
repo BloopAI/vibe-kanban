@@ -48,3 +48,10 @@ const resolvedHeaders = (() => {
 
 export const electricShapeUrl = normalizeToAbsolute(resolvedShapeUrl);
 export const electricShapeHeaders = resolvedHeaders;
+
+export const getElectricShapeUrl = (table: string): string => {
+  const baseUrl = normalizeToAbsolute(resolvedShapeUrl);
+  const url = new URL(baseUrl);
+  url.pathname = `${DEFAULT_SHAPE_PATH}/${table}`;
+  return url.toString();
+};

@@ -74,6 +74,7 @@ import {
   OpenEditorRequest,
   CreatePrError,
   PushError,
+  TokenResponse,
 } from 'shared/types';
 
 // Re-export types for convenience
@@ -946,6 +947,13 @@ export const oauthApi = {
         response
       );
     }
+  },
+
+  /** Returns the current access token for the remote server (auto-refreshes if needed) */
+  getToken: async (): Promise<TokenResponse | null> => {
+    const response = await makeRequest('/api/auth/token');
+    if (!response.ok) return null;
+    return handleApiResponse<TokenResponse>(response);
   },
 };
 

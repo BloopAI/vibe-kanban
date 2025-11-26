@@ -25,9 +25,6 @@ services:
       LOGICAL_PUBLISHER_HOST: electric
       AUTH_MODE: insecure
       ELECTRIC_INSECURE: true
-    ports:
-      - "5133:3000"
-      - "65432:65432"
     depends_on:
       remote-db:
         condition: service_healthy
@@ -39,9 +36,12 @@ services:
     depends_on:
       remote-db:
         condition: service_healthy
+      electric:
+        condition: service_started
     environment:
       SERVER_DATABASE_URL: postgres://remote:remote@remote-db:5432/remote
       SERVER_LISTEN_ADDR: 0.0.0.0:8081
+      ELECTRIC_INTERNAL_URL: http://electric:3000
       GITHUB_OAUTH_CLIENT_ID: ${GITHUB_OAUTH_CLIENT_ID:?set in .env.remote}
       GITHUB_OAUTH_CLIENT_SECRET: ${GITHUB_OAUTH_CLIENT_SECRET:?set in .env.remote}
       GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:?set in .env.remote}

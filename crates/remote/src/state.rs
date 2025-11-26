@@ -15,6 +15,7 @@ pub struct AppState {
     pub jwt: Arc<JwtService>,
     pub mailer: Arc<dyn Mailer>,
     pub server_public_base_url: String,
+    pub http_client: reqwest::Client,
     handoff: Arc<OAuthHandoffService>,
 }
 
@@ -26,6 +27,7 @@ impl AppState {
         handoff: Arc<OAuthHandoffService>,
         mailer: Arc<dyn Mailer>,
         server_public_base_url: String,
+        http_client: reqwest::Client,
     ) -> Self {
         Self {
             pool,
@@ -33,6 +35,7 @@ impl AppState {
             jwt,
             mailer,
             server_public_base_url,
+            http_client,
             handoff,
         }
     }

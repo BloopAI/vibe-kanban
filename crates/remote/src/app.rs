@@ -73,6 +73,7 @@ impl Server {
             )
         })?;
 
+        let http_client = reqwest::Client::new();
         let state = AppState::new(
             pool.clone(),
             config.clone(),
@@ -80,6 +81,7 @@ impl Server {
             handoff_service,
             mailer,
             server_public_base_url,
+            http_client,
         );
 
         let router = routes::router(state);
