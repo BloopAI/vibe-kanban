@@ -5,7 +5,10 @@ use std::{
 };
 
 use dashmap::DashMap;
-use db::models::project::{SearchMatchType, SearchResult};
+use db::models::{
+    project::{Project, SearchMatchType, SearchResult},
+    project_repo::ProjectRepo,
+};
 use fst::{Map, MapBuilder};
 use ignore::WalkBuilder;
 use moka::future::Cache;
@@ -34,7 +37,7 @@ pub enum SearchMode {
 }
 
 /// Search query parameters for typed Axum extraction
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct SearchQuery {
     pub q: String,
     #[serde(default)]
@@ -174,8 +177,6 @@ impl FileSearchCache {
 
     /// Pre-warm cache for most active projects
     pub async fn warm_most_active(&self, db_pool: &SqlitePool, limit: i32) -> Result<(), String> {
-        use db::models::project::Project;
-
         info!("Starting file search cache warming...");
 
         // Get most active projects
@@ -188,13 +189,24 @@ impl FileSearchCache {
             return Ok(());
         }
 
-        let repo_paths: Vec<PathBuf> = active_projects
-            .iter()
-            .map(|p| PathBuf::from(&p.git_repo_path))
-            .collect();
+        // Collect all repository paths from active projects
+        let mut repo_paths: Vec<PathBuf> = Vec::new();
+        for project in &active_projects {
+            let repos = ProjectRepo::find_repos_for_project(db_pool, project.id)
+                .await
+                .map_err(|e| format!("Failed to fetch repositories for project: {e}"))?;
+            for repo in repos {
+                repo_paths.push(repo.path);
+            }
+        }
+
+        if repo_paths.is_empty() {
+            info!("No repositories found for active projects, skipping cache warming");
+            return Ok(());
+        }
 
         info!(
-            "Warming cache for {} projects: {:?}",
+            "Warming cache for {} repositories: {:?}",
             repo_paths.len(),
             repo_paths
         );

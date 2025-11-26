@@ -7,7 +7,7 @@ import type { BranchStatus } from 'shared/types';
 type Props = {
   selectedAttemptId?: string;
   attemptBranch: string | null;
-  branchStatus: BranchStatus;
+  branchStatus: BranchStatus[] | undefined;
   isEditable: boolean;
   onResolve?: () => void;
   enableResolve: boolean;
@@ -24,7 +24,8 @@ export function FollowUpConflictSection({
   enableAbort,
   conflictResolutionInstructions,
 }: Props) {
-  const op = branchStatus.conflict_op ?? null;
+  const firstRepoStatus = branchStatus?.[0];
+  const op = firstRepoStatus?.conflict_op ?? null;
   const openInEditor = useOpenInEditor(selectedAttemptId);
   const { abortConflicts } = useAttemptConflicts(selectedAttemptId);
 
@@ -36,8 +37,8 @@ export function FollowUpConflictSection({
   }, [aborting]);
 
   if (
-    !branchStatus.is_rebase_in_progress &&
-    !branchStatus.conflicted_files?.length
+    !firstRepoStatus?.is_rebase_in_progress &&
+    !firstRepoStatus?.conflicted_files?.length
   )
     return null;
 
@@ -45,14 +46,14 @@ export function FollowUpConflictSection({
     <>
       <ConflictBanner
         attemptBranch={attemptBranch}
-        baseBranch={branchStatus.target_branch_name}
-        conflictedFiles={branchStatus.conflicted_files || []}
+        baseBranch={firstRepoStatus?.target_branch_name ?? ''}
+        conflictedFiles={firstRepoStatus?.conflicted_files || []}
         op={op}
         onResolve={onResolve}
         enableResolve={enableResolve && !aborting}
         onOpenEditor={() => {
           if (!selectedAttemptId) return;
-          const first = branchStatus.conflicted_files?.[0];
+          const first = firstRepoStatus?.conflicted_files?.[0];
           openInEditor(first ? { filePath: first } : undefined);
         }}
         onAbort={async () => {

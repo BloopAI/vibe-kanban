@@ -45,8 +45,7 @@ const ProjectFormDialogImpl = NiceModal.create<ProjectFormDialogProps>(() => {
 
     const createData: CreateProject = {
       name: suggestedName,
-      git_repo_path: path,
-      use_existing_repo: true,
+      repositories: [{ name: suggestedName, git_repo_path: path }],
       setup_script: null,
       dev_script: null,
       cleanup_script: null,
@@ -76,8 +75,7 @@ const ProjectFormDialogImpl = NiceModal.create<ProjectFormDialogProps>(() => {
     // Creating new project
     const createData: CreateProject = {
       name: finalName,
-      git_repo_path: finalGitRepoPath,
-      use_existing_repo: repoMode === 'existing',
+      repositories: [{ name: finalName, git_repo_path: finalGitRepoPath }],
       setup_script: null,
       dev_script: null,
       cleanup_script: null,

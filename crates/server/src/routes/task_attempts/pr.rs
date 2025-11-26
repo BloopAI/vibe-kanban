@@ -21,7 +21,7 @@ use services::services::{
 use ts_rs::TS;
 use utils::response::ApiResponse;
 
-use super::util::ensure_worktree_path;
+use super::{get_first_repo_path, get_first_target_branch, util::ensure_worktree_path};
 use crate::{DeploymentImpl, error::ApiError};
 
 #[derive(Debug, Deserialize, Serialize, TS)]
@@ -147,21 +147,6 @@ pub async fn create_github_pr(
     State(deployment): State<DeploymentImpl>,
     Json(request): Json<CreateGitHubPrRequest>,
 ) -> Result<ResponseJson<ApiResponse<String, CreatePrError>>, ApiError> {
-    let github_config = deployment.config().read().await.github.clone();
-    // Get the task attempt to access the stored target branch
-    let target_branch = request.target_branch.unwrap_or_else(|| {
-        // Use the stored target branch from the task attempt as the default
-        // Fall back to config default or "main" only if stored target branch is somehow invalid
-        if !task_attempt.target_branch.trim().is_empty() {
-            task_attempt.target_branch.clone()
-        } else {
-            github_config
-                .default_pr_base
-                .as_ref()
-                .map_or_else(|| "main".to_string(), |b| b.to_string())
-        }
-    });
-
     let pool = &deployment.db().pool;
     let task = task_attempt
         .parent_task(pool)
@@ -171,11 +156,29 @@ pub async fn create_github_pr(
         .await?
         .ok_or(ApiError::Project(ProjectError::ProjectNotFound))?;
 
+    let git_repo_path = get_first_repo_path(pool, project.id).await?;
+    let target_branch = get_first_target_branch(pool, task_attempt.id).await?;
+
+    let github_config = deployment.config().read().await.github.clone();
+    // Get the task attempt to access the stored target branch
+    let target_branch = request.target_branch.unwrap_or_else(|| {
+        // Use the stored target branch from the task attempt as the default
+        // Fall back to config default or "main" only if stored target branch is somehow invalid
+        if !target_branch.trim().is_empty() {
+            target_branch.clone()
+        } else {
+            github_config
+                .default_pr_base
+                .as_ref()
+                .map_or_else(|| "main".to_string(), |b| b.to_string())
+        }
+    });
+
     let workspace_path = ensure_worktree_path(&deployment, &task_attempt).await?;
 
     match deployment
         .git()
-        .check_remote_branch_exists(&project.git_repo_path, &target_branch)
+        .check_remote_branch_exists(&git_repo_path, &target_branch)
     {
         Ok(false) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
@@ -222,7 +225,7 @@ pub async fn create_github_pr(
     let norm_target_branch_name = if matches!(
         deployment
             .git()
-            .find_branch_type(&project.git_repo_path, &target_branch)?,
+            .find_branch_type(&git_repo_path, &target_branch)?,
         BranchType::Remote
     ) {
         // Remote branches are formatted as {remote}/{branch} locally.
@@ -247,9 +250,7 @@ pub async fn create_github_pr(
         draft: request.draft,
     };
     // Use GitService to get the remote URL, then create GitHubRepoInfo
-    let repo_info = deployment
-        .git()
-        .get_github_repo_info(&project.git_repo_path)?;
+    let repo_info = deployment.git().get_github_repo_info(&git_repo_path)?;
 
     // Use GitHubService to create the PR
     let github_service = GitHubService::new()?;
@@ -327,6 +328,17 @@ pub async fn attach_existing_pr(
 ) -> Result<ResponseJson<ApiResponse<AttachPrResponse>>, ApiError> {
     let pool = &deployment.db().pool;
 
+    let task = task_attempt
+        .parent_task(pool)
+        .await?
+        .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
+    let project = Project::find_by_id(pool, task.project_id)
+        .await?
+        .ok_or(ApiError::Project(ProjectError::ProjectNotFound))?;
+
+    let git_repo_path = get_first_repo_path(pool, project.id).await?;
+    let target_branch = get_first_target_branch(pool, task_attempt.id).await?;
+
     // Check if PR already attached
     if let Some(Merge::Pr(pr_merge)) =
         Merge::find_latest_by_task_attempt_id(pool, task_attempt.id).await?
@@ -339,18 +351,8 @@ pub async fn attach_existing_pr(
         })));
     }
 
-    // Get project and repo info
-    let Some(task) = task_attempt.parent_task(pool).await? else {
-        return Err(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound));
-    };
-    let Some(project) = Project::find_by_id(pool, task.project_id).await? else {
-        return Err(ApiError::Project(ProjectError::ProjectNotFound));
-    };
-
     let github_service = GitHubService::new()?;
-    let repo_info = deployment
-        .git()
-        .get_github_repo_info(&project.git_repo_path)?;
+    let repo_info = deployment.git().get_github_repo_info(&git_repo_path)?;
 
     // List all PRs for branch (open, closed, and merged)
     let prs = github_service
@@ -363,7 +365,7 @@ pub async fn attach_existing_pr(
         let merge = Merge::create_pr(
             pool,
             task_attempt.id,
-            &task_attempt.target_branch,
+            &target_branch,
             pr_info.number,
             &pr_info.url,
         )
@@ -423,6 +425,16 @@ pub async fn get_pr_comments(
 ) -> Result<ResponseJson<ApiResponse<PrCommentsResponse, GetPrCommentsError>>, ApiError> {
     let pool = &deployment.db().pool;
 
+    let task = task_attempt
+        .parent_task(pool)
+        .await?
+        .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
+    let project = Project::find_by_id(pool, task.project_id)
+        .await?
+        .ok_or(ApiError::Project(ProjectError::ProjectNotFound))?;
+
+    let git_repo_path = get_first_repo_path(pool, project.id).await?;
+
     // Find the latest merge for this task attempt
     let merge = Merge::find_latest_by_task_attempt_id(pool, task_attempt.id).await?;
 
@@ -436,19 +448,8 @@ pub async fn get_pr_comments(
         }
     };
 
-    // Get project and repo info
-    let task = task_attempt
-        .parent_task(pool)
-        .await?
-        .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
-    let project = Project::find_by_id(pool, task.project_id)
-        .await?
-        .ok_or(ApiError::Project(ProjectError::ProjectNotFound))?;
-
     let github_service = GitHubService::new()?;
-    let repo_info = deployment
-        .git()
-        .get_github_repo_info(&project.git_repo_path)?;
+    let repo_info = deployment.git().get_github_repo_info(&git_repo_path)?;
 
     // Fetch comments from GitHub
     match github_service

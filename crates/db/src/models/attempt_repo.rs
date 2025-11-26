@@ -1,0 +1,133 @@
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use sqlx::{FromRow, SqlitePool};
+use ts_rs::TS;
+use uuid::Uuid;
+
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
+pub struct AttemptRepo {
+    pub id: Uuid,
+    pub attempt_id: Uuid,
+    pub repo_id: Uuid,
+    pub target_branch: String,
+    #[ts(type = "Date")]
+    pub created_at: DateTime<Utc>,
+    #[ts(type = "Date")]
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Deserialize, TS)]
+pub struct CreateAttemptRepo {
+    pub repo_id: Uuid,
+    pub target_branch: String,
+}
+
+impl AttemptRepo {
+    pub async fn create_many(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+        repos: &[CreateAttemptRepo],
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        let mut results = Vec::with_capacity(repos.len());
+
+        for repo in repos {
+            let id = Uuid::new_v4();
+            let attempt_repo = sqlx::query_as!(
+                AttemptRepo,
+                r#"INSERT INTO attempt_repos (id, attempt_id, repo_id, target_branch)
+                   VALUES ($1, $2, $3, $4)
+                   RETURNING id as "id!: Uuid",
+                             attempt_id as "attempt_id!: Uuid",
+                             repo_id as "repo_id!: Uuid",
+                             target_branch,
+                             created_at as "created_at!: DateTime<Utc>",
+                             updated_at as "updated_at!: DateTime<Utc>""#,
+                id,
+                attempt_id,
+                repo.repo_id,
+                repo.target_branch
+            )
+            .fetch_one(pool)
+            .await?;
+            results.push(attempt_repo);
+        }
+
+        Ok(results)
+    }
+
+    pub async fn find_by_attempt_id(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            AttemptRepo,
+            r#"SELECT id as "id!: Uuid",
+                      attempt_id as "attempt_id!: Uuid",
+                      repo_id as "repo_id!: Uuid",
+                      target_branch,
+                      created_at as "created_at!: DateTime<Utc>",
+                      updated_at as "updated_at!: DateTime<Utc>"
+               FROM attempt_repos
+               WHERE attempt_id = $1"#,
+            attempt_id
+        )
+        .fetch_all(pool)
+        .await
+    }
+
+    pub async fn update_target_branch(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+        repo_id: Uuid,
+        new_target_branch: &str,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE attempt_repos SET target_branch = $1, updated_at = datetime('now') WHERE attempt_id = $2 AND repo_id = $3",
+            new_target_branch,
+            attempt_id,
+            repo_id
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn update_all_target_branches(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+        new_target_branch: &str,
+    ) -> Result<u64, sqlx::Error> {
+        let result = sqlx::query!(
+            "UPDATE attempt_repos SET target_branch = $1, updated_at = datetime('now') WHERE attempt_id = $2",
+            new_target_branch,
+            attempt_id
+        )
+        .execute(pool)
+        .await?;
+        Ok(result.rows_affected())
+    }
+
+    pub async fn update_target_branch_for_children_of_attempt(
+        pool: &SqlitePool,
+        parent_attempt_id: Uuid,
+        old_branch: &str,
+        new_branch: &str,
+    ) -> Result<u64, sqlx::Error> {
+        let result = sqlx::query!(
+            r#"UPDATE attempt_repos
+               SET target_branch = $1, updated_at = datetime('now')
+               WHERE target_branch = $2
+                 AND attempt_id IN (
+                     SELECT ta.id FROM task_attempts ta
+                     JOIN tasks t ON ta.task_id = t.id
+                     WHERE t.parent_task_attempt = $3
+                 )"#,
+            new_branch,
+            old_branch,
+            parent_attempt_id
+        )
+        .execute(pool)
+        .await?;
+        Ok(result.rows_affected())
+    }
+}

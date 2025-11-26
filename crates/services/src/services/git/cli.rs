@@ -123,6 +123,30 @@ impl GitCli {
         Ok(())
     }
 
+    /// Run `git -C <repo> worktree move <old_path> <new_path>`
+    pub fn worktree_move(
+        &self,
+        repo_path: &Path,
+        old_path: &Path,
+        new_path: &Path,
+    ) -> Result<(), GitCliError> {
+        self.ensure_available()?;
+        self.git(
+            repo_path,
+            [
+                "worktree",
+                "move",
+                old_path.to_str().ok_or_else(|| {
+                    GitCliError::CommandFailed("Invalid old worktree path".to_string())
+                })?,
+                new_path.to_str().ok_or_else(|| {
+                    GitCliError::CommandFailed("Invalid new worktree path".to_string())
+                })?,
+            ],
+        )?;
+        Ok(())
+    }
+
     /// Prune stale worktree metadata
     pub fn worktree_prune(&self, repo_path: &Path) -> Result<(), GitCliError> {
         self.git(repo_path, ["worktree", "prune"])?;

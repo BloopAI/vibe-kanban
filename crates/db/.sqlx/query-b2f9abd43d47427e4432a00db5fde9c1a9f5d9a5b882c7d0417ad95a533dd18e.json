@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT ta.id as \"attempt_id!: Uuid\", ta.container_ref, r.path as \"path!\"\n            FROM task_attempts ta\n            LEFT JOIN execution_processes ep ON ta.id = ep.task_attempt_id AND ep.completed_at IS NOT NULL\n            JOIN tasks t ON ta.task_id = t.id\n            JOIN project_repos pr ON pr.project_id = t.project_id\n            JOIN repos r ON r.id = pr.repo_id\n            WHERE ta.worktree_deleted = FALSE\n                AND ta.id NOT IN (\n                    SELECT DISTINCT ep2.task_attempt_id\n                    FROM execution_processes ep2\n                    WHERE ep2.completed_at IS NULL\n                )\n            GROUP BY ta.id, ta.container_ref, ta.updated_at\n            HAVING datetime('now', '-72 hours') > datetime(\n                MAX(\n                    CASE\n                        WHEN ep.completed_at IS NOT NULL THEN ep.completed_at\n                        ELSE ta.updated_at\n                    END\n                )\n            )\n            ORDER BY MAX(\n                CASE\n                    WHEN ep.completed_at IS NOT NULL THEN ep.completed_at\n                    ELSE ta.updated_at\n                END\n            ) ASC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "attempt_id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "container_ref",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "path!",
+        "ordinal": 2,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "b2f9abd43d47427e4432a00db5fde9c1a9f5d9a5b882c7d0417ad95a533dd18e"
+}

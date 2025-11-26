@@ -1,4 +1,4 @@
-use std::{future::Future, path::PathBuf, str::FromStr};
+use std::{future::Future, str::FromStr};
 
 use db::models::{
     project::Project,
@@ -37,14 +37,13 @@ pub struct CreateTaskResponse {
     pub task_id: String,
 }
 
+// TODO: Update to expose all repositories for multi-repo support
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct ProjectSummary {
     #[schemars(description = "The unique identifier of the project")]
     pub id: String,
     #[schemars(description = "The name of the project")]
     pub name: String,
-    #[schemars(description = "The path to the git repository")]
-    pub git_repo_path: PathBuf,
     #[schemars(description = "Optional setup script for the project")]
     pub setup_script: Option<String>,
     #[schemars(description = "Optional cleanup script for the project")]
@@ -62,7 +61,6 @@ impl ProjectSummary {
         Self {
             id: project.id.to_string(),
             name: project.name,
-            git_repo_path: project.git_repo_path,
             setup_script: project.setup_script,
             cleanup_script: project.cleanup_script,
             dev_script: project.dev_script,
@@ -308,13 +306,18 @@ impl TaskServer {
         }
 
         let ctx = api_response.data?;
+        let attempt_target_branch = ctx
+            .attempt_repos
+            .first()
+            .map(|r| r.target_branch.clone())
+            .unwrap_or_default();
         Some(McpContext {
             project_id: ctx.project.id,
             task_id: ctx.task.id,
             task_title: ctx.task.title,
             attempt_id: ctx.task_attempt.id,
             attempt_branch: ctx.task_attempt.branch,
-            attempt_target_branch: ctx.task_attempt.target_branch,
+            attempt_target_branch,
             executor: ctx.task_attempt.executor,
         })
     }
@@ -471,21 +474,16 @@ impl TaskServer {
 
         let url = self.url("/api/tasks");
 
-        // Get parent_task_attempt from context if available (auto-link subtasks)
-        let parent_task_attempt = self.context.as_ref().map(|ctx| ctx.attempt_id);
-
-        let create_payload = CreateTask {
-            project_id,
-            title,
-            description: expanded_description,
-            status: Some(TaskStatus::Todo),
-            parent_task_attempt,
-            image_ids: None,
-            shared_task_id: None,
-        };
-
         let task: Task = match self
-            .send_json(self.client.post(&url).json(&create_payload))
+            .send_json(
+                self.client
+                    .post(&url)
+                    .json(&CreateTask::from_title_description(
+                        project_id,
+                        title,
+                        expanded_description,
+                    )),
+            )
             .await
         {
             Ok(t) => t,

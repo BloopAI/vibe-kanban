@@ -7,6 +7,7 @@ use db::{
     DBService,
     models::{
         project::{CreateProject, Project},
+        project_repo::CreateProjectRepo,
         task_attempt::TaskAttemptError,
     },
 };
@@ -27,11 +28,12 @@ use services::services::{
     git::{GitService, GitServiceError},
     image::{ImageError, ImageService},
     pr_monitor::PrMonitorService,
+    project::ProjectService,
     queued_message::QueuedMessageService,
     share::SharePublisher,
     worktree_manager::WorktreeError,
 };
-use sqlx::{Error as SqlxError, types::Uuid};
+use sqlx::Error as SqlxError;
 use thiserror::Error;
 use tokio::sync::RwLock;
 use utils::sentry as sentry_utils;
@@ -89,6 +91,8 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     fn container(&self) -> &impl ContainerService;
 
     fn git(&self) -> &GitService;
+
+    fn project(&self) -> &ProjectService;
 
     fn image(&self) -> &ImageService;
 
@@ -156,33 +160,32 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                 // Take first 3 repositories and create projects
                 for repo in repos.into_iter().take(3) {
                     // Generate clean project name from path
-                    let project_name = repo.name;
+                    let project_name = repo.name.clone();
+                    let repo_path = repo.path.to_string_lossy().to_string();
 
                     let create_data = CreateProject {
                         name: project_name,
-                        git_repo_path: repo.path.to_string_lossy().to_string(),
-                        use_existing_repo: true,
+                        repositories: vec![CreateProjectRepo {
+                            name: repo.name,
+                            git_repo_path: repo_path.clone(),
+                        }],
                         setup_script: None,
                         dev_script: None,
                         cleanup_script: None,
                         copy_files: None,
                         parallel_setup_script: None,
                     };
-                    // Ensure existing repo has a main branch if it's empty
-                    if let Err(e) = self.git().ensure_main_branch_exists(&repo.path) {
-                        tracing::error!("Failed to ensure main branch exists: {}", e);
-                        continue;
-                    }
 
-                    // Create project (ignore individual failures)
-                    let project_id = Uuid::new_v4();
-
-                    match Project::create(&self.db().pool, &create_data, project_id).await {
+                    match self
+                        .project()
+                        .create_project(&self.db().pool, create_data.clone())
+                        .await
+                    {
                         Ok(project) => {
                             tracing::info!(
                                 "Auto-created project '{}' from {}",
-                                create_data.name,
-                                create_data.git_repo_path
+                                project.name,
+                                repo_path
                             );
 
                             // Track project creation event
@@ -190,7 +193,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                                 "project_created",
                                 serde_json::json!({
                                     "project_id": project.id.to_string(),
-                                    "use_existing_repo": create_data.use_existing_repo,
+                                    "repository_count": 1,
                                     "has_setup_script": create_data.setup_script.is_some(),
                                     "has_dev_script": create_data.dev_script.is_some(),
                                     "trigger": "auto_setup",
@@ -200,8 +203,8 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                         }
                         Err(e) => {
                             tracing::warn!(
-                                "Failed to auto-create project '{}': {}",
-                                create_data.name,
+                                "Failed to auto-create project from {}: {}",
+                                repo.path.display(),
                                 e
                             );
                         }
