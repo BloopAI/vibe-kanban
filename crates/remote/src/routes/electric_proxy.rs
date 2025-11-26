@@ -83,9 +83,7 @@ async fn proxy_table(
     headers.insert(header::VARY, HeaderValue::from_static("Authorization"));
 
     // Stream the response body directly without buffering
-    let body_stream = response
-        .bytes_stream()
-        .map_err(|e| std::io::Error::other(e));
+    let body_stream = response.bytes_stream().map_err(std::io::Error::other);
     let body = Body::from_stream(body_stream);
 
     Ok((status, headers, body).into_response())
