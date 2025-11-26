@@ -197,6 +197,21 @@ impl GitService {
         }
     }
 
+    pub fn get_default_branch(&self, repo_path: &Path) -> Result<String, GitServiceError> {
+        let repo = self.open_repo(repo_path)?;
+        let head = repo.head()?;
+
+        // Use shorthand if available (e.g. "main", "master")
+        // For unborn branches (empty repo), this also returns the name HEAD points to
+        if let Some(name) = head.shorthand() {
+            Ok(name.to_string())
+        } else {
+            // If we can't get a shorthand (e.g. detached HEAD), fallback to "main"
+            // This mirrors the behavior in initialize_repo_with_main_branch which enforces "main"
+            Ok("main".to_string())
+        }
+    }
+
     /// Initialize a new git repository with a main branch and initial commit
     pub fn initialize_repo_with_main_branch(
         &self,

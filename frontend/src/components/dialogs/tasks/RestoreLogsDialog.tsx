@@ -66,7 +66,11 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
         try {
           const proc =
             await executionProcessesApi.getDetails(executionProcessId);
-          const sha = proc.before_head_commit || null;
+          // TODO: before_head_commit is now stored in execution_process_repo_states table
+          // Need to update API to return this field or fetch it separately
+          const sha =
+            (proc as { before_head_commit?: string }).before_head_commit ||
+            null;
           if (cancelled) return;
           setTargetSha(sha);
 

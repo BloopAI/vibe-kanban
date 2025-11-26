@@ -36,6 +36,7 @@ import type {
   DraftFollowUpData,
   ExecutorAction,
   ExecutorProfileId,
+  Merge,
 } from 'shared/types';
 import { buildResolveConflictsInstructions } from '@/lib/conflicts';
 import { useTranslation } from 'react-i18next';
@@ -60,6 +61,7 @@ export function TaskFollowUpSection({
     useAttemptExecution(selectedAttemptId, task.id);
   const { data: branchStatus, refetch: refetchBranchStatus } =
     useBranchStatus(selectedAttemptId);
+  const firstRepoStatus = branchStatus?.[0];
   const { branch: attemptBranch, refetch: refetchAttemptBranch } =
     useAttemptBranch(selectedAttemptId);
   const { profiles } = useUserSystem();
@@ -82,19 +84,19 @@ export function TaskFollowUpSection({
 
   // Non-editable conflict resolution instructions (derived, like review comments)
   const conflictResolutionInstructions = useMemo(() => {
-    const hasConflicts = (branchStatus?.conflicted_files?.length ?? 0) > 0;
+    const hasConflicts = (firstRepoStatus?.conflicted_files?.length ?? 0) > 0;
     if (!hasConflicts) return null;
     return buildResolveConflictsInstructions(
       attemptBranch,
-      branchStatus?.target_branch_name,
-      branchStatus?.conflicted_files || [],
-      branchStatus?.conflict_op ?? null
+      firstRepoStatus?.target_branch_name,
+      firstRepoStatus?.conflicted_files || [],
+      firstRepoStatus?.conflict_op ?? null
     );
   }, [
     attemptBranch,
-    branchStatus?.target_branch_name,
-    branchStatus?.conflicted_files,
-    branchStatus?.conflict_op,
+    firstRepoStatus?.target_branch_name,
+    firstRepoStatus?.conflicted_files,
+    firstRepoStatus?.conflict_op,
   ]);
 
   // Editor state (persisted via scratch)
@@ -308,9 +310,9 @@ export function TaskFollowUpSection({
     }
 
     // Check if PR is merged - if so, block follow-ups
-    if (branchStatus?.merges) {
-      const mergedPR = branchStatus.merges.find(
-        (m) => m.type === 'pr' && m.pr_info.status === 'merged'
+    if (firstRepoStatus?.merges) {
+      const mergedPR = firstRepoStatus.merges.find(
+        (m: Merge) => m.type === 'pr' && m.pr_info.status === 'merged'
       );
       if (mergedPR) {
         return false;
@@ -325,7 +327,7 @@ export function TaskFollowUpSection({
     selectedAttemptId,
     processes.length,
     isSendingFollowUp,
-    branchStatus?.merges,
+    firstRepoStatus?.merges,
     isRetryActive,
     hasPendingApproval,
   ]);

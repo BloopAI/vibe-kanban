@@ -1,4 +1,4 @@
-use std::{future::Future, path::PathBuf, str::FromStr};
+use std::{future::Future, str::FromStr};
 
 use db::models::{
     project::Project,
@@ -35,14 +35,13 @@ pub struct CreateTaskResponse {
     pub task_id: String,
 }
 
+// TODO: Update to expose all repositories for multi-repo support
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct ProjectSummary {
     #[schemars(description = "The unique identifier of the project")]
     pub id: String,
     #[schemars(description = "The name of the project")]
     pub name: String,
-    #[schemars(description = "The path to the git repository")]
-    pub git_repo_path: PathBuf,
     #[schemars(description = "Optional setup script for the project")]
     pub setup_script: Option<String>,
     #[schemars(description = "Optional cleanup script for the project")]
@@ -60,7 +59,6 @@ impl ProjectSummary {
         Self {
             id: project.id.to_string(),
             name: project.name,
-            git_repo_path: project.git_repo_path,
             setup_script: project.setup_script,
             cleanup_script: project.cleanup_script,
             dev_script: project.dev_script,

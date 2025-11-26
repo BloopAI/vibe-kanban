@@ -14,6 +14,7 @@ use axum::{
 };
 use db::models::{
     image::TaskImage,
+    project_repository::ProjectRepository,
     task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
     task_attempt::{CreateTaskAttempt, TaskAttempt},
 };
@@ -22,9 +23,7 @@ use executors::profile::ExecutorProfileId;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use serde::{Deserialize, Serialize};
 use services::services::{
-    container::ContainerService,
-    share::ShareError,
-    worktree_manager::{WorktreeCleanup, WorktreeManager},
+    container::ContainerService, share::ShareError, workspace_manager::WorkspaceManager,
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
@@ -300,22 +299,18 @@ pub async fn delete_task(
         })?;
 
     // Gather cleanup data before deletion
+    let pool = &deployment.db().pool;
     let project = task
-        .parent_project(&deployment.db().pool)
+        .parent_project(pool)
         .await?
         .ok_or_else(|| ApiError::Database(SqlxError::RowNotFound))?;
 
-    let cleanup_args: Vec<WorktreeCleanup> = attempts
+    let repositories = ProjectRepository::find_by_project_id(pool, project.id).await?;
+
+    // Collect workspace directories that need cleanup
+    let workspace_dirs: Vec<PathBuf> = attempts
         .iter()
-        .filter_map(|attempt| {
-            attempt
-                .container_ref
-                .as_ref()
-                .map(|worktree_path| WorktreeCleanup {
-                    worktree_path: PathBuf::from(worktree_path),
-                    git_repo_path: Some(project.git_repo_path.clone()),
-                })
-        })
+        .filter_map(|attempt| attempt.container_ref.as_ref().map(PathBuf::from))
         .collect();
 
     if let Some(shared_task_id) = task.shared_task_id {
@@ -368,24 +363,26 @@ pub async fn delete_task(
     // Spawn background worktree cleanup task
     let task_id = task.id;
     tokio::spawn(async move {
-        let span = tracing::info_span!("background_worktree_cleanup", task_id = %task_id);
-        let _enter = span.enter();
-
         tracing::info!(
-            "Starting background cleanup for task {} ({} worktrees)",
+            "Starting background cleanup for task {} ({} workspaces, {} repos)",
             task_id,
-            cleanup_args.len()
+            workspace_dirs.len(),
+            repositories.len()
         );
 
-        if let Err(e) = WorktreeManager::batch_cleanup_worktrees(&cleanup_args).await {
-            tracing::error!(
-                "Background worktree cleanup failed for task {}: {}",
-                task_id,
-                e
-            );
-        } else {
-            tracing::info!("Background cleanup completed for task {}", task_id);
+        for workspace_dir in &workspace_dirs {
+            if let Err(e) = WorkspaceManager::cleanup_workspace(workspace_dir, &repositories).await
+            {
+                tracing::error!(
+                    "Background workspace cleanup failed for task {} at {}: {}",
+                    task_id,
+                    workspace_dir.display(),
+                    e
+                );
+            }
         }
+
+        tracing::info!("Background cleanup completed for task {}", task_id);
     });
 
     // Return 202 Accepted to indicate deletion was scheduled

@@ -87,6 +87,7 @@ struct DiffWatcherContext {
     cumulative: Arc<AtomicUsize>,
     full_sent: Arc<std::sync::RwLock<HashSet<String>>>,
     stats_only: bool,
+    path_prefix: Option<String>,
     tx: mpsc::Sender<Result<LogMsg, io::Error>>,
 }
 
@@ -109,6 +110,7 @@ impl DiffWatcherContext {
         let cumulative = self.cumulative.clone();
         let full_sent = self.full_sent.clone();
         let stats_only = self.stats_only;
+        let path_prefix = self.path_prefix.clone();
 
         match tokio::task::spawn_blocking(move || {
             process_file_changes(
@@ -119,6 +121,7 @@ impl DiffWatcherContext {
                 &cumulative,
                 &full_sent,
                 stats_only,
+                path_prefix.as_deref(),
             )
         })
         .await
@@ -147,6 +150,7 @@ pub async fn create(
     worktree_path: PathBuf,
     base_commit: Commit,
     stats_only: bool,
+    path_prefix: Option<String>,
 ) -> Result<DiffStreamHandle, DiffStreamError> {
     let (tx, rx) = mpsc::channel::<Result<LogMsg, io::Error>>(DIFF_STREAM_CHANNEL_CAPACITY);
 
@@ -162,6 +166,7 @@ pub async fn create(
         let git_for_diff = git_service.clone();
         let worktree_for_diff = worktree_path.clone();
         let base_for_diff = base_commit.clone();
+        let path_prefix_clone = path_prefix.clone();
 
         let initial_diffs_result = tokio::task::spawn_blocking(move || {
             git_for_diff.get_diffs(
@@ -203,7 +208,7 @@ pub async fn create(
             }
         }
 
-        if !send_initial_diffs(&tx_clone, initial_diffs).await {
+        if !send_initial_diffs(&tx_clone, initial_diffs, path_prefix_clone.as_deref()).await {
             return;
         }
 
@@ -239,6 +244,7 @@ pub async fn create(
             cumulative,
             full_sent,
             stats_only,
+            path_prefix,
             tx: tx_clone,
         };
 
@@ -273,12 +279,29 @@ pub async fn create(
     ))
 }
 
+fn prefix_path(path: String, prefix: Option<&str>) -> String {
+    match prefix {
+        Some(p) => format!("{p}/{path}"),
+        None => path,
+    }
+}
+
 async fn send_initial_diffs(
     tx: &mpsc::Sender<Result<LogMsg, io::Error>>,
     diffs: Vec<Diff>,
+    path_prefix: Option<&str>,
 ) -> bool {
-    for diff in diffs {
-        let entry_index = GitService::diff_path(&diff);
+    for mut diff in diffs {
+        let entry_index = prefix_path(GitService::diff_path(&diff), path_prefix);
+
+        // Update internal paths to match the prefix
+        if let Some(old) = diff.old_path {
+            diff.old_path = Some(prefix_path(old, path_prefix));
+        }
+        if let Some(new) = diff.new_path {
+            diff.new_path = Some(prefix_path(new, path_prefix));
+        }
+
         let patch = ConversationPatch::add_diff(escape_json_pointer_segment(&entry_index), diff);
         if tx.send(Ok(LogMsg::JsonPatch(patch))).await.is_err() {
             return false;
@@ -364,6 +387,7 @@ fn extract_changed_paths(
         .collect()
 }
 
+#[allow(clippy::too_many_arguments)]
 fn process_file_changes(
     git_service: &GitService,
     worktree_path: &Path,
@@ -372,6 +396,7 @@ fn process_file_changes(
     cumulative_bytes: &Arc<AtomicUsize>,
     full_sent_paths: &Arc<std::sync::RwLock<HashSet<String>>>,
     stats_only: bool,
+    path_prefix: Option<&str>,
 ) -> Result<Vec<LogMsg>, DiffStreamError> {
     let path_filter: Vec<&str> = changed_paths.iter().map(|s| s.as_str()).collect();
 
@@ -387,26 +412,39 @@ fn process_file_changes(
     let mut files_with_diffs = HashSet::new();
 
     for mut diff in current_diffs {
-        let file_path = GitService::diff_path(&diff);
-        files_with_diffs.insert(file_path.clone());
+        let raw_file_path = GitService::diff_path(&diff);
+        files_with_diffs.insert(raw_file_path.clone());
+
         apply_stream_omit_policy(&mut diff, cumulative_bytes, stats_only);
 
         if diff.content_omitted {
-            if full_sent_paths.read().unwrap().contains(&file_path) {
+            if full_sent_paths.read().unwrap().contains(&raw_file_path) {
                 continue;
             }
         } else {
             let mut guard = full_sent_paths.write().unwrap();
-            guard.insert(file_path.clone());
+            guard.insert(raw_file_path.clone());
         }
 
-        let patch = ConversationPatch::add_diff(escape_json_pointer_segment(&file_path), diff);
+        // Apply prefix for the stream message
+        let prefixed_entry_index = prefix_path(raw_file_path, path_prefix);
+        if let Some(old) = diff.old_path {
+            diff.old_path = Some(prefix_path(old, path_prefix));
+        }
+        if let Some(new) = diff.new_path {
+            diff.new_path = Some(prefix_path(new, path_prefix));
+        }
+
+        let patch =
+            ConversationPatch::add_diff(escape_json_pointer_segment(&prefixed_entry_index), diff);
         msgs.push(LogMsg::JsonPatch(patch));
     }
 
     for changed_path in changed_paths {
         if !files_with_diffs.contains(changed_path) {
-            let patch = ConversationPatch::remove_diff(escape_json_pointer_segment(changed_path));
+            // Also prefix the removal path
+            let prefixed_path = prefix_path(changed_path.clone(), path_prefix);
+            let patch = ConversationPatch::remove_diff(escape_json_pointer_segment(&prefixed_path));
             msgs.push(LogMsg::JsonPatch(patch));
         }
     }

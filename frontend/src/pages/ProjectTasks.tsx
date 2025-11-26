@@ -109,7 +109,7 @@ function DiffsPanelContainer({
   attempt: TaskAttempt | null;
   selectedTask: TaskWithAttemptStatus | null;
   projectId: string;
-  branchStatus: BranchStatus | null;
+  branchStatus: BranchStatus[] | null;
   branches: GitBranch[];
 }) {
   const { isAttemptRunning } = useAttemptExecution(attempt?.id);
@@ -125,7 +125,7 @@ function DiffsPanelContainer({
               branchStatus: branchStatus ?? null,
               branches,
               isAttemptRunning,
-              selectedBranch: branchStatus?.target_branch_name ?? null,
+              selectedBranch: branchStatus?.[0]?.target_branch_name ?? null,
             }
           : undefined
       }

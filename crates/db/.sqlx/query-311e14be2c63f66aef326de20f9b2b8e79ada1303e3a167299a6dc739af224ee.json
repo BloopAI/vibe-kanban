@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      git_repo_path,\n                      setup_script,\n                      dev_script,\n                      cleanup_script,\n                      copy_files,\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               WHERE remote_project_id = $1\n               LIMIT 1",
+  "query": "\n            SELECT p.id as \"id!: Uuid\", p.name, p.setup_script, p.dev_script, p.cleanup_script, p.copy_files,\n                   p.remote_project_id as \"remote_project_id: Uuid\",\n                   p.created_at as \"created_at!: DateTime<Utc>\", p.updated_at as \"updated_at!: DateTime<Utc>\"\n            FROM projects p\n            WHERE p.id IN (\n                SELECT DISTINCT t.project_id\n                FROM tasks t\n                INNER JOIN task_attempts ta ON ta.task_id = t.id\n                ORDER BY ta.updated_at DESC\n            )\n            LIMIT $1\n            ",
   "describe": {
     "columns": [
       {
@@ -14,43 +14,38 @@
         "type_info": "Text"
       },
       {
-        "name": "git_repo_path",
+        "name": "setup_script",
         "ordinal": 2,
         "type_info": "Text"
       },
       {
-        "name": "setup_script",
+        "name": "dev_script",
         "ordinal": 3,
         "type_info": "Text"
       },
       {
-        "name": "dev_script",
+        "name": "cleanup_script",
         "ordinal": 4,
         "type_info": "Text"
       },
       {
-        "name": "cleanup_script",
+        "name": "copy_files",
         "ordinal": 5,
         "type_info": "Text"
       },
       {
-        "name": "copy_files",
-        "ordinal": 6,
-        "type_info": "Text"
-      },
-      {
         "name": "remote_project_id: Uuid",
-        "ordinal": 7,
+        "ordinal": 6,
         "type_info": "Blob"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 8,
+        "ordinal": 7,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 9,
+        "ordinal": 8,
         "type_info": "Text"
       }
     ],
@@ -59,7 +54,6 @@
     },
     "nullable": [
       true,
-      false,
       false,
       true,
       true,
@@ -70,5 +64,5 @@
       false
     ]
   },
-  "hash": "2330097afa4816aaf7d98e083eac80558ecb9a355384e5076aa744fab27d2f7e"
+  "hash": "311e14be2c63f66aef326de20f9b2b8e79ada1303e3a167299a6dc739af224ee"
 }

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n        SELECT\n            id as \"id!: Uuid\",\n            task_attempt_id as \"task_attempt_id!: Uuid\",\n            run_reason as \"run_reason!: ExecutionProcessRunReason\",\n            executor_action as \"executor_action!: sqlx::types::Json<ExecutorActionField>\",\n            before_head_commit,\n            after_head_commit,\n            status as \"status!: ExecutionProcessStatus\",\n            exit_code,\n            dropped,\n            started_at as \"started_at!: DateTime<Utc>\",\n            completed_at as \"completed_at?: DateTime<Utc>\",\n            created_at as \"created_at!: DateTime<Utc>\",\n            updated_at as \"updated_at!: DateTime<Utc>\"\n        FROM execution_processes\n        WHERE status = 'running'\n          AND run_reason = 'devserver'\n          AND task_attempt_id = ?\n        ORDER BY created_at DESC\n        ",
+  "query": "SELECT\n                    ep.id as \"id!: Uuid\",\n                    ep.task_attempt_id as \"task_attempt_id!: Uuid\",\n                    ep.run_reason as \"run_reason!: ExecutionProcessRunReason\",\n                    ep.executor_action as \"executor_action!: sqlx::types::Json<ExecutorActionField>\",\n                    ep.status as \"status!: ExecutionProcessStatus\",\n                    ep.exit_code,\n                    ep.dropped,\n                    ep.started_at as \"started_at!: DateTime<Utc>\",\n                    ep.completed_at as \"completed_at?: DateTime<Utc>\",\n                    ep.created_at as \"created_at!: DateTime<Utc>\",\n                    ep.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM execution_processes ep WHERE ep.rowid = ?",
   "describe": {
     "columns": [
       {
@@ -24,48 +24,38 @@
         "type_info": "Text"
       },
       {
-        "name": "before_head_commit",
+        "name": "status!: ExecutionProcessStatus",
         "ordinal": 4,
         "type_info": "Text"
       },
       {
-        "name": "after_head_commit",
-        "ordinal": 5,
-        "type_info": "Text"
-      },
-      {
-        "name": "status!: ExecutionProcessStatus",
-        "ordinal": 6,
-        "type_info": "Text"
-      },
-      {
         "name": "exit_code",
-        "ordinal": 7,
+        "ordinal": 5,
         "type_info": "Integer"
       },
       {
         "name": "dropped",
-        "ordinal": 8,
+        "ordinal": 6,
         "type_info": "Bool"
       },
       {
         "name": "started_at!: DateTime<Utc>",
-        "ordinal": 9,
+        "ordinal": 7,
         "type_info": "Text"
       },
       {
         "name": "completed_at?: DateTime<Utc>",
-        "ordinal": 10,
+        "ordinal": 8,
         "type_info": "Text"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 11,
+        "ordinal": 9,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 12,
+        "ordinal": 10,
         "type_info": "Text"
       }
     ],
@@ -77,8 +67,6 @@
       false,
       false,
       false,
-      true,
-      true,
       false,
       true,
       false,
@@ -88,5 +76,5 @@
       false
     ]
   },
-  "hash": "196a97c709d226c23b957cc258c57f0d6cd35b1a6aeef879c7f6dfa89fc85539"
+  "hash": "1f1755ae7724828d0161025a317e8ffab53d5a4475669156c6a8a602ac2b0c48"
 }
