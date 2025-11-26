@@ -44,6 +44,8 @@
     "@sentry/react": "^9.34.0",
     "@sentry/vite-plugin": "^3.5.0",
     "@tailwindcss/typography": "^0.5.16",
+    "@tanstack/electric-db-collection": "^0.2.6",
+    "@tanstack/react-db": "^0.1.50",
     "@tanstack/react-devtools": "^0.8.0",
     "@tanstack/react-form": "^1.23.8",
     "@tanstack/react-form-devtools": "^0.1.8",
@@ -78,6 +80,7 @@
     "tailwind-merge": "^2.2.0",
     "tailwindcss-animate": "^1.0.7",
     "vibe-kanban-web-companion": "^0.0.4",
+    "wa-sqlite": "^1.0.0",
     "zod": "^4.1.12",
     "zustand": "^4.5.4"
   },

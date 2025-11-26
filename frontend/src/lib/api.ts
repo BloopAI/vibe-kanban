@@ -26,7 +26,7 @@ import {
   Tag,
   TagSearchParams,
   TaskWithAttemptStatus,
-  AssignSharedTaskResponse,
+  AssignSharedTaskResponseWrapper,
   UpdateProject,
   UpdateTask,
   UpdateTag,
@@ -373,7 +373,7 @@ export const tasksApi = {
   reassign: async (
     sharedTaskId: string,
     data: { new_assignee_user_id: string | null; version?: number | null }
-  ): Promise<AssignSharedTaskResponse> => {
+  ): Promise<AssignSharedTaskResponseWrapper> => {
     const payload = {
       new_assignee_user_id: data.new_assignee_user_id,
       version: data.version ?? null,
@@ -387,7 +387,7 @@ export const tasksApi = {
       }
     );
 
-    return handleApiResponse<AssignSharedTaskResponse>(response);
+    return handleApiResponse<AssignSharedTaskResponseWrapper>(response);
   },
 
   unshare: async (sharedTaskId: string): Promise<void> => {

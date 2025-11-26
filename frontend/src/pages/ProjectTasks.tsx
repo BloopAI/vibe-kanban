@@ -447,9 +447,6 @@ export function ProjectTasks() {
     const getTimestamp = (item: KanbanColumnItem) => {
       const createdAt =
         item.type === 'task' ? item.task.created_at : item.task.created_at;
-      if (createdAt instanceof Date) {
-        return createdAt.getTime();
-      }
       return new Date(createdAt).getTime();
     };
 

@@ -1,6 +1,7 @@
 services:
   remote-db:
     image: postgres:16-alpine
+    command: ["postgres", "-c", "wal_level=logical"]
     environment:
       POSTGRES_DB: remote
       POSTGRES_USER: remote
@@ -16,6 +17,21 @@ services:
     ports:
       - "5432:5432"
 
+  electric:
+    image: electricsql/electric:latest
+    environment:
+      DATABASE_URL: postgresql://remote:remote@remote-db:5432/remote?sslmode=disable
+      PG_PROXY_PORT: 65432
+      LOGICAL_PUBLISHER_HOST: electric
+      AUTH_MODE: insecure
+      ELECTRIC_INSECURE: true
+    ports:
+      - "5133:3000"
+      - "65432:65432"
+    depends_on:
+      remote-db:
+        condition: service_healthy
+
   remote-server:
     build:
       context: ../..
@@ -26,7 +42,6 @@ services:
     environment:
       SERVER_DATABASE_URL: postgres://remote:remote@remote-db:5432/remote
       SERVER_LISTEN_ADDR: 0.0.0.0:8081
-      SERVER_ACTIVITY_CHANNEL: activity
       GITHUB_OAUTH_CLIENT_ID: ${GITHUB_OAUTH_CLIENT_ID:?set in .env.remote}
       GITHUB_OAUTH_CLIENT_SECRET: ${GITHUB_OAUTH_CLIENT_SECRET:?set in .env.remote}
       GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:?set in .env.remote}

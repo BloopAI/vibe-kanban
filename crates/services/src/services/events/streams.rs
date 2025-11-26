@@ -1,8 +1,6 @@
 use db::models::{
     execution_process::ExecutionProcess,
-    project::Project,
     scratch::Scratch,
-    shared_task::SharedTask,
     task::{Task, TaskWithAttemptStatus},
 };
 use futures::StreamExt;
@@ -33,37 +31,17 @@ impl EventService {
             .map(|task| (task.id.to_string(), serde_json::to_value(task).unwrap()))
             .collect();
 
-        let remote_project_id = Project::find_by_id(&self.db.pool, project_id)
-            .await?
-            .and_then(|project| project.remote_project_id);
-
-        let shared_tasks = if let Some(remote_project_id) = remote_project_id {
-            SharedTask::list_by_remote_project_id(&self.db.pool, remote_project_id).await?
-        } else {
-            Vec::new()
-        };
-        let shared_tasks_map: serde_json::Map<String, serde_json::Value> = shared_tasks
-            .into_iter()
-            .map(|task| (task.id.to_string(), serde_json::to_value(task).unwrap()))
-            .collect();
-
         let initial_patch = json!([
             {
                 "op": "replace",
                 "path": "/tasks",
                 "value": tasks_map
-            },
-            {
-                "op": "replace",
-                "path": "/shared_tasks",
-                "value": shared_tasks_map
             }
         ]);
         let initial_msg = LogMsg::JsonPatch(serde_json::from_value(initial_patch).unwrap());
 
         // Clone necessary data for the async filter
         let db_pool = self.db.pool.clone();
-        let remote_project_id_filter = remote_project_id;
 
         // Get filtered event stream
         let filtered_stream =
@@ -74,44 +52,6 @@ impl EventService {
                         Ok(LogMsg::JsonPatch(patch)) => {
                             // Filter events based on project_id
                             if let Some(patch_op) = patch.0.first() {
-                                if patch_op.path().starts_with("/shared_tasks/") {
-                                    match patch_op {
-                                        json_patch::PatchOperation::Add(op) => {
-                                            if let Ok(shared_task) =
-                                                serde_json::from_value::<SharedTask>(
-                                                    op.value.clone(),
-                                                )
-                                                && remote_project_id_filter
-                                                    .map(|expected| {
-                                                        shared_task.remote_project_id == expected
-                                                    })
-                                                    .unwrap_or(false)
-                                            {
-                                                return Some(Ok(LogMsg::JsonPatch(patch)));
-                                            }
-                                        }
-                                        json_patch::PatchOperation::Replace(op) => {
-                                            if let Ok(shared_task) =
-                                                serde_json::from_value::<SharedTask>(
-                                                    op.value.clone(),
-                                                )
-                                                && remote_project_id_filter
-                                                    .map(|expected| {
-                                                        shared_task.remote_project_id == expected
-                                                    })
-                                                    .unwrap_or(false)
-                                            {
-                                                return Some(Ok(LogMsg::JsonPatch(patch)));
-                                            }
-                                        }
-                                        json_patch::PatchOperation::Remove(_) => {
-                                            // Forward removals; clients will ignore missing tasks
-                                            return Some(Ok(LogMsg::JsonPatch(patch)));
-                                        }
-                                        _ => {}
-                                    }
-                                    return None;
-                                }
                                 // Check if this is a direct task patch (new format)
                                 if patch_op.path().starts_with("/tasks/") {
                                     match patch_op {
@@ -164,19 +104,6 @@ impl EventService {
                                             if *deleted_project_id == project_id {
                                                 return Some(Ok(LogMsg::JsonPatch(patch)));
                                             }
-                                        }
-                                        RecordTypes::SharedTask(shared_task) => {
-                                            if remote_project_id_filter
-                                                .map(|expected| {
-                                                    shared_task.remote_project_id == expected
-                                                })
-                                                .unwrap_or(false)
-                                            {
-                                                return Some(Ok(LogMsg::JsonPatch(patch)));
-                                            }
-                                        }
-                                        RecordTypes::DeletedSharedTask { .. } => {
-                                            return Some(Ok(LogMsg::JsonPatch(patch)));
                                         }
                                         RecordTypes::TaskAttempt(attempt) => {
                                             // Check if this task_attempt belongs to a task in our project

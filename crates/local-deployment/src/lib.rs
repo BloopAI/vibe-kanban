@@ -18,9 +18,9 @@ use services::services::{
     oauth_credentials::OAuthCredentials,
     queued_message::QueuedMessageService,
     remote_client::{RemoteClient, RemoteClientError},
-    share::{RemoteSyncHandle, ShareConfig, SharePublisher},
+    share::{ShareConfig, SharePublisher},
 };
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::RwLock;
 use utils::{
     api::oauth::LoginStatus,
     assets::{config_path, credentials_path},
@@ -47,7 +47,6 @@ pub struct LocalDeployment {
     approvals: Approvals,
     queued_message_service: QueuedMessageService,
     share_publisher: Result<SharePublisher, RemoteClientNotConfigured>,
-    share_sync_handle: Arc<Mutex<Option<RemoteSyncHandle>>>,
     share_config: Option<ShareConfig>,
     remote_client: Result<RemoteClient, RemoteClientNotConfigured>,
     auth_context: AuthContext,
@@ -159,14 +158,6 @@ impl Deployment for LocalDeployment {
             .map_err(|e| *e);
 
         let oauth_handoffs = Arc::new(RwLock::new(HashMap::new()));
-        let share_sync_handle = Arc::new(Mutex::new(None));
-
-        let mut share_sync_config: Option<ShareConfig> = None;
-        if let (Some(sc_ref), Ok(_)) = (share_config.as_ref(), &share_publisher)
-            && oauth_credentials.get().await.is_some()
-        {
-            share_sync_config = Some(sc_ref.clone());
-        }
 
         // We need to make analytics accessible to the ContainerService
         // TODO: Handle this more gracefully
@@ -205,16 +196,11 @@ impl Deployment for LocalDeployment {
             approvals,
             queued_message_service,
             share_publisher,
-            share_sync_handle: share_sync_handle.clone(),
             share_config: share_config.clone(),
             remote_client,
             auth_context,
             oauth_handoffs,
         };
-
-        if let Some(sc) = share_sync_config {
-            deployment.spawn_remote_sync(sc);
-        }
 
         Ok(deployment)
     }
@@ -269,10 +255,6 @@ impl Deployment for LocalDeployment {
 
     fn share_publisher(&self) -> Result<SharePublisher, RemoteClientNotConfigured> {
         self.share_publisher.clone()
-    }
-
-    fn share_sync_handle(&self) -> &Arc<Mutex<Option<RemoteSyncHandle>>> {
-        &self.share_sync_handle
     }
 
     fn auth_context(&self) -> &AuthContext {

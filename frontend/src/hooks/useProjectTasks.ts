@@ -1,20 +1,31 @@
 import { useCallback, useMemo } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
 import { useProject } from '@/contexts/ProjectContext';
+import { useLiveQuery, eq, isNull } from '@tanstack/react-db';
+import { sharedTasksCollection } from '@/lib/electric/sharedTasksCollection';
 import type {
   SharedTask,
   TaskStatus,
   TaskWithAttemptStatus,
 } from 'shared/types';
 
-export type SharedTaskRecord = Omit<
-  SharedTask,
-  'version' | 'last_event_seq'
-> & {
+const statusMap: Record<string, TaskStatus> = {
+  todo: 'todo',
+  'in-progress': 'inprogress',
+  inprogress: 'inprogress',
+  'in-review': 'inreview',
+  inreview: 'inreview',
+  done: 'done',
+  cancelled: 'cancelled',
+};
+
+const normalizeStatus = (status: string): TaskStatus =>
+  statusMap[status] ?? 'todo';
+
+export type SharedTaskRecord = Omit<SharedTask, 'version'> & {
   version: number;
+  remote_project_id: string;
   last_event_seq: number | null;
-  created_at: string | Date;
-  updated_at: string | Date;
   assignee_first_name?: string | null;
   assignee_last_name?: string | null;
   assignee_username?: string | null;
@@ -22,7 +33,7 @@ export type SharedTaskRecord = Omit<
 
 type TasksState = {
   tasks: Record<string, TaskWithAttemptStatus>;
-  shared_tasks: Record<string, SharedTaskRecord>;
+  // shared_tasks is no longer in WS stream
 };
 
 export interface UseProjectTasksResult {
@@ -45,12 +56,9 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
   const { project } = useProject();
   const remoteProjectId = project?.remote_project_id;
 
-  const endpoint = `/api/tasks/stream/ws?project_id=${encodeURIComponent(projectId)}&remote_project_id=${encodeURIComponent(remoteProjectId ?? 'null')}`;
+  const endpoint = `/api/tasks/stream/ws?project_id=${encodeURIComponent(projectId)}`;
 
-  const initialData = useCallback(
-    (): TasksState => ({ tasks: {}, shared_tasks: {} }),
-    []
-  );
+  const initialData = useCallback((): TasksState => ({ tasks: {} }), []);
 
   const { data, isConnected, error } = useJsonPatchWsStream(
     endpoint,
@@ -58,11 +66,43 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
     initialData
   );
 
-  const localTasksById = useMemo(() => data?.tasks ?? {}, [data?.tasks]);
-  const sharedTasksById = useMemo(
-    () => data?.shared_tasks ?? {},
-    [data?.shared_tasks]
+  const sharedTasksQuery = useLiveQuery(
+    (q) => {
+      if (!remoteProjectId) {
+        return undefined;
+      }
+      return q
+        .from({ sharedTasks: sharedTasksCollection })
+        .where(({ sharedTasks }) => eq(sharedTasks.project_id, remoteProjectId))
+        .where(({ sharedTasks }) => isNull(sharedTasks.deleted_at));
+    },
+    [remoteProjectId]
   );
+
+  const sharedTasksList = sharedTasksQuery.data ?? [];
+
+  const localTasksById = useMemo(() => data?.tasks ?? {}, [data?.tasks]);
+
+  const sharedTasksById = useMemo(() => {
+    if (!sharedTasksList) return {};
+    const map: Record<string, SharedTaskRecord> = {};
+    const list = Array.isArray(sharedTasksList) ? sharedTasksList : [];
+    for (const task of list) {
+      const enriched = task as SharedTask & Partial<SharedTaskRecord>;
+      const normalizedStatus = normalizeStatus(String(task.status));
+      map[task.id] = {
+        ...task,
+        status: normalizedStatus,
+        version: Number(task.version),
+        remote_project_id: task.project_id,
+        last_event_seq: null,
+        assignee_first_name: enriched.assignee_first_name ?? null,
+        assignee_last_name: enriched.assignee_last_name ?? null,
+        assignee_username: enriched.assignee_username ?? null,
+      };
+    }
+    return map;
+  }, [sharedTasksList]);
 
   const { tasks, tasksById, tasksByStatus } = useMemo(() => {
     const merged: Record<string, TaskWithAttemptStatus> = { ...localTasksById };

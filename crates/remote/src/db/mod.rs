@@ -1,9 +1,6 @@
-pub mod activity;
 pub mod auth;
 pub mod identity_errors;
 pub mod invitations;
-pub mod listener;
-pub mod maintenance;
 pub mod oauth;
 pub mod oauth_accounts;
 pub mod organization_members;
@@ -12,7 +9,6 @@ pub mod projects;
 pub mod tasks;
 pub mod users;
 
-pub use listener::ActivityListener;
 use sqlx::{PgPool, Postgres, Transaction, migrate::MigrateError, postgres::PgPoolOptions};
 
 pub(crate) type Tx<'a> = Transaction<'a, Postgres>;

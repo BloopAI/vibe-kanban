@@ -5,7 +5,6 @@ pub mod image;
 pub mod merge;
 pub mod project;
 pub mod scratch;
-pub mod shared_task;
 pub mod tag;
 pub mod task;
 pub mod task_attempt;

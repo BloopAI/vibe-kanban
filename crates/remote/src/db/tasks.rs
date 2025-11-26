@@ -2,27 +2,26 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use thiserror::Error;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use super::{
-    Tx,
     identity_errors::IdentityError,
     projects::{ProjectError, ProjectRepository},
     users::{UserData, fetch_user},
 };
-use crate::db::maintenance;
 
 pub struct BulkFetchResult {
     pub tasks: Vec<SharedTaskActivityPayload>,
     pub deleted_task_ids: Vec<Uuid>,
-    pub latest_seq: Option<i64>,
 }
 
 pub const MAX_SHARED_TASK_TEXT_BYTES: usize = 50 * 1024;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, TS)]
 #[serde(rename_all = "kebab-case")]
 #[sqlx(type_name = "task_status", rename_all = "kebab-case")]
+#[ts(export)]
 pub enum TaskStatus {
     Todo,
     InProgress,
@@ -43,7 +42,8 @@ impl SharedTaskWithUser {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, TS)]
+#[ts(export)]
 pub struct SharedTask {
     pub id: Uuid,
     pub organization_id: Uuid,
@@ -226,7 +226,6 @@ impl<'a> SharedTaskRepository<'a> {
             None => None,
         };
 
-        insert_activity(&mut tx, &task, user.as_ref(), "task.created").await?;
         tx.commit().await.map_err(SharedTaskError::from)?;
         Ok(SharedTaskWithUser::new(task, user))
     }
@@ -314,23 +313,11 @@ impl<'a> SharedTaskRepository<'a> {
 
         let deleted_task_ids = deleted_rows.into_iter().map(|row| row.id).collect();
 
-        let latest_seq = sqlx::query_scalar!(
-            r#"
-            SELECT MAX(seq)
-            FROM activity
-            WHERE project_id = $1
-            "#,
-            project_id
-        )
-        .fetch_one(&mut *tx)
-        .await?;
-
         tx.commit().await?;
 
         Ok(BulkFetchResult {
             tasks,
             deleted_task_ids,
-            latest_seq,
         })
     }
 
@@ -388,7 +375,6 @@ impl<'a> SharedTaskRepository<'a> {
             None => None,
         };
 
-        insert_activity(&mut tx, &task, user.as_ref(), "task.updated").await?;
         tx.commit().await.map_err(SharedTaskError::from)?;
         Ok(SharedTaskWithUser::new(task, user))
     }
@@ -442,7 +428,6 @@ impl<'a> SharedTaskRepository<'a> {
             None => None,
         };
 
-        insert_activity(&mut tx, &task, user.as_ref(), "task.reassigned").await?;
         tx.commit().await.map_err(SharedTaskError::from)?;
         Ok(SharedTaskWithUser::new(task, user))
     }
@@ -491,7 +476,6 @@ impl<'a> SharedTaskRepository<'a> {
             SharedTaskError::Conflict("task version mismatch or user not authorized".to_string())
         })?;
 
-        insert_activity(&mut tx, &task, None, "task.deleted").await?;
         tx.commit().await.map_err(SharedTaskError::from)?;
         Ok(SharedTaskWithUser::new(task, None))
     }
@@ -508,81 +492,6 @@ pub(crate) fn ensure_text_size(
     }
 
     Ok(())
-}
-
-async fn insert_activity(
-    tx: &mut Tx<'_>,
-    task: &SharedTask,
-    user: Option<&UserData>,
-    event_type: &str,
-) -> Result<(), SharedTaskError> {
-    let payload = SharedTaskActivityPayload {
-        task: task.clone(),
-        user: user.cloned(),
-    };
-    let payload = serde_json::to_value(payload).map_err(SharedTaskError::Serialization)?;
-
-    // First attempt at inserting - if partitions are missing we retry after provisioning.
-    match do_insert_activity(tx, task, event_type, payload.clone()).await {
-        Ok(_) => Ok(()),
-        Err(err) => {
-            if let sqlx::Error::Database(db_err) = &err
-                && maintenance::is_partition_missing_error(db_err.as_ref())
-            {
-                let code_owned = db_err.code().map(|c| c.to_string());
-                let code = code_owned.as_deref().unwrap_or_default();
-                tracing::warn!(
-                    "Activity partition missing ({}), creating current and next partitions",
-                    code
-                );
-
-                maintenance::ensure_future_partitions(tx.as_mut())
-                    .await
-                    .map_err(SharedTaskError::from)?;
-
-                return do_insert_activity(tx, task, event_type, payload)
-                    .await
-                    .map_err(SharedTaskError::from);
-            }
-
-            Err(SharedTaskError::from(err))
-        }
-    }
-}
-
-async fn do_insert_activity(
-    tx: &mut Tx<'_>,
-    task: &SharedTask,
-    event_type: &str,
-    payload: serde_json::Value,
-) -> Result<(), sqlx::Error> {
-    sqlx::query!(
-        r#"
-        WITH next AS (
-            INSERT INTO project_activity_counters AS counters (project_id, last_seq)
-            VALUES ($1, 1)
-            ON CONFLICT (project_id)
-            DO UPDATE SET last_seq = counters.last_seq + 1
-            RETURNING last_seq
-        )
-        INSERT INTO activity (
-            project_id,
-            seq,
-            assignee_user_id,
-            event_type,
-            payload
-        )
-        SELECT $1, next.last_seq, $2, $3, $4
-        FROM next
-        "#,
-        task.project_id,
-        task.assignee_user_id,
-        event_type,
-        payload
-    )
-    .execute(&mut **tx)
-    .await
-    .map(|_| ())
 }
 
 impl SharedTaskRepository<'_> {
