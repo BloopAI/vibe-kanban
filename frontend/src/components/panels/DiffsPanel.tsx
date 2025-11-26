@@ -40,10 +40,6 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
   }, [selectedAttempt?.id]);
 
   useEffect(() => {
-    setLoading(true);
-  }, [selectedAttempt?.id]);
-
-  useEffect(() => {
     if (diffs.length > 0 && loading) {
       setLoading(false);
     }
