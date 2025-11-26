@@ -37,8 +37,8 @@ impl RemoteServerConfig {
 
         let auth = AuthConfig::from_env()?;
 
-        let electric_url = env::var("ELECTRIC_URL")
-            .map_err(|_| ConfigError::MissingVar("ELECTRIC_URL"))?;
+        let electric_url =
+            env::var("ELECTRIC_URL").map_err(|_| ConfigError::MissingVar("ELECTRIC_URL"))?;
 
         let electric_token = env::var("ELECTRIC_TOKEN")
             .map(|s| SecretString::new(s.into()))
