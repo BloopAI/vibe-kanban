@@ -7,13 +7,21 @@ use axum::{
     response::{IntoResponse, Json as ResponseJson},
     routing::get,
 };
-use db::models::scratch::{CreateScratch, Scratch, UpdateScratch};
+use db::models::scratch::{CreateScratch, Scratch, ScratchType, UpdateScratch};
 use deployment::Deployment;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
+use serde::Deserialize;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
+
+/// Path parameters for scratch routes with composite key
+#[derive(Deserialize)]
+pub struct ScratchPath {
+    scratch_type: ScratchType,
+    id: Uuid,
+}
 
 pub async fn list_scratch(
     State(deployment): State<DeploymentImpl>,
@@ -24,9 +32,9 @@ pub async fn list_scratch(
 
 pub async fn get_scratch(
     State(deployment): State<DeploymentImpl>,
-    Path(id): Path<Uuid>,
+    Path(ScratchPath { scratch_type, id }): Path<ScratchPath>,
 ) -> Result<ResponseJson<ApiResponse<Scratch>>, ApiError> {
-    let scratch = Scratch::find_by_id(&deployment.db().pool, id)
+    let scratch = Scratch::find_by_id(&deployment.db().pool, id, &scratch_type)
         .await?
         .ok_or_else(|| ApiError::BadRequest("Scratch not found".to_string()))?;
     Ok(ResponseJson(ApiResponse::success(scratch)))
@@ -34,19 +42,31 @@ pub async fn get_scratch(
 
 pub async fn create_scratch(
     State(deployment): State<DeploymentImpl>,
+    Path(ScratchPath { scratch_type, id }): Path<ScratchPath>,
     Json(payload): Json<CreateScratch>,
 ) -> Result<ResponseJson<ApiResponse<Scratch>>, ApiError> {
-    let id = Uuid::new_v4();
+    // Validate that payload type matches URL type
+    payload
+        .payload
+        .validate_type(&scratch_type.to_string())
+        .map_err(|e| ApiError::BadRequest(e.to_string()))?;
+
     let scratch = Scratch::create(&deployment.db().pool, id, &payload).await?;
     Ok(ResponseJson(ApiResponse::success(scratch)))
 }
 
 pub async fn update_scratch(
     State(deployment): State<DeploymentImpl>,
-    Path(id): Path<Uuid>,
+    Path(ScratchPath { scratch_type, id }): Path<ScratchPath>,
     Json(payload): Json<UpdateScratch>,
 ) -> Result<ResponseJson<ApiResponse<Scratch>>, ApiError> {
-    let scratch = Scratch::update(&deployment.db().pool, id, &payload)
+    // Validate that payload type matches URL type (if payload provided)
+    if let Some(ref p) = payload.payload {
+        p.validate_type(&scratch_type.to_string())
+            .map_err(|e| ApiError::BadRequest(e.to_string()))?;
+    }
+
+    let scratch = Scratch::update(&deployment.db().pool, id, &scratch_type, &payload)
         .await?
         .ok_or_else(|| ApiError::BadRequest("Scratch not found".to_string()))?;
     Ok(ResponseJson(ApiResponse::success(scratch)))
@@ -54,9 +74,9 @@ pub async fn update_scratch(
 
 pub async fn delete_scratch(
     State(deployment): State<DeploymentImpl>,
-    Path(id): Path<Uuid>,
+    Path(ScratchPath { scratch_type, id }): Path<ScratchPath>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
-    let rows = Scratch::delete(&deployment.db().pool, id).await?;
+    let rows = Scratch::delete(&deployment.db().pool, id, &scratch_type).await?;
     if rows == 0 {
         return Err(ApiError::BadRequest("Scratch not found".to_string()));
     }
@@ -66,10 +86,10 @@ pub async fn delete_scratch(
 pub async fn stream_scratch_ws(
     ws: WebSocketUpgrade,
     State(deployment): State<DeploymentImpl>,
-    Path(id): Path<Uuid>,
+    Path(ScratchPath { scratch_type, id }): Path<ScratchPath>,
 ) -> impl IntoResponse {
     ws.on_upgrade(move |socket| async move {
-        if let Err(e) = handle_scratch_ws(socket, deployment, id).await {
+        if let Err(e) = handle_scratch_ws(socket, deployment, id, scratch_type).await {
             tracing::warn!("scratch WS closed: {}", e);
         }
     })
@@ -79,10 +99,11 @@ async fn handle_scratch_ws(
     socket: WebSocket,
     deployment: DeploymentImpl,
     id: Uuid,
+    scratch_type: ScratchType,
 ) -> anyhow::Result<()> {
     let mut stream = deployment
         .events()
-        .stream_scratch_raw(id)
+        .stream_scratch_raw(id, &scratch_type)
         .await?
         .map_ok(|msg| msg.to_ws_message_unchecked());
 
@@ -108,10 +129,16 @@ async fn handle_scratch_ws(
 
 pub fn router(_deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     Router::new()
-        .route("/scratch", get(list_scratch).post(create_scratch))
+        .route("/scratch", get(list_scratch))
         .route(
-            "/scratch/{id}",
-            get(get_scratch).put(update_scratch).delete(delete_scratch),
+            "/scratch/{scratch_type}/{id}",
+            get(get_scratch)
+                .post(create_scratch)
+                .put(update_scratch)
+                .delete(delete_scratch),
         )
-        .route("/scratch/{id}/stream/ws", get(stream_scratch_ws))
+        .route(
+            "/scratch/{scratch_type}/{id}/stream/ws",
+            get(stream_scratch_ws),
+        )
 }

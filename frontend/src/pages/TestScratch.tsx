@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { ScratchEditor } from '@/components/ScratchEditor';
 import { Loader } from '@/components/ui/loader';
 import { Button } from '@/components/ui/button';
-import { Scratch, ScratchPayload } from 'shared/types';
+import type { Scratch, ScratchPayload } from 'shared/types';
+import type { ScratchType } from '@/lib/api';
 
 export function TestScratch() {
   const [items, setItems] = useState<Scratch[]>([]);
@@ -34,8 +35,10 @@ export function TestScratch() {
     setIsCreating(true);
     setCreateError(null);
 
+    const scratchType: ScratchType = 'draft_task';
+    const newId = crypto.randomUUID();
     const payload: ScratchPayload = {
-      type: 'draft_task',
+      type: scratchType,
       data: {
         json: {
           source: 'test-page',
@@ -46,7 +49,7 @@ export function TestScratch() {
     };
 
     try {
-      const res = await fetch('/api/scratch', {
+      const res = await fetch(`/api/scratch/${scratchType}/${newId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -71,11 +74,11 @@ export function TestScratch() {
     }
   };
 
-  const handleDelete = async (scratchId: string) => {
+  const handleDelete = async (scratchType: ScratchType, scratchId: string) => {
     if (!confirm('Delete this scratch item?')) return;
 
     try {
-      const res = await fetch(`/api/scratch/${scratchId}`, {
+      const res = await fetch(`/api/scratch/${scratchType}/${scratchId}`, {
         method: 'DELETE',
       });
 
@@ -83,7 +86,12 @@ export function TestScratch() {
         throw new Error(`Delete failed: ${res.statusText}`);
       }
 
-      setItems((prev) => prev.filter((item) => item.id !== scratchId));
+      setItems((prev) =>
+        prev.filter(
+          (item) =>
+            !(item.id === scratchId && item.payload.type === scratchType)
+        )
+      );
     } catch (e) {
       console.error('Failed to delete scratch:', e);
     }
@@ -130,12 +138,15 @@ export function TestScratch() {
       <div className="space-y-4">
         {items.map((item) => (
           <div
-            key={item.id}
+            key={`${item.payload.type}-${item.id}`}
             className="border rounded-lg p-4 bg-white shadow-sm"
           >
             <div className="flex justify-between items-start mb-3 text-xs text-gray-500">
               <div>
                 <span className="font-mono">ID: {item.id}</span>
+                <span className="ml-2 font-mono">
+                  Type: {item.payload.type}
+                </span>
               </div>
               <div className="flex items-center gap-4">
                 <span>
@@ -147,7 +158,9 @@ export function TestScratch() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleDelete(item.id as string)}
+                  onClick={() =>
+                    handleDelete(item.payload.type, item.id as string)
+                  }
                   className="text-red-600 hover:text-red-700 hover:bg-red-50"
                 >
                   Delete
@@ -155,7 +168,10 @@ export function TestScratch() {
               </div>
             </div>
 
-            <ScratchEditor scratchId={item.id as string} />
+            <ScratchEditor
+              scratchType={item.payload.type}
+              scratchId={item.id as string}
+            />
           </div>
         ))}
       </div>

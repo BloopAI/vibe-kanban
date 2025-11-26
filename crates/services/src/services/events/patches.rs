@@ -243,21 +243,17 @@ pub mod task_attempt_patch {
     }
 }
 
-/// Helper functions for creating scratch-specific patches
+/// Helper functions for creating scratch-specific patches.
+/// All patches use path "/scratch" - filtering is done by matching id and payload type in the value.
 pub mod scratch_patch {
     use super::*;
 
-    fn scratch_path(scratch_id: Uuid) -> String {
-        format!(
-            "/scratch/{}",
-            escape_pointer_segment(&scratch_id.to_string())
-        )
-    }
+    const SCRATCH_PATH: &str = "/scratch";
 
     /// Create patch for adding a new scratch
     pub fn add(scratch: &Scratch) -> Patch {
         Patch(vec![PatchOperation::Add(AddOperation {
-            path: scratch_path(scratch.id)
+            path: SCRATCH_PATH
                 .try_into()
                 .expect("Scratch path should be valid"),
             value: serde_json::to_value(scratch).expect("Scratch serialization should not fail"),
@@ -267,19 +263,25 @@ pub mod scratch_patch {
     /// Create patch for updating an existing scratch
     pub fn replace(scratch: &Scratch) -> Patch {
         Patch(vec![PatchOperation::Replace(ReplaceOperation {
-            path: scratch_path(scratch.id)
+            path: SCRATCH_PATH
                 .try_into()
                 .expect("Scratch path should be valid"),
             value: serde_json::to_value(scratch).expect("Scratch serialization should not fail"),
         })])
     }
 
-    /// Create patch for removing a scratch
-    pub fn remove(scratch_id: Uuid) -> Patch {
-        Patch(vec![PatchOperation::Remove(RemoveOperation {
-            path: scratch_path(scratch_id)
+    /// Create patch for removing a scratch.
+    /// Uses Replace with deleted marker so clients can filter by id and payload type.
+    pub fn remove(scratch_id: Uuid, scratch_type_str: &str) -> Patch {
+        Patch(vec![PatchOperation::Replace(ReplaceOperation {
+            path: SCRATCH_PATH
                 .try_into()
                 .expect("Scratch path should be valid"),
+            value: serde_json::json!({
+                "id": scratch_id,
+                "payload": { "type": scratch_type_str },
+                "deleted": true
+            }),
         })])
     }
 }

@@ -76,6 +76,7 @@ pub enum RecordTypes {
     DeletedScratch {
         rowid: i64,
         scratch_id: Option<Uuid>,
+        scratch_type: Option<String>,
     },
 }
 

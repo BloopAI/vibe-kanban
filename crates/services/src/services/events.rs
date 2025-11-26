@@ -164,10 +164,14 @@ impl EventService {
                                 }
                             }
                             "scratch" => {
-                                if let Ok(value) = preupdate.get_old_column_value(0)
-                                    && let Ok(scratch_id) = <Uuid as Decode<Sqlite>>::decode(value)
+                                // Composite key: need both id (column 0) and scratch_type (column 1)
+                                if let Ok(id_val) = preupdate.get_old_column_value(0)
+                                    && let Ok(scratch_id) = <Uuid as Decode<Sqlite>>::decode(id_val)
+                                    && let Ok(type_val) = preupdate.get_old_column_value(1)
+                                    && let Ok(type_str) =
+                                        <String as Decode<Sqlite>>::decode(type_val)
                                 {
-                                    let patch = scratch_patch::remove(scratch_id);
+                                    let patch = scratch_patch::remove(scratch_id, &type_str);
                                     msg_store_for_preupdate.push_patch(patch);
                                 }
                             }
@@ -281,6 +285,7 @@ impl EventService {
                                         Ok(None) => RecordTypes::DeletedScratch {
                                             rowid,
                                             scratch_id: None,
+                                            scratch_type: None,
                                         },
                                         Err(e) => {
                                             tracing::error!("Failed to fetch scratch: {:?}", e);
@@ -378,9 +383,10 @@ impl EventService {
                                 }
                                 RecordTypes::DeletedScratch {
                                     scratch_id: Some(scratch_id),
+                                    scratch_type: Some(scratch_type_str),
                                     ..
                                 } => {
-                                    let patch = scratch_patch::remove(*scratch_id);
+                                    let patch = scratch_patch::remove(*scratch_id, scratch_type_str);
                                     msg_store_for_hook.push_patch(patch);
                                     return;
                                 }

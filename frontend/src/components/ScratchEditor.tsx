@@ -1,12 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useScratch } from '@/hooks/useScratch';
+import type { ScratchType } from '@/lib/api';
 
 interface ScratchEditorProps {
+  scratchType: ScratchType;
   scratchId: string;
 }
 
-export const ScratchEditor = ({ scratchId }: ScratchEditorProps) => {
-  const { scratch, isConnected, updateScratch } = useScratch(scratchId);
+export const ScratchEditor = ({
+  scratchType,
+  scratchId,
+}: ScratchEditorProps) => {
+  const { scratch, isConnected, updateScratch } = useScratch(
+    scratchType,
+    scratchId
+  );
 
   const [localContent, setLocalContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n                UPDATE scratch\n                SET\n                    payload_type = $2,\n                    payload      = $3,\n                    updated_at   = CURRENT_TIMESTAMP\n                WHERE id = $1\n                RETURNING\n                    id              as \"id!: Uuid\",\n                    payload_type,\n                    payload,\n                    created_at      as \"created_at!: DateTime<Utc>\",\n                    updated_at      as \"updated_at!: DateTime<Utc>\"\n                ",
+  "query": "\n                UPDATE scratch\n                SET\n                    payload      = $3,\n                    updated_at   = CURRENT_TIMESTAMP\n                WHERE id = $1 AND scratch_type = $2\n                RETURNING\n                    id              as \"id!: Uuid\",\n                    scratch_type,\n                    payload,\n                    created_at      as \"created_at!: DateTime<Utc>\",\n                    updated_at      as \"updated_at!: DateTime<Utc>\"\n                ",
   "describe": {
     "columns": [
       {
@@ -9,7 +9,7 @@
         "type_info": "Blob"
       },
       {
-        "name": "payload_type",
+        "name": "scratch_type",
         "ordinal": 1,
         "type_info": "Text"
       },
@@ -33,12 +33,12 @@
       "Right": 3
     },
     "nullable": [
-      true,
+      false,
       false,
       false,
       false,
       false
     ]
   },
-  "hash": "66cbe12b77f27248a197525cd42a6e6080c7bdfcde63d924cedd10f58e8d4b5c"
+  "hash": "cd5e31c9e4cb5fcadf153dc22b4c6a1c527c2b0dee921462f988df7cdf78740a"
 }

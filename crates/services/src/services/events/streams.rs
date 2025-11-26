@@ -453,47 +453,55 @@ impl EventService {
     pub async fn stream_scratch_raw(
         &self,
         scratch_id: Uuid,
+        scratch_type: &db::models::scratch::ScratchType,
     ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, EventError>
     {
-        // Get initial snapshot for this scratch
-        let scratch = Scratch::find_by_id(&self.db.pool, scratch_id)
+        let scratch = Scratch::find_by_id(&self.db.pool, scratch_id, scratch_type)
             .await
             .map_err(|_| EventError::Other(anyhow!("Failed to get scratch item")))?
             .ok_or_else(|| EventError::Other(anyhow!("Scratch not found")))?;
 
-        // Convert scratch to map with single entry
-        let mut scratch_map = serde_json::Map::new();
-        scratch_map.insert(
-            scratch.id.to_string(),
-            serde_json::to_value(scratch).unwrap(),
-        );
-
         let initial_patch = json!([{
             "op": "replace",
             "path": "/scratch",
-            "value": scratch_map
+            "value": scratch
         }]);
         let initial_msg = LogMsg::JsonPatch(serde_json::from_value(initial_patch).unwrap());
 
-        let id_str = scratch_id.to_string();
+        let type_str = scratch_type.to_string();
 
-        // Filter to only this scratch's events
+        // Filter to only this scratch's events by matching id and payload.type in the patch value
         let filtered_stream =
             BroadcastStream::new(self.msg_store.get_receiver()).filter_map(move |msg_result| {
-                let id_str = id_str.clone();
+                let id_str = scratch_id.to_string();
+                let type_str = type_str.clone();
                 async move {
                     match msg_result {
                         Ok(LogMsg::JsonPatch(patch)) => {
-                            if let Some(op) = patch.0.first() {
-                                let path = op.path();
-                                if let Some(rest) = path.strip_prefix("/scratch/") {
-                                    if let Some((found_id, _)) = rest.split_once('/') {
-                                        if found_id == id_str {
-                                            return Some(Ok(LogMsg::JsonPatch(patch)));
-                                        }
-                                    } else if rest == id_str {
-                                        return Some(Ok(LogMsg::JsonPatch(patch)));
-                                    }
+                            if let Some(op) = patch.0.first()
+                                && op.path() == "/scratch"
+                            {
+                                // Extract id and payload.type from the patch value
+                                let value = match op {
+                                    json_patch::PatchOperation::Add(a) => Some(&a.value),
+                                    json_patch::PatchOperation::Replace(r) => Some(&r.value),
+                                    json_patch::PatchOperation::Remove(_) => None,
+                                    _ => None,
+                                };
+
+                                let matches = value.is_some_and(|v| {
+                                    let id_matches =
+                                        v.get("id").and_then(|v| v.as_str()) == Some(&id_str);
+                                    let type_matches = v
+                                        .get("payload")
+                                        .and_then(|p| p.get("type"))
+                                        .and_then(|t| t.as_str())
+                                        == Some(&type_str);
+                                    id_matches && type_matches
+                                });
+
+                                if matches {
+                                    return Some(Ok(LogMsg::JsonPatch(patch)));
                                 }
                             }
                             None

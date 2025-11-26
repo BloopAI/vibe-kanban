@@ -1,10 +1,10 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
-import { scratchApi } from '@/lib/api';
+import { scratchApi, type ScratchType } from '@/lib/api';
 import type { Scratch, UpdateScratch } from 'shared/types';
 
 type ScratchState = {
-  scratch: Record<string, Scratch>;
+  scratch: Scratch | null;
 };
 
 export interface UseScratchResult {
@@ -17,12 +17,15 @@ export interface UseScratchResult {
 
 /**
  * Stream a single scratch item via WebSocket (JSON Patch).
- * Server sends initial snapshot at /scratch with single entry, then live updates at /scratch/{id}.
+ * Server sends the scratch object directly at /scratch.
  */
-export const useScratch = (id: string): UseScratchResult => {
-  const endpoint = scratchApi.getStreamUrl(id);
+export const useScratch = (
+  scratchType: ScratchType,
+  id: string
+): UseScratchResult => {
+  const endpoint = scratchApi.getStreamUrl(scratchType, id);
 
-  const initialData = useCallback((): ScratchState => ({ scratch: {} }), []);
+  const initialData = useCallback((): ScratchState => ({ scratch: null }), []);
 
   const { data, isConnected, error } = useJsonPatchWsStream<ScratchState>(
     endpoint,
@@ -30,18 +33,13 @@ export const useScratch = (id: string): UseScratchResult => {
     initialData
   );
 
-  const scratchById = useMemo(() => data?.scratch ?? {}, [data?.scratch]);
-
-  const scratch = useMemo(
-    () => (id ? (scratchById[id] ?? null) : null),
-    [scratchById, id]
-  );
+  const scratch = data?.scratch ?? null;
 
   const updateScratch = useCallback(
     async (update: UpdateScratch) => {
-      await scratchApi.update(id, update);
+      await scratchApi.update(scratchType, id, update);
     },
-    [id]
+    [scratchType, id]
   );
 
   const isLoading = !data && !error;

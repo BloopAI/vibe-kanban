@@ -73,9 +73,15 @@ import {
   OpenEditorResponse,
   OpenEditorRequest,
   CreatePrError,
+  Scratch,
+  ScratchPayload,
+  CreateScratch,
   UpdateScratch,
   PushError,
 } from 'shared/types';
+
+// Derive ScratchType from ScratchPayload for URL parameters
+export type ScratchType = ScratchPayload['type'];
 
 // Re-export types for convenience
 export type {
@@ -1056,13 +1062,42 @@ export const organizationsApi = {
 
 // Scratch API
 export const scratchApi = {
-  update: async (id: string, data: UpdateScratch): Promise<void> => {
-    const response = await makeRequest(`/api/scratch/${id}`, {
+  create: async (
+    scratchType: ScratchType,
+    id: string,
+    data: CreateScratch
+  ): Promise<Scratch> => {
+    const response = await makeRequest(`/api/scratch/${scratchType}/${id}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<Scratch>(response);
+  },
+
+  get: async (scratchType: ScratchType, id: string): Promise<Scratch> => {
+    const response = await makeRequest(`/api/scratch/${scratchType}/${id}`);
+    return handleApiResponse<Scratch>(response);
+  },
+
+  update: async (
+    scratchType: ScratchType,
+    id: string,
+    data: UpdateScratch
+  ): Promise<void> => {
+    const response = await makeRequest(`/api/scratch/${scratchType}/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
     return handleApiResponse<void>(response);
   },
 
-  getStreamUrl: (id: string): string => `/api/scratch/${id}/stream/ws`,
+  delete: async (scratchType: ScratchType, id: string): Promise<void> => {
+    const response = await makeRequest(`/api/scratch/${scratchType}/${id}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  getStreamUrl: (scratchType: ScratchType, id: string): string =>
+    `/api/scratch/${scratchType}/${id}/stream/ws`,
 };
