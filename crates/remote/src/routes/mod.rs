@@ -14,6 +14,7 @@ use tracing::{Level, field};
 
 use crate::{AppState, auth::require_session};
 
+mod electric_proxy;
 mod error;
 mod identity;
 mod oauth;
@@ -57,6 +58,7 @@ pub fn router(state: AppState) -> Router {
         .merge(organizations::router())
         .merge(organization_members::protected_router())
         .merge(oauth::protected_router())
+        .merge(electric_proxy::router())
         .layer(middleware::from_fn_with_state(
             state.clone(),
             require_session,

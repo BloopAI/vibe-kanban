@@ -10,6 +10,7 @@ pub struct RemoteServerConfig {
     pub listen_addr: String,
     pub server_public_base_url: Option<String>,
     pub auth: AuthConfig,
+    pub electric_url: String,
 }
 
 #[derive(Debug, Error)]
@@ -35,11 +36,15 @@ impl RemoteServerConfig {
 
         let auth = AuthConfig::from_env()?;
 
+        let electric_url = env::var("ELECTRIC_INTERNAL_URL")
+            .map_err(|_| ConfigError::MissingVar("ELECTRIC_INTERNAL_URL"))?;
+
         Ok(Self {
             database_url,
             listen_addr,
             server_public_base_url,
             auth,
+            electric_url,
         })
     }
 }
