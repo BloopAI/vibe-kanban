@@ -33,7 +33,7 @@ interface GitOperationsProps {
   selectedAttempt: TaskAttempt;
   task: TaskWithAttemptStatus;
   projectId: string;
-  branchStatus: BranchStatus | null;
+  branchStatus: BranchStatus[] | null;
   branches: GitBranch[];
   isAttemptRunning: boolean;
   selectedBranch: string | null;
@@ -57,11 +57,44 @@ function GitOperations({
   const git = useGitOperations(selectedAttempt.id, projectId);
   const isChangingTargetBranch = git.states.changeTargetBranchPending;
 
-  // Git status calculations
-  const hasConflictsCalculated = useMemo(
-    () => Boolean((branchStatus?.conflicted_files?.length ?? 0) > 0),
-    [branchStatus?.conflicted_files]
-  );
+  // Compute aggregated status across all repos
+  const aggregatedStatus = useMemo(() => {
+    if (!branchStatus?.length) return null;
+
+    const totalCommitsAhead = branchStatus.reduce(
+      (sum, r) => sum + (r.commits_ahead ?? 0),
+      0
+    );
+    const totalCommitsBehind = branchStatus.reduce(
+      (sum, r) => sum + (r.commits_behind ?? 0),
+      0
+    );
+    const reposWithChanges = branchStatus.filter(
+      (r) => (r.commits_ahead ?? 0) > 0
+    ).length;
+    const hasAnyConflicts = branchStatus.some(
+      (r) => (r.conflicted_files?.length ?? 0) > 0
+    );
+    const hasAnyRebaseInProgress = branchStatus.some(
+      (r) => r.is_rebase_in_progress
+    );
+    const reposWithConflicts = branchStatus.filter(
+      (r) => (r.conflicted_files?.length ?? 0) > 0
+    ).length;
+
+    return {
+      totalCommitsAhead,
+      totalCommitsBehind,
+      reposWithChanges,
+      hasAnyConflicts,
+      hasAnyRebaseInProgress,
+      reposWithConflicts,
+      repoCount: branchStatus.length,
+    };
+  }, [branchStatus]);
+
+  const firstRepoStatus = branchStatus?.[0];
+  const hasConflictsCalculated = aggregatedStatus?.hasAnyConflicts ?? false;
 
   // Local state for git operations
   const [merging, setMerging] = useState(false);
@@ -92,7 +125,7 @@ function GitOperations({
 
   // Memoize merge status information to avoid repeated calculations
   const mergeInfo = useMemo(() => {
-    if (!branchStatus?.merges)
+    if (!firstRepoStatus?.merges)
       return {
         hasOpenPR: false,
         openPR: null,
@@ -102,15 +135,15 @@ function GitOperations({
         latestMerge: null,
       };
 
-    const openPR = branchStatus.merges.find(
-      (m) => m.type === 'pr' && m.pr_info.status === 'open'
+    const openPR = firstRepoStatus.merges.find(
+      (m: Merge) => m.type === 'pr' && m.pr_info.status === 'open'
     );
 
-    const mergedPR = branchStatus.merges.find(
-      (m) => m.type === 'pr' && m.pr_info.status === 'merged'
+    const mergedPR = firstRepoStatus.merges.find(
+      (m: Merge) => m.type === 'pr' && m.pr_info.status === 'merged'
     );
 
-    const merges = branchStatus.merges.filter(
+    const merges = firstRepoStatus.merges.filter(
       (m: Merge) =>
         m.type === 'direct' ||
         (m.type === 'pr' && m.pr_info.status === 'merged')
@@ -122,9 +155,9 @@ function GitOperations({
       hasMergedPR: !!mergedPR,
       mergedPR,
       hasMerged: merges.length > 0,
-      latestMerge: branchStatus.merges[0] || null, // Most recent merge
+      latestMerge: firstRepoStatus.merges[0] || null, // Most recent merge
     };
-  }, [branchStatus?.merges]);
+  }, [firstRepoStatus?.merges]);
 
   const mergeButtonLabel = useMemo(() => {
     if (mergeSuccess) return t('git.states.merged');
@@ -272,7 +305,7 @@ function GitOperations({
                   <span className="inline-flex items-center gap-1.5 max-w-[280px] px-2 py-0.5 rounded-full bg-muted text-xs font-medium min-w-0">
                     <GitBranchIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     <span className="truncate">
-                      {branchStatus?.target_branch_name ||
+                      {firstRepoStatus?.target_branch_name ||
                         selectedAttempt.target_branch ||
                         selectedBranch ||
                         t('git.branch.current')}
@@ -310,19 +343,25 @@ function GitOperations({
         {/* Center: Status chips */}
         <div className="flex items-center gap-2 text-xs min-w-0 overflow-hidden whitespace-nowrap">
           {(() => {
-            const commitsAhead = branchStatus?.commits_ahead ?? 0;
-            const commitsBehind = branchStatus?.commits_behind ?? 0;
+            const commitsAhead = aggregatedStatus?.totalCommitsAhead ?? 0;
+            const commitsBehind = aggregatedStatus?.totalCommitsBehind ?? 0;
+            const reposWithChanges = aggregatedStatus?.reposWithChanges ?? 0;
+            const repoCount = aggregatedStatus?.repoCount ?? 1;
+            const showRepoCount = repoCount > 1;
 
             if (hasConflictsCalculated) {
               return (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100/60 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
                   <AlertTriangle className="h-3.5 w-3.5" />
                   {t('git.status.conflicts')}
+                  {showRepoCount &&
+                    aggregatedStatus?.reposWithConflicts &&
+                    ` (${aggregatedStatus.reposWithConflicts} repo${aggregatedStatus.reposWithConflicts > 1 ? 's' : ''})`}
                 </span>
               );
             }
 
-            if (branchStatus?.is_rebase_in_progress) {
+            if (aggregatedStatus?.hasAnyRebaseInProgress) {
               return (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100/60 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
                   <RefreshCw className="h-3.5 w-3.5 animate-spin" />
@@ -369,6 +408,9 @@ function GitOperations({
                   +{commitsAhead}{' '}
                   {t('git.status.commits', { count: commitsAhead })}{' '}
                   {t('git.status.ahead')}
+                  {showRepoCount &&
+                    reposWithChanges > 0 &&
+                    ` (${reposWithChanges} repo${reposWithChanges > 1 ? 's' : ''})`}
                 </span>
               );
             }
@@ -396,7 +438,7 @@ function GitOperations({
         </div>
 
         {/* Right: Actions */}
-        {branchStatus && (
+        {aggregatedStatus && (
           <div className={actionsClasses}>
             <Button
               onClick={handleMergeClick}
@@ -406,7 +448,7 @@ function GitOperations({
                 merging ||
                 hasConflictsCalculated ||
                 isAttemptRunning ||
-                ((branchStatus.commits_ahead ?? 0) === 0 &&
+                (aggregatedStatus.totalCommitsAhead === 0 &&
                   !pushSuccess &&
                   !mergeSuccess)
               }
@@ -427,9 +469,9 @@ function GitOperations({
                 isAttemptRunning ||
                 hasConflictsCalculated ||
                 (mergeInfo.hasOpenPR &&
-                  branchStatus.remote_commits_ahead === 0) ||
-                ((branchStatus.commits_ahead ?? 0) === 0 &&
-                  (branchStatus.remote_commits_ahead ?? 0) === 0 &&
+                  (firstRepoStatus?.remote_commits_ahead ?? 0) === 0) ||
+                (aggregatedStatus.totalCommitsAhead === 0 &&
+                  (firstRepoStatus?.remote_commits_ahead ?? 0) === 0 &&
                   !pushSuccess &&
                   !mergeSuccess)
               }

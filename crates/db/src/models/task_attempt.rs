@@ -269,11 +269,12 @@ impl TaskAttempt {
     ) -> Result<Vec<(Uuid, Option<String>, String)>, sqlx::Error> {
         let records = sqlx::query!(
             r#"
-            SELECT ta.id as "attempt_id!: Uuid", ta.container_ref, p.git_repo_path as "git_repo_path!"
+            SELECT ta.id as "attempt_id!: Uuid", ta.container_ref, pr.git_repo_path as "git_repo_path!"
             FROM task_attempts ta
             JOIN tasks t ON ta.task_id = t.id
-            JOIN projects p ON t.project_id = p.id
+            JOIN project_repositories pr ON pr.project_id = t.project_id
             WHERE ta.task_id = $1
+            GROUP BY ta.id
             "#,
             task_id
         )
@@ -321,11 +322,11 @@ impl TaskAttempt {
     ) -> Result<Vec<(Uuid, String, String)>, sqlx::Error> {
         let records = sqlx::query!(
             r#"
-            SELECT ta.id as "attempt_id!: Uuid", ta.container_ref, p.git_repo_path as "git_repo_path!"
+            SELECT ta.id as "attempt_id!: Uuid", ta.container_ref, pr.git_repo_path as "git_repo_path!"
             FROM task_attempts ta
             LEFT JOIN execution_processes ep ON ta.id = ep.task_attempt_id AND ep.completed_at IS NOT NULL
             JOIN tasks t ON ta.task_id = t.id
-            JOIN projects p ON t.project_id = p.id
+            JOIN project_repositories pr ON pr.project_id = t.project_id
             WHERE ta.worktree_deleted = FALSE
                 -- Exclude attempts with any running processes (in progress)
                 AND ta.id NOT IN (
@@ -333,7 +334,7 @@ impl TaskAttempt {
                     FROM execution_processes ep2
                     WHERE ep2.completed_at IS NULL
                 )
-            GROUP BY ta.id, ta.container_ref, p.git_repo_path, ta.updated_at
+            GROUP BY ta.id, ta.container_ref, ta.updated_at
             HAVING datetime('now', '-72 hours') > datetime(
                 MAX(
                     CASE

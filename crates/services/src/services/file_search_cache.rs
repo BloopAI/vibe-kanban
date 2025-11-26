@@ -34,7 +34,7 @@ pub enum SearchMode {
 }
 
 /// Search query parameters for typed Axum extraction
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct SearchQuery {
     pub q: String,
     #[serde(default)]
@@ -174,7 +174,7 @@ impl FileSearchCache {
 
     /// Pre-warm cache for most active projects
     pub async fn warm_most_active(&self, db_pool: &SqlitePool, limit: i32) -> Result<(), String> {
-        use db::models::project::Project;
+        use db::models::{project::Project, project_repository::ProjectRepository};
 
         info!("Starting file search cache warming...");
 
@@ -188,13 +188,24 @@ impl FileSearchCache {
             return Ok(());
         }
 
-        let repo_paths: Vec<PathBuf> = active_projects
-            .iter()
-            .map(|p| PathBuf::from(&p.git_repo_path))
-            .collect();
+        // Collect all repository paths from active projects
+        let mut repo_paths: Vec<PathBuf> = Vec::new();
+        for project in &active_projects {
+            let repos = ProjectRepository::find_by_project_id(db_pool, project.id)
+                .await
+                .map_err(|e| format!("Failed to fetch repositories for project: {e}"))?;
+            for repo in repos {
+                repo_paths.push(repo.git_repo_path);
+            }
+        }
+
+        if repo_paths.is_empty() {
+            info!("No repositories found for active projects, skipping cache warming");
+            return Ok(());
+        }
 
         info!(
-            "Warming cache for {} projects: {:?}",
+            "Warming cache for {} repositories: {:?}",
             repo_paths.len(),
             repo_paths
         );

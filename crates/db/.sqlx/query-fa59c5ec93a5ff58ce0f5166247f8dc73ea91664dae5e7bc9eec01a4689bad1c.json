@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                ep.id                         as \"id!: Uuid\",\n                ep.task_attempt_id            as \"task_attempt_id!: Uuid\",\n                eprs.project_repository_id    as \"project_repository_id!: Uuid\",\n                eprs.after_head_commit        as after_head_commit,\n                prev.after_head_commit        as prev_after_head_commit,\n                ta.target_branch              as target_branch,\n                pr.git_repo_path              as git_repo_path\n            FROM execution_processes ep\n            JOIN execution_process_repo_states eprs ON eprs.execution_process_id = ep.id\n            JOIN project_repositories pr ON pr.id = eprs.project_repository_id\n            JOIN task_attempts ta ON ta.id = ep.task_attempt_id\n            LEFT JOIN execution_process_repo_states prev\n              ON prev.execution_process_id = (\n                   SELECT id FROM execution_processes\n                     WHERE task_attempt_id = ep.task_attempt_id\n                       AND created_at < ep.created_at\n                     ORDER BY created_at DESC\n                     LIMIT 1\n               )\n              AND prev.project_repository_id = eprs.project_repository_id\n            WHERE eprs.before_head_commit IS NULL\n              AND eprs.after_head_commit IS NOT NULL",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "task_attempt_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "project_repository_id!: Uuid",
+        "ordinal": 2,
+        "type_info": "Blob"
+      },
+      {
+        "name": "after_head_commit",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "prev_after_head_commit",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "target_branch",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "git_repo_path",
+        "ordinal": 6,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "fa59c5ec93a5ff58ce0f5166247f8dc73ea91664dae5e7bc9eec01a4689bad1c"
+}

@@ -17,6 +17,7 @@ use services::services::{
     git::GitServiceError,
     github::GitHubServiceError,
     image::ImageError,
+    project::ProjectServiceError,
     remote_client::RemoteClientError,
     share::ShareError,
     worktree_manager::WorktreeError,
@@ -300,6 +301,47 @@ impl From<ShareError> for ApiError {
                 ApiError::Conflict("Invalid organization ID format".to_string())
             }
             ShareError::RemoteClientError(err) => ApiError::Conflict(err.to_string()),
+        }
+    }
+}
+
+impl From<ProjectServiceError> for ApiError {
+    fn from(err: ProjectServiceError) -> Self {
+        match err {
+            ProjectServiceError::Database(db_err) => ApiError::Database(db_err),
+            ProjectServiceError::Io(io_err) => ApiError::Io(io_err),
+            ProjectServiceError::Project(proj_err) => ApiError::Project(proj_err),
+            ProjectServiceError::Share(share_err) => ApiError::from(share_err),
+            ProjectServiceError::PathNotFound(path) => {
+                ApiError::BadRequest(format!("Path does not exist: {}", path.display()))
+            }
+            ProjectServiceError::PathNotDirectory(path) => {
+                ApiError::BadRequest(format!("Path is not a directory: {}", path.display()))
+            }
+            ProjectServiceError::NotGitRepository(path) => {
+                ApiError::BadRequest(format!("Path is not a git repository: {}", path.display()))
+            }
+            ProjectServiceError::DuplicateGitRepoPath => ApiError::Conflict(
+                "A project with this git repository path already exists".to_string(),
+            ),
+            ProjectServiceError::DuplicateRepositoryName => ApiError::Conflict(
+                "A repository with this name already exists in the project".to_string(),
+            ),
+            ProjectServiceError::CannotDeleteLastRepository => {
+                ApiError::Conflict("Cannot delete the last repository in a project".to_string())
+            }
+            ProjectServiceError::RepositoryNotFound => {
+                ApiError::BadRequest("Repository not found".to_string())
+            }
+            ProjectServiceError::GitError(msg) => {
+                ApiError::BadRequest(format!("Git operation failed: {}", msg))
+            }
+            ProjectServiceError::NoRepositoriesConfigured => {
+                ApiError::BadRequest("Project has no repositories configured".to_string())
+            }
+            ProjectServiceError::RemoteClient(msg) => {
+                ApiError::BadRequest(format!("Remote client error: {}", msg))
+            }
         }
     }
 }

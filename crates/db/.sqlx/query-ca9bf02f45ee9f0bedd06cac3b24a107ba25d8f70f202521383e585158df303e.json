@@ -1,0 +1,80 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                      ep.id              as \"id!: Uuid\",\n                      ep.task_attempt_id as \"task_attempt_id!: Uuid\",\n                      ep.run_reason      as \"run_reason!: ExecutionProcessRunReason\",\n                      ep.executor_action as \"executor_action!: sqlx::types::Json<ExecutorActionField>\",\n                      ep.status          as \"status!: ExecutionProcessStatus\",\n                      ep.exit_code,\n                      ep.dropped,\n                      ep.started_at      as \"started_at!: DateTime<Utc>\",\n                      ep.completed_at    as \"completed_at?: DateTime<Utc>\",\n                      ep.created_at      as \"created_at!: DateTime<Utc>\",\n                      ep.updated_at      as \"updated_at!: DateTime<Utc>\"\n               FROM execution_processes ep\n               WHERE ep.task_attempt_id = ?\n                 AND (? OR ep.dropped = FALSE)\n               ORDER BY ep.created_at ASC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "task_attempt_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "run_reason!: ExecutionProcessRunReason",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "executor_action!: sqlx::types::Json<ExecutorActionField>",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "status!: ExecutionProcessStatus",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "exit_code",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "dropped",
+        "ordinal": 6,
+        "type_info": "Bool"
+      },
+      {
+        "name": "started_at!: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "completed_at?: DateTime<Utc>",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 10,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "ca9bf02f45ee9f0bedd06cac3b24a107ba25d8f70f202521383e585158df303e"
+}

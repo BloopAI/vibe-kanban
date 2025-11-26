@@ -1,0 +1,213 @@
+use std::path::{Path, PathBuf};
+
+use db::models::project_repository::ProjectRepository;
+use thiserror::Error;
+use tracing::{debug, error, info};
+use uuid::Uuid;
+
+use super::worktree_manager::{WorktreeCleanup, WorktreeError, WorktreeManager};
+
+#[derive(Debug, Error)]
+pub enum WorkspaceError {
+    #[error(transparent)]
+    Worktree(#[from] WorktreeError),
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("No repositories provided")]
+    NoRepositories,
+    #[error("Partial workspace creation failed: {0}")]
+    PartialCreation(String),
+}
+
+/// Info about a single repo's worktree within a workspace
+#[derive(Debug, Clone)]
+pub struct RepoWorktree {
+    pub repo_id: Uuid,
+    pub repo_name: String,
+    pub source_repo_path: PathBuf,
+    pub worktree_path: PathBuf,
+}
+
+/// A workspace containing worktrees for all project repos
+#[derive(Debug, Clone)]
+pub struct Workspace {
+    pub workspace_dir: PathBuf,
+    pub worktrees: Vec<RepoWorktree>,
+}
+
+pub struct WorkspaceManager;
+
+impl WorkspaceManager {
+    /// Create a workspace with worktrees for all repositories.
+    /// On failure, rolls back any already-created worktrees.
+    pub async fn create_workspace(
+        workspace_dir: &Path,
+        repos: &[ProjectRepository],
+        branch_name: &str,
+        base_branch: &str,
+    ) -> Result<Workspace, WorkspaceError> {
+        if repos.is_empty() {
+            return Err(WorkspaceError::NoRepositories);
+        }
+
+        info!(
+            "Creating workspace at {} with {} repositories",
+            workspace_dir.display(),
+            repos.len()
+        );
+
+        // Create the workspace directory
+        tokio::fs::create_dir_all(workspace_dir).await?;
+
+        let mut created_worktrees: Vec<RepoWorktree> = Vec::new();
+
+        for repo in repos {
+            let worktree_path = workspace_dir.join(&repo.name);
+
+            debug!(
+                "Creating worktree for repo '{}' at {}",
+                repo.name,
+                worktree_path.display()
+            );
+
+            match WorktreeManager::create_worktree(
+                &repo.git_repo_path,
+                branch_name,
+                &worktree_path,
+                base_branch,
+                true, // create_branch
+            )
+            .await
+            {
+                Ok(()) => {
+                    created_worktrees.push(RepoWorktree {
+                        repo_id: repo.id,
+                        repo_name: repo.name.clone(),
+                        source_repo_path: repo.git_repo_path.clone(),
+                        worktree_path,
+                    });
+                }
+                Err(e) => {
+                    error!(
+                        "Failed to create worktree for repo '{}': {}. Rolling back...",
+                        repo.name, e
+                    );
+
+                    // Rollback: cleanup all worktrees we've created so far
+                    Self::cleanup_created_worktrees(&created_worktrees).await;
+
+                    // Also remove the workspace directory if it's empty
+                    if let Err(cleanup_err) = tokio::fs::remove_dir(workspace_dir).await {
+                        debug!(
+                            "Could not remove workspace dir during rollback: {}",
+                            cleanup_err
+                        );
+                    }
+
+                    return Err(WorkspaceError::PartialCreation(format!(
+                        "Failed to create worktree for repo '{}': {}",
+                        repo.name, e
+                    )));
+                }
+            }
+        }
+
+        info!(
+            "Successfully created workspace with {} worktrees",
+            created_worktrees.len()
+        );
+
+        Ok(Workspace {
+            workspace_dir: workspace_dir.to_path_buf(),
+            worktrees: created_worktrees,
+        })
+    }
+
+    /// Ensure all worktrees in a workspace exist (for cold restart scenarios)
+    pub async fn ensure_workspace_exists(
+        workspace_dir: &Path,
+        repos: &[ProjectRepository],
+        branch_name: &str,
+    ) -> Result<(), WorkspaceError> {
+        if repos.is_empty() {
+            return Err(WorkspaceError::NoRepositories);
+        }
+
+        // Ensure workspace directory exists
+        if !workspace_dir.exists() {
+            tokio::fs::create_dir_all(workspace_dir).await?;
+        }
+
+        for repo in repos {
+            let worktree_path = workspace_dir.join(&repo.name);
+
+            debug!(
+                "Ensuring worktree exists for repo '{}' at {}",
+                repo.name,
+                worktree_path.display()
+            );
+
+            WorktreeManager::ensure_worktree_exists(
+                &repo.git_repo_path,
+                branch_name,
+                &worktree_path,
+            )
+            .await?;
+        }
+
+        Ok(())
+    }
+
+    /// Clean up all worktrees in a workspace
+    pub async fn cleanup_workspace(
+        workspace_dir: &Path,
+        repos: &[ProjectRepository],
+    ) -> Result<(), WorkspaceError> {
+        info!("Cleaning up workspace at {}", workspace_dir.display());
+
+        let cleanup_data: Vec<WorktreeCleanup> = repos
+            .iter()
+            .map(|repo| {
+                let worktree_path = workspace_dir.join(&repo.name);
+                WorktreeCleanup::new(worktree_path, Some(repo.git_repo_path.clone()))
+            })
+            .collect();
+
+        WorktreeManager::batch_cleanup_worktrees(&cleanup_data).await?;
+
+        // Remove the workspace directory itself
+        if workspace_dir.exists()
+            && let Err(e) = tokio::fs::remove_dir_all(workspace_dir).await
+        {
+            debug!(
+                "Could not remove workspace directory {}: {}",
+                workspace_dir.display(),
+                e
+            );
+        }
+
+        Ok(())
+    }
+
+    /// Get the base directory for workspaces (same as worktree base dir)
+    pub fn get_workspace_base_dir() -> PathBuf {
+        WorktreeManager::get_worktree_base_dir()
+    }
+
+    /// Helper to cleanup worktrees during rollback
+    async fn cleanup_created_worktrees(worktrees: &[RepoWorktree]) {
+        for worktree in worktrees {
+            let cleanup = WorktreeCleanup::new(
+                worktree.worktree_path.clone(),
+                Some(worktree.source_repo_path.clone()),
+            );
+
+            if let Err(e) = WorktreeManager::cleanup_worktree(&cleanup).await {
+                error!(
+                    "Failed to cleanup worktree '{}' during rollback: {}",
+                    worktree.repo_name, e
+                );
+            }
+        }
+    }
+}

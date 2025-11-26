@@ -17,7 +17,10 @@ import {
   ExecutionProcess,
   GitBranch,
   Project,
+  ProjectRepository,
+  ProjectBranchesResponse,
   CreateProject,
+  CreateProjectRepository,
   SearchResult,
   ShareTaskResponse,
   Task,
@@ -279,7 +282,8 @@ export const projectsApi = {
 
   getBranches: async (id: string): Promise<GitBranch[]> => {
     const response = await makeRequest(`/api/projects/${id}/branches`);
-    return handleApiResponse<GitBranch[]>(response);
+    const data = await handleApiResponse<ProjectBranchesResponse>(response);
+    return data.repositories.flatMap((r) => r.branches);
   },
 
   searchFiles: async (
@@ -326,6 +330,40 @@ export const projectsApi = {
       method: 'DELETE',
     });
     return handleApiResponse<Project>(response);
+  },
+
+  getRepositories: async (projectId: string): Promise<ProjectRepository[]> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/repositories`
+    );
+    return handleApiResponse<ProjectRepository[]>(response);
+  },
+
+  addRepository: async (
+    projectId: string,
+    data: CreateProjectRepository
+  ): Promise<ProjectRepository> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/repositories`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse<ProjectRepository>(response);
+  },
+
+  deleteRepository: async (
+    projectId: string,
+    repoId: string
+  ): Promise<void> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/repositories/${repoId}`,
+      {
+        method: 'DELETE',
+      }
+    );
+    return handleApiResponse<void>(response);
   },
 };
 
@@ -487,11 +525,11 @@ export const attemptsApi = {
     return handleApiResponse<OpenEditorResponse>(response);
   },
 
-  getBranchStatus: async (attemptId: string): Promise<BranchStatus> => {
+  getBranchStatus: async (attemptId: string): Promise<BranchStatus[]> => {
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/branch-status`
     );
-    return handleApiResponse<BranchStatus>(response);
+    return handleApiResponse<BranchStatus[]>(response);
   },
 
   merge: async (attemptId: string): Promise<void> => {

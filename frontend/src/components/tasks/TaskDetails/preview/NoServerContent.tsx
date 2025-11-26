@@ -89,7 +89,6 @@ export function NoServerContent({
         projectId: project.id,
         data: {
           name: project.name,
-          git_repo_path: project.git_repo_path,
           setup_script: project.setup_script ?? null,
           dev_script: script,
           cleanup_script: project.cleanup_script ?? null,

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE execution_process_repo_states\n               SET merge_commit = $1, updated_at = $2\n             WHERE execution_process_id = $3\n               AND project_repository_id = $4",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "ae1016aabc3daea6180b932158673b27de693fc6762742161db4a594bd8b18a5"
+}
