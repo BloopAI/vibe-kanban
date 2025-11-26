@@ -35,7 +35,8 @@ pub fn router(state: AppState) -> Router {
         ELECTRIC_EXPOSED_HEADERS
             .iter()
             .copied()
-            .map(HeaderName::from_static),
+            .map(HeaderName::from_static)
+            .collect::<Vec<_>>(),
     );
 
     let trace_layer = TraceLayer::new_for_http()
