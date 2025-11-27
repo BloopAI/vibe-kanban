@@ -1,5 +1,10 @@
-import { ReactNode, useState } from 'react';
-import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
+import { ReactNode, useRef, useState } from 'react';
+import {
+  PanelGroup,
+  Panel,
+  PanelResizeHandle,
+  ImperativePanelHandle,
+} from 'react-resizable-panels';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -88,6 +93,18 @@ function RightWorkArea({
     loadSizes(STORAGE_KEYS.ATTEMPT_AUX, DEFAULT_ATTEMPT_AUX)
   );
   const [isAttemptCollapsed, setIsAttemptCollapsed] = useState(false);
+  const attemptPanelRef = useRef<ImperativePanelHandle>(null);
+
+  const handleDoubleClick = () => {
+    const panel = attemptPanelRef.current;
+    if (panel) {
+      if (isAttemptCollapsed) {
+        panel.expand();
+      } else {
+        panel.collapse();
+      }
+    }
+  };
 
   return (
     <div className="h-full min-h-0 flex flex-col">
@@ -110,6 +127,7 @@ function RightWorkArea({
             }}
           >
             <Panel
+              ref={attemptPanelRef}
               id="attempt"
               order={1}
               defaultSize={innerSizes[0]}
@@ -127,6 +145,7 @@ function RightWorkArea({
 
             <PanelResizeHandle
               id="handle-aa"
+              onDoubleClick={handleDoubleClick}
               className={cn(
                 'relative z-30 bg-border cursor-col-resize group touch-none',
                 'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60',
@@ -187,6 +206,18 @@ function DesktopSimple({
     loadSizes(STORAGE_KEYS.KANBAN_ATTEMPT, DEFAULT_KANBAN_ATTEMPT)
   );
   const [isKanbanCollapsed, setIsKanbanCollapsed] = useState(false);
+  const kanbanPanelRef = useRef<ImperativePanelHandle>(null);
+
+  const handleDoubleClick = () => {
+    const panel = kanbanPanelRef.current;
+    if (panel) {
+      if (isKanbanCollapsed) {
+        panel.expand();
+      } else {
+        panel.collapse();
+      }
+    }
+  };
 
   // When preview/diffs is open, hide Kanban entirely and render only RightWorkArea
   if (mode !== null) {
@@ -212,6 +243,7 @@ function DesktopSimple({
       }}
     >
       <Panel
+        ref={kanbanPanelRef}
         id="kanban"
         order={1}
         defaultSize={outerSizes[0]}
@@ -229,6 +261,7 @@ function DesktopSimple({
 
       <PanelResizeHandle
         id="handle-kr"
+        onDoubleClick={handleDoubleClick}
         className={cn(
           'relative z-30 bg-border cursor-col-resize group touch-none',
           'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60',
