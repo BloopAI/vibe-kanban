@@ -8,9 +8,13 @@ import {
   TRANSFORMERS,
   $convertToMarkdownString,
   $convertFromMarkdownString,
+  type Transformer,
 } from '@lexical/markdown';
+import { ImageNode } from './wysiwyg/nodes/image-node';
+import { IMAGE_TRANSFORMER } from './wysiwyg/transformers/image-transformer';
 import { FileTagTypeaheadPlugin } from './wysiwyg/plugins/file-tag-typeahead-plugin';
 import { KeyboardCommandsPlugin } from './wysiwyg/plugins/keyboard-commands-plugin';
+import { ImageKeyboardPlugin } from './wysiwyg/plugins/image-keyboard-plugin';
 import { ReadOnlyLinkPlugin } from './wysiwyg/plugins/read-only-link-plugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
@@ -120,6 +124,7 @@ function WYSIWYGEditor({
         ListItemNode,
         CodeNode,
         LinkNode,
+        ImageNode,
       ],
     }),
     []
@@ -130,8 +135,11 @@ function WYSIWYGEditor({
     undefined
   );
 
-  // Markdown shortcuts for typing UX (e.g., typing `*` creates bullet lists)
-  const markdownShortcuts = TRANSFORMERS;
+  // Extended transformers with image support (memoized to prevent unnecessary re-renders)
+  const extendedTransformers: Transformer[] = useMemo(
+    () => [IMAGE_TRANSFORMER, ...TRANSFORMERS],
+    []
+  );
 
   const editorContent = (
     <div className="wysiwyg">
@@ -181,12 +189,13 @@ function WYSIWYGEditor({
         {!disabled && (
           <>
             <HistoryPlugin />
-            <MarkdownShortcutPlugin transformers={markdownShortcuts} />
+            <MarkdownShortcutPlugin transformers={extendedTransformers} />
             <FileTagTypeaheadPlugin projectId={projectId} />
             <KeyboardCommandsPlugin
               onCmdEnter={onCmdEnter}
               onShiftCmdEnter={onShiftCmdEnter}
             />
+            <ImageKeyboardPlugin />
           </>
         )}
         {/* Link sanitization for read-only mode */}
@@ -197,12 +206,14 @@ function WYSIWYGEditor({
           onSerializedChange={onChange}
           onEditorStateChange={onEditorStateChange}
           lastSerializedRef={lastSerializedRef}
+          transformers={extendedTransformers}
         />
 
         {/* Apply external controlled value (markdown) */}
         <MarkdownValuePlugin
           value={value}
           lastSerializedRef={lastSerializedRef}
+          transformers={extendedTransformers}
         />
 
         {/* Apply defaultValue once in uncontrolled mode */}
@@ -281,10 +292,12 @@ function MarkdownOnChangePlugin({
   onSerializedChange,
   onEditorStateChange,
   lastSerializedRef,
+  transformers,
 }: {
   onSerializedChange?: (state: SerializedEditorState) => void;
   onEditorStateChange?: (s: EditorState) => void;
   lastSerializedRef: React.MutableRefObject<SerializedEditorState | undefined>;
+  transformers: Transformer[];
 }) {
   const [editor] = useLexicalComposerContext();
   useEffect(() => {
@@ -295,7 +308,7 @@ function MarkdownOnChangePlugin({
 
       // Convert editor state to markdown
       const markdown = editorState.read(() =>
-        $convertToMarkdownString(TRANSFORMERS)
+        $convertToMarkdownString(transformers)
       );
 
       if (markdown === lastSerializedRef.current) return;
@@ -303,16 +316,24 @@ function MarkdownOnChangePlugin({
       lastSerializedRef.current = markdown;
       onSerializedChange(markdown);
     });
-  }, [editor, onSerializedChange, onEditorStateChange, lastSerializedRef]);
+  }, [
+    editor,
+    onSerializedChange,
+    onEditorStateChange,
+    lastSerializedRef,
+    transformers,
+  ]);
   return null;
 }
 
 function MarkdownValuePlugin({
   value,
   lastSerializedRef,
+  transformers,
 }: {
   value?: SerializedEditorState;
   lastSerializedRef: React.MutableRefObject<SerializedEditorState | undefined>;
+  transformers: Transformer[];
 }) {
   const [editor] = useLexicalComposerContext();
   useEffect(() => {
@@ -322,22 +343,24 @@ function MarkdownValuePlugin({
     try {
       // Convert markdown to editor state
       editor.update(() => {
-        $convertFromMarkdownString(value, TRANSFORMERS);
+        $convertFromMarkdownString(value, transformers);
       });
       lastSerializedRef.current = value;
     } catch (err) {
       console.error('Failed to parse markdown', err);
     }
-  }, [editor, value, lastSerializedRef]);
+  }, [editor, value, lastSerializedRef, transformers]);
   return null;
 }
 
 function MarkdownDefaultValuePlugin({
   defaultValue,
   lastSerializedRef,
+  transformers,
 }: {
   defaultValue: SerializedEditorState;
   lastSerializedRef: React.MutableRefObject<SerializedEditorState | undefined>;
+  transformers: Transformer[];
 }) {
   const [editor] = useLexicalComposerContext();
   const didInit = useRef(false);
@@ -350,13 +373,13 @@ function MarkdownDefaultValuePlugin({
     try {
       // Convert markdown to editor state
       editor.update(() => {
-        $convertFromMarkdownString(defaultValue, TRANSFORMERS);
+        $convertFromMarkdownString(defaultValue, transformers);
       });
       lastSerializedRef.current = defaultValue;
     } catch (err) {
       console.error('Failed to parse default markdown', err);
     }
-  }, [editor, defaultValue, lastSerializedRef]);
+  }, [editor, defaultValue, lastSerializedRef, transformers]);
   return null;
 }
 
