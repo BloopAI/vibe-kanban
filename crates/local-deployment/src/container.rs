@@ -767,13 +767,13 @@ impl LocalContainerService {
             .await?
             .and_then(|project| self.cleanup_action(project.cleanup_script));
 
-        // Handle images: associate, copy to worktree, canonicalize prompt
-        let mut prompt = draft.prompt.clone();
+        // Handle images: associate and copy to worktree
+        let prompt = draft.prompt.clone();
         if let Some(image_ids) = &draft.image_ids {
             // Associate to task
             let _ = TaskImage::associate_many_dedup(&self.db.pool, ctx.task.id, image_ids).await;
 
-            // Copy to worktree and canonicalize
+            // Copy images to worktree
             let worktree_path = std::path::PathBuf::from(&container_ref);
             if let Err(e) = self
                 .image_service
@@ -781,8 +781,6 @@ impl LocalContainerService {
                 .await
             {
                 tracing::warn!("Failed to copy images to worktree: {}", e);
-            } else {
-                prompt = ImageService::canonicalise_image_paths(&prompt, &worktree_path);
             }
         }
 

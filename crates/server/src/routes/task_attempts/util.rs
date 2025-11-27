@@ -1,6 +1,6 @@
 use db::models::image::TaskImage;
 use deployment::Deployment;
-use services::services::{container::ContainerService, image::ImageService};
+use services::services::container::ContainerService;
 use uuid::Uuid;
 
 use crate::error::ApiError;
@@ -17,8 +17,8 @@ pub async fn ensure_worktree_path(
     Ok(std::path::PathBuf::from(container_ref))
 }
 
-/// Associate images to the task, copy into worktree, and canonicalize paths in the prompt.
-/// Returns the transformed prompt.
+/// Associate images to the task, copy into worktree.
+/// Returns the prompt unchanged (with relative image paths preserved).
 pub async fn handle_images_for_prompt(
     deployment: &crate::DeploymentImpl,
     attempt: &db::models::task_attempt::TaskAttempt,
@@ -32,14 +32,11 @@ pub async fn handle_images_for_prompt(
 
     TaskImage::associate_many_dedup(&deployment.db().pool, task_id, image_ids).await?;
 
-    // Copy to worktree and canonicalize
+    // Copy images to worktree
     let worktree_path = ensure_worktree_path(deployment, attempt).await?;
     deployment
         .image()
         .copy_images_by_ids_to_worktree(&worktree_path, image_ids)
         .await?;
-    Ok(ImageService::canonicalise_image_paths(
-        prompt,
-        &worktree_path,
-    ))
+    Ok(prompt.to_string())
 }

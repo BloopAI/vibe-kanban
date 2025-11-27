@@ -4,7 +4,6 @@ use std::{
 };
 
 use db::models::image::{CreateImage, Image};
-use regex::{Captures, Regex};
 use sha2::{Digest, Sha256};
 use sqlx::SqlitePool;
 use uuid::Uuid;
@@ -215,22 +214,5 @@ impl ImageService {
         }
 
         Ok(())
-    }
-
-    pub fn canonicalise_image_paths(prompt: &str, worktree_path: &Path) -> String {
-        let pattern = format!(
-            r#"!\[([^\]]*)\]\(({}/[^)\s]+)\)"#,
-            regex::escape(utils::path::VIBE_IMAGES_DIR)
-        );
-        let re = Regex::new(&pattern).unwrap();
-
-        re.replace_all(prompt, |caps: &Captures| {
-            let alt = &caps[1];
-            let rel = &caps[2];
-            let abs = worktree_path.join(rel);
-            let abs = abs.to_string_lossy().replace('\\', "/");
-            format!("![{alt}]({abs})")
-        })
-        .into_owned()
     }
 }

@@ -202,10 +202,7 @@ impl DraftsService {
         self.image
             .copy_images_by_ids_to_worktree(worktree_path, image_ids)
             .await?;
-        Ok(ImageService::canonicalise_image_paths(
-            prompt,
-            worktree_path,
-        ))
+        Ok(prompt.to_string())
     }
 
     async fn start_follow_up_from_draft(
