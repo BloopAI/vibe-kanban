@@ -26,6 +26,8 @@ import { useFollowUpSend } from '@/hooks/follow-up/useFollowUpSend';
 import type { ExecutorAction, ExecutorProfileId } from 'shared/types';
 import { buildResolveConflictsInstructions } from '@/lib/conflicts';
 import { useTranslation } from 'react-i18next';
+import { useScratch } from '@/hooks/useScratch';
+import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 
 interface TaskFollowUpSectionProps {
   task: TaskWithAttemptStatus;
@@ -82,8 +84,41 @@ export function TaskFollowUpSection({
     branchStatus?.conflict_op,
   ]);
 
-  // Editor state (simple local state, no draft persistence)
-  const [followUpMessage, setFollowUpMessage] = useState('');
+  // Editor state (persisted via scratch)
+  const { scratch, updateScratch, deleteScratch } = useScratch(
+    'draft_follow_up',
+    selectedAttemptId ?? ''
+  );
+
+  // Derive the message from scratch, defaulting to empty string
+  const followUpMessage = useMemo(() => {
+    const json = scratch?.payload?.data?.json;
+    if (!json) return '';
+    return typeof json === 'string' ? json : JSON.stringify(json);
+  }, [scratch?.payload?.data?.json]);
+
+  // Debounced save to scratch
+  const saveScratch = useCallback(
+    async (value: string) => {
+      if (!selectedAttemptId) return;
+      try {
+        await updateScratch({
+          payload: {
+            type: 'draft_follow_up',
+            data: {
+              json: value ? JSON.parse(value) : null,
+              md: '', // Lexical JSON stored, markdown not needed
+            },
+          },
+        });
+      } catch (e) {
+        console.error('Failed to save follow-up draft', e);
+      }
+    },
+    [selectedAttemptId, updateScratch]
+  );
+
+  const setFollowUpMessage = useDebouncedCallback(saveScratch, 500);
 
   // Track whether the follow-up textarea is focused
   const [isTextareaFocused, setIsTextareaFocused] = useState(false);

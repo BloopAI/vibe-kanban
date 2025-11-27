@@ -13,6 +13,7 @@ export interface UseScratchResult {
   isConnected: boolean;
   error: string | null;
   updateScratch: (update: UpdateScratch) => Promise<void>;
+  deleteScratch: () => Promise<void>;
 }
 
 /**
@@ -42,6 +43,10 @@ export const useScratch = (
     [scratchType, id]
   );
 
+  const deleteScratch = useCallback(async () => {
+    await scratchApi.delete(scratchType, id);
+  }, [scratchType, id]);
+
   const isLoading = !data && !error;
 
   return {
@@ -50,5 +55,6 @@ export const useScratch = (
     isConnected,
     error,
     updateScratch,
+    deleteScratch,
   };
 };
