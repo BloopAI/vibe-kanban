@@ -5,6 +5,7 @@ pub mod db;
 pub mod mail;
 pub mod routes;
 mod state;
+pub mod validated_where;
 
 use std::{env, sync::OnceLock};
 
