@@ -1029,36 +1029,25 @@ export function ProjectTasks() {
 
   const effectiveMode: LayoutMode = selectedSharedTask ? null : mode;
 
-  const attemptArea =
-    attempt && selectedTask ? (
-      <GitOperationsProvider attemptId={attempt.id}>
-        <ClickedElementsProvider attempt={attempt}>
-          <ReviewProvider key={attempt.id}>
-            <ExecutionProcessesProvider key={attempt.id} attemptId={attempt.id}>
-              <TasksLayout
-                kanban={kanbanContent}
-                attempt={attemptContent}
-                aux={auxContent}
-                isPanelOpen={isPanelOpen}
-                mode={effectiveMode}
-                isMobile={isMobile}
-                rightHeader={rightHeader}
-              />
-            </ExecutionProcessesProvider>
-          </ReviewProvider>
-        </ClickedElementsProvider>
-      </GitOperationsProvider>
-    ) : (
-      <TasksLayout
-        kanban={kanbanContent}
-        attempt={attemptContent}
-        aux={auxContent}
-        isPanelOpen={isPanelOpen}
-        mode={effectiveMode}
-        isMobile={isMobile}
-        rightHeader={rightHeader}
-      />
-    );
+  const attemptArea = (
+    <GitOperationsProvider attemptId={attempt?.id}>
+      <ClickedElementsProvider attempt={attempt}>
+        <ReviewProvider attemptId={attempt?.id}>
+          <ExecutionProcessesProvider attemptId={attempt?.id}>
+            <TasksLayout
+              kanban={kanbanContent}
+              attempt={attemptContent}
+              aux={auxContent}
+              isPanelOpen={isPanelOpen}
+              mode={effectiveMode}
+              isMobile={isMobile}
+              rightHeader={rightHeader}
+            />
+          </ExecutionProcessesProvider>
+        </ReviewProvider>
+      </ClickedElementsProvider>
+    </GitOperationsProvider>
+  );
 
   return (
     <div className="min-h-full h-full flex flex-col">

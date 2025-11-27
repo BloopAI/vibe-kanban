@@ -20,7 +20,7 @@ const ExecutionProcessesContext =
   createContext<ExecutionProcessesContextType | null>(null);
 
 export const ExecutionProcessesProvider: React.FC<{
-  attemptId: string;
+  attemptId: string | undefined;
   children: React.ReactNode;
 }> = ({ attemptId, children }) => {
   const {

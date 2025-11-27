@@ -1,5 +1,11 @@
 import { SplitSide } from '@git-diff-view/react';
-import { createContext, useContext, useState, ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  useEffect,
+} from 'react';
 import { genId } from '@/utils/id';
 
 export interface ReviewComment {
@@ -40,9 +46,19 @@ export function useReview() {
   return context;
 }
 
-export function ReviewProvider({ children }: { children: ReactNode }) {
+export function ReviewProvider({
+  children,
+  attemptId,
+}: {
+  children: ReactNode;
+  attemptId?: string;
+}) {
   const [comments, setComments] = useState<ReviewComment[]>([]);
   const [drafts, setDrafts] = useState<Record<string, ReviewDraft>>({});
+
+  useEffect(() => {
+    return () => clearComments();
+  }, [attemptId]);
 
   const addComment = (comment: Omit<ReviewComment, 'id'>) => {
     const newComment: ReviewComment = {

@@ -21,15 +21,19 @@ interface UseExecutionProcessesResult {
  * Live updates arrive at /execution_processes/<id> via add/replace/remove operations.
  */
 export const useExecutionProcesses = (
-  taskAttemptId: string,
+  taskAttemptId: string | undefined,
   opts?: { showSoftDeleted?: boolean }
 ): UseExecutionProcessesResult => {
   const showSoftDeleted = opts?.showSoftDeleted;
-  const params = new URLSearchParams({ task_attempt_id: taskAttemptId });
-  if (typeof showSoftDeleted === 'boolean') {
-    params.set('show_soft_deleted', String(showSoftDeleted));
+  let endpoint: string | undefined;
+
+  if (taskAttemptId) {
+    const params = new URLSearchParams({ task_attempt_id: taskAttemptId });
+    if (typeof showSoftDeleted === 'boolean') {
+      params.set('show_soft_deleted', String(showSoftDeleted));
+    }
+    endpoint = `/api/execution-processes/stream/ws?${params.toString()}`;
   }
-  const endpoint = `/api/execution-processes/stream/ws?${params.toString()}`;
 
   const initialData = useCallback(
     (): ExecutionProcessState => ({ execution_processes: {} }),
