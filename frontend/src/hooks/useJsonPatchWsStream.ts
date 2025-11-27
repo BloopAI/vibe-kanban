@@ -75,7 +75,7 @@ export const useJsonPatchWsStream = <T extends object>(
   const { getWebSocket, readyState } = useWebSocket(wsUrl, {
     ...DEFAULT_WEBSOCKET_OPTIONS,
     share: share ?? DEFAULT_WEBSOCKET_OPTIONS.share,
-    shouldReconnect: () => !finishedRef.current,
+    shouldReconnect: (event) => !finishedRef.current && event.code !== 1000,
     onOpen: () => {
       setError(null);
       // If we are reconnecting, we might want to reset finishedRef

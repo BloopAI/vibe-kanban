@@ -2,7 +2,7 @@ import { Options } from 'react-use-websocket';
 
 export const DEFAULT_WEBSOCKET_OPTIONS: Options = {
   share: true,
-  shouldReconnect: () => true,
+  shouldReconnect: (event) => event.code !== 1000,
   reconnectInterval: (attempt) => Math.min(8000, 1000 * Math.pow(2, attempt)),
   retryOnError: true,
 };
