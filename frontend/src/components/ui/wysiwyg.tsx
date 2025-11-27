@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback, memo } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
@@ -11,6 +11,7 @@ import {
 } from '@lexical/markdown';
 import { FileTagTypeaheadPlugin } from './wysiwyg/plugins/file-tag-typeahead-plugin';
 import { KeyboardCommandsPlugin } from './wysiwyg/plugins/keyboard-commands-plugin';
+import { ReadOnlyLinkPlugin } from './wysiwyg/plugins/read-only-link-plugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { ListNode, ListItemNode } from '@lexical/list';
@@ -20,6 +21,15 @@ import { LinkNode } from '@lexical/link';
 import { EditorState } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { Button } from '@/components/ui/button';
+import { Check, Clipboard } from 'lucide-react';
+import { writeClipboardViaBridge } from '@/vscode/bridge';
 
 /** Markdown string representing the editor content */
 export type SerializedEditorState = string;
@@ -39,9 +49,11 @@ type WysiwygProps = {
   projectId?: string; // for file search in typeahead
   onCmdEnter?: () => void;
   onShiftCmdEnter?: () => void;
+  /** Show copy-to-clipboard button on hover */
+  enableCopyButton?: boolean;
 };
 
-export default function WYSIWYGEditor({
+function WYSIWYGEditor({
   placeholder,
   value,
   onChange,
@@ -54,7 +66,20 @@ export default function WYSIWYGEditor({
   projectId,
   onCmdEnter,
   onShiftCmdEnter,
+  enableCopyButton = false,
 }: WysiwygProps) {
+  // Copy button state
+  const [copied, setCopied] = useState(false);
+  const handleCopy = useCallback(async () => {
+    if (!value) return;
+    try {
+      await writeClipboardViaBridge(value);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 400);
+    } catch {
+      // noop – bridge handles fallback
+    }
+  }, [value]);
   const initialConfig = useMemo(
     () => ({
       namespace: 'md-wysiwyg',
@@ -71,11 +96,11 @@ export default function WYSIWYGEditor({
         },
         quote: 'my-3 border-l-2 border-muted pl-3 text-muted-foreground italic',
         list: {
-          ul: 'my-2 ml-6 list-disc space-y-1',
-          ol: 'my-2 ml-6 list-decimal space-y-1',
-          listitem: 'ml-1',
+          ul: 'my-1 list-disc list-inside',
+          ol: 'my-1 list-decimal list-inside',
+          listitem: '',
           nested: {
-            listitem: 'ml-4 list-none',
+            listitem: 'pl-4',
           },
         },
         link: 'text-primary underline underline-offset-2 cursor-pointer hover:text-primary/80',
@@ -84,7 +109,7 @@ export default function WYSIWYGEditor({
           italic: 'italic',
           underline: 'underline underline-offset-2',
           strikethrough: 'line-through',
-          code: 'font-mono text-xs bg-muted px-1 py-0.5 rounded',
+          code: 'font-mono bg-muted px-1 py-0.5 rounded',
         },
         code: 'block font-mono text-xs bg-muted rounded-md px-3 py-2 my-2 overflow-x-auto',
       },
@@ -108,7 +133,7 @@ export default function WYSIWYGEditor({
   // Markdown shortcuts for typing UX (e.g., typing `*` creates bullet lists)
   const markdownShortcuts = TRANSFORMERS;
 
-  return (
+  const editorContent = (
     <div className="wysiwyg">
       <LexicalComposer initialConfig={initialConfig}>
         <EditablePlugin editable={!disabled} />
@@ -117,13 +142,13 @@ export default function WYSIWYGEditor({
             contentEditable={
               <ContentEditable
                 className={cn(
-                  'min-h-[200px] outline-none text-base leading-relaxed',
-                  disabled && 'cursor-not-allowed opacity-70',
+                  'outline-none text-sm',
+                  !disabled && 'min-h-[200px]',
                   className
                 )}
-                aria-label="Markdown editor"
+                aria-label={disabled ? 'Markdown content' : 'Markdown editor'}
                 onPaste={(event) => {
-                  if (!onPasteFiles) return;
+                  if (!onPasteFiles || disabled) return;
 
                   const dt = event.clipboardData;
                   if (!dt) return;
@@ -141,22 +166,31 @@ export default function WYSIWYGEditor({
               />
             }
             placeholder={
-              <div className="absolute top-0 left-0 text-secondary-foreground pointer-events-none">
-                {placeholder}
-              </div>
+              !disabled ? (
+                <div className="absolute top-0 left-0 text-sm text-secondary-foreground pointer-events-none">
+                  {placeholder}
+                </div>
+              ) : null
             }
             ErrorBoundary={LexicalErrorBoundary}
           />
         </div>
 
         <ListPlugin />
-        <HistoryPlugin />
-        <MarkdownShortcutPlugin transformers={markdownShortcuts} />
-        <FileTagTypeaheadPlugin projectId={projectId} />
-        <KeyboardCommandsPlugin
-          onCmdEnter={onCmdEnter}
-          onShiftCmdEnter={onShiftCmdEnter}
-        />
+        {/* Only include editing plugins when not in read-only mode */}
+        {!disabled && (
+          <>
+            <HistoryPlugin />
+            <MarkdownShortcutPlugin transformers={markdownShortcuts} />
+            <FileTagTypeaheadPlugin projectId={projectId} />
+            <KeyboardCommandsPlugin
+              onCmdEnter={onCmdEnter}
+              onShiftCmdEnter={onShiftCmdEnter}
+            />
+          </>
+        )}
+        {/* Link sanitization for read-only mode */}
+        {disabled && <ReadOnlyLinkPlugin />}
 
         {/* Emit markdown on change */}
         <MarkdownOnChangePlugin
@@ -183,6 +217,56 @@ export default function WYSIWYGEditor({
       </LexicalComposer >
     </div >
   );
+
+  // Wrap with copy button if enabled
+  if (enableCopyButton) {
+    return (
+      <div className="relative group">
+        <div className="sticky top-2 right-2 z-10 pointer-events-none h-0">
+          <div className="flex justify-end pr-1">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="relative">
+                    <Button
+                      type="button"
+                      aria-label={copied ? 'Copied!' : 'Copy as Markdown'}
+                      title={copied ? 'Copied!' : 'Copy as Markdown'}
+                      variant="outline"
+                      size="icon"
+                      onClick={handleCopy}
+                      className="pointer-events-auto opacity-0 group-hover:opacity-100 delay-0 transition-opacity duration-50 h-8 w-8 rounded-md bg-background/95 backdrop-blur border border-border shadow-sm"
+                    >
+                      {copied ? (
+                        <Check className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <Clipboard className="h-4 w-4" />
+                      )}
+                    </Button>
+                    {copied && (
+                      <div
+                        className="absolute -right-1 mt-1 translate-y-1.5 select-none text-[11px] leading-none px-2 py-1 rounded bg-green-600 text-white shadow pointer-events-none"
+                        role="status"
+                        aria-live="polite"
+                      >
+                        Copied
+                      </div>
+                    )}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {copied ? 'Copied!' : 'Copy as Markdown'}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        </div>
+        {editorContent}
+      </div>
+    );
+  }
+
+  return editorContent;
 }
 
 function EditablePlugin({ editable }: { editable: boolean }) {
@@ -275,3 +359,5 @@ function MarkdownDefaultValuePlugin({
   }, [editor, defaultValue, lastSerializedRef]);
   return null;
 }
+
+export default memo(WYSIWYGEditor);

@@ -1,4 +1,4 @@
-import MarkdownRenderer from '@/components/ui/markdown-renderer';
+import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { Button } from '@/components/ui/button';
 import { Pencil } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -88,8 +88,10 @@ const UserMessage = ({
               }}
             />
           ) : (
-            <MarkdownRenderer
-              content={content}
+            <WYSIWYGEditor
+              placeholder=""
+              value={content}
+              disabled
               className="whitespace-pre-wrap break-words flex flex-col gap-1 font-light"
             />
           )}

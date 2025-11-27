@@ -62,7 +62,6 @@
     "lexical": "^0.36.2",
     "lodash": "^4.17.21",
     "lucide-react": "^0.539.0",
-    "markdown-to-jsx": "^7.7.13",
     "posthog-js": "^1.276.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
