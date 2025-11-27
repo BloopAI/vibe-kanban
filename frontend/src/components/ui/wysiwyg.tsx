@@ -4,7 +4,11 @@ import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
-import { TRANSFORMERS } from '@lexical/markdown';
+import {
+  TRANSFORMERS,
+  $convertToMarkdownString,
+  $convertFromMarkdownString,
+} from '@lexical/markdown';
 import { FileTagTypeaheadPlugin } from './wysiwyg/plugins/file-tag-typeahead-plugin';
 import { KeyboardCommandsPlugin } from './wysiwyg/plugins/keyboard-commands-plugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
@@ -17,14 +21,15 @@ import { EditorState } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { cn } from '@/lib/utils';
 
+/** Markdown string representing the editor content */
 export type SerializedEditorState = string;
 
 type WysiwygProps = {
   placeholder: string;
-  /** JSON string from `JSON.stringify(editorState.toJSON())` */
+  /** Markdown string representing the editor content */
   value?: SerializedEditorState;
   onChange?: (state: SerializedEditorState) => void;
-  /** Initial JSON string, used only in uncontrolled mode */
+  /** Initial markdown string, used only in uncontrolled mode */
   defaultValue?: SerializedEditorState;
   onEditorStateChange?: (s: EditorState) => void;
   disabled?: boolean;
@@ -153,15 +158,18 @@ export default function WYSIWYGEditor({
           onShiftCmdEnter={onShiftCmdEnter}
         />
 
-        {/* Emit JSON on change */}
-        <JsonOnChangePlugin
+        {/* Emit markdown on change */}
+        <MarkdownOnChangePlugin
           onSerializedChange={onChange}
           onEditorStateChange={onEditorStateChange}
           lastSerializedRef={lastSerializedRef}
         />
 
-        {/* Apply external controlled value (JSON) */}
-        <JsonValuePlugin value={value} lastSerializedRef={lastSerializedRef} />
+        {/* Apply external controlled value (markdown) */}
+        <MarkdownValuePlugin
+          value={value}
+          lastSerializedRef={lastSerializedRef}
+        />
 
         {/* Apply defaultValue once in uncontrolled mode */}
         {
@@ -185,7 +193,7 @@ function EditablePlugin({ editable }: { editable: boolean }) {
   return null;
 }
 
-function JsonOnChangePlugin({
+function MarkdownOnChangePlugin({
   onSerializedChange,
   onEditorStateChange,
   lastSerializedRef,
@@ -201,19 +209,21 @@ function JsonOnChangePlugin({
 
       if (!onSerializedChange) return;
 
-      const json = editorState.toJSON();
-      const serialized = JSON.stringify(json);
+      // Convert editor state to markdown
+      const markdown = editorState.read(() =>
+        $convertToMarkdownString(TRANSFORMERS)
+      );
 
-      if (serialized === lastSerializedRef.current) return;
+      if (markdown === lastSerializedRef.current) return;
 
-      lastSerializedRef.current = serialized;
-      onSerializedChange(serialized);
+      lastSerializedRef.current = markdown;
+      onSerializedChange(markdown);
     });
   }, [editor, onSerializedChange, onEditorStateChange, lastSerializedRef]);
   return null;
 }
 
-function JsonValuePlugin({
+function MarkdownValuePlugin({
   value,
   lastSerializedRef,
 }: {
@@ -226,17 +236,19 @@ function JsonValuePlugin({
     if (value === lastSerializedRef.current) return;
 
     try {
-      const editorState = editor.parseEditorState(value);
-      editor.setEditorState(editorState);
+      // Convert markdown to editor state
+      editor.update(() => {
+        $convertFromMarkdownString(value, TRANSFORMERS);
+      });
       lastSerializedRef.current = value;
     } catch (err) {
-      console.error('Failed to parse editor state JSON', err);
+      console.error('Failed to parse markdown', err);
     }
   }, [editor, value, lastSerializedRef]);
   return null;
 }
 
-function JsonDefaultValuePlugin({
+function MarkdownDefaultValuePlugin({
   defaultValue,
   lastSerializedRef,
 }: {
@@ -252,11 +264,13 @@ function JsonDefaultValuePlugin({
     if (defaultValue.trim() === '') return;
 
     try {
-      const editorState = editor.parseEditorState(defaultValue);
-      editor.setEditorState(editorState);
+      // Convert markdown to editor state
+      editor.update(() => {
+        $convertFromMarkdownString(defaultValue, TRANSFORMERS);
+      });
       lastSerializedRef.current = defaultValue;
     } catch (err) {
-      console.error('Failed to parse default editor state JSON', err);
+      console.error('Failed to parse default markdown', err);
     }
   }, [editor, defaultValue, lastSerializedRef]);
   return null;

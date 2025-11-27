@@ -2,7 +2,6 @@ use std::{fmt, str::FromStr};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use sqlx::{FromRow, SqlitePool};
 use thiserror::Error;
 use ts_rs::TS;
@@ -23,20 +22,15 @@ pub enum ScratchError {
     },
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct RichText {
-    pub json: Value,
-    pub md: String,
-}
-
 /// The payload of a scratch, tagged by type. The type is part of the composite primary key.
+/// Data is stored as markdown string.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(tag = "type", content = "data")]
 pub enum ScratchPayload {
     #[serde(rename = "draft_task")]
-    DraftTask(RichText),
+    DraftTask(String),
     #[serde(rename = "draft_follow_up")]
-    DraftFollowUp(RichText),
+    DraftFollowUp(String),
 }
 
 impl ScratchPayload {
@@ -123,8 +117,8 @@ impl Scratch {
 impl TryFrom<ScratchRow> for Scratch {
     type Error = ScratchError;
     fn try_from(r: ScratchRow) -> Result<Self, ScratchError> {
-        // Parse the inner data (RichText) from the stored payload
-        let data: RichText = serde_json::from_str(&r.payload)?;
+        // Parse the markdown string from the stored payload
+        let data: String = serde_json::from_str(&r.payload)?;
 
         // Reconstruct the tagged enum based on scratch_type
         let payload = match r.scratch_type.as_str() {
@@ -154,8 +148,8 @@ pub struct UpdateScratch {
     pub payload: Option<ScratchPayload>,
 }
 
-/// Helper to extract the inner RichText data from a ScratchPayload
-fn extract_payload_data(payload: &ScratchPayload) -> &RichText {
+/// Helper to extract the inner markdown data from a ScratchPayload
+fn extract_payload_data(payload: &ScratchPayload) -> &str {
     match payload {
         ScratchPayload::DraftTask(data) => data,
         ScratchPayload::DraftFollowUp(data) => data,
@@ -169,7 +163,7 @@ impl Scratch {
         data: &CreateScratch,
     ) -> Result<Self, ScratchError> {
         let scratch_type_str = data.payload.scratch_type();
-        // Store only the inner RichText data, not the tagged enum
+        // Store the markdown string as JSON-encoded string
         let payload_str = serde_json::to_string(extract_payload_data(&data.payload))
             .map_err(|e| sqlx::Error::Protocol(e.to_string()))?;
 
@@ -248,45 +242,46 @@ impl Scratch {
         Ok(scratches)
     }
 
+    /// Upsert a scratch record - creates if not exists, updates if exists.
+    /// If `data.payload` is None, returns the existing record unchanged (or None if not found).
     pub async fn update(
         pool: &SqlitePool,
         id: Uuid,
         scratch_type: &ScratchType,
         data: &UpdateScratch,
     ) -> Result<Option<Self>, ScratchError> {
-        if let Some(existing) = Self::find_by_id(pool, id, scratch_type).await? {
-            let new_payload = data.payload.clone().unwrap_or(existing.payload);
-            // Store only the inner RichText data
-            let payload_str = serde_json::to_string(extract_payload_data(&new_payload))?;
-            let scratch_type_str = scratch_type.to_string();
+        // If no payload provided, just fetch and return existing (no upsert possible)
+        let Some(ref payload) = data.payload else {
+            return Self::find_by_id(pool, id, scratch_type).await;
+        };
 
-            let row = sqlx::query_as!(
-                ScratchRow,
-                r#"
-                UPDATE scratch
-                SET
-                    payload      = $3,
-                    updated_at   = CURRENT_TIMESTAMP
-                WHERE id = $1 AND scratch_type = $2
-                RETURNING
-                    id              as "id!: Uuid",
-                    scratch_type,
-                    payload,
-                    created_at      as "created_at!: DateTime<Utc>",
-                    updated_at      as "updated_at!: DateTime<Utc>"
-                "#,
-                id,
-                scratch_type_str,
-                payload_str,
-            )
-            .fetch_optional(pool)
-            .await?;
+        let payload_str = serde_json::to_string(extract_payload_data(payload))?;
+        let scratch_type_str = scratch_type.to_string();
 
-            let scratch = row.map(Scratch::try_from).transpose()?;
-            Ok(scratch)
-        } else {
-            Ok(None)
-        }
+        // Upsert: insert if not exists, update if exists
+        let row = sqlx::query_as!(
+            ScratchRow,
+            r#"
+            INSERT INTO scratch (id, scratch_type, payload)
+            VALUES ($1, $2, $3)
+            ON CONFLICT(id, scratch_type) DO UPDATE SET
+                payload = excluded.payload,
+                updated_at = datetime('now', 'subsec')
+            RETURNING
+                id              as "id!: Uuid",
+                scratch_type,
+                payload,
+                created_at      as "created_at!: DateTime<Utc>",
+                updated_at      as "updated_at!: DateTime<Utc>"
+            "#,
+            id,
+            scratch_type_str,
+            payload_str,
+        )
+        .fetch_one(pool)
+        .await?;
+
+        Ok(Some(Scratch::try_from(row)?))
     }
 
     pub async fn delete(

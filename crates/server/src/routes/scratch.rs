@@ -66,9 +66,13 @@ pub async fn update_scratch(
             .map_err(|e| ApiError::BadRequest(e.to_string()))?;
     }
 
+    // Upsert: creates if not exists, updates if exists.
+    // Returns None only if payload is None AND record doesn't exist.
     let scratch = Scratch::update(&deployment.db().pool, id, &scratch_type, &payload)
         .await?
-        .ok_or_else(|| ApiError::BadRequest("Scratch not found".to_string()))?;
+        .ok_or_else(|| {
+            ApiError::BadRequest("Scratch not found and no payload provided".to_string())
+        })?;
     Ok(ResponseJson(ApiResponse::success(scratch)))
 }
 

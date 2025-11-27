@@ -91,11 +91,8 @@ export function TaskFollowUpSection({
   );
 
   // Derive the message from scratch, defaulting to empty string
-  const followUpMessage = useMemo(() => {
-    const json = scratch?.payload?.data?.json;
-    if (!json) return '';
-    return typeof json === 'string' ? json : JSON.stringify(json);
-  }, [scratch?.payload?.data?.json]);
+  // Data is now a simple markdown string
+  const followUpMessage = scratch?.payload?.data ?? '';
 
   // Debounced save to scratch
   const saveScratch = useCallback(
@@ -105,10 +102,7 @@ export function TaskFollowUpSection({
         await updateScratch({
           payload: {
             type: 'draft_follow_up',
-            data: {
-              json: value ? JSON.parse(value) : null,
-              md: '', // Lexical JSON stored, markdown not needed
-            },
+            data: value, // markdown string
           },
         });
       } catch (e) {

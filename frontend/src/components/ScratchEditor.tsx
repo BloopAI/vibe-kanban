@@ -21,16 +21,18 @@ export const ScratchEditor = ({
   const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (scratch?.payload?.data?.md) {
-      setLocalContent(scratch.payload.data.md);
+    // Data is now a simple markdown string
+    if (scratch?.payload?.data) {
+      setLocalContent(scratch.payload.data);
     }
   }, [scratch?.payload, scratchId]);
 
   useEffect(() => {
     if (!scratchId || !scratch) return;
 
-    const currentMd = scratch.payload?.data?.md || '';
-    if (localContent === currentMd) return;
+    // Data is now a simple markdown string
+    const currentContent = scratch.payload?.data || '';
+    if (localContent === currentContent) return;
 
     const handle = window.setTimeout(async () => {
       setIsSaving(true);
@@ -40,10 +42,7 @@ export const ScratchEditor = ({
         await updateScratch({
           payload: {
             type: scratch.payload.type,
-            data: {
-              json: scratch.payload.data.json ?? null,
-              md: localContent,
-            },
+            data: localContent, // markdown string
           },
         });
       } catch (e) {

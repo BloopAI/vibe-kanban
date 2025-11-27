@@ -39,13 +39,7 @@ export function TestScratch() {
     const newId = crypto.randomUUID();
     const payload: ScratchPayload = {
       type: scratchType,
-      data: {
-        json: {
-          source: 'test-page',
-          timestamp: Date.now(),
-        },
-        md: '# New scratch item\n\nEdit me to test real-time sync...',
-      },
+      data: '# New scratch item\n\nEdit me to test real-time sync...', // markdown string
     };
 
     try {
