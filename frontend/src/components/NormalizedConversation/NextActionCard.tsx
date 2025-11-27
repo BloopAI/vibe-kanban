@@ -15,18 +15,18 @@ import { ViewProcessesDialog } from '@/components/dialogs/tasks/ViewProcessesDia
 import { CreateAttemptDialog } from '@/components/dialogs/tasks/CreateAttemptDialog';
 import { GitActionsDialog } from '@/components/dialogs/tasks/GitActionsDialog';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
-import { useDiffSummary } from '@/hooks/useDiffSummary';
+import { useDiffSummaryContext } from '@/contexts/DiffSummaryContext';
 import { useDevServer } from '@/hooks/useDevServer';
 import { Button } from '@/components/ui/button';
 import { IdeIcon } from '@/components/ide/IdeIcon';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { getIdeName } from '@/components/ide/IdeIcon';
 import { useProject } from '@/contexts/ProjectContext';
-import { useQuery } from '@tanstack/react-query';
 import { attemptsApi } from '@/lib/api';
 import {
   BaseAgentCapability,
   type BaseCodingAgent,
+  type TaskAttempt,
   type TaskWithAttemptStatus,
 } from 'shared/types';
 import {
@@ -37,8 +37,7 @@ import {
 } from '@/components/ui/tooltip';
 
 type NextActionCardProps = {
-  attemptId?: string;
-  containerRef?: string | null;
+  attempt?: TaskAttempt;
   failed: boolean;
   execution_processes: number;
   task?: TaskWithAttemptStatus;
@@ -46,8 +45,7 @@ type NextActionCardProps = {
 };
 
 export function NextActionCard({
-  attemptId,
-  containerRef,
+  attempt,
   failed,
   execution_processes,
   task,
@@ -58,18 +56,10 @@ export function NextActionCard({
   const { project } = useProject();
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
-
-  const { data: attempt } = useQuery({
-    queryKey: ['attempt', attemptId],
-    queryFn: () => attemptsApi.get(attemptId!),
-    enabled: !!attemptId && failed,
-  });
   const { capabilities } = useUserSystem();
 
-  const openInEditor = useOpenInEditor(attemptId);
-  const { fileCount, added, deleted, error } = useDiffSummary(
-    attemptId ?? null
-  );
+  const openInEditor = useOpenInEditor(attempt?.id);
+  const { fileCount, added, deleted, error } = useDiffSummaryContext();
   const {
     start,
     stop,
@@ -77,34 +67,34 @@ export function NextActionCard({
     isStopping,
     runningDevServer,
     latestDevServerProcess,
-  } = useDevServer(attemptId);
+  } = useDevServer(attempt?.id);
 
   const projectHasDevScript = Boolean(project?.dev_script);
 
   const handleCopy = useCallback(async () => {
-    if (!containerRef) return;
+    if (!attempt?.container_ref) return;
 
     try {
-      await navigator.clipboard.writeText(containerRef);
+      await navigator.clipboard.writeText(attempt.container_ref);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.warn('Copy to clipboard failed:', err);
     }
-  }, [containerRef]);
+  }, [attempt?.container_ref]);
 
   const handleOpenInEditor = useCallback(() => {
     openInEditor();
   }, [openInEditor]);
 
   const handleViewLogs = useCallback(() => {
-    if (attemptId) {
+    if (attempt?.id) {
       ViewProcessesDialog.show({
-        attemptId,
+        attemptId: attempt.id,
         initialProcessId: latestDevServerProcess?.id,
       });
     }
-  }, [attemptId, latestDevServerProcess?.id]);
+  }, [attempt?.id, latestDevServerProcess?.id]);
 
   const handleOpenDiffs = useCallback(() => {
     navigate({ search: '?view=diffs' });
@@ -118,18 +108,18 @@ export function NextActionCard({
   }, [attempt?.task_id]);
 
   const handleGitActions = useCallback(() => {
-    if (!attemptId) return;
+    if (!attempt?.id) return;
     GitActionsDialog.show({
-      attemptId,
+      attemptId: attempt.id,
       task,
       projectId: project?.id,
     });
-  }, [attemptId, task, project?.id]);
+  }, [attempt?.id, task, project?.id]);
 
   const handleRunSetup = useCallback(async () => {
-    if (!attemptId || !attempt) return;
+    if (!attempt?.id) return;
     try {
-      await attemptsApi.runAgentSetup(attemptId, {
+      await attemptsApi.runAgentSetup(attempt.id, {
         executor_profile_id: {
           executor: attempt.executor as BaseCodingAgent,
           variant: null,
@@ -138,7 +128,7 @@ export function NextActionCard({
     } catch (error) {
       console.error('Failed to run setup:', error);
     }
-  }, [attemptId, attempt]);
+  }, [attempt]);
 
   const canAutoSetup = !!(
     attempt?.executor &&
@@ -246,7 +236,7 @@ export function NextActionCard({
                 <TooltipContent>{t('attempt.diffs')}</TooltipContent>
               </Tooltip>
 
-              {containerRef && (
+              {attempt?.container_ref && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -276,7 +266,7 @@ export function NextActionCard({
                     size="sm"
                     className="h-7 w-7 p-0"
                     onClick={handleOpenInEditor}
-                    disabled={!attemptId}
+                    disabled={!attempt?.id}
                     aria-label={t('attempt.openInEditor', {
                       editor: editorName,
                     })}
@@ -302,7 +292,7 @@ export function NextActionCard({
                       onClick={runningDevServer ? () => stop() : () => start()}
                       disabled={
                         (runningDevServer ? isStopping : isStarting) ||
-                        !attemptId ||
+                        !attempt?.id ||
                         !projectHasDevScript
                       }
                       aria-label={
@@ -336,7 +326,7 @@ export function NextActionCard({
                       size="sm"
                       className="h-7 w-7 p-0"
                       onClick={handleViewLogs}
-                      disabled={!attemptId}
+                      disabled={!attempt?.id}
                       aria-label={t('attempt.viewDevLogs')}
                     >
                       <Terminal className="h-3.5 w-3.5" />
@@ -353,7 +343,7 @@ export function NextActionCard({
                     size="sm"
                     className="h-7 w-7 p-0"
                     onClick={handleGitActions}
-                    disabled={!attemptId}
+                    disabled={!attempt?.id}
                     aria-label={t('attempt.gitActions')}
                   >
                     <GitBranch className="h-3.5 w-3.5" />

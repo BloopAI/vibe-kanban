@@ -17,6 +17,12 @@ interface UseJsonPatchStreamOptions<T> {
    * Filter/deduplicate patches before applying them
    */
   deduplicatePatches?: (patches: Operation[]) => Operation[];
+  /**
+   * Whether to share the WebSocket connection across multiple hooks with the same URL.
+   * Defaults to true (from DEFAULT_WEBSOCKET_OPTIONS).
+   * Set to false to force a new connection.
+   */
+  share?: boolean;
 }
 
 interface UseJsonPatchStreamResult<T> {
@@ -41,6 +47,7 @@ export const useJsonPatchWsStream = <T extends object>(
 
   const injectInitialEntry = options?.injectInitialEntry;
   const deduplicatePatches = options?.deduplicatePatches;
+  const share = options?.share;
 
   const wsUrl = enabled ? toWsUrl(endpoint) : null;
 
@@ -67,6 +74,7 @@ export const useJsonPatchWsStream = <T extends object>(
 
   const { getWebSocket, readyState } = useWebSocket(wsUrl, {
     ...DEFAULT_WEBSOCKET_OPTIONS,
+    share: share ?? DEFAULT_WEBSOCKET_OPTIONS.share,
     shouldReconnect: () => !finishedRef.current,
     onOpen: () => {
       setError(null);

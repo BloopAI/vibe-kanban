@@ -46,8 +46,8 @@ export const useDiffStream = (
   const { data, error } = useJsonPatchWsStream<DiffStreamEvent>(
     endpoint,
     enabled && !!attemptId,
-    initialData
-    // No need for injectInitialEntry or deduplicatePatches for diffs
+    initialData,
+    { share: false }
   );
 
   const diffs = useMemo(() => {
