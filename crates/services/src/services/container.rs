@@ -122,26 +122,29 @@ pub trait ContainerService {
     }
 
     /// A context is finalized when
+    /// - Always when the execution process has failed or been killed
+    /// - Never when the run reason is DevServer
     /// - The next action is None (no follow-up actions)
-    /// - The run reason is not DevServer
     fn should_finalize(&self, ctx: &ExecutionContext) -> bool {
-        // Always finalize failed or killed executions
+        if matches!(
+            ctx.execution_process.run_reason,
+            ExecutionProcessRunReason::DevServer
+        ) {
+            return false;
+        }
+        // Always finalize failed or killed executions, regardless of next action
         if matches!(
             ctx.execution_process.status,
             ExecutionProcessStatus::Failed | ExecutionProcessStatus::Killed
         ) {
             return true;
         }
-        // Otherwise, finalize only if no next action and not a dev server
+        // Otherwise, finalize only if no next action
         ctx.execution_process
             .executor_action()
             .unwrap()
             .next_action
             .is_none()
-            && (!matches!(
-                ctx.execution_process.run_reason,
-                ExecutionProcessRunReason::DevServer
-            ))
     }
 
     /// Finalize task execution by updating status to InReview and sending notifications
