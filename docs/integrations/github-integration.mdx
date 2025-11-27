@@ -38,16 +38,3 @@ Once the GitHub CLI is ready, you can create pull requests directly from a task:
 4.  Click **Create** to open the PR on GitHub.
 
 If the operation is successful, the task status will update, and a link to the new Pull Request will be available.
-
-## Troubleshooting
-
-### "GitHub CLI is not installed"
-If you see this error, ensure `gh` is available in your system's PATH. You can verify this by running `gh --version` in your terminal.
-
-### "Insufficient permissions"
-If you encounter permission errors:
-1.  Run `gh auth status` to check your current authentication status.
-2.  If needed, re-authenticate with `gh auth login` and ensure you grant the necessary permissions (specifically `repo` access) to the GitHub CLI.
-
-### "Repository not found"
-Ensure that the user you are authenticated as has access to the repository you are working on.
