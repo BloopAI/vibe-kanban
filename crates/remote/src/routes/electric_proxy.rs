@@ -59,12 +59,18 @@ async fn proxy_table(
         }
     }
 
-    let mut request = state.http_client.get(origin_url.as_str());
-    if let Some(token) = &state.config.electric_token {
-        request = request.bearer_auth(token.expose_secret());
+    if let Some(secret) = &state.config.electric_secret {
+        origin_url
+            .query_pairs_mut()
+            .append_pair("secret", secret.expose_secret());
     }
 
-    let response = request.send().await.map_err(ProxyError::Connection)?;
+    let response = state
+        .http_client
+        .get(origin_url.as_str())
+        .send()
+        .await
+        .map_err(ProxyError::Connection)?;
 
     let status = response.status();
 
@@ -83,9 +89,7 @@ async fn proxy_table(
     headers.insert(header::VARY, HeaderValue::from_static("Authorization"));
 
     // Stream the response body directly without buffering
-    let body_stream = response
-        .bytes_stream()
-        .map_err(|e| std::io::Error::other(e));
+    let body_stream = response.bytes_stream().map_err(std::io::Error::other);
     let body = Body::from_stream(body_stream);
 
     Ok((status, headers, body).into_response())
