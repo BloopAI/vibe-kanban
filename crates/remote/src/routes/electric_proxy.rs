@@ -11,8 +11,11 @@ use axum::{
 use futures::TryStreamExt;
 use secrecy::ExposeSecret;
 use tracing::error;
+use uuid::Uuid;
 
-use crate::{AppState, auth::RequestContext, db::organizations::OrganizationRepository};
+use crate::{
+    AppState, auth::RequestContext, db::organizations::OrganizationRepository, validated_where,
+};
 
 pub fn router() -> Router<AppState> {
     Router::new().route("/shape/shared_tasks", get(proxy_shared_tasks))
@@ -56,11 +59,15 @@ pub async fn proxy_shared_tasks(
         return Ok(empty_shape_response());
     }
 
-    // Build org_id filter: "organization_id" IN ('uuid1','uuid2',...)
-    let org_ids: Vec<String> = orgs.iter().map(|o| format!("'{}'", o.id)).collect();
-    let where_clause = format!("\"organization_id\" IN ({})", org_ids.join(","));
+    // Build org_id filter using compile-time validated WHERE clause
+    let org_uuids: Vec<Uuid> = orgs.iter().map(|o| o.id).collect();
+    let query = validated_where!(
+        r#"shared_tasks"#,
+        r#""organization_id" = ANY($1)"#,
+        &org_uuids
+    );
 
-    proxy_table(&state, "shared_tasks", &params, Some(&where_clause)).await
+    proxy_table(&state, query.table, &params, Some(&query.where_clause)).await
 }
 
 /// Proxy a Shape request to Electric for a specific table.
