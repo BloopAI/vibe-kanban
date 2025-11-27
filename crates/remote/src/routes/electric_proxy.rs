@@ -14,7 +14,11 @@ use tracing::error;
 use uuid::Uuid;
 
 use crate::{
-    AppState, auth::RequestContext, db::organizations::OrganizationRepository, validated_where,
+    AppState,
+    auth::RequestContext,
+    db::organizations::OrganizationRepository,
+    validated_where,
+    validated_where::{ValidatedWhere, format_uuid_array},
 };
 
 pub fn router() -> Router<AppState> {
@@ -61,13 +65,10 @@ pub async fn proxy_shared_tasks(
 
     // Build org_id filter using compile-time validated WHERE clause
     let org_uuids: Vec<Uuid> = orgs.iter().map(|o| o.id).collect();
-    let query = validated_where!(
-        r#"shared_tasks"#,
-        r#""organization_id" = ANY($1)"#,
-        &org_uuids
-    );
+    let query = validated_where!("shared_tasks", r#""organization_id" = ANY($1)"#, &org_uuids);
 
-    proxy_table(&state, query.table, &params, Some(&query.where_clause)).await
+    tracing::info!("Proxying Electric Shape request for shared_tasks table{query:?}");
+    proxy_table(&state, &query, &params, &[format_uuid_array(&org_uuids)]).await
 }
 
 /// Proxy a Shape request to Electric for a specific table.
@@ -76,9 +77,9 @@ pub async fn proxy_shared_tasks(
 /// to prevent unauthorized access to other tables or data.
 async fn proxy_table(
     state: &AppState,
-    table: &str,
-    params: &HashMap<String, String>,
-    server_where: Option<&str>,
+    query: &ValidatedWhere,
+    client_params: &HashMap<String, String>,
+    electric_params: &[String],
 ) -> Result<Response, ProxyError> {
     // Build the Electric URL
     let mut origin_url = url::Url::parse(&state.config.electric_url)
@@ -87,13 +88,24 @@ async fn proxy_table(
     origin_url.set_path("/v1/shape");
 
     // Set table server-side (security: client can't override)
-    origin_url.query_pairs_mut().append_pair("table", table);
+    origin_url
+        .query_pairs_mut()
+        .append_pair("table", query.table);
 
-    if let Some(w) = server_where {
-        origin_url.query_pairs_mut().append_pair("where", w);
+    // Set WHERE clause with parameterized values
+    origin_url
+        .query_pairs_mut()
+        .append_pair("where", query.where_clause);
+
+    // Pass params for $1, $2, etc. placeholders
+    for (i, param) in electric_params.iter().enumerate() {
+        origin_url
+            .query_pairs_mut()
+            .append_pair(&format!("params[{}]", i + 1), param);
     }
 
-    for (key, value) in params {
+    // Forward safe client params
+    for (key, value) in client_params {
         if ELECTRIC_PARAMS.contains(&key.as_str()) {
             origin_url.query_pairs_mut().append_pair(key, value);
         }
