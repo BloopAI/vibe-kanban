@@ -99,6 +99,7 @@ fn generate_types_content() -> String {
         server::routes::tasks::CreateAndStartTaskRequest::decl(),
         server::routes::task_attempts::CreateGitHubPrRequest::decl(),
         server::routes::images::ImageResponse::decl(),
+        server::routes::task_attempts::images::TaskAttemptImageMetadata::decl(),
         services::services::config::Config::decl(),
         services::services::config::NotificationConfig::decl(),
         services::services::config::ThemeMode::decl(),

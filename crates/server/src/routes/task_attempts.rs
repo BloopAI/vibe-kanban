@@ -2,6 +2,7 @@ pub mod codex_setup;
 pub mod cursor_setup;
 pub mod drafts;
 pub mod gh_cli_setup;
+pub mod images;
 pub mod util;
 
 use axum::{
@@ -1605,7 +1606,8 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
 
     let task_attempts_router = Router::new()
         .route("/", get(get_task_attempts).post(create_task_attempt))
-        .nest("/{id}", task_attempt_id_router);
+        .nest("/{id}", task_attempt_id_router)
+        .nest("/{id}/images", images::router(deployment));
 
     Router::new().nest("/task-attempts", task_attempts_router)
 }
