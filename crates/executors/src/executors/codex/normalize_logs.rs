@@ -17,7 +17,7 @@ use codex_protocol::{
         ErrorEvent, EventMsg, ExecApprovalRequestEvent, ExecCommandBeginEvent, ExecCommandEndEvent,
         ExecCommandOutputDeltaEvent, ExecOutputStream, FileChange as CodexProtoFileChange,
         McpInvocation, McpToolCallBeginEvent, McpToolCallEndEvent, PatchApplyBeginEvent,
-        PatchApplyEndEvent, StreamErrorEvent, TokenUsageInfo, ViewImageToolCallEvent,
+        PatchApplyEndEvent, StreamErrorEvent, TokenUsageInfo, ViewImageToolCallEvent, WarningEvent,
         WebSearchBeginEvent, WebSearchEndEvent,
     },
 };
@@ -460,15 +460,21 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                     upsert_normalized_entry(&msg_store, index, entry, is_new);
                     state.thinking = None;
                 }
-                EventMsg::AgentReasoningSectionBreak(AgentReasoningSectionBreakEvent {}) => {
+                EventMsg::AgentReasoningSectionBreak(AgentReasoningSectionBreakEvent {
+                    item_id: _,
+                    summary_index: _,
+                }) => {
                     state.assistant = None;
                     state.thinking = None;
                 }
                 EventMsg::ExecApprovalRequest(ExecApprovalRequestEvent {
                     call_id,
+                    turn_id: _,
                     command,
                     cwd: _,
                     reason,
+                    risk: _,
+                    parsed_cmd: _,
                 }) => {
                     state.assistant = None;
                     state.thinking = None;
@@ -504,6 +510,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                 }
                 EventMsg::ApplyPatchApprovalRequest(ApplyPatchApprovalRequestEvent {
                     call_id,
+                    turn_id: _,
                     changes,
                     reason: _,
                     grant_root: _,
@@ -539,7 +546,13 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                     }
                 }
                 EventMsg::ExecCommandBegin(ExecCommandBeginEvent {
-                    call_id, command, ..
+                    call_id,
+                    turn_id: _,
+                    command,
+                    cwd: _,
+                    parsed_cmd: _,
+                    source: _,
+                    interaction_input: _,
                 }) => {
                     state.assistant = None;
                     state.thinking = None;
@@ -596,6 +609,12 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                 }
                 EventMsg::ExecCommandEnd(ExecCommandEndEvent {
                     call_id,
+                    turn_id: _,
+                    command: _,
+                    cwd: _,
+                    parsed_cmd: _,
+                    source: _,
+                    interaction_input: _,
                     stdout: _,
                     stderr: _,
                     aggregated_output: _,
@@ -635,7 +654,10 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                         },
                     );
                 }
-                EventMsg::StreamError(StreamErrorEvent { message }) => {
+                EventMsg::StreamError(StreamErrorEvent {
+                    message,
+                    codex_error_info,
+                }) => {
                     add_normalized_entry(
                         &msg_store,
                         &entry_index,
@@ -644,7 +666,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                             entry_type: NormalizedEntryType::ErrorMessage {
                                 error_type: NormalizedEntryError::Other,
                             },
-                            content: format!("Stream error: {message}"),
+                            content: format!("Stream error: {message} {codex_error_info:?}"),
                             metadata: None,
                         },
                     );
@@ -918,7 +940,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                         },
                     );
                 }
-                EventMsg::Error(ErrorEvent { message }) => {
+                EventMsg::Warning(WarningEvent { message }) => {
                     add_normalized_entry(
                         &msg_store,
                         &entry_index,
@@ -928,6 +950,23 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                                 error_type: NormalizedEntryError::Other,
                             },
                             content: message,
+                            metadata: None,
+                        },
+                    );
+                }
+                EventMsg::Error(ErrorEvent {
+                    message,
+                    codex_error_info,
+                }) => {
+                    add_normalized_entry(
+                        &msg_store,
+                        &entry_index,
+                        NormalizedEntry {
+                            timestamp: None,
+                            entry_type: NormalizedEntryType::ErrorMessage {
+                                error_type: NormalizedEntryError::Other,
+                            },
+                            content: format!("Error: {message} {codex_error_info:?}"),
                             metadata: None,
                         },
                     );
@@ -944,10 +983,20 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                 | EventMsg::TurnDiff(..)
                 | EventMsg::GetHistoryEntryResponse(..)
                 | EventMsg::McpListToolsResponse(..)
+                | EventMsg::McpStartupComplete(..)
+                | EventMsg::McpStartupUpdate(..)
+                | EventMsg::DeprecationNotice(..)
+                | EventMsg::UndoCompleted(..)
+                | EventMsg::UndoStarted(..)
+                | EventMsg::RawResponseItem(..)
+                | EventMsg::ItemStarted(..)
+                | EventMsg::ItemCompleted(..)
+                | EventMsg::AgentMessageContentDelta(..)
+                | EventMsg::ReasoningContentDelta(..)
+                | EventMsg::ReasoningRawContentDelta(..)
                 | EventMsg::ListCustomPromptsResponse(..)
                 | EventMsg::TurnAborted(..)
                 | EventMsg::ShutdownComplete
-                | EventMsg::ConversationPath(..)
                 | EventMsg::EnteredReviewMode(..)
                 | EventMsg::ExitedReviewMode(..)
                 | EventMsg::TaskComplete(..) => {}

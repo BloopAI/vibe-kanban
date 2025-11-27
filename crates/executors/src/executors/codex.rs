@@ -78,6 +78,7 @@ pub enum ReasoningEffort {
     Low,
     Medium,
     High,
+    Xhigh,
 }
 
 /// Model reasoning summary style
@@ -124,9 +125,13 @@ pub struct Codex {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub base_instructions: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub include_plan_tool: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub include_apply_patch_tool: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_provider: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub compact_prompt: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub developer_instructions: Option<String>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
 
@@ -197,7 +202,7 @@ impl StandardCodingAgentExecutor for Codex {
 
 impl Codex {
     pub fn base_command() -> &'static str {
-        "npx -y @openai/codex@0.60.1"
+        "npx -y @openai/codex@0.63.0"
     }
 
     fn build_command_builder(&self) -> CommandBuilder {
@@ -238,8 +243,10 @@ impl Codex {
             sandbox,
             config: self.build_config_overrides(),
             base_instructions: self.base_instructions.clone(),
-            include_plan_tool: self.include_plan_tool,
             include_apply_patch_tool: self.include_apply_patch_tool,
+            model_provider: self.model_provider.clone(),
+            compact_prompt: self.compact_prompt.clone(),
+            developer_instructions: self.developer_instructions.clone(),
         }
     }
 
