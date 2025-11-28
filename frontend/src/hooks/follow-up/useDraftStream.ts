@@ -5,6 +5,7 @@ import type { Operation } from 'rfc6902';
 import useWebSocket from 'react-use-websocket';
 import type { Draft, DraftResponse } from 'shared/types';
 import { useProject } from '@/contexts/ProjectContext';
+import { DEFAULT_WEBSOCKET_OPTIONS, toWsUrl } from '@/utils/websocket';
 
 interface Drafts {
   [attemptId: string]: { follow_up: Draft; retry: DraftResponse | null };
@@ -59,51 +60,32 @@ function useDraftsStreamState(projectId?: string): Drafts | undefined {
     initialData,
   });
 
-  const { getWebSocket } = useWebSocket(
-    wsUrl ?? 'ws://invalid',
-    {
-      share: true,
-      shouldReconnect: () => true,
-      reconnectInterval: (attempt) =>
-        Math.min(8000, 1000 * Math.pow(2, attempt)),
-      retryOnError: true,
-      onMessage: (event) => {
-        try {
-          const msg: WsMsg = JSON.parse(event.data);
-          if ('JsonPatch' in msg) {
-            const patches = msg.JsonPatch;
-            if (!patches.length) return;
-            queryClient.setQueryData<DraftsContainer>(queryKey, (prev) => {
-              const base = prev ?? initialData();
-              const next = structuredClone(base) as DraftsContainer;
-              applyPatch(next, patches);
-              return next;
-            });
-          } else if ('finished' in msg) {
-            try {
-              getWebSocket()?.close();
-            } catch {
-              /* noop */
-            }
+  const { getWebSocket } = useWebSocket(isStreamEnabled ? wsUrl : null, {
+    ...DEFAULT_WEBSOCKET_OPTIONS,
+    onMessage: (event) => {
+      try {
+        const msg: WsMsg = JSON.parse(event.data);
+        if ('JsonPatch' in msg) {
+          const patches = msg.JsonPatch;
+          if (!patches.length) return;
+          queryClient.setQueryData<DraftsContainer>(queryKey, (prev) => {
+            const base = prev ?? initialData();
+            const next = structuredClone(base) as DraftsContainer;
+            applyPatch(next, patches);
+            return next;
+          });
+        } else if ('finished' in msg) {
+          try {
+            getWebSocket()?.close();
+          } catch {
+            /* noop */
           }
-        } catch (e) {
-          console.error('Failed to process WebSocket message:', e);
         }
-      },
+      } catch (e) {
+        console.error('Failed to process WebSocket message:', e);
+      }
     },
-    isStreamEnabled
-  );
+  });
 
   return isStreamEnabled ? data.drafts : undefined;
-}
-
-function toWsUrl(endpoint?: string): string | undefined {
-  if (!endpoint) return undefined;
-  try {
-    const url = new URL(endpoint, window.location.origin);
-    url.protocol = url.protocol.replace('http', 'ws');
-    return url.toString();
-  } catch {
-    return undefined;
-  }
 }

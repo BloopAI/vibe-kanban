@@ -22,6 +22,7 @@ import { useBranchStatus, useAttemptExecution } from '@/hooks';
 import { projectsApi } from '@/lib/api';
 import { paths } from '@/lib/paths';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
+import { DiffSummaryProvider } from '@/contexts/DiffSummaryContext';
 import { ClickedElementsProvider } from '@/contexts/ClickedElementsProvider';
 import { ReviewProvider } from '@/contexts/ReviewProvider';
 import {
@@ -1029,25 +1030,41 @@ export function ProjectTasks() {
 
   const effectiveMode: LayoutMode = selectedSharedTask ? null : mode;
 
-  const attemptArea = (
-    <GitOperationsProvider attemptId={attempt?.id}>
-      <ClickedElementsProvider attempt={attempt}>
-        <ReviewProvider attemptId={attempt?.id}>
-          <ExecutionProcessesProvider attemptId={attempt?.id}>
-            <TasksLayout
-              kanban={kanbanContent}
-              attempt={attemptContent}
-              aux={auxContent}
-              isPanelOpen={isPanelOpen}
-              mode={effectiveMode}
-              isMobile={isMobile}
-              rightHeader={rightHeader}
-            />
-          </ExecutionProcessesProvider>
-        </ReviewProvider>
-      </ClickedElementsProvider>
-    </GitOperationsProvider>
-  );
+  const attemptArea =
+    attempt && selectedTask ? (
+      <GitOperationsProvider attemptId={attempt.id}>
+        <ClickedElementsProvider attempt={attempt}>
+          <ReviewProvider attemptId={attempt.id}>
+            <DiffSummaryProvider key={attempt.id} attemptId={attempt.id}>
+              <ExecutionProcessesProvider
+                key={attempt.id}
+                attemptId={attempt.id}
+              >
+                <TasksLayout
+                  kanban={kanbanContent}
+                  attempt={attemptContent}
+                  aux={auxContent}
+                  isPanelOpen={isPanelOpen}
+                  mode={effectiveMode}
+                  isMobile={isMobile}
+                  rightHeader={rightHeader}
+                />
+              </ExecutionProcessesProvider>
+            </DiffSummaryProvider>
+          </ReviewProvider>
+        </ClickedElementsProvider>
+      </GitOperationsProvider>
+    ) : (
+      <TasksLayout
+        kanban={kanbanContent}
+        attempt={attemptContent}
+        aux={auxContent}
+        isPanelOpen={isPanelOpen}
+        mode={effectiveMode}
+        isMobile={isMobile}
+        rightHeader={rightHeader}
+      />
+    );
 
   return (
     <div className="min-h-full h-full flex flex-col">

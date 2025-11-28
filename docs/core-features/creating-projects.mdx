@@ -43,7 +43,7 @@ Cleanup scripts run after a coding agent finishes it's turn. You can use these t
 
 ### Copy Files
 
-Comma-separated list of files to copy from the original project directory to the worktree. These files will be copied after the worktree is created but before the setup script runs. Useful for environment-specific files like `.env`, configuration files, and local settings.
+Comma-separated list of files, directories, or glob patterns to copy from the original project directory to the worktree. These files will be copied after the worktree is created but before the setup script runs. You can specify individual files (`.env`), entire directories (`secrets/`), or glob patterns (`*.env`, `config/**/*.yml`).
 
 <Warning>
 Make sure these files are gitignored or they could get committed!
