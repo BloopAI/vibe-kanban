@@ -1,6 +1,7 @@
 use std::{net::SocketAddr, sync::Arc};
 
 use anyhow::{Context, bail};
+use secrecy::ExposeSecret;
 use tracing::instrument;
 
 use crate::{
@@ -31,6 +32,12 @@ impl Server {
         db::migrate(&pool)
             .await
             .context("failed to run database migrations")?;
+
+        if let Some(password) = config.electric_role_password.as_ref() {
+            db::ensure_electric_role_password(&pool, password.expose_secret())
+                .await
+                .context("failed to set electric role password")?;
+        }
 
         let auth_config = config.auth.clone();
         let jwt = Arc::new(JwtService::new(auth_config.jwt_secret().clone()));

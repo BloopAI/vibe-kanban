@@ -12,6 +12,7 @@ pub struct RemoteServerConfig {
     pub auth: AuthConfig,
     pub electric_url: String,
     pub electric_secret: Option<SecretString>,
+    pub electric_role_password: Option<SecretString>,
 }
 
 #[derive(Debug, Error)]
@@ -44,6 +45,10 @@ impl RemoteServerConfig {
             .map(|s| SecretString::new(s.into()))
             .ok();
 
+        let electric_role_password = env::var("ELECTRIC_ROLE_PASSWORD")
+            .ok()
+            .map(|s| SecretString::new(s.into()));
+
         Ok(Self {
             database_url,
             listen_addr,
@@ -51,6 +56,7 @@ impl RemoteServerConfig {
             auth,
             electric_url,
             electric_secret,
+            electric_role_password,
         })
     }
 }

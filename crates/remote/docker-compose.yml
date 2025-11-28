@@ -20,11 +20,13 @@ services:
   electric:
     image: electricsql/electric:latest
     environment:
-      DATABASE_URL: postgresql://remote:remote@remote-db:5432/remote?sslmode=disable
+      DATABASE_URL: postgresql://electric_sync:${ELECTRIC_ROLE_PASSWORD:?set in .env.remote}@remote-db:5432/remote?sslmode=disable
       PG_PROXY_PORT: 65432
       LOGICAL_PUBLISHER_HOST: electric
       AUTH_MODE: insecure
       ELECTRIC_INSECURE: true
+      ELECTRIC_MANUAL_TABLE_PUBLISHING: true
+      ELECTRIC_USAGE_REPORTING: false
     depends_on:
       remote-db:
         condition: service_healthy
@@ -51,6 +53,7 @@ services:
       SERVER_PUBLIC_BASE_URL: http://localhost:3000
       VITE_APP_BASE_URL: http://localhost:3000
       VITE_API_BASE_URL: http://localhost:3000
+      ELECTRIC_ROLE_PASSWORD: ${ELECTRIC_ROLE_PASSWORD:?set in .env.remote}
     ports:
       - "127.0.0.1:3000:8081"
     restart: unless-stopped
