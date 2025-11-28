@@ -778,8 +778,7 @@ function DisplayConversationEntry({
     return (
       <div className="px-4 py-2 text-sm">
         <NextActionCard
-          attemptId={taskAttempt?.id}
-          containerRef={taskAttempt?.container_ref}
+          attempt={taskAttempt}
           failed={entry.entry_type.failed}
           execution_processes={entry.entry_type.execution_processes}
           task={task}
