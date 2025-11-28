@@ -36,6 +36,7 @@ import {
   GetMcpServerResponse,
   ImageResponse,
   GitOperationError,
+  UserName,
   ApprovalResponse,
   RebaseTaskAttemptRequest,
   ChangeTargetBranchRequest,
@@ -396,6 +397,36 @@ export const tasksApi = {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
+  },
+
+  getSharedTaskAssignees: async (projectId: string): Promise<UserName[]> => {
+    const tokenRes = await oauthApi.getToken();
+    if (!tokenRes?.access_token) {
+      throw new Error('Not authenticated');
+    }
+    const response = await makeRequest(
+      `/v1/tasks/assignees?${new URLSearchParams({
+        project_id: projectId,
+      })}`,
+      {
+        headers: {
+          Authorization: `Bearer ${tokenRes.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      }
+    );
+    if (!response.ok) {
+      let message = `Request failed with status ${response.status}`;
+      try {
+        const err = await response.json();
+        if (err?.message) message = err.message;
+      } catch {
+        // empty
+      }
+      throw new ApiError(message, response.status, response);
+    }
+    return response.json();
   },
 };
 

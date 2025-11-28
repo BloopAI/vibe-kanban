@@ -49,8 +49,8 @@ export default schemas;
   };
 }
 
-const electricProxyTarget =
-  process.env.VITE_ELECTRIC_PROXY_TARGET || "http://localhost:5133";
+const shareApiBase =
+  process.env.VITE_VK_SHARED_API_BASE || "http://localhost:5133";
 
 export default defineConfig({
   plugins: [
@@ -72,10 +72,9 @@ export default defineConfig({
         changeOrigin: true,
         ws: true,
       },
-      "/electric-shape": {
-        target: electricProxyTarget,
+      "/v1": {
+        target: shareApiBase,
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/electric-shape/, "/v1/shape"),
       },
     },
     fs: {

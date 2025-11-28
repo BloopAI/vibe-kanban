@@ -1,6 +1,9 @@
 use db::{
     DBService,
-    models::{project::Project, task::Task},
+    models::{
+        project::Project,
+        task::{CreateTask, Task, TaskStatus},
+    },
 };
 use remote::routes::tasks::{
     AssignSharedTaskRequest, CreateSharedTaskRequest, DeleteSharedTaskRequest, SharedTaskResponse,
@@ -15,6 +18,14 @@ use crate::services::remote_client::RemoteClient;
 pub struct SharePublisher {
     db: DBService,
     client: RemoteClient,
+}
+
+pub struct SharedTaskDetails {
+    pub id: Uuid,
+    pub project_id: Uuid,
+    pub title: String,
+    pub description: Option<String>,
+    pub status: TaskStatus,
 }
 
 impl SharePublisher {
@@ -122,5 +133,27 @@ impl SharePublisher {
         }
 
         Ok(())
+    }
+
+    pub async fn link_shared_task(
+        &self,
+        shared_task: SharedTaskDetails,
+    ) -> Result<Task, ShareError> {
+        if let Some(task) = Task::find_by_shared_task_id(&self.db.pool, shared_task.id).await? {
+            return Ok(task);
+        }
+
+        let create_task = CreateTask::from_shared_task(
+            shared_task.project_id,
+            shared_task.title,
+            shared_task.description,
+            shared_task.status,
+            shared_task.id,
+        );
+
+        let id = Uuid::new_v4();
+        let task = Task::create(&self.db.pool, &create_task, id).await?;
+
+        Ok(task)
     }
 }

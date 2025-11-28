@@ -1,0 +1,38 @@
+import { useQuery } from '@tanstack/react-query';
+import { tasksApi } from '@/lib/api';
+import type { SharedTask, UserName } from 'shared/types';
+import { useEffect, useMemo } from 'react';
+
+interface UseAssigneeUserNamesOptions {
+  projectId: string | undefined;
+  sharedTasks?: SharedTask[];
+}
+
+export function useAssigneeUserNames(options: UseAssigneeUserNamesOptions) {
+  const { projectId, sharedTasks } = options;
+
+  const { data: assignees, refetch } = useQuery<UserName[], Error>({
+    queryKey: ['project', 'assignees', projectId],
+    queryFn: () => tasksApi.getSharedTaskAssignees(projectId!),
+    enabled: Boolean(projectId),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const assignedUserIds = useMemo(() => {
+    if (!sharedTasks) return [];
+    return Array.from(
+      new Set(sharedTasks.map((task) => task.assignee_user_id))
+    );
+  }, [sharedTasks]);
+
+  // Refetch when assignee ids change
+  useEffect(() => {
+    if (!sharedTasks) return;
+    refetch();
+  }, [assignedUserIds, refetch]);
+
+  return {
+    assignees,
+    refetchAssignees: refetch,
+  };
+}

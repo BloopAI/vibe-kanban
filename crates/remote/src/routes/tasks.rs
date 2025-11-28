@@ -35,6 +35,48 @@ pub fn router() -> Router<AppState> {
         .route("/tasks/{task_id}", patch(update_shared_task))
         .route("/tasks/{task_id}", delete(delete_shared_task))
         .route("/tasks/{task_id}/assign", post(assign_task))
+        .route("/tasks/assignees", get(get_task_assignees_by_project))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AssigneesQuery {
+    pub project_id: Uuid,
+}
+
+#[instrument(
+    name = "tasks.get_task_assignees_by_project",
+    skip(state, ctx, query),
+    fields(user_id = %ctx.user.id, project_id = %query.project_id, org_id = tracing::field::Empty)
+)]
+pub async fn get_task_assignees_by_project(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Query(query): Query<AssigneesQuery>,
+) -> Response {
+    let pool = state.pool();
+
+    let _org_id = match ensure_project_access(pool, ctx.user.id, query.project_id).await {
+        Ok(org) => {
+            Span::current().record("org_id", format_args!("{org}"));
+            org
+        }
+        Err(error) => return error.into_response(),
+    };
+
+    let user_repo = UserRepository::new(pool);
+    let assignees = match user_repo.fetch_assignees_by_project(query.project_id).await {
+        Ok(names) => names,
+        Err(e) => {
+            tracing::error!(?e, "failed to load assignees");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "failed to load assignees"})),
+            )
+                .into_response();
+        }
+    };
+
+    (StatusCode::OK, Json(assignees)).into_response()
 }
 
 #[derive(Debug, Deserialize)]

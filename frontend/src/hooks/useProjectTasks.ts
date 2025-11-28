@@ -3,6 +3,7 @@ import { useJsonPatchWsStream } from './useJsonPatchWsStream';
 import { useProject } from '@/contexts/ProjectContext';
 import { useLiveQuery, eq, isNull } from '@tanstack/react-db';
 import { sharedTasksCollection } from '@/lib/electric/sharedTasksCollection';
+import { useAssigneeUserNames } from './useAssigneeUserName';
 import type {
   SharedTask,
   TaskStatus,
@@ -83,26 +84,34 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
 
   const localTasksById = useMemo(() => data?.tasks ?? {}, [data?.tasks]);
 
+  const { assignees } = useAssigneeUserNames({
+    projectId: remoteProjectId || undefined,
+    sharedTasks: sharedTasksList,
+  });
+
   const sharedTasksById = useMemo(() => {
     if (!sharedTasksList) return {};
     const map: Record<string, SharedTaskRecord> = {};
     const list = Array.isArray(sharedTasksList) ? sharedTasksList : [];
     for (const task of list) {
-      const enriched = task as SharedTask & Partial<SharedTaskRecord>;
       const normalizedStatus = normalizeStatus(String(task.status));
+      const assignee =
+        task.assignee_user_id && assignees
+          ? assignees.find((a) => a.user_id === task.assignee_user_id)
+          : null;
       map[task.id] = {
         ...task,
         status: normalizedStatus,
         version: Number(task.version),
         remote_project_id: task.project_id,
         last_event_seq: null,
-        assignee_first_name: enriched.assignee_first_name ?? null,
-        assignee_last_name: enriched.assignee_last_name ?? null,
-        assignee_username: enriched.assignee_username ?? null,
+        assignee_first_name: assignee?.first_name ?? null,
+        assignee_last_name: assignee?.last_name ?? null,
+        assignee_username: assignee?.username ?? null,
       };
     }
     return map;
-  }, [sharedTasksList]);
+  }, [sharedTasksList, assignees]);
 
   const { tasks, tasksById, tasksByStatus } = useMemo(() => {
     const merged: Record<string, TaskWithAttemptStatus> = { ...localTasksById };

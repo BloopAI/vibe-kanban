@@ -46,6 +46,7 @@ fn generate_types_content() -> String {
         db::models::scratch::UpdateScratch::decl(),
         services::services::queued_message::QueuedMessage::decl(),
         services::services::queued_message::QueueStatus::decl(),
+        remote::db::users::UserName::decl(),
         db::models::image::Image::decl(),
         db::models::image::CreateImage::decl(),
         utils::response::ApiResponse::<()>::decl(),
