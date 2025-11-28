@@ -68,6 +68,7 @@ pub struct OAuthHandoff {
     pub redeemed_at: Option<DateTime<Utc>>,
     pub user_id: Option<Uuid>,
     pub session_id: Option<Uuid>,
+    pub encrypted_provider_tokens: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -112,21 +113,22 @@ impl<'a> OAuthHandoffRepository<'a> {
             )
             VALUES ($1, $2, $3, $4, $5)
             RETURNING
-                id              AS "id!",
-                provider        AS "provider!",
-                state           AS "state!",
-                return_to       AS "return_to!",
-                app_challenge   AS "app_challenge!",
-                app_code_hash   AS "app_code_hash?",
-                status          AS "status!",
-                error_code      AS "error_code?",
-                expires_at      AS "expires_at!",
-                authorized_at   AS "authorized_at?",
-                redeemed_at     AS "redeemed_at?",
-                user_id         AS "user_id?",
-                session_id      AS "session_id?",
-                created_at      AS "created_at!",
-                updated_at      AS "updated_at!"
+                id                          AS "id!",
+                provider                    AS "provider!",
+                state                       AS "state!",
+                return_to                   AS "return_to!",
+                app_challenge               AS "app_challenge!",
+                app_code_hash               AS "app_code_hash?",
+                status                      AS "status!",
+                error_code                  AS "error_code?",
+                expires_at                  AS "expires_at!",
+                authorized_at               AS "authorized_at?",
+                redeemed_at                 AS "redeemed_at?",
+                user_id                     AS "user_id?",
+                session_id                  AS "session_id?",
+                encrypted_provider_tokens   AS "encrypted_provider_tokens?",
+                created_at                  AS "created_at!",
+                updated_at                  AS "updated_at!"
             "#,
             data.provider,
             data.state,
@@ -156,7 +158,8 @@ impl<'a> OAuthHandoffRepository<'a> {
                 authorized_at   AS "authorized_at?",
                 redeemed_at     AS "redeemed_at?",
                 user_id         AS "user_id?",
-                session_id      AS "session_id?",
+                session_id                  AS "session_id?",
+                encrypted_provider_tokens   AS "encrypted_provider_tokens?",
                 created_at      AS "created_at!",
                 updated_at      AS "updated_at!"
             FROM oauth_handoffs
@@ -186,7 +189,8 @@ impl<'a> OAuthHandoffRepository<'a> {
                 authorized_at   AS "authorized_at?",
                 redeemed_at     AS "redeemed_at?",
                 user_id         AS "user_id?",
-                session_id      AS "session_id?",
+                session_id                  AS "session_id?",
+                encrypted_provider_tokens   AS "encrypted_provider_tokens?",
                 created_at      AS "created_at!",
                 updated_at      AS "updated_at!"
             FROM oauth_handoffs
@@ -228,6 +232,7 @@ impl<'a> OAuthHandoffRepository<'a> {
         user_id: Uuid,
         session_id: Uuid,
         app_code_hash: &str,
+        encrypted_provider_tokens: Option<String>,
     ) -> Result<(), OAuthHandoffError> {
         sqlx::query!(
             r#"
@@ -238,13 +243,15 @@ impl<'a> OAuthHandoffRepository<'a> {
                 user_id = $2,
                 session_id = $3,
                 app_code_hash = $4,
+                encrypted_provider_tokens = $5,
                 authorized_at = NOW()
             WHERE id = $1
             "#,
             id,
             user_id,
             session_id,
-            app_code_hash
+            app_code_hash,
+            encrypted_provider_tokens
         )
         .execute(self.pool)
         .await?;
@@ -257,6 +264,7 @@ impl<'a> OAuthHandoffRepository<'a> {
             UPDATE oauth_handoffs
             SET
                 status = 'redeemed',
+                encrypted_provider_tokens = NULL,
                 redeemed_at = NOW()
             WHERE id = $1
               AND status = 'authorized'

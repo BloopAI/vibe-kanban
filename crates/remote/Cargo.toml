@@ -8,6 +8,7 @@ publish = false
 anyhow = { workspace = true }
 axum = { workspace = true }
 axum-extra = { version = "0.10.3", features = ["typed-header"] }
+aes-gcm = "0.10"
 chrono = { version = "0.4", features = ["serde"] }
 futures = "0.3"
 async-trait = "0.1"
