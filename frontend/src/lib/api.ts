@@ -12,6 +12,7 @@ import {
   CreateAndStartTaskRequest,
   CreateTaskAttemptBody,
   CreateTag,
+  TaskStatus,
   DirectoryListResponse,
   DirectoryEntry,
   ExecutionProcess,
@@ -76,6 +77,7 @@ import {
   UpdateScratch,
   PushError,
   TokenResponse,
+  CurrentUserResponse,
   QueueStatus,
 } from 'shared/types';
 
@@ -427,6 +429,20 @@ export const tasksApi = {
       throw new ApiError(message, response.status, response);
     }
     return response.json();
+  },
+
+  linkToLocal: async (data: {
+    id: string;
+    project_id: string;
+    title: string;
+    description: string | null;
+    status: TaskStatus;
+  }): Promise<Task> => {
+    const response = await makeRequest(`/api/shared-tasks/link-to-local`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<Task>(response);
   },
 };
 
@@ -947,6 +963,12 @@ export const oauthApi = {
     const response = await makeRequest('/api/auth/token');
     if (!response.ok) return null;
     return handleApiResponse<TokenResponse>(response);
+  },
+
+  /** Returns the user ID of the currently authenticated user */
+  getCurrentUser: async (): Promise<CurrentUserResponse> => {
+    const response = await makeRequest('/api/auth/user');
+    return handleApiResponse<CurrentUserResponse>(response);
   },
 };
 

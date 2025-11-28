@@ -179,6 +179,8 @@ export type CheckAgentAvailabilityQuery = { executor: BaseCodingAgent, };
 
 export type AvailabilityInfo = { "type": "LOGIN_DETECTED", last_auth_timestamp: bigint, } | { "type": "INSTALLATION_FOUND" } | { "type": "NOT_FOUND" };
 
+export type CurrentUserResponse = { user_id: string };
+
 export type CreateFollowUpAttempt = { prompt: string, variant: string | null, retry_process_id: string | null, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };
 
 export type ChangeTargetBranchRequest = { new_target_branch: string, };

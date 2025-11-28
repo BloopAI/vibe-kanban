@@ -22,6 +22,7 @@ export { useTaskAttempts } from './useTaskAttempts';
 export { useAuth } from './auth/useAuth';
 export { useAuthMutations } from './auth/useAuthMutations';
 export { useAuthStatus } from './auth/useAuthStatus';
+export { useCurrentUser } from './auth/useCurrentUser';
 export { useUserOrganizations } from './useUserOrganizations';
 export { useOrganizationSelection } from './useOrganizationSelection';
 export { useOrganizationMembers } from './useOrganizationMembers';

@@ -3,7 +3,7 @@ mod publisher;
 mod status;
 
 pub use config::ShareConfig;
-pub use publisher::SharePublisher;
+pub use publisher::{SharePublisher, SharedTaskDetails};
 use thiserror::Error;
 use utils::ws::WsError;
 use uuid::Uuid;

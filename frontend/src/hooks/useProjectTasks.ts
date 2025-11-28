@@ -4,6 +4,7 @@ import { useProject } from '@/contexts/ProjectContext';
 import { useLiveQuery, eq, isNull } from '@tanstack/react-db';
 import { sharedTasksCollection } from '@/lib/electric/sharedTasksCollection';
 import { useAssigneeUserNames } from './useAssigneeUserName';
+import { useAutoLinkSharedTasks } from './useAutoLinkSharedTasks';
 import type {
   SharedTask,
   TaskStatus,
@@ -80,9 +81,22 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
     [remoteProjectId]
   );
 
-  const sharedTasksList = sharedTasksQuery.data ?? [];
+  const sharedTasksList = useMemo(
+    () => sharedTasksQuery.data ?? [],
+    [sharedTasksQuery.data]
+  );
 
   const localTasksById = useMemo(() => data?.tasks ?? {}, [data?.tasks]);
+
+  const referencedSharedIds = useMemo(
+    () =>
+      new Set(
+        Object.values(localTasksById)
+          .map((task) => task.shared_task_id)
+          .filter((id): id is string => Boolean(id))
+      ),
+    [localTasksById]
+  );
 
   const { assignees } = useAssigneeUserNames({
     projectId: remoteProjectId || undefined,
@@ -153,12 +167,6 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
       cancelled: [],
     };
 
-    const referencedSharedIds = new Set(
-      Object.values(localTasksById)
-        .map((task) => task.shared_task_id)
-        .filter((id): id is string => Boolean(id))
-    );
-
     Object.values(sharedTasksById).forEach((sharedTask) => {
       const hasLocal =
         Boolean(localTasksById[sharedTask.id]) ||
@@ -179,9 +187,19 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
     });
 
     return grouped;
-  }, [localTasksById, sharedTasksById]);
+  }, [localTasksById, sharedTasksById, referencedSharedIds]);
 
   const isLoading = !data && !error; // until first snapshot
+
+  // Auto-link shared tasks assigned to current user
+  useAutoLinkSharedTasks({
+    sharedTasksById,
+    localTasksById,
+    referencedSharedIds,
+    isLoading,
+    remoteProjectId: project?.remote_project_id || undefined,
+    projectId,
+  });
 
   return {
     tasks,

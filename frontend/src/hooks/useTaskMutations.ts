@@ -9,6 +9,7 @@ import type {
   Task,
   TaskWithAttemptStatus,
   UpdateTask,
+  TaskStatus,
 } from 'shared/types';
 
 export function useTaskMutations(projectId?: string) {
@@ -107,6 +108,31 @@ export function useTaskMutations(projectId?: string) {
     },
   });
 
+  const linkSharedTaskToLocal = useMutation({
+    mutationFn: (data: {
+      id: string;
+      project_id: string;
+      title: string;
+      description: string | null;
+      status: TaskStatus;
+    }) => tasksApi.linkToLocal(data),
+    onSuccess: (createdTask: Task) => {
+      // Invalidate project tasks to refresh the list
+      if (projectId) {
+        queryClient.invalidateQueries({
+          queryKey: ['projectTasks', projectId],
+        });
+      }
+      // Also invalidate the specific task
+      queryClient.invalidateQueries({
+        queryKey: ['task', createdTask.id],
+      });
+    },
+    onError: (err) => {
+      console.error('Failed to link shared task to local:', err);
+    },
+  });
+
   return {
     createTask,
     createAndStart,
@@ -114,5 +140,6 @@ export function useTaskMutations(projectId?: string) {
     deleteTask,
     shareTask,
     stopShareTask: unshareSharedTask,
+    linkSharedTaskToLocal,
   };
 }

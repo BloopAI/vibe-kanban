@@ -19,7 +19,7 @@ export function useAssigneeUserNames(options: UseAssigneeUserNamesOptions) {
   });
 
   const assignedUserIds = useMemo(() => {
-    if (!sharedTasks) return [];
+    if (!sharedTasks) return null;
     return Array.from(
       new Set(sharedTasks.map((task) => task.assignee_user_id))
     );
@@ -27,7 +27,7 @@ export function useAssigneeUserNames(options: UseAssigneeUserNamesOptions) {
 
   // Refetch when assignee ids change
   useEffect(() => {
-    if (!sharedTasks) return;
+    if (!assignedUserIds) return;
     refetch();
   }, [assignedUserIds, refetch]);
 

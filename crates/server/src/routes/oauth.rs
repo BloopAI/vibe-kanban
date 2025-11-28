@@ -30,6 +30,13 @@ pub struct TokenResponse {
     pub expires_at: Option<DateTime<Utc>>,
 }
 
+/// Response from GET /api/auth/user - returns the current user ID
+#[derive(Debug, Serialize, TS)]
+#[ts(export)]
+pub struct CurrentUserResponse {
+    pub user_id: String,
+}
+
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/auth/handoff/init", post(handoff_init))
@@ -37,6 +44,7 @@ pub fn router() -> Router<DeploymentImpl> {
         .route("/auth/logout", post(logout))
         .route("/auth/status", get(status))
         .route("/auth/token", get(get_token))
+        .route("/auth/user", get(get_current_user))
 }
 
 #[derive(Debug, Deserialize)]
@@ -260,6 +268,30 @@ async fn get_token(
     Ok(ResponseJson(ApiResponse::success(TokenResponse {
         access_token,
         expires_at,
+    })))
+}
+
+async fn get_current_user(
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<CurrentUserResponse>>, ApiError> {
+    let remote_client = deployment.remote_client()?;
+
+    // Get the access token from remote client
+    let access_token = remote_client
+        .access_token()
+        .await
+        .map_err(|_| ApiError::Unauthorized)?;
+
+    // Extract user ID from the JWT token's 'sub' claim
+    let user_id = utils::jwt::extract_subject(&access_token)
+        .map_err(|e| {
+            tracing::error!("Failed to extract user ID from token: {}", e);
+            ApiError::Unauthorized
+        })?
+        .to_string();
+
+    Ok(ResponseJson(ApiResponse::success(CurrentUserResponse {
+        user_id,
     })))
 }
 

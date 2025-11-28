@@ -20,6 +20,7 @@ pub struct SharePublisher {
     client: RemoteClient,
 }
 
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize, ts_rs::TS)]
 pub struct SharedTaskDetails {
     pub id: Uuid,
     pub project_id: Uuid,
