@@ -49,6 +49,9 @@ export default schemas;
   };
 }
 
+const electricProxyTarget =
+  process.env.VITE_ELECTRIC_PROXY_TARGET || "http://localhost:5133";
+
 export default defineConfig({
   plugins: [
     react(),
@@ -69,11 +72,19 @@ export default defineConfig({
         changeOrigin: true,
         ws: true,
       },
+      "/electric-shape": {
+        target: electricProxyTarget,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/electric-shape/, "/v1/shape"),
+      },
     },
     fs: {
       allow: [path.resolve(__dirname, "."), path.resolve(__dirname, "..")],
     },
     open: process.env.VITE_OPEN === "true",
+  },
+  optimizeDeps: {
+    exclude: ["wa-sqlite"],
   },
   build: { sourcemap: true },
 });

@@ -11,7 +11,7 @@ axum-extra = { version = "0.10.3", features = ["typed-header"] }
 chrono = { version = "0.4", features = ["serde"] }
 futures = "0.3"
 async-trait = "0.1"
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
 secrecy = "0.10.3"
 sentry = { version = "0.41.0", features = ["anyhow", "backtrace", "panic", "debug-images"] }
 sentry-tracing = { version = "0.41.0", features = ["backtrace"] }
@@ -25,6 +25,7 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 tracing-error = "0.2"
 thiserror = { workspace = true }
+ts-rs = { workspace = true }
 utils = { path = "../utils" }
 uuid = { version = "1", features = ["serde", "v4"] }
 jsonwebtoken = "9"

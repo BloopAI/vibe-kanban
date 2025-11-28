@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE tasks\n               SET shared_task_id = NULL\n               WHERE project_id IN (\n                   SELECT id FROM projects WHERE remote_project_id = $1\n               )",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "31cbff397a2c2c116f9f7558d04ad2de76b4b3aaa072253172f40ef378998451"
+}

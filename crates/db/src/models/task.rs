@@ -113,15 +113,6 @@ impl CreateTask {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct SyncTask {
-    pub shared_task_id: Uuid,
-    pub project_id: Uuid,
-    pub title: String,
-    pub description: Option<String>,
-    pub status: TaskStatus,
-}
-
 #[derive(Debug, Serialize, Deserialize, TS)]
 pub struct UpdateTask {
     pub title: Option<String>,
@@ -331,58 +322,6 @@ ORDER BY t.created_at DESC"#,
         .await
     }
 
-    pub async fn sync_from_shared_task<'e, E>(
-        executor: E,
-        data: SyncTask,
-        create_if_not_exists: bool,
-    ) -> Result<bool, sqlx::Error>
-    where
-        E: Executor<'e, Database = Sqlite>,
-    {
-        let new_task_id = Uuid::new_v4();
-
-        let result = sqlx::query!(
-            r#"
-            INSERT INTO tasks (
-                id,
-                project_id,
-                title,
-                description,
-                status,
-                shared_task_id
-            )
-            SELECT
-                $1,
-                $2,
-                $3,
-                $4,
-                $5,
-                $6
-            WHERE $7
-               OR EXISTS (
-                    SELECT 1 FROM tasks WHERE shared_task_id = $6
-               )
-            ON CONFLICT(shared_task_id) WHERE shared_task_id IS NOT NULL DO UPDATE SET
-                project_id = excluded.project_id,
-                title = excluded.title,
-                description = excluded.description,
-                status = excluded.status,
-                updated_at = datetime('now', 'subsec')
-            "#,
-            new_task_id,
-            data.project_id,
-            data.title,
-            data.description,
-            data.status,
-            data.shared_task_id,
-            create_if_not_exists
-        )
-        .execute(executor)
-        .await?;
-
-        Ok(result.rows_affected() > 0)
-    }
-
     pub async fn update_status(
         pool: &SqlitePool,
         id: Uuid,
@@ -428,8 +367,8 @@ ORDER BY t.created_at DESC"#,
         let result = sqlx::query!(
             r#"UPDATE tasks
                SET shared_task_id = NULL
-               WHERE shared_task_id IN (
-                   SELECT id FROM shared_tasks WHERE remote_project_id = $1
+               WHERE project_id IN (
+                   SELECT id FROM projects WHERE remote_project_id = $1
                )"#,
             remote_project_id
         )

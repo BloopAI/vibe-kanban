@@ -1,6 +1,6 @@
 use db::{
     DBService,
-    models::{project::Project, shared_task::SharedTask, task::Task},
+    models::{project::Project, task::Task},
 };
 use remote::routes::tasks::{
     AssignSharedTaskRequest, CreateSharedTaskRequest, DeleteSharedTaskRequest, SharedTaskResponse,
@@ -8,7 +8,7 @@ use remote::routes::tasks::{
 };
 use uuid::Uuid;
 
-use super::{ShareError, convert_remote_task, status};
+use super::{ShareError, status};
 use crate::services::remote_client::RemoteClient;
 
 #[derive(Clone)]
@@ -47,7 +47,7 @@ impl SharePublisher {
 
         let remote_task = self.client.create_shared_task(&payload).await?;
 
-        self.sync_shared_task(&task, &remote_task).await?;
+        Task::set_shared_task_id(&self.db.pool, task.id, Some(remote_task.task.id)).await?;
         Ok(remote_task.task.id)
     }
 
@@ -64,12 +64,9 @@ impl SharePublisher {
             version: None,
         };
 
-        let remote_task = self
-            .client
+        self.client
             .update_shared_task(shared_task_id, &payload)
             .await?;
-
-        self.sync_shared_task(task, &remote_task).await?;
 
         Ok(())
     }
@@ -84,10 +81,10 @@ impl SharePublisher {
 
     pub async fn assign_shared_task(
         &self,
-        shared_task: &SharedTask,
+        shared_task_id: Uuid,
         new_assignee_user_id: Option<String>,
         version: Option<i64>,
-    ) -> Result<SharedTask, ShareError> {
+    ) -> Result<SharedTaskResponse, ShareError> {
         let assignee_uuid = new_assignee_user_id
             .map(|id| uuid::Uuid::parse_str(&id))
             .transpose()
@@ -98,59 +95,32 @@ impl SharePublisher {
             version,
         };
 
-        let SharedTaskResponse {
-            task: remote_task,
-            user,
-        } = self
+        let response = self
             .client
-            .assign_shared_task(shared_task.id, &payload)
+            .assign_shared_task(shared_task_id, &payload)
             .await?;
 
-        let input = convert_remote_task(&remote_task, user.as_ref(), None);
-        let record = SharedTask::upsert(&self.db.pool, input).await?;
-        Ok(record)
+        Ok(response)
     }
 
     pub async fn delete_shared_task(&self, shared_task_id: Uuid) -> Result<(), ShareError> {
-        let shared_task = SharedTask::find_by_id(&self.db.pool, shared_task_id)
-            .await?
-            .ok_or(ShareError::TaskNotFound(shared_task_id))?;
+        // We do not have version here anymore if we don't have local shared task.
+        // Assuming optimistic locking is less critical for unshare or we accept any version (None).
+        // Or we should fetch from remote first?
+        // For unshare, usually we just want to break the link. The remote task is "deleted" (soft delete).
 
-        let payload = DeleteSharedTaskRequest {
-            version: Some(shared_task.version),
-        };
+        let payload = DeleteSharedTaskRequest { version: None };
 
         self.client
-            .delete_shared_task(shared_task.id, &payload)
+            .delete_shared_task(shared_task_id, &payload)
             .await?;
 
         if let Some(local_task) =
-            Task::find_by_shared_task_id(&self.db.pool, shared_task.id).await?
+            Task::find_by_shared_task_id(&self.db.pool, shared_task_id).await?
         {
             Task::set_shared_task_id(&self.db.pool, local_task.id, None).await?;
         }
 
-        SharedTask::remove(&self.db.pool, shared_task.id).await?;
-        Ok(())
-    }
-
-    async fn sync_shared_task(
-        &self,
-        task: &Task,
-        remote_task: &SharedTaskResponse,
-    ) -> Result<(), ShareError> {
-        let SharedTaskResponse {
-            task: remote_task,
-            user,
-        } = remote_task;
-
-        Project::find_by_id(&self.db.pool, task.project_id)
-            .await?
-            .ok_or(ShareError::ProjectNotFound(task.project_id))?;
-
-        let input = convert_remote_task(remote_task, user.as_ref(), None);
-        SharedTask::upsert(&self.db.pool, input).await?;
-        Task::set_shared_task_id(&self.db.pool, task.id, Some(remote_task.id)).await?;
         Ok(())
     }
 }

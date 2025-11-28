@@ -10,13 +10,3 @@ pub(super) fn to_remote(status: &TaskStatus) -> RemoteTaskStatus {
         TaskStatus::Cancelled => RemoteTaskStatus::Cancelled,
     }
 }
-
-pub(super) fn from_remote(status: &RemoteTaskStatus) -> TaskStatus {
-    match status {
-        RemoteTaskStatus::Todo => TaskStatus::Todo,
-        RemoteTaskStatus::InProgress => TaskStatus::InProgress,
-        RemoteTaskStatus::InReview => TaskStatus::InReview,
-        RemoteTaskStatus::Done => TaskStatus::Done,
-        RemoteTaskStatus::Cancelled => TaskStatus::Cancelled,
-    }
-}

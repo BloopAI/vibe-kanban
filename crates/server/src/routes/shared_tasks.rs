@@ -4,8 +4,8 @@ use axum::{
     response::Json as ResponseJson,
     routing::{delete, post},
 };
-use db::models::shared_task::SharedTask;
 use deployment::Deployment;
+use remote::routes::tasks::SharedTaskResponse;
 use serde::{Deserialize, Serialize};
 use services::services::share::ShareError;
 use ts_rs::TS;
@@ -23,8 +23,9 @@ pub struct AssignSharedTaskRequest {
 
 #[derive(Debug, Clone, Serialize, TS)]
 #[ts(export)]
-pub struct AssignSharedTaskResponse {
-    pub shared_task: SharedTask,
+pub struct AssignSharedTaskResponseWrapper {
+    #[ts(type = "any")]
+    pub shared_task: SharedTaskResponse,
 }
 
 pub fn router() -> Router<DeploymentImpl> {
@@ -40,18 +41,14 @@ pub async fn assign_shared_task(
     Path(shared_task_id): Path<Uuid>,
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<AssignSharedTaskRequest>,
-) -> Result<ResponseJson<ApiResponse<AssignSharedTaskResponse>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<AssignSharedTaskResponseWrapper>>, ApiError> {
     let Ok(publisher) = deployment.share_publisher() else {
         return Err(ShareError::MissingConfig("share publisher unavailable").into());
     };
 
-    let shared_task = SharedTask::find_by_id(&deployment.db().pool, shared_task_id)
-        .await?
-        .ok_or_else(|| ApiError::Conflict("shared task not found".into()))?;
-
     let updated_shared_task = publisher
         .assign_shared_task(
-            &shared_task,
+            shared_task_id,
             payload.new_assignee_user_id.clone(),
             payload.version,
         )
@@ -66,7 +63,7 @@ pub async fn assign_shared_task(
         .await;
 
     Ok(ResponseJson(ApiResponse::success(
-        AssignSharedTaskResponse {
+        AssignSharedTaskResponseWrapper {
             shared_task: updated_shared_task,
         },
     )))

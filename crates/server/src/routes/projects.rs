@@ -20,7 +20,6 @@ use services::services::{
     file_search_cache::{CacheError, SearchMode, SearchQuery},
     git::GitBranch,
     remote_client::CreateRemoteProjectPayload,
-    share::link_shared_tasks_to_project,
 };
 use ts_rs::TS;
 use utils::{
@@ -177,10 +176,6 @@ async fn apply_remote_project_link(
     let updated_project = Project::find_by_id(pool, project_id)
         .await?
         .ok_or(ProjectError::ProjectNotFound)?;
-
-    let current_profile = deployment.auth_context().cached_profile().await;
-    let current_user_id = current_profile.as_ref().map(|p| p.user_id);
-    link_shared_tasks_to_project(pool, current_user_id, project_id, remote_project.id).await?;
 
     deployment
         .track_if_analytics_allowed(

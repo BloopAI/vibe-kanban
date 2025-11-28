@@ -5,11 +5,13 @@ use axum::{
     response::Json as ResponseJson,
     routing::{get, post},
 };
+use chrono::{DateTime, Utc};
 use deployment::Deployment;
 use rand::{Rng, distributions::Alphanumeric};
 use serde::{Deserialize, Serialize};
 use services::services::{config::save_config_to_file, oauth_credentials::Credentials};
 use sha2::{Digest, Sha256};
+use ts_rs::TS;
 use utils::{
     api::oauth::{HandoffInitRequest, HandoffRedeemRequest, StatusResponse},
     assets::config_path,
@@ -20,12 +22,21 @@ use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
 
+/// Response from GET /api/auth/token - returns the current access token
+#[derive(Debug, Serialize, TS)]
+#[ts(export)]
+pub struct TokenResponse {
+    pub access_token: String,
+    pub expires_at: Option<DateTime<Utc>>,
+}
+
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/auth/handoff/init", post(handoff_init))
         .route("/auth/handoff/complete", get(handoff_complete))
         .route("/auth/logout", post(logout))
         .route("/auth/status", get(status))
+        .route("/auth/token", get(get_token))
 }
 
 #[derive(Debug, Deserialize)]
@@ -188,36 +199,12 @@ async fn handoff_complete(
         );
     }
 
-    // Start remote sync if not already running
-    {
-        let handle_guard = deployment.share_sync_handle().lock().await;
-        let should_start = handle_guard.is_none();
-        drop(handle_guard);
-
-        if should_start {
-            if let Some(share_config) = deployment.share_config() {
-                tracing::info!("Starting remote sync after login");
-                deployment.spawn_remote_sync(share_config.clone());
-            } else {
-                tracing::debug!(
-                    "Share config not available; skipping remote sync spawn after login"
-                );
-            }
-        }
-    }
-
     Ok(close_window_response(format!(
         "Signed in with {provider}. You can return to the app."
     )))
 }
 
 async fn logout(State(deployment): State<DeploymentImpl>) -> Result<StatusCode, ApiError> {
-    // Stop remote sync if running
-    if let Some(handle) = deployment.share_sync_handle().lock().await.take() {
-        tracing::info!("Stopping remote sync due to logout");
-        handle.shutdown().await;
-    }
-
     let auth_context = deployment.auth_context();
 
     if let Ok(client) = deployment.remote_client() {
@@ -253,6 +240,27 @@ async fn status(
             })))
         }
     }
+}
+
+/// Returns the current access token (auto-refreshes if needed)
+async fn get_token(
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<TokenResponse>>, ApiError> {
+    let remote_client = deployment.remote_client()?;
+
+    // This will auto-refresh the token if expired
+    let access_token = remote_client
+        .access_token()
+        .await
+        .map_err(|_| ApiError::Unauthorized)?;
+
+    let creds = deployment.auth_context().get_credentials().await;
+    let expires_at = creds.and_then(|c| c.expires_at);
+
+    Ok(ResponseJson(ApiResponse::success(TokenResponse {
+        access_token,
+        expires_at,
+    })))
 }
 
 fn generate_secret() -> String {

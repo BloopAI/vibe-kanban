@@ -27,7 +27,7 @@ import {
   Tag,
   TagSearchParams,
   TaskWithAttemptStatus,
-  AssignSharedTaskResponse,
+  AssignSharedTaskResponseWrapper,
   UpdateProject,
   UpdateTask,
   UpdateTag,
@@ -74,6 +74,7 @@ import {
   OpenEditorRequest,
   CreatePrError,
   PushError,
+  TokenResponse,
 } from 'shared/types';
 
 // Re-export types for convenience
@@ -378,7 +379,7 @@ export const tasksApi = {
   reassign: async (
     sharedTaskId: string,
     data: { new_assignee_user_id: string | null; version?: number | null }
-  ): Promise<AssignSharedTaskResponse> => {
+  ): Promise<AssignSharedTaskResponseWrapper> => {
     const payload = {
       new_assignee_user_id: data.new_assignee_user_id,
       version: data.version ?? null,
@@ -392,7 +393,7 @@ export const tasksApi = {
       }
     );
 
-    return handleApiResponse<AssignSharedTaskResponse>(response);
+    return handleApiResponse<AssignSharedTaskResponseWrapper>(response);
   },
 
   unshare: async (sharedTaskId: string): Promise<void> => {
@@ -946,6 +947,13 @@ export const oauthApi = {
         response
       );
     }
+  },
+
+  /** Returns the current access token for the remote server (auto-refreshes if needed) */
+  getToken: async (): Promise<TokenResponse | null> => {
+    const response = await makeRequest('/api/auth/token');
+    if (!response.ok) return null;
+    return handleApiResponse<TokenResponse>(response);
   },
 };
 

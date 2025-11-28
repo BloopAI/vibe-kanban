@@ -3,7 +3,7 @@ name: Remote Deploy Dev
 on:
   push:
     branches:
-      - gabriel/share
+      - electric
       - main
     paths:
       - crates/remote/**

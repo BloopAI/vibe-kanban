@@ -68,7 +68,6 @@ pub async fn bulk_shared_tasks(
             Json(BulkSharedTasksResponse {
                 tasks: snapshot.tasks,
                 deleted_task_ids: snapshot.deleted_task_ids,
-                latest_seq: snapshot.latest_seq,
             }),
         )
             .into_response(),
@@ -328,7 +327,6 @@ pub async fn delete_shared_task(
 pub struct BulkSharedTasksResponse {
     pub tasks: Vec<crate::db::tasks::SharedTaskActivityPayload>,
     pub deleted_task_ids: Vec<Uuid>,
-    pub latest_seq: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
