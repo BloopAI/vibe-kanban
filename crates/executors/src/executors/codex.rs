@@ -397,7 +397,7 @@ impl Codex {
         client.connect(rpc_peer);
         client.initialize().await?;
         let auth_status = client.get_auth_status().await?;
-        if auth_status.auth_method.is_none() {
+        if auth_status.requires_openai_auth.unwrap_or(true) && auth_status.auth_method.is_none() {
             return Err(ExecutorError::AuthRequired(
                 "Codex authentication required".to_string(),
             ));
