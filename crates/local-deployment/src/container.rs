@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     fs, io,
     path::{Path, PathBuf},
     sync::{Arc, atomic::AtomicUsize},
@@ -1268,8 +1268,6 @@ fn copy_project_files_impl(
     target_dir: &Path,
     copy_files: &str,
 ) -> Result<(), ContainerError> {
-    use std::collections::HashSet;
-
     let patterns: Vec<&str> = copy_files
         .split(',')
         .map(|s| s.trim())
@@ -1377,7 +1375,7 @@ fn copy_single_file(
     source_root: &Path,
     target_root: &Path,
     canonical_source: &Path,
-    seen: &mut std::collections::HashSet<PathBuf>,
+    seen: &mut HashSet<PathBuf>,
 ) -> Result<bool, ContainerError> {
     // Validate path is within source_dir
     let canonical_file = source_file.canonicalize().map_err(|e| {
@@ -1426,7 +1424,7 @@ fn copy_directory_recursive(
     source_root: &Path,
     target_root: &Path,
     canonical_source: &Path,
-    seen: &mut std::collections::HashSet<PathBuf>,
+    seen: &mut HashSet<PathBuf>,
 ) -> Result<usize, ContainerError> {
     let mut files_copied = 0;
 
@@ -1446,20 +1444,6 @@ fn copy_directory_recursive(
         };
         if ft.is_symlink() {
             tracing::warn!("Skipping symlink: {path:?}");
-            continue;
-        }
-
-        // Validate path is within source directory
-        let canonical_path = match path.canonicalize() {
-            Ok(p) => p,
-            Err(e) => {
-                tracing::warn!("Failed to canonicalize {path:?}: {e}");
-                continue;
-            }
-        };
-
-        if !canonical_path.starts_with(canonical_source) {
-            tracing::warn!("Skipping path outside project directory: {path:?}");
             continue;
         }
 
