@@ -2042,6 +2042,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "globwalk"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0bf760ebf69878d9fd8f110c89703d90ce35095324d1f1edcb595c63945ee757"
+dependencies = [
+ "bitflags 2.10.0",
+ "ignore",
+ "walkdir",
+]
+
+[[package]]
 name = "gloo-timers"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2910,6 +2921,7 @@ dependencies = [
  "deployment",
  "executors",
  "futures",
+ "globwalk",
  "json-patch",
  "nix 0.29.0",
  "notify",
@@ -2920,6 +2932,7 @@ dependencies = [
  "serde_json",
  "services",
  "sqlx",
+ "tempfile",
  "thiserror 2.0.17",
  "tokio",
  "tokio-util",
