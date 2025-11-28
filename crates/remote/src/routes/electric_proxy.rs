@@ -14,11 +14,8 @@ use tracing::error;
 use uuid::Uuid;
 
 use crate::{
-    AppState,
-    auth::RequestContext,
-    db::organizations::OrganizationRepository,
-    validated_where,
-    validated_where::{ValidatedWhere, format_uuid_array},
+    AppState, auth::RequestContext, db::organizations::OrganizationRepository, validated_where,
+    validated_where::ValidatedWhere,
 };
 
 pub fn router() -> Router<AppState> {
@@ -66,9 +63,16 @@ pub async fn proxy_shared_tasks(
     // Build org_id filter using compile-time validated WHERE clause
     let org_uuids: Vec<Uuid> = orgs.iter().map(|o| o.id).collect();
     let query = validated_where!("shared_tasks", r#""organization_id" = ANY($1)"#, &org_uuids);
-
+    let query_params = &[format!(
+        "{{{}}}",
+        org_uuids
+            .iter()
+            .map(|u| u.to_string())
+            .collect::<Vec<_>>()
+            .join(",")
+    )];
     tracing::info!("Proxying Electric Shape request for shared_tasks table{query:?}");
-    proxy_table(&state, &query, &params, &[format_uuid_array(&org_uuids)]).await
+    proxy_table(&state, &query, &params, query_params).await
 }
 
 /// Proxy a Shape request to Electric for a specific table.
