@@ -17,6 +17,7 @@ import { FileTagTypeaheadPlugin } from './wysiwyg/plugins/file-tag-typeahead-plu
 import { KeyboardCommandsPlugin } from './wysiwyg/plugins/keyboard-commands-plugin';
 import { ImageKeyboardPlugin } from './wysiwyg/plugins/image-keyboard-plugin';
 import { ReadOnlyLinkPlugin } from './wysiwyg/plugins/read-only-link-plugin';
+import { ToolbarPlugin } from './wysiwyg/plugins/toolbar-plugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { ListNode, ListItemNode } from '@lexical/list';
@@ -150,6 +151,7 @@ function WYSIWYGEditor({
       <TaskAttemptContext.Provider value={taskAttemptId}>
         <LexicalComposer initialConfig={initialConfig}>
           <EditablePlugin editable={!disabled} />
+          {!disabled && <ToolbarPlugin />}
           <div className="relative">
             <RichTextPlugin
               contentEditable={
