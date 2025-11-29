@@ -1,10 +1,10 @@
-use std::fmt;
+use std::{collections::HashMap, fmt};
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
-use workspace_utils::approvals::ApprovalStatus;
+use workspace_utils::approvals::{ApprovalStatus, Question};
 
 /// Errors emitted by executor approval services.
 #[derive(Debug, Error)]
@@ -33,6 +33,14 @@ pub trait ExecutorApprovalService: Send + Sync {
         tool_input: Value,
         tool_call_id: &str,
     ) -> Result<ApprovalStatus, ExecutorApprovalError>;
+
+    /// Requests user to answer questions (AskUserQuestion) and waits for answers.
+    /// Returns the approval status and optional answers map (header -> answer).
+    async fn request_question_approval(
+        &self,
+        questions: &[Question],
+        tool_call_id: &str,
+    ) -> Result<(ApprovalStatus, Option<HashMap<String, String>>), ExecutorApprovalError>;
 }
 
 #[derive(Debug, Default)]
@@ -47,6 +55,15 @@ impl ExecutorApprovalService for NoopExecutorApprovalService {
         _tool_call_id: &str,
     ) -> Result<ApprovalStatus, ExecutorApprovalError> {
         Ok(ApprovalStatus::Approved)
+    }
+
+    async fn request_question_approval(
+        &self,
+        _questions: &[Question],
+        _tool_call_id: &str,
+    ) -> Result<(ApprovalStatus, Option<HashMap<String, String>>), ExecutorApprovalError> {
+        // NoOp service times out questions since there's no user to answer them
+        Ok((ApprovalStatus::TimedOut, None))
     }
 }
 

@@ -10,6 +10,8 @@
     "npx-cli/dist/**"
   ],
   "scripts": {
+    "clean": "cargo clean && cd frontend && rm -rf node_modules/.vite",
+    "clean:old": "cargo sweep --time 7 || echo 'Install cargo-sweep: cargo install cargo-sweep'",
     "lint": "npm run frontend:lint && npm run backend:lint",
     "format": "cargo fmt --all && cd frontend && npm run format",
     "check": "npm run frontend:check && npm run backend:check",

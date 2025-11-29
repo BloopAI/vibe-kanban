@@ -145,6 +145,13 @@ pub enum ToolStatus {
         timeout_at: DateTime<Utc>,
     },
     TimedOut,
+    /// Pending user question for AskUserQuestion tool
+    PendingQuestion {
+        question_id: String,
+        questions: Vec<workspace_utils::approvals::Question>,
+        requested_at: DateTime<Utc>,
+        timeout_at: DateTime<Utc>,
+    },
 }
 
 impl ToolStatus {

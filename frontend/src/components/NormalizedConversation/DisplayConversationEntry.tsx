@@ -31,6 +31,7 @@ import {
 import RawLogText from '../common/RawLogText';
 import UserMessage from './UserMessage';
 import PendingApprovalEntry from './PendingApprovalEntry';
+import PendingQuestionEntry from './PendingQuestionEntry';
 import { NextActionCard } from './NextActionCard';
 import { cn } from '@/lib/utils';
 import { useRetryUi } from '@/contexts/RetryUiContext';
@@ -582,6 +583,11 @@ const isPendingApprovalStatus = (
 ): status is Extract<ToolStatus, { status: 'pending_approval' }> =>
   status.status === 'pending_approval';
 
+const isPendingQuestionStatus = (
+  status: ToolStatus
+): status is Extract<ToolStatus, { status: 'pending_question' }> =>
+  status.status === 'pending_question';
+
 const getToolStatusAppearance = (status: ToolStatus): ToolStatusAppearance => {
   if (status.status === 'denied') return 'denied';
   if (status.status === 'timed_out') return 'timed_out';
@@ -682,7 +688,8 @@ function DisplayConversationEntry({
     const isPlanPresentation =
       toolEntry.action_type.action === 'plan_presentation';
     const isPendingApproval = status.status === 'pending_approval';
-    const defaultExpanded = isPendingApproval || isPlanPresentation;
+    const isPendingQuestion = status.status === 'pending_question';
+    const defaultExpanded = isPendingApproval || isPendingQuestion || isPlanPresentation;
 
     const body = (() => {
       if (isFileEdit(toolEntry.action_type)) {
@@ -697,7 +704,7 @@ function DisplayConversationEntry({
                 expansionKey={`edit:${expansionKey}:${idx}`}
                 defaultExpanded={defaultExpanded}
                 statusAppearance={statusAppearance}
-                forceExpanded={isPendingApproval}
+                forceExpanded={isPendingApproval || isPendingQuestion}
               />
             ))}
           </div>
@@ -719,7 +726,7 @@ function DisplayConversationEntry({
         <ToolCallCard
           entry={entry}
           expansionKey={expansionKey}
-          forceExpanded={isPendingApproval}
+          forceExpanded={isPendingApproval || isPendingQuestion}
         />
       );
     })();
@@ -740,6 +747,17 @@ function DisplayConversationEntry({
         >
           {content}
         </PendingApprovalEntry>
+      );
+    }
+
+    if (isPendingQuestionStatus(status)) {
+      return (
+        <PendingQuestionEntry
+          pendingStatus={status}
+          executionProcessId={executionProcessId}
+        >
+          {content}
+        </PendingQuestionEntry>
       );
     }
 

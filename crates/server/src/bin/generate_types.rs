@@ -169,6 +169,8 @@ fn generate_types_content() -> String {
         utils::approvals::ApprovalStatus::decl(),
         utils::approvals::CreateApprovalRequest::decl(),
         utils::approvals::ApprovalResponse::decl(),
+        utils::approvals::Question::decl(),
+        utils::approvals::QuestionOption::decl(),
         serde_json::Value::decl(),
     ];
 

@@ -390,7 +390,7 @@ value: JsonValue, };
 
 export type ToolResultValueType = { "type": "markdown" } | { "type": "json" };
 
-export type ToolStatus = { "status": "created" } | { "status": "success" } | { "status": "failed" } | { "status": "denied", reason: string | null, } | { "status": "pending_approval", approval_id: string, requested_at: string, timeout_at: string, } | { "status": "timed_out" };
+export type ToolStatus = { "status": "created" } | { "status": "success" } | { "status": "failed" } | { "status": "denied", reason: string | null, } | { "status": "pending_approval", approval_id: string, requested_at: string, timeout_at: string, } | { "status": "timed_out" } | { "status": "pending_question", question_id: string, questions: Array<Question>, requested_at: string, timeout_at: string, };
 
 export type PatchType = { "type": "NORMALIZED_ENTRY", "content": NormalizedEntry } | { "type": "STDOUT", "content": string } | { "type": "STDERR", "content": string } | { "type": "DIFF", "content": Diff };
 
@@ -398,6 +398,14 @@ export type ApprovalStatus = { "status": "pending" } | { "status": "approved" } 
 
 export type CreateApprovalRequest = { tool_name: string, tool_input: JsonValue, tool_call_id: string, };
 
-export type ApprovalResponse = { execution_process_id: string, status: ApprovalStatus, };
+export type ApprovalResponse = { execution_process_id: string, status: ApprovalStatus, 
+/**
+ * Optional answers for AskUserQuestion responses (header -> answer)
+ */
+answers?: { [key in string]?: string }, };
+
+export type Question = { question: string, header: string, multiSelect: boolean, options: Array<QuestionOption>, };
+
+export type QuestionOption = { label: string, description: string, };
 
 export type JsonValue = number | string | boolean | Array<JsonValue> | { [key in string]?: JsonValue } | null;
