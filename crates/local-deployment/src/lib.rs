@@ -10,7 +10,6 @@ use services::services::{
     auth::AuthContext,
     config::{Config, load_config_from_file, save_config_to_file},
     container::ContainerService,
-    drafts::DraftsService,
     events::EventService,
     file_search_cache::FileSearchCache,
     filesystem::FilesystemService,
@@ -45,7 +44,6 @@ pub struct LocalDeployment {
     events: EventService,
     file_search_cache: Arc<FileSearchCache>,
     approvals: Approvals,
-    drafts: DraftsService,
     share_publisher: Result<SharePublisher, RemoteClientNotConfigured>,
     share_sync_handle: Arc<Mutex<Option<RemoteSyncHandle>>>,
     share_config: Option<ShareConfig>,
@@ -187,7 +185,6 @@ impl Deployment for LocalDeployment {
 
         let events = EventService::new(db.clone(), events_msg_store, events_entry_count);
 
-        let drafts = DraftsService::new(db.clone());
         let file_search_cache = Arc::new(FileSearchCache::new());
 
         let deployment = Self {
@@ -202,7 +199,6 @@ impl Deployment for LocalDeployment {
             events,
             file_search_cache,
             approvals,
-            drafts,
             share_publisher,
             share_sync_handle: share_sync_handle.clone(),
             share_config: share_config.clone(),
@@ -260,10 +256,6 @@ impl Deployment for LocalDeployment {
 
     fn approvals(&self) -> &Approvals {
         &self.approvals
-    }
-
-    fn drafts(&self) -> &DraftsService {
-        &self.drafts
     }
 
     fn share_publisher(&self) -> Result<SharePublisher, RemoteClientNotConfigured> {

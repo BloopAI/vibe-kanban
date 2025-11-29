@@ -1,6 +1,5 @@
 pub mod codex_setup;
 pub mod cursor_setup;
-pub mod drafts;
 pub mod gh_cli_setup;
 pub mod images;
 pub mod util;
@@ -17,7 +16,6 @@ use axum::{
     routing::{get, post},
 };
 use db::models::{
-    draft::{Draft, DraftType},
     execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
     merge::{Merge, MergeStatus, PrMerge, PullRequestInfo},
     project::{Project, ProjectError},
@@ -306,9 +304,6 @@ pub async fn follow_up(
 
         // Soft-drop the target process and all later processes
         let _ = ExecutionProcess::drop_at_and_after(pool, task_attempt.id, proc_id).await?;
-
-        // Best-effort: clear any retry draft for this attempt
-        let _ = Draft::clear_after_send(pool, task_attempt.id, DraftType::Retry).await;
     }
 
     let latest_session_id = ExecutionProcess::find_latest_session_id_by_task_attempt(
@@ -348,15 +343,6 @@ pub async fn follow_up(
             &ExecutionProcessRunReason::CodingAgent,
         )
         .await?;
-
-    // Clear drafts post-send:
-    // - If this was a retry send, the retry draft has already been cleared above.
-    // - Otherwise, clear the follow-up draft to avoid.
-    if payload.retry_process_id.is_none() {
-        let _ =
-            Draft::clear_after_send(&deployment.db().pool, task_attempt.id, DraftType::FollowUp)
-                .await;
-    }
 
     Ok(ResponseJson(ApiResponse::success(execution_process)))
 }
@@ -1567,13 +1553,6 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/follow-up", post(follow_up))
         .route("/run-agent-setup", post(run_agent_setup))
         .route("/gh-cli-setup", post(gh_cli_setup_handler))
-        .route(
-            "/draft",
-            get(drafts::get_draft)
-                .put(drafts::save_draft)
-                .delete(drafts::delete_draft),
-        )
-        .route("/draft/queue", post(drafts::set_draft_queue))
         .route("/commit-info", get(get_commit_info))
         .route("/commit-compare", get(compare_commit_to_head))
         .route("/start-dev-server", post(start_dev_server))

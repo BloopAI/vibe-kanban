@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
-import { useDraftStream } from '@/hooks/follow-up/useDraftStream';
 
 type RetryUiContextType = {
   activeRetryProcessId: string | null;
@@ -11,7 +10,6 @@ type RetryUiContextType = {
 const RetryUiContext = createContext<RetryUiContextType | null>(null);
 
 export function RetryUiProvider({
-  attemptId,
   children,
 }: {
   attemptId?: string;
@@ -19,7 +17,6 @@ export function RetryUiProvider({
 }) {
   const { executionProcessesAll: executionProcesses } =
     useExecutionProcessesContext();
-  const { retryDraft } = useDraftStream(attemptId);
 
   const processOrder = useMemo(() => {
     const order: Record<string, number> = {};
@@ -29,16 +26,12 @@ export function RetryUiProvider({
     return order;
   }, [executionProcesses]);
 
-  const activeRetryProcessId = retryDraft?.retry_process_id ?? null;
-  const targetOrder = activeRetryProcessId
-    ? (processOrder[activeRetryProcessId] ?? -1)
-    : -1;
+  // With drafts removed, there's no active retry process
+  const activeRetryProcessId = null;
 
-  const isProcessGreyed = (processId?: string) => {
-    if (!activeRetryProcessId || !processId) return false;
-    const idx = processOrder[processId];
-    if (idx === undefined) return false;
-    return idx >= targetOrder; // grey target and later
+  const isProcessGreyed = () => {
+    // With drafts removed, no processes are greyed
+    return false;
   };
 
   const value: RetryUiContextType = {

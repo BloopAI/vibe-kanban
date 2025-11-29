@@ -1,5 +1,4 @@
 use db::models::{
-    draft::{Draft, DraftType},
     execution_process::ExecutionProcess,
     project::Project,
     scratch::Scratch,
@@ -342,108 +341,6 @@ impl EventService {
         let initial_stream = futures::stream::once(async move { Ok(initial_msg) });
         let combined_stream = initial_stream.chain(filtered_stream).boxed();
 
-        Ok(combined_stream)
-    }
-
-    /// Stream drafts for all task attempts in a project with initial snapshot (raw LogMsg)
-    pub async fn stream_drafts_for_project_raw(
-        &self,
-        project_id: Uuid,
-    ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, EventError>
-    {
-        // Load all attempt ids for tasks in this project
-        let attempt_ids: Vec<Uuid> = sqlx::query_scalar(
-            r#"SELECT ta.id
-               FROM task_attempts ta
-               JOIN tasks t ON t.id = ta.task_id
-              WHERE t.project_id = ?"#,
-        )
-        .bind(project_id)
-        .fetch_all(&self.db.pool)
-        .await?;
-
-        // Build initial drafts map keyed by attempt_id
-        let mut drafts_map: serde_json::Map<String, serde_json::Value> = serde_json::Map::new();
-        for attempt_id in attempt_ids {
-            let fu = Draft::find_by_task_attempt_and_type(
-                &self.db.pool,
-                attempt_id,
-                DraftType::FollowUp,
-            )
-            .await?
-            .unwrap_or(Draft {
-                id: uuid::Uuid::new_v4(),
-                task_attempt_id: attempt_id,
-                draft_type: DraftType::FollowUp,
-                retry_process_id: None,
-                prompt: String::new(),
-                queued: false,
-                sending: false,
-                variant: None,
-                created_at: chrono::Utc::now(),
-                updated_at: chrono::Utc::now(),
-                version: 0,
-            });
-            let re =
-                Draft::find_by_task_attempt_and_type(&self.db.pool, attempt_id, DraftType::Retry)
-                    .await?;
-            let entry = json!({
-                "follow_up": fu,
-                "retry": serde_json::to_value(re).unwrap_or(serde_json::Value::Null),
-            });
-            drafts_map.insert(attempt_id.to_string(), entry);
-        }
-
-        let initial_patch = json!([
-            {
-                "op": "replace",
-                "path": "/drafts",
-                "value": drafts_map
-            }
-        ]);
-        let initial_msg = LogMsg::JsonPatch(serde_json::from_value(initial_patch).unwrap());
-
-        let db_pool = self.db.pool.clone();
-        // Live updates: accept direct draft patches and filter by project membership
-        let filtered_stream =
-            BroadcastStream::new(self.msg_store.get_receiver()).filter_map(move |msg_result| {
-                let db_pool = db_pool.clone();
-                async move {
-                    match msg_result {
-                        Ok(LogMsg::JsonPatch(patch)) => {
-                            if let Some(op) = patch.0.first() {
-                                let path = op.path();
-                                if let Some(rest) = path.strip_prefix("/drafts/")
-                                    && let Some((attempt_str, _)) = rest.split_once('/')
-                                    && let Ok(attempt_id) = Uuid::parse_str(attempt_str)
-                                {
-                                    // Check project membership
-                                    if let Ok(Some(task_attempt)) =
-                                        db::models::task_attempt::TaskAttempt::find_by_id(
-                                            &db_pool, attempt_id,
-                                        )
-                                        .await
-                                        && let Ok(Some(task)) = db::models::task::Task::find_by_id(
-                                            &db_pool,
-                                            task_attempt.task_id,
-                                        )
-                                        .await
-                                        && task.project_id == project_id
-                                    {
-                                        return Some(Ok(LogMsg::JsonPatch(patch)));
-                                    }
-                                }
-                            }
-                            None
-                        }
-                        Ok(other) => Some(Ok(other)),
-                        Err(_) => None,
-                    }
-                }
-            });
-
-        let initial_stream = futures::stream::once(async move { Ok(initial_msg) });
-        let combined_stream = initial_stream.chain(filtered_stream).boxed();
         Ok(combined_stream)
     }
 

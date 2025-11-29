@@ -1,10 +1,6 @@
 use db::models::{
-    draft::{Draft, DraftType},
-    execution_process::ExecutionProcess,
-    scratch::Scratch,
-    shared_task::SharedTask as DbSharedTask,
-    task::TaskWithAttemptStatus,
-    task_attempt::TaskAttempt,
+    execution_process::ExecutionProcess, scratch::Scratch, shared_task::SharedTask as DbSharedTask,
+    task::TaskWithAttemptStatus, task_attempt::TaskAttempt,
 };
 use json_patch::{AddOperation, Patch, PatchOperation, RemoveOperation, ReplaceOperation};
 use uuid::Uuid;
@@ -129,72 +125,6 @@ pub mod execution_process_patch {
             path: execution_process_path(process_id)
                 .try_into()
                 .expect("Execution process path should be valid"),
-        })])
-    }
-}
-
-/// Helper functions for creating draft-specific patches
-pub mod draft_patch {
-    use super::*;
-
-    fn follow_up_path(attempt_id: Uuid) -> String {
-        format!("/drafts/{attempt_id}/follow_up")
-    }
-
-    fn retry_path(attempt_id: Uuid) -> String {
-        format!("/drafts/{attempt_id}/retry")
-    }
-
-    /// Replace the follow-up draft for a specific attempt
-    pub fn follow_up_replace(draft: &Draft) -> Patch {
-        Patch(vec![PatchOperation::Replace(ReplaceOperation {
-            path: follow_up_path(draft.task_attempt_id)
-                .try_into()
-                .expect("Path should be valid"),
-            value: serde_json::to_value(draft).expect("Draft serialization should not fail"),
-        })])
-    }
-
-    /// Replace the retry draft for a specific attempt
-    pub fn retry_replace(draft: &Draft) -> Patch {
-        Patch(vec![PatchOperation::Replace(ReplaceOperation {
-            path: retry_path(draft.task_attempt_id)
-                .try_into()
-                .expect("Path should be valid"),
-            value: serde_json::to_value(draft).expect("Draft serialization should not fail"),
-        })])
-    }
-
-    /// Clear the follow-up draft for an attempt (replace with an empty draft)
-    pub fn follow_up_clear(attempt_id: Uuid) -> Patch {
-        let empty = Draft {
-            id: uuid::Uuid::new_v4(),
-            task_attempt_id: attempt_id,
-            draft_type: DraftType::FollowUp,
-            retry_process_id: None,
-            prompt: String::new(),
-            queued: false,
-            sending: false,
-            variant: None,
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
-            version: 0,
-        };
-        Patch(vec![PatchOperation::Replace(ReplaceOperation {
-            path: follow_up_path(attempt_id)
-                .try_into()
-                .expect("Path should be valid"),
-            value: serde_json::to_value(empty).expect("Draft serialization should not fail"),
-        })])
-    }
-
-    /// Clear the retry draft for an attempt (set to null)
-    pub fn retry_clear(attempt_id: Uuid) -> Patch {
-        Patch(vec![PatchOperation::Replace(ReplaceOperation {
-            path: retry_path(attempt_id)
-                .try_into()
-                .expect("Path should be valid"),
-            value: serde_json::Value::Null,
         })])
     }
 }

@@ -32,13 +32,10 @@ import {
   UpdateTask,
   UpdateTag,
   UserSystemInfo,
-  UpdateRetryFollowUpDraftRequest,
   McpServerQuery,
   UpdateMcpServersBody,
   GetMcpServerResponse,
   ImageResponse,
-  DraftResponse,
-  UpdateFollowUpDraftRequest,
   GitOperationError,
   ApprovalResponse,
   RebaseTaskAttemptRequest,
@@ -82,12 +79,6 @@ import {
 
 // Derive ScratchType from ScratchPayload for URL parameters
 export type ScratchType = ScratchPayload['type'];
-
-// Re-export types for convenience
-export type {
-  UpdateFollowUpDraftRequest,
-  UpdateRetryFollowUpDraftRequest,
-} from 'shared/types';
 
 class ApiError<E = unknown> extends Error {
   public status?: number;
@@ -470,63 +461,6 @@ export const attemptsApi = {
       }
     );
     return handleApiResponse<RunAgentSetupResponse>(response);
-  },
-
-  getDraft: async (
-    attemptId: string,
-    type: 'follow_up' | 'retry'
-  ): Promise<DraftResponse> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/draft?type=${encodeURIComponent(type)}`
-    );
-    return handleApiResponse<DraftResponse>(response);
-  },
-
-  saveDraft: async (
-    attemptId: string,
-    type: 'follow_up' | 'retry',
-    data: UpdateFollowUpDraftRequest | UpdateRetryFollowUpDraftRequest
-  ): Promise<DraftResponse> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/draft?type=${encodeURIComponent(type)}`,
-      {
-        method: 'PUT',
-        body: JSON.stringify(data),
-      }
-    );
-    return handleApiResponse<DraftResponse>(response);
-  },
-
-  deleteDraft: async (
-    attemptId: string,
-    type: 'follow_up' | 'retry'
-  ): Promise<void> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/draft?type=${encodeURIComponent(type)}`,
-      { method: 'DELETE' }
-    );
-    return handleApiResponse<void>(response);
-  },
-
-  setDraftQueue: async (
-    attemptId: string,
-    queued: boolean,
-    expectedQueued?: boolean,
-    expectedVersion?: number,
-    type: 'follow_up' | 'retry' = 'follow_up'
-  ): Promise<DraftResponse> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/draft/queue?type=${encodeURIComponent(type)}`,
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          queued,
-          expected_queued: expectedQueued,
-          expected_version: expectedVersion,
-        }),
-      }
-    );
-    return handleApiResponse<DraftResponse>(response);
   },
 
   openEditor: async (

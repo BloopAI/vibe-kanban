@@ -12,7 +12,6 @@ use command_group::AsyncGroupChild;
 use db::{
     DBService,
     models::{
-        draft::{Draft, DraftType},
         execution_process::{
             ExecutionContext, ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus,
         },
@@ -411,14 +410,6 @@ impl LocalContainerService {
                     container
                         .finalize_task(&config, publisher.as_ref().ok(), &ctx)
                         .await;
-                    // After finalization, check if a queued follow-up exists and start it
-                    if let Err(e) = container.try_consume_queued_followup(&ctx).await {
-                        tracing::error!(
-                            "Failed to start queued follow-up for attempt {}: {}",
-                            ctx.task_attempt.id,
-                            e
-                        );
-                    }
                 }
 
                 // Fire analytics event when CodingAgent execution has finished
@@ -657,141 +648,6 @@ impl LocalContainerService {
                 }
             }
         }
-
-        Ok(())
-    }
-
-    /// If a queued follow-up draft exists for this attempt and nothing is running,
-    /// start it immediately and clear the draft.
-    async fn try_consume_queued_followup(
-        &self,
-        ctx: &ExecutionContext,
-    ) -> Result<(), ContainerError> {
-        // Only consider CodingAgent/cleanup chains; skip DevServer completions
-        if matches!(
-            ctx.execution_process.run_reason,
-            ExecutionProcessRunReason::DevServer
-        ) {
-            return Ok(());
-        }
-
-        // If anything is running for this attempt, bail
-        let procs =
-            ExecutionProcess::find_by_task_attempt_id(&self.db.pool, ctx.task_attempt.id, false)
-                .await?;
-        if procs
-            .iter()
-            .any(|p| matches!(p.status, ExecutionProcessStatus::Running))
-        {
-            return Ok(());
-        }
-
-        // Load draft and ensure it's eligible
-        let Some(draft) = Draft::find_by_task_attempt_and_type(
-            &self.db.pool,
-            ctx.task_attempt.id,
-            DraftType::FollowUp,
-        )
-        .await?
-        else {
-            return Ok(());
-        };
-
-        if !draft.queued || draft.prompt.trim().is_empty() {
-            return Ok(());
-        }
-
-        // Atomically acquire sending lock; if not acquired, someone else is sending.
-        if !Draft::try_mark_sending(&self.db.pool, ctx.task_attempt.id, DraftType::FollowUp)
-            .await
-            .unwrap_or(false)
-        {
-            return Ok(());
-        }
-
-        // Ensure worktree exists
-        let _container_ref = self.ensure_container_exists(&ctx.task_attempt).await?;
-
-        // Get session id
-        let Some(session_id) = ExecutionProcess::find_latest_session_id_by_task_attempt(
-            &self.db.pool,
-            ctx.task_attempt.id,
-        )
-        .await?
-        else {
-            tracing::warn!(
-                "No session id found for attempt {}. Cannot start queued follow-up.",
-                ctx.task_attempt.id
-            );
-            return Ok(());
-        };
-
-        // Get last coding agent process to inherit executor profile
-        let Some(latest) = ExecutionProcess::find_latest_by_task_attempt_and_run_reason(
-            &self.db.pool,
-            ctx.task_attempt.id,
-            &ExecutionProcessRunReason::CodingAgent,
-        )
-        .await?
-        else {
-            tracing::warn!(
-                "No prior CodingAgent process for attempt {}. Cannot start queued follow-up.",
-                ctx.task_attempt.id
-            );
-            return Ok(());
-        };
-
-        use executors::actions::ExecutorActionType;
-        let initial_executor_profile_id = match &latest.executor_action()?.typ {
-            ExecutorActionType::CodingAgentInitialRequest(req) => req.executor_profile_id.clone(),
-            ExecutorActionType::CodingAgentFollowUpRequest(req) => req.executor_profile_id.clone(),
-            _ => {
-                tracing::warn!(
-                    "Latest process for attempt {} is not a coding agent; skipping queued follow-up",
-                    ctx.task_attempt.id
-                );
-                return Ok(());
-            }
-        };
-
-        let executor_profile_id = executors::profile::ExecutorProfileId {
-            executor: initial_executor_profile_id.executor,
-            variant: draft.variant.clone(),
-        };
-
-        // Prepare cleanup action
-        let cleanup_action = ctx
-            .task
-            .parent_project(&self.db.pool)
-            .await?
-            .and_then(|project| self.cleanup_action(project.cleanup_script));
-
-        let prompt = draft.prompt.clone();
-
-        let follow_up_request =
-            executors::actions::coding_agent_follow_up::CodingAgentFollowUpRequest {
-                prompt,
-                session_id,
-                executor_profile_id,
-            };
-
-        let follow_up_action = executors::actions::ExecutorAction::new(
-            executors::actions::ExecutorActionType::CodingAgentFollowUpRequest(follow_up_request),
-            cleanup_action,
-        );
-
-        // Start the execution
-        let _ = self
-            .start_execution(
-                &ctx.task_attempt,
-                &follow_up_action,
-                &ExecutionProcessRunReason::CodingAgent,
-            )
-            .await?;
-
-        // Clear the draft to reflect that it has been consumed
-        let _ =
-            Draft::clear_after_send(&self.db.pool, ctx.task_attempt.id, DraftType::FollowUp).await;
 
         Ok(())
     }

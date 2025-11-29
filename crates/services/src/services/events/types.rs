@@ -1,10 +1,6 @@
 use anyhow::Error as AnyhowError;
 use db::models::{
-    draft::{Draft, DraftType},
-    execution_process::ExecutionProcess,
-    scratch::Scratch,
-    shared_task::SharedTask,
-    task::Task,
+    execution_process::ExecutionProcess, scratch::Scratch, shared_task::SharedTask, task::Task,
     task_attempt::TaskAttempt,
 };
 use serde::{Deserialize, Serialize};
@@ -32,8 +28,6 @@ pub enum HookTables {
     TaskAttempts,
     #[strum(to_string = "execution_processes")]
     ExecutionProcesses,
-    #[strum(to_string = "drafts")]
-    Drafts,
     #[strum(to_string = "shared_tasks")]
     SharedTasks,
     #[strum(to_string = "scratch")]
@@ -46,8 +40,6 @@ pub enum RecordTypes {
     Task(Task),
     TaskAttempt(TaskAttempt),
     ExecutionProcess(ExecutionProcess),
-    Draft(Draft),
-    RetryDraft(Draft),
     SharedTask(SharedTask),
     Scratch(Scratch),
     DeletedTask {
@@ -63,11 +55,6 @@ pub enum RecordTypes {
         rowid: i64,
         task_attempt_id: Option<Uuid>,
         process_id: Option<Uuid>,
-    },
-    DeletedDraft {
-        rowid: i64,
-        draft_type: DraftType,
-        task_attempt_id: Option<Uuid>,
     },
     DeletedSharedTask {
         rowid: i64,

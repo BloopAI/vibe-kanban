@@ -20,7 +20,6 @@ use services::services::{
     auth::AuthContext,
     config::{Config, ConfigError},
     container::{ContainerError, ContainerService},
-    drafts::DraftsService,
     events::{EventError, EventService},
     file_search_cache::FileSearchCache,
     filesystem::{FilesystemError, FilesystemService},
@@ -99,8 +98,6 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     fn file_search_cache(&self) -> &Arc<FileSearchCache>;
 
     fn approvals(&self) -> &Approvals;
-
-    fn drafts(&self) -> &DraftsService;
 
     fn auth_context(&self) -> &AuthContext;
 
