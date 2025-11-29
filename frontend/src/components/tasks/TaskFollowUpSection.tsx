@@ -1,4 +1,4 @@
-import { Loader2, Send, StopCircle, AlertCircle } from 'lucide-react';
+import { Loader2, Send, StopCircle, AlertCircle, Clock, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 //
@@ -32,6 +32,7 @@ import { buildResolveConflictsInstructions } from '@/lib/conflicts';
 import { useTranslation } from 'react-i18next';
 import { useScratch } from '@/hooks/useScratch';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
+import { useQueueStatus } from '@/hooks/useQueueStatus';
 import { imagesApi } from '@/lib/api';
 
 interface TaskFollowUpSectionProps {
@@ -228,6 +229,23 @@ export function TaskFollowUpSection({
   const { activeRetryProcessId } = useRetryUi();
   const isRetryActive = !!activeRetryProcessId;
 
+  // Queue status for queuing follow-up messages while agent is running
+  const {
+    isQueued,
+    queuedMessage,
+    isLoading: isQueueLoading,
+    queueMessage,
+    cancelQueue,
+    refresh: refreshQueueStatus,
+  } = useQueueStatus(selectedAttemptId);
+
+  // Refresh queue status when execution stops
+  useEffect(() => {
+    if (!isAttemptRunning && selectedAttemptId) {
+      refreshQueueStatus();
+    }
+  }, [isAttemptRunning, selectedAttemptId, refreshQueueStatus]);
+
   // Check if there's a pending approval - users shouldn't be able to type during approvals
   const { entries } = useEntries();
   const hasPendingApproval = useMemo(() => {
@@ -283,6 +301,7 @@ export function TaskFollowUpSection({
 
     if (isRetryActive) return false; // disable typing while retry editor is active
     if (hasPendingApproval) return false; // disable typing during approval
+    if (isQueued) return false; // disable typing when message is queued
     return true;
   }, [
     selectedAttemptId,
@@ -291,6 +310,7 @@ export function TaskFollowUpSection({
     branchStatus?.merges,
     isRetryActive,
     hasPendingApproval,
+    isQueued,
   ]);
 
   const canSendFollowUp = useMemo(() => {
@@ -315,15 +335,48 @@ export function TaskFollowUpSection({
   const isEditable =
     !isRetryActive && !hasPendingApproval && !isSendingFollowUp;
 
-  // Keyboard shortcut handler - send follow-up
+  // Handler to queue the current message for execution after agent finishes
+  const handleQueueMessage = useCallback(async () => {
+    if (
+      !followUpMessage.trim() &&
+      !conflictResolutionInstructions &&
+      !reviewMarkdown &&
+      !clickedMarkdown
+    ) {
+      return;
+    }
+    // Combine all the content that would be sent (same as follow-up send)
+    const parts = [
+      conflictResolutionInstructions,
+      clickedMarkdown,
+      reviewMarkdown,
+      followUpMessage,
+    ].filter(Boolean);
+    const combinedMessage = parts.join('\n\n');
+    await queueMessage(combinedMessage, selectedVariant);
+  }, [
+    followUpMessage,
+    conflictResolutionInstructions,
+    reviewMarkdown,
+    clickedMarkdown,
+    selectedVariant,
+    queueMessage,
+  ]);
+
+  // Keyboard shortcut handler - send follow-up or queue depending on state
   const handleSubmitShortcut = useCallback(
     (e?: KeyboardEvent) => {
       e?.preventDefault();
-      if (!isAttemptRunning) {
+      if (isAttemptRunning) {
+        // When running, CMD+Enter queues the message (if not already queued)
+        if (!isQueued) {
+          handleQueueMessage();
+        }
+      } else {
         onSendFollowUp();
       }
     },
-    [isAttemptRunning, onSendFollowUp]
+    [isAttemptRunning, isQueued, handleQueueMessage, onSendFollowUp]
   );
 
   // Handle image paste - upload to container and insert markdown
@@ -460,6 +513,24 @@ export function TaskFollowUpSection({
             {/* Clicked elements notice and actions */}
             <ClickedElementsBanner />
 
+            {/* Queued message indicator */}
+            {isQueued && queuedMessage && (
+              <div className="flex items-start gap-2 text-sm text-muted-foreground bg-muted p-3 rounded-md border">
+                <Clock className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium mb-1">
+                    {t(
+                      'followUp.queuedMessage',
+                      'Message queued - will execute when current run finishes'
+                    )}
+                  </div>
+                  <div className="text-xs whitespace-pre-wrap break-words opacity-75 max-h-24 overflow-y-auto">
+                    {queuedMessage.data.message}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-col gap-2">
               <WYSIWYGEditor
                 placeholder={
@@ -500,21 +571,63 @@ export function TaskFollowUpSection({
           </div>
 
           {isAttemptRunning ? (
-            <Button
-              onClick={stopExecution}
-              disabled={isStopping}
-              size="sm"
-              variant="destructive"
-            >
-              {isStopping ? (
-                <Loader2 className="animate-spin h-4 w-4 mr-2" />
+            <div className="flex items-center gap-2">
+              {/* Queue/Cancel Queue button when running */}
+              {isQueued ? (
+                <Button
+                  onClick={cancelQueue}
+                  disabled={isQueueLoading}
+                  size="sm"
+                  variant="outline"
+                >
+                  {isQueueLoading ? (
+                    <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                  ) : (
+                    <>
+                      <X className="h-4 w-4 mr-2" />
+                      {t('followUp.cancelQueue', 'Cancel Queue')}
+                    </>
+                  )}
+                </Button>
               ) : (
-                <>
-                  <StopCircle className="h-4 w-4 mr-2" />
-                  {t('followUp.stop')}
-                </>
+                <Button
+                  onClick={handleQueueMessage}
+                  disabled={
+                    isQueueLoading ||
+                    (!followUpMessage.trim() &&
+                      !conflictResolutionInstructions &&
+                      !reviewMarkdown &&
+                      !clickedMarkdown)
+                  }
+                  size="sm"
+                  variant="secondary"
+                >
+                  {isQueueLoading ? (
+                    <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                  ) : (
+                    <>
+                      <Clock className="h-4 w-4 mr-2" />
+                      {t('followUp.queue', 'Queue')}
+                    </>
+                  )}
+                </Button>
               )}
-            </Button>
+              <Button
+                onClick={stopExecution}
+                disabled={isStopping}
+                size="sm"
+                variant="destructive"
+              >
+                {isStopping ? (
+                  <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                ) : (
+                  <>
+                    <StopCircle className="h-4 w-4 mr-2" />
+                    {t('followUp.stop')}
+                  </>
+                )}
+              </Button>
+            </div>
           ) : (
             <div className="flex items-center gap-2">
               {comments.length > 0 && (

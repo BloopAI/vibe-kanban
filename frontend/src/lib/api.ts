@@ -75,6 +75,7 @@ import {
   CreateScratch,
   UpdateScratch,
   PushError,
+  QueueStatus,
 } from 'shared/types';
 
 // Derive ScratchType from ScratchPayload for URL parameters
@@ -1066,4 +1067,45 @@ export const scratchApi = {
 
   getStreamUrl: (scratchType: ScratchType, id: string): string =>
     `/api/scratch/${scratchType}/${id}/stream/ws`,
+};
+
+// Queue API for task attempt follow-up messages
+export const queueApi = {
+  /**
+   * Queue a follow-up message to be executed when current execution finishes
+   */
+  queue: async (
+    attemptId: string,
+    data: { message: string; variant: string | null }
+  ): Promise<QueueStatus> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/queue`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse<QueueStatus>(response);
+  },
+
+  /**
+   * Cancel a queued follow-up message
+   */
+  cancel: async (attemptId: string): Promise<QueueStatus> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/queue`,
+      {
+        method: 'DELETE',
+      }
+    );
+    return handleApiResponse<QueueStatus>(response);
+  },
+
+  /**
+   * Get the current queue status for a task attempt
+   */
+  getStatus: async (attemptId: string): Promise<QueueStatus> => {
+    const response = await makeRequest(`/api/task-attempts/${attemptId}/queue`);
+    return handleApiResponse<QueueStatus>(response);
+  },
 };

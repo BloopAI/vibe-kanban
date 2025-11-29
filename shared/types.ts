@@ -70,6 +70,22 @@ export type CreateScratch = { payload: ScratchPayload, };
 
 export type UpdateScratch = { payload: ScratchPayload | null, };
 
+export type QueuedMessage = { 
+/**
+ * The task attempt this message is queued for
+ */
+task_attempt_id: string, 
+/**
+ * The follow-up data (message + variant)
+ */
+data: DraftFollowUpData, 
+/**
+ * Timestamp when the message was queued
+ */
+queued_at: string, };
+
+export type QueueStatus = { "status": "empty" } | { "status": "queued", message: QueuedMessage, };
+
 export type Image = { id: string, file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, created_at: string, updated_at: string, };
 
 export type CreateImage = { file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, };

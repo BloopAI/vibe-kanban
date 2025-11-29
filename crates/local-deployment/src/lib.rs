@@ -16,6 +16,7 @@ use services::services::{
     git::GitService,
     image::ImageService,
     oauth_credentials::OAuthCredentials,
+    queued_message::QueuedMessageService,
     remote_client::{RemoteClient, RemoteClientError},
     share::{RemoteSyncHandle, ShareConfig, SharePublisher},
 };
@@ -44,6 +45,7 @@ pub struct LocalDeployment {
     events: EventService,
     file_search_cache: Arc<FileSearchCache>,
     approvals: Approvals,
+    queued_message_service: QueuedMessageService,
     share_publisher: Result<SharePublisher, RemoteClientNotConfigured>,
     share_sync_handle: Arc<Mutex<Option<RemoteSyncHandle>>>,
     share_config: Option<ShareConfig>,
@@ -118,6 +120,7 @@ impl Deployment for LocalDeployment {
         }
 
         let approvals = Approvals::new(msg_stores.clone());
+        let queued_message_service = QueuedMessageService::new();
 
         let share_config = ShareConfig::from_env();
 
@@ -179,6 +182,7 @@ impl Deployment for LocalDeployment {
             image.clone(),
             analytics_ctx,
             approvals.clone(),
+            queued_message_service.clone(),
             share_publisher.clone(),
         )
         .await;
@@ -199,6 +203,7 @@ impl Deployment for LocalDeployment {
             events,
             file_search_cache,
             approvals,
+            queued_message_service,
             share_publisher,
             share_sync_handle: share_sync_handle.clone(),
             share_config: share_config.clone(),
@@ -256,6 +261,10 @@ impl Deployment for LocalDeployment {
 
     fn approvals(&self) -> &Approvals {
         &self.approvals
+    }
+
+    fn queued_message_service(&self) -> &QueuedMessageService {
+        &self.queued_message_service
     }
 
     fn share_publisher(&self) -> Result<SharePublisher, RemoteClientNotConfigured> {

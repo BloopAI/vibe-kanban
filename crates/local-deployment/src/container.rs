@@ -18,13 +18,18 @@ use db::{
         executor_session::ExecutorSession,
         merge::Merge,
         project::Project,
+        scratch::{DraftFollowUpData, Scratch, ScratchType},
         task::{Task, TaskStatus},
         task_attempt::TaskAttempt,
     },
 };
 use deployment::{DeploymentError, RemoteClientNotConfigured};
 use executors::{
-    actions::{Executable, ExecutorAction},
+    actions::{
+        Executable, ExecutorAction, ExecutorActionType,
+        coding_agent_follow_up::CodingAgentFollowUpRequest,
+        coding_agent_initial::CodingAgentInitialRequest,
+    },
     approvals::{ExecutorApprovalService, NoopExecutorApprovalService},
     executors::{BaseCodingAgent, ExecutorExitResult, ExecutorExitSignal},
     logs::{
@@ -34,6 +39,7 @@ use executors::{
             patch::{escape_json_pointer_segment, extract_normalized_entry_from_patch},
         },
     },
+    profile::ExecutorProfileId,
 };
 use futures::{FutureExt, StreamExt, TryStreamExt, stream::select};
 use serde_json::json;
@@ -45,6 +51,7 @@ use services::services::{
     diff_stream::{self, DiffStreamHandle},
     git::{Commit, DiffTarget, GitService},
     image::ImageService,
+    queued_message::QueuedMessageService,
     share::SharePublisher,
     worktree_manager::{WorktreeCleanup, WorktreeManager},
 };
@@ -69,6 +76,7 @@ pub struct LocalContainerService {
     image_service: ImageService,
     analytics: Option<AnalyticsContext>,
     approvals: Approvals,
+    queued_message_service: QueuedMessageService,
     publisher: Result<SharePublisher, RemoteClientNotConfigured>,
 }
 
@@ -82,6 +90,7 @@ impl LocalContainerService {
         image_service: ImageService,
         analytics: Option<AnalyticsContext>,
         approvals: Approvals,
+        queued_message_service: QueuedMessageService,
         publisher: Result<SharePublisher, RemoteClientNotConfigured>,
     ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
@@ -95,6 +104,7 @@ impl LocalContainerService {
             image_service,
             analytics,
             approvals,
+            queued_message_service,
             publisher,
         };
 
@@ -407,9 +417,46 @@ impl LocalContainerService {
                 }
 
                 if container.should_finalize(&ctx) {
-                    container
-                        .finalize_task(&config, publisher.as_ref().ok(), &ctx)
-                        .await;
+                    // Check for queued message before finalizing
+                    if let Some(queued_msg) = container
+                        .queued_message_service
+                        .take_queued(ctx.task_attempt.id)
+                    {
+                        tracing::info!(
+                            "Found queued message for attempt {}, starting follow-up execution",
+                            ctx.task_attempt.id
+                        );
+
+                        // Delete the scratch since we're consuming the queued message
+                        if let Err(e) = Scratch::delete(
+                            &db.pool,
+                            ctx.task_attempt.id,
+                            &ScratchType::DraftFollowUp,
+                        )
+                        .await
+                        {
+                            tracing::warn!(
+                                "Failed to delete scratch after consuming queued message: {}",
+                                e
+                            );
+                        }
+
+                        // Execute the queued follow-up
+                        if let Err(e) = container
+                            .start_queued_follow_up(&ctx, &queued_msg.data)
+                            .await
+                        {
+                            tracing::error!("Failed to start queued follow-up: {}", e);
+                            // Fall back to finalization if follow-up fails
+                            container
+                                .finalize_task(&config, publisher.as_ref().ok(), &ctx)
+                                .await;
+                        }
+                    } else {
+                        container
+                            .finalize_task(&config, publisher.as_ref().ok(), &ctx)
+                            .await;
+                    }
                 }
 
                 // Fire analytics event when CodingAgent execution has finished
@@ -650,6 +697,62 @@ impl LocalContainerService {
         }
 
         Ok(())
+    }
+
+    /// Start a follow-up execution from a queued message
+    async fn start_queued_follow_up(
+        &self,
+        ctx: &ExecutionContext,
+        queued_data: &DraftFollowUpData,
+    ) -> Result<ExecutionProcess, ContainerError> {
+        // Get executor profile from the latest CodingAgent process
+        let initial_executor_profile_id = ExecutionProcess::latest_executor_profile_for_attempt(
+            &self.db.pool,
+            ctx.task_attempt.id,
+        )
+        .await
+        .map_err(|e| ContainerError::Other(anyhow!("Failed to get executor profile: {e}")))?;
+
+        let executor_profile_id = ExecutorProfileId {
+            executor: initial_executor_profile_id.executor,
+            variant: queued_data.variant.clone(),
+        };
+
+        // Get latest session ID for session continuity
+        let latest_session_id = ExecutionProcess::find_latest_session_id_by_task_attempt(
+            &self.db.pool,
+            ctx.task_attempt.id,
+        )
+        .await?;
+
+        // Get project for cleanup script
+        let project = Project::find_by_id(&self.db.pool, ctx.task.project_id)
+            .await?
+            .ok_or_else(|| ContainerError::Other(anyhow!("Project not found")))?;
+
+        let cleanup_action = self.cleanup_action(project.cleanup_script);
+
+        let action_type = if let Some(session_id) = latest_session_id {
+            ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
+                prompt: queued_data.message.clone(),
+                session_id,
+                executor_profile_id: executor_profile_id.clone(),
+            })
+        } else {
+            ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
+                prompt: queued_data.message.clone(),
+                executor_profile_id: executor_profile_id.clone(),
+            })
+        };
+
+        let action = ExecutorAction::new(action_type, cleanup_action);
+
+        self.start_execution(
+            &ctx.task_attempt,
+            &action,
+            &ExecutionProcessRunReason::CodingAgent,
+        )
+        .await
     }
 }
 
