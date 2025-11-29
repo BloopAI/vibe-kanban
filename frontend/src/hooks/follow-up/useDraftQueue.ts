@@ -1,13 +1,12 @@
 import { useCallback } from 'react';
 import { attemptsApi, type UpdateFollowUpDraftRequest } from '@/lib/api';
-import type { Draft, ImageResponse } from 'shared/types';
+import type { Draft } from 'shared/types';
 
 type Args = {
   attemptId?: string;
   draft: Draft | null;
   message: string;
   selectedVariant: string | null;
-  images: ImageResponse[];
 };
 
 export function useDraftQueue({
@@ -15,7 +14,6 @@ export function useDraftQueue({
   draft,
   message,
   selectedVariant,
-  images,
 }: Args) {
   const onQueue = useCallback(async (): Promise<boolean> => {
     if (!attemptId) return false;
@@ -27,12 +25,6 @@ export function useDraftQueue({
       };
       if ((draft?.variant ?? null) !== (selectedVariant ?? null))
         immediatePayload.variant = (selectedVariant ?? null) as string | null;
-      const currentIds = images.map((img) => img.id);
-      const serverIds = (draft?.image_ids as string[] | undefined) ?? [];
-      const idsEqual =
-        currentIds.length === serverIds.length &&
-        currentIds.every((id, i) => id === serverIds[i]);
-      if (!idsEqual) immediatePayload.image_ids = currentIds;
       await attemptsApi.saveDraft(
         attemptId,
         'follow_up',
@@ -44,15 +36,7 @@ export function useDraftQueue({
       // presentation-only state handled by caller
     }
     return false;
-  }, [
-    attemptId,
-    draft?.variant,
-    draft?.image_ids,
-    draft?.queued,
-    images,
-    message,
-    selectedVariant,
-  ]);
+  }, [attemptId, draft?.variant, draft?.queued, message, selectedVariant]);
 
   const onUnqueue = useCallback(async (): Promise<boolean> => {
     if (!attemptId) return false;

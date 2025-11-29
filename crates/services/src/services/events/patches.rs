@@ -176,7 +176,6 @@ pub mod draft_patch {
             queued: false,
             sending: false,
             variant: None,
-            image_ids: None,
             created_at: chrono::Utc::now(),
             updated_at: chrono::Utc::now(),
             version: 0,

@@ -28,6 +28,7 @@ import { buildResolveConflictsInstructions } from '@/lib/conflicts';
 import { useTranslation } from 'react-i18next';
 import { useScratch } from '@/hooks/useScratch';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
+import { imagesApi } from '@/lib/api';
 
 interface TaskFollowUpSectionProps {
   task: TaskWithAttemptStatus;
@@ -206,8 +207,6 @@ export function TaskFollowUpSection({
       reviewMarkdown,
       clickedMarkdown,
       selectedVariant,
-      images: [],
-      newlyUploadedImageIds: [],
       clearComments,
       clearClickedElements,
       jumpToLogsTab,
@@ -282,6 +281,31 @@ export function TaskFollowUpSection({
       }
     },
     [isAttemptRunning, onSendFollowUp]
+  );
+
+  // Handle image paste - upload to container and insert markdown
+  const handlePasteFiles = useCallback(
+    async (files: File[]) => {
+      if (!selectedAttemptId) return;
+
+      for (const file of files) {
+        try {
+          const response = await imagesApi.uploadForAttempt(
+            selectedAttemptId,
+            file
+          );
+          // Append markdown image to current message
+          const imageMarkdown = `![${response.original_name}](${response.file_path})`;
+          const newMessage = followUpMessage
+            ? `${followUpMessage}\n\n${imageMarkdown}`
+            : imageMarkdown;
+          setFollowUpMessage(newMessage);
+        } catch (error) {
+          console.error('Failed to upload image:', error);
+        }
+      }
+    },
+    [selectedAttemptId, followUpMessage, setFollowUpMessage]
   );
 
   // Register keyboard shortcuts
@@ -400,7 +424,11 @@ export function TaskFollowUpSection({
                   }}
                   disabled={!isEditable}
                   onFocusChange={setIsTextareaFocused}
+                  onPasteFiles={handlePasteFiles}
+                  onAttachFiles={handlePasteFiles}
+                  showAttachButton={!!selectedAttemptId}
                   projectId={projectId}
+                  taskAttemptId={selectedAttemptId}
                   onCmdEnter={handleSubmitShortcut}
                   className="min-h-[40px]"
                 />

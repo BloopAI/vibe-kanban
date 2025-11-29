@@ -87,7 +87,6 @@ export function useProcessRetry(attempt: TaskAttempt | undefined) {
           retry_process_id: executionProcessId,
           prompt: newPrompt,
           variant,
-          image_ids: [],
           version: null,
         });
       } finally {

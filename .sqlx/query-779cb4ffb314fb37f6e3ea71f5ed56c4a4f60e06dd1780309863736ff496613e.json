@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT\n                id                       as \"id!: Uuid\",\n                task_attempt_id          as \"task_attempt_id!: Uuid\",\n                draft_type,\n                retry_process_id         as \"retry_process_id?: Uuid\",\n                prompt,\n                queued                   as \"queued!: bool\",\n                sending                  as \"sending!: bool\",\n                variant,\n                image_ids,\n                created_at               as \"created_at!: DateTime<Utc>\",\n                updated_at               as \"updated_at!: DateTime<Utc>\",\n                version                  as \"version!: i64\"\n              FROM drafts\n             WHERE rowid = $1",
+  "query": "SELECT\n                id                       as \"id!: Uuid\",\n                task_attempt_id          as \"task_attempt_id!: Uuid\",\n                draft_type,\n                retry_process_id         as \"retry_process_id?: Uuid\",\n                prompt,\n                queued                   as \"queued!: bool\",\n                sending                  as \"sending!: bool\",\n                variant,\n                created_at               as \"created_at!: DateTime<Utc>\",\n                updated_at               as \"updated_at!: DateTime<Utc>\",\n                version                  as \"version!: i64\"\n              FROM drafts\n             WHERE task_attempt_id = $1 AND draft_type = $2",
   "describe": {
     "columns": [
       {
@@ -44,28 +44,23 @@
         "type_info": "Text"
       },
       {
-        "name": "image_ids",
-        "ordinal": 8,
-        "type_info": "Text"
-      },
-      {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 9,
+        "ordinal": 8,
         "type_info": "Datetime"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 10,
+        "ordinal": 9,
         "type_info": "Datetime"
       },
       {
         "name": "version!: i64",
-        "ordinal": 11,
+        "ordinal": 10,
         "type_info": "Integer"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 2
     },
     "nullable": [
       true,
@@ -76,11 +71,10 @@
       false,
       false,
       true,
-      true,
       false,
       false,
       false
     ]
   },
-  "hash": "eb8c35173d48f942dd8c93ce0d5b88b05fcffa19785a364727dc54fff8741bf4"
+  "hash": "779cb4ffb314fb37f6e3ea71f5ed56c4a4f60e06dd1780309863736ff496613e"
 }

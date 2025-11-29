@@ -887,6 +887,38 @@ export const imagesApi = {
     return handleApiResponse<ImageResponse>(response);
   },
 
+  /**
+   * Upload an image for a task attempt and immediately copy it to the container.
+   * Returns the image with a file_path that can be used in markdown.
+   */
+  uploadForAttempt: async (
+    attemptId: string,
+    file: File
+  ): Promise<ImageResponse> => {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const response = await fetch(
+      `/api/task-attempts/${attemptId}/images/upload`,
+      {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new ApiError(
+        `Failed to upload image: ${errorText}`,
+        response.status,
+        response
+      );
+    }
+
+    return handleApiResponse<ImageResponse>(response);
+  },
+
   delete: async (imageId: string): Promise<void> => {
     const response = await makeRequest(`/api/images/${imageId}`, {
       method: 'DELETE',

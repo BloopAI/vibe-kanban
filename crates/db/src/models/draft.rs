@@ -46,8 +46,6 @@ pub struct Draft {
     pub queued: bool,
     pub sending: bool,
     pub variant: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub image_ids: Option<Vec<Uuid>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub version: i64,
@@ -63,7 +61,6 @@ struct DraftRow {
     pub queued: bool,
     pub sending: bool,
     pub variant: Option<String>,
-    pub image_ids: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub version: i64,
@@ -71,10 +68,6 @@ struct DraftRow {
 
 impl From<DraftRow> for Draft {
     fn from(r: DraftRow) -> Self {
-        let image_ids = r
-            .image_ids
-            .as_deref()
-            .and_then(|s| serde_json::from_str::<Vec<Uuid>>(s).ok());
         Draft {
             id: r.id,
             task_attempt_id: r.task_attempt_id,
@@ -84,7 +77,6 @@ impl From<DraftRow> for Draft {
             queued: r.queued,
             sending: r.sending,
             variant: r.variant,
-            image_ids,
             created_at: r.created_at,
             updated_at: r.updated_at,
             version: r.version,
@@ -100,7 +92,6 @@ pub struct UpsertDraft {
     pub prompt: String,
     pub queued: bool,
     pub variant: Option<String>,
-    pub image_ids: Option<Vec<Uuid>>,
 }
 
 impl Draft {
@@ -116,7 +107,6 @@ impl Draft {
                 queued                   as "queued!: bool",
                 sending                  as "sending!: bool",
                 variant,
-                image_ids,
                 created_at               as "created_at!: DateTime<Utc>",
                 updated_at               as "updated_at!: DateTime<Utc>",
                 version                  as "version!: i64"
@@ -146,7 +136,6 @@ impl Draft {
                 queued                   as "queued!: bool",
                 sending                  as "sending!: bool",
                 variant,
-                image_ids,
                 created_at               as "created_at!: DateTime<Utc>",
                 updated_at               as "updated_at!: DateTime<Utc>",
                 version                  as "version!: i64"
@@ -169,23 +158,18 @@ impl Draft {
         }
 
         let id = Uuid::new_v4();
-        let image_ids_json = data
-            .image_ids
-            .as_ref()
-            .map(|ids| serde_json::to_string(ids).unwrap_or_else(|_| "[]".to_string()));
         let draft_type_str = data.draft_type.as_str();
         let prompt = data.prompt.clone();
         let variant = data.variant.clone();
         sqlx::query_as!(
             DraftRow,
-            r#"INSERT INTO drafts (id, task_attempt_id, draft_type, retry_process_id, prompt, queued, variant, image_ids)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            r#"INSERT INTO drafts (id, task_attempt_id, draft_type, retry_process_id, prompt, queued, variant)
+               VALUES ($1, $2, $3, $4, $5, $6, $7)
                ON CONFLICT(task_attempt_id, draft_type) DO UPDATE SET
                  retry_process_id = excluded.retry_process_id,
                  prompt = excluded.prompt,
                  queued = excluded.queued,
                  variant = excluded.variant,
-                 image_ids = excluded.image_ids,
                  version = drafts.version + 1
                RETURNING
                  id                       as "id!: Uuid",
@@ -196,7 +180,6 @@ impl Draft {
                  queued                   as "queued!: bool",
                  sending                  as "sending!: bool",
                  variant,
-                 image_ids,
                  created_at               as "created_at!: DateTime<Utc>",
                  updated_at               as "updated_at!: DateTime<Utc>",
                  version                  as "version!: i64""#,
@@ -206,8 +189,7 @@ impl Draft {
             data.retry_process_id,
             prompt,
             data.queued,
-            variant,
-            image_ids_json
+            variant
         )
         .fetch_one(pool)
         .await
@@ -226,7 +208,7 @@ impl Draft {
                 // Follow-up drafts: update to empty
                 sqlx::query(
                     r#"UPDATE drafts
-                       SET prompt = '', queued = 0, sending = 0, image_ids = NULL, updated_at = CURRENT_TIMESTAMP, version = version + 1
+                       SET prompt = '', queued = 0, sending = 0, updated_at = CURRENT_TIMESTAMP, version = version + 1
                      WHERE task_attempt_id = ? AND draft_type = ?"#,
                 )
                 .bind(task_attempt_id)
@@ -289,14 +271,9 @@ impl Draft {
         draft_type: DraftType,
         prompt: Option<String>,
         variant: Option<Option<String>>,
-        image_ids: Option<Vec<Uuid>>,
         retry_process_id: Option<Uuid>,
     ) -> Result<(), sqlx::Error> {
-        if retry_process_id.is_none()
-            && prompt.is_none()
-            && variant.is_none()
-            && image_ids.is_none()
-        {
+        if retry_process_id.is_none() && prompt.is_none() && variant.is_none() {
             return Ok(());
         }
         let mut query = QueryBuilder::<Sqlite>::new("UPDATE drafts SET ");
@@ -316,11 +293,6 @@ impl Draft {
                 Some(v) => separated.push_bind_unseparated(v),
                 None => separated.push_bind_unseparated(Option::<String>::None),
             };
-        }
-        if let Some(ids) = image_ids {
-            let image_ids_json = serde_json::to_string(&ids).unwrap_or_else(|_| "[]".to_string());
-            separated.push("image_ids = ");
-            separated.push_bind_unseparated(image_ids_json);
         }
         separated.push("updated_at = CURRENT_TIMESTAMP");
         separated.push("version = version + 1");

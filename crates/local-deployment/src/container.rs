@@ -17,7 +17,6 @@ use db::{
             ExecutionContext, ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus,
         },
         executor_session::ExecutorSession,
-        image::TaskImage,
         merge::Merge,
         project::Project,
         task::{Task, TaskStatus},
@@ -711,7 +710,7 @@ impl LocalContainerService {
         }
 
         // Ensure worktree exists
-        let container_ref = self.ensure_container_exists(&ctx.task_attempt).await?;
+        let _container_ref = self.ensure_container_exists(&ctx.task_attempt).await?;
 
         // Get session id
         let Some(session_id) = ExecutionProcess::find_latest_session_id_by_task_attempt(
@@ -767,22 +766,7 @@ impl LocalContainerService {
             .await?
             .and_then(|project| self.cleanup_action(project.cleanup_script));
 
-        // Handle images: associate and copy to worktree
         let prompt = draft.prompt.clone();
-        if let Some(image_ids) = &draft.image_ids {
-            // Associate to task
-            let _ = TaskImage::associate_many_dedup(&self.db.pool, ctx.task.id, image_ids).await;
-
-            // Copy images to worktree
-            let worktree_path = std::path::PathBuf::from(&container_ref);
-            if let Err(e) = self
-                .image_service
-                .copy_images_by_ids_to_worktree(&worktree_path, image_ids)
-                .await
-            {
-                tracing::warn!("Failed to copy images to worktree: {}", e);
-            }
-        }
 
         let follow_up_request =
             executors::actions::coding_agent_follow_up::CodingAgentFollowUpRequest {

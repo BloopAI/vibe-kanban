@@ -12,34 +12,24 @@ export type SaveStatus = 'idle' | 'saving' | 'saved' | 'offline' | 'sent';
 type BaseCurrent = {
   prompt: string;
   variant: string | null | undefined;
-  image_ids: string[] | null | undefined;
 };
 type BaseServer = {
   prompt?: string | null;
   variant?: string | null;
-  image_ids?: string[] | null;
 } | null;
 type BasePayload = {
   prompt?: string;
   variant?: string | null;
-  image_ids?: string[];
 };
 
 function diffBaseDraft(current: BaseCurrent, server: BaseServer): BasePayload {
   const payload: BasePayload = {};
   const serverPrompt = (server?.prompt ?? '') || '';
   const serverVariant = server?.variant ?? null;
-  const serverIds = (server?.image_ids as string[] | undefined) ?? [];
 
   if (current.prompt !== serverPrompt) payload.prompt = current.prompt || '';
   if ((current.variant ?? null) !== serverVariant)
     payload.variant = (current.variant ?? null) as string | null;
-
-  const currIds = (current.image_ids as string[] | null) ?? [];
-  const idsEqual =
-    currIds.length === serverIds.length &&
-    currIds.every((id, i) => id === serverIds[i]);
-  if (!idsEqual) payload.image_ids = currIds;
 
   return payload;
 }
@@ -174,7 +164,7 @@ function useDraftAutosaveCore<TServer, TCurrent, TPayload>({
   return { isSaving, saveStatus } as const;
 }
 
-type DraftData = Pick<Draft, 'prompt' | 'variant' | 'image_ids'>;
+type DraftData = Pick<Draft, 'prompt' | 'variant'>;
 
 type DraftArgs<TServer, TCurrent> = {
   attemptId?: string;
@@ -255,9 +245,6 @@ export type RetrySaveStatus = SaveStatus;
 
 type RetryDraftResponse = DraftResponse;
 
-type RetryDraftData = Pick<
-  DraftResponse,
-  'prompt' | 'variant' | 'image_ids'
-> & {
+type RetryDraftData = Pick<DraftResponse, 'prompt' | 'variant'> & {
   retry_process_id: string;
 };

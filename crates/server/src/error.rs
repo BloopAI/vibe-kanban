@@ -135,7 +135,6 @@ impl IntoResponse for ApiError {
                 DraftsServiceError::Container(_) => {
                     (StatusCode::INTERNAL_SERVER_ERROR, "ContainerError")
                 }
-                DraftsServiceError::Image(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ImageError"),
                 DraftsServiceError::ExecutionProcess(_) => {
                     (StatusCode::INTERNAL_SERVER_ERROR, "ExecutionProcessError")
                 }
@@ -264,7 +263,6 @@ impl IntoResponse for ApiError {
                 DraftsServiceError::Conflict(msg) => msg.clone(),
                 DraftsServiceError::Database(_) => format!("{}: {}", error_type, drafts_err),
                 DraftsServiceError::Container(_) => format!("{}: {}", error_type, drafts_err),
-                DraftsServiceError::Image(_) => format!("{}: {}", error_type, drafts_err),
                 DraftsServiceError::ExecutionProcess(_) => {
                     format!("{}: {}", error_type, drafts_err)
                 }

@@ -152,13 +152,13 @@ export type CheckAgentAvailabilityQuery = { executor: BaseCodingAgent, };
 
 export type AvailabilityInfo = { "type": "LOGIN_DETECTED", last_auth_timestamp: bigint, } | { "type": "INSTALLATION_FOUND" } | { "type": "NOT_FOUND" };
 
-export type CreateFollowUpAttempt = { prompt: string, variant: string | null, image_ids: Array<string> | null, retry_process_id: string | null, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };
+export type CreateFollowUpAttempt = { prompt: string, variant: string | null, retry_process_id: string | null, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };
 
-export type DraftResponse = { task_attempt_id: string, draft_type: DraftType, retry_process_id: string | null, prompt: string, queued: boolean, variant: string | null, image_ids: Array<string> | null, version: bigint, };
+export type DraftResponse = { task_attempt_id: string, draft_type: DraftType, retry_process_id: string | null, prompt: string, queued: boolean, variant: string | null, version: bigint, };
 
-export type UpdateFollowUpDraftRequest = { prompt: string | null, variant: string | null | null, image_ids: Array<string> | null, version: bigint | null, };
+export type UpdateFollowUpDraftRequest = { prompt: string | null, variant: string | null | null, version: bigint | null, };
 
-export type UpdateRetryFollowUpDraftRequest = { retry_process_id: string, prompt: string | null, variant: string | null | null, image_ids: Array<string> | null, version: bigint | null, };
+export type UpdateRetryFollowUpDraftRequest = { retry_process_id: string, prompt: string | null, variant: string | null | null, version: bigint | null, };
 
 export type ChangeTargetBranchRequest = { new_target_branch: string, };
 
@@ -364,7 +364,7 @@ export type MergeStatus = "open" | "merged" | "closed" | "unknown";
 
 export type PullRequestInfo = { number: bigint, url: string, status: MergeStatus, merged_at: string | null, merge_commit_sha: string | null, };
 
-export type Draft = { id: string, task_attempt_id: string, draft_type: DraftType, retry_process_id: string | null, prompt: string, queued: boolean, sending: boolean, variant: string | null, image_ids: Array<string> | null, created_at: string, updated_at: string, version: bigint, };
+export type Draft = { id: string, task_attempt_id: string, draft_type: DraftType, retry_process_id: string | null, prompt: string, queued: boolean, sending: boolean, variant: string | null, created_at: string, updated_at: string, version: bigint, };
 
 export type DraftType = "follow_up" | "retry";
 

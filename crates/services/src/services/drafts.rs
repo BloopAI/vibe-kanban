@@ -1,5 +1,3 @@
-use std::path::{Path, PathBuf};
-
 use db::{
     DBService,
     models::{
@@ -8,7 +6,6 @@ use db::{
             ExecutionProcess, ExecutionProcessError, ExecutionProcessRunReason,
             ExecutionProcessStatus,
         },
-        image::TaskImage,
         task_attempt::TaskAttempt,
     },
 };
@@ -24,10 +21,7 @@ use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
 
-use super::{
-    container::{ContainerError, ContainerService},
-    image::{ImageError, ImageService},
-};
+use super::container::{ContainerError, ContainerService};
 
 #[derive(Debug, Error)]
 pub enum DraftsServiceError {
@@ -35,8 +29,6 @@ pub enum DraftsServiceError {
     Database(#[from] sqlx::Error),
     #[error(transparent)]
     Container(#[from] ContainerError),
-    #[error(transparent)]
-    Image(#[from] ImageError),
     #[error(transparent)]
     ExecutionProcess(#[from] ExecutionProcessError),
     #[error("Conflict: {0}")]
@@ -51,7 +43,6 @@ pub struct DraftResponse {
     pub prompt: String,
     pub queued: bool,
     pub variant: Option<String>,
-    pub image_ids: Option<Vec<Uuid>>,
     pub version: i64,
 }
 
@@ -59,7 +50,6 @@ pub struct DraftResponse {
 pub struct UpdateFollowUpDraftRequest {
     pub prompt: Option<String>,
     pub variant: Option<Option<String>>,
-    pub image_ids: Option<Vec<Uuid>>,
     pub version: Option<i64>,
 }
 
@@ -68,7 +58,6 @@ pub struct UpdateRetryFollowUpDraftRequest {
     pub retry_process_id: Uuid,
     pub prompt: Option<String>,
     pub variant: Option<Option<String>>,
-    pub image_ids: Option<Vec<Uuid>>,
     pub version: Option<i64>,
 }
 
@@ -82,12 +71,11 @@ pub struct SetQueueRequest {
 #[derive(Clone)]
 pub struct DraftsService {
     db: DBService,
-    image: ImageService,
 }
 
 impl DraftsService {
-    pub fn new(db: DBService, image: ImageService) -> Self {
-        Self { db, image }
+    pub fn new(db: DBService) -> Self {
+        Self { db }
     }
 
     fn pool(&self) -> &sqlx::SqlitePool {
@@ -102,7 +90,6 @@ impl DraftsService {
             prompt: d.prompt,
             queued: d.queued,
             variant: d.variant,
-            image_ids: d.image_ids,
             version: d.version,
         }
     }
@@ -127,7 +114,6 @@ impl DraftsService {
                 prompt: "".to_string(),
                 queued: false,
                 variant: None,
-                image_ids: None,
             },
         )
         .await?;
@@ -136,19 +122,6 @@ impl DraftsService {
             .await?
             .ok_or(SqlxError::RowNotFound)
             .map_err(DraftsServiceError::from)
-    }
-
-    async fn associate_images_for_task_if_any(
-        &self,
-        task_id: Uuid,
-        image_ids: &Option<Vec<Uuid>>,
-    ) -> Result<(), DraftsServiceError> {
-        if let Some(ids) = image_ids
-            && !ids.is_empty()
-        {
-            TaskImage::associate_many_dedup(self.pool(), task_id, ids).await?;
-        }
-        Ok(())
     }
 
     async fn has_running_processes_for_attempt(
@@ -180,29 +153,10 @@ impl DraftsService {
                 prompt: "".to_string(),
                 queued: false,
                 variant: None,
-                image_ids: None,
                 version: 0,
             }
         };
         Ok(resp)
-    }
-
-    async fn handle_images_for_prompt(
-        &self,
-        task_id: Uuid,
-        image_ids: &[Uuid],
-        prompt: &str,
-        worktree_path: &Path,
-    ) -> Result<String, DraftsServiceError> {
-        if image_ids.is_empty() {
-            return Ok(prompt.to_string());
-        }
-
-        TaskImage::associate_many_dedup(self.pool(), task_id, image_ids).await?;
-        self.image
-            .copy_images_by_ids_to_worktree(worktree_path, image_ids)
-            .await?;
-        Ok(prompt.to_string())
     }
 
     async fn start_follow_up_from_draft(
@@ -211,8 +165,7 @@ impl DraftsService {
         task_attempt: &TaskAttempt,
         draft: &Draft,
     ) -> Result<ExecutionProcess, DraftsServiceError> {
-        let worktree_ref = container.ensure_container_exists(task_attempt).await?;
-        let worktree_path = PathBuf::from(worktree_ref);
+        let _worktree_ref = container.ensure_container_exists(task_attempt).await?;
         let base_profile =
             ExecutionProcess::latest_executor_profile_for_attempt(self.pool(), task_attempt.id)
                 .await?;
@@ -234,12 +187,7 @@ impl DraftsService {
 
         let cleanup_action = container.cleanup_action(project.cleanup_script);
 
-        let mut prompt = draft.prompt.clone();
-        if let Some(image_ids) = &draft.image_ids {
-            prompt = self
-                .handle_images_for_prompt(task_attempt.task_id, image_ids, &prompt, &worktree_path)
-                .await?;
-        }
+        let prompt = draft.prompt.clone();
 
         let latest_session_id =
             ExecutionProcess::find_latest_session_id_by_task_attempt(self.pool(), task_attempt.id)
@@ -296,23 +244,16 @@ impl DraftsService {
             ));
         }
 
-        if payload.prompt.is_none() && payload.variant.is_none() && payload.image_ids.is_none() {
-        } else {
+        if payload.prompt.is_some() || payload.variant.is_some() {
             Draft::update_partial(
                 pool,
                 task_attempt.id,
                 DraftType::FollowUp,
                 payload.prompt.clone(),
                 payload.variant.clone(),
-                payload.image_ids.clone(),
                 None,
             )
             .await?;
-        }
-
-        if let Some(task) = task_attempt.parent_task(pool).await? {
-            self.associate_images_for_task_if_any(task.id, &payload.image_ids)
-                .await?;
         }
 
         let current =
@@ -326,7 +267,6 @@ impl DraftsService {
                     prompt: "".to_string(),
                     queued: false,
                     variant: None,
-                    image_ids: None,
                     version: 0,
                 });
 
@@ -367,7 +307,6 @@ impl DraftsService {
                     prompt: payload.prompt.clone().unwrap_or_default(),
                     queued: false,
                     variant: payload.variant.clone().unwrap_or(None),
-                    image_ids: payload.image_ids.clone(),
                 },
             )
             .await?;
@@ -375,23 +314,16 @@ impl DraftsService {
             return Ok(Self::draft_to_response(draft));
         }
 
-        if payload.prompt.is_none() && payload.variant.is_none() && payload.image_ids.is_none() {
-        } else {
+        if payload.prompt.is_some() || payload.variant.is_some() {
             Draft::update_partial(
                 pool,
                 task_attempt.id,
                 DraftType::Retry,
                 payload.prompt.clone(),
                 payload.variant.clone(),
-                payload.image_ids.clone(),
                 Some(payload.retry_process_id),
             )
             .await?;
-        }
-
-        if let Some(task) = task_attempt.parent_task(pool).await? {
-            self.associate_images_for_task_if_any(task.id, &payload.image_ids)
-                .await?;
         }
 
         let draft = Draft::find_by_task_attempt_and_type(pool, task_attempt.id, DraftType::Retry)

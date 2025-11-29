@@ -187,7 +187,7 @@ impl Deployment for LocalDeployment {
 
         let events = EventService::new(db.clone(), events_msg_store, events_entry_count);
 
-        let drafts = DraftsService::new(db.clone(), image.clone());
+        let drafts = DraftsService::new(db.clone());
         let file_search_cache = Arc::new(FileSearchCache::new());
 
         let deployment = Self {

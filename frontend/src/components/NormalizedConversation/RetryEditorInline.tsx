@@ -3,27 +3,15 @@ import { useTranslation } from 'react-i18next';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useProject } from '@/contexts/ProjectContext';
 import { FollowUpStatusRow } from '@/components/tasks/FollowUpStatusRow';
-import { ImageUploadSection } from '@/components/ui/image-upload-section';
 import { cn } from '@/lib/utils';
 import { VariantSelector } from '@/components/tasks/VariantSelector';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-  AlertCircle,
-  Image as ImageIcon,
-  Loader2,
-  Send,
-  X,
-} from 'lucide-react';
+import { AlertCircle, Loader2, Send, X } from 'lucide-react';
 import { useDraftEditor } from '@/hooks/follow-up/useDraftEditor';
 import { useDraftStream } from '@/hooks/follow-up/useDraftStream';
 import { useDraftAutosave } from '@/hooks/follow-up/useDraftAutosave';
-import {
-  attemptsApi,
-  imagesApi,
-  executionProcessesApi,
-  commitsApi,
-} from '@/lib/api';
+import { attemptsApi, executionProcessesApi, commitsApi } from '@/lib/api';
 import type { DraftResponse, TaskAttempt } from 'shared/types';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useUserSystem } from '@/components/ConfigProvider';
@@ -34,7 +22,6 @@ import {
   isCodingAgent,
   PROCESS_RUN_REASONS,
 } from '@/constants/processes';
-import { appendImageMarkdown } from '@/utils/markdownImages';
 import type { RestoreLogsDialogResult } from '@/components/dialogs';
 
 export function RetryEditorInline({
@@ -69,21 +56,9 @@ export function RetryEditorInline({
     };
   }, [retryDraft, executionProcessId]);
 
-  const {
-    message,
-    setMessage,
-    images,
-    setImages,
-    handleImageUploaded,
-    clearImagesAndUploads,
-    isMessageLocallyDirty,
-  } = useDraftEditor({
+  const { message, setMessage, isMessageLocallyDirty } = useDraftEditor({
     draft,
-    taskId: attempt.task_id,
   });
-
-  // Presentation-only: show/hide image upload panel
-  const [showImageUpload, setShowImageUpload] = useState(false);
 
   // Variant selection: start with initialVariant or draft.variant
   const [selectedVariant, setSelectedVariant] = useState<string | null>(
@@ -100,7 +75,6 @@ export function RetryEditorInline({
     current: {
       prompt: message,
       variant: selectedVariant,
-      image_ids: images.map((img) => img.id),
       retry_process_id: executionProcessId,
     },
     isDraftSending: false,
@@ -112,7 +86,7 @@ export function RetryEditorInline({
   const [isFinalizing, setIsFinalizing] = useState<false | 'cancel' | 'send'>(
     false
   );
-  const canSend = !isAttemptRunning && !!(message.trim() || images.length > 0);
+  const canSend = !isAttemptRunning && !!message.trim();
 
   const onCancel = async () => {
     setSendError(null);
@@ -228,12 +202,10 @@ export function RetryEditorInline({
       await attemptsApi.followUp(attemptId, {
         prompt: message,
         variant: selectedVariant,
-        image_ids: images.map((img) => img.id),
         retry_process_id: executionProcessId,
         force_when_dirty: modalResult.forceWhenDirty ?? false,
         perform_git_reset: modalResult.performGitReset ?? true,
       });
-      clearImagesAndUploads();
       // Keep overlay up until stream clears the retry draft
       setIsFinalizing('send');
     } catch (error: unknown) {
@@ -297,20 +269,6 @@ export function RetryEditorInline({
       />
 
       <div className="flex items-center gap-2">
-        {/* Image button */}
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => setShowImageUpload((prev) => !prev)}
-          disabled={isSending || !!isFinalizing}
-        >
-          <ImageIcon
-            className={cn(
-              'h-4 w-4',
-              (images.length > 0 || showImageUpload) && 'text-primary'
-            )}
-          />
-        </Button>
         <VariantSelector
           selectedVariant={selectedVariant}
           onChange={setSelectedVariant}
@@ -334,24 +292,6 @@ export function RetryEditorInline({
           </Button>
         </div>
       </div>
-
-      {showImageUpload && (
-        <div className="mb-2">
-          <ImageUploadSection
-            images={images}
-            onImagesChange={setImages}
-            onUpload={(file) => imagesApi.uploadForTask(attempt.task_id, file)}
-            onDelete={imagesApi.delete}
-            onImageUploaded={(image) => {
-              handleImageUploaded(image);
-              setMessage((prev) => appendImageMarkdown(prev, image));
-            }}
-            disabled={isSending || !!isFinalizing}
-            collapsible={false}
-            defaultExpanded={true}
-          />
-        </div>
-      )}
 
       {sendError && (
         <Alert variant="destructive">

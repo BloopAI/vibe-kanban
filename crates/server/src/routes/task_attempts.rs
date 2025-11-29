@@ -50,10 +50,7 @@ use crate::{
     DeploymentImpl,
     error::ApiError,
     middleware::load_task_attempt_middleware,
-    routes::task_attempts::{
-        gh_cli_setup::GhCliSetupError,
-        util::{ensure_worktree_path, handle_images_for_prompt},
-    },
+    routes::task_attempts::{gh_cli_setup::GhCliSetupError, util::ensure_worktree_path},
 };
 
 #[derive(Debug, Deserialize, Serialize, TS)]
@@ -216,7 +213,6 @@ pub async fn run_agent_setup(
 pub struct CreateFollowUpAttempt {
     pub prompt: String,
     pub variant: Option<String>,
-    pub image_ids: Option<Vec<Uuid>>,
     pub retry_process_id: Option<Uuid>,
     pub force_when_dirty: Option<bool>,
     pub perform_git_reset: Option<bool>,
@@ -321,11 +317,7 @@ pub async fn follow_up(
     )
     .await?;
 
-    let mut prompt = payload.prompt;
-    if let Some(image_ids) = &payload.image_ids {
-        prompt = handle_images_for_prompt(&deployment, &task_attempt, task.id, image_ids, &prompt)
-            .await?;
-    }
+    let prompt = payload.prompt;
 
     let cleanup_action = deployment
         .container()

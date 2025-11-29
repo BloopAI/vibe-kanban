@@ -3,13 +3,13 @@ use std::path::Path;
 use axum::{
     Extension, Router,
     body::Body,
-    extract::{Query, Request, State},
+    extract::{DefaultBodyLimit, Multipart, Query, Request, State},
     http::{StatusCode, header},
     middleware::{Next, from_fn_with_state},
     response::{Json as ResponseJson, Response},
-    routing::get,
+    routing::{get, post},
 };
-use db::models::task_attempt::TaskAttempt;
+use db::models::{task::Task, task_attempt::TaskAttempt};
 use deployment::Deployment;
 use serde::{Deserialize, Serialize};
 use services::services::image::ImageError;
@@ -20,7 +20,12 @@ use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use super::util::ensure_worktree_path;
-use crate::{DeploymentImpl, error::ApiError, middleware::load_task_attempt_middleware};
+use crate::{
+    DeploymentImpl,
+    error::ApiError,
+    middleware::load_task_attempt_middleware,
+    routes::images::{ImageResponse, process_image_upload},
+};
 
 #[derive(Debug, Deserialize)]
 pub struct ImageMetadataQuery {
@@ -37,6 +42,31 @@ pub struct TaskAttemptImageMetadata {
     pub size_bytes: Option<i64>,
     pub format: Option<String>,
     pub proxy_url: Option<String>,
+}
+
+/// Upload an image and immediately copy it to the task attempt's worktree.
+/// This allows images to be available in the container before follow-up is sent.
+pub async fn upload_image(
+    Extension(task_attempt): Extension<TaskAttempt>,
+    State(deployment): State<DeploymentImpl>,
+    multipart: Multipart,
+) -> Result<ResponseJson<ApiResponse<ImageResponse>>, ApiError> {
+    // Get the task for this attempt
+    let task = Task::find_by_id(&deployment.db().pool, task_attempt.task_id)
+        .await?
+        .ok_or_else(|| ApiError::Image(ImageError::NotFound))?;
+
+    // Process upload (store in cache, associate with task)
+    let image_response = process_image_upload(&deployment, multipart, Some(task.id)).await?;
+
+    // Copy image to worktree immediately
+    let worktree_path = ensure_worktree_path(&deployment, &task_attempt).await?;
+    deployment
+        .image()
+        .copy_images_by_ids_to_worktree(&worktree_path, &[image_response.id])
+        .await?;
+
+    Ok(ResponseJson(ApiResponse::success(image_response)))
 }
 
 /// Get metadata about an image in the task attempt's worktree.
@@ -210,6 +240,10 @@ async fn load_task_attempt_with_wildcard(
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let metadata_router = Router::new()
         .route("/metadata", get(get_image_metadata))
+        .route(
+            "/upload",
+            post(upload_image).layer(DefaultBodyLimit::max(20 * 1024 * 1024)), // 20MB limit
+        )
         .layer(from_fn_with_state(
             deployment.clone(),
             load_task_attempt_middleware,
