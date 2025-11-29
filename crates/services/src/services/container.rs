@@ -4,7 +4,7 @@ use std::{
     sync::Arc,
 };
 
-use anyhow::{Error as AnyhowError, anyhow};
+use anyhow::Error as AnyhowError;
 use async_trait::async_trait;
 use db::{
     DBService,
@@ -43,7 +43,6 @@ use uuid::Uuid;
 use crate::services::{
     config::Config,
     git::{GitService, GitServiceError},
-    image::ImageService,
     notification::NotificationService,
     share::SharePublisher,
     worktree_manager::WorktreeError,
@@ -669,14 +668,7 @@ pub trait ContainerService {
             .await?
             .ok_or(SqlxError::RowNotFound)?;
 
-        // TODO: this implementation will not work in cloud
-        let worktree_path = PathBuf::from(
-            task_attempt
-                .container_ref
-                .as_ref()
-                .ok_or_else(|| ContainerError::Other(anyhow!("Container ref not found")))?,
-        );
-        let prompt = ImageService::canonicalise_image_paths(&task.to_prompt(), &worktree_path);
+        let prompt = task.to_prompt();
 
         let cleanup_action = self.cleanup_action(project.cleanup_script);
 

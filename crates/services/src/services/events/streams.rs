@@ -1,7 +1,9 @@
+use anyhow::anyhow;
 use db::models::{
     draft::{Draft, DraftType},
     execution_process::ExecutionProcess,
     project::Project,
+    scratch::Scratch,
     shared_task::SharedTask,
     task::{Task, TaskWithAttemptStatus},
 };
@@ -432,6 +434,74 @@ impl EventService {
                                     {
                                         return Some(Ok(LogMsg::JsonPatch(patch)));
                                     }
+                                }
+                            }
+                            None
+                        }
+                        Ok(other) => Some(Ok(other)),
+                        Err(_) => None,
+                    }
+                }
+            });
+
+        let initial_stream = futures::stream::once(async move { Ok(initial_msg) });
+        let combined_stream = initial_stream.chain(filtered_stream).boxed();
+        Ok(combined_stream)
+    }
+
+    /// Stream a single scratch item with initial snapshot (raw LogMsg format for WebSocket)
+    pub async fn stream_scratch_raw(
+        &self,
+        scratch_id: Uuid,
+        scratch_type: &db::models::scratch::ScratchType,
+    ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, EventError>
+    {
+        let scratch = Scratch::find_by_id(&self.db.pool, scratch_id, scratch_type)
+            .await
+            .map_err(|_| EventError::Other(anyhow!("Failed to get scratch item")))?
+            .ok_or_else(|| EventError::Other(anyhow!("Scratch not found")))?;
+
+        let initial_patch = json!([{
+            "op": "replace",
+            "path": "/scratch",
+            "value": scratch
+        }]);
+        let initial_msg = LogMsg::JsonPatch(serde_json::from_value(initial_patch).unwrap());
+
+        let type_str = scratch_type.to_string();
+
+        // Filter to only this scratch's events by matching id and payload.type in the patch value
+        let filtered_stream =
+            BroadcastStream::new(self.msg_store.get_receiver()).filter_map(move |msg_result| {
+                let id_str = scratch_id.to_string();
+                let type_str = type_str.clone();
+                async move {
+                    match msg_result {
+                        Ok(LogMsg::JsonPatch(patch)) => {
+                            if let Some(op) = patch.0.first()
+                                && op.path() == "/scratch"
+                            {
+                                // Extract id and payload.type from the patch value
+                                let value = match op {
+                                    json_patch::PatchOperation::Add(a) => Some(&a.value),
+                                    json_patch::PatchOperation::Replace(r) => Some(&r.value),
+                                    json_patch::PatchOperation::Remove(_) => None,
+                                    _ => None,
+                                };
+
+                                let matches = value.is_some_and(|v| {
+                                    let id_matches =
+                                        v.get("id").and_then(|v| v.as_str()) == Some(&id_str);
+                                    let type_matches = v
+                                        .get("payload")
+                                        .and_then(|p| p.get("type"))
+                                        .and_then(|t| t.as_str())
+                                        == Some(&type_str);
+                                    id_matches && type_matches
+                                });
+
+                                if matches {
+                                    return Some(Ok(LogMsg::JsonPatch(patch)));
                                 }
                             }
                             None

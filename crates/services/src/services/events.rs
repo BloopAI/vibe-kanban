@@ -5,6 +5,7 @@ use db::{
     models::{
         draft::{Draft, DraftType},
         execution_process::ExecutionProcess,
+        scratch::Scratch,
         shared_task::SharedTask as SharedDbTask,
         task::Task,
         task_attempt::TaskAttempt,
@@ -24,7 +25,8 @@ mod streams;
 pub mod types;
 
 pub use patches::{
-    draft_patch, execution_process_patch, shared_task_patch, task_attempt_patch, task_patch,
+    draft_patch, execution_process_patch, scratch_patch, shared_task_patch, task_attempt_patch,
+    task_patch,
 };
 pub use types::{EventError, EventPatch, EventPatchInner, HookTables, RecordTypes};
 
@@ -161,6 +163,18 @@ impl EventService {
                                     msg_store_for_preupdate.push_patch(patch);
                                 }
                             }
+                            "scratch" => {
+                                // Composite key: need both id (column 0) and scratch_type (column 1)
+                                if let Ok(id_val) = preupdate.get_old_column_value(0)
+                                    && let Ok(scratch_id) = <Uuid as Decode<Sqlite>>::decode(id_val)
+                                    && let Ok(type_val) = preupdate.get_old_column_value(1)
+                                    && let Ok(type_str) =
+                                        <String as Decode<Sqlite>>::decode(type_val)
+                                {
+                                    let patch = scratch_patch::remove(scratch_id, &type_str);
+                                    msg_store_for_preupdate.push_patch(patch);
+                                }
+                            }
                             _ => {}
                         }
                     }
@@ -180,7 +194,8 @@ impl EventService {
                                 | (HookTables::TaskAttempts, SqliteOperation::Delete)
                                 | (HookTables::ExecutionProcesses, SqliteOperation::Delete)
                                 | (HookTables::Drafts, SqliteOperation::Delete)
-                                | (HookTables::SharedTasks, SqliteOperation::Delete) => {
+                                | (HookTables::SharedTasks, SqliteOperation::Delete)
+                                | (HookTables::Scratch, SqliteOperation::Delete) => {
                                     // Deletions handled in preupdate hook for reliable data capture
                                     return;
                                 }
@@ -264,6 +279,20 @@ impl EventService {
                                         }
                                     }
                                 }
+                                (HookTables::Scratch, _) => {
+                                    match Scratch::find_by_rowid(&db.pool, rowid).await {
+                                        Ok(Some(scratch)) => RecordTypes::Scratch(scratch),
+                                        Ok(None) => RecordTypes::DeletedScratch {
+                                            rowid,
+                                            scratch_id: None,
+                                            scratch_type: None,
+                                        },
+                                        Err(e) => {
+                                            tracing::error!("Failed to fetch scratch: {:?}", e);
+                                            return;
+                                        }
+                                    }
+                                }
                             };
 
                             let db_op: &str = match hook.operation {
@@ -340,6 +369,24 @@ impl EventService {
                                     ..
                                 } => {
                                     let patch = shared_task_patch::remove(*task_id);
+                                    msg_store_for_hook.push_patch(patch);
+                                    return;
+                                }
+                                RecordTypes::Scratch(scratch) => {
+                                    let patch = match hook.operation {
+                                        SqliteOperation::Insert => scratch_patch::add(scratch),
+                                        SqliteOperation::Update => scratch_patch::replace(scratch),
+                                        _ => scratch_patch::replace(scratch),
+                                    };
+                                    msg_store_for_hook.push_patch(patch);
+                                    return;
+                                }
+                                RecordTypes::DeletedScratch {
+                                    scratch_id: Some(scratch_id),
+                                    scratch_type: Some(scratch_type_str),
+                                    ..
+                                } => {
+                                    let patch = scratch_patch::remove(*scratch_id, scratch_type_str);
                                     msg_store_for_hook.push_patch(patch);
                                     return;
                                 }

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import MarkdownRenderer from '@/components/ui/markdown-renderer.tsx';
+import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import {
   ActionType,
   NormalizedEntry,
@@ -268,17 +268,27 @@ const CollapsibleEntry: React.FC<{
   expansionKey: string;
   variant: CollapsibleVariant;
   contentClassName: string;
-}> = ({ content, markdown, expansionKey, variant, contentClassName }) => {
+  taskAttemptId?: string;
+}> = ({
+  content,
+  markdown,
+  expansionKey,
+  variant,
+  contentClassName,
+  taskAttemptId,
+}) => {
   const multiline = content.includes('\n');
   const [expanded, toggle] = useExpandable(`entry:${expansionKey}`, false);
 
   const Inner = (
     <div className={contentClassName}>
       {markdown ? (
-        <MarkdownRenderer
-          content={content}
+        <WYSIWYGEditor
+          placeholder=""
+          value={content}
+          disabled
           className="whitespace-pre-wrap break-words"
-          enableCopyButton={false}
+          taskAttemptId={taskAttemptId}
         />
       ) : (
         content
@@ -290,10 +300,12 @@ const CollapsibleEntry: React.FC<{
   const PreviewInner = (
     <div className={contentClassName}>
       {markdown ? (
-        <MarkdownRenderer
-          content={firstLine}
+        <WYSIWYGEditor
+          placeholder=""
+          value={firstLine}
+          disabled
           className="whitespace-pre-wrap break-words"
-          enableCopyButton={false}
+          taskAttemptId={taskAttemptId}
         />
       ) : (
         firstLine
@@ -356,11 +368,13 @@ const PlanPresentationCard: React.FC<{
   expansionKey: string;
   defaultExpanded?: boolean;
   statusAppearance?: ToolStatusAppearance;
+  taskAttemptId?: string;
 }> = ({
   plan,
   expansionKey,
   defaultExpanded = false,
   statusAppearance = 'default',
+  taskAttemptId,
 }) => {
   const { t } = useTranslation('common');
   const [expanded, toggle] = useExpandable(
@@ -406,10 +420,13 @@ const PlanPresentationCard: React.FC<{
         {expanded && (
           <div className={cn('px-3 py-2', tone.contentBg)}>
             <div className={cn('text-sm', tone.contentText)}>
-              <MarkdownRenderer
-                content={plan}
+              <WYSIWYGEditor
+                placeholder=""
+                value={plan}
+                disabled
                 className="whitespace-pre-wrap break-words"
                 enableCopyButton
+                taskAttemptId={taskAttemptId}
               />
             </div>
           </div>
@@ -423,7 +440,8 @@ const ToolCallCard: React.FC<{
   entry: NormalizedEntry | ProcessStartPayload;
   expansionKey: string;
   forceExpanded?: boolean;
-}> = ({ entry, expansionKey, forceExpanded = false }) => {
+  taskAttemptId?: string;
+}> = ({ entry, expansionKey, forceExpanded = false, taskAttemptId }) => {
   const { t } = useTranslation('common');
 
   // Determine if this is a NormalizedEntry with tool_use
@@ -549,8 +567,11 @@ const ToolCallCard: React.FC<{
                   <div className="px-2 py-1">
                     {actionType.result?.type.type === 'markdown' &&
                       actionType.result.value && (
-                        <MarkdownRenderer
-                          content={actionType.result.value?.toString()}
+                        <WYSIWYGEditor
+                          placeholder=""
+                          value={actionType.result.value?.toString()}
+                          disabled
+                          taskAttemptId={taskAttemptId}
                         />
                       )}
                     {actionType.result?.type.type === 'json' &&
@@ -622,7 +643,11 @@ function DisplayConversationEntry({
   if (isProcessStart(entry)) {
     return (
       <div className={greyed ? 'opacity-50 pointer-events-none' : undefined}>
-        <ToolCallCard entry={entry} expansionKey={expansionKey} />
+        <ToolCallCard
+          entry={entry}
+          expansionKey={expansionKey}
+          taskAttemptId={taskAttempt?.id}
+        />
       </div>
     );
   }
@@ -664,9 +689,12 @@ function DisplayConversationEntry({
               toolName: feedbackEntry.denied_tool,
             })}
           </div>
-          <MarkdownRenderer
-            content={entry.content}
+          <WYSIWYGEditor
+            placeholder=""
+            value={entry.content}
+            disabled
             className="whitespace-pre-wrap break-words flex flex-col gap-1 font-light py-3"
+            taskAttemptId={taskAttempt?.id}
           />
         </div>
       </div>
@@ -711,6 +739,7 @@ function DisplayConversationEntry({
             expansionKey={expansionKey}
             defaultExpanded={defaultExpanded}
             statusAppearance={statusAppearance}
+            taskAttemptId={taskAttempt?.id}
           />
         );
       }
@@ -720,6 +749,7 @@ function DisplayConversationEntry({
           entry={entry}
           expansionKey={expansionKey}
           forceExpanded={isPendingApproval}
+          taskAttemptId={taskAttempt?.id}
         />
       );
     })();
@@ -761,6 +791,7 @@ function DisplayConversationEntry({
           expansionKey={expansionKey}
           variant={isSystem ? 'system' : 'error'}
           contentClassName={getContentClassName(entryType)}
+          taskAttemptId={taskAttempt?.id}
         />
       </div>
     );
@@ -793,10 +824,13 @@ function DisplayConversationEntry({
     <div className="px-4 py-2 text-sm">
       <div className={getContentClassName(entryType)}>
         {shouldRenderMarkdown(entryType) ? (
-          <MarkdownRenderer
-            content={isNormalizedEntry(entry) ? entry.content : ''}
+          <WYSIWYGEditor
+            placeholder=""
+            value={isNormalizedEntry(entry) ? entry.content : ''}
+            disabled
             className="whitespace-pre-wrap break-words flex flex-col gap-1 font-light"
             enableCopyButton={entryType.type === 'assistant_message'}
+            taskAttemptId={taskAttempt?.id}
           />
         ) : isNormalizedEntry(entry) ? (
           entry.content

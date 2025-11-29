@@ -60,6 +60,14 @@ export type UpdateTask = { title: string | null, description: string | null, sta
 
 export type SharedTask = { id: string, remote_project_id: string, title: string, description: string | null, status: TaskStatus, assignee_user_id: string | null, assignee_first_name: string | null, assignee_last_name: string | null, assignee_username: string | null, version: bigint, last_event_seq: bigint | null, created_at: Date, updated_at: Date, };
 
+export type ScratchPayload = { "type": "draft_task", "data": string } | { "type": "draft_follow_up", "data": string };
+
+export type Scratch = { id: string, payload: ScratchPayload, created_at: string, updated_at: string, };
+
+export type CreateScratch = { payload: ScratchPayload, };
+
+export type UpdateScratch = { payload: ScratchPayload | null, };
+
 export type Image = { id: string, file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, created_at: string, updated_at: string, };
 
 export type CreateImage = { file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, };
@@ -177,6 +185,8 @@ export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id:
 export type CreateGitHubPrRequest = { title: string, body: string | null, target_branch: string | null, };
 
 export type ImageResponse = { id: string, file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, created_at: string, updated_at: string, };
+
+export type TaskAttemptImageMetadata = { exists: boolean, file_name: string | null, path: string | null, size_bytes: bigint | null, format: string | null, proxy_url: string | null, };
 
 export type Config = { config_version: string, theme: ThemeMode, executor_profile: ExecutorProfileId, disclaimer_acknowledged: boolean, onboarding_acknowledged: boolean, notifications: NotificationConfig, editor: EditorConfig, github: GitHubConfig, analytics_enabled: boolean, workspace_dir: string | null, last_app_version: string | null, show_release_notes: boolean, language: UiLanguage, git_branch_prefix: string, showcases: ShowcaseState, };
 

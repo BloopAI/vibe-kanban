@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM scratch WHERE id = $1 AND scratch_type = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "8f3ab3ad20de3261703b0bdaf01a3d3c4289754381b47af7cd97acce767163e8"
+}

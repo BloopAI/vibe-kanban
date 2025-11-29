@@ -1,13 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FollowUpEditorCard } from '@/components/tasks/follow-up/FollowUpEditorCard';
+import WYSIWYGEditor from '@/components/ui/wysiwyg';
+import { useProject } from '@/contexts/ProjectContext';
 import { FollowUpStatusRow } from '@/components/tasks/FollowUpStatusRow';
 import { ImageUploadSection } from '@/components/ui/image-upload-section';
 import { cn } from '@/lib/utils';
 import { VariantSelector } from '@/components/tasks/VariantSelector';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Image as ImageIcon, Send, X } from 'lucide-react';
+import {
+  AlertCircle,
+  Image as ImageIcon,
+  Loader2,
+  Send,
+  X,
+} from 'lucide-react';
 import { useDraftEditor } from '@/hooks/follow-up/useDraftEditor';
 import { useDraftStream } from '@/hooks/follow-up/useDraftStream';
 import { useDraftAutosave } from '@/hooks/follow-up/useDraftAutosave';
@@ -47,6 +54,7 @@ export function RetryEditorInline({
   const { isAttemptRunning, attemptData } = useAttemptExecution(attemptId);
   const { data: branchStatus } = useBranchStatus(attemptId);
   const { profiles } = useUserSystem();
+  const { projectId } = useProject();
 
   // Errors are now reserved for send/cancel; creation occurs outside via useProcessRetry
   const [initError] = useState<string | null>(null);
@@ -261,15 +269,22 @@ export function RetryEditorInline({
         </Alert>
       )}
 
-      <FollowUpEditorCard
-        placeholder="Edit and resend your message…"
-        value={message}
-        onChange={setMessage}
-        onKeyDown={() => void 0}
-        disabled={isSending || !!isFinalizing}
-        showLoadingOverlay={isSending || !!isFinalizing}
-        textareaClassName="bg-background"
-      />
+      <div className="relative">
+        <WYSIWYGEditor
+          placeholder="Edit and resend your message…"
+          value={message}
+          onChange={setMessage}
+          disabled={isSending || !!isFinalizing}
+          className={cn('min-h-[40px]', 'bg-background')}
+          projectId={projectId}
+          taskAttemptId={attemptId}
+        />
+        {(isSending || !!isFinalizing) && (
+          <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-background/60">
+            <Loader2 className="h-4 w-4 animate-spin" />
+          </div>
+        )}
+      </div>
 
       {/* Draft save/load status (no queue/sending for retry) */}
       <FollowUpStatusRow

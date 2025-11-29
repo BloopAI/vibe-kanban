@@ -1,0 +1,60 @@
+import { useCallback } from 'react';
+import { useJsonPatchWsStream } from './useJsonPatchWsStream';
+import { scratchApi, type ScratchType } from '@/lib/api';
+import type { Scratch, UpdateScratch } from 'shared/types';
+
+type ScratchState = {
+  scratch: Scratch | null;
+};
+
+export interface UseScratchResult {
+  scratch: Scratch | null;
+  isLoading: boolean;
+  isConnected: boolean;
+  error: string | null;
+  updateScratch: (update: UpdateScratch) => Promise<void>;
+  deleteScratch: () => Promise<void>;
+}
+
+/**
+ * Stream a single scratch item via WebSocket (JSON Patch).
+ * Server sends the scratch object directly at /scratch.
+ */
+export const useScratch = (
+  scratchType: ScratchType,
+  id: string
+): UseScratchResult => {
+  const endpoint = scratchApi.getStreamUrl(scratchType, id);
+
+  const initialData = useCallback((): ScratchState => ({ scratch: null }), []);
+
+  const { data, isConnected, error } = useJsonPatchWsStream<ScratchState>(
+    endpoint,
+    true,
+    initialData
+  );
+
+  const scratch = data?.scratch ?? null;
+
+  const updateScratch = useCallback(
+    async (update: UpdateScratch) => {
+      await scratchApi.update(scratchType, id, update);
+    },
+    [scratchType, id]
+  );
+
+  const deleteScratch = useCallback(async () => {
+    await scratchApi.delete(scratchType, id);
+  }, [scratchType, id]);
+
+  const isLoading = !data && !error;
+
+  return {
+    scratch,
+    isLoading,
+    isConnected,
+    error,
+    updateScratch,
+    deleteScratch,
+  };
+};

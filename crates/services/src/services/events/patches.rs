@@ -1,6 +1,7 @@
 use db::models::{
     draft::{Draft, DraftType},
     execution_process::ExecutionProcess,
+    scratch::Scratch,
     shared_task::SharedTask as DbSharedTask,
     task::TaskWithAttemptStatus,
     task_attempt::TaskAttempt,
@@ -238,6 +239,49 @@ pub mod task_attempt_patch {
             path: attempt_path(attempt_id)
                 .try_into()
                 .expect("Task attempt path should be valid"),
+        })])
+    }
+}
+
+/// Helper functions for creating scratch-specific patches.
+/// All patches use path "/scratch" - filtering is done by matching id and payload type in the value.
+pub mod scratch_patch {
+    use super::*;
+
+    const SCRATCH_PATH: &str = "/scratch";
+
+    /// Create patch for adding a new scratch
+    pub fn add(scratch: &Scratch) -> Patch {
+        Patch(vec![PatchOperation::Add(AddOperation {
+            path: SCRATCH_PATH
+                .try_into()
+                .expect("Scratch path should be valid"),
+            value: serde_json::to_value(scratch).expect("Scratch serialization should not fail"),
+        })])
+    }
+
+    /// Create patch for updating an existing scratch
+    pub fn replace(scratch: &Scratch) -> Patch {
+        Patch(vec![PatchOperation::Replace(ReplaceOperation {
+            path: SCRATCH_PATH
+                .try_into()
+                .expect("Scratch path should be valid"),
+            value: serde_json::to_value(scratch).expect("Scratch serialization should not fail"),
+        })])
+    }
+
+    /// Create patch for removing a scratch.
+    /// Uses Replace with deleted marker so clients can filter by id and payload type.
+    pub fn remove(scratch_id: Uuid, scratch_type_str: &str) -> Patch {
+        Patch(vec![PatchOperation::Replace(ReplaceOperation {
+            path: SCRATCH_PATH
+                .try_into()
+                .expect("Scratch path should be valid"),
+            value: serde_json::json!({
+                "id": scratch_id,
+                "payload": { "type": scratch_type_str },
+                "deleted": true
+            }),
         })])
     }
 }
