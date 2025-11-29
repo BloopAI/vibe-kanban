@@ -12,6 +12,7 @@ import {
 } from '@lexical/markdown';
 import { ImageNode } from './wysiwyg/nodes/image-node';
 import { IMAGE_TRANSFORMER } from './wysiwyg/transformers/image-transformer';
+import { CODE_BLOCK_TRANSFORMER } from './wysiwyg/transformers/code-block-transformer';
 import { TaskAttemptContext } from './wysiwyg/context/task-attempt-context';
 import { FileTagTypeaheadPlugin } from './wysiwyg/plugins/file-tag-typeahead-plugin';
 import { KeyboardCommandsPlugin } from './wysiwyg/plugins/keyboard-commands-plugin';
@@ -202,9 +203,9 @@ function WYSIWYGEditor({
     undefined
   );
 
-  // Extended transformers with image support (memoized to prevent unnecessary re-renders)
+  // Extended transformers with image and code block support (memoized to prevent unnecessary re-renders)
   const extendedTransformers: Transformer[] = useMemo(
-    () => [IMAGE_TRANSFORMER, ...TRANSFORMERS],
+    () => [IMAGE_TRANSFORMER, CODE_BLOCK_TRANSFORMER, ...TRANSFORMERS],
     []
   );
 
