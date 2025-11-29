@@ -2,8 +2,6 @@ import { useCallback } from 'react';
 import {
   $createTextNode,
   $getNodeByKey,
-  $getSelection,
-  $isNodeSelection,
   DecoratorNode,
   DOMConversionMap,
   DOMExportOutput,
@@ -13,10 +11,11 @@ import {
   Spread,
 } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { useLexicalNodeSelection } from '@lexical/react/useLexicalNodeSelection';
 import { HelpCircle, Loader2 } from 'lucide-react';
 import { useTaskAttemptId } from '../context/task-attempt-context';
 import { useImageMetadata } from '@/hooks/useImageMetadata';
+import { ImagePreviewDialog } from '@/components/dialogs/wysiwyg/ImagePreviewDialog';
+import { formatFileSize } from '@/lib/utils';
 
 export type SerializedImageNode = Spread<
   {
@@ -32,14 +31,6 @@ function truncatePath(path: string, maxLength = 24): string {
   return filename.slice(0, maxLength - 3) + '...';
 }
 
-function formatFileSize(bytes: bigint | null): string {
-  if (!bytes) return '';
-  const num = Number(bytes);
-  if (num < 1024) return `${num} B`;
-  if (num < 1024 * 1024) return `${(num / 1024).toFixed(1)} KB`;
-  return `${(num / (1024 * 1024)).toFixed(1)} MB`;
-}
-
 function ImageComponent({
   src,
   altText,
@@ -50,8 +41,6 @@ function ImageComponent({
   nodeKey: NodeKey;
 }): JSX.Element {
   const [editor] = useLexicalComposerContext();
-  const [isSelected, setSelected, clearSelection] =
-    useLexicalNodeSelection(nodeKey);
   const taskAttemptId = useTaskAttemptId();
 
   const isVibeImage = src.startsWith('.vibe-images/');
@@ -67,14 +56,18 @@ function ImageComponent({
       event.preventDefault();
       event.stopPropagation();
 
-      if (event.shiftKey) {
-        setSelected(!isSelected);
-      } else {
-        clearSelection();
-        setSelected(true);
+      // Open preview dialog if we have a valid image URL
+      if (metadata?.exists && metadata.proxy_url) {
+        ImagePreviewDialog.show({
+          imageUrl: metadata.proxy_url,
+          altText,
+          fileName: metadata.file_name ?? undefined,
+          format: metadata.format ?? undefined,
+          sizeBytes: metadata.size_bytes,
+        });
       }
     },
-    [isSelected, setSelected, clearSelection]
+    [metadata, altText]
   );
 
   const handleDoubleClick = useCallback(
@@ -163,11 +156,7 @@ function ImageComponent({
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-1.5 py-1 bg-muted rounded border align-middle cursor-pointer ${
-        isSelected
-          ? 'border-primary ring-2 ring-primary/20'
-          : 'border-border hover:border-muted-foreground'
-      }`}
+      className="inline-flex items-center gap-1.5 px-1.5 py-1 bg-muted rounded border align-middle cursor-pointer border-border hover:border-muted-foreground"
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
       role="button"
@@ -285,15 +274,4 @@ export function $isImageNode(
   node: LexicalNode | null | undefined
 ): node is ImageNode {
   return node instanceof ImageNode;
-}
-
-export function $getSelectedImageNode(): ImageNode | null {
-  const selection = $getSelection();
-  if (!$isNodeSelection(selection)) return null;
-
-  const nodes = selection.getNodes();
-  if (nodes.length !== 1) return null;
-
-  const node = nodes[0];
-  return $isImageNode(node) ? node : null;
 }

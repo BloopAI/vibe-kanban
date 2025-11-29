@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { Button } from './button';
 import { Alert, AlertDescription } from './alert';
-import { cn } from '@/lib/utils';
+import { cn, formatFileSize } from '@/lib/utils';
 import { imagesApi } from '@/lib/api';
 import type { ImageResponse } from 'shared/types';
 
@@ -212,14 +212,6 @@ export const ImageUploadSection = forwardRef<
       },
       [images, onImagesChange, onDelete]
     );
-
-    const formatFileSize = (bytes: bigint) => {
-      const kb = Number(bytes) / 1024;
-      if (kb < 1024) {
-        return `${kb.toFixed(1)} KB`;
-      }
-      return `${(kb / 1024).toFixed(1)} MB`;
-    };
 
     const content = (
       <div className={cn('space-y-3', className)}>
