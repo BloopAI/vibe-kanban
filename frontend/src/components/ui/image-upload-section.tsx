@@ -12,11 +12,13 @@ import {
   Upload,
   ChevronRight,
   AlertCircle,
+  ImageOff,
 } from 'lucide-react';
 import { Button } from './button';
 import { Alert, AlertDescription } from './alert';
 import { cn } from '@/lib/utils';
 import { imagesApi } from '@/lib/api';
+import { ImageLightboxDialog } from '@/components/dialogs';
 import type { ImageResponse } from 'shared/types';
 
 interface ImageUploadSectionProps {
@@ -78,6 +80,9 @@ export const ImageUploadSection = forwardRef<
       new Set()
     );
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [failedThumbnails, setFailedThumbnails] = useState<Set<string>>(
+      new Set()
+    );
     const fileInputRef = useRef<HTMLInputElement>(null);
     const latestImagesRef = useRef(images);
 
@@ -221,6 +226,27 @@ export const ImageUploadSection = forwardRef<
       return `${(kb / 1024).toFixed(1)} MB`;
     };
 
+    const handleImageClick = useCallback(
+      async (index: number) => {
+        await ImageLightboxDialog.show({
+          images,
+          initialIndex: index,
+          onDelete:
+            !readOnly && onDelete
+              ? async (imageId: string) => {
+                  await handleRemoveImage(imageId);
+                }
+              : undefined,
+          readOnly,
+        });
+      },
+      [images, readOnly, onDelete, handleRemoveImage]
+    );
+
+    const handleThumbnailError = useCallback((imageId: string) => {
+      setFailedThumbnails((prev) => new Set(prev).add(imageId));
+    }, []);
+
     const content = (
       <div className={cn('space-y-3', className)}>
         {/* Error message */}
@@ -279,17 +305,30 @@ export const ImageUploadSection = forwardRef<
         {/* Image previews */}
         {images.length > 0 && (
           <div className="grid grid-cols-2 gap-2">
-            {images.map((image) => (
+            {images.map((image, index) => (
               <div
                 key={image.id}
                 className="relative group border rounded-lg p-2 bg-background"
               >
                 <div className="flex items-center gap-2">
-                  <img
-                    src={imagesApi.getImageUrl(image.id)}
-                    alt={image.original_name}
-                    className="h-16 w-16 object-cover rounded"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => handleImageClick(index)}
+                    className="h-16 w-16 flex-shrink-0 rounded overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    {failedThumbnails.has(image.id) ? (
+                      <div className="h-full w-full flex items-center justify-center bg-muted">
+                        <ImageOff className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                    ) : (
+                      <img
+                        src={imagesApi.getImageUrl(image.id)}
+                        alt={image.original_name}
+                        className="h-full w-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                        onError={() => handleThumbnailError(image.id)}
+                      />
+                    )}
+                  </button>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium truncate">
                       {image.original_name}

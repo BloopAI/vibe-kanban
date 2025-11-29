@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTaskAttempts } from '@/hooks/useTaskAttempts';
 import { useTaskAttempt } from '@/hooks/useTaskAttempt';
+import { useTaskImages } from '@/hooks/useTaskImages';
 import { useNavigateWithSearch } from '@/hooks';
 import { paths } from '@/lib/paths';
 import type { TaskWithAttemptStatus, TaskAttempt } from 'shared/types';
@@ -10,6 +11,7 @@ import { Button } from '../ui/button';
 import { PlusIcon } from 'lucide-react';
 import { CreateAttemptDialog } from '@/components/dialogs/tasks/CreateAttemptDialog';
 import MarkdownRenderer from '@/components/ui/markdown-renderer';
+import { ImageUploadSection } from '@/components/ui/image-upload-section';
 import { DataTable, type ColumnDef } from '@/components/ui/table';
 
 interface TaskPanelProps {
@@ -30,6 +32,8 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
   const { data: parentAttempt, isLoading: isParentLoading } = useTaskAttempt(
     task?.parent_task_attempt || undefined
   );
+
+  const { data: taskImages = [] } = useTaskImages(task?.id);
 
   const formatTimeAgo = (iso: string) => {
     const d = new Date(iso);
@@ -104,7 +108,27 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
           <div className="space-y-3 overflow-y-auto flex-shrink min-h-0">
             <MarkdownRenderer content={titleContent} />
             {descriptionContent && (
-              <MarkdownRenderer content={descriptionContent} />
+              <MarkdownRenderer
+                content={descriptionContent}
+                taskImages={taskImages}
+              />
+            )}
+
+            {/* Read-only image gallery */}
+            {taskImages.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-border">
+                <ImageUploadSection
+                  images={taskImages}
+                  onImagesChange={() => {}}
+                  onUpload={async () => {
+                    throw new Error('Read-only');
+                  }}
+                  readOnly={true}
+                  collapsible={true}
+                  defaultExpanded={true}
+                  hideDropZone={true}
+                />
+              </div>
             )}
           </div>
 

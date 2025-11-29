@@ -7,8 +7,11 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip.tsx';
 import { Button } from '@/components/ui/button.tsx';
-import { Check, Clipboard } from 'lucide-react';
+import { Check, Clipboard, ImageOff } from 'lucide-react';
 import { writeClipboardViaBridge } from '@/vscode/bridge';
+import { ImageLightboxDialog } from '@/components/dialogs';
+import { cn } from '@/lib/utils';
+import type { ImageResponse } from 'shared/types';
 
 const HIGHLIGHT_LINK =
   'rounded-sm bg-muted/50 px-1 py-0.5 underline-offset-2 transition-colors';
@@ -111,21 +114,104 @@ function InlineCodeOverride({
   );
 }
 
+// Check if src is a .vibe-images path
+function isVibeImagePath(src?: string): boolean {
+  if (!src) return false;
+  return src.startsWith('.vibe-images/');
+}
+
+// Find image by matching file_path against taskImages
+function findImageByPath(
+  src: string,
+  taskImages?: ImageResponse[]
+): ImageResponse | null {
+  if (!taskImages) return null;
+  return taskImages.find((img) => img.file_path === src) || null;
+}
+
+// Image override component factory (captures taskImages for lightbox navigation)
+function createImageOverride(taskImages?: ImageResponse[]) {
+  return function ImageOverride({ src, alt }: { src?: string; alt?: string }) {
+    const [error, setError] = useState(false);
+
+    // Check if this is a .vibe-images path and find matching image
+    const isVibeImage = isVibeImagePath(src);
+    const matchedImage = isVibeImage ? findImageByPath(src!, taskImages) : null;
+
+    // Determine the URL to use
+    const imageUrl = matchedImage
+      ? `/api/images/${matchedImage.id}/file`
+      : src || '';
+
+    const handleClick = useCallback(() => {
+      if (!matchedImage) return;
+
+      if (taskImages && taskImages.length > 0) {
+        // Find index of clicked image in task images
+        const index = taskImages.findIndex((img) => img.id === matchedImage.id);
+        void ImageLightboxDialog.show({
+          images: taskImages,
+          initialIndex: index >= 0 ? index : 0,
+          readOnly: true,
+        });
+      } else {
+        // Fallback: single image
+        void ImageLightboxDialog.show({
+          images: [matchedImage],
+          initialIndex: 0,
+          readOnly: true,
+        });
+      }
+    }, [matchedImage]);
+
+    if (error) {
+      return (
+        <span className="inline-flex items-center gap-1 text-muted-foreground text-sm">
+          <ImageOff className="h-4 w-4" />
+          [Image failed to load]
+        </span>
+      );
+    }
+
+    return (
+      <img
+        src={imageUrl}
+        alt={alt || ''}
+        onClick={matchedImage ? handleClick : undefined}
+        onError={() => setError(true)}
+        className={cn(
+          'max-w-full rounded my-2',
+          matchedImage && 'cursor-pointer hover:opacity-90 transition-opacity'
+        )}
+      />
+    );
+  };
+}
+
 interface MarkdownRendererProps {
   content: string;
   className?: string;
   enableCopyButton?: boolean;
+  taskImages?: ImageResponse[]; // For lightbox navigation with all task images
 }
 
 function MarkdownRenderer({
   content,
   className = '',
   enableCopyButton = false,
+  taskImages,
 }: MarkdownRendererProps) {
+  // Create image override dynamically to capture taskImages for lightbox
+  const imageOverride = useMemo(
+    () => createImageOverride(taskImages),
+    [taskImages]
+  );
+
   const overrides = useMemo(
     () => ({
       a: { component: LinkOverride },
       code: { component: InlineCodeOverride },
+      img: { component: imageOverride },
       strong: {
         component: ({ children, ...props }: React.ComponentProps<'strong'>) => (
           <span {...props} className="">
@@ -212,7 +298,7 @@ function MarkdownRenderer({
         ),
       },
     }),
-    []
+    [imageOverride]
   );
 
   const [copied, setCopied] = useState(false);

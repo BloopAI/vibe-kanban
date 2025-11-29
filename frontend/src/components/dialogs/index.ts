@@ -115,3 +115,7 @@ export {
   FolderPickerDialog,
   type FolderPickerDialogProps,
 } from './shared/FolderPickerDialog';
+export {
+  ImageLightboxDialog,
+  type ImageLightboxDialogProps,
+} from './shared/ImageLightboxDialog';

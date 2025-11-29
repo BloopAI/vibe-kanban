@@ -18,7 +18,7 @@ const SharedTaskPanel = ({ task }: SharedTaskPanelProps) => {
           </div>
         </div>
         {task.description ? (
-          <MarkdownRenderer content={task.description} />
+          <MarkdownRenderer content={task.description} taskImages={[]} />
         ) : null}
       </div>
     </NewCardContent>
