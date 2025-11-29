@@ -69,3 +69,25 @@ Agents can still perform system-level actions, so review their work and keep bac
 <Tip>
 To use a fixed port, specify the `PORT` environment variable: `PORT=8080 npx vibe-kanban`
 </Tip>
+
+## Network Access
+
+To access Vibe Kanban from other machines on your network (for example, from your laptop whilst the server runs on your desktop), start the server with the `HOST` environment variable:
+
+```bash
+HOST=0.0.0.0 npx vibe-kanban
+```
+
+Then access from any device on your network using your host machine's IP address (for example, `http://192.168.1.100:3000`).
+
+<Check>
+OAuth authentication works automatically - the frontend uses your access URL for OAuth callbacks.
+</Check>
+
+<Warning>
+Only use `HOST=0.0.0.0` on trusted networks. Consider configuring firewall rules to restrict access to specific IP addresses if needed.
+</Warning>
+
+<Tip>
+Find your host machine's IP address using `hostname -I` (Linux/macOS) or `ipconfig` (Windows).
+</Tip>

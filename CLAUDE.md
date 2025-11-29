@@ -17,6 +17,20 @@ npm run backend:dev     # Backend only (port auto-assigned)
 ./build-npm-package.sh
 ```
 
+### Network Access (Development)
+
+To access Vibe Kanban from other machines on your network:
+
+```bash
+HOST=0.0.0.0 pnpm run dev
+```
+
+Then access from any machine using the host machine's IP address (e.g., `http://192.168.1.100:3000`).
+
+OAuth authentication works automatically - the frontend uses `window.location.origin` which captures the correct network address.
+
+**Security note**: Only use `HOST=0.0.0.0` on trusted networks. Consider firewall rules to restrict access.
+
 ### Testing & Validation
 ```bash
 # Run all checks (frontend + backend)
