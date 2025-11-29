@@ -457,8 +457,7 @@ impl EventService {
     {
         let scratch = Scratch::find_by_id(&self.db.pool, scratch_id, scratch_type)
             .await
-            .map_err(|_| EventError::Other(anyhow!("Failed to get scratch item")))?
-            .ok_or_else(|| EventError::Other(anyhow!("Scratch not found")))?;
+            .map_err(|_| EventError::Other(anyhow!("Failed to get scratch item")))?;
 
         let initial_patch = json!([{
             "op": "replace",

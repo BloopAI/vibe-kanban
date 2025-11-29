@@ -151,6 +151,9 @@ export function TaskFollowUpSection({
   const saveToScratch = useCallback(
     async (message: string, variant: string | null) => {
       if (!selectedAttemptId) return;
+      // Don't create empty scratch entries - only save if there's actual content
+      // or if scratch already exists (to allow clearing a draft)
+      if (!message.trim() && !scratch) return;
       try {
         await updateScratch({
           payload: {
@@ -162,7 +165,7 @@ export function TaskFollowUpSection({
         console.error('Failed to save follow-up draft', e);
       }
     },
-    [selectedAttemptId, updateScratch]
+    [selectedAttemptId, updateScratch, scratch]
   );
 
   // Wrapper to update variant and save to scratch immediately

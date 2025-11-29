@@ -47,7 +47,7 @@ export const useScratch = (
     await scratchApi.delete(scratchType, id);
   }, [scratchType, id]);
 
-  const isLoading = !data && !error;
+  const isLoading = !data && !error && !isConnected;
 
   return {
     scratch,
