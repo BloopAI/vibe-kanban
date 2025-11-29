@@ -277,6 +277,7 @@ export function RetryEditorInline({
           disabled={isSending || !!isFinalizing}
           className={cn('min-h-[40px]', 'bg-background')}
           projectId={projectId}
+          taskAttemptId={attemptId}
         />
         {(isSending || !!isFinalizing) && (
           <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-background/60">

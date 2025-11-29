@@ -12,6 +12,7 @@ import {
 } from '@lexical/markdown';
 import { ImageNode } from './wysiwyg/nodes/image-node';
 import { IMAGE_TRANSFORMER } from './wysiwyg/transformers/image-transformer';
+import { TaskAttemptContext } from './wysiwyg/context/task-attempt-context';
 import { FileTagTypeaheadPlugin } from './wysiwyg/plugins/file-tag-typeahead-plugin';
 import { KeyboardCommandsPlugin } from './wysiwyg/plugins/keyboard-commands-plugin';
 import { ImageKeyboardPlugin } from './wysiwyg/plugins/image-keyboard-plugin';
@@ -55,6 +56,8 @@ type WysiwygProps = {
   onShiftCmdEnter?: () => void;
   /** Show copy-to-clipboard button on hover */
   enableCopyButton?: boolean;
+  /** Task attempt ID for resolving .vibe-images paths */
+  taskAttemptId?: string;
 };
 
 function WYSIWYGEditor({
@@ -71,6 +74,7 @@ function WYSIWYGEditor({
   onCmdEnter,
   onShiftCmdEnter,
   enableCopyButton = false,
+  taskAttemptId,
 }: WysiwygProps) {
   // Copy button state
   const [copied, setCopied] = useState(false);
@@ -143,89 +147,82 @@ function WYSIWYGEditor({
 
   const editorContent = (
     <div className="wysiwyg">
-      <LexicalComposer initialConfig={initialConfig}>
-        <EditablePlugin editable={!disabled} />
-        <div className="relative">
-          <RichTextPlugin
-            contentEditable={
-              <ContentEditable
-                className={cn(
-                  'outline-none text-sm',
-                  !disabled && 'min-h-[200px]',
-                  className
-                )}
-                aria-label={disabled ? 'Markdown content' : 'Markdown editor'}
-                onPaste={(event) => {
-                  if (!onPasteFiles || disabled) return;
+      <TaskAttemptContext.Provider value={taskAttemptId}>
+        <LexicalComposer initialConfig={initialConfig}>
+          <EditablePlugin editable={!disabled} />
+          <div className="relative">
+            <RichTextPlugin
+              contentEditable={
+                <ContentEditable
+                  className={cn(
+                    'outline-none text-sm',
+                    !disabled && 'min-h-[200px]',
+                    className
+                  )}
+                  aria-label={disabled ? 'Markdown content' : 'Markdown editor'}
+                  onPaste={(event) => {
+                    if (!onPasteFiles || disabled) return;
 
-                  const dt = event.clipboardData;
-                  if (!dt) return;
+                    const dt = event.clipboardData;
+                    if (!dt) return;
 
-                  const files: File[] = Array.from(dt.files || []).filter((f) =>
-                    f.type.startsWith('image/')
-                  );
+                    const files: File[] = Array.from(dt.files || []).filter(
+                      (f) => f.type.startsWith('image/')
+                    );
 
-                  if (files.length > 0) {
-                    onPasteFiles(files);
-                  }
-                }}
-                onFocus={() => onFocusChange?.(true)}
-                onBlur={() => onFocusChange?.(false)}
+                    if (files.length > 0) {
+                      onPasteFiles(files);
+                    }
+                  }}
+                  onFocus={() => onFocusChange?.(true)}
+                  onBlur={() => onFocusChange?.(false)}
+                />
+              }
+              placeholder={
+                !disabled ? (
+                  <div className="absolute top-0 left-0 text-sm text-secondary-foreground pointer-events-none">
+                    {placeholder}
+                  </div>
+                ) : null
+              }
+              ErrorBoundary={LexicalErrorBoundary}
+            />
+          </div>
+
+          <ListPlugin />
+          {/* Only include editing plugins when not in read-only mode */}
+          {!disabled && (
+            <>
+              <HistoryPlugin />
+              <MarkdownShortcutPlugin transformers={extendedTransformers} />
+              <FileTagTypeaheadPlugin projectId={projectId} />
+              <KeyboardCommandsPlugin
+                onCmdEnter={onCmdEnter}
+                onShiftCmdEnter={onShiftCmdEnter}
               />
-            }
-            placeholder={
-              !disabled ? (
-                <div className="absolute top-0 left-0 text-sm text-secondary-foreground pointer-events-none">
-                  {placeholder}
-                </div>
-              ) : null
-            }
-            ErrorBoundary={LexicalErrorBoundary}
+              <ImageKeyboardPlugin />
+            </>
+          )}
+          {/* Link sanitization for read-only mode */}
+          {disabled && <ReadOnlyLinkPlugin />}
+
+          {/* Apply external controlled value (markdown) */}
+          <MarkdownValuePlugin
+            value={value}
+            lastSerializedRef={lastSerializedRef}
+            transformers={extendedTransformers}
           />
-        </div>
 
-        <ListPlugin />
-        {/* Only include editing plugins when not in read-only mode */}
-        {!disabled && (
-          <>
-            <HistoryPlugin />
-            <MarkdownShortcutPlugin transformers={extendedTransformers} />
-            <FileTagTypeaheadPlugin projectId={projectId} />
-            <KeyboardCommandsPlugin
-              onCmdEnter={onCmdEnter}
-              onShiftCmdEnter={onShiftCmdEnter}
-            />
-            <ImageKeyboardPlugin />
-          </>
-        )}
-        {/* Link sanitization for read-only mode */}
-        {disabled && <ReadOnlyLinkPlugin />}
-
-        {/* Emit markdown on change */}
-        <MarkdownOnChangePlugin
-          onSerializedChange={onChange}
-          onEditorStateChange={onEditorStateChange}
-          lastSerializedRef={lastSerializedRef}
-          transformers={extendedTransformers}
-        />
-
-        {/* Apply external controlled value (markdown) */}
-        <MarkdownValuePlugin
-          value={value}
-          lastSerializedRef={lastSerializedRef}
-          transformers={extendedTransformers}
-        />
-
-        {/* Apply defaultValue once in uncontrolled mode */}
-        {
-          value === undefined && defaultValue ? (
-            <JsonDefaultValuePlugin
-              defaultValue={defaultValue}
-              lastSerializedRef={lastSerializedRef}
-            />
-          ) : null
-        }
-      </LexicalComposer >
+          {/* Apply defaultValue once in uncontrolled mode */}
+          {
+            value === undefined && defaultValue ? (
+              <JsonDefaultValuePlugin
+                defaultValue={defaultValue}
+                lastSerializedRef={lastSerializedRef}
+              />
+            ) : null
+          }
+        </LexicalComposer >
     </div >
   );
 

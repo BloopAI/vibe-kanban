@@ -268,7 +268,15 @@ const CollapsibleEntry: React.FC<{
   expansionKey: string;
   variant: CollapsibleVariant;
   contentClassName: string;
-}> = ({ content, markdown, expansionKey, variant, contentClassName }) => {
+  taskAttemptId?: string;
+}> = ({
+  content,
+  markdown,
+  expansionKey,
+  variant,
+  contentClassName,
+  taskAttemptId,
+}) => {
   const multiline = content.includes('\n');
   const [expanded, toggle] = useExpandable(`entry:${expansionKey}`, false);
 
@@ -280,6 +288,7 @@ const CollapsibleEntry: React.FC<{
           value={content}
           disabled
           className="whitespace-pre-wrap break-words"
+          taskAttemptId={taskAttemptId}
         />
       ) : (
         content
@@ -296,6 +305,7 @@ const CollapsibleEntry: React.FC<{
           value={firstLine}
           disabled
           className="whitespace-pre-wrap break-words"
+          taskAttemptId={taskAttemptId}
         />
       ) : (
         firstLine
@@ -358,11 +368,13 @@ const PlanPresentationCard: React.FC<{
   expansionKey: string;
   defaultExpanded?: boolean;
   statusAppearance?: ToolStatusAppearance;
+  taskAttemptId?: string;
 }> = ({
   plan,
   expansionKey,
   defaultExpanded = false,
   statusAppearance = 'default',
+  taskAttemptId,
 }) => {
   const { t } = useTranslation('common');
   const [expanded, toggle] = useExpandable(
@@ -414,6 +426,7 @@ const PlanPresentationCard: React.FC<{
                 disabled
                 className="whitespace-pre-wrap break-words"
                 enableCopyButton
+                taskAttemptId={taskAttemptId}
               />
             </div>
           </div>
@@ -427,7 +440,8 @@ const ToolCallCard: React.FC<{
   entry: NormalizedEntry | ProcessStartPayload;
   expansionKey: string;
   forceExpanded?: boolean;
-}> = ({ entry, expansionKey, forceExpanded = false }) => {
+  taskAttemptId?: string;
+}> = ({ entry, expansionKey, forceExpanded = false, taskAttemptId }) => {
   const { t } = useTranslation('common');
 
   // Determine if this is a NormalizedEntry with tool_use
@@ -557,6 +571,7 @@ const ToolCallCard: React.FC<{
                           placeholder=""
                           value={actionType.result.value?.toString()}
                           disabled
+                          taskAttemptId={taskAttemptId}
                         />
                       )}
                     {actionType.result?.type.type === 'json' &&
@@ -628,7 +643,11 @@ function DisplayConversationEntry({
   if (isProcessStart(entry)) {
     return (
       <div className={greyed ? 'opacity-50 pointer-events-none' : undefined}>
-        <ToolCallCard entry={entry} expansionKey={expansionKey} />
+        <ToolCallCard
+          entry={entry}
+          expansionKey={expansionKey}
+          taskAttemptId={taskAttempt?.id}
+        />
       </div>
     );
   }
@@ -675,6 +694,7 @@ function DisplayConversationEntry({
             value={entry.content}
             disabled
             className="whitespace-pre-wrap break-words flex flex-col gap-1 font-light py-3"
+            taskAttemptId={taskAttempt?.id}
           />
         </div>
       </div>
@@ -719,6 +739,7 @@ function DisplayConversationEntry({
             expansionKey={expansionKey}
             defaultExpanded={defaultExpanded}
             statusAppearance={statusAppearance}
+            taskAttemptId={taskAttempt?.id}
           />
         );
       }
@@ -728,6 +749,7 @@ function DisplayConversationEntry({
           entry={entry}
           expansionKey={expansionKey}
           forceExpanded={isPendingApproval}
+          taskAttemptId={taskAttempt?.id}
         />
       );
     })();
@@ -769,6 +791,7 @@ function DisplayConversationEntry({
           expansionKey={expansionKey}
           variant={isSystem ? 'system' : 'error'}
           contentClassName={getContentClassName(entryType)}
+          taskAttemptId={taskAttempt?.id}
         />
       </div>
     );
@@ -807,6 +830,7 @@ function DisplayConversationEntry({
             disabled
             className="whitespace-pre-wrap break-words flex flex-col gap-1 font-light"
             enableCopyButton={entryType.type === 'assistant_message'}
+            taskAttemptId={taskAttempt?.id}
           />
         ) : isNormalizedEntry(entry) ? (
           entry.content
