@@ -18,6 +18,7 @@ import { KeyboardCommandsPlugin } from './wysiwyg/plugins/keyboard-commands-plug
 import { ImageKeyboardPlugin } from './wysiwyg/plugins/image-keyboard-plugin';
 import { ReadOnlyLinkPlugin } from './wysiwyg/plugins/read-only-link-plugin';
 import { ToolbarPlugin } from './wysiwyg/plugins/toolbar-plugin';
+import { CodeBlockShortcutPlugin } from './wysiwyg/plugins/code-block-shortcut-plugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { ListNode, ListItemNode } from '@lexical/list';
@@ -204,6 +205,7 @@ function WYSIWYGEditor({
                 onShiftCmdEnter={onShiftCmdEnter}
               />
               <ImageKeyboardPlugin />
+              <CodeBlockShortcutPlugin />
             </>
           )}
           {/* Link sanitization for read-only mode */}
