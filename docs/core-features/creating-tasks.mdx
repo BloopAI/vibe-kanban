@@ -30,6 +30,42 @@ When adding a task, you can insert reusable text snippets using task tags:
 Task tags save time by providing reusable text snippets for common task structures. Learn more in the [Task Tags](/configuration-customisation/creating-task-tags) guide.
 </Note>
 
+## Attaching Images to Tasks
+
+You can attach images to task descriptions to provide visual context for coding agents. This is useful for:
+
+- **UI mockups and designs** that agents should implement
+- **Screenshots of bugs** or issues that need fixing
+- **Diagrams and architecture** references
+- **Error messages** or console output
+
+### Adding Images
+
+When editing a task description, you can add images by:
+
+1. **Drag and drop** - Drag image files directly onto the description area
+2. **Click to upload** - Click the upload area to select files from your computer
+
+Supported formats include PNG, JPEG, GIF, WebP, BMP, and SVG (max 20MB per file).
+
+### Viewing Images
+
+Images appear in two places when viewing a task:
+
+- **Inline in markdown** - Images embedded in the description render directly in the text
+- **Image gallery** - A collapsible gallery below the description shows all attached images
+
+Click any image thumbnail to open it in a full-screen lightbox where you can:
+
+- **Navigate** between images using arrow keys or on-screen buttons
+- **Download** the current image (press `D`)
+- **Delete** images when in edit mode
+- **View metadata** including filename, size, and dimensions
+
+<Tip>
+Coding agents can access attached images via their file paths, making them useful for tasks that require visual understanding like UI implementation or bug reproduction.
+</Tip>
+
 ## Starting an Existing Task
 
 <Frame>
