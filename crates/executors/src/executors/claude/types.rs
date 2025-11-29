@@ -77,6 +77,12 @@ pub enum ControlRequestType {
         #[serde(skip_serializing_if = "Option::is_none")]
         tool_use_id: Option<String>,
     },
+    /// AskUserQuestion control request for asking structured questions
+    AskUserQuestion {
+        questions: Vec<workspace_utils::approvals::Question>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        tool_use_id: Option<String>,
+    },
 }
 
 /// Result of permission check

@@ -19,11 +19,27 @@ use sqlx::{Error as SqlxError, SqlitePool};
 use thiserror::Error;
 use tokio::sync::{RwLock, oneshot};
 use utils::{
-    approvals::{ApprovalRequest, ApprovalResponse, ApprovalStatus},
+    approvals::{ApprovalRequest, ApprovalResponse, ApprovalStatus, Question},
     log_msg::LogMsg,
     msg_store::MsgStore,
 };
 use uuid::Uuid;
+
+/// Response data from an approval/question response
+#[derive(Debug, Clone)]
+pub struct ApprovalResponseData {
+    pub status: ApprovalStatus,
+    pub answers: Option<HashMap<String, String>>,
+}
+
+impl Default for ApprovalResponseData {
+    fn default() -> Self {
+        Self {
+            status: ApprovalStatus::TimedOut,
+            answers: None,
+        }
+    }
+}
 
 #[derive(Debug)]
 struct PendingApproval {
@@ -31,10 +47,11 @@ struct PendingApproval {
     entry: NormalizedEntry,
     execution_process_id: Uuid,
     tool_name: String,
-    response_tx: oneshot::Sender<ApprovalStatus>,
+    questions: Option<Vec<Question>>,
+    response_tx: oneshot::Sender<ApprovalResponseData>,
 }
 
-type ApprovalWaiter = Shared<BoxFuture<'static, ApprovalStatus>>;
+type ApprovalWaiter = Shared<BoxFuture<'static, ApprovalResponseData>>;
 
 #[derive(Debug)]
 pub struct ToolContext {
@@ -80,22 +97,35 @@ impl Approvals {
     ) -> Result<(ApprovalRequest, ApprovalWaiter), ApprovalError> {
         let (tx, rx) = oneshot::channel();
         let waiter: ApprovalWaiter = rx
-            .map(|result| result.unwrap_or(ApprovalStatus::TimedOut))
+            .map(|result| result.unwrap_or_default())
             .boxed()
             .shared();
         let req_id = request.id.clone();
+        let is_question = request.questions.is_some();
 
         if let Some(store) = self.msg_store_by_id(&request.execution_process_id).await {
             // Find the matching tool use entry by name and input
             let matching_tool = find_matching_tool_use(store.clone(), &request.tool_call_id);
 
             if let Some((idx, matching_tool)) = matching_tool {
-                let approval_entry = matching_tool
-                    .with_tool_status(ToolStatus::PendingApproval {
+                // Use PendingQuestion status for AskUserQuestion, PendingApproval otherwise
+                let tool_status = if let Some(ref questions) = request.questions {
+                    ToolStatus::PendingQuestion {
+                        question_id: req_id.clone(),
+                        questions: questions.clone(),
+                        requested_at: request.created_at,
+                        timeout_at: request.timeout_at,
+                    }
+                } else {
+                    ToolStatus::PendingApproval {
                         approval_id: req_id.clone(),
                         requested_at: request.created_at,
                         timeout_at: request.timeout_at,
-                    })
+                    }
+                };
+
+                let approval_entry = matching_tool
+                    .with_tool_status(tool_status)
                     .ok_or(ApprovalError::NoToolUseEntry)?;
                 store.push_patch(ConversationPatch::replace(idx, approval_entry));
 
@@ -106,11 +136,13 @@ impl Approvals {
                         entry: matching_tool,
                         execution_process_id: request.execution_process_id,
                         tool_name: request.tool_name.clone(),
+                        questions: request.questions.clone(),
                         response_tx: tx,
                     },
                 );
                 tracing::debug!(
-                    "Created approval {} for tool '{}' at entry index {}",
+                    "Created {} {} for tool '{}' at entry index {}",
+                    if is_question { "question" } else { "approval" },
                     req_id,
                     request.tool_name,
                     idx
@@ -142,7 +174,13 @@ impl Approvals {
     ) -> Result<(ApprovalStatus, ToolContext), ApprovalError> {
         if let Some((_, p)) = self.pending.remove(id) {
             self.completed.insert(id.to_string(), req.status.clone());
-            let _ = p.response_tx.send(req.status.clone());
+
+            // Send response data including answers if present
+            let response_data = ApprovalResponseData {
+                status: req.status.clone(),
+                answers: req.answers.clone(),
+            };
+            let _ = p.response_tx.send(response_data);
 
             if let Some(store) = self.msg_store_by_id(&p.execution_process_id).await {
                 let status = ToolStatus::from_approval_status(&req.status).ok_or(
@@ -207,18 +245,18 @@ impl Approvals {
         let deadline = tokio::time::Instant::now() + to_wait;
 
         tokio::spawn(async move {
-            let status = tokio::select! {
+            let response_data = tokio::select! {
                 biased;
 
                 resolved = waiter.clone() => resolved,
-                _ = tokio::time::sleep_until(deadline) => ApprovalStatus::TimedOut,
+                _ = tokio::time::sleep_until(deadline) => ApprovalResponseData::default(),
             };
 
-            let is_timeout = matches!(&status, ApprovalStatus::TimedOut);
-            completed.insert(id.clone(), status.clone());
+            let is_timeout = matches!(&response_data.status, ApprovalStatus::TimedOut);
+            completed.insert(id.clone(), response_data.status.clone());
 
             if is_timeout && let Some((_, pending_approval)) = pending.remove(&id) {
-                if pending_approval.response_tx.send(status.clone()).is_err() {
+                if pending_approval.response_tx.send(response_data.clone()).is_err() {
                     tracing::debug!("approval '{}' timeout notification receiver dropped", id);
                 }
 
