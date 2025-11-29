@@ -103,7 +103,8 @@ function WYSIWYGEditor({
           h5: 'mt-2 mb-1 text-sm font-medium',
           h6: 'mt-2 mb-1 text-xs font-medium uppercase tracking-wide',
         },
-        quote: 'my-3 border-l-2 border-muted pl-3 text-muted-foreground italic',
+        quote:
+          'my-3 border-l-4 border-primary-foreground pl-4 text-muted-foreground',
         list: {
           ul: 'my-1 list-disc list-inside',
           ol: 'my-1 list-decimal list-inside',
