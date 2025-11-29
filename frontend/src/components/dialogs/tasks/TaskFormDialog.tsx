@@ -67,11 +67,11 @@ export type TaskFormDialogProps =
   | { mode: 'edit'; projectId: string; task: Task }
   | { mode: 'duplicate'; projectId: string; initialTask: Task }
   | {
-    mode: 'subtask';
-    projectId: string;
-    parentTaskAttemptId: string;
-    initialBaseBranch: string;
-  };
+      mode: 'subtask';
+      projectId: string;
+      parentTaskAttemptId: string;
+      initialBaseBranch: string;
+    };
 
 type TaskFormValues = {
   title: string;

@@ -206,6 +206,14 @@ function WYSIWYGEditor({
           {/* Link sanitization for read-only mode */}
           {disabled && <ReadOnlyLinkPlugin />}
 
+          {/* Emit markdown on change */}
+          <MarkdownOnChangePlugin
+            onSerializedChange={onChange}
+            onEditorStateChange={onEditorStateChange}
+            lastSerializedRef={lastSerializedRef}
+            transformers={extendedTransformers}
+          />
+
           {/* Apply external controlled value (markdown) */}
           <MarkdownValuePlugin
             value={value}
@@ -214,16 +222,16 @@ function WYSIWYGEditor({
           />
 
           {/* Apply defaultValue once in uncontrolled mode */}
-          {
-            value === undefined && defaultValue ? (
-              <JsonDefaultValuePlugin
-                defaultValue={defaultValue}
-                lastSerializedRef={lastSerializedRef}
-              />
-            ) : null
-          }
-        </LexicalComposer >
-    </div >
+          {value === undefined && defaultValue ? (
+            <MarkdownDefaultValuePlugin
+              defaultValue={defaultValue}
+              lastSerializedRef={lastSerializedRef}
+              transformers={extendedTransformers}
+            />
+          ) : null}
+        </LexicalComposer>
+      </TaskAttemptContext.Provider>
+    </div>
   );
 
   // Wrap with copy button if enabled

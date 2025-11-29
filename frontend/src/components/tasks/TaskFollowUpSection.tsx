@@ -211,7 +211,13 @@ export function TaskFollowUpSection({
       clearComments,
       clearClickedElements,
       jumpToLogsTab,
-      onAfterSendCleanup: () => { },
+      onAfterSendCleanup: async () => {
+        try {
+          await deleteScratch();
+        } catch (e) {
+          // Ignore errors when deleting scratch
+        }
+      },
       setMessage: setFollowUpMessage,
     });
 
@@ -253,9 +259,9 @@ export function TaskFollowUpSection({
     // Allow sending if conflict instructions, review comments, clicked elements, or message is present
     return Boolean(
       conflictResolutionInstructions ||
-      reviewMarkdown ||
-      clickedMarkdown ||
-      followUpMessage.trim()
+        reviewMarkdown ||
+        clickedMarkdown ||
+        followUpMessage.trim()
     );
   }, [
     canTypeFollowUp,
@@ -457,88 +463,6 @@ export function TaskFollowUpSection({
                         ? t('followUp.resolveConflicts')
                         : t('followUp.send')}
                     </>
-                  )}
-                </Button>
-                {isQueued && (
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="min-w-[180px] transition-all"
-                    onClick={async () => {
-                      setIsUnqueuing(true);
-                      try {
-                        const ok = await onUnqueue();
-                        if (ok) setQueuedOptimistic(false);
-                      } finally {
-                        setIsUnqueuing(false);
-                      }
-                    }}
-                    disabled={isUnqueuing}
-                  >
-                    {isUnqueuing ? (
-                      <>
-                        <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                        {t('followUp.unqueuing')}
-                      </>
-                    ) : (
-                      t('followUp.edit')
-                    )}
-                  </Button>
-                )}
-              </div>
-            )}
-            {isAttemptRunning && (
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={async () => {
-                    if (displayQueued) {
-                      setIsUnqueuing(true);
-                      try {
-                        const ok = await onUnqueue();
-                        if (ok) setQueuedOptimistic(false);
-                      } finally {
-                        setIsUnqueuing(false);
-                      }
-                    } else {
-                      setIsQueuing(true);
-                      try {
-                        const ok = await onQueue();
-                        if (ok) setQueuedOptimistic(true);
-                      } finally {
-                        setIsQueuing(false);
-                      }
-                    }
-                  }}
-                  disabled={
-                    displayQueued
-                      ? isUnqueuing
-                      : !canSendFollowUp ||
-                      !isDraftLoaded ||
-                      isQueuing ||
-                      isUnqueuing ||
-                      !!draft?.sending ||
-                      isRetryActive
-                  }
-                  size="sm"
-                  variant="default"
-                  className="md:min-w-[180px] transition-all"
-                >
-                  {displayQueued ? (
-                    isUnqueuing ? (
-                      <>
-                        <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                        {t('followUp.unqueuing')}
-                      </>
-                    ) : (
-                      t('followUp.edit')
-                    )
-                  ) : isQueuing ? (
-                    <>
-                      <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                      {t('followUp.queuing')}
-                    </>
-                  ) : (
-                    t('followUp.queueForNextTurn')
                   )}
                 </Button>
               </div>

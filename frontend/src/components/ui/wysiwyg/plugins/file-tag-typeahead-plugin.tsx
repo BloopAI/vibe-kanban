@@ -167,10 +167,11 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
                       return (
                         <div
                           key={option.key}
-                          className={`px-3 py-2 cursor-pointer text-sm ${index === selectedIndex
+                          className={`px-3 py-2 cursor-pointer text-sm ${
+                            index === selectedIndex
                               ? 'bg-muted text-foreground'
                               : 'hover:bg-muted'
-                            }`}
+                          }`}
                           onMouseEnter={() => setHighlightedIndex(index)}
                           onClick={() => selectOptionAndCleanUp(option)}
                         >
@@ -203,10 +204,11 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
                       return (
                         <div
                           key={option.key}
-                          className={`px-3 py-2 cursor-pointer text-sm ${index === selectedIndex
+                          className={`px-3 py-2 cursor-pointer text-sm ${
+                            index === selectedIndex
                               ? 'bg-muted text-foreground'
                               : 'hover:bg-muted'
-                            }`}
+                          }`}
                           onMouseEnter={() => setHighlightedIndex(index)}
                           onClick={() => selectOptionAndCleanUp(option)}
                         >
