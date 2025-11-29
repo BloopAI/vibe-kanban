@@ -38,6 +38,7 @@ fn generate_types_content() -> String {
         db::models::task::CreateTask::decl(),
         db::models::task::UpdateTask::decl(),
         db::models::shared_task::SharedTask::decl(),
+        db::models::scratch::DraftFollowUpData::decl(),
         db::models::scratch::ScratchPayload::decl(),
         db::models::scratch::Scratch::decl(),
         db::models::scratch::CreateScratch::decl(),

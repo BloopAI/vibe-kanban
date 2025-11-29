@@ -23,7 +23,11 @@ import { ClickedElementsBanner } from '@/components/tasks/ClickedElementsBanner'
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useRetryUi } from '@/contexts/RetryUiContext';
 import { useFollowUpSend } from '@/hooks/follow-up/useFollowUpSend';
-import type { ExecutorAction, ExecutorProfileId } from 'shared/types';
+import type {
+  DraftFollowUpData,
+  ExecutorAction,
+  ExecutorProfileId,
+} from 'shared/types';
 import { buildResolveConflictsInstructions } from '@/lib/conflicts';
 import { useTranslation } from 'react-i18next';
 import { useScratch } from '@/hooks/useScratch';
@@ -86,39 +90,24 @@ export function TaskFollowUpSection({
   ]);
 
   // Editor state (persisted via scratch)
-  const { scratch, updateScratch, deleteScratch } = useScratch(
-    'draft_follow_up',
-    selectedAttemptId ?? ''
-  );
+  const {
+    scratch,
+    updateScratch,
+    deleteScratch,
+    isLoading: isScratchLoading,
+  } = useScratch('draft_follow_up', selectedAttemptId ?? '');
 
-  // Derive the message from scratch, defaulting to empty string
-  // Data is now a simple markdown string
-  const followUpMessage = scratch?.payload?.data ?? '';
-
-  // Debounced save to scratch
-  const saveScratch = useCallback(
-    async (value: string) => {
-      if (!selectedAttemptId) return;
-      try {
-        await updateScratch({
-          payload: {
-            type: 'draft_follow_up',
-            data: value, // markdown string
-          },
-        });
-      } catch (e) {
-        console.error('Failed to save follow-up draft', e);
-      }
-    },
-    [selectedAttemptId, updateScratch]
-  );
-
-  const setFollowUpMessage = useDebouncedCallback(saveScratch, 500);
+  // Derive the message and variant from scratch
+  const scratchData: DraftFollowUpData | undefined =
+    scratch?.payload?.type === 'draft_follow_up'
+      ? scratch.payload.data
+      : undefined;
+  const followUpMessage = scratchData?.message ?? '';
 
   // Track whether the follow-up textarea is focused
   const [isTextareaFocused, setIsTextareaFocused] = useState(false);
 
-  // Variant selection (inlined from useDefaultVariant)
+  // Variant selection - derive default from latest process
   const latestProfileId = useMemo<ExecutorProfileId | null>(() => {
     if (!processes?.length) return null;
 
@@ -150,13 +139,64 @@ export function TaskFollowUpSection({
 
   const defaultFollowUpVariant = latestProfileId?.variant ?? null;
 
-  const [selectedVariant, setSelectedVariant] = useState<string | null>(
-    defaultFollowUpVariant
+  // Variant state: initialized to null, will be set once scratch loads
+  const [selectedVariant, setSelectedVariantState] = useState<string | null>(
+    null
   );
-  useEffect(
-    () => setSelectedVariant(defaultFollowUpVariant),
-    [defaultFollowUpVariant]
+
+  // Ref to track current variant for use in message save callback
+  const variantRef = useRef<string | null>(null);
+
+  // Save scratch helper (used for both message and variant changes)
+  const saveToScratch = useCallback(
+    async (message: string, variant: string | null) => {
+      if (!selectedAttemptId) return;
+      try {
+        await updateScratch({
+          payload: {
+            type: 'draft_follow_up',
+            data: { message, variant },
+          },
+        });
+      } catch (e) {
+        console.error('Failed to save follow-up draft', e);
+      }
+    },
+    [selectedAttemptId, updateScratch]
   );
+
+  // Wrapper to update variant and save to scratch immediately
+  const setSelectedVariant = useCallback(
+    (variant: string | null) => {
+      setSelectedVariantState(variant);
+      variantRef.current = variant;
+      // Save immediately when user changes variant
+      saveToScratch(followUpMessage, variant);
+    },
+    [followUpMessage, saveToScratch]
+  );
+
+  // Debounced save for message changes (uses current variant from ref)
+  const setFollowUpMessage = useDebouncedCallback(
+    useCallback(
+      (value: string) => saveToScratch(value, variantRef.current),
+      [saveToScratch]
+    ),
+    500
+  );
+
+  // Sync variant: wait for scratch to load, then use scratch variant or default
+  useEffect(() => {
+    if (isScratchLoading) return;
+
+    if (scratchData?.variant !== undefined) {
+      setSelectedVariantState(scratchData.variant);
+      variantRef.current = scratchData.variant;
+    } else {
+      setSelectedVariantState(defaultFollowUpVariant);
+      variantRef.current = defaultFollowUpVariant;
+    }
+  }, [isScratchLoading, defaultFollowUpVariant, scratchData]);
 
   const currentProfile = useMemo(() => {
     if (!latestProfileId) return null;
@@ -362,142 +402,148 @@ export function TaskFollowUpSection({
     refetchAttemptBranch,
   ]);
 
+  if (!selectedAttemptId) return null;
+
+  if (isScratchLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="animate-spin h-6 w-6" />
+      </div>
+    );
+  }
+
   return (
-    selectedAttemptId && (
-      <div
-        className={cn(
-          'grid h-full min-h-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden focus-within:ring ring-inset',
-          isRetryActive && 'opacity-50'
-        )}
-      >
-        {/* Scrollable content area */}
-        <div className="overflow-y-auto min-h-0 p-4">
+    <div
+      className={cn(
+        'grid h-full min-h-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden focus-within:ring ring-inset',
+        isRetryActive && 'opacity-50'
+      )}
+    >
+      {/* Scrollable content area */}
+      <div className="overflow-y-auto min-h-0 p-4">
+        <div className="space-y-2">
+          {followUpError && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{followUpError}</AlertDescription>
+            </Alert>
+          )}
           <div className="space-y-2">
-            {followUpError && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{followUpError}</AlertDescription>
-              </Alert>
-            )}
-            <div className="space-y-2">
-              {/* Review comments preview */}
-              {reviewMarkdown && (
-                <div className="mb-4">
-                  <div className="text-sm whitespace-pre-wrap break-words rounded-md border bg-muted p-3">
-                    {reviewMarkdown}
-                  </div>
+            {/* Review comments preview */}
+            {reviewMarkdown && (
+              <div className="mb-4">
+                <div className="text-sm whitespace-pre-wrap break-words rounded-md border bg-muted p-3">
+                  {reviewMarkdown}
                 </div>
-              )}
-
-              {/* Conflict notice and actions (optional UI) */}
-              {branchStatus && (
-                <FollowUpConflictSection
-                  selectedAttemptId={selectedAttemptId}
-                  attemptBranch={attemptBranch}
-                  branchStatus={branchStatus}
-                  isEditable={isEditable}
-                  onResolve={onSendFollowUp}
-                  enableResolve={
-                    canSendFollowUp && !isAttemptRunning && isEditable
-                  }
-                  enableAbort={canSendFollowUp && !isAttemptRunning}
-                  conflictResolutionInstructions={
-                    conflictResolutionInstructions
-                  }
-                />
-              )}
-
-              {/* Clicked elements notice and actions */}
-              <ClickedElementsBanner />
-
-              <div className="flex flex-col gap-2">
-                <WYSIWYGEditor
-                  placeholder={
-                    reviewMarkdown || conflictResolutionInstructions
-                      ? '(Optional) Add additional instructions... Type @ to insert tags or search files.'
-                      : 'Continue working on this task attempt... Type @ to insert tags or search files.'
-                  }
-                  value={followUpMessage}
-                  onChange={(value) => {
-                    setFollowUpMessage(value);
-                    if (followUpError) setFollowUpError(null);
-                  }}
-                  disabled={!isEditable}
-                  onFocusChange={setIsTextareaFocused}
-                  onPasteFiles={handlePasteFiles}
-                  onAttachFiles={handlePasteFiles}
-                  showAttachButton={!!selectedAttemptId}
-                  projectId={projectId}
-                  taskAttemptId={selectedAttemptId}
-                  onCmdEnter={handleSubmitShortcut}
-                  className="min-h-[40px]"
-                />
               </div>
-            </div>
-          </div>
-        </div>
+            )}
 
-        {/* Always-visible action bar */}
-        <div className="border-t bg-background p-4">
-          <div className="flex flex-row gap-2 items-center">
-            <div className="flex-1 flex gap-2">
-              <VariantSelector
-                currentProfile={currentProfile}
-                selectedVariant={selectedVariant}
-                onChange={setSelectedVariant}
+            {/* Conflict notice and actions (optional UI) */}
+            {branchStatus && (
+              <FollowUpConflictSection
+                selectedAttemptId={selectedAttemptId}
+                attemptBranch={attemptBranch}
+                branchStatus={branchStatus}
+                isEditable={isEditable}
+                onResolve={onSendFollowUp}
+                enableResolve={
+                  canSendFollowUp && !isAttemptRunning && isEditable
+                }
+                enableAbort={canSendFollowUp && !isAttemptRunning}
+                conflictResolutionInstructions={conflictResolutionInstructions}
+              />
+            )}
+
+            {/* Clicked elements notice and actions */}
+            <ClickedElementsBanner />
+
+            <div className="flex flex-col gap-2">
+              <WYSIWYGEditor
+                placeholder={
+                  reviewMarkdown || conflictResolutionInstructions
+                    ? '(Optional) Add additional instructions... Type @ to insert tags or search files.'
+                    : 'Continue working on this task attempt... Type @ to insert tags or search files.'
+                }
+                value={followUpMessage}
+                onChange={(value) => {
+                  setFollowUpMessage(value);
+                  if (followUpError) setFollowUpError(null);
+                }}
                 disabled={!isEditable}
+                onFocusChange={setIsTextareaFocused}
+                onPasteFiles={handlePasteFiles}
+                onAttachFiles={handlePasteFiles}
+                showAttachButton={!!selectedAttemptId}
+                projectId={projectId}
+                taskAttemptId={selectedAttemptId}
+                onCmdEnter={handleSubmitShortcut}
+                className="min-h-[40px]"
               />
             </div>
-
-            {isAttemptRunning ? (
-              <Button
-                onClick={stopExecution}
-                disabled={isStopping}
-                size="sm"
-                variant="destructive"
-              >
-                {isStopping ? (
-                  <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                ) : (
-                  <>
-                    <StopCircle className="h-4 w-4 mr-2" />
-                    {t('followUp.stop')}
-                  </>
-                )}
-              </Button>
-            ) : (
-              <div className="flex items-center gap-2">
-                {comments.length > 0 && (
-                  <Button
-                    onClick={clearComments}
-                    size="sm"
-                    variant="destructive"
-                    disabled={!isEditable}
-                  >
-                    {t('followUp.clearReviewComments')}
-                  </Button>
-                )}
-                <Button
-                  onClick={onSendFollowUp}
-                  disabled={!canSendFollowUp || !isEditable}
-                  size="sm"
-                >
-                  {isSendingFollowUp ? (
-                    <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                  ) : (
-                    <>
-                      <Send className="h-4 w-4 mr-2" />
-                      {conflictResolutionInstructions
-                        ? t('followUp.resolveConflicts')
-                        : t('followUp.send')}
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
           </div>
         </div>
       </div>
-    )
+
+      {/* Always-visible action bar */}
+      <div className="border-t bg-background p-4">
+        <div className="flex flex-row gap-2 items-center">
+          <div className="flex-1 flex gap-2">
+            <VariantSelector
+              currentProfile={currentProfile}
+              selectedVariant={selectedVariant}
+              onChange={setSelectedVariant}
+              disabled={!isEditable}
+            />
+          </div>
+
+          {isAttemptRunning ? (
+            <Button
+              onClick={stopExecution}
+              disabled={isStopping}
+              size="sm"
+              variant="destructive"
+            >
+              {isStopping ? (
+                <Loader2 className="animate-spin h-4 w-4 mr-2" />
+              ) : (
+                <>
+                  <StopCircle className="h-4 w-4 mr-2" />
+                  {t('followUp.stop')}
+                </>
+              )}
+            </Button>
+          ) : (
+            <div className="flex items-center gap-2">
+              {comments.length > 0 && (
+                <Button
+                  onClick={clearComments}
+                  size="sm"
+                  variant="destructive"
+                  disabled={!isEditable}
+                >
+                  {t('followUp.clearReviewComments')}
+                </Button>
+              )}
+              <Button
+                onClick={onSendFollowUp}
+                disabled={!canSendFollowUp || !isEditable}
+                size="sm"
+              >
+                {isSendingFollowUp ? (
+                  <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    {conflictResolutionInstructions
+                      ? t('followUp.resolveConflicts')
+                      : t('followUp.send')}
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

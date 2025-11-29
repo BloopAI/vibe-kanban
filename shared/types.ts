@@ -60,7 +60,9 @@ export type UpdateTask = { title: string | null, description: string | null, sta
 
 export type SharedTask = { id: string, remote_project_id: string, title: string, description: string | null, status: TaskStatus, assignee_user_id: string | null, assignee_first_name: string | null, assignee_last_name: string | null, assignee_username: string | null, version: bigint, last_event_seq: bigint | null, created_at: Date, updated_at: Date, };
 
-export type ScratchPayload = { "type": "draft_task", "data": string } | { "type": "draft_follow_up", "data": string };
+export type DraftFollowUpData = { message: string, variant: string | null, };
+
+export type ScratchPayload = { "type": "draft_task", "data": string } | { "type": "draft_follow_up", "data": DraftFollowUpData };
 
 export type Scratch = { id: string, payload: ScratchPayload, created_at: string, updated_at: string, };
 

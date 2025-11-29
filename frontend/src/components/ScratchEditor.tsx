@@ -1,10 +1,40 @@
 import { useEffect, useState } from 'react';
 import { useScratch } from '@/hooks/useScratch';
 import type { ScratchType } from '@/lib/api';
+import type { ScratchPayload } from 'shared/types';
 
 interface ScratchEditorProps {
   scratchType: ScratchType;
   scratchId: string;
+}
+
+// Helper to extract the text content from a ScratchPayload
+function getContentFromPayload(payload: ScratchPayload | undefined): string {
+  if (!payload) return '';
+  if (payload.type === 'draft_task') {
+    return payload.data;
+  } else if (payload.type === 'draft_follow_up') {
+    return payload.data.message;
+  }
+  return '';
+}
+
+// Helper to build a ScratchPayload with updated content
+function buildPayload(
+  existingPayload: ScratchPayload,
+  newContent: string
+): ScratchPayload {
+  if (existingPayload.type === 'draft_task') {
+    return { type: 'draft_task', data: newContent };
+  } else {
+    return {
+      type: 'draft_follow_up',
+      data: {
+        message: newContent,
+        variant: existingPayload.data.variant,
+      },
+    };
+  }
 }
 
 export const ScratchEditor = ({
@@ -21,17 +51,15 @@ export const ScratchEditor = ({
   const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Data is now a simple markdown string
-    if (scratch?.payload?.data) {
-      setLocalContent(scratch.payload.data);
+    if (scratch?.payload) {
+      setLocalContent(getContentFromPayload(scratch.payload));
     }
   }, [scratch?.payload, scratchId]);
 
   useEffect(() => {
     if (!scratchId || !scratch) return;
 
-    // Data is now a simple markdown string
-    const currentContent = scratch.payload?.data || '';
+    const currentContent = getContentFromPayload(scratch.payload);
     if (localContent === currentContent) return;
 
     const handle = window.setTimeout(async () => {
@@ -40,10 +68,7 @@ export const ScratchEditor = ({
 
       try {
         await updateScratch({
-          payload: {
-            type: scratch.payload.type,
-            data: localContent, // markdown string
-          },
+          payload: buildPayload(scratch.payload, localContent),
         });
       } catch (e) {
         console.error('Failed to auto-save scratch', e);

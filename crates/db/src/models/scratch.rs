@@ -22,6 +22,14 @@ pub enum ScratchError {
     },
 }
 
+/// Data for a draft follow-up scratch
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct DraftFollowUpData {
+    pub message: String,
+    #[serde(default)]
+    pub variant: Option<String>,
+}
+
 /// The payload of a scratch, tagged by type. The type is part of the composite primary key.
 /// Data is stored as markdown string.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -30,7 +38,7 @@ pub enum ScratchPayload {
     #[serde(rename = "draft_task")]
     DraftTask(String),
     #[serde(rename = "draft_follow_up")]
-    DraftFollowUp(String),
+    DraftFollowUp(DraftFollowUpData),
 }
 
 impl ScratchPayload {
@@ -117,13 +125,16 @@ impl Scratch {
 impl TryFrom<ScratchRow> for Scratch {
     type Error = ScratchError;
     fn try_from(r: ScratchRow) -> Result<Self, ScratchError> {
-        // Parse the markdown string from the stored payload
-        let data: String = serde_json::from_str(&r.payload)?;
-
         // Reconstruct the tagged enum based on scratch_type
         let payload = match r.scratch_type.as_str() {
-            "draft_task" => ScratchPayload::DraftTask(data),
-            "draft_follow_up" => ScratchPayload::DraftFollowUp(data),
+            "draft_task" => {
+                let data: String = serde_json::from_str(&r.payload)?;
+                ScratchPayload::DraftTask(data)
+            }
+            "draft_follow_up" => {
+                let data: DraftFollowUpData = serde_json::from_str(&r.payload)?;
+                ScratchPayload::DraftFollowUp(data)
+            }
             _ => return Err(ScratchError::UnknownScratchType(r.scratch_type)),
         };
 
@@ -148,11 +159,11 @@ pub struct UpdateScratch {
     pub payload: Option<ScratchPayload>,
 }
 
-/// Helper to extract the inner markdown data from a ScratchPayload
-fn extract_payload_data(payload: &ScratchPayload) -> &str {
+/// Helper to serialize the inner data from a ScratchPayload to JSON string for storage
+fn serialize_payload_data(payload: &ScratchPayload) -> Result<String, serde_json::Error> {
     match payload {
-        ScratchPayload::DraftTask(data) => data,
-        ScratchPayload::DraftFollowUp(data) => data,
+        ScratchPayload::DraftTask(data) => serde_json::to_string(data),
+        ScratchPayload::DraftFollowUp(data) => serde_json::to_string(data),
     }
 }
 
@@ -163,9 +174,8 @@ impl Scratch {
         data: &CreateScratch,
     ) -> Result<Self, ScratchError> {
         let scratch_type_str = data.payload.scratch_type();
-        // Store the markdown string as JSON-encoded string
-        let payload_str = serde_json::to_string(extract_payload_data(&data.payload))
-            .map_err(|e| sqlx::Error::Protocol(e.to_string()))?;
+        // Store the data as JSON-encoded string
+        let payload_str = serialize_payload_data(&data.payload)?;
 
         let row = sqlx::query_as!(
             ScratchRow,
@@ -255,7 +265,7 @@ impl Scratch {
             return Self::find_by_id(pool, id, scratch_type).await;
         };
 
-        let payload_str = serde_json::to_string(extract_payload_data(payload))?;
+        let payload_str = serialize_payload_data(payload)?;
         let scratch_type_str = scratch_type.to_string();
 
         // Upsert: insert if not exists, update if exists
