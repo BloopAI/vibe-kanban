@@ -23,7 +23,8 @@ import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { ListNode, ListItemNode } from '@lexical/list';
 import { ListPlugin } from '@lexical/react/LexicalListPlugin';
-import { CodeNode } from '@lexical/code';
+import { CodeNode, CodeHighlightNode } from '@lexical/code';
+import { CodeHighlightPlugin } from './wysiwyg/plugins/code-highlight-plugin';
 import { LinkNode } from '@lexical/link';
 import { EditorState } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
@@ -148,7 +149,39 @@ function WYSIWYGEditor({
           strikethrough: 'line-through',
           code: 'font-mono bg-muted px-1 py-0.5 rounded',
         },
-        code: 'block font-mono text-xs bg-muted rounded-md px-3 py-2 my-2 overflow-x-auto',
+        code: 'block font-mono text-sm bg-muted rounded-md px-3 py-2 my-2 overflow-x-auto',
+        codeHighlight: {
+          atrule: 'text-[var(--syntax-keyword)]',
+          attr: 'text-[var(--syntax-constant)]',
+          boolean: 'text-[var(--syntax-constant)]',
+          builtin: 'text-[var(--syntax-variable)]',
+          cdata: 'text-[var(--syntax-comment)]',
+          char: 'text-[var(--syntax-string)]',
+          class: 'text-[var(--syntax-function)]',
+          'class-name': 'text-[var(--syntax-function)]',
+          comment: 'text-[var(--syntax-comment)] italic',
+          constant: 'text-[var(--syntax-constant)]',
+          deleted: 'text-[var(--syntax-deleted)]',
+          doctype: 'text-[var(--syntax-comment)]',
+          entity: 'text-[var(--syntax-function)]',
+          function: 'text-[var(--syntax-function)]',
+          important: 'text-[var(--syntax-keyword)] font-bold',
+          inserted: 'text-[var(--syntax-tag)]',
+          keyword: 'text-[var(--syntax-keyword)]',
+          namespace: 'text-[var(--syntax-comment)]',
+          number: 'text-[var(--syntax-constant)]',
+          operator: 'text-[var(--syntax-constant)]',
+          prolog: 'text-[var(--syntax-comment)]',
+          property: 'text-[var(--syntax-constant)]',
+          punctuation: 'text-[var(--syntax-punctuation)]',
+          regex: 'text-[var(--syntax-string)]',
+          selector: 'text-[var(--syntax-tag)]',
+          string: 'text-[var(--syntax-string)]',
+          symbol: 'text-[var(--syntax-variable)]',
+          tag: 'text-[var(--syntax-tag)]',
+          url: 'text-[var(--syntax-constant)]',
+          variable: 'text-[var(--syntax-variable)]',
+        },
       },
       nodes: [
         HeadingNode,
@@ -156,6 +189,7 @@ function WYSIWYGEditor({
         ListNode,
         ListItemNode,
         CodeNode,
+        CodeHighlightNode,
         LinkNode,
         ImageNode,
       ],
@@ -242,6 +276,7 @@ function WYSIWYGEditor({
           </div>
 
           <ListPlugin />
+          <CodeHighlightPlugin />
           {/* Only include editing plugins when not in read-only mode */}
           {!disabled && (
             <>

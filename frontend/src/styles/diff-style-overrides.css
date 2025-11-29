@@ -531,7 +531,7 @@
   Current colors taken from GitHub's CSS
 */
 .diff-tailwindcss-wrapper .diff-line-syntax-raw .hljs {
-  color: #24292e;
+  color: var(--syntax-punctuation);
   background: #ffffff;
 }
 
@@ -543,7 +543,7 @@
 .diff-tailwindcss-wrapper .diff-line-syntax-raw .hljs-type,
 .diff-tailwindcss-wrapper .diff-line-syntax-raw .hljs-variable.language_ {
   /* prettylights-syntax-keyword */
-  color: #d73a49;
+  color: var(--syntax-keyword);
 }
 
 .diff-tailwindcss-wrapper .diff-line-syntax-raw .hljs-title,
@@ -551,7 +551,7 @@
 .diff-tailwindcss-wrapper .diff-line-syntax-raw .hljs-title.class_.inherited__,
 .diff-tailwindcss-wrapper .diff-line-syntax-raw .hljs-title.function_ {
   /* prettylights-syntax-entity */
-  color: #6f42c1;
+  color: var(--syntax-function);
 }
 
 .diff-tailwindcss-wrapper .diff-line-syntax-raw .hljs-attr,
@@ -565,27 +565,27 @@
 .diff-tailwindcss-wrapper .diff-line-syntax-raw .hljs-selector-class,
 .diff-tailwindcss-wrapper .diff-line-syntax-raw .hljs-selector-id {
   /* prettylights-syntax-constant */
-  color: #005cc5;
+  color: var(--syntax-constant);
 }
 
 .diff-tailwindcss-wrapper .diff-line-syntax-raw .hljs-regexp,
 .diff-tailwindcss-wrapper .diff-line-syntax-raw .hljs-string,
 .diff-tailwindcss-wrapper .diff-line-syntax-raw .hljs-meta .hljs-string {
   /* prettylights-syntax-string */
-  color: #032f62;
+  color: var(--syntax-string);
 }
 
 .diff-tailwindcss-wrapper .diff-line-syntax-raw .hljs-built_in,
 .diff-tailwindcss-wrapper .diff-line-syntax-raw .hljs-symbol {
   /* prettylights-syntax-variable */
-  color: #e36209;
+  color: var(--syntax-variable);
 }
 
 .diff-tailwindcss-wrapper .diff-line-syntax-raw .hljs-comment,
 .diff-tailwindcss-wrapper .diff-line-syntax-raw .hljs-code,
 .diff-tailwindcss-wrapper .diff-line-syntax-raw .hljs-formula {
   /* prettylights-syntax-comment */
-  color: #6a737d;
+  color: var(--syntax-comment);
 }
 
 .diff-tailwindcss-wrapper .diff-line-syntax-raw .hljs-name,
@@ -593,17 +593,17 @@
 .diff-tailwindcss-wrapper .diff-line-syntax-raw .hljs-selector-tag,
 .diff-tailwindcss-wrapper .diff-line-syntax-raw .hljs-selector-pseudo {
   /* prettylights-syntax-entity-tag */
-  color: #22863a;
+  color: var(--syntax-tag);
 }
 
 .diff-tailwindcss-wrapper .diff-line-syntax-raw .hljs-subst {
   /* prettylights-syntax-storage-modifier-import */
-  color: #24292e;
+  color: var(--syntax-punctuation);
 }
 
 .diff-tailwindcss-wrapper .diff-line-syntax-raw .hljs-section {
   /* prettylights-syntax-markup-heading */
-  color: #005cc5;
+  color: var(--syntax-constant);
   font-weight: bold;
 }
 
@@ -614,25 +614,25 @@
 
 .diff-tailwindcss-wrapper .diff-line-syntax-raw .hljs-emphasis {
   /* prettylights-syntax-markup-italic */
-  color: #24292e;
+  color: var(--syntax-punctuation);
   font-style: italic;
 }
 
 .diff-tailwindcss-wrapper .diff-line-syntax-raw .hljs-strong {
   /* prettylights-syntax-markup-bold */
-  color: #24292e;
+  color: var(--syntax-punctuation);
   font-weight: bold;
 }
 
 .diff-tailwindcss-wrapper .diff-line-syntax-raw .hljs-addition {
   /* prettylights-syntax-markup-inserted */
-  color: #22863a;
+  color: var(--syntax-tag);
   background-color: #f0fff4;
 }
 
 .diff-tailwindcss-wrapper .diff-line-syntax-raw .hljs-deletion {
   /* prettylights-syntax-markup-deleted */
-  color: #b31d28;
+  color: var(--syntax-deleted);
   background-color: #ffeef0;
 }
 
@@ -669,7 +669,7 @@
   Current colors taken from GitHub's CSS
 */
 .diff-tailwindcss-wrapper[data-theme='dark'] .diff-line-syntax-raw .hljs {
-  color: #c9d1d9;
+  color: var(--syntax-punctuation);
   background: #0d1117;
 }
 
@@ -692,7 +692,7 @@
   .diff-line-syntax-raw
   .hljs-variable.language_ {
   /* prettylights-syntax-keyword */
-  color: #ff7b72;
+  color: var(--syntax-keyword);
 }
 
 .diff-tailwindcss-wrapper[data-theme='dark'] .diff-line-syntax-raw .hljs-title,
@@ -706,7 +706,7 @@
   .diff-line-syntax-raw
   .hljs-title.function_ {
   /* prettylights-syntax-entity */
-  color: #d2a8ff;
+  color: var(--syntax-function);
 }
 
 .diff-tailwindcss-wrapper[data-theme='dark'] .diff-line-syntax-raw .hljs-attr,
@@ -734,7 +734,7 @@
   .diff-line-syntax-raw
   .hljs-selector-id {
   /* prettylights-syntax-constant */
-  color: #79c0ff;
+  color: var(--syntax-constant);
 }
 
 .diff-tailwindcss-wrapper[data-theme='dark'] .diff-line-syntax-raw .hljs-regexp,
@@ -744,7 +744,7 @@
   .hljs-meta
   .hljs-string {
   /* prettylights-syntax-string */
-  color: #a5d6ff;
+  color: var(--syntax-string);
 }
 
 .diff-tailwindcss-wrapper[data-theme='dark']
@@ -754,7 +754,7 @@
   .diff-line-syntax-raw
   .hljs-symbol {
   /* prettylights-syntax-variable */
-  color: #ffa657;
+  color: var(--syntax-variable);
 }
 
 .diff-tailwindcss-wrapper[data-theme='dark']
@@ -765,7 +765,7 @@
   .diff-line-syntax-raw
   .hljs-formula {
   /* prettylights-syntax-comment */
-  color: #8b949e;
+  color: var(--syntax-comment);
 }
 
 .diff-tailwindcss-wrapper[data-theme='dark'] .diff-line-syntax-raw .hljs-name,
@@ -777,12 +777,12 @@
   .diff-line-syntax-raw
   .hljs-selector-pseudo {
   /* prettylights-syntax-entity-tag */
-  color: #7ee787;
+  color: var(--syntax-tag);
 }
 
 .diff-tailwindcss-wrapper[data-theme='dark'] .diff-line-syntax-raw .hljs-subst {
   /* prettylights-syntax-storage-modifier-import */
-  color: #c9d1d9;
+  color: var(--syntax-punctuation);
 }
 
 .diff-tailwindcss-wrapper[data-theme='dark']
@@ -804,7 +804,7 @@
   .diff-line-syntax-raw
   .hljs-emphasis {
   /* prettylights-syntax-markup-italic */
-  color: #c9d1d9;
+  color: var(--syntax-punctuation);
   font-style: italic;
 }
 
@@ -812,7 +812,7 @@
   .diff-line-syntax-raw
   .hljs-strong {
   /* prettylights-syntax-markup-bold */
-  color: #c9d1d9;
+  color: var(--syntax-punctuation);
   font-weight: bold;
 }
 
@@ -828,7 +828,7 @@
   .diff-line-syntax-raw
   .hljs-deletion {
   /* prettylights-syntax-markup-deleted */
-  color: #ffdcd7;
+  color: var(--syntax-deleted);
   background-color: #67060c;
 }
 

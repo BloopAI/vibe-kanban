@@ -41,6 +41,17 @@
     --_console-foreground: 222.2 84% 4.9%;
     --_console-success: 138 69% 45%;
     --_console-error: 5 100% 69%;
+
+    /* Syntax highlighting (light - GitHub) */
+    --_syntax-keyword: #d73a49;
+    --_syntax-function: #6f42c1;
+    --_syntax-constant: #005cc5;
+    --_syntax-string: #032f62;
+    --_syntax-variable: #e36209;
+    --_syntax-comment: #6a737d;
+    --_syntax-tag: #22863a;
+    --_syntax-punctuation: #24292e;
+    --_syntax-deleted: #b31d28;
   }
 
   /* Dark defaults (used if no theme class but user prefers dark) */
@@ -77,6 +88,17 @@
     --_console-foreground: 210 40% 98%;
     --_console-success: 138.5 76.5% 47.7%;
     --_console-error: 0 84.2% 60.2%;
+
+    /* Syntax highlighting (dark - GitHub Dark) */
+    --_syntax-keyword: #ff7b72;
+    --_syntax-function: #d2a8ff;
+    --_syntax-constant: #79c0ff;
+    --_syntax-string: #a5d6ff;
+    --_syntax-variable: #ffa657;
+    --_syntax-comment: #8b949e;
+    --_syntax-tag: #7ee787;
+    --_syntax-punctuation: #c9d1d9;
+    --_syntax-deleted: #ffdcd7;
   }
 }
 
@@ -158,6 +180,17 @@
       var(--_console-success)
     );
     --console-error: var(--vscode-terminal-ansiRed, var(--_console-error));
+
+    /* Syntax highlighting */
+    --syntax-keyword: var(--_syntax-keyword);
+    --syntax-function: var(--_syntax-function);
+    --syntax-constant: var(--_syntax-constant);
+    --syntax-string: var(--_syntax-string);
+    --syntax-variable: var(--_syntax-variable);
+    --syntax-comment: var(--_syntax-comment);
+    --syntax-tag: var(--_syntax-tag);
+    --syntax-punctuation: var(--_syntax-punctuation);
+    --syntax-deleted: var(--_syntax-deleted);
   }
 }
 
