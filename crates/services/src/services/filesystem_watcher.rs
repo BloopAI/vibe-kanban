@@ -63,12 +63,11 @@ fn build_gitignore_set(root: &Path) -> Result<Gitignore, FilesystemWatcherError>
             let is_dir = entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false);
 
             // Skip .git directory
-            if is_dir {
-                if let Some(name) = entry.file_name().to_str() {
-                    if should_skip_dir(name) {
-                        return false;
-                    }
-                }
+            if is_dir
+                && let Some(name) = entry.file_name().to_str()
+                && should_skip_dir(name)
+            {
+                return false;
             }
 
             // only recurse into directories and .gitignore files
@@ -124,12 +123,11 @@ fn path_allowed(path: &Path, gi: &Gitignore, canonical_root: &Path) -> bool {
 
     // Check if path is inside any of the always-skip directories
     for component in relative_path.components() {
-        if let std::path::Component::Normal(name) = component {
-            if let Some(name_str) = name.to_str() {
-                if should_skip_dir(name_str) {
-                    return false;
-                }
-            }
+        if let std::path::Component::Normal(name) = component
+            && let Some(name_str) = name.to_str()
+            && should_skip_dir(name_str)
+        {
+            return false;
         }
     }
 
@@ -170,10 +168,10 @@ fn collect_watch_directories(root: &Path) -> Vec<PathBuf> {
             }
 
             // Skip .git directory (not in .gitignore but should never be watched)
-            if let Some(name) = entry.file_name().to_str() {
-                if should_skip_dir(name) {
-                    return false;
-                }
+            if let Some(name) = entry.file_name().to_str()
+                && should_skip_dir(name)
+            {
+                return false;
             }
 
             true
@@ -228,15 +226,8 @@ pub fn async_watcher(root: PathBuf) -> Result<WatcherComponents, FilesystemWatch
     // Collect directories to watch, respecting gitignore and excluding .git.
     // Use NonRecursive mode for each directory to avoid OS-level watching of excluded dirs.
     let watch_dirs = collect_watch_directories(&canonical_root);
-    tracing::debug!(
-        "Setting up file watcher for {} directories (respecting gitignore)",
-        watch_dirs.len()
-    );
-
     for dir in watch_dirs {
-        if let Err(e) = debouncer.watch(&dir, RecursiveMode::NonRecursive) {
-            tracing::warn!("Failed to watch directory {:?}: {}", dir, e);
-        }
+        debouncer.watch(&dir, RecursiveMode::NonRecursive)?;
     }
 
     Ok((debouncer, rx, canonical_root))
