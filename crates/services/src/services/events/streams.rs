@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use db::models::{
     draft::{Draft, DraftType},
     execution_process::ExecutionProcess,
@@ -455,9 +454,20 @@ impl EventService {
         scratch_type: &db::models::scratch::ScratchType,
     ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, EventError>
     {
-        let scratch = Scratch::find_by_id(&self.db.pool, scratch_id, scratch_type)
-            .await
-            .map_err(|e| EventError::Other(anyhow!("Failed to get scratch item: {}", e)))?;
+        // Treat errors (e.g., corrupted/malformed data) the same as "scratch not found"
+        // This prevents the websocket from closing and retrying indefinitely
+        let scratch = match Scratch::find_by_id(&self.db.pool, scratch_id, scratch_type).await {
+            Ok(scratch) => scratch,
+            Err(e) => {
+                tracing::warn!(
+                    scratch_id = %scratch_id,
+                    scratch_type = %scratch_type,
+                    error = %e,
+                    "Failed to load scratch, treating as empty"
+                );
+                None
+            }
+        };
 
         let initial_patch = json!([{
             "op": "replace",
