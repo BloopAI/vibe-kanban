@@ -258,12 +258,36 @@ export function TaskFollowUpSection({
     refresh: refreshQueueStatus,
   } = useQueueStatus(selectedAttemptId);
 
-  // Refresh queue status when execution stops
+  // Track previous process count to detect new processes
+  const prevProcessCountRef = useRef(processes.length);
+
+  // Refresh queue status when execution stops OR when a new process starts
   useEffect(() => {
-    if (!isAttemptRunning && selectedAttemptId) {
+    const prevCount = prevProcessCountRef.current;
+    prevProcessCountRef.current = processes.length;
+
+    if (!selectedAttemptId) return;
+
+    // Refresh when execution stops
+    if (!isAttemptRunning) {
+      refreshQueueStatus();
+      return;
+    }
+
+    // Refresh when a new process starts (queued message was consumed)
+    if (processes.length > prevCount) {
       refreshQueueStatus();
     }
-  }, [isAttemptRunning, selectedAttemptId, refreshQueueStatus]);
+  }, [
+    isAttemptRunning,
+    selectedAttemptId,
+    processes.length,
+    refreshQueueStatus,
+  ]);
+
+  // When queued, display the queued message content so user can edit it
+  const displayMessage =
+    isQueued && queuedMessage ? queuedMessage.data.message : localMessage;
 
   // Check if there's a pending approval - users shouldn't be able to type during approvals
   const { entries } = useEntries();
@@ -320,7 +344,7 @@ export function TaskFollowUpSection({
 
     if (isRetryActive) return false; // disable typing while retry editor is active
     if (hasPendingApproval) return false; // disable typing during approval
-    if (isQueued) return false; // disable typing when message is queued
+    // Note: isQueued no longer blocks typing - editing auto-cancels the queue
     return true;
   }, [
     selectedAttemptId,
@@ -329,7 +353,6 @@ export function TaskFollowUpSection({
     branchStatus?.merges,
     isRetryActive,
     hasPendingApproval,
-    isQueued,
   ]);
 
   const canSendFollowUp = useMemo(() => {
@@ -410,6 +433,17 @@ export function TaskFollowUpSection({
     followUpErrorRef.current = followUpError;
   }, [followUpError]);
 
+  // Refs for queue state to use in stable onChange handler
+  const isQueuedRef = useRef(isQueued);
+  useEffect(() => {
+    isQueuedRef.current = isQueued;
+  }, [isQueued]);
+
+  const cancelQueueRef = useRef(cancelQueue);
+  useEffect(() => {
+    cancelQueueRef.current = cancelQueue;
+  }, [cancelQueue]);
+
   // Handle image paste - upload to container and insert markdown
   const handlePasteFiles = useCallback(
     async (files: File[]) => {
@@ -441,6 +475,10 @@ export function TaskFollowUpSection({
   // Stable onChange handler for WYSIWYGEditor
   const handleEditorChange = useCallback(
     (value: string) => {
+      // Auto-cancel queue when user starts editing
+      if (isQueuedRef.current) {
+        cancelQueueRef.current();
+      }
       setLocalMessage(value); // Immediate update for UI responsiveness
       setFollowUpMessageRef.current(value); // Debounced save to scratch
       if (followUpErrorRef.current) setFollowUpError(null);
@@ -588,7 +626,7 @@ export function TaskFollowUpSection({
             <div className="flex flex-col gap-2">
               <WYSIWYGEditor
                 placeholder={editorPlaceholder}
-                value={localMessage}
+                value={displayMessage}
                 onChange={handleEditorChange}
                 disabled={!isEditable}
                 onFocusChange={setIsTextareaFocused}
