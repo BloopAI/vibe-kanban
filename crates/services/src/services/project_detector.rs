@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fs;
 use std::path::Path;
 
 use anyhow::Result;
@@ -54,6 +55,13 @@ impl ProjectDetector {
         // Scan for .env template files
         if let Some(env_suggestions) = Self::scan_env_files(repo_path)? {
             for suggestion in env_suggestions {
+                Self::add_suggestion(&mut suggestions, suggestion);
+            }
+        }
+
+        // Scan for dev server network configuration
+        if let Some(network_suggestions) = Self::scan_dev_network_config(repo_path)? {
+            for suggestion in network_suggestions {
                 Self::add_suggestion(&mut suggestions, suggestion);
             }
         }
@@ -402,6 +410,89 @@ impl ProjectDetector {
 
         Ok(Some(suggestions))
     }
+
+    /// Scan for dev server network configuration hints
+    fn scan_dev_network_config(repo_path: &Path) -> Result<Option<Vec<ProjectConfigSuggestion>>> {
+        let mut suggestions = Vec::new();
+
+        // Compile regex patterns once
+        let port_regex = Regex::new(r"port:\s*(\d+)").ok();
+        let env_port_regex = Regex::new(r"PORT=(\d+)").ok();
+
+        // Check vite.config.ts/js for server.host
+        for config_file in ["vite.config.ts", "vite.config.js", "vite.config.mjs"] {
+            let config_path = repo_path.join(config_file);
+            if config_path.exists()
+                && let Ok(content) = fs::read_to_string(&config_path)
+            {
+                // Look for server.host configuration
+                if content.contains("host:") && content.contains("0.0.0.0") {
+                    suggestions.push(ProjectConfigSuggestion {
+                        field: ProjectConfigField::DevHost,
+                        value: "0.0.0.0".to_string(),
+                        confidence: ConfidenceLevel::High,
+                        source: config_file.to_string(),
+                    });
+                }
+
+                // Look for port configuration
+                if let Some(ref re) = port_regex
+                    && let Some(port_match) = re.captures(&content)
+                    && let Some(port) = port_match.get(1)
+                {
+                    suggestions.push(ProjectConfigSuggestion {
+                        field: ProjectConfigField::DevPort,
+                        value: port.as_str().to_string(),
+                        confidence: ConfidenceLevel::High,
+                        source: config_file.to_string(),
+                    });
+                }
+            }
+        }
+
+        // Check .env files for HOST and PORT
+        if let Some(env_files) = Self::scan_env_files(repo_path)? {
+            for env_file in env_files {
+                if env_file.field == ProjectConfigField::CopyFiles {
+                    let env_path = repo_path.join(&env_file.value);
+                    if env_path.exists()
+                        && let Ok(content) = fs::read_to_string(&env_path)
+                    {
+                        // Look for HOST=0.0.0.0
+                        if content.contains("HOST=0.0.0.0")
+                            || content.contains("HOST=\"0.0.0.0\"")
+                        {
+                            suggestions.push(ProjectConfigSuggestion {
+                                field: ProjectConfigField::DevHost,
+                                value: "0.0.0.0".to_string(),
+                                confidence: ConfidenceLevel::Medium,
+                                source: env_file.value.clone(),
+                            });
+                        }
+
+                        // Look for PORT=XXXX
+                        if let Some(ref re) = env_port_regex
+                            && let Some(port_match) = re.captures(&content)
+                            && let Some(port) = port_match.get(1)
+                        {
+                            suggestions.push(ProjectConfigSuggestion {
+                                field: ProjectConfigField::DevPort,
+                                value: port.as_str().to_string(),
+                                confidence: ConfidenceLevel::Medium,
+                                source: env_file.value.clone(),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(if suggestions.is_empty() {
+            None
+        } else {
+            Some(suggestions)
+        })
+    }
 }
 
 #[cfg(test)]
@@ -677,14 +768,12 @@ cargo test
         assert!(suggestions
             .iter()
             .any(|s| matches!(s.field, ProjectConfigField::DevScript) && s.value == "cargo run"));
-        assert!(suggestions
-            .iter()
-            .any(|s| matches!(s.field, ProjectConfigField::SetupScript)
-                && s.value == "cargo build"));
-        assert!(suggestions
-            .iter()
-            .any(|s| matches!(s.field, ProjectConfigField::CleanupScript)
-                && s.value == "cargo test"));
+        assert!(suggestions.iter().any(
+            |s| matches!(s.field, ProjectConfigField::SetupScript) && s.value == "cargo build"
+        ));
+        assert!(suggestions.iter().any(
+            |s| matches!(s.field, ProjectConfigField::CleanupScript) && s.value == "cargo test"
+        ));
     }
 
     #[test]
@@ -717,10 +806,7 @@ cargo test
 
         assert_eq!(suggestions.len(), 1);
         let copy_files = &suggestions[0];
-        assert!(matches!(
-            copy_files.field,
-            ProjectConfigField::CopyFiles
-        ));
+        assert!(matches!(copy_files.field, ProjectConfigField::CopyFiles));
         assert!(matches!(copy_files.confidence, ConfidenceLevel::High));
         assert_eq!(copy_files.source, "filesystem scan");
 

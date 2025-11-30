@@ -47,6 +47,7 @@ struct PendingApproval {
     entry: NormalizedEntry,
     execution_process_id: Uuid,
     tool_name: String,
+    #[allow(dead_code)]
     questions: Option<Vec<Question>>,
     response_tx: oneshot::Sender<ApprovalResponseData>,
 }

@@ -20,7 +20,7 @@ export type SearchMatchType = "FileName" | "DirectoryName" | "FullPath";
 
 export type ProjectConfigSuggestion = { field: ProjectConfigField, value: string, confidence: ConfidenceLevel, source: string, };
 
-export type ProjectConfigField = "SetupScript" | "DevScript" | "CleanupScript" | "CopyFiles";
+export type ProjectConfigField = "SetupScript" | "DevScript" | "CleanupScript" | "CopyFiles" | "DevHost" | "DevPort";
 
 export type ConfidenceLevel = "High" | "Medium";
 

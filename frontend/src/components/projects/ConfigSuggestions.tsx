@@ -28,6 +28,8 @@ const fieldLabels: Record<ProjectConfigField, string> = {
   DevScript: 'Dev Script',
   CleanupScript: 'Cleanup Script',
   CopyFiles: 'Copy Files',
+  DevHost: 'Dev Server Host',
+  DevPort: 'Dev Server Port',
 };
 
 const fieldDescriptions: Record<ProjectConfigField, string> = {
@@ -35,6 +37,9 @@ const fieldDescriptions: Record<ProjectConfigField, string> = {
   DevScript: 'Command to start the development server',
   CleanupScript: 'Commands to run tests, linters, or validators',
   CopyFiles: 'Files to copy to new worktrees (e.g., .env files)',
+  DevHost:
+    'Network host configuration for dev server (e.g., 0.0.0.0 for network access)',
+  DevPort: 'Port number for dev server',
 };
 
 export function ConfigSuggestions({
@@ -104,6 +109,10 @@ export function ConfigSuggestions({
         return 'cleanup_script';
       case 'CopyFiles':
         return 'copy_files';
+      case 'DevHost':
+        return 'dev_host';
+      case 'DevPort':
+        return 'dev_port';
     }
   };
 

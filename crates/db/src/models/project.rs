@@ -80,12 +80,15 @@ pub struct ProjectConfigSuggestion {
     pub source: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, TS)]
+#[derive(Debug, Serialize, Deserialize, TS, Clone, PartialEq)]
+#[ts(export)]
 pub enum ProjectConfigField {
     SetupScript,
     DevScript,
     CleanupScript,
     CopyFiles,
+    DevHost,
+    DevPort,
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]

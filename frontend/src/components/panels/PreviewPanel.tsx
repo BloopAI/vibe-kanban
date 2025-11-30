@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, X, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDevserverPreview } from '@/hooks/useDevserverPreview';
 import { useDevServer } from '@/hooks/useDevServer';
@@ -23,6 +23,7 @@ export function PreviewPanel() {
   const [showHelp, setShowHelp] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showLogs, setShowLogs] = useState(false);
+  const [frameBlocked, setFrameBlocked] = useState(false);
   const listenerRef = useRef<ClickToComponentListener | null>(null);
 
   const { t } = useTranslation('tasks');
@@ -57,6 +58,16 @@ export function PreviewPanel() {
   };
   const handleIframeError = () => {
     setIframeError(true);
+  };
+
+  const handleFrameBlocked = () => {
+    setFrameBlocked(true);
+  };
+
+  const handleOpenInNewTab = () => {
+    if (previewState.url) {
+      window.open(previewState.url, '_blank', 'noopener,noreferrer');
+    }
   };
 
   const { addElement } = useClickedElements();
@@ -175,6 +186,7 @@ export function PreviewPanel() {
               url={previewState.url}
               iframeKey={`${previewState.url}-${refreshKey}`}
               onIframeError={handleIframeError}
+              onFrameBlocked={handleFrameBlocked}
             />
           </>
         ) : (
@@ -186,6 +198,44 @@ export function PreviewPanel() {
             stopDevServer={stopDevServer}
             project={project}
           />
+        )}
+
+        {frameBlocked && !iframeError && (
+          <Alert variant="default" className="space-y-2">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 space-y-2">
+                <p className="font-bold">{t('preview.frameBlocked.title')}</p>
+                <p className="text-sm">
+                  {t('preview.frameBlocked.description')}
+                </p>
+                <ul className="list-disc list-inside text-sm space-y-1">
+                  <li>{t('preview.frameBlocked.solution1')}</li>
+                  <li>
+                    {t('preview.frameBlocked.solution2')}{' '}
+                    <a
+                      href="https://github.com/BloopAI/vibe-kanban-web-companion"
+                      target="_blank"
+                      className="underline font-bold"
+                    >
+                      {t('preview.frameBlocked.webCompanion')}
+                    </a>
+                  </li>
+                </ul>
+                <Button variant="default" onClick={handleOpenInNewTab}>
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  {t('preview.frameBlocked.openInNewTab')}
+                </Button>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFrameBlocked(false)}
+                className="h-6 w-6 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </Alert>
         )}
 
         {showHelp && (

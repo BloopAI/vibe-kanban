@@ -88,6 +88,14 @@
       "copyUrl": "Copy URL",
       "openInTab": "Open in new tab",
       "stopDevServer": "Stop dev server"
+    },
+    "frameBlocked": {
+      "title": "Preview Blocked by Dev Server",
+      "description": "The dev server is blocking iframe embedding due to security headers (X-Frame-Options or CSP).",
+      "solution1": "Configure your dev server to allow framing (see documentation)",
+      "solution2": "Install the",
+      "webCompanion": "Vibe Kanban Web Companion",
+      "openInNewTab": "Open in New Tab"
     }
   },
   "diff": {

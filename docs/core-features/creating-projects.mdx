@@ -68,4 +68,65 @@ Comma-separated list of files to copy from the original project directory to the
 Make sure these files are gitignored or they could get committed!
 </Warning>
 
+### Network Access Configuration
+
+If you access Vibe Kanban from other machines on your network (e.g., `http://192.168.1.100:3000`), you need to configure your dev server to bind to all network interfaces.
+
+<Tabs>
+<Tab title="Vite">
+  Update your dev script or `vite.config.ts`:
+  ```json package.json
+  {
+    "scripts": {
+      "dev": "vite --host 0.0.0.0"
+    }
+  }
+  ```
+
+  Or in `vite.config.ts`:
+  ```typescript
+  export default defineConfig({
+    server: {
+      host: '0.0.0.0',
+      port: 3000
+    }
+  });
+  ```
+</Tab>
+
+<Tab title="Next.js">
+  Update your dev script:
+  ```json package.json
+  {
+    "scripts": {
+      "dev": "next dev -H 0.0.0.0"
+    }
+  }
+  ```
+</Tab>
+
+<Tab title="Create React App">
+  Add to `.env` file:
+  ```bash
+  HOST=0.0.0.0
+  ```
+</Tab>
+</Tabs>
+
+<Warning>
+Only use `0.0.0.0` on trusted networks. This exposes your dev server to all network interfaces.
+</Warning>
+
+#### Troubleshooting Preview Errors
+
+If the dev server preview shows an error or blank screen:
+
+1. **Check dev server logs** - Click "Show Logs" to see if the server started correctly
+2. **Verify network binding** - Ensure dev script uses `0.0.0.0` or `--host 0.0.0.0`
+3. **X-Frame-Options blocking** - Some dev servers block iframe embedding. Solutions:
+   - Configure dev server to allow framing (see framework documentation)
+   - Install [Vibe Kanban Web Companion](https://github.com/BloopAI/vibe-kanban-web-companion) browser extension
+   - Use "Open in New Tab" button to view in separate window
+4. **Check firewall** - Ensure dev server port is accessible on your network
+
 
