@@ -1,15 +1,10 @@
-import { useEffect, useMemo, useRef, useState, useCallback, memo } from 'react';
+import { useMemo, useRef, useState, useCallback, memo } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
-import {
-  TRANSFORMERS,
-  $convertToMarkdownString,
-  $convertFromMarkdownString,
-  type Transformer,
-} from '@lexical/markdown';
+import { TRANSFORMERS, type Transformer } from '@lexical/markdown';
 import { ImageNode } from './wysiwyg/nodes/image-node';
 import { IMAGE_TRANSFORMER } from './wysiwyg/transformers/image-transformer';
 import { CODE_BLOCK_TRANSFORMER } from './wysiwyg/transformers/code-block-transformer';
@@ -20,6 +15,7 @@ import { ImageKeyboardPlugin } from './wysiwyg/plugins/image-keyboard-plugin';
 import { ReadOnlyLinkPlugin } from './wysiwyg/plugins/read-only-link-plugin';
 import { ToolbarPlugin } from './wysiwyg/plugins/toolbar-plugin';
 import { CodeBlockShortcutPlugin } from './wysiwyg/plugins/code-block-shortcut-plugin';
+import { MarkdownSyncPlugin } from './wysiwyg/plugins/markdown-sync-plugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { ListNode, ListItemNode } from '@lexical/list';
@@ -28,7 +24,6 @@ import { CodeNode, CodeHighlightNode } from '@lexical/code';
 import { CodeHighlightPlugin } from './wysiwyg/plugins/code-highlight-plugin';
 import { LinkNode } from '@lexical/link';
 import { EditorState } from 'lexical';
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { cn } from '@/lib/utils';
 import {
   Tooltip,
@@ -198,11 +193,6 @@ function WYSIWYGEditor({
     []
   );
 
-  // Shared ref to avoid update loops and redundant imports
-  const lastSerializedRef = useRef<SerializedEditorState | undefined>(
-    undefined
-  );
-
   // Extended transformers with image and code block support (memoized to prevent unnecessary re-renders)
   const extendedTransformers: Transformer[] = useMemo(
     () => [IMAGE_TRANSFORMER, CODE_BLOCK_TRANSFORMER, ...TRANSFORMERS],
@@ -213,7 +203,14 @@ function WYSIWYGEditor({
     <div className="wysiwyg">
       <TaskAttemptContext.Provider value={taskAttemptId}>
         <LexicalComposer initialConfig={initialConfig}>
-          <EditablePlugin editable={!disabled} />
+          <MarkdownSyncPlugin
+            value={value}
+            defaultValue={defaultValue}
+            onChange={onChange}
+            onEditorStateChange={onEditorStateChange}
+            editable={!disabled}
+            transformers={extendedTransformers}
+          />
           {!disabled && <ToolbarPlugin />}
           <div className="relative">
             <RichTextPlugin
@@ -299,30 +296,6 @@ function WYSIWYGEditor({
           )}
           {/* Link sanitization for read-only mode */}
           {disabled && <ReadOnlyLinkPlugin />}
-
-          {/* Emit markdown on change */}
-          <MarkdownOnChangePlugin
-            onSerializedChange={onChange}
-            onEditorStateChange={onEditorStateChange}
-            lastSerializedRef={lastSerializedRef}
-            transformers={extendedTransformers}
-          />
-
-          {/* Apply external controlled value (markdown) */}
-          <MarkdownValuePlugin
-            value={value}
-            lastSerializedRef={lastSerializedRef}
-            transformers={extendedTransformers}
-          />
-
-          {/* Apply defaultValue once in uncontrolled mode */}
-          {value === undefined && defaultValue ? (
-            <MarkdownDefaultValuePlugin
-              defaultValue={defaultValue}
-              lastSerializedRef={lastSerializedRef}
-              transformers={extendedTransformers}
-            />
-          ) : null}
         </LexicalComposer>
       </TaskAttemptContext.Provider>
     </div>
@@ -377,109 +350,6 @@ function WYSIWYGEditor({
   }
 
   return editorContent;
-}
-
-function EditablePlugin({ editable }: { editable: boolean }) {
-  const [editor] = useLexicalComposerContext();
-  useEffect(() => {
-    editor.setEditable(editable);
-  }, [editor, editable]);
-  return null;
-}
-
-function MarkdownOnChangePlugin({
-  onSerializedChange,
-  onEditorStateChange,
-  lastSerializedRef,
-  transformers,
-}: {
-  onSerializedChange?: (state: SerializedEditorState) => void;
-  onEditorStateChange?: (s: EditorState) => void;
-  lastSerializedRef: React.MutableRefObject<SerializedEditorState | undefined>;
-  transformers: Transformer[];
-}) {
-  const [editor] = useLexicalComposerContext();
-  useEffect(() => {
-    return editor.registerUpdateListener(({ editorState }) => {
-      onEditorStateChange?.(editorState);
-
-      if (!onSerializedChange) return;
-
-      // Convert editor state to markdown
-      const markdown = editorState.read(() =>
-        $convertToMarkdownString(transformers)
-      );
-
-      if (markdown === lastSerializedRef.current) return;
-
-      lastSerializedRef.current = markdown;
-      onSerializedChange(markdown);
-    });
-  }, [
-    editor,
-    onSerializedChange,
-    onEditorStateChange,
-    lastSerializedRef,
-    transformers,
-  ]);
-  return null;
-}
-
-function MarkdownValuePlugin({
-  value,
-  lastSerializedRef,
-  transformers,
-}: {
-  value?: SerializedEditorState;
-  lastSerializedRef: React.MutableRefObject<SerializedEditorState | undefined>;
-  transformers: Transformer[];
-}) {
-  const [editor] = useLexicalComposerContext();
-  useEffect(() => {
-    if (value === undefined || value.trim() === '') return;
-    if (value === lastSerializedRef.current) return;
-
-    try {
-      // Convert markdown to editor state
-      editor.update(() => {
-        $convertFromMarkdownString(value, transformers);
-      });
-      lastSerializedRef.current = value;
-    } catch (err) {
-      console.error('Failed to parse markdown', err);
-    }
-  }, [editor, value, lastSerializedRef, transformers]);
-  return null;
-}
-
-function MarkdownDefaultValuePlugin({
-  defaultValue,
-  lastSerializedRef,
-  transformers,
-}: {
-  defaultValue: SerializedEditorState;
-  lastSerializedRef: React.MutableRefObject<SerializedEditorState | undefined>;
-  transformers: Transformer[];
-}) {
-  const [editor] = useLexicalComposerContext();
-  const didInit = useRef(false);
-  useEffect(() => {
-    if (didInit.current) return;
-    didInit.current = true;
-
-    if (defaultValue.trim() === '') return;
-
-    try {
-      // Convert markdown to editor state
-      editor.update(() => {
-        $convertFromMarkdownString(defaultValue, transformers);
-      });
-      lastSerializedRef.current = defaultValue;
-    } catch (err) {
-      console.error('Failed to parse default markdown', err);
-    }
-  }, [editor, defaultValue, lastSerializedRef, transformers]);
-  return null;
 }
 
 export default memo(WYSIWYGEditor);

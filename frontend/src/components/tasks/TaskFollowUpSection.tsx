@@ -278,7 +278,6 @@ export function TaskFollowUpSection({
           // Ignore errors when deleting scratch
         }
       },
-      setMessage: setFollowUpMessage,
     });
 
   // Profile/variant derived from processes only (see useDefaultVariant)

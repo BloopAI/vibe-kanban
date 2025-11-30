@@ -13,7 +13,6 @@ type Args = {
   clearClickedElements?: () => void;
   jumpToLogsTab: () => void;
   onAfterSendCleanup: () => void;
-  setMessage: (v: string) => void;
 };
 
 export function useFollowUpSend({
@@ -27,7 +26,6 @@ export function useFollowUpSend({
   clearClickedElements,
   jumpToLogsTab,
   onAfterSendCleanup,
-  setMessage,
 }: Args) {
   const [isSendingFollowUp, setIsSendingFollowUp] = useState(false);
   const [followUpError, setFollowUpError] = useState<string | null>(null);
@@ -55,7 +53,6 @@ export function useFollowUpSend({
         perform_git_reset: null,
       };
       await attemptsApi.followUp(attemptId, body);
-      setMessage('');
       clearComments();
       clearClickedElements?.();
       onAfterSendCleanup();
@@ -79,7 +76,6 @@ export function useFollowUpSend({
     clearClickedElements,
     jumpToLogsTab,
     onAfterSendCleanup,
-    setMessage,
   ]);
 
   return {

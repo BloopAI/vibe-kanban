@@ -34,7 +34,9 @@ export const useScratch = (
     initialData
   );
 
-  const scratch = data?.scratch ?? null;
+  // Treat deleted scratches as null
+  const rawScratch = data?.scratch as (Scratch & { deleted?: boolean }) | null;
+  const scratch = rawScratch?.deleted ? null : rawScratch;
 
   const updateScratch = useCallback(
     async (update: UpdateScratch) => {
