@@ -407,6 +407,8 @@ impl ProjectDetector {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use tempfile::TempDir;
 
     #[test]
     fn test_extract_code_blocks() {
@@ -431,5 +433,422 @@ Done!
         assert_eq!(blocks.len(), 2);
         assert!(blocks[0].contains("npm install"));
         assert!(blocks[1].contains("npm run dev"));
+    }
+
+    #[test]
+    fn test_extract_code_blocks_with_language() {
+        let markdown = r#"
+```javascript
+console.log("hello");
+```
+
+```bash
+cargo build
+```
+"#;
+        let blocks = ProjectDetector::extract_code_blocks(markdown);
+        assert_eq!(blocks.len(), 2);
+        assert!(blocks[0].contains("console.log"));
+        assert!(blocks[1].contains("cargo build"));
+    }
+
+    #[test]
+    fn test_extract_code_blocks_empty() {
+        let markdown = "# No code blocks here\nJust regular text.";
+        let blocks = ProjectDetector::extract_code_blocks(markdown);
+        assert_eq!(blocks.len(), 0);
+    }
+
+    #[test]
+    fn test_scan_package_json_with_dev_script() {
+        let temp_dir = TempDir::new().unwrap();
+        let package_json = r#"{
+  "name": "test-project",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test": "vitest"
+  }
+}"#;
+        fs::write(temp_dir.path().join("package.json"), package_json).unwrap();
+
+        let suggestions = ProjectDetector::scan_package_json(temp_dir.path())
+            .unwrap()
+            .unwrap();
+
+        // Should find dev script
+        let dev_suggestion = suggestions
+            .iter()
+            .find(|s| matches!(s.field, ProjectConfigField::DevScript));
+        assert!(dev_suggestion.is_some());
+        let dev = dev_suggestion.unwrap();
+        assert_eq!(dev.value, "npm run dev");
+        assert!(matches!(dev.confidence, ConfidenceLevel::High));
+        assert_eq!(dev.source, "package.json");
+
+        // Should find setup script (npm install)
+        let setup_suggestion = suggestions
+            .iter()
+            .find(|s| matches!(s.field, ProjectConfigField::SetupScript));
+        assert!(setup_suggestion.is_some());
+        let setup = setup_suggestion.unwrap();
+        assert_eq!(setup.value, "npm install");
+        assert!(matches!(setup.confidence, ConfidenceLevel::High));
+
+        // Should find test script
+        let cleanup_suggestion = suggestions
+            .iter()
+            .find(|s| matches!(s.field, ProjectConfigField::CleanupScript));
+        assert!(cleanup_suggestion.is_some());
+        let cleanup = cleanup_suggestion.unwrap();
+        assert!(cleanup.value.contains("npm run test"));
+    }
+
+    #[test]
+    fn test_scan_package_json_with_start_script() {
+        let temp_dir = TempDir::new().unwrap();
+        let package_json = r#"{
+  "name": "test-project",
+  "scripts": {
+    "start": "node index.js"
+  }
+}"#;
+        fs::write(temp_dir.path().join("package.json"), package_json).unwrap();
+
+        let suggestions = ProjectDetector::scan_package_json(temp_dir.path())
+            .unwrap()
+            .unwrap();
+
+        // Should find start script as dev script
+        let dev_suggestion = suggestions
+            .iter()
+            .find(|s| matches!(s.field, ProjectConfigField::DevScript));
+        assert!(dev_suggestion.is_some());
+        assert_eq!(dev_suggestion.unwrap().value, "npm run start");
+    }
+
+    #[test]
+    fn test_scan_package_json_missing_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let result = ProjectDetector::scan_package_json(temp_dir.path()).unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_scan_cargo_toml() {
+        let temp_dir = TempDir::new().unwrap();
+        let cargo_toml = r#"[package]
+name = "test-project"
+version = "0.1.0"
+"#;
+        fs::write(temp_dir.path().join("Cargo.toml"), cargo_toml).unwrap();
+
+        let suggestions = ProjectDetector::scan_cargo_toml(temp_dir.path())
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(suggestions.len(), 3);
+
+        // Check setup script
+        let setup = suggestions
+            .iter()
+            .find(|s| matches!(s.field, ProjectConfigField::SetupScript));
+        assert!(setup.is_some());
+        assert_eq!(setup.unwrap().value, "cargo build");
+
+        // Check dev script
+        let dev = suggestions
+            .iter()
+            .find(|s| matches!(s.field, ProjectConfigField::DevScript));
+        assert!(dev.is_some());
+        assert_eq!(dev.unwrap().value, "cargo run");
+
+        // Check cleanup script
+        let cleanup = suggestions
+            .iter()
+            .find(|s| matches!(s.field, ProjectConfigField::CleanupScript));
+        assert!(cleanup.is_some());
+        assert_eq!(cleanup.unwrap().value, "cargo test && cargo clippy");
+
+        // All should be high confidence
+        for suggestion in &suggestions {
+            assert!(matches!(suggestion.confidence, ConfidenceLevel::High));
+            assert_eq!(suggestion.source, "Cargo.toml");
+        }
+    }
+
+    #[test]
+    fn test_scan_cargo_toml_missing_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let result = ProjectDetector::scan_cargo_toml(temp_dir.path()).unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_scan_markdown_file_with_commands() {
+        let temp_dir = TempDir::new().unwrap();
+        let readme = r#"# My Project
+
+## Development
+
+Start the dev server:
+
+```bash
+npm run dev
+```
+
+## Setup
+
+Install dependencies:
+
+```bash
+pnpm install
+```
+
+## Testing
+
+Run tests:
+
+```bash
+npm run test
+npm run lint
+```
+"#;
+        let readme_path = temp_dir.path().join("README.md");
+        fs::write(&readme_path, readme).unwrap();
+
+        let suggestions = ProjectDetector::scan_markdown_file(&readme_path, "README.md")
+            .unwrap()
+            .unwrap();
+
+        // Should find dev script
+        let dev = suggestions
+            .iter()
+            .find(|s| matches!(s.field, ProjectConfigField::DevScript));
+        assert!(dev.is_some());
+        assert_eq!(dev.unwrap().value, "npm run dev");
+        assert!(matches!(dev.unwrap().confidence, ConfidenceLevel::Medium));
+
+        // Should find setup script
+        let setup = suggestions
+            .iter()
+            .find(|s| matches!(s.field, ProjectConfigField::SetupScript));
+        assert!(setup.is_some());
+        assert_eq!(setup.unwrap().value, "pnpm install");
+
+        // Should find test script
+        let cleanup = suggestions
+            .iter()
+            .find(|s| matches!(s.field, ProjectConfigField::CleanupScript));
+        assert!(cleanup.is_some());
+        assert!(cleanup.unwrap().value.contains("npm run test"));
+    }
+
+    #[test]
+    fn test_scan_markdown_file_with_cargo_commands() {
+        let temp_dir = TempDir::new().unwrap();
+        let readme = r#"# Rust Project
+
+Build with:
+
+```bash
+cargo build
+```
+
+Run with:
+
+```bash
+cargo run
+```
+
+Test with:
+
+```bash
+cargo test
+```
+"#;
+        let readme_path = temp_dir.path().join("README.md");
+        fs::write(&readme_path, readme).unwrap();
+
+        let suggestions = ProjectDetector::scan_markdown_file(&readme_path, "README.md")
+            .unwrap()
+            .unwrap();
+
+        assert!(suggestions
+            .iter()
+            .any(|s| matches!(s.field, ProjectConfigField::DevScript) && s.value == "cargo run"));
+        assert!(suggestions
+            .iter()
+            .any(|s| matches!(s.field, ProjectConfigField::SetupScript)
+                && s.value == "cargo build"));
+        assert!(suggestions
+            .iter()
+            .any(|s| matches!(s.field, ProjectConfigField::CleanupScript)
+                && s.value == "cargo test"));
+    }
+
+    #[test]
+    fn test_scan_markdown_file_no_commands() {
+        let temp_dir = TempDir::new().unwrap();
+        let readme = "# My Project\n\nThis is a simple project with no code blocks.";
+        let readme_path = temp_dir.path().join("README.md");
+        fs::write(&readme_path, readme).unwrap();
+
+        let result = ProjectDetector::scan_markdown_file(&readme_path, "README.md").unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_scan_env_files() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create .env file (typically gitignored)
+        fs::write(temp_dir.path().join(".env"), "API_KEY=secret").unwrap();
+
+        // Create .env.local
+        fs::write(temp_dir.path().join(".env.local"), "DEBUG=true").unwrap();
+
+        // Create .gitignore that ignores .env files
+        fs::write(temp_dir.path().join(".gitignore"), ".env\n.env.local").unwrap();
+
+        let suggestions = ProjectDetector::scan_env_files(temp_dir.path())
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(suggestions.len(), 1);
+        let copy_files = &suggestions[0];
+        assert!(matches!(
+            copy_files.field,
+            ProjectConfigField::CopyFiles
+        ));
+        assert!(matches!(copy_files.confidence, ConfidenceLevel::High));
+        assert_eq!(copy_files.source, "filesystem scan");
+
+        // Should find both .env files even though they're gitignored
+        assert!(copy_files.value.contains(".env"));
+        assert!(copy_files.value.contains(".env.local"));
+    }
+
+    #[test]
+    fn test_scan_env_files_none_found() {
+        let temp_dir = TempDir::new().unwrap();
+        let result = ProjectDetector::scan_env_files(temp_dir.path()).unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_add_suggestion_prioritizes_high_confidence() {
+        let mut map = HashMap::new();
+
+        // Add medium confidence suggestion first
+        let medium_suggestion = ProjectConfigSuggestion {
+            field: ProjectConfigField::DevScript,
+            value: "npm run dev".to_string(),
+            confidence: ConfidenceLevel::Medium,
+            source: "README.md".to_string(),
+        };
+        ProjectDetector::add_suggestion(&mut map, medium_suggestion);
+
+        assert_eq!(map.len(), 1);
+        let key = "DevScript".to_string();
+        assert!(matches!(
+            map.get(&key).unwrap().confidence,
+            ConfidenceLevel::Medium
+        ));
+
+        // Add high confidence suggestion - should replace medium
+        let high_suggestion = ProjectConfigSuggestion {
+            field: ProjectConfigField::DevScript,
+            value: "npm run start".to_string(),
+            confidence: ConfidenceLevel::High,
+            source: "package.json".to_string(),
+        };
+        ProjectDetector::add_suggestion(&mut map, high_suggestion);
+
+        assert_eq!(map.len(), 1);
+        let stored = map.get(&key).unwrap();
+        assert!(matches!(stored.confidence, ConfidenceLevel::High));
+        assert_eq!(stored.value, "npm run start");
+        assert_eq!(stored.source, "package.json");
+    }
+
+    #[test]
+    fn test_add_suggestion_keeps_high_confidence() {
+        let mut map = HashMap::new();
+
+        // Add high confidence suggestion first
+        let high_suggestion = ProjectConfigSuggestion {
+            field: ProjectConfigField::DevScript,
+            value: "npm run dev".to_string(),
+            confidence: ConfidenceLevel::High,
+            source: "package.json".to_string(),
+        };
+        ProjectDetector::add_suggestion(&mut map, high_suggestion);
+
+        // Try to add medium confidence - should be ignored
+        let medium_suggestion = ProjectConfigSuggestion {
+            field: ProjectConfigField::DevScript,
+            value: "npm start".to_string(),
+            confidence: ConfidenceLevel::Medium,
+            source: "README.md".to_string(),
+        };
+        ProjectDetector::add_suggestion(&mut map, medium_suggestion);
+
+        let key = "DevScript".to_string();
+        let stored = map.get(&key).unwrap();
+        assert!(matches!(stored.confidence, ConfidenceLevel::High));
+        assert_eq!(stored.value, "npm run dev");
+        assert_eq!(stored.source, "package.json");
+    }
+
+    #[test]
+    fn test_scan_repo_hybrid_project() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create a hybrid Node.js + Rust project
+        let package_json = r#"{
+  "name": "hybrid-project",
+  "scripts": {
+    "dev": "vite",
+    "test": "vitest",
+    "lint": "eslint ."
+  }
+}"#;
+        fs::write(temp_dir.path().join("package.json"), package_json).unwrap();
+
+        let cargo_toml = r#"[package]
+name = "hybrid-project"
+version = "0.1.0"
+"#;
+        fs::write(temp_dir.path().join("Cargo.toml"), cargo_toml).unwrap();
+
+        fs::write(temp_dir.path().join(".env"), "API_KEY=test").unwrap();
+
+        let readme = r#"# Hybrid Project
+
+Start development:
+
+```bash
+pnpm run dev
+```
+"#;
+        fs::write(temp_dir.path().join("README.md"), readme).unwrap();
+
+        let suggestions = ProjectDetector::scan_repo(temp_dir.path()).unwrap();
+
+        // Should have suggestions from both package.json and Cargo.toml
+        // Package.json should win for dev script (High confidence, processed first)
+        let dev = suggestions
+            .iter()
+            .find(|s| matches!(s.field, ProjectConfigField::DevScript));
+        assert!(dev.is_some());
+        assert_eq!(dev.unwrap().source, "package.json");
+
+        // Should find .env file
+        let copy_files = suggestions
+            .iter()
+            .find(|s| matches!(s.field, ProjectConfigField::CopyFiles));
+        assert!(copy_files.is_some());
+        assert!(copy_files.unwrap().value.contains(".env"));
     }
 }
