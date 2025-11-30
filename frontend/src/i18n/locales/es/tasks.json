@@ -180,7 +180,10 @@
     "resolveConflicts": "Resolve conflicts",
     "send": "Send",
     "stop": "Stop",
-    "unqueuing": "Unqueuing…"
+    "unqueuing": "Unqueuing…",
+    "queue": "Encolar",
+    "cancelQueue": "Cancelar cola",
+    "queuedMessage": "Mensaje en cola - se ejecutará cuando finalice la ejecución actual"
   },
   "git": {
     "branch": {

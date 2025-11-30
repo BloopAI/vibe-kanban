@@ -180,7 +180,10 @@
     "resolveConflicts": "Resolve conflicts",
     "send": "Send",
     "stop": "Stop",
-    "unqueuing": "Unqueuing…"
+    "unqueuing": "Unqueuing…",
+    "queue": "대기열에 추가",
+    "cancelQueue": "대기열 취소",
+    "queuedMessage": "메시지가 대기열에 추가됨 - 현재 실행이 완료되면 실행됩니다"
   },
   "git": {
     "branch": {

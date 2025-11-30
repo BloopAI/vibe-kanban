@@ -180,7 +180,10 @@
     "resolveConflicts": "Resolve conflicts",
     "send": "Send",
     "stop": "Stop",
-    "unqueuing": "Unqueuing…"
+    "unqueuing": "Unqueuing…",
+    "queue": "キューに追加",
+    "cancelQueue": "キューをキャンセル",
+    "queuedMessage": "メッセージがキューに追加されました - 現在の実行が完了すると実行されます"
   },
   "git": {
     "branch": {

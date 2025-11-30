@@ -148,7 +148,10 @@
     "unqueuing": "Unqueuing…",
     "edit": "Edit",
     "queuing": "Queuing…",
-    "queueForNextTurn": "Queue for next turn"
+    "queueForNextTurn": "Queue for next turn",
+    "queue": "Queue",
+    "cancelQueue": "Cancel Queue",
+    "queuedMessage": "Message queued - will execute when current run finishes"
   },
   "todos": {
     "title_one": "Todos ({{count}})",
