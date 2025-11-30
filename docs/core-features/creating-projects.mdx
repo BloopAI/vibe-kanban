@@ -24,6 +24,25 @@ After creating a project, you need to press the settings button in the top right
 
 Once you've created a project, you can access the project settings by clicking the settings button in the top right corner. From here, you can configure various aspects of your project.
 
+### Auto-Detect Configuration
+
+<Tip>
+Vibe Kanban can automatically scan your repository to suggest configuration values for setup scripts, dev scripts, cleanup scripts, and files to copy.
+</Tip>
+
+When you enter a valid git repository path in the project settings, click the **Scan Project Configuration** button to automatically detect:
+
+- **Setup commands** from `package.json`, `Cargo.toml`, or documentation files (README.md, CLAUDE.md, etc.)
+- **Dev server commands** from npm/pnpm scripts or Rust cargo commands
+- **Test and linting commands** for cleanup scripts
+- **Environment files** like `.env`, `.env.local`, and other local configuration files that need copying
+
+The scanner provides suggestions with confidence levels:
+- **High confidence**: Found in structured files like `package.json` or `Cargo.toml`
+- **Medium confidence**: Extracted from documentation code blocks
+
+You can accept or reject each suggestion individually before saving your project configuration.
+
 ### Setup Scripts
 
 Setup scripts will be run before the coding agent is executed. This is useful for installing dependencies, for example you might run `npm install` or `cargo build`. This will save you time as your agent won't need to figure out that these commands haven't already been run.
