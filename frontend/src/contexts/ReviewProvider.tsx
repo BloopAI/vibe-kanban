@@ -5,6 +5,7 @@ import {
   useState,
   ReactNode,
   useEffect,
+  useCallback,
 } from 'react';
 import { genId } from '@/utils/id';
 
@@ -96,7 +97,7 @@ export function ReviewProvider({
     });
   };
 
-  const generateReviewMarkdown = () => {
+  const generateReviewMarkdown = useCallback(() => {
     if (comments.length === 0) return '';
 
     const commentsNum = comments.length;
@@ -125,7 +126,7 @@ export function ReviewProvider({
       .join('\n');
 
     return header + commentsMd;
-  };
+  }, [comments]);
 
   return (
     <ReviewContext.Provider

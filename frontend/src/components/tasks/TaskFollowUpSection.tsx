@@ -148,13 +148,25 @@ export function TaskFollowUpSection({
   // Ref to track current variant for use in message save callback
   const variantRef = useRef<string | null>(null);
 
+  // Refs to stabilize callbacks - avoid re-creating callbacks when these values change
+  const scratchRef = useRef(scratch);
+  useEffect(() => {
+    scratchRef.current = scratch;
+  }, [scratch]);
+
+  const followUpMessageRef = useRef(followUpMessage);
+  useEffect(() => {
+    followUpMessageRef.current = followUpMessage;
+  }, [followUpMessage]);
+
   // Save scratch helper (used for both message and variant changes)
+  // Uses scratchRef to avoid callback invalidation when scratch updates
   const saveToScratch = useCallback(
     async (message: string, variant: string | null) => {
       if (!selectedAttemptId) return;
       // Don't create empty scratch entries - only save if there's actual content
       // or if scratch already exists (to allow clearing a draft)
-      if (!message.trim() && !scratch) return;
+      if (!message.trim() && !scratchRef.current) return;
       try {
         await updateScratch({
           payload: {
@@ -166,7 +178,7 @@ export function TaskFollowUpSection({
         console.error('Failed to save follow-up draft', e);
       }
     },
-    [selectedAttemptId, updateScratch, scratch]
+    [selectedAttemptId, updateScratch]
   );
 
   // Wrapper to update variant and save to scratch immediately
@@ -174,10 +186,10 @@ export function TaskFollowUpSection({
     (variant: string | null) => {
       setSelectedVariantState(variant);
       variantRef.current = variant;
-      // Save immediately when user changes variant
-      saveToScratch(followUpMessage, variant);
+      // Save immediately when user changes variant (use ref to avoid dependency)
+      saveToScratch(followUpMessageRef.current, variant);
     },
-    [followUpMessage, saveToScratch]
+    [saveToScratch]
   );
 
   // Debounced save for message changes (uses current variant from ref)
@@ -378,7 +390,20 @@ export function TaskFollowUpSection({
     [isAttemptRunning, isQueued, handleQueueMessage, onSendFollowUp]
   );
 
+  // Ref to access setFollowUpMessage without adding it as a dependency
+  const setFollowUpMessageRef = useRef(setFollowUpMessage);
+  useEffect(() => {
+    setFollowUpMessageRef.current = setFollowUpMessage;
+  }, [setFollowUpMessage]);
+
+  // Ref for followUpError to use in stable onChange handler
+  const followUpErrorRef = useRef(followUpError);
+  useEffect(() => {
+    followUpErrorRef.current = followUpError;
+  }, [followUpError]);
+
   // Handle image paste - upload to container and insert markdown
+  // Uses refs to avoid callback invalidation when message changes
   const handlePasteFiles = useCallback(
     async (files: File[]) => {
       if (!selectedAttemptId) return;
@@ -391,16 +416,36 @@ export function TaskFollowUpSection({
           );
           // Append markdown image to current message
           const imageMarkdown = `![${response.original_name}](${response.file_path})`;
-          const newMessage = followUpMessage
-            ? `${followUpMessage}\n\n${imageMarkdown}`
+          const currentMessage = followUpMessageRef.current;
+          const newMessage = currentMessage
+            ? `${currentMessage}\n\n${imageMarkdown}`
             : imageMarkdown;
-          setFollowUpMessage(newMessage);
+          setFollowUpMessageRef.current(newMessage);
         } catch (error) {
           console.error('Failed to upload image:', error);
         }
       }
     },
-    [selectedAttemptId, followUpMessage, setFollowUpMessage]
+    [selectedAttemptId]
+  );
+
+  // Stable onChange handler for WYSIWYGEditor
+  const handleEditorChange = useCallback(
+    (value: string) => {
+      setFollowUpMessageRef.current(value);
+      if (followUpErrorRef.current) setFollowUpError(null);
+    },
+    [setFollowUpError]
+  );
+
+  // Memoize placeholder to avoid re-renders
+  const hasExtraContext = !!(reviewMarkdown || conflictResolutionInstructions);
+  const editorPlaceholder = useMemo(
+    () =>
+      hasExtraContext
+        ? '(Optional) Add additional instructions... Type @ to insert tags or search files.'
+        : 'Continue working on this task attempt... Type @ to insert tags or search files.',
+    [hasExtraContext]
   );
 
   // Register keyboard shortcuts
@@ -532,16 +577,9 @@ export function TaskFollowUpSection({
 
             <div className="flex flex-col gap-2">
               <WYSIWYGEditor
-                placeholder={
-                  reviewMarkdown || conflictResolutionInstructions
-                    ? '(Optional) Add additional instructions... Type @ to insert tags or search files.'
-                    : 'Continue working on this task attempt... Type @ to insert tags or search files.'
-                }
+                placeholder={editorPlaceholder}
                 value={followUpMessage}
-                onChange={(value) => {
-                  setFollowUpMessage(value);
-                  if (followUpError) setFollowUpError(null);
-                }}
+                onChange={handleEditorChange}
                 disabled={!isEditable}
                 onFocusChange={setIsTextareaFocused}
                 onPasteFiles={handlePasteFiles}

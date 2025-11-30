@@ -199,6 +199,49 @@ function WYSIWYGEditor({
     []
   );
 
+  // Memoized handlers for ContentEditable to prevent re-renders
+  const handlePaste = useCallback(
+    (event: React.ClipboardEvent) => {
+      if (!onPasteFiles || disabled) return;
+
+      const dt = event.clipboardData;
+      if (!dt) return;
+
+      const files: File[] = Array.from(dt.files || []).filter((f) =>
+        f.type.startsWith('image/')
+      );
+
+      if (files.length > 0) {
+        onPasteFiles(files);
+      }
+    },
+    [onPasteFiles, disabled]
+  );
+
+  const handleFocus = useCallback(() => {
+    onFocusChange?.(true);
+  }, [onFocusChange]);
+
+  const handleBlur = useCallback(() => {
+    onFocusChange?.(false);
+  }, [onFocusChange]);
+
+  // Memoized placeholder element
+  const placeholderElement = useMemo(
+    () =>
+      !disabled ? (
+        <div
+          className={cn(
+            'absolute top-0 left-0 text-sm text-secondary-foreground pointer-events-none',
+            showAttachButton && 'pr-10'
+          )}
+        >
+          {placeholder}
+        </div>
+      ) : null,
+    [disabled, showAttachButton, placeholder]
+  );
+
   const editorContent = (
     <div className="wysiwyg">
       <TaskAttemptContext.Provider value={taskAttemptId}>
@@ -222,36 +265,12 @@ function WYSIWYGEditor({
                     className
                   )}
                   aria-label={disabled ? 'Markdown content' : 'Markdown editor'}
-                  onPaste={(event) => {
-                    if (!onPasteFiles || disabled) return;
-
-                    const dt = event.clipboardData;
-                    if (!dt) return;
-
-                    const files: File[] = Array.from(dt.files || []).filter(
-                      (f) => f.type.startsWith('image/')
-                    );
-
-                    if (files.length > 0) {
-                      onPasteFiles(files);
-                    }
-                  }}
-                  onFocus={() => onFocusChange?.(true)}
-                  onBlur={() => onFocusChange?.(false)}
+                  onPaste={handlePaste}
+                  onFocus={handleFocus}
+                  onBlur={handleBlur}
                 />
               }
-              placeholder={
-                !disabled ? (
-                  <div
-                    className={cn(
-                      'absolute top-0 left-0 text-sm text-secondary-foreground pointer-events-none',
-                      showAttachButton && 'pr-10'
-                    )}
-                  >
-                    {placeholder}
-                  </div>
-                ) : null
-              }
+              placeholder={placeholderElement}
               ErrorBoundary={LexicalErrorBoundary}
             />
             {/* Attachment button */}
