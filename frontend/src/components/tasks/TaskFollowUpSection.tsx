@@ -108,6 +108,9 @@ export function TaskFollowUpSection({
   // Track whether the follow-up textarea is focused
   const [isTextareaFocused, setIsTextareaFocused] = useState(false);
 
+  // Local message state for immediate UI feedback (before debounced save)
+  const [localMessage, setLocalMessage] = useState('');
+
   // Variant selection - derive default from latest process
   const latestProfileId = useMemo<ExecutorProfileId | null>(() => {
     if (!processes?.length) return null;
@@ -186,10 +189,10 @@ export function TaskFollowUpSection({
     (variant: string | null) => {
       setSelectedVariantState(variant);
       variantRef.current = variant;
-      // Save immediately when user changes variant (use ref to avoid dependency)
-      saveToScratch(followUpMessageRef.current, variant);
+      // Save immediately when user changes variant
+      saveToScratch(localMessage, variant);
     },
-    [saveToScratch]
+    [saveToScratch, localMessage]
   );
 
   // Debounced save for message changes (uses current variant from ref)
@@ -201,10 +204,14 @@ export function TaskFollowUpSection({
     500
   );
 
-  // Sync variant: wait for scratch to load, then use scratch variant or default
+  // Sync variant and local message: wait for scratch to load, then use scratch values or defaults
   useEffect(() => {
     if (isScratchLoading) return;
 
+    // Sync local message from scratch
+    setLocalMessage(scratchData?.message ?? '');
+
+    // Sync variant from scratch or default
     if (scratchData?.variant !== undefined) {
       setSelectedVariantState(scratchData.variant);
       variantRef.current = scratchData.variant;
@@ -275,7 +282,7 @@ export function TaskFollowUpSection({
   const { isSendingFollowUp, followUpError, setFollowUpError, onSendFollowUp } =
     useFollowUpSend({
       attemptId: selectedAttemptId,
-      message: followUpMessage,
+      message: localMessage,
       conflictMarkdown: conflictResolutionInstructions,
       reviewMarkdown,
       clickedMarkdown,
@@ -284,6 +291,7 @@ export function TaskFollowUpSection({
       clearClickedElements,
       jumpToLogsTab,
       onAfterSendCleanup: async () => {
+        setLocalMessage(''); // Clear local state immediately
         try {
           await deleteScratch();
         } catch (e) {
@@ -334,14 +342,14 @@ export function TaskFollowUpSection({
       conflictResolutionInstructions ||
         reviewMarkdown ||
         clickedMarkdown ||
-        followUpMessage.trim()
+        localMessage.trim()
     );
   }, [
     canTypeFollowUp,
     conflictResolutionInstructions,
     reviewMarkdown,
     clickedMarkdown,
-    followUpMessage,
+    localMessage,
   ]);
   const isEditable =
     !isRetryActive && !hasPendingApproval && !isSendingFollowUp;
@@ -349,7 +357,7 @@ export function TaskFollowUpSection({
   // Handler to queue the current message for execution after agent finishes
   const handleQueueMessage = useCallback(async () => {
     if (
-      !followUpMessage.trim() &&
+      !localMessage.trim() &&
       !conflictResolutionInstructions &&
       !reviewMarkdown &&
       !clickedMarkdown
@@ -361,12 +369,12 @@ export function TaskFollowUpSection({
       conflictResolutionInstructions,
       clickedMarkdown,
       reviewMarkdown,
-      followUpMessage,
+      localMessage,
     ].filter(Boolean);
     const combinedMessage = parts.join('\n\n');
     await queueMessage(combinedMessage, selectedVariant);
   }, [
-    followUpMessage,
+    localMessage,
     conflictResolutionInstructions,
     reviewMarkdown,
     clickedMarkdown,
@@ -403,7 +411,6 @@ export function TaskFollowUpSection({
   }, [followUpError]);
 
   // Handle image paste - upload to container and insert markdown
-  // Uses refs to avoid callback invalidation when message changes
   const handlePasteFiles = useCallback(
     async (files: File[]) => {
       if (!selectedAttemptId) return;
@@ -416,11 +423,13 @@ export function TaskFollowUpSection({
           );
           // Append markdown image to current message
           const imageMarkdown = `![${response.original_name}](${response.file_path})`;
-          const currentMessage = followUpMessageRef.current;
-          const newMessage = currentMessage
-            ? `${currentMessage}\n\n${imageMarkdown}`
-            : imageMarkdown;
-          setFollowUpMessageRef.current(newMessage);
+          setLocalMessage((prev) => {
+            const newMessage = prev
+              ? `${prev}\n\n${imageMarkdown}`
+              : imageMarkdown;
+            setFollowUpMessageRef.current(newMessage); // Debounced save to scratch
+            return newMessage;
+          });
         } catch (error) {
           console.error('Failed to upload image:', error);
         }
@@ -432,7 +441,8 @@ export function TaskFollowUpSection({
   // Stable onChange handler for WYSIWYGEditor
   const handleEditorChange = useCallback(
     (value: string) => {
-      setFollowUpMessageRef.current(value);
+      setLocalMessage(value); // Immediate update for UI responsiveness
+      setFollowUpMessageRef.current(value); // Debounced save to scratch
       if (followUpErrorRef.current) setFollowUpError(null);
     },
     [setFollowUpError]
@@ -578,7 +588,7 @@ export function TaskFollowUpSection({
             <div className="flex flex-col gap-2">
               <WYSIWYGEditor
                 placeholder={editorPlaceholder}
-                value={followUpMessage}
+                value={localMessage}
                 onChange={handleEditorChange}
                 disabled={!isEditable}
                 onFocusChange={setIsTextareaFocused}
@@ -631,7 +641,7 @@ export function TaskFollowUpSection({
                   onClick={handleQueueMessage}
                   disabled={
                     isQueueLoading ||
-                    (!followUpMessage.trim() &&
+                    (!localMessage.trim() &&
                       !conflictResolutionInstructions &&
                       !reviewMarkdown &&
                       !clickedMarkdown)
