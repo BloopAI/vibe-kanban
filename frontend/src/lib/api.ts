@@ -74,6 +74,8 @@ import {
   OpenEditorRequest,
   CreatePrError,
   PushError,
+  ScanConfigRequest,
+  ScanConfigResponse,
 } from 'shared/types';
 
 // Re-export types for convenience
@@ -325,6 +327,14 @@ export const projectsApi = {
       method: 'DELETE',
     });
     return handleApiResponse<Project>(response);
+  },
+
+  scanConfig: async (data: ScanConfigRequest): Promise<ScanConfigResponse> => {
+    const response = await makeRequest('/api/projects/scan-config', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<ScanConfigResponse>(response);
   },
 };
 
