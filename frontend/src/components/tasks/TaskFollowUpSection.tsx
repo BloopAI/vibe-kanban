@@ -470,7 +470,7 @@ export function TaskFollowUpSection({
   return (
     <div
       className={cn(
-        'grid h-full min-h-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden focus-within:ring ring-inset',
+        'grid h-full min-h-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden',
         isRetryActive && 'opacity-50'
       )}
     >
@@ -558,7 +558,7 @@ export function TaskFollowUpSection({
       </div>
 
       {/* Always-visible action bar */}
-      <div className="border-t bg-background p-4">
+      <div className="p-4">
         <div className="flex flex-row gap-2 items-center">
           <div className="flex-1 flex gap-2">
             <VariantSelector
