@@ -42,11 +42,11 @@ impl ProjectDetector {
         // Scan documentation files
         for doc_file in DOCUMENTATION_FILES {
             let doc_path = repo_path.join(doc_file);
-            if doc_path.exists() {
-                if let Some(doc_suggestions) = Self::scan_markdown_file(&doc_path, doc_file)? {
-                    for suggestion in doc_suggestions {
-                        Self::add_suggestion(&mut suggestions, suggestion);
-                    }
+            if doc_path.exists()
+                && let Some(doc_suggestions) = Self::scan_markdown_file(&doc_path, doc_file)?
+            {
+                for suggestion in doc_suggestions {
+                    Self::add_suggestion(&mut suggestions, suggestion);
                 }
             }
         }
@@ -102,15 +102,14 @@ impl ProjectDetector {
                 .get("dev")
                 .or_else(|| scripts.get("start"))
                 .or_else(|| scripts.get("serve"))
+                && let Some(cmd) = dev_cmd.as_str()
             {
-                if let Some(cmd) = dev_cmd.as_str() {
-                    suggestions.push(ProjectConfigSuggestion {
-                        field: ProjectConfigField::DevScript,
-                        value: format!("npm run {}", Self::get_script_name(scripts, cmd)),
-                        confidence: ConfidenceLevel::High,
-                        source: "package.json".to_string(),
-                    });
-                }
+                suggestions.push(ProjectConfigSuggestion {
+                    field: ProjectConfigField::DevScript,
+                    value: format!("npm run {}", Self::get_script_name(scripts, cmd)),
+                    confidence: ConfidenceLevel::High,
+                    source: "package.json".to_string(),
+                });
             }
 
             // Setup script: look for install, postinstall, build, prepare
@@ -171,10 +170,10 @@ impl ProjectDetector {
     /// Helper to get script name from command
     fn get_script_name(scripts: &serde_json::Map<String, Value>, target_cmd: &str) -> String {
         for (name, value) in scripts {
-            if let Some(cmd) = value.as_str() {
-                if cmd == target_cmd {
-                    return name.clone();
-                }
+            if let Some(cmd) = value.as_str()
+                && cmd == target_cmd
+            {
+                return name.clone();
             }
         }
         "dev".to_string()
@@ -187,28 +186,26 @@ impl ProjectDetector {
             return Ok(None);
         }
 
-        let mut suggestions = Vec::new();
-
-        suggestions.push(ProjectConfigSuggestion {
-            field: ProjectConfigField::SetupScript,
-            value: "cargo build".to_string(),
-            confidence: ConfidenceLevel::High,
-            source: "Cargo.toml".to_string(),
-        });
-
-        suggestions.push(ProjectConfigSuggestion {
-            field: ProjectConfigField::DevScript,
-            value: "cargo run".to_string(),
-            confidence: ConfidenceLevel::High,
-            source: "Cargo.toml".to_string(),
-        });
-
-        suggestions.push(ProjectConfigSuggestion {
-            field: ProjectConfigField::CleanupScript,
-            value: "cargo test && cargo clippy".to_string(),
-            confidence: ConfidenceLevel::High,
-            source: "Cargo.toml".to_string(),
-        });
+        let suggestions = vec![
+            ProjectConfigSuggestion {
+                field: ProjectConfigField::SetupScript,
+                value: "cargo build".to_string(),
+                confidence: ConfidenceLevel::High,
+                source: "Cargo.toml".to_string(),
+            },
+            ProjectConfigSuggestion {
+                field: ProjectConfigField::DevScript,
+                value: "cargo run".to_string(),
+                confidence: ConfidenceLevel::High,
+                source: "Cargo.toml".to_string(),
+            },
+            ProjectConfigSuggestion {
+                field: ProjectConfigField::CleanupScript,
+                value: "cargo test && cargo clippy".to_string(),
+                confidence: ConfidenceLevel::High,
+                source: "Cargo.toml".to_string(),
+            },
+        ];
 
         Ok(Some(suggestions))
     }
@@ -243,16 +240,16 @@ impl ProjectDetector {
         for pattern in &dev_patterns {
             let re = Regex::new(pattern)?;
             for block in &code_blocks {
-                if let Some(captures) = re.captures(block) {
-                    if let Some(matched) = captures.get(0) {
-                        suggestions.push(ProjectConfigSuggestion {
-                            field: ProjectConfigField::DevScript,
-                            value: matched.as_str().to_string(),
-                            confidence: ConfidenceLevel::Medium,
-                            source: file_name.to_string(),
-                        });
-                        break;
-                    }
+                if let Some(captures) = re.captures(block)
+                    && let Some(matched) = captures.get(0)
+                {
+                    suggestions.push(ProjectConfigSuggestion {
+                        field: ProjectConfigField::DevScript,
+                        value: matched.as_str().to_string(),
+                        confidence: ConfidenceLevel::Medium,
+                        source: file_name.to_string(),
+                    });
+                    break;
                 }
             }
         }
@@ -269,16 +266,16 @@ impl ProjectDetector {
         for pattern in &setup_patterns {
             let re = Regex::new(pattern)?;
             for block in &code_blocks {
-                if let Some(captures) = re.captures(block) {
-                    if let Some(matched) = captures.get(0) {
-                        suggestions.push(ProjectConfigSuggestion {
-                            field: ProjectConfigField::SetupScript,
-                            value: matched.as_str().to_string(),
-                            confidence: ConfidenceLevel::Medium,
-                            source: file_name.to_string(),
-                        });
-                        break;
-                    }
+                if let Some(captures) = re.captures(block)
+                    && let Some(matched) = captures.get(0)
+                {
+                    suggestions.push(ProjectConfigSuggestion {
+                        field: ProjectConfigField::SetupScript,
+                        value: matched.as_str().to_string(),
+                        confidence: ConfidenceLevel::Medium,
+                        source: file_name.to_string(),
+                    });
+                    break;
                 }
             }
         }
@@ -296,16 +293,16 @@ impl ProjectDetector {
         for pattern in &test_patterns {
             let re = Regex::new(pattern)?;
             for block in &code_blocks {
-                if let Some(captures) = re.captures(block) {
-                    if let Some(matched) = captures.get(0) {
-                        suggestions.push(ProjectConfigSuggestion {
-                            field: ProjectConfigField::CleanupScript,
-                            value: matched.as_str().to_string(),
-                            confidence: ConfidenceLevel::Medium,
-                            source: file_name.to_string(),
-                        });
-                        break;
-                    }
+                if let Some(captures) = re.captures(block)
+                    && let Some(matched) = captures.get(0)
+                {
+                    suggestions.push(ProjectConfigSuggestion {
+                        field: ProjectConfigField::CleanupScript,
+                        value: matched.as_str().to_string(),
+                        confidence: ConfidenceLevel::Medium,
+                        source: file_name.to_string(),
+                    });
+                    break;
                 }
             }
         }
@@ -360,39 +357,34 @@ impl ProjectDetector {
 
         for entry in walker {
             let entry = entry?;
-            if entry.file_type().map_or(false, |ft| ft.is_file()) {
-                if let Some(file_name) = entry.file_name().to_str() {
-                    // Skip node_modules, target, dist, build directories even with gitignore disabled
-                    if let Some(parent) = entry.path().parent() {
-                        let parent_name = parent.file_name().and_then(|n| n.to_str()).unwrap_or("");
-                        if parent_name == "node_modules"
-                            || parent_name == "target"
-                            || parent_name == "dist"
-                            || parent_name == "build"
-                            || parent_name == ".git"
-                        {
-                            continue;
-                        }
+            if entry.file_type().is_some_and(|ft| ft.is_file())
+                && let Some(file_name) = entry.file_name().to_str()
+            {
+                // Skip node_modules, target, dist, build directories even with gitignore disabled
+                if let Some(parent) = entry.path().parent() {
+                    let parent_name = parent.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                    if parent_name == "node_modules"
+                        || parent_name == "target"
+                        || parent_name == "dist"
+                        || parent_name == "build"
+                        || parent_name == ".git"
+                    {
+                        continue;
                     }
+                }
 
-                    // Priority 1: Actual .env files (usually gitignored)
-                    if file_name == ".env"
-                        || file_name == ".env.local"
-                        || file_name == ".env.development"
-                        || file_name == ".env.production"
-                    {
-                        if let Ok(rel_path) = entry.path().strip_prefix(repo_path) {
-                            env_files.push(rel_path.to_string_lossy().to_string());
-                        }
-                    }
-                    // Priority 2: Config files that might be gitignored
-                    else if file_name.starts_with("config.local")
-                        || file_name.starts_with("settings.local")
-                    {
-                        if let Ok(rel_path) = entry.path().strip_prefix(repo_path) {
-                            env_files.push(rel_path.to_string_lossy().to_string());
-                        }
-                    }
+                // Actual .env files and config.local files (usually gitignored)
+                let is_env_file = file_name == ".env"
+                    || file_name == ".env.local"
+                    || file_name == ".env.development"
+                    || file_name == ".env.production";
+                let is_local_config = file_name.starts_with("config.local")
+                    || file_name.starts_with("settings.local");
+
+                if (is_env_file || is_local_config)
+                    && let Ok(rel_path) = entry.path().strip_prefix(repo_path)
+                {
+                    env_files.push(rel_path.to_string_lossy().to_string());
                 }
             }
         }

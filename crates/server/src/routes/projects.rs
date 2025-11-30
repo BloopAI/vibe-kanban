@@ -9,7 +9,10 @@ use axum::{
     routing::{get, post},
 };
 use db::models::{
-    project::{CreateProject, Project, ProjectError, ScanConfigRequest, ScanConfigResponse, SearchMatchType, SearchResult, UpdateProject},
+    project::{
+        CreateProject, Project, ProjectError, ScanConfigRequest, ScanConfigResponse,
+        SearchMatchType, SearchResult, UpdateProject,
+    },
     task::Task,
 };
 use deployment::Deployment;
