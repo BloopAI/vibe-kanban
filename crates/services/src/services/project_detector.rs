@@ -345,33 +345,49 @@ impl ProjectDetector {
         blocks
     }
 
-    /// Scan for .env template files
+    /// Scan for .env files and other config files (including gitignored ones)
     fn scan_env_files(repo_path: &Path) -> Result<Option<Vec<ProjectConfigSuggestion>>> {
         let mut env_files = Vec::new();
 
+        // Scan with gitignore DISABLED to find actual .env files (which are usually gitignored)
         let walker = WalkBuilder::new(repo_path)
             .max_depth(Some(2))
             .hidden(false)
+            .git_ignore(false) // Disable gitignore to find .env files
+            .git_global(false)
+            .git_exclude(false)
             .build();
 
         for entry in walker {
             let entry = entry?;
             if entry.file_type().map_or(false, |ft| ft.is_file()) {
                 if let Some(file_name) = entry.file_name().to_str() {
-                    // Match .env.example, .env.local.example, .env.template, etc.
-                    if file_name.starts_with(".env")
-                        && (file_name.ends_with(".example")
-                            || file_name.ends_with(".template")
-                            || file_name.ends_with(".sample"))
+                    // Skip node_modules, target, dist, build directories even with gitignore disabled
+                    if let Some(parent) = entry.path().parent() {
+                        let parent_name = parent.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                        if parent_name == "node_modules"
+                            || parent_name == "target"
+                            || parent_name == "dist"
+                            || parent_name == "build"
+                            || parent_name == ".git"
+                        {
+                            continue;
+                        }
+                    }
+
+                    // Priority 1: Actual .env files (usually gitignored)
+                    if file_name == ".env"
+                        || file_name == ".env.local"
+                        || file_name == ".env.development"
+                        || file_name == ".env.production"
                     {
-                        // Get relative path from repo root
                         if let Ok(rel_path) = entry.path().strip_prefix(repo_path) {
                             env_files.push(rel_path.to_string_lossy().to_string());
                         }
                     }
-                    // Also match config.example.*, settings.example.*, etc.
-                    else if (file_name.starts_with("config") || file_name.starts_with("settings"))
-                        && (file_name.contains(".example.") || file_name.contains(".template."))
+                    // Priority 2: Config files that might be gitignored
+                    else if file_name.starts_with("config.local")
+                        || file_name.starts_with("settings.local")
                     {
                         if let Ok(rel_path) = entry.path().strip_prefix(repo_path) {
                             env_files.push(rel_path.to_string_lossy().to_string());
