@@ -122,12 +122,14 @@ fn path_allowed(path: &Path, gi: &Gitignore, canonical_root: &Path) -> bool {
     };
 
     // Check if path is inside any of the always-skip directories
-    for component in relative_path.components() {
-        if let std::path::Component::Normal(name) = component
-            && let Some(name_str) = name.to_str()
-            && should_skip_dir(name_str)
-        {
-            return false;
+    if let Some(parent) = relative_path.parent() {
+        for component in parent.components() {
+            if let std::path::Component::Normal(name) = component
+                && let Some(name_str) = name.to_str()
+                && should_skip_dir(name_str)
+            {
+                return false;
+            }
         }
     }
 
