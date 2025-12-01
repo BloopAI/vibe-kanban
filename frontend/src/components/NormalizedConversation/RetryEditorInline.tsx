@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useProject } from '@/contexts/ProjectContext';
@@ -21,6 +21,8 @@ import {
   isCodingAgent,
   PROCESS_RUN_REASONS,
 } from '@/constants/processes';
+import { useVariant } from '@/hooks/useVariant';
+import type { ExecutorAction, ExecutorProfileId } from 'shared/types';
 
 export function RetryEditorInline({
   attempt,
@@ -41,8 +43,40 @@ export function RetryEditorInline({
   const { projectId } = useProject();
 
   const [message, setMessage] = useState(initialContent);
-  const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
+
+  // Extract variant from the process being retried
+  const processVariant = useMemo<string | null>(() => {
+    const process = attemptData.processes?.find(
+      (p) => p.id === executionProcessId
+    );
+    if (!process?.executor_action) return null;
+
+    const extractProfile = (
+      action: ExecutorAction | null
+    ): ExecutorProfileId | null => {
+      let curr: ExecutorAction | null = action;
+      while (curr) {
+        const typ = curr.typ;
+        switch (typ.type) {
+          case 'CodingAgentInitialRequest':
+          case 'CodingAgentFollowUpRequest':
+            return typ.executor_profile_id;
+          case 'ScriptRequest':
+            curr = curr.next_action;
+            continue;
+        }
+      }
+      return null;
+    };
+
+    return extractProfile(process.executor_action)?.variant ?? null;
+  }, [attemptData.processes, executionProcessId]);
+
+  const { selectedVariant, setSelectedVariant } = useVariant({
+    processVariant,
+    scratchVariant: undefined,
+  });
   const [isSending, setIsSending] = useState(false);
 
   const canSend = !isAttemptRunning && !!message.trim();
