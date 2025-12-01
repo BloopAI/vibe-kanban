@@ -20,6 +20,7 @@ use db::models::{
     execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
     merge::{Merge, MergeStatus, PrMerge, PullRequestInfo},
     project::{Project, ProjectError},
+    scratch::{Scratch, ScratchType},
     task::{Task, TaskRelationships, TaskStatus},
     task_attempt::{CreateTaskAttempt, TaskAttempt, TaskAttemptError},
 };
@@ -344,6 +345,23 @@ pub async fn follow_up(
             &ExecutionProcessRunReason::CodingAgent,
         )
         .await?;
+
+    // Clear the draft follow-up scratch on successful spawn
+    // This ensures the scratch is wiped even if the user navigates away quickly
+    if let Err(e) = Scratch::delete(
+        &deployment.db().pool,
+        task_attempt.id,
+        &ScratchType::DraftFollowUp,
+    )
+    .await
+    {
+        // Log but don't fail the request - scratch deletion is best-effort
+        tracing::debug!(
+            "Failed to delete draft follow-up scratch for attempt {}: {}",
+            task_attempt.id,
+            e
+        );
+    }
 
     Ok(ResponseJson(ApiResponse::success(execution_process)))
 }
