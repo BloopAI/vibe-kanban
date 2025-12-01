@@ -26,9 +26,7 @@ const TitleDescriptionEditor = ({
       />
       <WYSIWYGEditor
         placeholder="Description"
-        value={
-          description && description.trim() !== '' ? description : undefined
-        }
+        value={description ?? ''}
         onChange={onDescriptionChange}
         projectId={projectId}
       />

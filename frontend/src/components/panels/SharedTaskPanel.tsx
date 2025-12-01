@@ -18,7 +18,7 @@ const SharedTaskPanel = ({ task }: SharedTaskPanelProps) => {
           </div>
         </div>
         {task.description ? (
-          <WYSIWYGEditor placeholder="" value={task.description} disabled />
+          <WYSIWYGEditor value={task.description} disabled />
         ) : null}
       </div>
     </NewCardContent>

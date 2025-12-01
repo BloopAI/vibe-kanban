@@ -14,7 +14,6 @@ const UserMessage = ({
       <div className="group bg-background px-4 py-2 text-sm flex gap-2">
         <div className="flex-1 py-3">
           <WYSIWYGEditor
-            placeholder=""
             value={content}
             disabled
             className="whitespace-pre-wrap break-words flex flex-col gap-1 font-light"

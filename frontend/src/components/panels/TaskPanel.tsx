@@ -102,13 +102,9 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
       <NewCardContent>
         <div className="p-6 flex flex-col h-full max-h-[calc(100vh-8rem)]">
           <div className="space-y-3 overflow-y-auto flex-shrink min-h-0">
-            <WYSIWYGEditor placeholder="" value={titleContent} disabled />
+            <WYSIWYGEditor value={titleContent} disabled />
             {descriptionContent && (
-              <WYSIWYGEditor
-                placeholder=""
-                value={descriptionContent}
-                disabled
-              />
+              <WYSIWYGEditor value={descriptionContent} disabled />
             )}
           </div>
 

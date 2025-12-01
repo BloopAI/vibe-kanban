@@ -284,7 +284,6 @@ const CollapsibleEntry: React.FC<{
     <div className={contentClassName}>
       {markdown ? (
         <WYSIWYGEditor
-          placeholder=""
           value={content}
           disabled
           className="whitespace-pre-wrap break-words"
@@ -301,7 +300,6 @@ const CollapsibleEntry: React.FC<{
     <div className={contentClassName}>
       {markdown ? (
         <WYSIWYGEditor
-          placeholder=""
           value={firstLine}
           disabled
           className="whitespace-pre-wrap break-words"
@@ -421,11 +419,9 @@ const PlanPresentationCard: React.FC<{
           <div className={cn('px-3 py-2', tone.contentBg)}>
             <div className={cn('text-sm', tone.contentText)}>
               <WYSIWYGEditor
-                placeholder=""
                 value={plan}
                 disabled
                 className="whitespace-pre-wrap break-words"
-                enableCopyButton
                 taskAttemptId={taskAttemptId}
               />
             </div>
@@ -568,7 +564,6 @@ const ToolCallCard: React.FC<{
                     {actionType.result?.type.type === 'markdown' &&
                       actionType.result.value && (
                         <WYSIWYGEditor
-                          placeholder=""
                           value={actionType.result.value?.toString()}
                           disabled
                           taskAttemptId={taskAttemptId}
@@ -690,7 +685,6 @@ function DisplayConversationEntry({
             })}
           </div>
           <WYSIWYGEditor
-            placeholder=""
             value={entry.content}
             disabled
             className="whitespace-pre-wrap break-words flex flex-col gap-1 font-light py-3"
@@ -825,11 +819,9 @@ function DisplayConversationEntry({
       <div className={getContentClassName(entryType)}>
         {shouldRenderMarkdown(entryType) ? (
           <WYSIWYGEditor
-            placeholder=""
             value={isNormalizedEntry(entry) ? entry.content : ''}
             disabled
             className="whitespace-pre-wrap break-words flex flex-col gap-1 font-light"
-            enableCopyButton={entryType.type === 'assistant_message'}
             taskAttemptId={taskAttempt?.id}
           />
         ) : isNormalizedEntry(entry) ? (

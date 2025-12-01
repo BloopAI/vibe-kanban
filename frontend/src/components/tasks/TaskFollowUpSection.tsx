@@ -650,13 +650,21 @@ export function TaskFollowUpSection({
               </div>
             )}
 
-            <div className="flex flex-col gap-2">
+            <div
+              className="flex flex-col gap-2"
+              onFocus={() => setIsTextareaFocused(true)}
+              onBlur={(e) => {
+                // Only blur if focus is leaving the container entirely
+                if (!e.currentTarget.contains(e.relatedTarget)) {
+                  setIsTextareaFocused(false);
+                }
+              }}
+            >
               <WYSIWYGEditor
                 placeholder={editorPlaceholder}
                 value={displayMessage}
                 onChange={handleEditorChange}
                 disabled={!isEditable}
-                onFocusChange={setIsTextareaFocused}
                 onPasteFiles={handlePasteFiles}
                 projectId={projectId}
                 taskAttemptId={selectedAttemptId}

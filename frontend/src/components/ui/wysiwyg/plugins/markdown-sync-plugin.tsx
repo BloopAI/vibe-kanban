@@ -8,8 +8,7 @@ import {
 import { $getRoot, type EditorState } from 'lexical';
 
 type MarkdownSyncPluginProps = {
-  value?: string;
-  defaultValue?: string;
+  value: string;
   onChange?: (markdown: string) => void;
   onEditorStateChange?: (state: EditorState) => void;
   editable: boolean;
@@ -19,16 +18,10 @@ type MarkdownSyncPluginProps = {
 /**
  * Handles bidirectional markdown synchronization between Lexical editor and external state.
  *
- * This plugin consolidates all markdown sync logic:
- * - Controlled mode: syncs `value` prop to/from editor
- * - Uncontrolled mode: applies `defaultValue` once on mount
- * - Editable state management
- *
  * Uses an internal ref to prevent infinite update loops during bidirectional sync.
  */
 export function MarkdownSyncPlugin({
   value,
-  defaultValue,
   onChange,
   onEditorStateChange,
   editable,
@@ -36,32 +29,14 @@ export function MarkdownSyncPlugin({
 }: MarkdownSyncPluginProps) {
   const [editor] = useLexicalComposerContext();
   const lastSerializedRef = useRef<string | undefined>(undefined);
-  const didInitRef = useRef(false);
 
   // Handle editable state
   useEffect(() => {
     editor.setEditable(editable);
   }, [editor, editable]);
 
-  // Handle defaultValue (uncontrolled mode) - run once
-  useEffect(() => {
-    if (value !== undefined || didInitRef.current) return;
-    didInitRef.current = true;
-    if (!defaultValue?.trim()) return;
-
-    try {
-      editor.update(() => {
-        $convertFromMarkdownString(defaultValue, transformers);
-      });
-      lastSerializedRef.current = defaultValue;
-    } catch (err) {
-      console.error('Failed to parse default markdown', err);
-    }
-  }, [editor, defaultValue, value, transformers]);
-
   // Handle controlled value changes (external → editor)
   useEffect(() => {
-    if (value === undefined) return;
     if (value === lastSerializedRef.current) return;
 
     try {

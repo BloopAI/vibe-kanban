@@ -39,40 +39,32 @@ import { writeClipboardViaBridge } from '@/vscode/bridge';
 export type SerializedEditorState = string;
 
 type WysiwygProps = {
-  placeholder: string;
+  placeholder?: string;
   /** Markdown string representing the editor content */
-  value?: SerializedEditorState;
+  value: SerializedEditorState;
   onChange?: (state: SerializedEditorState) => void;
-  /** Initial markdown string, used only in uncontrolled mode */
-  defaultValue?: SerializedEditorState;
   onEditorStateChange?: (s: EditorState) => void;
   disabled?: boolean;
   onPasteFiles?: (files: File[]) => void;
-  onFocusChange?: (isFocused: boolean) => void;
   className?: string;
   projectId?: string; // for file search in typeahead
   onCmdEnter?: () => void;
   onShiftCmdEnter?: () => void;
-  /** Show copy-to-clipboard button on hover */
-  enableCopyButton?: boolean;
   /** Task attempt ID for resolving .vibe-images paths */
   taskAttemptId?: string;
 };
 
 function WYSIWYGEditor({
-  placeholder,
+  placeholder = '',
   value,
   onChange,
-  defaultValue,
   onEditorStateChange,
   disabled = false,
   onPasteFiles,
-  onFocusChange,
   className,
   projectId,
   onCmdEnter,
   onShiftCmdEnter,
-  enableCopyButton = false,
   taskAttemptId,
 }: WysiwygProps) {
   // Copy button state
@@ -193,14 +185,6 @@ function WYSIWYGEditor({
     [onPasteFiles, disabled]
   );
 
-  const handleFocus = useCallback(() => {
-    onFocusChange?.(true);
-  }, [onFocusChange]);
-
-  const handleBlur = useCallback(() => {
-    onFocusChange?.(false);
-  }, [onFocusChange]);
-
   // Memoized placeholder element
   const placeholderElement = useMemo(
     () =>
@@ -218,7 +202,6 @@ function WYSIWYGEditor({
         <LexicalComposer initialConfig={initialConfig}>
           <MarkdownSyncPlugin
             value={value}
-            defaultValue={defaultValue}
             onChange={onChange}
             onEditorStateChange={onEditorStateChange}
             editable={!disabled}
@@ -236,8 +219,6 @@ function WYSIWYGEditor({
                   )}
                   aria-label={disabled ? 'Markdown content' : 'Markdown editor'}
                   onPaste={handlePaste}
-                  onFocus={handleFocus}
-                  onBlur={handleBlur}
                 />
               }
               placeholder={placeholderElement}
@@ -268,8 +249,8 @@ function WYSIWYGEditor({
     </div>
   );
 
-  // Wrap with copy button if enabled
-  if (enableCopyButton) {
+  // Wrap with copy button in read-only mode
+  if (disabled) {
     return (
       <div className="relative group">
         <div className="sticky top-2 right-2 z-10 pointer-events-none h-0">
