@@ -5,8 +5,7 @@ use std::time::Duration;
 use backon::{ExponentialBuilder, Retryable};
 use chrono::Duration as ChronoDuration;
 use remote::routes::tasks::{
-    AssignSharedTaskRequest, BulkSharedTasksResponse, CreateSharedTaskRequest, SharedTaskResponse,
-    UpdateSharedTaskRequest,
+    AssignSharedTaskRequest, CreateSharedTaskRequest, SharedTaskResponse, UpdateSharedTaskRequest,
 };
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -589,15 +588,6 @@ impl RemoteClient {
         res.json::<SharedTaskResponse>()
             .await
             .map_err(|e| RemoteClientError::Serde(e.to_string()))
-    }
-
-    /// Fetches bulk snapshot of shared tasks for a project.
-    pub async fn fetch_bulk_snapshot(
-        &self,
-        project_id: Uuid,
-    ) -> Result<BulkSharedTasksResponse, RemoteClientError> {
-        self.get_authed(&format!("/v1/tasks/bulk?project_id={project_id}"))
-            .await
     }
 }
 

@@ -5,7 +5,6 @@ mod status;
 pub use config::ShareConfig;
 pub use publisher::{SharePublisher, SharedTaskDetails};
 use thiserror::Error;
-use utils::ws::WsError;
 use uuid::Uuid;
 
 use crate::{
@@ -23,8 +22,6 @@ pub enum ShareError {
     Serialization(#[from] serde_json::Error),
     #[error(transparent)]
     Url(#[from] url::ParseError),
-    #[error(transparent)]
-    WebSocket(#[from] WsError),
     #[error("share configuration missing: {0}")]
     MissingConfig(&'static str),
     #[error("task {0} not found")]

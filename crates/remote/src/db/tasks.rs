@@ -11,11 +11,6 @@ use super::{
     users::{UserData, fetch_user},
 };
 
-pub struct BulkFetchResult {
-    pub tasks: Vec<SharedTaskActivityPayload>,
-    pub deleted_task_ids: Vec<Uuid>,
-}
-
 pub const MAX_SHARED_TASK_TEXT_BYTES: usize = 50 * 1024;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, TS)]
@@ -58,12 +53,6 @@ pub struct SharedTask {
     pub shared_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SharedTaskActivityPayload {
-    pub task: SharedTask,
-    pub user: Option<UserData>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -222,95 +211,6 @@ impl<'a> SharedTaskRepository<'a> {
 
         tx.commit().await.map_err(SharedTaskError::from)?;
         Ok(SharedTaskWithUser::new(task, user))
-    }
-
-    pub async fn bulk_fetch(&self, project_id: Uuid) -> Result<BulkFetchResult, SharedTaskError> {
-        let mut tx = self.pool.begin().await?;
-        sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
-            .execute(&mut *tx)
-            .await?;
-
-        let rows = sqlx::query!(
-            r#"
-            SELECT
-                st.id                     AS "id!: Uuid",
-                st.organization_id        AS "organization_id!: Uuid",
-                st.project_id             AS "project_id!: Uuid",
-                st.creator_user_id        AS "creator_user_id?: Uuid",
-                st.assignee_user_id       AS "assignee_user_id?: Uuid",
-                st.deleted_by_user_id     AS "deleted_by_user_id?: Uuid",
-                st.title                  AS "title!",
-                st.description            AS "description?",
-                st.status                 AS "status!: TaskStatus",
-                st.deleted_at             AS "deleted_at?",
-                st.shared_at              AS "shared_at?",
-                st.created_at             AS "created_at!",
-                st.updated_at             AS "updated_at!",
-                u.id                      AS "user_id?: Uuid",
-                u.first_name              AS "user_first_name?",
-                u.last_name               AS "user_last_name?",
-                u.username                AS "user_username?"
-            FROM shared_tasks st
-            LEFT JOIN users u ON st.assignee_user_id = u.id
-            WHERE st.project_id = $1
-              AND st.deleted_at IS NULL
-            ORDER BY st.updated_at DESC
-            "#,
-            project_id
-        )
-        .fetch_all(&mut *tx)
-        .await?;
-
-        let tasks = rows
-            .into_iter()
-            .map(|row| {
-                let task = SharedTask {
-                    id: row.id,
-                    organization_id: row.organization_id,
-                    project_id: row.project_id,
-                    creator_user_id: row.creator_user_id,
-                    assignee_user_id: row.assignee_user_id,
-                    deleted_by_user_id: row.deleted_by_user_id,
-                    title: row.title,
-                    description: row.description,
-                    status: row.status,
-                    deleted_at: row.deleted_at,
-                    shared_at: row.shared_at,
-                    created_at: row.created_at,
-                    updated_at: row.updated_at,
-                };
-
-                let user = row.user_id.map(|user_id| UserData {
-                    user_id,
-                    first_name: row.user_first_name,
-                    last_name: row.user_last_name,
-                    username: row.user_username,
-                });
-
-                SharedTaskActivityPayload { task, user }
-            })
-            .collect();
-
-        let deleted_rows = sqlx::query!(
-            r#"
-            SELECT st.id AS "id!: Uuid"
-            FROM shared_tasks st
-            WHERE st.project_id = $1
-              AND st.deleted_at IS NOT NULL
-            "#,
-            project_id
-        )
-        .fetch_all(&mut *tx)
-        .await?;
-
-        let deleted_task_ids = deleted_rows.into_iter().map(|row| row.id).collect();
-
-        tx.commit().await?;
-
-        Ok(BulkFetchResult {
-            tasks,
-            deleted_task_ids,
-        })
     }
 
     pub async fn update(

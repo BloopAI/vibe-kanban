@@ -31,7 +31,6 @@ use crate::{
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/tasks/bulk", get(bulk_shared_tasks))
         .route("/tasks", post(create_shared_task))
         .route("/tasks/{task_id}", patch(update_shared_task))
         .route("/tasks/{task_id}", delete(delete_shared_task))
@@ -79,54 +78,6 @@ pub async fn get_task_assignees_by_project(
     };
 
     (StatusCode::OK, Json(assignees)).into_response()
-}
-
-#[derive(Debug, Deserialize)]
-pub struct BulkTasksQuery {
-    pub project_id: Uuid,
-}
-
-#[instrument(
-    name = "tasks.bulk_shared_tasks",
-    skip(state, ctx, query),
-    fields(user_id = %ctx.user.id, project_id = %query.project_id, org_id = tracing::field::Empty)
-)]
-pub async fn bulk_shared_tasks(
-    State(state): State<AppState>,
-    Extension(ctx): Extension<RequestContext>,
-    Query(query): Query<BulkTasksQuery>,
-) -> Response {
-    let pool = state.pool();
-    let _organization_id = match ensure_project_access(pool, ctx.user.id, query.project_id).await {
-        Ok(org_id) => {
-            Span::current().record("org_id", format_args!("{org_id}"));
-            org_id
-        }
-        Err(error) => return error.into_response(),
-    };
-
-    let repo = SharedTaskRepository::new(pool);
-    match repo.bulk_fetch(query.project_id).await {
-        Ok(snapshot) => (
-            StatusCode::OK,
-            Json(BulkSharedTasksResponse {
-                tasks: snapshot.tasks,
-                deleted_task_ids: snapshot.deleted_task_ids,
-            }),
-        )
-            .into_response(),
-        Err(error) => match error {
-            SharedTaskError::Database(err) => {
-                tracing::error!(?err, "failed to load shared task snapshot");
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(json!({ "error": "failed to load shared tasks" })),
-                )
-                    .into_response()
-            }
-            other => task_error_response(other, "failed to load shared tasks"),
-        },
-    }
 }
 
 #[instrument(
@@ -358,12 +309,6 @@ pub async fn delete_shared_task(
         Ok(task) => (StatusCode::OK, Json(SharedTaskResponse::from(task))).into_response(),
         Err(error) => task_error_response(error, "failed to delete shared task"),
     }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BulkSharedTasksResponse {
-    pub tasks: Vec<crate::db::tasks::SharedTaskActivityPayload>,
-    pub deleted_task_ids: Vec<Uuid>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

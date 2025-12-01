@@ -286,10 +286,6 @@ impl From<ShareError> for ApiError {
                 tracing::error!(?err, "share task URL error");
                 ApiError::Conflict("Share service URL is invalid".to_string())
             }
-            ShareError::WebSocket(err) => {
-                tracing::error!(?err, "share task websocket error");
-                ApiError::Conflict("Unexpected websocket error during sharing".to_string())
-            }
             ShareError::InvalidResponse => ApiError::Conflict(
                 "Remote share service returned an unexpected response".to_string(),
             ),
