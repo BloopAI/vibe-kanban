@@ -47,13 +47,11 @@ import { imagesApi } from '@/lib/api';
 interface TaskFollowUpSectionProps {
   task: TaskWithAttemptStatus;
   selectedAttemptId?: string;
-  jumpToLogsTab: () => void;
 }
 
 export function TaskFollowUpSection({
   task,
   selectedAttemptId,
-  jumpToLogsTab,
 }: TaskFollowUpSectionProps) {
   const { t } = useTranslation('tasks');
   const { projectId } = useProject();
@@ -103,7 +101,6 @@ export function TaskFollowUpSection({
   const {
     scratch,
     updateScratch,
-    deleteScratch,
     isLoading: isScratchLoading,
   } = useScratch(ScratchType.DRAFT_FOLLOW_UP, selectedAttemptId ?? '');
 
@@ -208,13 +205,14 @@ export function TaskFollowUpSection({
   );
 
   // Debounced save for message changes (uses current variant from ref)
-  const setFollowUpMessage = useDebouncedCallback(
-    useCallback(
-      (value: string) => saveToScratch(value, variantRef.current),
-      [saveToScratch]
-    ),
-    500
-  );
+  const { debounced: setFollowUpMessage, cancel: cancelDebouncedSave } =
+    useDebouncedCallback(
+      useCallback(
+        (value: string) => saveToScratch(value, variantRef.current),
+        [saveToScratch]
+      ),
+      500
+    );
 
   // Sync local message from scratch when it loads
   useEffect(() => {
@@ -253,15 +251,19 @@ export function TaskFollowUpSection({
       return;
     }
 
-    // Refresh when a new process starts (queued message was consumed)
+    // Refresh when a new process starts (could be queued message consumption or follow-up)
     if (processes.length > prevCount) {
       refreshQueueStatus();
+      // Re-sync local message from current scratch state
+      // If scratch was deleted, scratchData will be undefined, so localMessage becomes ''
+      setLocalMessage(scratchData?.message ?? '');
     }
   }, [
     isAttemptRunning,
     selectedAttemptId,
     processes.length,
     refreshQueueStatus,
+    scratchData?.message,
   ]);
 
   // When queued, display the queued message content so user can edit it
@@ -292,14 +294,10 @@ export function TaskFollowUpSection({
       selectedVariant,
       clearComments,
       clearClickedElements,
-      jumpToLogsTab,
-      onAfterSendCleanup: async () => {
+      onAfterSendCleanup: () => {
+        cancelDebouncedSave(); // Cancel any pending debounced save to avoid race condition
         setLocalMessage(''); // Clear local state immediately
-        try {
-          await deleteScratch();
-        } catch (e) {
-          // Ignore errors when deleting scratch
-        }
+        // Scratch deletion is handled by the backend when the queued message is consumed
       },
     });
 
@@ -351,8 +349,7 @@ export function TaskFollowUpSection({
     clickedMarkdown,
     localMessage,
   ]);
-  const isEditable =
-    !isRetryActive && !hasPendingApproval && !isSendingFollowUp;
+  const isEditable = !isRetryActive && !hasPendingApproval;
 
   // Handler to queue the current message for execution after agent finishes
   const handleQueueMessage = useCallback(async () => {

@@ -140,7 +140,7 @@ function DenyReasonForm({
   projectId?: string;
 }) {
   return (
-    <div className="flex flex-col gap-2 mt-3">
+    <div className="flex flex-col gap-2 p-4">
       <WYSIWYGEditor
         value={value}
         onChange={onChange}
@@ -318,7 +318,7 @@ const PendingApprovalEntry = ({
       <div className="overflow-hidden">
         {children}
 
-        <div className="border-t bg-background px-2 py-1.5 text-xs sm:text-sm">
+        <div className="bg-background px-2 py-1.5 text-xs sm:text-sm">
           <TooltipProvider>
             <div className="flex items-center justify-between gap-1.5 pl-4">
               <div className="flex items-center gap-1.5">
