@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { useReview } from '@/contexts/ReviewProvider';
 import { useClickedElements } from '@/contexts/ClickedElementsProvider';
 import { useEntries } from '@/contexts/EntriesContext';
-import { useKeyCycleVariant, useKeySubmitFollowUp, Scope } from '@/keyboard';
+import { useKeySubmitFollowUp, Scope } from '@/keyboard';
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { useProject } from '@/contexts/ProjectContext';
 //
@@ -31,6 +31,7 @@ import { ClickedElementsBanner } from '@/components/tasks/ClickedElementsBanner'
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useRetryUi } from '@/contexts/RetryUiContext';
 import { useFollowUpSend } from '@/hooks/useFollowUpSend';
+import { useVariant } from '@/hooks/useVariant';
 import type {
   DraftFollowUpData,
   ExecutorAction,
@@ -111,7 +112,6 @@ export function TaskFollowUpSection({
     scratch?.payload?.type === 'DRAFT_FOLLOW_UP'
       ? scratch.payload.data
       : undefined;
-  const followUpMessage = scratchData?.message ?? '';
 
   // Track whether the follow-up textarea is focused
   const [isTextareaFocused, setIsTextareaFocused] = useState(false);
@@ -149,15 +149,25 @@ export function TaskFollowUpSection({
     );
   }, [processes]);
 
-  const defaultFollowUpVariant = latestProfileId?.variant ?? null;
+  const processVariant = latestProfileId?.variant ?? null;
 
-  // Variant state: initialized to null, will be set once scratch loads
-  const [selectedVariant, setSelectedVariantState] = useState<string | null>(
-    null
-  );
+  const currentProfile = useMemo(() => {
+    if (!latestProfileId) return null;
+    return profiles?.[latestProfileId.executor] ?? null;
+  }, [latestProfileId, profiles]);
+
+  // Variant selection with priority: user selection > scratch > process
+  const { selectedVariant, setSelectedVariant: setVariantFromHook } =
+    useVariant({
+      processVariant,
+      scratchVariant: scratchData?.variant,
+    });
 
   // Ref to track current variant for use in message save callback
-  const variantRef = useRef<string | null>(null);
+  const variantRef = useRef<string | null>(selectedVariant);
+  useEffect(() => {
+    variantRef.current = selectedVariant;
+  }, [selectedVariant]);
 
   // Refs to stabilize callbacks - avoid re-creating callbacks when these values change
   const scratchRef = useRef(scratch);
@@ -165,19 +175,14 @@ export function TaskFollowUpSection({
     scratchRef.current = scratch;
   }, [scratch]);
 
-  const followUpMessageRef = useRef(followUpMessage);
-  useEffect(() => {
-    followUpMessageRef.current = followUpMessage;
-  }, [followUpMessage]);
-
   // Save scratch helper (used for both message and variant changes)
   // Uses scratchRef to avoid callback invalidation when scratch updates
   const saveToScratch = useCallback(
     async (message: string, variant: string | null) => {
       if (!selectedAttemptId) return;
-      // Don't create empty scratch entries - only save if there's actual content
-      // or if scratch already exists (to allow clearing a draft)
-      if (!message.trim() && !scratchRef.current) return;
+      // Don't create empty scratch entries - only save if there's actual content,
+      // a variant is selected, or scratch already exists (to allow clearing a draft)
+      if (!message.trim() && !variant && !scratchRef.current) return;
       try {
         await updateScratch({
           payload: {
@@ -195,12 +200,11 @@ export function TaskFollowUpSection({
   // Wrapper to update variant and save to scratch immediately
   const setSelectedVariant = useCallback(
     (variant: string | null) => {
-      setSelectedVariantState(variant);
-      variantRef.current = variant;
+      setVariantFromHook(variant);
       // Save immediately when user changes variant
       saveToScratch(localMessage, variant);
     },
-    [saveToScratch, localMessage]
+    [setVariantFromHook, saveToScratch, localMessage]
   );
 
   // Debounced save for message changes (uses current variant from ref)
@@ -212,44 +216,11 @@ export function TaskFollowUpSection({
     500
   );
 
-  // Sync variant and local message: wait for scratch to load, then use scratch values or defaults
+  // Sync local message from scratch when it loads
   useEffect(() => {
     if (isScratchLoading) return;
-
-    // Sync local message from scratch
     setLocalMessage(scratchData?.message ?? '');
-
-    // Sync variant from scratch or default
-    if (scratchData?.variant !== undefined) {
-      setSelectedVariantState(scratchData.variant);
-      variantRef.current = scratchData.variant;
-    } else {
-      setSelectedVariantState(defaultFollowUpVariant);
-      variantRef.current = defaultFollowUpVariant;
-    }
-  }, [isScratchLoading, defaultFollowUpVariant, scratchData]);
-
-  const currentProfile = useMemo(() => {
-    if (!latestProfileId) return null;
-    return profiles?.[latestProfileId.executor] ?? null;
-  }, [latestProfileId, profiles]);
-
-  // Cycle to the next variant when Shift+Tab is pressed
-  const cycleVariant = useCallback(() => {
-    if (!currentProfile) return;
-    const variants = Object.keys(currentProfile); // Include DEFAULT
-    if (variants.length === 0) return;
-
-    // Treat null as "DEFAULT" for finding current position
-    const currentVariantForLookup = selectedVariant ?? 'DEFAULT';
-    const currentIndex = variants.indexOf(currentVariantForLookup);
-    const nextIndex = (currentIndex + 1) % variants.length;
-    const nextVariant = variants[nextIndex];
-
-    // Keep using null to represent DEFAULT (backend expects it)
-    // But for display/cycling purposes, treat DEFAULT as a real option
-    setSelectedVariant(nextVariant === 'DEFAULT' ? null : nextVariant);
-  }, [currentProfile, selectedVariant, setSelectedVariant]);
+  }, [isScratchLoading, scratchData?.message]);
 
   // During retry, follow-up box is greyed/disabled (not hidden)
   // Use RetryUi context so optimistic retry immediately disables this box
@@ -331,8 +302,6 @@ export function TaskFollowUpSection({
         }
       },
     });
-
-  // Profile/variant derived from processes only (see useDefaultVariant)
 
   // Separate logic for when textarea should be disabled vs when send button should be disabled
   const canTypeFollowUp = useMemo(() => {
@@ -541,12 +510,6 @@ export function TaskFollowUpSection({
   );
 
   // Register keyboard shortcuts
-  useKeyCycleVariant(cycleVariant, {
-    scope: Scope.FOLLOW_UP,
-    enableOnFormTags: ['textarea', 'TEXTAREA'],
-    preventDefault: true,
-  });
-
   useKeySubmitFollowUp(handleSubmitShortcut, {
     scope: Scope.FOLLOW_UP_READY,
     enableOnFormTags: ['textarea', 'TEXTAREA'],
