@@ -4,10 +4,12 @@ import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
-import { TRANSFORMERS, type Transformer } from '@lexical/markdown';
+import { TRANSFORMERS, INLINE_CODE, type Transformer } from '@lexical/markdown';
 import { ImageNode } from './wysiwyg/nodes/image-node';
+import { InlineCodeNode } from './wysiwyg/nodes/inline-code-node';
 import { IMAGE_TRANSFORMER } from './wysiwyg/transformers/image-transformer';
 import { CODE_BLOCK_TRANSFORMER } from './wysiwyg/transformers/code-block-transformer';
+import { INLINE_CODE_TRANSFORMER } from './wysiwyg/transformers/inline-code-transformer';
 import { TaskAttemptContext } from './wysiwyg/context/task-attempt-context';
 import { FileTagTypeaheadPlugin } from './wysiwyg/plugins/file-tag-typeahead-plugin';
 import { KeyboardCommandsPlugin } from './wysiwyg/plugins/keyboard-commands-plugin';
@@ -22,6 +24,7 @@ import { ListNode, ListItemNode } from '@lexical/list';
 import { ListPlugin } from '@lexical/react/LexicalListPlugin';
 import { CodeNode, CodeHighlightNode } from '@lexical/code';
 import { CodeHighlightPlugin } from './wysiwyg/plugins/code-highlight-plugin';
+import { CODE_HIGHLIGHT_CLASSES } from './wysiwyg/lib/code-highlight-theme';
 import { LinkNode } from '@lexical/link';
 import { EditorState } from 'lexical';
 import { cn } from '@/lib/utils';
@@ -110,38 +113,7 @@ function WYSIWYGEditor({
           code: 'font-mono bg-muted px-1 py-0.5 rounded',
         },
         code: 'block font-mono text-sm bg-muted rounded-md px-3 py-2 my-2 whitespace-pre overflow-x-auto',
-        codeHighlight: {
-          atrule: 'text-[var(--syntax-keyword)]',
-          attr: 'text-[var(--syntax-constant)]',
-          boolean: 'text-[var(--syntax-constant)]',
-          builtin: 'text-[var(--syntax-variable)]',
-          cdata: 'text-[var(--syntax-comment)]',
-          char: 'text-[var(--syntax-string)]',
-          class: 'text-[var(--syntax-function)]',
-          'class-name': 'text-[var(--syntax-function)]',
-          comment: 'text-[var(--syntax-comment)] italic',
-          constant: 'text-[var(--syntax-constant)]',
-          deleted: 'text-[var(--syntax-deleted)]',
-          doctype: 'text-[var(--syntax-comment)]',
-          entity: 'text-[var(--syntax-function)]',
-          function: 'text-[var(--syntax-function)]',
-          important: 'text-[var(--syntax-keyword)] font-bold',
-          inserted: 'text-[var(--syntax-tag)]',
-          keyword: 'text-[var(--syntax-keyword)]',
-          namespace: 'text-[var(--syntax-comment)]',
-          number: 'text-[var(--syntax-constant)]',
-          operator: 'text-[var(--syntax-constant)]',
-          prolog: 'text-[var(--syntax-comment)]',
-          property: 'text-[var(--syntax-constant)]',
-          punctuation: 'text-[var(--syntax-punctuation)]',
-          regex: 'text-[var(--syntax-string)]',
-          selector: 'text-[var(--syntax-tag)]',
-          string: 'text-[var(--syntax-string)]',
-          symbol: 'text-[var(--syntax-variable)]',
-          tag: 'text-[var(--syntax-tag)]',
-          url: 'text-[var(--syntax-constant)]',
-          variable: 'text-[var(--syntax-variable)]',
-        },
+        codeHighlight: CODE_HIGHLIGHT_CLASSES,
       },
       nodes: [
         HeadingNode,
@@ -152,14 +124,21 @@ function WYSIWYGEditor({
         CodeHighlightNode,
         LinkNode,
         ImageNode,
+        InlineCodeNode,
       ],
     }),
     []
   );
 
   // Extended transformers with image and code block support (memoized to prevent unnecessary re-renders)
+  // Filter out default INLINE_CODE to use our custom INLINE_CODE_TRANSFORMER with syntax highlighting
   const extendedTransformers: Transformer[] = useMemo(
-    () => [IMAGE_TRANSFORMER, CODE_BLOCK_TRANSFORMER, ...TRANSFORMERS],
+    () => [
+      IMAGE_TRANSFORMER,
+      CODE_BLOCK_TRANSFORMER,
+      INLINE_CODE_TRANSFORMER,
+      ...TRANSFORMERS.filter((t) => t !== INLINE_CODE),
+    ],
     []
   );
 
