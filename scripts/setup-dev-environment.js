@@ -7,6 +7,52 @@ const net = require("net");
 const PORTS_FILE = path.join(__dirname, "..", ".dev-ports.json");
 const DEV_ASSETS_SEED = path.join(__dirname, "..", "dev_assets_seed");
 const DEV_ASSETS = path.join(__dirname, "..", "dev_assets");
+const ENV_FILE = path.join(__dirname, "..", ".env");
+
+/**
+ * Load environment variables from .env file
+ */
+function loadEnvFile() {
+  try {
+    if (fs.existsSync(ENV_FILE)) {
+      const content = fs.readFileSync(ENV_FILE, "utf8");
+      const lines = content.split("\n");
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        // Skip empty lines and comments
+        if (!trimmed || trimmed.startsWith("#")) continue;
+
+        const eqIndex = trimmed.indexOf("=");
+        if (eqIndex === -1) continue;
+
+        const key = trimmed.slice(0, eqIndex).trim();
+        let value = trimmed.slice(eqIndex + 1).trim();
+
+        // Remove surrounding quotes if present
+        if (
+          (value.startsWith('"') && value.endsWith('"')) ||
+          (value.startsWith("'") && value.endsWith("'"))
+        ) {
+          value = value.slice(1, -1);
+        }
+
+        // Only set if not already defined in environment
+        if (!process.env[key]) {
+          process.env[key] = value;
+        }
+      }
+
+      return true;
+    }
+  } catch (error) {
+    console.warn("Failed to load .env file:", error.message);
+  }
+  return false;
+}
+
+// Load .env file before anything else
+loadEnvFile();
 
 /**
  * Check if a port is available
@@ -83,6 +129,26 @@ async function verifyPorts(ports) {
  * Allocate ports for development
  */
 async function allocatePorts() {
+  // If FRONTEND_PORT and BACKEND_PORT are set, use them directly
+  if (process.env.FRONTEND_PORT && process.env.BACKEND_PORT) {
+    const frontendPort = parseInt(process.env.FRONTEND_PORT, 10);
+    const backendPort = parseInt(process.env.BACKEND_PORT, 10);
+
+    const ports = {
+      frontend: frontendPort,
+      backend: backendPort,
+      timestamp: new Date().toISOString(),
+    };
+
+    if (process.argv[2] === "get") {
+      console.log("Using FRONTEND_PORT and BACKEND_PORT from environment:");
+      console.log(`Frontend: ${ports.frontend}`);
+      console.log(`Backend: ${ports.backend}`);
+    }
+
+    return ports;
+  }
+
   // If PORT env is set, use it for frontend and PORT+1 for backend
   if (process.env.PORT) {
     const frontendPort = parseInt(process.env.PORT, 10);
