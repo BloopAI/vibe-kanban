@@ -168,7 +168,7 @@ function WYSIWYGEditor({
   const placeholderElement = useMemo(
     () =>
       !disabled ? (
-        <div className="absolute top-0 left-0 text-sm text-secondary-foreground pointer-events-none">
+        <div className="absolute top-0 left-0 text-secondary-foreground pointer-events-none">
           {placeholder}
         </div>
       ) : null,
