@@ -35,7 +35,6 @@ import {
   GetMcpServerResponse,
   ImageResponse,
   GitOperationError,
-  UserData,
   ApprovalResponse,
   RebaseTaskAttemptRequest,
   ChangeTargetBranchRequest,
@@ -78,11 +77,10 @@ import {
   CurrentUserResponse,
   SharedTaskResponse,
   SharedTaskDetails,
-  AssigneesQuery,
   QueueStatus,
 } from 'shared/types';
 
-class ApiError<E = unknown> extends Error {
+export class ApiError<E = unknown> extends Error {
   public status?: number;
   public error_data?: E;
 
@@ -154,7 +152,9 @@ const handleApiResponseAsResult = async <T, E>(
   return { success: true, data: result.data as T };
 };
 
-const handleApiResponse = async <T, E = T>(response: Response): Promise<T> => {
+export const handleApiResponse = async <T, E = T>(
+  response: Response
+): Promise<T> => {
   if (!response.ok) {
     let errorMessage = `Request failed with status ${response.status}`;
 
@@ -399,36 +399,6 @@ export const tasksApi = {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
-  },
-
-  getSharedTaskAssignees: async (projectId: string): Promise<UserData[]> => {
-    const tokenRes = await oauthApi.getToken();
-    if (!tokenRes?.access_token) {
-      throw new Error('Not authenticated');
-    }
-    const response = await makeRequest(
-      `/v1/tasks/assignees?${new URLSearchParams({
-        project_id: projectId,
-      } as AssigneesQuery)}`,
-      {
-        headers: {
-          Authorization: `Bearer ${tokenRes.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-      }
-    );
-    if (!response.ok) {
-      let message = `Request failed with status ${response.status}`;
-      try {
-        const err = await response.json();
-        if (err?.message) message = err.message;
-      } catch {
-        // empty
-      }
-      throw new ApiError(message, response.status, response);
-    }
-    return response.json();
   },
 
   linkToLocal: async (data: SharedTaskDetails): Promise<Task> => {

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { tasksApi } from '@/lib/api';
+import { getSharedTaskAssignees } from '@/lib/remoteApi';
 import type { SharedTask, UserData } from 'shared/types';
 import { useEffect, useMemo } from 'react';
 
@@ -13,7 +13,7 @@ export function useAssigneeUserNames(options: UseAssigneeUserNamesOptions) {
 
   const { data: assignees, refetch } = useQuery<UserData[], Error>({
     queryKey: ['project', 'assignees', projectId],
-    queryFn: () => tasksApi.getSharedTaskAssignees(projectId!),
+    queryFn: () => getSharedTaskAssignees(projectId!),
     enabled: Boolean(projectId),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
