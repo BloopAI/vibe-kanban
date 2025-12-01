@@ -1242,10 +1242,10 @@ mod tests {
 
     #[test]
     fn test_session_id_extraction_from_system_line() {
-        // Ensure we can parse and find session_id from a system JSON line
+        // System messages no longer extract session_id
         let system_line = r#"{"type":"system","subtype":"init","session_id":"abc-xyz","model":"Claude 4 Sonnet"}"#;
         let parsed: CursorJson = serde_json::from_str(system_line).unwrap();
-        assert_eq!(parsed.extract_session_id().as_deref(), Some("abc-xyz"));
+        assert_eq!(parsed.extract_session_id().as_deref(), None);
     }
 
     #[test]

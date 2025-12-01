@@ -1832,10 +1832,8 @@ mod tests {
             r#"{"type":"system","subtype":"init","session_id":"abc123","model":"claude-sonnet-4"}"#;
         let parsed: ClaudeJson = serde_json::from_str(system_json).unwrap();
 
-        assert_eq!(
-            ClaudeLogProcessor::extract_session_id(&parsed),
-            Some("abc123".to_string())
-        );
+        // System messages no longer extract session_id
+        assert_eq!(ClaudeLogProcessor::extract_session_id(&parsed), None);
 
         let entries = normalize(&parsed, "");
         assert_eq!(entries.len(), 0);
@@ -2030,10 +2028,8 @@ mod tests {
         let system_json = r#"{"type":"system","session_id":"test-session-123"}"#;
         let parsed: ClaudeJson = serde_json::from_str(system_json).unwrap();
 
-        assert_eq!(
-            ClaudeLogProcessor::extract_session_id(&parsed),
-            Some("test-session-123".to_string())
-        );
+        // System messages no longer extract session_id
+        assert_eq!(ClaudeLogProcessor::extract_session_id(&parsed), None);
 
         let tool_use_json =
             r#"{"type":"tool_use","tool_name":"read","input":{},"session_id":"another-session"}"#;
