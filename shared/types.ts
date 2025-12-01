@@ -62,7 +62,9 @@ export type SharedTask = { id: string, remote_project_id: string, title: string,
 
 export type DraftFollowUpData = { message: string, variant: string | null, };
 
-export type ScratchPayload = { "type": "draft_task", "data": string } | { "type": "draft_follow_up", "data": DraftFollowUpData };
+export type ScratchPayload = { "type": "DRAFT_TASK", "data": string } | { "type": "DRAFT_FOLLOW_UP", "data": DraftFollowUpData };
+
+export enum ScratchType { DRAFT_TASK = "DRAFT_TASK", DRAFT_FOLLOW_UP = "DRAFT_FOLLOW_UP" }
 
 export type Scratch = { id: string, payload: ScratchPayload, created_at: string, updated_at: string, };
 

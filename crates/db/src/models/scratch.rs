@@ -1,8 +1,9 @@
-use std::{fmt, str::FromStr};
+use std::fmt;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
+use strum_macros::{Display, EnumDiscriminants, EnumString};
 use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
@@ -32,31 +33,31 @@ pub struct DraftFollowUpData {
 
 /// The payload of a scratch, tagged by type. The type is part of the composite primary key.
 /// Data is stored as markdown string.
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[serde(tag = "type", content = "data")]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, EnumDiscriminants)]
+#[serde(tag = "type", content = "data", rename_all = "SCREAMING_SNAKE_CASE")]
+#[strum_discriminants(name(ScratchType))]
+#[strum_discriminants(derive(Display, EnumString, Serialize, Deserialize, TS))]
+#[strum_discriminants(ts(use_ts_enum))]
+#[strum_discriminants(serde(rename_all = "SCREAMING_SNAKE_CASE"))]
+#[strum_discriminants(strum(serialize_all = "SCREAMING_SNAKE_CASE"))]
 pub enum ScratchPayload {
-    #[serde(rename = "draft_task")]
     DraftTask(String),
-    #[serde(rename = "draft_follow_up")]
     DraftFollowUp(DraftFollowUpData),
 }
 
 impl ScratchPayload {
-    /// Returns the scratch type string for database storage and URL matching
-    pub fn scratch_type(&self) -> &'static str {
-        match self {
-            Self::DraftTask(_) => "draft_task",
-            Self::DraftFollowUp(_) => "draft_follow_up",
-        }
+    /// Returns the scratch type for this payload
+    pub fn scratch_type(&self) -> ScratchType {
+        ScratchType::from(self)
     }
 
     /// Validates that the payload type matches the expected URL type
-    pub fn validate_type(&self, url_type: &str) -> Result<(), ScratchError> {
-        let payload_type = self.scratch_type();
-        if payload_type != url_type {
+    pub fn validate_type(&self, expected: ScratchType) -> Result<(), ScratchError> {
+        let actual = self.scratch_type();
+        if actual != expected {
             return Err(ScratchError::TypeMismatch {
-                url_type: url_type.to_string(),
-                payload_type: payload_type.to_string(),
+                url_type: expected.to_string(),
+                payload_type: actual.to_string(),
             });
         }
         Ok(())
@@ -66,35 +67,6 @@ impl ScratchPayload {
 impl fmt::Display for ScratchPayload {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.scratch_type())
-    }
-}
-
-/// Used for URL path parsing - validates the scratch type from URL
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ScratchType {
-    DraftTask,
-    DraftFollowUp,
-}
-
-impl fmt::Display for ScratchType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::DraftTask => write!(f, "draft_task"),
-            Self::DraftFollowUp => write!(f, "draft_follow_up"),
-        }
-    }
-}
-
-impl FromStr for ScratchType {
-    type Err = ScratchError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "draft_task" => Ok(Self::DraftTask),
-            "draft_follow_up" => Ok(Self::DraftFollowUp),
-            _ => Err(ScratchError::UnknownScratchType(s.to_string())),
-        }
     }
 }
 
@@ -117,7 +89,7 @@ pub struct Scratch {
 
 impl Scratch {
     /// Returns the scratch type derived from the payload
-    pub fn scratch_type(&self) -> &'static str {
+    pub fn scratch_type(&self) -> ScratchType {
         self.payload.scratch_type()
     }
 }
@@ -125,17 +97,20 @@ impl Scratch {
 impl TryFrom<ScratchRow> for Scratch {
     type Error = ScratchError;
     fn try_from(r: ScratchRow) -> Result<Self, ScratchError> {
-        // Reconstruct the tagged enum based on scratch_type
-        let payload = match r.scratch_type.as_str() {
-            "draft_task" => {
+        let scratch_type: ScratchType = r
+            .scratch_type
+            .parse()
+            .map_err(|_| ScratchError::UnknownScratchType(r.scratch_type.clone()))?;
+
+        let payload = match scratch_type {
+            ScratchType::DraftTask => {
                 let data: String = serde_json::from_str(&r.payload)?;
                 ScratchPayload::DraftTask(data)
             }
-            "draft_follow_up" => {
+            ScratchType::DraftFollowUp => {
                 let data: DraftFollowUpData = serde_json::from_str(&r.payload)?;
                 ScratchPayload::DraftFollowUp(data)
             }
-            _ => return Err(ScratchError::UnknownScratchType(r.scratch_type)),
         };
 
         Ok(Scratch {
@@ -173,7 +148,7 @@ impl Scratch {
         id: Uuid,
         data: &CreateScratch,
     ) -> Result<Self, ScratchError> {
-        let scratch_type_str = data.payload.scratch_type();
+        let scratch_type_str = data.payload.scratch_type().to_string();
         // Store the data as JSON-encoded string
         let payload_str = serialize_payload_data(&data.payload)?;
 

@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 //
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import type { TaskWithAttemptStatus } from 'shared/types';
+import { ScratchType, type TaskWithAttemptStatus } from 'shared/types';
 import { useBranchStatus } from '@/hooks';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useUserSystem } from '@/components/ConfigProvider';
@@ -104,11 +104,11 @@ export function TaskFollowUpSection({
     updateScratch,
     deleteScratch,
     isLoading: isScratchLoading,
-  } = useScratch('draft_follow_up', selectedAttemptId ?? '');
+  } = useScratch(ScratchType.DRAFT_FOLLOW_UP, selectedAttemptId ?? '');
 
   // Derive the message and variant from scratch
   const scratchData: DraftFollowUpData | undefined =
-    scratch?.payload?.type === 'draft_follow_up'
+    scratch?.payload?.type === 'DRAFT_FOLLOW_UP'
       ? scratch.payload.data
       : undefined;
   const followUpMessage = scratchData?.message ?? '';
@@ -181,7 +181,7 @@ export function TaskFollowUpSection({
       try {
         await updateScratch({
           payload: {
-            type: 'draft_follow_up',
+            type: 'DRAFT_FOLLOW_UP',
             data: { message, variant },
           },
         });

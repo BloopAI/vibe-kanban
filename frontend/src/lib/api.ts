@@ -71,15 +71,12 @@ import {
   OpenEditorRequest,
   CreatePrError,
   Scratch,
-  ScratchPayload,
+  ScratchType,
   CreateScratch,
   UpdateScratch,
   PushError,
   QueueStatus,
 } from 'shared/types';
-
-// Derive ScratchType from ScratchPayload for URL parameters
-export type ScratchType = ScratchPayload['type'];
 
 class ApiError<E = unknown> extends Error {
   public status?: number;

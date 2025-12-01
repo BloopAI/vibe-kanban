@@ -57,7 +57,7 @@ pub async fn create_scratch(
     // Validate that payload type matches URL type
     payload
         .payload
-        .validate_type(&scratch_type.to_string())
+        .validate_type(scratch_type)
         .map_err(|e| ApiError::BadRequest(e.to_string()))?;
 
     let scratch = Scratch::create(&deployment.db().pool, id, &payload).await?;
@@ -80,7 +80,7 @@ pub async fn update_scratch(
 
     // Validate that payload type matches URL type (if payload provided)
     if let Some(ref p) = payload.payload {
-        p.validate_type(&scratch_type.to_string())
+        p.validate_type(scratch_type)
             .map_err(|e| ApiError::BadRequest(e.to_string()))?;
     }
 

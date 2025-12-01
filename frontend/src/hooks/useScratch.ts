@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
-import { scratchApi, type ScratchType } from '@/lib/api';
-import type { Scratch, UpdateScratch } from 'shared/types';
+import { scratchApi } from '@/lib/api';
+import { ScratchType, type Scratch, type UpdateScratch } from 'shared/types';
 
 type ScratchState = {
   scratch: Scratch | null;
