@@ -30,7 +30,7 @@ import { FollowUpConflictSection } from '@/components/tasks/follow-up/FollowUpCo
 import { ClickedElementsBanner } from '@/components/tasks/ClickedElementsBanner';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useRetryUi } from '@/contexts/RetryUiContext';
-import { useFollowUpSend } from '@/hooks/follow-up/useFollowUpSend';
+import { useFollowUpSend } from '@/hooks/useFollowUpSend';
 import type {
   DraftFollowUpData,
   ExecutorAction,
