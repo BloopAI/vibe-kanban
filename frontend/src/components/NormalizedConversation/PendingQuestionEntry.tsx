@@ -139,7 +139,9 @@ function QuestionForm({
 
         return (
           <div key={question.header} className="space-y-2">
-            <div className="font-medium text-foreground">{question.question}</div>
+            <div className="font-medium text-foreground">
+              {question.question}
+            </div>
             <div className="flex flex-wrap gap-2">
               {question.options.map((option) => {
                 const isSelected = question.multiSelect

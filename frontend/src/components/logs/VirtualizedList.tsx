@@ -22,7 +22,10 @@ interface MessageListContext {
   task?: TaskWithAttemptStatus;
 }
 
-const ItemContent = ({ data, context }: {
+const ItemContent = ({
+  data,
+  context,
+}: {
   data: PatchTypeWithKey;
   context?: MessageListContext;
 }) => {

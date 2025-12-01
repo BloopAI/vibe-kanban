@@ -19,12 +19,15 @@ export const detectDevserverUrl = (line: string): DevserverUrlInfo | null => {
   if (fullUrlMatch) {
     try {
       const parsed = new URL(fullUrlMatch[1]);
+      // Convert 0.0.0.0/:: to client's actual hostname for network access
       if (
         parsed.hostname === '0.0.0.0' ||
         parsed.hostname === '::' ||
-        parsed.hostname === '[::]'
+        parsed.hostname === '[::]' ||
+        parsed.hostname === 'localhost' ||
+        parsed.hostname === '127.0.0.1'
       ) {
-        parsed.hostname = 'localhost';
+        parsed.hostname = window.location.hostname;
       }
       return {
         url: parsed.toString(),
@@ -41,7 +44,7 @@ export const detectDevserverUrl = (line: string): DevserverUrlInfo | null => {
     const port = Number(hostPortMatch[1]);
     const scheme = /https/i.test(cleaned) ? 'https' : 'http';
     return {
-      url: `${scheme}://localhost:${port}`,
+      url: `${scheme}://${window.location.hostname}:${port}`,
       port,
       scheme: scheme as 'http' | 'https',
     };

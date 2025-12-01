@@ -72,6 +72,41 @@ pub enum SearchMatchType {
     FullPath,
 }
 
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct ProjectConfigSuggestion {
+    pub field: ProjectConfigField,
+    pub value: String,
+    pub confidence: ConfidenceLevel,
+    pub source: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS, Clone, PartialEq)]
+#[ts(export)]
+pub enum ProjectConfigField {
+    SetupScript,
+    DevScript,
+    CleanupScript,
+    CopyFiles,
+    DevHost,
+    DevPort,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub enum ConfidenceLevel {
+    High,
+    Medium,
+}
+
+#[derive(Debug, Deserialize, TS)]
+pub struct ScanConfigRequest {
+    pub repo_path: String,
+}
+
+#[derive(Debug, Serialize, TS)]
+pub struct ScanConfigResponse {
+    pub suggestions: Vec<ProjectConfigSuggestion>,
+}
+
 impl Project {
     pub async fn count(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
         sqlx::query_scalar!(r#"SELECT COUNT(*) as "count!: i64" FROM projects"#)

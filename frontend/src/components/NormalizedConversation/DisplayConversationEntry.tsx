@@ -689,7 +689,8 @@ function DisplayConversationEntry({
       toolEntry.action_type.action === 'plan_presentation';
     const isPendingApproval = status.status === 'pending_approval';
     const isPendingQuestion = status.status === 'pending_question';
-    const defaultExpanded = isPendingApproval || isPendingQuestion || isPlanPresentation;
+    const defaultExpanded =
+      isPendingApproval || isPendingQuestion || isPlanPresentation;
 
     const body = (() => {
       if (isFileEdit(toolEntry.action_type)) {

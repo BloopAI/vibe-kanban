@@ -25,6 +25,7 @@ import { useProjects } from '@/hooks/useProjects';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { useScriptPlaceholders } from '@/hooks/useScriptPlaceholders';
 import { CopyFilesField } from '@/components/projects/CopyFilesField';
+import { ConfigSuggestions } from '@/components/projects/ConfigSuggestions';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
 import type { Project, UpdateProject } from 'shared/types';
@@ -397,6 +398,13 @@ export function ProjectSettings() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <ConfigSuggestions
+                repoPath={draft.git_repo_path}
+                onApply={(field, value) => {
+                  updateDraft({ [field]: value });
+                }}
+              />
+
               <div className="space-y-2">
                 <Label htmlFor="setup-script">
                   {t('settings.projects.scripts.setup.label')}

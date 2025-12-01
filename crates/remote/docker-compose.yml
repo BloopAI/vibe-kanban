@@ -33,11 +33,11 @@ services:
       GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:?set in .env.remote}
       VIBEKANBAN_REMOTE_JWT_SECRET: ${VIBEKANBAN_REMOTE_JWT_SECRET:?set in .env.remote}
       LOOPS_EMAIL_API_KEY: ${LOOPS_EMAIL_API_KEY:?set in .env.remote}
-      SERVER_PUBLIC_BASE_URL: http://localhost:3000
-      VITE_APP_BASE_URL: http://localhost:3000
-      VITE_API_BASE_URL: http://localhost:3000
+      SERVER_PUBLIC_BASE_URL: ${SERVER_PUBLIC_BASE_URL:-http://localhost:3000}
+      VITE_APP_BASE_URL: ${VITE_APP_BASE_URL:-http://localhost:3000}
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3000}
     ports:
-      - "127.0.0.1:3000:8081"
+      - "0.0.0.0:3000:8081"
     restart: unless-stopped
 
 volumes:

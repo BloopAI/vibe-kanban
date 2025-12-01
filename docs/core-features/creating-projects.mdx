@@ -24,6 +24,25 @@ After creating a project, you need to press the settings button in the top right
 
 Once you've created a project, you can access the project settings by clicking the settings button in the top right corner. From here, you can configure various aspects of your project.
 
+### Auto-Detect Configuration
+
+<Tip>
+Vibe Kanban can automatically scan your repository to suggest configuration values for setup scripts, dev scripts, cleanup scripts, and files to copy.
+</Tip>
+
+When you enter a valid git repository path in the project settings, click the **Scan Project Configuration** button to automatically detect:
+
+- **Setup commands** from `package.json`, `Cargo.toml`, or documentation files (README.md, CLAUDE.md, etc.)
+- **Dev server commands** from npm/pnpm scripts or Rust cargo commands
+- **Test and linting commands** for cleanup scripts
+- **Environment files** like `.env`, `.env.local`, and other local configuration files that need copying
+
+The scanner provides suggestions with confidence levels:
+- **High confidence**: Found in structured files like `package.json` or `Cargo.toml`
+- **Medium confidence**: Extracted from documentation code blocks
+
+You can accept or reject each suggestion individually before saving your project configuration.
+
 ### Setup Scripts
 
 Setup scripts will be run before the coding agent is executed. This is useful for installing dependencies, for example you might run `npm install` or `cargo build`. This will save you time as your agent won't need to figure out that these commands haven't already been run.
@@ -48,5 +67,66 @@ Comma-separated list of files to copy from the original project directory to the
 <Warning>
 Make sure these files are gitignored or they could get committed!
 </Warning>
+
+### Network Access Configuration
+
+If you access Vibe Kanban from other machines on your network (e.g., `http://192.168.1.100:3000`), you need to configure your dev server to bind to all network interfaces.
+
+<Tabs>
+<Tab title="Vite">
+  Update your dev script or `vite.config.ts`:
+  ```json package.json
+  {
+    "scripts": {
+      "dev": "vite --host 0.0.0.0"
+    }
+  }
+  ```
+
+  Or in `vite.config.ts`:
+  ```typescript
+  export default defineConfig({
+    server: {
+      host: '0.0.0.0',
+      port: 3000
+    }
+  });
+  ```
+</Tab>
+
+<Tab title="Next.js">
+  Update your dev script:
+  ```json package.json
+  {
+    "scripts": {
+      "dev": "next dev -H 0.0.0.0"
+    }
+  }
+  ```
+</Tab>
+
+<Tab title="Create React App">
+  Add to `.env` file:
+  ```bash
+  HOST=0.0.0.0
+  ```
+</Tab>
+</Tabs>
+
+<Warning>
+Only use `0.0.0.0` on trusted networks. This exposes your dev server to all network interfaces.
+</Warning>
+
+#### Troubleshooting Preview Errors
+
+If the dev server preview shows an error or blank screen:
+
+1. **Check dev server logs** - Click "Show Logs" to see if the server started correctly
+2. **Verify network binding** - Ensure dev script uses `0.0.0.0` or `--host 0.0.0.0`
+3. **X-Frame-Options blocking** - Some dev servers block iframe embedding. Solutions:
+   - Configure dev server to allow framing (see framework documentation)
+   - Install [Vibe Kanban Web Companion](https://github.com/BloopAI/vibe-kanban-web-companion) browser extension
+   - Use "Open in New Tab" button to view in separate window
+4. **Check firewall** - Ensure dev server port is accessible on your network
 
 

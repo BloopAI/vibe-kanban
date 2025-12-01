@@ -9,7 +9,10 @@ use axum::{
     routing::{get, post},
 };
 use db::models::{
-    project::{CreateProject, Project, ProjectError, SearchMatchType, SearchResult, UpdateProject},
+    project::{
+        CreateProject, Project, ProjectError, ScanConfigRequest, ScanConfigResponse,
+        SearchMatchType, SearchResult, UpdateProject,
+    },
     task::Task,
 };
 use deployment::Deployment;
@@ -19,6 +22,7 @@ use services::services::{
     file_ranker::FileRanker,
     file_search_cache::{CacheError, SearchMode, SearchQuery},
     git::GitBranch,
+    project_detector::ProjectDetector,
     remote_client::CreateRemoteProjectPayload,
     share::link_shared_tasks_to_project,
 };
@@ -654,6 +658,31 @@ async fn search_files_in_repo(
     Ok(results)
 }
 
+pub async fn scan_project_config(
+    Json(payload): Json<ScanConfigRequest>,
+) -> Result<ResponseJson<ApiResponse<ScanConfigResponse>>, ApiError> {
+    let repo_path = std::path::absolute(expand_tilde(&payload.repo_path))?;
+
+    if !repo_path.exists() {
+        return Ok(ResponseJson(ApiResponse::error(
+            "Repository path does not exist",
+        )));
+    }
+
+    match ProjectDetector::scan_repo(&repo_path) {
+        Ok(suggestions) => Ok(ResponseJson(ApiResponse::success(ScanConfigResponse {
+            suggestions,
+        }))),
+        Err(e) => {
+            tracing::error!("Failed to scan project config: {}", e);
+            Err(ApiError::BadRequest(format!(
+                "Failed to scan project: {}",
+                e
+            )))
+        }
+    }
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let project_id_router = Router::new()
         .route(
@@ -676,6 +705,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
 
     let projects_router = Router::new()
         .route("/", get(get_projects).post(create_project))
+        .route("/scan-config", post(scan_project_config))
         .nest("/{id}", project_id_router);
 
     Router::new().nest("/projects", projects_router).route(

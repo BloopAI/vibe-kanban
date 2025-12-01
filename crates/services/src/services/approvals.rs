@@ -47,6 +47,7 @@ struct PendingApproval {
     entry: NormalizedEntry,
     execution_process_id: Uuid,
     tool_name: String,
+    #[allow(dead_code)]
     questions: Option<Vec<Question>>,
     response_tx: oneshot::Sender<ApprovalResponseData>,
 }
@@ -96,10 +97,7 @@ impl Approvals {
         request: ApprovalRequest,
     ) -> Result<(ApprovalRequest, ApprovalWaiter), ApprovalError> {
         let (tx, rx) = oneshot::channel();
-        let waiter: ApprovalWaiter = rx
-            .map(|result| result.unwrap_or_default())
-            .boxed()
-            .shared();
+        let waiter: ApprovalWaiter = rx.map(|result| result.unwrap_or_default()).boxed().shared();
         let req_id = request.id.clone();
         let is_question = request.questions.is_some();
 
@@ -256,7 +254,11 @@ impl Approvals {
             completed.insert(id.clone(), response_data.status.clone());
 
             if is_timeout && let Some((_, pending_approval)) = pending.remove(&id) {
-                if pending_approval.response_tx.send(response_data.clone()).is_err() {
+                if pending_approval
+                    .response_tx
+                    .send(response_data.clone())
+                    .is_err()
+                {
                     tracing::debug!("approval '{}' timeout notification receiver dropped", id);
                 }
 

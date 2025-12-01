@@ -18,6 +18,16 @@ export type SearchResult = { path: string, is_file: boolean, match_type: SearchM
 
 export type SearchMatchType = "FileName" | "DirectoryName" | "FullPath";
 
+export type ProjectConfigSuggestion = { field: ProjectConfigField, value: string, confidence: ConfidenceLevel, source: string, };
+
+export type ProjectConfigField = "SetupScript" | "DevScript" | "CleanupScript" | "CopyFiles" | "DevHost" | "DevPort";
+
+export type ConfidenceLevel = "High" | "Medium";
+
+export type ScanConfigRequest = { repo_path: string, };
+
+export type ScanConfigResponse = { suggestions: Array<ProjectConfigSuggestion>, };
+
 export type CreateRemoteProjectRequest = { organization_id: string, name: string, };
 
 export type LinkToExistingRequest = { remote_project_id: string, };
