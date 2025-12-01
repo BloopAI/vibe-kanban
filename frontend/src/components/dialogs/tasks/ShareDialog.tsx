@@ -33,15 +33,14 @@ const ShareDialogImpl = NiceModal.create<ShareDialogProps>(({ task }) => {
   const { isSignedIn } = useAuth();
   const { project } = useProject();
   const { shareTask } = useTaskMutations(task.project_id);
+  const { reset: resetShareTask } = shareTask;
 
   const [shareError, setShareError] = useState<string | null>(null);
 
   useEffect(() => {
-    shareTask.reset();
+    resetShareTask();
     setShareError(null);
-    // shareTask is intentionally omitted; we only want to reset when the task changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [task.id]);
+  }, [task.id, resetShareTask]);
 
   const handleClose = () => {
     modal.resolve(shareTask.isSuccess);
