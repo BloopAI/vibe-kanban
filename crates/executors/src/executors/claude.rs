@@ -429,7 +429,7 @@ impl ClaudeLogProcessor {
     /// Extract session ID from Claude JSON
     fn extract_session_id(claude_json: &ClaudeJson) -> Option<String> {
         match claude_json {
-            ClaudeJson::System { session_id, .. } => session_id.clone(),
+            ClaudeJson::System { .. } => None,  // session might not have been initialized yet
             ClaudeJson::Assistant { session_id, .. } => session_id.clone(),
             ClaudeJson::User { session_id, .. } => session_id.clone(),
             ClaudeJson::ToolUse { session_id, .. } => session_id.clone(),
