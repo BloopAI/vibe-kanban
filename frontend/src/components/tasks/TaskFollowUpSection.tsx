@@ -1,4 +1,12 @@
-import { Loader2, Send, StopCircle, AlertCircle, Clock, X } from 'lucide-react';
+import {
+  Loader2,
+  Send,
+  StopCircle,
+  AlertCircle,
+  Clock,
+  X,
+  Paperclip,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 //
@@ -472,6 +480,25 @@ export function TaskFollowUpSection({
     [selectedAttemptId]
   );
 
+  // Attachment button - file input ref and handlers
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const handleAttachClick = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+  const handleFileInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(e.target.files || []).filter((f) =>
+        f.type.startsWith('image/')
+      );
+      if (files.length > 0) {
+        handlePasteFiles(files);
+      }
+      // Reset input so same file can be selected again
+      e.target.value = '';
+    },
+    [handlePasteFiles]
+  );
+
   // Stable onChange handler for WYSIWYGEditor
   const handleEditorChange = useCallback(
     (value: string) => {
@@ -631,8 +658,6 @@ export function TaskFollowUpSection({
                 disabled={!isEditable}
                 onFocusChange={setIsTextareaFocused}
                 onPasteFiles={handlePasteFiles}
-                onAttachFiles={handlePasteFiles}
-                showAttachButton={!!selectedAttemptId}
                 projectId={projectId}
                 taskAttemptId={selectedAttemptId}
                 onCmdEnter={handleSubmitShortcut}
@@ -725,6 +750,25 @@ export function TaskFollowUpSection({
                   {t('followUp.clearReviewComments')}
                 </Button>
               )}
+              {/* Hidden file input for attachment */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleFileInputChange}
+              />
+              <Button
+                onClick={handleAttachClick}
+                disabled={!isEditable}
+                size="sm"
+                variant="outline"
+                title="Attach image"
+                aria-label="Attach image"
+              >
+                <Paperclip className="h-4 w-4" />
+              </Button>
               <Button
                 onClick={onSendFollowUp}
                 disabled={!canSendFollowUp || !isEditable}

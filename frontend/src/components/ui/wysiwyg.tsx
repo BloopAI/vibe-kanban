@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useCallback, memo } from 'react';
+import { useMemo, useState, useCallback, memo } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
@@ -32,7 +32,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
-import { Check, Clipboard, Paperclip } from 'lucide-react';
+import { Check, Clipboard } from 'lucide-react';
 import { writeClipboardViaBridge } from '@/vscode/bridge';
 
 /** Markdown string representing the editor content */
@@ -57,10 +57,6 @@ type WysiwygProps = {
   enableCopyButton?: boolean;
   /** Task attempt ID for resolving .vibe-images paths */
   taskAttemptId?: string;
-  /** Callback to handle file attachment (upload + insert markdown) */
-  onAttachFiles?: (files: File[]) => void;
-  /** Show attachment button in bottom-right corner */
-  showAttachButton?: boolean;
 };
 
 function WYSIWYGEditor({
@@ -78,8 +74,6 @@ function WYSIWYGEditor({
   onShiftCmdEnter,
   enableCopyButton = false,
   taskAttemptId,
-  onAttachFiles,
-  showAttachButton = false,
 }: WysiwygProps) {
   // Copy button state
   const [copied, setCopied] = useState(false);
@@ -93,25 +87,6 @@ function WYSIWYGEditor({
       // noop – bridge handles fallback
     }
   }, [value]);
-
-  // Attachment button state
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const handleAttachClick = useCallback(() => {
-    fileInputRef.current?.click();
-  }, []);
-  const handleFileChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = Array.from(e.target.files || []).filter((f) =>
-        f.type.startsWith('image/')
-      );
-      if (files.length > 0 && onAttachFiles) {
-        onAttachFiles(files);
-      }
-      // Reset input so same file can be selected again
-      e.target.value = '';
-    },
-    [onAttachFiles]
-  );
 
   const initialConfig = useMemo(
     () => ({
@@ -230,16 +205,11 @@ function WYSIWYGEditor({
   const placeholderElement = useMemo(
     () =>
       !disabled ? (
-        <div
-          className={cn(
-            'absolute top-0 left-0 text-sm text-secondary-foreground pointer-events-none',
-            showAttachButton && 'pr-10'
-          )}
-        >
+        <div className="absolute top-0 left-0 text-sm text-secondary-foreground pointer-events-none">
           {placeholder}
         </div>
       ) : null,
-    [disabled, showAttachButton, placeholder]
+    [disabled, placeholder]
   );
 
   const editorContent = (
@@ -273,28 +243,6 @@ function WYSIWYGEditor({
               placeholder={placeholderElement}
               ErrorBoundary={LexicalErrorBoundary}
             />
-            {/* Attachment button */}
-            {showAttachButton && onAttachFiles && !disabled && (
-              <>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={handleFileChange}
-                />
-                <button
-                  type="button"
-                  onClick={handleAttachClick}
-                  className="absolute bottom-2 right-2 p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-                  title="Attach image"
-                  aria-label="Attach image"
-                >
-                  <Paperclip size={16} />
-                </button>
-              </>
-            )}
           </div>
 
           <ListPlugin />
