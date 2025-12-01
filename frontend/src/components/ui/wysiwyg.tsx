@@ -192,7 +192,7 @@ function WYSIWYGEditor({
               contentEditable={
                 <ContentEditable
                   className={cn(
-                    'outline-none text-sm',
+                    'outline-none',
                     !disabled && 'min-h-[200px]',
                     className
                   )}
