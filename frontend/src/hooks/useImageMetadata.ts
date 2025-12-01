@@ -1,23 +1,69 @@
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import type { TaskAttemptImageMetadata } from 'shared/types';
+import type { ImageMetadata } from 'shared/types';
+import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
 
 export function useImageMetadata(
   taskAttemptId: string | undefined,
-  src: string
+  src: string,
+  taskId?: string | undefined,
+  localImages?: LocalImageMetadata[]
 ) {
   const isVibeImage = src.startsWith('.vibe-images/');
-  const enabled = isVibeImage && !!taskAttemptId;
 
-  return useQuery({
-    queryKey: ['imageMetadata', taskAttemptId, src],
-    queryFn: async () => {
-      const res = await fetch(
-        `/api/task-attempts/${taskAttemptId}/images/metadata?path=${encodeURIComponent(src)}`
-      );
-      const data = await res.json();
-      return data.data as TaskAttemptImageMetadata | null;
+  // Synchronous lookup for local images
+  const localImage = useMemo(
+    () => localImages?.find((img) => img.path === src),
+    [localImages, src]
+  );
+
+  // Convert to ImageMetadata format
+  const localImageMetadata: ImageMetadata | null = useMemo(
+    () =>
+      localImage
+        ? {
+            exists: true,
+            file_name: localImage.file_name,
+            path: localImage.path,
+            size_bytes: BigInt(localImage.size_bytes),
+            format: localImage.format,
+            proxy_url: localImage.proxy_url,
+          }
+        : null,
+    [localImage]
+  );
+
+  const hasContext = !!taskAttemptId || !!taskId;
+  // Only fetch from API if: vibe image, has context, and NO local image
+  const shouldFetch = isVibeImage && hasContext && !localImage;
+
+  const query = useQuery({
+    queryKey: ['imageMetadata', taskAttemptId, taskId, src],
+    queryFn: async (): Promise<ImageMetadata | null> => {
+      // Pure API logic - no local image handling
+      if (taskAttemptId) {
+        const res = await fetch(
+          `/api/task-attempts/${taskAttemptId}/images/metadata?path=${encodeURIComponent(src)}`
+        );
+        const data = await res.json();
+        return data.data as ImageMetadata | null;
+      }
+      if (taskId) {
+        const res = await fetch(
+          `/api/images/task/${taskId}/metadata?path=${encodeURIComponent(src)}`
+        );
+        const data = await res.json();
+        return data.data as ImageMetadata | null;
+      }
+      return null;
     },
-    enabled,
-    staleTime: Infinity, // Image metadata doesn't change
+    enabled: shouldFetch,
+    staleTime: Infinity,
   });
+
+  // Return local data if available, otherwise query result
+  return {
+    data: localImageMetadata ?? query.data,
+    isLoading: localImage ? false : query.isLoading,
+  };
 }

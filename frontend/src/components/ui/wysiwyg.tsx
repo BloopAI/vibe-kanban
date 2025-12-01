@@ -10,7 +10,12 @@ import { InlineCodeNode } from './wysiwyg/nodes/inline-code-node';
 import { IMAGE_TRANSFORMER } from './wysiwyg/transformers/image-transformer';
 import { CODE_BLOCK_TRANSFORMER } from './wysiwyg/transformers/code-block-transformer';
 import { INLINE_CODE_TRANSFORMER } from './wysiwyg/transformers/inline-code-transformer';
-import { TaskAttemptContext } from './wysiwyg/context/task-attempt-context';
+import {
+  TaskAttemptContext,
+  TaskContext,
+  LocalImagesContext,
+  type LocalImageMetadata,
+} from './wysiwyg/context/task-attempt-context';
 import { FileTagTypeaheadPlugin } from './wysiwyg/plugins/file-tag-typeahead-plugin';
 import { KeyboardCommandsPlugin } from './wysiwyg/plugins/keyboard-commands-plugin';
 import { ImageKeyboardPlugin } from './wysiwyg/plugins/image-keyboard-plugin';
@@ -47,8 +52,12 @@ type WysiwygProps = {
   projectId?: string; // for file search in typeahead
   onCmdEnter?: () => void;
   onShiftCmdEnter?: () => void;
-  /** Task attempt ID for resolving .vibe-images paths */
+  /** Task attempt ID for resolving .vibe-images paths (preferred over taskId) */
   taskAttemptId?: string;
+  /** Task ID for resolving .vibe-images paths when taskAttemptId is not available */
+  taskId?: string;
+  /** Local images for immediate rendering (before saved to server) */
+  localImages?: LocalImageMetadata[];
   /** Optional edit callback - shows edit button in read-only mode when provided */
   onEdit?: () => void;
   /** Optional delete callback - shows delete button in read-only mode when provided */
@@ -67,6 +76,8 @@ function WYSIWYGEditor({
   onCmdEnter,
   onShiftCmdEnter,
   taskAttemptId,
+  taskId,
+  localImages,
   onEdit,
   onDelete,
 }: WysiwygProps) {
@@ -178,52 +189,58 @@ function WYSIWYGEditor({
   const editorContent = (
     <div className="wysiwyg">
       <TaskAttemptContext.Provider value={taskAttemptId}>
-        <LexicalComposer initialConfig={initialConfig}>
-          <MarkdownSyncPlugin
-            value={value}
-            onChange={onChange}
-            onEditorStateChange={onEditorStateChange}
-            editable={!disabled}
-            transformers={extendedTransformers}
-          />
-          {!disabled && <ToolbarPlugin />}
-          <div className="relative">
-            <RichTextPlugin
-              contentEditable={
-                <ContentEditable
-                  className={cn(
-                    'outline-none',
-                    !disabled && 'min-h-[200px]',
-                    className
-                  )}
-                  aria-label={disabled ? 'Markdown content' : 'Markdown editor'}
-                  onPaste={handlePaste}
-                />
-              }
-              placeholder={placeholderElement}
-              ErrorBoundary={LexicalErrorBoundary}
-            />
-          </div>
-
-          <ListPlugin />
-          <CodeHighlightPlugin />
-          {/* Only include editing plugins when not in read-only mode */}
-          {!disabled && (
-            <>
-              <HistoryPlugin />
-              <MarkdownShortcutPlugin transformers={extendedTransformers} />
-              <FileTagTypeaheadPlugin projectId={projectId} />
-              <KeyboardCommandsPlugin
-                onCmdEnter={onCmdEnter}
-                onShiftCmdEnter={onShiftCmdEnter}
+        <TaskContext.Provider value={taskId}>
+          <LocalImagesContext.Provider value={localImages ?? []}>
+            <LexicalComposer initialConfig={initialConfig}>
+              <MarkdownSyncPlugin
+                value={value}
+                onChange={onChange}
+                onEditorStateChange={onEditorStateChange}
+                editable={!disabled}
+                transformers={extendedTransformers}
               />
-              <ImageKeyboardPlugin />
-              <CodeBlockShortcutPlugin />
-            </>
-          )}
-          {/* Link sanitization for read-only mode */}
-          {disabled && <ReadOnlyLinkPlugin />}
-        </LexicalComposer>
+              {!disabled && <ToolbarPlugin />}
+              <div className="relative">
+                <RichTextPlugin
+                  contentEditable={
+                    <ContentEditable
+                      className={cn(
+                        'outline-none',
+                        !disabled && 'min-h-[200px]',
+                        className
+                      )}
+                      aria-label={
+                        disabled ? 'Markdown content' : 'Markdown editor'
+                      }
+                      onPaste={handlePaste}
+                    />
+                  }
+                  placeholder={placeholderElement}
+                  ErrorBoundary={LexicalErrorBoundary}
+                />
+              </div>
+
+              <ListPlugin />
+              <CodeHighlightPlugin />
+              {/* Only include editing plugins when not in read-only mode */}
+              {!disabled && (
+                <>
+                  <HistoryPlugin />
+                  <MarkdownShortcutPlugin transformers={extendedTransformers} />
+                  <FileTagTypeaheadPlugin projectId={projectId} />
+                  <KeyboardCommandsPlugin
+                    onCmdEnter={onCmdEnter}
+                    onShiftCmdEnter={onShiftCmdEnter}
+                  />
+                  <ImageKeyboardPlugin />
+                  <CodeBlockShortcutPlugin />
+                </>
+              )}
+              {/* Link sanitization for read-only mode */}
+              {disabled && <ReadOnlyLinkPlugin />}
+            </LexicalComposer>
+          </LocalImagesContext.Provider>
+        </TaskContext.Provider>
       </TaskAttemptContext.Provider>
     </div>
   );

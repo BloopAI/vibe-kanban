@@ -103,6 +103,28 @@ impl Image {
         .await
     }
 
+    pub async fn find_by_file_path(
+        pool: &SqlitePool,
+        file_path: &str,
+    ) -> Result<Option<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Image,
+            r#"SELECT id as "id!: Uuid",
+                      file_path as "file_path!",
+                      original_name as "original_name!",
+                      mime_type,
+                      size_bytes as "size_bytes!",
+                      hash as "hash!",
+                      created_at as "created_at!: DateTime<Utc>",
+                      updated_at as "updated_at!: DateTime<Utc>"
+               FROM images
+               WHERE file_path = $1"#,
+            file_path
+        )
+        .fetch_optional(pool)
+        .await
+    }
+
     pub async fn find_by_task_id(
         pool: &SqlitePool,
         task_id: Uuid,
@@ -214,5 +236,21 @@ impl TaskImage {
             .execute(pool)
             .await?;
         Ok(())
+    }
+
+    /// Check if an image is associated with a specific task.
+    pub async fn is_associated(
+        pool: &SqlitePool,
+        task_id: Uuid,
+        image_id: Uuid,
+    ) -> Result<bool, sqlx::Error> {
+        let result = sqlx::query_scalar!(
+            r#"SELECT 1 as "exists" FROM task_images WHERE task_id = $1 AND image_id = $2"#,
+            task_id,
+            image_id
+        )
+        .fetch_optional(pool)
+        .await?;
+        Ok(result.is_some())
     }
 }

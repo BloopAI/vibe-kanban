@@ -11,11 +11,10 @@ use axum::{
 };
 use db::models::{task::Task, task_attempt::TaskAttempt};
 use deployment::Deployment;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use services::services::image::ImageError;
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
-use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
@@ -24,24 +23,13 @@ use crate::{
     DeploymentImpl,
     error::ApiError,
     middleware::load_task_attempt_middleware,
-    routes::images::{ImageResponse, process_image_upload},
+    routes::images::{ImageMetadata, ImageResponse, process_image_upload},
 };
 
 #[derive(Debug, Deserialize)]
 pub struct ImageMetadataQuery {
     /// Path relative to worktree root, e.g., ".vibe-images/screenshot.png"
     pub path: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, TS)]
-#[ts(export)]
-pub struct TaskAttemptImageMetadata {
-    pub exists: bool,
-    pub file_name: Option<String>,
-    pub path: Option<String>,
-    pub size_bytes: Option<i64>,
-    pub format: Option<String>,
-    pub proxy_url: Option<String>,
 }
 
 /// Upload an image and immediately copy it to the task attempt's worktree.
@@ -74,34 +62,30 @@ pub async fn get_image_metadata(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<ImageMetadataQuery>,
-) -> Result<ResponseJson<ApiResponse<TaskAttemptImageMetadata>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<ImageMetadata>>, ApiError> {
     // Validate path starts with .vibe-images/
     let vibe_images_prefix = format!("{}/", utils::path::VIBE_IMAGES_DIR);
     if !query.path.starts_with(&vibe_images_prefix) {
-        return Ok(ResponseJson(ApiResponse::success(
-            TaskAttemptImageMetadata {
-                exists: false,
-                file_name: None,
-                path: Some(query.path),
-                size_bytes: None,
-                format: None,
-                proxy_url: None,
-            },
-        )));
+        return Ok(ResponseJson(ApiResponse::success(ImageMetadata {
+            exists: false,
+            file_name: None,
+            path: Some(query.path),
+            size_bytes: None,
+            format: None,
+            proxy_url: None,
+        })));
     }
 
     // Reject paths with .. to prevent traversal
     if query.path.contains("..") {
-        return Ok(ResponseJson(ApiResponse::success(
-            TaskAttemptImageMetadata {
-                exists: false,
-                file_name: None,
-                path: Some(query.path),
-                size_bytes: None,
-                format: None,
-                proxy_url: None,
-            },
-        )));
+        return Ok(ResponseJson(ApiResponse::success(ImageMetadata {
+            exists: false,
+            file_name: None,
+            path: Some(query.path),
+            size_bytes: None,
+            format: None,
+            proxy_url: None,
+        })));
     }
 
     let worktree_path = ensure_worktree_path(&deployment, &task_attempt).await?;
@@ -111,16 +95,14 @@ pub async fn get_image_metadata(
     let metadata = match tokio::fs::metadata(&full_path).await {
         Ok(m) if m.is_file() => m,
         _ => {
-            return Ok(ResponseJson(ApiResponse::success(
-                TaskAttemptImageMetadata {
-                    exists: false,
-                    file_name: None,
-                    path: Some(query.path),
-                    size_bytes: None,
-                    format: None,
-                    proxy_url: None,
-                },
-            )));
+            return Ok(ResponseJson(ApiResponse::success(ImageMetadata {
+                exists: false,
+                file_name: None,
+                path: Some(query.path),
+                size_bytes: None,
+                format: None,
+                proxy_url: None,
+            })));
         }
     };
 
@@ -141,16 +123,14 @@ pub async fn get_image_metadata(
         task_attempt.id, image_path
     );
 
-    Ok(ResponseJson(ApiResponse::success(
-        TaskAttemptImageMetadata {
-            exists: true,
-            file_name,
-            path: Some(query.path),
-            size_bytes: Some(metadata.len() as i64),
-            format,
-            proxy_url: Some(proxy_url),
-        },
-    )))
+    Ok(ResponseJson(ApiResponse::success(ImageMetadata {
+        exists: true,
+        file_name,
+        path: Some(query.path),
+        size_bytes: Some(metadata.len() as i64),
+        format,
+        proxy_url: Some(proxy_url),
+    })))
 }
 
 /// Serve an image file from the task attempt's .vibe-images folder.

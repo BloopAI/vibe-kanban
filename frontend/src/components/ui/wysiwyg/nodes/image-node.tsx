@@ -12,7 +12,11 @@ import {
 } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { HelpCircle, Loader2 } from 'lucide-react';
-import { useTaskAttemptId } from '../context/task-attempt-context';
+import {
+  useTaskAttemptId,
+  useTaskId,
+  useLocalImages,
+} from '../context/task-attempt-context';
 import { useImageMetadata } from '@/hooks/useImageMetadata';
 import { ImagePreviewDialog } from '@/components/dialogs/wysiwyg/ImagePreviewDialog';
 import { formatFileSize } from '@/lib/utils';
@@ -42,13 +46,19 @@ function ImageComponent({
 }): JSX.Element {
   const [editor] = useLexicalComposerContext();
   const taskAttemptId = useTaskAttemptId();
+  const taskId = useTaskId();
+  const localImages = useLocalImages();
 
   const isVibeImage = src.startsWith('.vibe-images/');
 
   // Use TanStack Query for caching metadata across component recreations
+  // Pass both taskAttemptId and taskId - the hook prefers taskAttemptId when available
+  // Also pass localImages for immediate rendering of newly uploaded images
   const { data: metadata, isLoading: loading } = useImageMetadata(
     taskAttemptId,
-    src
+    src,
+    taskId,
+    localImages
   );
 
   const handleClick = useCallback(
@@ -97,7 +107,12 @@ function ImageComponent({
   let displayName: string;
   let metadataLine: string | null = null;
 
-  if (isVibeImage && taskAttemptId) {
+  // Check if we have context for fetching metadata (either taskAttemptId or taskId)
+  const hasContext = !!taskAttemptId || !!taskId;
+  // Check if image exists in local images (for create mode where no task context exists yet)
+  const hasLocalImage = localImages.some((img) => img.path === src);
+
+  if (isVibeImage && (hasLocalImage || hasContext)) {
     if (loading) {
       thumbnailContent = (
         <div className="w-10 h-10 flex items-center justify-center bg-muted rounded flex-shrink-0">
@@ -145,7 +160,7 @@ function ImageComponent({
     );
     displayName = truncatePath(altText || src);
   } else {
-    // isVibeImage but no taskAttemptId - fallback to question mark
+    // isVibeImage but no context available - fallback to question mark
     thumbnailContent = (
       <div className="w-10 h-10 flex items-center justify-center bg-muted rounded flex-shrink-0">
         <HelpCircle className="w-5 h-5 text-muted-foreground" />
