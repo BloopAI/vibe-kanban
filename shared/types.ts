@@ -70,7 +70,7 @@ export type Scratch = { id: string, payload: ScratchPayload, created_at: string,
 
 export type CreateScratch = { payload: ScratchPayload, };
 
-export type UpdateScratch = { payload: ScratchPayload | null, };
+export type UpdateScratch = { payload: ScratchPayload, };
 
 export type QueuedMessage = { 
 /**

@@ -78,19 +78,14 @@ pub async fn update_scratch(
         ));
     }
 
-    // Validate that payload type matches URL type (if payload provided)
-    if let Some(ref p) = payload.payload {
-        p.validate_type(scratch_type)
-            .map_err(|e| ApiError::BadRequest(e.to_string()))?;
-    }
+    // Validate that payload type matches URL type
+    payload
+        .payload
+        .validate_type(scratch_type)
+        .map_err(|e| ApiError::BadRequest(e.to_string()))?;
 
-    // Upsert: creates if not exists, updates if exists.
-    // Returns None only if payload is None AND record doesn't exist.
-    let scratch = Scratch::update(&deployment.db().pool, id, &scratch_type, &payload)
-        .await?
-        .ok_or_else(|| {
-            ApiError::BadRequest("Scratch not found and no payload provided".to_string())
-        })?;
+    // Upsert: creates if not exists, updates if exists
+    let scratch = Scratch::update(&deployment.db().pool, id, &scratch_type, &payload).await?;
     Ok(ResponseJson(ApiResponse::success(scratch)))
 }
 

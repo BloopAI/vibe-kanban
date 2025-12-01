@@ -1,5 +1,3 @@
-use std::fmt;
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
@@ -14,13 +12,8 @@ pub enum ScratchError {
     Serde(#[from] serde_json::Error),
     #[error(transparent)]
     Database(#[from] sqlx::Error),
-    #[error("Unknown scratch type: {0}")]
-    UnknownScratchType(String),
-    #[error("Scratch type mismatch: URL has '{url_type}' but payload has '{payload_type}'")]
-    TypeMismatch {
-        url_type: String,
-        payload_type: String,
-    },
+    #[error("Scratch type mismatch: expected '{expected}' but got '{actual}'")]
+    TypeMismatch { expected: String, actual: String },
 }
 
 /// Data for a draft follow-up scratch
@@ -51,22 +44,16 @@ impl ScratchPayload {
         ScratchType::from(self)
     }
 
-    /// Validates that the payload type matches the expected URL type
+    /// Validates that the payload type matches the expected type
     pub fn validate_type(&self, expected: ScratchType) -> Result<(), ScratchError> {
         let actual = self.scratch_type();
         if actual != expected {
             return Err(ScratchError::TypeMismatch {
-                url_type: expected.to_string(),
-                payload_type: actual.to_string(),
+                expected: expected.to_string(),
+                actual: actual.to_string(),
             });
         }
         Ok(())
-    }
-}
-
-impl fmt::Display for ScratchPayload {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.scratch_type())
     }
 }
 
@@ -97,22 +84,15 @@ impl Scratch {
 impl TryFrom<ScratchRow> for Scratch {
     type Error = ScratchError;
     fn try_from(r: ScratchRow) -> Result<Self, ScratchError> {
-        let scratch_type: ScratchType = r
-            .scratch_type
-            .parse()
-            .map_err(|_| ScratchError::UnknownScratchType(r.scratch_type.clone()))?;
-
-        let payload = match scratch_type {
-            ScratchType::DraftTask => {
-                let data: String = serde_json::from_str(&r.payload)?;
-                ScratchPayload::DraftTask(data)
-            }
-            ScratchType::DraftFollowUp => {
-                let data: DraftFollowUpData = serde_json::from_str(&r.payload)?;
-                ScratchPayload::DraftFollowUp(data)
-            }
-        };
-
+        let payload: ScratchPayload = serde_json::from_str(&r.payload)?;
+        payload.validate_type(
+            r.scratch_type
+                .parse()
+                .map_err(|_| ScratchError::TypeMismatch {
+                    expected: r.scratch_type.clone(),
+                    actual: payload.scratch_type().to_string(),
+                })?,
+        )?;
         Ok(Scratch {
             id: r.id,
             payload,
@@ -131,15 +111,7 @@ pub struct CreateScratch {
 /// Request body for updating a scratch
 #[derive(Debug, Serialize, Deserialize, TS)]
 pub struct UpdateScratch {
-    pub payload: Option<ScratchPayload>,
-}
-
-/// Helper to serialize the inner data from a ScratchPayload to JSON string for storage
-fn serialize_payload_data(payload: &ScratchPayload) -> Result<String, serde_json::Error> {
-    match payload {
-        ScratchPayload::DraftTask(data) => serde_json::to_string(data),
-        ScratchPayload::DraftFollowUp(data) => serde_json::to_string(data),
-    }
+    pub payload: ScratchPayload,
 }
 
 impl Scratch {
@@ -149,8 +121,7 @@ impl Scratch {
         data: &CreateScratch,
     ) -> Result<Self, ScratchError> {
         let scratch_type_str = data.payload.scratch_type().to_string();
-        // Store the data as JSON-encoded string
-        let payload_str = serialize_payload_data(&data.payload)?;
+        let payload_str = serde_json::to_string(&data.payload)?;
 
         let row = sqlx::query_as!(
             ScratchRow,
@@ -228,19 +199,13 @@ impl Scratch {
     }
 
     /// Upsert a scratch record - creates if not exists, updates if exists.
-    /// If `data.payload` is None, returns the existing record unchanged (or None if not found).
     pub async fn update(
         pool: &SqlitePool,
         id: Uuid,
         scratch_type: &ScratchType,
         data: &UpdateScratch,
-    ) -> Result<Option<Self>, ScratchError> {
-        // If no payload provided, just fetch and return existing (no upsert possible)
-        let Some(ref payload) = data.payload else {
-            return Self::find_by_id(pool, id, scratch_type).await;
-        };
-
-        let payload_str = serialize_payload_data(payload)?;
+    ) -> Result<Self, ScratchError> {
+        let payload_str = serde_json::to_string(&data.payload)?;
         let scratch_type_str = scratch_type.to_string();
 
         // Upsert: insert if not exists, update if exists
@@ -266,7 +231,7 @@ impl Scratch {
         .fetch_one(pool)
         .await?;
 
-        Ok(Some(Scratch::try_from(row)?))
+        Scratch::try_from(row)
     }
 
     pub async fn delete(
