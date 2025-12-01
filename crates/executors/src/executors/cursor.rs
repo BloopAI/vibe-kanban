@@ -564,7 +564,7 @@ pub enum CursorJson {
 impl CursorJson {
     pub fn extract_session_id(&self) -> Option<String> {
         match self {
-            CursorJson::System { .. } => None,  // session might not have been initialized yet
+            CursorJson::System { .. } => None, // session might not have been initialized yet
             CursorJson::User { session_id, .. } => session_id.clone(),
             CursorJson::Assistant { session_id, .. } => session_id.clone(),
             CursorJson::Thinking { session_id, .. } => session_id.clone(),
