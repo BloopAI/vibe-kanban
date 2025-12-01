@@ -29,7 +29,7 @@ import { LinkNode } from '@lexical/link';
 import { EditorState } from 'lexical';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Check, Clipboard, Pencil } from 'lucide-react';
+import { Check, Clipboard, Pencil, Trash2 } from 'lucide-react';
 import { writeClipboardViaBridge } from '@/vscode/bridge';
 
 /** Markdown string representing the editor content */
@@ -49,8 +49,10 @@ type WysiwygProps = {
   onShiftCmdEnter?: () => void;
   /** Task attempt ID for resolving .vibe-images paths */
   taskAttemptId?: string;
-  /** Optional retry callback - shows edit button in read-only mode when provided */
-  onRetry?: () => void;
+  /** Optional edit callback - shows edit button in read-only mode when provided */
+  onEdit?: () => void;
+  /** Optional delete callback - shows delete button in read-only mode when provided */
+  onDelete?: () => void;
 };
 
 function WYSIWYGEditor({
@@ -65,7 +67,8 @@ function WYSIWYGEditor({
   onCmdEnter,
   onShiftCmdEnter,
   taskAttemptId,
-  onRetry,
+  onEdit,
+  onDelete,
 }: WysiwygProps) {
   // Copy button state
   const [copied, setCopied] = useState(false);
@@ -247,18 +250,32 @@ function WYSIWYGEditor({
                 <Clipboard className="w-4 h-4 text-background" />
               )}
             </Button>
-            {/* Retry button - only if onRetry provided */}
-            {onRetry && (
+            {/* Edit button - only if onEdit provided */}
+            {onEdit && (
               <Button
                 type="button"
-                aria-label="Edit message"
-                title="Edit message"
+                aria-label="Edit"
+                title="Edit"
                 variant="icon"
                 size="icon"
-                onClick={onRetry}
+                onClick={onEdit}
                 className="pointer-events-auto p-2 bg-foreground h-8 w-8"
               >
                 <Pencil className="w-4 h-4 text-background" />
+              </Button>
+            )}
+            {/* Delete button - only if onDelete provided */}
+            {onDelete && (
+              <Button
+                type="button"
+                aria-label="Delete"
+                title="Delete"
+                variant="icon"
+                size="icon"
+                onClick={onDelete}
+                className="pointer-events-auto p-2 bg-foreground h-8 w-8"
+              >
+                <Trash2 className="w-4 h-4 text-background" />
               </Button>
             )}
           </div>

@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
+import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useReview, type ReviewDraft } from '@/contexts/ReviewProvider';
 import { Scope, useKeyExit, useKeySubmitComment } from '@/keyboard';
 import { useHotkeysContext } from 'react-hotkeys-hook';
@@ -22,12 +22,7 @@ export function CommentWidgetLine({
 }: CommentWidgetLineProps) {
   const { setDraft, addComment } = useReview();
   const [value, setValue] = useState(draft.text);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { enableScope, disableScope } = useHotkeysContext();
-
-  useEffect(() => {
-    textareaRef.current?.focus();
-  }, []);
 
   useEffect(() => {
     enableScope(Scope.EDIT_COMMENT);
@@ -81,13 +76,13 @@ export function CommentWidgetLine({
 
   return (
     <div className="p-4 border-y bg-primary">
-      <FileSearchTextarea
-        ref={textareaRef}
+      <WYSIWYGEditor
         value={value}
         onChange={setValue}
         placeholder="Add a comment... (type @ to search files)"
-        className="w-full bg-primary text-primary-foreground text-sm font-mono resize-none min-h-[60px] focus:outline-none focus:ring-1 focus:ring-primary"
+        className="w-full bg-primary text-primary-foreground text-sm font-mono min-h-[60px]"
         projectId={projectId}
+        onCmdEnter={handleSave}
       />
       <div className="mt-2 flex gap-2">
         <Button size="xs" onClick={handleSave} disabled={!value.trim()}>

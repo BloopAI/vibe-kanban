@@ -68,7 +68,7 @@ const UserMessage = ({
               disabled
               className="whitespace-pre-wrap break-words flex flex-col gap-1 font-light"
               taskAttemptId={taskAttempt?.id}
-              onRetry={canRetry ? startRetry : undefined}
+              onEdit={canRetry ? startRetry : undefined}
             />
           )}
         </div>
