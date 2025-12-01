@@ -12,7 +12,7 @@ use super::{project::Project, task_attempt::TaskAttempt};
 )]
 #[sqlx(type_name = "task_status", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
-#[strum(serialize_all = "kebab_case")]
+#[strum(serialize_all = "lowercase")]
 pub enum TaskStatus {
     #[default]
     Todo,

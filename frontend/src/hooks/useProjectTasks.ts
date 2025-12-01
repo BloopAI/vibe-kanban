@@ -11,19 +11,6 @@ import type {
   TaskWithAttemptStatus,
 } from 'shared/types';
 
-const statusMap: Record<string, TaskStatus> = {
-  todo: 'todo',
-  'in-progress': 'inprogress',
-  inprogress: 'inprogress',
-  'in-review': 'inreview',
-  inreview: 'inreview',
-  done: 'done',
-  cancelled: 'cancelled',
-};
-
-const normalizeStatus = (status: string): TaskStatus =>
-  statusMap[status] ?? 'todo';
-
 export type SharedTaskRecord = Omit<SharedTask, 'version'> & {
   remote_project_id: string;
   assignee_first_name?: string | null;
@@ -105,14 +92,13 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
     const map: Record<string, SharedTaskRecord> = {};
     const list = Array.isArray(sharedTasksList) ? sharedTasksList : [];
     for (const task of list) {
-      const normalizedStatus = normalizeStatus(String(task.status));
       const assignee =
         task.assignee_user_id && assignees
           ? assignees.find((a) => a.user_id === task.assignee_user_id)
           : null;
       map[task.id] = {
         ...task,
-        status: normalizedStatus,
+        status: task.status,
         remote_project_id: task.project_id,
         assignee_first_name: assignee?.first_name ?? null,
         assignee_last_name: assignee?.last_name ?? null,
