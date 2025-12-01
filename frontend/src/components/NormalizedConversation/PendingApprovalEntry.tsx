@@ -315,7 +315,7 @@ const PendingApprovalEntry = ({
 
   return (
     <div className="relative mt-3">
-      <div className="overflow-hidden border">
+      <div className="overflow-hidden">
         {children}
 
         <div className="border-t bg-background px-2 py-1.5 text-xs sm:text-sm">
