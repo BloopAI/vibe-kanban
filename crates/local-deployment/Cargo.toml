@@ -26,6 +26,5 @@ notify-debouncer-full = "0.5.0"
 reqwest = { version = "0.12", features = ["json"] }
 sentry = { version = "0.41.0", features = ["anyhow", "backtrace", "panic", "debug-images"] }
 futures = "0.3"
-async-stream = "0.3"
 json-patch = "2.0"
 tokio = { workspace = true }

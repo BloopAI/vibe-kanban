@@ -28,15 +28,12 @@ tokio = { workspace = true }
 futures = "0.3.31"
 tokio-stream = { version = "0.1.17", features = ["sync"] }
 tokio-tungstenite = { version = "0.28", features = ["rustls-tls-webpki-roots", "url"] }
-async-stream = "0.3"
 shellexpand = "3.1.1"
 which = "8.0.0"
 similar = "2"
 git2 = "0.18"
 dirs = "5.0"
-async-trait = { workspace = true }
 thiserror = { workspace = true }
-dashmap = "6.1"
 url = "2.5"
 reqwest = { version = "0.12", features = ["json"] }
 sqlx = { version = "0.8.6", default-features = false, features = ["postgres", "uuid", "chrono"] }
