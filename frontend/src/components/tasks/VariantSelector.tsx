@@ -59,7 +59,7 @@ const VariantSelectorInner = forwardRef<HTMLButtonElement, Props>(
             variant="secondary"
             size="sm"
             className={cn(
-              'w-28 md:w-32 px-2 flex items-center justify-between transition-all',
+              'px-2 flex items-center justify-between transition-all',
               isAnimating && 'scale-105 bg-accent',
               className
             )}
