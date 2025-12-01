@@ -140,16 +140,17 @@ function DenyReasonForm({
   projectId?: string;
 }) {
   return (
-    <div className="mt-3 bg-background px-3 py-3 text-sm">
+    <div className="flex flex-col gap-2 mt-3">
       <WYSIWYGEditor
         value={value}
         onChange={onChange}
         placeholder="Let the agent know why this request was denied... Type @ to insert tags or search files."
         disabled={isResponding}
-        className="w-full bg-transparent border px-3 py-2 text-sm min-h-[80px]"
+        className="min-h-[80px]"
         projectId={projectId}
+        onCmdEnter={onSubmit}
       />
-      <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
         <Button
           variant="ghost"
           size="sm"
