@@ -417,37 +417,55 @@ impl LocalContainerService {
                 }
 
                 if container.should_finalize(&ctx) {
-                    // Check for queued message before finalizing
+                    // Only execute queued messages if the execution succeeded
+                    // If it failed or was killed, just clear the queue and finalize
+                    let should_execute_queued = !matches!(
+                        ctx.execution_process.status,
+                        ExecutionProcessStatus::Failed | ExecutionProcessStatus::Killed
+                    );
+
                     if let Some(queued_msg) = container
                         .queued_message_service
                         .take_queued(ctx.task_attempt.id)
                     {
-                        tracing::info!(
-                            "Found queued message for attempt {}, starting follow-up execution",
-                            ctx.task_attempt.id
-                        );
-
-                        // Delete the scratch since we're consuming the queued message
-                        if let Err(e) = Scratch::delete(
-                            &db.pool,
-                            ctx.task_attempt.id,
-                            &ScratchType::DraftFollowUp,
-                        )
-                        .await
-                        {
-                            tracing::warn!(
-                                "Failed to delete scratch after consuming queued message: {}",
-                                e
+                        if should_execute_queued {
+                            tracing::info!(
+                                "Found queued message for attempt {}, starting follow-up execution",
+                                ctx.task_attempt.id
                             );
-                        }
 
-                        // Execute the queued follow-up
-                        if let Err(e) = container
-                            .start_queued_follow_up(&ctx, &queued_msg.data)
+                            // Delete the scratch since we're consuming the queued message
+                            if let Err(e) = Scratch::delete(
+                                &db.pool,
+                                ctx.task_attempt.id,
+                                &ScratchType::DraftFollowUp,
+                            )
                             .await
-                        {
-                            tracing::error!("Failed to start queued follow-up: {}", e);
-                            // Fall back to finalization if follow-up fails
+                            {
+                                tracing::warn!(
+                                    "Failed to delete scratch after consuming queued message: {}",
+                                    e
+                                );
+                            }
+
+                            // Execute the queued follow-up
+                            if let Err(e) = container
+                                .start_queued_follow_up(&ctx, &queued_msg.data)
+                                .await
+                            {
+                                tracing::error!("Failed to start queued follow-up: {}", e);
+                                // Fall back to finalization if follow-up fails
+                                container
+                                    .finalize_task(&config, publisher.as_ref().ok(), &ctx)
+                                    .await;
+                            }
+                        } else {
+                            // Execution failed or was killed - discard the queued message and finalize
+                            tracing::info!(
+                                "Discarding queued message for attempt {} due to execution status {:?}",
+                                ctx.task_attempt.id,
+                                ctx.execution_process.status
+                            );
                             container
                                 .finalize_task(&config, publisher.as_ref().ok(), &ctx)
                                 .await;

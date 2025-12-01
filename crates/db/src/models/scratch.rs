@@ -85,14 +85,12 @@ impl TryFrom<ScratchRow> for Scratch {
     type Error = ScratchError;
     fn try_from(r: ScratchRow) -> Result<Self, ScratchError> {
         let payload: ScratchPayload = serde_json::from_str(&r.payload)?;
-        payload.validate_type(
-            r.scratch_type
-                .parse()
-                .map_err(|_| ScratchError::TypeMismatch {
-                    expected: r.scratch_type.clone(),
-                    actual: payload.scratch_type().to_string(),
-                })?,
-        )?;
+        payload.validate_type(r.scratch_type.parse().map_err(|_| {
+            ScratchError::TypeMismatch {
+                expected: r.scratch_type.clone(),
+                actual: payload.scratch_type().to_string(),
+            }
+        })?)?;
         Ok(Scratch {
             id: r.id,
             payload,
