@@ -452,6 +452,11 @@ export function TaskFollowUpSection({
     cancelQueueRef.current = cancelQueue;
   }, [cancelQueue]);
 
+  const queuedMessageRef = useRef(queuedMessage);
+  useEffect(() => {
+    queuedMessageRef.current = queuedMessage;
+  }, [queuedMessage]);
+
   // Handle image paste - upload to container and insert markdown
   const handlePasteFiles = useCallback(
     async (files: File[]) => {
@@ -465,13 +470,25 @@ export function TaskFollowUpSection({
           );
           // Append markdown image to current message
           const imageMarkdown = `![${response.original_name}](${response.file_path})`;
-          setLocalMessage((prev) => {
-            const newMessage = prev
-              ? `${prev}\n\n${imageMarkdown}`
+
+          // If queued, cancel queue and use queued message as base (same as editor change behavior)
+          if (isQueuedRef.current && queuedMessageRef.current) {
+            cancelQueueRef.current();
+            const base = queuedMessageRef.current.data.message;
+            const newMessage = base
+              ? `${base}\n\n${imageMarkdown}`
               : imageMarkdown;
-            setFollowUpMessageRef.current(newMessage); // Debounced save to scratch
-            return newMessage;
-          });
+            setLocalMessage(newMessage);
+            setFollowUpMessageRef.current(newMessage);
+          } else {
+            setLocalMessage((prev) => {
+              const newMessage = prev
+                ? `${prev}\n\n${imageMarkdown}`
+                : imageMarkdown;
+              setFollowUpMessageRef.current(newMessage); // Debounced save to scratch
+              return newMessage;
+            });
+          }
         } catch (error) {
           console.error('Failed to upload image:', error);
         }
@@ -688,6 +705,28 @@ export function TaskFollowUpSection({
             />
           </div>
 
+          {/* Hidden file input for attachment - always present */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={handleFileInputChange}
+          />
+
+          {/* Attach button - always visible */}
+          <Button
+            onClick={handleAttachClick}
+            disabled={!isEditable}
+            size="sm"
+            variant="outline"
+            title="Attach image"
+            aria-label="Attach image"
+          >
+            <Paperclip className="h-4 w-4" />
+          </Button>
+
           {isAttemptRunning ? (
             <div className="flex items-center gap-2">
               {/* Queue/Cancel Queue button when running */}
@@ -758,25 +797,6 @@ export function TaskFollowUpSection({
                   {t('followUp.clearReviewComments')}
                 </Button>
               )}
-              {/* Hidden file input for attachment */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={handleFileInputChange}
-              />
-              <Button
-                onClick={handleAttachClick}
-                disabled={!isEditable}
-                size="sm"
-                variant="outline"
-                title="Attach image"
-                aria-label="Attach image"
-              >
-                <Paperclip className="h-4 w-4" />
-              </Button>
               <Button
                 onClick={onSendFollowUp}
                 disabled={!canSendFollowUp || !isEditable}
