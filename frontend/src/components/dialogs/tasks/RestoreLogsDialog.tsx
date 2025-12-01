@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { AlertTriangle, GitCommit } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
+import { useKeySubmitTask } from '@/keyboard/hooks';
+import { Scope } from '@/keyboard/registry';
 
 export interface RestoreLogsDialogProps {
   targetSha: string | null;
@@ -62,7 +64,9 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
 
     const hasLater = laterCount > 0;
     const short = targetSha?.slice(0, 7);
-    // Note: confirm enabling logic handled in footer based on uncommitted changes
+
+    const isConfirmDisabled =
+      hasRisk && worktreeResetOn && needGitReset && !forceReset;
 
     const handleConfirm = () => {
       modal.resolve({
@@ -83,6 +87,12 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
         handleCancel();
       }
     };
+
+    // CMD+Enter to confirm
+    useKeySubmitTask(handleConfirm, {
+      scope: Scope.DIALOG,
+      when: modal.visible && !isConfirmDisabled,
+    });
 
     return (
       <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
@@ -368,12 +378,7 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
             </Button>
             <Button
               variant="destructive"
-              disabled={
-                // Disable when uncommitted changes present and user hasn't enabled force
-                // or explicitly disabled worktree reset.
-                (hasRisk && worktreeResetOn && needGitReset && !forceReset) ||
-                false
-              }
+              disabled={isConfirmDisabled}
               onClick={handleConfirm}
             >
               Retry

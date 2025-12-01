@@ -25,14 +25,8 @@ import { CodeHighlightPlugin } from './wysiwyg/plugins/code-highlight-plugin';
 import { LinkNode } from '@lexical/link';
 import { EditorState } from 'lexical';
 import { cn } from '@/lib/utils';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
-import { Check, Clipboard } from 'lucide-react';
+import { Check, Clipboard, Pencil } from 'lucide-react';
 import { writeClipboardViaBridge } from '@/vscode/bridge';
 
 /** Markdown string representing the editor content */
@@ -52,6 +46,8 @@ type WysiwygProps = {
   onShiftCmdEnter?: () => void;
   /** Task attempt ID for resolving .vibe-images paths */
   taskAttemptId?: string;
+  /** Optional retry callback - shows edit button in read-only mode when provided */
+  onRetry?: () => void;
 };
 
 function WYSIWYGEditor({
@@ -66,6 +62,7 @@ function WYSIWYGEditor({
   onCmdEnter,
   onShiftCmdEnter,
   taskAttemptId,
+  onRetry,
 }: WysiwygProps) {
   // Copy button state
   const [copied, setCopied] = useState(false);
@@ -249,47 +246,42 @@ function WYSIWYGEditor({
     </div>
   );
 
-  // Wrap with copy button in read-only mode
+  // Wrap with action buttons in read-only mode
   if (disabled) {
     return (
       <div className="relative group">
-        <div className="sticky top-2 right-2 z-10 pointer-events-none h-0">
-          <div className="flex justify-end pr-1">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="relative">
-                    <Button
-                      type="button"
-                      aria-label={copied ? 'Copied!' : 'Copy as Markdown'}
-                      title={copied ? 'Copied!' : 'Copy as Markdown'}
-                      variant="outline"
-                      size="icon"
-                      onClick={handleCopy}
-                      className="pointer-events-auto opacity-0 group-hover:opacity-100 delay-0 transition-opacity duration-50 h-8 w-8 rounded-md bg-background/95 backdrop-blur border border-border shadow-sm"
-                    >
-                      {copied ? (
-                        <Check className="h-4 w-4 text-green-600" />
-                      ) : (
-                        <Clipboard className="h-4 w-4" />
-                      )}
-                    </Button>
-                    {copied && (
-                      <div
-                        className="absolute -right-1 mt-1 translate-y-1.5 select-none text-[11px] leading-none px-2 py-1 rounded bg-green-600 text-white shadow pointer-events-none"
-                        role="status"
-                        aria-live="polite"
-                      >
-                        Copied
-                      </div>
-                    )}
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {copied ? 'Copied!' : 'Copy as Markdown'}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+        <div className="sticky top-0 right-2 z-10 pointer-events-none h-0">
+          <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+            {/* Copy button */}
+            <Button
+              type="button"
+              aria-label={copied ? 'Copied!' : 'Copy as Markdown'}
+              title={copied ? 'Copied!' : 'Copy as Markdown'}
+              variant="icon"
+              size="icon"
+              onClick={handleCopy}
+              className="pointer-events-auto p-2 bg-foreground h-8 w-8"
+            >
+              {copied ? (
+                <Check className="w-4 h-4 text-green-600" />
+              ) : (
+                <Clipboard className="w-4 h-4 text-background" />
+              )}
+            </Button>
+            {/* Retry button - only if onRetry provided */}
+            {onRetry && (
+              <Button
+                type="button"
+                aria-label="Edit message"
+                title="Edit message"
+                variant="icon"
+                size="icon"
+                onClick={onRetry}
+                className="pointer-events-auto p-2 bg-foreground h-8 w-8"
+              >
+                <Pencil className="w-4 h-4 text-background" />
+              </Button>
+            )}
           </div>
         </div>
         {editorContent}
