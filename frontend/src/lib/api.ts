@@ -5,7 +5,6 @@ import {
   ApiResponse,
   BranchStatus,
   Config,
-  CommitInfo,
   CreateFollowUpAttempt,
   EditorType,
   CreateGitHubPrRequest,
@@ -598,14 +597,6 @@ export const attemptsApi = {
 
 // Extra helpers
 export const commitsApi = {
-  getInfo: async (attemptId: string, sha: string): Promise<CommitInfo> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/commit-info?sha=${encodeURIComponent(
-        sha
-      )}`
-    );
-    return handleApiResponse<CommitInfo>(response);
-  },
   compareToHead: async (
     attemptId: string,
     sha: string

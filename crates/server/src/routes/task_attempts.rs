@@ -430,32 +430,8 @@ async fn handle_task_attempt_diff_ws(
 }
 
 #[derive(Debug, Serialize, TS)]
-pub struct CommitInfo {
-    pub sha: String,
-    pub subject: String,
-}
-
-pub async fn get_commit_info(
-    Extension(task_attempt): Extension<TaskAttempt>,
-    State(deployment): State<DeploymentImpl>,
-    Query(params): Query<std::collections::HashMap<String, String>>,
-) -> Result<ResponseJson<ApiResponse<CommitInfo>>, ApiError> {
-    let Some(sha) = params.get("sha").cloned() else {
-        return Err(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
-            "Missing sha param".to_string(),
-        )));
-    };
-    let wt_buf = ensure_worktree_path(&deployment, &task_attempt).await?;
-    let wt = wt_buf.as_path();
-    let subject = deployment.git().get_commit_subject(wt, &sha)?;
-    Ok(ResponseJson(ApiResponse::success(CommitInfo {
-        sha,
-        subject,
-    })))
-}
-
-#[derive(Debug, Serialize, TS)]
 pub struct CommitCompareResult {
+    pub subject: String,
     pub head_oid: String,
     pub target_oid: String,
     pub ahead_from_head: usize,
@@ -475,6 +451,7 @@ pub async fn compare_commit_to_head(
     };
     let wt_buf = ensure_worktree_path(&deployment, &task_attempt).await?;
     let wt = wt_buf.as_path();
+    let subject = deployment.git().get_commit_subject(wt, &target_oid)?;
     let head_info = deployment.git().get_head_info(wt)?;
     let (ahead_from_head, behind_from_head) =
         deployment
@@ -482,6 +459,7 @@ pub async fn compare_commit_to_head(
             .ahead_behind_commits_by_oid(wt, &head_info.oid, &target_oid)?;
     let is_linear = behind_from_head == 0;
     Ok(ResponseJson(ApiResponse::success(CommitCompareResult {
+        subject,
         head_oid: head_info.oid,
         target_oid,
         ahead_from_head,
@@ -1572,7 +1550,6 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/follow-up", post(follow_up))
         .route("/run-agent-setup", post(run_agent_setup))
         .route("/gh-cli-setup", post(gh_cli_setup_handler))
-        .route("/commit-info", get(get_commit_info))
         .route("/commit-compare", get(compare_commit_to_head))
         .route("/start-dev-server", post(start_dev_server))
         .route("/branch-status", get(get_task_attempt_branch_status))

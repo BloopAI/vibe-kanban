@@ -7,21 +7,12 @@ import { VariantSelector } from '@/components/tasks/VariantSelector';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Loader2, Send, X } from 'lucide-react';
-import { attemptsApi, executionProcessesApi, commitsApi } from '@/lib/api';
 import type { TaskAttempt } from 'shared/types';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
-import {
-  RestoreLogsDialog,
-  type RestoreLogsDialogResult,
-} from '@/components/dialogs';
-import {
-  shouldShowInLogs,
-  isCodingAgent,
-  PROCESS_RUN_REASONS,
-} from '@/constants/processes';
 import { useVariant } from '@/hooks/useVariant';
+import { useRetryProcess } from '@/hooks/useRetryProcess';
 import type { ExecutorAction, ExecutorProfileId } from 'shared/types';
 
 export function RetryEditorInline({
@@ -77,113 +68,38 @@ export function RetryEditorInline({
     processVariant,
     scratchVariant: undefined,
   });
-  const [isSending, setIsSending] = useState(false);
 
+  const retryMutation = useRetryProcess(
+    attemptId,
+    () => onCancelled?.(),
+    (err) => setSendError((err as Error)?.message || 'Failed to send retry')
+  );
+
+  const isSending = retryMutation.isPending;
   const canSend = !isAttemptRunning && !!message.trim();
 
   const onCancel = () => {
     onCancelled?.();
   };
 
-  const onSend = useCallback(async () => {
+  const onSend = useCallback(() => {
     if (!canSend) return;
     setSendError(null);
-    setIsSending(true);
-    try {
-      // Fetch process details and compute confirmation payload
-      const proc = await executionProcessesApi.getDetails(executionProcessId);
-      type WithBefore = { before_head_commit?: string | null };
-      const before = (proc as WithBefore)?.before_head_commit || null;
-      let targetSubject: string | null = null;
-      let commitsToReset: number | null = null;
-      let isLinear: boolean | null = null;
-      if (before) {
-        try {
-          const info = await commitsApi.getInfo(attemptId, before);
-          targetSubject = info.subject;
-          const cmp = await commitsApi.compareToHead(attemptId, before);
-          commitsToReset = cmp.is_linear ? cmp.ahead_from_head : null;
-          isLinear = cmp.is_linear;
-        } catch {
-          /* ignore */
-        }
-      }
-
-      const head = branchStatus?.head_oid || null;
-      const dirty = !!branchStatus?.has_uncommitted_changes;
-      const needReset = !!(before && (before !== head || dirty));
-      const canGitReset = needReset && !dirty;
-
-      // Compute later processes summary for UI
-      const procs = (attemptData.processes || []).filter(
-        (p) => !p.dropped && shouldShowInLogs(p.run_reason)
-      );
-      const idx = procs.findIndex((p) => p.id === executionProcessId);
-      const later = idx >= 0 ? procs.slice(idx + 1) : [];
-      const laterCount = later.length;
-      const laterCoding = later.filter((p) =>
-        isCodingAgent(p.run_reason)
-      ).length;
-      const laterSetup = later.filter(
-        (p) => p.run_reason === PROCESS_RUN_REASONS.SETUP_SCRIPT
-      ).length;
-      const laterCleanup = later.filter(
-        (p) => p.run_reason === PROCESS_RUN_REASONS.CLEANUP_SCRIPT
-      ).length;
-
-      // Ask user for confirmation
-      let modalResult: RestoreLogsDialogResult | undefined;
-      try {
-        modalResult = await RestoreLogsDialog.show({
-          targetSha: before,
-          targetSubject,
-          commitsToReset,
-          isLinear,
-          laterCount,
-          laterCoding,
-          laterSetup,
-          laterCleanup,
-          needGitReset: needReset,
-          canGitReset,
-          hasRisk: dirty,
-          uncommittedCount: branchStatus?.uncommitted_count ?? 0,
-          untrackedCount: branchStatus?.untracked_count ?? 0,
-          initialWorktreeResetOn: true,
-          initialForceReset: false,
-        });
-      } catch {
-        setIsSending(false);
-        return; // dialog closed
-      }
-      if (!modalResult || modalResult.action !== 'confirmed') {
-        setIsSending(false);
-        return;
-      }
-
-      // Send the retry request
-      await attemptsApi.followUp(attemptId, {
-        prompt: message,
-        variant: selectedVariant,
-        retry_process_id: executionProcessId,
-        force_when_dirty: modalResult.forceWhenDirty ?? false,
-        perform_git_reset: modalResult.performGitReset ?? true,
-      });
-
-      // Success - exit editing mode
-      onCancelled?.();
-    } catch (error: unknown) {
-      setSendError((error as Error)?.message || 'Failed to send retry');
-      setIsSending(false);
-    }
+    retryMutation.mutate({
+      message,
+      variant: selectedVariant,
+      executionProcessId,
+      branchStatus,
+      processes: attemptData.processes,
+    });
   }, [
     canSend,
-    executionProcessId,
-    attemptId,
-    branchStatus,
-    attemptData.processes,
+    retryMutation,
     message,
     selectedVariant,
-    onCancelled,
+    executionProcessId,
+    branchStatus,
+    attemptData.processes,
   ]);
 
   const handleCmdEnter = useCallback(() => {

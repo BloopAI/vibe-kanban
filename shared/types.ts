@@ -182,7 +182,7 @@ export type RenameBranchRequest = { new_branch_name: string, };
 
 export type RenameBranchResponse = { branch: string, };
 
-export type CommitCompareResult = { head_oid: string, target_oid: string, ahead_from_head: number, behind_from_head: number, is_linear: boolean, };
+export type CommitCompareResult = { subject: string, head_oid: string, target_oid: string, ahead_from_head: number, behind_from_head: number, is_linear: boolean, };
 
 export type OpenEditorRequest = { editor_type: string | null, file_path: string | null, };
 
@@ -327,8 +327,6 @@ export type GitOperationError = { "type": "merge_conflicts", message: string, op
 export type PushError = { "type": "force_push_required" };
 
 export type CreatePrError = { "type": "github_cli_not_installed" } | { "type": "github_cli_not_logged_in" } | { "type": "git_cli_not_logged_in" } | { "type": "git_cli_not_installed" } | { "type": "target_branch_not_found", branch: string, };
-
-export type CommitInfo = { sha: string, subject: string, };
 
 export type BranchStatus = { commits_behind: number | null, commits_ahead: number | null, has_uncommitted_changes: boolean | null, head_oid: string | null, uncommitted_count: number | null, untracked_count: number | null, target_branch_name: string, remote_commits_behind: number | null, remote_commits_ahead: number | null, merges: Array<Merge>, 
 /**
