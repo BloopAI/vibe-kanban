@@ -32,7 +32,7 @@
     "prepack": "npm run build:npx",
     "remote:dev": "cd crates/remote && docker compose --env-file .env.remote up --build ; docker compose down -v",
     "remote:dev:detach": "cd crates/remote && docker compose --env-file .env.remote up --build -d",
-    "remote:dev:stop": "cd crates/remote && docker compose down -v",
+    "remote:dev:stop": "cd crates/remote && docker compose --env-file .env.remote down -v",
     "remote:prepare-db": "cd crates/remote && bash scripts/prepare-db.sh"
   },
   "devDependencies": {
