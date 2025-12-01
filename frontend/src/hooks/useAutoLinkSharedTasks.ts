@@ -28,6 +28,7 @@ export function useAutoLinkSharedTasks({
   const { data: currentUser } = useCurrentUser();
   const { linkSharedTaskToLocal } = useTaskMutations(projectId);
   const linkingInProgress = useRef<Set<string>>(new Set());
+  const failedTasks = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!currentUser?.user_id || isLoading || !remoteProjectId || !projectId) {
@@ -40,12 +41,14 @@ export function useAutoLinkSharedTasks({
       const hasLocalTask = Boolean(localTasksById[task.id]);
       const isAlreadyLinked = referencedSharedIds.has(task.id);
       const isBeingLinked = linkingInProgress.current.has(task.id);
+      const hasFailed = failedTasks.current.has(task.id);
 
       return (
         isAssignedToCurrentUser &&
         !hasLocalTask &&
         !isAlreadyLinked &&
-        !isBeingLinked
+        !isBeingLinked &&
+        !hasFailed
       );
     });
 
@@ -60,6 +63,9 @@ export function useAutoLinkSharedTasks({
           status: task.status,
         },
         {
+          onError: () => {
+            failedTasks.current.add(task.id);
+          },
           onSettled: () => {
             linkingInProgress.current.delete(task.id);
           },

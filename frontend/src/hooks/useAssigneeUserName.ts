@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { tasksApi } from '@/lib/api';
-import type { SharedTask, UserName } from 'shared/types';
+import type { SharedTask, UserData } from 'shared/types';
 import { useEffect, useMemo } from 'react';
 
 interface UseAssigneeUserNamesOptions {
@@ -11,7 +11,7 @@ interface UseAssigneeUserNamesOptions {
 export function useAssigneeUserNames(options: UseAssigneeUserNamesOptions) {
   const { projectId, sharedTasks } = options;
 
-  const { data: assignees, refetch } = useQuery<UserName[], Error>({
+  const { data: assignees, refetch } = useQuery<UserData[], Error>({
     queryKey: ['project', 'assignees', projectId],
     queryFn: () => tasksApi.getSharedTaskAssignees(projectId!),
     enabled: Boolean(projectId),

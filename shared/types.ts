@@ -58,9 +58,9 @@ export type CreateTask = { project_id: string, title: string, description: strin
 
 export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, parent_task_attempt: string | null, image_ids: Array<string> | null, };
 
-export type SharedTask = { id: string, organization_id: string, project_id: string, creator_user_id: string | null, assignee_user_id: string | null, deleted_by_user_id: string | null, title: string, description: string | null, status: TaskStatus, version: bigint, deleted_at: string | null, shared_at: string | null, created_at: string, updated_at: string, };
+export type SharedTask = { id: string, organization_id: string, project_id: string, creator_user_id: string | null, assignee_user_id: string | null, deleted_by_user_id: string | null, title: string, description: string | null, status: TaskStatus, deleted_at: string | null, shared_at: string | null, created_at: string, updated_at: string, };
 
-export type UserName = { user_id: string, first_name: string | null, last_name: string | null, username: string | null, };
+export type UserData = { user_id: string, first_name: string | null, last_name: string | null, username: string | null, };
 
 export type DraftFollowUpData = { message: string, variant: string | null, };
 
@@ -197,9 +197,11 @@ export type OpenEditorRequest = { editor_type: string | null, file_path: string 
 
 export type OpenEditorResponse = { url: string | null, };
 
-export type AssignSharedTaskRequest = { new_assignee_user_id: string | null, version: bigint | null, };
+export type AssignSharedTaskRequest = { new_assignee_user_id: string | null, };
 
-export type AssignSharedTaskResponseWrapper = { shared_task: any, };
+export type SharedTaskResponse = { task: SharedTask, user: UserData | null, };
+
+export type AssigneesQuery = { project_id: string, };
 
 export type ShareTaskResponse = { shared_task_id: string, };
 

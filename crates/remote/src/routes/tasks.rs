@@ -8,6 +8,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{Span, instrument};
+use ts_rs::TS;
 use uuid::Uuid;
 
 use super::{
@@ -38,7 +39,8 @@ pub fn router() -> Router<AppState> {
         .route("/tasks/assignees", get(get_task_assignees_by_project))
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, TS)]
+#[ts(export)]
 pub struct AssigneesQuery {
     pub project_id: Uuid,
 }
@@ -226,7 +228,6 @@ pub async fn update_shared_task(
         title,
         description,
         status,
-        version,
     } = payload;
 
     let next_title = title.as_deref().unwrap_or(existing.title.as_str());
@@ -240,7 +241,6 @@ pub async fn update_shared_task(
         title,
         description,
         status,
-        version,
         acting_user_id: ctx.user.id,
     };
 
@@ -304,7 +304,6 @@ pub async fn assign_task(
     let data = AssignTaskData {
         new_assignee_user_id: payload.new_assignee_user_id,
         previous_assignee_user_id: Some(ctx.user.id),
-        version: payload.version,
     };
 
     match repo.assign_task(task_id, data).await {
@@ -315,14 +314,13 @@ pub async fn assign_task(
 
 #[instrument(
     name = "tasks.delete_shared_task",
-    skip(state, ctx, payload),
+    skip(state, ctx),
     fields(user_id = %ctx.user.id, task_id = %task_id, org_id = tracing::field::Empty)
 )]
 pub async fn delete_shared_task(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(task_id): Path<Uuid>,
-    payload: Option<Json<DeleteSharedTaskRequest>>,
 ) -> Response {
     let pool = state.pool();
     let _organization_id = match ensure_task_access(pool, ctx.user.id, task_id).await {
@@ -352,11 +350,8 @@ pub async fn delete_shared_task(
         );
     }
 
-    let version = payload.as_ref().and_then(|body| body.0.version);
-
     let data = DeleteTaskData {
         acting_user_id: ctx.user.id,
-        version,
     };
 
     match repo.delete_task(task_id, data).await {
@@ -384,21 +379,15 @@ pub struct UpdateSharedTaskRequest {
     pub title: Option<String>,
     pub description: Option<String>,
     pub status: Option<TaskStatus>,
-    pub version: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AssignSharedTaskRequest {
     pub new_assignee_user_id: Option<Uuid>,
-    pub version: Option<i64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DeleteSharedTaskRequest {
-    pub version: Option<i64>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct SharedTaskResponse {
     pub task: SharedTask,
     pub user: Option<UserData>,

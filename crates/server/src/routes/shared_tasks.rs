@@ -6,7 +6,7 @@ use axum::{
 };
 use deployment::Deployment;
 use remote::routes::tasks::SharedTaskResponse;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use services::services::share::{ShareError, SharedTaskDetails};
 use ts_rs::TS;
 use utils::response::ApiResponse;
@@ -18,14 +18,6 @@ use crate::{DeploymentImpl, error::ApiError};
 #[ts(export)]
 pub struct AssignSharedTaskRequest {
     pub new_assignee_user_id: Option<String>,
-    pub version: Option<i64>,
-}
-
-#[derive(Debug, Clone, Serialize, TS)]
-#[ts(export)]
-pub struct AssignSharedTaskResponseWrapper {
-    #[ts(type = "any")]
-    pub shared_task: SharedTaskResponse,
 }
 
 pub fn router() -> Router<DeploymentImpl> {
@@ -45,17 +37,13 @@ pub async fn assign_shared_task(
     Path(shared_task_id): Path<Uuid>,
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<AssignSharedTaskRequest>,
-) -> Result<ResponseJson<ApiResponse<AssignSharedTaskResponseWrapper>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<SharedTaskResponse>>, ApiError> {
     let Ok(publisher) = deployment.share_publisher() else {
         return Err(ShareError::MissingConfig("share publisher unavailable").into());
     };
 
     let updated_shared_task = publisher
-        .assign_shared_task(
-            shared_task_id,
-            payload.new_assignee_user_id.clone(),
-            payload.version,
-        )
+        .assign_shared_task(shared_task_id, payload.new_assignee_user_id.clone())
         .await?;
 
     let props = serde_json::json!({
@@ -66,11 +54,7 @@ pub async fn assign_shared_task(
         .track_if_analytics_allowed("reassign_shared_task", props)
         .await;
 
-    Ok(ResponseJson(ApiResponse::success(
-        AssignSharedTaskResponseWrapper {
-            shared_task: updated_shared_task,
-        },
-    )))
+    Ok(ResponseJson(ApiResponse::success(updated_shared_task)))
 }
 
 pub async fn delete_shared_task(

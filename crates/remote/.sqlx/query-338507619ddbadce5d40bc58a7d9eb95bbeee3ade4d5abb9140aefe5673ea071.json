@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            INSERT INTO shared_tasks (\n                organization_id,\n                project_id,\n                creator_user_id,\n                assignee_user_id,\n                title,\n                description,\n                shared_at\n            )\n            VALUES ($1, $2, $3, $4, $5, $6, NOW())\n            RETURNING id                 AS \"id!\",\n                      organization_id    AS \"organization_id!: Uuid\",\n                      project_id         AS \"project_id!\",\n                      creator_user_id    AS \"creator_user_id?: Uuid\",\n                      assignee_user_id   AS \"assignee_user_id?: Uuid\",\n                      deleted_by_user_id AS \"deleted_by_user_id?: Uuid\",\n                      title              AS \"title!\",\n                      description        AS \"description?\",\n                      status             AS \"status!: TaskStatus\",\n                      version            AS \"version!\",\n                      deleted_at         AS \"deleted_at?\",\n                      shared_at          AS \"shared_at?\",\n                      created_at         AS \"created_at!\",\n                      updated_at         AS \"updated_at!\"\n            ",
+  "query": "\n        UPDATE shared_tasks AS t\n        SET title       = COALESCE($2, t.title),\n            description = COALESCE($3, t.description),\n            status      = COALESCE($4, t.status),\n            updated_at  = NOW()\n        WHERE t.id = $1\n          AND t.assignee_user_id = $5\n          AND t.deleted_at IS NULL\n        RETURNING\n            t.id                AS \"id!\",\n            t.organization_id   AS \"organization_id!: Uuid\",\n            t.project_id        AS \"project_id!\",\n            t.creator_user_id   AS \"creator_user_id?: Uuid\",\n            t.assignee_user_id  AS \"assignee_user_id?: Uuid\",\n            t.deleted_by_user_id AS \"deleted_by_user_id?: Uuid\",\n            t.title             AS \"title!\",\n            t.description       AS \"description?\",\n            t.status            AS \"status!: TaskStatus\",\n            t.deleted_at        AS \"deleted_at?\",\n            t.shared_at         AS \"shared_at?\",\n            t.created_at        AS \"created_at!\",\n            t.updated_at        AS \"updated_at!\"\n        ",
   "describe": {
     "columns": [
       {
@@ -63,26 +63,21 @@
       },
       {
         "ordinal": 9,
-        "name": "version!",
-        "type_info": "Int8"
-      },
-      {
-        "ordinal": 10,
         "name": "deleted_at?",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 11,
+        "ordinal": 10,
         "name": "shared_at?",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 12,
+        "ordinal": 11,
         "name": "created_at!",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 13,
+        "ordinal": 12,
         "name": "updated_at!",
         "type_info": "Timestamptz"
       }
@@ -90,11 +85,23 @@
     "parameters": {
       "Left": [
         "Uuid",
-        "Uuid",
-        "Uuid",
-        "Uuid",
         "Text",
-        "Text"
+        "Text",
+        {
+          "Custom": {
+            "name": "task_status",
+            "kind": {
+              "Enum": [
+                "todo",
+                "in-progress",
+                "in-review",
+                "done",
+                "cancelled"
+              ]
+            }
+          }
+        },
+        "Uuid"
       ]
     },
     "nullable": [
@@ -107,12 +114,11 @@
       false,
       true,
       false,
-      false,
       true,
       true,
       false,
       false
     ]
   },
-  "hash": "13b1cf3d350af65f983aeab1e8c43faf3edc10c6403279f8450f2f9ae835cc18"
+  "hash": "338507619ddbadce5d40bc58a7d9eb95bbeee3ade4d5abb9140aefe5673ea071"
 }

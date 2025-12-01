@@ -54,7 +54,6 @@ pub struct SharedTask {
     pub title: String,
     pub description: Option<String>,
     pub status: TaskStatus,
-    pub version: i64,
     pub deleted_at: Option<DateTime<Utc>>,
     pub shared_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
@@ -81,7 +80,6 @@ pub struct UpdateSharedTaskData {
     pub title: Option<String>,
     pub description: Option<String>,
     pub status: Option<TaskStatus>,
-    pub version: Option<i64>,
     pub acting_user_id: Uuid,
 }
 
@@ -89,13 +87,11 @@ pub struct UpdateSharedTaskData {
 pub struct AssignTaskData {
     pub new_assignee_user_id: Option<Uuid>,
     pub previous_assignee_user_id: Option<Uuid>,
-    pub version: Option<i64>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct DeleteTaskData {
     pub acting_user_id: Uuid,
-    pub version: Option<i64>,
 }
 
 #[derive(Debug, Error)]
@@ -141,7 +137,6 @@ impl<'a> SharedTaskRepository<'a> {
                 title               AS "title!",
                 description         AS "description?",
                 status              AS "status!: TaskStatus",
-                version             AS "version!",
                 deleted_at          AS "deleted_at?",
                 shared_at           AS "shared_at?",
                 created_at          AS "created_at!",
@@ -205,7 +200,6 @@ impl<'a> SharedTaskRepository<'a> {
                       title              AS "title!",
                       description        AS "description?",
                       status             AS "status!: TaskStatus",
-                      version            AS "version!",
                       deleted_at         AS "deleted_at?",
                       shared_at          AS "shared_at?",
                       created_at         AS "created_at!",
@@ -248,7 +242,6 @@ impl<'a> SharedTaskRepository<'a> {
                 st.title                  AS "title!",
                 st.description            AS "description?",
                 st.status                 AS "status!: TaskStatus",
-                st.version                AS "version!",
                 st.deleted_at             AS "deleted_at?",
                 st.shared_at              AS "shared_at?",
                 st.created_at             AS "created_at!",
@@ -281,15 +274,14 @@ impl<'a> SharedTaskRepository<'a> {
                     title: row.title,
                     description: row.description,
                     status: row.status,
-                    version: row.version,
                     deleted_at: row.deleted_at,
                     shared_at: row.shared_at,
                     created_at: row.created_at,
                     updated_at: row.updated_at,
                 };
 
-                let user = row.user_id.map(|id| UserData {
-                    id,
+                let user = row.user_id.map(|user_id| UserData {
+                    user_id,
                     first_name: row.user_first_name,
                     last_name: row.user_last_name,
                     username: row.user_username,
@@ -335,11 +327,9 @@ impl<'a> SharedTaskRepository<'a> {
         SET title       = COALESCE($2, t.title),
             description = COALESCE($3, t.description),
             status      = COALESCE($4, t.status),
-            version     = t.version + 1,
             updated_at  = NOW()
         WHERE t.id = $1
-          AND t.version = COALESCE($5, t.version)
-          AND t.assignee_user_id = $6
+          AND t.assignee_user_id = $5
           AND t.deleted_at IS NULL
         RETURNING
             t.id                AS "id!",
@@ -351,7 +341,6 @@ impl<'a> SharedTaskRepository<'a> {
             t.title             AS "title!",
             t.description       AS "description?",
             t.status            AS "status!: TaskStatus",
-            t.version           AS "version!",
             t.deleted_at        AS "deleted_at?",
             t.shared_at         AS "shared_at?",
             t.created_at        AS "created_at!",
@@ -361,12 +350,11 @@ impl<'a> SharedTaskRepository<'a> {
             data.title,
             data.description,
             data.status as Option<TaskStatus>,
-            data.version,
             data.acting_user_id
         )
         .fetch_optional(&mut *tx)
         .await?
-        .ok_or_else(|| SharedTaskError::Conflict("task version mismatch".to_string()))?;
+        .ok_or_else(|| SharedTaskError::NotFound)?;
 
         ensure_text_size(&task.title, task.description.as_deref())?;
 
@@ -390,10 +378,8 @@ impl<'a> SharedTaskRepository<'a> {
             SharedTask,
             r#"
         UPDATE shared_tasks AS t
-        SET assignee_user_id = $2,
-            version = t.version + 1
+        SET assignee_user_id = $2
         WHERE t.id = $1
-          AND t.version = COALESCE($4, t.version)
           AND ($3::uuid IS NULL OR t.assignee_user_id = $3::uuid)
           AND t.deleted_at IS NULL
         RETURNING
@@ -406,7 +392,6 @@ impl<'a> SharedTaskRepository<'a> {
             t.title             AS "title!",
             t.description       AS "description?",
             t.status            AS "status!: TaskStatus",
-            t.version           AS "version!",
             t.deleted_at        AS "deleted_at?",
             t.shared_at         AS "shared_at?",
             t.created_at        AS "created_at!",
@@ -414,14 +399,11 @@ impl<'a> SharedTaskRepository<'a> {
         "#,
             task_id,
             data.new_assignee_user_id,
-            data.previous_assignee_user_id,
-            data.version
+            data.previous_assignee_user_id
         )
         .fetch_optional(&mut *tx)
         .await?
-        .ok_or_else(|| {
-            SharedTaskError::Conflict("task version or previous assignee mismatch".to_string())
-        })?;
+        .ok_or_else(|| SharedTaskError::Conflict("previous assignee mismatch".to_string()))?;
 
         let user = match data.new_assignee_user_id {
             Some(user_id) => fetch_user(&mut tx, user_id).await?,
@@ -444,11 +426,9 @@ impl<'a> SharedTaskRepository<'a> {
             r#"
         UPDATE shared_tasks AS t
         SET deleted_at = NOW(),
-            deleted_by_user_id = $3,
-            version = t.version + 1
+            deleted_by_user_id = $2
         WHERE t.id = $1
-          AND t.version = COALESCE($2, t.version)
-          AND t.assignee_user_id = $3
+          AND t.assignee_user_id = $2
           AND t.deleted_at IS NULL
         RETURNING
             t.id                AS "id!",
@@ -460,21 +440,17 @@ impl<'a> SharedTaskRepository<'a> {
             t.title             AS "title!",
             t.description       AS "description?",
             t.status            AS "status!: TaskStatus",
-            t.version           AS "version!",
             t.deleted_at        AS "deleted_at?",
             t.shared_at         AS "shared_at?",
             t.created_at        AS "created_at!",
             t.updated_at        AS "updated_at!"
         "#,
             task_id,
-            data.version,
             data.acting_user_id
         )
         .fetch_optional(&mut *tx)
         .await?
-        .ok_or_else(|| {
-            SharedTaskError::Conflict("task version mismatch or user not authorized".to_string())
-        })?;
+        .ok_or_else(|| SharedTaskError::Conflict("user not authorized".to_string()))?;
 
         tx.commit().await.map_err(SharedTaskError::from)?;
         Ok(SharedTaskWithUser::new(task, None))

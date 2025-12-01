@@ -71,7 +71,7 @@ pub async fn proxy_shared_tasks(
             .collect::<Vec<_>>()
             .join(",")
     )];
-    tracing::info!("Proxying Electric Shape request for shared_tasks table{query:?}");
+    tracing::debug!("Proxying Electric Shape request for shared_tasks table{query:?}");
     proxy_table(&state, &query, &params, query_params).await
 }
 

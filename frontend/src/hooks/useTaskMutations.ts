@@ -11,15 +11,16 @@ import type {
   UpdateTask,
   TaskStatus,
 } from 'shared/types';
+import { taskKeys } from './useTask';
 
 export function useTaskMutations(projectId?: string) {
   const queryClient = useQueryClient();
   const navigate = useNavigateWithSearch();
 
   const invalidateQueries = (taskId?: string) => {
-    queryClient.invalidateQueries({ queryKey: ['tasks', projectId] });
+    queryClient.invalidateQueries({ queryKey: taskKeys.all });
     if (taskId) {
-      queryClient.invalidateQueries({ queryKey: ['task', taskId] });
+      queryClient.invalidateQueries({ queryKey: taskKeys.byId(taskId) });
     }
   };
 
@@ -117,16 +118,7 @@ export function useTaskMutations(projectId?: string) {
       status: TaskStatus;
     }) => tasksApi.linkToLocal(data),
     onSuccess: (createdTask: Task) => {
-      // Invalidate project tasks to refresh the list
-      if (projectId) {
-        queryClient.invalidateQueries({
-          queryKey: ['projectTasks', projectId],
-        });
-      }
-      // Also invalidate the specific task
-      queryClient.invalidateQueries({
-        queryKey: ['task', createdTask.id],
-      });
+      invalidateQueries(createdTask.id);
     },
     onError: (err) => {
       console.error('Failed to link shared task to local:', err);

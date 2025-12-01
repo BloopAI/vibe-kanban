@@ -17,17 +17,9 @@ pub struct User {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UserData {
-    pub id: Uuid,
-    pub first_name: Option<String>,
-    pub last_name: Option<String>,
-    pub username: Option<String>,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, TS)]
 #[ts(export)]
-pub struct UserName {
+pub struct UserData {
     pub user_id: Uuid,
     pub first_name: Option<String>,
     pub last_name: Option<String>,
@@ -103,12 +95,13 @@ impl<'a> UserRepository<'a> {
     }
 
     /// Fetch all assignees for a given project id.
-    /// Returns Vec<UserName> containing all unique users assigned to tasks in the project.
+    /// Returns Vec<UserData> containing all unique users assigned to tasks in the project.
     pub async fn fetch_assignees_by_project(
         &self,
         project_id: Uuid,
-    ) -> Result<Vec<UserName>, IdentityError> {
-        let rows = sqlx::query_as::<_, UserName>(
+    ) -> Result<Vec<UserData>, IdentityError> {
+        let rows = sqlx::query_as!(
+            UserData,
             r#"
             SELECT DISTINCT
                 u.id         as "user_id",
@@ -120,8 +113,8 @@ impl<'a> UserRepository<'a> {
             WHERE st.project_id = $1
             AND st.assignee_user_id IS NOT NULL
             "#,
+            project_id
         )
-        .bind(project_id)
         .fetch_all(self.pool)
         .await
         .map_err(IdentityError::from)?;
@@ -178,7 +171,7 @@ pub async fn fetch_user(tx: &mut Tx<'_>, user_id: Uuid) -> Result<Option<UserDat
     .map_err(IdentityError::from)
     .map(|row_opt| {
         row_opt.map(|row| UserData {
-            id: row.id,
+            user_id: row.id,
             first_name: row.first_name,
             last_name: row.last_name,
             username: row.username,

@@ -25,9 +25,7 @@ const normalizeStatus = (status: string): TaskStatus =>
   statusMap[status] ?? 'todo';
 
 export type SharedTaskRecord = Omit<SharedTask, 'version'> & {
-  version: number;
   remote_project_id: string;
-  last_event_seq: number | null;
   assignee_first_name?: string | null;
   assignee_last_name?: string | null;
   assignee_username?: string | null;
@@ -35,7 +33,6 @@ export type SharedTaskRecord = Omit<SharedTask, 'version'> & {
 
 type TasksState = {
   tasks: Record<string, TaskWithAttemptStatus>;
-  // shared_tasks is no longer in WS stream
 };
 
 export interface UseProjectTasksResult {
@@ -116,9 +113,7 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
       map[task.id] = {
         ...task,
         status: normalizedStatus,
-        version: Number(task.version),
         remote_project_id: task.project_id,
-        last_event_seq: null,
         assignee_first_name: assignee?.first_name ?? null,
         assignee_last_name: assignee?.last_name ?? null,
         assignee_username: assignee?.username ?? null,

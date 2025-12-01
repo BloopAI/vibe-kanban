@@ -6,8 +6,7 @@ use db::{
     },
 };
 use remote::routes::tasks::{
-    AssignSharedTaskRequest, CreateSharedTaskRequest, DeleteSharedTaskRequest, SharedTaskResponse,
-    UpdateSharedTaskRequest,
+    AssignSharedTaskRequest, CreateSharedTaskRequest, SharedTaskResponse, UpdateSharedTaskRequest,
 };
 use uuid::Uuid;
 
@@ -73,7 +72,6 @@ impl SharePublisher {
             title: Some(task.title.clone()),
             description: task.description.clone(),
             status: Some(status::to_remote(&task.status)),
-            version: None,
         };
 
         self.client
@@ -95,7 +93,6 @@ impl SharePublisher {
         &self,
         shared_task_id: Uuid,
         new_assignee_user_id: Option<String>,
-        version: Option<i64>,
     ) -> Result<SharedTaskResponse, ShareError> {
         let assignee_uuid = new_assignee_user_id
             .map(|id| uuid::Uuid::parse_str(&id))
@@ -104,7 +101,6 @@ impl SharePublisher {
 
         let payload = AssignSharedTaskRequest {
             new_assignee_user_id: assignee_uuid,
-            version,
         };
 
         let response = self
@@ -116,16 +112,7 @@ impl SharePublisher {
     }
 
     pub async fn delete_shared_task(&self, shared_task_id: Uuid) -> Result<(), ShareError> {
-        // We do not have version here anymore if we don't have local shared task.
-        // Assuming optimistic locking is less critical for unshare or we accept any version (None).
-        // Or we should fetch from remote first?
-        // For unshare, usually we just want to break the link. The remote task is "deleted" (soft delete).
-
-        let payload = DeleteSharedTaskRequest { version: None };
-
-        self.client
-            .delete_shared_task(shared_task_id, &payload)
-            .await?;
+        self.client.delete_shared_task(shared_task_id).await?;
 
         if let Some(local_task) =
             Task::find_by_shared_task_id(&self.db.pool, shared_task_id).await?

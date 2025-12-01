@@ -5,8 +5,8 @@ use std::time::Duration;
 use backon::{ExponentialBuilder, Retryable};
 use chrono::Duration as ChronoDuration;
 use remote::routes::tasks::{
-    AssignSharedTaskRequest, BulkSharedTasksResponse, CreateSharedTaskRequest,
-    DeleteSharedTaskRequest, SharedTaskResponse, UpdateSharedTaskRequest,
+    AssignSharedTaskRequest, BulkSharedTasksResponse, CreateSharedTaskRequest, SharedTaskResponse,
+    UpdateSharedTaskRequest,
 };
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -577,14 +577,13 @@ impl RemoteClient {
     pub async fn delete_shared_task(
         &self,
         task_id: Uuid,
-        request: &DeleteSharedTaskRequest,
     ) -> Result<SharedTaskResponse, RemoteClientError> {
         let res = self
             .send(
                 reqwest::Method::DELETE,
                 &format!("/v1/tasks/{task_id}"),
                 true,
-                Some(request),
+                None::<&()>,
             )
             .await?;
         res.json::<SharedTaskResponse>()

@@ -12,7 +12,6 @@ import {
   CreateAndStartTaskRequest,
   CreateTaskAttemptBody,
   CreateTag,
-  TaskStatus,
   DirectoryListResponse,
   DirectoryEntry,
   ExecutionProcess,
@@ -27,7 +26,6 @@ import {
   Tag,
   TagSearchParams,
   TaskWithAttemptStatus,
-  AssignSharedTaskResponseWrapper,
   UpdateProject,
   UpdateTask,
   UpdateTag,
@@ -37,7 +35,7 @@ import {
   GetMcpServerResponse,
   ImageResponse,
   GitOperationError,
-  UserName,
+  UserData,
   ApprovalResponse,
   RebaseTaskAttemptRequest,
   ChangeTargetBranchRequest,
@@ -78,6 +76,9 @@ import {
   PushError,
   TokenResponse,
   CurrentUserResponse,
+  SharedTaskResponse,
+  SharedTaskDetails,
+  AssigneesQuery,
   QueueStatus,
 } from 'shared/types';
 
@@ -376,11 +377,10 @@ export const tasksApi = {
 
   reassign: async (
     sharedTaskId: string,
-    data: { new_assignee_user_id: string | null; version?: number | null }
-  ): Promise<AssignSharedTaskResponseWrapper> => {
+    data: { new_assignee_user_id: string | null }
+  ): Promise<SharedTaskResponse> => {
     const payload = {
       new_assignee_user_id: data.new_assignee_user_id,
-      version: data.version ?? null,
     };
 
     const response = await makeRequest(
@@ -391,7 +391,7 @@ export const tasksApi = {
       }
     );
 
-    return handleApiResponse<AssignSharedTaskResponseWrapper>(response);
+    return handleApiResponse<SharedTaskResponse>(response);
   },
 
   unshare: async (sharedTaskId: string): Promise<void> => {
@@ -401,7 +401,7 @@ export const tasksApi = {
     return handleApiResponse<void>(response);
   },
 
-  getSharedTaskAssignees: async (projectId: string): Promise<UserName[]> => {
+  getSharedTaskAssignees: async (projectId: string): Promise<UserData[]> => {
     const tokenRes = await oauthApi.getToken();
     if (!tokenRes?.access_token) {
       throw new Error('Not authenticated');
@@ -409,7 +409,7 @@ export const tasksApi = {
     const response = await makeRequest(
       `/v1/tasks/assignees?${new URLSearchParams({
         project_id: projectId,
-      })}`,
+      } as AssigneesQuery)}`,
       {
         headers: {
           Authorization: `Bearer ${tokenRes.access_token}`,
@@ -431,13 +431,7 @@ export const tasksApi = {
     return response.json();
   },
 
-  linkToLocal: async (data: {
-    id: string;
-    project_id: string;
-    title: string;
-    description: string | null;
-    status: TaskStatus;
-  }): Promise<Task> => {
+  linkToLocal: async (data: SharedTaskDetails): Promise<Task> => {
     const response = await makeRequest(`/api/shared-tasks/link-to-local`, {
       method: 'POST',
       body: JSON.stringify(data),
