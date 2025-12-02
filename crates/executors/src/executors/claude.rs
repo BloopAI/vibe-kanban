@@ -261,7 +261,8 @@ impl ClaudeCode {
         tokio::spawn(async move {
             let log_writer = LogWriter::new(new_stdout);
             let client = ClaudeAgentClient::new(log_writer.clone(), approvals_clone);
-            let protocol_peer = ProtocolPeer::spawn(child_stdin, child_stdout, client.clone());
+            let protocol_peer =
+                ProtocolPeer::spawn(child_stdin, child_stdout, client.clone(), interrupt_rx);
             client.connect(protocol_peer);
 
             // Initialize control protocol
@@ -283,13 +284,6 @@ impl ClaudeCode {
                 let _ = log_writer
                     .log_raw(&format!("Error: Failed to send prompt - {e}"))
                     .await;
-            }
-
-            // Wait for interrupt signal (sender dropped or signal received)
-            if interrupt_rx.await.is_ok()
-                && let Err(e) = client.interrupt().await
-            {
-                tracing::debug!("Failed to send interrupt to Claude: {e}");
             }
         });
 

@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
+use futures::FutureExt;
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     process::{ChildStdin, ChildStdout},
-    sync::Mutex,
+    sync::{Mutex, oneshot},
 };
 
 use super::types::{CLIMessage, ControlRequestType, ControlResponseMessage, ControlResponseType};
@@ -22,14 +23,19 @@ pub struct ProtocolPeer {
 }
 
 impl ProtocolPeer {
-    pub fn spawn(stdin: ChildStdin, stdout: ChildStdout, client: Arc<ClaudeAgentClient>) -> Self {
+    pub fn spawn(
+        stdin: ChildStdin,
+        stdout: ChildStdout,
+        client: Arc<ClaudeAgentClient>,
+        interrupt_rx: oneshot::Receiver<()>,
+    ) -> Self {
         let peer = Self {
             stdin: Arc::new(Mutex::new(stdin)),
         };
 
         let reader_peer = peer.clone();
         tokio::spawn(async move {
-            if let Err(e) = reader_peer.read_loop(stdout, client).await {
+            if let Err(e) = reader_peer.read_loop(stdout, client, interrupt_rx).await {
                 tracing::error!("Protocol reader loop error: {}", e);
             }
         });
@@ -41,41 +47,53 @@ impl ProtocolPeer {
         &self,
         stdout: ChildStdout,
         client: Arc<ClaudeAgentClient>,
+        interrupt_rx: oneshot::Receiver<()>,
     ) -> Result<(), ExecutorError> {
         let mut reader = BufReader::new(stdout);
         let mut buffer = String::new();
+        // Fuse the receiver so it returns Pending forever after completing
+        let mut interrupt_rx = interrupt_rx.fuse();
 
         loop {
             buffer.clear();
-            match reader.read_line(&mut buffer).await {
-                Ok(0) => break, // EOF
-                Ok(_) => {
-                    let line = buffer.trim();
-                    if line.is_empty() {
-                        continue;
-                    }
-                    // Parse message using typed enum
-                    match serde_json::from_str::<CLIMessage>(line) {
-                        Ok(CLIMessage::ControlRequest {
-                            request_id,
-                            request,
-                        }) => {
-                            self.handle_control_request(&client, request_id, request)
-                                .await;
+            tokio::select! {
+                line_result = reader.read_line(&mut buffer) => {
+                    match line_result {
+                        Ok(0) => break, // EOF
+                        Ok(_) => {
+                            let line = buffer.trim();
+                            if line.is_empty() {
+                                continue;
+                            }
+                            // Parse message using typed enum
+                            match serde_json::from_str::<CLIMessage>(line) {
+                                Ok(CLIMessage::ControlRequest {
+                                    request_id,
+                                    request,
+                                }) => {
+                                    self.handle_control_request(&client, request_id, request)
+                                        .await;
+                                }
+                                Ok(CLIMessage::ControlResponse { .. }) => {}
+                                Ok(CLIMessage::Result(_)) => {
+                                    client.on_non_control(line).await?;
+                                    break;
+                                }
+                                _ => {
+                                    client.on_non_control(line).await?;
+                                }
+                            }
                         }
-                        Ok(CLIMessage::ControlResponse { .. }) => {}
-                        Ok(CLIMessage::Result(_)) => {
-                            client.on_non_control(line).await?;
+                        Err(e) => {
+                            tracing::error!("Error reading stdout: {}", e);
                             break;
-                        }
-                        _ => {
-                            client.on_non_control(line).await?;
                         }
                     }
                 }
-                Err(e) => {
-                    tracing::error!("Error reading stdout: {}", e);
-                    break;
+                _ = &mut interrupt_rx => {
+                    if let Err(e) = client.interrupt().await {
+                        tracing::debug!("Failed to send interrupt to Claude: {e}");
+                    }
                 }
             }
         }
