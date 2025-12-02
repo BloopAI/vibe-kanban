@@ -3,7 +3,7 @@ import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
-export type LayoutMode = 'preview' | 'diffs' | null;
+export type LayoutMode = 'preview' | 'diffs' | 'files' | null;
 
 interface TasksLayoutProps {
   kanban: ReactNode;

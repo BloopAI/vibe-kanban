@@ -15,6 +15,7 @@ import {
   CreateTag,
   DirectoryListResponse,
   DirectoryEntry,
+  FileContentResponse,
   ExecutionProcess,
   GitBranch,
   Project,
@@ -724,6 +725,55 @@ export const fileSystemApi = {
       `/api/filesystem/git-repos${queryParam}`
     );
     return handleApiResponse<DirectoryEntry[]>(response);
+  },
+};
+
+// File Browser APIs (for worktree and project file browsing)
+export const fileBrowserApi = {
+  // List directory contents within a task attempt's worktree
+  listWorktreeDirectory: async (
+    attemptId: string,
+    path?: string
+  ): Promise<DirectoryListResponse> => {
+    const queryParam = path ? `?path=${encodeURIComponent(path)}` : '';
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/files${queryParam}`
+    );
+    return handleApiResponse<DirectoryListResponse>(response);
+  },
+
+  // Read file content from a task attempt's worktree
+  readWorktreeFile: async (
+    attemptId: string,
+    filePath: string
+  ): Promise<FileContentResponse> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/files/${encodeURIComponent(filePath)}`
+    );
+    return handleApiResponse<FileContentResponse>(response);
+  },
+
+  // List directory contents within a project's git repo
+  listProjectDirectory: async (
+    projectId: string,
+    path?: string
+  ): Promise<DirectoryListResponse> => {
+    const queryParam = path ? `?path=${encodeURIComponent(path)}` : '';
+    const response = await makeRequest(
+      `/api/projects/${projectId}/files${queryParam}`
+    );
+    return handleApiResponse<DirectoryListResponse>(response);
+  },
+
+  // Read file content from a project's git repo
+  readProjectFile: async (
+    projectId: string,
+    filePath: string
+  ): Promise<FileContentResponse> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/files/${encodeURIComponent(filePath)}`
+    );
+    return handleApiResponse<FileContentResponse>(response);
   },
 };
 

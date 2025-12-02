@@ -21,6 +21,7 @@ use serde::Deserialize;
 use services::services::{
     file_ranker::FileRanker,
     file_search_cache::{CacheError, SearchMode, SearchQuery},
+    filesystem::{DirectoryListResponse, FileContentResponse, FilesystemError},
     git::GitBranch,
     project_detector::ProjectDetector,
     remote_client::CreateRemoteProjectPayload,
@@ -683,6 +684,96 @@ pub async fn scan_project_config(
     }
 }
 
+// ============================================================================
+// File Browser Endpoints for Main Project
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct ListProjectFilesQuery {
+    /// Relative path within the project (optional, defaults to root)
+    path: Option<String>,
+}
+
+/// List files and directories within a project's git repository
+pub async fn list_project_files(
+    Extension(project): Extension<Project>,
+    State(deployment): State<DeploymentImpl>,
+    Query(query): Query<ListProjectFilesQuery>,
+) -> Result<ResponseJson<ApiResponse<DirectoryListResponse>>, ApiError> {
+    match deployment
+        .filesystem()
+        .list_directory_within(&project.git_repo_path, query.path.as_deref())
+        .await
+    {
+        Ok(response) => Ok(ResponseJson(ApiResponse::success(response))),
+        Err(FilesystemError::DirectoryDoesNotExist) => {
+            Ok(ResponseJson(ApiResponse::error("Directory does not exist")))
+        }
+        Err(FilesystemError::PathIsNotDirectory) => {
+            Ok(ResponseJson(ApiResponse::error("Path is not a directory")))
+        }
+        Err(FilesystemError::PathTraversalNotAllowed) => Ok(ResponseJson(ApiResponse::error(
+            "Path traversal not allowed",
+        ))),
+        Err(FilesystemError::Io(e)) => {
+            tracing::error!("Failed to list project directory: {}", e);
+            Ok(ResponseJson(ApiResponse::error(&format!(
+                "Failed to list directory: {}",
+                e
+            ))))
+        }
+        Err(e) => {
+            tracing::error!("Unexpected error listing project: {}", e);
+            Ok(ResponseJson(ApiResponse::error(&e.to_string())))
+        }
+    }
+}
+
+/// Read file content from a project's git repository
+pub async fn read_project_file(
+    Extension(project): Extension<Project>,
+    State(deployment): State<DeploymentImpl>,
+    Path((_project_id, file_path)): Path<(Uuid, String)>,
+) -> Result<ResponseJson<ApiResponse<FileContentResponse>>, ApiError> {
+    match deployment
+        .filesystem()
+        .read_file_within(&project.git_repo_path, &file_path, None)
+        .await
+    {
+        Ok(response) => Ok(ResponseJson(ApiResponse::success(response))),
+        Err(FilesystemError::FileDoesNotExist) => {
+            Ok(ResponseJson(ApiResponse::error("File does not exist")))
+        }
+        Err(FilesystemError::PathIsNotFile) => {
+            Ok(ResponseJson(ApiResponse::error("Path is not a file")))
+        }
+        Err(FilesystemError::PathTraversalNotAllowed) => Ok(ResponseJson(ApiResponse::error(
+            "Path traversal not allowed",
+        ))),
+        Err(FilesystemError::FileIsBinary) => Ok(ResponseJson(ApiResponse::error(
+            "Cannot display binary file",
+        ))),
+        Err(FilesystemError::FileTooLarge {
+            max_bytes,
+            actual_bytes,
+        }) => Ok(ResponseJson(ApiResponse::error(&format!(
+            "File too large ({} bytes, max {} bytes)",
+            actual_bytes, max_bytes
+        )))),
+        Err(FilesystemError::Io(e)) => {
+            tracing::error!("Failed to read project file: {}", e);
+            Ok(ResponseJson(ApiResponse::error(&format!(
+                "Failed to read file: {}",
+                e
+            ))))
+        }
+        Err(e) => {
+            tracing::error!("Unexpected error reading project file: {}", e);
+            Ok(ResponseJson(ApiResponse::error(&e.to_string())))
+        }
+    }
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let project_id_router = Router::new()
         .route(
@@ -693,6 +784,8 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/branches", get(get_project_branches))
         .route("/search", get(search_project_files))
         .route("/open-editor", post(open_project_in_editor))
+        // File browser endpoints
+        .route("/files", get(list_project_files))
         .route(
             "/link",
             post(link_project_to_existing_remote).delete(unlink_project),
@@ -703,10 +796,20 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             load_project_middleware,
         ));
 
+    // File content route needs to be outside the middleware-wrapped router
+    // because it uses a wildcard path parameter
+    let project_files_router = Router::new()
+        .route("/{id}/files/*file_path", get(read_project_file))
+        .layer(from_fn_with_state(
+            deployment.clone(),
+            load_project_middleware,
+        ));
+
     let projects_router = Router::new()
         .route("/", get(get_projects).post(create_project))
         .route("/scan-config", post(scan_project_config))
-        .nest("/{id}", project_id_router);
+        .nest("/{id}", project_id_router)
+        .merge(project_files_router);
 
     Router::new().nest("/projects", projects_router).route(
         "/remote-projects/{remote_project_id}",
