@@ -799,7 +799,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     // File content route needs to be outside the middleware-wrapped router
     // because it uses a wildcard path parameter
     let project_files_router = Router::new()
-        .route("/{id}/files/*file_path", get(read_project_file))
+        .route("/{id}/files/{*file_path}", get(read_project_file))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_project_middleware,

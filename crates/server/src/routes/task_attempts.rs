@@ -1695,7 +1695,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/rename-branch", post(rename_branch))
         // File browser endpoints
         .route("/files", get(list_worktree_files))
-        .route("/files/*file_path", get(read_worktree_file))
+        .route("/files/{*file_path}", get(read_worktree_file))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_task_attempt_middleware,
