@@ -6,15 +6,12 @@ use tokio::{
     sync::Mutex,
 };
 
-use super::types::{
-    CLIMessage, ControlRequestType, ControlResponseMessage, ControlResponseType,
-    SDKControlRequestMessage,
-};
+use super::types::{CLIMessage, ControlRequestType, ControlResponseMessage, ControlResponseType};
 use crate::executors::{
     ExecutorError,
     claude::{
         client::ClaudeAgentClient,
-        types::{PermissionMode, SDKControlRequestType},
+        types::{Message, SDKControlRequest, SDKControlRequestType},
     },
 };
 
@@ -165,6 +162,11 @@ impl ProtocolPeer {
     }
 
     /// Send JSON message to stdin
+    pub async fn send_message(&self, message: Message) -> Result<(), ExecutorError> {
+        self.send_json(&message).await
+    }
+
+    /// Send JSON message to stdin
     async fn send_json<T: serde::Serialize>(&self, message: &T) -> Result<(), ExecutorError> {
         let json = serde_json::to_string(message)?;
         let mut stdin = self.stdin.lock().await;
@@ -174,28 +176,10 @@ impl ProtocolPeer {
         Ok(())
     }
 
-    pub async fn send_user_message(&self, content: String) -> Result<(), ExecutorError> {
-        let message = serde_json::json!({
-            "type": "user",
-            "message": {
-                "role": "user",
-                "content": content
-            }
-        });
-        self.send_json(&message).await
-    }
-
-    pub async fn initialize(&self, hooks: Option<serde_json::Value>) -> Result<(), ExecutorError> {
-        self.send_json(&SDKControlRequestMessage::new(
-            SDKControlRequestType::Initialize { hooks },
-        ))
-        .await
-    }
-
-    pub async fn set_permission_mode(&self, mode: PermissionMode) -> Result<(), ExecutorError> {
-        self.send_json(&SDKControlRequestMessage::new(
-            SDKControlRequestType::SetPermissionMode { mode },
-        ))
-        .await
+    pub async fn send_control_request(
+        &self,
+        request: SDKControlRequestType,
+    ) -> Result<(), ExecutorError> {
+        self.send_json(&SDKControlRequest::new(request)).await
     }
 }

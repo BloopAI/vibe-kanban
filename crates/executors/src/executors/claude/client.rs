@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use workspace_utils::approvals::ApprovalStatus;
 
@@ -9,9 +9,10 @@ use crate::{
         ExecutorError,
         claude::{
             ClaudeJson,
+            protocol::ProtocolPeer,
             types::{
-                PermissionResult, PermissionUpdate, PermissionUpdateDestination,
-                PermissionUpdateType,
+                Message, PermissionResult, PermissionUpdate, PermissionUpdateDestination,
+                PermissionUpdateType, SDKControlRequestType,
             },
         },
         codex::client::LogWriter,
@@ -22,6 +23,7 @@ const EXIT_PLAN_MODE_NAME: &str = "ExitPlanMode";
 
 /// Claude Agent client with control protocol support
 pub struct ClaudeAgentClient {
+    rpc: OnceLock<ProtocolPeer>,
     log_writer: LogWriter,
     approvals: Option<Arc<dyn ExecutorApprovalService>>,
     auto_approve: bool, // true when approvals is None
@@ -35,10 +37,19 @@ impl ClaudeAgentClient {
     ) -> Arc<Self> {
         let auto_approve = approvals.is_none();
         Arc::new(Self {
+            rpc: OnceLock::new(),
             log_writer,
             approvals,
             auto_approve,
         })
+    }
+
+    pub fn connect(&self, peer: ProtocolPeer) {
+        let _ = self.rpc.set(peer);
+    }
+
+    fn rpc(&self) -> &ProtocolPeer {
+        self.rpc.get().expect("Claude RPC peer not attached")
     }
 
     async fn handle_approval(
@@ -170,5 +181,27 @@ impl ClaudeAgentClient {
     pub async fn on_non_control(&self, line: &str) -> Result<(), ExecutorError> {
         // Forward all non-control messages to stdout
         self.log_writer.log_raw(line).await
+    }
+
+    pub async fn send_user_message(&self, content: String) -> Result<(), ExecutorError> {
+        let message = Message::new_user(content);
+        self.rpc().send_message(message).await
+    }
+
+    pub async fn initialize(&self, hooks: Option<serde_json::Value>) -> Result<(), ExecutorError> {
+        self.rpc()
+            .send_control_request(SDKControlRequestType::Initialize { hooks })
+            .await
+    }
+    pub async fn interrupt(&self) -> Result<(), ExecutorError> {
+        self.rpc()
+            .send_control_request(SDKControlRequestType::Interrupt {})
+            .await
+    }
+
+    pub async fn set_permission_mode(&self, mode: PermissionMode) -> Result<(), ExecutorError> {
+        self.rpc()
+            .send_control_request(SDKControlRequestType::SetPermissionMode { mode })
+            .await
     }
 }

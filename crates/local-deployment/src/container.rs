@@ -31,7 +31,7 @@ use executors::{
         coding_agent_initial::CodingAgentInitialRequest,
     },
     approvals::{ExecutorApprovalService, NoopExecutorApprovalService},
-    executors::{BaseCodingAgent, ExecutorExitResult, ExecutorExitSignal},
+    executors::{BaseCodingAgent, ExecutorExitResult, ExecutorExitSignal, InterruptSender},
     logs::{
         NormalizedEntryType,
         utils::{
@@ -70,6 +70,7 @@ use crate::command;
 pub struct LocalContainerService {
     db: DBService,
     child_store: Arc<RwLock<HashMap<Uuid, Arc<RwLock<AsyncGroupChild>>>>>,
+    interrupt_senders: Arc<RwLock<HashMap<Uuid, InterruptSender>>>,
     msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
     config: Arc<RwLock<Config>>,
     git: GitService,
@@ -94,10 +95,12 @@ impl LocalContainerService {
         publisher: Result<SharePublisher, RemoteClientNotConfigured>,
     ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
+        let interrupt_senders = Arc::new(RwLock::new(HashMap::new()));
 
         let container = LocalContainerService {
             db,
             child_store,
+            interrupt_senders,
             msg_stores,
             config,
             git,
@@ -126,6 +129,16 @@ impl LocalContainerService {
     pub async fn remove_child_from_store(&self, id: &Uuid) {
         let mut map = self.child_store.write().await;
         map.remove(id);
+    }
+
+    async fn add_interrupt_sender(&self, id: Uuid, sender: InterruptSender) {
+        let mut map = self.interrupt_senders.write().await;
+        map.insert(id, sender);
+    }
+
+    async fn take_interrupt_sender(&self, id: &Uuid) -> Option<InterruptSender> {
+        let mut map = self.interrupt_senders.write().await;
+        map.remove(id)
     }
 
     /// Defensively check for externally deleted worktrees and mark them as deleted in the database
@@ -986,6 +999,12 @@ impl ContainerService for LocalContainerService {
         self.add_child_to_store(execution_process.id, spawned.child)
             .await;
 
+        // Store interrupt sender for graceful shutdown
+        if let Some(interrupt_sender) = spawned.interrupt_sender {
+            self.add_interrupt_sender(execution_process.id, interrupt_sender)
+                .await;
+        }
+
         // Spawn unified exit monitor: watches OS exit and optional executor signal
         let _hn = self.spawn_exit_monitor(&execution_process.id, spawned.exit_signal);
 
@@ -1011,6 +1030,40 @@ impl ContainerService for LocalContainerService {
 
         ExecutionProcess::update_completion(&self.db.pool, execution_process.id, status, exit_code)
             .await?;
+
+        // Try graceful interrupt first, then force kill
+        if let Some(interrupt_sender) = self.take_interrupt_sender(&execution_process.id).await {
+            tracing::info!(
+                "Sending interrupt signal to execution process {}",
+                execution_process.id
+            );
+            // Send interrupt signal (ignore error if receiver dropped)
+            let _ = interrupt_sender.send(());
+
+            // Wait for graceful exit with timeout
+            let graceful_exit = {
+                let mut child_guard = child.write().await;
+                tokio::time::timeout(Duration::from_secs(5), child_guard.wait()).await
+            };
+
+            match graceful_exit {
+                Ok(Ok(_)) => {
+                    tracing::info!(
+                        "Process {} exited gracefully after interrupt",
+                        execution_process.id
+                    );
+                }
+                Ok(Err(e)) => {
+                    tracing::warn!("Error waiting for process {}: {}", execution_process.id, e);
+                }
+                Err(_) => {
+                    tracing::info!(
+                        "Graceful shutdown timed out for process {}, force killing",
+                        execution_process.id
+                    );
+                }
+            }
+        }
 
         // Kill the child process and remove from the store
         {

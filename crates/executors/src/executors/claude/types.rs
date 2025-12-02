@@ -23,14 +23,14 @@ pub enum CLIMessage {
 
 /// Control request from SDK to CLI (outgoing)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SDKControlRequestMessage {
+pub struct SDKControlRequest {
     #[serde(rename = "type")]
     message_type: String, // Always "control_request"
     pub request_id: String,
     pub request: SDKControlRequestType,
 }
 
-impl SDKControlRequestMessage {
+impl SDKControlRequest {
     pub fn new(request: SDKControlRequestType) -> Self {
         use uuid::Uuid;
         Self {
@@ -142,6 +142,29 @@ pub enum ControlResponseType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum Message {
+    User { message: ClaudeUserMessage },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClaudeUserMessage {
+    role: String,
+    content: String,
+}
+
+impl Message {
+    pub fn new_user(content: String) -> Self {
+        Self::User {
+            message: ClaudeUserMessage {
+                role: "user".to_string(),
+                content,
+            },
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "subtype", rename_all = "snake_case")]
 pub enum SDKControlRequestType {
     SetPermissionMode {
@@ -151,6 +174,7 @@ pub enum SDKControlRequestType {
         #[serde(skip_serializing_if = "Option::is_none")]
         hooks: Option<Value>,
     },
+    Interrupt {},
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
