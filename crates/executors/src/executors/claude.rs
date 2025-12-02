@@ -286,10 +286,10 @@ impl ClaudeCode {
             }
 
             // Wait for interrupt signal (sender dropped or signal received)
-            if interrupt_rx.await.is_ok() {
-                if let Err(e) = client.interrupt().await {
-                    tracing::debug!("Failed to send interrupt to Claude: {e}");
-                }
+            if interrupt_rx.await.is_ok()
+                && let Err(e) = client.interrupt().await
+            {
+                tracing::debug!("Failed to send interrupt to Claude: {e}");
             }
         });
 
