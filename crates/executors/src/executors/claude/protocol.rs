@@ -179,12 +179,10 @@ impl ProtocolPeer {
         .await
     }
 
-    /// Send JSON message to stdin
     pub async fn send_message(&self, message: Message) -> Result<(), ExecutorError> {
         self.send_json(&message).await
     }
 
-    /// Send JSON message to stdin
     async fn send_json<T: serde::Serialize>(&self, message: &T) -> Result<(), ExecutorError> {
         let json = serde_json::to_string(message)?;
         let mut stdin = self.stdin.lock().await;
