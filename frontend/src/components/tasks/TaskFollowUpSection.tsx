@@ -361,6 +361,12 @@ export function TaskFollowUpSection({
     ) {
       return;
     }
+
+    // Cancel any pending debounced save and save immediately before queueing
+    // This prevents the race condition where the debounce fires after queueing
+    cancelDebouncedSave();
+    await saveToScratch(localMessage, selectedVariant);
+
     // Combine all the content that would be sent (same as follow-up send)
     const parts = [
       conflictResolutionInstructions,
@@ -377,6 +383,8 @@ export function TaskFollowUpSection({
     clickedMarkdown,
     selectedVariant,
     queueMessage,
+    cancelDebouncedSave,
+    saveToScratch,
   ]);
 
   // Keyboard shortcut handler - send follow-up or queue depending on state
