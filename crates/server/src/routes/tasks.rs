@@ -248,12 +248,23 @@ pub async fn update_task(
         TaskImage::associate_many_dedup(&deployment.db().pool, task.id, image_ids).await?;
     }
 
-    // If task has been shared, broadcast update
+    // If task has been shared, broadcast update (fire-and-forget to avoid blocking)
     if task.shared_task_id.is_some() {
-        let Ok(publisher) = deployment.share_publisher() else {
-            return Err(ShareError::MissingConfig("share publisher unavailable").into());
-        };
-        publisher.update_shared_task(&task).await?;
+        if let Ok(publisher) = deployment.share_publisher() {
+            let task_clone = task.clone();
+            tokio::spawn(async move {
+                match tokio::time::timeout(
+                    std::time::Duration::from_secs(5),
+                    publisher.update_shared_task(&task_clone),
+                )
+                .await
+                {
+                    Ok(Ok(())) => {}
+                    Ok(Err(e)) => tracing::warn!(?e, "failed to sync shared task update"),
+                    Err(_) => tracing::warn!("shared task sync timed out"),
+                }
+            });
+        }
     }
 
     Ok(ResponseJson(ApiResponse::success(task)))
@@ -299,11 +310,22 @@ pub async fn delete_task(
         })
         .collect();
 
+    // Fire-and-forget remote deletion to avoid blocking local operation
     if let Some(shared_task_id) = task.shared_task_id {
-        let Ok(publisher) = deployment.share_publisher() else {
-            return Err(ShareError::MissingConfig("share publisher unavailable").into());
-        };
-        publisher.delete_shared_task(shared_task_id).await?;
+        if let Ok(publisher) = deployment.share_publisher() {
+            tokio::spawn(async move {
+                match tokio::time::timeout(
+                    std::time::Duration::from_secs(5),
+                    publisher.delete_shared_task(shared_task_id),
+                )
+                .await
+                {
+                    Ok(Ok(())) => {}
+                    Ok(Err(e)) => tracing::warn!(?e, "failed to sync shared task deletion"),
+                    Err(_) => tracing::warn!("shared task deletion sync timed out"),
+                }
+            });
+        }
     }
 
     // Use a transaction to ensure atomicity: either all operations succeed or all are rolled back

@@ -90,23 +90,33 @@ pub enum ShareError {
 
 const WS_BACKOFF_BASE_DELAY: Duration = Duration::from_secs(1);
 const WS_BACKOFF_MAX_DELAY: Duration = Duration::from_secs(30);
+const WS_BACKOFF_MAX_FAILURES: u32 = 10;
+const AUTH_WAIT_MAX_RETRIES: u32 = 5;
 
 struct Backoff {
     current: Duration,
+    failure_count: u32,
 }
 
 impl Backoff {
     fn new() -> Self {
         Self {
             current: WS_BACKOFF_BASE_DELAY,
+            failure_count: 0,
         }
     }
 
     fn reset(&mut self) {
         self.current = WS_BACKOFF_BASE_DELAY;
+        self.failure_count = 0;
+    }
+
+    fn should_give_up(&self) -> bool {
+        self.failure_count >= WS_BACKOFF_MAX_FAILURES
     }
 
     async fn wait(&mut self) {
+        self.failure_count += 1;
         let wait = self.current;
         sleep(wait).await;
         let doubled = wait.checked_mul(2).unwrap_or(WS_BACKOFF_MAX_DELAY);
@@ -386,16 +396,43 @@ async fn project_watcher_task(
     mut shutdown_rx: oneshot::Receiver<()>,
 ) -> Result<(), ShareError> {
     let mut backoff = Backoff::new();
+    let mut auth_wait_count = 0u32;
 
     loop {
+        // Check if we've exceeded max failures - give up and let reconcile restart us later
+        if backoff.should_give_up() {
+            tracing::warn!(
+                %remote_project_id,
+                failures = backoff.failure_count,
+                "too many consecutive failures, watcher exiting"
+            );
+            return Err(ShareError::MissingAuth);
+        }
+
         if auth_ctx.cached_profile().await.is_none() {
-            tracing::debug!(%remote_project_id, "waiting for authentication before syncing project");
+            auth_wait_count += 1;
+            if auth_wait_count > AUTH_WAIT_MAX_RETRIES {
+                tracing::warn!(
+                    %remote_project_id,
+                    attempts = auth_wait_count,
+                    "auth wait timeout exceeded, watcher exiting"
+                );
+                return Err(ShareError::MissingAuth);
+            }
+            tracing::debug!(
+                %remote_project_id,
+                attempt = auth_wait_count,
+                max_attempts = AUTH_WAIT_MAX_RETRIES,
+                "waiting for authentication before syncing project"
+            );
             tokio::select! {
                 _ = &mut shutdown_rx => return Ok(()),
                 _ = backoff.wait() => {}
             }
             continue;
         }
+        // Reset auth wait count on successful auth
+        auth_wait_count = 0;
 
         let mut last_seq = SharedActivityCursor::get(&db.pool, remote_project_id)
             .await?
