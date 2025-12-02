@@ -18,6 +18,7 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::{
+        node_projects::NodeProjectRepository,
         organization_members,
         tasks::{
             AssignTaskData, CreateSharedTaskData, DeleteTaskData, SharedTask, SharedTaskError,
@@ -26,6 +27,7 @@ use crate::{
         },
         users::{UserData, UserRepository},
     },
+    nodes::ws::message::TaskDetails,
 };
 
 pub fn router() -> Router<AppState> {
@@ -131,16 +133,54 @@ pub async fn create_shared_task(
 
     let data = CreateSharedTaskData {
         project_id,
-        title,
-        description,
+        title: title.clone(),
+        description: description.clone(),
         creator_user_id: ctx.user.id,
         assignee_user_id,
     };
 
-    match repo.create(data).await {
-        Ok(task) => (StatusCode::CREATED, Json(SharedTaskResponse::from(task))).into_response(),
-        Err(error) => task_error_response(error, "failed to create shared task"),
+    let task = match repo.create(data).await {
+        Ok(task) => task,
+        Err(error) => return task_error_response(error, "failed to create shared task"),
+    };
+
+    // Check if project has a linked node and dispatch task
+    let node_project_repo = NodeProjectRepository::new(pool);
+    if let Ok(Some(node_project)) = node_project_repo.find_by_project(project_id).await {
+        let dispatcher = crate::nodes::TaskDispatcher::new(
+            pool.clone(),
+            state.node_connections().clone(),
+        );
+
+        let task_details = TaskDetails {
+            title,
+            description,
+            executor: "CLAUDE_CODE".to_string(), // Default executor
+            executor_variant: None,
+            base_branch: node_project.default_branch.clone(),
+        };
+
+        // Attempt to dispatch - don't fail task creation if dispatch fails
+        match dispatcher.assign_task(task.task.id, project_id, task_details).await {
+            Ok(result) => {
+                tracing::info!(
+                    task_id = %task.task.id,
+                    assignment_id = %result.assignment_id,
+                    node_id = %result.node_id,
+                    "task dispatched to node"
+                );
+            }
+            Err(e) => {
+                tracing::warn!(
+                    task_id = %task.task.id,
+                    error = %e,
+                    "failed to dispatch task to node - task created but not assigned"
+                );
+            }
+        }
     }
+
+    (StatusCode::CREATED, Json(SharedTaskResponse::from(task))).into_response()
 }
 
 #[instrument(

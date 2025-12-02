@@ -16,6 +16,7 @@ use services::services::{
     filesystem::FilesystemService,
     git::GitService,
     image::ImageService,
+    node_runner::{NodeRunnerConfig, NodeRunnerState, spawn_node_runner},
     oauth_credentials::OAuthCredentials,
     remote_client::{RemoteClient, RemoteClientError},
     share::{RemoteSyncHandle, ShareConfig, SharePublisher},
@@ -52,6 +53,8 @@ pub struct LocalDeployment {
     remote_client: Result<RemoteClient, RemoteClientNotConfigured>,
     auth_context: AuthContext,
     oauth_handoffs: Arc<RwLock<HashMap<Uuid, PendingHandoff>>>,
+    /// Node runner state (if connected to a hive)
+    node_runner_state: Option<Arc<RwLock<NodeRunnerState>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -190,6 +193,19 @@ impl Deployment for LocalDeployment {
         let drafts = DraftsService::new(db.clone(), image.clone());
         let file_search_cache = Arc::new(FileSearchCache::new());
 
+        // Initialize node runner if hive connection is configured
+        let node_runner_state = if let Some(node_config) = NodeRunnerConfig::from_env() {
+            tracing::info!(
+                hive_url = %node_config.hive_url,
+                node_name = %node_config.node_name,
+                "starting node runner to connect to hive"
+            );
+            spawn_node_runner(node_config, db.clone())
+        } else {
+            tracing::debug!("VK_HIVE_URL not set; node runner disabled");
+            None
+        };
+
         let deployment = Self {
             config,
             user_id,
@@ -209,6 +225,7 @@ impl Deployment for LocalDeployment {
             remote_client,
             auth_context,
             oauth_handoffs,
+            node_runner_state,
         };
 
         if let Some(sc) = share_sync_config {
@@ -339,5 +356,19 @@ impl LocalDeployment {
 
     pub fn share_config(&self) -> Option<&ShareConfig> {
         self.share_config.as_ref()
+    }
+
+    /// Get the node runner state (if connected to a hive).
+    pub fn node_runner_state(&self) -> Option<&Arc<RwLock<NodeRunnerState>>> {
+        self.node_runner_state.as_ref()
+    }
+
+    /// Check if this instance is running as a node connected to a hive.
+    pub async fn is_node_connected(&self) -> bool {
+        if let Some(state) = &self.node_runner_state {
+            state.read().await.connected
+        } else {
+            false
+        }
     }
 }

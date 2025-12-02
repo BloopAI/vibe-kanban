@@ -4781,6 +4781,7 @@ dependencies = [
  "futures",
  "futures-util",
  "git2",
+ "hostname",
  "ignore",
  "json-patch",
  "lazy_static",
