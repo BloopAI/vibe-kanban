@@ -8,7 +8,7 @@ import {
   PatchTypeWithKey,
   useConversationHistory,
 } from '@/hooks/useConversationHistory';
-import { ArrowDown, Loader2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
 import { ApprovalFormProvider } from '@/contexts/ApprovalFormContext';
@@ -61,6 +61,7 @@ const VirtualizedList = ({ attempt, task }: VirtualizedListProps) => {
   const [items, setItems] = useState<PatchTypeWithKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [atBottom, setAtBottom] = useState(true);
+  const [atTop, setAtTop] = useState(false);
   const { setEntries, reset } = useEntries();
 
   useEffect(() => {
@@ -99,6 +100,14 @@ const VirtualizedList = ({ attempt, task }: VirtualizedListProps) => {
       behavior: 'smooth',
     });
   }, [items.length]);
+
+  const scrollToTop = useCallback(() => {
+    virtuosoRef.current?.scrollToIndex({
+      index: 0,
+      align: 'start',
+      behavior: 'smooth',
+    });
+  }, []);
 
   // Initial jump to bottom once data appears
   useEffect(() => {
@@ -147,9 +156,21 @@ const VirtualizedList = ({ attempt, task }: VirtualizedListProps) => {
           }}
           initialTopMostItemIndex={items.length > 0 ? items.length - 1 : 0}
           atBottomStateChange={setAtBottom}
+          atTopStateChange={setAtTop}
           followOutput={atBottom && !loading ? 'smooth' : false}
           increaseViewportBy={{ top: 0, bottom: 600 }}
         />
+        {!atTop && items.length > 0 && !loading && (
+          <Button
+            variant="outline"
+            size="icon"
+            className="absolute top-4 right-4 rounded-full shadow-lg bg-background/90 backdrop-blur-sm hover:bg-background z-10"
+            onClick={scrollToTop}
+            aria-label="Scroll to top"
+          >
+            <ArrowUp className="h-4 w-4" />
+          </Button>
+        )}
         {!atBottom && items.length > 0 && !loading && (
           <Button
             variant="outline"
