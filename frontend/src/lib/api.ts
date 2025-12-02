@@ -103,17 +103,45 @@ class ApiError<E = unknown> extends Error {
   }
 }
 
+const REQUEST_TIMEOUT_MS = 30000; // 30 seconds
+
 const makeRequest = async (url: string, options: RequestInit = {}) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
   const headers = new Headers(options.headers ?? {});
   if (!headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 
-  return fetch(url, {
-    ...options,
-    headers,
-  });
+  try {
+    return await fetch(url, {
+      ...options,
+      headers,
+      signal: options.signal
+        ? // If caller provided a signal, combine with timeout
+          anySignal([options.signal, controller.signal])
+        : controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 };
+
+// Helper to combine multiple AbortSignals (first one to abort wins)
+function anySignal(signals: AbortSignal[]): AbortSignal {
+  const controller = new AbortController();
+  for (const signal of signals) {
+    if (signal.aborted) {
+      controller.abort(signal.reason);
+      break;
+    }
+    signal.addEventListener('abort', () => controller.abort(signal.reason), {
+      once: true,
+    });
+  }
+  return controller.signal;
+}
 
 export type Ok<T> = { success: true; data: T };
 export type Err<E> = { success: false; error: E | undefined; message?: string };
