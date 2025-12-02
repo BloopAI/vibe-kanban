@@ -59,6 +59,10 @@
         "showOsInfo": {
           "label": "Show OS Information",
           "helper": "Display the operating system type and version in the development banner."
+        },
+        "hideDiscordLink": {
+          "label": "Hide Discord Link",
+          "helper": "Hide the Discord server link and online count from the navigation bar."
         }
       },
       "taskExecution": {

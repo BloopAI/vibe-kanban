@@ -16,7 +16,11 @@ export function DevBanner() {
   const fgColor = devBanner?.foreground_color || undefined;
 
   // Build the info parts to display
-  const infoParts: string[] = [t('devMode.banner')];
+  // Use shorter text when showing system info to save space
+  const showSystemInfo = devBanner?.show_hostname || devBanner?.show_os_info;
+  const infoParts: string[] = [
+    showSystemInfo ? t('devMode.bannerShort') : t('devMode.banner'),
+  ];
   if (devBanner?.show_hostname && environment?.hostname) {
     infoParts.push(environment.hostname);
   }
