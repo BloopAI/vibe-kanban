@@ -1,5 +1,5 @@
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import DisplayConversationEntry from '../NormalizedConversation/DisplayConversationEntry';
 import { useEntries } from '@/contexts/EntriesContext';
@@ -8,7 +8,8 @@ import {
   PatchTypeWithKey,
   useConversationHistory,
 } from '@/hooks/useConversationHistory';
-import { Loader2 } from 'lucide-react';
+import { ArrowDown, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
 import { ApprovalFormProvider } from '@/contexts/ApprovalFormContext';
 
@@ -91,6 +92,14 @@ const VirtualizedList = ({ attempt, task }: VirtualizedListProps) => {
     [attempt, task]
   );
 
+  const scrollToBottom = useCallback(() => {
+    virtuosoRef.current?.scrollToIndex({
+      index: items.length - 1,
+      align: 'end',
+      behavior: 'smooth',
+    });
+  }, [items.length]);
+
   // Initial jump to bottom once data appears
   useEffect(() => {
     if (!didInitScroll.current && items.length > 0) {
@@ -123,23 +132,36 @@ const VirtualizedList = ({ attempt, task }: VirtualizedListProps) => {
 
   return (
     <ApprovalFormProvider>
-      <Virtuoso<PatchTypeWithKey>
-        ref={virtuosoRef}
-        className="flex-1"
-        data={items}
-        itemContent={(_index, item) => (
-          <ItemContent data={item} context={messageListContext} />
+      <div className="relative flex-1 flex flex-col">
+        <Virtuoso<PatchTypeWithKey>
+          ref={virtuosoRef}
+          className="flex-1"
+          data={items}
+          itemContent={(_index, item) => (
+            <ItemContent data={item} context={messageListContext} />
+          )}
+          computeItemKey={computeItemKey}
+          components={{
+            Header: () => <div className="h-2"></div>,
+            Footer: () => <div className="h-2"></div>,
+          }}
+          initialTopMostItemIndex={items.length > 0 ? items.length - 1 : 0}
+          atBottomStateChange={setAtBottom}
+          followOutput={atBottom && !loading ? 'smooth' : false}
+          increaseViewportBy={{ top: 0, bottom: 600 }}
+        />
+        {!atBottom && items.length > 0 && !loading && (
+          <Button
+            variant="outline"
+            size="icon"
+            className="absolute bottom-4 right-4 rounded-full shadow-lg bg-background/90 backdrop-blur-sm hover:bg-background z-10"
+            onClick={scrollToBottom}
+            aria-label="Scroll to bottom"
+          >
+            <ArrowDown className="h-4 w-4" />
+          </Button>
         )}
-        computeItemKey={computeItemKey}
-        components={{
-          Header: () => <div className="h-2"></div>,
-          Footer: () => <div className="h-2"></div>,
-        }}
-        initialTopMostItemIndex={items.length > 0 ? items.length - 1 : 0}
-        atBottomStateChange={setAtBottom}
-        followOutput={atBottom && !loading ? 'smooth' : false}
-        increaseViewportBy={{ top: 0, bottom: 600 }}
-      />
+      </div>
       {loading && (
         <div className="float-left top-0 left-0 w-full h-full bg-primary flex flex-col gap-2 justify-center items-center">
           <Loader2 className="h-8 w-8 animate-spin" />
