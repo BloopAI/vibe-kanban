@@ -14,6 +14,7 @@ pub mod organizations;
 pub mod projects;
 pub mod task_assignments;
 pub mod task_output_logs;
+pub mod task_progress_events;
 pub mod tasks;
 pub mod users;
 

@@ -53,6 +53,10 @@ pub fn protected_router() -> Router<AppState> {
             "/nodes/assignments/{assignment_id}/logs",
             get(get_assignment_logs),
         )
+        .route(
+            "/nodes/assignments/{assignment_id}/progress",
+            get(get_assignment_progress),
+        )
 }
 
 // ============================================================================
@@ -507,6 +511,126 @@ pub async fn get_assignment_logs(
         }
         Err(e) => {
             tracing::error!(?e, "failed to fetch assignment logs");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "internal server error" })),
+            )
+                .into_response()
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct GetAssignmentProgressQuery {
+    /// Maximum number of events to return
+    pub limit: Option<i64>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct TaskProgressEventResponse {
+    pub id: i64,
+    pub assignment_id: Uuid,
+    pub event_type: String,
+    pub message: Option<String>,
+    pub metadata: Option<serde_json::Value>,
+    pub timestamp: chrono::DateTime<chrono::Utc>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GetAssignmentProgressResponse {
+    pub events: Vec<TaskProgressEventResponse>,
+}
+
+#[instrument(
+    name = "nodes.get_assignment_progress",
+    skip(state, ctx, query),
+    fields(user_id = %ctx.user.id, assignment_id = %assignment_id)
+)]
+pub async fn get_assignment_progress(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(assignment_id): Path<Uuid>,
+    Query(query): Query<GetAssignmentProgressQuery>,
+) -> Response {
+    use crate::db::task_assignments::TaskAssignmentRepository;
+    use crate::db::task_progress_events::TaskProgressEventRepository;
+
+    let pool = state.pool();
+
+    // Get the assignment to verify access
+    let assignment_repo = TaskAssignmentRepository::new(pool);
+    let assignment = match assignment_repo.find_by_id(assignment_id).await {
+        Ok(Some(a)) => a,
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!({ "error": "assignment not found" })),
+            )
+                .into_response();
+        }
+        Err(e) => {
+            tracing::error!(?e, "failed to fetch assignment");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "internal server error" })),
+            )
+                .into_response();
+        }
+    };
+
+    // Get the task to verify organization access
+    use crate::db::tasks::SharedTaskRepository;
+    let task_repo = SharedTaskRepository::new(pool);
+    let task = match task_repo.find_by_id(assignment.task_id).await {
+        Ok(Some(t)) => t,
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!({ "error": "task not found" })),
+            )
+                .into_response();
+        }
+        Err(e) => {
+            tracing::error!(?e, "failed to fetch task");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "internal server error" })),
+            )
+                .into_response();
+        }
+    };
+
+    // Verify user has access to the organization
+    if let Err(error) = ensure_member_access(pool, task.organization_id, ctx.user.id).await {
+        return error.into_response();
+    }
+
+    // Get the progress events
+    let progress_repo = TaskProgressEventRepository::new(pool);
+    match progress_repo
+        .list_by_assignment(assignment_id, query.limit)
+        .await
+    {
+        Ok(events) => {
+            let response = GetAssignmentProgressResponse {
+                events: events
+                    .into_iter()
+                    .map(|event| TaskProgressEventResponse {
+                        id: event.id,
+                        assignment_id: event.assignment_id,
+                        event_type: event.event_type,
+                        message: event.message,
+                        metadata: event.metadata,
+                        timestamp: event.timestamp,
+                        created_at: event.created_at,
+                    })
+                    .collect(),
+            };
+            (StatusCode::OK, Json(response)).into_response()
+        }
+        Err(e) => {
+            tracing::error!(?e, "failed to fetch assignment progress events");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "error": "internal server error" })),

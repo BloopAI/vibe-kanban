@@ -29,6 +29,10 @@ pub enum NodeMessage {
     #[serde(rename = "task_output")]
     TaskOutput(TaskOutputMessage),
 
+    /// Task progress event (milestones)
+    #[serde(rename = "task_progress")]
+    TaskProgress(TaskProgressMessage),
+
     /// Acknowledgement of a hive message
     #[serde(rename = "ack")]
     Ack { message_id: Uuid },
@@ -235,6 +239,48 @@ pub enum TaskOutputType {
     Stdout,
     Stderr,
     System,
+}
+
+/// Task progress event from node to hive.
+///
+/// Progress events represent significant milestones during task execution,
+/// such as agent startup, PR creation, or branch pushes.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskProgressMessage {
+    /// Assignment ID
+    pub assignment_id: Uuid,
+    /// Type of progress event
+    pub event_type: TaskProgressType,
+    /// Optional message/description
+    pub message: Option<String>,
+    /// Optional metadata (e.g., PR URL, branch name)
+    pub metadata: Option<serde_json::Value>,
+    /// Timestamp
+    pub timestamp: DateTime<Utc>,
+}
+
+/// Type of task progress event.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TaskProgressType {
+    /// Agent has started processing
+    AgentStarted,
+    /// Agent is thinking/planning
+    AgentThinking,
+    /// Code changes being made
+    CodeChanges,
+    /// Branch has been created
+    BranchCreated,
+    /// Changes have been committed
+    Committed,
+    /// Branch has been pushed
+    Pushed,
+    /// Pull request created
+    PullRequestCreated,
+    /// Agent finished (use status update for success/failure)
+    AgentFinished,
+    /// Custom milestone
+    Custom,
 }
 
 /// Project sync message from hive to node.

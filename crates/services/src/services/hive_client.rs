@@ -84,6 +84,8 @@ pub enum NodeMessage {
     TaskStatus(TaskStatusMessage),
     #[serde(rename = "task_output")]
     TaskOutput(TaskOutputMessage),
+    #[serde(rename = "task_progress")]
+    TaskProgress(TaskProgressMessage),
     #[serde(rename = "ack")]
     Ack { message_id: Uuid },
     #[serde(rename = "error")]
@@ -229,6 +231,31 @@ pub enum TaskOutputType {
     Stdout,
     Stderr,
     System,
+}
+
+/// Task progress event from node to hive.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskProgressMessage {
+    pub assignment_id: Uuid,
+    pub event_type: TaskProgressType,
+    pub message: Option<String>,
+    pub metadata: Option<serde_json::Value>,
+    pub timestamp: chrono::DateTime<Utc>,
+}
+
+/// Type of task progress event.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TaskProgressType {
+    AgentStarted,
+    AgentThinking,
+    CodeChanges,
+    BranchCreated,
+    Committed,
+    Pushed,
+    PullRequestCreated,
+    AgentFinished,
+    Custom,
 }
 
 /// Protocol version
@@ -607,6 +634,17 @@ impl HiveClient {
     pub async fn send_task_output(&self, output: TaskOutputMessage) -> Result<(), HiveClientError> {
         self.command_tx
             .send(NodeMessage::TaskOutput(output))
+            .await
+            .map_err(|_| HiveClientError::Send("channel closed".to_string()))
+    }
+
+    /// Send task progress event.
+    pub async fn send_task_progress(
+        &self,
+        progress: TaskProgressMessage,
+    ) -> Result<(), HiveClientError> {
+        self.command_tx
+            .send(NodeMessage::TaskProgress(progress))
             .await
             .map_err(|_| HiveClientError::Send("channel closed".to_string()))
     }

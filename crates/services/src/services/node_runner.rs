@@ -257,6 +257,17 @@ impl NodeRunnerHandle {
             .map_err(|_| HiveClientError::Send("channel closed".to_string()))
     }
 
+    /// Send task progress event to the hive.
+    pub async fn send_task_progress(
+        &self,
+        progress: super::hive_client::TaskProgressMessage,
+    ) -> Result<(), HiveClientError> {
+        self.command_tx
+            .send(NodeMessage::TaskProgress(progress))
+            .await
+            .map_err(|_| HiveClientError::Send("channel closed".to_string()))
+    }
+
     /// Check if connected to the hive.
     pub async fn is_connected(&self) -> bool {
         self.state.read().await.connected

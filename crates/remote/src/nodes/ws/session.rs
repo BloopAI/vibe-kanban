@@ -20,7 +20,8 @@ use super::{
     connection::ConnectionManager,
     message::{
         AuthResultMessage, HeartbeatMessage, HiveMessage, LinkedProjectInfo, NodeMessage,
-        PROTOCOL_VERSION, TaskExecutionStatus, TaskOutputMessage, TaskStatusMessage,
+        PROTOCOL_VERSION, TaskExecutionStatus, TaskOutputMessage, TaskProgressMessage,
+        TaskStatusMessage,
     },
 };
 use crate::nodes::{
@@ -340,6 +341,7 @@ async fn handle_node_message(
             handle_task_status(node_id, organization_id, status, pool).await
         }
         NodeMessage::TaskOutput(output) => handle_task_output(node_id, output, pool).await,
+        NodeMessage::TaskProgress(progress) => handle_task_progress(node_id, progress, pool).await,
         NodeMessage::Ack { message_id } => {
             tracing::trace!(node_id = %node_id, message_id = %message_id, "received ack");
             Ok(())
@@ -509,6 +511,37 @@ async fn handle_task_output(
         output_type = %output_type,
         content_len = output.content.len(),
         "stored task output"
+    );
+
+    Ok(())
+}
+
+/// Handle task progress events from a node.
+async fn handle_task_progress(
+    node_id: Uuid,
+    progress: &TaskProgressMessage,
+    pool: &PgPool,
+) -> Result<(), HandleError> {
+    use crate::db::task_progress_events::{CreateTaskProgressEvent, TaskProgressEventRepository};
+
+    let event_type = format!("{:?}", progress.event_type).to_lowercase();
+
+    let repo = TaskProgressEventRepository::new(pool);
+    repo.create(CreateTaskProgressEvent {
+        assignment_id: progress.assignment_id,
+        event_type,
+        message: progress.message.clone(),
+        metadata: progress.metadata.clone(),
+        timestamp: progress.timestamp,
+    })
+    .await
+    .map_err(|e| HandleError::Database(e.to_string()))?;
+
+    tracing::debug!(
+        node_id = %node_id,
+        assignment_id = %progress.assignment_id,
+        event_type = ?progress.event_type,
+        "stored task progress event"
     );
 
     Ok(())
