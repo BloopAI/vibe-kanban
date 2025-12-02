@@ -17,6 +17,7 @@ use crate::{AppState, auth::require_session};
 pub mod activity;
 mod error;
 mod identity;
+mod nodes;
 mod oauth;
 pub(crate) mod organization_members;
 mod organizations;
@@ -49,7 +50,8 @@ pub fn router(state: AppState) -> Router {
         .route("/health", get(health))
         .merge(oauth::public_router())
         .merge(organization_members::public_router())
-        .merge(tokens::public_router());
+        .merge(tokens::public_router())
+        .merge(nodes::api_key_router());
 
     let v1_protected = Router::<AppState>::new()
         .merge(identity::router())
@@ -59,6 +61,7 @@ pub fn router(state: AppState) -> Router {
         .merge(organizations::router())
         .merge(organization_members::protected_router())
         .merge(oauth::protected_router())
+        .merge(nodes::protected_router())
         .merge(crate::ws::router())
         .layer(middleware::from_fn_with_state(
             state.clone(),

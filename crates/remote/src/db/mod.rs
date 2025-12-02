@@ -4,11 +4,15 @@ pub mod identity_errors;
 pub mod invitations;
 pub mod listener;
 pub mod maintenance;
+pub mod node_api_keys;
+pub mod node_projects;
+pub mod nodes;
 pub mod oauth;
 pub mod oauth_accounts;
 pub mod organization_members;
 pub mod organizations;
 pub mod projects;
+pub mod task_assignments;
 pub mod tasks;
 pub mod users;
 

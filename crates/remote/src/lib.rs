@@ -4,6 +4,7 @@ mod auth;
 pub mod config;
 pub mod db;
 pub mod mail;
+pub mod nodes;
 pub mod routes;
 mod state;
 pub mod ws;
