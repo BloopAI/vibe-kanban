@@ -1033,10 +1033,6 @@ impl ContainerService for LocalContainerService {
 
         // Try graceful interrupt first, then force kill
         if let Some(interrupt_sender) = self.take_interrupt_sender(&execution_process.id).await {
-            tracing::info!(
-                "Sending interrupt signal to execution process {}",
-                execution_process.id
-            );
             // Send interrupt signal (ignore error if receiver dropped)
             let _ = interrupt_sender.send(());
 
@@ -1048,16 +1044,16 @@ impl ContainerService for LocalContainerService {
 
             match graceful_exit {
                 Ok(Ok(_)) => {
-                    tracing::info!(
+                    tracing::debug!(
                         "Process {} exited gracefully after interrupt",
                         execution_process.id
                     );
                 }
                 Ok(Err(e)) => {
-                    tracing::warn!("Error waiting for process {}: {}", execution_process.id, e);
+                    tracing::info!("Error waiting for process {}: {}", execution_process.id, e);
                 }
                 Err(_) => {
-                    tracing::info!(
+                    tracing::debug!(
                         "Graceful shutdown timed out for process {}, force killing",
                         execution_process.id
                     );
