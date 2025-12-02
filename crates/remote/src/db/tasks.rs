@@ -355,6 +355,29 @@ impl<'a> SharedTaskRepository<'a> {
         tx.commit().await.map_err(SharedTaskError::from)?;
         Ok(SharedTaskWithUser::new(task, None))
     }
+
+    pub async fn check_existence(
+        &self,
+        task_ids: &[Uuid],
+        user_id: Uuid,
+    ) -> Result<Vec<Uuid>, SharedTaskError> {
+        let tasks = sqlx::query!(
+            r#"
+            SELECT t.id
+            FROM shared_tasks t
+            INNER JOIN organization_member_metadata om ON t.organization_id = om.organization_id
+            WHERE t.id = ANY($1)
+              AND t.deleted_at IS NULL
+              AND om.user_id = $2
+            "#,
+            task_ids,
+            user_id
+        )
+        .fetch_all(self.pool)
+        .await?;
+
+        Ok(tasks.into_iter().map(|r| r.id).collect())
+    }
 }
 
 pub(crate) fn ensure_text_size(

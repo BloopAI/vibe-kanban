@@ -52,8 +52,8 @@
             "kind": {
               "Enum": [
                 "todo",
-                "in-progress",
-                "in-review",
+                "inprogress",
+                "inreview",
                 "done",
                 "cancelled"
               ]

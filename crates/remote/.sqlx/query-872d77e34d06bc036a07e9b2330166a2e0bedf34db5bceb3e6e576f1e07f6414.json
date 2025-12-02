@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT t.id\n            FROM shared_tasks t\n            INNER JOIN organization_member_metadata om ON t.organization_id = om.organization_id\n            WHERE t.id = ANY($1)\n              AND t.deleted_at IS NULL\n              AND om.user_id = $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "872d77e34d06bc036a07e9b2330166a2e0bedf34db5bceb3e6e576f1e07f6414"
+}

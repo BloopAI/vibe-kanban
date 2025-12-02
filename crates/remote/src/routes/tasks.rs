@@ -32,6 +32,7 @@ use crate::{
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/tasks", post(create_shared_task))
+        .route("/tasks/check", post(check_tasks_existence))
         .route("/tasks/{task_id}", patch(update_shared_task))
         .route("/tasks/{task_id}", delete(delete_shared_task))
         .route("/tasks/{task_id}/assign", post(assign_task))
@@ -309,6 +310,30 @@ pub async fn delete_shared_task(
         Ok(task) => (StatusCode::OK, Json(SharedTaskResponse::from(task))).into_response(),
         Err(error) => task_error_response(error, "failed to delete shared task"),
     }
+}
+
+#[instrument(
+    name = "tasks.check_existence",
+    skip(state, ctx, payload),
+    fields(user_id = %ctx.user.id)
+)]
+pub async fn check_tasks_existence(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Json(payload): Json<CheckTasksRequest>,
+) -> Response {
+    let pool = state.pool();
+    let repo = SharedTaskRepository::new(pool);
+
+    match repo.check_existence(&payload.task_ids, ctx.user.id).await {
+        Ok(existing_ids) => (StatusCode::OK, Json(existing_ids)).into_response(),
+        Err(error) => task_error_response(error, "failed to check tasks existence"),
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CheckTasksRequest {
+    pub task_ids: Vec<Uuid>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

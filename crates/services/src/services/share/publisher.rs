@@ -144,4 +144,49 @@ impl SharePublisher {
 
         Ok(task)
     }
+
+    pub async fn cleanup_shared_tasks(&self) -> Result<(), ShareError> {
+        let tasks = Task::find_all_shared(&self.db.pool).await?;
+        if tasks.is_empty() {
+            return Ok(());
+        }
+
+        let shared_ids: Vec<Uuid> = tasks.iter().filter_map(|t| t.shared_task_id).collect();
+
+        if shared_ids.is_empty() {
+            return Ok(());
+        }
+
+        // Verify in chunks of 100 to avoid hitting payload limits
+        for chunk in shared_ids.chunks(100) {
+            let existing_ids = match self.client.check_tasks(chunk.to_vec()).await {
+                Ok(ids) => ids,
+                Err(e) => {
+                    tracing::warn!("Failed to check task existence: {}", e);
+                    continue;
+                }
+            };
+
+            let existing_set: std::collections::HashSet<Uuid> = existing_ids.into_iter().collect();
+
+            let missing_ids: Vec<Uuid> = chunk
+                .iter()
+                .filter(|id| !existing_set.contains(id))
+                .cloned()
+                .collect();
+
+            if !missing_ids.is_empty() {
+                tracing::info!(
+                    "Unlinking ({}) shared tasks that no longer exist in remote",
+                    missing_ids.len()
+                );
+
+                if let Err(e) = Task::batch_unlink_shared_tasks(&self.db.pool, &missing_ids).await {
+                    tracing::error!("Failed to batch unlink tasks: {}", e);
+                }
+            }
+        }
+
+        Ok(())
+    }
 }

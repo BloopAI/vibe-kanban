@@ -264,12 +264,23 @@ ORDER BY t.created_at DESC"#,
         sqlx::query_as!(
             Task,
             r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
-               FROM tasks 
+               FROM tasks
                WHERE shared_task_id = $1
                LIMIT 1"#,
             shared_task_id
         )
         .fetch_optional(executor)
+        .await
+    }
+
+    pub async fn find_all_shared(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Task,
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+               FROM tasks
+               WHERE shared_task_id IS NOT NULL"#
+        )
+        .fetch_all(pool)
         .await
     }
 
@@ -403,6 +414,31 @@ ORDER BY t.created_at DESC"#,
         .execute(executor)
         .await?;
         Ok(())
+    }
+
+    pub async fn batch_unlink_shared_tasks<'e, E>(
+        executor: E,
+        shared_task_ids: &[Uuid],
+    ) -> Result<u64, sqlx::Error>
+    where
+        E: Executor<'e, Database = Sqlite>,
+    {
+        if shared_task_ids.is_empty() {
+            return Ok(0);
+        }
+
+        let mut query_builder = sqlx::QueryBuilder::new(
+            "UPDATE tasks SET shared_task_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE shared_task_id IN (",
+        );
+
+        let mut separated = query_builder.separated(", ");
+        for id in shared_task_ids {
+            separated.push_bind(id);
+        }
+        separated.push_unseparated(")");
+
+        let result = query_builder.build().execute(executor).await?;
+        Ok(result.rows_affected())
     }
 
     pub async fn exists(

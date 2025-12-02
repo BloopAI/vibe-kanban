@@ -5,7 +5,8 @@ use std::time::Duration;
 use backon::{ExponentialBuilder, Retryable};
 use chrono::Duration as ChronoDuration;
 use remote::routes::tasks::{
-    AssignSharedTaskRequest, CreateSharedTaskRequest, SharedTaskResponse, UpdateSharedTaskRequest,
+    AssignSharedTaskRequest, CheckTasksRequest, CreateSharedTaskRequest, SharedTaskResponse,
+    UpdateSharedTaskRequest,
 };
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -588,6 +589,12 @@ impl RemoteClient {
         res.json::<SharedTaskResponse>()
             .await
             .map_err(|e| RemoteClientError::Serde(e.to_string()))
+    }
+
+    /// Checks if shared tasks exist.
+    pub async fn check_tasks(&self, task_ids: Vec<Uuid>) -> Result<Vec<Uuid>, RemoteClientError> {
+        let request = CheckTasksRequest { task_ids };
+        self.post_authed("/v1/tasks/check", Some(&request)).await
     }
 }
 
