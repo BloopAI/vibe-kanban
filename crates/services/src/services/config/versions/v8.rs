@@ -33,6 +33,8 @@ pub struct Config {
     pub git_branch_prefix: String,
     #[serde(default)]
     pub showcases: ShowcaseState,
+    #[serde(default)]
+    pub show_chat_timestamps: bool,
 }
 
 impl Config {
@@ -56,6 +58,7 @@ impl Config {
             language: old_config.language,
             git_branch_prefix: old_config.git_branch_prefix,
             showcases: old_config.showcases,
+            show_chat_timestamps: false,
         }
     }
 
@@ -104,6 +107,7 @@ impl Default for Config {
             language: UiLanguage::default(),
             git_branch_prefix: default_git_branch_prefix(),
             showcases: ShowcaseState::default(),
+            show_chat_timestamps: false,
         }
     }
 }
