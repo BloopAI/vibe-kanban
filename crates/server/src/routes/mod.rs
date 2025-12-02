@@ -8,6 +8,7 @@ use crate::DeploymentImpl;
 pub mod approvals;
 pub mod config;
 pub mod containers;
+pub mod dashboard;
 pub mod filesystem;
 // pub mod github;
 pub mod drafts;
@@ -30,6 +31,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .route("/health", get(health::health_check))
         .merge(config::router())
         .merge(containers::router(&deployment))
+        .merge(dashboard::router(&deployment))
         .merge(projects::router(&deployment))
         .merge(drafts::router(&deployment))
         .merge(tasks::router(&deployment))

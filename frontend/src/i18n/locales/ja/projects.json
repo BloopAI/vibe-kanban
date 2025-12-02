@@ -46,5 +46,10 @@
   "unlinkFromOrganization": "リモートプロジェクトからリンク解除",
   "viewProject": "プロジェクトを表示",
   "openInIDE": "IDEで開く",
-  "createdDate": "作成日 {{date}}"
+  "createdDate": "作成日 {{date}}",
+  "statusBanner": {
+    "title": "アクティブなタスク",
+    "running": "実行中",
+    "inReview": "レビュー待ち"
+  }
 }

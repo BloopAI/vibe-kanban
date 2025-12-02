@@ -7,6 +7,7 @@ import {
   Config,
   CommitInfo,
   CreateFollowUpAttempt,
+  DashboardSummary,
   EditorType,
   CreateGitHubPrRequest,
   CreateTask,
@@ -1110,5 +1111,13 @@ export const organizationsApi = {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
+  },
+};
+
+// Dashboard API
+export const dashboardApi = {
+  getSummary: async (): Promise<DashboardSummary> => {
+    const response = await makeRequest('/api/dashboard/summary');
+    return handleApiResponse<DashboardSummary>(response);
   },
 };

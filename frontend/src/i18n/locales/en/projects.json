@@ -46,5 +46,10 @@
   "unlinkFromOrganization": "Unlink from Remote Project",
   "viewProject": "View Project",
   "openInIDE": "Open in IDE",
-  "createdDate": "Created {{date}}"
+  "createdDate": "Created {{date}}",
+  "statusBanner": {
+    "title": "Active Tasks",
+    "running": "Running",
+    "inReview": "In Review"
+  }
 }
