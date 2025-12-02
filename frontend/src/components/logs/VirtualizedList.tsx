@@ -1,11 +1,4 @@
-import {
-  DataWithScrollModifier,
-  ScrollModifier,
-  VirtuosoMessageList,
-  VirtuosoMessageListLicense,
-  VirtuosoMessageListMethods,
-  VirtuosoMessageListProps,
-} from '@virtuoso.dev/message-list';
+import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import DisplayConversationEntry from '../NormalizedConversation/DisplayConversationEntry';
@@ -29,23 +22,10 @@ interface MessageListContext {
   task?: TaskWithAttemptStatus;
 }
 
-const INITIAL_TOP_ITEM = { index: 'LAST' as const, align: 'end' as const };
-
-const InitialDataScrollModifier: ScrollModifier = {
-  type: 'item-location',
-  location: INITIAL_TOP_ITEM,
-  purgeItemSizes: true,
-};
-
-const AutoScrollToBottom: ScrollModifier = {
-  type: 'auto-scroll-to-bottom',
-  autoScroll: 'smooth',
-};
-
-const ItemContent: VirtuosoMessageListProps<
-  PatchTypeWithKey,
-  MessageListContext
->['ItemContent'] = ({ data, context }) => {
+const ItemContent = ({ data, context }: {
+  data: PatchTypeWithKey;
+  context?: MessageListContext;
+}) => {
   const attempt = context?.attempt;
   const task = context?.task;
 
@@ -70,35 +50,27 @@ const ItemContent: VirtuosoMessageListProps<
   return null;
 };
 
-const computeItemKey: VirtuosoMessageListProps<
-  PatchTypeWithKey,
-  MessageListContext
->['computeItemKey'] = ({ data }) => `l-${data.patchKey}`;
+const computeItemKey = (_index: number, data: PatchTypeWithKey) =>
+  `l-${data.patchKey}`;
 
 const VirtualizedList = ({ attempt, task }: VirtualizedListProps) => {
-  const [channelData, setChannelData] =
-    useState<DataWithScrollModifier<PatchTypeWithKey> | null>(null);
+  const [items, setItems] = useState<PatchTypeWithKey[]>([]);
   const [loading, setLoading] = useState(true);
+  const [atBottom, setAtBottom] = useState(true);
   const { setEntries, reset } = useEntries();
 
   useEffect(() => {
     setLoading(true);
-    setChannelData(null);
+    setItems([]);
     reset();
   }, [attempt.id, reset]);
 
   const onEntriesUpdated = (
     newEntries: PatchTypeWithKey[],
-    addType: AddEntryType,
+    _addType: AddEntryType,
     newLoading: boolean
   ) => {
-    let scrollModifier: ScrollModifier = InitialDataScrollModifier;
-
-    if (addType === 'running' && !loading) {
-      scrollModifier = AutoScrollToBottom;
-    }
-
-    setChannelData({ data: newEntries, scrollModifier });
+    setItems(newEntries);
     setEntries(newEntries);
 
     if (loading) {
@@ -108,29 +80,63 @@ const VirtualizedList = ({ attempt, task }: VirtualizedListProps) => {
 
   useConversationHistory({ attempt, onEntriesUpdated });
 
-  const messageListRef = useRef<VirtuosoMessageListMethods | null>(null);
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const didInitScroll = useRef(false);
+  const prevLenRef = useRef(0);
   const messageListContext = useMemo(
     () => ({ attempt, task }),
     [attempt, task]
   );
 
+  // Initial jump to bottom once data appears
+  useEffect(() => {
+    if (!didInitScroll.current && items.length > 0) {
+      didInitScroll.current = true;
+      requestAnimationFrame(() => {
+        virtuosoRef.current?.scrollToIndex({
+          index: items.length - 1,
+          align: 'end',
+        });
+      });
+    }
+  }, [items.length]);
+
+  // Handle large bursts - force scroll to bottom
+  useEffect(() => {
+    const prev = prevLenRef.current;
+    const grewBy = items.length - prev;
+    prevLenRef.current = items.length;
+
+    const LARGE_BURST = 10;
+    if (grewBy >= LARGE_BURST && atBottom && items.length > 0) {
+      requestAnimationFrame(() => {
+        virtuosoRef.current?.scrollToIndex({
+          index: items.length - 1,
+          align: 'end',
+        });
+      });
+    }
+  }, [items.length, atBottom, items]);
+
   return (
     <ApprovalFormProvider>
-      <VirtuosoMessageListLicense
-        licenseKey={import.meta.env.VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY}
-      >
-        <VirtuosoMessageList<PatchTypeWithKey, MessageListContext>
-          ref={messageListRef}
-          className="flex-1"
-          data={channelData}
-          initialLocation={INITIAL_TOP_ITEM}
-          context={messageListContext}
-          computeItemKey={computeItemKey}
-          ItemContent={ItemContent}
-          Header={() => <div className="h-2"></div>}
-          Footer={() => <div className="h-2"></div>}
-        />
-      </VirtuosoMessageListLicense>
+      <Virtuoso<PatchTypeWithKey>
+        ref={virtuosoRef}
+        className="flex-1"
+        data={items}
+        itemContent={(_index, item) => (
+          <ItemContent data={item} context={messageListContext} />
+        )}
+        computeItemKey={computeItemKey}
+        components={{
+          Header: () => <div className="h-2"></div>,
+          Footer: () => <div className="h-2"></div>,
+        }}
+        initialTopMostItemIndex={items.length > 0 ? items.length - 1 : 0}
+        atBottomStateChange={setAtBottom}
+        followOutput={atBottom && !loading ? 'smooth' : false}
+        increaseViewportBy={{ top: 0, bottom: 600 }}
+      />
       {loading && (
         <div className="float-left top-0 left-0 w-full h-full bg-primary flex flex-col gap-2 justify-center items-center">
           <Loader2 className="h-8 w-8 animate-spin" />

@@ -107,7 +107,7 @@ The following environment variables can be configured at build time or runtime:
 | `POSTHOG_API_ENDPOINT` | Build-time | Empty | PostHog analytics endpoint (disables analytics if empty) |
 | `BACKEND_PORT` | Runtime | `0` (auto-assign) | Backend server port |
 | `FRONTEND_PORT` | Runtime | `3000` | Frontend development server port |
-| `HOST` | Runtime | `127.0.0.1` | Backend server host |
+| `HOST` | Runtime | `127.0.0.1` | Backend server host. Set to `0.0.0.0` for network access |
 | `DISABLE_WORKTREE_ORPHAN_CLEANUP` | Runtime | Not set | Disable git worktree cleanup (for debugging) |
 
 **Build-time variables** must be set when running `pnpm run build`. **Runtime variables** are read when the application starts.

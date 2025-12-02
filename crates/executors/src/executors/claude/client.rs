@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use workspace_utils::approvals::ApprovalStatus;
+use workspace_utils::approvals::{ApprovalStatus, Question};
 
 use super::types::PermissionMode;
 use crate::{
@@ -170,5 +170,72 @@ impl ClaudeAgentClient {
     pub async fn on_non_control(&self, line: &str) -> Result<(), ExecutorError> {
         // Forward all non-control messages to stdout
         self.log_writer.log_raw(line).await
+    }
+
+    /// Handle AskUserQuestion control request
+    pub async fn on_ask_user_question(
+        &self,
+        questions: Vec<Question>,
+        tool_use_id: Option<String>,
+    ) -> Result<serde_json::Value, ExecutorError> {
+        // AskUserQuestion should always prompt the user, even in auto_approve mode
+        // This is because it's gathering information, not requesting permissions
+        let approval_service = match self.approvals.as_ref() {
+            Some(service) => service,
+            None => {
+                // No approval service available - return empty answers with error
+                tracing::warn!("AskUserQuestion called without approval service");
+                return Ok(serde_json::json!({
+                    "error": "User questions not available in auto-approve mode"
+                }));
+            }
+        };
+
+        let call_id = match tool_use_id {
+            Some(id) => id,
+            None => {
+                tracing::warn!("AskUserQuestion called without tool_use_id");
+                return Ok(serde_json::json!({
+                    "error": "No tool_use_id provided for question"
+                }));
+            }
+        };
+
+        // Use the approval service to request user questions
+        match approval_service
+            .request_question_approval(&questions, &call_id)
+            .await
+        {
+            Ok((status, answers)) => {
+                // Log the question response
+                self.log_writer
+                    .log_raw(&serde_json::to_string(&ClaudeJson::ApprovalResponse {
+                        call_id: call_id.clone(),
+                        tool_name: "AskUserQuestion".to_string(),
+                        approval_status: status.clone(),
+                    })?)
+                    .await?;
+
+                match status {
+                    ApprovalStatus::Approved => {
+                        // Return answers in format expected by Claude Code
+                        Ok(serde_json::json!({ "answers": answers.unwrap_or_default() }))
+                    }
+                    ApprovalStatus::Denied { reason } => Ok(serde_json::json!({
+                        "error": reason.unwrap_or_else(|| "User cancelled".to_string())
+                    })),
+                    ApprovalStatus::TimedOut => {
+                        Ok(serde_json::json!({ "error": "Question request timed out" }))
+                    }
+                    ApprovalStatus::Pending => {
+                        Ok(serde_json::json!({ "error": "Question still pending (unexpected)" }))
+                    }
+                }
+            }
+            Err(e) => {
+                tracing::error!("Question approval request failed: {e}");
+                Ok(serde_json::json!({ "error": "Question request failed" }))
+            }
+        }
     }
 }
