@@ -19,6 +19,16 @@ pub enum FilesystemError {
     DirectoryDoesNotExist,
     #[error("Path is not a directory")]
     PathIsNotDirectory,
+    #[error("File does not exist")]
+    FileDoesNotExist,
+    #[error("Path is not a file")]
+    PathIsNotFile,
+    #[error("Path traversal not allowed")]
+    PathTraversalNotAllowed,
+    #[error("File is binary")]
+    FileIsBinary,
+    #[error("File too large (max {max_bytes} bytes, got {actual_bytes})")]
+    FileTooLarge { max_bytes: u64, actual_bytes: u64 },
     #[error("Failed to read directory: {0}")]
     Io(#[from] std::io::Error),
 }
@@ -35,6 +45,23 @@ pub struct DirectoryEntry {
     pub is_directory: bool,
     pub is_git_repo: bool,
     pub last_modified: Option<u64>,
+}
+
+/// Maximum file size for reading (1MB)
+pub const MAX_FILE_SIZE: u64 = 1024 * 1024;
+
+#[derive(Debug, Serialize, TS)]
+pub struct FileContentResponse {
+    /// The file path (relative if within a base directory)
+    pub path: String,
+    /// The file content as text
+    pub content: String,
+    /// File size in bytes
+    pub size_bytes: u64,
+    /// Whether the content was truncated due to size limit
+    pub truncated: bool,
+    /// Detected language based on file extension
+    pub language: Option<String>,
 }
 
 impl Default for FilesystemService {
@@ -319,5 +346,209 @@ impl FilesystemService {
             entries: directory_entries,
             current_path: path.to_string_lossy().to_string(),
         })
+    }
+
+    /// List directory contents within a base directory (e.g., worktree or project)
+    /// Returns entries with paths relative to base_path
+    pub async fn list_directory_within(
+        &self,
+        base_path: &Path,
+        relative_path: Option<&str>,
+    ) -> Result<DirectoryListResponse, FilesystemError> {
+        Self::verify_directory(base_path)?;
+
+        let target_path = if let Some(rel) = relative_path {
+            let joined = base_path.join(rel);
+            // Verify path doesn't escape base directory
+            let canonical = joined.canonicalize()?;
+            let base_canonical = base_path.canonicalize()?;
+            if !canonical.starts_with(&base_canonical) {
+                return Err(FilesystemError::PathTraversalNotAllowed);
+            }
+            canonical
+        } else {
+            base_path.to_path_buf()
+        };
+
+        Self::verify_directory(&target_path)?;
+
+        let entries = fs::read_dir(&target_path)?;
+        let mut directory_entries = Vec::new();
+
+        for entry in entries.flatten() {
+            let entry_path = entry.path();
+            let metadata = entry.metadata().ok();
+            if let Some(name) = entry_path.file_name().and_then(|n| n.to_str()) {
+                // Skip hidden files/directories (except .gitignore, etc.)
+                if name.starts_with('.') && name != ".." {
+                    continue;
+                }
+
+                let is_directory = metadata.as_ref().is_some_and(|m| m.is_dir());
+                let is_git_repo = if is_directory {
+                    entry_path.join(".git").exists()
+                } else {
+                    false
+                };
+
+                // Store relative path from base
+                let relative = entry_path
+                    .strip_prefix(base_path)
+                    .unwrap_or(&entry_path)
+                    .to_path_buf();
+
+                directory_entries.push(DirectoryEntry {
+                    name: name.to_string(),
+                    path: relative,
+                    is_directory,
+                    is_git_repo,
+                    last_modified: metadata
+                        .and_then(|m| m.modified().ok())
+                        .map(|t| t.elapsed().unwrap_or_default().as_secs()),
+                });
+            }
+        }
+
+        // Sort: directories first, then files, both alphabetically
+        directory_entries.sort_by(|a, b| match (a.is_directory, b.is_directory) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+        });
+
+        // Return relative path from base
+        let current_relative = target_path
+            .strip_prefix(base_path)
+            .unwrap_or(&target_path)
+            .to_string_lossy()
+            .to_string();
+
+        Ok(DirectoryListResponse {
+            entries: directory_entries,
+            current_path: if current_relative.is_empty() {
+                ".".to_string()
+            } else {
+                current_relative
+            },
+        })
+    }
+
+    /// Read file content within a base directory with security checks
+    pub async fn read_file_within(
+        &self,
+        base_path: &Path,
+        relative_path: &str,
+        max_bytes: Option<u64>,
+    ) -> Result<FileContentResponse, FilesystemError> {
+        let max_bytes = max_bytes.unwrap_or(MAX_FILE_SIZE);
+
+        // Verify base path exists
+        Self::verify_directory(base_path)?;
+
+        // Build and verify target path
+        let target_path = base_path.join(relative_path);
+        let canonical = target_path.canonicalize()?;
+        let base_canonical = base_path.canonicalize()?;
+
+        // Security: Ensure path doesn't escape base directory
+        if !canonical.starts_with(&base_canonical) {
+            return Err(FilesystemError::PathTraversalNotAllowed);
+        }
+
+        // Verify file exists and is a file
+        if !canonical.exists() {
+            return Err(FilesystemError::FileDoesNotExist);
+        }
+        if !canonical.is_file() {
+            return Err(FilesystemError::PathIsNotFile);
+        }
+
+        // Check file size
+        let metadata = fs::metadata(&canonical)?;
+        let size_bytes = metadata.len();
+
+        if size_bytes > max_bytes {
+            return Err(FilesystemError::FileTooLarge {
+                max_bytes,
+                actual_bytes: size_bytes,
+            });
+        }
+
+        // Read file content
+        let content = fs::read(&canonical)?;
+
+        // Check if binary (contains null bytes in first 8KB)
+        let check_len = std::cmp::min(8192, content.len());
+        if content[..check_len].contains(&0) {
+            return Err(FilesystemError::FileIsBinary);
+        }
+
+        // Convert to string (lossy for non-UTF8)
+        let content_str = String::from_utf8_lossy(&content).to_string();
+
+        // Detect language from extension
+        let language = canonical
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .map(Self::extension_to_language);
+
+        Ok(FileContentResponse {
+            path: relative_path.to_string(),
+            content: content_str,
+            size_bytes,
+            truncated: false,
+            language,
+        })
+    }
+
+    /// Map file extension to language name for syntax highlighting
+    fn extension_to_language(ext: &str) -> String {
+        let lang = match ext.to_lowercase().as_str() {
+            "rs" => "rust",
+            "ts" | "tsx" => "typescript",
+            "js" | "jsx" | "mjs" | "cjs" => "javascript",
+            "py" => "python",
+            "rb" => "ruby",
+            "go" => "go",
+            "java" => "java",
+            "c" | "h" => "c",
+            "cpp" | "cc" | "cxx" | "hpp" => "cpp",
+            "cs" => "csharp",
+            "swift" => "swift",
+            "kt" | "kts" => "kotlin",
+            "scala" => "scala",
+            "php" => "php",
+            "html" | "htm" => "html",
+            "css" => "css",
+            "scss" | "sass" => "scss",
+            "less" => "less",
+            "json" => "json",
+            "yaml" | "yml" => "yaml",
+            "toml" => "toml",
+            "xml" => "xml",
+            "md" | "markdown" => "markdown",
+            "sql" => "sql",
+            "sh" | "bash" | "zsh" => "bash",
+            "ps1" => "powershell",
+            "dockerfile" => "dockerfile",
+            "graphql" | "gql" => "graphql",
+            "vue" => "vue",
+            "svelte" => "svelte",
+            "lua" => "lua",
+            "r" => "r",
+            "ex" | "exs" => "elixir",
+            "erl" | "hrl" => "erlang",
+            "clj" | "cljs" | "cljc" => "clojure",
+            "hs" => "haskell",
+            "ml" | "mli" => "ocaml",
+            "f90" | "f95" | "f03" => "fortran",
+            "pl" | "pm" => "perl",
+            "zig" => "zig",
+            "nim" => "nim",
+            "v" => "v",
+            "dart" => "dart",
+            _ => return ext.to_lowercase(),
+        };
+        lang.to_string()
     }
 }

@@ -35,6 +35,10 @@ pub async fn list_directory(
                 e
             ))))
         }
+        Err(e) => {
+            tracing::error!("Unexpected error listing directory: {}", e);
+            Ok(ResponseJson(ApiResponse::error(&e.to_string())))
+        }
     }
 }
 
@@ -67,6 +71,10 @@ pub async fn list_git_repos(
                 "Failed to read directory: {}",
                 e
             ))))
+        }
+        Err(e) => {
+            tracing::error!("Unexpected error listing git repos: {}", e);
+            Ok(ResponseJson(ApiResponse::error(&e.to_string())))
         }
     }
 }

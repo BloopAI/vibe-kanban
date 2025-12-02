@@ -55,6 +55,7 @@ import { useHotkeysContext } from 'react-hotkeys-hook';
 import { TasksLayout, type LayoutMode } from '@/components/layout/TasksLayout';
 import { PreviewPanel } from '@/components/panels/PreviewPanel';
 import { DiffsPanel } from '@/components/panels/DiffsPanel';
+import { FilesPanel } from '@/components/files';
 import TaskAttemptPanel from '@/components/panels/TaskAttemptPanel';
 import TaskPanel from '@/components/panels/TaskPanel';
 import SharedTaskPanel from '@/components/panels/SharedTaskPanel';
@@ -303,7 +304,7 @@ export function ProjectTasks() {
 
   const rawMode = searchParams.get('view') as LayoutMode;
   const mode: LayoutMode =
-    rawMode === 'preview' || rawMode === 'diffs' ? rawMode : null;
+    rawMode === 'preview' || rawMode === 'diffs' || rawMode === 'files' ? rawMode : null;
 
   // TODO: Remove this redirect after v0.1.0 (legacy URL support for bookmarked links)
   // Migrates old `view=logs` to `view=diffs`
@@ -545,11 +546,11 @@ export function ProjectTasks() {
   /**
    * Cycle the attempt area view.
    * - When panel is closed: opens task details (if a task is selected)
-   * - When panel is open: cycles among [attempt, preview, diffs]
+   * - When panel is open: cycles among [attempt, preview, diffs, files]
    */
   const cycleView = useCallback(
     (direction: 'forward' | 'backward' = 'forward') => {
-      const order: LayoutMode[] = [null, 'preview', 'diffs'];
+      const order: LayoutMode[] = [null, 'preview', 'diffs', 'files'];
       const idx = order.indexOf(mode);
       const next =
         direction === 'forward'
@@ -573,7 +574,7 @@ export function ProjectTasks() {
     () => {
       if (isPanelOpen) {
         // Track keyboard shortcut before cycling view
-        const order: LayoutMode[] = [null, 'preview', 'diffs'];
+        const order: LayoutMode[] = [null, 'preview', 'diffs', 'files'];
         const idx = order.indexOf(mode);
         const next = order[(idx + 1) % order.length];
 
@@ -586,6 +587,13 @@ export function ProjectTasks() {
           });
         } else if (next === 'diffs') {
           posthog?.capture('diffs_navigated', {
+            trigger: 'keyboard',
+            direction: 'forward',
+            timestamp: new Date().toISOString(),
+            source: 'frontend',
+          });
+        } else if (next === 'files') {
+          posthog?.capture('files_navigated', {
             trigger: 'keyboard',
             direction: 'forward',
             timestamp: new Date().toISOString(),
@@ -606,7 +614,7 @@ export function ProjectTasks() {
     () => {
       if (isPanelOpen) {
         // Track keyboard shortcut before cycling view
-        const order: LayoutMode[] = [null, 'preview', 'diffs'];
+        const order: LayoutMode[] = [null, 'preview', 'diffs', 'files'];
         const idx = order.indexOf(mode);
         const next = order[(idx - 1 + order.length) % order.length];
 
@@ -619,6 +627,13 @@ export function ProjectTasks() {
           });
         } else if (next === 'diffs') {
           posthog?.capture('diffs_navigated', {
+            trigger: 'keyboard',
+            direction: 'backward',
+            timestamp: new Date().toISOString(),
+            source: 'frontend',
+          });
+        } else if (next === 'files') {
+          posthog?.capture('files_navigated', {
             trigger: 'keyboard',
             direction: 'backward',
             timestamp: new Date().toISOString(),
@@ -1020,6 +1035,13 @@ export function ProjectTasks() {
             projectId={projectId!}
             branchStatus={branchStatus ?? null}
             branches={branches}
+          />
+        )}
+        {mode === 'files' && (
+          <FilesPanel
+            attemptId={attempt.id}
+            projectId={projectId!}
+            compact={isMobile}
           />
         )}
       </div>

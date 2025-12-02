@@ -7,7 +7,7 @@ pub mod util;
 use axum::{
     Extension, Json, Router,
     extract::{
-        Query, State,
+        Path, Query, State,
         ws::{WebSocket, WebSocketUpgrade},
     },
     http::StatusCode,
@@ -37,6 +37,7 @@ use git2::BranchType;
 use serde::{Deserialize, Serialize};
 use services::services::{
     container::ContainerService,
+    filesystem::{DirectoryListResponse, FileContentResponse, FilesystemError},
     git::{ConflictOp, GitCliError, GitServiceError, WorktreeResetOptions},
     github::{CreatePrRequest, GitHubService, GitHubServiceError},
 };
@@ -1568,6 +1569,100 @@ pub async fn gh_cli_setup_handler(
     }
 }
 
+// ============================================================================
+// File Browser Endpoints
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct ListFilesQuery {
+    /// Relative path within the worktree (optional, defaults to root)
+    path: Option<String>,
+}
+
+/// List files and directories within a task attempt's worktree
+pub async fn list_worktree_files(
+    Extension(task_attempt): Extension<TaskAttempt>,
+    State(deployment): State<DeploymentImpl>,
+    Query(query): Query<ListFilesQuery>,
+) -> Result<ResponseJson<ApiResponse<DirectoryListResponse>>, ApiError> {
+    let worktree_path = ensure_worktree_path(&deployment, &task_attempt).await?;
+
+    match deployment
+        .filesystem()
+        .list_directory_within(&worktree_path, query.path.as_deref())
+        .await
+    {
+        Ok(response) => Ok(ResponseJson(ApiResponse::success(response))),
+        Err(FilesystemError::DirectoryDoesNotExist) => {
+            Ok(ResponseJson(ApiResponse::error("Directory does not exist")))
+        }
+        Err(FilesystemError::PathIsNotDirectory) => {
+            Ok(ResponseJson(ApiResponse::error("Path is not a directory")))
+        }
+        Err(FilesystemError::PathTraversalNotAllowed) => Ok(ResponseJson(ApiResponse::error(
+            "Path traversal not allowed",
+        ))),
+        Err(FilesystemError::Io(e)) => {
+            tracing::error!("Failed to list worktree directory: {}", e);
+            Ok(ResponseJson(ApiResponse::error(&format!(
+                "Failed to list directory: {}",
+                e
+            ))))
+        }
+        Err(e) => {
+            tracing::error!("Unexpected error listing worktree: {}", e);
+            Ok(ResponseJson(ApiResponse::error(&e.to_string())))
+        }
+    }
+}
+
+/// Read file content from a task attempt's worktree
+pub async fn read_worktree_file(
+    Extension(task_attempt): Extension<TaskAttempt>,
+    State(deployment): State<DeploymentImpl>,
+    Path(file_path): Path<String>,
+) -> Result<ResponseJson<ApiResponse<FileContentResponse>>, ApiError> {
+    let worktree_path = ensure_worktree_path(&deployment, &task_attempt).await?;
+
+    match deployment
+        .filesystem()
+        .read_file_within(&worktree_path, &file_path, None)
+        .await
+    {
+        Ok(response) => Ok(ResponseJson(ApiResponse::success(response))),
+        Err(FilesystemError::FileDoesNotExist) => {
+            Ok(ResponseJson(ApiResponse::error("File does not exist")))
+        }
+        Err(FilesystemError::PathIsNotFile) => {
+            Ok(ResponseJson(ApiResponse::error("Path is not a file")))
+        }
+        Err(FilesystemError::PathTraversalNotAllowed) => Ok(ResponseJson(ApiResponse::error(
+            "Path traversal not allowed",
+        ))),
+        Err(FilesystemError::FileIsBinary) => Ok(ResponseJson(ApiResponse::error(
+            "Cannot display binary file",
+        ))),
+        Err(FilesystemError::FileTooLarge {
+            max_bytes,
+            actual_bytes,
+        }) => Ok(ResponseJson(ApiResponse::error(&format!(
+            "File too large ({} bytes, max {} bytes)",
+            actual_bytes, max_bytes
+        )))),
+        Err(FilesystemError::Io(e)) => {
+            tracing::error!("Failed to read worktree file: {}", e);
+            Ok(ResponseJson(ApiResponse::error(&format!(
+                "Failed to read file: {}",
+                e
+            ))))
+        }
+        Err(e) => {
+            tracing::error!("Unexpected error reading file: {}", e);
+            Ok(ResponseJson(ApiResponse::error(&e.to_string())))
+        }
+    }
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_attempt_id_router = Router::new()
         .route("/", get(get_task_attempt))
@@ -1598,6 +1693,9 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/stop", post(stop_task_attempt_execution))
         .route("/change-target-branch", post(change_target_branch))
         .route("/rename-branch", post(rename_branch))
+        // File browser endpoints
+        .route("/files", get(list_worktree_files))
+        .route("/files/*file_path", get(read_worktree_file))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_task_attempt_middleware,
