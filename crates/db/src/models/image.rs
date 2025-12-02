@@ -177,36 +177,6 @@ impl Image {
 }
 
 impl TaskImage {
-    pub async fn create(pool: &SqlitePool, data: &CreateTaskImage) -> Result<Self, sqlx::Error> {
-        let id = Uuid::new_v4();
-        sqlx::query_as!(
-            TaskImage,
-            r#"INSERT INTO task_images (id, task_id, image_id)
-               VALUES ($1, $2, $3)
-               RETURNING id as "id!: Uuid",
-                         task_id as "task_id!: Uuid",
-                         image_id as "image_id!: Uuid", 
-                         created_at as "created_at!: DateTime<Utc>""#,
-            id,
-            data.task_id,
-            data.image_id,
-        )
-        .fetch_one(pool)
-        .await
-    }
-
-    pub async fn associate_many(
-        pool: &SqlitePool,
-        task_id: Uuid,
-        image_ids: &[Uuid],
-    ) -> Result<(), sqlx::Error> {
-        for &image_id in image_ids {
-            let task_image = CreateTaskImage { task_id, image_id };
-            TaskImage::create(pool, &task_image).await?;
-        }
-        Ok(())
-    }
-
     /// Associate multiple images with a task, skipping duplicates.
     pub async fn associate_many_dedup(
         pool: &SqlitePool,
