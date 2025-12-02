@@ -33,7 +33,10 @@ pub fn api_key_router() -> Router<AppState> {
         .route("/nodes/register", post(register_node))
         .route("/nodes/{node_id}/heartbeat", post(heartbeat))
         .route("/nodes/{node_id}/projects", post(link_project))
-        .route("/nodes/{node_id}/projects/{link_id}", delete(unlink_project_by_id))
+        .route(
+            "/nodes/{node_id}/projects/{link_id}",
+            delete(unlink_project_by_id),
+        )
 }
 
 /// Routes that require user JWT authentication
@@ -85,7 +88,10 @@ pub async fn create_api_key(
     let service = NodeServiceImpl::new(pool.clone());
     let data = CreateNodeApiKey { name: payload.name };
 
-    match service.create_api_key(payload.organization_id, data, ctx.user.id).await {
+    match service
+        .create_api_key(payload.organization_id, data, ctx.user.id)
+        .await
+    {
         Ok((api_key, secret)) => (
             StatusCode::CREATED,
             Json(CreateApiKeyResponse { api_key, secret }),
@@ -178,7 +184,10 @@ pub async fn register_node(
     Span::current().record("org_id", format_args!("{}", api_key.organization_id));
 
     // Register or update node
-    match service.register_node(api_key.organization_id, payload).await {
+    match service
+        .register_node(api_key.organization_id, payload)
+        .await
+    {
         Ok(node) => {
             // Get linked projects
             let linked_projects = service
@@ -405,7 +414,10 @@ async fn extract_and_validate_api_key(
                 (StatusCode::UNAUTHORIZED, "invalid API key")
             }
             NodeError::ApiKeyRevoked => (StatusCode::UNAUTHORIZED, "API key revoked"),
-            _ => (StatusCode::INTERNAL_SERVER_ERROR, "failed to validate API key"),
+            _ => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to validate API key",
+            ),
         };
         (status, Json(json!({ "error": message }))).into_response()
     })
@@ -418,8 +430,13 @@ fn node_error_response(error: NodeError, context: &str) -> Response {
         NodeError::ApiKeyNotFound => (StatusCode::NOT_FOUND, "API key not found"),
         NodeError::ApiKeyInvalid => (StatusCode::UNAUTHORIZED, "invalid API key"),
         NodeError::ApiKeyRevoked => (StatusCode::UNAUTHORIZED, "API key revoked"),
-        NodeError::ProjectAlreadyLinked => (StatusCode::CONFLICT, "project already linked to a node"),
-        NodeError::TaskAlreadyAssigned => (StatusCode::CONFLICT, "task already has an active assignment"),
+        NodeError::ProjectAlreadyLinked => {
+            (StatusCode::CONFLICT, "project already linked to a node")
+        }
+        NodeError::TaskAlreadyAssigned => (
+            StatusCode::CONFLICT,
+            "task already has an active assignment",
+        ),
         NodeError::AssignmentNotFound => (StatusCode::NOT_FOUND, "assignment not found"),
         NodeError::NodeProjectNotFound => (StatusCode::NOT_FOUND, "node project link not found"),
         NodeError::Database(err) => {

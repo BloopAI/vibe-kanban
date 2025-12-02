@@ -99,7 +99,10 @@ impl<'a> NodeProjectRepository<'a> {
     }
 
     /// Find a node project link by project ID
-    pub async fn find_by_project(&self, project_id: Uuid) -> Result<Option<NodeProject>, NodeProjectError> {
+    pub async fn find_by_project(
+        &self,
+        project_id: Uuid,
+    ) -> Result<Option<NodeProject>, NodeProjectError> {
         let link = sqlx::query_as::<_, NodeProject>(
             r#"
             SELECT

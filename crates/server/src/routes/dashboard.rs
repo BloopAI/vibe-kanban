@@ -14,5 +14,8 @@ pub async fn get_dashboard_summary(
 }
 
 pub fn router(_deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
-    Router::new().nest("/dashboard", Router::new().route("/summary", get(get_dashboard_summary)))
+    Router::new().nest(
+        "/dashboard",
+        Router::new().route("/summary", get(get_dashboard_summary)),
+    )
 }

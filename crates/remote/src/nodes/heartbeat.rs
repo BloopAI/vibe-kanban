@@ -4,10 +4,7 @@ use chrono::Utc;
 use sqlx::PgPool;
 use tokio::time::interval;
 
-use crate::db::{
-    nodes::NodeRepository,
-    task_assignments::TaskAssignmentRepository,
-};
+use crate::db::{nodes::NodeRepository, task_assignments::TaskAssignmentRepository};
 
 /// Default heartbeat timeout in seconds
 const DEFAULT_HEARTBEAT_TIMEOUT_SECS: i64 = 60;

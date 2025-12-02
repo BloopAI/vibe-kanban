@@ -168,11 +168,7 @@ impl<'a> NodeRepository<'a> {
     }
 
     /// Update node status and heartbeat timestamp
-    pub async fn heartbeat(
-        &self,
-        node_id: Uuid,
-        status: NodeStatus,
-    ) -> Result<(), NodeDbError> {
+    pub async fn heartbeat(&self, node_id: Uuid, status: NodeStatus) -> Result<(), NodeDbError> {
         let result = sqlx::query(
             r#"
             UPDATE nodes

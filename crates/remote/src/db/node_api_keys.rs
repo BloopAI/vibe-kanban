@@ -61,7 +61,10 @@ impl<'a> NodeApiKeyRepository<'a> {
     }
 
     /// Find an API key by its prefix (first 8 chars) for validation
-    pub async fn find_by_prefix(&self, prefix: &str) -> Result<Option<NodeApiKey>, NodeApiKeyError> {
+    pub async fn find_by_prefix(
+        &self,
+        prefix: &str,
+    ) -> Result<Option<NodeApiKey>, NodeApiKeyError> {
         let key = sqlx::query_as::<_, NodeApiKey>(
             r#"
             SELECT

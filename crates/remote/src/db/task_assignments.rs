@@ -68,7 +68,10 @@ impl<'a> TaskAssignmentRepository<'a> {
     }
 
     /// Find an assignment by ID
-    pub async fn find_by_id(&self, assignment_id: Uuid) -> Result<Option<NodeTaskAssignment>, TaskAssignmentError> {
+    pub async fn find_by_id(
+        &self,
+        assignment_id: Uuid,
+    ) -> Result<Option<NodeTaskAssignment>, TaskAssignmentError> {
         let assignment = sqlx::query_as::<_, NodeTaskAssignment>(
             r#"
             SELECT
@@ -95,7 +98,10 @@ impl<'a> TaskAssignmentRepository<'a> {
     }
 
     /// Find the active assignment for a task (if any)
-    pub async fn find_active_for_task(&self, task_id: Uuid) -> Result<Option<NodeTaskAssignment>, TaskAssignmentError> {
+    pub async fn find_active_for_task(
+        &self,
+        task_id: Uuid,
+    ) -> Result<Option<NodeTaskAssignment>, TaskAssignmentError> {
         let assignment = sqlx::query_as::<_, NodeTaskAssignment>(
             r#"
             SELECT
@@ -123,7 +129,10 @@ impl<'a> TaskAssignmentRepository<'a> {
     }
 
     /// List all assignments for a node
-    pub async fn list_by_node(&self, node_id: Uuid) -> Result<Vec<NodeTaskAssignment>, TaskAssignmentError> {
+    pub async fn list_by_node(
+        &self,
+        node_id: Uuid,
+    ) -> Result<Vec<NodeTaskAssignment>, TaskAssignmentError> {
         let assignments = sqlx::query_as::<_, NodeTaskAssignment>(
             r#"
             SELECT
@@ -151,7 +160,10 @@ impl<'a> TaskAssignmentRepository<'a> {
     }
 
     /// List active assignments for a node
-    pub async fn list_active_by_node(&self, node_id: Uuid) -> Result<Vec<NodeTaskAssignment>, TaskAssignmentError> {
+    pub async fn list_active_by_node(
+        &self,
+        node_id: Uuid,
+    ) -> Result<Vec<NodeTaskAssignment>, TaskAssignmentError> {
         let assignments = sqlx::query_as::<_, NodeTaskAssignment>(
             r#"
             SELECT
@@ -222,7 +234,11 @@ impl<'a> TaskAssignmentRepository<'a> {
     }
 
     /// Mark an assignment as completed
-    pub async fn complete(&self, assignment_id: Uuid, status: &str) -> Result<(), TaskAssignmentError> {
+    pub async fn complete(
+        &self,
+        assignment_id: Uuid,
+        status: &str,
+    ) -> Result<(), TaskAssignmentError> {
         let result = sqlx::query(
             r#"
             UPDATE node_task_assignments
@@ -245,7 +261,10 @@ impl<'a> TaskAssignmentRepository<'a> {
     }
 
     /// Fail all active assignments for a node (used when node goes offline)
-    pub async fn fail_node_assignments(&self, node_id: Uuid) -> Result<Vec<Uuid>, TaskAssignmentError> {
+    pub async fn fail_node_assignments(
+        &self,
+        node_id: Uuid,
+    ) -> Result<Vec<Uuid>, TaskAssignmentError> {
         let rows = sqlx::query(
             r#"
             UPDATE node_task_assignments

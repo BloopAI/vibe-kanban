@@ -247,7 +247,10 @@ impl NodeServiceImpl {
     }
 
     /// Get a project link by project ID
-    pub async fn get_project_link(&self, project_id: Uuid) -> Result<Option<NodeProject>, NodeError> {
+    pub async fn get_project_link(
+        &self,
+        project_id: Uuid,
+    ) -> Result<Option<NodeProject>, NodeError> {
         let repo = NodeProjectRepository::new(&self.pool);
         Ok(repo.find_by_project(project_id).await?)
     }
@@ -259,11 +262,7 @@ impl NodeServiceImpl {
     }
 
     /// Update project sync status
-    pub async fn update_project_sync(
-        &self,
-        link_id: Uuid,
-        status: &str,
-    ) -> Result<(), NodeError> {
+    pub async fn update_project_sync(&self, link_id: Uuid, status: &str) -> Result<(), NodeError> {
         let repo = NodeProjectRepository::new(&self.pool);
         Ok(repo.update_sync_status(link_id, status).await?)
     }
