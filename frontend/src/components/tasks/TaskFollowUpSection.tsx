@@ -611,18 +611,13 @@ export function TaskFollowUpSection({
 
             {/* Queued message indicator */}
             {isQueued && queuedMessage && (
-              <div className="flex items-start gap-2 text-sm text-muted-foreground bg-muted p-3 rounded-md border">
-                <Clock className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium mb-1">
-                    {t(
-                      'followUp.queuedMessage',
-                      'Message queued - will execute when current run finishes'
-                    )}
-                  </div>
-                  <div className="text-xs whitespace-pre-wrap break-words opacity-75 max-h-24 overflow-y-auto">
-                    {queuedMessage.data.message}
-                  </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted p-3 rounded-md border">
+                <Clock className="h-4 w-4 flex-shrink-0" />
+                <div className="font-medium">
+                  {t(
+                    'followUp.queuedMessage',
+                    'Message queued - will execute when current run finishes'
+                  )}
                 </div>
               </div>
             )}
