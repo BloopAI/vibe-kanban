@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO attempt_repos (id, attempt_id, repo_id, target_branch)\n                   VALUES ($1, $2, $3, $4)\n                   RETURNING id as \"id!: Uuid\",\n                             attempt_id as \"attempt_id!: Uuid\",\n                             repo_id as \"repo_id!: Uuid\",\n                             target_branch,\n                             created_at as \"created_at!: DateTime<Utc>\",\n                             updated_at as \"updated_at!: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "attempt_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "repo_id!: Uuid",
+        "ordinal": 2,
+        "type_info": "Blob"
+      },
+      {
+        "name": "target_branch",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 5,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "531221cc4af491b49341e7da7667d2044248eae2fec185b5047160351d897633"
+}

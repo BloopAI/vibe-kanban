@@ -105,10 +105,10 @@ pub enum ExecutorActionField {
 pub struct MissingBeforeContext {
     pub id: Uuid,
     pub task_attempt_id: Uuid,
-    pub project_repository_id: Uuid,
+    pub repo_id: Uuid,
     pub prev_after_head_commit: Option<String>,
     pub target_branch: String,
-    pub git_repo_path: Option<String>,
+    pub repo_path: Option<String>,
 }
 
 impl ExecutionProcess {
@@ -144,15 +144,16 @@ impl ExecutionProcess {
             r#"SELECT
                 ep.id                         as "id!: Uuid",
                 ep.task_attempt_id            as "task_attempt_id!: Uuid",
-                eprs.project_repository_id    as "project_repository_id!: Uuid",
+                eprs.repo_id                  as "repo_id!: Uuid",
                 eprs.after_head_commit        as after_head_commit,
                 prev.after_head_commit        as prev_after_head_commit,
-                ta.target_branch              as target_branch,
-                pr.git_repo_path              as git_repo_path
+                ar.target_branch              as "target_branch!",
+                r.path                        as repo_path
             FROM execution_processes ep
             JOIN execution_process_repo_states eprs ON eprs.execution_process_id = ep.id
-            JOIN project_repositories pr ON pr.id = eprs.project_repository_id
+            JOIN repos r ON r.id = eprs.repo_id
             JOIN task_attempts ta ON ta.id = ep.task_attempt_id
+            JOIN attempt_repos ar ON ar.attempt_id = ta.id AND ar.repo_id = eprs.repo_id
             LEFT JOIN execution_process_repo_states prev
               ON prev.execution_process_id = (
                    SELECT id FROM execution_processes
@@ -161,7 +162,7 @@ impl ExecutionProcess {
                      ORDER BY created_at DESC
                      LIMIT 1
                )
-              AND prev.project_repository_id = eprs.project_repository_id
+              AND prev.repo_id = eprs.repo_id
             WHERE eprs.before_head_commit IS NULL
               AND eprs.after_head_commit IS NOT NULL"#
         )
@@ -173,10 +174,10 @@ impl ExecutionProcess {
             .map(|r| MissingBeforeContext {
                 id: r.id,
                 task_attempt_id: r.task_attempt_id,
-                project_repository_id: r.project_repository_id,
+                repo_id: r.repo_id,
                 prev_after_head_commit: r.prev_after_head_commit,
                 target_branch: r.target_branch,
-                git_repo_path: Some(r.git_repo_path),
+                repo_path: Some(r.repo_path),
             })
             .collect();
         Ok(result)
@@ -538,20 +539,20 @@ impl ExecutionProcess {
         pool: &SqlitePool,
         task_attempt_id: Uuid,
         boundary_process_id: Uuid,
-        project_repository_id: Uuid,
+        repo_id: Uuid,
     ) -> Result<Option<String>, sqlx::Error> {
         let repo_res = sqlx::query_scalar(
             r#"SELECT eprs.after_head_commit
                FROM execution_process_repo_states eprs
                JOIN execution_processes ep ON ep.id = eprs.execution_process_id
               WHERE ep.task_attempt_id = ?
-                AND eprs.project_repository_id = ?
+                AND eprs.repo_id = ?
                 AND ep.created_at < (SELECT created_at FROM execution_processes WHERE id = ?)
               ORDER BY ep.created_at DESC
               LIMIT 1"#,
         )
         .bind(task_attempt_id)
-        .bind(project_repository_id)
+        .bind(repo_id)
         .bind(boundary_process_id)
         .fetch_optional(pool)
         .await?;

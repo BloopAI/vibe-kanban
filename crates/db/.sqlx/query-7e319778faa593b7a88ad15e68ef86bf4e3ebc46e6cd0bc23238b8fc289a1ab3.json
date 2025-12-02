@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\",\n                      project_id as \"project_id!: Uuid\",\n                      name,\n                      git_repo_path,\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM project_repositories\n               WHERE project_id = $1 AND name = $2",
+  "query": "SELECT id as \"id!: Uuid\",\n                      attempt_id as \"attempt_id!: Uuid\",\n                      repo_id as \"repo_id!: Uuid\",\n                      target_branch,\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM attempt_repos\n               WHERE attempt_id = $1",
   "describe": {
     "columns": [
       {
@@ -9,17 +9,17 @@
         "type_info": "Blob"
       },
       {
-        "name": "project_id!: Uuid",
+        "name": "attempt_id!: Uuid",
         "ordinal": 1,
         "type_info": "Blob"
       },
       {
-        "name": "name",
+        "name": "repo_id!: Uuid",
         "ordinal": 2,
-        "type_info": "Text"
+        "type_info": "Blob"
       },
       {
-        "name": "git_repo_path",
+        "name": "target_branch",
         "ordinal": 3,
         "type_info": "Text"
       },
@@ -35,7 +35,7 @@
       }
     ],
     "parameters": {
-      "Right": 2
+      "Right": 1
     },
     "nullable": [
       true,
@@ -46,5 +46,5 @@
       false
     ]
   },
-  "hash": "0dd1245990f6d57a261d365a12f29ece0e9b107291ee6a955748242bf3a8be90"
+  "hash": "7e319778faa593b7a88ad15e68ef86bf4e3ebc46e6cd0bc23238b8fc289a1ab3"
 }

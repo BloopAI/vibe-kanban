@@ -12,12 +12,14 @@ use command_group::AsyncGroupChild;
 use db::{
     DBService,
     models::{
+        attempt_repo::AttemptRepo,
         execution_process::{
             ExecutionContext, ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus,
         },
         execution_process_repo_state::ExecutionProcessRepoState,
         executor_session::ExecutorSession,
         project::Project,
+        project_repo::ProjectRepo,
         scratch::{DraftFollowUpData, Scratch, ScratchType},
         task::{Task, TaskStatus},
         task_attempt::TaskAttempt,
@@ -47,7 +49,7 @@ use services::services::{
     image::ImageService,
     queued_message::QueuedMessageService,
     share::SharePublisher,
-    workspace_manager::WorkspaceManager,
+    workspace_manager::{RepoWorkspaceInput, WorkspaceManager},
     worktree_manager::{WorktreeCleanup, WorktreeManager},
 };
 use tokio::{sync::RwLock, task::JoinHandle};
@@ -289,7 +291,8 @@ impl LocalContainerService {
         if let Ok(ctx) = ExecutionProcess::load_context(&self.db.pool, exec_id).await {
             let workspace_root = self.task_attempt_to_current_dir(&ctx.task_attempt);
             if let Ok(Some(project)) = Project::find_by_id(&self.db.pool, ctx.task.project_id).await
-                && let Ok(repos) = project.repositories(&self.db.pool).await
+                && let Ok(repos) =
+                    ProjectRepo::find_repos_for_project(&self.db.pool, project.id).await
             {
                 for repo in repos {
                     let repo_path = workspace_root.join(&repo.name);
@@ -786,7 +789,7 @@ impl ContainerService for LocalContainerService {
             .await?
             .ok_or(sqlx::Error::RowNotFound)?;
 
-        let repositories = project.repositories(&self.db.pool).await?;
+        let repositories = ProjectRepo::find_repos_for_project(&self.db.pool, project.id).await?;
 
         if repositories.is_empty() {
             return Err(ContainerError::Other(anyhow!(
@@ -794,11 +797,25 @@ impl ContainerService for LocalContainerService {
             )));
         }
 
+        let attempt_repos = AttemptRepo::find_by_attempt_id(&self.db.pool, task_attempt.id).await?;
+        let target_branches: HashMap<_, _> = attempt_repos
+            .iter()
+            .map(|ar| (ar.repo_id, ar.target_branch.clone()))
+            .collect();
+
+        let workspace_inputs: Vec<RepoWorkspaceInput> = repositories
+            .iter()
+            .filter_map(|repo| {
+                target_branches
+                    .get(&repo.id)
+                    .map(|tb| RepoWorkspaceInput::new(repo.clone(), tb.clone()))
+            })
+            .collect();
+
         let workspace = WorkspaceManager::create_workspace(
             &workspace_dir,
-            &repositories,
+            &workspace_inputs,
             &task_attempt.branch,
-            &task_attempt.target_branch,
         )
         .await?;
 
@@ -806,6 +823,7 @@ impl ContainerService for LocalContainerService {
             && !copy_files.trim().is_empty()
         {
             for worktree in &workspace.worktrees {
+                // TODO: Change into per-repo copy files
                 self.copy_project_files(
                     &worktree.source_repo_path,
                     &worktree.worktree_path,
@@ -851,8 +869,7 @@ impl ContainerService for LocalContainerService {
 
         // Get repositories for cleanup
         let repositories = match Project::find_by_id(&self.db.pool, task.project_id).await {
-            Ok(Some(project)) => project
-                .repositories(&self.db.pool)
+            Ok(Some(project)) => ProjectRepo::find_repos_for_project(&self.db.pool, project.id)
                 .await
                 .unwrap_or_default(),
             Ok(None) => Vec::new(),
@@ -863,7 +880,6 @@ impl ContainerService for LocalContainerService {
         };
 
         if repositories.is_empty() {
-            // Fallback: just clean up the workspace directory if no repos found
             tracing::warn!(
                 "No repositories found for project {}, cleaning up workspace directory only",
                 task.project_id
@@ -908,8 +924,7 @@ impl ContainerService for LocalContainerService {
         })?;
         let workspace_dir = PathBuf::from(container_ref);
 
-        // Get all repositories for the project
-        let repositories = project.repositories(&self.db.pool).await?;
+        let repositories = ProjectRepo::find_repos_for_project(&self.db.pool, project.id).await?;
 
         if repositories.is_empty() {
             return Err(ContainerError::Other(anyhow!(
@@ -947,7 +962,7 @@ impl ContainerService for LocalContainerService {
             .await?
             .ok_or(ContainerError::Other(anyhow!("Project not found")))?;
 
-        let repositories = project.repositories(&self.db.pool).await?;
+        let repositories = ProjectRepo::find_repos_for_project(&self.db.pool, project.id).await?;
 
         for repo in &repositories {
             let worktree_path = workspace_dir.join(&repo.name);
@@ -1102,7 +1117,13 @@ impl ContainerService for LocalContainerService {
             .await?
             .ok_or(ContainerError::Other(anyhow!("Project not found")))?;
 
-        let repositories = project.repositories(&self.db.pool).await?;
+        let repositories = ProjectRepo::find_repos_for_project(&self.db.pool, project.id).await?;
+
+        let attempt_repos = AttemptRepo::find_by_attempt_id(&self.db.pool, task_attempt.id).await?;
+        let target_branches: HashMap<_, _> = attempt_repos
+            .iter()
+            .map(|ar| (ar.repo_id, ar.target_branch.clone()))
+            .collect();
 
         let mut streams = Vec::new();
 
@@ -1110,30 +1131,31 @@ impl ContainerService for LocalContainerService {
         let workspace_root = PathBuf::from(container_ref);
 
         for repo in repositories {
-            let project_repo_path = &repo.git_repo_path;
             let worktree_path = workspace_root.join(&repo.name);
-
-            // We currently treat the branch names as global across all repos
             let branch = &task_attempt.branch;
-            let target_branch = &task_attempt.target_branch;
 
-            // Try to get base commit.
-            // If this fails (e.g. branch doesn't exist in this repo), log warning and continue.
-            let base_commit =
-                match self
-                    .git()
-                    .get_base_commit(project_repo_path, branch, target_branch)
-                {
-                    Ok(c) => c,
-                    Err(e) => {
-                        tracing::warn!(
-                            "Skipping diff stream for repo {}: failed to get base commit: {}",
-                            repo.name,
-                            e
-                        );
-                        continue;
-                    }
-                };
+            let Some(target_branch) = target_branches.get(&repo.id) else {
+                tracing::warn!(
+                    "Skipping diff stream for repo {}: no target branch configured",
+                    repo.name
+                );
+                continue;
+            };
+
+            let base_commit = match self
+                .git()
+                .get_base_commit(&repo.path, branch, target_branch)
+            {
+                Ok(c) => c,
+                Err(e) => {
+                    tracing::warn!(
+                        "Skipping diff stream for repo {}: failed to get base commit: {}",
+                        repo.name,
+                        e
+                    );
+                    continue;
+                }
+            };
 
             let stream = self
                 .create_live_diff_stream(

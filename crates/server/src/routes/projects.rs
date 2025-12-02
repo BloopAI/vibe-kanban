@@ -10,7 +10,8 @@ use axum::{
 };
 use db::models::{
     project::{CreateProject, Project, ProjectError, SearchResult, UpdateProject},
-    project_repository::{CreateProjectRepository, ProjectRepository},
+    project_repo::CreateProjectRepo,
+    repo::Repo,
 };
 use deployment::Deployment;
 use serde::{Deserialize, Serialize};
@@ -77,7 +78,7 @@ pub async fn get_project_branches(
     let mut repo_branches = Vec::with_capacity(repositories.len());
 
     for repo in repositories {
-        let branches = deployment.git().get_all_branches(&repo.git_repo_path)?;
+        let branches = deployment.git().get_all_branches(&repo.path)?;
         repo_branches.push(RepositoryBranches {
             repository_id: repo.id,
             repository_name: repo.name,
@@ -237,9 +238,6 @@ pub async fn create_project(
 
             Ok(ResponseJson(ApiResponse::success(project)))
         }
-        Err(ProjectServiceError::NoRepositoriesConfigured) => Ok(ResponseJson(ApiResponse::error(
-            "At least one repository is required",
-        ))),
         Err(ProjectServiceError::DuplicateGitRepoPath) => Ok(ResponseJson(ApiResponse::error(
             "Duplicate repository path provided",
         ))),
@@ -333,7 +331,7 @@ pub async fn open_project_in_editor(
 
         repositories
             .first()
-            .map(|r| r.git_repo_path.clone())
+            .map(|r| r.path.clone())
             .ok_or_else(|| ApiError::BadRequest("Project has no repositories".to_string()))?
     };
 
@@ -417,7 +415,7 @@ pub async fn search_project_files(
 pub async fn get_project_repositories(
     Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<Vec<ProjectRepository>>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<Vec<Repo>>>, ApiError> {
     let repositories = deployment
         .project()
         .get_repositories(&deployment.db().pool, project.id)
@@ -428,8 +426,8 @@ pub async fn get_project_repositories(
 pub async fn add_project_repository(
     Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
-    Json(payload): Json<CreateProjectRepository>,
-) -> Result<ResponseJson<ApiResponse<ProjectRepository>>, ApiError> {
+    Json(payload): Json<CreateProjectRepo>,
+) -> Result<ResponseJson<ApiResponse<Repo>>, ApiError> {
     match deployment
         .project()
         .add_repository(&deployment.db().pool, project.id, &payload)
@@ -468,9 +466,6 @@ pub async fn delete_project_repository(
         Err(ProjectServiceError::RepositoryNotFound) => {
             Ok(ResponseJson(ApiResponse::error("Repository not found")))
         }
-        Err(ProjectServiceError::CannotDeleteLastRepository) => Ok(ResponseJson(
-            ApiResponse::error("Cannot delete the last repository in a project"),
-        )),
         Err(e) => Err(e.into()),
     }
 }

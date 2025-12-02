@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT r.id as \"id!: Uuid\",\n                      r.path,\n                      r.name,\n                      r.created_at as \"created_at!: DateTime<Utc>\",\n                      r.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM repos r\n               JOIN project_repos pr ON r.id = pr.repo_id\n               WHERE pr.project_id = $1\n               ORDER BY r.name ASC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "path",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "name",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 4,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "858dda6de17d2b4e815ab5d2341c84a506a20650b9a75331a5ee287089543194"
+}

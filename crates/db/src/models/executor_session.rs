@@ -23,37 +23,7 @@ pub struct CreateExecutorSession {
     pub prompt: Option<String>,
 }
 
-#[derive(Debug, Deserialize, TS)]
-#[allow(dead_code)]
-pub struct UpdateExecutorSession {
-    pub session_id: Option<String>,
-    pub prompt: Option<String>,
-    pub summary: Option<String>,
-}
-
 impl ExecutorSession {
-    /// Find executor session by ID
-    #[allow(dead_code)]
-    pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            ExecutorSession,
-            r#"SELECT 
-                id as "id!: Uuid", 
-                task_attempt_id as "task_attempt_id!: Uuid", 
-                execution_process_id as "execution_process_id!: Uuid", 
-                session_id, 
-                prompt,
-                summary,
-                created_at as "created_at!: DateTime<Utc>", 
-                updated_at as "updated_at!: DateTime<Utc>"
-               FROM executor_sessions 
-               WHERE id = $1"#,
-            id
-        )
-        .fetch_optional(pool)
-        .await
-    }
-
     /// Find executor session by execution process ID
     pub async fn find_by_execution_process_id(
         pool: &SqlitePool,
@@ -75,32 +45,6 @@ impl ExecutorSession {
             execution_process_id
         )
         .fetch_optional(pool)
-        .await
-    }
-
-    /// Find all executor sessions for a task attempt
-    #[allow(dead_code)]
-    pub async fn find_by_task_attempt_id(
-        pool: &SqlitePool,
-        task_attempt_id: Uuid,
-    ) -> Result<Vec<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            ExecutorSession,
-            r#"SELECT 
-                id as "id!: Uuid", 
-                task_attempt_id as "task_attempt_id!: Uuid", 
-                execution_process_id as "execution_process_id!: Uuid", 
-                session_id, 
-                prompt,
-                summary,
-                created_at as "created_at!: DateTime<Utc>", 
-                updated_at as "updated_at!: DateTime<Utc>"
-               FROM executor_sessions 
-               WHERE task_attempt_id = $1 
-               ORDER BY created_at ASC"#,
-            task_attempt_id
-        )
-        .fetch_all(pool)
         .await
     }
 
@@ -187,28 +131,6 @@ impl ExecutorSession {
             external_session_id,
             now,
             execution_process_id
-        )
-        .execute(pool)
-        .await?;
-
-        Ok(())
-    }
-
-    /// Update executor session prompt
-    #[allow(dead_code)]
-    pub async fn update_prompt(
-        pool: &SqlitePool,
-        id: Uuid,
-        prompt: &str,
-    ) -> Result<(), sqlx::Error> {
-        let now = Utc::now();
-        sqlx::query!(
-            r#"UPDATE executor_sessions 
-               SET prompt = $1, updated_at = $2 
-               WHERE id = $3"#,
-            prompt,
-            now,
-            id
         )
         .execute(pool)
         .await?;

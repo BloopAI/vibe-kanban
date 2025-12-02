@@ -1,11 +1,26 @@
 use std::path::{Path, PathBuf};
 
-use db::models::project_repository::ProjectRepository;
+use db::models::repo::Repo;
 use thiserror::Error;
 use tracing::{debug, error, info};
 use uuid::Uuid;
 
 use super::worktree_manager::{WorktreeCleanup, WorktreeError, WorktreeManager};
+
+#[derive(Debug, Clone)]
+pub struct RepoWorkspaceInput {
+    pub repo: Repo,
+    pub target_branch: String,
+}
+
+impl RepoWorkspaceInput {
+    pub fn new(repo: Repo, target_branch: String) -> Self {
+        Self {
+            repo,
+            target_branch,
+        }
+    }
+}
 
 #[derive(Debug, Error)]
 pub enum WorkspaceError {
@@ -42,9 +57,8 @@ impl WorkspaceManager {
     /// On failure, rolls back any already-created worktrees.
     pub async fn create_workspace(
         workspace_dir: &Path,
-        repos: &[ProjectRepository],
+        repos: &[RepoWorkspaceInput],
         branch_name: &str,
-        base_branch: &str,
     ) -> Result<Workspace, WorkspaceError> {
         if repos.is_empty() {
             return Err(WorkspaceError::NoRepositories);
@@ -56,41 +70,40 @@ impl WorkspaceManager {
             repos.len()
         );
 
-        // Create the workspace directory
         tokio::fs::create_dir_all(workspace_dir).await?;
 
         let mut created_worktrees: Vec<RepoWorktree> = Vec::new();
 
-        for repo in repos {
-            let worktree_path = workspace_dir.join(&repo.name);
+        for input in repos {
+            let worktree_path = workspace_dir.join(&input.repo.name);
 
             debug!(
                 "Creating worktree for repo '{}' at {}",
-                repo.name,
+                input.repo.name,
                 worktree_path.display()
             );
 
             match WorktreeManager::create_worktree(
-                &repo.git_repo_path,
+                &input.repo.path,
                 branch_name,
                 &worktree_path,
-                base_branch,
-                true, // create_branch
+                &input.target_branch,
+                true,
             )
             .await
             {
                 Ok(()) => {
                     created_worktrees.push(RepoWorktree {
-                        repo_id: repo.id,
-                        repo_name: repo.name.clone(),
-                        source_repo_path: repo.git_repo_path.clone(),
+                        repo_id: input.repo.id,
+                        repo_name: input.repo.name.clone(),
+                        source_repo_path: input.repo.path.clone(),
                         worktree_path,
                     });
                 }
                 Err(e) => {
                     error!(
                         "Failed to create worktree for repo '{}': {}. Rolling back...",
-                        repo.name, e
+                        input.repo.name, e
                     );
 
                     // Rollback: cleanup all worktrees we've created so far
@@ -106,7 +119,7 @@ impl WorkspaceManager {
 
                     return Err(WorkspaceError::PartialCreation(format!(
                         "Failed to create worktree for repo '{}': {}",
-                        repo.name, e
+                        input.repo.name, e
                     )));
                 }
             }
@@ -126,14 +139,13 @@ impl WorkspaceManager {
     /// Ensure all worktrees in a workspace exist (for cold restart scenarios)
     pub async fn ensure_workspace_exists(
         workspace_dir: &Path,
-        repos: &[ProjectRepository],
+        repos: &[Repo],
         branch_name: &str,
     ) -> Result<(), WorkspaceError> {
         if repos.is_empty() {
             return Err(WorkspaceError::NoRepositories);
         }
 
-        // Ensure workspace directory exists
         if !workspace_dir.exists() {
             tokio::fs::create_dir_all(workspace_dir).await?;
         }
@@ -147,12 +159,8 @@ impl WorkspaceManager {
                 worktree_path.display()
             );
 
-            WorktreeManager::ensure_worktree_exists(
-                &repo.git_repo_path,
-                branch_name,
-                &worktree_path,
-            )
-            .await?;
+            WorktreeManager::ensure_worktree_exists(&repo.path, branch_name, &worktree_path)
+                .await?;
         }
 
         Ok(())
@@ -161,7 +169,7 @@ impl WorkspaceManager {
     /// Clean up all worktrees in a workspace
     pub async fn cleanup_workspace(
         workspace_dir: &Path,
-        repos: &[ProjectRepository],
+        repos: &[Repo],
     ) -> Result<(), WorkspaceError> {
         info!("Cleaning up workspace at {}", workspace_dir.display());
 
@@ -169,7 +177,7 @@ impl WorkspaceManager {
             .iter()
             .map(|repo| {
                 let worktree_path = workspace_dir.join(&repo.name);
-                WorktreeCleanup::new(worktree_path, Some(repo.git_repo_path.clone()))
+                WorktreeCleanup::new(worktree_path, Some(repo.path.clone()))
             })
             .collect();
 

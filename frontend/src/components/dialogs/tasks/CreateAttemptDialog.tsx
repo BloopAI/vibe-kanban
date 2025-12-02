@@ -116,17 +116,8 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
     }, [branches]);
 
     const defaultBranch: string | null = useMemo(() => {
-      return (
-        parentAttempt?.branch ??
-        currentBranchName ??
-        latestAttempt?.target_branch ??
-        null
-      );
-    }, [
-      parentAttempt?.branch,
-      currentBranchName,
-      latestAttempt?.target_branch,
-    ]);
+      return parentAttempt?.branch ?? currentBranchName ?? null;
+    }, [parentAttempt?.branch, currentBranchName]);
 
     const effectiveProfile = userSelectedProfile ?? defaultProfile;
     const effectiveBranch = userSelectedBranch ?? defaultBranch;
