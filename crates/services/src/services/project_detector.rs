@@ -21,6 +21,68 @@ const DOCUMENTATION_FILES: &[&str] = &[
 
 pub struct ProjectDetector;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PackageManager {
+    Npm,
+    Pnpm,
+    Yarn,
+}
+
+impl PackageManager {
+    /// Detect the package manager from the repository by checking for lock files
+    /// and packageManager field in package.json
+    pub fn detect(repo_path: &Path) -> Self {
+        // Check for lock files first (most reliable indicator of what's actually used)
+        if repo_path.join("pnpm-lock.yaml").exists() {
+            return Self::Pnpm;
+        }
+        if repo_path.join("yarn.lock").exists() {
+            return Self::Yarn;
+        }
+        if repo_path.join("package-lock.json").exists() {
+            return Self::Npm;
+        }
+
+        // Check packageManager field in package.json
+        let package_json_path = repo_path.join("package.json");
+        if package_json_path.exists() {
+            if let Ok(content) = std::fs::read_to_string(&package_json_path) {
+                if let Ok(json) = serde_json::from_str::<Value>(&content) {
+                    if let Some(pm) = json.get("packageManager").and_then(|v| v.as_str()) {
+                        if pm.starts_with("pnpm") {
+                            return Self::Pnpm;
+                        }
+                        if pm.starts_with("yarn") {
+                            return Self::Yarn;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Default to npm
+        Self::Npm
+    }
+
+    /// Get the run command for this package manager (e.g., "pnpm run")
+    pub fn run_command(&self) -> &'static str {
+        match self {
+            Self::Npm => "npm run",
+            Self::Pnpm => "pnpm run",
+            Self::Yarn => "yarn run",
+        }
+    }
+
+    /// Get the install command for this package manager
+    pub fn install_command(&self) -> &'static str {
+        match self {
+            Self::Npm => "npm install",
+            Self::Pnpm => "pnpm install",
+            Self::Yarn => "yarn install",
+        }
+    }
+}
+
 impl ProjectDetector {
     /// Scan a repository and return configuration suggestions
     pub fn scan_repo(repo_path: &Path) -> Result<Vec<ProjectConfigSuggestion>> {
@@ -102,6 +164,11 @@ impl ProjectDetector {
         let content = std::fs::read_to_string(&package_json_path)?;
         let json: Value = serde_json::from_str(&content)?;
 
+        // Detect package manager for this project
+        let pm = PackageManager::detect(repo_path);
+        let run_cmd = pm.run_command();
+        let install_cmd = pm.install_command();
+
         let mut suggestions = Vec::new();
 
         if let Some(scripts) = json.get("scripts").and_then(|s| s.as_object()) {
@@ -114,7 +181,7 @@ impl ProjectDetector {
             {
                 suggestions.push(ProjectConfigSuggestion {
                     field: ProjectConfigField::DevScript,
-                    value: format!("npm run {}", Self::get_script_name(scripts, cmd)),
+                    value: format!("{} {}", run_cmd, Self::get_script_name(scripts, cmd)),
                     confidence: ConfidenceLevel::High,
                     source: "package.json".to_string(),
                 });
@@ -128,19 +195,19 @@ impl ProjectDetector {
                 .or_else(|| scripts.get("prepare"))
             {
                 if let Some(_cmd) = setup_cmd.as_str() {
-                    // For setup, we typically want npm install, not the script itself
+                    // For setup, we typically want install, not the script itself
                     suggestions.push(ProjectConfigSuggestion {
                         field: ProjectConfigField::SetupScript,
-                        value: "npm install".to_string(),
+                        value: install_cmd.to_string(),
                         confidence: ConfidenceLevel::High,
                         source: "package.json".to_string(),
                     });
                 }
             } else {
-                // If no specific setup script, still suggest npm install
+                // If no specific setup script, still suggest install
                 suggestions.push(ProjectConfigSuggestion {
                     field: ProjectConfigField::SetupScript,
-                    value: "npm install".to_string(),
+                    value: install_cmd.to_string(),
                     confidence: ConfidenceLevel::High,
                     source: "package.json".to_string(),
                 });
@@ -155,7 +222,7 @@ impl ProjectDetector {
                         || name.contains("check")
                         || name == "validate"
                     {
-                        Some(format!("npm run {}", name))
+                        Some(format!("{} {}", run_cmd, name))
                     } else {
                         None
                     }
@@ -936,5 +1003,100 @@ pnpm run dev
             .find(|s| matches!(s.field, ProjectConfigField::CopyFiles));
         assert!(copy_files.is_some());
         assert!(copy_files.unwrap().value.contains(".env"));
+    }
+
+    #[test]
+    fn test_package_manager_detect_pnpm_lockfile() {
+        let temp_dir = TempDir::new().unwrap();
+        fs::write(temp_dir.path().join("pnpm-lock.yaml"), "lockfileVersion: 5.4").unwrap();
+        fs::write(temp_dir.path().join("package.json"), "{}").unwrap();
+
+        let pm = PackageManager::detect(temp_dir.path());
+        assert_eq!(pm, PackageManager::Pnpm);
+        assert_eq!(pm.run_command(), "pnpm run");
+        assert_eq!(pm.install_command(), "pnpm install");
+    }
+
+    #[test]
+    fn test_package_manager_detect_yarn_lockfile() {
+        let temp_dir = TempDir::new().unwrap();
+        fs::write(temp_dir.path().join("yarn.lock"), "# yarn lockfile v1").unwrap();
+        fs::write(temp_dir.path().join("package.json"), "{}").unwrap();
+
+        let pm = PackageManager::detect(temp_dir.path());
+        assert_eq!(pm, PackageManager::Yarn);
+        assert_eq!(pm.run_command(), "yarn run");
+        assert_eq!(pm.install_command(), "yarn install");
+    }
+
+    #[test]
+    fn test_package_manager_detect_npm_lockfile() {
+        let temp_dir = TempDir::new().unwrap();
+        fs::write(temp_dir.path().join("package-lock.json"), "{}").unwrap();
+        fs::write(temp_dir.path().join("package.json"), "{}").unwrap();
+
+        let pm = PackageManager::detect(temp_dir.path());
+        assert_eq!(pm, PackageManager::Npm);
+        assert_eq!(pm.run_command(), "npm run");
+        assert_eq!(pm.install_command(), "npm install");
+    }
+
+    #[test]
+    fn test_package_manager_detect_from_package_json() {
+        let temp_dir = TempDir::new().unwrap();
+        let package_json = r#"{"packageManager": "pnpm@8.0.0"}"#;
+        fs::write(temp_dir.path().join("package.json"), package_json).unwrap();
+
+        let pm = PackageManager::detect(temp_dir.path());
+        assert_eq!(pm, PackageManager::Pnpm);
+    }
+
+    #[test]
+    fn test_package_manager_detect_default_npm() {
+        let temp_dir = TempDir::new().unwrap();
+        fs::write(temp_dir.path().join("package.json"), "{}").unwrap();
+
+        let pm = PackageManager::detect(temp_dir.path());
+        assert_eq!(pm, PackageManager::Npm);
+    }
+
+    #[test]
+    fn test_scan_package_json_with_pnpm() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create pnpm lock file to trigger pnpm detection
+        fs::write(temp_dir.path().join("pnpm-lock.yaml"), "lockfileVersion: 5.4").unwrap();
+
+        let package_json = r#"{
+  "name": "test-project",
+  "scripts": {
+    "dev": "vite",
+    "test": "vitest"
+  }
+}"#;
+        fs::write(temp_dir.path().join("package.json"), package_json).unwrap();
+
+        let suggestions = ProjectDetector::scan_package_json(temp_dir.path())
+            .unwrap()
+            .unwrap();
+
+        // Should use pnpm commands
+        let dev = suggestions
+            .iter()
+            .find(|s| matches!(s.field, ProjectConfigField::DevScript))
+            .unwrap();
+        assert_eq!(dev.value, "pnpm run dev");
+
+        let setup = suggestions
+            .iter()
+            .find(|s| matches!(s.field, ProjectConfigField::SetupScript))
+            .unwrap();
+        assert_eq!(setup.value, "pnpm install");
+
+        let cleanup = suggestions
+            .iter()
+            .find(|s| matches!(s.field, ProjectConfigField::CleanupScript))
+            .unwrap();
+        assert!(cleanup.value.contains("pnpm run test"));
     }
 }
