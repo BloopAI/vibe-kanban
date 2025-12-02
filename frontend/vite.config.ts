@@ -1,6 +1,6 @@
 // vite.config.ts
 import { sentryVitePlugin } from "@sentry/vite-plugin";
-import { defineConfig, loadEnv, Plugin } from "vite";
+import { defineConfig, Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import fs from "fs";
@@ -49,46 +49,34 @@ export default schemas;
   };
 }
 
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd());
-  const shareApiBase =
-    process.env.VITE_VK_SHARED_API_BASE ||
-    env.VITE_VK_SHARED_API_BASE ||
-    "http://localhost:3000";
-
-  return {
-    plugins: [
-      react(),
-      sentryVitePlugin({ org: "bloop-ai", project: "vibe-kanban" }),
-      executorSchemasPlugin(),
-    ],
-    resolve: {
-      alias: {
-        "@": path.resolve(__dirname, "./src"),
-        shared: path.resolve(__dirname, "../shared"),
-      },
+export default defineConfig({
+  plugins: [
+    react(),
+    sentryVitePlugin({ org: "bloop-ai", project: "vibe-kanban" }),
+    executorSchemasPlugin(),
+  ],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+      shared: path.resolve(__dirname, "../shared"),
     },
-    server: {
-      port: parseInt(process.env.FRONTEND_PORT || "3000"),
-      proxy: {
-        "/api": {
-          target: `http://localhost:${process.env.BACKEND_PORT || "3001"}`,
-          changeOrigin: true,
-          ws: true,
-        },
-        "/v1": {
-          target: shareApiBase,
-          changeOrigin: true,
-        },
-      },
-      fs: {
-        allow: [path.resolve(__dirname, "."), path.resolve(__dirname, "..")],
-      },
-      open: process.env.VITE_OPEN === "true",
+  },
+  server: {
+    port: parseInt(process.env.FRONTEND_PORT || "3000"),
+    proxy: {
+      "/api": {
+        target: `http://localhost:${process.env.BACKEND_PORT || "3001"}`,
+        changeOrigin: true,
+        ws: true,
+      }
     },
-    optimizeDeps: {
-      exclude: ["wa-sqlite"],
+    fs: {
+      allow: [path.resolve(__dirname, "."), path.resolve(__dirname, "..")],
     },
-    build: { sourcemap: true },
-  };
+    open: process.env.VITE_OPEN === "true",
+  },
+  optimizeDeps: {
+    exclude: ["wa-sqlite"],
+  },
+  build: { sourcemap: true },
 });

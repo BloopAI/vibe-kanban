@@ -1,7 +1,9 @@
 import { oauthApi, ApiError } from './api';
 import { UserData, AssigneesQuery } from 'shared/types';
 
-const makeRequest = async (url: string, options: RequestInit = {}) => {
+export const REMOTE_API_URL = import.meta.env.VITE_VK_SHARED_API_BASE || '';
+
+const makeRequest = async (path: string, options: RequestInit = {}) => {
   const tokenRes = await oauthApi.getToken();
   if (!tokenRes?.access_token) {
     throw new Error('Not authenticated');
@@ -13,7 +15,9 @@ const makeRequest = async (url: string, options: RequestInit = {}) => {
   }
   headers.set('Authorization', `Bearer ${tokenRes.access_token}`);
 
-  return fetch(url, {
+  console.log('VITE_VK_SHARED_API_BASE:', REMOTE_API_URL);
+
+  return fetch(`${REMOTE_API_URL}${path}`, {
     ...options,
     headers,
     credentials: 'include',

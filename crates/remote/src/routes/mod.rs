@@ -5,7 +5,7 @@ use axum::{
     routing::get,
 };
 use tower_http::{
-    cors::CorsLayer,
+    cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer},
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, RequestId, SetRequestIdLayer},
     services::{ServeDir, ServeFile},
     trace::{DefaultOnFailure, DefaultOnResponse, TraceLayer},
@@ -72,7 +72,13 @@ pub fn router(state: AppState) -> Router {
         .nest("/v1", v1_public)
         .nest("/v1", v1_protected)
         .fallback_service(spa)
-        .layer(CorsLayer::permissive())
+        .layer(
+            CorsLayer::new()
+                .allow_origin(AllowOrigin::mirror_request())
+                .allow_methods(AllowMethods::mirror_request())
+                .allow_headers(AllowHeaders::mirror_request())
+                .allow_credentials(true),
+        )
         .layer(trace_layer)
         .layer(PropagateRequestIdLayer::new(HeaderName::from_static(
             "x-request-id",
