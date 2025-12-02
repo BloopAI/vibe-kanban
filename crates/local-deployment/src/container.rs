@@ -986,12 +986,16 @@ impl ContainerService for LocalContainerService {
         let mut env = ExecutionEnv::new();
 
         // Load task and project context for environment variables
-        let task = task_attempt.parent_task(&self.db.pool).await?.ok_or(
-            ContainerError::Other(anyhow!("Task not found for task attempt")),
-        )?;
-        let project = task.parent_project(&self.db.pool).await?.ok_or(
-            ContainerError::Other(anyhow!("Project not found for task")),
-        )?;
+        let task = task_attempt
+            .parent_task(&self.db.pool)
+            .await?
+            .ok_or(ContainerError::Other(anyhow!(
+                "Task not found for task attempt"
+            )))?;
+        let project = task
+            .parent_project(&self.db.pool)
+            .await?
+            .ok_or(ContainerError::Other(anyhow!("Project not found for task")))?;
 
         env.insert("VK_PROJECT_NAME", &project.name);
         env.insert("VK_TASK_ID", task.id.to_string());
