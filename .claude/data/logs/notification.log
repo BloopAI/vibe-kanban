@@ -1,0 +1,40 @@
+{"timestamp": "2025-12-02T00:51:14Z", "event": "notification_args", "args": {"notify": true}, "argv": ["--notify"]}
+{"timestamp": "2025-12-02T00:51:14Z", "event": "notification_received", "payload": {"session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a", "transcript_path": "/home/david/.claude/projects/-home-david-Code-vibe-kanban/e320f7d3-5c5e-43d7-b6eb-dc446498717a.jsonl", "cwd": "/home/david/Code/vibe-kanban", "hook_event_name": "Notification", "message": "Claude is waiting for your input", "notification_type": "idle_prompt"}}
+{"timestamp": "2025-12-02T00:51:14Z", "event": "notification_tts_requested", "message": "Claude is waiting for your input"}
+{"timestamp": "2025-12-02T00:51:14Z", "event": "tts_attempt", "script": "/home/david/.claude/hooks/utils/tts/elevenlabs_tts.py", "message": "David, your agent needs your input"}
+{"timestamp": "2025-12-02T00:51:16Z", "event": "post_tool_log_missing", "session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a"}
+{"timestamp": "2025-12-02T00:51:16Z", "event": "slack_context_missing", "session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a"}
+{"timestamp": "2025-12-02T00:51:16Z", "event": "slack_attempt", "session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a", "script": "/home/david/.claude/scripts/notify-slack.py", "message_preview": "Claude is waiting for your input *Claude Output:* Here's a comprehensive overview of the *Vibe Kanban* project: --- *Project Purpose and Goals* *Vibe Kanban* is a task management and orchestration…"}
+{"timestamp": "2025-12-02T00:51:17Z", "event": "slack_success", "session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a"}
+{"timestamp": "2025-12-02T01:25:12Z", "event": "notification_args", "args": {"notify": true}, "argv": ["--notify"]}
+{"timestamp": "2025-12-02T01:25:12Z", "event": "notification_received", "payload": {"session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a", "transcript_path": "/home/david/.claude/projects/-home-david-Code-vibe-kanban/e320f7d3-5c5e-43d7-b6eb-dc446498717a.jsonl", "cwd": "/home/david/Code/vibe-kanban", "hook_event_name": "Notification", "message": "Claude is waiting for your input", "notification_type": "idle_prompt"}}
+{"timestamp": "2025-12-02T01:25:12Z", "event": "notification_tts_requested", "message": "Claude is waiting for your input"}
+{"timestamp": "2025-12-02T01:25:12Z", "event": "tts_attempt", "script": "/home/david/.claude/hooks/utils/tts/elevenlabs_tts.py", "message": "Your agent needs your input"}
+{"timestamp": "2025-12-02T01:25:12Z", "event": "post_tool_log_missing", "session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a"}
+{"timestamp": "2025-12-02T01:25:12Z", "event": "slack_context_missing", "session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a"}
+{"timestamp": "2025-12-02T01:25:12Z", "event": "slack_attempt", "session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a", "script": "/home/david/.claude/scripts/notify-slack.py", "message_preview": "Claude is waiting for your input *Claude Output:* Yes, all the updates have been pushed and merged. Here's the status: *Branch:* `feature/network-dev-server-preview` is pushed and in sync with…"}
+{"timestamp": "2025-12-02T01:25:12Z", "event": "slack_success", "session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a"}
+{"timestamp": "2025-12-02T01:30:45Z", "event": "notification_args", "args": {"notify": true}, "argv": ["--notify"]}
+{"timestamp": "2025-12-02T01:30:45Z", "event": "notification_received", "payload": {"session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a", "transcript_path": "/home/david/.claude/projects/-home-david-Code-vibe-kanban/e320f7d3-5c5e-43d7-b6eb-dc446498717a.jsonl", "cwd": "/home/david/Code/vibe-kanban", "hook_event_name": "Notification", "message": "Claude is waiting for your input", "notification_type": "idle_prompt"}}
+{"timestamp": "2025-12-02T01:30:45Z", "event": "notification_tts_requested", "message": "Claude is waiting for your input"}
+{"timestamp": "2025-12-02T01:30:45Z", "event": "tts_attempt", "script": "/home/david/.claude/hooks/utils/tts/elevenlabs_tts.py", "message": "David, your agent needs your input"}
+{"timestamp": "2025-12-02T01:30:46Z", "event": "post_tool_log_missing", "session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a"}
+{"timestamp": "2025-12-02T01:30:46Z", "event": "slack_context_missing", "session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a"}
+{"timestamp": "2025-12-02T01:30:46Z", "event": "slack_attempt", "session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a", "script": "/home/david/.claude/scripts/notify-slack.py", "message_preview": "Claude is waiting for your input *Claude Output:* Here's the current state: *Your fork (origin/main):* Has your feature work that's not in local: • PR #4: File listing feature • PR #3, #2, #1:…"}
+{"timestamp": "2025-12-02T01:30:46Z", "event": "slack_success", "session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a"}
+{"timestamp": "2025-12-02T01:34:27Z", "event": "notification_args", "args": {"notify": true}, "argv": ["--notify"]}
+{"timestamp": "2025-12-02T01:34:27Z", "event": "notification_received", "payload": {"session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a", "transcript_path": "/home/david/.claude/projects/-home-david-Code-vibe-kanban/e320f7d3-5c5e-43d7-b6eb-dc446498717a.jsonl", "cwd": "/home/david/Code/vibe-kanban", "hook_event_name": "Notification", "message": "Claude is waiting for your input", "notification_type": "idle_prompt"}}
+{"timestamp": "2025-12-02T01:34:27Z", "event": "notification_tts_requested", "message": "Claude is waiting for your input"}
+{"timestamp": "2025-12-02T01:34:27Z", "event": "tts_attempt", "script": "/home/david/.claude/hooks/utils/tts/elevenlabs_tts.py", "message": "Your agent needs your input"}
+{"timestamp": "2025-12-02T01:34:27Z", "event": "post_tool_log_missing", "session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a"}
+{"timestamp": "2025-12-02T01:34:27Z", "event": "slack_context_missing", "session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a"}
+{"timestamp": "2025-12-02T01:34:27Z", "event": "slack_attempt", "session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a", "script": "/home/david/.claude/scripts/notify-slack.py", "message_preview": "Claude is waiting for your input *Claude Output:* Pushed. Your fork is now up to date with BloopAI upstream."}
+{"timestamp": "2025-12-02T01:34:28Z", "event": "slack_success", "session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a"}
+{"timestamp": "2025-12-02T03:19:06Z", "event": "notification_args", "args": {"notify": true}, "argv": ["--notify"]}
+{"timestamp": "2025-12-02T03:19:06Z", "event": "notification_received", "payload": {"session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a", "transcript_path": "/home/david/.claude/projects/-home-david-Code-vibe-kanban/e320f7d3-5c5e-43d7-b6eb-dc446498717a.jsonl", "cwd": "/home/david/Code/vibe-kanban", "hook_event_name": "Notification", "message": "Claude is waiting for your input", "notification_type": "idle_prompt"}}
+{"timestamp": "2025-12-02T03:19:06Z", "event": "notification_tts_requested", "message": "Claude is waiting for your input"}
+{"timestamp": "2025-12-02T03:19:06Z", "event": "tts_attempt", "script": "/home/david/.claude/hooks/utils/tts/elevenlabs_tts.py", "message": "David, your agent needs your input"}
+{"timestamp": "2025-12-02T03:19:06Z", "event": "post_tool_log_missing", "session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a"}
+{"timestamp": "2025-12-02T03:19:06Z", "event": "slack_context_missing", "session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a"}
+{"timestamp": "2025-12-02T03:19:06Z", "event": "slack_attempt", "session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a", "script": "/home/david/.claude/scripts/notify-slack.py", "message_preview": "Claude is waiting for your input *Claude Output:* Done. Committed and pushed to `origin/main`: ``` e15ff165 fix: Update Axum wildcard route syntax for 0.8+ compatibility ``` *Note:* Left uncommitted:…"}
+{"timestamp": "2025-12-02T03:19:07Z", "event": "slack_success", "session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a"}

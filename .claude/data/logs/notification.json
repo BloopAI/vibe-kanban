@@ -1,0 +1,42 @@
+[
+  {
+    "session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a",
+    "transcript_path": "/home/david/.claude/projects/-home-david-Code-vibe-kanban/e320f7d3-5c5e-43d7-b6eb-dc446498717a.jsonl",
+    "cwd": "/home/david/Code/vibe-kanban",
+    "hook_event_name": "Notification",
+    "message": "Claude is waiting for your input",
+    "notification_type": "idle_prompt"
+  },
+  {
+    "session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a",
+    "transcript_path": "/home/david/.claude/projects/-home-david-Code-vibe-kanban/e320f7d3-5c5e-43d7-b6eb-dc446498717a.jsonl",
+    "cwd": "/home/david/Code/vibe-kanban",
+    "hook_event_name": "Notification",
+    "message": "Claude is waiting for your input",
+    "notification_type": "idle_prompt"
+  },
+  {
+    "session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a",
+    "transcript_path": "/home/david/.claude/projects/-home-david-Code-vibe-kanban/e320f7d3-5c5e-43d7-b6eb-dc446498717a.jsonl",
+    "cwd": "/home/david/Code/vibe-kanban",
+    "hook_event_name": "Notification",
+    "message": "Claude is waiting for your input",
+    "notification_type": "idle_prompt"
+  },
+  {
+    "session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a",
+    "transcript_path": "/home/david/.claude/projects/-home-david-Code-vibe-kanban/e320f7d3-5c5e-43d7-b6eb-dc446498717a.jsonl",
+    "cwd": "/home/david/Code/vibe-kanban",
+    "hook_event_name": "Notification",
+    "message": "Claude is waiting for your input",
+    "notification_type": "idle_prompt"
+  },
+  {
+    "session_id": "e320f7d3-5c5e-43d7-b6eb-dc446498717a",
+    "transcript_path": "/home/david/.claude/projects/-home-david-Code-vibe-kanban/e320f7d3-5c5e-43d7-b6eb-dc446498717a.jsonl",
+    "cwd": "/home/david/Code/vibe-kanban",
+    "hook_event_name": "Notification",
+    "message": "Claude is waiting for your input",
+    "notification_type": "idle_prompt"
+  }
+]
