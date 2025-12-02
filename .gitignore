@@ -85,3 +85,6 @@ dev_assets
 
 vibe-kanban-cloud/
 remote-frontend/dist
+
+# Claude Code
+.claude/
