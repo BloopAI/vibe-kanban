@@ -16,6 +16,7 @@ use crate::{
     actions::ExecutorAction,
     approvals::ExecutorApprovalService,
     command::CommandBuildError,
+    env::ExecutionEnv,
     executors::{
         amp::Amp, claude::ClaudeCode, codex::Codex, copilot::Copilot, cursor::CursorAgent,
         droid::Droid, gemini::Gemini, opencode::Opencode, qwen::QwenCode,
@@ -192,12 +193,18 @@ impl AvailabilityInfo {
 pub trait StandardCodingAgentExecutor {
     fn use_approvals(&mut self, _approvals: Arc<dyn ExecutorApprovalService>) {}
 
-    async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError>;
+    async fn spawn(
+        &self,
+        current_dir: &Path,
+        prompt: &str,
+        env: Option<&ExecutionEnv>,
+    ) -> Result<SpawnedChild, ExecutorError>;
     async fn spawn_follow_up(
         &self,
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        env: Option<&ExecutionEnv>,
     ) -> Result<SpawnedChild, ExecutorError>;
     fn normalize_logs(&self, _raw_logs_event_store: Arc<MsgStore>, _worktree_path: &Path);
 

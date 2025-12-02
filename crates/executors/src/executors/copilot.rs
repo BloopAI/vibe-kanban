@@ -23,6 +23,7 @@ use workspace_utils::{msg_store::MsgStore, path::get_vibe_kanban_temp_dir};
 
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
+    env::ExecutionEnv,
     executors::{
         AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
     },
@@ -97,7 +98,12 @@ impl Copilot {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Copilot {
-    async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
+    async fn spawn(
+        &self,
+        current_dir: &Path,
+        prompt: &str,
+        env: Option<&ExecutionEnv>,
+    ) -> Result<SpawnedChild, ExecutorError> {
         let log_dir = Self::create_temp_log_dir(current_dir).await?;
         let command_parts = self
             .build_command_builder(&log_dir.to_string_lossy())
@@ -115,6 +121,11 @@ impl StandardCodingAgentExecutor for Copilot {
             .current_dir(current_dir)
             .args(&args)
             .env("NODE_NO_WARNINGS", "1");
+
+        // Apply environment variables if provided
+        if let Some(env) = env {
+            env.apply_to_command(&mut command);
+        }
 
         let mut child = command.group_spawn()?;
 
@@ -135,6 +146,7 @@ impl StandardCodingAgentExecutor for Copilot {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        env: Option<&ExecutionEnv>,
     ) -> Result<SpawnedChild, ExecutorError> {
         let log_dir = Self::create_temp_log_dir(current_dir).await?;
         let command_parts = self
@@ -154,6 +166,11 @@ impl StandardCodingAgentExecutor for Copilot {
             .current_dir(current_dir)
             .args(&args)
             .env("NODE_NO_WARNINGS", "1");
+
+        // Apply environment variables if provided
+        if let Some(env) = env {
+            env.apply_to_command(&mut command);
+        }
 
         let mut child = command.group_spawn()?;
 

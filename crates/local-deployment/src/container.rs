@@ -31,6 +31,7 @@ use executors::{
         coding_agent_initial::CodingAgentInitialRequest,
     },
     approvals::{ExecutorApprovalService, NoopExecutorApprovalService},
+    env::ExecutionEnv,
     executors::{BaseCodingAgent, ExecutorExitResult, ExecutorExitSignal, InterruptSender},
     logs::{
         NormalizedEntryType,
@@ -981,10 +982,26 @@ impl ContainerService for LocalContainerService {
                 _ => Arc::new(NoopExecutorApprovalService {}),
             };
 
+        // Build ExecutionEnv with VK_* variables
+        let mut env = ExecutionEnv::new();
+
+        // Load task and project context for environment variables
+        let task = task_attempt.parent_task(&self.db.pool).await?.ok_or(
+            ContainerError::Other(anyhow!("Task not found for task attempt")),
+        )?;
+        let project = task.parent_project(&self.db.pool).await?.ok_or(
+            ContainerError::Other(anyhow!("Project not found for task")),
+        )?;
+
+        env.insert("VK_PROJECT_NAME", &project.name);
+        env.insert("VK_TASK_ID", task.id.to_string());
+        env.insert("VK_ATTEMPT_ID", task_attempt.id.to_string());
+        env.insert("VK_ATTEMPT_BRANCH", &task_attempt.branch);
+
         // Create the child and stream, add to execution tracker with timeout
         let mut spawned = tokio::time::timeout(
             Duration::from_secs(30),
-            executor_action.spawn(&current_dir, approvals_service),
+            executor_action.spawn(&current_dir, approvals_service, Some(&env)),
         )
         .await
         .map_err(|_| {

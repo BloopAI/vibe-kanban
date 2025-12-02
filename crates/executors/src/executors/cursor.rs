@@ -17,6 +17,7 @@ use workspace_utils::{
 
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
+    env::ExecutionEnv,
     executors::{
         AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
     },
@@ -68,7 +69,12 @@ impl CursorAgent {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for CursorAgent {
-    async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
+    async fn spawn(
+        &self,
+        current_dir: &Path,
+        prompt: &str,
+        env: Option<&ExecutionEnv>,
+    ) -> Result<SpawnedChild, ExecutorError> {
         mcp::ensure_mcp_server_trust(self, current_dir).await;
 
         let command_parts = self.build_command_builder().build_initial()?;
@@ -86,6 +92,11 @@ impl StandardCodingAgentExecutor for CursorAgent {
             .current_dir(current_dir)
             .args(&args);
 
+        // Apply environment variables if provided
+        if let Some(env) = env {
+            env.apply_to_command(&mut command);
+        }
+
         let mut child = command.group_spawn()?;
 
         if let Some(mut stdin) = child.inner().stdin.take() {
@@ -101,6 +112,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        env: Option<&ExecutionEnv>,
     ) -> Result<SpawnedChild, ExecutorError> {
         mcp::ensure_mcp_server_trust(self, current_dir).await;
 
@@ -119,6 +131,11 @@ impl StandardCodingAgentExecutor for CursorAgent {
             .stderr(Stdio::piped())
             .current_dir(current_dir)
             .args(&args);
+
+        // Apply environment variables if provided
+        if let Some(env) = env {
+            env.apply_to_command(&mut command);
+        }
 
         let mut child = command.group_spawn()?;
 

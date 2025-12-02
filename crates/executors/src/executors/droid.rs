@@ -11,6 +11,7 @@ use workspace_utils::msg_store::MsgStore;
 
 use crate::{
     command::CommandParts,
+    env::ExecutionEnv,
     executors::{AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
     logs::utils::EntryIndexProvider,
 };
@@ -104,10 +105,11 @@ impl Droid {
     }
 }
 
-async fn spawn(
+async fn spawn_droid(
     command_parts: CommandParts,
     prompt: &String,
     current_dir: &Path,
+    env: Option<&ExecutionEnv>,
 ) -> Result<SpawnedChild, ExecutorError> {
     let (program_path, args) = command_parts.into_resolved().await?;
 
@@ -119,6 +121,11 @@ async fn spawn(
         .stderr(Stdio::piped())
         .current_dir(current_dir)
         .args(args);
+
+    // Apply environment variables if provided
+    if let Some(env) = env {
+        env.apply_to_command(&mut command);
+    }
 
     let mut child = command.group_spawn()?;
 
@@ -132,11 +139,16 @@ async fn spawn(
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Droid {
-    async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
+    async fn spawn(
+        &self,
+        current_dir: &Path,
+        prompt: &str,
+        env: Option<&ExecutionEnv>,
+    ) -> Result<SpawnedChild, ExecutorError> {
         let droid_command = self.build_command_builder().build_initial()?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
-        spawn(droid_command, &combined_prompt, current_dir).await
+        spawn_droid(droid_command, &combined_prompt, current_dir, env).await
     }
 
     async fn spawn_follow_up(
@@ -144,6 +156,7 @@ impl StandardCodingAgentExecutor for Droid {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        env: Option<&ExecutionEnv>,
     ) -> Result<SpawnedChild, ExecutorError> {
         let forked_session_id = fork_session(session_id).map_err(|e| {
             ExecutorError::FollowUpNotSupported(format!(
@@ -155,7 +168,7 @@ impl StandardCodingAgentExecutor for Droid {
             .build_follow_up(&["--session-id".to_string(), forked_session_id.clone()])?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
-        spawn(continue_cmd, &combined_prompt, current_dir).await
+        spawn_droid(continue_cmd, &combined_prompt, current_dir, env).await
     }
 
     fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &Path) {

@@ -21,6 +21,7 @@ use self::{client::ClaudeAgentClient, protocol::ProtocolPeer, types::PermissionM
 use crate::{
     approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuilder, CommandParts, apply_overrides},
+    env::ExecutionEnv,
     executors::{
         AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
         codex::client::LogWriter,
@@ -153,10 +154,15 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         self.approvals_service = Some(approvals);
     }
 
-    async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
+    async fn spawn(
+        &self,
+        current_dir: &Path,
+        prompt: &str,
+        env: Option<&ExecutionEnv>,
+    ) -> Result<SpawnedChild, ExecutorError> {
         let command_builder = self.build_command_builder().await;
         let command_parts = command_builder.build_initial()?;
-        self.spawn_internal(current_dir, prompt, command_parts)
+        self.spawn_internal(current_dir, prompt, command_parts, env)
             .await
     }
 
@@ -165,6 +171,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        env: Option<&ExecutionEnv>,
     ) -> Result<SpawnedChild, ExecutorError> {
         let command_builder = self.build_command_builder().await;
         let command_parts = command_builder.build_follow_up(&[
@@ -172,7 +179,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
             "--resume".to_string(),
             session_id.to_string(),
         ])?;
-        self.spawn_internal(current_dir, prompt, command_parts)
+        self.spawn_internal(current_dir, prompt, command_parts, env)
             .await
     }
 
@@ -220,6 +227,7 @@ impl ClaudeCode {
         current_dir: &Path,
         prompt: &str,
         command_parts: CommandParts,
+        env: Option<&ExecutionEnv>,
     ) -> Result<SpawnedChild, ExecutorError> {
         let (program_path, args) = command_parts.into_resolved().await?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
@@ -232,6 +240,11 @@ impl ClaudeCode {
             .stderr(Stdio::piped())
             .current_dir(current_dir)
             .args(&args);
+
+        // Apply environment variables if provided
+        if let Some(env) = env {
+            env.apply_to_command(&mut command);
+        }
 
         // Remove ANTHROPIC_API_KEY if disable_api_key is enabled
         if self.disable_api_key.unwrap_or(false) {

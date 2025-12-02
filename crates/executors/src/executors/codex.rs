@@ -32,6 +32,7 @@ use self::{
 use crate::{
     approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuilder, CommandParts, apply_overrides},
+    env::ExecutionEnv,
     executors::{
         AppendPrompt, AvailabilityInfo, ExecutorError, ExecutorExitResult, SpawnedChild,
         StandardCodingAgentExecutor,
@@ -147,9 +148,15 @@ impl StandardCodingAgentExecutor for Codex {
         self.approvals = Some(approvals);
     }
 
-    async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
+    async fn spawn(
+        &self,
+        current_dir: &Path,
+        prompt: &str,
+        env: Option<&ExecutionEnv>,
+    ) -> Result<SpawnedChild, ExecutorError> {
         let command_parts = self.build_command_builder().build_initial()?;
-        self.spawn(current_dir, prompt, command_parts, None).await
+        self.spawn_inner(current_dir, prompt, command_parts, None, env)
+            .await
     }
 
     async fn spawn_follow_up(
@@ -157,9 +164,10 @@ impl StandardCodingAgentExecutor for Codex {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        env: Option<&ExecutionEnv>,
     ) -> Result<SpawnedChild, ExecutorError> {
         let command_parts = self.build_command_builder().build_follow_up(&[])?;
-        self.spawn(current_dir, prompt, command_parts, Some(session_id))
+        self.spawn_inner(current_dir, prompt, command_parts, Some(session_id), env)
             .await
     }
 
@@ -283,12 +291,13 @@ impl Codex {
         }
     }
 
-    async fn spawn(
+    async fn spawn_inner(
         &self,
         current_dir: &Path,
         prompt: &str,
         command_parts: CommandParts,
         resume_session: Option<&str>,
+        env: Option<&ExecutionEnv>,
     ) -> Result<SpawnedChild, ExecutorError> {
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let (program_path, args) = command_parts.into_resolved().await?;
@@ -304,6 +313,11 @@ impl Codex {
             .env("NODE_NO_WARNINGS", "1")
             .env("NO_COLOR", "1")
             .env("RUST_LOG", "error");
+
+        // Apply environment variables if provided
+        if let Some(env) = env {
+            env.apply_to_command(&mut process);
+        }
 
         let mut child = process.group_spawn()?;
 
