@@ -287,16 +287,24 @@ if (require.main === module) {
         .catch(console.error);
       break;
 
+    case "host":
+      // Load .env if not already loaded (getPorts does this via loadEnvFile at top)
+      console.log(process.env.HOST || "127.0.0.1");
+      break;
+
     default:
       console.log("Usage:");
       console.log(
-        "  node setup-dev-environment.js get     - Setup dev environment (ports + assets)"
+        "  node setup-dev-environment.js get      - Setup dev environment (ports + assets)"
       );
       console.log(
         "  node setup-dev-environment.js frontend - Get frontend port only"
       );
       console.log(
         "  node setup-dev-environment.js backend  - Get backend port only"
+      );
+      console.log(
+        "  node setup-dev-environment.js host     - Get host binding (from .env or default)"
       );
       console.log(
         "  node setup-dev-environment.js clear    - Clear saved ports"
