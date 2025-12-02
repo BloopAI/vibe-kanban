@@ -133,7 +133,7 @@ impl StandardCodingAgentExecutor for Opencode {
         &self,
         current_dir: &Path,
         prompt: &str,
-        env: Option<&ExecutionEnv>,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         // Start a dedicated local share bridge bound to this opencode process
         let bridge = ShareBridge::start().await.map_err(ExecutorError::Io)?;
@@ -154,10 +154,8 @@ impl StandardCodingAgentExecutor for Opencode {
             .env("OPENCODE_AUTO_SHARE", "1")
             .env("OPENCODE_API", bridge.base_url.clone());
 
-        // Apply environment variables if provided
-        if let Some(env) = env {
-            env.apply_to_command(&mut command);
-        }
+        // Apply environment variables
+        env.apply_to_command(&mut command);
 
         let mut child = match command.group_spawn() {
             Ok(c) => c,
@@ -203,7 +201,7 @@ impl StandardCodingAgentExecutor for Opencode {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
-        env: Option<&ExecutionEnv>,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         // Start a dedicated local share bridge bound to this opencode process
         let bridge = ShareBridge::start().await.map_err(ExecutorError::Io)?;
@@ -226,10 +224,8 @@ impl StandardCodingAgentExecutor for Opencode {
             .env("OPENCODE_AUTO_SHARE", "1")
             .env("OPENCODE_API", bridge.base_url.clone());
 
-        // Apply environment variables if provided
-        if let Some(env) = env {
-            env.apply_to_command(&mut command);
-        }
+        // Apply environment variables
+        env.apply_to_command(&mut command);
 
         let mut child = match command.group_spawn() {
             Ok(c) => c,

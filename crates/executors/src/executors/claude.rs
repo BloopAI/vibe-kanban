@@ -158,7 +158,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         &self,
         current_dir: &Path,
         prompt: &str,
-        env: Option<&ExecutionEnv>,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let command_builder = self.build_command_builder().await;
         let command_parts = command_builder.build_initial()?;
@@ -171,7 +171,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
-        env: Option<&ExecutionEnv>,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let command_builder = self.build_command_builder().await;
         let command_parts = command_builder.build_follow_up(&[
@@ -227,7 +227,7 @@ impl ClaudeCode {
         current_dir: &Path,
         prompt: &str,
         command_parts: CommandParts,
-        env: Option<&ExecutionEnv>,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let (program_path, args) = command_parts.into_resolved().await?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
@@ -241,10 +241,8 @@ impl ClaudeCode {
             .current_dir(current_dir)
             .args(&args);
 
-        // Apply environment variables if provided
-        if let Some(env) = env {
-            env.apply_to_command(&mut command);
-        }
+        // Apply environment variables
+        env.apply_to_command(&mut command);
 
         // Remove ANTHROPIC_API_KEY if disable_api_key is enabled
         if self.disable_api_key.unwrap_or(false) {

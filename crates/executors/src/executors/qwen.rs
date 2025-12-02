@@ -43,7 +43,7 @@ impl StandardCodingAgentExecutor for QwenCode {
         &self,
         current_dir: &Path,
         prompt: &str,
-        env: Option<&ExecutionEnv>,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let qwen_command = self.build_command_builder().build_initial()?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
@@ -58,7 +58,7 @@ impl StandardCodingAgentExecutor for QwenCode {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
-        env: Option<&ExecutionEnv>,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let qwen_command = self.build_command_builder().build_follow_up(&[])?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);

@@ -39,7 +39,7 @@ impl Executable for CodingAgentFollowUpRequest {
         &self,
         current_dir: &Path,
         approvals: Arc<dyn ExecutorApprovalService>,
-        env: Option<&ExecutionEnv>,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let executor_profile_id = self.get_executor_profile_id();
         let mut agent = ExecutorConfigs::get_cached()

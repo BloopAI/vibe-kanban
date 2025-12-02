@@ -102,7 +102,7 @@ impl StandardCodingAgentExecutor for Copilot {
         &self,
         current_dir: &Path,
         prompt: &str,
-        env: Option<&ExecutionEnv>,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let log_dir = Self::create_temp_log_dir(current_dir).await?;
         let command_parts = self
@@ -122,10 +122,8 @@ impl StandardCodingAgentExecutor for Copilot {
             .args(&args)
             .env("NODE_NO_WARNINGS", "1");
 
-        // Apply environment variables if provided
-        if let Some(env) = env {
-            env.apply_to_command(&mut command);
-        }
+        // Apply environment variables
+        env.apply_to_command(&mut command);
 
         let mut child = command.group_spawn()?;
 
@@ -146,7 +144,7 @@ impl StandardCodingAgentExecutor for Copilot {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
-        env: Option<&ExecutionEnv>,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let log_dir = Self::create_temp_log_dir(current_dir).await?;
         let command_parts = self
@@ -167,10 +165,8 @@ impl StandardCodingAgentExecutor for Copilot {
             .args(&args)
             .env("NODE_NO_WARNINGS", "1");
 
-        // Apply environment variables if provided
-        if let Some(env) = env {
-            env.apply_to_command(&mut command);
-        }
+        // Apply environment variables
+        env.apply_to_command(&mut command);
 
         let mut child = command.group_spawn()?;
 

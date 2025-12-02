@@ -109,7 +109,7 @@ async fn spawn_droid(
     command_parts: CommandParts,
     prompt: &String,
     current_dir: &Path,
-    env: Option<&ExecutionEnv>,
+    env: &ExecutionEnv,
 ) -> Result<SpawnedChild, ExecutorError> {
     let (program_path, args) = command_parts.into_resolved().await?;
 
@@ -122,10 +122,8 @@ async fn spawn_droid(
         .current_dir(current_dir)
         .args(args);
 
-    // Apply environment variables if provided
-    if let Some(env) = env {
-        env.apply_to_command(&mut command);
-    }
+    // Apply environment variables
+    env.apply_to_command(&mut command);
 
     let mut child = command.group_spawn()?;
 
@@ -143,7 +141,7 @@ impl StandardCodingAgentExecutor for Droid {
         &self,
         current_dir: &Path,
         prompt: &str,
-        env: Option<&ExecutionEnv>,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let droid_command = self.build_command_builder().build_initial()?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
@@ -156,7 +154,7 @@ impl StandardCodingAgentExecutor for Droid {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
-        env: Option<&ExecutionEnv>,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let forked_session_id = fork_session(session_id).map_err(|e| {
             ExecutorError::FollowUpNotSupported(format!(

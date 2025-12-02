@@ -73,7 +73,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
         &self,
         current_dir: &Path,
         prompt: &str,
-        env: Option<&ExecutionEnv>,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         mcp::ensure_mcp_server_trust(self, current_dir).await;
 
@@ -92,10 +92,8 @@ impl StandardCodingAgentExecutor for CursorAgent {
             .current_dir(current_dir)
             .args(&args);
 
-        // Apply environment variables if provided
-        if let Some(env) = env {
-            env.apply_to_command(&mut command);
-        }
+        // Apply environment variables
+        env.apply_to_command(&mut command);
 
         let mut child = command.group_spawn()?;
 
@@ -112,7 +110,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
-        env: Option<&ExecutionEnv>,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         mcp::ensure_mcp_server_trust(self, current_dir).await;
 
@@ -132,10 +130,8 @@ impl StandardCodingAgentExecutor for CursorAgent {
             .current_dir(current_dir)
             .args(&args);
 
-        // Apply environment variables if provided
-        if let Some(env) = env {
-            env.apply_to_command(&mut command);
-        }
+        // Apply environment variables
+        env.apply_to_command(&mut command);
 
         let mut child = command.group_spawn()?;
 

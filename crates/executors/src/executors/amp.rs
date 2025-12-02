@@ -49,7 +49,7 @@ impl StandardCodingAgentExecutor for Amp {
         &self,
         current_dir: &Path,
         prompt: &str,
-        env: Option<&ExecutionEnv>,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let command_parts = self.build_command_builder().build_initial()?;
         let (executable_path, args) = command_parts.into_resolved().await?;
@@ -65,10 +65,8 @@ impl StandardCodingAgentExecutor for Amp {
             .current_dir(current_dir)
             .args(&args);
 
-        // Apply environment variables if provided
-        if let Some(env) = env {
-            env.apply_to_command(&mut command);
-        }
+        // Apply environment variables
+        env.apply_to_command(&mut command);
 
         let mut child = command.group_spawn()?;
 
@@ -86,7 +84,7 @@ impl StandardCodingAgentExecutor for Amp {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
-        env: Option<&ExecutionEnv>,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         // 1) Fork the thread synchronously to obtain new thread id
         let builder = self.build_command_builder();
@@ -139,10 +137,8 @@ impl StandardCodingAgentExecutor for Amp {
             .current_dir(current_dir)
             .args(&continue_args);
 
-        // Apply environment variables if provided
-        if let Some(env) = env {
-            env.apply_to_command(&mut command);
-        }
+        // Apply environment variables
+        env.apply_to_command(&mut command);
 
         let mut child = command.group_spawn()?;
 

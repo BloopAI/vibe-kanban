@@ -33,7 +33,7 @@ impl Executable for CodingAgentInitialRequest {
         &self,
         current_dir: &Path,
         approvals: Arc<dyn ExecutorApprovalService>,
-        env: Option<&ExecutionEnv>,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let executor_profile_id = self.executor_profile_id.clone();
         let mut agent = ExecutorConfigs::get_cached()

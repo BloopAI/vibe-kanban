@@ -152,7 +152,7 @@ impl StandardCodingAgentExecutor for Codex {
         &self,
         current_dir: &Path,
         prompt: &str,
-        env: Option<&ExecutionEnv>,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let command_parts = self.build_command_builder().build_initial()?;
         self.spawn_inner(current_dir, prompt, command_parts, None, env)
@@ -164,7 +164,7 @@ impl StandardCodingAgentExecutor for Codex {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
-        env: Option<&ExecutionEnv>,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let command_parts = self.build_command_builder().build_follow_up(&[])?;
         self.spawn_inner(current_dir, prompt, command_parts, Some(session_id), env)
@@ -297,7 +297,7 @@ impl Codex {
         prompt: &str,
         command_parts: CommandParts,
         resume_session: Option<&str>,
-        env: Option<&ExecutionEnv>,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let (program_path, args) = command_parts.into_resolved().await?;
@@ -314,10 +314,8 @@ impl Codex {
             .env("NO_COLOR", "1")
             .env("RUST_LOG", "error");
 
-        // Apply environment variables if provided
-        if let Some(env) = env {
-            env.apply_to_command(&mut process);
-        }
+        // Apply environment variables
+        env.apply_to_command(&mut process);
 
         let mut child = process.group_spawn()?;
 

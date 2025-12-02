@@ -72,7 +72,7 @@ pub trait Executable {
         &self,
         current_dir: &Path,
         approvals: Arc<dyn ExecutorApprovalService>,
-        env: Option<&ExecutionEnv>,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError>;
 }
 
@@ -82,7 +82,7 @@ impl Executable for ExecutorAction {
         &self,
         current_dir: &Path,
         approvals: Arc<dyn ExecutorApprovalService>,
-        env: Option<&ExecutionEnv>,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         self.typ.spawn(current_dir, approvals, env).await
     }

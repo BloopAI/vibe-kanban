@@ -55,7 +55,7 @@ impl AcpAgentHarness {
         current_dir: &Path,
         prompt: String,
         command_parts: CommandParts,
-        env: Option<&ExecutionEnv>,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let (program_path, args) = command_parts.into_resolved().await?;
         let mut command = Command::new(program_path);
@@ -68,10 +68,8 @@ impl AcpAgentHarness {
             .args(&args)
             .env("NODE_NO_WARNINGS", "1");
 
-        // Apply environment variables if provided
-        if let Some(env) = env {
-            env.apply_to_command(&mut command);
-        }
+        // Apply environment variables
+        env.apply_to_command(&mut command);
 
         let mut child = command.group_spawn()?;
 
@@ -99,7 +97,7 @@ impl AcpAgentHarness {
         prompt: String,
         session_id: &str,
         command_parts: CommandParts,
-        env: Option<&ExecutionEnv>,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let (program_path, args) = command_parts.into_resolved().await?;
         let mut command = Command::new(program_path);
@@ -112,10 +110,8 @@ impl AcpAgentHarness {
             .args(&args)
             .env("NODE_NO_WARNINGS", "1");
 
-        // Apply environment variables if provided
-        if let Some(env) = env {
-            env.apply_to_command(&mut command);
-        }
+        // Apply environment variables
+        env.apply_to_command(&mut command);
 
         let mut child = command.group_spawn()?;
 

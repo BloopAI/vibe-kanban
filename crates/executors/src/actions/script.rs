@@ -40,7 +40,7 @@ impl Executable for ScriptRequest {
         &self,
         current_dir: &Path,
         _approvals: Arc<dyn ExecutorApprovalService>,
-        env: Option<&ExecutionEnv>,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let (shell_cmd, shell_arg) = get_shell_command();
         let mut command = Command::new(shell_cmd);
@@ -53,10 +53,8 @@ impl Executable for ScriptRequest {
             .arg(&self.script)
             .current_dir(current_dir);
 
-        // Apply environment variables if provided
-        if let Some(env) = env {
-            env.apply_to_command(&mut command);
-        }
+        // Apply environment variables
+        env.apply_to_command(&mut command);
 
         let child = command.group_spawn()?;
 
