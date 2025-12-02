@@ -252,6 +252,9 @@ impl ClaudeCode {
         let permission_mode = self.permission_mode();
         let hooks = self.get_hooks();
 
+        // Create interrupt channel for graceful shutdown
+        let (interrupt_tx, interrupt_rx) = tokio::sync::oneshot::channel::<()>();
+
         // Spawn task to handle the SDK client with control protocol
         let prompt_clone = combined_prompt.clone();
         let approvals_clone = self.approvals_service.clone();
@@ -259,9 +262,10 @@ impl ClaudeCode {
             let log_writer = LogWriter::new(new_stdout);
             let client = ClaudeAgentClient::new(log_writer.clone(), approvals_clone);
             let protocol_peer = ProtocolPeer::spawn(child_stdin, child_stdout, client.clone());
+            client.connect(protocol_peer);
 
             // Initialize control protocol
-            if let Err(e) = protocol_peer.initialize(hooks).await {
+            if let Err(e) = client.initialize(hooks).await {
                 tracing::error!("Failed to initialize control protocol: {e}");
                 let _ = log_writer
                     .log_raw(&format!("Error: Failed to initialize - {e}"))
@@ -269,22 +273,31 @@ impl ClaudeCode {
                 return;
             }
 
-            if let Err(e) = protocol_peer.set_permission_mode(permission_mode).await {
+            if let Err(e) = client.set_permission_mode(permission_mode).await {
                 tracing::warn!("Failed to set permission mode to {permission_mode}: {e}");
             }
 
             // Send user message
-            if let Err(e) = protocol_peer.send_user_message(prompt_clone).await {
+            if let Err(e) = client.send_user_message(prompt_clone).await {
                 tracing::error!("Failed to send prompt: {e}");
                 let _ = log_writer
                     .log_raw(&format!("Error: Failed to send prompt - {e}"))
                     .await;
+            }
+
+            // Wait for interrupt signal (sender dropped or signal received)
+            if interrupt_rx.await.is_ok() {
+                tracing::info!("Received interrupt signal, sending interrupt to Claude");
+                if let Err(e) = client.interrupt().await {
+                    tracing::error!("Failed to send interrupt to Claude: {e}");
+                }
             }
         });
 
         Ok(SpawnedChild {
             child,
             exit_signal: None,
+            interrupt_sender: Some(interrupt_tx),
         })
     }
 }
