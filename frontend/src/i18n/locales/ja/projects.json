@@ -50,6 +50,8 @@
   "statusBanner": {
     "title": "アクティブなタスク",
     "running": "実行中",
-    "inReview": "レビュー待ち"
+    "inReview": "レビュー待ち",
+    "noActiveTasks": "アクティブなタスクはありません",
+    "error": "ダッシュボードの読み込みに失敗しました"
   }
 }

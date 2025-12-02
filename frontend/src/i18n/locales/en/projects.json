@@ -50,6 +50,8 @@
   "statusBanner": {
     "title": "Active Tasks",
     "running": "Running",
-    "inReview": "In Review"
+    "inReview": "In Review",
+    "noActiveTasks": "No active tasks",
+    "error": "Failed to load dashboard summary"
   }
 }

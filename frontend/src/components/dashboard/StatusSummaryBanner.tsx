@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronUp, Loader2, Bot, Clock } from 'lucide-react';
+import { ChevronUp, Loader2, Bot, Clock, CheckCircle2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDashboardSummary } from '@/hooks/useDashboardSummary';
 import { Card } from '@/components/ui/card';
@@ -78,9 +78,16 @@ export function StatusSummaryBanner() {
   const inReviewCount = data?.in_review_tasks.length ?? 0;
   const totalCount = runningCount + inReviewCount;
 
-  // Don't render if there's nothing to show and not loading
+  // Non-collapsible summary when no active tasks
   if (!isLoading && totalCount === 0) {
-    return null;
+    return (
+      <Card className="bg-muted p-3 text-sm flex items-center gap-3 mb-4">
+        <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+        <span className="text-muted-foreground">
+          {t('statusBanner.noActiveTasks', 'No active tasks')}
+        </span>
+      </Card>
+    );
   }
 
   return (
@@ -122,7 +129,7 @@ export function StatusSummaryBanner() {
       <Card className="mt-2 p-3 space-y-4">
         {error && (
           <div className="text-sm text-destructive">
-            Failed to load dashboard summary
+            {t('statusBanner.error', 'Failed to load dashboard summary')}
           </div>
         )}
 

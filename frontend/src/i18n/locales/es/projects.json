@@ -50,6 +50,8 @@
   "statusBanner": {
     "title": "Tareas Activas",
     "running": "En Ejecución",
-    "inReview": "En Revisión"
+    "inReview": "En Revisión",
+    "noActiveTasks": "No hay tareas activas",
+    "error": "Error al cargar el resumen del panel"
   }
 }

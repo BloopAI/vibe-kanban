@@ -50,6 +50,8 @@
   "statusBanner": {
     "title": "활성 작업",
     "running": "실행 중",
-    "inReview": "검토 대기"
+    "inReview": "검토 대기",
+    "noActiveTasks": "활성 작업 없음",
+    "error": "대시보드 요약을 불러오지 못했습니다"
   }
 }
