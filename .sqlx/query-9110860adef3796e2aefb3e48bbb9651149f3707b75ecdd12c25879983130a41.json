@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM organization_invitations\n            WHERE id = $1 AND organization_id = $2\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9110860adef3796e2aefb3e48bbb9651149f3707b75ecdd12c25879983130a41"
+}

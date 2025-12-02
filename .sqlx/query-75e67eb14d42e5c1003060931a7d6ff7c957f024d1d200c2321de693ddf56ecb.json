@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO organization_member_metadata (organization_id, user_id, role)\n        VALUES ($1, $2, $3)\n        ON CONFLICT (organization_id, user_id) DO UPDATE\n        SET role = EXCLUDED.role\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        {
+          "Custom": {
+            "name": "member_role",
+            "kind": {
+              "Enum": [
+                "admin",
+                "member"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "75e67eb14d42e5c1003060931a7d6ff7c957f024d1d200c2321de693ddf56ecb"
+}

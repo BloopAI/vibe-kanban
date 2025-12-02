@@ -526,8 +526,7 @@ impl ProjectDetector {
                         && let Ok(content) = fs::read_to_string(&env_path)
                     {
                         // Look for HOST=0.0.0.0
-                        if content.contains("HOST=0.0.0.0")
-                            || content.contains("HOST=\"0.0.0.0\"")
+                        if content.contains("HOST=0.0.0.0") || content.contains("HOST=\"0.0.0.0\"")
                         {
                             suggestions.push(ProjectConfigSuggestion {
                                 field: ProjectConfigField::DevHost,

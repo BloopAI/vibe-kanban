@@ -1,0 +1,59 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO auth_sessions (user_id, refresh_token_id)\n            VALUES ($1, $2)\n            RETURNING\n                id                          AS \"id!\",\n                user_id                     AS \"user_id!: Uuid\",\n                created_at                  AS \"created_at!\",\n                last_used_at                AS \"last_used_at?\",\n                revoked_at                  AS \"revoked_at?\",\n                refresh_token_id           AS \"refresh_token_id?\",\n                refresh_token_issued_at     AS \"refresh_token_issued_at?\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "last_used_at?",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "revoked_at?",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "refresh_token_id?",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "refresh_token_issued_at?",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "4d963a12190ee1db657446ef451c5364f8f91153f7f1bb4e5abfd3f3ddbe0461"
+}

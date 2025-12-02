@@ -31,6 +31,7 @@ uuid = { version = "1", features = ["serde", "v4"] }
 jsonwebtoken = "9"
 rand = "0.9"
 sha2 = "0.10"
+hex = "0.4"
 url = "2.5"
 base64 = "0.22"
 hmac = "0.12"
