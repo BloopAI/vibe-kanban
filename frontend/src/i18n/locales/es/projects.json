@@ -46,5 +46,10 @@
   "unlinkFromOrganization": "Desvincular de Proyecto Remoto",
   "viewProject": "Ver Proyecto",
   "openInIDE": "Abrir en IDE",
-  "createdDate": "Creado {{date}}"
+  "createdDate": "Creado {{date}}",
+  "statusBanner": {
+    "title": "Tareas Activas",
+    "running": "En Ejecución",
+    "inReview": "En Revisión"
+  }
 }

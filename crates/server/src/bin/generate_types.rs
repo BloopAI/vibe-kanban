@@ -40,6 +40,8 @@ fn generate_types_content() -> String {
         db::models::task::Task::decl(),
         db::models::task::TaskWithAttemptStatus::decl(),
         db::models::task::TaskRelationships::decl(),
+        db::models::dashboard::DashboardTask::decl(),
+        db::models::dashboard::DashboardSummary::decl(),
         db::models::task::CreateTask::decl(),
         db::models::task::UpdateTask::decl(),
         db::models::shared_task::SharedTask::decl(),

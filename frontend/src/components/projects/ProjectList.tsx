@@ -10,6 +10,7 @@ import { ProjectFormDialog } from '@/components/dialogs/projects/ProjectFormDial
 import { projectsApi } from '@/lib/api';
 import { AlertCircle, Loader2, Plus } from 'lucide-react';
 import ProjectCard from '@/components/projects/ProjectCard.tsx';
+import { StatusSummaryBanner } from '@/components/dashboard/StatusSummaryBanner';
 import { useKeyCreate, Scope } from '@/keyboard';
 
 export function ProjectList() {
@@ -83,6 +84,8 @@ export function ProjectList() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+
+      {!loading && projects.length > 0 && <StatusSummaryBanner />}
 
       {loading ? (
         <div className="flex items-center justify-center py-12">

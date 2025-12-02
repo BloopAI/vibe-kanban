@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT i.id as \"id!: Uuid\",\n                      i.file_path as \"file_path!\",\n                      i.original_name as \"original_name!\",\n                      i.mime_type,\n                      i.size_bytes as \"size_bytes!\",\n                      i.hash as \"hash!\",\n                      i.created_at as \"created_at!: DateTime<Utc>\",\n                      i.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM images i\n               LEFT JOIN task_images ti ON i.id = ti.image_id\n               WHERE ti.task_id IS NULL",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "file_path!",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "original_name!",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "mime_type",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "size_bytes!",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "hash!",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "bc4d59205c5ff082e33cbe0c3d32d5915c471ca17ac9b6ff61b75cf7cd9839fc"
+}
