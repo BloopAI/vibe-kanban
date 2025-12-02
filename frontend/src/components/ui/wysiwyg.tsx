@@ -99,7 +99,7 @@ function WYSIWYGEditor({
       namespace: 'md-wysiwyg',
       onError: console.error,
       theme: {
-        paragraph: 'mb-2 last:mb-0',
+        paragraph: 'mb-2 last:mb-0 text-sm',
         heading: {
           h1: 'mt-4 mb-2 text-2xl font-semibold',
           h2: 'mt-3 mb-2 text-xl font-semibold',
@@ -179,7 +179,7 @@ function WYSIWYGEditor({
   const placeholderElement = useMemo(
     () =>
       !disabled ? (
-        <div className="absolute top-0 left-0 text-secondary-foreground pointer-events-none">
+        <div className="absolute top-0 left-0 text-sm text-secondary-foreground pointer-events-none">
           {placeholder}
         </div>
       ) : null,
