@@ -5,7 +5,10 @@ use std::{
 };
 
 use dashmap::DashMap;
-use db::models::project::{SearchMatchType, SearchResult};
+use db::models::{
+    project::{Project, SearchMatchType, SearchResult},
+    project_repo::ProjectRepo,
+};
 use fst::{Map, MapBuilder};
 use ignore::WalkBuilder;
 use moka::future::Cache;
@@ -174,8 +177,6 @@ impl FileSearchCache {
 
     /// Pre-warm cache for most active projects
     pub async fn warm_most_active(&self, db_pool: &SqlitePool, limit: i32) -> Result<(), String> {
-        use db::models::{project::Project, project_repository::ProjectRepository};
-
         info!("Starting file search cache warming...");
 
         // Get most active projects
@@ -191,11 +192,11 @@ impl FileSearchCache {
         // Collect all repository paths from active projects
         let mut repo_paths: Vec<PathBuf> = Vec::new();
         for project in &active_projects {
-            let repos = ProjectRepository::find_by_project_id(db_pool, project.id)
+            let repos = ProjectRepo::find_repos_for_project(db_pool, project.id)
                 .await
                 .map_err(|e| format!("Failed to fetch repositories for project: {e}"))?;
             for repo in repos {
-                repo_paths.push(repo.git_repo_path);
+                repo_paths.push(repo.path);
             }
         }
 

@@ -28,7 +28,7 @@ import { CopyFilesField } from '@/components/projects/CopyFilesField';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
 import { projectsApi } from '@/lib/api';
-import type { Project, ProjectRepository, UpdateProject } from 'shared/types';
+import type { Project, Repo, UpdateProject } from 'shared/types';
 
 interface ProjectFormState {
   name: string;
@@ -73,7 +73,7 @@ export function ProjectSettings() {
   const [success, setSuccess] = useState(false);
 
   // Repositories state
-  const [repositories, setRepositories] = useState<ProjectRepository[]>([]);
+  const [repositories, setRepositories] = useState<Repo[]>([]);
   const [loadingRepos, setLoadingRepos] = useState(false);
   const [repoError, setRepoError] = useState<string | null>(null);
   const [addingRepo, setAddingRepo] = useState(false);
@@ -455,7 +455,7 @@ export function ProjectSettings() {
                       <div className="min-w-0 flex-1">
                         <div className="font-medium">{repo.name}</div>
                         <div className="text-sm text-muted-foreground truncate">
-                          {repo.git_repo_path}
+                          {repo.path}
                         </div>
                       </div>
                       <Button

@@ -14,7 +14,7 @@ export type UserData = { user_id: string, first_name: string | null, last_name: 
 
 export type Project = { id: string, name: string, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, copy_files: string | null, remote_project_id: string | null, created_at: Date, updated_at: Date, };
 
-export type CreateProject = { name: string, repositories: Array<CreateProjectRepository>, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, copy_files: string | null, };
+export type CreateProject = { name: string, repositories: Array<CreateProjectRepo>, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, copy_files: string | null, };
 
 export type UpdateProject = { name: string | null, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, copy_files: string | null, };
 
@@ -22,9 +22,13 @@ export type SearchResult = { path: string, is_file: boolean, match_type: SearchM
 
 export type SearchMatchType = "FileName" | "DirectoryName" | "FullPath";
 
-export type ProjectRepository = { id: string, project_id: string, name: string, git_repo_path: string, created_at: Date, updated_at: Date, };
+export type Repo = { id: string, path: string, name: string, created_at: Date, updated_at: Date, };
 
-export type CreateProjectRepository = { name: string, git_repo_path: string, };
+export type CreateProjectRepo = { name: string, git_repo_path: string, };
+
+export type AttemptRepo = { id: string, attempt_id: string, repo_id: string, target_branch: string, created_at: Date, updated_at: Date, };
+
+export type CreateAttemptRepo = { repo_id: string, target_branch: string, };
 
 export type Tag = { id: string, tag_name: string, content: string, created_at: string, updated_at: string, };
 
@@ -60,7 +64,7 @@ export type Image = { id: string, file_path: string, original_name: string, mime
 
 export type CreateImage = { file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, };
 
-export type TaskAttempt = { id: string, task_id: string, container_ref: string | null, branch: string, target_branch: string, executor: string, worktree_deleted: boolean, setup_completed_at: string | null, created_at: string, updated_at: string, };
+export type TaskAttempt = { id: string, task_id: string, container_ref: string | null, branch: string, executor: string, worktree_deleted: boolean, setup_completed_at: string | null, created_at: string, updated_at: string, };
 
 export type ExecutionProcess = { id: string, task_attempt_id: string, run_reason: ExecutionProcessRunReason, executor_action: ExecutorAction, status: ExecutionProcessStatus, exit_code: bigint | null, 
 /**

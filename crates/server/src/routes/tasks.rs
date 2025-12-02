@@ -13,8 +13,9 @@ use axum::{
     routing::{delete, get, post, put},
 };
 use db::models::{
+    attempt_repo::{AttemptRepo, CreateAttemptRepo},
     image::TaskImage,
-    project_repository::ProjectRepository,
+    project_repo::ProjectRepo,
     task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
     task_attempt::{CreateTaskAttempt, TaskAttempt},
 };
@@ -164,6 +165,14 @@ pub async fn create_task_and_start(
             }),
         )
         .await;
+    let project = task
+        .parent_project(&deployment.db().pool)
+        .await?
+        .ok_or(SqlxError::RowNotFound)?;
+
+    let repositories =
+        ProjectRepo::find_repos_for_project(&deployment.db().pool, project.id).await?;
+
     let attempt_id = Uuid::new_v4();
     let git_branch_name = deployment
         .container()
@@ -174,13 +183,22 @@ pub async fn create_task_and_start(
         &deployment.db().pool,
         &CreateTaskAttempt {
             executor: payload.executor_profile_id.executor,
-            base_branch: payload.base_branch,
             branch: git_branch_name,
         },
         attempt_id,
         task.id,
     )
     .await?;
+
+    let attempt_repos: Vec<_> = repositories
+        .iter()
+        .map(|repo| CreateAttemptRepo {
+            repo_id: repo.id,
+            target_branch: payload.base_branch.clone(),
+        })
+        .collect();
+    AttemptRepo::create_many(&deployment.db().pool, task_attempt.id, &attempt_repos).await?;
+
     let is_attempt_running = deployment
         .container()
         .start_attempt(&task_attempt, payload.executor_profile_id.clone())
@@ -305,7 +323,7 @@ pub async fn delete_task(
         .await?
         .ok_or_else(|| ApiError::Database(SqlxError::RowNotFound))?;
 
-    let repositories = ProjectRepository::find_by_project_id(pool, project.id).await?;
+    let repositories = ProjectRepo::find_repos_for_project(pool, project.id).await?;
 
     // Collect workspace directories that need cleanup
     let workspace_dirs: Vec<PathBuf> = attempts

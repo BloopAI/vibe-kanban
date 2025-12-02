@@ -18,6 +18,7 @@ use db::{
             CreateExecutionProcessRepoState, ExecutionProcessRepoState,
         },
         executor_session::{CreateExecutorSession, ExecutorSession},
+        project_repo::ProjectRepo,
         task::{Task, TaskStatus},
         task_attempt::{TaskAttempt, TaskAttemptError},
     },
@@ -204,15 +205,16 @@ pub trait ContainerService {
                 );
                 continue;
             }
-            // Capture after-head commit OID (best-effort) per repository
+            // Capture after-head commit OID per repository
             if let Ok(Some(task_attempt)) =
                 TaskAttempt::find_by_id(&self.db().pool, process.task_attempt_id).await
                 && let Some(ref container_ref) = task_attempt.container_ref
                 && let Ok(Some(task)) = task_attempt.parent_task(&self.db().pool).await
                 && let Ok(Some(project)) = task.parent_project(&self.db().pool).await
-                && let Ok(repos) = project.repositories(&self.db().pool).await
+                && let Ok(repos) =
+                    ProjectRepo::find_repos_for_project(&self.db().pool, project.id).await
             {
-                let workspace_root = std::path::PathBuf::from(container_ref);
+                let workspace_root = PathBuf::from(container_ref);
                 for repo in repos {
                     let repo_path = workspace_root.join(&repo.name);
                     if let Ok(head) = self.git().get_head_info(&repo_path)
@@ -284,8 +286,7 @@ pub trait ContainerService {
 
             // Fallback to base branch commit OID
             if before.is_none() {
-                let repo_path =
-                    std::path::Path::new(row.git_repo_path.as_deref().unwrap_or_default());
+                let repo_path = std::path::Path::new(row.repo_path.as_deref().unwrap_or_default());
                 match self
                     .git()
                     .get_branch_oid(repo_path, row.target_branch.as_str())
@@ -306,7 +307,7 @@ pub trait ContainerService {
                 && let Err(e) = ExecutionProcessRepoState::update_before_head_commit(
                     pool,
                     row.id,
-                    row.project_repository_id,
+                    row.repo_id,
                     &before_oid,
                 )
                 .await
@@ -773,7 +774,7 @@ pub trait ContainerService {
             .await?
             .ok_or(SqlxError::RowNotFound)?;
 
-        let repositories = project.repositories(&self.db().pool).await?;
+        let repositories = ProjectRepo::find_repos_for_project(&self.db().pool, project.id).await?;
         if repositories.is_empty() {
             return Err(ContainerError::Other(anyhow!(
                 "Project has no repositories configured"
@@ -791,7 +792,7 @@ pub trait ContainerService {
             let repo_path = workspace_root.join(&repo.name);
             let before_head_commit = self.git().get_head_info(&repo_path).ok().map(|h| h.oid);
             repo_states.push(CreateExecutionProcessRepoState {
-                project_repository_id: repo.id,
+                repo_id: repo.id,
                 before_head_commit,
                 after_head_commit: None,
                 merge_commit: None,

@@ -225,7 +225,7 @@ function GitOperations({
 
   const handleRebaseDialogOpen = async () => {
     try {
-      const defaultTargetBranch = selectedAttempt.target_branch;
+      const defaultTargetBranch = firstRepoStatus?.target_branch_name;
       const result = await RebaseDialog.show({
         branches,
         isRebasing: rebasing,
@@ -306,7 +306,6 @@ function GitOperations({
                     <GitBranchIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     <span className="truncate">
                       {firstRepoStatus?.target_branch_name ||
-                        selectedAttempt.target_branch ||
                         selectedBranch ||
                         t('git.branch.current')}
                     </span>

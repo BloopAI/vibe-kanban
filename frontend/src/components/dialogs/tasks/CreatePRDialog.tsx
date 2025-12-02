@@ -78,14 +78,10 @@ const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
           .then((projectBranches) => {
             setBranches(projectBranches);
 
-            // Set smart default: task target branch OR current branch
-            if (attempt.target_branch) {
-              setPrBaseBranch(attempt.target_branch);
-            } else {
-              const currentBranch = projectBranches.find((b) => b.is_current);
-              if (currentBranch) {
-                setPrBaseBranch(currentBranch.name);
-              }
+            // Set smart default: current branch (target_branch is now per-repo in AttemptRepo)
+            const currentBranch = projectBranches.find((b) => b.is_current);
+            if (currentBranch) {
+              setPrBaseBranch(currentBranch.name);
             }
           })
           .catch(console.error)

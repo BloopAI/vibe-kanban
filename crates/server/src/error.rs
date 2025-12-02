@@ -327,17 +327,11 @@ impl From<ProjectServiceError> for ApiError {
             ProjectServiceError::DuplicateRepositoryName => ApiError::Conflict(
                 "A repository with this name already exists in the project".to_string(),
             ),
-            ProjectServiceError::CannotDeleteLastRepository => {
-                ApiError::Conflict("Cannot delete the last repository in a project".to_string())
-            }
             ProjectServiceError::RepositoryNotFound => {
                 ApiError::BadRequest("Repository not found".to_string())
             }
             ProjectServiceError::GitError(msg) => {
                 ApiError::BadRequest(format!("Git operation failed: {}", msg))
-            }
-            ProjectServiceError::NoRepositoriesConfigured => {
-                ApiError::BadRequest("Project has no repositories configured".to_string())
             }
             ProjectServiceError::RemoteClient(msg) => {
                 ApiError::BadRequest(format!("Remote client error: {}", msg))

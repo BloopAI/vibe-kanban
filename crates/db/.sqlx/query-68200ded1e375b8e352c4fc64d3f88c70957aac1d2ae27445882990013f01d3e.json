@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT COUNT(*) as \"count!: i64\" FROM project_repositories WHERE project_id = $1",
+  "query": "SELECT COUNT(*) as \"count!: i64\" FROM project_repos WHERE project_id = $1",
   "describe": {
     "columns": [
       {
@@ -16,5 +16,5 @@
       false
     ]
   },
-  "hash": "dedf19cc0fbcebe8bc7060357d2a1258e0cce50efb28555bc2df5c46acc874fd"
+  "hash": "68200ded1e375b8e352c4fc64d3f88c70957aac1d2ae27445882990013f01d3e"
 }

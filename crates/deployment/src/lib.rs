@@ -7,7 +7,7 @@ use db::{
     DBService,
     models::{
         project::{CreateProject, Project},
-        project_repository::CreateProjectRepository,
+        project_repo::CreateProjectRepo,
         task_attempt::TaskAttemptError,
     },
 };
@@ -165,7 +165,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
                     let create_data = CreateProject {
                         name: project_name,
-                        repositories: vec![CreateProjectRepository {
+                        repositories: vec![CreateProjectRepo {
                             name: repo.name,
                             git_repo_path: repo_path.clone(),
                         }],

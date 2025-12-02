@@ -17,10 +17,10 @@ import {
   ExecutionProcess,
   GitBranch,
   Project,
-  ProjectRepository,
+  Repo,
   ProjectBranchesResponse,
   CreateProject,
-  CreateProjectRepository,
+  CreateProjectRepo,
   SearchResult,
   ShareTaskResponse,
   Task,
@@ -332,17 +332,17 @@ export const projectsApi = {
     return handleApiResponse<Project>(response);
   },
 
-  getRepositories: async (projectId: string): Promise<ProjectRepository[]> => {
+  getRepositories: async (projectId: string): Promise<Repo[]> => {
     const response = await makeRequest(
       `/api/projects/${projectId}/repositories`
     );
-    return handleApiResponse<ProjectRepository[]>(response);
+    return handleApiResponse<Repo[]>(response);
   },
 
   addRepository: async (
     projectId: string,
-    data: CreateProjectRepository
-  ): Promise<ProjectRepository> => {
+    data: CreateProjectRepo
+  ): Promise<Repo> => {
     const response = await makeRequest(
       `/api/projects/${projectId}/repositories`,
       {
@@ -350,7 +350,7 @@ export const projectsApi = {
         body: JSON.stringify(data),
       }
     );
-    return handleApiResponse<ProjectRepository>(response);
+    return handleApiResponse<Repo>(response);
   },
 
   deleteRepository: async (

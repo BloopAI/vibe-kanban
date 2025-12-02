@@ -304,13 +304,18 @@ impl TaskServer {
         }
 
         let ctx = api_response.data?;
+        let attempt_target_branch = ctx
+            .attempt_repos
+            .first()
+            .map(|r| r.target_branch.clone())
+            .unwrap_or_default();
         Some(McpContext {
             project_id: ctx.project.id,
             task_id: ctx.task.id,
             task_title: ctx.task.title,
             attempt_id: ctx.task_attempt.id,
             attempt_branch: ctx.task_attempt.branch,
-            attempt_target_branch: ctx.task_attempt.target_branch,
+            attempt_target_branch,
             executor: ctx.task_attempt.executor,
         })
     }

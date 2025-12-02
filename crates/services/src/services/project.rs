@@ -1,8 +1,12 @@
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashSet,
+    path::{Path, PathBuf},
+};
 
 use db::models::{
     project::{CreateProject, Project, ProjectError, SearchMatchType, SearchResult, UpdateProject},
-    project_repository::{CreateProjectRepository, ProjectRepository},
+    project_repo::{CreateProjectRepo, ProjectRepo},
+    repo::Repo,
     task::Task,
 };
 use ignore::WalkBuilder;
@@ -37,14 +41,10 @@ pub enum ProjectServiceError {
     DuplicateGitRepoPath,
     #[error("Duplicate repository name in project")]
     DuplicateRepositoryName,
-    #[error("Cannot delete the last repository in a project")]
-    CannotDeleteLastRepository,
     #[error("Repository not found")]
     RepositoryNotFound,
     #[error("Git operation failed: {0}")]
     GitError(String),
-    #[error("Project has no repositories configured")]
-    NoRepositoriesConfigured,
     #[error("Remote client error: {0}")]
     RemoteClient(String),
 }
@@ -60,7 +60,7 @@ impl ProjectService {
     }
 
     /// Validate that a path exists and is a git repository
-    pub fn validate_git_repo_path(&self, path: &Path) -> Result<()> {
+    fn validate_git_repo_path(&self, path: &Path) -> Result<()> {
         if !path.exists() {
             return Err(ProjectServiceError::PathNotFound(path.to_path_buf()));
         }
@@ -77,7 +77,7 @@ impl ProjectService {
     }
 
     /// Expand tilde and convert to absolute path
-    pub fn normalize_path(&self, path: &str) -> std::io::Result<PathBuf> {
+    fn normalize_path(&self, path: &str) -> std::io::Result<PathBuf> {
         std::path::absolute(expand_tilde(path))
     }
 
@@ -86,14 +86,9 @@ impl ProjectService {
         pool: &SqlitePool,
         payload: CreateProject,
     ) -> Result<Project> {
-        // Require at least one repository
-        if payload.repositories.is_empty() {
-            return Err(ProjectServiceError::NoRepositoriesConfigured);
-        }
-
         // Validate all repository paths and check for duplicates within the payload
-        let mut seen_names = std::collections::HashSet::new();
-        let mut seen_paths = std::collections::HashSet::new();
+        let mut seen_names = HashSet::new();
+        let mut seen_paths = HashSet::new();
         let mut normalized_repos = Vec::new();
 
         for repo in &payload.repositories {
@@ -110,7 +105,7 @@ impl ProjectService {
                 return Err(ProjectServiceError::DuplicateGitRepoPath);
             }
 
-            normalized_repos.push(CreateProjectRepository {
+            normalized_repos.push(CreateProjectRepo {
                 name: repo.name.clone(),
                 git_repo_path: normalized_path,
             });
@@ -125,9 +120,10 @@ impl ProjectService {
             .await
             .map_err(|e| ProjectServiceError::Project(ProjectError::CreateFailed(e.to_string())))?;
 
-        // Create all repositories
         for repo in normalized_repos {
-            ProjectRepository::create(&mut *tx, project.id, &repo).await?;
+            let repo_entity =
+                Repo::find_or_create(&mut *tx, Path::new(&repo.git_repo_path), &repo.name).await?;
+            ProjectRepo::create(&mut *tx, project.id, repo_entity.id).await?;
         }
 
         tx.commit().await?;
@@ -196,35 +192,27 @@ impl ProjectService {
         &self,
         pool: &SqlitePool,
         project_id: Uuid,
-        payload: &CreateProjectRepository,
-    ) -> Result<ProjectRepository> {
+        payload: &CreateProjectRepo,
+    ) -> Result<Repo> {
         let path = self.normalize_path(&payload.git_repo_path)?;
-
         self.validate_git_repo_path(&path)?;
 
-        if ProjectRepository::find_by_project_and_name(pool, project_id, &payload.name)
-            .await?
-            .is_some()
-        {
-            return Err(ProjectServiceError::DuplicateRepositoryName);
-        }
-
-        if ProjectRepository::find_by_project_and_path(pool, project_id, &path.to_string_lossy())
-            .await?
-            .is_some()
-        {
-            return Err(ProjectServiceError::DuplicateGitRepoPath);
-        }
-
-        let repository = ProjectRepository::create(
+        let repository = ProjectRepo::add_repo_to_project(
             pool,
             project_id,
-            &CreateProjectRepository {
-                name: payload.name.clone(),
-                git_repo_path: path.to_string_lossy().to_string(),
-            },
+            &path.to_string_lossy(),
+            &payload.name,
         )
-        .await?;
+        .await
+        .map_err(|e| match e {
+            db::models::project_repo::ProjectRepoError::AlreadyExists => {
+                ProjectServiceError::DuplicateGitRepoPath
+            }
+            db::models::project_repo::ProjectRepoError::Database(e) => {
+                ProjectServiceError::Database(e)
+            }
+            _ => ProjectServiceError::RepositoryNotFound,
+        })?;
 
         Ok(repository)
     }
@@ -235,37 +223,29 @@ impl ProjectService {
         project_id: Uuid,
         repo_id: Uuid,
     ) -> Result<()> {
-        let existing = ProjectRepository::find_by_id(pool, repo_id)
-            .await?
-            .ok_or(ProjectServiceError::RepositoryNotFound)?;
-
-        if existing.project_id != project_id {
-            return Err(ProjectServiceError::RepositoryNotFound);
-        }
-
-        // Don't allow deleting the last repository
-        let count = ProjectRepository::count_by_project_id(pool, project_id).await?;
-        if count <= 1 {
-            return Err(ProjectServiceError::CannotDeleteLastRepository);
-        }
-
-        ProjectRepository::delete(pool, repo_id).await?;
+        ProjectRepo::remove_repo_from_project(pool, project_id, repo_id)
+            .await
+            .map_err(|e| match e {
+                db::models::project_repo::ProjectRepoError::NotFound => {
+                    ProjectServiceError::RepositoryNotFound
+                }
+                db::models::project_repo::ProjectRepoError::Database(e) => {
+                    ProjectServiceError::Database(e)
+                }
+                _ => ProjectServiceError::RepositoryNotFound,
+            })?;
         Ok(())
     }
 
-    pub async fn get_repositories(
-        &self,
-        pool: &SqlitePool,
-        project_id: Uuid,
-    ) -> Result<Vec<ProjectRepository>> {
-        let repos = ProjectRepository::find_by_project_id(pool, project_id).await?;
+    pub async fn get_repositories(&self, pool: &SqlitePool, project_id: Uuid) -> Result<Vec<Repo>> {
+        let repos = ProjectRepo::find_repos_for_project(pool, project_id).await?;
         Ok(repos)
     }
 
     pub async fn search_files(
         &self,
         cache: &FileSearchCache,
-        repositories: &[ProjectRepository],
+        repositories: &[Repo],
         query: &SearchQuery,
     ) -> Result<Vec<SearchResult>> {
         let query_str = query.q.trim();
@@ -276,9 +256,7 @@ impl ProjectService {
         // Simple search in single-repo case
         if repositories.len() == 1 {
             let repo = &repositories[0];
-            return self
-                .search_single_repo(cache, Path::new(&repo.git_repo_path), query)
-                .await;
+            return self.search_single_repo(cache, &repo.path, query).await;
         }
 
         // Multi repo: search in parallel and prefix paths
@@ -286,11 +264,11 @@ impl ProjectService {
             .iter()
             .map(|repo| {
                 let repo_name = repo.name.clone();
-                let repo_path = repo.git_repo_path.clone();
+                let repo_path = repo.path.clone();
                 let query = query.clone();
                 async move {
                     let results = self
-                        .search_single_repo(cache, Path::new(&repo_path), &query)
+                        .search_single_repo(cache, &repo_path, &query)
                         .await
                         .unwrap_or_else(|e| {
                             tracing::warn!("Search failed for repo {}: {}", repo_name, e);
