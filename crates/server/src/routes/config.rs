@@ -49,6 +49,8 @@ pub struct Environment {
     pub os_version: String,
     pub os_architecture: String,
     pub bitness: String,
+    pub is_dev_mode: bool,
+    pub hostname: String,
 }
 
 impl Default for Environment {
@@ -65,6 +67,10 @@ impl Environment {
             os_version: info.version().to_string(),
             os_architecture: info.architecture().unwrap_or("unknown").to_string(),
             bitness: info.bitness().to_string(),
+            is_dev_mode: cfg!(debug_assertions),
+            hostname: gethostname::gethostname()
+                .to_string_lossy()
+                .to_string(),
         }
     }
 }

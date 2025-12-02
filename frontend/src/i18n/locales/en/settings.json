@@ -39,6 +39,28 @@
           "helper": "Choose your preferred language. Browser Default follows your system language."
         }
       },
+      "devBanner": {
+        "title": "Development Banner",
+        "description": "Customize the appearance of the development mode banner.",
+        "backgroundColor": {
+          "label": "Background Color",
+          "placeholder": "#f97316 or orange",
+          "helper": "Custom background color for the dev banner. Use any CSS color value (hex, rgb, named colors). Leave empty for default orange."
+        },
+        "foregroundColor": {
+          "label": "Text Color",
+          "placeholder": "white or #ffffff",
+          "helper": "Custom text color for the dev banner. Use any CSS color value. Leave empty for default white."
+        },
+        "showHostname": {
+          "label": "Show Hostname",
+          "helper": "Display the system hostname in the development banner."
+        },
+        "showOsInfo": {
+          "label": "Show OS Information",
+          "helper": "Display the operating system type and version in the development banner."
+        }
+      },
       "taskExecution": {
         "title": "Task Execution",
         "description": "Configure how tasks are executed and processed.",

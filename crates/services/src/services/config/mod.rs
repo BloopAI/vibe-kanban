@@ -26,6 +26,7 @@ pub type EditorType = versions::v8::EditorType;
 pub type GitHubConfig = versions::v8::GitHubConfig;
 pub type UiLanguage = versions::v8::UiLanguage;
 pub type ShowcaseState = versions::v8::ShowcaseState;
+pub type DevBannerConfig = versions::v8::DevBannerConfig;
 
 /// Will always return config, trying old schemas or eventually returning default
 pub async fn load_config_from_file(config_path: &PathBuf) -> Config {
