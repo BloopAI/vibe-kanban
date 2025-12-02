@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
+import { useAuth } from '@/hooks';
 import { useProject } from '@/contexts/ProjectContext';
 import { useLiveQuery, eq, isNull } from '@tanstack/react-db';
 import { sharedTasksCollection } from '@/lib/electric/sharedTasksCollection';
@@ -40,6 +41,7 @@ export interface UseProjectTasksResult {
  */
 export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
   const { project } = useProject();
+  const { isSignedIn } = useAuth();
   const remoteProjectId = project?.remote_project_id;
 
   const endpoint = `/api/tasks/stream/ws?project_id=${encodeURIComponent(projectId)}`;
@@ -53,16 +55,21 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
   );
 
   const sharedTasksQuery = useLiveQuery(
-    (q) => {
-      if (!remoteProjectId) {
-        return undefined;
-      }
-      return q
-        .from({ sharedTasks: sharedTasksCollection })
-        .where(({ sharedTasks }) => eq(sharedTasks.project_id, remoteProjectId))
-        .where(({ sharedTasks }) => isNull(sharedTasks.deleted_at));
-    },
-    [remoteProjectId]
+    useCallback(
+      (q) => {
+        if (!remoteProjectId || !isSignedIn) {
+          return undefined;
+        }
+        return q
+          .from({ sharedTasks: sharedTasksCollection })
+          .where(({ sharedTasks }) =>
+            eq(sharedTasks.project_id, remoteProjectId)
+          )
+          .where(({ sharedTasks }) => isNull(sharedTasks.deleted_at));
+      },
+      [remoteProjectId, isSignedIn]
+    ),
+    [remoteProjectId, isSignedIn]
   );
 
   const sharedTasksList = useMemo(

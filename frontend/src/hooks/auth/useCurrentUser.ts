@@ -1,8 +1,11 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { oauthApi } from '@/lib/api';
+import { useEffect } from 'react';
+import { useAuth } from '@/hooks/auth/useAuth';
 
 export function useCurrentUser() {
-  return useQuery({
+  const { isSignedIn } = useAuth();
+  const query = useQuery({
     queryKey: ['auth', 'user'],
     queryFn: () => oauthApi.getCurrentUser(),
     retry: 2,
@@ -10,4 +13,11 @@ export function useCurrentUser() {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });
+
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ['auth', 'user'] });
+  }, [queryClient, isSignedIn]);
+
+  return query;
 }
