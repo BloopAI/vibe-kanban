@@ -216,7 +216,7 @@ export type ImageResponse = { id: string, file_path: string, original_name: stri
 
 export type Config = { config_version: string, theme: ThemeMode, executor_profile: ExecutorProfileId, disclaimer_acknowledged: boolean, onboarding_acknowledged: boolean, notifications: NotificationConfig, editor: EditorConfig, github: GitHubConfig, analytics_enabled: boolean, workspace_dir: string | null, last_app_version: string | null, show_release_notes: boolean, language: UiLanguage, git_branch_prefix: string, showcases: ShowcaseState, dev_banner: DevBannerConfig, };
 
-export type DevBannerConfig = { background_color: string | null, foreground_color: string | null, show_hostname: boolean, show_os_info: boolean, };
+export type DevBannerConfig = { background_color: string | null, foreground_color: string | null, show_hostname: boolean, show_os_info: boolean, hide_discord_link: boolean, };
 
 export type NotificationConfig = { sound_enabled: boolean, push_enabled: boolean, sound_file: SoundFile, };
 

@@ -405,6 +405,29 @@ export function GeneralSettings() {
                 </p>
               </div>
             </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="dev-banner-hide-discord"
+                checked={draft?.dev_banner?.hide_discord_link ?? false}
+                onCheckedChange={(checked: boolean) =>
+                  updateDraft({
+                    dev_banner: {
+                      ...draft!.dev_banner,
+                      hide_discord_link: checked,
+                    },
+                  })
+                }
+              />
+              <div className="space-y-0.5">
+                <Label htmlFor="dev-banner-hide-discord" className="cursor-pointer">
+                  {t('settings.general.devBanner.hideDiscordLink.label')}
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.general.devBanner.hideDiscordLink.helper')}
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
