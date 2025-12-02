@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
@@ -67,6 +67,8 @@ function getMenuPosition(anchorEl: HTMLElement) {
 export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
   const [editor] = useLexicalComposerContext();
   const [options, setOptions] = useState<FileTagOption[]>([]);
+  const itemRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const lastSelectedIndexRef = useRef<number>(-1);
 
   const onQueryChange = useCallback(
     (query: string | null) => {
@@ -134,6 +136,20 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
           anchorRef.current
         );
 
+        // Scroll selected item into view when navigating with arrow keys
+        if (
+          selectedIndex !== null &&
+          selectedIndex !== lastSelectedIndexRef.current
+        ) {
+          lastSelectedIndexRef.current = selectedIndex;
+          setTimeout(() => {
+            const itemEl = itemRefs.current.get(selectedIndex);
+            if (itemEl) {
+              itemEl.scrollIntoView({ block: 'nearest' });
+            }
+          }, 0);
+        }
+
         const tagResults = options.filter((r) => r.item.type === 'tag');
         const fileResults = options.filter((r) => r.item.type === 'file');
 
@@ -167,6 +183,10 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
                       return (
                         <div
                           key={option.key}
+                          ref={(el) => {
+                            if (el) itemRefs.current.set(index, el);
+                            else itemRefs.current.delete(index);
+                          }}
                           className={`px-3 py-2 cursor-pointer text-sm ${
                             index === selectedIndex
                               ? 'bg-muted text-foreground'
@@ -204,6 +224,10 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
                       return (
                         <div
                           key={option.key}
+                          ref={(el) => {
+                            if (el) itemRefs.current.set(index, el);
+                            else itemRefs.current.delete(index);
+                          }}
                           className={`px-3 py-2 cursor-pointer text-sm ${
                             index === selectedIndex
                               ? 'bg-muted text-foreground'

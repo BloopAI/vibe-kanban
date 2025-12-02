@@ -44,6 +44,7 @@ export function MultiFileSearchTextarea({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const searchCacheRef = useRef<Map<string, FileSearchResult[]>>(new Map());
+  const itemRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   // Search for files when query changes
   useEffect(() => {
@@ -309,6 +310,16 @@ export function MultiFileSearchTextarea({
     }
   }, [searchResults.length, showDropdown]);
 
+  // Scroll selected item into view when navigating with arrow keys
+  useEffect(() => {
+    if (selectedIndex >= 0) {
+      const itemEl = itemRefs.current.get(selectedIndex);
+      if (itemEl) {
+        itemEl.scrollIntoView({ block: 'nearest' });
+      }
+    }
+  }, [selectedIndex]);
+
   const dropdownPosition = getDropdownPosition();
 
   return (
@@ -352,6 +363,10 @@ export function MultiFileSearchTextarea({
                 {searchResults.map((file, index) => (
                   <div
                     key={file.path}
+                    ref={(el) => {
+                      if (el) itemRefs.current.set(index, el);
+                      else itemRefs.current.delete(index);
+                    }}
                     className={`px-3 py-2 cursor-pointer text-sm ${
                       index === selectedIndex
                         ? 'bg-blue-50 text-blue-900'
