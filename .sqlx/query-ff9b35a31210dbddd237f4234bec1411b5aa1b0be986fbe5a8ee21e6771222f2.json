@@ -1,0 +1,137 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                st.id                     AS \"id!: Uuid\",\n                st.organization_id        AS \"organization_id!: Uuid\",\n                st.project_id             AS \"project_id!: Uuid\",\n                st.creator_user_id        AS \"creator_user_id?: Uuid\",\n                st.assignee_user_id       AS \"assignee_user_id?: Uuid\",\n                st.deleted_by_user_id     AS \"deleted_by_user_id?: Uuid\",\n                st.title                  AS \"title!\",\n                st.description            AS \"description?\",\n                st.status                 AS \"status!: TaskStatus\",\n                st.version                AS \"version!\",\n                st.deleted_at             AS \"deleted_at?\",\n                st.shared_at              AS \"shared_at?\",\n                st.created_at             AS \"created_at!\",\n                st.updated_at             AS \"updated_at!\",\n                u.id                      AS \"user_id?: Uuid\",\n                u.first_name              AS \"user_first_name?\",\n                u.last_name               AS \"user_last_name?\",\n                u.username                AS \"user_username?\"\n            FROM shared_tasks st\n            LEFT JOIN users u ON st.assignee_user_id = u.id\n            WHERE st.project_id = $1\n              AND st.deleted_at IS NULL\n            ORDER BY st.updated_at DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "organization_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "project_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "creator_user_id?: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "assignee_user_id?: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "deleted_by_user_id?: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "title!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "description?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "status!: TaskStatus",
+        "type_info": {
+          "Custom": {
+            "name": "task_status",
+            "kind": {
+              "Enum": [
+                "todo",
+                "in-progress",
+                "in-review",
+                "done",
+                "cancelled"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "version!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 10,
+        "name": "deleted_at?",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "shared_at?",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 13,
+        "name": "updated_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 14,
+        "name": "user_id?: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 15,
+        "name": "user_first_name?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 16,
+        "name": "user_last_name?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 17,
+        "name": "user_username?",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "ff9b35a31210dbddd237f4234bec1411b5aa1b0be986fbe5a8ee21e6771222f2"
+}

@@ -13,6 +13,7 @@ use crate::{
     config::RemoteServerConfig,
     db,
     mail::LoopsMailer,
+    nodes::ConnectionManager,
     routes,
 };
 
@@ -84,6 +85,8 @@ impl Server {
             )
         })?;
 
+        let node_connections = ConnectionManager::new();
+
         let state = AppState::new(
             pool.clone(),
             broker.clone(),
@@ -93,6 +96,7 @@ impl Server {
             oauth_token_validator,
             mailer,
             server_public_base_url,
+            node_connections,
         );
 
         let listener =

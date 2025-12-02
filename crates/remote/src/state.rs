@@ -7,6 +7,7 @@ use crate::{
     auth::{JwtService, OAuthHandoffService, OAuthTokenValidator, ProviderRegistry},
     config::RemoteServerConfig,
     mail::Mailer,
+    nodes::ConnectionManager,
 };
 
 #[derive(Clone)]
@@ -19,6 +20,7 @@ pub struct AppState {
     pub server_public_base_url: String,
     pub handoff: Arc<OAuthHandoffService>,
     pub oauth_token_validator: Arc<OAuthTokenValidator>,
+    pub node_connections: ConnectionManager,
 }
 
 impl AppState {
@@ -32,6 +34,7 @@ impl AppState {
         oauth_token_validator: Arc<OAuthTokenValidator>,
         mailer: Arc<dyn Mailer>,
         server_public_base_url: String,
+        node_connections: ConnectionManager,
     ) -> Self {
         Self {
             pool,
@@ -42,6 +45,7 @@ impl AppState {
             server_public_base_url,
             handoff,
             oauth_token_validator,
+            node_connections,
         }
     }
 
@@ -71,5 +75,9 @@ impl AppState {
 
     pub fn oauth_token_validator(&self) -> Arc<OAuthTokenValidator> {
         Arc::clone(&self.oauth_token_validator)
+    }
+
+    pub fn node_connections(&self) -> &ConnectionManager {
+        &self.node_connections
     }
 }

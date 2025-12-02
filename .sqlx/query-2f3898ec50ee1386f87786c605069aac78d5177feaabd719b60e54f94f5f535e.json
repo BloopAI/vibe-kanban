@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE auth_sessions\n            SET refresh_token_id = $3,\n                refresh_token_issued_at = NOW()\n            WHERE id = $1\n              AND refresh_token_id = $2\n            RETURNING user_id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "2f3898ec50ee1386f87786c605069aac78d5177feaabd719b60e54f94f5f535e"
+}

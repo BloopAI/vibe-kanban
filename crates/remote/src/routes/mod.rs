@@ -51,7 +51,8 @@ pub fn router(state: AppState) -> Router {
         .merge(oauth::public_router())
         .merge(organization_members::public_router())
         .merge(tokens::public_router())
-        .merge(nodes::api_key_router());
+        .merge(nodes::api_key_router())
+        .merge(crate::nodes::ws::router());
 
     let v1_protected = Router::<AppState>::new()
         .merge(identity::router())

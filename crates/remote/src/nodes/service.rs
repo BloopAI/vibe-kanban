@@ -6,8 +6,11 @@ use uuid::Uuid;
 
 use super::domain::{
     CreateNodeApiKey, HeartbeatPayload, LinkProjectData, Node, NodeApiKey, NodeProject,
-    NodeRegistration, NodeTaskAssignment, UpdateAssignmentData,
+    NodeRegistration, NodeStatus, NodeTaskAssignment, UpdateAssignmentData,
 };
+
+/// Type alias for registration data (used by WebSocket session)
+pub type RegisterNode = NodeRegistration;
 use crate::db::{
     node_api_keys::{NodeApiKeyError, NodeApiKeyRepository},
     node_projects::{NodeProjectError, NodeProjectRepository},
@@ -224,6 +227,16 @@ impl NodeServiceImpl {
         Ok(repo.delete(node_id).await?)
     }
 
+    /// Update a node's status (used by WebSocket session)
+    pub async fn update_node_status(
+        &self,
+        node_id: Uuid,
+        status: NodeStatus,
+    ) -> Result<(), NodeError> {
+        let repo = NodeRepository::new(&self.pool);
+        Ok(repo.heartbeat(node_id, status).await?)
+    }
+
     // =========================================================================
     // Project Linking
     // =========================================================================
@@ -314,6 +327,39 @@ impl NodeServiceImpl {
     ) -> Result<NodeTaskAssignment, NodeError> {
         let repo = TaskAssignmentRepository::new(&self.pool);
         Ok(repo.update(assignment_id, data).await?)
+    }
+
+    /// Update assignment local IDs (task and attempt IDs from the node)
+    pub async fn update_assignment_local_ids(
+        &self,
+        assignment_id: Uuid,
+        local_task_id: Option<Uuid>,
+        local_attempt_id: Option<Uuid>,
+    ) -> Result<(), NodeError> {
+        let data = UpdateAssignmentData {
+            local_task_id,
+            local_attempt_id,
+            execution_status: None,
+        };
+        let repo = TaskAssignmentRepository::new(&self.pool);
+        repo.update(assignment_id, data).await?;
+        Ok(())
+    }
+
+    /// Update assignment execution status
+    pub async fn update_assignment_status(
+        &self,
+        assignment_id: Uuid,
+        status: &str,
+    ) -> Result<(), NodeError> {
+        let data = UpdateAssignmentData {
+            local_task_id: None,
+            local_attempt_id: None,
+            execution_status: Some(status.to_string()),
+        };
+        let repo = TaskAssignmentRepository::new(&self.pool);
+        repo.update(assignment_id, data).await?;
+        Ok(())
     }
 
     /// Complete an assignment
