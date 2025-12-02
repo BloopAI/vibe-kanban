@@ -6,7 +6,7 @@ use std::{
 
 use git2::{Error as GitError, Repository};
 use thiserror::Error;
-use tracing::{debug, info};
+use tracing::{debug, info, trace};
 use utils::shell::resolve_executable_path;
 
 use super::git::{GitService, GitServiceError};
@@ -109,7 +109,7 @@ impl WorktreeManager {
 
         // Check if worktree already exists and is properly set up
         if Self::is_worktree_properly_set_up(repo_path, worktree_path).await? {
-            debug!("Worktree already properly set up at path: {}", path_str);
+            trace!("Worktree already properly set up at path: {}", path_str);
             return Ok(());
         }
 

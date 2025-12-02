@@ -6,7 +6,7 @@ pub const VIBE_IMAGES_DIR: &str = ".vibe-images";
 /// Convert absolute paths to relative paths based on worktree path
 /// This is a robust implementation that handles symlinks and edge cases
 pub fn make_path_relative(path: &str, worktree_path: &str) -> String {
-    tracing::debug!("Making path relative: {} -> {}", path, worktree_path);
+    tracing::trace!("Making path relative: {} -> {}", path, worktree_path);
 
     let path_obj = normalize_macos_private_alias(Path::new(&path));
     let worktree_path_obj = normalize_macos_private_alias(Path::new(worktree_path));
@@ -18,7 +18,7 @@ pub fn make_path_relative(path: &str, worktree_path: &str) -> String {
 
     if let Ok(relative_path) = path_obj.strip_prefix(&worktree_path_obj) {
         let result = relative_path.to_string_lossy().to_string();
-        tracing::debug!("Successfully made relative: '{}' -> '{}'", path, result);
+        tracing::trace!("Successfully made relative: '{}' -> '{}'", path, result);
         if result.is_empty() {
             return ".".to_string();
         }

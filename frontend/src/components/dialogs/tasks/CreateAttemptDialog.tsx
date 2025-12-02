@@ -26,6 +26,7 @@ import { paths } from '@/lib/paths';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import type { ExecutorProfileId, BaseCodingAgent } from 'shared/types';
+import { useKeySubmitTask, Scope } from '@/keyboard';
 
 export interface CreateAttemptDialogProps {
   taskId: string;
@@ -156,6 +157,12 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
     const handleOpenChange = (open: boolean) => {
       if (!open) modal.hide();
     };
+
+    useKeySubmitTask(handleCreate, {
+      enabled: modal.visible && canCreate,
+      scope: Scope.DIALOG,
+      preventDefault: true,
+    });
 
     return (
       <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
