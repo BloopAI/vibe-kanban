@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use db::{
     DBService,
@@ -27,6 +27,7 @@ use uuid::Uuid;
 use super::{
     container::{ContainerError, ContainerService},
     image::{ImageError, ImageService},
+    prompt::{handle_images_for_prompt, prepend_orphan_prompts},
 };
 
 #[derive(Debug, Error)]
@@ -187,27 +188,6 @@ impl DraftsService {
         Ok(resp)
     }
 
-    async fn handle_images_for_prompt(
-        &self,
-        task_id: Uuid,
-        image_ids: &[Uuid],
-        prompt: &str,
-        worktree_path: &Path,
-    ) -> Result<String, DraftsServiceError> {
-        if image_ids.is_empty() {
-            return Ok(prompt.to_string());
-        }
-
-        TaskImage::associate_many_dedup(self.pool(), task_id, image_ids).await?;
-        self.image
-            .copy_images_by_ids_to_worktree(worktree_path, image_ids)
-            .await?;
-        Ok(ImageService::canonicalise_image_paths(
-            prompt,
-            worktree_path,
-        ))
-    }
-
     async fn start_follow_up_from_draft(
         &self,
         container: &(dyn ContainerService + Send + Sync),
@@ -239,25 +219,29 @@ impl DraftsService {
 
         let mut prompt = draft.prompt.clone();
         if let Some(image_ids) = &draft.image_ids {
-            prompt = self
-                .handle_images_for_prompt(task_attempt.task_id, image_ids, &prompt, &worktree_path)
-                .await?;
+            prompt = handle_images_for_prompt(
+                self.pool(),
+                &self.image,
+                task_attempt.task_id,
+                image_ids,
+                &prompt,
+                &worktree_path,
+            )
+            .await?;
         }
 
-        let latest_session_id =
-            ExecutionProcess::find_latest_session_id_by_task_attempt(self.pool(), task_attempt.id)
-                .await?;
+        let prepared = prepend_orphan_prompts(self.pool(), task_attempt.id, prompt).await?;
 
-        let action_type = if let Some(session_id) = latest_session_id {
+        let action_type = if let Some(session_id) = prepared.session_id {
             ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
-                prompt: prompt.clone(),
+                prompt: prepared.prompt.clone(),
                 session_id,
                 executor_profile_id,
             })
         } else {
             ExecutorActionType::CodingAgentInitialRequest(
                 executors::actions::coding_agent_initial::CodingAgentInitialRequest {
-                    prompt,
+                    prompt: prepared.prompt,
                     executor_profile_id,
                 },
             )

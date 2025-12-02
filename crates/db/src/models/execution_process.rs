@@ -10,7 +10,7 @@ use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
 
-use super::{task::Task, task_attempt::TaskAttempt};
+use super::{executor_session::ExecutorSession, task::Task, task_attempt::TaskAttempt};
 
 #[derive(Debug, Error)]
 pub enum ExecutionProcessError {
@@ -301,19 +301,28 @@ impl ExecutionProcess {
         .await
     }
 
-    /// Find latest session_id by task attempt (simple scalar query)
-    pub async fn find_latest_session_id_by_task_attempt(
+    /// Find latest session with a session_id by task attempt
+    pub async fn find_latest_session_by_task_attempt(
         pool: &SqlitePool,
         task_attempt_id: Uuid,
-    ) -> Result<Option<String>, sqlx::Error> {
+    ) -> Result<Option<ExecutorSession>, sqlx::Error> {
         tracing::info!(
-            "Finding latest session id for task attempt {}",
+            "Finding latest session for task attempt {}",
             task_attempt_id
         );
-        let row = sqlx::query!(
-            r#"SELECT es.session_id
+        let session = sqlx::query_as!(
+            ExecutorSession,
+            r#"SELECT
+                es.id as "id!: Uuid",
+                es.task_attempt_id as "task_attempt_id!: Uuid",
+                es.execution_process_id as "execution_process_id!: Uuid",
+                es.session_id,
+                es.prompt,
+                es.summary,
+                es.created_at as "created_at!: DateTime<Utc>",
+                es.updated_at as "updated_at!: DateTime<Utc>"
                FROM execution_processes ep
-               JOIN executor_sessions es ON ep.id = es.execution_process_id  
+               JOIN executor_sessions es ON ep.id = es.execution_process_id
                WHERE ep.task_attempt_id = $1
                  AND ep.run_reason = 'codingagent'
                  AND ep.dropped = FALSE
@@ -325,9 +334,9 @@ impl ExecutionProcess {
         .fetch_optional(pool)
         .await?;
 
-        tracing::info!("Latest session id: {:?}", row);
+        tracing::info!("Latest session: {:?}", session);
 
-        Ok(row.and_then(|r| r.session_id))
+        Ok(session)
     }
 
     /// Find latest execution process by task attempt and run reason

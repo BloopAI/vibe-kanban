@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                es.id as \"id!: Uuid\",\n                es.task_attempt_id as \"task_attempt_id!: Uuid\",\n                es.execution_process_id as \"execution_process_id!: Uuid\",\n                es.session_id,\n                es.prompt,\n                es.summary,\n                es.created_at as \"created_at!: DateTime<Utc>\",\n                es.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM execution_processes ep\n               JOIN executor_sessions es ON ep.id = es.execution_process_id\n               WHERE ep.task_attempt_id = $1\n                 AND ep.run_reason = 'codingagent'\n                 AND ep.dropped = FALSE\n                 AND es.session_id IS NOT NULL\n               ORDER BY ep.created_at DESC\n               LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "task_attempt_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "execution_process_id!: Uuid",
+        "ordinal": 2,
+        "type_info": "Blob"
+      },
+      {
+        "name": "session_id",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "prompt",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "summary",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "feaaf6bb889044b81320f45b64a8b89f0c4733f853a85ebe21e4f08f643ed64d"
+}

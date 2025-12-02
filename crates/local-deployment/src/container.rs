@@ -714,12 +714,12 @@ impl LocalContainerService {
         let container_ref = self.ensure_container_exists(&ctx.task_attempt).await?;
 
         // Get session id
-        let Some(session_id) = ExecutionProcess::find_latest_session_id_by_task_attempt(
+        let Some(session_id) = ExecutionProcess::find_latest_session_by_task_attempt(
             &self.db.pool,
             ctx.task_attempt.id,
         )
         .await?
-        else {
+        .and_then(|s| s.session_id) else {
             tracing::warn!(
                 "No session id found for attempt {}. Cannot start queued follow-up.",
                 ctx.task_attempt.id

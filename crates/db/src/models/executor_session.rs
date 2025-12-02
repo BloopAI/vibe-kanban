@@ -129,6 +129,62 @@ impl ExecutorSession {
         .await
     }
 
+    /// Find orphan sessions (sessions without a session_id) after a given session.
+    /// If after_session_id is None, returns all orphan sessions for the task attempt.
+    /// Results are ordered chronologically (oldest first).
+    pub async fn find_orphans_after_session(
+        pool: &SqlitePool,
+        task_attempt_id: Uuid,
+        after_session_id: Option<Uuid>,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        match after_session_id {
+            Some(session_id) => {
+                sqlx::query_as!(
+                    ExecutorSession,
+                    r#"SELECT
+                        id as "id!: Uuid",
+                        task_attempt_id as "task_attempt_id!: Uuid",
+                        execution_process_id as "execution_process_id!: Uuid",
+                        session_id,
+                        prompt,
+                        summary,
+                        created_at as "created_at!: DateTime<Utc>",
+                        updated_at as "updated_at!: DateTime<Utc>"
+                       FROM executor_sessions
+                       WHERE task_attempt_id = $1
+                         AND session_id IS NULL
+                         AND created_at > (SELECT created_at FROM executor_sessions WHERE id = $2)
+                       ORDER BY created_at ASC"#,
+                    task_attempt_id,
+                    session_id
+                )
+                .fetch_all(pool)
+                .await
+            }
+            None => {
+                sqlx::query_as!(
+                    ExecutorSession,
+                    r#"SELECT
+                        id as "id!: Uuid",
+                        task_attempt_id as "task_attempt_id!: Uuid",
+                        execution_process_id as "execution_process_id!: Uuid",
+                        session_id,
+                        prompt,
+                        summary,
+                        created_at as "created_at!: DateTime<Utc>",
+                        updated_at as "updated_at!: DateTime<Utc>"
+                       FROM executor_sessions
+                       WHERE task_attempt_id = $1
+                         AND session_id IS NULL
+                       ORDER BY created_at ASC"#,
+                    task_attempt_id
+                )
+                .fetch_all(pool)
+                .await
+            }
+        }
+    }
+
     /// Create a new executor session
     pub async fn create(
         pool: &SqlitePool,

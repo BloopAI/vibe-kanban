@@ -39,6 +39,7 @@ use services::services::{
     container::ContainerService,
     git::{ConflictOp, GitCliError, GitServiceError, WorktreeResetOptions},
     github::{CreatePrRequest, GitHubService, GitHubServiceError},
+    prompt::{handle_images_for_prompt, prepend_orphan_prompts},
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
@@ -49,10 +50,7 @@ use crate::{
     DeploymentImpl,
     error::ApiError,
     middleware::load_task_attempt_middleware,
-    routes::task_attempts::{
-        gh_cli_setup::GhCliSetupError,
-        util::{ensure_worktree_path, handle_images_for_prompt},
-    },
+    routes::task_attempts::{gh_cli_setup::GhCliSetupError, util::ensure_worktree_path},
 };
 
 #[derive(Debug, Deserialize, Serialize, TS)]
@@ -314,32 +312,37 @@ pub async fn follow_up(
         let _ = Draft::clear_after_send(pool, task_attempt.id, DraftType::Retry).await;
     }
 
-    let latest_session_id = ExecutionProcess::find_latest_session_id_by_task_attempt(
-        &deployment.db().pool,
-        task_attempt.id,
-    )
-    .await?;
-
     let mut prompt = payload.prompt;
     if let Some(image_ids) = &payload.image_ids {
-        prompt = handle_images_for_prompt(&deployment, &task_attempt, task.id, image_ids, &prompt)
-            .await?;
+        let worktree_path = ensure_worktree_path(&deployment, &task_attempt).await?;
+        prompt = handle_images_for_prompt(
+            &deployment.db().pool,
+            deployment.image(),
+            task.id,
+            image_ids,
+            &prompt,
+            &worktree_path,
+        )
+        .await?;
     }
+
+    // Prepare follow-up prompt (concatenates orphan prompts and gets session_id)
+    let prepared = prepend_orphan_prompts(&deployment.db().pool, task_attempt.id, prompt).await?;
 
     let cleanup_action = deployment
         .container()
         .cleanup_action(project.cleanup_script);
 
-    let action_type = if let Some(session_id) = latest_session_id {
+    let action_type = if let Some(session_id) = prepared.session_id {
         ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
-            prompt: prompt.clone(),
+            prompt: prepared.prompt.clone(),
             session_id,
             executor_profile_id: executor_profile_id.clone(),
         })
     } else {
         ExecutorActionType::CodingAgentInitialRequest(
             executors::actions::coding_agent_initial::CodingAgentInitialRequest {
-                prompt,
+                prompt: prepared.prompt,
                 executor_profile_id: executor_profile_id.clone(),
             },
         )
