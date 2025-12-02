@@ -662,7 +662,7 @@ export const fileSystemApi = {
 // Config APIs (backwards compatible)
 export const configApi = {
   getConfig: async (): Promise<UserSystemInfo> => {
-    const response = await makeRequest('/api/info');
+    const response = await makeRequest('/api/info', { cache: 'no-store' });
     return handleApiResponse<UserSystemInfo>(response);
   },
   saveConfig: async (config: Config): Promise<Config> => {
@@ -905,7 +905,9 @@ export const oauthApi = {
   },
 
   status: async (): Promise<StatusResponse> => {
-    const response = await makeRequest('/api/auth/status');
+    const response = await makeRequest('/api/auth/status', {
+      cache: 'no-store',
+    });
     return handleApiResponse<StatusResponse>(response);
   },
 
