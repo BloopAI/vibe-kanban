@@ -147,10 +147,8 @@ pub async fn create_shared_task(
     // Check if project has a linked node and dispatch task
     let node_project_repo = NodeProjectRepository::new(pool);
     if let Ok(Some(node_project)) = node_project_repo.find_by_project(project_id).await {
-        let dispatcher = crate::nodes::TaskDispatcher::new(
-            pool.clone(),
-            state.node_connections().clone(),
-        );
+        let dispatcher =
+            crate::nodes::TaskDispatcher::new(pool.clone(), state.node_connections().clone());
 
         let task_details = TaskDetails {
             title,
@@ -161,7 +159,10 @@ pub async fn create_shared_task(
         };
 
         // Attempt to dispatch - don't fail task creation if dispatch fails
-        match dispatcher.assign_task(task.task.id, project_id, task_details).await {
+        match dispatcher
+            .assign_task(task.task.id, project_id, task_details)
+            .await
+        {
             Ok(result) => {
                 tracing::info!(
                     task_id = %task.task.id,

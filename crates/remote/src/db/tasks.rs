@@ -447,6 +447,50 @@ impl<'a> SharedTaskRepository<'a> {
         Ok(SharedTaskWithUser::new(task, user))
     }
 
+    /// Update task status from a node execution update.
+    ///
+    /// This method bypasses the user check since it's called by the system
+    /// when nodes report execution status changes.
+    pub async fn update_status_from_node(
+        &self,
+        task_id: Uuid,
+        status: TaskStatus,
+    ) -> Result<SharedTask, SharedTaskError> {
+        let task = sqlx::query_as!(
+            SharedTask,
+            r#"
+            UPDATE shared_tasks AS t
+            SET status = $2,
+                version = t.version + 1,
+                updated_at = NOW()
+            WHERE t.id = $1
+              AND t.deleted_at IS NULL
+            RETURNING
+                t.id                AS "id!",
+                t.organization_id   AS "organization_id!: Uuid",
+                t.project_id        AS "project_id!",
+                t.creator_user_id   AS "creator_user_id?: Uuid",
+                t.assignee_user_id  AS "assignee_user_id?: Uuid",
+                t.deleted_by_user_id AS "deleted_by_user_id?: Uuid",
+                t.title             AS "title!",
+                t.description       AS "description?",
+                t.status            AS "status!: TaskStatus",
+                t.version           AS "version!",
+                t.deleted_at        AS "deleted_at?",
+                t.shared_at         AS "shared_at?",
+                t.created_at        AS "created_at!",
+                t.updated_at        AS "updated_at!"
+            "#,
+            task_id,
+            status as TaskStatus,
+        )
+        .fetch_optional(self.pool)
+        .await?
+        .ok_or(SharedTaskError::NotFound)?;
+
+        Ok(task)
+    }
+
     pub async fn delete_task(
         &self,
         task_id: Uuid,

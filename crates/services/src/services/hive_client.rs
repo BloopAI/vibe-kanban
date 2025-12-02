@@ -9,7 +9,7 @@ use chrono::Utc;
 use futures::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use tokio::{
-    sync::{mpsc, RwLock},
+    sync::{RwLock, mpsc},
     time::{self, MissedTickBehavior},
 };
 use tokio_tungstenite::{connect_async, tungstenite::Message};
@@ -108,9 +108,7 @@ pub enum HiveMessage {
     #[serde(rename = "project_sync")]
     ProjectSync(ProjectSyncMessage),
     #[serde(rename = "heartbeat_ack")]
-    HeartbeatAck {
-        server_time: chrono::DateTime<Utc>,
-    },
+    HeartbeatAck { server_time: chrono::DateTime<Utc> },
     #[serde(rename = "error")]
     Error {
         message_id: Option<Uuid>,
@@ -383,9 +381,7 @@ impl HiveClient {
         let auth_result = self.parse_auth_response(auth_response)?;
 
         if !auth_result.success {
-            return Err(HiveClientError::Auth(
-                auth_result.error.unwrap_or_default(),
-            ));
+            return Err(HiveClientError::Auth(auth_result.error.unwrap_or_default()));
         }
 
         let node_id = auth_result.node_id.ok_or(HiveClientError::Auth(
@@ -500,7 +496,7 @@ impl HiveClient {
                 return Err(HiveClientError::Url(format!(
                     "unsupported scheme: {}",
                     other
-                )))
+                )));
             }
         }
 
@@ -517,7 +513,7 @@ impl HiveClient {
             _ => {
                 return Err(HiveClientError::Protocol(
                     "expected text message".to_string(),
-                ))
+                ));
             }
         };
 

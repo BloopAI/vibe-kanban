@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use db::DBService;
-use tokio::sync::{mpsc, RwLock};
+use tokio::sync::{RwLock, mpsc};
 use uuid::Uuid;
 
 use super::hive_client::{
@@ -79,13 +79,15 @@ impl ProjectMapping {
         self.local_to_link.clear();
 
         for link in links {
-            self.local_to_link.insert(link.local_project_id, link.link_id);
+            self.local_to_link
+                .insert(link.local_project_id, link.link_id);
             self.links.insert(link.link_id, link);
         }
     }
 
     pub fn add_link(&mut self, link: LinkedProjectInfo) {
-        self.local_to_link.insert(link.local_project_id, link.link_id);
+        self.local_to_link
+            .insert(link.local_project_id, link.link_id);
         self.links.insert(link.link_id, link);
     }
 
@@ -166,7 +168,9 @@ impl NodeRunnerHandle {
                 let mut state = self.state.write().await;
                 state.node_id = Some(*node_id);
                 state.organization_id = Some(*organization_id);
-                state.project_mapping.update_from_links(linked_projects.clone());
+                state
+                    .project_mapping
+                    .update_from_links(linked_projects.clone());
                 state.connected = true;
 
                 tracing::info!(
@@ -235,12 +239,20 @@ impl NodeRunnerHandle {
     }
 
     /// Send a task status update.
-    pub async fn send_task_status(
-        &self,
-        status: TaskStatusMessage,
-    ) -> Result<(), HiveClientError> {
+    pub async fn send_task_status(&self, status: TaskStatusMessage) -> Result<(), HiveClientError> {
         self.command_tx
             .send(NodeMessage::TaskStatus(status))
+            .await
+            .map_err(|_| HiveClientError::Send("channel closed".to_string()))
+    }
+
+    /// Send task output/logs to the hive.
+    pub async fn send_task_output(
+        &self,
+        output: super::hive_client::TaskOutputMessage,
+    ) -> Result<(), HiveClientError> {
+        self.command_tx
+            .send(NodeMessage::TaskOutput(output))
             .await
             .map_err(|_| HiveClientError::Send("channel closed".to_string()))
     }

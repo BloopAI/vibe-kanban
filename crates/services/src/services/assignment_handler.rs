@@ -13,7 +13,7 @@ use db::{
     },
 };
 use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
-use tokio::sync::{mpsc, RwLock};
+use tokio::sync::{RwLock, mpsc};
 use uuid::Uuid;
 
 use std::sync::Arc;

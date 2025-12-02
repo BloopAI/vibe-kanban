@@ -49,6 +49,10 @@ pub fn protected_router() -> Router<AppState> {
         .route("/nodes/{node_id}", get(get_node))
         .route("/nodes/{node_id}", delete(delete_node))
         .route("/nodes/{node_id}/projects", get(list_node_projects))
+        .route(
+            "/nodes/assignments/{assignment_id}/logs",
+            get(get_assignment_logs),
+        )
 }
 
 // ============================================================================
@@ -385,6 +389,130 @@ pub async fn list_node_projects(
     match service.list_node_projects(node_id).await {
         Ok(projects) => (StatusCode::OK, Json(projects)).into_response(),
         Err(error) => node_error_response(error, "failed to list node projects"),
+    }
+}
+
+// ============================================================================
+// Task Output Logs (User JWT Auth)
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct GetAssignmentLogsQuery {
+    /// Maximum number of logs to return
+    pub limit: Option<i64>,
+    /// Return logs after this ID (for pagination)
+    pub after_id: Option<i64>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct TaskOutputLogResponse {
+    pub id: i64,
+    pub assignment_id: Uuid,
+    pub output_type: String,
+    pub content: String,
+    pub timestamp: chrono::DateTime<chrono::Utc>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GetAssignmentLogsResponse {
+    pub logs: Vec<TaskOutputLogResponse>,
+}
+
+#[instrument(
+    name = "nodes.get_assignment_logs",
+    skip(state, ctx, query),
+    fields(user_id = %ctx.user.id, assignment_id = %assignment_id)
+)]
+pub async fn get_assignment_logs(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(assignment_id): Path<Uuid>,
+    Query(query): Query<GetAssignmentLogsQuery>,
+) -> Response {
+    use crate::db::task_assignments::TaskAssignmentRepository;
+    use crate::db::task_output_logs::TaskOutputLogRepository;
+
+    let pool = state.pool();
+
+    // Get the assignment to verify access
+    let assignment_repo = TaskAssignmentRepository::new(pool);
+    let assignment = match assignment_repo.find_by_id(assignment_id).await {
+        Ok(Some(a)) => a,
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!({ "error": "assignment not found" })),
+            )
+                .into_response();
+        }
+        Err(e) => {
+            tracing::error!(?e, "failed to fetch assignment");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "internal server error" })),
+            )
+                .into_response();
+        }
+    };
+
+    // Get the task to verify organization access
+    use crate::db::tasks::SharedTaskRepository;
+    let task_repo = SharedTaskRepository::new(pool);
+    let task = match task_repo.find_by_id(assignment.task_id).await {
+        Ok(Some(t)) => t,
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!({ "error": "task not found" })),
+            )
+                .into_response();
+        }
+        Err(e) => {
+            tracing::error!(?e, "failed to fetch task");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "internal server error" })),
+            )
+                .into_response();
+        }
+    };
+
+    // Verify user has access to the organization
+    if let Err(error) = ensure_member_access(pool, task.organization_id, ctx.user.id).await {
+        return error.into_response();
+    }
+
+    // Get the logs
+    let log_repo = TaskOutputLogRepository::new(pool);
+    match log_repo
+        .list_by_assignment(assignment_id, query.limit, query.after_id)
+        .await
+    {
+        Ok(logs) => {
+            let response = GetAssignmentLogsResponse {
+                logs: logs
+                    .into_iter()
+                    .map(|log| TaskOutputLogResponse {
+                        id: log.id,
+                        assignment_id: log.assignment_id,
+                        output_type: log.output_type,
+                        content: log.content,
+                        timestamp: log.timestamp,
+                        created_at: log.created_at,
+                    })
+                    .collect(),
+            };
+            (StatusCode::OK, Json(response)).into_response()
+        }
+        Err(e) => {
+            tracing::error!(?e, "failed to fetch assignment logs");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "internal server error" })),
+            )
+                .into_response()
+        }
     }
 }
 

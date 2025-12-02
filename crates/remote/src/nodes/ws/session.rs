@@ -20,7 +20,7 @@ use super::{
     connection::ConnectionManager,
     message::{
         AuthResultMessage, HeartbeatMessage, HiveMessage, LinkedProjectInfo, NodeMessage,
-        PROTOCOL_VERSION, TaskExecutionStatus, TaskStatusMessage,
+        PROTOCOL_VERSION, TaskExecutionStatus, TaskOutputMessage, TaskStatusMessage,
     },
 };
 use crate::nodes::{
@@ -339,16 +339,7 @@ async fn handle_node_message(
         NodeMessage::TaskStatus(status) => {
             handle_task_status(node_id, organization_id, status, pool).await
         }
-        NodeMessage::TaskOutput(output) => {
-            // TODO: Implement task output streaming
-            tracing::debug!(
-                node_id = %node_id,
-                assignment_id = %output.assignment_id,
-                output_type = ?output.output_type,
-                "received task output"
-            );
-            Ok(())
-        }
+        NodeMessage::TaskOutput(output) => handle_task_output(node_id, output, pool).await,
         NodeMessage::Ack { message_id } => {
             tracing::trace!(node_id = %node_id, message_id = %message_id, "received ack");
             Ok(())
@@ -420,6 +411,9 @@ async fn handle_task_status(
     status: &TaskStatusMessage,
     pool: &PgPool,
 ) -> Result<(), HandleError> {
+    use crate::db::task_assignments::TaskAssignmentRepository;
+    use crate::db::tasks::{SharedTaskRepository, TaskStatus};
+
     let service = NodeServiceImpl::new(pool.clone());
 
     // Map execution status to database status string
@@ -444,17 +438,77 @@ async fn handle_task_status(
             .map_err(|e| HandleError::Database(e.to_string()))?;
     }
 
-    // Update execution status
+    // Update execution status on the assignment
     service
         .update_assignment_status(status.assignment_id, db_status)
         .await
         .map_err(|e| HandleError::Database(e.to_string()))?;
+
+    // Also update the shared task status
+    // First, get the task_id from the assignment
+    let assignment_repo = TaskAssignmentRepository::new(pool);
+    if let Ok(Some(assignment)) = assignment_repo.find_by_id(status.assignment_id).await {
+        // Map execution status to shared task status
+        let shared_status = match status.status {
+            TaskExecutionStatus::Pending | TaskExecutionStatus::Starting => TaskStatus::Todo,
+            TaskExecutionStatus::Running => TaskStatus::InProgress,
+            TaskExecutionStatus::Completed => TaskStatus::InReview,
+            TaskExecutionStatus::Failed | TaskExecutionStatus::Cancelled => TaskStatus::Todo,
+        };
+
+        let task_repo = SharedTaskRepository::new(pool);
+        if let Err(e) = task_repo
+            .update_status_from_node(assignment.task_id, shared_status)
+            .await
+        {
+            tracing::warn!(
+                task_id = %assignment.task_id,
+                error = %e,
+                "failed to update shared task status"
+            );
+        }
+    }
 
     tracing::info!(
         node_id = %node_id,
         assignment_id = %status.assignment_id,
         status = ?status.status,
         "task status updated"
+    );
+
+    Ok(())
+}
+
+/// Handle task output/log messages from a node.
+async fn handle_task_output(
+    node_id: Uuid,
+    output: &TaskOutputMessage,
+    pool: &PgPool,
+) -> Result<(), HandleError> {
+    use crate::db::task_output_logs::{CreateTaskOutputLog, TaskOutputLogRepository};
+
+    let output_type = match output.output_type {
+        super::message::TaskOutputType::Stdout => "stdout",
+        super::message::TaskOutputType::Stderr => "stderr",
+        super::message::TaskOutputType::System => "system",
+    };
+
+    let repo = TaskOutputLogRepository::new(pool);
+    repo.create(CreateTaskOutputLog {
+        assignment_id: output.assignment_id,
+        output_type: output_type.to_string(),
+        content: output.content.clone(),
+        timestamp: output.timestamp,
+    })
+    .await
+    .map_err(|e| HandleError::Database(e.to_string()))?;
+
+    tracing::trace!(
+        node_id = %node_id,
+        assignment_id = %output.assignment_id,
+        output_type = %output_type,
+        content_len = output.content.len(),
+        "stored task output"
     );
 
     Ok(())
