@@ -1,0 +1,96 @@
+---
+title: "Browsing Files"
+description: "Learn how to browse and view files in your projects and task worktrees"
+---
+
+Vibe Kanban includes a built-in file browser that lets you explore your project's codebase and view files directly within the application. You can browse files from either the main project repository or from a specific task attempt's worktree.
+
+## Opening the File Browser
+
+### From a Task Attempt
+
+When viewing a task attempt, click the **Files** icon in the toolbar to open the file browser for that task's worktree.
+
+<Info>
+The task worktree contains the isolated environment where the coding agent made its changes. This is useful for exploring what files exist alongside the changes shown in the diff view.
+</Info>
+
+### From a Project
+
+You can also browse files directly from your project's main repository by accessing the project settings and selecting the files option.
+
+## Using the File Browser
+
+### Directory Navigation
+
+The file browser displays a tree view of your files and directories:
+
+- Click on a **folder** to expand or collapse its contents
+- Click on a **file** to view its contents in the viewer panel
+- Use the **breadcrumb navigation** at the top to quickly navigate to parent directories
+
+### Filtering Files
+
+Use the filter input at the top of the file tree to quickly find files by name. The filter searches across all visible files and directories.
+
+### Switching Between Sources
+
+When viewing a task attempt, you can toggle between two file sources:
+
+- **Worktree**: The isolated environment for this specific task attempt
+- **Project**: The main project repository
+
+This is useful for comparing the task's working directory against the original project state.
+
+## Viewing File Contents
+
+When you select a file, the viewer panel displays:
+
+- **Syntax highlighting**: Automatic language detection based on file extension, supporting 40+ programming languages
+- **Line numbers**: For easy reference when discussing specific code sections
+
+<Note>
+Binary files and very large files cannot be displayed in the viewer. You'll see a message indicating why the file cannot be shown.
+</Note>
+
+## Supported File Types
+
+The file browser supports syntax highlighting for many common file types including:
+
+- **Web**: JavaScript, TypeScript, HTML, CSS, JSON, JSX, TSX
+- **Backend**: Python, Ruby, Go, Rust, Java, C, C++, C#
+- **Configuration**: YAML, TOML, INI, ENV files
+- **Documentation**: Markdown, plain text
+- **And many more**
+
+## Use Cases
+
+### Exploring Agent Changes
+
+After a coding agent completes a task, use the file browser alongside the diff view to:
+
+- Understand the context around changed files
+- Check related files that may have been affected
+- Verify file structure and organisation
+
+### Understanding Project Structure
+
+When working with an unfamiliar codebase, the file browser helps you:
+
+- Navigate the directory structure
+- Quickly preview file contents
+- Understand how the project is organised
+
+### Reviewing Configuration
+
+Check configuration files to ensure:
+
+- Environment settings are correct
+- Dependencies are properly listed
+- Build configurations are appropriate
+
+## Related Documentation
+
+- [Reviewing Code Changes](/core-features/reviewing-code-changes) - Review diffs and provide feedback
+- [Monitoring Task Execution](/core-features/monitoring-task-execution) - Watch agent progress in real-time
+- [Creating Projects](/core-features/creating-projects) - Set up projects with proper configuration
