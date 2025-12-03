@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM cached_nodes WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "ec94aadc9234a94541dab1f3860e8b09eda76a7b34c9fe8c66f2639a35b7f70e"
+}

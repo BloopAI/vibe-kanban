@@ -8,7 +8,10 @@ use axum::{
     response::Json as ResponseJson,
     routing::{get, post},
 };
+use chrono::{DateTime, Utc};
 use db::models::{
+    cached_node::CachedNodeStatus,
+    cached_node_project::CachedNodeProjectWithNode,
     project::{
         CreateProject, Project, ProjectError, ScanConfigRequest, ScanConfigResponse,
         SearchMatchType, SearchResult, UpdateProject,
@@ -17,7 +20,7 @@ use db::models::{
 };
 use deployment::Deployment;
 use ignore::WalkBuilder;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use services::services::{
     file_ranker::FileRanker,
     file_search_cache::{CacheError, SearchMode, SearchQuery},
@@ -48,11 +51,135 @@ pub struct CreateRemoteProjectRequest {
     pub name: String,
 }
 
+/// A project in the unified view - can be local or from another node
+#[derive(Debug, Clone, Serialize, TS)]
+#[serde(tag = "type")]
+pub enum UnifiedProject {
+    /// A local project on this node
+    #[serde(rename = "local")]
+    Local(Project),
+    /// A project from another node (cached from hive sync)
+    #[serde(rename = "remote")]
+    Remote(RemoteNodeProject),
+}
+
+/// A project from another node in the organization
+#[derive(Debug, Clone, Serialize, TS)]
+pub struct RemoteNodeProject {
+    pub id: Uuid,
+    pub node_id: Uuid,
+    pub project_id: Uuid,
+    pub local_project_id: Uuid,
+    pub project_name: String,
+    pub git_repo_path: String,
+    pub default_branch: String,
+    pub sync_status: String,
+    #[ts(type = "Date | null")]
+    pub last_synced_at: Option<DateTime<Utc>>,
+    #[ts(type = "Date")]
+    pub created_at: DateTime<Utc>,
+    #[ts(type = "Date")]
+    pub cached_at: DateTime<Utc>,
+    // Node info
+    pub node_name: String,
+    pub node_status: CachedNodeStatus,
+    pub node_public_url: Option<String>,
+}
+
+impl From<CachedNodeProjectWithNode> for RemoteNodeProject {
+    fn from(p: CachedNodeProjectWithNode) -> Self {
+        Self {
+            id: p.id,
+            node_id: p.node_id,
+            project_id: p.project_id,
+            local_project_id: p.local_project_id,
+            project_name: p.project_name,
+            git_repo_path: p.git_repo_path,
+            default_branch: p.default_branch,
+            sync_status: p.sync_status,
+            last_synced_at: p.last_synced_at,
+            created_at: p.created_at,
+            cached_at: p.cached_at,
+            node_name: p.node_name,
+            node_status: p.node_status,
+            node_public_url: p.node_public_url,
+        }
+    }
+}
+
+/// Response for the unified projects endpoint
+#[derive(Debug, Clone, Serialize, TS)]
+pub struct UnifiedProjectsResponse {
+    /// Local projects (always shown first)
+    pub local: Vec<Project>,
+    /// Projects from other nodes grouped by node
+    pub remote_by_node: Vec<RemoteNodeGroup>,
+}
+
+/// A group of projects from a single remote node
+#[derive(Debug, Clone, Serialize, TS)]
+pub struct RemoteNodeGroup {
+    pub node_id: Uuid,
+    pub node_name: String,
+    pub node_status: CachedNodeStatus,
+    pub node_public_url: Option<String>,
+    pub projects: Vec<RemoteNodeProject>,
+}
+
 pub async fn get_projects(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<Vec<Project>>>, ApiError> {
     let projects = Project::find_all(&deployment.db().pool).await?;
     Ok(ResponseJson(ApiResponse::success(projects)))
+}
+
+/// Get a unified view of all projects: local projects first, then remote projects grouped by node.
+///
+/// Remote projects that are already linked to a local project (via remote_project_id) are excluded
+/// to avoid duplicates.
+pub async fn get_unified_projects(
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<UnifiedProjectsResponse>>, ApiError> {
+    use std::collections::HashMap;
+
+    let pool = &deployment.db().pool;
+
+    // Get local projects
+    let local_projects = Project::find_all(pool).await?;
+
+    // Collect remote_project_ids to exclude from remote list
+    let linked_remote_ids: Vec<Uuid> = local_projects
+        .iter()
+        .filter_map(|p| p.remote_project_id)
+        .collect();
+
+    // Get all remote projects from all organizations, excluding those already linked locally
+    let all_remote = CachedNodeProjectWithNode::find_all_with_exclusions(pool, &linked_remote_ids)
+        .await
+        .unwrap_or_default();
+
+    // Group remote projects by node
+    let mut by_node: HashMap<Uuid, RemoteNodeGroup> = HashMap::new();
+    for remote_project in all_remote {
+        let node_id = remote_project.node_id;
+        let group = by_node.entry(node_id).or_insert_with(|| RemoteNodeGroup {
+            node_id,
+            node_name: remote_project.node_name.clone(),
+            node_status: remote_project.node_status,
+            node_public_url: remote_project.node_public_url.clone(),
+            projects: Vec::new(),
+        });
+        group.projects.push(RemoteNodeProject::from(remote_project));
+    }
+
+    // Convert to sorted list of node groups
+    let mut remote_by_node: Vec<RemoteNodeGroup> = by_node.into_values().collect();
+    remote_by_node.sort_by(|a, b| a.node_name.cmp(&b.node_name));
+
+    Ok(ResponseJson(ApiResponse::success(UnifiedProjectsResponse {
+        local: local_projects,
+        remote_by_node,
+    })))
 }
 
 pub async fn get_project(
@@ -811,8 +938,11 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .nest("/{id}", project_id_router)
         .merge(project_files_router);
 
-    Router::new().nest("/projects", projects_router).route(
-        "/remote-projects/{remote_project_id}",
-        get(get_remote_project_by_id),
-    )
+    Router::new()
+        .nest("/projects", projects_router)
+        .route("/unified-projects", get(get_unified_projects))
+        .route(
+            "/remote-projects/{remote_project_id}",
+            get(get_remote_project_by_id),
+        )
 }

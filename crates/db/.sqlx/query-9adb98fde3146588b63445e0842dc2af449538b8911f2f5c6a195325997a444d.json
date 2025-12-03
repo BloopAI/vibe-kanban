@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM cached_node_projects WHERE node_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "9adb98fde3146588b63445e0842dc2af449538b8911f2f5c6a195325997a444d"
+}

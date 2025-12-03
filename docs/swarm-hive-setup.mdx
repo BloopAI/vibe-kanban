@@ -1,4 +1,8 @@
-# Swarm/Hive Architecture Setup Guide
+---
+title: "Swarm/Hive Architecture"
+description: "Configure Vibe Kanban to run in a distributed swarm architecture with multiple nodes connecting to a central hive server"
+sidebarTitle: "Setup Guide"
+---
 
 This guide explains how to configure Vibe Kanban to run in a distributed swarm architecture, where multiple local nodes connect to a central hive server.
 
@@ -49,11 +53,14 @@ cp .env.remote.example .env.remote
 Required environment variables (see `.env.remote.example` for full list):
 
 ```bash
+# Database - for Docker Compose, use POSTGRES_* vars (SERVER_DATABASE_URL is auto-configured)
+# For local dev with cargo run, set: SERVER_DATABASE_URL=postgres://user:pass@localhost/vibe_remote
+POSTGRES_DB=vibe_remote
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_secure_password
+
 # Network - Public URL for OAuth callbacks
 SERVER_PUBLIC_BASE_URL=http://your-server:3000
-
-# Database
-DATABASE_URL=postgres://user:password@localhost/vibe_hive
 
 # JWT Secret (base64-encoded, minimum 32 bytes)
 # Generate with: openssl rand -base64 32
@@ -68,41 +75,121 @@ GOOGLE_OAUTH_CLIENT_ID=your_google_client_id
 GOOGLE_OAUTH_CLIENT_SECRET=your_google_client_secret
 ```
 
-**Note:** The hive uses `VIBEKANBAN_REMOTE_JWT_SECRET` for both user authentication and connection tokens.
+<Note>
+For Docker Compose, do NOT set `SERVER_DATABASE_URL` - it's automatically constructed using the `POSTGRES_*` variables with `remote-db` as the host (the Docker service name).
+</Note>
+
+<Note>
+The hive uses `VIBEKANBAN_REMOTE_JWT_SECRET` for both user authentication and connection tokens.
+</Note>
 
 ### 2. Run the Hive Server
 
 ```bash
 cd crates/remote
-cargo run
-# Or with docker:
+
+# With Docker (recommended):
 docker compose --env-file .env.remote up --build
+
+# Or for local development (requires local PostgreSQL):
+# Make sure to set SERVER_DATABASE_URL in .env.remote with localhost
+cargo run
 ```
 
-### 3. Register and Create an Organization
+### 3. Authenticate via OAuth
 
-The hive requires user authentication via OAuth (GitHub or Google):
-
-1. **Access the hive frontend** at your configured `SERVER_PUBLIC_BASE_URL`
-2. **Sign in** using GitHub or Google OAuth
-3. **Create an organization** through the frontend UI:
-   - Navigate to Settings or Organization management
-   - Click "Create Organization"
-   - Provide a name for your organization
-
-Once you have an organization, you can generate API keys for nodes.
-
-### 4. Generate a Node API Key
-
-API keys allow nodes to authenticate with the hive. Generate one using the API:
+The hive requires user authentication via OAuth (GitHub or Google). Since there's no web frontend for the remote server, you'll use curl with the OAuth handoff flow:
 
 ```bash
-# First, get a user JWT token by logging in
-curl -X POST https://hive.example.com/v1/nodes/api-keys \
-  -H "Authorization: Bearer <user-jwt-token>" \
+# 1. Start the OAuth handoff
+curl -X POST http://localhost:3000/v1/oauth/web/init \
   -H "Content-Type: application/json" \
   -d '{
-    "organization_id": "your-org-uuid",
+    "provider": "github",
+    "return_to": "http://localhost:3000/oauth-callback",
+    "app_challenge": "your-random-challenge-string"
+  }'
+
+# Response includes authorize_url - open this in a browser:
+# { "handoff_id": "...", "authorize_url": "https://github.com/login/oauth/..." }
+```
+
+After completing OAuth in the browser, you'll be redirected with an `app_code`. Redeem it:
+
+```bash
+# 2. Redeem the OAuth code for tokens
+curl -X POST http://localhost:3000/v1/oauth/web/redeem \
+  -H "Content-Type: application/json" \
+  -d '{
+    "handoff_id": "handoff-id-from-step-1",
+    "app_code": "code-from-callback-url",
+    "app_verifier": "your-random-challenge-string"
+  }'
+
+# Response: { "access_token": "...", "refresh_token": "..." }
+```
+
+Save the `access_token` - you'll use it for all subsequent API calls.
+
+### 4. Get Your User Info and Organizations
+
+Use the `/v1/me` endpoint to see your user info and organizations in one call:
+
+```bash
+curl http://localhost:3000/v1/me \
+  -H "Authorization: Bearer <your-access-token>"
+```
+
+Response:
+```json
+{
+  "user": {
+    "id": "user-uuid",
+    "username": "davidrudduck",
+    "email": "david@example.com"
+  },
+  "organizations": [
+    {
+      "id": "org-uuid-here",
+      "name": "David's Org",
+      "slug": "personal-user-uuid",
+      "is_personal": true,
+      "user_role": "admin",
+      "created_at": "2024-01-15T10:00:00Z",
+      "updated_at": "2024-01-15T10:00:00Z"
+    }
+  ]
+}
+```
+
+<Note>
+A personal organization is automatically created when you first sign in. Use its `id` for the next step.
+</Note>
+
+### 5. Create an Organization (Optional)
+
+If you need a separate organization for team nodes:
+
+```bash
+curl -X POST http://localhost:3000/v1/organizations \
+  -H "Authorization: Bearer <your-access-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Team",
+    "slug": "my-team"
+  }'
+```
+
+### 6. Generate a Node API Key
+
+Use the `organization_id` from `/v1/me` to create an API key:
+
+```bash
+curl -X POST http://localhost:3000/v1/nodes/api-keys \
+  -H "Authorization: Bearer <your-access-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "organization_id": "org-uuid-from-step-4",
     "name": "MacBook Pro Node"
   }'
 ```
@@ -121,7 +208,9 @@ Response:
 }
 ```
 
-**Important:** Save the `secret` value immediately - it's only shown once!
+<Warning>
+Save the `secret` value immediately - it's only shown once!
+</Warning>
 
 ---
 
@@ -367,15 +456,54 @@ The log viewer shows connection status:
 
 ## Example: Full Setup Script
 
+### Using Docker Compose (Recommended)
+
+```bash
+#!/bin/bash
+
+# Create .env.remote with your configuration
+cat > crates/remote/.env.remote << 'EOF'
+# Database (auto-configured for Docker)
+POSTGRES_DB=vibe_remote
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_secure_password
+
+# Network
+SERVER_PUBLIC_BASE_URL=http://localhost:3000
+
+# Security - generate with: openssl rand -base64 32
+VIBEKANBAN_REMOTE_JWT_SECRET=your_base64_encoded_secret_here
+
+# OAuth
+GITHUB_OAUTH_CLIENT_ID=your_github_client_id
+GITHUB_OAUTH_CLIENT_SECRET=your_github_client_secret
+GOOGLE_OAUTH_CLIENT_ID=your_google_client_id
+GOOGLE_OAUTH_CLIENT_SECRET=your_google_client_secret
+
+# Email
+LOOPS_EMAIL_API_KEY=your_loops_api_key
+EOF
+
+# Start hive with Docker
+cd crates/remote && docker compose --env-file .env.remote up --build -d
+
+# Wait for hive to start, then:
+# 1. Access http://localhost:3000 and sign in via OAuth
+# 2. Create an organization
+# 3. Generate an API key for your node
+```
+
+### Local Development (cargo run)
+
 ```bash
 #!/bin/bash
 
 # Generate a shared secret for JWT/connection tokens
 JWT_SECRET=$(openssl rand -base64 32)
 
-# Hive server configuration (see .env.remote.example for full list)
+# Hive server configuration - note localhost for local postgres
 export SERVER_PUBLIC_BASE_URL=http://localhost:8081
-export DATABASE_URL=postgres://vibe:password@localhost/vibe_hive
+export SERVER_DATABASE_URL=postgres://postgres:postgres@localhost:5432/vibe_remote
 export VIBEKANBAN_REMOTE_JWT_SECRET=$JWT_SECRET
 export GITHUB_OAUTH_CLIENT_ID=your_github_client_id
 export GITHUB_OAUTH_CLIENT_SECRET=your_github_client_secret
@@ -389,10 +517,14 @@ cd crates/remote && cargo run &
 # 1. Access http://localhost:8081 and sign in via OAuth
 # 2. Create an organization
 # 3. Generate an API key for your node
+```
 
-# Node configuration
-export VK_HIVE_URL=ws://localhost:8081
-export VK_NODE_API_KEY="your-api-key-here"  # From step 3 above
+### Node Configuration
+
+```bash
+# Node configuration (same for Docker or local)
+export VK_HIVE_URL=ws://localhost:8081  # or ws://localhost:3000 for Docker
+export VK_NODE_API_KEY="your-api-key-here"  # From hive setup above
 export VK_NODE_NAME="Development Node"
 export VK_NODE_PUBLIC_URL=http://localhost:3000
 export VK_CONNECTION_TOKEN_SECRET=$JWT_SECRET  # Same as VIBEKANBAN_REMOTE_JWT_SECRET
@@ -404,6 +536,14 @@ HOST=0.0.0.0 pnpm run dev
 ---
 
 ## API Reference
+
+### User & Organization
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/v1/me` | GET | User JWT | Get current user info and their organizations |
+| `/v1/organizations` | GET | User JWT | List user's organizations |
+| `/v1/organizations` | POST | User JWT | Create organization |
 
 ### Node API Key Management
 

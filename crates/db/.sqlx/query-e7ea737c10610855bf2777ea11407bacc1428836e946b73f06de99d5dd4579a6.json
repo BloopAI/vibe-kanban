@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT\n                organization_id AS \"organization_id!: Uuid\",\n                last_synced_at  AS \"last_synced_at!: DateTime<Utc>\",\n                sync_version    AS \"sync_version!: i64\"\n            FROM node_sync_cursors\n            WHERE organization_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "organization_id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "last_synced_at!: DateTime<Utc>",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "sync_version!: i64",
+        "ordinal": 2,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "e7ea737c10610855bf2777ea11407bacc1428836e946b73f06de99d5dd4579a6"
+}

@@ -206,6 +206,9 @@ async fn handoff_complete(
         }
     }
 
+    // Start node cache sync to fetch all nodes/projects from other nodes in the org
+    deployment.start_node_cache_sync().await;
+
     Ok(close_window_response(format!(
         "Signed in with {provider}. You can return to the app."
     )))

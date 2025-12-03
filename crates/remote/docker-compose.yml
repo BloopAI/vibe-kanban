@@ -1,30 +1,45 @@
+# Vibe Kanban Remote Server (Hive) - Docker Compose Configuration
+#
+# Usage: docker compose --env-file .env.remote up --build
+#
+# Database configuration:
+#   - Set POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD in .env.remote
+#   - SERVER_DATABASE_URL is auto-constructed using these vars with host "remote-db"
+#   - Do NOT set SERVER_DATABASE_URL in .env.remote (it would use localhost which won't work)
+
 services:
   remote-db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: remote
-      POSTGRES_USER: remote
-      POSTGRES_PASSWORD: remote
+      POSTGRES_DB: ${POSTGRES_DB:-vibe_remote}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - remote-db-data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U remote -d remote" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-vibe_remote}" ]
       interval: 5s
       timeout: 5s
       retries: 5
       start_period: 5s
     ports:
-      - "5434:5432"
+      - "${POSTGRES_PORT:-5434}:5432"
 
   remote-server:
     build:
       context: ../..
       dockerfile: crates/remote/Dockerfile
+      args:
+        # SQLx needs DATABASE_URL at compile time for query validation
+        # Use offline mode with sqlx-data.json, or provide a dummy URL
+        SQLX_OFFLINE: "true"
     depends_on:
       remote-db:
         condition: service_healthy
     environment:
-      SERVER_DATABASE_URL: postgres://remote:remote@remote-db:5432/remote
+      # Database URL for runtime - connects to the remote-db service
+      # Override with SERVER_DATABASE_URL in .env.remote for custom setup
+      SERVER_DATABASE_URL: ${SERVER_DATABASE_URL:-postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@remote-db:5432/${POSTGRES_DB:-vibe_remote}}
       SERVER_LISTEN_ADDR: 0.0.0.0:8081
       SERVER_ACTIVITY_CHANNEL: activity
       GITHUB_OAUTH_CLIENT_ID: ${GITHUB_OAUTH_CLIENT_ID:?set in .env.remote}
