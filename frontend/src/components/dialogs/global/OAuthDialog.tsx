@@ -33,6 +33,7 @@ const OAuthDialogImpl = NiceModal.create<NoProps>(() => {
   const [state, setState] = useState<OAuthState>({ type: 'select' });
   const popupRef = useRef<Window | null>(null);
   const [isPolling, setIsPolling] = useState(false);
+  const [sawLoggedOut, setSawLoggedOut] = useState(false);
 
   // Auth mutations hook
   const { initHandoff } = useAuthMutations({
@@ -83,7 +84,10 @@ const OAuthDialogImpl = NiceModal.create<NoProps>(() => {
   useEffect(() => {
     if (!isPolling || !statusData) return;
 
-    // Check if popup is closed
+    if (!statusData.logged_in) {
+      setSawLoggedOut(true);
+    }
+
     if (popupRef.current?.closed) {
       setIsPolling(false);
       if (!statusData.logged_in) {
@@ -94,14 +98,12 @@ const OAuthDialogImpl = NiceModal.create<NoProps>(() => {
       }
     }
 
-    // If logged in, stop polling and trigger success
-    if (statusData.logged_in && statusData.profile) {
+    if (sawLoggedOut && statusData.logged_in && statusData.profile) {
       setIsPolling(false);
       if (popupRef.current && !popupRef.current.closed) {
         popupRef.current.close();
       }
 
-      // Reload user system to refresh login status
       reloadSystem();
 
       setState({ type: 'success', profile: statusData.profile });
@@ -110,10 +112,11 @@ const OAuthDialogImpl = NiceModal.create<NoProps>(() => {
         modal.hide();
       }, 1500);
     }
-  }, [statusData, isPolling, modal, reloadSystem]);
+  }, [statusData, isPolling, sawLoggedOut, modal, reloadSystem]);
 
   const handleProviderSelect = (provider: OAuthProvider) => {
     setState({ type: 'waiting', provider });
+    setSawLoggedOut(false);
 
     // Get the current window location as return_to
     const returnTo = `${window.location.origin}/api/auth/handoff/complete`;
