@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   FolderOpen,
+  Server,
   Settings,
   BookOpen,
   MessageCircleQuestion,
@@ -40,7 +41,10 @@ import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { oauthApi } from '@/lib/api';
 
-const INTERNAL_NAV = [{ label: 'Projects', icon: FolderOpen, to: '/projects' }];
+const INTERNAL_NAV = [
+  { label: 'Projects', icon: FolderOpen, to: '/projects' },
+  { label: 'Nodes', icon: Server, to: '/nodes' },
+];
 
 const EXTERNAL_LINKS = [
   {

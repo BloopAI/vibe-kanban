@@ -6,6 +6,7 @@ use backon::{ExponentialBuilder, Retryable};
 use chrono::Duration as ChronoDuration;
 use remote::{
     activity::ActivityResponse,
+    nodes::{Node, NodeApiKey, NodeProject},
     routes::tasks::{
         AssignSharedTaskRequest, BulkSharedTasksResponse, CreateSharedTaskRequest,
         DeleteSharedTaskRequest, SharedTaskResponse, UpdateSharedTaskRequest,
@@ -615,6 +616,41 @@ impl RemoteClient {
         project_id: Uuid,
     ) -> Result<BulkSharedTasksResponse, RemoteClientError> {
         self.get_authed(&format!("/v1/tasks/bulk?project_id={project_id}"))
+            .await
+    }
+
+    // =====================
+    // Node Management APIs
+    // =====================
+
+    /// Lists all nodes for an organization.
+    pub async fn list_nodes(&self, org_id: Uuid) -> Result<Vec<Node>, RemoteClientError> {
+        self.get_authed(&format!("/v1/nodes?organization_id={org_id}"))
+            .await
+    }
+
+    /// Gets a specific node by ID.
+    pub async fn get_node(&self, node_id: Uuid) -> Result<Node, RemoteClientError> {
+        self.get_authed(&format!("/v1/nodes/{node_id}")).await
+    }
+
+    /// Deletes a node.
+    pub async fn delete_node(&self, node_id: Uuid) -> Result<(), RemoteClientError> {
+        self.delete_authed(&format!("/v1/nodes/{node_id}")).await
+    }
+
+    /// Lists projects linked to a node.
+    pub async fn list_node_projects(
+        &self,
+        node_id: Uuid,
+    ) -> Result<Vec<NodeProject>, RemoteClientError> {
+        self.get_authed(&format!("/v1/nodes/{node_id}/projects"))
+            .await
+    }
+
+    /// Lists API keys for an organization.
+    pub async fn list_node_api_keys(&self, org_id: Uuid) -> Result<Vec<NodeApiKey>, RemoteClientError> {
+        self.get_authed(&format!("/v1/nodes/api-keys?organization_id={org_id}"))
             .await
     }
 }

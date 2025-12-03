@@ -4737,6 +4737,7 @@ dependencies = [
  "openssl-sys",
  "os_info",
  "rand 0.8.5",
+ "remote",
  "reqwest",
  "rmcp",
  "rust-embed",

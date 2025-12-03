@@ -1149,3 +1149,39 @@ export const dashboardApi = {
     return handleApiResponse<DashboardSummary>(response);
   },
 };
+
+// Nodes API (swarm/hive architecture)
+import type { Node, NodeProject, NodeApiKey } from '@/types/nodes';
+
+export const nodesApi = {
+  list: async (organizationId: string): Promise<Node[]> => {
+    const response = await makeRequest(
+      `/api/nodes?organization_id=${encodeURIComponent(organizationId)}`
+    );
+    return handleApiResponse<Node[]>(response);
+  },
+
+  getById: async (nodeId: string): Promise<Node> => {
+    const response = await makeRequest(`/api/nodes/${nodeId}`);
+    return handleApiResponse<Node>(response);
+  },
+
+  delete: async (nodeId: string): Promise<void> => {
+    const response = await makeRequest(`/api/nodes/${nodeId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  listProjects: async (nodeId: string): Promise<NodeProject[]> => {
+    const response = await makeRequest(`/api/nodes/${nodeId}/projects`);
+    return handleApiResponse<NodeProject[]>(response);
+  },
+
+  listApiKeys: async (organizationId: string): Promise<NodeApiKey[]> => {
+    const response = await makeRequest(
+      `/api/nodes/api-keys?organization_id=${encodeURIComponent(organizationId)}`
+    );
+    return handleApiResponse<NodeApiKey[]>(response);
+  },
+};
