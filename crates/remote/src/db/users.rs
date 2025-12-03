@@ -72,28 +72,6 @@ impl<'a> UserRepository<'a> {
         .ok_or(IdentityError::NotFound)
     }
 
-    pub async fn find_user_by_email(&self, email: &str) -> Result<Option<User>, IdentityError> {
-        sqlx::query_as!(
-            User,
-            r#"
-            SELECT
-                id           AS "id!: Uuid",
-                email        AS "email!",
-                first_name   AS "first_name?",
-                last_name    AS "last_name?",
-                username     AS "username?",
-                created_at   AS "created_at!",
-                updated_at   AS "updated_at!"
-            FROM users
-            WHERE lower(email) = lower($1)
-            "#,
-            email
-        )
-        .fetch_optional(self.pool)
-        .await
-        .map_err(IdentityError::from)
-    }
-
     /// Fetch all assignees for a given project id.
     /// Returns Vec<UserData> containing all unique users assigned to tasks in the project.
     pub async fn fetch_assignees_by_project(
