@@ -20,6 +20,7 @@ use db::{
         executor_session::ExecutorSession,
         project::Project,
         project_repo::ProjectRepo,
+        repo::Repo,
         scratch::{DraftFollowUpData, Scratch, ScratchType},
         task::{Task, TaskStatus},
         task_attempt::TaskAttempt,
@@ -46,7 +47,7 @@ use services::services::{
     config::Config,
     container::{ContainerError, ContainerRef, ContainerService},
     diff_stream::{self, DiffStreamHandle},
-    git::{Commit, GitService},
+    git::{Commit, GitCli, GitService},
     image::ImageService,
     queued_message::QueuedMessageService,
     share::SharePublisher,
@@ -304,24 +305,128 @@ impl LocalContainerService {
     async fn update_after_head_commits(&self, exec_id: Uuid) {
         if let Ok(ctx) = ExecutionProcess::load_context(&self.db.pool, exec_id).await {
             let workspace_root = self.task_attempt_to_current_dir(&ctx.task_attempt);
-            if let Ok(Some(project)) = Project::find_by_id(&self.db.pool, ctx.task.project_id).await
-                && let Ok(repos) =
-                    ProjectRepo::find_repos_for_project(&self.db.pool, project.id).await
-            {
-                for repo in repos {
-                    let repo_path = workspace_root.join(&repo.name);
-                    if let Ok(head) = self.git().get_head_info(&repo_path) {
-                        let _ = ExecutionProcessRepoState::update_after_head_commit(
-                            &self.db.pool,
-                            exec_id,
-                            repo.id,
-                            &head.oid,
-                        )
-                        .await;
-                    }
+            for repo in &ctx.repos {
+                let repo_path = workspace_root.join(&repo.name);
+                if let Ok(head) = self.git().get_head_info(&repo_path) {
+                    let _ = ExecutionProcessRepoState::update_after_head_commit(
+                        &self.db.pool,
+                        exec_id,
+                        repo.id,
+                        &head.oid,
+                    )
+                    .await;
                 }
             }
         }
+    }
+
+    /// Get the commit message based on the execution run reason.
+    async fn get_commit_message(&self, ctx: &ExecutionContext) -> String {
+        match ctx.execution_process.run_reason {
+            ExecutionProcessRunReason::CodingAgent => {
+                // Try to retrieve the task summary from the executor session
+                // otherwise fallback to default message
+                match ExecutorSession::find_by_execution_process_id(
+                    &self.db().pool,
+                    ctx.execution_process.id,
+                )
+                .await
+                {
+                    Ok(Some(session)) if session.summary.is_some() => session.summary.unwrap(),
+                    Ok(_) => {
+                        tracing::debug!(
+                            "No summary found for execution process {}, using default message",
+                            ctx.execution_process.id
+                        );
+                        format!(
+                            "Commit changes from coding agent for task attempt {}",
+                            ctx.task_attempt.id
+                        )
+                    }
+                    Err(e) => {
+                        tracing::debug!(
+                            "Failed to retrieve summary for execution process {}: {}",
+                            ctx.execution_process.id,
+                            e
+                        );
+                        format!(
+                            "Commit changes from coding agent for task attempt {}",
+                            ctx.task_attempt.id
+                        )
+                    }
+                }
+            }
+            ExecutionProcessRunReason::CleanupScript => {
+                format!(
+                    "Cleanup script changes for task attempt {}",
+                    ctx.task_attempt.id
+                )
+            }
+            _ => format!(
+                "Changes from execution process {}",
+                ctx.execution_process.id
+            ),
+        }
+    }
+
+    /// Check which repos have uncommitted changes. Fails if any repo is inaccessible.
+    fn check_repos_for_changes(
+        &self,
+        workspace_root: &Path,
+        repos: &[Repo],
+    ) -> Result<Vec<(Repo, PathBuf)>, ContainerError> {
+        let git = GitCli::new();
+        let mut repos_with_changes = Vec::new();
+
+        for repo in repos {
+            let worktree_path = workspace_root.join(&repo.name);
+
+            match git.has_changes(&worktree_path) {
+                Ok(true) => {
+                    repos_with_changes.push((repo.clone(), worktree_path));
+                }
+                Ok(false) => {
+                    tracing::debug!("No changes in repo '{}'", repo.name);
+                }
+                Err(e) => {
+                    return Err(ContainerError::Other(anyhow!(
+                        "Pre-flight check failed for repo '{}': {}",
+                        repo.name,
+                        e
+                    )));
+                }
+            }
+        }
+
+        Ok(repos_with_changes)
+    }
+
+    /// Commit changes to each repo. Logs failures but continues with other repos.
+    fn commit_repos(&self, repos_with_changes: Vec<(Repo, PathBuf)>, message: &str) -> bool {
+        let mut any_committed = false;
+
+        for (repo, worktree_path) in repos_with_changes {
+            tracing::debug!(
+                "Committing changes for repo '{}' at {:?}",
+                repo.name,
+                &worktree_path
+            );
+
+            match self.git().commit(&worktree_path, message) {
+                Ok(true) => {
+                    any_committed = true;
+                    tracing::info!("Committed changes in repo '{}'", repo.name);
+                }
+                Ok(false) => {
+                    tracing::warn!("No changes committed in repo '{}' (unexpected)", repo.name);
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to commit in repo '{}': {}", repo.name, e);
+                }
+            }
+        }
+
+        any_committed
     }
 
     /// Spawn a background task that polls the child process for completion and
@@ -718,12 +823,7 @@ impl LocalContainerService {
         )
         .await?;
 
-        // Get project for cleanup script
-        let project = Project::find_by_id(&self.db.pool, ctx.task.project_id)
-            .await?
-            .ok_or_else(|| ContainerError::Other(anyhow!("Project not found")))?;
-
-        let cleanup_action = self.cleanup_action(project.cleanup_script);
+        let cleanup_action = self.cleanup_action(ctx.project.cleanup_script.clone());
 
         let action_type = if let Some(session_id) = latest_session_id {
             ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
@@ -1256,64 +1356,22 @@ impl ContainerService for LocalContainerService {
             return Ok(false);
         }
 
-        let message = match ctx.execution_process.run_reason {
-            ExecutionProcessRunReason::CodingAgent => {
-                // Try to retrieve the task summary from the executor session
-                // otherwise fallback to default message
-                match ExecutorSession::find_by_execution_process_id(
-                    &self.db().pool,
-                    ctx.execution_process.id,
-                )
-                .await
-                {
-                    Ok(Some(session)) if session.summary.is_some() => session.summary.unwrap(),
-                    Ok(_) => {
-                        tracing::debug!(
-                            "No summary found for execution process {}, using default message",
-                            ctx.execution_process.id
-                        );
-                        format!(
-                            "Commit changes from coding agent for task attempt {}",
-                            ctx.task_attempt.id
-                        )
-                    }
-                    Err(e) => {
-                        tracing::debug!(
-                            "Failed to retrieve summary for execution process {}: {}",
-                            ctx.execution_process.id,
-                            e
-                        );
-                        format!(
-                            "Commit changes from coding agent for task attempt {}",
-                            ctx.task_attempt.id
-                        )
-                    }
-                }
-            }
-            ExecutionProcessRunReason::CleanupScript => {
-                format!(
-                    "Cleanup script changes for task attempt {}",
-                    ctx.task_attempt.id
-                )
-            }
-            _ => Err(ContainerError::Other(anyhow::anyhow!(
-                "Invalid run reason for commit"
-            )))?,
-        };
+        let message = self.get_commit_message(ctx).await;
 
-        let container_ref = ctx.task_attempt.container_ref.as_ref().ok_or_else(|| {
-            ContainerError::Other(anyhow::anyhow!("Container reference not found"))
-        })?;
+        let container_ref = ctx
+            .task_attempt
+            .container_ref
+            .as_ref()
+            .ok_or_else(|| ContainerError::Other(anyhow!("Container reference not found")))?;
+        let workspace_root = PathBuf::from(container_ref);
 
-        tracing::debug!(
-            "Committing changes for task attempt {} at path {:?}: '{}'",
-            ctx.task_attempt.id,
-            &container_ref,
-            message
-        );
+        let repos_with_changes = self.check_repos_for_changes(&workspace_root, &ctx.repos)?;
+        if repos_with_changes.is_empty() {
+            tracing::debug!("No changes to commit in any repository");
+            return Ok(false);
+        }
 
-        let changes_committed = self.git().commit(Path::new(container_ref), &message)?;
-        Ok(changes_committed)
+        Ok(self.commit_repos(repos_with_changes, &message))
     }
 
     /// Copy files from the original project directory to the worktree

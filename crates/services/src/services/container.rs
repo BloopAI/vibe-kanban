@@ -206,16 +206,11 @@ pub trait ContainerService {
                 continue;
             }
             // Capture after-head commit OID per repository
-            if let Ok(Some(task_attempt)) =
-                TaskAttempt::find_by_id(&self.db().pool, process.task_attempt_id).await
-                && let Some(ref container_ref) = task_attempt.container_ref
-                && let Ok(Some(task)) = task_attempt.parent_task(&self.db().pool).await
-                && let Ok(Some(project)) = task.parent_project(&self.db().pool).await
-                && let Ok(repos) =
-                    ProjectRepo::find_repos_for_project(&self.db().pool, project.id).await
+            if let Ok(ctx) = ExecutionProcess::load_context(&self.db().pool, process.id).await
+                && let Some(ref container_ref) = ctx.task_attempt.container_ref
             {
                 let workspace_root = PathBuf::from(container_ref);
-                for repo in repos {
+                for repo in &ctx.repos {
                     let repo_path = workspace_root.join(&repo.name);
                     if let Ok(head) = self.git().get_head_info(&repo_path)
                         && let Err(err) = ExecutionProcessRepoState::update_after_head_commit(
