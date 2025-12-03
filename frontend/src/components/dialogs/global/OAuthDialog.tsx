@@ -33,7 +33,7 @@ const OAuthDialogImpl = NiceModal.create<NoProps>(() => {
   const [state, setState] = useState<OAuthState>({ type: 'select' });
   const popupRef = useRef<Window | null>(null);
   const [isPolling, setIsPolling] = useState(false);
-  const [sawLoggedOut, setSawLoggedOut] = useState(false);
+  const sawLoggedOutRef = useRef(false);
 
   // Auth mutations hook
   const { initHandoff } = useAuthMutations({
@@ -85,7 +85,7 @@ const OAuthDialogImpl = NiceModal.create<NoProps>(() => {
     if (!isPolling || !statusData) return;
 
     if (!statusData.logged_in) {
-      setSawLoggedOut(true);
+      sawLoggedOutRef.current = true;
     }
 
     if (popupRef.current?.closed) {
@@ -98,7 +98,7 @@ const OAuthDialogImpl = NiceModal.create<NoProps>(() => {
       }
     }
 
-    if (sawLoggedOut && statusData.logged_in && statusData.profile) {
+    if (sawLoggedOutRef.current && statusData.logged_in && statusData.profile) {
       setIsPolling(false);
       if (popupRef.current && !popupRef.current.closed) {
         popupRef.current.close();
@@ -112,11 +112,11 @@ const OAuthDialogImpl = NiceModal.create<NoProps>(() => {
         modal.hide();
       }, 1500);
     }
-  }, [statusData, isPolling, sawLoggedOut, modal, reloadSystem]);
+  }, [statusData, isPolling, modal, reloadSystem]);
 
   const handleProviderSelect = (provider: OAuthProvider) => {
     setState({ type: 'waiting', provider });
-    setSawLoggedOut(false);
+    sawLoggedOutRef.current = false;
 
     // Get the current window location as return_to
     const returnTo = `${window.location.origin}/api/auth/handoff/complete`;
