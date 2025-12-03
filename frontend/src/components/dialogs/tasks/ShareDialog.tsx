@@ -69,7 +69,13 @@ const ShareDialogImpl = NiceModal.create<ShareDialogProps>(({ task }) => {
       modal.hide();
     } catch (err) {
       if (getStatus(err) === 401) {
-        void OAuthDialog.show();
+        // Hide this dialog first so OAuthDialog appears on top
+        modal.hide();
+        const result = await OAuthDialog.show();
+        // If user successfully authenticated, re-show this dialog
+        if (result) {
+          void ShareDialog.show({ task });
+        }
         return;
       }
       setShareError(getReadableError(err));
