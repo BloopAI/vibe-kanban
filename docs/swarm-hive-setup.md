@@ -1,0 +1,385 @@
+# Swarm/Hive Architecture Setup Guide
+
+This guide explains how to configure Vibe Kanban to run in a distributed swarm architecture, where multiple local nodes connect to a central hive server.
+
+## Overview
+
+The swarm/hive architecture enables:
+- **Centralized management** - View all projects and tasks across multiple machines
+- **Remote task execution** - Create tasks on the hive that execute on connected nodes
+- **Live log streaming** - View real-time output from tasks running on any node
+- **Cross-platform support** - Run nodes on different operating systems
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                        HIVE (Remote Server)                     │
+│              PostgreSQL + Activity Broker + Node Registry       │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │ WebSocket (persistent)
+          ┌────────────────┼────────────────┐
+          │                │                │
+          ▼                ▼                ▼
+┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+│   NODE: Mac     │ │  NODE: Linux    │ │  NODE: Windows  │
+│   (local srv)   │ │   (local srv)   │ │   (local srv)   │
+└─────────────────┘ └─────────────────┘ └─────────────────┘
+```
+
+## Prerequisites
+
+1. A running Vibe Kanban hive server (the `remote` crate)
+2. One or more local Vibe Kanban instances to act as nodes
+3. Network connectivity between nodes and hive
+
+---
+
+## Hive Server Setup
+
+The hive server manages the central registry of nodes, projects, and task assignments.
+
+### 1. Run the Hive Server
+
+```bash
+cd crates/remote
+cargo run
+```
+
+By default, the hive runs on port 8081. Configure with environment variables:
+
+```bash
+PORT=8081
+DATABASE_URL=postgres://user:password@localhost/vibe_hive
+JWT_SECRET=your-jwt-secret-key
+CONNECTION_TOKEN_SECRET=your-connection-token-secret
+```
+
+### 2. Create an Organization
+
+Users must be part of an organization to manage nodes. Create one via the API or through the frontend.
+
+### 3. Generate a Node API Key
+
+API keys allow nodes to authenticate with the hive. Generate one using the API:
+
+```bash
+# First, get a user JWT token by logging in
+curl -X POST https://hive.example.com/v1/nodes/api-keys \
+  -H "Authorization: Bearer <user-jwt-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "organization_id": "your-org-uuid",
+    "name": "MacBook Pro Node"
+  }'
+```
+
+Response:
+```json
+{
+  "api_key": {
+    "id": "key-uuid",
+    "organization_id": "org-uuid",
+    "name": "MacBook Pro Node",
+    "key_prefix": "vk_abc123",
+    "created_at": "2024-01-15T10:00:00Z"
+  },
+  "secret": "vk_abc123_full_secret_key_here"
+}
+```
+
+**Important:** Save the `secret` value immediately - it's only shown once!
+
+---
+
+## Node Configuration
+
+Configure a local Vibe Kanban instance to connect to the hive as a node.
+
+### Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `VK_HIVE_URL` | Yes | WebSocket URL of the hive server (e.g., `wss://hive.example.com` or `ws://localhost:8081`) |
+| `VK_NODE_API_KEY` | Yes | The API key secret from the hive |
+| `VK_NODE_NAME` | No | Human-readable name for this node (defaults to hostname) |
+| `VK_NODE_PUBLIC_URL` | No | Public URL for direct log streaming (e.g., `http://192.168.1.50:3000`) |
+| `VK_CONNECTION_TOKEN_SECRET` | No | JWT secret for validating direct connection tokens (must match hive's `CONNECTION_TOKEN_SECRET`) |
+
+### Minimal Setup
+
+```bash
+export VK_HIVE_URL=ws://localhost:8081
+export VK_NODE_API_KEY=vk_abc123_full_secret_key_here
+
+pnpm run dev
+```
+
+### Full Setup with Direct Log Streaming
+
+For optimal log streaming performance, enable direct connections:
+
+```bash
+export VK_HIVE_URL=wss://hive.example.com
+export VK_NODE_API_KEY=vk_abc123_full_secret_key_here
+export VK_NODE_NAME="David's MacBook Pro"
+export VK_NODE_PUBLIC_URL=http://192.168.1.50:3000
+export VK_CONNECTION_TOKEN_SECRET=same-secret-as-hive
+
+pnpm run dev
+```
+
+### Network Accessibility
+
+For direct log streaming to work:
+1. The node must be accessible from the frontend (browser)
+2. Set `HOST=0.0.0.0` to bind to all interfaces
+3. Configure `VK_NODE_PUBLIC_URL` to the node's accessible address
+
+```bash
+HOST=0.0.0.0 \
+VK_HIVE_URL=wss://hive.example.com \
+VK_NODE_API_KEY=your-api-key \
+VK_NODE_PUBLIC_URL=http://192.168.1.50:3000 \
+pnpm run dev
+```
+
+---
+
+## Linking Projects
+
+Projects on the node must be linked to the hive for task routing.
+
+### Via the Frontend
+
+1. Open a project on the node's local frontend
+2. Click the menu (three dots) on the project card
+3. Select "Link to Remote Project"
+4. Choose your organization and create/select a remote project
+
+### Via the API
+
+When a project is linked, the node automatically registers the link with the hive.
+
+---
+
+## Task Flow
+
+### 1. Create Task on Hive
+
+Tasks created on the hive are automatically routed to the node linked to that project:
+
+```bash
+curl -X POST https://hive.example.com/v1/tasks \
+  -H "Authorization: Bearer <user-jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "project_id": "project-uuid",
+    "title": "Implement new feature",
+    "description": "Add user authentication"
+  }'
+```
+
+### 2. Node Receives Assignment
+
+The node receives the task assignment via WebSocket and creates a local task.
+
+### 3. Execute Task
+
+Start the task on the node (manually or via API):
+
+```bash
+curl -X POST http://localhost:3000/api/task-attempts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "task_id": "local-task-uuid",
+    "executor": "CLAUDE_CODE",
+    "base_branch": "main"
+  }'
+```
+
+### 4. View Logs
+
+The frontend automatically streams logs:
+- **Direct connection** if the node is accessible (lowest latency)
+- **Hive relay** as fallback if direct connection fails
+
+---
+
+## Viewing Nodes
+
+### Frontend
+
+Navigate to `/nodes` in the hive frontend to see:
+- All registered nodes in your organization
+- Node status (online, offline, busy)
+- Node capabilities (OS, architecture, available executors)
+- Last heartbeat time
+
+### API
+
+```bash
+# List all nodes
+curl https://hive.example.com/v1/nodes?organization_id=<org-uuid> \
+  -H "Authorization: Bearer <user-jwt>"
+
+# Get specific node
+curl https://hive.example.com/v1/nodes/<node-uuid> \
+  -H "Authorization: Bearer <user-jwt>"
+
+# List node's linked projects
+curl https://hive.example.com/v1/nodes/<node-uuid>/projects \
+  -H "Authorization: Bearer <user-jwt>"
+```
+
+---
+
+## Node Status
+
+| Status | Description |
+|--------|-------------|
+| `pending` | Registered but never connected |
+| `online` | Connected and ready for tasks |
+| `busy` | Currently executing one or more tasks |
+| `offline` | Disconnected (heartbeat timeout) |
+| `draining` | Not accepting new tasks, finishing current |
+
+Nodes are marked offline after 60 seconds without a heartbeat.
+
+---
+
+## Log Streaming Architecture
+
+```text
+┌─────────────┐         ┌─────────────┐         ┌──────────────┐
+│   Frontend  │ ──(1)─► │    Hive     │ ──(2)─► │     Node     │
+│   Browser   │         │   Server    │         │  (logs here) │
+└─────────────┘         └─────────────┘         └──────────────┘
+       │                                               │
+       │                     OR                        │
+       │                                               │
+       └───────────────── (3) Direct ─────────────────►│
+```
+
+1. Frontend requests connection info from hive
+2. If node isn't directly accessible, hive relays logs
+3. If node is accessible, frontend connects directly (faster)
+
+### Connection Status Indicators
+
+The log viewer shows connection status:
+- **Direct** (green) - Connected directly to node
+- **Relay** (blue) - Connected via hive relay
+- **Connecting** (yellow) - Establishing connection
+- **Disconnected** (gray) - Connection lost
+
+---
+
+## Troubleshooting
+
+### Node Not Appearing in Hive
+
+1. Check `VK_HIVE_URL` is correct and accessible
+2. Verify `VK_NODE_API_KEY` is valid and not revoked
+3. Check node logs for connection errors
+4. Ensure the API key belongs to the correct organization
+
+### Node Shows as Offline
+
+1. Check network connectivity between node and hive
+2. Verify the node process is still running
+3. Check for WebSocket connection errors in logs
+
+### Logs Not Streaming
+
+1. For direct streaming:
+   - Verify `VK_NODE_PUBLIC_URL` is accessible from the browser
+   - Check `VK_CONNECTION_TOKEN_SECRET` matches the hive
+   - Ensure node is listening on `0.0.0.0` (not just localhost)
+
+2. For relay streaming:
+   - Verify the hive can reach the node
+   - Check hive logs for relay errors
+
+### Project Not Receiving Tasks
+
+1. Verify project is linked to a remote project
+2. Check the node-project link exists in hive
+3. Ensure the node is online when task is created
+
+---
+
+## Security Considerations
+
+### API Key Security
+
+- API keys grant full access to register and operate as a node
+- Store keys securely (environment variables, secrets manager)
+- Rotate keys periodically
+- Revoke keys immediately if compromised
+
+### Network Security
+
+- Use `wss://` (TLS) for production hive connections
+- Consider VPN or firewall rules for direct node connections
+- The connection token secret must be kept confidential
+
+### Access Control
+
+- Only organization members can create API keys
+- Nodes can only execute tasks for linked projects
+- Users must have project access to view logs
+
+---
+
+## Example: Full Setup Script
+
+```bash
+#!/bin/bash
+
+# Hive server configuration
+export PORT=8081
+export DATABASE_URL=postgres://vibe:password@localhost/vibe_hive
+export JWT_SECRET=$(openssl rand -base64 32)
+export CONNECTION_TOKEN_SECRET=$(openssl rand -base64 32)
+
+# Start hive (in production, use a process manager)
+cd crates/remote && cargo run &
+
+# Node configuration
+export VK_HIVE_URL=ws://localhost:8081
+export VK_NODE_API_KEY="your-api-key-here"
+export VK_NODE_NAME="Development Node"
+export VK_NODE_PUBLIC_URL=http://localhost:3000
+export VK_CONNECTION_TOKEN_SECRET=$CONNECTION_TOKEN_SECRET
+
+# Start node
+HOST=0.0.0.0 pnpm run dev
+```
+
+---
+
+## API Reference
+
+### Node API Key Management
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/v1/nodes/api-keys` | POST | User JWT | Create API key |
+| `/v1/nodes/api-keys?organization_id=<uuid>` | GET | User JWT | List API keys |
+| `/v1/nodes/api-keys/<key_id>` | DELETE | User JWT | Revoke API key |
+
+### Node Management
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/v1/nodes?organization_id=<uuid>` | GET | User JWT | List nodes |
+| `/v1/nodes/<node_id>` | GET | User JWT | Get node details |
+| `/v1/nodes/<node_id>` | DELETE | User JWT | Remove node |
+| `/v1/nodes/<node_id>/projects` | GET | User JWT | List node's projects |
+
+### Log Streaming
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/v1/nodes/assignments/<id>/connection-info` | GET | User JWT | Get log streaming connection info |
+| `/v1/nodes/assignments/<id>/logs` | GET | User JWT | Get assignment logs (HTTP) |
+| `/v1/relay/logs/<id>/ws` | WS | Connection Token | Relay log stream |

@@ -38,6 +38,7 @@ reqwest = { version = "0.12", features = ["json"] }
 lazy_static = "1.4"
 futures-util = "0.3"
 json-patch = "2.0"
+jsonwebtoken = "10.2"
 backon = "1.5.1"
 base64 = "0.22"
 thiserror = { workspace = true }

@@ -29,6 +29,13 @@ pub struct ExecutionProcessQuery {
     pub show_soft_deleted: Option<bool>,
 }
 
+/// Query parameters for log streaming endpoints.
+#[derive(Debug, Deserialize)]
+pub struct LogStreamQuery {
+    /// Optional connection token for external access (e.g., from Hive frontend)
+    pub token: Option<String>,
+}
+
 pub async fn get_execution_process_by_id(
     Extension(execution_process): Extension<ExecutionProcess>,
     State(_deployment): State<DeploymentImpl>,
@@ -36,11 +43,49 @@ pub async fn get_execution_process_by_id(
     Ok(ResponseJson(ApiResponse::success(execution_process)))
 }
 
+/// Stream raw logs via WebSocket.
+///
+/// This endpoint supports two authentication modes:
+/// 1. Session-based (local access) - no token required
+/// 2. Token-based (external access) - connection token in query param
+///
+/// When a token is provided, it is validated against the connection token validator.
+/// If validation is disabled (VK_CONNECTION_TOKEN_SECRET not set) or the token is
+/// invalid, the request is rejected with 401 Unauthorized.
 pub async fn stream_raw_logs_ws(
     ws: WebSocketUpgrade,
     State(deployment): State<DeploymentImpl>,
     Path(exec_id): Path<Uuid>,
+    Query(query): Query<LogStreamQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
+    // If a token is provided, validate it
+    if let Some(token) = &query.token {
+        let validator = deployment.connection_token_validator();
+
+        if !validator.is_enabled() {
+            tracing::warn!(
+                "connection token provided but validation is disabled (VK_CONNECTION_TOKEN_SECRET not set)"
+            );
+            return Err(ApiError::Forbidden(
+                "connection token validation not configured on this node".to_string(),
+            ));
+        }
+
+        match validator.validate_for_execution(token, exec_id) {
+            Ok(validated) => {
+                tracing::debug!(
+                    user_id = %validated.user_id,
+                    exec_id = %exec_id,
+                    "connection token validated for log streaming"
+                );
+            }
+            Err(e) => {
+                tracing::warn!(?e, "invalid connection token for log streaming");
+                return Err(ApiError::Unauthorized);
+            }
+        }
+    }
+
     // Check if the stream exists before upgrading the WebSocket
     let _stream = deployment
         .container()

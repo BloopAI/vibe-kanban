@@ -81,6 +81,13 @@
           "integrations/mcp-server-configuration",
           "integrations/vibe-kanban-mcp-server"
         ]
+      },
+      {
+        "group": "Swarm Architecture",
+        "pages": [
+          "swarm-hive-setup",
+          "future/phase-4-load-balancing"
+        ]
       }
     ]
   },

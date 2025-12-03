@@ -4,7 +4,10 @@ use sqlx::PgPool;
 
 use crate::{
     activity::ActivityBroker,
-    auth::{JwtService, OAuthHandoffService, OAuthTokenValidator, ProviderRegistry},
+    auth::{
+        ConnectionTokenService, JwtService, OAuthHandoffService, OAuthTokenValidator,
+        ProviderRegistry,
+    },
     config::RemoteServerConfig,
     mail::Mailer,
     nodes::ConnectionManager,
@@ -21,6 +24,7 @@ pub struct AppState {
     pub handoff: Arc<OAuthHandoffService>,
     pub oauth_token_validator: Arc<OAuthTokenValidator>,
     pub node_connections: ConnectionManager,
+    pub connection_token: Arc<ConnectionTokenService>,
 }
 
 impl AppState {
@@ -35,6 +39,7 @@ impl AppState {
         mailer: Arc<dyn Mailer>,
         server_public_base_url: String,
         node_connections: ConnectionManager,
+        connection_token: Arc<ConnectionTokenService>,
     ) -> Self {
         Self {
             pool,
@@ -46,6 +51,7 @@ impl AppState {
             handoff,
             oauth_token_validator,
             node_connections,
+            connection_token,
         }
     }
 
@@ -79,5 +85,9 @@ impl AppState {
 
     pub fn node_connections(&self) -> &ConnectionManager {
         &self.node_connections
+    }
+
+    pub fn connection_token(&self) -> Arc<ConnectionTokenService> {
+        Arc::clone(&self.connection_token)
     }
 }

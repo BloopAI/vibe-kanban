@@ -46,7 +46,7 @@ fn default_max_concurrent() -> i32 {
 }
 
 /// API key for node authentication (machine-to-machine)
-#[derive(Debug, Clone, Serialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct NodeApiKey {
     pub id: Uuid,
     pub organization_id: Uuid,
@@ -67,7 +67,7 @@ pub struct CreateNodeApiKey {
 }
 
 /// A registered node in the swarm
-#[derive(Debug, Clone, Serialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Node {
     pub id: Uuid,
     pub organization_id: Uuid,
@@ -103,7 +103,7 @@ pub struct HeartbeatPayload {
 }
 
 /// Link between a node and a project
-#[derive(Debug, Clone, Serialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct NodeProject {
     pub id: Uuid,
     pub node_id: Uuid,

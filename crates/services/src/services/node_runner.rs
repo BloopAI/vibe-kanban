@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use db::DBService;
-use tokio::sync::{mpsc, RwLock};
+use tokio::sync::{RwLock, mpsc};
 use uuid::Uuid;
 
 use super::hive_client::{
@@ -27,6 +27,9 @@ pub struct NodeRunnerConfig {
     pub node_name: String,
     /// Public URL for this node (optional, for direct connections)
     pub public_url: Option<String>,
+    /// JWT secret for validating connection tokens (optional)
+    /// When set, enables direct frontend-to-node log streaming
+    pub connection_token_secret: Option<secrecy::SecretString>,
 }
 
 impl NodeRunnerConfig {
@@ -39,6 +42,8 @@ impl NodeRunnerConfig {
     /// Optional:
     /// - `VK_NODE_NAME`: Human-readable name (defaults to hostname)
     /// - `VK_NODE_PUBLIC_URL`: Public URL for direct connections
+    /// - `VK_CONNECTION_TOKEN_SECRET`: JWT secret for validating connection tokens
+    ///   (enables direct frontend-to-node log streaming)
     pub fn from_env() -> Option<Self> {
         let hive_url = std::env::var("VK_HIVE_URL").ok()?;
         let api_key = std::env::var("VK_NODE_API_KEY").ok()?;
@@ -51,11 +56,16 @@ impl NodeRunnerConfig {
 
         let public_url = std::env::var("VK_NODE_PUBLIC_URL").ok();
 
+        let connection_token_secret = std::env::var("VK_CONNECTION_TOKEN_SECRET")
+            .ok()
+            .map(secrecy::SecretString::from);
+
         Some(Self {
             hive_url,
             api_key,
             node_name,
             public_url,
+            connection_token_secret,
         })
     }
 }
@@ -79,13 +89,15 @@ impl ProjectMapping {
         self.local_to_link.clear();
 
         for link in links {
-            self.local_to_link.insert(link.local_project_id, link.link_id);
+            self.local_to_link
+                .insert(link.local_project_id, link.link_id);
             self.links.insert(link.link_id, link);
         }
     }
 
     pub fn add_link(&mut self, link: LinkedProjectInfo) {
-        self.local_to_link.insert(link.local_project_id, link.link_id);
+        self.local_to_link
+            .insert(link.local_project_id, link.link_id);
         self.links.insert(link.link_id, link);
     }
 
@@ -166,7 +178,9 @@ impl NodeRunnerHandle {
                 let mut state = self.state.write().await;
                 state.node_id = Some(*node_id);
                 state.organization_id = Some(*organization_id);
-                state.project_mapping.update_from_links(linked_projects.clone());
+                state
+                    .project_mapping
+                    .update_from_links(linked_projects.clone());
                 state.connected = true;
 
                 tracing::info!(
@@ -235,12 +249,31 @@ impl NodeRunnerHandle {
     }
 
     /// Send a task status update.
-    pub async fn send_task_status(
-        &self,
-        status: TaskStatusMessage,
-    ) -> Result<(), HiveClientError> {
+    pub async fn send_task_status(&self, status: TaskStatusMessage) -> Result<(), HiveClientError> {
         self.command_tx
             .send(NodeMessage::TaskStatus(status))
+            .await
+            .map_err(|_| HiveClientError::Send("channel closed".to_string()))
+    }
+
+    /// Send task output/logs to the hive.
+    pub async fn send_task_output(
+        &self,
+        output: super::hive_client::TaskOutputMessage,
+    ) -> Result<(), HiveClientError> {
+        self.command_tx
+            .send(NodeMessage::TaskOutput(output))
+            .await
+            .map_err(|_| HiveClientError::Send("channel closed".to_string()))
+    }
+
+    /// Send task progress event to the hive.
+    pub async fn send_task_progress(
+        &self,
+        progress: super::hive_client::TaskProgressMessage,
+    ) -> Result<(), HiveClientError> {
+        self.command_tx
+            .send(NodeMessage::TaskProgress(progress))
             .await
             .map_err(|_| HiveClientError::Send("channel closed".to_string()))
     }
@@ -292,6 +325,9 @@ fn spawn_hive_connection(config: NodeRunnerConfig) -> NodeRunnerHandle {
     }
 }
 
+use super::assignment_handler::AssignmentHandler;
+use super::container::ContainerService;
+
 /// Spawn the node runner event loop.
 ///
 /// This function should be called during application startup if node mode is enabled.
@@ -299,32 +335,61 @@ fn spawn_hive_connection(config: NodeRunnerConfig) -> NodeRunnerHandle {
 /// 1. Connects to the hive server
 /// 2. Processes incoming events (task assignments, cancellations, etc.)
 /// 3. Creates local tasks and attempts for incoming assignments
-pub fn spawn_node_runner(
+///
+/// Note: The container service must be passed in to enable task execution.
+/// If container is None, task assignments will be logged but not executed.
+pub fn spawn_node_runner<C: ContainerService + Sync + Send + 'static>(
     config: NodeRunnerConfig,
-    _db: DBService,
+    db: DBService,
+    container: Option<C>,
 ) -> Option<Arc<RwLock<NodeRunnerState>>> {
     let mut handle = spawn_hive_connection(config);
     let state = handle.state.clone();
+    let command_tx = handle.command_tx.clone();
 
     tokio::spawn(async move {
+        // Create assignment handler if container is available
+        let handler: Option<AssignmentHandler<C>> = container.map(|c| {
+            AssignmentHandler::new(db.clone(), c, handle.state.clone(), command_tx.clone())
+        });
+
         loop {
             match handle.process_event().await {
                 Some(HiveEvent::TaskAssigned(assignment)) => {
-                    // TODO: Phase 1C - Assignment handler
-                    // Create local task and attempt, then start execution
                     tracing::info!(
                         assignment_id = %assignment.assignment_id,
                         task_id = %assignment.task_id,
                         title = %assignment.task.title,
-                        "task assignment received - handler pending implementation"
+                        "task assignment received"
                     );
+
+                    if let Some(ref h) = handler {
+                        if let Err(e) = h.handle_assignment(assignment).await {
+                            tracing::error!(
+                                error = %e,
+                                "failed to handle task assignment"
+                            );
+                        }
+                    } else {
+                        tracing::warn!("task assignment received but no container available");
+                    }
                 }
                 Some(HiveEvent::TaskCancelled(cancel)) => {
-                    // TODO: Cancel running task
                     tracing::info!(
                         assignment_id = %cancel.assignment_id,
-                        "task cancellation received - handler pending implementation"
+                        "task cancellation received"
                     );
+
+                    if let Some(ref h) = handler {
+                        if let Err(e) = h.handle_cancellation(cancel.assignment_id).await {
+                            tracing::error!(
+                                error = %e,
+                                "failed to handle task cancellation"
+                            );
+                        }
+                    } else {
+                        tracing::warn!("task cancellation received but no container available");
+                    }
                 }
                 Some(_) => {
                     // Other events are handled in process_event

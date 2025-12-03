@@ -44,6 +44,8 @@
     }
   },
   "unlinkFromOrganization": "원격 프로젝트에서 연결 해제",
+  "linked": "연결됨",
+  "linkedToOrganizationTooltip": "이 프로젝트는 협업을 위해 원격 프로젝트에 연결되어 있습니다",
   "viewProject": "프로젝트 보기",
   "openInIDE": "IDE에서 열기",
   "createdDate": "생성일 {{date}}",

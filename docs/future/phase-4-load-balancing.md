@@ -1,0 +1,331 @@
+# Phase 4: Load Balancing & Auto-Dispatch
+
+## Overview
+
+Phase 4 builds upon the foundation laid in Phases 1-3 to enable intelligent workload distribution across the node swarm. This phase transforms the current "one node per project" model into a more flexible system where tasks can be dispatched to any capable node.
+
+## Current State (Post Phase 1)
+
+Currently implemented:
+- Nodes register with the Hive via API keys
+- Projects are linked 1:1 to specific nodes
+- Tasks are routed to the node that owns the linked project
+- Log streaming works via direct connection or Hive relay
+
+## Phase 4 Goals
+
+1. **Auto-dispatch** - Route tasks to any available node in the organization
+2. **Load balancing** - Distribute work across nodes based on capacity
+3. **Capability matching** - Route tasks to nodes with required capabilities (OS, executors)
+4. **Task cancellation** - Cancel running tasks from the Hive
+
+---
+
+## Existing Code Ready for Phase 4
+
+### TaskDispatcher (crates/remote/src/nodes/ws/dispatcher.rs)
+
+Two methods exist but are currently unused:
+
+#### `dispatch_to_available_node()`
+
+```rust
+/// Find an available node for a project and assign the task.
+pub async fn dispatch_to_available_node(
+    &self,
+    task_id: Uuid,
+    organization_id: Uuid,
+    task_details: TaskDetails,
+) -> Result<AssignResult, DispatchError>
+```
+
+**Purpose:** Assigns a task to any available node in the organization, rather than requiring a specific project-node link.
+
+**Current behavior:**
+1. Calls `connections.find_available_node(organization_id)` to get an available node
+2. Gets the node's projects and picks the first one
+3. Creates an assignment and sends it to the node
+
+**What's needed to use it:**
+1. Add an API endpoint that uses this method (e.g., `POST /v1/tasks/dispatch`)
+2. Or modify task creation to optionally skip project-node routing
+3. Consider adding capability matching (currently picks first project)
+
+#### `cancel_task()`
+
+```rust
+/// Cancel a task on a node.
+///
+/// Note: This currently only marks the assignment as cancelled in the database.
+/// Sending the cancel message to the node requires knowing which node has the assignment,
+/// which will be implemented when we add assignment tracking.
+pub async fn cancel_task(
+    &self,
+    assignment_id: Uuid,
+    _reason: Option<String>,
+) -> Result<(), DispatchError>
+```
+
+**Purpose:** Cancels a running task assignment.
+
+**Current behavior:**
+- Marks the assignment as cancelled in the database
+- Does NOT send cancel message to the node (see TODO in code)
+
+**What's needed to complete it:**
+1. Add assignment→node tracking (the assignment already has `node_id`)
+2. Uncomment and implement the `TaskCancelMessage` sending:
+   ```rust
+   let message = HiveMessage::TaskCancel(TaskCancelMessage {
+       message_id: Uuid::new_v4(),
+       assignment_id,
+       reason,
+   });
+   self.connections.send_to_node(node_id, message).await?;
+   ```
+3. Handle the cancel message in the node's assignment handler
+
+---
+
+## Implementation Plan
+
+### Step 1: Complete Task Cancellation
+
+**Files to modify:**
+- `crates/remote/src/nodes/ws/dispatcher.rs` - Uncomment cancel message sending
+- `crates/remote/src/nodes/ws/message.rs` - Add `TaskCancelMessage` if not present
+- `crates/services/src/services/assignment_handler.rs` - Handle cancel message
+- `crates/remote/src/routes/tasks.rs` - Add `DELETE /v1/tasks/:id/assignment` endpoint
+
+**Flow:**
+```text
+Hive (cancel request)
+  → TaskDispatcher.cancel_task()
+  → WebSocket message to node
+  → AssignmentHandler.handle_cancellation()
+  → Kill running process
+  → Report status back to Hive
+```
+
+### Step 2: Add Auto-Dispatch API
+
+**New endpoint:** `POST /v1/tasks/dispatch`
+
+```rust
+#[derive(Deserialize)]
+pub struct DispatchTaskRequest {
+    pub organization_id: Uuid,
+    pub title: String,
+    pub description: Option<String>,
+    pub executor: String,
+    pub executor_variant: Option<String>,
+    // Optional: specify capabilities required
+    pub required_os: Option<String>,
+    pub required_arch: Option<String>,
+}
+```
+
+**Flow:**
+1. Create shared task without project_id
+2. Call `TaskDispatcher.dispatch_to_available_node()`
+3. Return assignment result
+
+### Step 3: Capability-Based Routing
+
+**Extend `ConnectionManager.find_available_node()`:**
+
+```rust
+pub async fn find_available_node_with_capabilities(
+    &self,
+    organization_id: Uuid,
+    requirements: &CapabilityRequirements,
+) -> Option<NodeConnectionInfo> {
+    let nodes = self.nodes.read().await;
+    nodes.values()
+        .filter(|n| n.organization_id == organization_id)
+        .filter(|n| n.status == NodeStatus::Online)
+        .filter(|n| n.capabilities.matches(requirements))
+        .min_by_key(|n| n.active_task_count)  // Load balancing
+        .cloned()
+}
+```
+
+### Step 4: Multi-Node Projects
+
+**Current limitation:** One node per project (enforced by unique constraint)
+
+**To support multiple nodes per project:**
+1. Remove `UNIQUE (project_id)` constraint from `node_projects`
+2. Add `is_primary` flag for default routing
+3. Update routing logic to consider load across all capable nodes
+
+---
+
+## Connection Manager Methods
+
+The `ConnectionManager` already has supporting infrastructure:
+
+```rust
+impl ConnectionManager {
+    /// Find an available node in the organization for task assignment.
+    pub async fn find_available_node(
+        &self,
+        organization_id: Uuid,
+    ) -> Option<NodeConnectionInfo>
+
+    /// Check if a node is currently connected.
+    pub async fn is_connected(&self, node_id: Uuid) -> bool
+
+    /// Send a message to a specific node.
+    pub async fn send_to_node(
+        &self,
+        node_id: Uuid,
+        message: HiveMessage,
+    ) -> Result<(), SendError>
+}
+```
+
+---
+
+## Error Handling
+
+### DispatchError Types
+
+```rust
+pub enum DispatchError {
+    NoNodeForProject,      // Project not linked to any node
+    NodeNotConnected,      // Linked node is offline
+    NoAvailableNode,       // No online nodes in organization
+    NoProjectOnNode,       // Node has no linked projects
+    SendFailed(String),    // WebSocket send failed
+    NodeService(NodeError),
+}
+```
+
+### Fallback Strategy
+
+When `assign_task()` fails (node offline), consider:
+1. Queue the task for later dispatch
+2. Try `dispatch_to_available_node()` as fallback
+3. Return error to user with explanation
+
+---
+
+## Testing Requirements
+
+### Unit Tests
+
+```rust
+#[tokio::test]
+async fn test_dispatch_to_available_node_selects_online_node() {
+    // Setup: Multiple nodes, some offline
+    // Assert: Picks an online node
+}
+
+#[tokio::test]
+async fn test_dispatch_to_available_node_no_available() {
+    // Setup: All nodes offline
+    // Assert: Returns NoAvailableNode error
+}
+
+#[tokio::test]
+async fn test_cancel_task_sends_message_to_node() {
+    // Setup: Active assignment
+    // Action: cancel_task()
+    // Assert: Cancel message sent to correct node
+}
+
+#[tokio::test]
+async fn test_capability_matching() {
+    // Setup: Windows task, Linux and Windows nodes
+    // Assert: Routes to Windows node
+}
+```
+
+### Integration Tests
+
+```rust
+#[tokio::test]
+async fn test_auto_dispatch_e2e() {
+    // Setup: Hive, 2 nodes online
+    // Action: POST /v1/tasks/dispatch
+    // Assert: Task assigned to one node, execution starts
+}
+
+#[tokio::test]
+async fn test_cancel_running_task_e2e() {
+    // Setup: Running task on node
+    // Action: DELETE /v1/tasks/:id/assignment
+    // Assert: Process killed on node, status updated
+}
+```
+
+---
+
+## API Additions
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/v1/tasks/dispatch` | POST | Auto-dispatch task to available node |
+| `/v1/tasks/:id/assignment` | DELETE | Cancel task assignment |
+| `/v1/nodes/:id/tasks` | GET | List active tasks on node |
+| `/v1/nodes/:id/drain` | POST | Stop accepting new tasks |
+
+---
+
+## Database Changes
+
+### Add Load Tracking
+
+```sql
+-- Track node load for balancing decisions
+ALTER TABLE nodes ADD COLUMN current_task_count INT DEFAULT 0;
+
+-- Index for efficient node selection
+CREATE INDEX idx_nodes_org_load ON nodes(organization_id, current_task_count)
+    WHERE status = 'online';
+```
+
+### Remove Project Uniqueness (Optional)
+
+```sql
+-- Allow multiple nodes per project
+ALTER TABLE node_projects DROP CONSTRAINT node_projects_project_id_key;
+ALTER TABLE node_projects ADD COLUMN is_primary BOOLEAN DEFAULT false;
+```
+
+---
+
+## Future Considerations
+
+### Priority Queues
+
+Add task priority for scheduling:
+```rust
+pub struct TaskDetails {
+    // ... existing fields
+    pub priority: i32,  // Higher = more urgent
+}
+```
+
+### Affinity Rules
+
+Allow users to define routing preferences:
+```rust
+pub struct ProjectRoutingRules {
+    pub preferred_node_ids: Vec<Uuid>,
+    pub required_executors: Vec<String>,
+    pub avoid_node_ids: Vec<Uuid>,
+}
+```
+
+### Task Queuing
+
+When all nodes are busy:
+```rust
+pub struct TaskQueue {
+    pub pending_tasks: VecDeque<QueuedTask>,
+    pub max_queue_size: usize,
+    pub queue_timeout: Duration,
+}
+```

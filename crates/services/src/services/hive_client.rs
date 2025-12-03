@@ -9,7 +9,7 @@ use chrono::Utc;
 use futures::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use tokio::{
-    sync::{mpsc, RwLock},
+    sync::{RwLock, mpsc},
     time::{self, MissedTickBehavior},
 };
 use tokio_tungstenite::{connect_async, tungstenite::Message};
@@ -84,6 +84,8 @@ pub enum NodeMessage {
     TaskStatus(TaskStatusMessage),
     #[serde(rename = "task_output")]
     TaskOutput(TaskOutputMessage),
+    #[serde(rename = "task_progress")]
+    TaskProgress(TaskProgressMessage),
     #[serde(rename = "ack")]
     Ack { message_id: Uuid },
     #[serde(rename = "error")]
@@ -108,9 +110,7 @@ pub enum HiveMessage {
     #[serde(rename = "project_sync")]
     ProjectSync(ProjectSyncMessage),
     #[serde(rename = "heartbeat_ack")]
-    HeartbeatAck {
-        server_time: chrono::DateTime<Utc>,
-    },
+    HeartbeatAck { server_time: chrono::DateTime<Utc> },
     #[serde(rename = "error")]
     Error {
         message_id: Option<Uuid>,
@@ -231,6 +231,31 @@ pub enum TaskOutputType {
     Stdout,
     Stderr,
     System,
+}
+
+/// Task progress event from node to hive.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskProgressMessage {
+    pub assignment_id: Uuid,
+    pub event_type: TaskProgressType,
+    pub message: Option<String>,
+    pub metadata: Option<serde_json::Value>,
+    pub timestamp: chrono::DateTime<Utc>,
+}
+
+/// Type of task progress event.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TaskProgressType {
+    AgentStarted,
+    AgentThinking,
+    CodeChanges,
+    BranchCreated,
+    Committed,
+    Pushed,
+    PullRequestCreated,
+    AgentFinished,
+    Custom,
 }
 
 /// Protocol version
@@ -383,9 +408,7 @@ impl HiveClient {
         let auth_result = self.parse_auth_response(auth_response)?;
 
         if !auth_result.success {
-            return Err(HiveClientError::Auth(
-                auth_result.error.unwrap_or_default(),
-            ));
+            return Err(HiveClientError::Auth(auth_result.error.unwrap_or_default()));
         }
 
         let node_id = auth_result.node_id.ok_or(HiveClientError::Auth(
@@ -500,7 +523,7 @@ impl HiveClient {
                 return Err(HiveClientError::Url(format!(
                     "unsupported scheme: {}",
                     other
-                )))
+                )));
             }
         }
 
@@ -517,7 +540,7 @@ impl HiveClient {
             _ => {
                 return Err(HiveClientError::Protocol(
                     "expected text message".to_string(),
-                ))
+                ));
             }
         };
 
@@ -611,6 +634,17 @@ impl HiveClient {
     pub async fn send_task_output(&self, output: TaskOutputMessage) -> Result<(), HiveClientError> {
         self.command_tx
             .send(NodeMessage::TaskOutput(output))
+            .await
+            .map_err(|_| HiveClientError::Send("channel closed".to_string()))
+    }
+
+    /// Send task progress event.
+    pub async fn send_task_progress(
+        &self,
+        progress: TaskProgressMessage,
+    ) -> Result<(), HiveClientError> {
+        self.command_tx
+            .send(NodeMessage::TaskProgress(progress))
             .await
             .map_err(|_| HiveClientError::Send("channel closed".to_string()))
     }
