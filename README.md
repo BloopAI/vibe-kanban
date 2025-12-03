@@ -96,7 +96,6 @@ pnpm build
 2. In the `npx-cli` folder run `npm pack`
 3. You can run your build with `npx [GENERATED FILE].tgz`
 
-
 ### Environment Variables
 
 The following environment variables can be configured at build time or runtime:
@@ -110,7 +109,56 @@ The following environment variables can be configured at build time or runtime:
 | `HOST` | Runtime | `127.0.0.1` | Backend server host. Set to `0.0.0.0` for network access |
 | `DISABLE_WORKTREE_ORPHAN_CLEANUP` | Runtime | Not set | Disable git worktree cleanup (for debugging) |
 
+#### Swarm/Hive Node Configuration
+
+Connect your local Vibe Kanban instance to a central hive server for distributed task management:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `VK_HIVE_URL` | Yes | WebSocket URL of the hive server (e.g., `wss://hive.example.com`) |
+| `VK_NODE_API_KEY` | Yes | API key for authenticating with the hive |
+| `VK_NODE_NAME` | No | Human-readable name for this node (defaults to hostname) |
+| `VK_NODE_PUBLIC_URL` | No | Public URL for direct log streaming (e.g., `http://192.168.1.50:3000`) |
+| `VK_CONNECTION_TOKEN_SECRET` | No | JWT secret for validating direct connection tokens |
+
+See [docs/swarm-hive-setup.md](docs/swarm-hive-setup.md) for the complete setup guide.
+
 **Build-time variables** must be set when running `pnpm run build`. **Runtime variables** are read when the application starts.
+
+### Swarm Architecture
+
+Vibe Kanban supports a distributed swarm architecture where multiple local nodes connect to a central hive server:
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                        HIVE (Remote Server)                     │
+│              PostgreSQL + Activity Broker + Node Registry       │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │ WebSocket (persistent)
+          ┌────────────────┼────────────────┐
+          │                │                │
+          ▼                ▼                ▼
+┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+│   NODE: Mac     │ │  NODE: Linux    │ │  NODE: Windows  │
+│   (local srv)   │ │   (local srv)   │ │   (local srv)   │
+└─────────────────┘ └─────────────────┘ └─────────────────┘
+```
+
+**Features:**
+- Centralized management of projects and tasks across multiple machines
+- Remote task execution with live log streaming
+- Direct node connections for low-latency logs, with hive relay fallback
+- Cross-platform support (macOS, Linux, Windows)
+
+**Quick Start:**
+```bash
+# On each node, set environment variables and start
+export VK_HIVE_URL=wss://hive.example.com
+export VK_NODE_API_KEY=your-api-key
+pnpm run dev
+```
+
+See [docs/swarm-hive-setup.md](docs/swarm-hive-setup.md) for detailed instructions.
 
 ### Remote Deployment
 
