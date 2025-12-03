@@ -1,3 +1,12 @@
+# Vibe Kanban Remote Server (Hive) - Docker Compose Configuration
+#
+# Usage: docker compose --env-file .env.remote up --build
+#
+# Database configuration:
+#   - Set POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD in .env.remote
+#   - SERVER_DATABASE_URL is auto-constructed using these vars with host "remote-db"
+#   - Do NOT set SERVER_DATABASE_URL in .env.remote (it would use localhost which won't work)
+
 services:
   remote-db:
     image: postgres:16-alpine
