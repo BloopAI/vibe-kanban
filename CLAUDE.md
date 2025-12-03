@@ -72,7 +72,7 @@ sqlx database create                 # Create database
 - **MCP Server**: Built-in Model Context Protocol server for AI agent integration
 
 ### Project Structure
-```
+```text
 crates/
 ├── server/         # Axum HTTP server, API routes, MCP server
 ├── db/            # Database models, migrations, SQLx queries
@@ -140,3 +140,10 @@ Runtime:
 - `FRONTEND_PORT`: Frontend dev port (default: 3000)
 - `HOST`: Backend host (default: 127.0.0.1)
 - `DISABLE_WORKTREE_ORPHAN_CLEANUP`: Debug flag for worktrees
+
+Swarm/Hive Node Configuration (see `docs/swarm-hive-setup.md` for full guide):
+- `VK_HIVE_URL`: WebSocket URL of the hive server (e.g., `wss://hive.example.com`)
+- `VK_NODE_API_KEY`: API key for authenticating with the hive
+- `VK_NODE_NAME`: Human-readable name for this node (defaults to hostname)
+- `VK_NODE_PUBLIC_URL`: Public URL for direct log streaming (e.g., `http://192.168.1.50:3000`)
+- `VK_CONNECTION_TOKEN_SECRET`: JWT secret for validating direct connection tokens
