@@ -91,7 +91,22 @@ export function NodeApiKeySection({
   const handleCopy = async () => {
     if (!createdSecret) return;
     try {
-      await navigator.clipboard.writeText(createdSecret);
+      // Try the modern clipboard API first
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(createdSecret);
+      } else {
+        // Fallback for non-HTTPS contexts (e.g., localhost development)
+        const textArea = document.createElement('textarea');
+        textArea.value = createdSecret;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
