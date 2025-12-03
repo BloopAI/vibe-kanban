@@ -439,13 +439,7 @@ impl OAuthHandoffService {
 
         let user_id = match existing_account {
             Some(account) => account.user_id,
-            None => {
-                if let Some(found) = user_repo.find_user_by_email(&email).await? {
-                    found.id
-                } else {
-                    Uuid::new_v4()
-                }
-            }
+            None => Uuid::new_v4(),
         };
 
         let (first_name, last_name) = split_name(profile.name.as_deref());
