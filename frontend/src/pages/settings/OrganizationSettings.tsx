@@ -143,15 +143,10 @@ export function OrganizationSettings() {
   const { data: remoteProjects = [], isLoading: loadingRemoteProjects } =
     useOrganizationProjects(selectedOrgId);
 
-  // Calculate available local projects (not linked to any remote project in this org)
-  const remoteProjectIds = remoteProjects.map((rp) => rp.id);
-  const availableLocalProjects = allProjects.filter((project) => {
-    // Project is available if it has no remote link OR if it's linked to a project outside this org
-    return (
-      !project.remote_project_id ||
-      !remoteProjectIds.includes(project.remote_project_id)
-    );
-  });
+  // Calculate available local projects (not linked to any remote project)
+  const availableLocalProjects = allProjects.filter(
+    (project) => !project.remote_project_id
+  );
 
   // Project mutations
   const { linkToExisting, unlinkProject } = useProjectMutations({
