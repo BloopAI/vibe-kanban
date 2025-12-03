@@ -53,8 +53,11 @@ cp .env.remote.example .env.remote
 Required environment variables (see `.env.remote.example` for full list):
 
 ```bash
-# Database (PostgreSQL)
-SERVER_DATABASE_URL=postgres://user:password@localhost/vibe_remote
+# Database - for Docker Compose, use POSTGRES_* vars (SERVER_DATABASE_URL is auto-configured)
+# For local dev with cargo run, set: SERVER_DATABASE_URL=postgres://user:pass@localhost/vibe_remote
+POSTGRES_DB=vibe_remote
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_secure_password
 
 # Network - Public URL for OAuth callbacks
 SERVER_PUBLIC_BASE_URL=http://your-server:3000
@@ -73,6 +76,10 @@ GOOGLE_OAUTH_CLIENT_SECRET=your_google_client_secret
 ```
 
 <Note>
+For Docker Compose, do NOT set `SERVER_DATABASE_URL` - it's automatically constructed using the `POSTGRES_*` variables with `remote-db` as the host (the Docker service name).
+</Note>
+
+<Note>
 The hive uses `VIBEKANBAN_REMOTE_JWT_SECRET` for both user authentication and connection tokens.
 </Note>
 
@@ -80,9 +87,13 @@ The hive uses `VIBEKANBAN_REMOTE_JWT_SECRET` for both user authentication and co
 
 ```bash
 cd crates/remote
-cargo run
-# Or with docker:
+
+# With Docker (recommended):
 docker compose --env-file .env.remote up --build
+
+# Or for local development (requires local PostgreSQL):
+# Make sure to set SERVER_DATABASE_URL in .env.remote with localhost
+cargo run
 ```
 
 ### 3. Register and Create an Organization
@@ -375,15 +386,54 @@ The log viewer shows connection status:
 
 ## Example: Full Setup Script
 
+### Using Docker Compose (Recommended)
+
+```bash
+#!/bin/bash
+
+# Create .env.remote with your configuration
+cat > crates/remote/.env.remote << 'EOF'
+# Database (auto-configured for Docker)
+POSTGRES_DB=vibe_remote
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_secure_password
+
+# Network
+SERVER_PUBLIC_BASE_URL=http://localhost:3000
+
+# Security - generate with: openssl rand -base64 32
+VIBEKANBAN_REMOTE_JWT_SECRET=your_base64_encoded_secret_here
+
+# OAuth
+GITHUB_OAUTH_CLIENT_ID=your_github_client_id
+GITHUB_OAUTH_CLIENT_SECRET=your_github_client_secret
+GOOGLE_OAUTH_CLIENT_ID=your_google_client_id
+GOOGLE_OAUTH_CLIENT_SECRET=your_google_client_secret
+
+# Email
+LOOPS_EMAIL_API_KEY=your_loops_api_key
+EOF
+
+# Start hive with Docker
+cd crates/remote && docker compose --env-file .env.remote up --build -d
+
+# Wait for hive to start, then:
+# 1. Access http://localhost:3000 and sign in via OAuth
+# 2. Create an organization
+# 3. Generate an API key for your node
+```
+
+### Local Development (cargo run)
+
 ```bash
 #!/bin/bash
 
 # Generate a shared secret for JWT/connection tokens
 JWT_SECRET=$(openssl rand -base64 32)
 
-# Hive server configuration (see .env.remote.example for full list)
+# Hive server configuration - note localhost for local postgres
 export SERVER_PUBLIC_BASE_URL=http://localhost:8081
-export SERVER_DATABASE_URL=postgres://vibe:password@localhost/vibe_remote
+export SERVER_DATABASE_URL=postgres://postgres:postgres@localhost:5432/vibe_remote
 export VIBEKANBAN_REMOTE_JWT_SECRET=$JWT_SECRET
 export GITHUB_OAUTH_CLIENT_ID=your_github_client_id
 export GITHUB_OAUTH_CLIENT_SECRET=your_github_client_secret
@@ -397,10 +447,14 @@ cd crates/remote && cargo run &
 # 1. Access http://localhost:8081 and sign in via OAuth
 # 2. Create an organization
 # 3. Generate an API key for your node
+```
 
-# Node configuration
-export VK_HIVE_URL=ws://localhost:8081
-export VK_NODE_API_KEY="your-api-key-here"  # From step 3 above
+### Node Configuration
+
+```bash
+# Node configuration (same for Docker or local)
+export VK_HIVE_URL=ws://localhost:8081  # or ws://localhost:3000 for Docker
+export VK_NODE_API_KEY="your-api-key-here"  # From hive setup above
 export VK_NODE_NAME="Development Node"
 export VK_NODE_PUBLIC_URL=http://localhost:3000
 export VK_CONNECTION_TOKEN_SECRET=$JWT_SECRET  # Same as VIBEKANBAN_REMOTE_JWT_SECRET
