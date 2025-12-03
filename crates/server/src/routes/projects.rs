@@ -160,6 +160,14 @@ pub async fn get_unified_projects(
         None
     };
 
+    tracing::debug!(
+        local_count = local_projects.len(),
+        linked_remote_ids_count = linked_remote_ids.len(),
+        linked_remote_ids = ?linked_remote_ids,
+        current_node_id = ?current_node_id,
+        "unified projects: fetching remote projects"
+    );
+
     // Get all remote projects from all organizations, excluding:
     // 1. Projects already linked locally
     // 2. Projects from the current node (they're shown as local projects)
@@ -167,6 +175,11 @@ pub async fn get_unified_projects(
         CachedNodeProjectWithNode::find_remote_projects(pool, &linked_remote_ids, current_node_id)
             .await
             .unwrap_or_default();
+
+    tracing::debug!(
+        remote_count = all_remote.len(),
+        "unified projects: found remote projects"
+    );
 
     // Group remote projects by node
     let mut by_node: HashMap<Uuid, RemoteNodeGroup> = HashMap::new();
@@ -185,6 +198,11 @@ pub async fn get_unified_projects(
     // Convert to sorted list of node groups
     let mut remote_by_node: Vec<RemoteNodeGroup> = by_node.into_values().collect();
     remote_by_node.sort_by(|a, b| a.node_name.cmp(&b.node_name));
+
+    tracing::debug!(
+        node_groups = remote_by_node.len(),
+        "unified projects: returning response"
+    );
 
     Ok(ResponseJson(ApiResponse::success(UnifiedProjectsResponse {
         local: local_projects,
