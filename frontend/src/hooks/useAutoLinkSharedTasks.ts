@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useCurrentUser } from '@/hooks/auth/useCurrentUser';
 import { useTaskMutations } from '@/hooks/useTaskMutations';
 import type { SharedTaskRecord } from './useProjectTasks';
-import type { TaskWithAttemptStatus } from 'shared/types';
+import type { SharedTaskDetails, TaskWithAttemptStatus } from 'shared/types';
 
 interface UseAutoLinkSharedTasksProps {
   sharedTasksById: Record<string, SharedTaskRecord>;
@@ -61,7 +61,7 @@ export function useAutoLinkSharedTasks({
           title: task.title,
           description: task.description,
           status: task.status,
-        },
+        } as SharedTaskDetails,
         {
           onError: () => {
             failedTasks.current.add(task.id);

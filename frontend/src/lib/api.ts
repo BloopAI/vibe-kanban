@@ -401,12 +401,12 @@ export const tasksApi = {
     return handleApiResponse<void>(response);
   },
 
-  linkToLocal: async (data: SharedTaskDetails): Promise<Task> => {
+  linkToLocal: async (data: SharedTaskDetails): Promise<Task | null> => {
     const response = await makeRequest(`/api/shared-tasks/link-to-local`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    return handleApiResponse<Task>(response);
+    return handleApiResponse<Task | null>(response);
   },
 };
 

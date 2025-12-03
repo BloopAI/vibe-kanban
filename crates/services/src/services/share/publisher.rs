@@ -126,9 +126,13 @@ impl SharePublisher {
     pub async fn link_shared_task(
         &self,
         shared_task: SharedTaskDetails,
-    ) -> Result<Task, ShareError> {
+    ) -> Result<Option<Task>, ShareError> {
         if let Some(task) = Task::find_by_shared_task_id(&self.db.pool, shared_task.id).await? {
-            return Ok(task);
+            return Ok(Some(task));
+        }
+
+        if !self.shared_task_exists(shared_task.id).await? {
+            return Ok(None);
         }
 
         let create_task = CreateTask::from_shared_task(
@@ -142,7 +146,15 @@ impl SharePublisher {
         let id = Uuid::new_v4();
         let task = Task::create(&self.db.pool, &create_task, id).await?;
 
-        Ok(task)
+        Ok(Some(task))
+    }
+
+    async fn shared_task_exists(&self, shared_task_id: Uuid) -> Result<bool, ShareError> {
+        Ok(self
+            .client
+            .check_tasks(vec![shared_task_id])
+            .await?
+            .contains(&shared_task_id))
     }
 
     pub async fn cleanup_shared_tasks(&self) -> Result<(), ShareError> {

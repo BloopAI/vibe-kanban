@@ -4,6 +4,7 @@ use axum::{
     response::Json as ResponseJson,
     routing::{delete, post},
 };
+use db::models::task::Task;
 use deployment::Deployment;
 use remote::routes::tasks::SharedTaskResponse;
 use serde::Deserialize;
@@ -80,21 +81,23 @@ pub async fn delete_shared_task(
 pub async fn link_shared_task_to_local(
     State(deployment): State<DeploymentImpl>,
     Json(shared_task_details): Json<SharedTaskDetails>,
-) -> Result<ResponseJson<ApiResponse<db::models::task::Task>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<Option<Task>>>, ApiError> {
     let Ok(publisher) = deployment.share_publisher() else {
         return Err(ShareError::MissingConfig("share publisher unavailable").into());
     };
 
     let task = publisher.link_shared_task(shared_task_details).await?;
 
-    let props = serde_json::json!({
-        "shared_task_id": task.shared_task_id,
-        "task_id": task.id,
-        "project_id": task.project_id,
-    });
-    deployment
-        .track_if_analytics_allowed("link_shared_task_to_local", props)
-        .await;
+    if let Some(ref task) = task {
+        let props = serde_json::json!({
+            "shared_task_id": task.shared_task_id,
+            "task_id": task.id,
+            "project_id": task.project_id,
+        });
+        deployment
+            .track_if_analytics_allowed("link_shared_task_to_local", props)
+            .await;
+    }
 
     Ok(ResponseJson(ApiResponse::success(task)))
 }

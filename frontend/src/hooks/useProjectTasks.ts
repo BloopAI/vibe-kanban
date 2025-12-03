@@ -12,7 +12,7 @@ import type {
   TaskWithAttemptStatus,
 } from 'shared/types';
 
-export type SharedTaskRecord = Omit<SharedTask, 'version'> & {
+export type SharedTaskRecord = SharedTask & {
   remote_project_id: string;
   assignee_first_name?: string | null;
   assignee_last_name?: string | null;
