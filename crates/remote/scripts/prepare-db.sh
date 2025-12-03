@@ -16,8 +16,11 @@ initdb -D "$DATA_DIR" > /dev/null
 echo "➤ Starting Postgres on port $PORT..."
 pg_ctl -D "$DATA_DIR" -o "-p $PORT" -w start > /dev/null
 
+echo "➤ Creating 'remote' database..."
+createdb -p $PORT remote
+
 # Connection string
-export DATABASE_URL="postgres://localhost:$PORT/postgres"
+export DATABASE_URL="postgres://localhost:$PORT/remote"
 
 echo "➤ Running migrations..."
 sqlx migrate run

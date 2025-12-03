@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            WITH s AS (\n                SELECT\n                    BOOL_OR(user_id = $2 AND role = 'admin') AS is_admin\n                FROM organization_member_metadata\n                WHERE organization_id = $1\n            )\n            DELETE FROM organizations o\n            USING s\n            WHERE o.id = $1\n              AND s.is_admin = true\n            RETURNING o.id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "b97175fb9a4f5a7379119da3760be7efc1ba2bf95bd5d3e6725f4f98aa7d955a"
+}
