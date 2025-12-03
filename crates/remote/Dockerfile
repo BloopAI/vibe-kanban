@@ -21,8 +21,11 @@ RUN pnpm -C remote-frontend build
 
 FROM rust:1.89-slim-bookworm AS builder
 ARG APP_NAME
+ARG SQLX_OFFLINE=true
 
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+# Enable SQLx offline mode to use cached query metadata instead of live database
+ENV SQLX_OFFLINE=${SQLX_OFFLINE}
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends pkg-config libssl-dev ca-certificates \
@@ -34,6 +37,8 @@ COPY Cargo.toml Cargo.lock ./
 COPY crates crates
 COPY shared shared
 COPY assets assets
+# Copy SQLx query cache for offline compilation
+COPY .sqlx .sqlx
 
 RUN mkdir -p /app/bin
 
