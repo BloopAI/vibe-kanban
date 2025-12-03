@@ -13,6 +13,26 @@ fn default_git_branch_prefix() -> String {
     "vk".to_string()
 }
 
+/// Configuration for the development mode banner
+#[derive(Clone, Debug, Serialize, Deserialize, TS, Default)]
+pub struct DevBannerConfig {
+    /// Custom background color (CSS color string), None = default orange
+    #[serde(default)]
+    pub background_color: Option<String>,
+    /// Custom foreground/text color (CSS color string), None = default white
+    #[serde(default)]
+    pub foreground_color: Option<String>,
+    /// Whether to display the system hostname in the banner
+    #[serde(default)]
+    pub show_hostname: bool,
+    /// Whether to display the OS type and version in the banner
+    #[serde(default)]
+    pub show_os_info: bool,
+    /// Whether to hide the Discord link in the navbar (dev mode only)
+    #[serde(default)]
+    pub hide_discord_link: bool,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
 pub struct Config {
     pub config_version: String,
@@ -33,6 +53,8 @@ pub struct Config {
     pub git_branch_prefix: String,
     #[serde(default)]
     pub showcases: ShowcaseState,
+    #[serde(default)]
+    pub dev_banner: DevBannerConfig,
 }
 
 impl Config {
@@ -56,6 +78,7 @@ impl Config {
             language: old_config.language,
             git_branch_prefix: old_config.git_branch_prefix,
             showcases: old_config.showcases,
+            dev_banner: DevBannerConfig::default(),
         }
     }
 
@@ -104,6 +127,7 @@ impl Default for Config {
             language: UiLanguage::default(),
             git_branch_prefix: default_git_branch_prefix(),
             showcases: ShowcaseState::default(),
+            dev_banner: DevBannerConfig::default(),
         }
     }
 }

@@ -61,6 +61,7 @@ export function GeneralSettings() {
     loading,
     updateAndSaveConfig, // Use this on Save
     profiles,
+    environment,
   } = useUserSystem();
 
   // Draft state management
@@ -298,6 +299,138 @@ export function GeneralSettings() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Dev Banner Settings - only show when in dev mode */}
+      {environment?.is_dev_mode && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('settings.general.devBanner.title')}</CardTitle>
+            <CardDescription>
+              {t('settings.general.devBanner.description')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="dev-banner-bg-color">
+                {t('settings.general.devBanner.backgroundColor.label')}
+              </Label>
+              <Input
+                id="dev-banner-bg-color"
+                type="text"
+                placeholder={t(
+                  'settings.general.devBanner.backgroundColor.placeholder'
+                )}
+                value={draft?.dev_banner?.background_color || ''}
+                onChange={(e) =>
+                  updateDraft({
+                    dev_banner: {
+                      ...draft!.dev_banner,
+                      background_color: e.target.value || null,
+                    },
+                  })
+                }
+              />
+              <p className="text-sm text-muted-foreground">
+                {t('settings.general.devBanner.backgroundColor.helper')}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="dev-banner-fg-color">
+                {t('settings.general.devBanner.foregroundColor.label')}
+              </Label>
+              <Input
+                id="dev-banner-fg-color"
+                type="text"
+                placeholder={t(
+                  'settings.general.devBanner.foregroundColor.placeholder'
+                )}
+                value={draft?.dev_banner?.foreground_color || ''}
+                onChange={(e) =>
+                  updateDraft({
+                    dev_banner: {
+                      ...draft!.dev_banner,
+                      foreground_color: e.target.value || null,
+                    },
+                  })
+                }
+              />
+              <p className="text-sm text-muted-foreground">
+                {t('settings.general.devBanner.foregroundColor.helper')}
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="dev-banner-show-hostname"
+                checked={draft?.dev_banner?.show_hostname ?? false}
+                onCheckedChange={(checked: boolean) =>
+                  updateDraft({
+                    dev_banner: {
+                      ...draft!.dev_banner,
+                      show_hostname: checked,
+                    },
+                  })
+                }
+              />
+              <div className="space-y-0.5">
+                <Label htmlFor="dev-banner-show-hostname" className="cursor-pointer">
+                  {t('settings.general.devBanner.showHostname.label')}
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.general.devBanner.showHostname.helper')}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="dev-banner-show-os-info"
+                checked={draft?.dev_banner?.show_os_info ?? false}
+                onCheckedChange={(checked: boolean) =>
+                  updateDraft({
+                    dev_banner: {
+                      ...draft!.dev_banner,
+                      show_os_info: checked,
+                    },
+                  })
+                }
+              />
+              <div className="space-y-0.5">
+                <Label htmlFor="dev-banner-show-os-info" className="cursor-pointer">
+                  {t('settings.general.devBanner.showOsInfo.label')}
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.general.devBanner.showOsInfo.helper')}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="dev-banner-hide-discord"
+                checked={draft?.dev_banner?.hide_discord_link ?? false}
+                onCheckedChange={(checked: boolean) =>
+                  updateDraft({
+                    dev_banner: {
+                      ...draft!.dev_banner,
+                      hide_discord_link: checked,
+                    },
+                  })
+                }
+              />
+              <div className="space-y-0.5">
+                <Label htmlFor="dev-banner-hide-discord" className="cursor-pointer">
+                  {t('settings.general.devBanner.hideDiscordLink.label')}
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.general.devBanner.hideDiscordLink.helper')}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

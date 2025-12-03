@@ -67,7 +67,8 @@
   },
   "signOut": "Sign out",
   "devMode": {
-    "banner": "Development Mode - This is a development build"
+    "banner": "Development Mode - This is a development build",
+    "bannerShort": "Development Mode"
   },
   "oauth": {
     "title": "Sign in to Vibe Kanban",
