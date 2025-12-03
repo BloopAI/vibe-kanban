@@ -118,7 +118,7 @@ function WYSIWYGEditor({
             listitem: 'pl-4',
           },
         },
-        link: 'text-primary underline underline-offset-2 cursor-pointer hover:text-primary/80',
+        link: 'text-blue-600 dark:text-blue-400 underline underline-offset-2 cursor-pointer hover:text-blue-800 dark:hover:text-blue-300',
         text: {
           bold: 'font-semibold',
           italic: 'italic',
