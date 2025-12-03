@@ -86,6 +86,10 @@ pub enum NodeMessage {
     TaskOutput(TaskOutputMessage),
     #[serde(rename = "task_progress")]
     TaskProgress(TaskProgressMessage),
+    #[serde(rename = "link_project")]
+    LinkProject(LinkProjectMessage),
+    #[serde(rename = "unlink_project")]
+    UnlinkProject(UnlinkProjectMessage),
     #[serde(rename = "ack")]
     Ack { message_id: Uuid },
     #[serde(rename = "error")]
@@ -256,6 +260,31 @@ pub enum TaskProgressType {
     PullRequestCreated,
     AgentFinished,
     Custom,
+}
+
+/// Message to link a local project to a remote project on the hive.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LinkProjectMessage {
+    /// The remote project ID (from the hive's projects table)
+    pub project_id: Uuid,
+    /// The local project ID (from the node's local database)
+    pub local_project_id: Uuid,
+    /// Path to the git repository on this node
+    pub git_repo_path: String,
+    /// Default branch for the project
+    #[serde(default = "default_branch")]
+    pub default_branch: String,
+}
+
+fn default_branch() -> String {
+    "main".to_string()
+}
+
+/// Message to unlink a project from the hive.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UnlinkProjectMessage {
+    /// The remote project ID to unlink
+    pub project_id: Uuid,
 }
 
 /// Protocol version
@@ -645,6 +674,28 @@ impl HiveClient {
     ) -> Result<(), HiveClientError> {
         self.command_tx
             .send(NodeMessage::TaskProgress(progress))
+            .await
+            .map_err(|_| HiveClientError::Send("channel closed".to_string()))
+    }
+
+    /// Link a project to the hive.
+    pub async fn send_link_project(
+        &self,
+        link: LinkProjectMessage,
+    ) -> Result<(), HiveClientError> {
+        self.command_tx
+            .send(NodeMessage::LinkProject(link))
+            .await
+            .map_err(|_| HiveClientError::Send("channel closed".to_string()))
+    }
+
+    /// Unlink a project from the hive.
+    pub async fn send_unlink_project(
+        &self,
+        unlink: UnlinkProjectMessage,
+    ) -> Result<(), HiveClientError> {
+        self.command_tx
+            .send(NodeMessage::UnlinkProject(unlink))
             .await
             .map_err(|_| HiveClientError::Send("channel closed".to_string()))
     }

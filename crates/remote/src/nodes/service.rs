@@ -280,10 +280,22 @@ impl NodeServiceImpl {
         Ok(repo.update_sync_status(link_id, status).await?)
     }
 
-    /// Unlink a project from its node
+    /// Unlink a project from its node (by project ID only)
     pub async fn unlink_project(&self, project_id: Uuid) -> Result<(), NodeError> {
         let repo = NodeProjectRepository::new(&self.pool);
         Ok(repo.delete_by_project(project_id).await?)
+    }
+
+    /// Unlink a project from a specific node.
+    ///
+    /// This method verifies that the node owns the project link before deleting.
+    pub async fn unlink_project_for_node(
+        &self,
+        node_id: Uuid,
+        project_id: Uuid,
+    ) -> Result<(), NodeError> {
+        let repo = NodeProjectRepository::new(&self.pool);
+        Ok(repo.delete_by_node_and_project(node_id, project_id).await?)
     }
 
     // =========================================================================

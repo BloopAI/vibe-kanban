@@ -212,4 +212,30 @@ impl<'a> NodeProjectRepository<'a> {
 
         Ok(())
     }
+
+    /// Delete a project link by node ID and project ID.
+    ///
+    /// This ensures the node owns the project link before deleting it.
+    pub async fn delete_by_node_and_project(
+        &self,
+        node_id: Uuid,
+        project_id: Uuid,
+    ) -> Result<(), NodeProjectError> {
+        let result = sqlx::query(
+            r#"
+            DELETE FROM node_projects
+            WHERE node_id = $1 AND project_id = $2
+            "#,
+        )
+        .bind(node_id)
+        .bind(project_id)
+        .execute(self.pool)
+        .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(NodeProjectError::NotFound);
+        }
+
+        Ok(())
+    }
 }
