@@ -259,12 +259,12 @@ function WYSIWYGEditor({
               variant="icon"
               size="icon"
               onClick={handleCopy}
-              className="pointer-events-auto p-2 bg-foreground h-8 w-8"
+              className="pointer-events-auto p-2 bg-muted h-8 w-8"
             >
               {copied ? (
-                <Check className="w-4 h-4 text-green-600" />
+                <Check className="w-4 h-4 text-success" />
               ) : (
-                <Clipboard className="w-4 h-4 text-background" />
+                <Clipboard className="w-4 h-4 text-muted-foreground" />
               )}
             </Button>
             {/* Edit button - only if onEdit provided */}
@@ -276,9 +276,9 @@ function WYSIWYGEditor({
                 variant="icon"
                 size="icon"
                 onClick={onEdit}
-                className="pointer-events-auto p-2 bg-foreground h-8 w-8"
+                className="pointer-events-auto p-2 bg-muted h-8 w-8"
               >
-                <Pencil className="w-4 h-4 text-background" />
+                <Pencil className="w-4 h-4 text-muted-foreground" />
               </Button>
             )}
             {/* Delete button - only if onDelete provided */}
@@ -290,9 +290,9 @@ function WYSIWYGEditor({
                 variant="icon"
                 size="icon"
                 onClick={onDelete}
-                className="pointer-events-auto p-2 bg-foreground h-8 w-8"
+                className="pointer-events-auto p-2 bg-muted h-8 w-8"
               >
-                <Trash2 className="w-4 h-4 text-background" />
+                <Trash2 className="w-4 h-4 text-muted-foreground" />
               </Button>
             )}
           </div>
