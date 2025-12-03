@@ -28,7 +28,7 @@ use services::services::{
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
-use utils::response::ApiResponse;
+use utils::{api::oauth::LoginStatus, response::ApiResponse};
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError, middleware::load_task_middleware};
@@ -220,6 +220,8 @@ pub async fn update_task(
 
     Json(payload): Json<UpdateTask>,
 ) -> Result<ResponseJson<ApiResponse<Task>>, ApiError> {
+    ensure_shared_task_auth(&existing_task, &deployment).await?;
+
     // Use existing values if not provided in update
     let title = payload.title.unwrap_or(existing_task.title);
     let description = match payload.description {
@@ -259,10 +261,27 @@ pub async fn update_task(
     Ok(ResponseJson(ApiResponse::success(task)))
 }
 
+async fn ensure_shared_task_auth(
+    existing_task: &Task,
+    deployment: &local_deployment::LocalDeployment,
+) -> Result<(), ApiError> {
+    if existing_task.shared_task_id.is_some() {
+        match deployment.get_login_status().await {
+            LoginStatus::LoggedIn { .. } => return Ok(()),
+            LoginStatus::LoggedOut => {
+                return Err(ShareError::MissingAuth.into());
+            }
+        }
+    }
+    Ok(())
+}
+
 pub async fn delete_task(
     Extension(task): Extension<Task>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<(StatusCode, ResponseJson<ApiResponse<()>>), ApiError> {
+    ensure_shared_task_auth(&task, &deployment).await?;
+
     // Validate no running execution processes
     if deployment
         .container()

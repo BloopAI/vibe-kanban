@@ -47,7 +47,7 @@ export function ActionsDropdown({
   const hasAttemptActions = Boolean(attempt);
   const hasTaskActions = Boolean(task);
   const isShared = Boolean(sharedTask);
-  const canEditShared = !isShared || isSignedIn;
+  const canEditShared = (!isShared && !task?.shared_task_id) || isSignedIn;
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -255,10 +255,7 @@ export function ActionsDropdown({
               >
                 {t('common:buttons.edit')}
               </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={!projectId || !canEditShared}
-                onClick={handleDuplicate}
-              >
+              <DropdownMenuItem disabled={!projectId} onClick={handleDuplicate}>
                 {t('actionsMenu.duplicate')}
               </DropdownMenuItem>
               <DropdownMenuItem
