@@ -27,6 +27,9 @@ pub struct NodeRunnerConfig {
     pub node_name: String,
     /// Public URL for this node (optional, for direct connections)
     pub public_url: Option<String>,
+    /// JWT secret for validating connection tokens (optional)
+    /// When set, enables direct frontend-to-node log streaming
+    pub connection_token_secret: Option<secrecy::SecretString>,
 }
 
 impl NodeRunnerConfig {
@@ -39,6 +42,8 @@ impl NodeRunnerConfig {
     /// Optional:
     /// - `VK_NODE_NAME`: Human-readable name (defaults to hostname)
     /// - `VK_NODE_PUBLIC_URL`: Public URL for direct connections
+    /// - `VK_CONNECTION_TOKEN_SECRET`: JWT secret for validating connection tokens
+    ///   (enables direct frontend-to-node log streaming)
     pub fn from_env() -> Option<Self> {
         let hive_url = std::env::var("VK_HIVE_URL").ok()?;
         let api_key = std::env::var("VK_NODE_API_KEY").ok()?;
@@ -51,11 +56,16 @@ impl NodeRunnerConfig {
 
         let public_url = std::env::var("VK_NODE_PUBLIC_URL").ok();
 
+        let connection_token_secret = std::env::var("VK_CONNECTION_TOKEN_SECRET")
+            .ok()
+            .map(secrecy::SecretString::from);
+
         Some(Self {
             hive_url,
             api_key,
             node_name,
             public_url,
+            connection_token_secret,
         })
     }
 }

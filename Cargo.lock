@@ -4784,6 +4784,7 @@ dependencies = [
  "hostname",
  "ignore",
  "json-patch",
+ "jsonwebtoken 10.2.0",
  "lazy_static",
  "moka",
  "notify",

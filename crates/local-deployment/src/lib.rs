@@ -9,6 +9,7 @@ use services::services::{
     approvals::Approvals,
     auth::AuthContext,
     config::{Config, load_config_from_file, save_config_to_file},
+    connection_token::ConnectionTokenValidator,
     container::ContainerService,
     drafts::DraftsService,
     events::EventService,
@@ -55,6 +56,8 @@ pub struct LocalDeployment {
     oauth_handoffs: Arc<RwLock<HashMap<Uuid, PendingHandoff>>>,
     /// Node runner state (if connected to a hive)
     node_runner_state: Option<Arc<RwLock<NodeRunnerState>>>,
+    /// Validator for connection tokens (for direct frontend-to-node connections)
+    connection_token_validator: Arc<ConnectionTokenValidator>,
 }
 
 #[derive(Debug, Clone)]
@@ -193,18 +196,31 @@ impl Deployment for LocalDeployment {
         let drafts = DraftsService::new(db.clone(), image.clone());
         let file_search_cache = Arc::new(FileSearchCache::new());
 
-        // Initialize node runner if hive connection is configured
-        let node_runner_state = if let Some(node_config) = NodeRunnerConfig::from_env() {
-            tracing::info!(
-                hive_url = %node_config.hive_url,
-                node_name = %node_config.node_name,
-                "starting node runner to connect to hive"
-            );
-            spawn_node_runner(node_config, db.clone())
-        } else {
-            tracing::debug!("VK_HIVE_URL not set; node runner disabled");
-            None
-        };
+        // Initialize node runner and connection token validator if hive connection is configured
+        let (node_runner_state, connection_token_validator) =
+            if let Some(node_config) = NodeRunnerConfig::from_env() {
+                tracing::info!(
+                    hive_url = %node_config.hive_url,
+                    node_name = %node_config.node_name,
+                    "starting node runner to connect to hive"
+                );
+
+                // Create connection token validator if secret is configured
+                let validator = if let Some(secret) = node_config.connection_token_secret.clone() {
+                    tracing::info!("connection token validation enabled for direct log streaming");
+                    ConnectionTokenValidator::new(secret)
+                } else {
+                    tracing::debug!(
+                        "VK_CONNECTION_TOKEN_SECRET not set; direct log streaming auth disabled"
+                    );
+                    ConnectionTokenValidator::disabled()
+                };
+
+                (spawn_node_runner(node_config, db.clone()), validator)
+            } else {
+                tracing::debug!("VK_HIVE_URL not set; node runner disabled");
+                (None, ConnectionTokenValidator::disabled())
+            };
 
         let deployment = Self {
             config,
@@ -226,6 +242,7 @@ impl Deployment for LocalDeployment {
             auth_context,
             oauth_handoffs,
             node_runner_state,
+            connection_token_validator: Arc::new(connection_token_validator),
         };
 
         if let Some(sc) = share_sync_config {
@@ -370,5 +387,10 @@ impl LocalDeployment {
         } else {
             false
         }
+    }
+
+    /// Get the connection token validator for direct log streaming authentication.
+    pub fn connection_token_validator(&self) -> &Arc<ConnectionTokenValidator> {
+        &self.connection_token_validator
     }
 }

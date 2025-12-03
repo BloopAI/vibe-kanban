@@ -3,6 +3,7 @@ pub mod approvals;
 pub mod assignment_handler;
 pub mod auth;
 pub mod config;
+pub mod connection_token;
 pub mod container;
 pub mod diff_stream;
 pub mod drafts;
