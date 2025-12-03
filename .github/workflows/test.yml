@@ -70,5 +70,6 @@ jobs:
           cargo fmt --all -- --check
           npm run generate-types:check
           npm run prepare-db:check
+          npm run remote:prepare-db:check
           cargo test --workspace
           cargo clippy --all --all-targets -- -D warnings  
