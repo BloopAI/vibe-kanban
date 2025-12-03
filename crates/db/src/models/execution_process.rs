@@ -12,6 +12,9 @@ use uuid::Uuid;
 
 use super::{
     execution_process_repo_state::{CreateExecutionProcessRepoState, ExecutionProcessRepoState},
+    project::Project,
+    project_repo::ProjectRepo,
+    repo::Repo,
     task::Task,
     task_attempt::TaskAttempt,
 };
@@ -92,6 +95,8 @@ pub struct ExecutionContext {
     pub execution_process: ExecutionProcess,
     pub task_attempt: TaskAttempt,
     pub task: Task,
+    pub project: Project,
+    pub repos: Vec<Repo>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -568,7 +573,7 @@ impl ExecutionProcess {
         TaskAttempt::find_by_id(pool, self.task_attempt_id).await
     }
 
-    /// Load execution context with related task attempt and task
+    /// Load execution context with related task attempt, task, project, and repos
     pub async fn load_context(
         pool: &SqlitePool,
         exec_id: Uuid,
@@ -585,10 +590,18 @@ impl ExecutionProcess {
             .await?
             .ok_or(sqlx::Error::RowNotFound)?;
 
+        let project = Project::find_by_id(pool, task.project_id)
+            .await?
+            .ok_or(sqlx::Error::RowNotFound)?;
+
+        let repos = ProjectRepo::find_repos_for_project(pool, project.id).await?;
+
         Ok(ExecutionContext {
             execution_process,
             task_attempt,
             task,
+            project,
+            repos,
         })
     }
 
