@@ -325,6 +325,9 @@ fn spawn_hive_connection(config: NodeRunnerConfig) -> NodeRunnerHandle {
     }
 }
 
+use super::assignment_handler::AssignmentHandler;
+use super::container::ContainerService;
+
 /// Spawn the node runner event loop.
 ///
 /// This function should be called during application startup if node mode is enabled.
@@ -332,32 +335,61 @@ fn spawn_hive_connection(config: NodeRunnerConfig) -> NodeRunnerHandle {
 /// 1. Connects to the hive server
 /// 2. Processes incoming events (task assignments, cancellations, etc.)
 /// 3. Creates local tasks and attempts for incoming assignments
-pub fn spawn_node_runner(
+///
+/// Note: The container service must be passed in to enable task execution.
+/// If container is None, task assignments will be logged but not executed.
+pub fn spawn_node_runner<C: ContainerService + Sync + Send + 'static>(
     config: NodeRunnerConfig,
-    _db: DBService,
+    db: DBService,
+    container: Option<C>,
 ) -> Option<Arc<RwLock<NodeRunnerState>>> {
     let mut handle = spawn_hive_connection(config);
     let state = handle.state.clone();
+    let command_tx = handle.command_tx.clone();
 
     tokio::spawn(async move {
+        // Create assignment handler if container is available
+        let handler: Option<AssignmentHandler<C>> = container.map(|c| {
+            AssignmentHandler::new(db.clone(), c, handle.state.clone(), command_tx.clone())
+        });
+
         loop {
             match handle.process_event().await {
                 Some(HiveEvent::TaskAssigned(assignment)) => {
-                    // TODO: Phase 1C - Assignment handler
-                    // Create local task and attempt, then start execution
                     tracing::info!(
                         assignment_id = %assignment.assignment_id,
                         task_id = %assignment.task_id,
                         title = %assignment.task.title,
-                        "task assignment received - handler pending implementation"
+                        "task assignment received"
                     );
+
+                    if let Some(ref h) = handler {
+                        if let Err(e) = h.handle_assignment(assignment).await {
+                            tracing::error!(
+                                error = %e,
+                                "failed to handle task assignment"
+                            );
+                        }
+                    } else {
+                        tracing::warn!("task assignment received but no container available");
+                    }
                 }
                 Some(HiveEvent::TaskCancelled(cancel)) => {
-                    // TODO: Cancel running task
                     tracing::info!(
                         assignment_id = %cancel.assignment_id,
-                        "task cancellation received - handler pending implementation"
+                        "task cancellation received"
                     );
+
+                    if let Some(ref h) = handler {
+                        if let Err(e) = h.handle_cancellation(cancel.assignment_id).await {
+                            tracing::error!(
+                                error = %e,
+                                "failed to handle task cancellation"
+                            );
+                        }
+                    } else {
+                        tracing::warn!("task cancellation received but no container available");
+                    }
                 }
                 Some(_) => {
                     // Other events are handled in process_event

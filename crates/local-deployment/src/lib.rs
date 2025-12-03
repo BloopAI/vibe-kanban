@@ -216,7 +216,11 @@ impl Deployment for LocalDeployment {
                     ConnectionTokenValidator::disabled()
                 };
 
-                (spawn_node_runner(node_config, db.clone()), validator)
+                // Pass the container to spawn_node_runner to enable task execution
+                (
+                    spawn_node_runner(node_config, db.clone(), Some(container.clone())),
+                    validator,
+                )
             } else {
                 tracing::debug!("VK_HIVE_URL not set; node runner disabled");
                 (None, ConnectionTokenValidator::disabled())
