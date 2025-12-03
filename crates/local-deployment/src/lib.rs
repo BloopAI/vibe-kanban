@@ -17,6 +17,7 @@ use services::services::{
     filesystem::FilesystemService,
     git::GitService,
     image::ImageService,
+    node_cache::NodeCacheSyncService,
     node_runner::{NodeRunnerConfig, NodeRunnerState, spawn_node_runner},
     oauth_credentials::OAuthCredentials,
     remote_client::{RemoteClient, RemoteClientError},
@@ -58,6 +59,8 @@ pub struct LocalDeployment {
     node_runner_state: Option<Arc<RwLock<NodeRunnerState>>>,
     /// Validator for connection tokens (for direct frontend-to-node connections)
     connection_token_validator: Arc<ConnectionTokenValidator>,
+    /// Whether the node cache sync has been started
+    node_cache_sync_started: Arc<Mutex<bool>>,
 }
 
 #[derive(Debug, Clone)]
@@ -256,10 +259,20 @@ impl Deployment for LocalDeployment {
             oauth_handoffs,
             node_runner_state,
             connection_token_validator: Arc::new(connection_token_validator),
+            node_cache_sync_started: Arc::new(Mutex::new(false)),
         };
 
         if let Some(sc) = share_sync_config {
             deployment.spawn_remote_sync(sc);
+        }
+
+        // Start node cache sync if user is already logged in
+        // (runs in background, syncs nodes/projects from all organizations)
+        {
+            let d = deployment.clone();
+            tokio::spawn(async move {
+                d.start_node_cache_sync().await;
+            });
         }
 
         Ok(deployment)
@@ -405,5 +418,38 @@ impl LocalDeployment {
     /// Get the connection token validator for direct log streaming authentication.
     pub fn connection_token_validator(&self) -> &Arc<ConnectionTokenValidator> {
         &self.connection_token_validator
+    }
+
+    /// Start the background node cache sync if the user is logged in.
+    ///
+    /// This spawns a background task that periodically syncs nodes and projects
+    /// from all organizations the user has access to.
+    pub async fn start_node_cache_sync(&self) {
+        // Only start once
+        let mut started = self.node_cache_sync_started.lock().await;
+        if *started {
+            return;
+        }
+
+        // Need remote client and credentials
+        let Ok(client) = self.remote_client() else {
+            tracing::debug!("remote client not configured, skipping node cache sync");
+            return;
+        };
+
+        if self.auth_context.get_credentials().await.is_none() {
+            tracing::debug!("not logged in, skipping node cache sync");
+            return;
+        }
+
+        tracing::info!("starting background node cache sync");
+        *started = true;
+
+        let pool = self.db.pool.clone();
+        let sync_service = NodeCacheSyncService::new(pool, client);
+
+        tokio::spawn(async move {
+            sync_service.run().await;
+        });
     }
 }

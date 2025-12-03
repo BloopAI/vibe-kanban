@@ -1,0 +1,80 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT\n                id                  AS \"id!: Uuid\",\n                node_id             AS \"node_id!: Uuid\",\n                project_id          AS \"project_id!: Uuid\",\n                local_project_id    AS \"local_project_id!: Uuid\",\n                project_name        AS \"project_name!\",\n                git_repo_path       AS \"git_repo_path!\",\n                default_branch      AS \"default_branch!\",\n                sync_status         AS \"sync_status!\",\n                last_synced_at      AS \"last_synced_at?: DateTime<Utc>\",\n                created_at          AS \"created_at!: DateTime<Utc>\",\n                cached_at           AS \"cached_at!: DateTime<Utc>\"\n            FROM cached_node_projects\n            WHERE node_id = $1\n            ORDER BY project_name ASC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "node_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "project_id!: Uuid",
+        "ordinal": 2,
+        "type_info": "Blob"
+      },
+      {
+        "name": "local_project_id!: Uuid",
+        "ordinal": 3,
+        "type_info": "Blob"
+      },
+      {
+        "name": "project_name!",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "git_repo_path!",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "default_branch!",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "sync_status!",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_synced_at?: DateTime<Utc>",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "cached_at!: DateTime<Utc>",
+        "ordinal": 10,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "3a03def8b24b1025ffa3e5401f7c246d85202855bf399520bb3ba9473b3816e5"
+}

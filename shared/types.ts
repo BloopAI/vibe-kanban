@@ -54,6 +54,46 @@ export type CreateRemoteProjectRequest = { organization_id: string, name: string
 
 export type LinkToExistingRequest = { remote_project_id: string, };
 
+export type UnifiedProject = { "type": "local" } & Project | { "type": "remote" } & RemoteNodeProject;
+
+export type RemoteNodeProject = { id: string, node_id: string, project_id: string, local_project_id: string, project_name: string, git_repo_path: string, default_branch: string, sync_status: string, last_synced_at: Date | null, created_at: Date, cached_at: Date, node_name: string, node_status: CachedNodeStatus, node_public_url: string | null, };
+
+export type UnifiedProjectsResponse = { 
+/**
+ * Local projects (always shown first)
+ */
+local: Array<Project>, 
+/**
+ * Projects from other nodes grouped by node
+ */
+remote_by_node: Array<RemoteNodeGroup>, };
+
+export type RemoteNodeGroup = { node_id: string, node_name: string, node_status: CachedNodeStatus, node_public_url: string | null, projects: Array<RemoteNodeProject>, };
+
+export type CachedNodeStatus = "pending" | "online" | "offline" | "busy" | "draining";
+
+export type CachedNodeCapabilities = { 
+/**
+ * List of executor types this node supports
+ */
+executors: Array<string>, 
+/**
+ * Maximum number of concurrent tasks
+ */
+max_concurrent_tasks: number, 
+/**
+ * Operating system (e.g., "darwin", "linux", "windows")
+ */
+os: string, 
+/**
+ * CPU architecture (e.g., "arm64", "x86_64")
+ */
+arch: string, 
+/**
+ * Vibe Kanban version running on the node
+ */
+version: string, };
+
 export type ExecutorAction = { typ: ExecutorActionType, next_action: ExecutorAction | null, };
 
 export type McpConfig = { servers: { [key in string]?: JsonValue }, servers_path: Array<string>, template: JsonValue, preconfigured: JsonValue, is_toml_config: boolean, };
@@ -216,8 +256,6 @@ export type ImageResponse = { id: string, file_path: string, original_name: stri
 
 export type Config = { config_version: string, theme: ThemeMode, executor_profile: ExecutorProfileId, disclaimer_acknowledged: boolean, onboarding_acknowledged: boolean, notifications: NotificationConfig, editor: EditorConfig, github: GitHubConfig, analytics_enabled: boolean, workspace_dir: string | null, last_app_version: string | null, show_release_notes: boolean, language: UiLanguage, git_branch_prefix: string, showcases: ShowcaseState, dev_banner: DevBannerConfig, };
 
-export type DevBannerConfig = { background_color: string | null, foreground_color: string | null, show_hostname: boolean, show_os_info: boolean, hide_discord_link: boolean, };
-
 export type NotificationConfig = { sound_enabled: boolean, push_enabled: boolean, sound_file: SoundFile, };
 
 export enum ThemeMode { LIGHT = "LIGHT", DARK = "DARK", SYSTEM = "SYSTEM" }
@@ -235,6 +273,28 @@ export enum SoundFile { ABSTRACT_SOUND1 = "ABSTRACT_SOUND1", ABSTRACT_SOUND2 = "
 export type UiLanguage = "BROWSER" | "EN" | "JA" | "ES" | "KO";
 
 export type ShowcaseState = { seen_features: Array<string>, };
+
+export type DevBannerConfig = { 
+/**
+ * Custom background color (CSS color string), None = default orange
+ */
+background_color: string | null, 
+/**
+ * Custom foreground/text color (CSS color string), None = default white
+ */
+foreground_color: string | null, 
+/**
+ * Whether to display the system hostname in the banner
+ */
+show_hostname: boolean, 
+/**
+ * Whether to display the OS type and version in the banner
+ */
+show_os_info: boolean, 
+/**
+ * Whether to hide the Discord link in the navbar (dev mode only)
+ */
+hide_discord_link: boolean, };
 
 export type GitBranch = { name: string, is_current: boolean, is_remote: boolean, last_commit_date: Date, };
 
