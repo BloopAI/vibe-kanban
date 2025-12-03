@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button.tsx';
 import {
   Calendar,
+  Cloud,
   Edit,
   ExternalLink,
   FolderOpen,
@@ -121,7 +122,18 @@ function ProjectCard({
     >
       <CardHeader>
         <div className="flex items-start justify-between">
-          <CardTitle className="text-lg">{project.name}</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-lg">{project.name}</CardTitle>
+            {project.remote_project_id && (
+              <span
+                className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-blue-50 text-blue-700 border border-blue-200"
+                title={t('linkedToOrganizationTooltip')}
+              >
+                <Cloud className="h-3 w-3" />
+                {t('linked')}
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>

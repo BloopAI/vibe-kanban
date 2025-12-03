@@ -44,6 +44,8 @@
     }
   },
   "unlinkFromOrganization": "Unlink from Remote Project",
+  "linked": "Linked",
+  "linkedToOrganizationTooltip": "This project is linked to a remote project for collaboration",
   "viewProject": "View Project",
   "openInIDE": "Open in IDE",
   "createdDate": "Created {{date}}",
