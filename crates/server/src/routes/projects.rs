@@ -169,17 +169,13 @@ async fn apply_remote_project_link(
 ) -> Result<Project, ApiError> {
     let pool = &deployment.db().pool;
 
-    if let Some(old_remote_project_id) = project.remote_project_id {
-        if old_remote_project_id != remote_project.id {
-            let mut tx = pool.begin().await?;
-            Task::clear_shared_task_ids_for_remote_project(&mut *tx, old_remote_project_id).await?;
-            Project::set_remote_project_id_tx(&mut *tx, project.id, Some(remote_project.id))
-                .await?;
-            tx.commit().await?;
-        }
-    } else {
-        Project::set_remote_project_id(pool, project.id, Some(remote_project.id)).await?;
+    if project.remote_project_id.is_some() {
+        return Err(ApiError::Conflict(
+            "Project is already linked to a remote project. Unlink it first.".to_string(),
+        ));
     }
+
+    Project::set_remote_project_id(pool, project.id, Some(remote_project.id)).await?;
 
     let updated_project = Project::find_by_id(pool, project.id)
         .await?
