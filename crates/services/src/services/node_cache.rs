@@ -49,10 +49,25 @@ pub async fn sync_all_organizations(
     pool: &SqlitePool,
     remote_client: &RemoteClient,
 ) -> Result<Vec<(Uuid, SyncStats)>, NodeCacheSyncError> {
-    let orgs = remote_client
-        .list_organizations()
-        .await
-        .map_err(NodeCacheSyncError::Remote)?;
+    debug!("fetching organizations for node cache sync");
+
+    let orgs = match remote_client.list_organizations().await {
+        Ok(orgs) => orgs,
+        Err(e) => {
+            warn!(error = %e, "failed to fetch organizations for node cache sync");
+            return Err(NodeCacheSyncError::Remote(e));
+        }
+    };
+
+    if orgs.organizations.is_empty() {
+        info!("no organizations found, skipping node cache sync");
+        return Ok(vec![]);
+    }
+
+    info!(
+        org_count = orgs.organizations.len(),
+        "fetched organizations for node cache sync"
+    );
 
     let mut results = Vec::with_capacity(orgs.organizations.len());
 
@@ -101,14 +116,22 @@ impl<'a> NodeCacheSyncer<'a> {
         let org_id = self.organization_id;
         let mut stats = SyncStats::default();
 
-        // Fetch all nodes from the hive
-        let nodes = self
-            .remote_client
-            .list_nodes(org_id)
-            .await
-            .map_err(NodeCacheSyncError::Remote)?;
+        debug!(organization_id = %org_id, "fetching nodes for organization");
 
-        debug!(node_count = nodes.len(), "fetched nodes from hive");
+        // Fetch all nodes from the hive
+        let nodes = match self.remote_client.list_nodes(org_id).await {
+            Ok(nodes) => nodes,
+            Err(e) => {
+                warn!(organization_id = %org_id, error = %e, "failed to fetch nodes from hive");
+                return Err(NodeCacheSyncError::Remote(e));
+            }
+        };
+
+        info!(
+            organization_id = %org_id,
+            node_count = nodes.len(),
+            "fetched nodes from hive"
+        );
 
         let mut synced_node_ids = Vec::with_capacity(nodes.len());
 
