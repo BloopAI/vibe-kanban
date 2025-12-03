@@ -169,6 +169,11 @@ impl NodeRunnerContext {
         self.state.read().await.connected
     }
 
+    /// Get the current node ID if connected.
+    pub async fn node_id(&self) -> Option<Uuid> {
+        self.state.read().await.node_id
+    }
+
     /// Send a link project message to the hive.
     pub async fn send_link_project(&self, link: LinkProjectMessage) -> Result<(), HiveClientError> {
         self.command_tx

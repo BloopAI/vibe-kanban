@@ -282,15 +282,42 @@ impl CachedNodeProjectWithNode {
         pool: &SqlitePool,
         exclude_project_ids: &[Uuid],
     ) -> Result<Vec<Self>, sqlx::Error> {
-        // Build exclusion clause
-        let exclude_clause = if exclude_project_ids.is_empty() {
-            String::new()
-        } else {
+        Self::find_remote_projects(pool, exclude_project_ids, None).await
+    }
+
+    /// List all cached projects with node info (across all organizations),
+    /// excluding those with project_ids in the given list AND excluding the current node.
+    ///
+    /// This is the primary method for getting "remote" projects to display in the unified view.
+    /// It excludes:
+    /// - Projects already linked locally (via exclude_project_ids)
+    /// - Projects from the current node (via exclude_node_id)
+    pub async fn find_remote_projects(
+        pool: &SqlitePool,
+        exclude_project_ids: &[Uuid],
+        exclude_node_id: Option<Uuid>,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        // Build WHERE clauses
+        let mut conditions: Vec<String> = Vec::new();
+
+        // Exclude by project_id (already linked locally)
+        if !exclude_project_ids.is_empty() {
             let placeholders: Vec<String> = exclude_project_ids
                 .iter()
                 .map(|id| format!("'{}'", id))
                 .collect();
-            format!(" WHERE cnp.project_id NOT IN ({})", placeholders.join(", "))
+            conditions.push(format!("cnp.project_id NOT IN ({})", placeholders.join(", ")));
+        }
+
+        // Exclude current node's projects
+        if let Some(node_id) = exclude_node_id {
+            conditions.push(format!("cnp.node_id != '{}'", node_id));
+        }
+
+        let where_clause = if conditions.is_empty() {
+            String::new()
+        } else {
+            format!(" WHERE {}", conditions.join(" AND "))
         };
 
         let query = format!(
@@ -315,7 +342,7 @@ impl CachedNodeProjectWithNode {
             {}
             ORDER BY cn.name ASC, cnp.project_name ASC
             "#,
-            exclude_clause
+            where_clause
         );
 
         sqlx::query_as(&query).fetch_all(pool).await

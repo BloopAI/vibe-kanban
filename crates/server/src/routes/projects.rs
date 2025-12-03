@@ -136,7 +136,7 @@ pub async fn get_projects(
 /// Get a unified view of all projects: local projects first, then remote projects grouped by node.
 ///
 /// Remote projects that are already linked to a local project (via remote_project_id) are excluded
-/// to avoid duplicates.
+/// to avoid duplicates. Projects from the current node are also excluded since they're shown as local.
 pub async fn get_unified_projects(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<UnifiedProjectsResponse>>, ApiError> {
@@ -153,10 +153,20 @@ pub async fn get_unified_projects(
         .filter_map(|p| p.remote_project_id)
         .collect();
 
-    // Get all remote projects from all organizations, excluding those already linked locally
-    let all_remote = CachedNodeProjectWithNode::find_all_with_exclusions(pool, &linked_remote_ids)
-        .await
-        .unwrap_or_default();
+    // Get current node_id to exclude from remote list (if connected to hive)
+    let current_node_id = if let Some(ctx) = deployment.node_runner_context() {
+        ctx.node_id().await
+    } else {
+        None
+    };
+
+    // Get all remote projects from all organizations, excluding:
+    // 1. Projects already linked locally
+    // 2. Projects from the current node (they're shown as local projects)
+    let all_remote =
+        CachedNodeProjectWithNode::find_remote_projects(pool, &linked_remote_ids, current_node_id)
+            .await
+            .unwrap_or_default();
 
     // Group remote projects by node
     let mut by_node: HashMap<Uuid, RemoteNodeGroup> = HashMap::new();
