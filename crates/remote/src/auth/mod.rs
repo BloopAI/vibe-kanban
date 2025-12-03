@@ -5,7 +5,7 @@ mod middleware;
 mod oauth_token_validator;
 mod provider;
 
-pub use connection_token::{ConnectionToken, ConnectionTokenError, ConnectionTokenService};
+pub use connection_token::{ConnectionTokenError, ConnectionTokenService};
 pub use handoff::{CallbackResult, HandoffError, OAuthHandoffService};
 pub use jwt::{JwtError, JwtService};
 pub use middleware::{RequestContext, require_session};

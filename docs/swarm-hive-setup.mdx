@@ -53,11 +53,11 @@ cp .env.remote.example .env.remote
 Required environment variables (see `.env.remote.example` for full list):
 
 ```bash
+# Database (PostgreSQL)
+SERVER_DATABASE_URL=postgres://user:password@localhost/vibe_remote
+
 # Network - Public URL for OAuth callbacks
 SERVER_PUBLIC_BASE_URL=http://your-server:3000
-
-# Database
-DATABASE_URL=postgres://user:password@localhost/vibe_hive
 
 # JWT Secret (base64-encoded, minimum 32 bytes)
 # Generate with: openssl rand -base64 32
@@ -383,7 +383,7 @@ JWT_SECRET=$(openssl rand -base64 32)
 
 # Hive server configuration (see .env.remote.example for full list)
 export SERVER_PUBLIC_BASE_URL=http://localhost:8081
-export DATABASE_URL=postgres://vibe:password@localhost/vibe_hive
+export SERVER_DATABASE_URL=postgres://vibe:password@localhost/vibe_remote
 export VIBEKANBAN_REMOTE_JWT_SECRET=$JWT_SECRET
 export GITHUB_OAUTH_CLIENT_ID=your_github_client_id
 export GITHUB_OAUTH_CLIENT_SECRET=your_github_client_secret
