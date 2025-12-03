@@ -1,6 +1,6 @@
 use std::{
-    collections::HashMap,
-    io,
+    collections::{HashMap, HashSet},
+    fs, io,
     path::{Path, PathBuf},
     sync::{Arc, atomic::AtomicUsize},
     time::Duration,
@@ -1197,7 +1197,19 @@ impl ContainerService for LocalContainerService {
         target_dir: &Path,
         copy_files: &str,
     ) -> Result<(), ContainerError> {
-        copy_project_files_impl(source_dir, target_dir, copy_files)
+        let source_dir = source_dir.to_path_buf();
+        let target_dir = target_dir.to_path_buf();
+        let copy_files = copy_files.to_string();
+
+        tokio::time::timeout(
+            std::time::Duration::from_secs(30),
+            tokio::task::spawn_blocking(move || {
+                copy_project_files_impl(&source_dir, &target_dir, &copy_files)
+            }),
+        )
+        .await
+        .map_err(|_| ContainerError::Other(anyhow!("Copy project files timed out after 30s")))?
+        .map_err(|e| ContainerError::Other(anyhow!("Copy files task failed: {e}")))?
     }
 
     async fn kill_all_running_processes(&self) -> Result<(), ContainerError> {
@@ -1244,15 +1256,15 @@ fn copy_project_files_impl(
         let pattern = normalize_pattern(pattern);
         let pattern_path = source_dir.join(&pattern);
 
-        if pattern_path.is_file()
-            && let Err(e) = copy_single_file(&pattern_path, source_dir, target_dir, &mut seen)
-        {
-            tracing::warn!(
-                "Failed to copy file {} (from {}): {}",
-                pattern,
-                pattern_path.display(),
-                e
-            );
+        if pattern_path.is_file() {
+            if let Err(e) = copy_single_file(&pattern_path, source_dir, target_dir, &mut seen) {
+                tracing::warn!(
+                    "Failed to copy file {} (from {}): {}",
+                    pattern,
+                    pattern_path.display(),
+                    e
+                );
+            }
             continue;
         }
 
@@ -1288,8 +1300,6 @@ fn copy_project_files_impl(
 
     Ok(())
 }
-
-use std::{collections::HashSet, fs};
 
 fn copy_single_file(
     source_file: &Path,
