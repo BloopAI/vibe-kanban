@@ -1,5 +1,6 @@
 pub mod analytics;
 pub mod approvals;
+pub mod assignment_handler;
 pub mod auth;
 pub mod config;
 pub mod container;
@@ -12,7 +13,9 @@ pub mod filesystem;
 pub mod filesystem_watcher;
 pub mod git;
 pub mod github;
+pub mod hive_client;
 pub mod image;
+pub mod node_runner;
 pub mod notification;
 pub mod oauth_credentials;
 pub mod pr_monitor;
