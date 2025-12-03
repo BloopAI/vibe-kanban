@@ -51,7 +51,12 @@ export interface NodeApiKey {
   created_at: string;
 }
 
+export interface CreateNodeApiKeyRequest {
+  organization_id: string;
+  name: string;
+}
+
 export interface CreateNodeApiKeyResponse {
   api_key: NodeApiKey;
-  raw_key: string;
+  secret: string;
 }

@@ -1151,7 +1151,13 @@ export const dashboardApi = {
 };
 
 // Nodes API (swarm/hive architecture)
-import type { Node, NodeProject, NodeApiKey } from '@/types/nodes';
+import type {
+  Node,
+  NodeProject,
+  NodeApiKey,
+  CreateNodeApiKeyRequest,
+  CreateNodeApiKeyResponse,
+} from '@/types/nodes';
 
 export const nodesApi = {
   list: async (organizationId: string): Promise<Node[]> => {
@@ -1183,5 +1189,22 @@ export const nodesApi = {
       `/api/nodes/api-keys?organization_id=${encodeURIComponent(organizationId)}`
     );
     return handleApiResponse<NodeApiKey[]>(response);
+  },
+
+  createApiKey: async (
+    data: CreateNodeApiKeyRequest
+  ): Promise<CreateNodeApiKeyResponse> => {
+    const response = await makeRequest('/api/nodes/api-keys', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<CreateNodeApiKeyResponse>(response);
+  },
+
+  revokeApiKey: async (keyId: string): Promise<void> => {
+    const response = await makeRequest(`/api/nodes/api-keys/${keyId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
   },
 };
