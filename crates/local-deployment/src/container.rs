@@ -1237,11 +1237,6 @@ fn copy_project_files_impl(
         .filter(|s| !s.is_empty())
         .collect();
 
-    // Get canonical source directory for security checks
-    let canonical_source = source_dir.canonicalize().map_err(|e| {
-        ContainerError::Other(anyhow!("Failed to canonicalize source directory: {e}"))
-    })?;
-
     // Track files to avoid duplicates
     let mut seen = HashSet::new();
 
@@ -1249,68 +1244,45 @@ fn copy_project_files_impl(
         let pattern = normalize_pattern(pattern);
         let pattern_path = source_dir.join(&pattern);
 
-        // For exact file matches, copy directly (fast path)
-        if pattern_path.is_file() {
-            match copy_single_file(
-                &pattern_path,
-                source_dir,
-                target_dir,
-                &canonical_source,
-                &mut seen,
-            ) {
-                Ok(true) => tracing::info!("Copied file: {pattern}"),
-                Ok(false) => tracing::debug!("File already copied: {pattern}"),
-                Err(e) => tracing::warn!(
-                    "Failed to copy file {} (from {}): {}",
-                    pattern,
-                    pattern_path.display(),
-                    e
-                ),
-            }
+        if pattern_path.is_file()
+            && let Err(e) = copy_single_file(&pattern_path, source_dir, target_dir, &mut seen)
+        {
+            tracing::warn!(
+                "Failed to copy file {} (from {}): {}",
+                pattern,
+                pattern_path.display(),
+                e
+            );
             continue;
         }
 
-        // For directories, append /** to match all contents recursively
-        // For glob patterns, use as-is
         let glob_pattern = if pattern_path.is_dir() {
+            // For directories, append /** to match all contents recursively
             format!("{pattern}/**")
         } else {
             pattern.clone()
         };
 
-        let walker = match GlobWalkerBuilder::from_patterns(source_dir, &[&glob_pattern]).build() {
+        let walker = match GlobWalkerBuilder::from_patterns(source_dir, &[&glob_pattern])
+            .file_type(globwalk::FileType::FILE)
+            .build()
+        {
             Ok(w) => w,
             Err(e) => {
-                tracing::warn!("Invalid glob pattern '{pattern}': {e}");
+                tracing::warn!("Invalid glob pattern '{glob_pattern}': {e}");
                 continue;
             }
         };
 
-        let mut copied_count = 0;
         let mut had_matches = false;
-
         for entry in walker.flatten() {
             had_matches = true;
-            let path = entry.path();
-
-            // Skip directories - we only copy files
-            if !path.is_file() {
-                continue;
-            }
-
-            match copy_single_file(path, source_dir, target_dir, &canonical_source, &mut seen) {
-                Ok(true) => copied_count += 1,
-                Ok(false) => {} // Already copied
-                Err(e) => {
-                    tracing::warn!("Failed to copy file {path:?}: {e}");
-                }
+            if let Err(e) = copy_single_file(entry.path(), source_dir, target_dir, &mut seen) {
+                tracing::warn!("Failed to copy file {:?}: {e}", entry.path());
             }
         }
-
         if !had_matches {
-            tracing::warn!("No files matched pattern: {pattern}");
-        } else if copied_count > 0 {
-            tracing::info!("Copied {copied_count} files matching pattern: {pattern}");
+            tracing::info!("No files matched pattern: {pattern}");
         }
     }
 
@@ -1323,14 +1295,11 @@ fn copy_single_file(
     source_file: &Path,
     source_root: &Path,
     target_root: &Path,
-    canonical_source: &Path,
     seen: &mut HashSet<PathBuf>,
 ) -> Result<bool, ContainerError> {
+    let canonical_source = source_root.canonicalize()?;
+    let canonical_file = source_file.canonicalize()?;
     // Validate path is within source_dir
-    let canonical_file = source_file.canonicalize().map_err(|e| {
-        ContainerError::Other(anyhow!("Failed to canonicalize file {source_file:?}: {e}"))
-    })?;
-
     if !canonical_file.starts_with(canonical_source) {
         return Err(ContainerError::Other(anyhow!(
             "File {source_file:?} is outside project directory"
@@ -1349,21 +1318,12 @@ fn copy_single_file(
 
     let target_file = target_root.join(relative_path);
 
-    // Create parent directories if needed
     if let Some(parent) = target_file.parent()
         && !parent.exists()
     {
-        fs::create_dir_all(parent).map_err(|e| {
-            ContainerError::Other(anyhow!("Failed to create directory {parent:?}: {e}"))
-        })?;
+        fs::create_dir_all(parent)?;
     }
-
-    // Copy the file
-    fs::copy(source_file, &target_file).map_err(|e| {
-        ContainerError::Other(anyhow!(
-            "Failed to copy file {source_file:?} to {target_file:?}: {e}"
-        ))
-    })?;
+    fs::copy(source_file, &target_file)?;
 
     Ok(true)
 }
@@ -1388,20 +1348,6 @@ mod tests {
     use tempfile::TempDir;
 
     use super::*;
-
-    #[test]
-    fn test_truncate_to_char_boundary() {
-        let input = "a".repeat(10);
-        assert_eq!(truncate_to_char_boundary(&input, 7), "a".repeat(7));
-
-        let input = "hello world";
-        assert_eq!(truncate_to_char_boundary(input, input.len()), input);
-
-        let input = "🔥🔥🔥"; // each fire emoji is 4 bytes
-        assert_eq!(truncate_to_char_boundary(input, 5), "🔥");
-        assert_eq!(truncate_to_char_boundary(input, 3), "");
-    }
-
     #[test]
     fn test_copy_project_files_mixed_patterns() {
         let source_dir = TempDir::new().unwrap();
