@@ -28,7 +28,7 @@
 
     /* Status (light) */
     --_success: 142.1 76.2% 36.3%;
-    --_success-foreground: 138.5 76.5% 96.7%;
+    --_success-foreground: 142.1 76.2% 20%;
     --_warning: 32.2 95% 44.1%;
     --_warning-foreground: 26 83.3% 14.1%;
     --_info: 217.2 91.2% 59.8%;
