@@ -34,6 +34,7 @@ import type {
 import { MemberListItem } from '@/components/org/MemberListItem';
 import { PendingInvitationItem } from '@/components/org/PendingInvitationItem';
 import { RemoteProjectItem } from '@/components/org/RemoteProjectItem';
+import { NodeApiKeySection } from '@/components/org/NodeApiKeySection';
 import type { MemberRole } from 'shared/types';
 import { MemberRole as MemberRoleEnum } from 'shared/types';
 import { useTranslation } from 'react-i18next';
@@ -478,6 +479,13 @@ export function OrganizationSettings() {
             )}
           </CardContent>
         </Card>
+      )}
+
+      {selectedOrg && (
+        <NodeApiKeySection
+          organizationId={selectedOrg.id}
+          isAdmin={isAdmin}
+        />
       )}
 
       {selectedOrg && isAdmin && !isPersonalOrg && (

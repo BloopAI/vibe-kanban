@@ -649,10 +649,50 @@ impl RemoteClient {
     }
 
     /// Lists API keys for an organization.
-    pub async fn list_node_api_keys(&self, org_id: Uuid) -> Result<Vec<NodeApiKey>, RemoteClientError> {
+    pub async fn list_node_api_keys(
+        &self,
+        org_id: Uuid,
+    ) -> Result<Vec<NodeApiKey>, RemoteClientError> {
         self.get_authed(&format!("/v1/nodes/api-keys?organization_id={org_id}"))
             .await
     }
+
+    /// Creates a new API key for an organization.
+    pub async fn create_node_api_key(
+        &self,
+        org_id: Uuid,
+        name: String,
+    ) -> Result<CreateNodeApiKeyResponse, RemoteClientError> {
+        self.post_authed(
+            "/v1/nodes/api-keys",
+            Some(&CreateNodeApiKeyRequest {
+                organization_id: org_id,
+                name,
+            }),
+        )
+        .await
+    }
+
+    /// Revokes an API key.
+    pub async fn revoke_node_api_key(&self, key_id: Uuid) -> Result<(), RemoteClientError> {
+        self.delete_authed(&format!("/v1/nodes/api-keys/{key_id}"))
+            .await
+    }
+}
+
+/// Request payload for creating a node API key
+#[derive(Debug, Serialize)]
+pub struct CreateNodeApiKeyRequest {
+    pub organization_id: Uuid,
+    pub name: String,
+}
+
+/// Response from creating a node API key
+#[derive(Debug, Deserialize)]
+pub struct CreateNodeApiKeyResponse {
+    pub api_key: NodeApiKey,
+    /// The raw API key value - only returned on creation
+    pub secret: String,
 }
 
 #[derive(Debug, Serialize)]

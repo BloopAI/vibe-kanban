@@ -1,13 +1,13 @@
 //! Node management routes - proxies to the remote hive server.
 
 use axum::{
-    Router,
+    Json, Router,
     extract::{Path, Query, State},
     response::Json as ResponseJson,
-    routing::get,
+    routing::{delete, get},
 };
 use remote::nodes::{Node, NodeApiKey, NodeProject};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
@@ -21,6 +21,18 @@ pub struct ListNodesQuery {
 #[derive(Debug, Deserialize)]
 pub struct ListApiKeysQuery {
     pub organization_id: Uuid,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateApiKeyRequest {
+    pub organization_id: Uuid,
+    pub name: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CreateApiKeyResponse {
+    pub api_key: NodeApiKey,
+    pub secret: String,
 }
 
 /// List all nodes for an organization.
@@ -73,10 +85,36 @@ pub async fn list_api_keys(
     Ok(ResponseJson(ApiResponse::success(keys)))
 }
 
+/// Create a new API key for an organization.
+pub async fn create_api_key(
+    State(deployment): State<DeploymentImpl>,
+    Json(request): Json<CreateApiKeyRequest>,
+) -> Result<ResponseJson<ApiResponse<CreateApiKeyResponse>>, ApiError> {
+    let client = deployment.remote_client()?;
+    let response = client
+        .create_node_api_key(request.organization_id, request.name)
+        .await?;
+    Ok(ResponseJson(ApiResponse::success(CreateApiKeyResponse {
+        api_key: response.api_key,
+        secret: response.secret,
+    })))
+}
+
+/// Revoke an API key.
+pub async fn revoke_api_key(
+    State(deployment): State<DeploymentImpl>,
+    Path(key_id): Path<Uuid>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    let client = deployment.remote_client()?;
+    client.revoke_node_api_key(key_id).await?;
+    Ok(ResponseJson(ApiResponse::success(())))
+}
+
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/nodes", get(list_nodes))
         .route("/nodes/{node_id}", get(get_node).delete(delete_node))
         .route("/nodes/{node_id}/projects", get(list_node_projects))
-        .route("/nodes/api-keys", get(list_api_keys))
+        .route("/nodes/api-keys", get(list_api_keys).post(create_api_key))
+        .route("/nodes/api-keys/{key_id}", delete(revoke_api_key))
 }
