@@ -64,7 +64,7 @@ pub async fn get_project_branches(
 }
 
 pub async fn link_project_to_existing_remote(
-    Path(project_id): Path<Uuid>,
+    Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<LinkToExistingRequest>,
 ) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
@@ -73,13 +73,13 @@ pub async fn link_project_to_existing_remote(
     let remote_project = client.get_project(payload.remote_project_id).await?;
 
     let updated_project =
-        apply_remote_project_link(&deployment, project_id, remote_project).await?;
+        apply_remote_project_link(&deployment, project, remote_project).await?;
 
     Ok(ResponseJson(ApiResponse::success(updated_project)))
 }
 
 pub async fn create_and_link_remote_project(
-    Path(project_id): Path<Uuid>,
+    Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateRemoteProjectRequest>,
 ) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
@@ -101,7 +101,7 @@ pub async fn create_and_link_remote_project(
         .await?;
 
     let updated_project =
-        apply_remote_project_link(&deployment, project_id, remote_project).await?;
+        apply_remote_project_link(&deployment, project, remote_project).await?;
 
     Ok(ResponseJson(ApiResponse::success(updated_project)))
 }
@@ -166,28 +166,24 @@ pub async fn get_project_remote_members(
 
 async fn apply_remote_project_link(
     deployment: &DeploymentImpl,
-    project_id: Uuid,
+    project: Project,
     remote_project: RemoteProject,
 ) -> Result<Project, ApiError> {
     let pool = &deployment.db().pool;
 
-    let existing_project = Project::find_by_id(pool, project_id)
-        .await?
-        .ok_or(ProjectError::ProjectNotFound)?;
-
-    if let Some(old_remote_project_id) = existing_project.remote_project_id {
+    if let Some(old_remote_project_id) = project.remote_project_id {
         if old_remote_project_id != remote_project.id {
             let mut tx = pool.begin().await?;
             Task::clear_shared_task_ids_for_remote_project(&mut *tx, old_remote_project_id).await?;
-            Project::set_remote_project_id_tx(&mut *tx, project_id, Some(remote_project.id))
+            Project::set_remote_project_id_tx(&mut *tx, project.id, Some(remote_project.id))
                 .await?;
             tx.commit().await?;
         }
     } else {
-        Project::set_remote_project_id(pool, project_id, Some(remote_project.id)).await?;
+        Project::set_remote_project_id(pool, project.id, Some(remote_project.id)).await?;
     }
 
-    let updated_project = Project::find_by_id(pool, project_id)
+    let updated_project = Project::find_by_id(pool, project.id)
         .await?
         .ok_or(ProjectError::ProjectNotFound)?;
 
@@ -195,7 +191,7 @@ async fn apply_remote_project_link(
         .track_if_analytics_allowed(
             "project_linked_to_remote",
             serde_json::json!({
-                "project_id": project_id.to_string(),
+                "project_id": project.id.to_string(),
             }),
         )
         .await;
