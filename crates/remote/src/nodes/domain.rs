@@ -51,7 +51,8 @@ pub struct NodeApiKey {
     pub id: Uuid,
     pub organization_id: Uuid,
     pub name: String,
-    #[serde(skip_serializing)]
+    /// Key hash - never serialized, uses default when deserializing (for client-side types)
+    #[serde(default, skip_serializing)]
     pub key_hash: String,
     pub key_prefix: String,
     pub created_by: Option<Uuid>,
