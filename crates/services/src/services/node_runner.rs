@@ -12,8 +12,9 @@ use tokio::sync::{RwLock, mpsc};
 use uuid::Uuid;
 
 use super::hive_client::{
-    HiveClient, HiveClientConfig, HiveClientError, HiveEvent, LinkedProjectInfo, NodeMessage,
-    TaskExecutionStatus, TaskStatusMessage, detect_capabilities, get_machine_id,
+    HiveClient, HiveClientConfig, HiveClientError, HiveEvent, LinkProjectMessage,
+    LinkedProjectInfo, NodeMessage, TaskExecutionStatus, TaskStatusMessage, UnlinkProjectMessage,
+    detect_capabilities, get_machine_id,
 };
 
 /// Configuration for the node runner loaded from environment variables.
@@ -150,6 +151,44 @@ impl Default for NodeRunnerState {
     }
 }
 
+/// Context for interacting with the node runner from other parts of the app.
+///
+/// This struct provides read access to the node runner state and the ability
+/// to send messages to the hive.
+#[derive(Clone)]
+pub struct NodeRunnerContext {
+    /// Shared state (read-only access for checking connection status, etc.)
+    pub state: Arc<RwLock<NodeRunnerState>>,
+    /// Sender for commands to the hive
+    command_tx: mpsc::Sender<NodeMessage>,
+}
+
+impl NodeRunnerContext {
+    /// Check if connected to the hive.
+    pub async fn is_connected(&self) -> bool {
+        self.state.read().await.connected
+    }
+
+    /// Send a link project message to the hive.
+    pub async fn send_link_project(&self, link: LinkProjectMessage) -> Result<(), HiveClientError> {
+        self.command_tx
+            .send(NodeMessage::LinkProject(link))
+            .await
+            .map_err(|_| HiveClientError::Send("channel closed".to_string()))
+    }
+
+    /// Send an unlink project message to the hive.
+    pub async fn send_unlink_project(
+        &self,
+        unlink: UnlinkProjectMessage,
+    ) -> Result<(), HiveClientError> {
+        self.command_tx
+            .send(NodeMessage::UnlinkProject(unlink))
+            .await
+            .map_err(|_| HiveClientError::Send("channel closed".to_string()))
+    }
+}
+
 /// Handle for interacting with a running node runner.
 pub struct NodeRunnerHandle {
     /// Receiver for events from the hive
@@ -278,6 +317,33 @@ impl NodeRunnerHandle {
             .map_err(|_| HiveClientError::Send("channel closed".to_string()))
     }
 
+    /// Link a project to the hive.
+    ///
+    /// This notifies the hive that a local project is now linked to a remote project,
+    /// allowing the hive to track which projects are available on which nodes.
+    pub async fn send_link_project(
+        &self,
+        link: LinkProjectMessage,
+    ) -> Result<(), HiveClientError> {
+        self.command_tx
+            .send(NodeMessage::LinkProject(link))
+            .await
+            .map_err(|_| HiveClientError::Send("channel closed".to_string()))
+    }
+
+    /// Unlink a project from the hive.
+    ///
+    /// This notifies the hive that a local project is no longer linked to a remote project.
+    pub async fn send_unlink_project(
+        &self,
+        unlink: UnlinkProjectMessage,
+    ) -> Result<(), HiveClientError> {
+        self.command_tx
+            .send(NodeMessage::UnlinkProject(unlink))
+            .await
+            .map_err(|_| HiveClientError::Send("channel closed".to_string()))
+    }
+
     /// Check if connected to the hive.
     pub async fn is_connected(&self) -> bool {
         self.state.read().await.connected
@@ -336,16 +402,24 @@ use super::container::ContainerService;
 /// 2. Processes incoming events (task assignments, cancellations, etc.)
 /// 3. Creates local tasks and attempts for incoming assignments
 ///
+/// Returns a `NodeRunnerContext` that can be used to interact with the hive.
+///
 /// Note: The container service must be passed in to enable task execution.
 /// If container is None, task assignments will be logged but not executed.
 pub fn spawn_node_runner<C: ContainerService + Sync + Send + 'static>(
     config: NodeRunnerConfig,
     db: DBService,
     container: Option<C>,
-) -> Option<Arc<RwLock<NodeRunnerState>>> {
+) -> Option<NodeRunnerContext> {
     let mut handle = spawn_hive_connection(config);
     let state = handle.state.clone();
     let command_tx = handle.command_tx.clone();
+
+    // Create the context to return
+    let context = NodeRunnerContext {
+        state: state.clone(),
+        command_tx: command_tx.clone(),
+    };
 
     tokio::spawn(async move {
         // Create assignment handler if container is available
@@ -403,5 +477,5 @@ pub fn spawn_node_runner<C: ContainerService + Sync + Send + 'static>(
         }
     });
 
-    Some(state)
+    Some(context)
 }

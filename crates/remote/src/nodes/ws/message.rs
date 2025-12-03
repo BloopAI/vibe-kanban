@@ -33,6 +33,14 @@ pub enum NodeMessage {
     #[serde(rename = "task_progress")]
     TaskProgress(TaskProgressMessage),
 
+    /// Link a project from the node to a remote project
+    #[serde(rename = "link_project")]
+    LinkProject(LinkProjectMessage),
+
+    /// Unlink a project from the hive
+    #[serde(rename = "unlink_project")]
+    UnlinkProject(UnlinkProjectMessage),
+
     /// Acknowledgement of a hive message
     #[serde(rename = "ack")]
     Ack { message_id: Uuid },
@@ -281,6 +289,37 @@ pub enum TaskProgressType {
     AgentFinished,
     /// Custom milestone
     Custom,
+}
+
+/// Link a project from node to hive.
+///
+/// Sent by the node when a user links a local project to a remote project.
+/// This creates an entry in the hive's node_projects table.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LinkProjectMessage {
+    /// The remote project ID (from the hive's projects table)
+    pub project_id: Uuid,
+    /// The local project ID on the node
+    pub local_project_id: Uuid,
+    /// Path to the git repository on the node
+    pub git_repo_path: String,
+    /// Default branch for the project
+    #[serde(default = "default_branch")]
+    pub default_branch: String,
+}
+
+fn default_branch() -> String {
+    "main".to_string()
+}
+
+/// Unlink a project from the hive.
+///
+/// Sent by the node when a user unlinks a local project.
+/// This removes the entry from the hive's node_projects table.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UnlinkProjectMessage {
+    /// The remote project ID to unlink
+    pub project_id: Uuid,
 }
 
 /// Project sync message from hive to node.

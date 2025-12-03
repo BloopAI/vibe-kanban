@@ -253,6 +253,32 @@ pub async fn unlink_project(
         Project::set_remote_project_id_tx(&mut *tx, project.id, None).await?;
 
         tx.commit().await?;
+
+        // Notify the hive about the unlink if we're connected as a node
+        if let Some(ctx) = deployment.node_runner_context() {
+            use services::services::hive_client::UnlinkProjectMessage;
+
+            if ctx.is_connected().await {
+                let unlink_msg = UnlinkProjectMessage {
+                    project_id: remote_project_id,
+                };
+
+                if let Err(e) = ctx.send_unlink_project(unlink_msg).await {
+                    tracing::warn!(
+                        project_id = %project.id,
+                        remote_project_id = %remote_project_id,
+                        error = %e,
+                        "failed to send unlink_project to hive"
+                    );
+                } else {
+                    tracing::info!(
+                        project_id = %project.id,
+                        remote_project_id = %remote_project_id,
+                        "sent unlink_project to hive"
+                    );
+                }
+            }
+        }
     }
 
     let updated_project = Project::find_by_id(pool, project.id)
@@ -304,6 +330,11 @@ async fn apply_remote_project_link(
 ) -> Result<Project, ApiError> {
     let pool = &deployment.db().pool;
 
+    // First get the project to get git_repo_path for the hive notification
+    let project = Project::find_by_id(pool, project_id)
+        .await?
+        .ok_or(ProjectError::ProjectNotFound)?;
+
     Project::set_remote_project_id(pool, project_id, Some(remote_project.id)).await?;
 
     let updated_project = Project::find_by_id(pool, project_id)
@@ -313,6 +344,41 @@ async fn apply_remote_project_link(
     let current_profile = deployment.auth_context().cached_profile().await;
     let current_user_id = current_profile.as_ref().map(|p| p.user_id);
     link_shared_tasks_to_project(pool, current_user_id, project_id, remote_project.id).await?;
+
+    // Notify the hive about the link if we're connected as a node
+    if let Some(ctx) = deployment.node_runner_context() {
+        use services::services::hive_client::LinkProjectMessage;
+
+        if ctx.is_connected().await {
+            // Get the current branch from git (use as default branch)
+            let default_branch = deployment
+                .git()
+                .get_current_branch(&project.git_repo_path)
+                .unwrap_or_else(|_| "main".to_string());
+
+            let link_msg = LinkProjectMessage {
+                project_id: remote_project.id,
+                local_project_id: project_id,
+                git_repo_path: project.git_repo_path.to_string_lossy().to_string(),
+                default_branch,
+            };
+
+            if let Err(e) = ctx.send_link_project(link_msg).await {
+                tracing::warn!(
+                    project_id = %project_id,
+                    remote_project_id = %remote_project.id,
+                    error = %e,
+                    "failed to send link_project to hive"
+                );
+            } else {
+                tracing::info!(
+                    project_id = %project_id,
+                    remote_project_id = %remote_project.id,
+                    "sent link_project to hive"
+                );
+            }
+        }
+    }
 
     deployment
         .track_if_analytics_allowed(

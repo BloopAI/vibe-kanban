@@ -18,7 +18,7 @@ use services::services::{
     git::GitService,
     image::ImageService,
     node_cache::NodeCacheSyncService,
-    node_runner::{NodeRunnerConfig, NodeRunnerState, spawn_node_runner},
+    node_runner::{NodeRunnerConfig, NodeRunnerContext, spawn_node_runner},
     oauth_credentials::OAuthCredentials,
     remote_client::{RemoteClient, RemoteClientError},
     share::{RemoteSyncHandle, ShareConfig, SharePublisher},
@@ -55,8 +55,8 @@ pub struct LocalDeployment {
     remote_client: Result<RemoteClient, RemoteClientNotConfigured>,
     auth_context: AuthContext,
     oauth_handoffs: Arc<RwLock<HashMap<Uuid, PendingHandoff>>>,
-    /// Node runner state (if connected to a hive)
-    node_runner_state: Option<Arc<RwLock<NodeRunnerState>>>,
+    /// Node runner context (if connected to a hive) - provides state access and message sending
+    node_runner_context: Option<NodeRunnerContext>,
     /// Validator for connection tokens (for direct frontend-to-node connections)
     connection_token_validator: Arc<ConnectionTokenValidator>,
     /// Whether the node cache sync has been started
@@ -200,7 +200,7 @@ impl Deployment for LocalDeployment {
         let file_search_cache = Arc::new(FileSearchCache::new());
 
         // Initialize node runner and connection token validator if hive connection is configured
-        let (node_runner_state, connection_token_validator) =
+        let (node_runner_context, connection_token_validator) =
             if let Some(node_config) = NodeRunnerConfig::from_env() {
                 tracing::info!(
                     hive_url = %node_config.hive_url,
@@ -257,7 +257,7 @@ impl Deployment for LocalDeployment {
             remote_client,
             auth_context,
             oauth_handoffs,
-            node_runner_state,
+            node_runner_context,
             connection_token_validator: Arc::new(connection_token_validator),
             node_cache_sync_started: Arc::new(Mutex::new(false)),
         };
@@ -401,15 +401,17 @@ impl LocalDeployment {
         self.share_config.as_ref()
     }
 
-    /// Get the node runner state (if connected to a hive).
-    pub fn node_runner_state(&self) -> Option<&Arc<RwLock<NodeRunnerState>>> {
-        self.node_runner_state.as_ref()
+    /// Get the node runner context (if connected to a hive).
+    ///
+    /// This provides both read access to state and the ability to send messages to the hive.
+    pub fn node_runner_context(&self) -> Option<&NodeRunnerContext> {
+        self.node_runner_context.as_ref()
     }
 
     /// Check if this instance is running as a node connected to a hive.
     pub async fn is_node_connected(&self) -> bool {
-        if let Some(state) = &self.node_runner_state {
-            state.read().await.connected
+        if let Some(ctx) = &self.node_runner_context {
+            ctx.is_connected().await
         } else {
             false
         }

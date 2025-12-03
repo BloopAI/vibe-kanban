@@ -19,9 +19,9 @@ use uuid::Uuid;
 use super::{
     connection::ConnectionManager,
     message::{
-        AuthResultMessage, HeartbeatMessage, HiveMessage, LinkedProjectInfo, NodeMessage,
-        PROTOCOL_VERSION, TaskExecutionStatus, TaskOutputMessage, TaskProgressMessage,
-        TaskStatusMessage,
+        AuthResultMessage, HeartbeatMessage, HiveMessage, LinkProjectMessage, LinkedProjectInfo,
+        NodeMessage, PROTOCOL_VERSION, TaskExecutionStatus, TaskOutputMessage, TaskProgressMessage,
+        TaskStatusMessage, UnlinkProjectMessage,
     },
 };
 use crate::nodes::{
@@ -342,6 +342,8 @@ async fn handle_node_message(
         }
         NodeMessage::TaskOutput(output) => handle_task_output(node_id, output, pool).await,
         NodeMessage::TaskProgress(progress) => handle_task_progress(node_id, progress, pool).await,
+        NodeMessage::LinkProject(link) => handle_link_project(node_id, link, pool).await,
+        NodeMessage::UnlinkProject(unlink) => handle_unlink_project(node_id, unlink, pool).await,
         NodeMessage::Ack { message_id } => {
             tracing::trace!(node_id = %node_id, message_id = %message_id, "received ack");
             Ok(())
@@ -542,6 +544,66 @@ async fn handle_task_progress(
         assignment_id = %progress.assignment_id,
         event_type = ?progress.event_type,
         "stored task progress event"
+    );
+
+    Ok(())
+}
+
+/// Handle a project link message from a node.
+///
+/// This creates an entry in the node_projects table linking the remote project
+/// to this node's local project.
+async fn handle_link_project(
+    node_id: Uuid,
+    link: &LinkProjectMessage,
+    pool: &PgPool,
+) -> Result<(), HandleError> {
+    use crate::nodes::domain::LinkProjectData;
+
+    let service = NodeServiceImpl::new(pool.clone());
+
+    let link_data = LinkProjectData {
+        project_id: link.project_id,
+        local_project_id: link.local_project_id,
+        git_repo_path: link.git_repo_path.clone(),
+        default_branch: link.default_branch.clone(),
+    };
+
+    service
+        .link_project(node_id, link_data)
+        .await
+        .map_err(|e| HandleError::Database(e.to_string()))?;
+
+    tracing::info!(
+        node_id = %node_id,
+        project_id = %link.project_id,
+        local_project_id = %link.local_project_id,
+        git_repo_path = %link.git_repo_path,
+        "linked project to node"
+    );
+
+    Ok(())
+}
+
+/// Handle a project unlink message from a node.
+///
+/// This removes the entry from the node_projects table.
+async fn handle_unlink_project(
+    node_id: Uuid,
+    unlink: &UnlinkProjectMessage,
+    pool: &PgPool,
+) -> Result<(), HandleError> {
+    let service = NodeServiceImpl::new(pool.clone());
+
+    service
+        .unlink_project_for_node(node_id, unlink.project_id)
+        .await
+        .map_err(|e| HandleError::Database(e.to_string()))?;
+
+    tracing::info!(
+        node_id = %node_id,
+        project_id = %unlink.project_id,
+        "unlinked project from node"
     );
 
     Ok(())
