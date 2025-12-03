@@ -57,6 +57,10 @@ pub fn protected_router() -> Router<AppState> {
             "/nodes/assignments/{assignment_id}/progress",
             get(get_assignment_progress),
         )
+        .route(
+            "/nodes/assignments/{assignment_id}/connection-info",
+            get(get_connection_info),
+        )
 }
 
 // ============================================================================
@@ -638,6 +642,151 @@ pub async fn get_assignment_progress(
                 .into_response()
         }
     }
+}
+
+// ============================================================================
+// Connection Info (User JWT Auth)
+// ============================================================================
+
+/// Response containing connection information for streaming logs from a node.
+#[derive(Debug, Serialize)]
+pub struct ConnectionInfoResponse {
+    /// The assignment ID
+    pub assignment_id: Uuid,
+    /// The node ID
+    pub node_id: Uuid,
+    /// Direct URL to the node (if available)
+    pub direct_url: Option<String>,
+    /// Hive relay URL for log streaming
+    pub relay_url: String,
+    /// Short-lived token for authenticating with the node or relay
+    pub connection_token: String,
+    /// Token expiration timestamp (ISO 8601)
+    pub expires_at: String,
+}
+
+#[instrument(
+    name = "nodes.get_connection_info",
+    skip(state, ctx),
+    fields(user_id = %ctx.user.id, assignment_id = %assignment_id)
+)]
+pub async fn get_connection_info(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(assignment_id): Path<Uuid>,
+) -> Response {
+    use crate::db::nodes::NodeRepository;
+    use crate::db::task_assignments::TaskAssignmentRepository;
+
+    let pool = state.pool();
+
+    // Get the assignment
+    let assignment_repo = TaskAssignmentRepository::new(pool);
+    let assignment = match assignment_repo.find_by_id(assignment_id).await {
+        Ok(Some(a)) => a,
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!({ "error": "assignment not found" })),
+            )
+                .into_response();
+        }
+        Err(e) => {
+            tracing::error!(?e, "failed to fetch assignment");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "internal server error" })),
+            )
+                .into_response();
+        }
+    };
+
+    // Get the task to verify organization access
+    use crate::db::tasks::SharedTaskRepository;
+    let task_repo = SharedTaskRepository::new(pool);
+    let task = match task_repo.find_by_id(assignment.task_id).await {
+        Ok(Some(t)) => t,
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!({ "error": "task not found" })),
+            )
+                .into_response();
+        }
+        Err(e) => {
+            tracing::error!(?e, "failed to fetch task");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "internal server error" })),
+            )
+                .into_response();
+        }
+    };
+
+    // Verify user has access to the organization
+    if let Err(error) = ensure_member_access(pool, task.organization_id, ctx.user.id).await {
+        return error.into_response();
+    }
+
+    // Get the node to get its public URL
+    let node_repo = NodeRepository::new(pool);
+    let node = match node_repo.find_by_id(assignment.node_id).await {
+        Ok(Some(n)) => n,
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!({ "error": "node not found" })),
+            )
+                .into_response();
+        }
+        Err(e) => {
+            tracing::error!(?e, "failed to fetch node");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "internal server error" })),
+            )
+                .into_response();
+        }
+    };
+
+    // Generate connection token
+    let connection_token_service = state.connection_token();
+    let token = match connection_token_service.generate(
+        ctx.user.id,
+        node.id,
+        assignment_id,
+        assignment.local_attempt_id,
+    ) {
+        Ok(t) => t,
+        Err(e) => {
+            tracing::error!(?e, "failed to generate connection token");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "internal server error" })),
+            )
+                .into_response();
+        }
+    };
+
+    // Calculate expiration time (15 minutes from now)
+    let expires_at = chrono::Utc::now() + chrono::Duration::minutes(15);
+
+    // Build relay URL
+    let relay_url = format!(
+        "{}/v1/nodes/assignments/{}/logs/ws",
+        state.server_public_base_url, assignment_id
+    );
+
+    let response = ConnectionInfoResponse {
+        assignment_id,
+        node_id: node.id,
+        direct_url: node.public_url,
+        relay_url,
+        connection_token: token,
+        expires_at: expires_at.to_rfc3339(),
+    };
+
+    (StatusCode::OK, Json(response)).into_response()
 }
 
 // ============================================================================

@@ -7,8 +7,8 @@ use crate::{
     AppState,
     activity::ActivityBroker,
     auth::{
-        GitHubOAuthProvider, GoogleOAuthProvider, JwtService, OAuthHandoffService,
-        OAuthTokenValidator, ProviderRegistry,
+        ConnectionTokenService, GitHubOAuthProvider, GoogleOAuthProvider, JwtService,
+        OAuthHandoffService, OAuthTokenValidator, ProviderRegistry,
     },
     config::RemoteServerConfig,
     db,
@@ -87,6 +87,11 @@ impl Server {
 
         let node_connections = ConnectionManager::new();
 
+        // Use the same JWT secret for connection tokens
+        let connection_token = Arc::new(ConnectionTokenService::new(
+            auth_config.jwt_secret().clone(),
+        ));
+
         let state = AppState::new(
             pool.clone(),
             broker.clone(),
@@ -97,6 +102,7 @@ impl Server {
             mailer,
             server_public_base_url,
             node_connections,
+            connection_token,
         );
 
         let listener =

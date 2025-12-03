@@ -22,6 +22,7 @@ mod oauth;
 pub(crate) mod organization_members;
 mod organizations;
 mod projects;
+mod relay;
 pub mod tasks;
 mod tokens;
 
@@ -52,7 +53,8 @@ pub fn router(state: AppState) -> Router {
         .merge(organization_members::public_router())
         .merge(tokens::public_router())
         .merge(nodes::api_key_router())
-        .merge(crate::nodes::ws::router());
+        .merge(crate::nodes::ws::router())
+        .merge(relay::router());
 
     let v1_protected = Router::<AppState>::new()
         .merge(identity::router())

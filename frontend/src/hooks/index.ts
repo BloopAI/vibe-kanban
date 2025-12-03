@@ -28,3 +28,5 @@ export { useOrganizationMembers } from './useOrganizationMembers';
 export { useOrganizationInvitations } from './useOrganizationInvitations';
 export { useOrganizationMutations } from './useOrganizationMutations';
 export { useDashboardSummary } from './useDashboardSummary';
+export { useNodeLogStream } from './useNodeLogStream';
+export type { NodeLogEntry, ConnectionType } from './useNodeLogStream';
