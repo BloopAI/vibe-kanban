@@ -1,4 +1,8 @@
-# Swarm/Hive Architecture Setup Guide
+---
+title: "Swarm/Hive Architecture"
+description: "Configure Vibe Kanban to run in a distributed swarm architecture with multiple nodes connecting to a central hive server"
+sidebarTitle: "Setup Guide"
+---
 
 This guide explains how to configure Vibe Kanban to run in a distributed swarm architecture, where multiple local nodes connect to a central hive server.
 
@@ -37,27 +41,64 @@ The swarm/hive architecture enables:
 
 The hive server manages the central registry of nodes, projects, and task assignments.
 
-### 1. Run the Hive Server
+### 1. Configure Environment Variables
+
+Copy the example environment file and configure it:
+
+```bash
+cd crates/remote
+cp .env.remote.example .env.remote
+```
+
+Required environment variables (see `.env.remote.example` for full list):
+
+```bash
+# Network - Public URL for OAuth callbacks
+SERVER_PUBLIC_BASE_URL=http://your-server:3000
+
+# Database
+DATABASE_URL=postgres://user:password@localhost/vibe_hive
+
+# JWT Secret (base64-encoded, minimum 32 bytes)
+# Generate with: openssl rand -base64 32
+VIBEKANBAN_REMOTE_JWT_SECRET=your_base64_encoded_secret_here
+
+# OAuth - GitHub (create at https://github.com/settings/developers)
+GITHUB_OAUTH_CLIENT_ID=your_github_client_id
+GITHUB_OAUTH_CLIENT_SECRET=your_github_client_secret
+
+# OAuth - Google (create at https://console.cloud.google.com/apis/credentials)
+GOOGLE_OAUTH_CLIENT_ID=your_google_client_id
+GOOGLE_OAUTH_CLIENT_SECRET=your_google_client_secret
+```
+
+<Note>
+The hive uses `VIBEKANBAN_REMOTE_JWT_SECRET` for both user authentication and connection tokens.
+</Note>
+
+### 2. Run the Hive Server
 
 ```bash
 cd crates/remote
 cargo run
+# Or with docker:
+docker compose --env-file .env.remote up --build
 ```
 
-By default, the hive runs on port 8081. Configure with environment variables:
+### 3. Register and Create an Organization
 
-```bash
-PORT=8081
-DATABASE_URL=postgres://user:password@localhost/vibe_hive
-JWT_SECRET=your-jwt-secret-key
-CONNECTION_TOKEN_SECRET=your-connection-token-secret
-```
+The hive requires user authentication via OAuth (GitHub or Google):
 
-### 2. Create an Organization
+1. **Access the hive frontend** at your configured `SERVER_PUBLIC_BASE_URL`
+2. **Sign in** using GitHub or Google OAuth
+3. **Create an organization** through the frontend UI:
+   - Navigate to Settings or Organization management
+   - Click "Create Organization"
+   - Provide a name for your organization
 
-Users must be part of an organization to manage nodes. Create one via the API or through the frontend.
+Once you have an organization, you can generate API keys for nodes.
 
-### 3. Generate a Node API Key
+### 4. Generate a Node API Key
 
 API keys allow nodes to authenticate with the hive. Generate one using the API:
 
@@ -86,7 +127,9 @@ Response:
 }
 ```
 
-**Important:** Save the `secret` value immediately - it's only shown once!
+<Warning>
+Save the `secret` value immediately - it's only shown once!
+</Warning>
 
 ---
 
@@ -102,7 +145,7 @@ Configure a local Vibe Kanban instance to connect to the hive as a node.
 | `VK_NODE_API_KEY` | Yes | The API key secret from the hive |
 | `VK_NODE_NAME` | No | Human-readable name for this node (defaults to hostname) |
 | `VK_NODE_PUBLIC_URL` | No | Public URL for direct log streaming (e.g., `http://192.168.1.50:3000`) |
-| `VK_CONNECTION_TOKEN_SECRET` | No | JWT secret for validating direct connection tokens (must match hive's `CONNECTION_TOKEN_SECRET`) |
+| `VK_CONNECTION_TOKEN_SECRET` | No | JWT secret for validating direct connection tokens (must match hive's `VIBEKANBAN_REMOTE_JWT_SECRET`) |
 
 ### Minimal Setup
 
@@ -122,7 +165,7 @@ export VK_HIVE_URL=wss://hive.example.com
 export VK_NODE_API_KEY=vk_abc123_full_secret_key_here
 export VK_NODE_NAME="David's MacBook Pro"
 export VK_NODE_PUBLIC_URL=http://192.168.1.50:3000
-export VK_CONNECTION_TOKEN_SECRET=same-secret-as-hive
+export VK_CONNECTION_TOKEN_SECRET=same-as-VIBEKANBAN_REMOTE_JWT_SECRET
 
 pnpm run dev
 ```
@@ -292,7 +335,7 @@ The log viewer shows connection status:
 
 1. For direct streaming:
    - Verify `VK_NODE_PUBLIC_URL` is accessible from the browser
-   - Check `VK_CONNECTION_TOKEN_SECRET` matches the hive
+   - Check `VK_CONNECTION_TOKEN_SECRET` matches the hive's `VIBEKANBAN_REMOTE_JWT_SECRET`
    - Ensure node is listening on `0.0.0.0` (not just localhost)
 
 2. For relay streaming:
@@ -335,21 +378,32 @@ The log viewer shows connection status:
 ```bash
 #!/bin/bash
 
-# Hive server configuration
-export PORT=8081
+# Generate a shared secret for JWT/connection tokens
+JWT_SECRET=$(openssl rand -base64 32)
+
+# Hive server configuration (see .env.remote.example for full list)
+export SERVER_PUBLIC_BASE_URL=http://localhost:8081
 export DATABASE_URL=postgres://vibe:password@localhost/vibe_hive
-export JWT_SECRET=$(openssl rand -base64 32)
-export CONNECTION_TOKEN_SECRET=$(openssl rand -base64 32)
+export VIBEKANBAN_REMOTE_JWT_SECRET=$JWT_SECRET
+export GITHUB_OAUTH_CLIENT_ID=your_github_client_id
+export GITHUB_OAUTH_CLIENT_SECRET=your_github_client_secret
+export GOOGLE_OAUTH_CLIENT_ID=your_google_client_id
+export GOOGLE_OAUTH_CLIENT_SECRET=your_google_client_secret
 
 # Start hive (in production, use a process manager)
 cd crates/remote && cargo run &
 
+# Wait for hive to start, then:
+# 1. Access http://localhost:8081 and sign in via OAuth
+# 2. Create an organization
+# 3. Generate an API key for your node
+
 # Node configuration
 export VK_HIVE_URL=ws://localhost:8081
-export VK_NODE_API_KEY="your-api-key-here"
+export VK_NODE_API_KEY="your-api-key-here"  # From step 3 above
 export VK_NODE_NAME="Development Node"
 export VK_NODE_PUBLIC_URL=http://localhost:3000
-export VK_CONNECTION_TOKEN_SECRET=$CONNECTION_TOKEN_SECRET
+export VK_CONNECTION_TOKEN_SECRET=$JWT_SECRET  # Same as VIBEKANBAN_REMOTE_JWT_SECRET
 
 # Start node
 HOST=0.0.0.0 pnpm run dev
