@@ -8,6 +8,7 @@ WORKDIR /repo
 RUN corepack enable
 
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY scripts/ scripts/
 COPY frontend/package.json frontend/package.json
 COPY remote-frontend/package.json remote-frontend/package.json
 
