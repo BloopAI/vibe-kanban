@@ -1,0 +1,92 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT\n                id                  AS \"id!: Uuid\",\n                organization_id     AS \"organization_id!: Uuid\",\n                name                AS \"name!\",\n                machine_id          AS \"machine_id!\",\n                status              AS \"status!: String\",\n                capabilities        AS \"capabilities_json!\",\n                public_url          AS \"public_url?\",\n                last_heartbeat_at   AS \"last_heartbeat_at?: DateTime<Utc>\",\n                connected_at        AS \"connected_at?: DateTime<Utc>\",\n                disconnected_at     AS \"disconnected_at?: DateTime<Utc>\",\n                created_at          AS \"created_at!: DateTime<Utc>\",\n                updated_at          AS \"updated_at!: DateTime<Utc>\",\n                last_synced_at      AS \"last_synced_at!: DateTime<Utc>\"\n            FROM cached_nodes\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "organization_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "name!",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "machine_id!",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "status!: String",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "capabilities_json!",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "public_url?",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_heartbeat_at?: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "connected_at?: DateTime<Utc>",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "disconnected_at?: DateTime<Utc>",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 11,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_synced_at!: DateTime<Utc>",
+        "ordinal": 12,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "d3851aeb3292288bd1d3a909077d1541b02179147f8c6092acb85bc38ed00389"
+}

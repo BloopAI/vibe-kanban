@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO node_sync_cursors (organization_id, last_synced_at, sync_version)\n            VALUES ($1, datetime('now', 'subsec'), 1)\n            ON CONFLICT(organization_id) DO UPDATE SET\n                last_synced_at = datetime('now', 'subsec'),\n                sync_version = node_sync_cursors.sync_version + 1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "9cc529e38f5549f9aa0c358087ba6676cea27672e6c504e9da6e3febcaec12c7"
+}
