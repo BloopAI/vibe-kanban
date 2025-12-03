@@ -96,30 +96,100 @@ docker compose --env-file .env.remote up --build
 cargo run
 ```
 
-### 3. Register and Create an Organization
+### 3. Authenticate via OAuth
 
-The hive requires user authentication via OAuth (GitHub or Google):
-
-1. **Access the hive frontend** at your configured `SERVER_PUBLIC_BASE_URL`
-2. **Sign in** using GitHub or Google OAuth
-3. **Create an organization** through the frontend UI:
-   - Navigate to Settings or Organization management
-   - Click "Create Organization"
-   - Provide a name for your organization
-
-Once you have an organization, you can generate API keys for nodes.
-
-### 4. Generate a Node API Key
-
-API keys allow nodes to authenticate with the hive. Generate one using the API:
+The hive requires user authentication via OAuth (GitHub or Google). Since there's no web frontend for the remote server, you'll use curl with the OAuth handoff flow:
 
 ```bash
-# First, get a user JWT token by logging in
-curl -X POST https://hive.example.com/v1/nodes/api-keys \
-  -H "Authorization: Bearer <user-jwt-token>" \
+# 1. Start the OAuth handoff
+curl -X POST http://localhost:3000/v1/oauth/web/init \
   -H "Content-Type: application/json" \
   -d '{
-    "organization_id": "your-org-uuid",
+    "provider": "github",
+    "return_to": "http://localhost:3000/oauth-callback",
+    "app_challenge": "your-random-challenge-string"
+  }'
+
+# Response includes authorize_url - open this in a browser:
+# { "handoff_id": "...", "authorize_url": "https://github.com/login/oauth/..." }
+```
+
+After completing OAuth in the browser, you'll be redirected with an `app_code`. Redeem it:
+
+```bash
+# 2. Redeem the OAuth code for tokens
+curl -X POST http://localhost:3000/v1/oauth/web/redeem \
+  -H "Content-Type: application/json" \
+  -d '{
+    "handoff_id": "handoff-id-from-step-1",
+    "app_code": "code-from-callback-url",
+    "app_verifier": "your-random-challenge-string"
+  }'
+
+# Response: { "access_token": "...", "refresh_token": "..." }
+```
+
+Save the `access_token` - you'll use it for all subsequent API calls.
+
+### 4. Get Your User Info and Organizations
+
+Use the `/v1/me` endpoint to see your user info and organizations in one call:
+
+```bash
+curl http://localhost:3000/v1/me \
+  -H "Authorization: Bearer <your-access-token>"
+```
+
+Response:
+```json
+{
+  "user": {
+    "id": "user-uuid",
+    "username": "davidrudduck",
+    "email": "david@example.com"
+  },
+  "organizations": [
+    {
+      "id": "org-uuid-here",
+      "name": "David's Org",
+      "slug": "personal-user-uuid",
+      "is_personal": true,
+      "user_role": "admin",
+      "created_at": "2024-01-15T10:00:00Z",
+      "updated_at": "2024-01-15T10:00:00Z"
+    }
+  ]
+}
+```
+
+<Note>
+A personal organization is automatically created when you first sign in. Use its `id` for the next step.
+</Note>
+
+### 5. Create an Organization (Optional)
+
+If you need a separate organization for team nodes:
+
+```bash
+curl -X POST http://localhost:3000/v1/organizations \
+  -H "Authorization: Bearer <your-access-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Team",
+    "slug": "my-team"
+  }'
+```
+
+### 6. Generate a Node API Key
+
+Use the `organization_id` from `/v1/me` to create an API key:
+
+```bash
+curl -X POST http://localhost:3000/v1/nodes/api-keys \
+  -H "Authorization: Bearer <your-access-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "organization_id": "org-uuid-from-step-4",
     "name": "MacBook Pro Node"
   }'
 ```
@@ -466,6 +536,14 @@ HOST=0.0.0.0 pnpm run dev
 ---
 
 ## API Reference
+
+### User & Organization
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/v1/me` | GET | User JWT | Get current user info and their organizations |
+| `/v1/organizations` | GET | User JWT | List user's organizations |
+| `/v1/organizations` | POST | User JWT | Create organization |
 
 ### Node API Key Management
 
