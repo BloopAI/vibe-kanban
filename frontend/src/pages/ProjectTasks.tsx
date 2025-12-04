@@ -989,7 +989,7 @@ export function ProjectTasks() {
                   </div>
                 </div>
 
-                <div className="min-h-0 max-h-[50%] border-t overflow-hidden bg-background">
+                <div className="min-h-[200px] max-h-[50%] border-t overflow-hidden bg-background">
                   <div className="mx-auto w-full max-w-[50rem] h-full min-h-0">
                     {followUp}
                   </div>
