@@ -31,6 +31,7 @@ use uuid::Uuid;
 use crate::container::LocalContainerService;
 mod command;
 pub mod container;
+mod copy;
 
 #[derive(Clone)]
 pub struct LocalDeployment {
