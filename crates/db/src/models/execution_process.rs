@@ -301,6 +301,24 @@ impl ExecutionProcess {
         .await
     }
 
+    /// Check if there are running processes (excluding dev servers) for a task attempt
+    pub async fn has_running_non_dev_server_processes(
+        pool: &SqlitePool,
+        task_attempt_id: Uuid,
+    ) -> Result<bool, sqlx::Error> {
+        let count: i64 = sqlx::query_scalar(
+            r#"SELECT COUNT(*)
+               FROM execution_processes
+               WHERE task_attempt_id = ?
+                 AND status = 'running'
+                 AND run_reason != 'devserver'"#,
+        )
+        .bind(task_attempt_id)
+        .fetch_one(pool)
+        .await?;
+        Ok(count > 0)
+    }
+
     /// Find latest session_id by task attempt (simple scalar query)
     pub async fn find_latest_session_id_by_task_attempt(
         pool: &SqlitePool,

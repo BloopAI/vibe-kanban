@@ -1512,6 +1512,7 @@ pub async fn attach_existing_pr(
 #[ts(tag = "type", rename_all = "snake_case")]
 pub enum RunScriptError {
     NoScriptConfigured,
+    ProcessAlreadyRunning,
 }
 
 #[axum::debug_handler]
@@ -1519,6 +1520,15 @@ pub async fn run_setup_script(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<ExecutionProcess, RunScriptError>>, ApiError> {
+    // Check if any non-dev-server processes are already running
+    if ExecutionProcess::has_running_non_dev_server_processes(&deployment.db().pool, task_attempt.id)
+        .await?
+    {
+        return Ok(ResponseJson(ApiResponse::error_with_data(
+            RunScriptError::ProcessAlreadyRunning,
+        )));
+    }
+
     // Ensure worktree exists
     let _ = ensure_worktree_path(&deployment, &task_attempt).await?;
 
@@ -1578,6 +1588,15 @@ pub async fn run_cleanup_script(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<ExecutionProcess, RunScriptError>>, ApiError> {
+    // Check if any non-dev-server processes are already running
+    if ExecutionProcess::has_running_non_dev_server_processes(&deployment.db().pool, task_attempt.id)
+        .await?
+    {
+        return Ok(ResponseJson(ApiResponse::error_with_data(
+            RunScriptError::ProcessAlreadyRunning,
+        )));
+    }
+
     // Ensure worktree exists
     let _ = ensure_worktree_path(&deployment, &task_attempt).await?;
 
