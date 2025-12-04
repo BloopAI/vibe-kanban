@@ -6,5 +6,6 @@ export function useTaskAttempt(attemptId?: string) {
     queryKey: ['taskAttempt', attemptId],
     queryFn: () => attemptsApi.get(attemptId!),
     enabled: !!attemptId,
+    placeholderData: (previousData) => previousData,
   });
 }
