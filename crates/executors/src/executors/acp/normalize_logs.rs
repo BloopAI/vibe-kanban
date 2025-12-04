@@ -183,7 +183,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                         let mut update = update;
                         if update.fields.title.is_none() {
                             update.fields.title = tool_states
-                                .get(&update.id.0.to_string())
+                                .get(&update.tool_call_id.0.to_string())
                                 .map(|s| s.title.clone())
                                 .or_else(|| Some("".to_string()));
                         }
@@ -216,7 +216,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
         ) {
             streaming.assistant_text = None;
             streaming.thinking_text = None;
-            let id = tc.id.0.to_string();
+            let id = tc.tool_call_id.0.to_string();
             let is_new = !tool_states.contains_key(&id);
             let tool_data = tool_states.entry(id).or_default();
             tool_data.extend(tc, worktree_path);
@@ -373,7 +373,9 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                 agent_client_protocol::ToolKind::SwitchMode => ActionType::Other {
                     description: "switch_mode".to_string(),
                 },
-                agent_client_protocol::ToolKind::Other | agent_client_protocol::ToolKind::Move => {
+                agent_client_protocol::ToolKind::Other
+                | agent_client_protocol::ToolKind::Move
+                | _ => {
                     // Derive a friendlier tool name from the id if it looks like name-<digits>
                     let tool_name = extract_tool_name_from_id(tc.id.0.as_ref())
                         .unwrap_or_else(|| tc.title.clone());
@@ -411,7 +413,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
         fn extract_file_changes(tc: &PartialToolCallData) -> Vec<FileChange> {
             let mut changes = Vec::new();
             for c in &tc.content {
-                if let agent_client_protocol::ToolCallContent::Diff { diff } = c {
+                if let agent_client_protocol::ToolCallContent::Diff(diff) = c {
                     let path = diff.path.to_string_lossy().to_string();
                     let rel = if !path.is_empty() {
                         path
@@ -497,8 +499,8 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
         ) -> Option<String> {
             let mut out = String::new();
             for c in content {
-                if let agent_client_protocol::ToolCallContent::Content { content } = c
-                    && let agent_client_protocol::ContentBlock::Text(t) = content
+                if let agent_client_protocol::ToolCallContent::Content(inner) = c
+                    && let agent_client_protocol::ContentBlock::Text(t) = &inner.content
                 {
                     out.push_str(&t.text);
                     if !out.ends_with('\n') {
@@ -515,6 +517,10 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                 | agent_client_protocol::ToolCallStatus::InProgress => LogToolStatus::Created,
                 agent_client_protocol::ToolCallStatus::Completed => LogToolStatus::Success,
                 agent_client_protocol::ToolCallStatus::Failed => LogToolStatus::Failed,
+                _ => {
+                    tracing::debug!("Unknown tool call status: {:?}", status);
+                    LogToolStatus::Created
+                }
             }
         }
     });
@@ -534,7 +540,7 @@ struct PartialToolCallData {
 
 impl PartialToolCallData {
     fn extend(&mut self, tc: &agent_client_protocol::ToolCall, worktree_path: &Path) {
-        self.id = tc.id.clone();
+        self.id = tc.tool_call_id.clone();
         if tc.kind != Default::default() {
             self.kind = tc.kind;
         }
@@ -567,7 +573,7 @@ impl PartialToolCallData {
 impl Default for PartialToolCallData {
     fn default() -> Self {
         Self {
-            id: agent_client_protocol::ToolCallId(Default::default()),
+            id: agent_client_protocol::ToolCallId::new(""),
             index: 0,
             kind: agent_client_protocol::ToolKind::default(),
             title: String::new(),
@@ -623,16 +629,16 @@ impl TryFrom<SessionNotification> for AcpEvent {
 
     fn try_from(notification: SessionNotification) -> Result<Self, ()> {
         let event = match notification.update {
-            acp::SessionUpdate::AgentMessageChunk { content } => AcpEvent::Message(content),
-            acp::SessionUpdate::AgentThoughtChunk { content } => AcpEvent::Thought(content),
+            acp::SessionUpdate::AgentMessageChunk(chunk) => AcpEvent::Message(chunk.content),
+            acp::SessionUpdate::AgentThoughtChunk(chunk) => AcpEvent::Thought(chunk.content),
             acp::SessionUpdate::ToolCall(tc) => AcpEvent::ToolCall(tc),
             acp::SessionUpdate::ToolCallUpdate(update) => AcpEvent::ToolUpdate(update),
             acp::SessionUpdate::Plan(plan) => AcpEvent::Plan(plan),
-            acp::SessionUpdate::AvailableCommandsUpdate { available_commands } => {
-                AcpEvent::AvailableCommands(available_commands)
+            acp::SessionUpdate::AvailableCommandsUpdate(update) => {
+                AcpEvent::AvailableCommands(update.available_commands)
             }
-            acp::SessionUpdate::CurrentModeUpdate { current_mode_id } => {
-                AcpEvent::CurrentMode(current_mode_id)
+            acp::SessionUpdate::CurrentModeUpdate(update) => {
+                AcpEvent::CurrentMode(update.current_mode_id)
             }
             _ => return Err(()),
         };

@@ -39,7 +39,7 @@ convert_case = "0.6"
 sqlx = "0.8.6"
 axum = { workspace = true }
 shlex = "1.3.0"
-agent-client-protocol = "0.4"
+agent-client-protocol = "0.8"
 codex-protocol = { git = "https://github.com/openai/codex.git", package = "codex-protocol", rev = "80d6a3868ef1414e0fb1c2e28a369f2ef4fa4dcc" }
 codex-app-server-protocol = { git = "https://github.com/openai/codex.git", package = "codex-app-server-protocol", rev = "80d6a3868ef1414e0fb1c2e28a369f2ef4fa4dcc" }
 codex-mcp-types = { git = "https://github.com/openai/codex.git", package = "mcp-types", rev = "80d6a3868ef1414e0fb1c2e28a369f2ef4fa4dcc" }

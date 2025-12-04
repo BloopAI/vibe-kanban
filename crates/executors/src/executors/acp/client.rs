@@ -50,26 +50,23 @@ impl acp::Client for AcpClient {
             .or_else(|| args.options.first());
 
         let outcome = if let Some(opt) = chosen_option {
-            debug!("Auto-approving permission with option: {}", opt.id);
-            acp::RequestPermissionOutcome::Selected {
-                option_id: opt.id.clone(),
-            }
+            debug!("Auto-approving permission with option: {}", opt.option_id);
+            acp::RequestPermissionOutcome::Selected(acp::SelectedPermissionOutcome::new(
+                opt.option_id.clone(),
+            ))
         } else {
             warn!("No permission options available, cancelling");
             acp::RequestPermissionOutcome::Cancelled
         };
 
-        Ok(acp::RequestPermissionResponse {
-            outcome,
-            meta: None,
-        })
+        Ok(acp::RequestPermissionResponse::new(outcome))
     }
 
     async fn session_notification(&self, args: acp::SessionNotification) -> Result<(), acp::Error> {
         // Convert to typed events
         let event = match args.update {
-            acp::SessionUpdate::AgentMessageChunk { content } => Some(AcpEvent::Message(content)),
-            acp::SessionUpdate::AgentThoughtChunk { content } => Some(AcpEvent::Thought(content)),
+            acp::SessionUpdate::AgentMessageChunk(chunk) => Some(AcpEvent::Message(chunk.content)),
+            acp::SessionUpdate::AgentThoughtChunk(chunk) => Some(AcpEvent::Thought(chunk.content)),
             acp::SessionUpdate::ToolCall(tc) => Some(AcpEvent::ToolCall(tc)),
             acp::SessionUpdate::ToolCallUpdate(update) => Some(AcpEvent::ToolUpdate(update)),
             acp::SessionUpdate::Plan(plan) => Some(AcpEvent::Plan(plan)),

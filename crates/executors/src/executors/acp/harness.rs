@@ -261,19 +261,7 @@ impl AcpAgentHarness {
 
                         // Initialize
                         let _ = conn
-                            .initialize(proto::InitializeRequest {
-                                protocol_version: proto::V1,
-                                client_capabilities: proto::ClientCapabilities {
-                                    fs: proto::FileSystemCapability {
-                                        read_text_file: false,
-                                        write_text_file: false,
-                                        meta: None,
-                                    },
-                                    terminal: false,
-                                    meta: None,
-                                },
-                                meta: None,
-                            })
+                            .initialize(proto::InitializeRequest::new(proto::ProtocolVersion::V1))
                             .await;
 
                         // Handle session creation/forking
@@ -287,14 +275,13 @@ impl AcpAgentHarness {
                                 let meta =
                                     history.map(|h| serde_json::json!({ "history_jsonl": h }));
 
-                                match conn
-                                    .new_session(proto::NewSessionRequest {
-                                        mcp_servers: vec![],
-                                        cwd: cwd.clone(),
-                                        meta,
-                                    })
-                                    .await
+                                let mut req = proto::NewSessionRequest::new(cwd.clone());
+                                if let Some(m) = meta
+                                    && let Some(obj) = m.as_object()
                                 {
+                                    req = req.meta(obj.clone());
+                                }
+                                match conn.new_session(req).await {
                                     Ok(resp) => {
                                         let resume_prompt = session_manager
                                             .generate_resume_prompt(&new_ui_id, &prompt)
@@ -309,11 +296,7 @@ impl AcpAgentHarness {
                             } else {
                                 // New session
                                 match conn
-                                    .new_session(proto::NewSessionRequest {
-                                        mcp_servers: vec![],
-                                        cwd: cwd.clone(),
-                                        meta: None,
-                                    })
+                                    .new_session(proto::NewSessionRequest::new(cwd.clone()))
                                     .await
                                 {
                                     Ok(resp) => {
@@ -353,15 +336,12 @@ impl AcpAgentHarness {
                         );
 
                         // Build prompt request
-                        let req = proto::PromptRequest {
-                            session_id: proto::SessionId(acp_session_id.clone().into()),
-                            prompt: vec![proto::ContentBlock::Text(proto::TextContent {
-                                annotations: None,
-                                text: prompt_to_send,
-                                meta: None,
-                            })],
-                            meta: None,
-                        };
+                        let req = proto::PromptRequest::new(
+                            proto::SessionId::new(acp_session_id.clone()),
+                            vec![proto::ContentBlock::Text(proto::TextContent::new(
+                                prompt_to_send,
+                            ))],
+                        );
 
                         // Send the prompt and await completion to obtain stop_reason
                         match conn.prompt(req).await {
@@ -392,10 +372,9 @@ impl AcpAgentHarness {
 
                         // Cancel session work
                         let _ = conn
-                            .cancel(proto::CancelNotification {
-                                session_id: proto::SessionId(acp_session_id.into()),
-                                meta: None,
-                            })
+                            .cancel(proto::CancelNotification::new(proto::SessionId::new(
+                                acp_session_id,
+                            )))
                             .await;
 
                         // Cleanup
