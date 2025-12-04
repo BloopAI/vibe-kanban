@@ -305,8 +305,8 @@
     "reconnecting": "Reconnecting...",
     "selectAttempt": "Select an attempt to view execution processes.",
     "started": "Started: {{date}}",
-    "copyLogs": "Copy logs",
-    "logsCopied": "Copied!"
+    "copyLogs": "Copiar registros",
+    "logsCopied": "¡Copiado!"
   },
   "rebase": {
     "common": {
