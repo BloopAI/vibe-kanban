@@ -745,10 +745,7 @@ export function TaskFollowUpSection({
                   </TooltipTrigger>
                   {isAttemptRunning && (
                     <TooltipContent side="bottom">
-                      {t(
-                        'followUp.scriptsDisabledWhileRunning',
-                        'Cannot run scripts while a process is running'
-                      )}
+                      {t('followUp.scriptsDisabledWhileRunning')}
                     </TooltipContent>
                   )}
                 </Tooltip>
@@ -762,16 +759,13 @@ export function TaskFollowUpSection({
                           disabled={!hasSetupScript}
                           onClick={handleRunSetupScript}
                         >
-                          {t('followUp.runSetupScript', 'Run setup script')}
+                          {t('followUp.runSetupScript')}
                         </DropdownMenuItem>
                       </span>
                     </TooltipTrigger>
                     {!hasSetupScript && (
                       <TooltipContent side="left">
-                        {t(
-                          'followUp.noSetupScript',
-                          'No setup script configured for this project'
-                        )}
+                        {t('followUp.noSetupScript')}
                       </TooltipContent>
                     )}
                   </Tooltip>
@@ -784,16 +778,13 @@ export function TaskFollowUpSection({
                           disabled={!hasCleanupScript}
                           onClick={handleRunCleanupScript}
                         >
-                          {t('followUp.runCleanupScript', 'Run cleanup script')}
+                          {t('followUp.runCleanupScript')}
                         </DropdownMenuItem>
                       </span>
                     </TooltipTrigger>
                     {!hasCleanupScript && (
                       <TooltipContent side="left">
-                        {t(
-                          'followUp.noCleanupScript',
-                          'No cleanup script configured for this project'
-                        )}
+                        {t('followUp.noCleanupScript')}
                       </TooltipContent>
                     )}
                   </Tooltip>
