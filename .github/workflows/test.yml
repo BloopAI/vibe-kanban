@@ -63,10 +63,11 @@ jobs:
       - name: Install sqlx-cli
         run: cargo install sqlx-cli --no-default-features --features sqlite,postgres
 
-      - name: Install PostgreSQL
+      - name: Install PostgreSQL 16
         run: |
           sudo apt-get update
-          sudo apt-get install -y postgresql
+          sudo apt-get install -y postgresql-16
+          echo "/usr/lib/postgresql/16/bin" >> $GITHUB_PATH
 
       - name: Build frontend
         run: cd frontend && npm run build
