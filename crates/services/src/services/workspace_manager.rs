@@ -146,6 +146,12 @@ impl WorkspaceManager {
             return Err(WorkspaceError::NoRepositories);
         }
 
+        // Try legacy migration first (single repo projects only)
+        // Old layout had worktree directly at workspace_dir; new layout has it at workspace_dir/{repo_name}
+        if repos.len() == 1 && Self::migrate_legacy_worktree(workspace_dir, &repos[0]).await? {
+            return Ok(());
+        }
+
         if !workspace_dir.exists() {
             tokio::fs::create_dir_all(workspace_dir).await?;
         }
@@ -200,6 +206,60 @@ impl WorkspaceManager {
     /// Get the base directory for workspaces (same as worktree base dir)
     pub fn get_workspace_base_dir() -> PathBuf {
         WorktreeManager::get_worktree_base_dir()
+    }
+
+    /// Migrate a legacy single-worktree layout to the new workspace layout.
+    /// Old layout: workspace_dir IS the worktree
+    /// New layout: workspace_dir contains worktrees at workspace_dir/{repo_name}
+    ///
+    /// Returns Ok(true) if migration was performed, Ok(false) if no migration needed.
+    pub async fn migrate_legacy_worktree(
+        workspace_dir: &Path,
+        repo: &Repo,
+    ) -> Result<bool, WorkspaceError> {
+        let expected_worktree_path = workspace_dir.join(&repo.name);
+
+        // Detect old-style: workspace_dir exists AND has .git file (worktree marker)
+        // AND expected new location doesn't exist
+        let git_file = workspace_dir.join(".git");
+        let is_old_style = workspace_dir.exists()
+            && git_file.exists()
+            && git_file.is_file() // .git file = worktree, .git dir = main repo
+            && !expected_worktree_path.exists();
+
+        if !is_old_style {
+            return Ok(false);
+        }
+
+        info!(
+            "Detected legacy worktree at {}, migrating to new layout",
+            workspace_dir.display()
+        );
+
+        // Move old worktree to temp location (can't move into subdirectory of itself)
+        let temp_name = format!(
+            "{}-migrating",
+            workspace_dir
+                .file_name()
+                .map(|n| n.to_string_lossy())
+                .unwrap_or_default()
+        );
+        let temp_path = workspace_dir.with_file_name(temp_name);
+
+        tokio::fs::rename(workspace_dir, &temp_path).await?;
+
+        // Create new workspace directory
+        tokio::fs::create_dir_all(workspace_dir).await?;
+
+        // Move worktree to final location using git worktree move
+        WorktreeManager::move_worktree(&repo.path, &temp_path, &expected_worktree_path).await?;
+
+        info!(
+            "Successfully migrated legacy worktree to {}",
+            expected_worktree_path.display()
+        );
+
+        Ok(true)
     }
 
     /// Helper to cleanup worktrees during rollback

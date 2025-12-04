@@ -1168,6 +1168,19 @@ impl GitService {
         Ok(())
     }
 
+    /// Move a worktree to a new location
+    pub fn move_worktree(
+        &self,
+        repo_path: &Path,
+        old_path: &Path,
+        new_path: &Path,
+    ) -> Result<(), GitServiceError> {
+        let git = GitCli::new();
+        git.worktree_move(repo_path, old_path, new_path)
+            .map_err(|e| GitServiceError::InvalidRepository(e.to_string()))?;
+        Ok(())
+    }
+
     pub fn prune_worktrees(&self, repo_path: &Path) -> Result<(), GitServiceError> {
         let git = GitCli::new();
         git.worktree_prune(repo_path)
