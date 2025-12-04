@@ -1521,8 +1521,11 @@ pub async fn run_setup_script(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<ExecutionProcess, RunScriptError>>, ApiError> {
     // Check if any non-dev-server processes are already running
-    if ExecutionProcess::has_running_non_dev_server_processes(&deployment.db().pool, task_attempt.id)
-        .await?
+    if ExecutionProcess::has_running_non_dev_server_processes(
+        &deployment.db().pool,
+        task_attempt.id,
+    )
+    .await?
     {
         return Ok(ResponseJson(ApiResponse::error_with_data(
             RunScriptError::ProcessAlreadyRunning,
@@ -1589,8 +1592,11 @@ pub async fn run_cleanup_script(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<ExecutionProcess, RunScriptError>>, ApiError> {
     // Check if any non-dev-server processes are already running
-    if ExecutionProcess::has_running_non_dev_server_processes(&deployment.db().pool, task_attempt.id)
-        .await?
+    if ExecutionProcess::has_running_non_dev_server_processes(
+        &deployment.db().pool,
+        task_attempt.id,
+    )
+    .await?
     {
         return Ok(ResponseJson(ApiResponse::error_with_data(
             RunScriptError::ProcessAlreadyRunning,
