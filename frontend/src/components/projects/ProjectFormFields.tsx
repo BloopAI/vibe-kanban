@@ -11,8 +11,6 @@ import {
   FolderPlus,
   ArrowLeft,
 } from 'lucide-react';
-import { useScriptPlaceholders } from '@/hooks/useScriptPlaceholders';
-import { CopyFilesField } from './CopyFilesField';
 // Removed collapsible sections for simplicity; show fields always in edit mode
 import { fileSystemApi } from '@/lib/api';
 import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
@@ -20,56 +18,30 @@ import { DirectoryEntry } from 'shared/types';
 import { generateProjectNameFromPath } from '@/utils/string';
 
 interface ProjectFormFieldsProps {
-  isEditing: boolean;
   repoMode: 'existing' | 'new';
   setRepoMode: (mode: 'existing' | 'new') => void;
-  gitRepoPath: string;
-  handleGitRepoPathChange: (path: string) => void;
   parentPath: string;
   setParentPath: (path: string) => void;
   setFolderName: (name: string) => void;
   setName: (name: string) => void;
   name: string;
-  setupScript: string;
-  setSetupScript: (script: string) => void;
-  devScript: string;
-  setDevScript: (script: string) => void;
-  cleanupScript: string;
-  setCleanupScript: (script: string) => void;
-  copyFiles: string;
-  setCopyFiles: (files: string) => void;
   error: string;
   setError: (error: string) => void;
-  projectId?: string;
   onCreateProject?: (path: string, name: string) => void;
 }
 
 export function ProjectFormFields({
-  isEditing,
   repoMode,
   setRepoMode,
-  gitRepoPath,
-  handleGitRepoPathChange,
   parentPath,
   setParentPath,
   setFolderName,
   setName,
   name,
-  setupScript,
-  setSetupScript,
-  devScript,
-  setDevScript,
-  cleanupScript,
-  setCleanupScript,
-  copyFiles,
-  setCopyFiles,
   error,
   setError,
-  projectId,
   onCreateProject,
 }: ProjectFormFieldsProps) {
-  const placeholders = useScriptPlaceholders();
-
   // Repository loading state
   const [allRepos, setAllRepos] = useState<DirectoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -94,14 +66,14 @@ export function ProjectFormFields({
 
   // Lazy-load repositories when the user navigates to the repo list
   useEffect(() => {
-    if (!isEditing && showRecentRepos && !loading && allRepos.length === 0) {
+    if (showRecentRepos && !loading && allRepos.length === 0) {
       loadRecentRepos();
     }
-  }, [isEditing, showRecentRepos, loading, allRepos.length, loadRecentRepos]);
+  }, [showRecentRepos, loading, allRepos.length, loadRecentRepos]);
 
   return (
     <>
-      {!isEditing && repoMode === 'existing' && (
+      {repoMode === 'existing' && (
         <div className="space-y-4">
           {/* Show selection interface only when no repo is selected */}
           <>
@@ -276,7 +248,7 @@ export function ProjectFormFields({
       )}
 
       {/* Blank Project Form */}
-      {!isEditing && repoMode === 'new' && (
+      {repoMode === 'new' && (
         <div className="space-y-4">
           {/* Back button */}
           <Button
@@ -362,127 +334,6 @@ export function ProjectFormFields({
           </div>
         </div>
       )}
-
-      {isEditing && (
-        <>
-          <div className="space-y-2">
-            <Label htmlFor="git-repo-path">Git Repository Path</Label>
-            <div className="flex space-x-2">
-              <Input
-                id="git-repo-path"
-                type="text"
-                value={gitRepoPath}
-                onChange={(e) => handleGitRepoPathChange(e.target.value)}
-                placeholder="/path/to/your/existing/repo"
-                required
-                className="flex-1"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={async () => {
-                  const selectedPath = await FolderPickerDialog.show({
-                    title: 'Select Git Repository',
-                    description: 'Choose an existing git repository',
-                    value: gitRepoPath,
-                  });
-                  if (selectedPath) {
-                    handleGitRepoPathChange(selectedPath);
-                  }
-                }}
-              >
-                <Folder className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="name">Project Name</Label>
-            <Input
-              id="name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Enter project name"
-              required
-            />
-          </div>
-        </>
-      )}
-
-      {isEditing && (
-        <div className="space-y-4 pt-4 border-t border-border">
-          <div className="space-y-2">
-            <Label htmlFor="setup-script">Setup Script</Label>
-            <textarea
-              id="setup-script"
-              value={setupScript}
-              onChange={(e) => setSetupScript(e.target.value)}
-              placeholder={placeholders.setup}
-              rows={4}
-              className="w-full px-3 py-2 text-sm border border-input bg-background text-foreground rounded-md resize-vertical focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-            <p className="text-sm text-muted-foreground">
-              This script will run after creating the worktree and before the
-              coding agent starts. Use it for setup tasks like installing
-              dependencies or preparing the environment.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="dev-script">Dev Server Script</Label>
-            <textarea
-              id="dev-script"
-              value={devScript}
-              onChange={(e) => setDevScript(e.target.value)}
-              placeholder={placeholders.dev}
-              rows={4}
-              className="w-full px-3 py-2 text-sm border border-input bg-background text-foreground rounded-md resize-vertical focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-            <p className="text-sm text-muted-foreground">
-              This script can be run from task attempts to start a development
-              server. Use it to quickly start your project's dev server for
-              testing changes.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="cleanup-script">Cleanup Script</Label>
-            <textarea
-              id="cleanup-script"
-              value={cleanupScript}
-              onChange={(e) => setCleanupScript(e.target.value)}
-              placeholder={placeholders.cleanup}
-              rows={4}
-              className="w-full px-3 py-2 text-sm border border-input bg-background text-foreground rounded-md resize-vertical focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-            <p className="text-sm text-muted-foreground">
-              This script runs after coding agent execution{' '}
-              <strong>only if changes were made</strong>. Use it for quality
-              assurance tasks like running linters, formatters, tests, or other
-              validation steps. If no changes are made, this script is skipped.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Copy Files</Label>
-            <CopyFilesField
-              value={copyFiles}
-              onChange={setCopyFiles}
-              projectId={projectId}
-            />
-            <p className="text-sm text-muted-foreground">
-              Comma-separated list of files to copy from the original project
-              directory to the worktree. These files will be copied after the
-              worktree is created but before the setup script runs. Useful for
-              environment-specific files like .env, configuration files, and
-              local settings. Make sure these are gitignored or they could get
-              committed!
-            </p>
-          </div>
-        </div>
-      )}
-
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />

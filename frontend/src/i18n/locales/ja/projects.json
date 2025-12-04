@@ -47,8 +47,5 @@
   "viewProject": "プロジェクトを表示",
   "openInIDE": "IDEで開く",
   "createdDate": "作成日 {{date}}",
-  "copyFiles": {
-    "placeholderWithSearch": "パスまたはglobパターンを入力 (.env, config/*.json)",
-    "placeholderSimple": ".env, config/*.json, **/*.local"
-  }
+  "copyFilesPlaceholderWithSearch": "パスまたはglobパターンを入力 (.env, config/*.json)"
 }

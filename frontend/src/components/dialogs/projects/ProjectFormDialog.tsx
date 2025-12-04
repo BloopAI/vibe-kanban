@@ -39,16 +39,6 @@ const ProjectFormDialogImpl = NiceModal.create<ProjectFormDialogProps>(() => {
     },
   });
 
-  // Auto-populate project name from directory name
-  const handleGitRepoPathChange = (path: string) => {
-    setGitRepoPath(path);
-
-    if (path) {
-      const cleanName = generateProjectNameFromPath(path);
-      if (cleanName) setName(cleanName);
-    }
-  };
-
   // Handle direct project creation from repo selection
   const handleDirectCreate = async (path: string, suggestedName: string) => {
     setError('');
@@ -125,27 +115,15 @@ const ProjectFormDialogImpl = NiceModal.create<ProjectFormDialogProps>(() => {
         <div className="mx-auto w-full max-w-2xl overflow-x-hidden px-1">
           <form onSubmit={handleSubmit} className="space-y-4">
             <ProjectFormFields
-              isEditing={false}
               repoMode={repoMode}
               setRepoMode={setRepoMode}
-              gitRepoPath={gitRepoPath}
-              handleGitRepoPathChange={handleGitRepoPathChange}
               parentPath={parentPath}
               setParentPath={setParentPath}
               setFolderName={setFolderName}
               setName={setName}
               name={name}
-              setupScript=""
-              setSetupScript={() => {}}
-              devScript=""
-              setDevScript={() => {}}
-              cleanupScript=""
-              setCleanupScript={() => {}}
-              copyFiles=""
-              setCopyFiles={() => {}}
               error={error}
               setError={setError}
-              projectId={undefined}
               onCreateProject={handleDirectCreate}
             />
             {repoMode === 'new' && (
