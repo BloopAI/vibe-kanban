@@ -58,7 +58,7 @@ export function MultiFileSearchTextarea({
     const cached = searchCacheRef.current.get(searchQuery);
     if (cached) {
       setSearchResults(cached);
-      setShowDropdown(true);
+      setShowDropdown(cached.length > 0);
       setSelectedIndex(-1);
       return;
     }
@@ -95,7 +95,7 @@ export function MultiFileSearchTextarea({
           searchCacheRef.current.set(searchQuery, fileResults);
 
           setSearchResults(fileResults);
-          setShowDropdown(true);
+          setShowDropdown(fileResults.length > 0);
           setSelectedIndex(-1);
         }
       } catch (error) {
@@ -353,10 +353,6 @@ export function MultiFileSearchTextarea({
             {isLoading ? (
               <div className="p-2 text-sm text-muted-foreground">
                 Searching...
-              </div>
-            ) : searchResults.length === 0 ? (
-              <div className="p-2 text-sm text-muted-foreground">
-                No files found
               </div>
             ) : (
               <div className="py-1">
