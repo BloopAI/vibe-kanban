@@ -20,10 +20,9 @@ import { useRetryUi } from '@/contexts/RetryUiContext';
 
 interface ProcessesTabProps {
   attemptId?: string;
-  onLogsChange?: (logs: LogEntry[]) => void;
 }
 
-function ProcessesTab({ attemptId, onLogsChange }: ProcessesTabProps) {
+function ProcessesTab({ attemptId }: ProcessesTabProps) {
   const { t } = useTranslation('tasks');
   const {
     executionProcesses,
@@ -37,18 +36,30 @@ function ProcessesTab({ attemptId, onLogsChange }: ProcessesTabProps) {
   const [localProcessDetails, setLocalProcessDetails] = useState<
     Record<string, ExecutionProcess>
   >({});
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     setLocalProcessDetails({});
     setLoadingProcessId(null);
   }, [attemptId]);
 
-  // Clear logs when no process is selected
-  useEffect(() => {
-    if (!selectedProcessId) {
-      onLogsChange?.([]);
+  const handleLogsChange = useCallback((newLogs: LogEntry[]) => {
+    setLogs(newLogs);
+  }, []);
+
+  const handleCopyLogs = useCallback(async () => {
+    if (logs.length === 0) return;
+
+    const text = logs.map((entry) => entry.content).join('\n');
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.warn('Copy to clipboard failed:', err);
     }
-  }, [selectedProcessId, onLogsChange]);
+  }, [logs]);
 
   const getStatusIcon = (status: ExecutionProcessStatus) => {
     switch (status) {
@@ -269,19 +280,34 @@ function ProcessesTab({ attemptId, onLogsChange }: ProcessesTabProps) {
             <h2 className="text-lg font-semibold">
               {t('processes.detailsTitle')}
             </h2>
-            <button
-              onClick={() => setSelectedProcessId(null)}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md border border-border transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              {t('processes.backToList')}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleCopyLogs}
+                disabled={logs.length === 0}
+                className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md border border-border transition-colors ${
+                  copied
+                    ? 'text-success'
+                    : logs.length === 0
+                      ? 'text-muted-foreground opacity-50 cursor-not-allowed'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                }`}
+              >
+                {copied ? t('processes.logsCopied') : t('processes.copyLogs')}
+              </button>
+              <button
+                onClick={() => setSelectedProcessId(null)}
+                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md border border-border transition-colors"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                {t('processes.backToList')}
+              </button>
+            </div>
           </div>
           <div className="flex-1">
             {selectedProcess ? (
               <ProcessLogsViewer
                 processId={selectedProcess.id}
-                onLogsChange={onLogsChange}
+                onLogsChange={handleLogsChange}
               />
             ) : loadingProcessId === selectedProcessId ? (
               <div className="text-center text-muted-foreground">

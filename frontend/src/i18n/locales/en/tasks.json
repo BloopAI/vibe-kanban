@@ -126,7 +126,9 @@
     "detailsTitle": "Process Details",
     "backToList": "Back to list",
     "loadingDetails": "Loading process details...",
-    "errorLoadingDetails": "Failed to load process details. Please try again."
+    "errorLoadingDetails": "Failed to load process details. Please try again.",
+    "copyLogs": "Copy logs",
+    "logsCopied": "Copied!"
   },
   "taskHeader": {
     "editTask": "Edit task",
@@ -260,9 +262,7 @@
     "start": "Start"
   },
   "viewProcessesDialog": {
-    "title": "Execution processes",
-    "copyLogs": "Copy logs",
-    "logsCopied": "Copied!"
+    "title": "Execution processes"
   },
   "viewRelatedTasksDialog": {
     "title": "Related tasks",

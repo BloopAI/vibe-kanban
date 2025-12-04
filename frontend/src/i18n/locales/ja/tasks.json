@@ -304,7 +304,9 @@
     "processId": "Process ID: {{id}}",
     "reconnecting": "Reconnecting...",
     "selectAttempt": "Select an attempt to view execution processes.",
-    "started": "Started: {{date}}"
+    "started": "Started: {{date}}",
+    "copyLogs": "Copy logs",
+    "logsCopied": "Copied!"
   },
   "rebase": {
     "common": {
@@ -351,9 +353,7 @@
     "startFirstAttempt": "Start your first attempt to begin working on this task"
   },
   "viewProcessesDialog": {
-    "title": "Execution processes",
-    "copyLogs": "Copy logs",
-    "logsCopied": "Copied!"
+    "title": "Execution processes"
   },
   "viewRelatedTasksDialog": {
     "title": "Related tasks",
