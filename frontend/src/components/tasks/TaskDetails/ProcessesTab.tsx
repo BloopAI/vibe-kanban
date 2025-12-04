@@ -12,8 +12,12 @@ import {
 import { executionProcessesApi } from '@/lib/api.ts';
 import { ProfileVariantBadge } from '@/components/common/ProfileVariantBadge.tsx';
 import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
-import ProcessLogsViewer, { LogEntry } from './ProcessLogsViewer';
-import type { ExecutionProcessStatus, ExecutionProcess } from 'shared/types';
+import ProcessLogsViewer from './ProcessLogsViewer';
+import type {
+  ExecutionProcessStatus,
+  ExecutionProcess,
+  PatchType,
+} from 'shared/types';
 
 import { useProcessSelection } from '@/contexts/ProcessSelectionContext';
 import { useRetryUi } from '@/contexts/RetryUiContext';
@@ -36,7 +40,7 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
   const [localProcessDetails, setLocalProcessDetails] = useState<
     Record<string, ExecutionProcess>
   >({});
-  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [logs, setLogs] = useState<PatchType[]>([]);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -44,7 +48,7 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
     setLoadingProcessId(null);
   }, [attemptId]);
 
-  const handleLogsChange = useCallback((newLogs: LogEntry[]) => {
+  const handleLogsChange = useCallback((newLogs: PatchType[]) => {
     setLogs(newLogs);
   }, []);
 
