@@ -321,7 +321,7 @@ impl WorktreeManager {
                     Ok(())
                 }
                 Err(e) => {
-                    tracing::info!(
+                    tracing::warn!(
                         "git worktree add failed; attempting metadata cleanup and retry: {}",
                         e
                     );
@@ -496,6 +496,26 @@ impl WorktreeManager {
                 );
             }
             Ok(())
+        })
+        .await
+        .map_err(|e| WorktreeError::TaskJoin(format!("{e}")))?
+    }
+
+    /// Move a worktree to a new location
+    pub async fn move_worktree(
+        repo_path: &Path,
+        old_path: &Path,
+        new_path: &Path,
+    ) -> Result<(), WorktreeError> {
+        let repo_path = repo_path.to_path_buf();
+        let old_path = old_path.to_path_buf();
+        let new_path = new_path.to_path_buf();
+
+        tokio::task::spawn_blocking(move || {
+            let git_service = GitService::new();
+            git_service
+                .move_worktree(&repo_path, &old_path, &new_path)
+                .map_err(WorktreeError::GitService)
         })
         .await
         .map_err(|e| WorktreeError::TaskJoin(format!("{e}")))?
