@@ -1,5 +1,5 @@
 [toolchain]
-channel = "nightly-2025-05-18"
+channel = "1.89.0"
 components = [
     "rustfmt",
     "rustc",
