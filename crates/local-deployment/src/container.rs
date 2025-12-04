@@ -998,6 +998,7 @@ impl ContainerService for LocalContainerService {
             .ok_or(ContainerError::Other(anyhow!("Project not found for task")))?;
 
         env.insert("VK_PROJECT_NAME", &project.name);
+        env.insert("VK_PROJECT_ID", project.id.to_string());
         env.insert("VK_TASK_ID", task.id.to_string());
         env.insert("VK_ATTEMPT_ID", task_attempt.id.to_string());
         env.insert("VK_ATTEMPT_BRANCH", &task_attempt.branch);
