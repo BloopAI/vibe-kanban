@@ -67,6 +67,7 @@ jobs:
         uses: ikalnytskyi/action-setup-postgres@v7
         with:
           postgres-version: "16"
+          database: remote
 
       - name: Build frontend
         run: cd frontend && npm run build
@@ -74,6 +75,8 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=8192
 
       - name: Checks
+        env:
+          DATABASE_URL: postgres://postgres@localhost:5432/remote
         run: |
           cargo fmt --all -- --check
           npm run generate-types:check
