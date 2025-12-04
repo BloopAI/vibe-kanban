@@ -214,11 +214,12 @@ export function TaskFollowUpSection({
       500
     );
 
-  // Sync local message from scratch when it loads
+  // Sync local message from scratch when it loads (but not while user is typing)
   useEffect(() => {
     if (isScratchLoading) return;
+    if (isTextareaFocused) return; // Don't overwrite while user is typing
     setLocalMessage(scratchData?.message ?? '');
-  }, [isScratchLoading, scratchData?.message]);
+  }, [isScratchLoading, scratchData?.message, isTextareaFocused]);
 
   // During retry, follow-up box is greyed/disabled (not hidden)
   // Use RetryUi context so optimistic retry immediately disables this box
