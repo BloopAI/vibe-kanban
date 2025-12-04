@@ -151,7 +151,12 @@
     "queueForNextTurn": "Queue for next turn",
     "queue": "Queue",
     "cancelQueue": "Cancel Queue",
-    "queuedMessage": "Message queued - will execute when current run finishes"
+    "queuedMessage": "Message queued - will execute when current run finishes",
+    "runSetupScript": "Run setup script",
+    "runCleanupScript": "Run cleanup script",
+    "noSetupScript": "No setup script configured for this project",
+    "noCleanupScript": "No cleanup script configured for this project",
+    "scriptsDisabledWhileRunning": "Cannot run scripts while a process is running"
   },
   "todos": {
     "title_one": "Todos ({{count}})",
