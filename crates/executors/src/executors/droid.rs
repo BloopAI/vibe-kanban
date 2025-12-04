@@ -110,6 +110,7 @@ async fn spawn_droid(
     prompt: &String,
     current_dir: &Path,
     env: &ExecutionEnv,
+    cmd_overrides: &crate::command::CmdOverrides,
 ) -> Result<SpawnedChild, ExecutorError> {
     let (program_path, args) = command_parts.into_resolved().await?;
 
@@ -124,6 +125,9 @@ async fn spawn_droid(
 
     // Apply environment variables
     env.apply_to_command(&mut command);
+
+    // Apply custom environment variables from profile
+    crate::command::apply_env_vars(&mut command, cmd_overrides);
 
     let mut child = command.group_spawn()?;
 
@@ -146,7 +150,7 @@ impl StandardCodingAgentExecutor for Droid {
         let droid_command = self.build_command_builder().build_initial()?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
-        spawn_droid(droid_command, &combined_prompt, current_dir, env).await
+        spawn_droid(droid_command, &combined_prompt, current_dir, env, &self.cmd).await
     }
 
     async fn spawn_follow_up(
@@ -166,7 +170,7 @@ impl StandardCodingAgentExecutor for Droid {
             .build_follow_up(&["--session-id".to_string(), forked_session_id.clone()])?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
 
-        spawn_droid(continue_cmd, &combined_prompt, current_dir, env).await
+        spawn_droid(continue_cmd, &combined_prompt, current_dir, env, &self.cmd).await
     }
 
     fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &Path) {

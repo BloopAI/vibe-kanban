@@ -157,6 +157,9 @@ impl StandardCodingAgentExecutor for Opencode {
         // Apply environment variables
         env.apply_to_command(&mut command);
 
+        // Apply custom environment variables from profile
+        crate::command::apply_env_vars(&mut command, &self.cmd);
+
         let mut child = match command.group_spawn() {
             Ok(c) => c,
             Err(e) => {
@@ -226,6 +229,9 @@ impl StandardCodingAgentExecutor for Opencode {
 
         // Apply environment variables
         env.apply_to_command(&mut command);
+
+        // Apply custom environment variables from profile
+        crate::command::apply_env_vars(&mut command, &self.cmd);
 
         let mut child = match command.group_spawn() {
             Ok(c) => c,

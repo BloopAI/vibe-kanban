@@ -317,6 +317,9 @@ impl Codex {
         // Apply environment variables
         env.apply_to_command(&mut process);
 
+        // Apply custom environment variables from profile
+        crate::command::apply_env_vars(&mut process, &self.cmd);
+
         let mut child = process.group_spawn()?;
 
         let child_stdout = child.inner().stdout.take().ok_or_else(|| {

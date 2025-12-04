@@ -18,7 +18,7 @@ use workspace_utils::stream_lines::LinesStreamExt;
 
 use super::{AcpClient, SessionManager};
 use crate::{
-    command::CommandParts,
+    command::{CmdOverrides, CommandParts},
     env::ExecutionEnv,
     executors::{ExecutorError, ExecutorExitResult, SpawnedChild, acp::AcpEvent},
 };
@@ -56,6 +56,7 @@ impl AcpAgentHarness {
         prompt: String,
         command_parts: CommandParts,
         env: &ExecutionEnv,
+        cmd_overrides: Option<&CmdOverrides>,
     ) -> Result<SpawnedChild, ExecutorError> {
         let (program_path, args) = command_parts.into_resolved().await?;
         let mut command = Command::new(program_path);
@@ -70,6 +71,11 @@ impl AcpAgentHarness {
 
         // Apply environment variables
         env.apply_to_command(&mut command);
+
+        // Apply custom environment variables from profile if provided
+        if let Some(overrides) = cmd_overrides {
+            crate::command::apply_env_vars(&mut command, overrides);
+        }
 
         let mut child = command.group_spawn()?;
 
@@ -98,6 +104,7 @@ impl AcpAgentHarness {
         session_id: &str,
         command_parts: CommandParts,
         env: &ExecutionEnv,
+        cmd_overrides: Option<&CmdOverrides>,
     ) -> Result<SpawnedChild, ExecutorError> {
         let (program_path, args) = command_parts.into_resolved().await?;
         let mut command = Command::new(program_path);
@@ -112,6 +119,11 @@ impl AcpAgentHarness {
 
         // Apply environment variables
         env.apply_to_command(&mut command);
+
+        // Apply custom environment variables from profile if provided
+        if let Some(overrides) = cmd_overrides {
+            crate::command::apply_env_vars(&mut command, overrides);
+        }
 
         let mut child = command.group_spawn()?;
 

@@ -68,6 +68,9 @@ impl StandardCodingAgentExecutor for Amp {
         // Apply environment variables
         env.apply_to_command(&mut command);
 
+        // Apply custom environment variables from profile
+        crate::command::apply_env_vars(&mut command, &self.cmd);
+
         let mut child = command.group_spawn()?;
 
         // Feed the prompt in, then close the pipe so amp sees EOF
@@ -139,6 +142,9 @@ impl StandardCodingAgentExecutor for Amp {
 
         // Apply environment variables
         env.apply_to_command(&mut command);
+
+        // Apply custom environment variables from profile
+        crate::command::apply_env_vars(&mut command, &self.cmd);
 
         let mut child = command.group_spawn()?;
 

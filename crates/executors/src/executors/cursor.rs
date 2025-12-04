@@ -95,6 +95,9 @@ impl StandardCodingAgentExecutor for CursorAgent {
         // Apply environment variables
         env.apply_to_command(&mut command);
 
+        // Apply custom environment variables from profile
+        crate::command::apply_env_vars(&mut command, &self.cmd);
+
         let mut child = command.group_spawn()?;
 
         if let Some(mut stdin) = child.inner().stdin.take() {
@@ -132,6 +135,9 @@ impl StandardCodingAgentExecutor for CursorAgent {
 
         // Apply environment variables
         env.apply_to_command(&mut command);
+
+        // Apply custom environment variables from profile
+        crate::command::apply_env_vars(&mut command, &self.cmd);
 
         let mut child = command.group_spawn()?;
 

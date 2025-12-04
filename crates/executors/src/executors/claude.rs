@@ -244,6 +244,9 @@ impl ClaudeCode {
         // Apply environment variables
         env.apply_to_command(&mut command);
 
+        // Apply custom environment variables from profile
+        crate::command::apply_env_vars(&mut command, &self.cmd);
+
         // Remove ANTHROPIC_API_KEY if disable_api_key is enabled
         if self.disable_api_key.unwrap_or(false) {
             command.env_remove("ANTHROPIC_API_KEY");
@@ -2007,6 +2010,7 @@ mod tests {
             cmd: crate::command::CmdOverrides {
                 base_command_override: None,
                 additional_params: None,
+                env: None,
             },
             approvals_service: None,
             disable_api_key: None,

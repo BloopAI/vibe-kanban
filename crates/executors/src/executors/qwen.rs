@@ -49,7 +49,7 @@ impl StandardCodingAgentExecutor for QwenCode {
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let harness = AcpAgentHarness::with_session_namespace("qwen_sessions");
         harness
-            .spawn_with_command(current_dir, combined_prompt, qwen_command, env)
+            .spawn_with_command(current_dir, combined_prompt, qwen_command, env, Some(&self.cmd))
             .await
     }
 
@@ -70,6 +70,7 @@ impl StandardCodingAgentExecutor for QwenCode {
                 session_id,
                 qwen_command,
                 env,
+                Some(&self.cmd),
             )
             .await
     }
