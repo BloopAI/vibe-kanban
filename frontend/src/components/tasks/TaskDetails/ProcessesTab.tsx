@@ -12,12 +12,9 @@ import {
 import { executionProcessesApi } from '@/lib/api.ts';
 import { ProfileVariantBadge } from '@/components/common/ProfileVariantBadge.tsx';
 import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
-import ProcessLogsViewer from './ProcessLogsViewer';
-import type {
-  ExecutionProcessStatus,
-  ExecutionProcess,
-  PatchType,
-} from 'shared/types';
+import { useLogStream } from '@/hooks/useLogStream';
+import { ProcessLogsViewerContent } from './ProcessLogsViewer';
+import type { ExecutionProcessStatus, ExecutionProcess } from 'shared/types';
 
 import { useProcessSelection } from '@/contexts/ProcessSelectionContext';
 import { useRetryUi } from '@/contexts/RetryUiContext';
@@ -40,17 +37,19 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
   const [localProcessDetails, setLocalProcessDetails] = useState<
     Record<string, ExecutionProcess>
   >({});
-  const [logs, setLogs] = useState<PatchType[]>([]);
   const [copied, setCopied] = useState(false);
+
+  const selectedProcess = selectedProcessId
+    ? localProcessDetails[selectedProcessId] ||
+      executionProcessesById[selectedProcessId]
+    : null;
+
+  const { logs, error: logsError } = useLogStream(selectedProcess?.id ?? '');
 
   useEffect(() => {
     setLocalProcessDetails({});
     setLoadingProcessId(null);
   }, [attemptId]);
-
-  const handleLogsChange = useCallback((newLogs: PatchType[]) => {
-    setLogs(newLogs);
-  }, []);
 
   const handleCopyLogs = useCallback(async () => {
     if (logs.length === 0) return;
@@ -149,10 +148,6 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
     }
   };
 
-  const selectedProcess = selectedProcessId
-    ? localProcessDetails[selectedProcessId] ||
-      executionProcessesById[selectedProcessId]
-    : null;
   const { isProcessGreyed } = useRetryUi();
 
   if (!attemptId) {
@@ -309,10 +304,7 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
           </div>
           <div className="flex-1">
             {selectedProcess ? (
-              <ProcessLogsViewer
-                processId={selectedProcess.id}
-                onLogsChange={handleLogsChange}
-              />
+              <ProcessLogsViewerContent logs={logs} error={logsError} />
             ) : loadingProcessId === selectedProcessId ? (
               <div className="text-center text-muted-foreground">
                 <p>{t('processes.loadingDetails')}</p>

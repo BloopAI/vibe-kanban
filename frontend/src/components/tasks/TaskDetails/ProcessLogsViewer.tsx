@@ -9,7 +9,6 @@ type LogEntry = Extract<PatchType, { type: 'STDOUT' } | { type: 'STDERR' }>;
 
 interface ProcessLogsViewerProps {
   processId: string;
-  onLogsChange?: (logs: LogEntry[]) => void;
 }
 
 export function ProcessLogsViewerContent({
@@ -99,13 +98,7 @@ export function ProcessLogsViewerContent({
 
 export default function ProcessLogsViewer({
   processId,
-  onLogsChange,
 }: ProcessLogsViewerProps) {
   const { logs, error } = useLogStream(processId);
-
-  useEffect(() => {
-    onLogsChange?.(logs);
-  }, [logs, onLogsChange]);
-
   return <ProcessLogsViewerContent logs={logs} error={error} />;
 }
