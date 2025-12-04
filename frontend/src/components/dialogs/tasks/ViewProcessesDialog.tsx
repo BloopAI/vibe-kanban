@@ -64,21 +64,21 @@ const ViewProcessesDialogImpl = NiceModal.create<ViewProcessesDialogProps>(
             }
           }}
         >
-          <DialogHeader className="px-4 py-3 border-b flex flex-row items-center justify-between">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="absolute right-12 top-4 h-4 w-4 p-0 rounded-sm opacity-70 hover:opacity-100"
+            onClick={handleCopyLogs}
+            disabled={logs.length === 0}
+          >
+            {copied ? (
+              <Check className="h-4 w-4 text-success" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
+          </Button>
+          <DialogHeader className="px-4 py-3 border-b">
             <DialogTitle>{t('viewProcessesDialog.title')}</DialogTitle>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 w-7 p-0 mr-8"
-              onClick={handleCopyLogs}
-              disabled={logs.length === 0}
-            >
-              {copied ? (
-                <Check className="h-3.5 w-3.5 text-success" />
-              ) : (
-                <Copy className="h-3.5 w-3.5" />
-              )}
-            </Button>
           </DialogHeader>
           <div className="h-[75vh] flex flex-col min-h-0 min-w-0">
             <ProcessSelectionProvider initialProcessId={initialProcessId}>
