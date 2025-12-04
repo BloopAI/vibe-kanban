@@ -5,10 +5,11 @@ import { useLogStream } from '@/hooks/useLogStream';
 import RawLogText from '@/components/common/RawLogText';
 import type { PatchType } from 'shared/types';
 
-type LogEntry = Extract<PatchType, { type: 'STDOUT' } | { type: 'STDERR' }>;
+export type LogEntry = Extract<PatchType, { type: 'STDOUT' } | { type: 'STDERR' }>;
 
 interface ProcessLogsViewerProps {
   processId: string;
+  onLogsChange?: (logs: LogEntry[]) => void;
 }
 
 export function ProcessLogsViewerContent({
@@ -98,7 +99,13 @@ export function ProcessLogsViewerContent({
 
 export default function ProcessLogsViewer({
   processId,
+  onLogsChange,
 }: ProcessLogsViewerProps) {
   const { logs, error } = useLogStream(processId);
+
+  useEffect(() => {
+    onLogsChange?.(logs);
+  }, [logs, onLogsChange]);
+
   return <ProcessLogsViewerContent logs={logs} error={error} />;
 }

@@ -351,7 +351,9 @@
     "startFirstAttempt": "Start your first attempt to begin working on this task"
   },
   "viewProcessesDialog": {
-    "title": "Execution processes"
+    "title": "Execution processes",
+    "copyLogs": "Copy logs",
+    "logsCopied": "Copied!"
   },
   "viewRelatedTasksDialog": {
     "title": "Related tasks",

@@ -12,7 +12,7 @@ import {
 import { executionProcessesApi } from '@/lib/api.ts';
 import { ProfileVariantBadge } from '@/components/common/ProfileVariantBadge.tsx';
 import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
-import ProcessLogsViewer from './ProcessLogsViewer';
+import ProcessLogsViewer, { LogEntry } from './ProcessLogsViewer';
 import type { ExecutionProcessStatus, ExecutionProcess } from 'shared/types';
 
 import { useProcessSelection } from '@/contexts/ProcessSelectionContext';
@@ -20,9 +20,10 @@ import { useRetryUi } from '@/contexts/RetryUiContext';
 
 interface ProcessesTabProps {
   attemptId?: string;
+  onLogsChange?: (logs: LogEntry[]) => void;
 }
 
-function ProcessesTab({ attemptId }: ProcessesTabProps) {
+function ProcessesTab({ attemptId, onLogsChange }: ProcessesTabProps) {
   const { t } = useTranslation('tasks');
   const {
     executionProcesses,
@@ -41,6 +42,13 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
     setLocalProcessDetails({});
     setLoadingProcessId(null);
   }, [attemptId]);
+
+  // Clear logs when no process is selected
+  useEffect(() => {
+    if (!selectedProcessId) {
+      onLogsChange?.([]);
+    }
+  }, [selectedProcessId, onLogsChange]);
 
   const getStatusIcon = (status: ExecutionProcessStatus) => {
     switch (status) {
@@ -271,7 +279,10 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
           </div>
           <div className="flex-1">
             {selectedProcess ? (
-              <ProcessLogsViewer processId={selectedProcess.id} />
+              <ProcessLogsViewer
+                processId={selectedProcess.id}
+                onLogsChange={onLogsChange}
+              />
             ) : loadingProcessId === selectedProcessId ? (
               <div className="text-center text-muted-foreground">
                 <p>{t('processes.loadingDetails')}</p>
