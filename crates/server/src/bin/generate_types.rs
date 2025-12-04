@@ -115,6 +115,7 @@ fn generate_types_content() -> String {
         server::routes::task_attempts::PushError::decl(),
         server::routes::task_attempts::CreatePrError::decl(),
         server::routes::task_attempts::BranchStatus::decl(),
+        server::routes::task_attempts::RunScriptError::decl(),
         services::services::filesystem::DirectoryEntry::decl(),
         services::services::filesystem::DirectoryListResponse::decl(),
         services::services::config::Config::decl(),

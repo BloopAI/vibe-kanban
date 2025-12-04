@@ -256,6 +256,8 @@ conflict_op: ConflictOp | null,
  */
 conflicted_files: Array<string>, };
 
+export type RunScriptError = { "type": "no_script_configured" };
+
 export type DirectoryEntry = { name: string, path: string, is_directory: boolean, is_git_repo: boolean, last_modified: bigint | null, };
 
 export type DirectoryListResponse = { entries: Array<DirectoryEntry>, current_path: string, };

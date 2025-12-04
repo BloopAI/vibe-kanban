@@ -1507,6 +1507,131 @@ pub async fn attach_existing_pr(
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[serde(tag = "type", rename_all = "snake_case")]
+#[ts(tag = "type", rename_all = "snake_case")]
+pub enum RunScriptError {
+    NoScriptConfigured,
+}
+
+#[axum::debug_handler]
+pub async fn run_setup_script(
+    Extension(task_attempt): Extension<TaskAttempt>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<ExecutionProcess, RunScriptError>>, ApiError> {
+    // Ensure worktree exists
+    let _ = ensure_worktree_path(&deployment, &task_attempt).await?;
+
+    // Get parent task and project
+    let task = task_attempt
+        .parent_task(&deployment.db().pool)
+        .await?
+        .ok_or(SqlxError::RowNotFound)?;
+
+    let project = task
+        .parent_project(&deployment.db().pool)
+        .await?
+        .ok_or(SqlxError::RowNotFound)?;
+
+    // Check if setup script is configured
+    let Some(setup_script) = project.setup_script else {
+        return Ok(ResponseJson(ApiResponse::error_with_data(
+            RunScriptError::NoScriptConfigured,
+        )));
+    };
+
+    // Create and execute the setup script action
+    let executor_action = ExecutorAction::new(
+        ExecutorActionType::ScriptRequest(ScriptRequest {
+            script: setup_script,
+            language: ScriptRequestLanguage::Bash,
+            context: ScriptContext::SetupScript,
+        }),
+        None,
+    );
+
+    let execution_process = deployment
+        .container()
+        .start_execution(
+            &task_attempt,
+            &executor_action,
+            &ExecutionProcessRunReason::SetupScript,
+        )
+        .await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "setup_script_executed",
+            serde_json::json!({
+                "task_id": task.id.to_string(),
+                "project_id": project.id.to_string(),
+                "attempt_id": task_attempt.id.to_string(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(execution_process)))
+}
+
+#[axum::debug_handler]
+pub async fn run_cleanup_script(
+    Extension(task_attempt): Extension<TaskAttempt>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<ExecutionProcess, RunScriptError>>, ApiError> {
+    // Ensure worktree exists
+    let _ = ensure_worktree_path(&deployment, &task_attempt).await?;
+
+    // Get parent task and project
+    let task = task_attempt
+        .parent_task(&deployment.db().pool)
+        .await?
+        .ok_or(SqlxError::RowNotFound)?;
+
+    let project = task
+        .parent_project(&deployment.db().pool)
+        .await?
+        .ok_or(SqlxError::RowNotFound)?;
+
+    // Check if cleanup script is configured
+    let Some(cleanup_script) = project.cleanup_script else {
+        return Ok(ResponseJson(ApiResponse::error_with_data(
+            RunScriptError::NoScriptConfigured,
+        )));
+    };
+
+    // Create and execute the cleanup script action
+    let executor_action = ExecutorAction::new(
+        ExecutorActionType::ScriptRequest(ScriptRequest {
+            script: cleanup_script,
+            language: ScriptRequestLanguage::Bash,
+            context: ScriptContext::CleanupScript,
+        }),
+        None,
+    );
+
+    let execution_process = deployment
+        .container()
+        .start_execution(
+            &task_attempt,
+            &executor_action,
+            &ExecutionProcessRunReason::CleanupScript,
+        )
+        .await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "cleanup_script_executed",
+            serde_json::json!({
+                "task_id": task.id.to_string(),
+                "project_id": project.id.to_string(),
+                "attempt_id": task_attempt.id.to_string(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(execution_process)))
+}
+
 #[axum::debug_handler]
 pub async fn gh_cli_setup_handler(
     Extension(task_attempt): Extension<TaskAttempt>,
@@ -1552,6 +1677,8 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/gh-cli-setup", post(gh_cli_setup_handler))
         .route("/commit-compare", get(compare_commit_to_head))
         .route("/start-dev-server", post(start_dev_server))
+        .route("/run-setup-script", post(run_setup_script))
+        .route("/run-cleanup-script", post(run_cleanup_script))
         .route("/branch-status", get(get_task_attempt_branch_status))
         .route("/diff/ws", get(stream_task_attempt_diff_ws))
         .route("/merge", post(merge_task_attempt))
