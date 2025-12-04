@@ -192,7 +192,7 @@ function WYSIWYGEditor({
   // Render skeleton loading state
   if (loading) {
     return (
-      <div className={cn('wysiwyg', className)}>
+      <div className={cn('wysiwyg min-h-[200px]', className)}>
         <div className="space-y-2 animate-pulse">
           <div className="h-4 bg-foreground/10 rounded w-full" />
           <div className="h-4 bg-foreground/10 rounded w-5/6" />

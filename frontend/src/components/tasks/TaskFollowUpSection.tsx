@@ -562,7 +562,26 @@ export function TaskFollowUpSection({
     refetchAttemptBranch,
   ]);
 
-  if (!selectedAttemptId) return null;
+  if (!selectedAttemptId) {
+    return (
+      <div className="grid h-full min-h-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden">
+        <div className="overflow-y-auto min-h-0 p-4">
+          <div className="space-y-2">
+            <div className="flex flex-col gap-2">
+              <WYSIWYGEditor
+                placeholder=""
+                value=""
+                disabled
+                loading
+                className="min-h-[40px]"
+              />
+            </div>
+          </div>
+        </div>
+        <div className="p-4" />
+      </div>
+    );
+  }
 
   return (
     <div
