@@ -263,10 +263,9 @@ impl ClaudeCode {
             let client = ClaudeAgentClient::new(log_writer.clone(), approvals_clone);
             let protocol_peer =
                 ProtocolPeer::spawn(child_stdin, child_stdout, client.clone(), interrupt_rx);
-            client.connect(protocol_peer);
 
             // Initialize control protocol
-            if let Err(e) = client.initialize(hooks).await {
+            if let Err(e) = protocol_peer.initialize(hooks).await {
                 tracing::error!("Failed to initialize control protocol: {e}");
                 let _ = log_writer
                     .log_raw(&format!("Error: Failed to initialize - {e}"))
@@ -274,12 +273,12 @@ impl ClaudeCode {
                 return;
             }
 
-            if let Err(e) = client.set_permission_mode(permission_mode).await {
+            if let Err(e) = protocol_peer.set_permission_mode(permission_mode).await {
                 tracing::warn!("Failed to set permission mode to {permission_mode}: {e}");
             }
 
             // Send user message
-            if let Err(e) = client.send_user_message(prompt_clone).await {
+            if let Err(e) = protocol_peer.send_user_message(prompt_clone).await {
                 tracing::error!("Failed to send prompt: {e}");
                 let _ = log_writer
                     .log_raw(&format!("Error: Failed to send prompt - {e}"))

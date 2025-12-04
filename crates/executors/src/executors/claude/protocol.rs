@@ -12,7 +12,7 @@ use crate::executors::{
     ExecutorError,
     claude::{
         client::ClaudeAgentClient,
-        types::{Message, SDKControlRequest, SDKControlRequestType},
+        types::{Message, PermissionMode, SDKControlRequest, SDKControlRequestType},
     },
 };
 
@@ -91,7 +91,7 @@ impl ProtocolPeer {
                     }
                 }
                 _ = &mut interrupt_rx => {
-                    if let Err(e) = client.interrupt().await {
+                    if let Err(e) = self.interrupt().await {
                         tracing::debug!("Failed to send interrupt to Claude: {e}");
                     }
                 }
@@ -179,10 +179,6 @@ impl ProtocolPeer {
         .await
     }
 
-    pub async fn send_message(&self, message: Message) -> Result<(), ExecutorError> {
-        self.send_json(&message).await
-    }
-
     async fn send_json<T: serde::Serialize>(&self, message: &T) -> Result<(), ExecutorError> {
         let json = serde_json::to_string(message)?;
         let mut stdin = self.stdin.lock().await;
@@ -192,10 +188,26 @@ impl ProtocolPeer {
         Ok(())
     }
 
-    pub async fn send_control_request(
-        &self,
-        request: SDKControlRequestType,
-    ) -> Result<(), ExecutorError> {
-        self.send_json(&SDKControlRequest::new(request)).await
+    pub async fn send_user_message(&self, content: String) -> Result<(), ExecutorError> {
+        let message = Message::new_user(content);
+        self.send_json(&message).await
+    }
+
+    pub async fn initialize(&self, hooks: Option<serde_json::Value>) -> Result<(), ExecutorError> {
+        self.send_json(&SDKControlRequest::new(SDKControlRequestType::Initialize {
+            hooks,
+        }))
+        .await
+    }
+    pub async fn interrupt(&self) -> Result<(), ExecutorError> {
+        self.send_json(&SDKControlRequest::new(SDKControlRequestType::Interrupt {}))
+            .await
+    }
+
+    pub async fn set_permission_mode(&self, mode: PermissionMode) -> Result<(), ExecutorError> {
+        self.send_json(&SDKControlRequest::new(
+            SDKControlRequestType::SetPermissionMode { mode },
+        ))
+        .await
     }
 }
