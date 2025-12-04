@@ -5,7 +5,10 @@ import { useLogStream } from '@/hooks/useLogStream';
 import RawLogText from '@/components/common/RawLogText';
 import type { PatchType } from 'shared/types';
 
-export type LogEntry = Extract<PatchType, { type: 'STDOUT' } | { type: 'STDERR' }>;
+export type LogEntry = Extract<
+  PatchType,
+  { type: 'STDOUT' } | { type: 'STDERR' }
+>;
 
 interface ProcessLogsViewerProps {
   processId: string;

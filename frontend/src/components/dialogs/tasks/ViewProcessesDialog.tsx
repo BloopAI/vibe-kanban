@@ -96,7 +96,10 @@ const ViewProcessesDialogImpl = NiceModal.create<ViewProcessesDialogProps>(
           </DialogHeader>
           <div className="h-[75vh] flex flex-col min-h-0 min-w-0">
             <ProcessSelectionProvider initialProcessId={initialProcessId}>
-              <ProcessesTab attemptId={attemptId} onLogsChange={handleLogsChange} />
+              <ProcessesTab
+                attemptId={attemptId}
+                onLogsChange={handleLogsChange}
+              />
             </ProcessSelectionProvider>
           </div>
         </DialogContent>
