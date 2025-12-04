@@ -46,7 +46,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.89.0
+          toolchain: nightly-2025-12-04
           components: rustfmt, clippy
 
       - name: Cache Rust dependencies

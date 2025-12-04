@@ -26,7 +26,7 @@ permissions:
 env:
   NODE_VERSION: 22
   PNPM_VERSION: 10.13.1
-  RUST_TOOLCHAIN: 1.89.0
+  RUST_TOOLCHAIN: nightly-2025-12-04
 
 jobs:
   bump-version:
