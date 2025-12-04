@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{Executor, FromRow, Sqlite};
+use sqlx::{Executor, FromRow, Sqlite, SqlitePool};
 use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
@@ -27,6 +27,42 @@ pub struct Repo {
 }
 
 impl Repo {
+    pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Repo,
+            r#"SELECT id as "id!: Uuid",
+                      path,
+                      name,
+                      created_at as "created_at!: DateTime<Utc>",
+                      updated_at as "updated_at!: DateTime<Utc>"
+               FROM repos
+               WHERE id = $1"#,
+            id
+        )
+        .fetch_optional(pool)
+        .await
+    }
+
+    pub async fn find_by_attempt_id(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Repo,
+            r#"SELECT r.id as "id!: Uuid",
+                      r.path,
+                      r.name,
+                      r.created_at as "created_at!: DateTime<Utc>",
+                      r.updated_at as "updated_at!: DateTime<Utc>"
+               FROM repos r
+               JOIN attempt_repos ar ON r.id = ar.repo_id
+               WHERE ar.attempt_id = $1"#,
+            attempt_id
+        )
+        .fetch_all(pool)
+        .await
+    }
+
     pub async fn find_or_create<'e, E>(
         executor: E,
         path: &Path,
