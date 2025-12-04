@@ -99,7 +99,7 @@ function WYSIWYGEditor({
       namespace: 'md-wysiwyg',
       onError: console.error,
       theme: {
-        paragraph: 'mb-2 last:mb-0 text-sm',
+        paragraph: 'mb-2 last:mb-0',
         heading: {
           h1: 'mt-4 mb-2 text-2xl font-semibold',
           h2: 'mt-3 mb-2 text-xl font-semibold',
@@ -126,7 +126,7 @@ function WYSIWYGEditor({
           strikethrough: 'line-through',
           code: 'font-mono bg-muted px-1 py-0.5 rounded',
         },
-        code: 'block font-mono text-sm bg-secondary rounded-md px-3 py-2 my-2 whitespace-pre overflow-x-auto',
+        code: 'block font-mono bg-secondary rounded-md px-3 py-2 my-2 whitespace-pre overflow-x-auto',
         codeHighlight: CODE_HIGHLIGHT_CLASSES,
       },
       nodes: [
@@ -187,7 +187,7 @@ function WYSIWYGEditor({
   );
 
   const editorContent = (
-    <div className="wysiwyg">
+    <div className="wysiwyg text-sm">
       <TaskAttemptContext.Provider value={taskAttemptId}>
         <TaskContext.Provider value={taskId}>
           <LocalImagesContext.Provider value={localImages ?? []}>
