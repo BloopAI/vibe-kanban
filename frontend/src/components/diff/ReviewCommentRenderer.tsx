@@ -47,6 +47,7 @@ export function ReviewCommentRenderer({
           className="w-full bg-background text-foreground text-sm font-mono min-h-[60px]"
           projectId={projectId}
           onCmdEnter={handleSave}
+          autoFocus
         />
         <div className="mt-2 flex gap-2">
           <Button size="xs" onClick={handleSave} disabled={!editText.trim()}>

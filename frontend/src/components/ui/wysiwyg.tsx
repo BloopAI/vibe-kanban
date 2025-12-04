@@ -2,6 +2,7 @@ import { useMemo, useState, useCallback, memo } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
+import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
 import { TRANSFORMERS, INLINE_CODE, type Transformer } from '@lexical/markdown';
@@ -62,6 +63,8 @@ type WysiwygProps = {
   onEdit?: () => void;
   /** Optional delete callback - shows delete button in read-only mode when provided */
   onDelete?: () => void;
+  /** Auto-focus the editor on mount */
+  autoFocus?: boolean;
 };
 
 function WYSIWYGEditor({
@@ -80,6 +83,7 @@ function WYSIWYGEditor({
   localImages,
   onEdit,
   onDelete,
+  autoFocus = false,
 }: WysiwygProps) {
   // Copy button state
   const [copied, setCopied] = useState(false);
@@ -225,6 +229,7 @@ function WYSIWYGEditor({
               {/* Only include editing plugins when not in read-only mode */}
               {!disabled && (
                 <>
+                  {autoFocus && <AutoFocusPlugin />}
                   <HistoryPlugin />
                   <MarkdownShortcutPlugin transformers={extendedTransformers} />
                   <FileTagTypeaheadPlugin projectId={projectId} />
