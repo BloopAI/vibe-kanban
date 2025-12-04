@@ -183,7 +183,12 @@
     "unqueuing": "Unqueuing…",
     "queue": "キューに追加",
     "cancelQueue": "キューをキャンセル",
-    "queuedMessage": "メッセージがキューに追加されました - 現在の実行が完了すると実行されます"
+    "queuedMessage": "メッセージがキューに追加されました - 現在の実行が完了すると実行されます",
+    "runSetupScript": "セットアップスクリプトを実行",
+    "runCleanupScript": "クリーンアップスクリプトを実行",
+    "noSetupScript": "このプロジェクトにセットアップスクリプトが設定されていません",
+    "noCleanupScript": "このプロジェクトにクリーンアップスクリプトが設定されていません",
+    "scriptsDisabledWhileRunning": "プロセス実行中はスクリプトを実行できません"
   },
   "git": {
     "branch": {

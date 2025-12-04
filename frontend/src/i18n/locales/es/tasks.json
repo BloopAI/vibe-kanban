@@ -183,7 +183,12 @@
     "unqueuing": "Unqueuing…",
     "queue": "Encolar",
     "cancelQueue": "Cancelar cola",
-    "queuedMessage": "Mensaje en cola - se ejecutará cuando finalice la ejecución actual"
+    "queuedMessage": "Mensaje en cola - se ejecutará cuando finalice la ejecución actual",
+    "runSetupScript": "Ejecutar script de configuración",
+    "runCleanupScript": "Ejecutar script de limpieza",
+    "noSetupScript": "No hay script de configuración configurado para este proyecto",
+    "noCleanupScript": "No hay script de limpieza configurado para este proyecto",
+    "scriptsDisabledWhileRunning": "No se pueden ejecutar scripts mientras un proceso está en ejecución"
   },
   "git": {
     "branch": {
