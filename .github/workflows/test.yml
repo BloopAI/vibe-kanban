@@ -60,6 +60,9 @@ jobs:
           shared-key: "shared"
           cache-all-crates: true
 
+      - name: Install sqlx-cli
+        run: cargo install sqlx-cli --no-default-features --features sqlite,postgres
+
       - name: Build frontend
         run: cd frontend && npm run build
         env:
