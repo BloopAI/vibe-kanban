@@ -47,8 +47,6 @@ type WysiwygProps = {
   onChange?: (state: SerializedEditorState) => void;
   onEditorStateChange?: (s: EditorState) => void;
   disabled?: boolean;
-  /** Show skeleton loading state instead of editor content */
-  loading?: boolean;
   onPasteFiles?: (files: File[]) => void;
   className?: string;
   projectId?: string; // for file search in typeahead
@@ -72,7 +70,6 @@ function WYSIWYGEditor({
   onChange,
   onEditorStateChange,
   disabled = false,
-  loading = false,
   onPasteFiles,
   className,
   projectId,
@@ -188,19 +185,6 @@ function WYSIWYGEditor({
       ) : null,
     [disabled, placeholder]
   );
-
-  // Render skeleton loading state
-  if (loading) {
-    return (
-      <div className={cn('wysiwyg min-h-[200px]', className)}>
-        <div className="space-y-2 animate-pulse">
-          <div className="h-4 bg-foreground/10 rounded w-full" />
-          <div className="h-4 bg-foreground/10 rounded w-5/6" />
-          <div className="h-4 bg-foreground/10 rounded w-4/6" />
-        </div>
-      </div>
-    );
-  }
 
   const editorContent = (
     <div className="wysiwyg">
