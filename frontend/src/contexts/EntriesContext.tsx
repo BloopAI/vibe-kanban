@@ -4,6 +4,7 @@ import {
   useState,
   useMemo,
   useCallback,
+  useEffect,
   ReactNode,
 } from 'react';
 import type { PatchTypeWithKey } from '@/hooks/useConversationHistory';
@@ -18,9 +19,13 @@ const EntriesContext = createContext<EntriesContextType | null>(null);
 
 interface EntriesProviderProps {
   children: ReactNode;
+  attemptId?: string;
 }
 
-export const EntriesProvider = ({ children }: EntriesProviderProps) => {
+export const EntriesProvider = ({
+  children,
+  attemptId,
+}: EntriesProviderProps) => {
   const [entries, setEntriesState] = useState<PatchTypeWithKey[]>([]);
 
   const setEntries = useCallback((newEntries: PatchTypeWithKey[]) => {
@@ -30,6 +35,11 @@ export const EntriesProvider = ({ children }: EntriesProviderProps) => {
   const reset = useCallback(() => {
     setEntriesState([]);
   }, []);
+
+  // Reset entries when attemptId changes
+  useEffect(() => {
+    reset();
+  }, [attemptId, reset]);
 
   const value = useMemo(
     () => ({

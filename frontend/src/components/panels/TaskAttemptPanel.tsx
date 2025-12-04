@@ -25,7 +25,7 @@ const TaskAttemptPanel = ({
   }
 
   return (
-    <EntriesProvider key={attempt.id}>
+    <EntriesProvider attemptId={attempt.id}>
       <RetryUiProvider attemptId={attempt.id}>
         {children({
           logs: (
