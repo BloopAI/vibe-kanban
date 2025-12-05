@@ -197,6 +197,62 @@ impl GitService {
         }
     }
 
+    /// Get all remotes (name, url) from a git repository
+    pub fn get_remotes(&self, repo_path: &Path) -> Result<Vec<(String, String)>, GitServiceError> {
+        let repo = Repository::open(repo_path)?;
+        let mut remotes = Vec::new();
+
+        if let Ok(remote_names) = repo.remotes() {
+            for name in remote_names.iter().flatten() {
+                if let Ok(remote) = repo.find_remote(name) {
+                    if let Some(url) = remote.url() {
+                        remotes.push((name.to_string(), url.to_string()));
+                    }
+                }
+            }
+        }
+
+        Ok(remotes)
+    }
+
+    /// Extract the branch name from a full git ref
+    /// e.g., "refs/remotes/origin/main" -> "main"
+    /// e.g., "refs/heads/feature/foo" -> "feature/foo"
+    pub fn ref_to_branch_name(git_ref: &str) -> String {
+        if let Some(branch) = git_ref.strip_prefix("refs/remotes/") {
+            // Remote ref: refs/remotes/origin/main -> main (strip remote name too)
+            branch
+                .split_once('/')
+                .map(|(_, b)| b.to_string())
+                .unwrap_or_else(|| branch.to_string())
+        } else if let Some(branch) = git_ref.strip_prefix("refs/heads/") {
+            // Local ref: refs/heads/feature/foo -> feature/foo
+            branch.to_string()
+        } else {
+            // Fallback: return as-is
+            git_ref.to_string()
+        }
+    }
+
+    /// Extract the remote name from a full git ref, if it's a remote ref
+    /// e.g., "refs/remotes/origin/main" -> Some("origin")
+    /// e.g., "refs/heads/main" -> None
+    pub fn ref_to_remote_name(git_ref: &str) -> Option<String> {
+        git_ref.strip_prefix("refs/remotes/").and_then(|rest| {
+            rest.split_once('/').map(|(remote, _)| remote.to_string())
+        })
+    }
+
+    /// Check if a ref is a remote ref
+    pub fn is_remote_ref(git_ref: &str) -> bool {
+        git_ref.starts_with("refs/remotes/")
+    }
+
+    /// Check if a ref is a local ref
+    pub fn is_local_ref(git_ref: &str) -> bool {
+        git_ref.starts_with("refs/heads/")
+    }
+
     /// Initialize a new git repository with a main branch and initial commit
     pub fn initialize_repo_with_main_branch(
         &self,

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\",\n                      attempt_id as \"attempt_id!: Uuid\",\n                      repo_id as \"repo_id!: Uuid\",\n                      target_branch,\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM attempt_repos\n               WHERE attempt_id = $1",
+  "query": "SELECT id as \"id!: Uuid\",\n                      attempt_id as \"attempt_id!: Uuid\",\n                      repo_id as \"repo_id!: Uuid\",\n                      target_branch_ref,\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM attempt_repos\n               WHERE attempt_id = $1",
   "describe": {
     "columns": [
       {
@@ -19,7 +19,7 @@
         "type_info": "Blob"
       },
       {
-        "name": "target_branch",
+        "name": "target_branch_ref",
         "ordinal": 3,
         "type_info": "Text"
       },
@@ -46,5 +46,5 @@
       false
     ]
   },
-  "hash": "7e319778faa593b7a88ad15e68ef86bf4e3ebc46e6cd0bc23238b8fc289a1ab3"
+  "hash": "4bab0b4390d202831ad4f45b3b815c28d723becc5ffbce7cf21705274c122b52"
 }

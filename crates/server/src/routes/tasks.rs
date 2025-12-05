@@ -140,7 +140,8 @@ pub async fn create_task(
 pub struct CreateAndStartTaskRequest {
     pub task: CreateTask,
     pub executor_profile_id: ExecutorProfileId,
-    pub base_branch: String,
+    /// Full git ref for the base branch, e.g., "refs/remotes/origin/main"
+    pub base_branch_ref: String,
 }
 
 pub async fn create_task_and_start(
@@ -194,7 +195,7 @@ pub async fn create_task_and_start(
         .iter()
         .map(|repo| CreateAttemptRepo {
             repo_id: repo.id,
-            target_branch: payload.base_branch.clone(),
+            target_branch_ref: payload.base_branch_ref.clone(),
         })
         .collect();
     AttemptRepo::create_many(&deployment.db().pool, task_attempt.id, &attempt_repos).await?;

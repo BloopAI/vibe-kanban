@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE attempt_repos SET target_branch_ref = $1, updated_at = datetime('now') WHERE attempt_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "65299f8800e6f6ad1903654e0b7ea58ee2604c22cfaacc5ea5c46a7e60d09bb1"
+}

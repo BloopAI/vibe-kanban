@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE attempt_repos\n               SET target_branch_ref = $1, updated_at = datetime('now')\n               WHERE target_branch_ref = $2\n                 AND attempt_id IN (\n                     SELECT ta.id FROM task_attempts ta\n                     JOIN tasks t ON ta.task_id = t.id\n                     WHERE t.parent_task_attempt = $3\n                 )",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "b3b8139508e32cd009e1dacaec6d4c62673d379c9b339b56571440719e326c69"
+}

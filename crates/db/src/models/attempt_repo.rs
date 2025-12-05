@@ -9,7 +9,7 @@ pub struct AttemptRepo {
     pub id: Uuid,
     pub attempt_id: Uuid,
     pub repo_id: Uuid,
-    pub target_branch: String,
+    pub target_branch_ref: String,
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
     #[ts(type = "Date")]
@@ -19,7 +19,7 @@ pub struct AttemptRepo {
 #[derive(Debug, Clone, Deserialize, TS)]
 pub struct CreateAttemptRepo {
     pub repo_id: Uuid,
-    pub target_branch: String,
+    pub target_branch_ref: String,
 }
 
 impl AttemptRepo {
@@ -34,18 +34,18 @@ impl AttemptRepo {
             let id = Uuid::new_v4();
             let attempt_repo = sqlx::query_as!(
                 AttemptRepo,
-                r#"INSERT INTO attempt_repos (id, attempt_id, repo_id, target_branch)
+                r#"INSERT INTO attempt_repos (id, attempt_id, repo_id, target_branch_ref)
                    VALUES ($1, $2, $3, $4)
                    RETURNING id as "id!: Uuid",
                              attempt_id as "attempt_id!: Uuid",
                              repo_id as "repo_id!: Uuid",
-                             target_branch,
+                             target_branch_ref,
                              created_at as "created_at!: DateTime<Utc>",
                              updated_at as "updated_at!: DateTime<Utc>""#,
                 id,
                 attempt_id,
                 repo.repo_id,
-                repo.target_branch
+                repo.target_branch_ref
             )
             .fetch_one(pool)
             .await?;
@@ -64,7 +64,7 @@ impl AttemptRepo {
             r#"SELECT id as "id!: Uuid",
                       attempt_id as "attempt_id!: Uuid",
                       repo_id as "repo_id!: Uuid",
-                      target_branch,
+                      target_branch_ref,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM attempt_repos
@@ -85,7 +85,7 @@ impl AttemptRepo {
             r#"SELECT id as "id!: Uuid",
                       attempt_id as "attempt_id!: Uuid",
                       repo_id as "repo_id!: Uuid",
-                      target_branch,
+                      target_branch_ref,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM attempt_repos
@@ -97,15 +97,15 @@ impl AttemptRepo {
         .await
     }
 
-    pub async fn update_target_branch(
+    pub async fn update_target_branch_ref(
         pool: &SqlitePool,
         attempt_id: Uuid,
         repo_id: Uuid,
-        new_target_branch: &str,
+        new_target_branch_ref: &str,
     ) -> Result<(), sqlx::Error> {
         sqlx::query!(
-            "UPDATE attempt_repos SET target_branch = $1, updated_at = datetime('now') WHERE attempt_id = $2 AND repo_id = $3",
-            new_target_branch,
+            "UPDATE attempt_repos SET target_branch_ref = $1, updated_at = datetime('now') WHERE attempt_id = $2 AND repo_id = $3",
+            new_target_branch_ref,
             attempt_id,
             repo_id
         )
@@ -114,14 +114,14 @@ impl AttemptRepo {
         Ok(())
     }
 
-    pub async fn update_all_target_branches(
+    pub async fn update_all_target_branch_refs(
         pool: &SqlitePool,
         attempt_id: Uuid,
-        new_target_branch: &str,
+        new_target_branch_ref: &str,
     ) -> Result<u64, sqlx::Error> {
         let result = sqlx::query!(
-            "UPDATE attempt_repos SET target_branch = $1, updated_at = datetime('now') WHERE attempt_id = $2",
-            new_target_branch,
+            "UPDATE attempt_repos SET target_branch_ref = $1, updated_at = datetime('now') WHERE attempt_id = $2",
+            new_target_branch_ref,
             attempt_id
         )
         .execute(pool)
@@ -129,23 +129,23 @@ impl AttemptRepo {
         Ok(result.rows_affected())
     }
 
-    pub async fn update_target_branch_for_children_of_attempt(
+    pub async fn update_target_branch_ref_for_children_of_attempt(
         pool: &SqlitePool,
         parent_attempt_id: Uuid,
-        old_branch: &str,
-        new_branch: &str,
+        old_branch_ref: &str,
+        new_branch_ref: &str,
     ) -> Result<u64, sqlx::Error> {
         let result = sqlx::query!(
             r#"UPDATE attempt_repos
-               SET target_branch = $1, updated_at = datetime('now')
-               WHERE target_branch = $2
+               SET target_branch_ref = $1, updated_at = datetime('now')
+               WHERE target_branch_ref = $2
                  AND attempt_id IN (
                      SELECT ta.id FROM task_attempts ta
                      JOIN tasks t ON ta.task_id = t.id
                      WHERE t.parent_task_attempt = $3
                  )"#,
-            new_branch,
-            old_branch,
+            new_branch_ref,
+            old_branch_ref,
             parent_attempt_id
         )
         .execute(pool)
