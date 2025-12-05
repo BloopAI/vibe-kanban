@@ -6,7 +6,6 @@
 
 /* 1) THEME TOKENS scoped to .new-design */
 @layer base {
-
   /* Light defaults - New Design */
   .new-design {
     color-scheme: light;
@@ -148,22 +147,32 @@
     --popover-foreground: var(--foreground);
 
     --primary: var(--vscode-button-background, var(--_primary));
-    --primary-foreground: var(--vscode-editor-foreground,
-        var(--_primary-foreground));
+    --primary-foreground: var(
+      --vscode-editor-foreground,
+      var(--_primary-foreground)
+    );
     --secondary: var(--vscode-input-background, var(--_secondary));
-    --secondary-foreground: var(--vscode-input-foreground,
-        var(--_secondary-foreground));
+    --secondary-foreground: var(
+      --vscode-input-foreground,
+      var(--_secondary-foreground)
+    );
 
     --muted: var(--vscode-editor-background, var(--_muted));
-    --muted-foreground: var(--vscode-descriptionForeground,
-        var(--_muted-foreground));
+    --muted-foreground: var(
+      --vscode-descriptionForeground,
+      var(--_muted-foreground)
+    );
     --accent: var(--vscode-focusBorder, var(--_accent));
-    --accent-foreground: var(--vscode-editor-foreground,
-        var(--_accent-foreground));
+    --accent-foreground: var(
+      --vscode-editor-foreground,
+      var(--_accent-foreground)
+    );
 
     --destructive: var(--vscode-errorForeground, var(--_destructive));
-    --destructive-foreground: var(--vscode-button-foreground,
-        var(--_destructive-foreground));
+    --destructive-foreground: var(
+      --vscode-button-foreground,
+      var(--_destructive-foreground)
+    );
 
     --border: var(--vscode-input-background, var(--_border));
     --input: var(--vscode-input-background, var(--_input));
@@ -173,24 +182,36 @@
 
     /* Status */
     --success: var(--vscode-testing-iconPassed, var(--_success));
-    --success-foreground: var(--vscode-editor-foreground,
-        var(--_success-foreground));
+    --success-foreground: var(
+      --vscode-editor-foreground,
+      var(--_success-foreground)
+    );
     --warning: var(--vscode-testing-iconQueued, var(--_warning));
-    --warning-foreground: var(--vscode-descriptionForeground,
-        var(--_warning-foreground));
+    --warning-foreground: var(
+      --vscode-descriptionForeground,
+      var(--_warning-foreground)
+    );
     --info: var(--vscode-focusBorder, var(--_info));
     --info-foreground: var(--vscode-editor-foreground, var(--_info-foreground));
     --neutral: var(--vscode-input-background, var(--_neutral));
-    --neutral-foreground: var(--vscode-editor-foreground,
-        var(--_neutral-foreground));
+    --neutral-foreground: var(
+      --vscode-editor-foreground,
+      var(--_neutral-foreground)
+    );
 
     /* Console/terminal */
-    --console-background: var(--vscode-editor-background,
-        var(--_console-background));
-    --console-foreground: var(--vscode-terminal-foreground,
-        var(--_console-foreground));
-    --console-success: var(--vscode-testing-iconPassed,
-        var(--_console-success));
+    --console-background: var(
+      --vscode-editor-background,
+      var(--_console-background)
+    );
+    --console-foreground: var(
+      --vscode-terminal-foreground,
+      var(--_console-foreground)
+    );
+    --console-success: var(
+      --vscode-testing-iconPassed,
+      var(--_console-success)
+    );
     --console-error: var(--vscode-terminal-ansiRed, var(--_console-error));
 
     /* Syntax highlighting */
@@ -208,7 +229,6 @@
 
 /* 3) Base styles scoped to .new-design */
 @layer base {
-
   .new-design *,
   .new-design *::before,
   .new-design *::after {
