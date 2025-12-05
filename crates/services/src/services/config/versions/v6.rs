@@ -19,6 +19,7 @@ pub enum UiLanguage {
     Ja, // Force Japanese
     Es, // Force Spanish
     Ko, // Force Korean
+    ZhHans, // Force Simplified Chinese
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
