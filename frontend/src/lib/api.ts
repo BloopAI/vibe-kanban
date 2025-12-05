@@ -532,6 +532,11 @@ export const attemptsApi = {
     return handleApiResponse<BranchStatus[]>(response);
   },
 
+  getRepos: async (attemptId: string): Promise<Repo[]> => {
+    const response = await makeRequest(`/api/task-attempts/${attemptId}/repos`);
+    return handleApiResponse<Repo[]>(response);
+  },
+
   merge: async (attemptId: string): Promise<void> => {
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/merge`,

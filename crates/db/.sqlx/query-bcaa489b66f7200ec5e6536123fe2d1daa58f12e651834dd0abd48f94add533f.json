@@ -31,12 +31,12 @@
       {
         "name": "worktree_deleted!: bool",
         "ordinal": 5,
-        "type_info": "Integer"
+        "type_info": "Bool"
       },
       {
         "name": "setup_completed_at: DateTime<Utc>",
         "ordinal": 6,
-        "type_info": "Text"
+        "type_info": "Datetime"
       },
       {
         "name": "created_at!: DateTime<Utc>",
@@ -57,7 +57,7 @@
       false,
       true,
       false,
-      false,
+      true,
       false,
       true,
       false,

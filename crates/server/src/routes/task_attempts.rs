@@ -24,6 +24,7 @@ use db::models::{
     merge::{Merge, MergeStatus, PrMerge, PullRequestInfo},
     project::{Project, ProjectError},
     project_repo::ProjectRepo,
+    repo::{Repo, RepoError},
     scratch::{Scratch, ScratchType},
     task::{Task, TaskRelationships, TaskStatus},
     task_attempt::{CreateTaskAttempt, TaskAttempt, TaskAttemptError},
@@ -104,6 +105,7 @@ pub enum GitOperationError {
 pub struct CreateGitHubPrRequest {
     pub title: String,
     pub body: Option<String>,
+    pub repo_id: Uuid,
     pub target_branch: Option<String>,
 }
 
@@ -656,26 +658,7 @@ pub async fn create_github_pr(
     Json(request): Json<CreateGitHubPrRequest>,
 ) -> Result<ResponseJson<ApiResponse<String, CreatePrError>>, ApiError> {
     let pool = &deployment.db().pool;
-    let github_config = deployment.config().read().await.github.clone();
 
-    // Get the target branch: from request, or from attempt repos, or from config default
-    let target_branch = if let Some(branch) = request.target_branch {
-        branch
-    } else if let Ok(stored_branch) = get_first_target_branch(pool, task_attempt.id).await {
-        if !stored_branch.trim().is_empty() {
-            stored_branch
-        } else {
-            github_config
-                .default_pr_base
-                .as_ref()
-                .map_or_else(|| "main".to_string(), |b| b.to_string())
-        }
-    } else {
-        github_config
-            .default_pr_base
-            .as_ref()
-            .map_or_else(|| "main".to_string(), |b| b.to_string())
-    };
     let task = task_attempt
         .parent_task(pool)
         .await?
@@ -683,9 +666,26 @@ pub async fn create_github_pr(
     let project = Project::find_by_id(pool, task.project_id)
         .await?
         .ok_or(ApiError::Project(ProjectError::ProjectNotFound))?;
-    let repo_path = get_first_repo_path(pool, project.id).await?;
+
+    let attempt_repo =
+        AttemptRepo::find_by_attempt_and_repo_id(pool, task_attempt.id, request.repo_id)
+            .await?
+            .ok_or(RepoError::NotFound)?;
+
+    let repo = Repo::find_by_id(pool, attempt_repo.repo_id)
+        .await?
+        .ok_or(RepoError::NotFound)?;
+
+    let repo_path = repo.path;
+    // Get the target branch: from request, or from attempt repo
+    let target_branch = if let Some(branch) = request.target_branch {
+        branch
+    } else {
+        attempt_repo.target_branch.clone()
+    };
 
     let workspace_path = ensure_worktree_path(&deployment, &task_attempt).await?;
+    let worktree_path = workspace_path.join(repo.name);
 
     match deployment
         .git()
@@ -715,7 +715,7 @@ pub async fn create_github_pr(
     // Push the branch to GitHub first
     if let Err(e) = deployment
         .git()
-        .push_to_github(&workspace_path, &task_attempt.branch, false)
+        .push_to_github(&worktree_path, &task_attempt.branch, false)
     {
         tracing::error!("Failed to push branch to GitHub: {}", e);
         match e {
@@ -743,7 +743,7 @@ pub async fn create_github_pr(
         // For PR APIs, we must provide just the branch name.
         let remote = deployment
             .git()
-            .get_remote_name_from_branch_name(&workspace_path, &target_branch)?;
+            .get_remote_name_from_branch_name(&worktree_path, &target_branch)?;
         let remote_prefix = format!("{}/", remote);
         target_branch
             .strip_prefix(&remote_prefix)
@@ -1756,6 +1756,17 @@ pub async fn gh_cli_setup_handler(
     }
 }
 
+pub async fn get_task_attempt_repos(
+    Extension(task_attempt): Extension<TaskAttempt>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<Repo>>>, ApiError> {
+    let pool = &deployment.db().pool;
+
+    let repos = Repo::find_by_attempt_id(pool, task_attempt.id).await?;
+
+    Ok(ResponseJson(ApiResponse::success(repos)))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_attempt_id_router = Router::new()
         .route("/", get(get_task_attempt))
@@ -1780,6 +1791,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/stop", post(stop_task_attempt_execution))
         .route("/change-target-branch", post(change_target_branch))
         .route("/rename-branch", post(rename_branch))
+        .route("/repos", get(get_task_attempt_repos))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_task_attempt_middleware,

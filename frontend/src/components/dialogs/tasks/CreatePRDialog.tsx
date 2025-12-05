@@ -38,10 +38,11 @@ interface CreatePRDialogProps {
   attempt: TaskAttempt;
   task: TaskWithAttemptStatus;
   projectId: string;
+  repoId: string;
 }
 
 const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
-  ({ attempt, task, projectId }) => {
+  ({ attempt, task, projectId, repoId }) => {
     const modal = useModal();
     const { t } = useTranslation('tasks');
     const { isLoaded } = useAuth();
@@ -132,6 +133,7 @@ const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
         title: prTitle,
         body: prBody || null,
         target_branch: prBaseBranch || null,
+        repo_id: repoId,
       });
 
       if (result.success) {
