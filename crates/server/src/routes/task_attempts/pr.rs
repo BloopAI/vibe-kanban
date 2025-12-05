@@ -24,7 +24,7 @@ use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use super::{get_first_repo_path, get_first_target_branch, util::ensure_worktree_path};
+use super::{get_first_repo_path, get_first_target_branch};
 use crate::{DeploymentImpl, error::ApiError};
 
 #[derive(Debug, Deserialize, Serialize, TS)]
@@ -178,7 +178,11 @@ pub async fn create_github_pr(
         attempt_repo.target_branch.clone()
     };
 
-    let workspace_path = ensure_worktree_path(&deployment, &task_attempt).await?;
+    let container_ref = deployment
+        .container()
+        .ensure_container_exists(&task_attempt)
+        .await?;
+    let workspace_path = std::path::PathBuf::from(&container_ref);
     let worktree_path = workspace_path.join(repo.name);
 
     match deployment

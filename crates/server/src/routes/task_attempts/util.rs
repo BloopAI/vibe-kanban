@@ -9,18 +9,6 @@ use uuid::Uuid;
 
 use crate::error::ApiError;
 
-/// Resolve and ensure the worktree path for a task attempt.
-pub async fn ensure_worktree_path(
-    deployment: &crate::DeploymentImpl,
-    attempt: &db::models::task_attempt::TaskAttempt,
-) -> Result<std::path::PathBuf, ApiError> {
-    let container_ref = deployment
-        .container()
-        .ensure_container_exists(attempt)
-        .await?;
-    Ok(std::path::PathBuf::from(container_ref))
-}
-
 /// Reset all repository worktrees to the state before the given process.
 /// For each repo, finds the before_head_commit from the target process,
 /// or falls back to the previous process's after_head_commit.
@@ -40,8 +28,11 @@ pub async fn restore_worktrees_to_process(
     let repo_states =
         ExecutionProcessRepoState::find_by_execution_process_id(pool, target_process_id).await?;
 
-    // Get workspace directory (container_ref)
-    let workspace_dir = ensure_worktree_path(deployment, task_attempt).await?;
+    let container_ref = deployment
+        .container()
+        .ensure_container_exists(task_attempt)
+        .await?;
+    let workspace_dir = std::path::PathBuf::from(container_ref);
 
     // Check if workspace is dirty (any repo has uncommitted changes)
     let is_dirty = deployment
