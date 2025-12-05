@@ -13,7 +13,10 @@ use ignore::{
     WalkBuilder,
     gitignore::{Gitignore, GitignoreBuilder},
 };
-use notify::{RecommendedWatcher, RecursiveMode};
+use notify::{
+    RecommendedWatcher, RecursiveMode,
+    event::{EventKind, ModifyKind, RenameMode},
+};
 use notify_debouncer_full::{
     DebounceEventResult, DebouncedEvent, Debouncer, RecommendedCache, new_debouncer,
 };
@@ -441,6 +444,73 @@ pub fn async_watcher(root: PathBuf) -> Result<WatcherComponents, FilesystemWatch
                         } else if event.kind.is_remove() {
                             for path in &event.paths {
                                 remove_directory_watch(&mut debouncer_guard, &mut watched, path);
+                            }
+                        } else if let EventKind::Modify(ModifyKind::Name(mode)) = &event.kind {
+                            match mode {
+                                RenameMode::From => {
+                                    for path in &event.paths {
+                                        remove_directory_watch(
+                                            &mut debouncer_guard,
+                                            &mut watched,
+                                            path,
+                                        );
+                                    }
+                                }
+                                RenameMode::To => {
+                                    for path in &event.paths {
+                                        if path.is_dir() {
+                                            add_directory_watch(
+                                                &mut debouncer_guard,
+                                                &mut watched,
+                                                path,
+                                                &gi_clone,
+                                                &root_for_task,
+                                            );
+                                        }
+                                    }
+                                }
+                                RenameMode::Both => {
+                                    if let Some((from, rest)) = event.paths.split_first() {
+                                        remove_directory_watch(
+                                            &mut debouncer_guard,
+                                            &mut watched,
+                                            from,
+                                        );
+
+                                        if let Some(to) = rest.last() {
+                                            if to.is_dir() {
+                                                add_directory_watch(
+                                                    &mut debouncer_guard,
+                                                    &mut watched,
+                                                    to,
+                                                    &gi_clone,
+                                                    &root_for_task,
+                                                );
+                                            }
+                                        }
+                                    }
+                                }
+                                RenameMode::Any | RenameMode::Other => {
+                                    for path in &event.paths {
+                                        remove_directory_watch(
+                                            &mut debouncer_guard,
+                                            &mut watched,
+                                            path,
+                                        );
+                                    }
+
+                                    for path in &event.paths {
+                                        if path.is_dir() {
+                                            add_directory_watch(
+                                                &mut debouncer_guard,
+                                                &mut watched,
+                                                path,
+                                                &gi_clone,
+                                                &root_for_task,
+                                            );
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
