@@ -220,7 +220,11 @@ export type ShareTaskResponse = { shared_task_id: string, };
 
 export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id: ExecutorProfileId, base_branch: string, };
 
+<<<<<<< HEAD
 export type CreateGitHubPrRequest = { title: string, body: string | null, target_branch: string | null, draft: boolean | null, auto_generate_description: boolean, };
+=======
+export type CreateGitHubPrRequest = { title: string, body: string | null, repo_id: string, target_branch: string | null, draft: boolean | null, };
+>>>>>>> f2dc2b36 (Move repo selection to frontend for create PR (#1436))
 
 export type ImageResponse = { id: string, file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, created_at: string, updated_at: string, };
 
