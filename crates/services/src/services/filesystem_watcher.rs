@@ -178,6 +178,65 @@ struct WatchTarget {
     recursive: RecursiveMode,
 }
 
+#[derive(Default)]
+struct WatchedDirs {
+    all: HashSet<PathBuf>,
+    recursive: HashSet<PathBuf>,
+}
+
+impl WatchedDirs {
+    fn contains(&self, path: &Path) -> bool {
+        self.all.contains(path)
+    }
+
+    fn has_recursive_cover(&self, path: &Path) -> bool {
+        self.recursive
+            .iter()
+            .any(|ancestor| ancestor != path && path.starts_with(ancestor))
+    }
+
+    fn insert(&mut self, path: PathBuf, mode: RecursiveMode) {
+        if matches!(mode, RecursiveMode::Recursive) {
+            self.recursive.insert(path.clone());
+        } else {
+            self.recursive.remove(&path);
+        }
+        self.all.insert(path);
+    }
+
+    fn remove_dir_and_children<F>(&mut self, prefix: &Path, f: F)
+    where
+        F: FnMut(&Path),
+    {
+        self.remove_with_prefix(prefix, true, f);
+    }
+
+    fn remove_children_only<F>(&mut self, prefix: &Path, f: F)
+    where
+        F: FnMut(&Path),
+    {
+        self.remove_with_prefix(prefix, false, f);
+    }
+
+    fn remove_with_prefix<F>(&mut self, prefix: &Path, include_prefix: bool, mut f: F)
+    where
+        F: FnMut(&Path),
+    {
+        let to_remove: Vec<PathBuf> = self
+            .all
+            .iter()
+            .filter(|path| path.starts_with(prefix) && (include_prefix || *path != prefix))
+            .cloned()
+            .collect();
+
+        for path in to_remove {
+            self.all.remove(&path);
+            self.recursive.remove(&path);
+            f(&path);
+        }
+    }
+}
+
 /// Check if a directory or any of its descendants has gitignored directories.
 /// Used on macOS/Windows to determine if we can watch recursively.
 ///
@@ -349,48 +408,51 @@ fn determine_watch_mode(path: &Path, gi: &Gitignore, canonical_root: &Path) -> R
 /// Add a watch for a newly created directory
 fn add_directory_watch(
     debouncer: &mut Debouncer<RecommendedWatcher, RecommendedCache>,
-    watched_dirs: &mut HashSet<PathBuf>,
+    watched_dirs: &mut WatchedDirs,
     dir_path: &Path,
     gi: &Gitignore,
     canonical_root: &Path,
 ) {
-    if !path_allowed(dir_path, gi, canonical_root) {
+    let canonical_dir = canonicalize_lossy(dir_path);
+
+    if !path_allowed(&canonical_dir, gi, canonical_root) {
         return;
     }
 
-    if watched_dirs.contains(dir_path) {
+    if watched_dirs.contains(&canonical_dir) || watched_dirs.has_recursive_cover(&canonical_dir) {
         return;
     }
 
-    let mode = determine_watch_mode(dir_path, gi, canonical_root);
+    let mode = determine_watch_mode(&canonical_dir, gi, canonical_root);
 
-    if let Err(e) = debouncer.watch(dir_path, mode) {
-        tracing::warn!("Failed to watch new directory {:?}: {}", dir_path, e);
+    if let Err(e) = debouncer.watch(&canonical_dir, mode) {
+        tracing::warn!("Failed to watch new directory {:?}: {}", canonical_dir, e);
     } else {
-        watched_dirs.insert(dir_path.to_path_buf());
+        if matches!(mode, RecursiveMode::Recursive) {
+            watched_dirs.remove_children_only(&canonical_dir, |child| {
+                if let Err(err) = debouncer.unwatch(child) {
+                    tracing::warn!("Could not unwatch covered directory {:?}: {}", child, err);
+                }
+            });
+        }
+
+        watched_dirs.insert(canonical_dir, mode);
     }
 }
 
 /// Remove a watch for a deleted directory
 fn remove_directory_watch(
     debouncer: &mut Debouncer<RecommendedWatcher, RecommendedCache>,
-    watched_dirs: &mut HashSet<PathBuf>,
+    watched_dirs: &mut WatchedDirs,
     dir_path: &Path,
 ) {
     let canonical_dir = canonicalize_lossy(dir_path);
 
-    let to_remove: Vec<PathBuf> = watched_dirs
-        .iter()
-        .filter(|path| path.starts_with(&canonical_dir))
-        .cloned()
-        .collect();
-
-    for path in to_remove {
-        watched_dirs.remove(&path);
-        if let Err(e) = debouncer.unwatch(&path) {
+    watched_dirs.remove_dir_and_children(&canonical_dir, |path| {
+        if let Err(e) = debouncer.unwatch(path) {
             tracing::warn!("Could not unwatch deleted directory {:?}: {}", path, e);
         }
-    }
+    });
 }
 
 pub fn async_watcher(root: PathBuf) -> Result<WatcherComponents, FilesystemWatcherError> {
@@ -419,7 +481,7 @@ pub fn async_watcher(root: PathBuf) -> Result<WatcherComponents, FilesystemWatch
     let debouncer_for_init = debouncer.clone();
     let debouncer_for_task = Arc::downgrade(&debouncer);
 
-    let watched_dirs: Arc<Mutex<HashSet<PathBuf>>> = Arc::new(Mutex::new(HashSet::new()));
+    let watched_dirs: Arc<Mutex<WatchedDirs>> = Arc::new(Mutex::new(WatchedDirs::default()));
     let watched_dirs_for_task = watched_dirs.clone();
 
     let watch_targets = collect_watch_directories(&canonical_root, &gi_set);
@@ -431,7 +493,7 @@ pub fn async_watcher(root: PathBuf) -> Result<WatcherComponents, FilesystemWatch
             if let Err(e) = debouncer_guard.watch(&target.path, target.recursive) {
                 tracing::warn!("Failed to watch {:?}: {}", target.path, e);
             } else {
-                watched.insert(target.path.clone());
+                watched.insert(target.path.clone(), target.recursive);
             }
         }
     }
