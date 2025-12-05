@@ -599,8 +599,14 @@ export function TaskFollowUpSection({
     refetchAttemptBranch,
   ]);
 
-  if (!selectedAttemptId) {
-    return null;
+  if (!selectedAttemptId) return null;
+
+  if (isScratchLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="animate-spin h-6 w-6" />
+      </div>
+    );
   }
 
   return (
