@@ -4,6 +4,8 @@ use sqlx::{FromRow, SqlitePool};
 use ts_rs::TS;
 use uuid::Uuid;
 
+use super::repo::Repo;
+
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
 pub struct AttemptRepo {
     pub id: Uuid,
@@ -69,6 +71,27 @@ impl AttemptRepo {
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM attempt_repos
                WHERE attempt_id = $1"#,
+            attempt_id
+        )
+        .fetch_all(pool)
+        .await
+    }
+
+    pub async fn find_repos_for_attempt(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+    ) -> Result<Vec<Repo>, sqlx::Error> {
+        sqlx::query_as!(
+            Repo,
+            r#"SELECT r.id as "id!: Uuid",
+                      r.path,
+                      r.name,
+                      r.created_at as "created_at!: DateTime<Utc>",
+                      r.updated_at as "updated_at!: DateTime<Utc>"
+               FROM repos r
+               JOIN attempt_repos ar ON r.id = ar.repo_id
+               WHERE ar.attempt_id = $1
+               ORDER BY r.name ASC"#,
             attempt_id
         )
         .fetch_all(pool)
