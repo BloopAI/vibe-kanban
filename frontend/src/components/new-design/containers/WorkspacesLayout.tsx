@@ -10,7 +10,7 @@ export function WorkspacesLayout() {
     workspaces.find((w) => w.id === selectedWorkspaceId) ?? null;
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen divide-x divide-border">
       <WorkspacesSidebar
         workspaces={workspaces}
         selectedWorkspaceId={selectedWorkspaceId}
