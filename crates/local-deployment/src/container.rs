@@ -18,8 +18,6 @@ use db::{
         },
         execution_process_repo_state::ExecutionProcessRepoState,
         executor_session::ExecutorSession,
-        project::Project,
-        project_repo::ProjectRepo,
         repo::Repo,
         scratch::{DraftFollowUpData, Scratch, ScratchType},
         task::{Task, TaskStatus},
@@ -903,11 +901,12 @@ impl ContainerService for LocalContainerService {
             .await?
             .ok_or(sqlx::Error::RowNotFound)?;
 
-        let repositories = ProjectRepo::find_repos_for_project(&self.db.pool, project.id).await?;
+        let repositories =
+            AttemptRepo::find_repos_for_attempt(&self.db.pool, task_attempt.id).await?;
 
         if repositories.is_empty() {
             return Err(ContainerError::Other(anyhow!(
-                "Project has no repositories configured"
+                "Attempt has no repositories configured"
             )));
         }
 
@@ -919,10 +918,9 @@ impl ContainerService for LocalContainerService {
 
         let workspace_inputs: Vec<RepoWorkspaceInput> = repositories
             .iter()
-            .filter_map(|repo| {
-                target_branches
-                    .get(&repo.id)
-                    .map(|tb| RepoWorkspaceInput::new(repo.clone(), tb.clone()))
+            .map(|repo| {
+                let target_branch = target_branches.get(&repo.id).cloned().unwrap_or_default();
+                RepoWorkspaceInput::new(repo.clone(), target_branch)
             })
             .collect();
 
@@ -974,29 +972,17 @@ impl ContainerService for LocalContainerService {
 
     async fn delete_inner(&self, task_attempt: &TaskAttempt) -> Result<(), ContainerError> {
         // cleanup the container, here that means deleting the workspace with all worktrees
-        let task = task_attempt
-            .parent_task(&self.db.pool)
-            .await?
-            .ok_or(sqlx::Error::RowNotFound)?;
-
         let workspace_dir = PathBuf::from(task_attempt.container_ref.clone().unwrap_or_default());
 
         // Get repositories for cleanup
-        let repositories = match Project::find_by_id(&self.db.pool, task.project_id).await {
-            Ok(Some(project)) => ProjectRepo::find_repos_for_project(&self.db.pool, project.id)
-                .await
-                .unwrap_or_default(),
-            Ok(None) => Vec::new(),
-            Err(e) => {
-                tracing::error!("Failed to fetch project {}: {}", task.project_id, e);
-                Vec::new()
-            }
-        };
+        let repositories = AttemptRepo::find_repos_for_attempt(&self.db.pool, task_attempt.id)
+            .await
+            .unwrap_or_default();
 
         if repositories.is_empty() {
             tracing::warn!(
-                "No repositories found for project {}, cleaning up workspace directory only",
-                task.project_id
+                "No repositories found for attempt {}, cleaning up workspace directory only",
+                task_attempt.id
             );
             if workspace_dir.exists()
                 && let Err(e) = tokio::fs::remove_dir_all(&workspace_dir).await
@@ -1022,23 +1008,13 @@ impl ContainerService for LocalContainerService {
         &self,
         task_attempt: &TaskAttempt,
     ) -> Result<ContainerRef, ContainerError> {
-        // Get required context
-        let task = task_attempt
-            .parent_task(&self.db.pool)
-            .await?
-            .ok_or(sqlx::Error::RowNotFound)?;
-
-        let project = task
-            .parent_project(&self.db.pool)
-            .await?
-            .ok_or(sqlx::Error::RowNotFound)?;
-
         let container_ref = task_attempt.container_ref.as_ref().ok_or_else(|| {
             ContainerError::Other(anyhow!("Container ref not found for task attempt"))
         })?;
         let workspace_dir = PathBuf::from(container_ref);
 
-        let repositories = ProjectRepo::find_repos_for_project(&self.db.pool, project.id).await?;
+        let repositories =
+            AttemptRepo::find_repos_for_attempt(&self.db.pool, task_attempt.id).await?;
 
         if repositories.is_empty() {
             return Err(ContainerError::Other(anyhow!(
@@ -1066,17 +1042,8 @@ impl ContainerService for LocalContainerService {
             return Ok(true);
         }
 
-        let task = task_attempt
-            .parent_task(&self.db.pool)
-            .await?
-            .ok_or(ContainerError::Other(anyhow!("Task not found")))?;
-
-        let project = task
-            .parent_project(&self.db.pool)
-            .await?
-            .ok_or(ContainerError::Other(anyhow!("Project not found")))?;
-
-        let repositories = ProjectRepo::find_repos_for_project(&self.db.pool, project.id).await?;
+        let repositories =
+            AttemptRepo::find_repos_for_attempt(&self.db.pool, task_attempt.id).await?;
 
         for repo in &repositories {
             let worktree_path = workspace_dir.join(&repo.name);
@@ -1277,24 +1244,14 @@ impl ContainerService for LocalContainerService {
         stats_only: bool,
     ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, ContainerError>
     {
-        // Get the task and project to fetch repositories
-        let task = task_attempt
-            .parent_task(&self.db.pool)
-            .await?
-            .ok_or(ContainerError::Other(anyhow!("Task not found")))?;
-
-        let project = task
-            .parent_project(&self.db.pool)
-            .await?
-            .ok_or(ContainerError::Other(anyhow!("Project not found")))?;
-
-        let repositories = ProjectRepo::find_repos_for_project(&self.db.pool, project.id).await?;
-
         let attempt_repos = AttemptRepo::find_by_attempt_id(&self.db.pool, task_attempt.id).await?;
         let target_branches: HashMap<_, _> = attempt_repos
             .iter()
             .map(|ar| (ar.repo_id, ar.target_branch.clone()))
             .collect();
+
+        let repositories =
+            AttemptRepo::find_repos_for_attempt(&self.db.pool, task_attempt.id).await?;
 
         let mut streams = Vec::new();
 
