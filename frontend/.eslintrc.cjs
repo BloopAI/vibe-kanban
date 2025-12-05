@@ -180,5 +180,87 @@ module.exports = {
         'no-restricted-syntax': 'off',
       },
     },
+    {
+      // View components in new-design/views/ - strict presentation rules (no logic)
+      files: ['src/components/new-design/views/**/*.tsx'],
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            paths: [
+              {
+                name: '@/lib/api',
+                message: 'View components cannot import API. Pass data via props.',
+              },
+              {
+                name: '@tanstack/react-query',
+                importNames: ['useQuery', 'useMutation', 'useQueryClient', 'useInfiniteQuery'],
+                message: 'View components cannot use data fetching hooks. Pass data via props.',
+              },
+            ],
+          },
+        ],
+        'no-restricted-syntax': [
+          'error',
+          {
+            selector: 'CallExpression[callee.name="useState"]',
+            message: 'View components should not manage state. Use controlled props.',
+          },
+          {
+            selector: 'CallExpression[callee.name="useReducer"]',
+            message: 'View components should not use useReducer. Use container component.',
+          },
+          {
+            selector: 'CallExpression[callee.name="useContext"]',
+            message: 'View components should not consume context. Pass data via props.',
+          },
+          {
+            selector: 'CallExpression[callee.name="useQuery"]',
+            message: 'View components should not fetch data. Pass data via props.',
+          },
+          {
+            selector: 'CallExpression[callee.name="useMutation"]',
+            message: 'View components should not mutate data. Pass callbacks via props.',
+          },
+          {
+            selector: 'CallExpression[callee.name="useInfiniteQuery"]',
+            message: 'View components should not fetch data. Pass data via props.',
+          },
+          {
+            selector: 'CallExpression[callee.name="useEffect"]',
+            message: 'View components should avoid side effects. Move to container.',
+          },
+          {
+            selector: 'CallExpression[callee.name="useLayoutEffect"]',
+            message: 'View components should avoid layout effects. Move to container.',
+          },
+          {
+            selector: 'CallExpression[callee.name="useCallback"]',
+            message: 'View components should receive callbacks via props.',
+          },
+          {
+            selector: 'CallExpression[callee.name="useNavigate"]',
+            message: 'View components should not handle navigation. Pass callbacks via props.',
+          },
+        ],
+      },
+    },
+    {
+      // Logic hooks in new-design/hooks/ - no JSX allowed
+      files: ['src/components/new-design/hooks/**/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-syntax': [
+          'error',
+          {
+            selector: 'JSXElement',
+            message: 'Logic hooks must not contain JSX. Return data and callbacks only.',
+          },
+          {
+            selector: 'JSXFragment',
+            message: 'Logic hooks must not contain JSX fragments.',
+          },
+        ],
+      },
+    },
   ],
 };
