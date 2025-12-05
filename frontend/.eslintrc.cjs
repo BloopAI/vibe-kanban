@@ -168,8 +168,13 @@ module.exports = {
       },
     },
     {
-      // Allow NiceModal usage in lib/modals.ts, App.tsx (for Provider), and dialog component files
-      files: ['src/lib/modals.ts', 'src/App.tsx', 'src/components/dialogs/**/*.{ts,tsx}'],
+      // Allow NiceModal usage in lib/modals.ts, design scope files (for Provider), and dialog component files
+      files: [
+        'src/lib/modals.ts',
+        'src/components/legacy-design/LegacyDesignScope.tsx',
+        'src/components/new-design/NewDesignScope.tsx',
+        'src/components/dialogs/**/*.{ts,tsx}',
+      ],
       rules: {
         'no-restricted-imports': 'off',
         'no-restricted-syntax': 'off',
