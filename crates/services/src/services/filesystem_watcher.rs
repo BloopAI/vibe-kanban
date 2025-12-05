@@ -141,9 +141,15 @@ fn path_allowed(path: &Path, gi: &Gitignore, canonical_root: &Path) -> bool {
         }
     }
 
-    // Heuristic: assume paths without extensions are directories
-    // This works for most cases and avoids filesystem syscalls
-    let is_dir = relative_path.extension().is_none();
+    let is_dir = if let Ok(metadata) = std::fs::metadata(&canonical_path) {
+        metadata.is_dir()
+    } else {
+        // File may already be gone (e.g., remove event). Fall back to the
+        // old extension heuristic so directory-only rules still match.
+        // FIXME: capture file-type information earlier (e.g., when we add
+        // watches) so we don't have to guess after the fact.
+        relative_path.extension().is_none()
+    };
     let matched = gi.matched_path_or_any_parents(relative_path, is_dir);
 
     !matched.is_ignore()
