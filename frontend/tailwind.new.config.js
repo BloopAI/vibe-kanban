@@ -49,9 +49,9 @@ module.exports = {
         xl: ['1rem', { lineHeight: '1.5rem' }],         // 16px
       },
       spacing: {
-        'padding-half': '0.375rem',   // 6px
-        'padding-base': '0.75rem',    // 12px
-        'padding-double': '1.5rem',   // 24px
+        'half': '0.375rem',   // 6px
+        'base': '0.75rem',    // 12px
+        'double': '1.5rem',   // 24px
       },
       colors: {
         // Text colors: text-high, text-normal, text-low
@@ -69,11 +69,11 @@ module.exports = {
         // shadcn-style colors (used by @apply in CSS base layer)
         background: "hsl(var(--bg-primary))",
         foreground: "hsl(var(--text-high))",
-        border: "hsl(var(--text-low))",
+        border: "hsl(var(--border))",
       },
       borderColor: {
-        DEFAULT: "hsl(var(--text-low))",
-        border: "hsl(var(--text-low))",
+        DEFAULT: "hsl(var(--border))",
+        border: "hsl(var(--border))",
       },
       borderRadius: {
         lg: "var(--radius)",
