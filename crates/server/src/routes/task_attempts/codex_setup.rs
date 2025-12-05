@@ -13,7 +13,7 @@ use executors::{
 };
 use services::services::container::ContainerService;
 
-use crate::{error::ApiError, routes::task_attempts::ensure_worktree_path};
+use crate::error::ApiError;
 
 pub async fn run_codex_setup(
     deployment: &crate::DeploymentImpl,
@@ -38,7 +38,10 @@ pub async fn run_codex_setup(
         get_setup_helper_action(codex).await?
     };
 
-    let _ = ensure_worktree_path(deployment, task_attempt).await?;
+    deployment
+        .container()
+        .ensure_container_exists(task_attempt)
+        .await?;
 
     let execution_process = deployment
         .container()

@@ -56,10 +56,7 @@ use crate::{
     DeploymentImpl,
     error::ApiError,
     middleware::load_task_attempt_middleware,
-    routes::task_attempts::{
-        gh_cli_setup::GhCliSetupError,
-        util::{ensure_worktree_path, restore_worktrees_to_process},
-    },
+    routes::task_attempts::{gh_cli_setup::GhCliSetupError, util::restore_worktrees_to_process},
 };
 
 // TODO: refactor for proper multi-repo support
@@ -269,8 +266,10 @@ pub async fn follow_up(
 ) -> Result<ResponseJson<ApiResponse<ExecutionProcess>>, ApiError> {
     tracing::info!("{:?}", task_attempt);
 
-    // Ensure worktree exists (recreate if needed for cold task support)
-    let _ = ensure_worktree_path(&deployment, &task_attempt).await?;
+    deployment
+        .container()
+        .ensure_container_exists(&task_attempt)
+        .await?;
 
     // Get executor profile data from the latest CodingAgent process
     let initial_executor_profile_id = ExecutionProcess::latest_executor_profile_for_attempt(
@@ -474,8 +473,12 @@ pub async fn compare_commit_to_head(
             "Missing sha param".to_string(),
         )));
     };
-    let wt_buf = ensure_worktree_path(&deployment, &task_attempt).await?;
-    let wt = wt_buf.as_path();
+    let container_ref = deployment
+        .container()
+        .ensure_container_exists(&task_attempt)
+        .await?;
+    let wt = std::path::Path::new(&container_ref);
+    // TODO: this needs a worktree path, not a workspace path
     let subject = deployment.git().get_commit_subject(wt, &target_oid)?;
     let head_info = deployment.git().get_head_info(wt)?;
     let (ahead_from_head, behind_from_head) =
@@ -506,8 +509,11 @@ pub async fn merge_task_attempt(
         .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
     let ctx = TaskAttempt::load_context(pool, task_attempt.id, task.id, task.project_id).await?;
 
-    let worktree_path_buf = ensure_worktree_path(&deployment, &task_attempt).await?;
-    let worktree_path = worktree_path_buf.as_path();
+    let container_ref = deployment
+        .container()
+        .ensure_container_exists(&task_attempt)
+        .await?;
+    let workspace_path = std::path::Path::new(&container_ref);
 
     let task_uuid_str = task.id.to_string();
     let first_uuid_section = task_uuid_str.split('-').next().unwrap_or(&task_uuid_str);
@@ -525,9 +531,10 @@ pub async fn merge_task_attempt(
 
     let repo_path = get_first_repo_path(pool, ctx.project.id).await?;
     let target_branch = get_first_target_branch(pool, task_attempt.id).await?;
+    // TODO: this needs a worktree path, not a workspace path
     let merge_commit_id = deployment.git().merge_changes(
         &repo_path,
-        worktree_path,
+        workspace_path,
         &ctx.task_attempt.branch,
         &target_branch,
         &commit_message,
@@ -598,11 +605,16 @@ pub async fn push_task_attempt_branch(
     let github_service = GitHubService::new()?;
     github_service.check_token().await?;
 
-    let ws_path = ensure_worktree_path(&deployment, &task_attempt).await?;
+    let container_ref = deployment
+        .container()
+        .ensure_container_exists(&task_attempt)
+        .await?;
+    let workspace_path = std::path::PathBuf::from(&container_ref);
 
+    // TODO: this needs a worktree path, not a workspace path
     match deployment
         .git()
-        .push_to_github(&ws_path, &task_attempt.branch, false)
+        .push_to_github(&workspace_path, &task_attempt.branch, false)
     {
         Ok(_) => Ok(ResponseJson(ApiResponse::success(()))),
         Err(GitServiceError::GitCLI(GitCliError::PushRejected(_))) => Ok(ResponseJson(
@@ -619,11 +631,16 @@ pub async fn force_push_task_attempt_branch(
     let github_service = GitHubService::new()?;
     github_service.check_token().await?;
 
-    let ws_path = ensure_worktree_path(&deployment, &task_attempt).await?;
+    let container_ref = deployment
+        .container()
+        .ensure_container_exists(&task_attempt)
+        .await?;
+    let workspace_path = std::path::PathBuf::from(&container_ref);
 
+    // TODO: this needs a worktree path, not a workspace path
     deployment
         .git()
-        .push_to_github(&ws_path, &task_attempt.branch, true)?;
+        .push_to_github(&workspace_path, &task_attempt.branch, true)?;
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
@@ -650,15 +667,17 @@ pub async fn open_task_attempt_in_editor(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<OpenEditorRequest>,
 ) -> Result<ResponseJson<ApiResponse<OpenEditorResponse>>, ApiError> {
-    // Get the task attempt to access the worktree path
-    let base_path_buf = ensure_worktree_path(&deployment, &task_attempt).await?;
-    let base_path = base_path_buf.as_path();
+    let container_ref = deployment
+        .container()
+        .ensure_container_exists(&task_attempt)
+        .await?;
+    let workspace_path = std::path::Path::new(&container_ref);
 
     // If a specific file path is provided, use it; otherwise use the base path
     let path = if let Some(file_path) = payload.file_path.as_ref() {
-        base_path.join(file_path)
+        workspace_path.join(file_path)
     } else {
-        base_path.to_path_buf()
+        workspace_path.to_path_buf()
     };
 
     let editor_config = {
@@ -748,7 +767,11 @@ pub async fn get_task_attempt_branch_status(
         .map(|ar| (ar.repo_id, ar.target_branch.clone()))
         .collect();
 
-    let workspace_dir = ensure_worktree_path(&deployment, &task_attempt).await?;
+    let container_ref = deployment
+        .container()
+        .ensure_container_exists(&task_attempt)
+        .await?;
+    let workspace_dir = std::path::PathBuf::from(&container_ref);
     let merges = Merge::find_by_task_attempt_id(pool, task_attempt.id).await?;
 
     let mut results = Vec::with_capacity(repositories.len());
@@ -985,10 +1008,15 @@ pub async fn rename_branch(
         )));
     }
 
-    let worktree_path_buf = ensure_worktree_path(&deployment, &task_attempt).await?;
-    let worktree_path = worktree_path_buf.as_path();
+    let container_ref = deployment
+        .container()
+        .ensure_container_exists(&task_attempt)
+        .await?;
+    let workspace_path = std::path::Path::new(&container_ref);
 
-    if deployment.git().is_rebase_in_progress(worktree_path)? {
+    // TODO: this needs a worktree path, not a workspace path
+
+    if deployment.git().is_rebase_in_progress(workspace_path)? {
         return Ok(ResponseJson(ApiResponse::error(
             "Cannot rename branch while rebase is in progress. Please complete or abort the rebase first.",
         )));
@@ -1005,7 +1033,7 @@ pub async fn rename_branch(
 
     deployment
         .git()
-        .rename_local_branch(worktree_path, &task_attempt.branch, new_branch_name)?;
+        .rename_local_branch(workspace_path, &task_attempt.branch, new_branch_name)?;
 
     let old_branch = task_attempt.branch.clone();
 
@@ -1086,12 +1114,17 @@ pub async fn rebase_task_attempt(
         }
     }
 
-    let worktree_path_buf = ensure_worktree_path(&deployment, &task_attempt).await?;
-    let worktree_path = worktree_path_buf.as_path();
+    let container_ref = deployment
+        .container()
+        .ensure_container_exists(&task_attempt)
+        .await?;
+    let workspace_path = std::path::Path::new(&container_ref);
+
+    // TODO: this needs a worktree path, not a workspace path
 
     let result = deployment.git().rebase_branch(
         &repo_path,
-        worktree_path,
+        workspace_path,
         &new_base_branch,
         &old_base_branch,
         &task_attempt.branch.clone(),
@@ -1138,10 +1171,15 @@ pub async fn abort_conflicts_task_attempt(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     // Resolve worktree path for this attempt
-    let worktree_path_buf = ensure_worktree_path(&deployment, &task_attempt).await?;
-    let worktree_path = worktree_path_buf.as_path();
+    let container_ref = deployment
+        .container()
+        .ensure_container_exists(&task_attempt)
+        .await?;
+    let workspace_path = std::path::Path::new(&container_ref);
 
-    deployment.git().abort_conflicts(worktree_path)?;
+    // TODO: this needs a worktree path, not a workspace path
+
+    deployment.git().abort_conflicts(workspace_path)?;
 
     Ok(ResponseJson(ApiResponse::success(())))
 }
@@ -1309,8 +1347,10 @@ pub async fn run_setup_script(
         )));
     }
 
-    // Ensure worktree exists
-    let _ = ensure_worktree_path(&deployment, &task_attempt).await?;
+    deployment
+        .container()
+        .ensure_container_exists(&task_attempt)
+        .await?;
 
     // Get parent task and project
     let task = task_attempt
@@ -1380,8 +1420,10 @@ pub async fn run_cleanup_script(
         )));
     }
 
-    // Ensure worktree exists
-    let _ = ensure_worktree_path(&deployment, &task_attempt).await?;
+    deployment
+        .container()
+        .ensure_container_exists(&task_attempt)
+        .await?;
 
     // Get parent task and project
     let task = task_attempt
