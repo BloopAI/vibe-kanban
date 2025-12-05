@@ -239,11 +239,9 @@ fn has_ignored_descendants(
 /// On macOS/Windows, use recursive mode for directories without ignored subdirectories.
 /// On Linux, use non-recursive mode for all directories.
 fn collect_watch_directories(root: &Path, gi: &Gitignore) -> Vec<WatchTarget> {
-    use std::collections::HashSet;
-
     let use_recursive = platform_supports_native_recursive();
 
-    let allowed_dirs: HashSet<PathBuf> = WalkBuilder::new(root)
+    let mut allowed_dirs: Vec<PathBuf> = WalkBuilder::new(root)
         .follow_links(false)
         .hidden(false)
         .git_ignore(true) // Respect gitignore to skip node_modules, target, etc.
@@ -267,13 +265,31 @@ fn collect_watch_directories(root: &Path, gi: &Gitignore) -> Vec<WatchTarget> {
         .map(|entry| entry.into_path())
         .collect();
 
-    let mut ignored_cache = HashMap::new();
+    allowed_dirs.sort();
 
-    let mut targets: Vec<WatchTarget> = allowed_dirs
-        .iter()
-        .map(|path| {
+    let allowed_dirs_set: HashSet<PathBuf> = allowed_dirs.iter().cloned().collect();
+    let mut ignored_cache = HashMap::new();
+    let mut ancestor_stack: Vec<(PathBuf, bool)> = Vec::new();
+
+    allowed_dirs
+        .into_iter()
+        .filter_map(|path| {
+            while ancestor_stack
+                .last()
+                .is_some_and(|(ancestor, _)| !path.starts_with(ancestor))
+            {
+                ancestor_stack.pop();
+            }
+
+            if ancestor_stack
+                .last()
+                .is_some_and(|(_, is_recursive)| *is_recursive)
+            {
+                return None;
+            }
+
             let recursive_mode = if use_recursive {
-                if has_ignored_descendants(path, gi, root, &allowed_dirs, &mut ignored_cache) {
+                if has_ignored_descendants(&path, gi, root, &allowed_dirs_set, &mut ignored_cache) {
                     RecursiveMode::NonRecursive
                 } else {
                     RecursiveMode::Recursive
@@ -282,23 +298,15 @@ fn collect_watch_directories(root: &Path, gi: &Gitignore) -> Vec<WatchTarget> {
                 RecursiveMode::NonRecursive
             };
 
-            WatchTarget {
-                path: path.clone(),
+            let is_recursive = matches!(recursive_mode, RecursiveMode::Recursive);
+            ancestor_stack.push((path.clone(), is_recursive));
+
+            Some(WatchTarget {
+                path,
                 recursive: recursive_mode,
-            }
+            })
         })
-        .collect();
-
-    let targets_clone = targets.clone();
-    targets.retain(|target| {
-        !targets_clone.iter().any(|parent| {
-            parent.recursive == RecursiveMode::Recursive
-                && target.path.starts_with(&parent.path)
-                && target.path != parent.path
-        })
-    });
-
-    targets
+        .collect()
 }
 
 /// Helper to determine watch mode for a directory (used for dynamically added directories).
@@ -477,16 +485,16 @@ pub fn async_watcher(root: PathBuf) -> Result<WatcherComponents, FilesystemWatch
                                             from,
                                         );
 
-                                        if let Some(to) = rest.last() {
-                                            if to.is_dir() {
-                                                add_directory_watch(
-                                                    &mut debouncer_guard,
-                                                    &mut watched,
-                                                    to,
-                                                    &gi_clone,
-                                                    &root_for_task,
-                                                );
-                                            }
+                                        if let Some(to) = rest.last()
+                                            && to.is_dir()
+                                        {
+                                            add_directory_watch(
+                                                &mut debouncer_guard,
+                                                &mut watched,
+                                                to,
+                                                &gi_clone,
+                                                &root_for_task,
+                                            );
                                         }
                                     }
                                 }
