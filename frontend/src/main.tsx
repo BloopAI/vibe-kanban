@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
-import './styles/index.css';
+// CSS is now imported by design scope components (LegacyDesignScope, NewDesignScope)
 import { ClickToComponent } from 'click-to-react-component';
 import { VibeKanbanWebCompanion } from 'vibe-kanban-web-companion';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';

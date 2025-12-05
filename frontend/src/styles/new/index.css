@@ -1,29 +1,29 @@
-@import url('https://fonts.googleapis.com/css2?family=Chivo+Mono:ital,wght@0,100..900;1,100..900&family=Noto+Emoji:wght@300..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,100..700;1,100..700&family=IBM+Plex+Mono:ital,wght@0,100..700;1,100..700&family=Noto+Emoji:wght@300..700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* 1) THEME TOKENS (underscored): defaults + classes control these */
+/* 1) THEME TOKENS scoped to .new-design */
 @layer base {
-  /* Light defaults */
-  :root {
+  /* Light defaults - New Design */
+  .new-design {
     color-scheme: light;
-    --_background: 48 33% 97%;
-    --_foreground: 222.2 84% 4.9%;
-    --_primary: var(--_muted);
-    --_primary-foreground: var(--_muted-foreground);
-    --_secondary: var(--_muted);
-    --_secondary-foreground: 215.4 16.3% 70.9%;
-    --_muted: 0 0% 100%;
-    --_muted-foreground: var(--_foreground);
-    --_accent: var(--_background);
-    --_accent-foreground: 222.2 84% 4.9%;
+    --_background: 0 0% 100%;
+    --_foreground: 240 10% 3.9%;
+    --_primary: 240 5.9% 10%;
+    --_primary-foreground: 0 0% 98%;
+    --_secondary: 240 4.8% 95.9%;
+    --_secondary-foreground: 240 5.9% 10%;
+    --_muted: 240 4.8% 95.9%;
+    --_muted-foreground: 240 3.8% 46.1%;
+    --_accent: 240 4.8% 95.9%;
+    --_accent-foreground: 240 5.9% 10%;
     --_destructive: 0 84.2% 60.2%;
-    --_destructive-foreground: var(--_background);
-    --_border: 214.3 31.8% 91.4%;
-    --_input: var(--_border);
-    --_ring: 222.2 84% 4.9%;
+    --_destructive-foreground: 0 0% 98%;
+    --_border: 240 5.9% 90%;
+    --_input: 240 5.9% 90%;
+    --_ring: 240 5.9% 10%;
     --_radius: 0.5rem;
 
     /* Status (light) */
@@ -38,11 +38,11 @@
 
     /* Console (light) */
     --_console-background: 0 0% 100%;
-    --_console-foreground: 222.2 84% 4.9%;
+    --_console-foreground: 240 10% 3.9%;
     --_console-success: 138 69% 45%;
     --_console-error: 5 100% 69%;
 
-    /* Syntax highlighting (light - GitHub) */
+    /* Syntax highlighting (light) */
     --_syntax-keyword: #d73a49;
     --_syntax-function: #6f42c1;
     --_syntax-constant: #005cc5;
@@ -54,24 +54,25 @@
     --_syntax-deleted: #b31d28;
   }
 
-  /* Dark defaults (used if no theme class but user prefers dark) */
-  .dark {
+  /* Dark mode - handles both .new-design.dark and .dark .new-design */
+  .new-design.dark,
+  .dark .new-design {
     color-scheme: dark;
-    --_background: 48 4% 16%;
-    --_foreground: 48 7% 85%;
-    --_primary: var(--_muted);
-    --_primary-foreground: var(--_muted-foreground);
-    --_secondary: var(--_muted);
-    --_secondary-foreground: 48 2% 65%;
-    --_muted: 60 2% 18%;
-    --_muted-foreground: var(--_foreground);
-    --_accent: var(--_background);
-    --_accent-foreground: 210 40% 98%;
-    --_destructive: 0 45% 55%;
-    --_destructive-foreground: var(--_background-foreground);
-    --_border: 60 2% 25%;
-    --_input: var(--_border);
-    --_ring: 212.7 26.8% 83.9%;
+    --_background: 240 10% 3.9%;
+    --_foreground: 0 0% 98%;
+    --_primary: 0 0% 98%;
+    --_primary-foreground: 240 5.9% 10%;
+    --_secondary: 240 3.7% 15.9%;
+    --_secondary-foreground: 0 0% 98%;
+    --_muted: 240 3.7% 15.9%;
+    --_muted-foreground: 240 5% 64.9%;
+    --_accent: 240 3.7% 15.9%;
+    --_accent-foreground: 0 0% 98%;
+    --_destructive: 0 62.8% 30.6%;
+    --_destructive-foreground: 0 0% 98%;
+    --_border: 240 3.7% 15.9%;
+    --_input: 240 3.7% 15.9%;
+    --_ring: 240 4.9% 83.9%;
 
     /* Status (dark) */
     --_success: 138.5 76.5% 47.7%;
@@ -89,7 +90,7 @@
     --_console-success: 138.5 76.5% 47.7%;
     --_console-error: 0 84.2% 60.2%;
 
-    /* Syntax highlighting (dark - GitHub Dark) */
+    /* Syntax highlighting (dark) */
     --_syntax-keyword: #ff7b72;
     --_syntax-function: #d2a8ff;
     --_syntax-constant: #79c0ff;
@@ -102,9 +103,9 @@
   }
 }
 
-/* 2) PUBLIC TOKENS: prefer VS Code, else fall back to theme tokens */
+/* 2) PUBLIC TOKENS scoped to .new-design */
 @layer base {
-  :root {
+  .new-design {
     --background: var(--vscode-editor-background, var(--_background));
     --foreground: var(--vscode-editor-foreground, var(--_foreground));
 
@@ -194,9 +195,11 @@
   }
 }
 
-/* 3) Usage */
+/* 3) Base styles scoped to .new-design */
 @layer base {
-  * {
+  .new-design *,
+  .new-design *::before,
+  .new-design *::after {
     @apply border-border;
   }
 
@@ -206,15 +209,15 @@
     @apply min-h-screen;
   }
 
-  body {
-    @apply bg-background text-foreground font-chivo-mono;
+  .new-design {
+    @apply bg-background text-foreground font-ibm-plex-sans;
   }
 
-  *:focus {
+  .new-design *:focus {
     @apply ring-inset;
   }
 
-  .logo {
+  .new-design .logo {
     @apply fill-foreground;
   }
 }
@@ -297,3 +300,5 @@
     @apply underline;
   }
 }
+
+@config '../../../tailwind.new.config.js';

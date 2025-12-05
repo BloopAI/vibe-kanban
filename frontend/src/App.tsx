@@ -6,6 +6,7 @@ import { Projects } from '@/pages/Projects';
 import { ProjectTasks } from '@/pages/ProjectTasks';
 import { FullAttemptLogsPage } from '@/pages/FullAttemptLogs';
 import { NormalLayout } from '@/components/layout/NormalLayout';
+import { NewDesignLayout } from '@/components/layout/NewDesignLayout';
 import { usePostHog } from 'posthog-js/react';
 import { useAuth } from '@/hooks';
 import { usePreviousPath } from '@/hooks/usePreviousPath';
@@ -34,6 +35,13 @@ import { OnboardingDialog } from '@/components/dialogs/global/OnboardingDialog';
 import { ReleaseNotesDialog } from '@/components/dialogs/global/ReleaseNotesDialog';
 import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
 import NiceModal from '@ebay/nice-modal-react';
+
+// Design scope components
+import { LegacyDesignScope } from '@/components/legacy-design/LegacyDesignScope';
+import { NewDesignScope } from '@/components/new-design/NewDesignScope';
+
+// New design pages
+import { NewProjects } from '@/pages/new-design/NewProjects';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
@@ -121,13 +129,24 @@ function AppContent() {
         <SearchProvider>
           <div className="h-screen flex flex-col bg-background">
             <SentryRoutes>
+              {/* ========== LEGACY DESIGN ROUTES ========== */}
               {/* VS Code full-page logs route (outside NormalLayout for minimal UI) */}
               <Route
                 path="/projects/:projectId/tasks/:taskId/attempts/:attemptId/full"
-                element={<FullAttemptLogsPage />}
+                element={
+                  <LegacyDesignScope>
+                    <FullAttemptLogsPage />
+                  </LegacyDesignScope>
+                }
               />
 
-              <Route element={<NormalLayout />}>
+              <Route
+                element={
+                  <LegacyDesignScope>
+                    <NormalLayout />
+                  </LegacyDesignScope>
+                }
+              >
                 <Route path="/" element={<Projects />} />
                 <Route path="/projects" element={<Projects />} />
                 <Route path="/projects/:projectId" element={<Projects />} />
@@ -158,6 +177,19 @@ function AppContent() {
                   path="/projects/:projectId/tasks/:taskId/attempts/:attemptId"
                   element={<ProjectTasks />}
                 />
+              </Route>
+
+              {/* ========== NEW DESIGN ROUTES ========== */}
+              <Route
+                path="/new"
+                element={
+                  <NewDesignScope>
+                    <NewDesignLayout />
+                  </NewDesignScope>
+                }
+              >
+                <Route index element={<NewProjects />} />
+                <Route path="projects" element={<NewProjects />} />
               </Route>
             </SentryRoutes>
           </div>
