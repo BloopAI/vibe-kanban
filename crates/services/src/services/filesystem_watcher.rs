@@ -387,6 +387,8 @@ fn remove_directory_watch(
 pub fn async_watcher(root: PathBuf) -> Result<WatcherComponents, FilesystemWatcherError> {
     let canonical_root = canonicalize_lossy(&root);
     let gi_set = Arc::new(build_gitignore_set(&canonical_root)?);
+    // NOTE: changes to .gitignore aren’t picked up until the watcher is rebuilt.
+    // Recomputing on every change would require rebuilding the full watcher fleet.
 
     let (mut raw_tx, mut raw_rx) = channel::<DebounceEventResult>(64);
     let (mut filtered_tx, filtered_rx) = channel::<DebounceEventResult>(64);
