@@ -39,7 +39,7 @@ import { LegacyDesignScope } from '@/components/legacy-design/LegacyDesignScope'
 import { NewDesignScope } from '@/components/new-design/NewDesignScope';
 
 // New design pages
-import { NewProjects } from '@/pages/new-design/NewProjects';
+import { Workspaces } from '@/pages/new-design/Workspaces';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
@@ -183,8 +183,8 @@ function AppContent() {
                   </NewDesignScope>
                 }
               >
-                <Route index element={<NewProjects />} />
-                <Route path="projects" element={<NewProjects />} />
+                <Route index element={<Workspaces />} />
+                <Route path="workspaces" element={<Workspaces />} />
               </Route>
             </SentryRoutes>
           </div>

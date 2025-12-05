@@ -52,6 +52,21 @@
     --_syntax-tag: #22863a;
     --_syntax-punctuation: #24292e;
     --_syntax-deleted: #b31d28;
+
+    /* Text (light) */
+    --text-high: 240 10% 3.9%;
+    --text-normal: 240 5% 26%;
+    --text-low: 240 4% 46%;
+
+    /* Background (light) */
+    --bg-primary: 0 0% 100%;
+    --bg-secondary: 240 4.8% 95.9%;
+    --bg-panel: 240 5% 92%;
+
+    /* Accent (light) */
+    --brand: 25 82% 54%;
+    --error: 0 84.2% 60.2%;
+    --success: 142.1 76.2% 36.3%;
   }
 
   /* Dark mode - handles both .new-design.dark and .dark .new-design */
@@ -59,20 +74,47 @@
   .dark .new-design {
     color-scheme: dark;
 
-    /* Text */
-    --text-high: 0 0% 96%; /* #F5F5F5 */
-    --text-normal: 0 0% 77%; /* #C5C5C5 */
-    --text-low: 0 0% 39%; /* #636363 */
+    /* Internal variables (dark) - needed for public tokens */
+    --_background: 0 0% 13%;
+    --_foreground: 0 0% 96%;
+    --_primary: 240 4.8% 95.9%;
+    --_primary-foreground: 240 5.9% 10%;
+    --_secondary: 0 0% 12%;
+    --_secondary-foreground: 0 0% 77%;
+    --_muted: 0 0% 16%;
+    --_muted-foreground: 0 0% 64%;
+    --_accent: 0 0% 20%;
+    --_accent-foreground: 0 0% 96%;
+    --_destructive: 0 59% 57%;
+    --_destructive-foreground: 0 0% 96%;
+    --_border: 0 0% 20%;
+    --_input: 0 0% 20%;
+    --_ring: 0 0% 77%;
 
-    /* Background */
-    --bg-primary: 0 0% 13%; /* #212121 */
-    --bg-secondary: 0 0% 12%; /* #1E1E1E */
-    --bg-panel: 0 0% 16%; /* #292929 */
+    /* Status (dark) */
+    --_success: 117 38% 50%;
+    --_success-foreground: 117 38% 90%;
+    --_warning: 32.2 95% 44.1%;
+    --_warning-foreground: 32.2 95% 90%;
+    --_info: 217.2 91.2% 59.8%;
+    --_info-foreground: 217.2 91.2% 90%;
+    --_neutral: 0 0% 20%;
+    --_neutral-foreground: 0 0% 90%;
 
-    /* Colour */
-    --brand: 25 82% 54%; /* #E97828 */
-    --error: 0 59% 57%; /* #D25151 */
-    --success: 117 38% 50%; /* #56B052 */
+    /* Text (dark) */
+    --text-high: 0 0% 96%;
+    --text-normal: 0 0% 77%;
+    --text-low: 0 0% 39%;
+
+    /* Background (dark) */
+    --bg-primary: 0 0% 13%;
+    --bg-secondary: 0 0% 12%;
+    --bg-panel: 0 0% 16%;
+
+    /* Accent (dark) */
+    --brand: 25 82% 54%;
+    --error: 0 59% 57%;
+    --success: 117 38% 50%;
 
     /* Console (dark) */
     --_console-background: 0 0% 0%;
