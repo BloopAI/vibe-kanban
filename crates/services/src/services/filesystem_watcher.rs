@@ -377,7 +377,7 @@ pub fn async_watcher(root: PathBuf) -> Result<WatcherComponents, FilesystemWatch
 
     let debouncer = Arc::new(Mutex::new(debouncer_unwrapped));
     let debouncer_for_init = debouncer.clone();
-    let debouncer_for_task = debouncer.clone();
+    let debouncer_for_task = Arc::downgrade(&debouncer);
 
     let watched_dirs: Arc<Mutex<HashSet<PathBuf>>> = Arc::new(Mutex::new(HashSet::new()));
     let watched_dirs_for_task = watched_dirs.clone();
@@ -398,9 +398,13 @@ pub fn async_watcher(root: PathBuf) -> Result<WatcherComponents, FilesystemWatch
 
     std::thread::spawn(move || {
         while let Some(result) = futures::executor::block_on(async { raw_rx.next().await }) {
+            let Some(debouncer_arc) = debouncer_for_task.upgrade() else {
+                break;
+            };
+
             match result {
                 Ok(events) => {
-                    let mut debouncer_guard = debouncer_for_task.lock().unwrap();
+                    let mut debouncer_guard = debouncer_arc.lock().unwrap();
                     let mut watched = watched_dirs_for_task.lock().unwrap();
 
                     for event in &events {
