@@ -26,7 +26,7 @@ export function WorkspacesMain({
   }
 
   return (
-    <main className="flex-1 bg-primary p-padding-double">
+    <main className="flex-1 bg-primary p-base">
       <header className="mb-padding-double">
         <h1 className="text-2xl font-bold text-high">
           {selectedWorkspace.name}
