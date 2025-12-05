@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use services::services::container::ContainerService;
 use ts_rs::TS;
 
-use crate::{error::ApiError, routes::task_attempts::ensure_worktree_path};
+use crate::error::ApiError;
 
 #[derive(Debug, Serialize, Deserialize, TS)]
 #[ts(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -32,7 +32,10 @@ pub async fn run_gh_cli_setup(
 ) -> Result<ExecutionProcess, ApiError> {
     let executor_action = get_gh_cli_setup_helper_action().await?;
 
-    let _ = ensure_worktree_path(deployment, task_attempt).await?;
+    deployment
+        .container()
+        .ensure_container_exists(task_attempt)
+        .await?;
 
     let execution_process = deployment
         .container()

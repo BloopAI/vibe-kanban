@@ -12,13 +12,12 @@ use axum::{
 use db::models::{task::Task, task_attempt::TaskAttempt};
 use deployment::Deployment;
 use serde::Deserialize;
-use services::services::image::ImageError;
+use services::services::{container::ContainerService, image::ImageError};
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use super::util::ensure_worktree_path;
 use crate::{
     DeploymentImpl,
     error::ApiError,
@@ -47,11 +46,14 @@ pub async fn upload_image(
     // Process upload (store in cache, associate with task)
     let image_response = process_image_upload(&deployment, multipart, Some(task.id)).await?;
 
-    // Copy image to worktree immediately
-    let worktree_path = ensure_worktree_path(&deployment, &task_attempt).await?;
+    let container_ref = deployment
+        .container()
+        .ensure_container_exists(&task_attempt)
+        .await?;
+    let workspace_path = std::path::PathBuf::from(container_ref);
     deployment
         .image()
-        .copy_images_by_ids_to_worktree(&worktree_path, &[image_response.id])
+        .copy_images_by_ids_to_worktree(&workspace_path, &[image_response.id])
         .await?;
 
     Ok(ResponseJson(ApiResponse::success(image_response)))
@@ -88,8 +90,12 @@ pub async fn get_image_metadata(
         })));
     }
 
-    let worktree_path = ensure_worktree_path(&deployment, &task_attempt).await?;
-    let full_path = worktree_path.join(&query.path);
+    let container_ref = deployment
+        .container()
+        .ensure_container_exists(&task_attempt)
+        .await?;
+    let workspace_path = std::path::PathBuf::from(container_ref);
+    let full_path = workspace_path.join(&query.path);
 
     // Check if file exists
     let metadata = match tokio::fs::metadata(&full_path).await {
@@ -143,9 +149,13 @@ pub async fn serve_image(
     if path.contains("..") {
         return Err(ApiError::Image(ImageError::NotFound));
     }
+    let container_ref = deployment
+        .container()
+        .ensure_container_exists(&task_attempt)
+        .await?;
+    let workspace_path = std::path::PathBuf::from(container_ref);
 
-    let worktree_path = ensure_worktree_path(&deployment, &task_attempt).await?;
-    let vibe_images_dir = worktree_path.join(utils::path::VIBE_IMAGES_DIR);
+    let vibe_images_dir = workspace_path.join(utils::path::VIBE_IMAGES_DIR);
     let full_path = vibe_images_dir.join(&path);
 
     // Security: Canonicalize and verify path is within .vibe-images
