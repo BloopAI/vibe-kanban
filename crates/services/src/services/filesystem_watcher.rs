@@ -1,5 +1,5 @@
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
     time::Duration,
@@ -179,41 +179,51 @@ fn has_ignored_descendants(
     gi: &Gitignore,
     canonical_root: &Path,
     allowed_dirs: &std::collections::HashSet<PathBuf>,
+    cache: &mut HashMap<PathBuf, bool>,
 ) -> bool {
-    // Read immediate children
-    let Ok(entries) = std::fs::read_dir(dir) else {
-        return false;
-    };
-
-    for entry in entries.flatten() {
-        let Ok(file_type) = entry.file_type() else {
-            continue;
-        };
-
-        if !file_type.is_dir() {
-            continue;
-        }
-
-        let path = entry.path();
-
-        // Check if this subdirectory should be skipped
-        if let Some(name) = path.file_name().and_then(|n| n.to_str())
-            && should_skip_dir(name)
-        {
-            return true;
-        }
-
-        // If it's not in allowed_dirs, it means WalkBuilder skipped it (gitignored)
-        if !allowed_dirs.contains(&path) && !path_allowed(&path, gi, canonical_root) {
-            return true;
-        }
-
-        if has_ignored_descendants(&path, gi, canonical_root, allowed_dirs) {
-            return true;
-        }
+    let key = dir.to_path_buf();
+    if let Some(&cached) = cache.get(&key) {
+        return cached;
     }
 
-    false
+    // Read immediate children
+    let result = (|| {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return false;
+        };
+
+        for entry in entries.flatten() {
+            let Ok(file_type) = entry.file_type() else {
+                continue;
+            };
+
+            if !file_type.is_dir() {
+                continue;
+            }
+
+            let path = entry.path();
+
+            // Check if this subdirectory should be skipped
+            if let Some(name) = path.file_name().and_then(|n| n.to_str())
+                && should_skip_dir(name)
+            {
+                return true;
+            }
+
+            // If it's not in allowed_dirs, it means WalkBuilder skipped it (gitignored)
+            if !allowed_dirs.contains(&path) && !path_allowed(&path, gi, canonical_root) {
+                return true;
+            }
+
+            if has_ignored_descendants(&path, gi, canonical_root, allowed_dirs, cache) {
+                return true;
+            }
+        }
+        false
+    })();
+
+    cache.insert(key, result);
+    result
 }
 
 /// Collect directories to watch, respecting gitignore and excluding .git.
@@ -248,11 +258,13 @@ fn collect_watch_directories(root: &Path, gi: &Gitignore) -> Vec<WatchTarget> {
         .map(|entry| entry.into_path())
         .collect();
 
+    let mut ignored_cache = HashMap::new();
+
     let mut targets: Vec<WatchTarget> = allowed_dirs
         .iter()
         .map(|path| {
             let recursive_mode = if use_recursive {
-                if has_ignored_descendants(path, gi, root, &allowed_dirs) {
+                if has_ignored_descendants(path, gi, root, &allowed_dirs, &mut ignored_cache) {
                     RecursiveMode::NonRecursive
                 } else {
                     RecursiveMode::Recursive
