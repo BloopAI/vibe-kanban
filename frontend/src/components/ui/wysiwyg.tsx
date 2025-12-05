@@ -5,12 +5,10 @@ import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
-import { TRANSFORMERS, INLINE_CODE, type Transformer } from '@lexical/markdown';
+import { TRANSFORMERS, type Transformer } from '@lexical/markdown';
 import { ImageNode } from './wysiwyg/nodes/image-node';
-import { InlineCodeNode } from './wysiwyg/nodes/inline-code-node';
 import { IMAGE_TRANSFORMER } from './wysiwyg/transformers/image-transformer';
 import { CODE_BLOCK_TRANSFORMER } from './wysiwyg/transformers/code-block-transformer';
-import { INLINE_CODE_TRANSFORMER } from './wysiwyg/transformers/inline-code-transformer';
 import {
   TaskAttemptContext,
   TaskContext,
@@ -142,21 +140,14 @@ function WYSIWYGEditor({
         CodeHighlightNode,
         LinkNode,
         ImageNode,
-        InlineCodeNode,
       ],
     }),
     []
   );
 
   // Extended transformers with image and code block support (memoized to prevent unnecessary re-renders)
-  // Filter out default INLINE_CODE to use our custom INLINE_CODE_TRANSFORMER with syntax highlighting
   const extendedTransformers: Transformer[] = useMemo(
-    () => [
-      IMAGE_TRANSFORMER,
-      CODE_BLOCK_TRANSFORMER,
-      INLINE_CODE_TRANSFORMER,
-      ...TRANSFORMERS.filter((t) => t !== INLINE_CODE),
-    ],
+    () => [IMAGE_TRANSFORMER, CODE_BLOCK_TRANSFORMER, ...TRANSFORMERS],
     []
   );
 
