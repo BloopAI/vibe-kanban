@@ -113,6 +113,7 @@ fn generate_types_content() -> String {
         server::routes::images::ImageResponse::decl(),
         server::routes::images::ImageMetadata::decl(),
         server::routes::task_attempts::CreateTaskAttemptBody::decl(),
+        server::routes::task_attempts::RepoBranch::decl(),
         server::routes::task_attempts::RunAgentSetupRequest::decl(),
         server::routes::task_attempts::RunAgentSetupResponse::decl(),
         server::routes::task_attempts::gh_cli_setup::GhCliSetupError::decl(),

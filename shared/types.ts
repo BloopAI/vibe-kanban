@@ -200,7 +200,7 @@ export type ProjectBranchesResponse = { repositories: Array<RepositoryBranches>,
 
 export type CreateFollowUpAttempt = { prompt: string, variant: string | null, retry_process_id: string | null, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };
 
-export type ChangeTargetBranchRequest = { new_target_branch: string, };
+export type ChangeTargetBranchRequest = { new_target_branch: string, repo_id: string, };
 
 export type ChangeTargetBranchResponse = { new_target_branch: string, status: [number, number], };
 
@@ -218,7 +218,7 @@ export type AssignSharedTaskRequest = { new_assignee_user_id: string | null, };
 
 export type ShareTaskResponse = { shared_task_id: string, };
 
-export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id: ExecutorProfileId, base_branch: string, };
+export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id: ExecutorProfileId, base_branches: Array<RepoBranch>, };
 
 export type CreateGitHubPrRequest = { title: string, body: string | null, repo_id: string, target_branch: string | null, };
 
@@ -226,11 +226,9 @@ export type ImageResponse = { id: string, file_path: string, original_name: stri
 
 export type ImageMetadata = { exists: boolean, file_name: string | null, path: string | null, size_bytes: bigint | null, format: string | null, proxy_url: string | null, };
 
-export type CreateTaskAttemptBody = { task_id: string, 
-/**
- * Executor profile specification
- */
-executor_profile_id: ExecutorProfileId, base_branch: string, };
+export type CreateTaskAttemptBody = { task_id: string, executor_profile_id: ExecutorProfileId, base_branches: Array<RepoBranch>, };
+
+export type RepoBranch = { repo_id: string, branch: string, };
 
 export type RunAgentSetupRequest = { executor_profile_id: ExecutorProfileId, };
 

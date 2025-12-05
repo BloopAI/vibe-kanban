@@ -286,6 +286,11 @@ export const projectsApi = {
     return data.repositories.flatMap((r) => r.branches);
   },
 
+  getBranchesByRepo: async (id: string): Promise<ProjectBranchesResponse> => {
+    const response = await makeRequest(`/api/projects/${id}/branches`);
+    return handleApiResponse<ProjectBranchesResponse>(response);
+  },
+
   searchFiles: async (
     id: string,
     query: string,

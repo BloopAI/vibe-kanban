@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use anyhow;
@@ -31,7 +32,7 @@ use ts_rs::TS;
 use utils::{api::oauth::LoginStatus, response::ApiResponse};
 use uuid::Uuid;
 
-use crate::{DeploymentImpl, error::ApiError, middleware::load_task_middleware};
+use crate::{DeploymentImpl, error::ApiError, middleware::load_task_middleware, routes::task_attempts::RepoBranch};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TaskQuery {
@@ -140,7 +141,7 @@ pub async fn create_task(
 pub struct CreateAndStartTaskRequest {
     pub task: CreateTask,
     pub executor_profile_id: ExecutorProfileId,
-    pub base_branch: String,
+    pub base_branches: Vec<RepoBranch>,
 }
 
 pub async fn create_task_and_start(
@@ -190,11 +191,19 @@ pub async fn create_task_and_start(
     )
     .await?;
 
+    let branch_map: HashMap<Uuid, String> = payload
+        .base_branches
+        .iter()
+        .map(|rb| (rb.repo_id, rb.branch.clone()))
+        .collect();
+
     let attempt_repos: Vec<_> = repositories
         .iter()
-        .map(|repo| CreateAttemptRepo {
-            repo_id: repo.id,
-            target_branch: payload.base_branch.clone(),
+        .filter_map(|repo| {
+            branch_map.get(&repo.id).map(|branch| CreateAttemptRepo {
+                repo_id: repo.id,
+                target_branch: branch.clone(),
+            })
         })
         .collect();
     AttemptRepo::create_many(&deployment.db().pool, task_attempt.id, &attempt_repos).await?;

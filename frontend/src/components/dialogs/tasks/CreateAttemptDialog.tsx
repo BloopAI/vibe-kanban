@@ -17,7 +17,6 @@ import {
   useNavigateWithSearch,
   useTask,
   useAttempt,
-  useBranches,
   useTaskAttempts,
 } from '@/hooks';
 import { useProject } from '@/contexts/ProjectContext';
@@ -25,8 +24,9 @@ import { useUserSystem } from '@/components/ConfigProvider';
 import { paths } from '@/lib/paths';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
-import type { ExecutorProfileId, BaseCodingAgent } from 'shared/types';
+import type { ExecutorProfileId, BaseCodingAgent, RepoBranch } from 'shared/types';
 import { useKeySubmitTask, Scope } from '@/keyboard';
+import { useProjectBranches } from '@/hooks/useProjectBranches';
 
 export interface CreateAttemptDialogProps {
   taskId: string;
@@ -54,9 +54,8 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
       null
     );
 
-    const { data: branches = [], isLoading: isLoadingBranches } = useBranches(
-      projectId,
-      { enabled: modal.visible && !!projectId }
+    const { data: branches = [], repositories, isLoading: isLoadingBranches } = useProjectBranches(
+      projectId
     );
 
     const { data: attempts = [], isLoading: isLoadingAttempts } =
@@ -134,9 +133,13 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
     const handleCreate = async () => {
       if (!effectiveProfile || !effectiveBranch) return;
       try {
+        const baseBranches: RepoBranch[] = repositories.map((repo) => ({
+          repo_id: repo.repository_id,
+          branch: effectiveBranch,
+        }));
         await createAttempt({
           profile: effectiveProfile,
-          baseBranch: effectiveBranch,
+          baseBranches,
         });
 
         modal.hide();

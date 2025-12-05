@@ -47,6 +47,7 @@ import type {
   TaskStatus,
   ExecutorProfileId,
   ImageResponse,
+  RepoBranch,
 } from 'shared/types';
 
 interface Task {
@@ -70,12 +71,14 @@ export type TaskFormDialogProps =
       initialBaseBranch: string;
     };
 
+type RepoBranchMap = Record<string, string>;
+
 type TaskFormValues = {
   title: string;
   description: string;
   status: TaskStatus;
   executorProfileId: ExecutorProfileId | null;
-  branch: string;
+  branches: RepoBranchMap;
   autoStart: boolean;
 };
 
@@ -98,7 +101,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const [showDiscardWarning, setShowDiscardWarning] = useState(false);
   const forceCreateOnlyRef = useRef(false);
 
-  const { data: branches, isLoading: branchesLoading } =
+  const { repositories, isLoading: branchesLoading } =
     useProjectBranches(projectId);
   const { data: taskImages } = useTaskImages(
     editMode ? props.task.id : undefined
@@ -108,18 +111,23 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const defaultValues = useMemo((): TaskFormValues => {
     const baseProfile = system.config?.executor_profile || null;
 
-    const defaultBranch = (() => {
-      if (!branches?.length) return '';
-      if (
-        mode === 'subtask' &&
-        branches.some((b) => b.name === props.initialBaseBranch)
-      ) {
-        return props.initialBaseBranch;
+    const getDefaultBranchForRepo = (repoBranches: typeof repositories[number]) => {
+      if (mode === 'subtask') {
+        const hasInitialBranch = repoBranches.branches.some(
+          (b) => b.name === (props as { initialBaseBranch: string }).initialBaseBranch
+        );
+        if (hasInitialBranch) {
+          return (props as { initialBaseBranch: string }).initialBaseBranch;
+        }
       }
-      // current branch or first branch
-      const currentBranch = branches.find((b) => b.is_current);
-      return currentBranch?.name || branches[0]?.name || '';
-    })();
+      const currentBranch = repoBranches.branches.find((b) => b.is_current);
+      return currentBranch?.name || repoBranches.branches[0]?.name || '';
+    };
+
+    const defaultBranches: RepoBranchMap = {};
+    for (const repo of repositories) {
+      defaultBranches[repo.repository_id] = getDefaultBranchForRepo(repo);
+    }
 
     switch (mode) {
       case 'edit':
@@ -128,7 +136,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           description: props.task.description || '',
           status: props.task.status,
           executorProfileId: baseProfile,
-          branch: defaultBranch || '',
+          branches: defaultBranches,
           autoStart: false,
         };
 
@@ -138,7 +146,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           description: props.initialTask.description || '',
           status: 'todo',
           executorProfileId: baseProfile,
-          branch: defaultBranch || '',
+          branches: defaultBranches,
           autoStart: true,
         };
 
@@ -150,11 +158,11 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           description: '',
           status: 'todo',
           executorProfileId: baseProfile,
-          branch: defaultBranch || '',
+          branches: defaultBranches,
           autoStart: true,
         };
     }
-  }, [mode, props, system.config?.executor_profile, branches]);
+  }, [mode, props, system.config?.executor_profile, repositories]);
 
   // Form submission handler
   const handleSubmit = async ({ value }: { value: TaskFormValues }) => {
@@ -187,11 +195,14 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
       };
       const shouldAutoStart = value.autoStart && !forceCreateOnlyRef.current;
       if (shouldAutoStart) {
+        const baseBranches: RepoBranch[] = Object.entries(value.branches).map(
+          ([repo_id, branch]) => ({ repo_id, branch })
+        );
         await createAndStart.mutateAsync(
           {
             task,
             executor_profile_id: value.executorProfileId!,
-            base_branch: value.branch,
+            base_branches: baseBranches,
           },
           { onSuccess: () => modal.remove() }
         );
@@ -203,12 +214,13 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
 
   const validator = (value: TaskFormValues): string | undefined => {
     if (!value.title.trim().length) return 'need title';
+    const hasBranches = Object.keys(value.branches).length > 0;
     if (
       value.autoStart &&
       !forceCreateOnlyRef.current &&
-      (!value.executorProfileId || !value.branch)
+      (!value.executorProfileId || !hasBranches)
     ) {
-      return 'need executor profile or branch;';
+      return 'need executor profile and branches';
     }
   };
 
@@ -521,18 +533,52 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                       />
                     )}
                   </form.Field>
-                  <form.Field name="branch">
+                  <form.Field name="branches">
                     {(field) => (
-                      <BranchSelector
-                        branches={branches ?? []}
-                        selectedBranch={field.state.value}
-                        onBranchSelect={(branch) => field.handleChange(branch)}
-                        placeholder="Branch"
-                        className={cn(
-                          'h-9 flex-1 min-w-0 text-xs',
-                          isSubmitting && 'opacity-50 cursor-not-allowed'
+                      <>
+                        {repositories.length === 1 ? (
+                          <BranchSelector
+                            branches={repositories[0]?.branches ?? []}
+                            selectedBranch={field.state.value[repositories[0]?.repository_id] ?? ''}
+                            onBranchSelect={(branch) =>
+                              field.handleChange({
+                                ...field.state.value,
+                                [repositories[0]?.repository_id]: branch,
+                              })
+                            }
+                            placeholder="Branch"
+                            className={cn(
+                              'h-9 flex-1 min-w-0 text-xs',
+                              isSubmitting && 'opacity-50 cursor-not-allowed'
+                            )}
+                          />
+                        ) : (
+                          <div className="flex flex-col gap-1 flex-1 min-w-0">
+                            {repositories.map((repo) => (
+                              <div key={repo.repository_id} className="flex items-center gap-1.5">
+                                <span className="text-xs text-muted-foreground truncate max-w-[80px]">
+                                  {repo.repository_name}:
+                                </span>
+                                <BranchSelector
+                                  branches={repo.branches}
+                                  selectedBranch={field.state.value[repo.repository_id] ?? ''}
+                                  onBranchSelect={(branch) =>
+                                    field.handleChange({
+                                      ...field.state.value,
+                                      [repo.repository_id]: branch,
+                                    })
+                                  }
+                                  placeholder="Branch"
+                                  className={cn(
+                                    'h-7 flex-1 min-w-0 text-xs',
+                                    isSubmitting && 'opacity-50 cursor-not-allowed'
+                                  )}
+                                />
+                              </div>
+                            ))}
+                          </div>
                         )}
-                      />
+                      </>
                     )}
                   </form.Field>
                 </div>

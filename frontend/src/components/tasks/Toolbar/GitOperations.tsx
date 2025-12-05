@@ -7,6 +7,8 @@ import {
   AlertTriangle,
   CheckCircle,
   ExternalLink,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button.tsx';
 import {
@@ -104,10 +106,13 @@ function GitOperations({
   const [rebasing, setRebasing] = useState(false);
   const [mergeSuccess, setMergeSuccess] = useState(false);
   const [pushSuccess, setPushSuccess] = useState(false);
+  const [showAllRepos, setShowAllRepos] = useState(false);
+
+  const isMultiRepo = repos.length > 1;
 
   // Target branch change handlers
-  const handleChangeTargetBranchClick = async (newBranch: string) => {
-    await git.actions.changeTargetBranch(newBranch);
+  const handleChangeTargetBranchClick = async (newBranch: string, repoId: string) => {
+    await git.actions.changeTargetBranch({ newTargetBranch: newBranch, repoId });
   };
 
   const handleChangeTargetBranchDialogOpen = async () => {
@@ -115,10 +120,12 @@ function GitOperations({
       const result = await ChangeTargetBranchDialog.show({
         branches,
         isChangingTargetBranch: isChangingTargetBranch,
+        repos,
+        branchStatus: branchStatus ?? [],
       });
 
-      if (result.action === 'confirmed' && result.branchName) {
-        await handleChangeTargetBranchClick(result.branchName);
+      if (result.action === 'confirmed' && result.branchName && result.repoId) {
+        await handleChangeTargetBranchClick(result.branchName, result.repoId);
       }
     } catch (error) {
       // User cancelled - do nothing
@@ -317,6 +324,11 @@ function GitOperations({
                         selectedBranch ||
                         t('git.branch.current')}
                     </span>
+                    {isMultiRepo && !showAllRepos && (
+                      <span className="text-muted-foreground ml-0.5">
+                        (+{repos.length - 1})
+                      </span>
+                    )}
                   </span>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
@@ -324,6 +336,22 @@ function GitOperations({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+
+            {isMultiRepo && (
+              <Button
+                variant="ghost"
+                size="xs"
+                onClick={() => setShowAllRepos(!showAllRepos)}
+                className="h-5 w-5 p-0 hover:bg-muted"
+                aria-label={showAllRepos ? 'Collapse' : 'Expand'}
+              >
+                {showAllRepos ? (
+                  <ChevronUp className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                )}
+              </Button>
+            )}
 
             <TooltipProvider>
               <Tooltip>
@@ -346,6 +374,42 @@ function GitOperations({
             </TooltipProvider>
           </div>
         </div>
+
+        {/* Expanded per-repo target branches */}
+        {isMultiRepo && showAllRepos && (
+          <div className="col-span-full pl-4 border-l-2 border-muted ml-2 space-y-1">
+            {repos.map((repo, idx) => {
+              const status = branchStatus?.[idx];
+              return (
+                <div key={repo.id} className="flex items-center gap-2 text-xs">
+                  <span className="text-muted-foreground truncate max-w-[100px]">
+                    {repo.name}:
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted/50">
+                    <GitBranchIcon className="h-3 w-3 text-muted-foreground" />
+                    <span className="truncate max-w-[120px]">
+                      {status?.target_branch_name || selectedBranch || '—'}
+                    </span>
+                  </span>
+                  {status && (
+                    <span className="text-muted-foreground">
+                      {(status.commits_ahead ?? 0) > 0 && (
+                        <span className="text-emerald-600 dark:text-emerald-400">
+                          +{status.commits_ahead}
+                        </span>
+                      )}
+                      {(status.commits_behind ?? 0) > 0 && (
+                        <span className="text-amber-600 dark:text-amber-400 ml-1">
+                          -{status.commits_behind}
+                        </span>
+                      )}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Center: Status chips */}
         <div className="flex items-center gap-2 text-xs min-w-0 overflow-hidden whitespace-nowrap">

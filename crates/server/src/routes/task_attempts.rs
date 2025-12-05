@@ -137,15 +137,19 @@ pub async fn get_task_attempt(
 }
 
 #[derive(Debug, Serialize, Deserialize, ts_rs::TS)]
+pub struct RepoBranch {
+    pub repo_id: Uuid,
+    pub branch: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, ts_rs::TS)]
 pub struct CreateTaskAttemptBody {
     pub task_id: Uuid,
-    /// Executor profile specification
     pub executor_profile_id: ExecutorProfileId,
-    pub base_branch: String,
+    pub base_branches: Vec<RepoBranch>,
 }
 
 impl CreateTaskAttemptBody {
-    /// Get the executor profile ID
     pub fn get_executor_profile_id(&self) -> ExecutorProfileId {
         self.executor_profile_id.clone()
     }
@@ -194,11 +198,19 @@ pub async fn create_task_attempt(
     )
     .await?;
 
+    let branch_map: HashMap<Uuid, String> = payload
+        .base_branches
+        .iter()
+        .map(|rb| (rb.repo_id, rb.branch.clone()))
+        .collect();
+
     let attempt_repos: Vec<_> = repositories
         .iter()
-        .map(|repo| CreateAttemptRepo {
-            repo_id: repo.id,
-            target_branch: payload.base_branch.clone(),
+        .filter_map(|repo| {
+            branch_map.get(&repo.id).map(|branch| CreateAttemptRepo {
+                repo_id: repo.id,
+                target_branch: branch.clone(),
+            })
         })
         .collect();
     AttemptRepo::create_many(&deployment.db().pool, task_attempt.id, &attempt_repos).await?;
@@ -1040,6 +1052,7 @@ pub async fn get_task_attempt_branch_status(
 #[derive(serde::Deserialize, Debug, TS)]
 pub struct ChangeTargetBranchRequest {
     pub new_target_branch: String,
+    pub repo_id: Uuid,
 }
 
 #[derive(serde::Serialize, Debug, TS)]
@@ -1064,45 +1077,40 @@ pub async fn change_target_branch(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<ChangeTargetBranchRequest>,
 ) -> Result<ResponseJson<ApiResponse<ChangeTargetBranchResponse>>, ApiError> {
-    // Extract new base branch from request body if provided
     let new_target_branch = payload.new_target_branch;
-    let task = task_attempt
-        .parent_task(&deployment.db().pool)
-        .await?
-        .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
+    let repo_id = payload.repo_id;
     let pool = &deployment.db().pool;
-    let project = Project::find_by_id(pool, task.project_id)
+
+    let repo = Repo::find_by_id(pool, repo_id)
         .await?
-        .ok_or(ApiError::Project(ProjectError::ProjectNotFound))?;
-    let repo_path = get_first_repo_path(pool, project.id).await?;
-    match deployment
+        .ok_or_else(|| ApiError::BadRequest(format!("Repository {} not found", repo_id)))?;
+
+    if !deployment
         .git()
-        .check_branch_exists(&repo_path, &new_target_branch)?
+        .check_branch_exists(&repo.path, &new_target_branch)?
     {
-        true => {
-            AttemptRepo::update_all_target_branches(pool, task_attempt.id, &new_target_branch)
-                .await?;
-        }
-        false => {
-            return Ok(ResponseJson(ApiResponse::error(
-                format!(
-                    "Branch '{}' does not exist in the repository",
-                    new_target_branch
-                )
-                .as_str(),
-            )));
-        }
+        return Ok(ResponseJson(ApiResponse::error(
+            format!(
+                "Branch '{}' does not exist in repository '{}'",
+                new_target_branch, repo.name
+            )
+            .as_str(),
+        )));
     }
+
+    AttemptRepo::update_target_branch(pool, task_attempt.id, repo_id, &new_target_branch).await?;
+
     let status =
         deployment
             .git()
-            .get_branch_status(&repo_path, &task_attempt.branch, &new_target_branch)?;
+            .get_branch_status(&repo.path, &task_attempt.branch, &new_target_branch)?;
 
     deployment
         .track_if_analytics_allowed(
             "task_attempt_target_branch_changed",
             serde_json::json!({
                 "attempt_id": task_attempt.id.to_string(),
+                "repo_id": repo_id.to_string(),
             }),
         )
         .await;

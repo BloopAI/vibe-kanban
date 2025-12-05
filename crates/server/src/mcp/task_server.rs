@@ -18,7 +18,10 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json;
 use uuid::Uuid;
 
-use crate::routes::{containers::ContainerQuery, task_attempts::CreateTaskAttemptBody};
+use crate::routes::{
+    containers::ContainerQuery,
+    task_attempts::{CreateTaskAttemptBody, RepoBranch},
+};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct CreateTaskRequest {
@@ -560,10 +563,32 @@ impl TaskServer {
             variant,
         };
 
+        // Fetch task to get project_id
+        let task_url = self.url(&format!("/api/tasks/{}", task_id));
+        let task: Task = match self.send_json(self.client.get(&task_url)).await {
+            Ok(t) => t,
+            Err(e) => return Ok(e),
+        };
+
+        // Fetch project repos
+        let repos_url = self.url(&format!("/api/projects/{}/repositories", task.project_id));
+        let repos: Vec<db::models::repo::Repo> = match self.send_json(self.client.get(&repos_url)).await {
+            Ok(r) => r,
+            Err(e) => return Ok(e),
+        };
+
+        let base_branches: Vec<RepoBranch> = repos
+            .iter()
+            .map(|repo| RepoBranch {
+                repo_id: repo.id,
+                branch: base_branch.clone(),
+            })
+            .collect();
+
         let payload = CreateTaskAttemptBody {
             task_id,
             executor_profile_id,
-            base_branch,
+            base_branches,
         };
 
         let url = self.url("/api/task-attempts");
