@@ -307,7 +307,7 @@ impl TaskServer {
         let attempt_target_branch = ctx
             .attempt_repos
             .first()
-            .map(|r| r.target_branch.clone())
+            .map(|r| r.target_branch_ref.clone())
             .unwrap_or_default();
         Some(McpContext {
             project_id: ctx.project.id,
@@ -563,7 +563,7 @@ impl TaskServer {
         let payload = CreateTaskAttemptBody {
             task_id,
             executor_profile_id,
-            base_branch,
+            base_branch_ref: base_branch, // TODO make this a ref
         };
 
         let url = self.url("/api/task-attempts");

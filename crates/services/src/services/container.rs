@@ -46,7 +46,7 @@ use uuid::Uuid;
 
 use crate::services::{
     config::Config,
-    git::{GitService, GitServiceError},
+    git::{GitBranchId, GitService, GitServiceError},
     notification::NotificationService,
     share::SharePublisher,
     workspace_manager::WorkspaceError,
@@ -282,16 +282,14 @@ pub trait ContainerService {
             // Fallback to base branch commit OID
             if before.is_none() {
                 let repo_path = std::path::Path::new(row.repo_path.as_deref().unwrap_or_default());
-                match self
-                    .git()
-                    .get_branch_oid(repo_path, row.target_branch.as_str())
-                {
+                let target_branch_id = GitBranchId::new(row.target_branch_ref)?;
+                match self.git().get_branch_oid(repo_path, &target_branch_id) {
                     Ok(oid) => before = Some(oid),
                     Err(e) => {
                         tracing::warn!(
                             "Backfill: Failed to resolve base branch OID for attempt {} (branch {}): {}",
                             row.task_attempt_id,
-                            row.target_branch,
+                            target_branch_id.ref_name(),
                             e
                         );
                     }

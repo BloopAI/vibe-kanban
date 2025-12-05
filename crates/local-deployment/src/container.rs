@@ -914,7 +914,7 @@ impl ContainerService for LocalContainerService {
         let attempt_repos = AttemptRepo::find_by_attempt_id(&self.db.pool, task_attempt.id).await?;
         let target_branches: HashMap<_, _> = attempt_repos
             .iter()
-            .map(|ar| (ar.repo_id, ar.target_branch.clone()))
+            .map(|ar| (ar.repo_id, ar.target_branch_ref.clone()))
             .collect();
 
         let workspace_inputs: Vec<RepoWorkspaceInput> = repositories
@@ -1293,7 +1293,7 @@ impl ContainerService for LocalContainerService {
         let attempt_repos = AttemptRepo::find_by_attempt_id(&self.db.pool, task_attempt.id).await?;
         let target_branches: HashMap<_, _> = attempt_repos
             .iter()
-            .map(|ar| (ar.repo_id, ar.target_branch.clone()))
+            .map(|ar| (ar.repo_id, ar.target_branch_ref.clone()))
             .collect();
 
         let mut streams = Vec::new();
