@@ -75,6 +75,28 @@ impl AttemptRepo {
         .await
     }
 
+    pub async fn find_by_attempt_and_repo_id(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+        repo_id: Uuid,
+    ) -> Result<Option<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            AttemptRepo,
+            r#"SELECT id as "id!: Uuid",
+                      attempt_id as "attempt_id!: Uuid",
+                      repo_id as "repo_id!: Uuid",
+                      target_branch,
+                      created_at as "created_at!: DateTime<Utc>",
+                      updated_at as "updated_at!: DateTime<Utc>"
+               FROM attempt_repos
+               WHERE attempt_id = $1 AND repo_id = $2"#,
+            attempt_id,
+            repo_id
+        )
+        .fetch_optional(pool)
+        .await
+    }
+
     pub async fn update_target_branch(
         pool: &SqlitePool,
         attempt_id: Uuid,

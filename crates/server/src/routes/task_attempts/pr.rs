@@ -1,8 +1,10 @@
 use axum::{Extension, Json, extract::State, response::Json as ResponseJson};
 use db::models::{
+    attempt_repo::AttemptRepo,
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
     merge::{Merge, MergeStatus},
     project::{Project, ProjectError},
+    repo::{Repo, RepoError},
     task::{Task, TaskStatus},
     task_attempt::{TaskAttempt, TaskAttemptError},
 };
@@ -20,6 +22,7 @@ use services::services::{
 };
 use ts_rs::TS;
 use utils::response::ApiResponse;
+use uuid::Uuid;
 
 use super::{get_first_repo_path, get_first_target_branch, util::ensure_worktree_path};
 use crate::{DeploymentImpl, error::ApiError};
@@ -30,6 +33,7 @@ pub struct CreateGitHubPrRequest {
     pub body: Option<String>,
     pub target_branch: Option<String>,
     pub draft: Option<bool>,
+    pub repo_id: Uuid,
     #[serde(default)]
     pub auto_generate_description: bool,
 }
@@ -148,6 +152,7 @@ pub async fn create_github_pr(
     Json(request): Json<CreateGitHubPrRequest>,
 ) -> Result<ResponseJson<ApiResponse<String, CreatePrError>>, ApiError> {
     let pool = &deployment.db().pool;
+
     let task = task_attempt
         .parent_task(pool)
         .await?
@@ -156,29 +161,29 @@ pub async fn create_github_pr(
         .await?
         .ok_or(ApiError::Project(ProjectError::ProjectNotFound))?;
 
-    let git_repo_path = get_first_repo_path(pool, project.id).await?;
-    let target_branch = get_first_target_branch(pool, task_attempt.id).await?;
+    let attempt_repo =
+        AttemptRepo::find_by_attempt_and_repo_id(pool, task_attempt.id, request.repo_id)
+            .await?
+            .ok_or(RepoError::NotFound)?;
 
-    let github_config = deployment.config().read().await.github.clone();
-    // Get the task attempt to access the stored target branch
-    let target_branch = request.target_branch.unwrap_or_else(|| {
-        // Use the stored target branch from the task attempt as the default
-        // Fall back to config default or "main" only if stored target branch is somehow invalid
-        if !target_branch.trim().is_empty() {
-            target_branch.clone()
-        } else {
-            github_config
-                .default_pr_base
-                .as_ref()
-                .map_or_else(|| "main".to_string(), |b| b.to_string())
-        }
-    });
+    let repo = Repo::find_by_id(pool, attempt_repo.repo_id)
+        .await?
+        .ok_or(RepoError::NotFound)?;
+
+    let repo_path = repo.path;
+    // Get the target branch: from request, or from attempt repo
+    let target_branch = if let Some(branch) = request.target_branch {
+        branch
+    } else {
+        attempt_repo.target_branch.clone()
+    };
 
     let workspace_path = ensure_worktree_path(&deployment, &task_attempt).await?;
+    let worktree_path = workspace_path.join(repo.name);
 
     match deployment
         .git()
-        .check_remote_branch_exists(&git_repo_path, &target_branch)
+        .check_remote_branch_exists(&repo_path, &target_branch)
     {
         Ok(false) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
@@ -204,7 +209,7 @@ pub async fn create_github_pr(
     // Push the branch to GitHub first
     if let Err(e) = deployment
         .git()
-        .push_to_github(&workspace_path, &task_attempt.branch, false)
+        .push_to_github(&worktree_path, &task_attempt.branch, false)
     {
         tracing::error!("Failed to push branch to GitHub: {}", e);
         match e {
@@ -225,14 +230,14 @@ pub async fn create_github_pr(
     let norm_target_branch_name = if matches!(
         deployment
             .git()
-            .find_branch_type(&git_repo_path, &target_branch)?,
+            .find_branch_type(&repo_path, &target_branch)?,
         BranchType::Remote
     ) {
         // Remote branches are formatted as {remote}/{branch} locally.
         // For PR APIs, we must provide just the branch name.
         let remote = deployment
             .git()
-            .get_remote_name_from_branch_name(&workspace_path, &target_branch)?;
+            .get_remote_name_from_branch_name(&worktree_path, &target_branch)?;
         let remote_prefix = format!("{}/", remote);
         target_branch
             .strip_prefix(&remote_prefix)
@@ -250,7 +255,7 @@ pub async fn create_github_pr(
         draft: request.draft,
     };
     // Use GitService to get the remote URL, then create GitHubRepoInfo
-    let repo_info = deployment.git().get_github_repo_info(&git_repo_path)?;
+    let repo_info = deployment.git().get_github_repo_info(&repo_path)?;
 
     // Use GitHubService to create the PR
     let github_service = GitHubService::new()?;

@@ -27,6 +27,7 @@ import { ChangeTargetBranchDialog } from '@/components/dialogs/tasks/ChangeTarge
 import { RebaseDialog } from '@/components/dialogs/tasks/RebaseDialog';
 import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
 import { useTranslation } from 'react-i18next';
+import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useGitOperations } from '@/hooks/useGitOperations';
 
 interface GitOperationsProps {
@@ -55,6 +56,7 @@ function GitOperations({
   const { t } = useTranslation('tasks');
 
   const git = useGitOperations(selectedAttempt.id, projectId);
+  const { repos } = useAttemptRepo(selectedAttempt.id);
   const isChangingTargetBranch = git.states.changeTargetBranchPending;
 
   // Compute aggregated status across all repos
@@ -121,6 +123,11 @@ function GitOperations({
     } catch (error) {
       // User cancelled - do nothing
     }
+  };
+
+  // Select the first repo for operations that need a single repo
+  const getSelectedRepoId = () => {
+    return repos[0]?.id;
   };
 
   // Memoize merge status information to avoid repeated calculations
@@ -258,6 +265,7 @@ function GitOperations({
       attempt: selectedAttempt,
       task,
       projectId,
+      repoId: getSelectedRepoId(),
     });
   };
 

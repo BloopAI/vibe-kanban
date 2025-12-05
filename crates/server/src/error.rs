@@ -5,8 +5,8 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use db::models::{
-    execution_process::ExecutionProcessError, project::ProjectError, scratch::ScratchError,
-    task_attempt::TaskAttemptError,
+    execution_process::ExecutionProcessError, project::ProjectError, repo::RepoError,
+    scratch::ScratchError, task_attempt::TaskAttemptError,
 };
 use deployment::{DeploymentError, RemoteClientNotConfigured};
 use executors::executors::ExecutorError;
@@ -30,6 +30,8 @@ use utils::response::ApiResponse;
 pub enum ApiError {
     #[error(transparent)]
     Project(#[from] ProjectError),
+    #[error(transparent)]
+    Repo(#[from] RepoError),
     #[error(transparent)]
     TaskAttempt(#[from] TaskAttemptError),
     #[error(transparent)]
@@ -94,6 +96,7 @@ impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let (status_code, error_type) = match &self {
             ApiError::Project(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ProjectError"),
+            ApiError::Repo(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ProjectRepoError"),
             ApiError::TaskAttempt(_) => (StatusCode::INTERNAL_SERVER_ERROR, "TaskAttemptError"),
             ApiError::ScratchError(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ScratchError"),
             ApiError::ExecutionProcess(err) => match err {
