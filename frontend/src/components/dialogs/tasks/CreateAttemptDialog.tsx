@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import BranchSelector from '@/components/tasks/BranchSelector';
+import { RepoBranchSelector } from '@/components/tasks/RepoBranchSelector';
 import { ExecutorProfileSelector } from '@/components/settings';
 import { useAttemptCreation } from '@/hooks/useAttemptCreation';
 import {
@@ -50,11 +50,12 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
 
     const [userSelectedProfile, setUserSelectedProfile] =
       useState<ExecutorProfileId | null>(null);
-    const [userSelectedBranch, setUserSelectedBranch] = useState<string | null>(
-      null
-    );
+    const [userSelectedBranches, setUserSelectedBranches] = useState<Record<
+      string,
+      string
+    > | null>(null);
 
-    const { data: branches = [], repositories, isLoading: isLoadingBranches } = useProjectBranches(
+    const { repositories, isLoading: isLoadingBranches } = useProjectBranches(
       projectId
     );
 
@@ -86,7 +87,7 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
     useEffect(() => {
       if (!modal.visible) {
         setUserSelectedProfile(null);
-        setUserSelectedBranch(null);
+        setUserSelectedBranches(null);
       }
     }, [modal.visible]);
 
@@ -110,33 +111,37 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
       return config?.executor_profile ?? null;
     }, [latestAttempt?.executor, config?.executor_profile]);
 
-    const currentBranchName: string | null = useMemo(() => {
-      return branches.find((b) => b.is_current)?.name ?? null;
-    }, [branches]);
-
-    const defaultBranch: string | null = useMemo(() => {
-      return parentAttempt?.branch ?? currentBranchName ?? null;
-    }, [parentAttempt?.branch, currentBranchName]);
+    const defaultBranches: Record<string, string> = useMemo(() => {
+      const result: Record<string, string> = {};
+      for (const repo of repositories) {
+        const currentBranch = repo.branches.find((b) => b.is_current)?.name;
+        result[repo.repository_id] =
+          parentAttempt?.branch ?? currentBranch ?? repo.branches[0]?.name ?? '';
+      }
+      return result;
+    }, [repositories, parentAttempt?.branch]);
 
     const effectiveProfile = userSelectedProfile ?? defaultProfile;
-    const effectiveBranch = userSelectedBranch ?? defaultBranch;
+    const effectiveBranches = userSelectedBranches ?? defaultBranches;
 
     const isLoadingInitial =
       isLoadingBranches ||
       isLoadingAttempts ||
       isLoadingTask ||
       isLoadingParent;
+    const hasAllBranches =
+      repositories.length > 0 &&
+      repositories.every((repo) => effectiveBranches[repo.repository_id]);
     const canCreate = Boolean(
-      effectiveProfile && effectiveBranch && !isCreating && !isLoadingInitial
+      effectiveProfile && hasAllBranches && !isCreating && !isLoadingInitial
     );
 
     const handleCreate = async () => {
-      if (!effectiveProfile || !effectiveBranch) return;
+      if (!effectiveProfile || !hasAllBranches) return;
       try {
-        const baseBranches: RepoBranch[] = repositories.map((repo) => ({
-          repo_id: repo.repository_id,
-          branch: effectiveBranch,
-        }));
+        const baseBranches: RepoBranch[] = Object.entries(effectiveBranches).map(
+          ([repo_id, branch]) => ({ repo_id, branch })
+        );
         await createAttempt({
           profile: effectiveProfile,
           baseBranches,
@@ -182,18 +187,19 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
 
             <div className="space-y-2">
               <Label className="text-sm font-medium">
-                {t('createAttemptDialog.baseBranch')}{' '}
+                {t('createAttemptDialog.baseBranches', 'Base branches')}{' '}
                 <span className="text-destructive">*</span>
               </Label>
-              <BranchSelector
-                branches={branches}
-                selectedBranch={effectiveBranch}
-                onBranchSelect={setUserSelectedBranch}
-                placeholder={
-                  isLoadingBranches
-                    ? t('createAttemptDialog.loadingBranches')
-                    : t('createAttemptDialog.selectBranch')
+              <RepoBranchSelector
+                repositories={repositories}
+                selectedBranches={effectiveBranches}
+                onBranchChange={(repoId, branch) =>
+                  setUserSelectedBranches((prev) => ({
+                    ...(prev ?? defaultBranches),
+                    [repoId]: branch,
+                  }))
                 }
+                disabled={isCreating}
               />
             </div>
 

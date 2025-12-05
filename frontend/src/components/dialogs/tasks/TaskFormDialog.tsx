@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/select';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
-import BranchSelector from '@/components/tasks/BranchSelector';
+import { RepoBranchSelector } from '@/components/tasks/RepoBranchSelector';
 import { ExecutorProfileSelector } from '@/components/settings';
 import { useUserSystem } from '@/components/ConfigProvider';
 import {
@@ -535,50 +535,18 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                   </form.Field>
                   <form.Field name="branches">
                     {(field) => (
-                      <>
-                        {repositories.length === 1 ? (
-                          <BranchSelector
-                            branches={repositories[0]?.branches ?? []}
-                            selectedBranch={field.state.value[repositories[0]?.repository_id] ?? ''}
-                            onBranchSelect={(branch) =>
-                              field.handleChange({
-                                ...field.state.value,
-                                [repositories[0]?.repository_id]: branch,
-                              })
-                            }
-                            placeholder="Branch"
-                            className={cn(
-                              'h-9 flex-1 min-w-0 text-xs',
-                              isSubmitting && 'opacity-50 cursor-not-allowed'
-                            )}
-                          />
-                        ) : (
-                          <div className="flex flex-col gap-1 flex-1 min-w-0">
-                            {repositories.map((repo) => (
-                              <div key={repo.repository_id} className="flex items-center gap-1.5">
-                                <span className="text-xs text-muted-foreground truncate max-w-[80px]">
-                                  {repo.repository_name}:
-                                </span>
-                                <BranchSelector
-                                  branches={repo.branches}
-                                  selectedBranch={field.state.value[repo.repository_id] ?? ''}
-                                  onBranchSelect={(branch) =>
-                                    field.handleChange({
-                                      ...field.state.value,
-                                      [repo.repository_id]: branch,
-                                    })
-                                  }
-                                  placeholder="Branch"
-                                  className={cn(
-                                    'h-7 flex-1 min-w-0 text-xs',
-                                    isSubmitting && 'opacity-50 cursor-not-allowed'
-                                  )}
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </>
+                      <RepoBranchSelector
+                        repositories={repositories}
+                        selectedBranches={field.state.value}
+                        onBranchChange={(repoId, branch) =>
+                          field.handleChange({
+                            ...field.state.value,
+                            [repoId]: branch,
+                          })
+                        }
+                        disabled={isSubmitting || !autoStartField.state.value}
+                        className="flex-1 min-w-0"
+                      />
                     )}
                   </form.Field>
                 </div>

@@ -1,4 +1,12 @@
-import { useState, useMemo, useRef, useEffect, useCallback, memo } from 'react';
+import {
+  useState,
+  useMemo,
+  useRef,
+  useEffect,
+  useCallback,
+  memo,
+  forwardRef,
+} from 'react';
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button.tsx';
@@ -100,15 +108,18 @@ const BranchRow = memo(function BranchRow({
   return item;
 });
 
-function BranchSelector({
-  branches,
-  selectedBranch,
-  onBranchSelect,
-  placeholder,
-  className = '',
-  excludeCurrentBranch = false,
-  disabledTooltip,
-}: Props) {
+const BranchSelector = forwardRef<HTMLButtonElement, Props>(function BranchSelector(
+  {
+    branches,
+    selectedBranch,
+    onBranchSelect,
+    placeholder,
+    className = '',
+    excludeCurrentBranch = false,
+    disabledTooltip,
+  },
+  ref
+) {
   const { t } = useTranslation(['common']);
   const [branchSearchTerm, setBranchSearchTerm] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
@@ -207,6 +218,7 @@ function BranchSelector({
     >
       <DropdownMenuTrigger asChild>
         <Button
+          ref={ref}
           variant="outline"
           size="sm"
           className={`w-full justify-between text-xs ${className}`}
@@ -302,6 +314,6 @@ function BranchSelector({
       </TooltipProvider>
     </DropdownMenu>
   );
-}
+});
 
 export default BranchSelector;
