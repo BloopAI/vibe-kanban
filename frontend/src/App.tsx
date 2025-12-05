@@ -34,7 +34,6 @@ import { DisclaimerDialog } from '@/components/dialogs/global/DisclaimerDialog';
 import { OnboardingDialog } from '@/components/dialogs/global/OnboardingDialog';
 import { ReleaseNotesDialog } from '@/components/dialogs/global/ReleaseNotesDialog';
 import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
-import NiceModal from '@ebay/nice-modal-react';
 
 // Design scope components
 import { LegacyDesignScope } from '@/components/legacy-design/LegacyDesignScope';
@@ -206,9 +205,7 @@ function App() {
         <ClickedElementsProvider>
           <ProjectProvider>
             <HotkeysProvider initiallyActiveScopes={['*', 'global', 'kanban']}>
-              <NiceModal.Provider>
-                <AppContent />
-              </NiceModal.Provider>
+              <AppContent />
             </HotkeysProvider>
           </ProjectProvider>
         </ClickedElementsProvider>
