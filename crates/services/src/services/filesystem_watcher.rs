@@ -377,10 +377,19 @@ fn remove_directory_watch(
     watched_dirs: &mut HashSet<PathBuf>,
     dir_path: &Path,
 ) {
-    if watched_dirs.remove(dir_path)
-        && let Err(e) = debouncer.unwatch(dir_path)
-    {
-        tracing::warn!("Could not unwatch deleted directory {:?}: {}", dir_path, e);
+    let canonical_dir = canonicalize_lossy(dir_path);
+
+    let to_remove: Vec<PathBuf> = watched_dirs
+        .iter()
+        .filter(|path| path.starts_with(&canonical_dir))
+        .cloned()
+        .collect();
+
+    for path in to_remove {
+        watched_dirs.remove(&path);
+        if let Err(e) = debouncer.unwatch(&path) {
+            tracing::warn!("Could not unwatch deleted directory {:?}: {}", path, e);
+        }
     }
 }
 
