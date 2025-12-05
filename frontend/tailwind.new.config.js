@@ -42,13 +42,31 @@ module.exports = {
         DEFAULT: 'hsl(var(--primary))',
       },
       fontSize: {
-        xs: ['0.625rem', { lineHeight: '0.875rem' }],
-        sm: ['0.75rem', { lineHeight: '1rem' }],
-        base: ['0.875rem', { lineHeight: '1.25rem' }],
-        lg: ['1rem', { lineHeight: '1.5rem' }],
-        xl: ['1.125rem', { lineHeight: '1.75rem' }],
+        xs: ['0.5rem', { lineHeight: '0.75rem' }],      // 8px
+        sm: ['0.625rem', { lineHeight: '0.875rem' }],   // 10px
+        base: ['0.75rem', { lineHeight: '1.125rem' }],  // 12px (base)
+        lg: ['0.875rem', { lineHeight: '1.25rem' }],    // 14px
+        xl: ['1rem', { lineHeight: '1.5rem' }],         // 16px
+      },
+      spacing: {
+        'padding-half': '0.375rem',   // 6px
+        'padding-base': '0.75rem',    // 12px
+        'padding-double': '1.5rem',   // 24px
       },
       colors: {
+        // Text colors: text-high, text-normal, text-low
+        high: "hsl(var(--text-high))",
+        normal: "hsl(var(--text-normal))",
+        low: "hsl(var(--text-low))",
+        // Background colors: bg-primary, bg-secondary, bg-panel
+        primary: "hsl(var(--bg-primary))",
+        secondary: "hsl(var(--bg-secondary))",
+        panel: "hsl(var(--bg-panel))",
+        // Accent colors
+        brand: "hsl(var(--brand))",
+        error: "hsl(var(--error))",
+        success: "hsl(var(--success))",
+        // Legacy colors (for backwards compatibility)
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
