@@ -59,13 +59,7 @@ impl StandardCodingAgentExecutor for Gemini {
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let gemini_command = self.build_command_builder().build_initial()?;
         harness
-            .spawn_with_command(
-                current_dir,
-                combined_prompt,
-                gemini_command,
-                env,
-                &self.cmd,
-            )
+            .spawn_with_command(current_dir, combined_prompt, gemini_command, env, &self.cmd)
             .await
     }
 

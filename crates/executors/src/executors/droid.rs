@@ -123,7 +123,9 @@ async fn spawn_droid(
         .current_dir(current_dir)
         .args(args);
 
-    env.clone().with_profile(cmd_overrides).apply_to_command(&mut command);
+    env.clone()
+        .with_profile(cmd_overrides)
+        .apply_to_command(&mut command);
 
     let mut child = command.group_spawn()?;
 

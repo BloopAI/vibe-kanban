@@ -241,7 +241,9 @@ impl ClaudeCode {
             .current_dir(current_dir)
             .args(&args);
 
-        env.clone().with_profile(&self.cmd).apply_to_command(&mut command);
+        env.clone()
+            .with_profile(&self.cmd)
+            .apply_to_command(&mut command);
 
         // Remove ANTHROPIC_API_KEY if disable_api_key is enabled
         if self.disable_api_key.unwrap_or(false) {

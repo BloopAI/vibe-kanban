@@ -122,7 +122,9 @@ impl StandardCodingAgentExecutor for Copilot {
             .args(&args)
             .env("NODE_NO_WARNINGS", "1");
 
-        env.clone().with_profile(&self.cmd).apply_to_command(&mut command);
+        env.clone()
+            .with_profile(&self.cmd)
+            .apply_to_command(&mut command);
 
         let mut child = command.group_spawn()?;
 
@@ -164,7 +166,9 @@ impl StandardCodingAgentExecutor for Copilot {
             .args(&args)
             .env("NODE_NO_WARNINGS", "1");
 
-        env.clone().with_profile(&self.cmd).apply_to_command(&mut command);
+        env.clone()
+            .with_profile(&self.cmd)
+            .apply_to_command(&mut command);
 
         let mut child = command.group_spawn()?;
 

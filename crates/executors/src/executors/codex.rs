@@ -314,7 +314,9 @@ impl Codex {
             .env("NO_COLOR", "1")
             .env("RUST_LOG", "error");
 
-        env.clone().with_profile(&self.cmd).apply_to_command(&mut process);
+        env.clone()
+            .with_profile(&self.cmd)
+            .apply_to_command(&mut process);
 
         let mut child = process.group_spawn()?;
 
