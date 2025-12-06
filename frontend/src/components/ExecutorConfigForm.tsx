@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect, useState, useCallback } from 'react';
 import Form from '@rjsf/core';
 import type { IChangeEvent } from '@rjsf/core';
 import { RJSFValidationError } from '@rjsf/utils';
@@ -44,6 +44,21 @@ export function ExecutorConfigForm({
     return schemas[executor];
   }, [executor]);
 
+  // Custom handler for env field updates
+  const handleEnvChange = useCallback(
+    (envData: Record<string, string> | undefined) => {
+      const newFormData = {
+        ...(formData as Record<string, unknown>),
+        env: envData,
+      };
+      setFormData(newFormData);
+      if (onChange) {
+        onChange(newFormData);
+      }
+    },
+    [formData, onChange]
+  );
+
   const uiSchema = useMemo(
     () => ({
       env: {
@@ -51,6 +66,14 @@ export function ExecutorConfigForm({
       },
     }),
     []
+  );
+
+  // Pass the env update handler via formContext
+  const formContext = useMemo(
+    () => ({
+      onEnvChange: handleEnvChange,
+    }),
+    [handleEnvChange]
   );
 
   useEffect(() => {
@@ -98,6 +121,7 @@ export function ExecutorConfigForm({
             schema={schema}
             uiSchema={uiSchema}
             formData={formData}
+            formContext={formContext}
             onChange={handleChange}
             onSubmit={handleSubmit}
             onError={handleError}
