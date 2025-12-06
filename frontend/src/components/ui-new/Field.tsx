@@ -2,8 +2,8 @@ import { useMemo } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 
 import { cn } from '@/lib/utils';
-import { Label } from '@/components/ui-new/label';
-import { Separator } from '@/components/ui-new/separator';
+import { Label } from '@/components/ui-new/Label';
+import { Separator } from '@/components/ui-new/Separator';
 
 function FieldSet({ className, ...props }: React.ComponentProps<'fieldset'>) {
   return (
@@ -181,6 +181,54 @@ function FieldSeparator({
   );
 }
 
+function WorkspaceSearch({
+  className,
+  value,
+  onValueChange,
+  onAdd,
+  ...props
+}: Omit<React.ComponentProps<'div'>, 'onChange'> & {
+  value?: string;
+  onValueChange?: (value: string) => void;
+  onAdd?: () => void;
+}) {
+  return (
+    <div
+      data-slot="workspace-search"
+      className={cn('flex gap-2', className)}
+      {...props}
+    >
+      <input
+        type="text"
+        placeholder="Search workspaces..."
+        value={value}
+        onChange={(e) => onValueChange?.(e.target.value)}
+        className="flex-1 h-10 px-4 bg-secondary rounded border text-base text-normal placeholder:text-low focus:outline-none focus:ring-1 focus:ring-brand"
+      />
+      <button
+        type="button"
+        onClick={onAdd}
+        className="h-10 w-10 flex items-center justify-center bg-secondary rounded border text-low hover:text-normal"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M5 12h14" />
+          <path d="M12 5v14" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 function FieldError({
   className,
   children,
@@ -239,4 +287,5 @@ export {
   FieldSet,
   FieldContent,
   FieldTitle,
+  WorkspaceSearch,
 };
