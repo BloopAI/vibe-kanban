@@ -30,6 +30,7 @@ pub struct Project {
     pub dev_script: Option<String>,
     pub cleanup_script: Option<String>,
     pub copy_files: Option<String>,
+    pub parallel_setup_script: bool,
     pub remote_project_id: Option<Uuid>,
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
@@ -46,6 +47,7 @@ pub struct CreateProject {
     pub dev_script: Option<String>,
     pub cleanup_script: Option<String>,
     pub copy_files: Option<String>,
+    pub parallel_setup_script: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -56,6 +58,7 @@ pub struct UpdateProject {
     pub dev_script: Option<String>,
     pub cleanup_script: Option<String>,
     pub copy_files: Option<String>,
+    pub parallel_setup_script: Option<bool>,
 }
 
 #[derive(Debug, Serialize, TS)]
@@ -89,6 +92,7 @@ impl Project {
                       dev_script,
                       cleanup_script,
                       copy_files,
+                      parallel_setup_script as "parallel_setup_script!: bool",
                       remote_project_id as "remote_project_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
@@ -104,7 +108,8 @@ impl Project {
         sqlx::query_as!(
             Project,
             r#"
-            SELECT p.id as "id!: Uuid", p.name, p.git_repo_path, p.setup_script, p.dev_script, p.cleanup_script, p.copy_files, 
+            SELECT p.id as "id!: Uuid", p.name, p.git_repo_path, p.setup_script, p.dev_script, p.cleanup_script, p.copy_files,
+                   p.parallel_setup_script as "parallel_setup_script!: bool",
                    p.remote_project_id as "remote_project_id: Uuid",
                    p.created_at as "created_at!: DateTime<Utc>", p.updated_at as "updated_at!: DateTime<Utc>"
             FROM projects p
@@ -132,6 +137,7 @@ impl Project {
                       dev_script,
                       cleanup_script,
                       copy_files,
+                      parallel_setup_script as "parallel_setup_script!: bool",
                       remote_project_id as "remote_project_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
@@ -156,6 +162,7 @@ impl Project {
                       dev_script,
                       cleanup_script,
                       copy_files,
+                      parallel_setup_script as "parallel_setup_script!: bool",
                       remote_project_id as "remote_project_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
@@ -181,6 +188,7 @@ impl Project {
                       dev_script,
                       cleanup_script,
                       copy_files,
+                      parallel_setup_script as "parallel_setup_script!: bool",
                       remote_project_id as "remote_project_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
@@ -206,6 +214,7 @@ impl Project {
                       dev_script,
                       cleanup_script,
                       copy_files,
+                      parallel_setup_script as "parallel_setup_script!: bool",
                       remote_project_id as "remote_project_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
@@ -223,6 +232,7 @@ impl Project {
         data: &CreateProject,
         project_id: Uuid,
     ) -> Result<Self, sqlx::Error> {
+        let parallel_setup_script = data.parallel_setup_script.unwrap_or(false);
         sqlx::query_as!(
             Project,
             r#"INSERT INTO projects (
@@ -232,9 +242,10 @@ impl Project {
                     setup_script,
                     dev_script,
                     cleanup_script,
-                    copy_files
+                    copy_files,
+                    parallel_setup_script
                 ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7
+                    $1, $2, $3, $4, $5, $6, $7, $8
                 )
                 RETURNING id as "id!: Uuid",
                           name,
@@ -243,6 +254,7 @@ impl Project {
                           dev_script,
                           cleanup_script,
                           copy_files,
+                          parallel_setup_script as "parallel_setup_script!: bool",
                           remote_project_id as "remote_project_id: Uuid",
                           created_at as "created_at!: DateTime<Utc>",
                           updated_at as "updated_at!: DateTime<Utc>""#,
@@ -253,6 +265,7 @@ impl Project {
             data.dev_script,
             data.cleanup_script,
             data.copy_files,
+            parallel_setup_script,
         )
         .fetch_one(pool)
         .await
@@ -268,6 +281,7 @@ impl Project {
         dev_script: Option<String>,
         cleanup_script: Option<String>,
         copy_files: Option<String>,
+        parallel_setup_script: bool,
     ) -> Result<Self, sqlx::Error> {
         sqlx::query_as!(
             Project,
@@ -277,7 +291,8 @@ impl Project {
                    setup_script = $4,
                    dev_script = $5,
                    cleanup_script = $6,
-                   copy_files = $7
+                   copy_files = $7,
+                   parallel_setup_script = $8
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          name,
@@ -286,6 +301,7 @@ impl Project {
                          dev_script,
                          cleanup_script,
                          copy_files,
+                         parallel_setup_script as "parallel_setup_script!: bool",
                          remote_project_id as "remote_project_id: Uuid",
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
@@ -296,6 +312,7 @@ impl Project {
             dev_script,
             cleanup_script,
             copy_files,
+            parallel_setup_script,
         )
         .fetch_one(pool)
         .await

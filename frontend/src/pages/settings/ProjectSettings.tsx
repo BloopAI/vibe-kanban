@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Folder } from 'lucide-react';
 import { useProjects } from '@/hooks/useProjects';
@@ -33,6 +34,7 @@ interface ProjectFormState {
   name: string;
   git_repo_path: string;
   setup_script: string;
+  parallel_setup_script: boolean;
   dev_script: string;
   cleanup_script: string;
   copy_files: string;
@@ -43,6 +45,7 @@ function projectToFormState(project: Project): ProjectFormState {
     name: project.name,
     git_repo_path: project.git_repo_path,
     setup_script: project.setup_script ?? '',
+    parallel_setup_script: project.parallel_setup_script ?? false,
     dev_script: project.dev_script ?? '',
     cleanup_script: project.cleanup_script ?? '',
     copy_files: project.copy_files ?? '',
@@ -211,6 +214,7 @@ export function ProjectSettings() {
         name: draft.name.trim(),
         git_repo_path: draft.git_repo_path.trim(),
         setup_script: draft.setup_script.trim() || null,
+        parallel_setup_script: draft.parallel_setup_script,
         dev_script: draft.dev_script.trim() || null,
         cleanup_script: draft.cleanup_script.trim() || null,
         copy_files: draft.copy_files.trim() || null,
@@ -413,6 +417,26 @@ export function ProjectSettings() {
                 />
                 <p className="text-sm text-muted-foreground">
                   {t('settings.projects.scripts.setup.helper')}
+                </p>
+
+                <div className="flex items-center space-x-2 pt-2">
+                  <Checkbox
+                    id="parallel-setup-script"
+                    checked={draft.parallel_setup_script}
+                    onCheckedChange={(checked) =>
+                      updateDraft({ parallel_setup_script: checked === true })
+                    }
+                    disabled={!draft.setup_script.trim()}
+                  />
+                  <Label
+                    htmlFor="parallel-setup-script"
+                    className="text-sm font-normal cursor-pointer"
+                  >
+                    {t('settings.projects.scripts.setup.parallelLabel')}
+                  </Label>
+                </div>
+                <p className="text-sm text-muted-foreground pl-6">
+                  {t('settings.projects.scripts.setup.parallelHelper')}
                 </p>
               </div>
 

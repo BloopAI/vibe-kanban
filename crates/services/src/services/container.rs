@@ -670,32 +670,74 @@ pub trait ContainerService {
 
         let prompt = task.to_prompt();
 
-        let cleanup_action = self.cleanup_action(project.cleanup_script);
+        let cleanup_action = self.cleanup_action(project.cleanup_script.clone());
 
         // Choose whether to execute the setup_script or coding agent first
         let execution_process = if let Some(setup_script) = project.setup_script {
-            let executor_action = ExecutorAction::new(
-                ExecutorActionType::ScriptRequest(ScriptRequest {
-                    script: setup_script,
-                    language: ScriptRequestLanguage::Bash,
-                    context: ScriptContext::SetupScript,
-                }),
-                // once the setup script is done, run the initial coding agent request
-                Some(Box::new(ExecutorAction::new(
+            if project.parallel_setup_script {
+                // PARALLEL EXECUTION: Start setup script and coding agent independently
+                // Setup script runs without next_action (it completes on its own)
+                let setup_action = ExecutorAction::new(
+                    ExecutorActionType::ScriptRequest(ScriptRequest {
+                        script: setup_script,
+                        language: ScriptRequestLanguage::Bash,
+                        context: ScriptContext::SetupScript,
+                    }),
+                    None, // No chaining - runs independently
+                );
+
+                // Start setup script (ignore errors - coding agent will start regardless)
+                if let Err(e) = self
+                    .start_execution(
+                        &task_attempt,
+                        &setup_action,
+                        &ExecutionProcessRunReason::SetupScript,
+                    )
+                    .await
+                {
+                    tracing::warn!(?e, "Failed to start setup script in parallel mode");
+                }
+
+                // Start coding agent independently with cleanup as next_action
+                let coding_action = ExecutorAction::new(
                     ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
                         prompt,
                         executor_profile_id: executor_profile_id.clone(),
                     }),
                     cleanup_action,
-                ))),
-            );
+                );
 
-            self.start_execution(
-                &task_attempt,
-                &executor_action,
-                &ExecutionProcessRunReason::SetupScript,
-            )
-            .await?
+                self.start_execution(
+                    &task_attempt,
+                    &coding_action,
+                    &ExecutionProcessRunReason::CodingAgent,
+                )
+                .await?
+            } else {
+                // SEQUENTIAL EXECUTION: Setup script runs first, then coding agent
+                let executor_action = ExecutorAction::new(
+                    ExecutorActionType::ScriptRequest(ScriptRequest {
+                        script: setup_script,
+                        language: ScriptRequestLanguage::Bash,
+                        context: ScriptContext::SetupScript,
+                    }),
+                    // once the setup script is done, run the initial coding agent request
+                    Some(Box::new(ExecutorAction::new(
+                        ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
+                            prompt,
+                            executor_profile_id: executor_profile_id.clone(),
+                        }),
+                        cleanup_action,
+                    ))),
+                );
+
+                self.start_execution(
+                    &task_attempt,
+                    &executor_action,
+                    &ExecutionProcessRunReason::SetupScript,
+                )
+                .await?
+            }
         } else {
             let executor_action = ExecutorAction::new(
                 ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {

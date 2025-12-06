@@ -50,7 +50,7 @@ interface UseConversationHistoryResult {}
 const MIN_INITIAL_ENTRIES = 10;
 const REMAINING_BATCH_SIZE = 50;
 
-const loadingPatch: PatchTypeWithKey = {
+const makeLoadingPatch = (executionProcessId: string): PatchTypeWithKey => ({
   type: 'NORMALIZED_ENTRY',
   content: {
     entry_type: {
@@ -59,9 +59,9 @@ const loadingPatch: PatchTypeWithKey = {
     content: '',
     timestamp: null,
   },
-  patchKey: 'loading',
-  executionProcessId: '',
-};
+  patchKey: `${executionProcessId}:loading`,
+  executionProcessId,
+});
 
 const nextActionPatch: (
   failed: boolean,
@@ -99,7 +99,7 @@ export const useConversationHistory = ({
   const executionProcesses = useRef<ExecutionProcess[]>(executionProcessesRaw);
   const displayedExecutionProcesses = useRef<ExecutionProcessStateStore>({});
   const loadedInitialEntries = useRef(false);
-  const lastActiveProcessId = useRef<string | null>(null);
+  const streamingProcessIdsRef = useRef<Set<string>>(new Set());
   const onEntriesUpdatedRef = useRef<OnEntriesUpdated | null>(null);
 
   const mergeIntoDisplayed = (
@@ -191,16 +191,14 @@ export const useConversationHistory = ({
       .flatMap((p) => p.entries);
   };
 
-  const getActiveAgentProcess = (): ExecutionProcess | null => {
-    const activeProcesses = executionProcesses?.current.filter(
-      (p) =>
-        p.status === ExecutionProcessStatus.running &&
-        p.run_reason !== 'devserver'
+  const getActiveAgentProcesses = (): ExecutionProcess[] => {
+    return (
+      executionProcesses?.current.filter(
+        (p) =>
+          p.status === ExecutionProcessStatus.running &&
+          p.run_reason !== 'devserver'
+      ) ?? []
     );
-    if (activeProcesses.length > 1) {
-      console.error('More than one active execution process found');
-    }
-    return activeProcesses[0] || null;
   };
 
   const flattenEntriesForEmit = useCallback(
@@ -312,7 +310,7 @@ export const useConversationHistory = ({
             }
 
             if (isProcessRunning && !hasPendingApprovalEntry) {
-              entries.push(loadingPatch);
+              entries.push(makeLoadingPatch(p.executionProcess.id));
             }
           } else if (
             p.executionProcess.executor_action.typ.type === 'ScriptRequest'
@@ -625,24 +623,32 @@ export const useConversationHistory = ({
   ]); // include idListKey so new processes trigger reload
 
   useEffect(() => {
-    const activeProcess = getActiveAgentProcess();
-    if (!activeProcess) return;
+    const activeProcesses = getActiveAgentProcesses();
+    if (activeProcesses.length === 0) return;
 
-    if (!displayedExecutionProcesses.current[activeProcess.id]) {
-      const runningOrInitial =
-        Object.keys(displayedExecutionProcesses.current).length > 1
-          ? 'running'
-          : 'initial';
-      ensureProcessVisible(activeProcess);
-      emitEntries(displayedExecutionProcesses.current, runningOrInitial, false);
-    }
+    for (const activeProcess of activeProcesses) {
+      if (!displayedExecutionProcesses.current[activeProcess.id]) {
+        const runningOrInitial =
+          Object.keys(displayedExecutionProcesses.current).length > 1
+            ? 'running'
+            : 'initial';
+        ensureProcessVisible(activeProcess);
+        emitEntries(
+          displayedExecutionProcesses.current,
+          runningOrInitial,
+          false
+        );
+      }
 
-    if (
-      activeProcess.status === ExecutionProcessStatus.running &&
-      lastActiveProcessId.current !== activeProcess.id
-    ) {
-      lastActiveProcessId.current = activeProcess.id;
-      loadRunningAndEmitWithBackoff(activeProcess);
+      if (
+        activeProcess.status === ExecutionProcessStatus.running &&
+        !streamingProcessIdsRef.current.has(activeProcess.id)
+      ) {
+        streamingProcessIdsRef.current.add(activeProcess.id);
+        loadRunningAndEmitWithBackoff(activeProcess).finally(() => {
+          streamingProcessIdsRef.current.delete(activeProcess.id);
+        });
+      }
     }
   }, [
     attempt.id,
@@ -673,7 +679,7 @@ export const useConversationHistory = ({
   useEffect(() => {
     displayedExecutionProcesses.current = {};
     loadedInitialEntries.current = false;
-    lastActiveProcessId.current = null;
+    streamingProcessIdsRef.current.clear();
     emitEntries(displayedExecutionProcesses.current, 'initial', true);
   }, [attempt.id, emitEntries]);
 
