@@ -430,7 +430,7 @@ impl LocalContainerService {
                     }
                 }
 
-                if container.should_finalize(&ctx) {
+                if container.should_finalize(&ctx).await {
                     // Only execute queued messages if the execution succeeded
                     // If it failed or was killed, just clear the queue and finalize
                     let should_execute_queued = !matches!(

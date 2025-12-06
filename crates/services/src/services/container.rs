@@ -123,8 +123,9 @@ pub trait ContainerService {
     /// A context is finalized when
     /// - Always when the execution process has failed or been killed
     /// - Never when the run reason is DevServer
+    /// - Never when there are other running non-DevServer processes for the same task attempt
     /// - The next action is None (no follow-up actions)
-    fn should_finalize(&self, ctx: &ExecutionContext) -> bool {
+    async fn should_finalize(&self, ctx: &ExecutionContext) -> bool {
         if matches!(
             ctx.execution_process.run_reason,
             ExecutionProcessRunReason::DevServer
@@ -138,6 +139,19 @@ pub trait ContainerService {
         ) {
             return true;
         }
+
+        // Check if there are other running non-DevServer processes for this task attempt.
+        // This handles the parallel setup script case - don't finalize if coding agent is still running.
+        if let Ok(true) = ExecutionProcess::has_running_non_dev_server_processes_excluding(
+            &self.db().pool,
+            ctx.task_attempt.id,
+            Some(ctx.execution_process.id),
+        )
+        .await
+        {
+            return false;
+        }
+
         // Otherwise, finalize only if no next action
         ctx.execution_process
             .executor_action()
