@@ -306,27 +306,14 @@ impl ExecutionProcess {
         pool: &SqlitePool,
         task_attempt_id: Uuid,
     ) -> Result<bool, sqlx::Error> {
-        Self::has_running_non_dev_server_processes_excluding(pool, task_attempt_id, None).await
-    }
-
-    /// Check if there are running processes (excluding dev servers) for a task attempt,
-    /// optionally excluding a specific execution process (e.g., the one that just completed)
-    pub async fn has_running_non_dev_server_processes_excluding(
-        pool: &SqlitePool,
-        task_attempt_id: Uuid,
-        exclude_id: Option<Uuid>,
-    ) -> Result<bool, sqlx::Error> {
         let count: i64 = sqlx::query_scalar(
             r#"SELECT COUNT(*)
                FROM execution_processes
                WHERE task_attempt_id = ?
                  AND status = 'running'
-                 AND run_reason != 'devserver'
-                 AND (? IS NULL OR id != ?)"#,
+                 AND run_reason != 'devserver'"#,
         )
         .bind(task_attempt_id)
-        .bind(exclude_id)
-        .bind(exclude_id)
         .fetch_one(pool)
         .await?;
         Ok(count > 0)

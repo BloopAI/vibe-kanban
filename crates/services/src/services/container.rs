@@ -123,15 +123,29 @@ pub trait ContainerService {
     /// A context is finalized when
     /// - Always when the execution process has failed or been killed
     /// - Never when the run reason is DevServer
-    /// - Never when there are other running non-DevServer processes for the same task attempt
+    /// - Never when a setup script has no next_action (parallel mode)
     /// - The next action is None (no follow-up actions)
-    async fn should_finalize(&self, ctx: &ExecutionContext) -> bool {
+    fn should_finalize(&self, ctx: &ExecutionContext) -> bool {
+        // Never finalize DevServer processes
         if matches!(
             ctx.execution_process.run_reason,
             ExecutionProcessRunReason::DevServer
         ) {
             return false;
         }
+
+        // Never finalize setup scripts without a next_action (parallel mode).
+        // In sequential mode, setup scripts have next_action pointing to coding agent,
+        // so they won't finalize anyway (handled by next_action.is_none() check below).
+        let action = ctx.execution_process.executor_action().unwrap();
+        if matches!(
+            ctx.execution_process.run_reason,
+            ExecutionProcessRunReason::SetupScript
+        ) && action.next_action.is_none()
+        {
+            return false;
+        }
+
         // Always finalize failed or killed executions, regardless of next action
         if matches!(
             ctx.execution_process.status,
@@ -140,24 +154,8 @@ pub trait ContainerService {
             return true;
         }
 
-        // Check if there are other running non-DevServer processes for this task attempt.
-        // This handles the parallel setup script case - don't finalize if coding agent is still running.
-        if let Ok(true) = ExecutionProcess::has_running_non_dev_server_processes_excluding(
-            &self.db().pool,
-            ctx.task_attempt.id,
-            Some(ctx.execution_process.id),
-        )
-        .await
-        {
-            return false;
-        }
-
         // Otherwise, finalize only if no next action
-        ctx.execution_process
-            .executor_action()
-            .unwrap()
-            .next_action
-            .is_none()
+        action.next_action.is_none()
     }
 
     /// Finalize task execution by updating status to InReview and sending notifications
