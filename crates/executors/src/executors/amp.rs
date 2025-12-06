@@ -65,11 +65,7 @@ impl StandardCodingAgentExecutor for Amp {
             .current_dir(current_dir)
             .args(&args);
 
-        // Apply environment variables
-        env.apply_to_command(&mut command);
-
-        // Apply custom environment variables from profile
-        crate::command::apply_env_vars(&mut command, &self.cmd);
+        env.clone().with_profile(&self.cmd).apply_to_command(&mut command);
 
         let mut child = command.group_spawn()?;
 
@@ -140,11 +136,7 @@ impl StandardCodingAgentExecutor for Amp {
             .current_dir(current_dir)
             .args(&continue_args);
 
-        // Apply environment variables
-        env.apply_to_command(&mut command);
-
-        // Apply custom environment variables from profile
-        crate::command::apply_env_vars(&mut command, &self.cmd);
+        env.clone().with_profile(&self.cmd).apply_to_command(&mut command);
 
         let mut child = command.group_spawn()?;
 

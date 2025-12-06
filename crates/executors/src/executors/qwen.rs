@@ -54,7 +54,7 @@ impl StandardCodingAgentExecutor for QwenCode {
                 combined_prompt,
                 qwen_command,
                 env,
-                Some(&self.cmd),
+                &self.cmd,
             )
             .await
     }
@@ -76,7 +76,7 @@ impl StandardCodingAgentExecutor for QwenCode {
                 session_id,
                 qwen_command,
                 env,
-                Some(&self.cmd),
+                &self.cmd,
             )
             .await
     }

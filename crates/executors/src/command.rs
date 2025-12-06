@@ -3,7 +3,6 @@ use std::{collections::HashMap, path::PathBuf};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use tokio::process::Command;
 use ts_rs::TS;
 use workspace_utils::shell::resolve_executable_path;
 
@@ -59,15 +58,6 @@ pub struct CmdOverrides {
     )]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub env: Option<HashMap<String, String>>,
-}
-
-/// Apply environment variables from CmdOverrides to a Command
-pub fn apply_env_vars(command: &mut Command, overrides: &CmdOverrides) {
-    if let Some(ref env_vars) = overrides.env {
-        for (key, value) in env_vars {
-            command.env(key, value);
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]

@@ -64,7 +64,7 @@ impl StandardCodingAgentExecutor for Gemini {
                 combined_prompt,
                 gemini_command,
                 env,
-                Some(&self.cmd),
+                &self.cmd,
             )
             .await
     }
@@ -86,7 +86,7 @@ impl StandardCodingAgentExecutor for Gemini {
                 session_id,
                 gemini_command,
                 env,
-                Some(&self.cmd),
+                &self.cmd,
             )
             .await
     }

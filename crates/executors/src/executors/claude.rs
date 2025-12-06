@@ -241,11 +241,7 @@ impl ClaudeCode {
             .current_dir(current_dir)
             .args(&args);
 
-        // Apply environment variables
-        env.apply_to_command(&mut command);
-
-        // Apply custom environment variables from profile
-        crate::command::apply_env_vars(&mut command, &self.cmd);
+        env.clone().with_profile(&self.cmd).apply_to_command(&mut command);
 
         // Remove ANTHROPIC_API_KEY if disable_api_key is enabled
         if self.disable_api_key.unwrap_or(false) {

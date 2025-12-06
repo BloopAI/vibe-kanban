@@ -314,11 +314,7 @@ impl Codex {
             .env("NO_COLOR", "1")
             .env("RUST_LOG", "error");
 
-        // Apply environment variables
-        env.apply_to_command(&mut process);
-
-        // Apply custom environment variables from profile
-        crate::command::apply_env_vars(&mut process, &self.cmd);
+        env.clone().with_profile(&self.cmd).apply_to_command(&mut process);
 
         let mut child = process.group_spawn()?;
 
