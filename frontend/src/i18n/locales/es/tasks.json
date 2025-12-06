@@ -17,6 +17,7 @@
     "editBranchName": "Editar nombre de rama",
     "gitActions": "Acciones de Git",
     "openInIde": "Open attempt in IDE",
+    "openInTerminal": "Abrir en Terminal",
     "task": "Task",
     "viewProcesses": "View processes",
     "viewRelatedTasks": "View related tasks"
