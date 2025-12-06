@@ -110,13 +110,14 @@ function AppContent() {
     };
   }, [config, isSignedIn, updateAndSaveConfig]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader message="Loading..." size={32} />
-      </div>
-    );
-  }
+  // TODO: Disabled while developing FE only
+  // if (loading) {
+  //   return (
+  //     <div className="min-h-screen bg-background flex items-center justify-center">
+  //       <Loader message="Loading..." size={32} />
+  //     </div>
+  //   );
+  // }
 
   return (
     <I18nextProvider i18n={i18n}>
