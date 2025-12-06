@@ -72,6 +72,7 @@ function CompactCard({
   onDoubleClick,
   className,
 }: GitHubCommentCardProps) {
+  const { t } = useTranslation('tasks');
   const isReview = commentType === 'review';
   const Icon = isReview ? Code : MessageSquare;
   const displayText = isReview && path ? `${path}: ${body}` : body;
@@ -86,7 +87,7 @@ function CompactCard({
       onDoubleClick={onDoubleClick}
       role="button"
       tabIndex={0}
-      title={`@${author}: ${body}\n\nClick to view on GitHub, double-click to edit`}
+      title={`@${author}: ${body}\n\n${t('githubComments.card.tooltip')}`}
     >
       <Icon className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
       <span className="text-xs font-medium flex-shrink-0">@{author}</span>

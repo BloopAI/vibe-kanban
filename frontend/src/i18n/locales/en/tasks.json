@@ -406,10 +406,12 @@
       "noComments": "No comments found on this PR",
       "selectAll": "Select All",
       "deselectAll": "Deselect All",
-      "add": "Add"
+      "add": "Add",
+      "selectedCount": "{{selected}} of {{total}} selected"
     },
     "card": {
-      "review": "Review"
+      "review": "Review",
+      "tooltip": "Click to view on GitHub, double-click to edit"
     }
   },
   "taskFormDialog": {

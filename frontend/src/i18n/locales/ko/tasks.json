@@ -406,10 +406,12 @@
       "noComments": "이 PR에 댓글이 없습니다",
       "selectAll": "모두 선택",
       "deselectAll": "모두 선택 해제",
-      "add": "추가"
+      "add": "추가",
+      "selectedCount": "{{total}}개 중 {{selected}}개 선택됨"
     },
     "card": {
-      "review": "리뷰"
+      "review": "리뷰",
+      "tooltip": "클릭하여 GitHub에서 보기, 더블 클릭하여 편집"
     }
   },
   "taskFormDialog": {

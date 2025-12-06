@@ -123,7 +123,10 @@ const GitHubCommentsDialogImpl = NiceModal.create<GitHubCommentsDialogProps>(
               <>
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-sm text-muted-foreground">
-                    {selectedIds.size} of {comments.length} selected
+                    {t('tasks:githubComments.dialog.selectedCount', {
+                      selected: selectedIds.size,
+                      total: comments.length,
+                    })}
                   </span>
                   <Button
                     variant="ghost"
