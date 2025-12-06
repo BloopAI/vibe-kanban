@@ -1030,7 +1030,7 @@ export function ProjectTasks() {
   );
 
   return (
-    <div className="min-h-full h-full flex flex-col">
+    <div className="h-full flex flex-col">
       {streamError && (
         <Alert className="w-full z-30 xl:sticky xl:top-0">
           <AlertTitle className="flex items-center gap-2">
