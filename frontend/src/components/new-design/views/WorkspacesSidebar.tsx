@@ -1,23 +1,37 @@
 import type { Workspace } from '../hooks/useWorkspaces';
+import { WorkspaceSearch } from '@/components/ui-new/Field';
 
 interface WorkspacesSidebarProps {
   workspaces: Workspace[];
   selectedWorkspaceId: string | null;
   onSelectWorkspace: (id: string) => void;
+  onAddWorkspace?: () => void;
+  searchQuery: string;
+  onSearchChange: (value: string) => void;
 }
 
 export function WorkspacesSidebar({
   workspaces,
   selectedWorkspaceId,
   onSelectWorkspace,
+  onAddWorkspace,
+  searchQuery,
+  onSearchChange,
 }: WorkspacesSidebarProps) {
+  const filteredWorkspaces = workspaces.filter((workspace) =>
+    workspace.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <aside className="w-64 bg-secondary shrink-0 p-base">
-      <h2 className="mb-padding text-sm font-semibold uppercase tracking-wide text-low">
-        Workspaces
-      </h2>
+      <WorkspaceSearch
+        value={searchQuery}
+        onValueChange={onSearchChange}
+        onAdd={onAddWorkspace}
+        className="mb-base"
+      />
       <nav className="space-y-1">
-        {workspaces.map((workspace) => (
+        {filteredWorkspaces.map((workspace) => (
           <button
             key={workspace.id}
             onClick={() => onSelectWorkspace(workspace.id)}
