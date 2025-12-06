@@ -24,6 +24,11 @@ import koSettings from './locales/ko/settings.json';
 import koProjects from './locales/ko/projects.json';
 import koTasks from './locales/ko/tasks.json';
 import koOrganization from './locales/ko/organization.json';
+import zhHansCommon from './locales/zh-Hans/common.json';
+import zhHansSettings from './locales/zh-Hans/settings.json';
+import zhHansProjects from './locales/zh-Hans/projects.json';
+import zhHansTasks from './locales/zh-Hans/tasks.json';
+import zhHansOrganization from './locales/zh-Hans/organization.json';
 
 const resources = {
   en: {
@@ -53,6 +58,13 @@ const resources = {
     projects: koProjects,
     tasks: koTasks,
     organization: koOrganization,
+  },
+  'zh-Hans': {
+    common: zhHansCommon,
+    settings: zhHansSettings,
+    projects: zhHansProjects,
+    tasks: zhHansTasks,
+    organization: zhHansOrganization,
   },
 };
 
