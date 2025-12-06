@@ -2,7 +2,7 @@
 
 ### CSS Variables & Tailwind Config
 
-The new design uses custom CSS variables defined in `frontend/src/styles/new/index.css` and configured in `frontend/tailwind.new.config.js`. All styles are scoped to the `.new-design` class.
+The new design uses custom CSS variables defined in `src/styles/new/index.css` and configured in `tailwind.new.config.js`. All styles are scoped to the `.new-design` class.
 
 ### Colors
 
