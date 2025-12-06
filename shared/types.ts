@@ -258,6 +258,16 @@ conflicted_files: Array<string>, };
 
 export type RunScriptError = { "type": "no_script_configured" } | { "type": "process_already_running" };
 
+export type AttachPrResponse = { pr_attached: boolean, pr_url: string | null, pr_number: bigint | null, pr_status: MergeStatus | null, };
+
+export type PrCommentsResponse = { comments: Array<PrComment>, };
+
+export type GetPrCommentsError = { "type": "no_pr_attached" } | { "type": "github_cli_not_installed" } | { "type": "github_cli_not_logged_in" };
+
+export type PrComment = { id: string, author: PrCommentAuthor, authorAssociation: string, body: string, createdAt: string, url: string, };
+
+export type PrCommentAuthor = { login: string, };
+
 export type DirectoryEntry = { name: string, path: string, is_directory: boolean, is_git_repo: boolean, last_modified: bigint | null, };
 
 export type DirectoryListResponse = { entries: Array<DirectoryEntry>, current_path: string, };

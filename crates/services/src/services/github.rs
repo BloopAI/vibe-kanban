@@ -10,6 +10,7 @@ use tracing::info;
 mod cli;
 
 use cli::{GhCli, GhCliError};
+pub use cli::{PrComment, PrCommentAuthor};
 
 #[derive(Debug, Error)]
 pub enum GitHubServiceError {
@@ -261,6 +262,48 @@ impl GitHubService {
             })?;
             let prs = prs.map_err(GitHubServiceError::from)?;
             Ok(prs)
+        })
+        .retry(
+            &ExponentialBuilder::default()
+                .with_min_delay(Duration::from_secs(1))
+                .with_max_delay(Duration::from_secs(30))
+                .with_max_times(3)
+                .with_jitter(),
+        )
+        .when(|e: &GitHubServiceError| e.should_retry())
+        .notify(|err: &GitHubServiceError, dur: Duration| {
+            tracing::warn!(
+                "GitHub API call failed, retrying after {:.2}s: {}",
+                dur.as_secs_f64(),
+                err
+            );
+        })
+        .await
+    }
+
+    /// Fetch all comments for a pull request
+    pub async fn get_pr_comments(
+        &self,
+        repo_info: &GitHubRepoInfo,
+        pr_number: i64,
+    ) -> Result<Vec<PrComment>, GitHubServiceError> {
+        (|| async {
+            let owner = repo_info.owner.clone();
+            let repo = repo_info.repo_name.clone();
+            let cli = self.gh_cli.clone();
+            let comments = task::spawn_blocking({
+                let owner = owner.clone();
+                let repo = repo.clone();
+                move || cli.get_pr_comments(&owner, &repo, pr_number)
+            })
+            .await
+            .map_err(|err| {
+                GitHubServiceError::PullRequest(format!(
+                    "Failed to execute GitHub CLI for fetching PR #{pr_number} comments: {err}"
+                ))
+            })?;
+            let comments = comments.map_err(GitHubServiceError::from)?;
+            Ok(comments)
         })
         .retry(
             &ExponentialBuilder::default()
