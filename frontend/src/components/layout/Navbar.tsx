@@ -20,7 +20,6 @@ import {
   LogOut,
   LogIn,
 } from 'lucide-react';
-import { Logo } from '@/components/Logo';
 import { SearchBar } from '@/components/SearchBar';
 import { useSearch } from '@/contexts/SearchContext';
 import { openTaskForm } from '@/lib/openTaskForm';
@@ -138,9 +137,6 @@ export function Navbar() {
       <div className="w-full px-3">
         <div className="flex items-center h-12 py-2">
           <div className="flex-1 flex items-center">
-            <Link to="/projects">
-              <Logo />
-            </Link>
             <a
               href="https://discord.gg/AC4nwVtJM3"
               target="_blank"
