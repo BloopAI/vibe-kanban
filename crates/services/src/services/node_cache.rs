@@ -14,9 +14,9 @@ use std::time::Duration;
 
 use db::models::{
     cached_node::{CachedNode, CachedNodeCapabilities, CachedNodeInput, CachedNodeStatus},
-    cached_node_project::{CachedNodeProject, CachedNodeProjectInput, NodeSyncCursor},
+    project::Project,
 };
-use remote::nodes::{Node, NodeProject};
+use remote::nodes::Node;
 use sqlx::SqlitePool;
 use tokio::sync::RwLock;
 use tokio::time::{self, MissedTickBehavior};
@@ -142,13 +142,27 @@ impl<'a> NodeCacheSyncer<'a> {
 
             // Convert and upsert the node
             let input = self.node_to_input(&node);
-            CachedNode::upsert(self.pool, input)
-                .await
-                .map_err(NodeCacheSyncError::Database)?;
-            stats.nodes_synced += 1;
+            match CachedNode::upsert(self.pool, input).await {
+                Ok(cached) => {
+                    debug!(
+                        cached_node_id = %cached.id,
+                        cached_node_name = %cached.name,
+                        "successfully cached node"
+                    );
+                    stats.nodes_synced += 1;
+                }
+                Err(e) => {
+                    tracing::error!(
+                        node_id = %node_id,
+                        error = %e,
+                        "failed to upsert cached node"
+                    );
+                    return Err(NodeCacheSyncError::Database(e));
+                }
+            }
 
             // Fetch and sync projects for this node
-            match self.sync_node_projects(node_id).await {
+            match self.sync_node_projects(&node).await {
                 Ok(project_stats) => {
                     stats.projects_synced += project_stats.0;
                     stats.projects_removed += project_stats.1;
@@ -165,41 +179,81 @@ impl<'a> NodeCacheSyncer<'a> {
             .map_err(NodeCacheSyncError::Database)?;
         stats.nodes_removed = removed as usize;
 
-        // Update sync cursor
-        NodeSyncCursor::update(self.pool, org_id)
-            .await
-            .map_err(NodeCacheSyncError::Database)?;
-
         Ok(stats)
     }
 
-    /// Sync projects for a specific node
-    async fn sync_node_projects(&self, node_id: Uuid) -> Result<(usize, usize), NodeCacheSyncError> {
+    /// Sync projects for a specific node into the unified projects table
+    async fn sync_node_projects(&self, node: &Node) -> Result<(usize, usize), NodeCacheSyncError> {
         let projects = self
             .remote_client
-            .list_node_projects(node_id)
+            .list_node_projects(node.id)
             .await
             .map_err(NodeCacheSyncError::Remote)?;
 
-        debug!(node_id = %node_id, project_count = projects.len(), "fetched projects for node");
+        debug!(node_id = %node.id, project_count = projects.len(), "fetched projects for node");
 
         let mut synced_count = 0;
-        let mut synced_ids = Vec::with_capacity(projects.len());
+        let mut synced_remote_project_ids = Vec::with_capacity(projects.len());
 
         for project in projects {
-            synced_ids.push(project.id);
+            synced_remote_project_ids.push(project.project_id);
 
-            let input = self.project_to_input(node_id, &project);
-            CachedNodeProject::upsert(self.pool, input)
-                .await
-                .map_err(NodeCacheSyncError::Database)?;
-            synced_count += 1;
+            // Extract project name from git repo path
+            let project_name = std::path::Path::new(&project.git_repo_path)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("Unknown")
+                .to_string();
+
+            // Convert node status to string for storage
+            let node_status = match node.status {
+                remote::nodes::NodeStatus::Pending => "pending",
+                remote::nodes::NodeStatus::Online => "online",
+                remote::nodes::NodeStatus::Offline => "offline",
+                remote::nodes::NodeStatus::Busy => "busy",
+                remote::nodes::NodeStatus::Draining => "draining",
+            }
+            .to_string();
+
+            match Project::upsert_remote_project(
+                self.pool,
+                Uuid::new_v4(), // local_id for new projects
+                project.project_id,
+                project_name.clone(),
+                project.git_repo_path.clone(),
+                node.id,
+                node.name.clone(),
+                node.public_url.clone(),
+                Some(node_status),
+            )
+            .await
+            {
+                Ok(cached) => {
+                    debug!(
+                        cached_id = %cached.id,
+                        project_name = %cached.name,
+                        source_node_id = ?cached.source_node_id,
+                        "successfully synced remote project to unified table"
+                    );
+                    synced_count += 1;
+                }
+                Err(e) => {
+                    tracing::error!(
+                        node_id = %node.id,
+                        project_id = %project.project_id,
+                        error = %e,
+                        "failed to upsert remote project"
+                    );
+                    return Err(NodeCacheSyncError::Database(e));
+                }
+            }
         }
 
-        // Remove stale projects for this node
-        let removed = CachedNodeProject::remove_stale_for_node(self.pool, node_id, &synced_ids)
-            .await
-            .map_err(NodeCacheSyncError::Database)?;
+        // Remove stale remote projects (those no longer in the hive)
+        // Note: We pass all synced project IDs across all nodes to avoid
+        // accidentally deleting projects from other nodes
+        let removed =
+            Project::delete_stale_remote_projects(self.pool, &synced_remote_project_ids).await?;
 
         Ok((synced_count, removed as usize))
     }
@@ -237,31 +291,6 @@ impl<'a> NodeCacheSyncer<'a> {
             remote::nodes::NodeStatus::Busy => CachedNodeStatus::Busy,
             remote::nodes::NodeStatus::Draining => CachedNodeStatus::Draining,
         }
-    }
-
-    /// Convert a remote NodeProject to a CachedNodeProjectInput
-    fn project_to_input(&self, node_id: Uuid, project: &NodeProject) -> CachedNodeProjectInput {
-        CachedNodeProjectInput {
-            id: project.id,
-            node_id,
-            project_id: project.project_id,
-            local_project_id: project.local_project_id,
-            project_name: self.extract_project_name(&project.git_repo_path),
-            git_repo_path: project.git_repo_path.clone(),
-            default_branch: project.default_branch.clone(),
-            sync_status: project.sync_status.clone(),
-            last_synced_at: project.last_synced_at,
-            created_at: project.created_at,
-        }
-    }
-
-    /// Extract project name from git repo path
-    fn extract_project_name(&self, git_repo_path: &str) -> String {
-        std::path::Path::new(git_repo_path)
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("Unknown")
-            .to_string()
     }
 }
 

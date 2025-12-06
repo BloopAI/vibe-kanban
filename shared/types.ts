@@ -30,7 +30,7 @@ truncated: boolean,
  */
 language: string | null, };
 
-export type Project = { id: string, name: string, git_repo_path: string, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, copy_files: string | null, remote_project_id: string | null, created_at: Date, updated_at: Date, };
+export type Project = { id: string, name: string, git_repo_path: string, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, copy_files: string | null, remote_project_id: string | null, created_at: Date, updated_at: Date, is_remote: boolean, source_node_id: string | null, source_node_name: string | null, source_node_public_url: string | null, source_node_status: string | null, remote_last_synced_at: Date | null, };
 
 export type CreateProject = { name: string, git_repo_path: string, use_existing_repo: boolean, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, copy_files: string | null, };
 
@@ -56,7 +56,19 @@ export type LinkToExistingRequest = { remote_project_id: string, };
 
 export type UnifiedProject = { "type": "local" } & Project | { "type": "remote" } & RemoteNodeProject;
 
-export type RemoteNodeProject = { id: string, node_id: string, project_id: string, local_project_id: string, project_name: string, git_repo_path: string, default_branch: string, sync_status: string, last_synced_at: Date | null, created_at: Date, cached_at: Date, node_name: string, node_status: CachedNodeStatus, node_public_url: string | null, };
+export type RemoteNodeProject = { 
+/**
+ * Local ID in the unified projects table
+ */
+id: string, 
+/**
+ * ID of the node this project belongs to
+ */
+node_id: string, 
+/**
+ * Remote project ID from the Hive
+ */
+project_id: string, project_name: string, git_repo_path: string, last_synced_at: Date | null, created_at: Date, node_name: string, node_status: CachedNodeStatus, node_public_url: string | null, };
 
 export type UnifiedProjectsResponse = { 
 /**
@@ -120,9 +132,9 @@ export type TagSearchParams = { search: string | null, };
 
 export type TaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelled";
 
-export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_task_attempt: string | null, shared_task_id: string | null, created_at: string, updated_at: string, };
+export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_task_attempt: string | null, shared_task_id: string | null, created_at: string, updated_at: string, is_remote: boolean, remote_assignee_user_id: string | null, remote_assignee_name: string | null, remote_assignee_username: string | null, remote_version: bigint, remote_last_synced_at: string | null, remote_stream_node_id: string | null, remote_stream_url: string | null, };
 
-export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, has_merged_attempt: boolean, last_attempt_failed: boolean, executor: string, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_task_attempt: string | null, shared_task_id: string | null, created_at: string, updated_at: string, };
+export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, has_merged_attempt: boolean, last_attempt_failed: boolean, executor: string, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_task_attempt: string | null, shared_task_id: string | null, created_at: string, updated_at: string, is_remote: boolean, remote_assignee_user_id: string | null, remote_assignee_name: string | null, remote_assignee_username: string | null, remote_version: bigint, remote_last_synced_at: string | null, remote_stream_node_id: string | null, remote_stream_url: string | null, };
 
 export type TaskRelationships = { parent_task: Task | null, current_attempt: TaskAttempt, children: Array<Task>, };
 

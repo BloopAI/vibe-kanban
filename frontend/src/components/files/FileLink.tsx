@@ -14,7 +14,7 @@ import { useFileBrowserStore } from '@/stores/useFileBrowserStore';
  * - file.ts:42:10 (with column)
  */
 export const FILE_PATH_REGEX =
-  /(?:^|[\s"'`([\{])((\.\/|\.\.\/|\/)?[\w.-]+(?:\/[\w.-]+)*\.[a-zA-Z]{1,10})(?::(\d+)(?::(\d+))?)?(?=[\s"'`)\]}:,]|$)/g;
+  /(?:^|[\s"'`([{])((\.\/|\.\.\/|\/)?[\w.-]+(?:\/[\w.-]+)*\.[a-zA-Z]{1,10})(?::(\d+)(?::(\d+))?)?(?=[\s"'`)\]}:,]|$)/g;
 
 /**
  * Parse file path from text, extracting path, line, and column

@@ -14,6 +14,7 @@ use super::organization_members::ensure_member_access;
 use crate::{
     AppState,
     auth::RequestContext,
+    db::organizations::{MemberRole, OrganizationRepository},
     nodes::{
         CreateNodeApiKey, HeartbeatPayload, LinkProjectData, Node, NodeApiKey, NodeError,
         NodeProject, NodeRegistration, NodeServiceImpl,
@@ -371,8 +372,43 @@ pub async fn delete_node(
     let pool = state.pool();
     let service = NodeServiceImpl::new(pool.clone());
 
-    let _ = ctx; // TODO: Verify user has access to the node's organization
+    // Get node to verify organization access
+    let node = match service.get_node(node_id).await {
+        Ok(node) => node,
+        Err(NodeError::NodeNotFound) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!({ "error": "Node not found" })),
+            )
+                .into_response()
+        }
+        Err(error) => return node_error_response(error, "failed to get node"),
+    };
 
+    // Verify user is admin of the node's organization
+    let org_repo = OrganizationRepository::new(pool);
+    match org_repo
+        .check_user_role(node.organization_id, ctx.user.id)
+        .await
+    {
+        Ok(Some(MemberRole::Admin)) => {}
+        Ok(_) => {
+            return (
+                StatusCode::FORBIDDEN,
+                Json(json!({ "error": "Admin access required to delete nodes" })),
+            )
+                .into_response()
+        }
+        Err(_) => {
+            return (
+                StatusCode::FORBIDDEN,
+                Json(json!({ "error": "Admin access required to delete nodes" })),
+            )
+                .into_response()
+        }
+    }
+
+    // Delete the node (cascades node_projects, task_assignments)
     match service.delete_node(node_id).await {
         Ok(()) => StatusCode::NO_CONTENT.into_response(),
         Err(error) => node_error_response(error, "failed to delete node"),

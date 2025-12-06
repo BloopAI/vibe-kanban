@@ -17,6 +17,7 @@ pub mod github;
 pub mod hive_client;
 pub mod image;
 pub mod node_cache;
+pub mod node_proxy_client;
 pub mod node_runner;
 pub mod notification;
 pub mod oauth_credentials;

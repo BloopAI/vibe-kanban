@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            WITH admin_check AS (\n                SELECT 1 FROM organization_member_metadata\n                WHERE organization_id = $1 AND user_id = $2 AND role = 'admin'\n            )\n            DELETE FROM organizations o\n            USING admin_check\n            WHERE o.id = $1\n            RETURNING o.id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "03224cafe38ac2604d13bbebcdda7b4932b2b4959a7721c3173202d722705a1b"
+}

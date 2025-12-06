@@ -18,6 +18,7 @@ use services::services::{
     git::GitService,
     image::ImageService,
     node_cache::NodeCacheSyncService,
+    node_proxy_client::NodeProxyClient,
     node_runner::{NodeRunnerConfig, NodeRunnerContext, spawn_node_runner},
     oauth_credentials::OAuthCredentials,
     remote_client::{RemoteClient, RemoteClientError},
@@ -59,6 +60,8 @@ pub struct LocalDeployment {
     node_runner_context: Option<NodeRunnerContext>,
     /// Validator for connection tokens (for direct frontend-to-node connections)
     connection_token_validator: Arc<ConnectionTokenValidator>,
+    /// HTTP client for proxying requests to remote nodes
+    node_proxy_client: NodeProxyClient,
     /// Whether the node cache sync has been started
     node_cache_sync_started: Arc<Mutex<bool>>,
 }
@@ -200,7 +203,7 @@ impl Deployment for LocalDeployment {
         let file_search_cache = Arc::new(FileSearchCache::new());
 
         // Initialize node runner and connection token validator if hive connection is configured
-        let (node_runner_context, connection_token_validator) =
+        let (node_runner_context, connection_token_validator, node_proxy_client) =
             if let Some(node_config) = NodeRunnerConfig::from_env() {
                 tracing::info!(
                     hive_url = %node_config.hive_url,
@@ -219,10 +222,25 @@ impl Deployment for LocalDeployment {
                     ConnectionTokenValidator::disabled()
                 };
 
-                // Pass the container to spawn_node_runner to enable task execution
+                // Create node proxy client with the same secret
+                // Note: local_node_id will be set after the node authenticates with the hive
+                let proxy_client =
+                    NodeProxyClient::new(node_config.connection_token_secret.clone(), None);
+                if proxy_client.is_enabled() {
+                    tracing::info!("node proxy client enabled for remote project operations");
+                }
+
+                // Pass the container and remote_client to spawn_node_runner to enable
+                // task execution and remote project sync
                 (
-                    spawn_node_runner(node_config, db.clone(), Some(container.clone())),
+                    spawn_node_runner(
+                        node_config,
+                        db.clone(),
+                        Some(container.clone()),
+                        remote_client.clone().ok(),
+                    ),
                     validator,
+                    proxy_client,
                 )
             } else {
                 // Log which env vars are missing to help with debugging
@@ -231,11 +249,19 @@ impl Deployment for LocalDeployment {
                 if !has_hive_url && !has_api_key {
                     tracing::debug!("VK_HIVE_URL and VK_NODE_API_KEY not set; node runner disabled");
                 } else if !has_hive_url {
-                    tracing::debug!("VK_HIVE_URL not set; node runner disabled (VK_NODE_API_KEY is set)");
+                    tracing::debug!(
+                        "VK_HIVE_URL not set; node runner disabled (VK_NODE_API_KEY is set)"
+                    );
                 } else {
-                    tracing::debug!("VK_NODE_API_KEY not set; node runner disabled (VK_HIVE_URL is set)");
+                    tracing::debug!(
+                        "VK_NODE_API_KEY not set; node runner disabled (VK_HIVE_URL is set)"
+                    );
                 }
-                (None, ConnectionTokenValidator::disabled())
+                (
+                    None,
+                    ConnectionTokenValidator::disabled(),
+                    NodeProxyClient::disabled(),
+                )
             };
 
         let deployment = Self {
@@ -259,6 +285,7 @@ impl Deployment for LocalDeployment {
             oauth_handoffs,
             node_runner_context,
             connection_token_validator: Arc::new(connection_token_validator),
+            node_proxy_client,
             node_cache_sync_started: Arc::new(Mutex::new(false)),
         };
 
@@ -422,6 +449,11 @@ impl LocalDeployment {
         &self.connection_token_validator
     }
 
+    /// Get the node proxy client for proxying requests to remote nodes.
+    pub fn node_proxy_client(&self) -> &NodeProxyClient {
+        &self.node_proxy_client
+    }
+
     /// Start the background node cache sync if the user is logged in.
     ///
     /// This spawns a background task that periodically syncs nodes and projects
@@ -430,21 +462,27 @@ impl LocalDeployment {
         // Only start once
         let mut started = self.node_cache_sync_started.lock().await;
         if *started {
+            tracing::debug!("node cache sync already started, skipping");
             return;
         }
 
         // Need remote client and credentials
         let Ok(client) = self.remote_client() else {
-            tracing::debug!("remote client not configured, skipping node cache sync");
+            tracing::warn!("remote client not configured, skipping node cache sync");
             return;
         };
 
         if self.auth_context.get_credentials().await.is_none() {
-            tracing::debug!("not logged in, skipping node cache sync");
+            tracing::warn!("not logged in, skipping node cache sync");
             return;
         }
 
-        tracing::info!("starting background node cache sync");
+        // Log which database we're using
+        let db_path = utils::assets::asset_dir().join("db.sqlite");
+        tracing::info!(
+            db_path = %db_path.display(),
+            "starting background node cache sync"
+        );
         *started = true;
 
         let pool = self.db.pool.clone();

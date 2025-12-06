@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import {
   Card,
   CardDescription,
@@ -5,7 +6,7 @@ import {
   CardTitle,
 } from '@/components/ui/card.tsx';
 import { Badge } from '@/components/ui/badge.tsx';
-import { Calendar, Server, ExternalLink, Circle } from 'lucide-react';
+import { Calendar, Server, Circle, FolderKanban } from 'lucide-react';
 import { RemoteNodeProject, CachedNodeStatus } from 'shared/types';
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -34,6 +35,7 @@ function getStatusColor(status: CachedNodeStatus): string {
 function RemoteProjectCard({ project, isFocused }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const { t } = useTranslation('projects');
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (isFocused && ref.current) {
@@ -43,22 +45,16 @@ function RemoteProjectCard({ project, isFocused }: Props) {
   }, [isFocused]);
 
   const handleClick = () => {
-    // If node has a public URL, we could link to it
-    // For now, this is view-only
-    if (project.node_public_url) {
-      window.open(
-        `${project.node_public_url}/projects/${project.local_project_id}/tasks`,
-        '_blank'
-      );
-    }
+    // Navigate to unified project tasks page
+    // Uses project_id (Hive project ID) as the route parameter
+    // The unified ProjectTasks page handles both local and remote projects
+    navigate(`/projects/${project.project_id}/tasks`);
   };
-
-  const isClickable = !!project.node_public_url;
 
   return (
     <Card
-      className={`transition-shadow ${isClickable ? 'hover:shadow-md cursor-pointer' : 'opacity-75'} focus:ring-2 focus:ring-primary outline-none border`}
-      onClick={isClickable ? handleClick : undefined}
+      className="transition-shadow hover:shadow-md cursor-pointer focus:ring-2 focus:ring-primary outline-none border"
+      onClick={handleClick}
       tabIndex={isFocused ? 0 : -1}
       ref={ref}
     >
@@ -74,9 +70,7 @@ function RemoteProjectCard({ project, isFocused }: Props) {
               />
             </Badge>
           </div>
-          {isClickable && (
-            <ExternalLink className="h-4 w-4 text-muted-foreground" />
-          )}
+          <FolderKanban className="h-4 w-4 text-muted-foreground" />
         </div>
         <CardDescription className="flex items-center gap-3">
           <span className="flex items-center">

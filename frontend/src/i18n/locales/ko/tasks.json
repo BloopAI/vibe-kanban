@@ -19,8 +19,10 @@
     "openInIde": "Open attempt in IDE",
     "task": "Task",
     "viewProcesses": "View processes",
-    "viewRelatedTasks": "View related tasks"
+    "viewRelatedTasks": "View related tasks",
+    "remoteTaskCannotExecute": "원격 작업은 원본 노드에서 실행됩니다"
   },
+  "remoteTask": "원격 작업",
   "editBranchName": {
     "dialog": {
       "title": "브랜치 이름 편집",

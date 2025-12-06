@@ -113,6 +113,8 @@ pub enum HiveMessage {
     StatusRequest { message_id: Uuid },
     #[serde(rename = "project_sync")]
     ProjectSync(ProjectSyncMessage),
+    #[serde(rename = "node_removed")]
+    NodeRemoved(NodeRemovedMessage),
     #[serde(rename = "heartbeat_ack")]
     HeartbeatAck { server_time: chrono::DateTime<Utc> },
     #[serde(rename = "error")]
@@ -189,14 +191,39 @@ pub struct TaskCancelMessage {
     pub reason: Option<String>,
 }
 
+/// Message indicating a node was removed from the organization.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NodeRemovedMessage {
+    /// The ID of the node that was removed
+    pub node_id: Uuid,
+    /// Reason for removal
+    pub reason: String,
+}
+
+/// Message for syncing project info between nodes.
+///
+/// When `is_new` is true, this indicates a new project link from another node.
+/// When `is_new` is false, this indicates the project was unlinked.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectSyncMessage {
     pub message_id: Uuid,
     pub link_id: Uuid,
     pub project_id: Uuid,
+    /// Name of the project
+    #[serde(default)]
+    pub project_name: String,
     pub local_project_id: Uuid,
     pub git_repo_path: String,
     pub default_branch: String,
+    /// The node that owns this project link
+    pub source_node_id: Uuid,
+    /// Human-readable name of the source node
+    #[serde(default)]
+    pub source_node_name: String,
+    /// Public URL for direct connections to the source node
+    #[serde(default)]
+    pub source_node_public_url: Option<String>,
+    /// True if this is a new project link, false if it's being removed
     pub is_new: bool,
 }
 
@@ -305,8 +332,10 @@ pub enum HiveEvent {
     TaskAssigned(TaskAssignMessage),
     /// Task cancellation received
     TaskCancelled(TaskCancelMessage),
-    /// Project sync received
+    /// Project sync received (new project link or unlink from another node)
     ProjectSync(ProjectSyncMessage),
+    /// Node removed from organization
+    NodeRemoved(NodeRemovedMessage),
     /// Error from hive
     Error { message: String },
 }
@@ -609,10 +638,21 @@ impl HiveClient {
             HiveMessage::ProjectSync(sync) => {
                 tracing::info!(
                     project_id = %sync.project_id,
+                    project_name = %sync.project_name,
+                    source_node_id = %sync.source_node_id,
+                    source_node_name = %sync.source_node_name,
                     is_new = sync.is_new,
-                    "received project sync"
+                    "received project sync from another node"
                 );
                 let _ = self.event_tx.send(HiveEvent::ProjectSync(sync)).await;
+            }
+            HiveMessage::NodeRemoved(removed) => {
+                tracing::info!(
+                    node_id = %removed.node_id,
+                    reason = %removed.reason,
+                    "node removed from organization"
+                );
+                let _ = self.event_tx.send(HiveEvent::NodeRemoved(removed)).await;
             }
             HiveMessage::HeartbeatAck { server_time } => {
                 tracing::trace!(server_time = %server_time, "heartbeat acknowledged");
@@ -679,10 +719,7 @@ impl HiveClient {
     }
 
     /// Link a project to the hive.
-    pub async fn send_link_project(
-        &self,
-        link: LinkProjectMessage,
-    ) -> Result<(), HiveClientError> {
+    pub async fn send_link_project(&self, link: LinkProjectMessage) -> Result<(), HiveClientError> {
         self.command_tx
             .send(NodeMessage::LinkProject(link))
             .await

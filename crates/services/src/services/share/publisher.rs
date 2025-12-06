@@ -22,7 +22,15 @@ impl SharePublisher {
         Self { db, client }
     }
 
-    pub async fn share_task(&self, task_id: Uuid, user_id: Uuid) -> Result<Uuid, ShareError> {
+    /// Share a task to the Hive.
+    ///
+    /// The `assignee_user_id` is optional - if provided, the task will be assigned to that user.
+    /// If not provided, the task will be shared without an assignee.
+    pub async fn share_task(
+        &self,
+        task_id: Uuid,
+        assignee_user_id: Option<Uuid>,
+    ) -> Result<Uuid, ShareError> {
         let task = Task::find_by_id(&self.db.pool, task_id)
             .await?
             .ok_or(ShareError::TaskNotFound(task_id))?;
@@ -42,7 +50,9 @@ impl SharePublisher {
             project_id: remote_project_id,
             title: task.title.clone(),
             description: task.description.clone(),
-            assignee_user_id: Some(user_id),
+            status: Some(status::to_remote(&task.status)),
+            assignee_user_id,
+            start_attempt: false, // Never auto-dispatch when sharing from local node
         };
 
         let remote_task = self.client.create_shared_task(&payload).await?;

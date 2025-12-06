@@ -38,7 +38,7 @@ COPY crates crates
 COPY shared shared
 COPY assets assets
 # Copy SQLx query cache for offline compilation
-COPY .sqlx .sqlx
+COPY crates/remote/.sqlx .sqlx
 
 RUN mkdir -p /app/bin
 

@@ -104,6 +104,9 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
       cancelled: [],
     };
 
+    // Build a set of shared_task_ids that are already represented in local tasks
+    // This ensures we don't show duplicates when a task exists in both
+    // the local tasks table (with is_remote=true) AND the shared_tasks table
     const referencedSharedIds = new Set(
       Object.values(localTasksById)
         .map((task) => task.shared_task_id)
@@ -111,11 +114,9 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
     );
 
     Object.values(sharedTasksById).forEach((sharedTask) => {
-      const hasLocal =
-        Boolean(localTasksById[sharedTask.id]) ||
-        referencedSharedIds.has(sharedTask.id);
-
-      if (hasLocal) {
+      // Skip this shared task if its ID matches a local task's shared_task_id
+      // This properly deduplicates remote tasks that appear in both tables
+      if (referencedSharedIds.has(sharedTask.id)) {
         return;
       }
       grouped[sharedTask.status]?.push(sharedTask);

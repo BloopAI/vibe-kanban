@@ -47,6 +47,7 @@ export function ActionsDropdown({
   const hasAttemptActions = Boolean(attempt);
   const hasTaskActions = Boolean(task);
   const isShared = Boolean(sharedTask);
+  const isRemote = Boolean(task?.is_remote);
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -200,24 +201,47 @@ export function ActionsDropdown({
               >
                 {t('actionsMenu.viewRelatedTasks')}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleCreateNewAttempt}>
+              <DropdownMenuItem
+                disabled={isRemote}
+                onClick={handleCreateNewAttempt}
+                title={
+                  isRemote
+                    ? t('actionsMenu.remoteTaskCannotExecute')
+                    : undefined
+                }
+              >
                 {t('actionsMenu.createNewAttempt')}
               </DropdownMenuItem>
               <DropdownMenuItem
-                disabled={!projectId || !attempt}
+                disabled={!projectId || !attempt || isRemote}
                 onClick={handleCreateSubtask}
+                title={
+                  isRemote
+                    ? t('actionsMenu.remoteTaskCannotExecute')
+                    : undefined
+                }
               >
                 {t('actionsMenu.createSubtask')}
               </DropdownMenuItem>
               <DropdownMenuItem
-                disabled={!attempt?.id || !task}
+                disabled={!attempt?.id || !task || isRemote}
                 onClick={handleGitActions}
+                title={
+                  isRemote
+                    ? t('actionsMenu.remoteTaskCannotExecute')
+                    : undefined
+                }
               >
                 {t('actionsMenu.gitActions')}
               </DropdownMenuItem>
               <DropdownMenuItem
-                disabled={!attempt?.id}
+                disabled={!attempt?.id || isRemote}
                 onClick={handleEditBranchName}
+                title={
+                  isRemote
+                    ? t('actionsMenu.remoteTaskCannotExecute')
+                    : undefined
+                }
               >
                 {t('actionsMenu.editBranchName')}
               </DropdownMenuItem>

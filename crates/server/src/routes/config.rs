@@ -68,9 +68,7 @@ impl Environment {
             os_architecture: info.architecture().unwrap_or("unknown").to_string(),
             bitness: info.bitness().to_string(),
             is_dev_mode: cfg!(debug_assertions),
-            hostname: gethostname::gethostname()
-                .to_string_lossy()
-                .to_string(),
+            hostname: gethostname::gethostname().to_string_lossy().to_string(),
         }
     }
 }

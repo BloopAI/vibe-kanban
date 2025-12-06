@@ -152,6 +152,36 @@ impl ConnectionManager {
         failed
     }
 
+    /// Send a message to all nodes in an organization except one.
+    ///
+    /// This is useful when broadcasting changes initiated by a specific node
+    /// to all other nodes in the organization.
+    pub async fn broadcast_to_org_except(
+        &self,
+        organization_id: Uuid,
+        except_node_id: Uuid,
+        message: HiveMessage,
+    ) -> Vec<Uuid> {
+        let inner = self.inner.read().await;
+        let mut failed = Vec::new();
+
+        if let Some(node_ids) = inner.org_nodes.get(&organization_id) {
+            for node_id in node_ids {
+                // Skip the excluded node
+                if *node_id == except_node_id {
+                    continue;
+                }
+                if let Some(conn) = inner.connections.get(node_id)
+                    && conn.sender.send(message.clone()).await.is_err()
+                {
+                    failed.push(*node_id);
+                }
+            }
+        }
+
+        failed
+    }
+
     /// Get a node's connection info.
     pub async fn get_connection(&self, node_id: Uuid) -> Option<NodeConnectionInfo> {
         let inner = self.inner.read().await;

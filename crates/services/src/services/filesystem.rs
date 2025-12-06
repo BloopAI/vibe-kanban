@@ -5,7 +5,7 @@ use std::{
 };
 
 use ignore::WalkBuilder;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;
 use ts_rs::TS;
@@ -32,13 +32,13 @@ pub enum FilesystemError {
     #[error("Failed to read directory: {0}")]
     Io(#[from] std::io::Error),
 }
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Serialize, Deserialize, TS)]
 pub struct DirectoryListResponse {
     pub entries: Vec<DirectoryEntry>,
     pub current_path: String,
 }
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Serialize, Deserialize, TS)]
 pub struct DirectoryEntry {
     pub name: String,
     pub path: PathBuf,
@@ -50,7 +50,7 @@ pub struct DirectoryEntry {
 /// Maximum file size for reading (1MB)
 pub const MAX_FILE_SIZE: u64 = 1024 * 1024;
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Serialize, Deserialize, TS)]
 pub struct FileContentResponse {
     /// The file path (relative if within a base directory)
     pub path: String,

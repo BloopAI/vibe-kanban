@@ -17,6 +17,7 @@ use services::services::{
     git::GitServiceError,
     github::GitHubServiceError,
     image::ImageError,
+    node_proxy_client::NodeProxyError,
     remote_client::RemoteClientError,
     share::ShareError,
     worktree_manager::WorktreeError,
@@ -69,6 +70,12 @@ pub enum ApiError {
     Conflict(String),
     #[error("Forbidden: {0}")]
     Forbidden(String),
+    #[error("Bad gateway: {0}")]
+    BadGateway(String),
+    #[error("Gateway timeout")]
+    GatewayTimeout,
+    #[error(transparent)]
+    NodeProxy(#[from] NodeProxyError),
 }
 
 impl From<&'static str> for ApiError {
@@ -180,6 +187,22 @@ impl IntoResponse for ApiError {
             ApiError::BadRequest(_) => (StatusCode::BAD_REQUEST, "BadRequest"),
             ApiError::Conflict(_) => (StatusCode::CONFLICT, "ConflictError"),
             ApiError::Forbidden(_) => (StatusCode::FORBIDDEN, "ForbiddenError"),
+            ApiError::BadGateway(_) => (StatusCode::BAD_GATEWAY, "BadGateway"),
+            ApiError::GatewayTimeout => (StatusCode::GATEWAY_TIMEOUT, "GatewayTimeout"),
+            ApiError::NodeProxy(err) => match err {
+                NodeProxyError::NodeOffline => (StatusCode::BAD_GATEWAY, "NodeProxyError"),
+                NodeProxyError::NoNodeUrl => (StatusCode::BAD_REQUEST, "NodeProxyError"),
+                NodeProxyError::NoRemoteProjectId => (StatusCode::BAD_REQUEST, "NodeProxyError"),
+                NodeProxyError::NoTokenSecret => (StatusCode::INTERNAL_SERVER_ERROR, "NodeProxyError"),
+                NodeProxyError::Timeout => (StatusCode::GATEWAY_TIMEOUT, "NodeProxyError"),
+                NodeProxyError::Transport(_) => (StatusCode::BAD_GATEWAY, "NodeProxyError"),
+                NodeProxyError::RemoteError { status, .. } => (
+                    StatusCode::from_u16(*status).unwrap_or(StatusCode::BAD_GATEWAY),
+                    "NodeProxyError",
+                ),
+                NodeProxyError::ParseError(_) => (StatusCode::BAD_GATEWAY, "NodeProxyError"),
+                NodeProxyError::JwtError(_) => (StatusCode::INTERNAL_SERVER_ERROR, "NodeProxyError"),
+            },
         };
 
         let error_message = match &self {
@@ -256,6 +279,25 @@ impl IntoResponse for ApiError {
             ApiError::BadRequest(msg) => msg.clone(),
             ApiError::Conflict(msg) => msg.clone(),
             ApiError::Forbidden(msg) => msg.clone(),
+            ApiError::BadGateway(msg) => msg.clone(),
+            ApiError::GatewayTimeout => "Remote node did not respond in time. Please try again.".to_string(),
+            ApiError::NodeProxy(err) => match err {
+                NodeProxyError::NodeOffline => "Remote node is offline. Please try again later.".to_string(),
+                NodeProxyError::NoNodeUrl => "Remote node URL not configured.".to_string(),
+                NodeProxyError::NoRemoteProjectId => "Project is not linked to a remote project.".to_string(),
+                NodeProxyError::NoTokenSecret => "Node proxy authentication not configured.".to_string(),
+                NodeProxyError::Timeout => "Remote node did not respond in time. Please try again.".to_string(),
+                NodeProxyError::Transport(msg) => format!("Failed to reach remote node: {}", msg),
+                NodeProxyError::RemoteError { body, .. } => {
+                    if body.is_empty() {
+                        "Remote node returned an error.".to_string()
+                    } else {
+                        body.clone()
+                    }
+                }
+                NodeProxyError::ParseError(_) => "Failed to parse response from remote node.".to_string(),
+                NodeProxyError::JwtError(_) => "Failed to generate authentication token.".to_string(),
+            },
             ApiError::Drafts(drafts_err) => match drafts_err {
                 DraftsServiceError::Conflict(msg) => msg.clone(),
                 DraftsServiceError::Database(_) => format!("{}: {}", error_type, drafts_err),

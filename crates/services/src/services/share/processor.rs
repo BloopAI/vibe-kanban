@@ -15,13 +15,25 @@ use remote::{
 use sqlx::{Sqlite, Transaction};
 use uuid::Uuid;
 
-use super::{ShareConfig, ShareError, convert_remote_task, sync_local_task_for_shared_task};
+use super::{
+    ShareConfig, ShareError, convert_remote_task, status, sync_local_task_for_shared_task,
+};
 use crate::services::{auth::AuthContext, remote_client::RemoteClient};
 
 struct PreparedBulkTask {
     input: SharedTaskInput,
     creator_user_id: Option<uuid::Uuid>,
-    project_id: Option<Uuid>,
+    project: Option<Project>,
+    // For remote task upserts
+    remote_task_id: Uuid,
+    remote_task_title: String,
+    remote_task_description: Option<String>,
+    remote_task_status: remote::db::tasks::TaskStatus,
+    remote_task_assignee_user_id: Option<Uuid>,
+    remote_task_version: i64,
+    remote_user_first_name: Option<String>,
+    remote_user_last_name: Option<String>,
+    remote_user_username: Option<String>,
 }
 
 /// Processor for handling activity events and synchronizing shared tasks.
@@ -181,6 +193,36 @@ impl ActivityProcessor {
                     project_id,
                 )
                 .await?;
+
+                // For remote projects, also upsert into the unified tasks table
+                if let Some(ref project) = project
+                    && project.is_remote
+                {
+                    let assignee_name = user
+                        .as_ref()
+                        .map(|u| match (&u.first_name, &u.last_name) {
+                            (Some(f), Some(l)) => format!("{} {}", f, l),
+                            (Some(f), None) => f.clone(),
+                            (None, Some(l)) => l.clone(),
+                            (None, None) => String::new(),
+                        })
+                        .filter(|s| !s.is_empty());
+
+                    Task::upsert_remote_task(
+                        tx.as_mut(),
+                        Uuid::new_v4(),
+                        project.id,
+                        task.id,
+                        task.title.clone(),
+                        task.description.clone(),
+                        status::from_remote(&task.status),
+                        task.assignee_user_id,
+                        assignee_name,
+                        user.as_ref().and_then(|u| u.username.clone()),
+                        task.version,
+                    )
+                    .await?;
+                }
             }
             Err(error) => {
                 tracing::warn!(
@@ -225,6 +267,10 @@ impl ActivityProcessor {
         }
 
         SharedTask::remove(tx.as_mut(), task.id).await?;
+
+        // Also delete from unified tasks table if it exists as a remote task
+        Task::delete_by_shared_task_id(tx.as_mut(), task.id).await?;
+
         Ok(())
     }
 
@@ -248,13 +294,22 @@ impl ActivityProcessor {
                 );
             }
 
-            let project_id = project.as_ref().map(|p| p.id);
             keep_ids.insert(payload.task.id);
             let input = convert_remote_task(&payload.task, payload.user.as_ref(), latest_seq);
             replacements.push(PreparedBulkTask {
                 input,
                 creator_user_id: payload.task.creator_user_id,
-                project_id,
+                project: project.clone(),
+                // Store data for remote task upsert
+                remote_task_id: payload.task.id,
+                remote_task_title: payload.task.title.clone(),
+                remote_task_description: payload.task.description.clone(),
+                remote_task_status: payload.task.status,
+                remote_task_assignee_user_id: payload.task.assignee_user_id,
+                remote_task_version: payload.task.version,
+                remote_user_first_name: payload.user.as_ref().and_then(|u| u.first_name.clone()),
+                remote_user_last_name: payload.user.as_ref().and_then(|u| u.last_name.clone()),
+                remote_user_username: payload.user.as_ref().and_then(|u| u.username.clone()),
             });
         }
 
@@ -287,9 +342,19 @@ impl ActivityProcessor {
         for PreparedBulkTask {
             input,
             creator_user_id,
-            project_id,
+            project,
+            remote_task_id,
+            remote_task_title,
+            remote_task_description,
+            remote_task_status,
+            remote_task_assignee_user_id,
+            remote_task_version,
+            remote_user_first_name,
+            remote_user_last_name,
+            remote_user_username,
         } in replacements
         {
+            let project_id = project.as_ref().map(|p| p.id);
             let shared_task = SharedTask::upsert(tx.as_mut(), input).await?;
             sync_local_task_for_shared_task(
                 tx.as_mut(),
@@ -299,6 +364,33 @@ impl ActivityProcessor {
                 project_id,
             )
             .await?;
+
+            // For remote projects, also upsert into the unified tasks table
+            if let Some(ref proj) = project
+                && proj.is_remote
+            {
+                let assignee_name = match (&remote_user_first_name, &remote_user_last_name) {
+                    (Some(f), Some(l)) => Some(format!("{} {}", f, l)),
+                    (Some(f), None) => Some(f.clone()),
+                    (None, Some(l)) => Some(l.clone()),
+                    (None, None) => None,
+                };
+
+                Task::upsert_remote_task(
+                    tx.as_mut(),
+                    Uuid::new_v4(),
+                    proj.id,
+                    remote_task_id,
+                    remote_task_title,
+                    remote_task_description,
+                    status::from_remote(&remote_task_status),
+                    remote_task_assignee_user_id,
+                    assignee_name,
+                    remote_user_username,
+                    remote_task_version,
+                )
+                .await?;
+            }
         }
 
         if let Some(seq) = latest_seq {
@@ -322,6 +414,9 @@ impl ActivityProcessor {
             if let Some(local_task) = Task::find_by_shared_task_id(tx.as_mut(), *id).await? {
                 Task::set_shared_task_id(tx.as_mut(), local_task.id, None).await?;
             }
+
+            // Also delete from unified tasks table if it exists as a remote task
+            Task::delete_by_shared_task_id(tx.as_mut(), *id).await?;
         }
 
         SharedTask::remove_many(tx.as_mut(), ids).await?;

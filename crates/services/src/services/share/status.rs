@@ -1,7 +1,7 @@
 use db::models::task::TaskStatus;
 use remote::db::tasks::TaskStatus as RemoteTaskStatus;
 
-pub(super) fn to_remote(status: &TaskStatus) -> RemoteTaskStatus {
+pub fn to_remote(status: &TaskStatus) -> RemoteTaskStatus {
     match status {
         TaskStatus::Todo => RemoteTaskStatus::Todo,
         TaskStatus::InProgress => RemoteTaskStatus::InProgress,
@@ -11,7 +11,7 @@ pub(super) fn to_remote(status: &TaskStatus) -> RemoteTaskStatus {
     }
 }
 
-pub(super) fn from_remote(status: &RemoteTaskStatus) -> TaskStatus {
+pub fn from_remote(status: &RemoteTaskStatus) -> TaskStatus {
     match status {
         RemoteTaskStatus::Todo => TaskStatus::Todo,
         RemoteTaskStatus::InProgress => TaskStatus::InProgress,

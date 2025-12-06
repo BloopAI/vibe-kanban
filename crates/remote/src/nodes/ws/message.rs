@@ -45,6 +45,10 @@ pub enum NodeMessage {
     #[serde(rename = "ack")]
     Ack { message_id: Uuid },
 
+    /// Request to deregister this node from the hive
+    #[serde(rename = "deregister")]
+    Deregister(DeregisterMessage),
+
     /// Error response
     #[serde(rename = "error")]
     Error {
@@ -91,6 +95,10 @@ pub enum HiveMessage {
     /// Connection closing
     #[serde(rename = "close")]
     Close { reason: String },
+
+    /// Notification that a node has been removed from the organization
+    #[serde(rename = "node_removed")]
+    NodeRemoved(NodeRemovedMessage),
 }
 
 /// Authentication message from node to hive.
@@ -322,6 +330,30 @@ pub struct UnlinkProjectMessage {
     pub project_id: Uuid,
 }
 
+/// Request to deregister a node from the hive.
+///
+/// Sent by the node when disconnecting from the swarm.
+/// This performs a hard delete of all node data.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeregisterMessage {
+    /// Unique message ID for acknowledgement
+    pub message_id: Uuid,
+    /// Optional reason for deregistering
+    pub reason: Option<String>,
+}
+
+/// Notification that a node has been removed from the organization.
+///
+/// Broadcast to all nodes in the organization when a node deregisters
+/// or is deleted by an admin.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NodeRemovedMessage {
+    /// ID of the removed node
+    pub node_id: Uuid,
+    /// Reason for removal
+    pub reason: String,
+}
+
 /// Project sync message from hive to node.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectSyncMessage {
@@ -331,13 +363,21 @@ pub struct ProjectSyncMessage {
     pub link_id: Uuid,
     /// Project ID in the hive
     pub project_id: Uuid,
+    /// Project name
+    pub project_name: String,
     /// Local project ID on the node
     pub local_project_id: Uuid,
     /// Git repository path
     pub git_repo_path: String,
     /// Default branch
     pub default_branch: String,
-    /// Whether this is a new link or update
+    /// Source node ID (which node owns this project)
+    pub source_node_id: Uuid,
+    /// Source node name
+    pub source_node_name: String,
+    /// Source node public URL for direct proxy
+    pub source_node_public_url: Option<String>,
+    /// Whether this is a new link (true) or removal (false)
     pub is_new: bool,
 }
 

@@ -1,7 +1,9 @@
-//! Connection token validation for direct frontend-to-node log streaming.
+//! Connection token validation for direct frontend-to-node log streaming
+//! and node-to-node proxy authentication.
 //!
 //! This module validates JWT tokens issued by the Hive for frontend clients
-//! to connect directly to a node's log streaming endpoints.
+//! to connect directly to a node's log streaming endpoints, as well as
+//! tokens issued by other nodes for proxy requests.
 
 use std::collections::HashSet;
 
@@ -134,10 +136,10 @@ impl ConnectionTokenValidator {
         let connection_token = self.validate(token)?;
 
         // If the token specifies an execution process ID, it must match
-        if let Some(token_exec_id) = connection_token.execution_process_id {
-            if token_exec_id != expected_execution_id {
-                return Err(ConnectionTokenError::ExecutionMismatch);
-            }
+        if let Some(token_exec_id) = connection_token.execution_process_id
+            && token_exec_id != expected_execution_id
+        {
+            return Err(ConnectionTokenError::ExecutionMismatch);
         }
 
         Ok(connection_token)
@@ -148,6 +150,78 @@ impl Default for ConnectionTokenValidator {
     fn default() -> Self {
         Self::disabled()
     }
+}
+
+impl ConnectionTokenValidator {
+    /// Validate a node proxy token and return the decoded claims.
+    ///
+    /// Node proxy tokens are used for node-to-node communication when proxying
+    /// requests to remote nodes. They use `aud: "node_proxy"` and contain
+    /// the source node ID as `sub`.
+    pub fn validate_proxy_token(
+        &self,
+        token: &str,
+    ) -> Result<ProxyToken, ConnectionTokenError> {
+        let secret = self
+            .secret
+            .as_ref()
+            .ok_or(ConnectionTokenError::MissingSecret)?;
+
+        if token.trim().is_empty() {
+            return Err(ConnectionTokenError::InvalidToken);
+        }
+
+        let mut validation = Validation::new(Algorithm::HS256);
+        validation.validate_exp = true;
+        validation.validate_nbf = false;
+        validation.set_audience(&["node_proxy"]);
+        validation.required_spec_claims = HashSet::from([
+            "sub".to_string(),
+            "exp".to_string(),
+            "aud".to_string(),
+            "node_id".to_string(),
+        ]);
+        validation.leeway = 30; // 30 seconds leeway for clock skew
+
+        let decoding_key = DecodingKey::from_base64_secret(secret.expose_secret())?;
+        let data = decode::<ProxyTokenClaims>(token, &decoding_key, &validation)?;
+        let claims = data.claims;
+
+        let expires_at =
+            DateTime::from_timestamp(claims.exp, 0).ok_or(ConnectionTokenError::InvalidToken)?;
+
+        Ok(ProxyToken {
+            source_node_id: claims.sub,
+            target_node_id: claims.node_id,
+            expires_at,
+        })
+    }
+}
+
+/// Claims embedded in a node proxy token (for node-to-node communication).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProxyTokenClaims {
+    /// Source node ID (the node making the request)
+    pub sub: String,
+    /// Target node ID (the node receiving the request)
+    pub node_id: String,
+    /// Issued at timestamp
+    pub iat: i64,
+    /// Expiration timestamp
+    pub exp: i64,
+    /// Audience - always "node_proxy"
+    pub aud: String,
+}
+
+/// Decoded proxy token with parsed claims.
+#[derive(Debug, Clone)]
+pub struct ProxyToken {
+    /// The ID of the node that sent the request
+    pub source_node_id: String,
+    /// The ID of this node (target)
+    pub target_node_id: String,
+    /// When the token expires
+    pub expires_at: DateTime<Utc>,
 }
 
 #[cfg(test)]

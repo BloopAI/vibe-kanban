@@ -72,6 +72,7 @@ pub struct CreateSharedTaskData {
     pub project_id: Uuid,
     pub title: String,
     pub description: Option<String>,
+    pub status: Option<TaskStatus>,
     pub creator_user_id: Uuid,
     pub assignee_user_id: Option<Uuid>,
 }
@@ -168,6 +169,7 @@ impl<'a> SharedTaskRepository<'a> {
             project_id,
             title,
             description,
+            status,
             creator_user_id,
             assignee_user_id,
         } = data;
@@ -193,9 +195,10 @@ impl<'a> SharedTaskRepository<'a> {
                 assignee_user_id,
                 title,
                 description,
+                status,
                 shared_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, NOW())
+            VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, 'todo'::task_status), NOW())
             RETURNING id                 AS "id!",
                       organization_id    AS "organization_id!: Uuid",
                       project_id         AS "project_id!",
@@ -216,7 +219,8 @@ impl<'a> SharedTaskRepository<'a> {
             creator_user_id,
             assignee_user_id,
             title,
-            description
+            description,
+            status as Option<TaskStatus>
         )
         .fetch_one(&mut *tx)
         .await?;

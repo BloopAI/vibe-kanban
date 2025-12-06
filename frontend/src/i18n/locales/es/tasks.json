@@ -19,8 +19,10 @@
     "openInIde": "Open attempt in IDE",
     "task": "Task",
     "viewProcesses": "View processes",
-    "viewRelatedTasks": "View related tasks"
+    "viewRelatedTasks": "View related tasks",
+    "remoteTaskCannotExecute": "Las tareas remotas se ejecutan en su nodo de origen"
   },
+  "remoteTask": "Tarea remota",
   "editBranchName": {
     "dialog": {
       "title": "Editar nombre de rama",

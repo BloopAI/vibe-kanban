@@ -57,7 +57,7 @@ pub enum ConflictOp {
     Revert,
 }
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Serialize, Deserialize, TS)]
 pub struct GitBranch {
     pub name: String,
     pub is_current: bool,

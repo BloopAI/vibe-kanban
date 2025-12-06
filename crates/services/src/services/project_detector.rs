@@ -45,18 +45,16 @@ impl PackageManager {
 
         // Check packageManager field in package.json
         let package_json_path = repo_path.join("package.json");
-        if package_json_path.exists() {
-            if let Ok(content) = std::fs::read_to_string(&package_json_path) {
-                if let Ok(json) = serde_json::from_str::<Value>(&content) {
-                    if let Some(pm) = json.get("packageManager").and_then(|v| v.as_str()) {
-                        if pm.starts_with("pnpm") {
-                            return Self::Pnpm;
-                        }
-                        if pm.starts_with("yarn") {
-                            return Self::Yarn;
-                        }
-                    }
-                }
+        if package_json_path.exists()
+            && let Ok(content) = std::fs::read_to_string(&package_json_path)
+            && let Ok(json) = serde_json::from_str::<Value>(&content)
+            && let Some(pm) = json.get("packageManager").and_then(|v| v.as_str())
+        {
+            if pm.starts_with("pnpm") {
+                return Self::Pnpm;
+            }
+            if pm.starts_with("yarn") {
+                return Self::Yarn;
             }
         }
 
@@ -1007,7 +1005,11 @@ pnpm run dev
     #[test]
     fn test_package_manager_detect_pnpm_lockfile() {
         let temp_dir = TempDir::new().unwrap();
-        fs::write(temp_dir.path().join("pnpm-lock.yaml"), "lockfileVersion: 5.4").unwrap();
+        fs::write(
+            temp_dir.path().join("pnpm-lock.yaml"),
+            "lockfileVersion: 5.4",
+        )
+        .unwrap();
         fs::write(temp_dir.path().join("package.json"), "{}").unwrap();
 
         let pm = PackageManager::detect(temp_dir.path());
@@ -1064,7 +1066,11 @@ pnpm run dev
         let temp_dir = TempDir::new().unwrap();
 
         // Create pnpm lock file to trigger pnpm detection
-        fs::write(temp_dir.path().join("pnpm-lock.yaml"), "lockfileVersion: 5.4").unwrap();
+        fs::write(
+            temp_dir.path().join("pnpm-lock.yaml"),
+            "lockfileVersion: 5.4",
+        )
+        .unwrap();
 
         let package_json = r#"{
   "name": "test-project",

@@ -105,7 +105,9 @@ pub async fn create_shared_task(
         project_id,
         title,
         description,
+        status,
         assignee_user_id,
+        start_attempt,
     } = payload;
 
     if let Err(error) = ensure_text_size(&title, description.as_deref()) {
@@ -135,6 +137,7 @@ pub async fn create_shared_task(
         project_id,
         title: title.clone(),
         description: description.clone(),
+        status,
         creator_user_id: ctx.user.id,
         assignee_user_id,
     };
@@ -144,39 +147,41 @@ pub async fn create_shared_task(
         Err(error) => return task_error_response(error, "failed to create shared task"),
     };
 
-    // Check if project has a linked node and dispatch task
-    let node_project_repo = NodeProjectRepository::new(pool);
-    if let Ok(Some(node_project)) = node_project_repo.find_by_project(project_id).await {
-        let dispatcher =
-            crate::nodes::TaskDispatcher::new(pool.clone(), state.node_connections().clone());
+    // Only dispatch to node if start_attempt flag is true
+    if start_attempt {
+        let node_project_repo = NodeProjectRepository::new(pool);
+        if let Ok(Some(node_project)) = node_project_repo.find_by_project(project_id).await {
+            let dispatcher =
+                crate::nodes::TaskDispatcher::new(pool.clone(), state.node_connections().clone());
 
-        let task_details = TaskDetails {
-            title,
-            description,
-            executor: "CLAUDE_CODE".to_string(), // Default executor
-            executor_variant: None,
-            base_branch: node_project.default_branch.clone(),
-        };
+            let task_details = TaskDetails {
+                title,
+                description,
+                executor: "CLAUDE_CODE".to_string(), // Default executor
+                executor_variant: None,
+                base_branch: node_project.default_branch.clone(),
+            };
 
-        // Attempt to dispatch - don't fail task creation if dispatch fails
-        match dispatcher
-            .assign_task(task.task.id, project_id, task_details)
-            .await
-        {
-            Ok(result) => {
-                tracing::info!(
-                    task_id = %task.task.id,
-                    assignment_id = %result.assignment_id,
-                    node_id = %result.node_id,
-                    "task dispatched to node"
-                );
-            }
-            Err(e) => {
-                tracing::warn!(
-                    task_id = %task.task.id,
-                    error = %e,
-                    "failed to dispatch task to node - task created but not assigned"
-                );
+            // Attempt to dispatch - don't fail task creation if dispatch fails
+            match dispatcher
+                .assign_task(task.task.id, project_id, task_details)
+                .await
+            {
+                Ok(result) => {
+                    tracing::info!(
+                        task_id = %task.task.id,
+                        assignment_id = %result.assignment_id,
+                        node_id = %result.node_id,
+                        "task dispatched to node"
+                    );
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        task_id = %task.task.id,
+                        error = %e,
+                        "failed to dispatch task to node - task created but not assigned"
+                    );
+                }
             }
         }
     }
@@ -377,7 +382,12 @@ pub struct CreateSharedTaskRequest {
     pub project_id: Uuid,
     pub title: String,
     pub description: Option<String>,
+    pub status: Option<TaskStatus>,
     pub assignee_user_id: Option<Uuid>,
+    /// Whether to automatically start a task attempt on the linked node.
+    /// If false or not provided, the task is created but not dispatched.
+    #[serde(default)]
+    pub start_attempt: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

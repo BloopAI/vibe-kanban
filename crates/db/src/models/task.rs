@@ -33,6 +33,15 @@ pub struct Task {
     pub shared_task_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    // Remote task fields (Phase 1F)
+    pub is_remote: bool,
+    pub remote_assignee_user_id: Option<Uuid>,
+    pub remote_assignee_name: Option<String>,
+    pub remote_assignee_username: Option<String>,
+    pub remote_version: i64,
+    pub remote_last_synced_at: Option<DateTime<Utc>>,
+    pub remote_stream_node_id: Option<Uuid>,
+    pub remote_stream_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -159,6 +168,14 @@ impl Task {
   t.shared_task_id                AS "shared_task_id: Uuid",
   t.created_at                    AS "created_at!: DateTime<Utc>",
   t.updated_at                    AS "updated_at!: DateTime<Utc>",
+  t.is_remote                     AS "is_remote!: bool",
+  t.remote_assignee_user_id       AS "remote_assignee_user_id: Uuid",
+  t.remote_assignee_name,
+  t.remote_assignee_username,
+  t.remote_version                AS "remote_version!: i64",
+  t.remote_last_synced_at         AS "remote_last_synced_at: DateTime<Utc>",
+  t.remote_stream_node_id         AS "remote_stream_node_id: Uuid",
+  t.remote_stream_url,
 
   CASE WHEN EXISTS (
     SELECT 1
@@ -170,7 +187,7 @@ impl Task {
        AND ep.run_reason IN ('setupscript','cleanupscript','codingagent')
      LIMIT 1
   ) THEN 1 ELSE 0 END            AS "has_in_progress_attempt!: i64",
-  
+
   CASE WHEN (
     SELECT ep.status
       FROM task_attempts ta
@@ -211,6 +228,14 @@ ORDER BY t.created_at DESC"#,
                     shared_task_id: rec.shared_task_id,
                     created_at: rec.created_at,
                     updated_at: rec.updated_at,
+                    is_remote: rec.is_remote,
+                    remote_assignee_user_id: rec.remote_assignee_user_id,
+                    remote_assignee_name: rec.remote_assignee_name,
+                    remote_assignee_username: rec.remote_assignee_username,
+                    remote_version: rec.remote_version,
+                    remote_last_synced_at: rec.remote_last_synced_at,
+                    remote_stream_node_id: rec.remote_stream_node_id,
+                    remote_stream_url: rec.remote_stream_url,
                 },
                 has_in_progress_attempt: rec.has_in_progress_attempt != 0,
                 has_merged_attempt: false, // TODO use merges table
@@ -225,8 +250,16 @@ ORDER BY t.created_at DESC"#,
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
-               FROM tasks 
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>",
+                      is_remote as "is_remote!: bool",
+                      remote_assignee_user_id as "remote_assignee_user_id: Uuid",
+                      remote_assignee_name,
+                      remote_assignee_username,
+                      remote_version as "remote_version!: i64",
+                      remote_last_synced_at as "remote_last_synced_at: DateTime<Utc>",
+                      remote_stream_node_id as "remote_stream_node_id: Uuid",
+                      remote_stream_url
+               FROM tasks
                WHERE id = $1"#,
             id
         )
@@ -237,8 +270,16 @@ ORDER BY t.created_at DESC"#,
     pub async fn find_by_rowid(pool: &SqlitePool, rowid: i64) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
-               FROM tasks 
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>",
+                      is_remote as "is_remote!: bool",
+                      remote_assignee_user_id as "remote_assignee_user_id: Uuid",
+                      remote_assignee_name,
+                      remote_assignee_username,
+                      remote_version as "remote_version!: i64",
+                      remote_last_synced_at as "remote_last_synced_at: DateTime<Utc>",
+                      remote_stream_node_id as "remote_stream_node_id: Uuid",
+                      remote_stream_url
+               FROM tasks
                WHERE rowid = $1"#,
             rowid
         )
@@ -253,8 +294,16 @@ ORDER BY t.created_at DESC"#,
     ) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
-               FROM tasks 
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>",
+                      is_remote as "is_remote!: bool",
+                      remote_assignee_user_id as "remote_assignee_user_id: Uuid",
+                      remote_assignee_name,
+                      remote_assignee_username,
+                      remote_version as "remote_version!: i64",
+                      remote_last_synced_at as "remote_last_synced_at: DateTime<Utc>",
+                      remote_stream_node_id as "remote_stream_node_id: Uuid",
+                      remote_stream_url
+               FROM tasks
                WHERE id = $1 AND project_id = $2"#,
             id,
             project_id
@@ -272,8 +321,16 @@ ORDER BY t.created_at DESC"#,
     {
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
-               FROM tasks 
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>",
+                      is_remote as "is_remote!: bool",
+                      remote_assignee_user_id as "remote_assignee_user_id: Uuid",
+                      remote_assignee_name,
+                      remote_assignee_username,
+                      remote_version as "remote_version!: i64",
+                      remote_last_synced_at as "remote_last_synced_at: DateTime<Utc>",
+                      remote_stream_node_id as "remote_stream_node_id: Uuid",
+                      remote_stream_url
+               FROM tasks
                WHERE shared_task_id = $1
                LIMIT 1"#,
             shared_task_id
@@ -290,9 +347,17 @@ ORDER BY t.created_at DESC"#,
         let status = data.status.clone().unwrap_or_default();
         sqlx::query_as!(
             Task,
-            r#"INSERT INTO tasks (id, project_id, title, description, status, parent_task_attempt, shared_task_id) 
-               VALUES ($1, $2, $3, $4, $5, $6, $7) 
-               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            r#"INSERT INTO tasks (id, project_id, title, description, status, parent_task_attempt, shared_task_id)
+               VALUES ($1, $2, $3, $4, $5, $6, $7)
+               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>",
+                         is_remote as "is_remote!: bool",
+                         remote_assignee_user_id as "remote_assignee_user_id: Uuid",
+                         remote_assignee_name,
+                         remote_assignee_username,
+                         remote_version as "remote_version!: i64",
+                         remote_last_synced_at as "remote_last_synced_at: DateTime<Utc>",
+                         remote_stream_node_id as "remote_stream_node_id: Uuid",
+                         remote_stream_url"#,
             task_id,
             data.project_id,
             data.title,
@@ -316,10 +381,18 @@ ORDER BY t.created_at DESC"#,
     ) -> Result<Self, sqlx::Error> {
         sqlx::query_as!(
             Task,
-            r#"UPDATE tasks 
-               SET title = $3, description = $4, status = $5, parent_task_attempt = $6 
-               WHERE id = $1 AND project_id = $2 
-               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            r#"UPDATE tasks
+               SET title = $3, description = $4, status = $5, parent_task_attempt = $6
+               WHERE id = $1 AND project_id = $2
+               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>",
+                         is_remote as "is_remote!: bool",
+                         remote_assignee_user_id as "remote_assignee_user_id: Uuid",
+                         remote_assignee_name,
+                         remote_assignee_username,
+                         remote_version as "remote_version!: i64",
+                         remote_last_synced_at as "remote_last_synced_at: DateTime<Utc>",
+                         remote_stream_node_id as "remote_stream_node_id: Uuid",
+                         remote_stream_url"#,
             id,
             project_id,
             title,
@@ -488,8 +561,16 @@ ORDER BY t.created_at DESC"#,
         // Find only child tasks that have this attempt as their parent
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
-               FROM tasks 
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>",
+                      is_remote as "is_remote!: bool",
+                      remote_assignee_user_id as "remote_assignee_user_id: Uuid",
+                      remote_assignee_name,
+                      remote_assignee_username,
+                      remote_version as "remote_version!: i64",
+                      remote_last_synced_at as "remote_last_synced_at: DateTime<Utc>",
+                      remote_stream_node_id as "remote_stream_node_id: Uuid",
+                      remote_stream_url
+               FROM tasks
                WHERE parent_task_attempt = $1
                ORDER BY created_at DESC"#,
             attempt_id,
@@ -529,5 +610,166 @@ ORDER BY t.created_at DESC"#,
             current_attempt: task_attempt.clone(),
             children,
         })
+    }
+
+    /// Find all remote tasks for a project
+    pub async fn find_remote_by_project_id(
+        pool: &SqlitePool,
+        project_id: Uuid,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Task,
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>",
+                      is_remote as "is_remote!: bool",
+                      remote_assignee_user_id as "remote_assignee_user_id: Uuid",
+                      remote_assignee_name,
+                      remote_assignee_username,
+                      remote_version as "remote_version!: i64",
+                      remote_last_synced_at as "remote_last_synced_at: DateTime<Utc>",
+                      remote_stream_node_id as "remote_stream_node_id: Uuid",
+                      remote_stream_url
+               FROM tasks
+               WHERE project_id = $1 AND is_remote = 1
+               ORDER BY created_at DESC"#,
+            project_id
+        )
+        .fetch_all(pool)
+        .await
+    }
+
+    /// Upsert a remote task from the Hive
+    #[allow(clippy::too_many_arguments)]
+    pub async fn upsert_remote_task<'e, E>(
+        executor: E,
+        local_id: Uuid,
+        project_id: Uuid,
+        shared_task_id: Uuid,
+        title: String,
+        description: Option<String>,
+        status: TaskStatus,
+        remote_assignee_user_id: Option<Uuid>,
+        remote_assignee_name: Option<String>,
+        remote_assignee_username: Option<String>,
+        remote_version: i64,
+    ) -> Result<Self, sqlx::Error>
+    where
+        E: Executor<'e, Database = Sqlite>,
+    {
+        let now = Utc::now();
+        sqlx::query_as!(
+            Task,
+            r#"INSERT INTO tasks (
+                    id,
+                    project_id,
+                    title,
+                    description,
+                    status,
+                    shared_task_id,
+                    is_remote,
+                    remote_assignee_user_id,
+                    remote_assignee_name,
+                    remote_assignee_username,
+                    remote_version,
+                    remote_last_synced_at
+                ) VALUES (
+                    $1, $2, $3, $4, $5, $6, 1, $7, $8, $9, $10, $11
+                )
+                ON CONFLICT(shared_task_id) WHERE shared_task_id IS NOT NULL DO UPDATE SET
+                    title = excluded.title,
+                    description = excluded.description,
+                    status = excluded.status,
+                    remote_assignee_user_id = excluded.remote_assignee_user_id,
+                    remote_assignee_name = excluded.remote_assignee_name,
+                    remote_assignee_username = excluded.remote_assignee_username,
+                    remote_version = excluded.remote_version,
+                    remote_last_synced_at = excluded.remote_last_synced_at,
+                    updated_at = datetime('now', 'subsec')
+                RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>",
+                          is_remote as "is_remote!: bool",
+                          remote_assignee_user_id as "remote_assignee_user_id: Uuid",
+                          remote_assignee_name,
+                          remote_assignee_username,
+                          remote_version as "remote_version!: i64",
+                          remote_last_synced_at as "remote_last_synced_at: DateTime<Utc>",
+                          remote_stream_node_id as "remote_stream_node_id: Uuid",
+                          remote_stream_url"#,
+            local_id,
+            project_id,
+            title,
+            description,
+            status,
+            shared_task_id,
+            remote_assignee_user_id,
+            remote_assignee_name,
+            remote_assignee_username,
+            remote_version,
+            now
+        )
+        .fetch_one(executor)
+        .await
+    }
+
+    /// Update remote stream location for a task
+    pub async fn set_remote_stream_location(
+        pool: &SqlitePool,
+        id: Uuid,
+        stream_node_id: Option<Uuid>,
+        stream_url: Option<String>,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            r#"UPDATE tasks
+               SET remote_stream_node_id = $2,
+                   remote_stream_url = $3,
+                   updated_at = CURRENT_TIMESTAMP
+               WHERE id = $1"#,
+            id,
+            stream_node_id,
+            stream_url
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Delete remote tasks that are no longer in the Hive for a given project
+    pub async fn delete_stale_remote_tasks(
+        pool: &SqlitePool,
+        project_id: Uuid,
+        active_shared_task_ids: &[Uuid],
+    ) -> Result<u64, sqlx::Error> {
+        // If the list is empty, don't delete anything
+        if active_shared_task_ids.is_empty() {
+            return Ok(0);
+        }
+
+        // Fetch all remote tasks for this project and delete ones not in list
+        let all_remote = Self::find_remote_by_project_id(pool, project_id).await?;
+        let mut deleted = 0u64;
+
+        for task in all_remote {
+            if let Some(shared_id) = task.shared_task_id
+                && !active_shared_task_ids.contains(&shared_id)
+            {
+                deleted += Self::delete(pool, task.id).await?;
+            }
+        }
+
+        Ok(deleted)
+    }
+
+    /// Delete a task by its shared_task_id
+    ///
+    /// Used when syncing remote tasks and a task has been deleted on the Hive.
+    pub async fn delete_by_shared_task_id<'e, E>(
+        executor: E,
+        shared_task_id: Uuid,
+    ) -> Result<(), sqlx::Error>
+    where
+        E: Executor<'e, Database = Sqlite>,
+    {
+        sqlx::query!("DELETE FROM tasks WHERE shared_task_id = ?", shared_task_id)
+            .execute(executor)
+            .await?;
+        Ok(())
     }
 }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { KanbanCard } from '@/components/ui/shadcn-io/kanban';
-import { CheckCircle, Link, Loader2, XCircle } from 'lucide-react';
+import { CheckCircle, Link, Loader2, Server, XCircle } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { ActionsDropdown } from '@/components/ui/actions-dropdown';
 import { Button } from '@/components/ui/button';
@@ -88,9 +88,11 @@ export function TaskCard({
       isOpen={isOpen}
       forwardedRef={localRef}
       className={
-        sharedTask
-          ? 'relative overflow-hidden pl-5 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-card-foreground before:content-[""]'
-          : undefined
+        task.is_remote
+          ? 'relative overflow-hidden pl-5 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-purple-400 before:content-[""]'
+          : sharedTask
+            ? 'relative overflow-hidden pl-5 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-card-foreground before:content-[""]'
+            : undefined
       }
     >
       <div className="flex flex-col gap-2">
@@ -103,7 +105,14 @@ export function TaskCard({
                   lastName: sharedTask.assignee_last_name ?? undefined,
                   username: sharedTask.assignee_username ?? undefined,
                 }
-              : undefined
+              : task.is_remote && task.remote_assignee_name
+                ? {
+                    // Parse from remote_assignee_name (e.g., "John Doe")
+                    firstName: task.remote_assignee_name.split(' ')[0] ?? undefined,
+                    lastName: task.remote_assignee_name.split(' ').slice(1).join(' ') || undefined,
+                    username: task.remote_assignee_username ?? undefined,
+                  }
+                : undefined
           }
           right={
             <>
@@ -138,6 +147,16 @@ export function TaskCard({
               ? `${task.description.substring(0, 130)}...`
               : task.description}
           </p>
+        )}
+        {task.is_remote && (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Server className="h-3 w-3" />
+            {task.remote_assignee_name ? (
+              <span>{task.remote_assignee_name}</span>
+            ) : (
+              <span>{t('remoteTask')}</span>
+            )}
+          </div>
         )}
       </div>
     </KanbanCard>

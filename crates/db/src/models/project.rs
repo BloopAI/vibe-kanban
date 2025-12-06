@@ -35,6 +35,14 @@ pub struct Project {
     pub created_at: DateTime<Utc>,
     #[ts(type = "Date")]
     pub updated_at: DateTime<Utc>,
+    // Remote project fields (Phase 1F)
+    pub is_remote: bool,
+    pub source_node_id: Option<Uuid>,
+    pub source_node_name: Option<String>,
+    pub source_node_public_url: Option<String>,
+    pub source_node_status: Option<String>,
+    #[ts(type = "Date | null")]
+    pub remote_last_synced_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -58,14 +66,14 @@ pub struct UpdateProject {
     pub copy_files: Option<String>,
 }
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Serialize, Deserialize, TS)]
 pub struct SearchResult {
     pub path: String,
     pub is_file: bool,
     pub match_type: SearchMatchType,
 }
 
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub enum SearchMatchType {
     FileName,
     DirectoryName,
@@ -126,7 +134,13 @@ impl Project {
                       copy_files,
                       remote_project_id as "remote_project_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
-                      updated_at as "updated_at!: DateTime<Utc>"
+                      updated_at as "updated_at!: DateTime<Utc>",
+                      is_remote as "is_remote!: bool",
+                      source_node_id as "source_node_id: Uuid",
+                      source_node_name,
+                      source_node_public_url,
+                      source_node_status,
+                      remote_last_synced_at as "remote_last_synced_at: DateTime<Utc>"
                FROM projects
                ORDER BY created_at DESC"#
         )
@@ -139,9 +153,13 @@ impl Project {
         sqlx::query_as!(
             Project,
             r#"
-            SELECT p.id as "id!: Uuid", p.name, p.git_repo_path, p.setup_script, p.dev_script, p.cleanup_script, p.copy_files, 
+            SELECT p.id as "id!: Uuid", p.name, p.git_repo_path, p.setup_script, p.dev_script, p.cleanup_script, p.copy_files,
                    p.remote_project_id as "remote_project_id: Uuid",
-                   p.created_at as "created_at!: DateTime<Utc>", p.updated_at as "updated_at!: DateTime<Utc>"
+                   p.created_at as "created_at!: DateTime<Utc>", p.updated_at as "updated_at!: DateTime<Utc>",
+                   p.is_remote as "is_remote!: bool",
+                   p.source_node_id as "source_node_id: Uuid",
+                   p.source_node_name, p.source_node_public_url, p.source_node_status,
+                   p.remote_last_synced_at as "remote_last_synced_at: DateTime<Utc>"
             FROM projects p
             WHERE p.id IN (
                 SELECT DISTINCT t.project_id
@@ -169,7 +187,13 @@ impl Project {
                       copy_files,
                       remote_project_id as "remote_project_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
-                      updated_at as "updated_at!: DateTime<Utc>"
+                      updated_at as "updated_at!: DateTime<Utc>",
+                      is_remote as "is_remote!: bool",
+                      source_node_id as "source_node_id: Uuid",
+                      source_node_name,
+                      source_node_public_url,
+                      source_node_status,
+                      remote_last_synced_at as "remote_last_synced_at: DateTime<Utc>"
                FROM projects
                WHERE id = $1"#,
             id
@@ -193,7 +217,13 @@ impl Project {
                       copy_files,
                       remote_project_id as "remote_project_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
-                      updated_at as "updated_at!: DateTime<Utc>"
+                      updated_at as "updated_at!: DateTime<Utc>",
+                      is_remote as "is_remote!: bool",
+                      source_node_id as "source_node_id: Uuid",
+                      source_node_name,
+                      source_node_public_url,
+                      source_node_status,
+                      remote_last_synced_at as "remote_last_synced_at: DateTime<Utc>"
                FROM projects
                WHERE remote_project_id = $1
                LIMIT 1"#,
@@ -218,7 +248,13 @@ impl Project {
                       copy_files,
                       remote_project_id as "remote_project_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
-                      updated_at as "updated_at!: DateTime<Utc>"
+                      updated_at as "updated_at!: DateTime<Utc>",
+                      is_remote as "is_remote!: bool",
+                      source_node_id as "source_node_id: Uuid",
+                      source_node_name,
+                      source_node_public_url,
+                      source_node_status,
+                      remote_last_synced_at as "remote_last_synced_at: DateTime<Utc>"
                FROM projects
                WHERE git_repo_path = $1"#,
             git_repo_path
@@ -243,7 +279,13 @@ impl Project {
                       copy_files,
                       remote_project_id as "remote_project_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
-                      updated_at as "updated_at!: DateTime<Utc>"
+                      updated_at as "updated_at!: DateTime<Utc>",
+                      is_remote as "is_remote!: bool",
+                      source_node_id as "source_node_id: Uuid",
+                      source_node_name,
+                      source_node_public_url,
+                      source_node_status,
+                      remote_last_synced_at as "remote_last_synced_at: DateTime<Utc>"
                FROM projects
                WHERE git_repo_path = $1 AND id != $2"#,
             git_repo_path,
@@ -280,7 +322,13 @@ impl Project {
                           copy_files,
                           remote_project_id as "remote_project_id: Uuid",
                           created_at as "created_at!: DateTime<Utc>",
-                          updated_at as "updated_at!: DateTime<Utc>""#,
+                          updated_at as "updated_at!: DateTime<Utc>",
+                          is_remote as "is_remote!: bool",
+                          source_node_id as "source_node_id: Uuid",
+                          source_node_name,
+                          source_node_public_url,
+                          source_node_status,
+                          remote_last_synced_at as "remote_last_synced_at: DateTime<Utc>""#,
             project_id,
             data.name,
             data.git_repo_path,
@@ -323,7 +371,13 @@ impl Project {
                          copy_files,
                          remote_project_id as "remote_project_id: Uuid",
                          created_at as "created_at!: DateTime<Utc>",
-                         updated_at as "updated_at!: DateTime<Utc>""#,
+                         updated_at as "updated_at!: DateTime<Utc>",
+                         is_remote as "is_remote!: bool",
+                         source_node_id as "source_node_id: Uuid",
+                         source_node_name,
+                         source_node_public_url,
+                         source_node_status,
+                         remote_last_synced_at as "remote_last_synced_at: DateTime<Utc>""#,
             id,
             name,
             git_repo_path,
@@ -396,5 +450,195 @@ impl Project {
         .await?;
 
         Ok(result.count > 0)
+    }
+
+    /// Find all remote projects (synced from other nodes via the Hive)
+    pub async fn find_remote_projects(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Project,
+            r#"SELECT id as "id!: Uuid",
+                      name,
+                      git_repo_path,
+                      setup_script,
+                      dev_script,
+                      cleanup_script,
+                      copy_files,
+                      remote_project_id as "remote_project_id: Uuid",
+                      created_at as "created_at!: DateTime<Utc>",
+                      updated_at as "updated_at!: DateTime<Utc>",
+                      is_remote as "is_remote!: bool",
+                      source_node_id as "source_node_id: Uuid",
+                      source_node_name,
+                      source_node_public_url,
+                      source_node_status,
+                      remote_last_synced_at as "remote_last_synced_at: DateTime<Utc>"
+               FROM projects
+               WHERE is_remote = 1
+               ORDER BY name"#
+        )
+        .fetch_all(pool)
+        .await
+    }
+
+    /// Find all local projects (created on this node)
+    pub async fn find_local_projects(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Project,
+            r#"SELECT id as "id!: Uuid",
+                      name,
+                      git_repo_path,
+                      setup_script,
+                      dev_script,
+                      cleanup_script,
+                      copy_files,
+                      remote_project_id as "remote_project_id: Uuid",
+                      created_at as "created_at!: DateTime<Utc>",
+                      updated_at as "updated_at!: DateTime<Utc>",
+                      is_remote as "is_remote!: bool",
+                      source_node_id as "source_node_id: Uuid",
+                      source_node_name,
+                      source_node_public_url,
+                      source_node_status,
+                      remote_last_synced_at as "remote_last_synced_at: DateTime<Utc>"
+               FROM projects
+               WHERE is_remote = 0
+               ORDER BY created_at DESC"#
+        )
+        .fetch_all(pool)
+        .await
+    }
+
+    /// Create or update a remote project synced from the Hive
+    #[allow(clippy::too_many_arguments)]
+    pub async fn upsert_remote_project(
+        pool: &SqlitePool,
+        local_id: Uuid,
+        remote_project_id: Uuid,
+        name: String,
+        git_repo_path: String,
+        source_node_id: Uuid,
+        source_node_name: String,
+        source_node_public_url: Option<String>,
+        source_node_status: Option<String>,
+    ) -> Result<Self, sqlx::Error> {
+        let now = Utc::now();
+        sqlx::query_as!(
+            Project,
+            r#"INSERT INTO projects (
+                    id,
+                    name,
+                    git_repo_path,
+                    remote_project_id,
+                    is_remote,
+                    source_node_id,
+                    source_node_name,
+                    source_node_public_url,
+                    source_node_status,
+                    remote_last_synced_at
+                ) VALUES (
+                    $1, $2, $3, $4, 1, $5, $6, $7, $8, $9
+                )
+                ON CONFLICT(remote_project_id) WHERE remote_project_id IS NOT NULL DO UPDATE SET
+                    name = excluded.name,
+                    git_repo_path = excluded.git_repo_path,
+                    source_node_name = excluded.source_node_name,
+                    source_node_public_url = excluded.source_node_public_url,
+                    source_node_status = excluded.source_node_status,
+                    remote_last_synced_at = excluded.remote_last_synced_at,
+                    updated_at = datetime('now', 'subsec')
+                RETURNING id as "id!: Uuid",
+                          name,
+                          git_repo_path,
+                          setup_script,
+                          dev_script,
+                          cleanup_script,
+                          copy_files,
+                          remote_project_id as "remote_project_id: Uuid",
+                          created_at as "created_at!: DateTime<Utc>",
+                          updated_at as "updated_at!: DateTime<Utc>",
+                          is_remote as "is_remote!: bool",
+                          source_node_id as "source_node_id: Uuid",
+                          source_node_name,
+                          source_node_public_url,
+                          source_node_status,
+                          remote_last_synced_at as "remote_last_synced_at: DateTime<Utc>""#,
+            local_id,
+            name,
+            git_repo_path,
+            remote_project_id,
+            source_node_id,
+            source_node_name,
+            source_node_public_url,
+            source_node_status,
+            now
+        )
+        .fetch_one(pool)
+        .await
+    }
+
+    /// Update the sync status for a remote project
+    pub async fn update_remote_sync_status(
+        pool: &SqlitePool,
+        id: Uuid,
+        source_node_status: Option<String>,
+    ) -> Result<(), sqlx::Error> {
+        let now = Utc::now();
+        sqlx::query!(
+            r#"UPDATE projects
+               SET source_node_status = $2,
+                   remote_last_synced_at = $3
+               WHERE id = $1"#,
+            id,
+            source_node_status,
+            now
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Delete remote projects that are no longer in the Hive
+    pub async fn delete_stale_remote_projects(
+        pool: &SqlitePool,
+        active_remote_project_ids: &[Uuid],
+    ) -> Result<u64, sqlx::Error> {
+        // If the list is empty, don't delete anything (safety check)
+        if active_remote_project_ids.is_empty() {
+            return Ok(0);
+        }
+
+        // SQLite doesn't have array parameters, so we need to build the query dynamically
+        // However, sqlx doesn't support dynamic IN clauses easily.
+        // For now, we'll use a simpler approach: fetch all remote projects and delete ones not in list
+        let all_remote = Self::find_remote_projects(pool).await?;
+        let mut deleted = 0u64;
+
+        for project in all_remote {
+            if let Some(remote_id) = project.remote_project_id
+                && !active_remote_project_ids.contains(&remote_id)
+            {
+                deleted += Self::delete(pool, project.id).await?;
+            }
+        }
+
+        Ok(deleted)
+    }
+
+    /// Get all remote_project_ids from local projects (for exclusion during remote sync)
+    ///
+    /// This returns the set of project IDs that are already linked to local projects,
+    /// so they should be excluded from the remote project list.
+    pub async fn find_local_project_remote_ids(
+        pool: &SqlitePool,
+    ) -> Result<Vec<Uuid>, sqlx::Error> {
+        let rows = sqlx::query_scalar!(
+            r#"SELECT remote_project_id as "remote_project_id: Uuid"
+               FROM projects
+               WHERE is_remote = 0 AND remote_project_id IS NOT NULL"#
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(rows.into_iter().flatten().collect())
     }
 }

@@ -296,8 +296,10 @@
     "share": "Share",
     "reassign": "Reassign",
     "stopShare": "Stop share",
-    "duplicate": "Duplicate"
+    "duplicate": "Duplicate",
+    "remoteTaskCannotExecute": "Remote tasks execute on their origin node"
   },
+  "remoteTask": "Remote task",
   "editBranchName": {
     "dialog": {
       "title": "Edit Branch Name",

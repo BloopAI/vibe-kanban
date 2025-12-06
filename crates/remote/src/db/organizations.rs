@@ -232,20 +232,16 @@ impl<'a> OrganizationRepository<'a> {
             ));
         }
 
+        // Delete organization if user is an admin (single admin can now delete)
         let result = sqlx::query!(
             r#"
-            WITH s AS (
-                SELECT
-                    COUNT(*) FILTER (WHERE role = 'admin') AS admin_count,
-                    BOOL_OR(user_id = $2 AND role = 'admin') AS is_admin
-                FROM organization_member_metadata
-                WHERE organization_id = $1
+            WITH admin_check AS (
+                SELECT 1 FROM organization_member_metadata
+                WHERE organization_id = $1 AND user_id = $2 AND role = 'admin'
             )
             DELETE FROM organizations o
-            USING s
+            USING admin_check
             WHERE o.id = $1
-              AND s.is_admin = true
-              AND s.admin_count > 1
             RETURNING o.id
             "#,
             org_id,
@@ -255,17 +251,7 @@ impl<'a> OrganizationRepository<'a> {
         .await?;
 
         if result.is_none() {
-            let role = self.check_user_role(org_id, user_id).await?;
-            match role {
-                None | Some(MemberRole::Member) => {
-                    return Err(IdentityError::PermissionDenied);
-                }
-                Some(MemberRole::Admin) => {
-                    return Err(IdentityError::CannotDeleteOrganization(
-                        "Cannot delete organization: you are the only admin".to_string(),
-                    ));
-                }
-            }
+            return Err(IdentityError::PermissionDenied);
         }
 
         Ok(())

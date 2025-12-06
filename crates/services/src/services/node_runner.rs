@@ -8,6 +8,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use db::DBService;
+use db::models::{project::Project, task::Task, task::TaskStatus};
+use remote::db::tasks::TaskStatus as RemoteTaskStatus;
+use sqlx::SqlitePool;
 use tokio::sync::{RwLock, mpsc};
 use uuid::Uuid;
 
@@ -16,6 +19,8 @@ use super::hive_client::{
     LinkedProjectInfo, NodeMessage, TaskExecutionStatus, TaskStatusMessage, UnlinkProjectMessage,
     detect_capabilities, get_machine_id,
 };
+use super::node_cache;
+use super::remote_client::{RemoteClient, RemoteClientError};
 
 /// Configuration for the node runner loaded from environment variables.
 #[derive(Debug, Clone)]
@@ -71,13 +76,29 @@ impl NodeRunnerConfig {
     }
 }
 
+/// Info about a remote project from another node in the organization.
+#[derive(Debug, Clone)]
+pub struct RemoteProjectInfo {
+    pub link_id: Uuid,
+    pub project_id: Uuid,
+    pub project_name: String,
+    pub local_project_id: Uuid,
+    pub git_repo_path: String,
+    pub default_branch: String,
+    pub source_node_id: Uuid,
+    pub source_node_name: String,
+    pub source_node_public_url: Option<String>,
+}
+
 /// Mapping from hive project links to local project IDs.
 #[derive(Debug, Clone, Default)]
 pub struct ProjectMapping {
-    /// Maps link_id -> local project info
+    /// Maps link_id -> local project info (this node's projects)
     links: HashMap<Uuid, LinkedProjectInfo>,
     /// Maps local_project_id -> link_id
     local_to_link: HashMap<Uuid, Uuid>,
+    /// Remote projects from other nodes in the organization
+    remote_projects: HashMap<Uuid, RemoteProjectInfo>,
 }
 
 impl ProjectMapping {
@@ -100,6 +121,28 @@ impl ProjectMapping {
         self.local_to_link
             .insert(link.local_project_id, link.link_id);
         self.links.insert(link.link_id, link);
+    }
+
+    /// Add a remote project from another node.
+    pub fn add_remote_project(&mut self, project: RemoteProjectInfo) {
+        self.remote_projects.insert(project.link_id, project);
+    }
+
+    /// Remove a remote project by link_id.
+    pub fn remove_remote_project(&mut self, link_id: Uuid) {
+        self.remote_projects.remove(&link_id);
+    }
+
+    /// Remove all projects from a specific node.
+    pub fn remove_projects_from_node(&mut self, node_id: Uuid) {
+        self.remote_projects
+            .retain(|_, p| p.source_node_id != node_id);
+    }
+
+    /// Get all remote projects.
+    #[allow(dead_code)]
+    pub fn remote_projects(&self) -> impl Iterator<Item = &RemoteProjectInfo> {
+        self.remote_projects.values()
     }
 
     #[allow(dead_code)]
@@ -241,18 +284,46 @@ impl NodeRunnerHandle {
             }
             HiveEvent::ProjectSync(sync) => {
                 let mut state = self.state.write().await;
-                state.project_mapping.add_link(LinkedProjectInfo {
-                    link_id: sync.link_id,
-                    project_id: sync.project_id,
-                    local_project_id: sync.local_project_id,
-                    git_repo_path: sync.git_repo_path.clone(),
-                    default_branch: sync.default_branch.clone(),
-                });
+                if sync.is_new {
+                    // Add the remote project link
+                    state.project_mapping.add_remote_project(RemoteProjectInfo {
+                        link_id: sync.link_id,
+                        project_id: sync.project_id,
+                        project_name: sync.project_name.clone(),
+                        local_project_id: sync.local_project_id,
+                        git_repo_path: sync.git_repo_path.clone(),
+                        default_branch: sync.default_branch.clone(),
+                        source_node_id: sync.source_node_id,
+                        source_node_name: sync.source_node_name.clone(),
+                        source_node_public_url: sync.source_node_public_url.clone(),
+                    });
+                    tracing::info!(
+                        link_id = %sync.link_id,
+                        project_id = %sync.project_id,
+                        project_name = %sync.project_name,
+                        source_node = %sync.source_node_name,
+                        "remote project added"
+                    );
+                } else {
+                    // Remove the remote project link
+                    state.project_mapping.remove_remote_project(sync.link_id);
+                    tracing::info!(
+                        link_id = %sync.link_id,
+                        project_id = %sync.project_id,
+                        project_name = %sync.project_name,
+                        source_node = %sync.source_node_name,
+                        "remote project removed"
+                    );
+                }
+            }
+            HiveEvent::NodeRemoved(removed) => {
+                let mut state = self.state.write().await;
+                // Remove all projects from the removed node
+                state.project_mapping.remove_projects_from_node(removed.node_id);
                 tracing::info!(
-                    link_id = %sync.link_id,
-                    project_id = %sync.project_id,
-                    is_new = sync.is_new,
-                    "project sync received"
+                    node_id = %removed.node_id,
+                    reason = %removed.reason,
+                    "node removed from organization, cleaned up its projects"
                 );
             }
             HiveEvent::TaskAssigned(assignment) => {
@@ -326,10 +397,7 @@ impl NodeRunnerHandle {
     ///
     /// This notifies the hive that a local project is now linked to a remote project,
     /// allowing the hive to track which projects are available on which nodes.
-    pub async fn send_link_project(
-        &self,
-        link: LinkProjectMessage,
-    ) -> Result<(), HiveClientError> {
+    pub async fn send_link_project(&self, link: LinkProjectMessage) -> Result<(), HiveClientError> {
         self.command_tx
             .send(NodeMessage::LinkProject(link))
             .await
@@ -366,6 +434,10 @@ pub enum NodeRunnerError {
     ProjectNotLinked(Uuid),
     #[error("assignment not found: {0}")]
     AssignmentNotFound(Uuid),
+    #[error("remote client error: {0}")]
+    RemoteClient(#[from] RemoteClientError),
+    #[error("sync error: {0}")]
+    SyncError(String),
 }
 
 /// Spawn the node runner and return a handle.
@@ -406,6 +478,7 @@ use super::container::ContainerService;
 /// 1. Connects to the hive server
 /// 2. Processes incoming events (task assignments, cancellations, etc.)
 /// 3. Creates local tasks and attempts for incoming assignments
+/// 4. Syncs remote projects and tasks on connection (if remote_client provided)
 ///
 /// Returns a `NodeRunnerContext` that can be used to interact with the hive.
 ///
@@ -415,6 +488,7 @@ pub fn spawn_node_runner<C: ContainerService + Sync + Send + 'static>(
     config: NodeRunnerConfig,
     db: DBService,
     container: Option<C>,
+    remote_client: Option<RemoteClient>,
 ) -> Option<NodeRunnerContext> {
     let mut handle = spawn_hive_connection(config);
     let state = handle.state.clone();
@@ -434,6 +508,19 @@ pub fn spawn_node_runner<C: ContainerService + Sync + Send + 'static>(
 
         loop {
             match handle.process_event().await {
+                Some(HiveEvent::Connected {
+                    node_id,
+                    organization_id,
+                    ..
+                }) => {
+                    // Sync remote projects into unified schema on connect
+                    if let Some(ref client) = remote_client
+                        && let Err(e) =
+                            sync_remote_projects(&db.pool, client, organization_id, node_id).await
+                    {
+                        tracing::warn!(error = ?e, "Failed to sync remote projects on connect");
+                    }
+                }
                 Some(HiveEvent::TaskAssigned(assignment)) => {
                     tracing::info!(
                         assignment_id = %assignment.assignment_id,
@@ -483,4 +570,117 @@ pub fn spawn_node_runner<C: ContainerService + Sync + Send + 'static>(
     });
 
     Some(context)
+}
+
+/// Sync remote projects and their tasks into the unified schema.
+///
+/// This function is called when the node connects to the hive to ensure
+/// the local database has an up-to-date view of projects from other nodes.
+async fn sync_remote_projects(
+    pool: &SqlitePool,
+    remote_client: &RemoteClient,
+    organization_id: Uuid,
+    current_node_id: Uuid,
+) -> Result<(), NodeRunnerError> {
+    // 1. Sync organization from hive - this directly upserts remote projects into unified Project table
+    if let Err(e) = node_cache::sync_organization(pool, remote_client, organization_id).await {
+        tracing::warn!(error = ?e, "Failed to sync organization from hive");
+    }
+
+    // 2. Get remote projects from unified table (excluding current node)
+    let remote_projects: Vec<_> = Project::find_remote_projects(pool)
+        .await?
+        .into_iter()
+        .filter(|p| p.source_node_id != Some(current_node_id))
+        .collect();
+
+    // 3. Sync tasks for each remote project
+    for project in &remote_projects {
+        if let Some(remote_project_id) = project.remote_project_id
+            && let Err(e) =
+                sync_remote_project_tasks(pool, remote_client, project.id, remote_project_id).await
+        {
+            tracing::warn!(
+                error = ?e,
+                project_id = %remote_project_id,
+                "Failed to sync tasks for remote project"
+            );
+        }
+    }
+
+    tracing::info!(
+        project_count = remote_projects.len(),
+        "Synced remote projects to unified schema"
+    );
+
+    Ok(())
+}
+
+/// Sync tasks for a single remote project from the Hive.
+async fn sync_remote_project_tasks(
+    pool: &SqlitePool,
+    remote_client: &RemoteClient,
+    local_project_id: Uuid,
+    remote_project_id: Uuid,
+) -> Result<(), NodeRunnerError> {
+    // Fetch all tasks from Hive
+    let snapshot = remote_client
+        .fetch_bulk_snapshot(remote_project_id)
+        .await
+        .map_err(|e| NodeRunnerError::SyncError(e.to_string()))?;
+
+    // Upsert each task
+    let mut active_task_ids = Vec::new();
+    for task_payload in snapshot.tasks {
+        let task = &task_payload.task;
+        let user = &task_payload.user;
+
+        // Combine first_name and last_name into a display name
+        let user_display_name = user.as_ref().map(|u| match (&u.first_name, &u.last_name) {
+            (Some(first), Some(last)) => format!("{} {}", first, last),
+            (Some(first), None) => first.clone(),
+            (None, Some(last)) => last.clone(),
+            (None, None) => String::new(),
+        });
+
+        Task::upsert_remote_task(
+            pool,
+            Uuid::new_v4(),
+            local_project_id,
+            task.id,
+            task.title.clone(),
+            task.description.clone(),
+            convert_task_status(&task.status),
+            task.assignee_user_id,
+            user_display_name,
+            user.as_ref().and_then(|u| u.username.clone()),
+            task.version,
+        )
+        .await?;
+
+        active_task_ids.push(task.id);
+    }
+
+    // Handle deleted tasks
+    for deleted_id in snapshot.deleted_task_ids {
+        Task::delete_by_shared_task_id(pool, deleted_id).await?;
+    }
+
+    // Clean up stale remote tasks for this project
+    if !active_task_ids.is_empty() {
+        Task::delete_stale_remote_tasks(pool, local_project_id, &active_task_ids).await?;
+    }
+
+    Ok(())
+}
+
+/// Convert remote TaskStatus to local TaskStatus.
+fn convert_task_status(status: &RemoteTaskStatus) -> TaskStatus {
+    match status {
+        RemoteTaskStatus::Todo => TaskStatus::Todo,
+        RemoteTaskStatus::InProgress => TaskStatus::InProgress,
+        RemoteTaskStatus::InReview => TaskStatus::InReview,
+        RemoteTaskStatus::Done => TaskStatus::Done,
+        RemoteTaskStatus::Cancelled => TaskStatus::Cancelled,
+    }
 }

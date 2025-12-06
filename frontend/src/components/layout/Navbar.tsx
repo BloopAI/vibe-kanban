@@ -20,6 +20,7 @@ import {
   Plus,
   LogOut,
   LogIn,
+  Circle,
 } from 'lucide-react';
 import { Logo } from '@/components/Logo';
 import { SearchBar } from '@/components/SearchBar';
@@ -27,6 +28,7 @@ import { useSearch } from '@/contexts/SearchContext';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { useProject } from '@/contexts/ProjectContext';
 import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
+import { Badge } from '@/components/ui/badge';
 import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
 import { useDiscordOnlineCount } from '@/hooks/useDiscordOnlineCount';
 import { useTranslation } from 'react-i18next';
@@ -187,6 +189,26 @@ export function Navbar() {
               onClear={clear}
               project={project || null}
             />
+            {project?.is_remote && (
+              <Badge
+                variant="secondary"
+                className="flex items-center gap-1 text-xs shrink-0"
+              >
+                <Server className="h-3 w-3" />
+                {project.source_node_name || 'Remote'}
+                <Circle
+                  className={`h-2 w-2 fill-current ${
+                    project.source_node_status === 'online'
+                      ? 'text-green-500'
+                      : project.source_node_status === 'busy'
+                        ? 'text-yellow-500'
+                        : project.source_node_status === 'draining'
+                          ? 'text-orange-500'
+                          : 'text-gray-400'
+                  }`}
+                />
+              </Badge>
+            )}
           </div>
 
           <div className="flex flex-1 items-center justify-end gap-1">

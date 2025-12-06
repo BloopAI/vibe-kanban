@@ -19,9 +19,10 @@ use uuid::Uuid;
 use super::{
     connection::ConnectionManager,
     message::{
-        AuthResultMessage, HeartbeatMessage, HiveMessage, LinkProjectMessage, LinkedProjectInfo,
-        NodeMessage, PROTOCOL_VERSION, TaskExecutionStatus, TaskOutputMessage, TaskProgressMessage,
-        TaskStatusMessage, UnlinkProjectMessage,
+        AuthResultMessage, DeregisterMessage, HeartbeatMessage, HiveMessage, LinkProjectMessage,
+        LinkedProjectInfo, NodeMessage, NodeRemovedMessage, ProjectSyncMessage, PROTOCOL_VERSION,
+        TaskExecutionStatus, TaskOutputMessage, TaskProgressMessage, TaskStatusMessage,
+        UnlinkProjectMessage,
     },
 };
 use crate::nodes::{
@@ -74,6 +75,9 @@ pub async fn handle(socket: WebSocket, pool: PgPool, connections: ConnectionMana
     Span::current().record("node_id", format_args!("{}", auth_result.node_id));
     Span::current().record("org_id", format_args!("{}", auth_result.organization_id));
 
+    // Clone projects for broadcast before moving into response
+    let projects_for_broadcast = auth_result.linked_projects.clone();
+
     // Send auth success response
     if send_message(
         &mut ws_sender,
@@ -96,6 +100,18 @@ pub async fn handle(socket: WebSocket, pool: PgPool, connections: ConnectionMana
     connections
         .register(auth_result.node_id, auth_result.organization_id, tx)
         .await;
+
+    // Broadcast this node's projects to other nodes in the organization
+    broadcast_node_projects(
+        auth_result.node_id,
+        auth_result.organization_id,
+        &auth_result.node_name,
+        auth_result.node_public_url.as_deref(),
+        &projects_for_broadcast,
+        &pool,
+        &connections,
+    )
+    .await;
 
     // Set up heartbeat timeout
     let mut heartbeat_timeout = time::interval(HEARTBEAT_TIMEOUT);
@@ -204,6 +220,8 @@ pub async fn handle(socket: WebSocket, pool: PgPool, connections: ConnectionMana
 struct AuthResult {
     node_id: Uuid,
     organization_id: Uuid,
+    node_name: String,
+    node_public_url: Option<String>,
     linked_projects: Vec<LinkedProjectInfo>,
 }
 
@@ -280,6 +298,10 @@ async fn wait_for_auth(
         }
     })?;
 
+    // Store name and public_url for later use in broadcasts
+    let node_name = auth.name.clone();
+    let node_public_url = auth.public_url.clone();
+
     // Register or update the node
     let register_data = RegisterNode {
         name: auth.name,
@@ -311,6 +333,8 @@ async fn wait_for_auth(
     Ok(AuthResult {
         node_id: node.id,
         organization_id: node.organization_id,
+        node_name,
+        node_public_url,
         linked_projects,
     })
 }
@@ -342,8 +366,15 @@ async fn handle_node_message(
         }
         NodeMessage::TaskOutput(output) => handle_task_output(node_id, output, pool).await,
         NodeMessage::TaskProgress(progress) => handle_task_progress(node_id, progress, pool).await,
-        NodeMessage::LinkProject(link) => handle_link_project(node_id, link, pool).await,
-        NodeMessage::UnlinkProject(unlink) => handle_unlink_project(node_id, unlink, pool).await,
+        NodeMessage::LinkProject(link) => {
+            handle_link_project(node_id, organization_id, link, pool, connections).await
+        }
+        NodeMessage::UnlinkProject(unlink) => {
+            handle_unlink_project(node_id, organization_id, unlink, pool, connections).await
+        }
+        NodeMessage::Deregister(deregister) => {
+            handle_deregister(node_id, organization_id, deregister, pool, connections).await
+        }
         NodeMessage::Ack { message_id } => {
             tracing::trace!(node_id = %node_id, message_id = %message_id, "received ack");
             Ok(())
@@ -552,12 +583,15 @@ async fn handle_task_progress(
 /// Handle a project link message from a node.
 ///
 /// This creates an entry in the node_projects table linking the remote project
-/// to this node's local project.
+/// to this node's local project, then broadcasts the new link to all other nodes.
 async fn handle_link_project(
     node_id: Uuid,
+    organization_id: Uuid,
     link: &LinkProjectMessage,
     pool: &PgPool,
+    connections: &ConnectionManager,
 ) -> Result<(), HandleError> {
+    use crate::db::projects::ProjectRepository;
     use crate::nodes::domain::LinkProjectData;
 
     let service = NodeServiceImpl::new(pool.clone());
@@ -569,7 +603,7 @@ async fn handle_link_project(
         default_branch: link.default_branch.clone(),
     };
 
-    service
+    let node_project = service
         .link_project(node_id, link_data)
         .await
         .map_err(|e| HandleError::Database(e.to_string()))?;
@@ -582,18 +616,83 @@ async fn handle_link_project(
         "linked project to node"
     );
 
+    // Broadcast the new project link to other nodes
+    // Get node info and project name for the broadcast
+    let node = service
+        .get_node(node_id)
+        .await
+        .map_err(|e| HandleError::Database(e.to_string()))?;
+
+    let project_name = match ProjectRepository::fetch_by_id(pool, link.project_id).await {
+        Ok(Some(project)) => project.name,
+        _ => link
+            .git_repo_path
+            .rsplit('/')
+            .next()
+            .unwrap_or(&link.git_repo_path)
+            .to_string(),
+    };
+
+    let sync_msg = HiveMessage::ProjectSync(ProjectSyncMessage {
+        message_id: Uuid::new_v4(),
+        link_id: node_project.id,
+        project_id: link.project_id,
+        project_name,
+        local_project_id: link.local_project_id,
+        git_repo_path: link.git_repo_path.clone(),
+        default_branch: link.default_branch.clone(),
+        source_node_id: node_id,
+        source_node_name: node.name,
+        source_node_public_url: node.public_url,
+        is_new: true,
+    });
+
+    let failed = connections
+        .broadcast_to_org_except(organization_id, node_id, sync_msg)
+        .await;
+
+    if !failed.is_empty() {
+        tracing::warn!(
+            node_id = %node_id,
+            project_id = %link.project_id,
+            failed_count = failed.len(),
+            "failed to broadcast project link to some nodes"
+        );
+    }
+
     Ok(())
 }
 
 /// Handle a project unlink message from a node.
 ///
-/// This removes the entry from the node_projects table.
+/// This removes the entry from the node_projects table and broadcasts the
+/// removal to other nodes.
 async fn handle_unlink_project(
     node_id: Uuid,
+    organization_id: Uuid,
     unlink: &UnlinkProjectMessage,
     pool: &PgPool,
+    connections: &ConnectionManager,
 ) -> Result<(), HandleError> {
+    use crate::db::projects::ProjectRepository;
+
     let service = NodeServiceImpl::new(pool.clone());
+
+    // Get node info before unlink for the broadcast
+    let node = service
+        .get_node(node_id)
+        .await
+        .map_err(|e| HandleError::Database(e.to_string()))?;
+
+    // Get the link info before deleting it
+    let node_projects = service
+        .list_node_projects(node_id)
+        .await
+        .map_err(|e| HandleError::Database(e.to_string()))?;
+
+    let link_info = node_projects
+        .into_iter()
+        .find(|p| p.project_id == unlink.project_id);
 
     service
         .unlink_project_for_node(node_id, unlink.project_id)
@@ -604,6 +703,98 @@ async fn handle_unlink_project(
         node_id = %node_id,
         project_id = %unlink.project_id,
         "unlinked project from node"
+    );
+
+    // Broadcast the unlink to other nodes (only if we found the link info)
+    if let Some(link) = link_info {
+        let project_name = match ProjectRepository::fetch_by_id(pool, unlink.project_id).await {
+            Ok(Some(project)) => project.name,
+            _ => link
+                .git_repo_path
+                .rsplit('/')
+                .next()
+                .unwrap_or(&link.git_repo_path)
+                .to_string(),
+        };
+
+        let sync_msg = HiveMessage::ProjectSync(ProjectSyncMessage {
+            message_id: Uuid::new_v4(),
+            link_id: link.id,
+            project_id: unlink.project_id,
+            project_name,
+            local_project_id: link.local_project_id,
+            git_repo_path: link.git_repo_path,
+            default_branch: link.default_branch,
+            source_node_id: node_id,
+            source_node_name: node.name,
+            source_node_public_url: node.public_url,
+            is_new: false, // false indicates removal
+        });
+
+        let failed = connections
+            .broadcast_to_org_except(organization_id, node_id, sync_msg)
+            .await;
+
+        if !failed.is_empty() {
+            tracing::warn!(
+                node_id = %node_id,
+                project_id = %unlink.project_id,
+                failed_count = failed.len(),
+                "failed to broadcast project unlink to some nodes"
+            );
+        }
+    }
+
+    Ok(())
+}
+
+/// Handle a node deregistration request.
+///
+/// This performs a hard delete of all node data and broadcasts the removal
+/// to all other nodes in the organization.
+async fn handle_deregister(
+    node_id: Uuid,
+    organization_id: Uuid,
+    deregister: &DeregisterMessage,
+    pool: &PgPool,
+    connections: &ConnectionManager,
+) -> Result<(), HandleError> {
+    tracing::info!(
+        node_id = %node_id,
+        message_id = %deregister.message_id,
+        reason = ?deregister.reason,
+        "node requesting deregistration"
+    );
+
+    let service = NodeServiceImpl::new(pool.clone());
+
+    // Delete the node (cascades all related data: node_projects, task_assignments)
+    service
+        .delete_node(node_id)
+        .await
+        .map_err(|e| HandleError::Database(e.to_string()))?;
+
+    // Broadcast node removal to all other nodes in the organization
+    let removal_msg = HiveMessage::NodeRemoved(NodeRemovedMessage {
+        node_id,
+        reason: deregister
+            .reason
+            .clone()
+            .unwrap_or_else(|| "Node deregistered".to_string()),
+    });
+
+    let failed = connections.broadcast_to_org(organization_id, removal_msg).await;
+    if !failed.is_empty() {
+        tracing::warn!(
+            node_id = %node_id,
+            failed_count = failed.len(),
+            "failed to notify some nodes of deregistration"
+        );
+    }
+
+    tracing::info!(
+        node_id = %node_id,
+        "node deregistered successfully"
     );
 
     Ok(())
@@ -635,4 +826,74 @@ async fn send_message(
             Err(())
         }
     }
+}
+
+/// Broadcast a node's linked projects to all other nodes in the organization.
+///
+/// This is called when a node connects to notify other nodes about the newly
+/// connected node's available projects.
+async fn broadcast_node_projects(
+    node_id: Uuid,
+    organization_id: Uuid,
+    node_name: &str,
+    node_public_url: Option<&str>,
+    linked_projects: &[LinkedProjectInfo],
+    pool: &PgPool,
+    connections: &ConnectionManager,
+) {
+    use crate::db::projects::ProjectRepository;
+
+    if linked_projects.is_empty() {
+        return;
+    }
+
+    for project_info in linked_projects {
+        // Try to get the project name from the database
+        let project_name = match ProjectRepository::fetch_by_id(pool, project_info.project_id).await
+        {
+            Ok(Some(project)) => project.name,
+            _ => {
+                // Fallback to using the git_repo_path as the name
+                project_info
+                    .git_repo_path
+                    .rsplit('/')
+                    .next()
+                    .unwrap_or(&project_info.git_repo_path)
+                    .to_string()
+            }
+        };
+
+        let sync_msg = HiveMessage::ProjectSync(ProjectSyncMessage {
+            message_id: Uuid::new_v4(),
+            link_id: project_info.link_id,
+            project_id: project_info.project_id,
+            project_name,
+            local_project_id: project_info.local_project_id,
+            git_repo_path: project_info.git_repo_path.clone(),
+            default_branch: project_info.default_branch.clone(),
+            source_node_id: node_id,
+            source_node_name: node_name.to_string(),
+            source_node_public_url: node_public_url.map(String::from),
+            is_new: true,
+        });
+
+        let failed = connections
+            .broadcast_to_org_except(organization_id, node_id, sync_msg)
+            .await;
+
+        if !failed.is_empty() {
+            tracing::warn!(
+                node_id = %node_id,
+                project_id = %project_info.project_id,
+                failed_count = failed.len(),
+                "failed to broadcast project to some nodes"
+            );
+        }
+    }
+
+    tracing::info!(
+        node_id = %node_id,
+        project_count = linked_projects.len(),
+        "broadcast node projects to organization"
+    );
 }
