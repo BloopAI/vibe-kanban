@@ -239,6 +239,11 @@ impl ClaudeCode {
             tracing::info!("ANTHROPIC_API_KEY removed from environment");
         }
 
+        // Remove pnpm-specific env vars that cause npm warnings when using npx
+        // See: https://github.com/pnpm/pnpm/issues/10000
+        command.env_remove("npm_config__jsr-registry");
+        command.env_remove("npm_config_verify-deps-before-run");
+
         let mut child = command.group_spawn()?;
         let child_stdout = child.inner().stdout.take().ok_or_else(|| {
             ExecutorError::Io(std::io::Error::other("Claude Code missing stdout"))
