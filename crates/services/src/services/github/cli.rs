@@ -37,6 +37,27 @@ pub struct PrComment {
     pub url: String,
 }
 
+/// User information for a review comment (from API response)
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct ReviewCommentUser {
+    pub login: String,
+}
+
+/// An inline review comment on a GitHub PR (from gh api)
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct PrReviewComment {
+    pub id: i64,
+    pub user: ReviewCommentUser,
+    pub body: String,
+    pub created_at: DateTime<Utc>,
+    pub html_url: String,
+    pub path: String,
+    pub line: Option<i64>,
+    pub side: Option<String>,
+    pub diff_hunk: String,
+    pub author_association: String,
+}
+
 /// High-level errors originating from the GitHub CLI.
 #[derive(Debug, Error)]
 pub enum GhCliError {
@@ -206,6 +227,20 @@ impl GhCli {
         ])?;
         Self::parse_pr_comments(&raw)
     }
+
+    /// Fetch inline review comments for a pull request via API.
+    pub fn get_pr_review_comments(
+        &self,
+        owner: &str,
+        repo: &str,
+        pr_number: i64,
+    ) -> Result<Vec<PrReviewComment>, GhCliError> {
+        let raw = self.run([
+            "api",
+            &format!("repos/{owner}/{repo}/pulls/{pr_number}/comments"),
+        ])?;
+        Self::parse_pr_review_comments(&raw)
+    }
 }
 
 impl GhCli {
@@ -308,6 +343,14 @@ impl GhCli {
                 })
             })
             .collect()
+    }
+
+    fn parse_pr_review_comments(raw: &str) -> Result<Vec<PrReviewComment>, GhCliError> {
+        serde_json::from_str(raw.trim()).map_err(|err| {
+            GhCliError::UnexpectedOutput(format!(
+                "Failed to parse review comments API response: {err}; raw: {raw}"
+            ))
+        })
     }
 
     fn extract_pr_info(value: &Value) -> Option<PullRequestInfo> {

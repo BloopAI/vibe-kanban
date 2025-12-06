@@ -260,13 +260,11 @@ export type RunScriptError = { "type": "no_script_configured" } | { "type": "pro
 
 export type AttachPrResponse = { pr_attached: boolean, pr_url: string | null, pr_number: bigint | null, pr_status: MergeStatus | null, };
 
-export type PrCommentsResponse = { comments: Array<PrComment>, };
+export type PrCommentsResponse = { comments: Array<UnifiedPrComment>, };
 
 export type GetPrCommentsError = { "type": "no_pr_attached" } | { "type": "github_cli_not_installed" } | { "type": "github_cli_not_logged_in" };
 
-export type PrComment = { id: string, author: PrCommentAuthor, authorAssociation: string, body: string, createdAt: string, url: string, };
-
-export type PrCommentAuthor = { login: string, };
+export type UnifiedPrComment = { "comment_type": "general", id: string, author: string, author_association: string, body: string, created_at: string, url: string, } | { "comment_type": "review", id: bigint, author: string, author_association: string, body: string, created_at: string, url: string, path: string, line: bigint | null, diff_hunk: string, };
 
 export type DirectoryEntry = { name: string, path: string, is_directory: boolean, is_git_repo: boolean, last_modified: bigint | null, };
 

@@ -39,7 +39,7 @@ use serde::{Deserialize, Serialize};
 use services::services::{
     container::ContainerService,
     git::{ConflictOp, GitCliError, GitServiceError, WorktreeResetOptions},
-    github::{CreatePrRequest, GitHubService, GitHubServiceError, PrComment},
+    github::{CreatePrRequest, GitHubService, GitHubServiceError, UnifiedPrComment},
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
@@ -1413,7 +1413,7 @@ pub struct AttachPrResponse {
 
 #[derive(Debug, Serialize, TS)]
 pub struct PrCommentsResponse {
-    pub comments: Vec<PrComment>,
+    pub comments: Vec<UnifiedPrComment>,
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
