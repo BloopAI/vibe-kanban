@@ -122,72 +122,70 @@ function AppContent() {
     <I18nextProvider i18n={i18n}>
       <ThemeProvider initialTheme={config?.theme || ThemeMode.SYSTEM}>
         <SearchProvider>
-          <div className="h-screen flex flex-col bg-background">
-            <SentryRoutes>
-              {/* ========== LEGACY DESIGN ROUTES ========== */}
-              {/* VS Code full-page logs route (outside NormalLayout for minimal UI) */}
+          <SentryRoutes>
+            {/* ========== LEGACY DESIGN ROUTES ========== */}
+            {/* VS Code full-page logs route (outside NormalLayout for minimal UI) */}
+            <Route
+              path="/projects/:projectId/tasks/:taskId/attempts/:attemptId/full"
+              element={
+                <LegacyDesignScope>
+                  <FullAttemptLogsPage />
+                </LegacyDesignScope>
+              }
+            />
+
+            <Route
+              element={
+                <LegacyDesignScope>
+                  <NormalLayout />
+                </LegacyDesignScope>
+              }
+            >
+              <Route path="/" element={<Projects />} />
+              <Route path="/projects" element={<Projects />} />
+              <Route path="/projects/:projectId" element={<Projects />} />
               <Route
-                path="/projects/:projectId/tasks/:taskId/attempts/:attemptId/full"
-                element={
-                  <LegacyDesignScope>
-                    <FullAttemptLogsPage />
-                  </LegacyDesignScope>
-                }
+                path="/projects/:projectId/tasks"
+                element={<ProjectTasks />}
               />
-
-              <Route
-                element={
-                  <LegacyDesignScope>
-                    <NormalLayout />
-                  </LegacyDesignScope>
-                }
-              >
-                <Route path="/" element={<Projects />} />
-                <Route path="/projects" element={<Projects />} />
-                <Route path="/projects/:projectId" element={<Projects />} />
+              <Route path="/settings/*" element={<SettingsLayout />}>
+                <Route index element={<Navigate to="general" replace />} />
+                <Route path="general" element={<GeneralSettings />} />
+                <Route path="projects" element={<ProjectSettings />} />
                 <Route
-                  path="/projects/:projectId/tasks"
-                  element={<ProjectTasks />}
+                  path="organizations"
+                  element={<OrganizationSettings />}
                 />
-                <Route path="/settings/*" element={<SettingsLayout />}>
-                  <Route index element={<Navigate to="general" replace />} />
-                  <Route path="general" element={<GeneralSettings />} />
-                  <Route path="projects" element={<ProjectSettings />} />
-                  <Route
-                    path="organizations"
-                    element={<OrganizationSettings />}
-                  />
-                  <Route path="agents" element={<AgentSettings />} />
-                  <Route path="mcp" element={<McpSettings />} />
-                </Route>
-                <Route
-                  path="/mcp-servers"
-                  element={<Navigate to="/settings/mcp" replace />}
-                />
-                <Route
-                  path="/projects/:projectId/tasks/:taskId"
-                  element={<ProjectTasks />}
-                />
-                <Route
-                  path="/projects/:projectId/tasks/:taskId/attempts/:attemptId"
-                  element={<ProjectTasks />}
-                />
+                <Route path="agents" element={<AgentSettings />} />
+                <Route path="mcp" element={<McpSettings />} />
               </Route>
-
-              {/* ========== NEW DESIGN ROUTES ========== */}
               <Route
-                path="/new"
-                element={
-                  <NewDesignScope>
-                    <NewDesignLayout />
-                  </NewDesignScope>
-                }
-              >
-                <Route index element={<Workspaces />} />
-                <Route path="workspaces" element={<Workspaces />} />
-              </Route>
-            </SentryRoutes>
-          </div>
+                path="/mcp-servers"
+                element={<Navigate to="/settings/mcp" replace />}
+              />
+              <Route
+                path="/projects/:projectId/tasks/:taskId"
+                element={<ProjectTasks />}
+              />
+              <Route
+                path="/projects/:projectId/tasks/:taskId/attempts/:attemptId"
+                element={<ProjectTasks />}
+              />
+            </Route>
+
+            {/* ========== NEW DESIGN ROUTES ========== */}
+            <Route
+              path="/new"
+              element={
+                <NewDesignScope>
+                  <NewDesignLayout />
+                </NewDesignScope>
+              }
+            >
+              <Route index element={<Workspaces />} />
+              <Route path="workspaces" element={<Workspaces />} />
+            </Route>
+          </SentryRoutes>
         </SearchProvider>
       </ThemeProvider>
     </I18nextProvider>
