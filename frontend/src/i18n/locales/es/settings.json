@@ -324,7 +324,9 @@
         "description": "Configura los scripts de instalación, desarrollo y limpieza para este proyecto.",
         "setup": {
           "label": "Script de Instalación",
-          "helper": "Este script se ejecutará después de crear el worktree y antes de que comience el agente de codificación. Úsalo para tareas de configuración como instalar dependencias o preparar el entorno."
+          "helper": "Este script se ejecutará después de crear el worktree y antes de que comience el agente de codificación. Úsalo para tareas de configuración como instalar dependencias o preparar el entorno.",
+          "parallelLabel": "Ejecutar script de instalación en paralelo con el agente de codificación",
+          "parallelHelper": "Cuando está habilitado, el script de instalación se ejecuta simultáneamente con el agente de codificación en lugar de esperar a que se complete la configuración primero."
         },
         "dev": {
           "label": "Script del Servidor de Desarrollo",

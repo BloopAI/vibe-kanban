@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "UPDATE projects\n               SET name = $2,\n                   git_repo_path = $3,\n                   setup_script = $4,\n                   dev_script = $5,\n                   cleanup_script = $6,\n                   copy_files = $7\n               WHERE id = $1\n               RETURNING id as \"id!: Uuid\",\n                         name,\n                         git_repo_path,\n                         setup_script,\n                         dev_script,\n                         cleanup_script,\n                         copy_files,\n                         remote_project_id as \"remote_project_id: Uuid\",\n                         created_at as \"created_at!: DateTime<Utc>\",\n                         updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      git_repo_path,\n                      setup_script,\n                      dev_script,\n                      cleanup_script,\n                      copy_files,\n                      parallel_setup_script as \"parallel_setup_script!: bool\",\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -39,23 +39,28 @@
         "type_info": "Text"
       },
       {
-        "name": "remote_project_id: Uuid",
+        "name": "parallel_setup_script!: bool",
         "ordinal": 7,
+        "type_info": "Integer"
+      },
+      {
+        "name": "remote_project_id: Uuid",
+        "ordinal": 8,
         "type_info": "Blob"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 8,
+        "ordinal": 9,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 9,
+        "ordinal": 10,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 7
+      "Right": 0
     },
     "nullable": [
       true,
@@ -65,10 +70,11 @@
       true,
       true,
       true,
+      false,
       true,
       false,
       false
     ]
   },
-  "hash": "2d49b016e3d5872a71d07525a9d15637c9799e8918f125058413028ecb931a5c"
+  "hash": "5ae74dcee62a835018743862b2beceb7231696a0775ba2f144a0b1ecc8bfd56d"
 }
