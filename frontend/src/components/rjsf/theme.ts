@@ -1,4 +1,4 @@
-import { RegistryWidgetsType } from '@rjsf/utils';
+import { RegistryFieldsType, RegistryWidgetsType } from '@rjsf/utils';
 import {
   TextWidget,
   SelectWidget,
@@ -12,6 +12,7 @@ import {
   ObjectFieldTemplate,
   FormTemplate,
 } from './templates';
+import { KeyValueField } from './fields';
 
 export const customWidgets: RegistryWidgetsType = {
   TextWidget,
@@ -29,7 +30,12 @@ export const customTemplates = {
   FormTemplate,
 };
 
+export const customFields: RegistryFieldsType = {
+  KeyValueField,
+};
+
 export const shadcnTheme = {
   widgets: customWidgets,
   templates: customTemplates,
+  fields: customFields,
 };

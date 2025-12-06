@@ -44,6 +44,15 @@ export function ExecutorConfigForm({
     return schemas[executor];
   }, [executor]);
 
+  const uiSchema = useMemo(
+    () => ({
+      env: {
+        'ui:field': 'KeyValueField',
+      },
+    }),
+    []
+  );
+
   useEffect(() => {
     setFormData(value || {});
     setValidationErrors([]);
@@ -87,6 +96,7 @@ export function ExecutorConfigForm({
         <CardContent className="p-0">
           <Form
             schema={schema}
+            uiSchema={uiSchema}
             formData={formData}
             onChange={handleChange}
             onSubmit={handleSubmit}
@@ -97,6 +107,7 @@ export function ExecutorConfigForm({
             showErrorList={false}
             widgets={shadcnTheme.widgets}
             templates={shadcnTheme.templates}
+            fields={shadcnTheme.fields}
           >
             {onSave && (
               <div className="flex justify-end pt-4">
