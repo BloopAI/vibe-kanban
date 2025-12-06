@@ -1,16 +1,5 @@
 import { useCallback } from 'react';
-import {
-  $createTextNode,
-  $getNodeByKey,
-  DecoratorNode,
-  DOMConversionMap,
-  DOMExportOutput,
-  LexicalNode,
-  NodeKey,
-  SerializedLexicalNode,
-  Spread,
-} from 'lexical';
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
+import { NodeKey, SerializedLexicalNode, Spread } from 'lexical';
 import { HelpCircle, Loader2 } from 'lucide-react';
 import {
   useTaskAttemptId,
@@ -20,6 +9,16 @@ import {
 import { useImageMetadata } from '@/hooks/useImageMetadata';
 import { ImagePreviewDialog } from '@/components/dialogs/wysiwyg/ImagePreviewDialog';
 import { formatFileSize } from '@/lib/utils';
+import {
+  createDecoratorNode,
+  type DecoratorNodeConfig,
+  type GeneratedDecoratorNode,
+} from '../lib/create-decorator-node';
+
+export interface ImageData {
+  src: string;
+  altText: string;
+}
 
 export type SerializedImageNode = Spread<
   {
@@ -36,15 +35,14 @@ function truncatePath(path: string, maxLength = 24): string {
 }
 
 function ImageComponent({
-  src,
-  altText,
-  nodeKey,
+  data,
+  onDoubleClickEdit,
 }: {
-  src: string;
-  altText: string;
+  data: ImageData;
   nodeKey: NodeKey;
+  onDoubleClickEdit: (event: React.MouseEvent) => void;
 }): JSX.Element {
-  const [editor] = useLexicalComposerContext();
+  const { src, altText } = data;
   const taskAttemptId = useTaskAttemptId();
   const taskId = useTaskId();
   const localImages = useLocalImages();
@@ -78,28 +76,6 @@ function ImageComponent({
       }
     },
     [metadata, altText]
-  );
-
-  const handleDoubleClick = useCallback(
-    (event: React.MouseEvent) => {
-      // Don't allow editing in read-only mode
-      if (!editor.isEditable()) return;
-
-      event.preventDefault();
-      event.stopPropagation();
-
-      // Convert back to markdown text for editing
-      editor.update(() => {
-        const node = $getNodeByKey(nodeKey);
-        if ($isImageNode(node)) {
-          const markdownText = `![${node.getAltText()}](${node.getSrc()})`;
-          const textNode = $createTextNode(markdownText);
-          node.replace(textNode);
-          textNode.select(markdownText.length, markdownText.length);
-        }
-      });
-    },
-    [editor, nodeKey]
   );
 
   // Determine what to show as thumbnail
@@ -171,9 +147,9 @@ function ImageComponent({
 
   return (
     <span
-      className="inline-flex items-center gap-1.5 px-1.5 py-1 bg-muted rounded border align-middle cursor-pointer border-border hover:border-muted-foreground"
+      className="inline-flex items-center gap-1.5 px-1.5 py-1 bg-muted rounded border align-bottom cursor-pointer border-border hover:border-muted-foreground"
       onClick={handleClick}
-      onDoubleClick={handleDoubleClick}
+      onDoubleClick={onDoubleClickEdit}
       role="button"
       tabIndex={0}
     >
@@ -192,101 +168,43 @@ function ImageComponent({
   );
 }
 
-export class ImageNode extends DecoratorNode<JSX.Element> {
-  __src: string;
-  __altText: string;
-
-  static getType(): string {
-    return 'image';
-  }
-
-  static clone(node: ImageNode): ImageNode {
-    return new ImageNode(node.__src, node.__altText, node.__key);
-  }
-
-  constructor(src: string, altText: string, key?: NodeKey) {
-    super(key);
-    this.__src = src;
-    this.__altText = altText;
-  }
-
-  createDOM(): HTMLElement {
-    const span = document.createElement('span');
-    return span;
-  }
-
-  updateDOM(): false {
-    return false;
-  }
-
-  static importJSON(serializedNode: SerializedImageNode): ImageNode {
-    const { src, altText } = serializedNode;
-    return $createImageNode(src, altText);
-  }
-
-  exportJSON(): SerializedImageNode {
-    return {
-      type: 'image',
-      version: 1,
-      src: this.__src,
-      altText: this.__altText,
-    };
-  }
-
-  static importDOM(): DOMConversionMap | null {
-    return {
-      img: () => ({
-        conversion: (domNode: HTMLElement) => {
-          const img = domNode as HTMLImageElement;
-          const src = img.getAttribute('src') || '';
-          const altText = img.getAttribute('alt') || '';
-          return { node: $createImageNode(src, altText) };
-        },
-        priority: 0,
-      }),
-    };
-  }
-
-  exportDOM(): DOMExportOutput {
+const config: DecoratorNodeConfig<ImageData> = {
+  type: 'image',
+  serialization: {
+    format: 'inline',
+    pattern: /!\[([^\]]*)\]\(([^)]+)\)/,
+    trigger: ')',
+    serialize: (data) => `![${data.altText}](${data.src})`,
+    deserialize: (match) => ({ src: match[2], altText: match[1] }),
+  },
+  component: ImageComponent,
+  importDOM: (createNode) => ({
+    img: () => ({
+      conversion: (el: HTMLElement) => {
+        const img = el as HTMLImageElement;
+        return {
+          node: createNode({
+            src: img.getAttribute('src') || '',
+            altText: img.getAttribute('alt') || '',
+          }),
+        };
+      },
+      priority: 0,
+    }),
+  }),
+  exportDOM: (data) => {
     const img = document.createElement('img');
-    img.setAttribute('src', this.__src);
-    img.setAttribute('alt', this.__altText);
-    return { element: img };
-  }
+    img.setAttribute('src', data.src);
+    img.setAttribute('alt', data.altText);
+    return img;
+  },
+};
 
-  getSrc(): string {
-    return this.__src;
-  }
+const result = createDecoratorNode(config);
 
-  getAltText(): string {
-    return this.__altText;
-  }
-
-  decorate(): JSX.Element {
-    return (
-      <ImageComponent
-        src={this.__src}
-        altText={this.__altText}
-        nodeKey={this.__key}
-      />
-    );
-  }
-
-  isInline(): boolean {
-    return true;
-  }
-
-  isKeyboardSelectable(): boolean {
-    return true;
-  }
-}
-
-export function $createImageNode(src: string, altText: string): ImageNode {
-  return new ImageNode(src, altText);
-}
-
-export function $isImageNode(
-  node: LexicalNode | null | undefined
-): node is ImageNode {
-  return node instanceof ImageNode;
-}
+export const ImageNode = result.Node;
+export type ImageNodeInstance = GeneratedDecoratorNode<ImageData>;
+export const $createImageNode = (src: string, altText: string) =>
+  result.createNode({ src, altText });
+export const $isImageNode = result.isNode;
+export const IMAGE_TRANSFORMER = result.transformers[0];
