@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import {
@@ -32,6 +33,7 @@ function getCommentId(comment: UnifiedPrComment): string {
 
 const GitHubCommentsDialogImpl = NiceModal.create<GitHubCommentsDialogProps>(
   ({ attemptId }) => {
+    const { t } = useTranslation(['tasks', 'common']);
     const modal = useModal();
     const { data, isLoading, isError, error } = usePrComments(attemptId);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -99,7 +101,7 @@ const GitHubCommentsDialogImpl = NiceModal.create<GitHubCommentsDialogProps>(
           <DialogHeader className="px-4 py-3 border-b flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
-              Select GitHub Comments
+              {t('tasks:githubComments.dialog.title')}
             </DialogTitle>
           </DialogHeader>
 
@@ -115,7 +117,7 @@ const GitHubCommentsDialogImpl = NiceModal.create<GitHubCommentsDialogProps>(
               </div>
             ) : comments.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
-                No comments found on this PR
+                {t('tasks:githubComments.dialog.noComments')}
               </p>
             ) : (
               <>
@@ -128,7 +130,9 @@ const GitHubCommentsDialogImpl = NiceModal.create<GitHubCommentsDialogProps>(
                     size="sm"
                     onClick={isAllSelected ? deselectAll : selectAll}
                   >
-                    {isAllSelected ? 'Deselect All' : 'Select All'}
+                    {isAllSelected
+                      ? t('tasks:githubComments.dialog.deselectAll')
+                      : t('tasks:githubComments.dialog.selectAll')}
                   </Button>
                 </div>
                 <div className="space-y-3">
@@ -178,10 +182,11 @@ const GitHubCommentsDialogImpl = NiceModal.create<GitHubCommentsDialogProps>(
           {!errorMessage && !isLoading && comments.length > 0 && (
             <DialogFooter className="px-4 py-3 border-t flex-shrink-0">
               <Button variant="outline" onClick={() => handleOpenChange(false)}>
-                Cancel
+                {t('common:buttons.cancel')}
               </Button>
               <Button onClick={handleConfirm} disabled={selectedIds.size === 0}>
-                Add{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}
+                {t('tasks:githubComments.dialog.add')}
+                {selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}
               </Button>
             </DialogFooter>
           )}

@@ -400,6 +400,18 @@
       "finish": "완료"
     }
   },
+  "githubComments": {
+    "dialog": {
+      "title": "GitHub 댓글 선택",
+      "noComments": "이 PR에 댓글이 없습니다",
+      "selectAll": "모두 선택",
+      "deselectAll": "모두 선택 해제",
+      "add": "추가"
+    },
+    "card": {
+      "review": "리뷰"
+    }
+  },
   "taskFormDialog": {
     "createTitle": "새 작업 만들기",
     "editTitle": "작업 수정",

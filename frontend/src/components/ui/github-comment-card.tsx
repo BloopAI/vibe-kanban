@@ -1,4 +1,5 @@
 import { MessageSquare, Code, ExternalLink } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 
 export interface GitHubCommentCardProps {
@@ -111,6 +112,7 @@ function FullCard({
   onClick,
   className,
 }: GitHubCommentCardProps) {
+  const { t } = useTranslation('tasks');
   const isReview = commentType === 'review';
   const Icon = isReview ? Code : MessageSquare;
 
@@ -131,7 +133,7 @@ function FullCard({
           <span className="font-medium text-sm">@{author}</span>
           {isReview && (
             <span className="text-xs text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">
-              Review
+              {t('githubComments.card.review')}
             </span>
           )}
         </div>

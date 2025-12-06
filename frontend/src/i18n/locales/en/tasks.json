@@ -400,6 +400,18 @@
       "finish": "Finish"
     }
   },
+  "githubComments": {
+    "dialog": {
+      "title": "Select GitHub Comments",
+      "noComments": "No comments found on this PR",
+      "selectAll": "Select All",
+      "deselectAll": "Deselect All",
+      "add": "Add"
+    },
+    "card": {
+      "review": "Review"
+    }
+  },
   "taskFormDialog": {
     "createTitle": "Create New Task",
     "editTitle": "Edit Task",

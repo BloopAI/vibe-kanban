@@ -400,6 +400,18 @@
       "finish": "完了"
     }
   },
+  "githubComments": {
+    "dialog": {
+      "title": "GitHubコメントを選択",
+      "noComments": "このPRにコメントはありません",
+      "selectAll": "すべて選択",
+      "deselectAll": "すべて選択解除",
+      "add": "追加"
+    },
+    "card": {
+      "review": "レビュー"
+    }
+  },
   "taskFormDialog": {
     "createTitle": "新規タスクを作成",
     "editTitle": "タスクを編集",
