@@ -2,7 +2,7 @@ import { FieldProps } from '@rjsf/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, X } from 'lucide-react';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 
 type KeyValueData = Record<string, string>;
 
@@ -22,9 +22,9 @@ export function KeyValueField({
   // Get the custom env change handler from formContext
   const formContext = registry.formContext as EnvFormContext | undefined;
 
-  // Ensure we have an object to work with
-  const data: KeyValueData = formData ?? {};
-  const entries = Object.entries(data);
+  // Ensure we have a stable object reference
+  const data: KeyValueData = useMemo(() => formData ?? {}, [formData]);
+  const entries = useMemo(() => Object.entries(data), [data]);
 
   // Use the formContext handler to update env correctly
   const updateValue = useCallback(
