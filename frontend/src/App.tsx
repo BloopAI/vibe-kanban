@@ -28,7 +28,7 @@ import { HotkeysProvider } from 'react-hotkeys-hook';
 import { ProjectProvider } from '@/contexts/ProjectContext';
 import { ThemeMode } from 'shared/types';
 import * as Sentry from '@sentry/react';
-import { Loader } from '@/components/ui/loader';
+// import { Loader } from '@/components/ui/loader';
 
 import { DisclaimerDialog } from '@/components/dialogs/global/DisclaimerDialog';
 import { OnboardingDialog } from '@/components/dialogs/global/OnboardingDialog';
@@ -45,7 +45,7 @@ import { Workspaces } from '@/pages/new-design/Workspaces';
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
 function AppContent() {
-  const { config, analyticsUserId, updateAndSaveConfig, loading } =
+  const { config, analyticsUserId, updateAndSaveConfig } =
     useUserSystem();
   const posthog = usePostHog();
   const { isSignedIn } = useAuth();
