@@ -515,6 +515,7 @@ export function AgentSettings() {
                     selectedConfiguration
                   ]?.[selectedExecutorType] && (
                     <ExecutorConfigForm
+                      key={`${selectedExecutorType}-${selectedConfiguration}`}
                       executor={selectedExecutorType}
                       value={
                         (executorsMap[selectedExecutorType][
