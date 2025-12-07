@@ -9,6 +9,7 @@ use async_trait::async_trait;
 use db::{
     DBService,
     models::{
+        attempt_repo::AttemptRepo,
         execution_process::{
             CreateExecutionProcess, ExecutionContext, ExecutionProcess, ExecutionProcessRunReason,
             ExecutionProcessStatus,
@@ -18,7 +19,6 @@ use db::{
             CreateExecutionProcessRepoState, ExecutionProcessRepoState,
         },
         executor_session::{CreateExecutorSession, ExecutorSession},
-        project_repo::ProjectRepo,
         task::{Task, TaskStatus},
         task_attempt::{TaskAttempt, TaskAttemptError},
     },
@@ -841,15 +841,11 @@ pub trait ContainerService {
         }
         // Create new execution process record
         // Capture current HEAD per repository as the "before" commit for this execution
-        let project = task
-            .parent_project(&self.db().pool)
-            .await?
-            .ok_or(SqlxError::RowNotFound)?;
-
-        let repositories = ProjectRepo::find_repos_for_project(&self.db().pool, project.id).await?;
+        let repositories =
+            AttemptRepo::find_repos_for_attempt(&self.db().pool, task_attempt.id).await?;
         if repositories.is_empty() {
             return Err(ContainerError::Other(anyhow!(
-                "Project has no repositories configured"
+                "Attempt has no repositories configured"
             )));
         }
 
