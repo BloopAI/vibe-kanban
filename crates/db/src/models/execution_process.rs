@@ -11,9 +11,9 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 use super::{
+    attempt_repo::AttemptRepo,
     execution_process_repo_state::{CreateExecutionProcessRepoState, ExecutionProcessRepoState},
     project::Project,
-    project_repo::ProjectRepo,
     repo::Repo,
     task::Task,
     task_attempt::TaskAttempt,
@@ -571,7 +571,7 @@ impl ExecutionProcess {
             .await?
             .ok_or(sqlx::Error::RowNotFound)?;
 
-        let repos = ProjectRepo::find_repos_for_project(pool, project.id).await?;
+        let repos = AttemptRepo::find_repos_for_attempt(pool, task_attempt.id).await?;
 
         Ok(ExecutionContext {
             execution_process,

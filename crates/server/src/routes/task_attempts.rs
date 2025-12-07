@@ -755,12 +755,7 @@ pub async fn get_task_attempt_branch_status(
 ) -> Result<ResponseJson<ApiResponse<Vec<RepoBranchStatus>>>, ApiError> {
     let pool = &deployment.db().pool;
 
-    let task = task_attempt
-        .parent_task(pool)
-        .await?
-        .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
-
-    let repositories = ProjectRepo::find_repos_for_project(pool, task.project_id).await?;
+    let repositories = AttemptRepo::find_repos_for_attempt(pool, task_attempt.id).await?;
     let attempt_repos = AttemptRepo::find_by_attempt_id(pool, task_attempt.id).await?;
     let target_branches: HashMap<_, _> = attempt_repos
         .iter()
@@ -1519,7 +1514,7 @@ pub async fn get_task_attempt_repos(
 ) -> Result<ResponseJson<ApiResponse<Vec<Repo>>>, ApiError> {
     let pool = &deployment.db().pool;
 
-    let repos = Repo::find_by_attempt_id(pool, task_attempt.id).await?;
+    let repos = AttemptRepo::find_repos_for_attempt(pool, task_attempt.id).await?;
 
     Ok(ResponseJson(ApiResponse::success(repos)))
 }
