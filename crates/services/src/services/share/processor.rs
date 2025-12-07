@@ -179,49 +179,51 @@ impl ActivityProcessor {
                     );
                 }
 
-                let project_id = project.as_ref().map(|p| p.id);
                 let input = convert_remote_task(&task, user.as_ref(), Some(event.seq));
                 let shared_task = SharedTask::upsert(tx.as_mut(), input).await?;
 
                 let current_profile = self.auth_ctx.cached_profile().await;
                 let current_user_id = current_profile.as_ref().map(|p| p.user_id);
-                sync_local_task_for_shared_task(
-                    tx.as_mut(),
-                    &shared_task,
-                    current_user_id,
-                    task.creator_user_id,
-                    project_id,
-                )
-                .await?;
 
-                // For remote projects, also upsert into the unified tasks table
-                if let Some(ref project) = project
-                    && project.is_remote
-                {
-                    let assignee_name = user
-                        .as_ref()
-                        .map(|u| match (&u.first_name, &u.last_name) {
-                            (Some(f), Some(l)) => format!("{} {}", f, l),
-                            (Some(f), None) => f.clone(),
-                            (None, Some(l)) => l.clone(),
-                            (None, None) => String::new(),
-                        })
-                        .filter(|s| !s.is_empty());
+                // Use mutually exclusive sync paths based on project type to avoid duplicates
+                if let Some(ref project) = project {
+                    if project.is_remote {
+                        // Remote projects: use upsert_remote_task (creates with is_remote=1)
+                        let assignee_name = user
+                            .as_ref()
+                            .map(|u| match (&u.first_name, &u.last_name) {
+                                (Some(f), Some(l)) => format!("{} {}", f, l),
+                                (Some(f), None) => f.clone(),
+                                (None, Some(l)) => l.clone(),
+                                (None, None) => String::new(),
+                            })
+                            .filter(|s| !s.is_empty());
 
-                    Task::upsert_remote_task(
-                        tx.as_mut(),
-                        Uuid::new_v4(),
-                        project.id,
-                        task.id,
-                        task.title.clone(),
-                        task.description.clone(),
-                        status::from_remote(&task.status),
-                        task.assignee_user_id,
-                        assignee_name,
-                        user.as_ref().and_then(|u| u.username.clone()),
-                        task.version,
-                    )
-                    .await?;
+                        Task::upsert_remote_task(
+                            tx.as_mut(),
+                            Uuid::new_v4(),
+                            project.id,
+                            task.id,
+                            task.title.clone(),
+                            task.description.clone(),
+                            status::from_remote(&task.status),
+                            task.assignee_user_id,
+                            assignee_name,
+                            user.as_ref().and_then(|u| u.username.clone()),
+                            task.version,
+                        )
+                        .await?;
+                    } else {
+                        // Local projects: use sync_local_task_for_shared_task (creates with is_remote=0)
+                        sync_local_task_for_shared_task(
+                            tx.as_mut(),
+                            &shared_task,
+                            current_user_id,
+                            task.creator_user_id,
+                            Some(project.id),
+                        )
+                        .await?;
+                    }
                 }
             }
             Err(error) => {
@@ -354,42 +356,44 @@ impl ActivityProcessor {
             remote_user_username,
         } in replacements
         {
-            let project_id = project.as_ref().map(|p| p.id);
             let shared_task = SharedTask::upsert(tx.as_mut(), input).await?;
-            sync_local_task_for_shared_task(
-                tx.as_mut(),
-                &shared_task,
-                current_user_id,
-                creator_user_id,
-                project_id,
-            )
-            .await?;
 
-            // For remote projects, also upsert into the unified tasks table
-            if let Some(ref proj) = project
-                && proj.is_remote
-            {
-                let assignee_name = match (&remote_user_first_name, &remote_user_last_name) {
-                    (Some(f), Some(l)) => Some(format!("{} {}", f, l)),
-                    (Some(f), None) => Some(f.clone()),
-                    (None, Some(l)) => Some(l.clone()),
-                    (None, None) => None,
-                };
+            // Use mutually exclusive sync paths based on project type to avoid duplicates
+            if let Some(ref proj) = project {
+                if proj.is_remote {
+                    // Remote projects: use upsert_remote_task (creates with is_remote=1)
+                    let assignee_name = match (&remote_user_first_name, &remote_user_last_name) {
+                        (Some(f), Some(l)) => Some(format!("{} {}", f, l)),
+                        (Some(f), None) => Some(f.clone()),
+                        (None, Some(l)) => Some(l.clone()),
+                        (None, None) => None,
+                    };
 
-                Task::upsert_remote_task(
-                    tx.as_mut(),
-                    Uuid::new_v4(),
-                    proj.id,
-                    remote_task_id,
-                    remote_task_title,
-                    remote_task_description,
-                    status::from_remote(&remote_task_status),
-                    remote_task_assignee_user_id,
-                    assignee_name,
-                    remote_user_username,
-                    remote_task_version,
-                )
-                .await?;
+                    Task::upsert_remote_task(
+                        tx.as_mut(),
+                        Uuid::new_v4(),
+                        proj.id,
+                        remote_task_id,
+                        remote_task_title,
+                        remote_task_description,
+                        status::from_remote(&remote_task_status),
+                        remote_task_assignee_user_id,
+                        assignee_name,
+                        remote_user_username,
+                        remote_task_version,
+                    )
+                    .await?;
+                } else {
+                    // Local projects: use sync_local_task_for_shared_task (creates with is_remote=0)
+                    sync_local_task_for_shared_task(
+                        tx.as_mut(),
+                        &shared_task,
+                        current_user_id,
+                        creator_user_id,
+                        Some(proj.id),
+                    )
+                    .await?;
+                }
             }
         }
 
