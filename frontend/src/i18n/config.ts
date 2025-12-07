@@ -73,11 +73,15 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    fallbackLng: 'en',
+    fallbackLng: {
+      zh: ['zh-Hans'], // Map generic Chinese to Simplified Chinese
+      default: ['en'],
+    },
     defaultNS: 'common',
     debug: import.meta.env.DEV,
-    supportedLngs: SUPPORTED_I18N_CODES,
-    load: 'languageOnly', // Load 'en' instead of 'en-US' etc.
+    supportedLngs: [...SUPPORTED_I18N_CODES, 'zh'], // Include 'zh' for browser detection
+    nonExplicitSupportedLngs: true, // Accept zh -> zh-Hans mapping
+    load: 'currentOnly', // Load exact language code
 
     interpolation: {
       escapeValue: false, // React already escapes
