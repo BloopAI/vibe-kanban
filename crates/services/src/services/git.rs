@@ -127,12 +127,6 @@ pub enum DiffTarget<'p> {
         worktree_path: &'p Path,
         base_commit: &'p Commit,
     },
-    /// Fully committed branch vs base branch
-    Branch {
-        repo_path: &'p Path,
-        branch_name: &'p str,
-        base_branch: &'p str,
-    },
     /// Specific commit vs base branch
     Commit {
         repo_path: &'p Path,
@@ -409,43 +403,6 @@ impl GitService {
                     .into_iter()
                     .map(|e| Self::status_entry_to_diff(&repo, &base_tree, e))
                     .collect())
-            }
-            DiffTarget::Branch {
-                repo_path,
-                branch_name,
-                base_branch,
-            } => {
-                let repo = self.open_repo(repo_path)?;
-                let base_tree = Self::find_branch(&repo, base_branch)?
-                    .get()
-                    .peel_to_commit()?
-                    .tree()?;
-                let branch_tree = Self::find_branch(&repo, branch_name)?
-                    .get()
-                    .peel_to_commit()?
-                    .tree()?;
-
-                let mut diff_opts = DiffOptions::new();
-                diff_opts.include_typechange(true);
-
-                // Add path filtering if specified
-                if let Some(paths) = path_filter {
-                    for path in paths {
-                        diff_opts.pathspec(*path);
-                    }
-                }
-
-                let mut diff = repo.diff_tree_to_tree(
-                    Some(&base_tree),
-                    Some(&branch_tree),
-                    Some(&mut diff_opts),
-                )?;
-
-                // Enable rename detection
-                let mut find_opts = DiffFindOptions::new();
-                diff.find_similar(Some(&mut find_opts))?;
-
-                self.convert_diff_to_file_diffs(diff, &repo)
             }
             DiffTarget::Commit {
                 repo_path,

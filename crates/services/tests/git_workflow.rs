@@ -328,35 +328,6 @@ fn get_all_branches_lists_current_and_others() {
 }
 
 #[test]
-fn get_branch_diffs_between_branches() {
-    let td = TempDir::new().unwrap();
-    let repo_path = init_repo_main(&td);
-    let s = GitService::new();
-    // base commit on main
-    write_file(&repo_path, "a.txt", "a\n");
-    let _ = s.commit(&repo_path, "add a").unwrap();
-
-    // create branch and add new file
-    create_branch(&repo_path, "feature");
-    checkout_branch(&repo_path, "feature");
-    write_file(&repo_path, "b.txt", "b\n");
-    let _ = s.commit(&repo_path, "add b").unwrap();
-
-    let s = GitService::new();
-    let diffs = s
-        .get_diffs(
-            DiffTarget::Branch {
-                repo_path: Path::new(&repo_path),
-                branch_name: "feature",
-                base_branch: "main",
-            },
-            None,
-        )
-        .unwrap();
-    assert!(diffs.iter().any(|d| d.new_path.as_deref() == Some("b.txt")));
-}
-
-#[test]
 fn worktree_diff_respects_path_filter() {
     // Use git CLI status diff under the hood
     let td = TempDir::new().unwrap();
