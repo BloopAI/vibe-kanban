@@ -1757,7 +1757,7 @@ pub async fn get_task_attempt_repos(
 ) -> Result<ResponseJson<ApiResponse<Vec<Repo>>>, ApiError> {
     let pool = &deployment.db().pool;
 
-    let repos = Repo::find_by_attempt_id(pool, task_attempt.id).await?;
+    let repos = AttemptRepo::find_repos_for_attempt(pool, task_attempt.id).await?;
 
     Ok(ResponseJson(ApiResponse::success(repos)))
 }

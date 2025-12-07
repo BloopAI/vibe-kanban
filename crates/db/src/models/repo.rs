@@ -43,26 +43,6 @@ impl Repo {
         .await
     }
 
-    pub async fn find_by_attempt_id(
-        pool: &SqlitePool,
-        attempt_id: Uuid,
-    ) -> Result<Vec<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            Repo,
-            r#"SELECT r.id as "id!: Uuid",
-                      r.path,
-                      r.name,
-                      r.created_at as "created_at!: DateTime<Utc>",
-                      r.updated_at as "updated_at!: DateTime<Utc>"
-               FROM repos r
-               JOIN attempt_repos ar ON r.id = ar.repo_id
-               WHERE ar.attempt_id = $1"#,
-            attempt_id
-        )
-        .fetch_all(pool)
-        .await
-    }
-
     pub async fn find_or_create<'e, E>(
         executor: E,
         path: &Path,
