@@ -2,10 +2,12 @@ use std::{future::Future, path::PathBuf, str::FromStr};
 
 use db::models::{
     project::Project,
+    tag::Tag,
     task::{CreateTask, Task, TaskStatus, TaskWithAttemptStatus, UpdateTask},
     task_attempt::{TaskAttempt, TaskAttemptContext},
 };
 use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
+use regex::Regex;
 use rmcp::{
     ErrorData, ServerHandler,
     handler::server::tool::{Parameters, ToolRouter},
@@ -385,6 +387,58 @@ impl TaskServer {
             path.trim_start_matches('/')
         )
     }
+
+    /// Expands @tagname references in text by replacing them with tag content.
+    /// Returns the original text if expansion fails (e.g., network error).
+    /// Unknown tags are left as-is (not expanded, not an error).
+    async fn expand_tags(&self, text: &str) -> String {
+        // Pattern matches @tagname where tagname is non-whitespace, non-@ characters
+        let tag_pattern = match Regex::new(r"@([^\s@]+)") {
+            Ok(re) => re,
+            Err(_) => return text.to_string(),
+        };
+
+        // Find all unique tag names referenced in the text
+        let tag_names: Vec<String> = tag_pattern
+            .captures_iter(text)
+            .filter_map(|cap| cap.get(1).map(|m| m.as_str().to_string()))
+            .collect::<std::collections::HashSet<_>>()
+            .into_iter()
+            .collect();
+
+        if tag_names.is_empty() {
+            return text.to_string();
+        }
+
+        // Fetch all tags from the API
+        let url = self.url("/api/tags");
+        let tags: Vec<Tag> = match self.client.get(&url).send().await {
+            Ok(resp) if resp.status().is_success() => {
+                match resp.json::<ApiResponseEnvelope<Vec<Tag>>>().await {
+                    Ok(envelope) if envelope.success => envelope.data.unwrap_or_default(),
+                    _ => return text.to_string(),
+                }
+            }
+            _ => return text.to_string(),
+        };
+
+        // Build a map of tag_name -> content for quick lookup
+        let tag_map: std::collections::HashMap<&str, &str> = tags
+            .iter()
+            .map(|t| (t.tag_name.as_str(), t.content.as_str()))
+            .collect();
+
+        // Replace each @tagname with its content (if found)
+        let result = tag_pattern.replace_all(text, |caps: &regex::Captures| {
+            let tag_name = caps.get(1).map(|m| m.as_str()).unwrap_or("");
+            match tag_map.get(tag_name) {
+                Some(content) => (*content).to_string(),
+                None => caps.get(0).map(|m| m.as_str()).unwrap_or("").to_string(),
+            }
+        });
+
+        result.into_owned()
+    }
 }
 
 #[tool_router]
@@ -399,7 +453,7 @@ impl TaskServer {
         TaskServer::success(context)
     }
     #[tool(
-        description = "Create a new task/ticket in a project. Always pass the `project_id` of the project you want to create the task in - it is required!"
+        description = "Create a new task/ticket in a project. Always pass the `project_id` of the project you want to create the task in - it is required! You can use @tagname in the description to include tag content."
     )]
     async fn create_task(
         &self,
@@ -409,6 +463,12 @@ impl TaskServer {
             description,
         }): Parameters<CreateTaskRequest>,
     ) -> Result<CallToolResult, ErrorData> {
+        // Expand @tagname references in description
+        let expanded_description = match description {
+            Some(desc) => Some(self.expand_tags(&desc).await),
+            None => None,
+        };
+
         let url = self.url("/api/tasks");
         let task: Task = match self
             .send_json(
@@ -417,7 +477,7 @@ impl TaskServer {
                     .json(&CreateTask::from_title_description(
                         project_id,
                         title,
-                        description,
+                        expanded_description,
                     )),
             )
             .await
@@ -579,7 +639,7 @@ impl TaskServer {
     }
 
     #[tool(
-        description = "Update an existing task/ticket's title, description, or status. `project_id` and `task_id` are required! `title`, `description`, and `status` are optional."
+        description = "Update an existing task/ticket's title, description, or status. `project_id` and `task_id` are required! `title`, `description`, and `status` are optional. You can use @tagname in the description to include tag content."
     )]
     async fn update_task(
         &self,
@@ -604,9 +664,15 @@ impl TaskServer {
             None
         };
 
+        // Expand @tagname references in description
+        let expanded_description = match description {
+            Some(desc) => Some(self.expand_tags(&desc).await),
+            None => None,
+        };
+
         let payload = UpdateTask {
             title,
-            description,
+            description: expanded_description,
             status,
             parent_task_attempt: None,
             image_ids: None,

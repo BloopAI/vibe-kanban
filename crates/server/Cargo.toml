@@ -47,6 +47,7 @@ url = "2.5"
 rand = { version = "0.8", features = ["std"] }
 sha2 = "0.10"
 strum = "0.27.2"
+regex = "1"
 
 [build-dependencies]
 dotenv = "0.15"
