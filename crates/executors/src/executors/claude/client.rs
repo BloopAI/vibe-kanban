@@ -19,6 +19,7 @@ use crate::{
 };
 
 const EXIT_PLAN_MODE_NAME: &str = "ExitPlanMode";
+pub const AUTO_APPROVE_CALLBACK_ID: &str = "AUTO_APPROVE_CALLBACK_ID";
 
 /// Claude Agent client with control protocol support
 pub struct ClaudeAgentClient {
@@ -141,7 +142,7 @@ impl ClaudeAgentClient {
 
     pub async fn on_hook_callback(
         &self,
-        _callback_id: String,
+        callback_id: String,
         _input: serde_json::Value,
         _tool_use_id: Option<String>,
     ) -> Result<serde_json::Value, ExecutorError> {
@@ -154,16 +155,27 @@ impl ClaudeAgentClient {
                 }
             }))
         } else {
-            // Hook callbacks is only used to forward approval requests to can_use_tool.
-            // This works because `ask` decision in hook callback triggers a can_use_tool request
-            // https://docs.claude.com/en/api/agent-sdk/permissions#permission-flow-diagram
-            Ok(serde_json::json!({
-                "hookSpecificOutput": {
-                    "hookEventName": "PreToolUse",
-                    "permissionDecision": "ask",
-                    "permissionDecisionReason": "Forwarding to canusetool service"
+            match callback_id.as_str() {
+                AUTO_APPROVE_CALLBACK_ID => Ok(serde_json::json!({
+                    "hookSpecificOutput": {
+                        "hookEventName": "PreToolUse",
+                        "permissionDecision": "allow",
+                        "permissionDecisionReason": "Approved by SDK"
+                    }
+                })),
+                _ => {
+                    // Hook callbacks is only used to forward approval requests to can_use_tool.
+                    // This works because `ask` decision in hook callback triggers a can_use_tool request
+                    // https://docs.claude.com/en/api/agent-sdk/permissions#permission-flow-diagram
+                    Ok(serde_json::json!({
+                        "hookSpecificOutput": {
+                            "hookEventName": "PreToolUse",
+                            "permissionDecision": "ask",
+                            "permissionDecisionReason": "Forwarding to canusetool service"
+                        }
+                    }))
                 }
-            }))
+            }
         }
     }
 

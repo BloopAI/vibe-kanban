@@ -17,7 +17,11 @@ use workspace_utils::{
     path::make_path_relative,
 };
 
-use self::{client::ClaudeAgentClient, protocol::ProtocolPeer, types::PermissionMode};
+use self::{
+    client::{AUTO_APPROVE_CALLBACK_ID, ClaudeAgentClient},
+    protocol::ProtocolPeer,
+    types::PermissionMode,
+};
 use crate::{
     approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuilder, CommandParts, apply_overrides},
@@ -130,6 +134,10 @@ impl ClaudeCode {
                     {
                         "matcher": "^ExitPlanMode$",
                         "hookCallbackIds": ["tool_approval"],
+                    },
+                    {
+                        "matcher": "^(?!ExitPlanMode$).*",
+                        "hookCallbackIds": [AUTO_APPROVE_CALLBACK_ID],
                     }
                 ]
             }))
