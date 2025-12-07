@@ -47,7 +47,7 @@ use services::services::{
     config::Config,
     container::{ContainerError, ContainerRef, ContainerService},
     diff_stream::{self, DiffStreamHandle},
-    git::{Commit, GitCli, GitService},
+    git::{Commit, GitBranchId, GitCli, GitService},
     image::ImageService,
     queued_message::QueuedMessageService,
     share::SharePublisher,
@@ -1045,13 +1045,10 @@ impl ContainerService for LocalContainerService {
                 "Project has no repositories configured"
             )));
         }
+        let branch_id = GitBranchId::from_local_name(task_attempt.branch.clone());
 
-        WorkspaceManager::ensure_workspace_exists(
-            &workspace_dir,
-            &repositories,
-            &task_attempt.branch,
-        )
-        .await?;
+        WorkspaceManager::ensure_workspace_exists(&workspace_dir, &repositories, &branch_id)
+            .await?;
 
         Ok(container_ref.to_string())
     }
@@ -1291,10 +1288,22 @@ impl ContainerService for LocalContainerService {
         let repositories = ProjectRepo::find_repos_for_project(&self.db.pool, project.id).await?;
 
         let attempt_repos = AttemptRepo::find_by_attempt_id(&self.db.pool, task_attempt.id).await?;
-        let target_branches: HashMap<_, _> = attempt_repos
+        let target_branch_ids: HashMap<_, _> = attempt_repos
             .iter()
-            .map(|ar| (ar.repo_id, ar.target_branch_ref.clone()))
+            .filter_map(|ar| {
+                if let Ok(branch_id) = GitBranchId::from_ref(ar.target_branch_ref.clone()) {
+                    Some((ar.repo_id, branch_id))
+                } else {
+                    tracing::warn!(
+                        "Invalid target branch ref '{}' for repo ID {}, skipping diff stream",
+                        ar.target_branch_ref,
+                        ar.repo_id
+                    );
+                    None
+                }
+            })
             .collect();
+        let branch_id = GitBranchId::from_local_name(task_attempt.branch.clone());
 
         let mut streams = Vec::new();
 
@@ -1303,9 +1312,8 @@ impl ContainerService for LocalContainerService {
 
         for repo in repositories {
             let worktree_path = workspace_root.join(&repo.name);
-            let branch = &task_attempt.branch;
 
-            let Some(target_branch) = target_branches.get(&repo.id) else {
+            let Some(target_branch) = target_branch_ids.get(&repo.id) else {
                 tracing::warn!(
                     "Skipping diff stream for repo {}: no target branch configured",
                     repo.name
@@ -1313,20 +1321,21 @@ impl ContainerService for LocalContainerService {
                 continue;
             };
 
-            let base_commit = match self
-                .git()
-                .get_base_commit(&repo.path, branch, target_branch)
-            {
-                Ok(c) => c,
-                Err(e) => {
-                    tracing::warn!(
-                        "Skipping diff stream for repo {}: failed to get base commit: {}",
-                        repo.name,
-                        e
-                    );
-                    continue;
-                }
-            };
+            let base_commit =
+                match self
+                    .git()
+                    .get_base_commit(&repo.path, &branch_id, target_branch)
+                {
+                    Ok(c) => c,
+                    Err(e) => {
+                        tracing::warn!(
+                            "Skipping diff stream for repo {}: failed to get base commit: {}",
+                            repo.name,
+                            e
+                        );
+                        continue;
+                    }
+                };
 
             let stream = self
                 .create_live_diff_stream(

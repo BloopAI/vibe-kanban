@@ -1,10 +1,7 @@
 use std::{collections::HashMap, path::Path};
 
 use chrono::{DateTime, Utc};
-use git2::{
-    BranchType, Delta, DiffFindOptions, DiffOptions, Error as GitError, Reference, Remote,
-    Repository, Sort,
-};
+use git2::{BranchType, Delta, Error as GitError, Reference, Remote, Repository, Sort};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ts_rs::TS;
@@ -140,13 +137,13 @@ impl Default for GitService {
     }
 }
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Serialize, Clone, TS)]
 pub enum GitBranchType {
     Remote { remote_name: String },
     Local,
 }
 
-#[derive(Debug, Serialize, TS)]
+#[derive(Debug, Serialize, TS, Clone)]
 pub struct GitBranchId {
     ref_name: String,
     name: String,
@@ -154,7 +151,7 @@ pub struct GitBranchId {
 }
 
 impl GitBranchId {
-    pub fn new(ref_name: String) -> Result<Self, GitServiceError> {
+    pub fn from_ref(ref_name: String) -> Result<Self, GitServiceError> {
         if ref_name.starts_with("refs/remotes/") {
             let parts: Vec<&str> = ref_name["refs/remotes/".len()..].splitn(2, '/').collect();
             if parts.len() == 2 {
@@ -183,6 +180,15 @@ impl GitBranchId {
                 "Invalid branch ref name: {}",
                 ref_name
             )))
+        }
+    }
+
+    pub fn from_local_name(name: String) -> Self {
+        let ref_name = format!("refs/heads/{}", name);
+        Self {
+            ref_name,
+            name,
+            branch_type: GitBranchType::Local,
         }
     }
 
@@ -797,7 +803,7 @@ impl GitService {
         })?;
 
         for worktree in worktrees {
-            if let Some(ref branch) = worktree.branch
+            if let Some(ref branch) = worktree.branch_ref
                 && branch == branch_id.branch_name()
             {
                 return Ok(Some(std::path::PathBuf::from(worktree.path)));
@@ -873,8 +879,8 @@ impl GitService {
             }
             None => {
                 // base branch not checked out anywhere - use libgit2 pure ref operations
-                let task_branch = Self::find_branch(&task_repo, task_branch_id.branch_name())?;
-                let base_branch = Self::find_branch(&task_repo, base_branch_id.branch_name())?;
+                let task_branch = Self::find_branch(&task_repo, task_branch_id)?;
+                let base_branch = Self::find_branch(&task_repo, base_branch_id)?;
 
                 // Resolve commits
                 let base_commit = base_branch.get().peel_to_commit()?;
@@ -888,7 +894,7 @@ impl GitService {
                     &task_commit,
                     &signature,
                     commit_message,
-                    base_branch_id.branch_name(),
+                    base_branch_id,
                 )?;
 
                 // Update the task branch to the new squash commit so follow-up
@@ -930,8 +936,8 @@ impl GitService {
         base_branch_id: &GitBranchId,
     ) -> Result<(usize, usize), GitServiceError> {
         let repo = Repository::open(repo_path)?;
-        let branch = Self::find_branch(&repo, branch_id.branch_name())?;
-        let base_branch = Self::find_branch(&repo, base_branch_id.branch_name())?;
+        let branch = Self::find_branch(&repo, branch_id)?;
+        let base_branch = Self::find_branch(&repo, base_branch_id)?;
         self.get_branch_status_inner(
             &repo,
             &branch.into_reference(),
@@ -942,12 +948,12 @@ impl GitService {
     pub fn get_base_commit(
         &self,
         repo_path: &Path,
-        branch_name: &str,
-        base_branch_name: &str,
+        branch_id: &GitBranchId,
+        base_branch_id: &GitBranchId,
     ) -> Result<Commit, GitServiceError> {
         let repo = Repository::open(repo_path)?;
-        let branch = Self::find_branch(&repo, branch_name)?;
-        let base_branch = Self::find_branch(&repo, base_branch_name)?;
+        let branch = Self::find_branch(&repo, branch_id)?;
+        let base_branch = Self::find_branch(&repo, base_branch_id)?;
         // Find the common ancestor (merge base)
         let oid = repo
             .merge_base(
@@ -965,10 +971,10 @@ impl GitService {
         base_branch_id: Option<&GitBranchId>,
     ) -> Result<(usize, usize), GitServiceError> {
         let repo = Repository::open(repo_path)?;
-        let branch_ref = Self::find_branch(&repo, branch_id.branch_name())?.into_reference();
+        let branch_ref = Self::find_branch(&repo, branch_id)?.into_reference();
         // base branch is either given or upstream of branch_name
         let base_branch_ref = if let Some(bn) = base_branch_id {
-            Self::find_branch(&repo, bn.branch_name())?
+            Self::find_branch(&repo, bn)?
         } else {
             repo.find_branch(branch_id.branch_name(), BranchType::Local)?
                 .upstream()?
@@ -1073,7 +1079,7 @@ impl GitService {
         branch_id: &GitBranchId,
     ) -> Result<String, GitServiceError> {
         let repo = self.open_repo(repo_path)?;
-        let branch = Self::find_branch(&repo, branch_id.branch_name())?;
+        let branch = Self::find_branch(&repo, branch_id)?;
         let oid = branch.get().peel_to_commit()?.id().to_string();
         Ok(oid)
     }
@@ -1189,12 +1195,17 @@ impl GitService {
         &self,
         repo_path: &Path,
         worktree_path: &Path,
-        branch: &str,
+        branch_id: &GitBranchId,
         create_branch: bool,
     ) -> Result<(), GitServiceError> {
         let git = GitCli::new();
-        git.worktree_add(repo_path, worktree_path, branch, create_branch)
-            .map_err(|e| GitServiceError::InvalidRepository(e.to_string()))?;
+        git.worktree_add(
+            repo_path,
+            worktree_path,
+            &branch_id.ref_name(),
+            create_branch,
+        )
+        .map_err(|e| GitServiceError::InvalidRepository(e.to_string()))?;
         Ok(())
     }
 
@@ -1303,7 +1314,7 @@ impl GitService {
         task_commit: &git2::Commit,
         signature: &git2::Signature,
         commit_message: &str,
-        base_branch_name: &str,
+        base_branch_id: &GitBranchId,
     ) -> Result<git2::Oid, GitServiceError> {
         // In-memory merge to detect conflicts without touching the working tree
         let mut merge_opts = git2::MergeOptions::new();
@@ -1334,8 +1345,12 @@ impl GitService {
         )?;
 
         // Update the base branch reference to point to the new commit
-        let refname = format!("refs/heads/{base_branch_name}");
-        repo.reference(&refname, squash_commit_id, true, "Squash merge")?;
+        repo.reference(
+            &base_branch_id.ref_name,
+            squash_commit_id,
+            true,
+            "Squash merge",
+        )?;
 
         Ok(squash_commit_id)
     }
@@ -1346,8 +1361,8 @@ impl GitService {
         repo_path: &Path,
         worktree_path: &Path,
         new_base_branch_id: &GitBranchId,
-        old_base_branch: &str,
-        task_branch: &str,
+        old_base_branch_id: &GitBranchId,
+        task_branch_id: &GitBranchId,
     ) -> Result<String, GitServiceError> {
         let worktree_repo = Repository::open(worktree_path)?;
         let main_repo = self.open_repo(repo_path)?;
@@ -1365,7 +1380,7 @@ impl GitService {
         }
 
         // Get the target base branch reference
-        let nbr = Self::find_branch(&main_repo, new_base_branch_id.branch_name())?.into_reference();
+        let nbr = Self::find_branch(&main_repo, new_base_branch_id)?.into_reference();
         // If the target base is remote, update it first so CLI sees latest
         if nbr.is_remote() {
             self.fetch_branch_from_remote(&main_repo, &nbr)?;
@@ -1377,8 +1392,8 @@ impl GitService {
         match git.rebase_onto(
             worktree_path,
             new_base_branch_id.branch_name(),
-            old_base_branch,
-            task_branch,
+            old_base_branch_id.branch_name(),
+            task_branch_id.branch_name(),
         ) {
             Ok(()) => {}
             Err(GitCliError::RebaseInProgress) => {
@@ -1439,25 +1454,6 @@ impl GitService {
         Ok(final_commit.id().to_string())
     }
 
-    pub fn find_branch_type(
-        &self,
-        repo_path: &Path,
-        branch_name: &str,
-    ) -> Result<BranchType, GitServiceError> {
-        let repo = self.open_repo(repo_path)?;
-        // Try to find the branch as a local branch first
-        match repo.find_branch(branch_name, BranchType::Local) {
-            Ok(_) => Ok(BranchType::Local),
-            Err(_) => {
-                // If not found, try to find it as a remote branch
-                match repo.find_branch(branch_name, BranchType::Remote) {
-                    Ok(_) => Ok(BranchType::Remote),
-                    Err(_) => Err(GitServiceError::BranchNotFound(branch_name.to_string())),
-                }
-            }
-        }
-    }
-
     pub fn check_branch_exists(
         &self,
         repo_path: &Path,
@@ -1495,18 +1491,19 @@ impl GitService {
     pub fn rename_local_branch(
         &self,
         worktree_path: &Path,
-        old_branch_name: &str,
-        new_branch_name: &str,
+        old_branch_id: &GitBranchId,
+        new_branch_id: &GitBranchId,
     ) -> Result<(), GitServiceError> {
         let repo = self.open_repo(worktree_path)?;
 
         let mut branch = repo
-            .find_branch(old_branch_name, BranchType::Local)
-            .map_err(|_| GitServiceError::BranchNotFound(old_branch_name.to_string()))?;
+            .find_branch(old_branch_id.branch_name(), BranchType::Local)
+            .map_err(|_| {
+                GitServiceError::BranchNotFound(old_branch_id.branch_name().to_string())
+            })?;
 
-        branch.rename(new_branch_name, false)?;
-
-        repo.set_head(&format!("refs/heads/{new_branch_name}"))?;
+        branch.rename(new_branch_id.branch_name(), false)?;
+        repo.set_head(new_branch_id.ref_name())?;
 
         Ok(())
     }
@@ -1600,16 +1597,18 @@ impl GitService {
 
     pub fn find_branch<'a>(
         repo: &'a Repository,
-        branch_name: &str,
+        branch_id: &GitBranchId,
     ) -> Result<git2::Branch<'a>, GitServiceError> {
         // Try to find the branch as a local branch first
-        match repo.find_branch(branch_name, BranchType::Local) {
+        match repo.find_branch(branch_id.branch_name(), BranchType::Local) {
             Ok(branch) => Ok(branch),
             Err(_) => {
                 // If not found, try to find it as a remote branch
-                match repo.find_branch(branch_name, BranchType::Remote) {
+                match repo.find_branch(branch_id.branch_name(), BranchType::Remote) {
                     Ok(branch) => Ok(branch),
-                    Err(_) => Err(GitServiceError::BranchNotFound(branch_name.to_string())),
+                    Err(_) => Err(GitServiceError::BranchNotFound(
+                        branch_id.branch_name().to_string(),
+                    )),
                 }
             }
         }
@@ -1632,18 +1631,6 @@ impl GitService {
         GitHubRepoInfo::from_remote_url(url).map_err(|e| {
             GitServiceError::InvalidRepository(format!("Failed to parse remote URL: {e}"))
         })
-    }
-
-    pub fn get_remote_name_from_branch_name(
-        &self,
-        repo_path: &Path,
-        branch_name: &str,
-    ) -> Result<String, GitServiceError> {
-        let repo = Repository::open(repo_path)?;
-        let branch_ref = Self::find_branch(&repo, branch_name)?.into_reference();
-        let default_remote = self.default_remote_name(&repo);
-        self.get_remote_from_branch_ref(&repo, &branch_ref)
-            .map(|r| r.name().unwrap_or(&default_remote).to_string())
     }
 
     fn get_remote_from_branch_ref<'a>(
@@ -1693,7 +1680,7 @@ impl GitService {
             return Err(e.into());
         }
 
-        let mut branch = Self::find_branch(&repo, branch_id.branch_name())?;
+        let mut branch = Self::find_branch(&repo, branch_id)?;
         if !branch.get().is_remote() {
             if let Some(branch_target) = branch.get().target() {
                 let remote_ref = format!("refs/remotes/{remote_name}/{}", branch_id.branch_name());

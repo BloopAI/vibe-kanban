@@ -6,6 +6,7 @@ use tracing::{debug, error, info};
 use uuid::Uuid;
 
 use super::worktree_manager::{WorktreeCleanup, WorktreeError, WorktreeManager};
+use crate::services::git::GitBranchId;
 
 #[derive(Debug, Clone)]
 pub struct RepoWorkspaceInput {
@@ -140,7 +141,7 @@ impl WorkspaceManager {
     pub async fn ensure_workspace_exists(
         workspace_dir: &Path,
         repos: &[Repo],
-        branch_name: &str,
+        branch_id: &GitBranchId,
     ) -> Result<(), WorkspaceError> {
         if repos.is_empty() {
             return Err(WorkspaceError::NoRepositories);
@@ -165,8 +166,7 @@ impl WorkspaceManager {
                 worktree_path.display()
             );
 
-            WorktreeManager::ensure_worktree_exists(&repo.path, branch_name, &worktree_path)
-                .await?;
+            WorktreeManager::ensure_worktree_exists(&repo.path, branch_id, &worktree_path).await?;
         }
 
         Ok(())

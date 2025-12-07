@@ -68,7 +68,7 @@ pub struct StatusDiffEntry {
 #[derive(Debug, Clone)]
 pub struct WorktreeEntry {
     pub path: String,
-    pub branch: Option<String>,
+    pub branch_ref: Option<String>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -275,7 +275,7 @@ impl GitCli {
         let mut entries = Vec::new();
         let mut current_path: Option<String> = None;
         let mut current_head: Option<String> = None;
-        let mut current_branch: Option<String> = None;
+        let mut current_branch_ref: Option<String> = None;
 
         for line in out.lines() {
             let line = line.trim();
@@ -285,7 +285,7 @@ impl GitCli {
                 if let (Some(path), Some(_head)) = (current_path.take(), current_head.take()) {
                     entries.push(WorktreeEntry {
                         path,
-                        branch: current_branch.take(),
+                        branch_ref: current_branch_ref.take(),
                     });
                 }
             } else if let Some(path) = line.strip_prefix("worktree ") {
@@ -294,9 +294,7 @@ impl GitCli {
                 current_head = Some(head.to_string());
             } else if let Some(branch_ref) = line.strip_prefix("branch ") {
                 // Extract branch name from refs/heads/branch-name
-                current_branch = branch_ref
-                    .strip_prefix("refs/heads/")
-                    .map(|name| name.to_string());
+                current_branch_ref = Some(branch_ref.to_string());
             }
         }
 
@@ -304,7 +302,7 @@ impl GitCli {
         if let (Some(path), Some(_head)) = (current_path, current_head) {
             entries.push(WorktreeEntry {
                 path,
-                branch: current_branch,
+                branch_ref: current_branch_ref,
             });
         }
 

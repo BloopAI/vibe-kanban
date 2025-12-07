@@ -10,6 +10,7 @@ use tracing::{debug, info, trace};
 use utils::shell::resolve_executable_path;
 
 use super::git::{GitService, GitServiceError};
+use crate::services::git::GitBranchId;
 
 // Global synchronization for worktree creation to prevent race conditions
 lazy_static::lazy_static! {
@@ -60,20 +61,21 @@ impl WorktreeManager {
         repo_path: &Path,
         branch_name: &str,
         worktree_path: &Path,
-        base_branch: &str,
+        base_branch_ref: &str,
         create_branch: bool,
     ) -> Result<(), WorktreeError> {
+        let branch_id = GitBranchId::from_local_name(branch_name.to_string());
         if create_branch {
             let repo_path_owned = repo_path.to_path_buf();
-            let branch_name_owned = branch_name.to_string();
-            let base_branch_owned = base_branch.to_string();
+            let branch_id_owned = branch_id.clone();
+            let base_branch_id_owned = GitBranchId::from_ref(base_branch_ref.to_string())?;
 
             tokio::task::spawn_blocking(move || {
                 let repo = Repository::open(&repo_path_owned)?;
                 let base_branch_ref =
-                    GitService::find_branch(&repo, &base_branch_owned)?.into_reference();
+                    GitService::find_branch(&repo, &base_branch_id_owned)?.into_reference();
                 repo.branch(
-                    &branch_name_owned,
+                    &branch_id_owned.branch_name(),
                     &base_branch_ref.peel_to_commit()?,
                     false,
                 )?;
@@ -83,14 +85,14 @@ impl WorktreeManager {
             .map_err(|e| WorktreeError::TaskJoin(format!("Task join error: {e}")))??;
         }
 
-        Self::ensure_worktree_exists(repo_path, branch_name, worktree_path).await
+        Self::ensure_worktree_exists(repo_path, &branch_id, worktree_path).await
     }
 
     /// Ensure worktree exists, recreating if necessary with proper synchronization
     /// This is the main entry point for ensuring a worktree exists and prevents race conditions
     pub async fn ensure_worktree_exists(
         repo_path: &Path,
-        branch_name: &str,
+        branch_id: &GitBranchId,
         worktree_path: &Path,
     ) -> Result<(), WorktreeError> {
         let path_str = worktree_path.to_string_lossy().to_string();
@@ -115,17 +117,17 @@ impl WorktreeManager {
 
         // If worktree doesn't exist or isn't properly set up, recreate it
         info!("Worktree needs recreation at path: {}", path_str);
-        Self::recreate_worktree_internal(repo_path, branch_name, worktree_path).await
+        Self::recreate_worktree_internal(repo_path, branch_id, worktree_path).await
     }
 
     /// Internal worktree recreation function (always recreates)
     async fn recreate_worktree_internal(
         repo_path: &Path,
-        branch_name: &str,
+        branch_id: &GitBranchId,
         worktree_path: &Path,
     ) -> Result<(), WorktreeError> {
         let path_str = worktree_path.to_string_lossy().to_string();
-        let branch_name_owned = branch_name.to_string();
+        let branch_id_owned = branch_id.clone();
         let worktree_path_owned = worktree_path.to_path_buf();
 
         // Use the provided repo path
@@ -140,7 +142,8 @@ impl WorktreeManager {
 
         info!(
             "Creating worktree {} at path {}",
-            branch_name_owned, path_str
+            branch_id_owned.branch_name(),
+            path_str
         );
 
         // Step 1: Comprehensive cleanup of existing worktree and metadata (non-blocking)
@@ -163,7 +166,7 @@ impl WorktreeManager {
         // Step 3: Create the worktree with retry logic for metadata conflicts (non-blocking)
         Self::create_worktree_with_retry(
             git_repo_path,
-            &branch_name_owned,
+            &branch_id_owned,
             &worktree_path_owned,
             &worktree_name,
             &path_str,
@@ -293,13 +296,13 @@ impl WorktreeManager {
     /// Create worktree with retry logic in non-blocking manner
     async fn create_worktree_with_retry(
         git_repo_path: &Path,
-        branch_name: &str,
+        branch_id: &GitBranchId,
         worktree_path: &Path,
         worktree_name: &str,
         path_str: &str,
     ) -> Result<(), WorktreeError> {
         let git_repo_path = git_repo_path.to_path_buf();
-        let branch_name = branch_name.to_string();
+        let branch_id = branch_id.clone();
         let worktree_path = worktree_path.to_path_buf();
         let worktree_name = worktree_name.to_string();
         let path_str = path_str.to_string();
@@ -307,7 +310,7 @@ impl WorktreeManager {
         tokio::task::spawn_blocking(move || -> Result<(), WorktreeError> {
             // Prefer git CLI for worktree add to inherit sparse-checkout semantics
             let git_service = GitService::new();
-            match git_service.add_worktree(&git_repo_path, &worktree_path, &branch_name, false) {
+            match git_service.add_worktree(&git_repo_path, &worktree_path, &branch_id, false) {
                 Ok(()) => {
                     if !worktree_path.exists() {
                         return Err(WorktreeError::Repository(format!(
@@ -316,7 +319,8 @@ impl WorktreeManager {
                     }
                     info!(
                         "Successfully created worktree {} at {} (git CLI)",
-                        branch_name, path_str
+                        branch_id.branch_name(),
+                        path_str
                     );
                     Ok(())
                 }
@@ -333,12 +337,9 @@ impl WorktreeManager {
                     if worktree_path.exists() {
                         std::fs::remove_dir_all(&worktree_path).map_err(WorktreeError::Io)?;
                     }
-                    if let Err(e2) = git_service.add_worktree(
-                        &git_repo_path,
-                        &worktree_path,
-                        &branch_name,
-                        false,
-                    ) {
+                    if let Err(e2) =
+                        git_service.add_worktree(&git_repo_path, &worktree_path, &branch_id, false)
+                    {
                         return Err(WorktreeError::GitService(e2));
                     }
                     if !worktree_path.exists() {
@@ -348,7 +349,8 @@ impl WorktreeManager {
                     }
                     info!(
                         "Successfully created worktree {} at {} after metadata cleanup (git CLI)",
-                        branch_name, path_str
+                        branch_id.branch_name(),
+                        path_str
                     );
                     Ok(())
                 }

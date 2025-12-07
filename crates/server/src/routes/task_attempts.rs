@@ -42,7 +42,7 @@ use executors::{
 use serde::{Deserialize, Serialize};
 use services::services::{
     container::ContainerService,
-    git::{ConflictOp, GitBranchId, GitCliError, GitService, GitServiceError},
+    git::{ConflictOp, GitBranchId, GitCliError, GitServiceError},
     github::{CreatePrRequest, GitHubService, GitHubServiceError},
 };
 use sqlx::Error as SqlxError;
@@ -83,14 +83,14 @@ async fn get_first_target_branch(
         .ok_or_else(|| {
             ApiError::BadRequest("Attempt has no repositories configured".to_string())
         })?;
-    let git_branch = GitBranchId::new(branch_ref)?;
+    let git_branch = GitBranchId::from_ref(branch_ref)?;
     Ok(git_branch)
 }
 
 #[derive(Debug, Deserialize, Serialize, TS)]
 pub struct RebaseTaskAttemptRequest {
-    pub old_base_branch: Option<String>,
-    pub new_base_branch: Option<String>,
+    pub old_base_branch_ref: Option<String>,
+    pub new_base_branch_ref: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -542,7 +542,7 @@ pub async fn merge_task_attempt(
 
     let repo_path = get_first_repo_path(pool, ctx.project.id).await?;
     let target_branch = get_first_target_branch(pool, task_attempt.id).await?;
-    let task_branch_id = GitBranchId::new(format!("refs/heads/{}", task_attempt.branch))?;
+    let task_branch_id = GitBranchId::from_local_name(task_attempt.branch);
     // TODO: this needs a worktree path, not a workspace path
     let merge_commit_id = deployment.git().merge_changes(
         &repo_path,
@@ -628,7 +628,7 @@ pub async fn push_task_attempt_branch(
         .ensure_container_exists(&task_attempt)
         .await?;
     let workspace_path = std::path::PathBuf::from(&container_ref);
-    let task_branch_id = GitBranchId::new(format!("refs/heads/{}", task_attempt.branch))?;
+    let task_branch_id = GitBranchId::from_local_name(task_attempt.branch);
 
     // TODO: this needs a worktree path, not a workspace path
     match deployment
@@ -657,7 +657,7 @@ pub async fn force_push_task_attempt_branch(
     let workspace_path = std::path::PathBuf::from(&container_ref);
 
     // TODO: this needs a worktree path, not a workspace path
-    let task_branch_id = GitBranchId::new(format!("refs/heads/{}", task_attempt.branch))?;
+    let task_branch_id = GitBranchId::from_local_name(task_attempt.branch);
     deployment
         .git()
         .push_to_github(&workspace_path, &task_branch_id, true)?;
@@ -713,7 +713,7 @@ pub async fn create_github_pr(
     } else {
         attempt_repo.target_branch_ref.clone()
     };
-    let target_branch = GitBranchId::new(target_branch_ref)?;
+    let target_branch = GitBranchId::from_ref(target_branch_ref)?;
 
     let container_ref = deployment
         .container()
@@ -751,7 +751,7 @@ pub async fn create_github_pr(
         }
     }
 
-    let task_branch_id = GitBranchId::new(format!("refs/heads/{}", task_attempt.branch))?;
+    let task_branch_id = GitBranchId::from_local_name(task_attempt.branch);
     // Push the branch to GitHub first
     if let Err(e) = deployment
         .git()
@@ -776,8 +776,8 @@ pub async fn create_github_pr(
     let pr_request = CreatePrRequest {
         title: request.title.clone(),
         body: request.body.clone(),
-        head_branch: task_attempt.branch.clone(),
-        base_branch: target_branch.branch_name().to_string(),
+        head_branch: task_branch_id.ref_name().to_string(),
+        base_branch: target_branch.ref_name().to_string(),
     };
     // Use GitService to get the remote URL, then create GitHubRepoInfo
     let repo_info = deployment.git().get_github_repo_info(&repo_path)?;
@@ -957,6 +957,7 @@ pub async fn get_task_attempt_branch_status(
         .await?;
     let workspace_dir = std::path::PathBuf::from(&container_ref);
     let merges = Merge::find_by_task_attempt_id(pool, task_attempt.id).await?;
+    let task_branch_id = GitBranchId::from_local_name(task_attempt.branch);
 
     let mut results = Vec::with_capacity(repositories.len());
 
@@ -964,7 +965,7 @@ pub async fn get_task_attempt_branch_status(
         let Some(target_branch_ref) = target_branch_refs.get(&repo.id).cloned() else {
             continue;
         };
-        let target_branch = GitBranchId::new(target_branch_ref.clone())?;
+        let target_branch = GitBranchId::from_ref(target_branch_ref.clone())?;
         let worktree_path = workspace_dir.join(&repo.name);
 
         let head_oid = deployment
@@ -1000,7 +1001,6 @@ pub async fn get_task_attempt_branch_status(
             };
 
         let has_uncommitted_changes = uncommitted_count.map(|c| c > 0);
-        let task_branch_id = GitBranchId::new(format!("refs/heads/{}", task_attempt.branch))?;
 
         // Determine branch comparison based on ref type
         let (commits_ahead, commits_behind) = if target_branch.is_remote() {
@@ -1093,7 +1093,7 @@ pub async fn change_target_branch_ref(
 ) -> Result<ResponseJson<ApiResponse<ChangeTargetBranchRefResponse>>, ApiError> {
     let new_target_branch_ref = payload.new_target_branch_ref;
     // let new_target_branch_name = GitService::ref_to_branch_name(&new_target_branch_ref);
-    let new_target_branch_id = GitBranchId::new(new_target_branch_ref.clone())?;
+    let new_target_branch_id = GitBranchId::from_ref(new_target_branch_ref.clone())?;
     let task = task_attempt
         .parent_task(&deployment.db().pool)
         .await?
@@ -1127,7 +1127,7 @@ pub async fn change_target_branch_ref(
             .as_str(),
         )));
     }
-    let task_branch_id = GitBranchId::new(format!("refs/heads/{}", task_attempt.branch))?;
+    let task_branch_id = GitBranchId::from_local_name(task_attempt.branch);
 
     let status =
         deployment
@@ -1158,7 +1158,6 @@ pub async fn rename_branch(
     Json(payload): Json<RenameBranchRequest>,
 ) -> Result<ResponseJson<ApiResponse<RenameBranchResponse>>, ApiError> {
     let new_branch_name = payload.new_branch_name.trim();
-    let new_branch_id = GitBranchId::new(format!("refs/heads/{}", new_branch_name))?;
 
     if new_branch_name.is_empty() {
         return Ok(ResponseJson(ApiResponse::error(
@@ -1177,6 +1176,8 @@ pub async fn rename_branch(
             "Invalid branch name format",
         )));
     }
+    let new_branch_id = GitBranchId::from_local_name(new_branch_name.to_string());
+    let old_branch_id = GitBranchId::from_local_name(task_attempt.branch.clone());
 
     let pool = &deployment.db().pool;
     let task = task_attempt
@@ -1223,19 +1224,15 @@ pub async fn rename_branch(
 
     deployment
         .git()
-        .rename_local_branch(workspace_path, &task_attempt.branch, new_branch_name)?;
+        .rename_local_branch(workspace_path, &old_branch_id, &new_branch_id)?;
 
-    let old_branch = task_attempt.branch.clone();
-    let old_branch_ref = format!("refs/heads/{}", old_branch);
-    let new_branch_ref = format!("refs/heads/{}", new_branch_name);
-
+    // TODO: should be in a transaction
     TaskAttempt::update_branch_name(pool, task_attempt.id, new_branch_name).await?;
-
     let updated_children_count = AttemptRepo::update_target_branch_ref_for_children_of_attempt(
         pool,
         task_attempt.id,
-        &old_branch_ref,
-        &new_branch_ref,
+        &old_branch_id.ref_name(),
+        &new_branch_id.ref_name(),
     )
     .await?;
 
@@ -1282,11 +1279,13 @@ pub async fn rebase_task_attempt(
         .unwrap_or_default();
 
     let old_base_branch = payload
-        .old_base_branch
+        .old_base_branch_ref
         .unwrap_or(current_target_branch.clone());
-    let new_base_branch = payload.new_base_branch.unwrap_or(current_target_branch);
+    let new_base_branch = payload.new_base_branch_ref.unwrap_or(current_target_branch);
     // todo: make sure this is a ref
-    let new_base_branch_id = GitBranchId::new(new_base_branch.clone())?;
+    let new_base_branch_id = GitBranchId::from_ref(new_base_branch.clone())?;
+    let old_base_branch_id = GitBranchId::from_ref(old_base_branch.clone())?;
+    let task_branch_id = GitBranchId::from_local_name(task_attempt.branch.clone());
 
     let repo_path = get_first_repo_path(pool, ctx.project.id).await?;
     match deployment
@@ -1320,8 +1319,8 @@ pub async fn rebase_task_attempt(
         &repo_path,
         workspace_path,
         &new_base_branch_id,
-        &old_base_branch,
-        &task_attempt.branch.clone(),
+        &old_base_branch_id,
+        &task_branch_id,
     );
     if let Err(e) = result {
         use services::services::git::GitServiceError;

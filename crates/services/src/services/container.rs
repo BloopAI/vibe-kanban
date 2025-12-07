@@ -282,7 +282,7 @@ pub trait ContainerService {
             // Fallback to base branch commit OID
             if before.is_none() {
                 let repo_path = std::path::Path::new(row.repo_path.as_deref().unwrap_or_default());
-                let target_branch_id = GitBranchId::new(row.target_branch_ref)?;
+                let target_branch_id = GitBranchId::from_ref(row.target_branch_ref)?;
                 match self.git().get_branch_oid(repo_path, &target_branch_id) {
                     Ok(oid) => before = Some(oid),
                     Err(e) => {
