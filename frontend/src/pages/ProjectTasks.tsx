@@ -287,7 +287,7 @@ export function ProjectTasks() {
   }, [projectId, taskId, isLoading, selectedTask, navigate]);
 
   const effectiveAttemptId = attemptId === 'latest' ? undefined : attemptId;
-  const isTaskView = !!taskId && !effectiveAttemptId && attemptId !== 'latest';
+  const isTaskView = !!taskId && !effectiveAttemptId;
   const { data: attempt } = useTaskAttempt(effectiveAttemptId);
 
   const { data: branchStatus } = useBranchStatus(attempt?.id);

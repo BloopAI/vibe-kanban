@@ -400,6 +400,20 @@
       "finish": "Finalizar"
     }
   },
+  "githubComments": {
+    "dialog": {
+      "title": "Seleccionar comentarios de GitHub",
+      "noComments": "No se encontraron comentarios en este PR",
+      "selectAll": "Seleccionar todo",
+      "deselectAll": "Deseleccionar todo",
+      "add": "Agregar",
+      "selectedCount": "{{selected}} de {{total}} seleccionados"
+    },
+    "card": {
+      "review": "Revisión",
+      "tooltip": "Clic para ver en GitHub, doble clic para editar"
+    }
+  },
   "taskFormDialog": {
     "createTitle": "Crear Nueva Tarea",
     "editTitle": "Editar Tarea",

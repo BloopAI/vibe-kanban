@@ -79,6 +79,7 @@ import {
   SharedTaskResponse,
   SharedTaskDetails,
   QueueStatus,
+  PrCommentsResponse,
 } from 'shared/types';
 
 export class ApiError<E = unknown> extends Error {
@@ -633,6 +634,13 @@ export const attemptsApi = {
     return handleApiResponseAsResult<ExecutionProcess, RunScriptError>(
       response
     );
+  },
+
+  getPrComments: async (attemptId: string): Promise<PrCommentsResponse> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/pr/comments`
+    );
+    return handleApiResponse<PrCommentsResponse>(response);
   },
 };
 

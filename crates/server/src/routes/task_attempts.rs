@@ -39,7 +39,7 @@ use serde::{Deserialize, Serialize};
 use services::services::{
     container::ContainerService,
     git::{ConflictOp, GitCliError, GitServiceError, WorktreeResetOptions},
-    github::{CreatePrRequest, GitHubService, GitHubServiceError},
+    github::{CreatePrRequest, GitHubService, GitHubServiceError, UnifiedPrComment},
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
@@ -1411,6 +1411,20 @@ pub struct AttachPrResponse {
     pub pr_status: Option<MergeStatus>,
 }
 
+#[derive(Debug, Serialize, TS)]
+pub struct PrCommentsResponse {
+    pub comments: Vec<UnifiedPrComment>,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[serde(tag = "type", rename_all = "snake_case")]
+#[ts(tag = "type", rename_all = "snake_case")]
+pub enum GetPrCommentsError {
+    NoPrAttached,
+    GithubCliNotInstalled,
+    GithubCliNotLoggedIn,
+}
+
 pub async fn attach_existing_pr(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
@@ -1504,6 +1518,67 @@ pub async fn attach_existing_pr(
             pr_number: None,
             pr_status: None,
         })))
+    }
+}
+
+pub async fn get_pr_comments(
+    Extension(task_attempt): Extension<TaskAttempt>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<PrCommentsResponse, GetPrCommentsError>>, ApiError> {
+    let pool = &deployment.db().pool;
+
+    // Find the latest merge for this task attempt
+    let merge = Merge::find_latest_by_task_attempt_id(pool, task_attempt.id).await?;
+
+    // Ensure there's an attached PR
+    let pr_info = match merge {
+        Some(Merge::Pr(pr_merge)) => pr_merge.pr_info,
+        _ => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                GetPrCommentsError::NoPrAttached,
+            )));
+        }
+    };
+
+    // Get project and repo info
+    let task = task_attempt
+        .parent_task(pool)
+        .await?
+        .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
+    let project = Project::find_by_id(pool, task.project_id)
+        .await?
+        .ok_or(ApiError::Project(ProjectError::ProjectNotFound))?;
+
+    let github_service = GitHubService::new()?;
+    let repo_info = deployment
+        .git()
+        .get_github_repo_info(&project.git_repo_path)?;
+
+    // Fetch comments from GitHub
+    match github_service
+        .get_pr_comments(&repo_info, pr_info.number)
+        .await
+    {
+        Ok(comments) => Ok(ResponseJson(ApiResponse::success(PrCommentsResponse {
+            comments,
+        }))),
+        Err(e) => {
+            tracing::error!(
+                "Failed to fetch PR comments for attempt {}, PR #{}: {}",
+                task_attempt.id,
+                pr_info.number,
+                e
+            );
+            match &e {
+                GitHubServiceError::GhCliNotInstalled(_) => Ok(ResponseJson(
+                    ApiResponse::error_with_data(GetPrCommentsError::GithubCliNotInstalled),
+                )),
+                GitHubServiceError::AuthFailed(_) => Ok(ResponseJson(
+                    ApiResponse::error_with_data(GetPrCommentsError::GithubCliNotLoggedIn),
+                )),
+                _ => Err(ApiError::GitHubService(e)),
+            }
+        }
     }
 }
 
@@ -1713,6 +1788,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/conflicts/abort", post(abort_conflicts_task_attempt))
         .route("/pr", post(create_github_pr))
         .route("/pr/attach", post(attach_existing_pr))
+        .route("/pr/comments", get(get_pr_comments))
         .route("/open-editor", post(open_task_attempt_in_editor))
         .route("/children", get(get_task_attempt_children))
         .route("/stop", post(stop_task_attempt_execution))
