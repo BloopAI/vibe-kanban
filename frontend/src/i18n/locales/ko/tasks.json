@@ -441,5 +441,48 @@
       "continueEditing": "계속 수정",
       "discardChanges": "변경사항 버리기"
     }
+  },
+  "restoreLogsDialog": {
+    "title": "재시도 확인",
+    "historyChange": {
+      "title": "히스토리 변경",
+      "willDelete": "이 프로세스를 삭제합니다",
+      "andLaterProcesses_one": "및 이후 {{count}}개 프로세스",
+      "andLaterProcesses_other": "및 이후 {{count}}개 프로세스",
+      "fromHistory": "를 히스토리에서 삭제합니다.",
+      "codingAgentRuns_one": "{{count}}개 코딩 에이전트 실행",
+      "codingAgentRuns_other": "{{count}}개 코딩 에이전트 실행",
+      "scriptProcesses_one": "{{count}}개 스크립트 프로세스",
+      "scriptProcesses_other": "{{count}}개 스크립트 프로세스",
+      "setupCleanupBreakdown": "(설정 {{setup}}개, 정리 {{cleanup}}개)",
+      "permanentWarning": "이 작업은 히스토리를 영구적으로 변경하며 되돌릴 수 없습니다."
+    },
+    "uncommittedChanges": {
+      "title": "커밋되지 않은 변경사항 감지됨",
+      "description_one": "{{count}}개의 커밋되지 않은 변경사항이 있습니다",
+      "description_other": "{{count}}개의 커밋되지 않은 변경사항이 있습니다",
+      "andUntracked_one": " 및 {{count}}개의 추적되지 않은 파일",
+      "andUntracked_other": " 및 {{count}}개의 추적되지 않은 파일",
+      "acknowledgeLabel": "이 변경사항이 영향을 받을 수 있음을 이해합니다"
+    },
+    "resetWorktree": {
+      "title": "워크트리 초기화",
+      "enabled": "활성화",
+      "disabled": "비활성화",
+      "disabledUncommitted": "비활성화 (커밋되지 않은 변경사항 감지됨)",
+      "restoreDescription": "워크트리가 이 커밋으로 복원됩니다.",
+      "rollbackCommits_one": "현재 HEAD에서 {{count}}개 커밋을 롤백합니다.",
+      "rollbackCommits_other": "현재 HEAD에서 {{count}}개 커밋을 롤백합니다.",
+      "discardChanges_one": "{{count}}개의 커밋되지 않은 변경사항을 버립니다.",
+      "discardChanges_other": "{{count}}개의 커밋되지 않은 변경사항을 버립니다.",
+      "untrackedPresent_one": "{{count}}개의 추적되지 않은 파일이 있습니다 (초기화의 영향을 받지 않음).",
+      "untrackedPresent_other": "{{count}}개의 추적되지 않은 파일이 있습니다 (초기화의 영향을 받지 않음).",
+      "forceReset": "강제 초기화 (커밋되지 않은 변경사항 버리기)",
+      "uncommittedWillDiscard": "커밋되지 않은 변경사항이 버려집니다.",
+      "uncommittedPresentHint": "커밋되지 않은 변경사항이 있습니다. 강제 초기화를 켜거나 커밋/스태시한 후 진행하세요."
+    },
+    "buttons": {
+      "retry": "재시도"
+    }
   }
 }

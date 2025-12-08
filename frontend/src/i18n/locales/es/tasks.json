@@ -441,5 +441,48 @@
       "continueEditing": "Continuar Editando",
       "discardChanges": "Descartar Cambios"
     }
+  },
+  "restoreLogsDialog": {
+    "title": "Confirmar Reintento",
+    "historyChange": {
+      "title": "Cambio de historial",
+      "willDelete": "Eliminará este proceso",
+      "andLaterProcesses_one": "y {{count}} proceso posterior",
+      "andLaterProcesses_other": "y {{count}} procesos posteriores",
+      "fromHistory": "del historial.",
+      "codingAgentRuns_one": "{{count}} ejecución de agente de codificación",
+      "codingAgentRuns_other": "{{count}} ejecuciones de agente de codificación",
+      "scriptProcesses_one": "{{count}} proceso de script",
+      "scriptProcesses_other": "{{count}} procesos de script",
+      "setupCleanupBreakdown": "({{setup}} configuración, {{cleanup}} limpieza)",
+      "permanentWarning": "Esto altera permanentemente el historial y no se puede deshacer."
+    },
+    "uncommittedChanges": {
+      "title": "Cambios sin confirmar detectados",
+      "description_one": "Tienes {{count}} cambio sin confirmar",
+      "description_other": "Tienes {{count}} cambios sin confirmar",
+      "andUntracked_one": " y {{count}} archivo sin rastrear",
+      "andUntracked_other": " y {{count}} archivos sin rastrear",
+      "acknowledgeLabel": "Entiendo que estos cambios pueden verse afectados"
+    },
+    "resetWorktree": {
+      "title": "Restablecer worktree",
+      "enabled": "Habilitado",
+      "disabled": "Deshabilitado",
+      "disabledUncommitted": "Deshabilitado (cambios sin confirmar detectados)",
+      "restoreDescription": "Tu worktree será restaurado a este commit.",
+      "rollbackCommits_one": "Revertir {{count}} commit desde HEAD actual.",
+      "rollbackCommits_other": "Revertir {{count}} commits desde HEAD actual.",
+      "discardChanges_one": "Descartar {{count}} cambio sin confirmar.",
+      "discardChanges_other": "Descartar {{count}} cambios sin confirmar.",
+      "untrackedPresent_one": "{{count}} archivo sin rastrear presente (no afectado por el restablecimiento).",
+      "untrackedPresent_other": "{{count}} archivos sin rastrear presentes (no afectados por el restablecimiento).",
+      "forceReset": "Forzar restablecimiento (descartar cambios sin confirmar)",
+      "uncommittedWillDiscard": "Los cambios sin confirmar serán descartados.",
+      "uncommittedPresentHint": "Hay cambios sin confirmar. Activa Forzar restablecimiento o confirma/guarda para continuar."
+    },
+    "buttons": {
+      "retry": "Reintentar"
+    }
   }
 }

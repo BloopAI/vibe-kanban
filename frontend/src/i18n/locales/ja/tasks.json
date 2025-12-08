@@ -441,5 +441,48 @@
       "continueEditing": "編集を続ける",
       "discardChanges": "変更を破棄"
     }
+  },
+  "restoreLogsDialog": {
+    "title": "リトライを確認",
+    "historyChange": {
+      "title": "履歴の変更",
+      "willDelete": "このプロセスを削除します",
+      "andLaterProcesses_one": "および後続の{{count}}件のプロセス",
+      "andLaterProcesses_other": "および後続の{{count}}件のプロセス",
+      "fromHistory": "を履歴から削除します。",
+      "codingAgentRuns_one": "{{count}}件のコーディングエージェント実行",
+      "codingAgentRuns_other": "{{count}}件のコーディングエージェント実行",
+      "scriptProcesses_one": "{{count}}件のスクリプトプロセス",
+      "scriptProcesses_other": "{{count}}件のスクリプトプロセス",
+      "setupCleanupBreakdown": "(セットアップ{{setup}}件、クリーンアップ{{cleanup}}件)",
+      "permanentWarning": "この操作は履歴を永久に変更し、元に戻すことはできません。"
+    },
+    "uncommittedChanges": {
+      "title": "未コミットの変更が検出されました",
+      "description_one": "{{count}}件の未コミットの変更があります",
+      "description_other": "{{count}}件の未コミットの変更があります",
+      "andUntracked_one": "および{{count}}件の未追跡ファイル",
+      "andUntracked_other": "および{{count}}件の未追跡ファイル",
+      "acknowledgeLabel": "これらの変更が影響を受ける可能性があることを理解しています"
+    },
+    "resetWorktree": {
+      "title": "ワークツリーをリセット",
+      "enabled": "有効",
+      "disabled": "無効",
+      "disabledUncommitted": "無効（未コミットの変更が検出されました）",
+      "restoreDescription": "ワークツリーはこのコミットに復元されます。",
+      "rollbackCommits_one": "現在のHEADから{{count}}件のコミットをロールバックします。",
+      "rollbackCommits_other": "現在のHEADから{{count}}件のコミットをロールバックします。",
+      "discardChanges_one": "{{count}}件の未コミットの変更を破棄します。",
+      "discardChanges_other": "{{count}}件の未コミットの変更を破棄します。",
+      "untrackedPresent_one": "{{count}}件の未追跡ファイルがあります（リセットの影響を受けません）。",
+      "untrackedPresent_other": "{{count}}件の未追跡ファイルがあります（リセットの影響を受けません）。",
+      "forceReset": "強制リセット（未コミットの変更を破棄）",
+      "uncommittedWillDiscard": "未コミットの変更は破棄されます。",
+      "uncommittedPresentHint": "未コミットの変更があります。強制リセットをオンにするか、コミット/スタッシュしてから続行してください。"
+    },
+    "buttons": {
+      "retry": "リトライ"
+    }
   }
 }

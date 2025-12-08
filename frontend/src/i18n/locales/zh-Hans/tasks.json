@@ -441,5 +441,48 @@
       "continueEditing": "继续编辑",
       "discardChanges": "放弃更改"
     }
+  },
+  "restoreLogsDialog": {
+    "title": "确认重试",
+    "historyChange": {
+      "title": "历史记录变更",
+      "willDelete": "将删除此进程",
+      "andLaterProcesses_one": "及后续 {{count}} 个进程",
+      "andLaterProcesses_other": "及后续 {{count}} 个进程",
+      "fromHistory": "从历史记录中删除。",
+      "codingAgentRuns_one": "{{count}} 个编程代理运行",
+      "codingAgentRuns_other": "{{count}} 个编程代理运行",
+      "scriptProcesses_one": "{{count}} 个脚本进程",
+      "scriptProcesses_other": "{{count}} 个脚本进程",
+      "setupCleanupBreakdown": "({{setup}} 个设置，{{cleanup}} 个清理)",
+      "permanentWarning": "此操作将永久更改历史记录，无法撤消。"
+    },
+    "uncommittedChanges": {
+      "title": "检测到未提交的更改",
+      "description_one": "您有 {{count}} 个未提交的更改",
+      "description_other": "您有 {{count}} 个未提交的更改",
+      "andUntracked_one": "和 {{count}} 个未跟踪的文件",
+      "andUntracked_other": "和 {{count}} 个未跟踪的文件",
+      "acknowledgeLabel": "我了解这些更改可能会受到影响"
+    },
+    "resetWorktree": {
+      "title": "重置工作树",
+      "enabled": "已启用",
+      "disabled": "已禁用",
+      "disabledUncommitted": "已禁用（检测到未提交的更改）",
+      "restoreDescription": "您的工作树将被恢复到此提交。",
+      "rollbackCommits_one": "从当前 HEAD 回滚 {{count}} 个提交。",
+      "rollbackCommits_other": "从当前 HEAD 回滚 {{count}} 个提交。",
+      "discardChanges_one": "丢弃 {{count}} 个未提交的更改。",
+      "discardChanges_other": "丢弃 {{count}} 个未提交的更改。",
+      "untrackedPresent_one": "存在 {{count}} 个未跟踪的文件（不受重置影响）。",
+      "untrackedPresent_other": "存在 {{count}} 个未跟踪的文件（不受重置影响）。",
+      "forceReset": "强制重置（丢弃未提交的更改）",
+      "uncommittedWillDiscard": "未提交的更改将被丢弃。",
+      "uncommittedPresentHint": "存在未提交的更改。请打开强制重置或提交/暂存后继续。"
+    },
+    "buttons": {
+      "retry": "重试"
+    }
   }
 }

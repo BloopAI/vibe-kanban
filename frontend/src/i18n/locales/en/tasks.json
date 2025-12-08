@@ -441,5 +441,48 @@
       "continueEditing": "Continue Editing",
       "discardChanges": "Discard Changes"
     }
+  },
+  "restoreLogsDialog": {
+    "title": "Confirm Retry",
+    "historyChange": {
+      "title": "History change",
+      "willDelete": "Will delete this process",
+      "andLaterProcesses_one": "and {{count}} later process",
+      "andLaterProcesses_other": "and {{count}} later processes",
+      "fromHistory": "from history.",
+      "codingAgentRuns_one": "{{count}} coding agent run",
+      "codingAgentRuns_other": "{{count}} coding agent runs",
+      "scriptProcesses_one": "{{count}} script process",
+      "scriptProcesses_other": "{{count}} script processes",
+      "setupCleanupBreakdown": "({{setup}} setup, {{cleanup}} cleanup)",
+      "permanentWarning": "This permanently alters history and cannot be undone."
+    },
+    "uncommittedChanges": {
+      "title": "Uncommitted changes detected",
+      "description_one": "You have {{count}} uncommitted change",
+      "description_other": "You have {{count}} uncommitted changes",
+      "andUntracked_one": " and {{count}} untracked file",
+      "andUntracked_other": " and {{count}} untracked files",
+      "acknowledgeLabel": "I understand these changes may be affected"
+    },
+    "resetWorktree": {
+      "title": "Reset worktree",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "disabledUncommitted": "Disabled (uncommitted changes detected)",
+      "restoreDescription": "Your worktree will be restored to this commit.",
+      "rollbackCommits_one": "Roll back {{count}} commit from current HEAD.",
+      "rollbackCommits_other": "Roll back {{count}} commits from current HEAD.",
+      "discardChanges_one": "Discard {{count}} uncommitted change.",
+      "discardChanges_other": "Discard {{count}} uncommitted changes.",
+      "untrackedPresent_one": "{{count}} untracked file present (not affected by reset).",
+      "untrackedPresent_other": "{{count}} untracked files present (not affected by reset).",
+      "forceReset": "Force reset (discard uncommitted changes)",
+      "uncommittedWillDiscard": "Uncommitted changes will be discarded.",
+      "uncommittedPresentHint": "Uncommitted changes present. Turn on Force reset or commit/stash to proceed."
+    },
+    "buttons": {
+      "retry": "Retry"
+    }
   }
 }
