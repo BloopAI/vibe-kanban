@@ -38,10 +38,10 @@ fn main() {
     }
 
     // Build timestamp (ISO 8601 format)
-    if let Ok(output) = Command::new("date").args(["-u", "+%Y-%m-%dT%H:%M:%SZ"]).output() {
-        if output.status.success() {
-            let timestamp = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            println!("cargo:rustc-env=VK_BUILD_TIMESTAMP={}", timestamp);
-        }
+    if let Ok(output) = Command::new("date").args(["-u", "+%Y-%m-%dT%H:%M:%SZ"]).output()
+        && output.status.success()
+    {
+        let timestamp = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        println!("cargo:rustc-env=VK_BUILD_TIMESTAMP={}", timestamp);
     }
 }
