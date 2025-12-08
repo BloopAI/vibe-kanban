@@ -4,7 +4,12 @@ import type { Operation } from 'rfc6902';
 
 type WsJsonPatchMsg = { JsonPatch: Operation[] };
 type WsFinishedMsg = { finished: boolean };
-type WsMsg = WsJsonPatchMsg | WsFinishedMsg;
+type WsRefreshRequiredMsg = { refresh_required: { reason: string } };
+type WsMsg = WsJsonPatchMsg | WsFinishedMsg | WsRefreshRequiredMsg;
+
+// Keep-alive constants
+const PING_INTERVAL_MS = 25000; // Send ping every 25 seconds
+const IDLE_TIMEOUT_MS = 60000; // Consider connection stale after 60s of no messages
 
 interface UseJsonPatchStreamOptions<T> {
   /**
@@ -15,6 +20,12 @@ interface UseJsonPatchStreamOptions<T> {
    * Filter/deduplicate patches before applying them
    */
   deduplicatePatches?: (patches: Operation[]) => Operation[];
+  /**
+   * Called when server signals that the client should refresh data.
+   * This happens when the server's broadcast channel lagged and missed messages.
+   * If not provided, the hook will automatically reconnect.
+   */
+  onRefreshRequired?: (reason: string) => void;
 }
 
 interface UseJsonPatchStreamResult<T> {
@@ -41,9 +52,44 @@ export const useJsonPatchWsStream = <T extends object>(
   const retryAttemptsRef = useRef<number>(0);
   const [retryNonce, setRetryNonce] = useState(0);
   const finishedRef = useRef<boolean>(false);
+  const pingIntervalRef = useRef<number | null>(null);
+  const idleTimeoutRef = useRef<number | null>(null);
+  const lastMessageTimeRef = useRef<number>(Date.now());
 
   const injectInitialEntry = options?.injectInitialEntry;
   const deduplicatePatches = options?.deduplicatePatches;
+  const onRefreshRequired = options?.onRefreshRequired;
+
+  // Reset the idle timeout - called on every message received
+  function resetIdleTimeout() {
+    lastMessageTimeRef.current = Date.now();
+    if (idleTimeoutRef.current) {
+      window.clearTimeout(idleTimeoutRef.current);
+    }
+    idleTimeoutRef.current = window.setTimeout(() => {
+      console.warn(
+        '[WS] Connection appears stale - no messages for',
+        IDLE_TIMEOUT_MS / 1000,
+        's'
+      );
+      // Force reconnect by closing the socket
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.close(4000, 'idle timeout');
+      }
+    }, IDLE_TIMEOUT_MS);
+  }
+
+  // Clear all keep-alive timers
+  function clearKeepAliveTimers() {
+    if (pingIntervalRef.current) {
+      window.clearInterval(pingIntervalRef.current);
+      pingIntervalRef.current = null;
+    }
+    if (idleTimeoutRef.current) {
+      window.clearTimeout(idleTimeoutRef.current);
+      idleTimeoutRef.current = null;
+    }
+  }
 
   function scheduleReconnect() {
     if (retryTimerRef.current) return; // already scheduled
@@ -67,6 +113,7 @@ export const useJsonPatchWsStream = <T extends object>(
         window.clearTimeout(retryTimerRef.current);
         retryTimerRef.current = null;
       }
+      clearKeepAliveTimers();
       retryAttemptsRef.current = 0;
       finishedRef.current = false;
       setData(undefined);
@@ -104,9 +151,30 @@ export const useJsonPatchWsStream = <T extends object>(
           window.clearTimeout(retryTimerRef.current);
           retryTimerRef.current = null;
         }
+
+        // Start keep-alive mechanisms
+        // 1. Client-side ping interval - WebSocket ping frames
+        pingIntervalRef.current = window.setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            // Send a ping frame (empty binary message acts as heartbeat)
+            // Note: Browser WebSocket API doesn't expose ping frames directly,
+            // but the server is sending pings and we respond with pongs automatically.
+            // This interval is mainly to log keep-alive status.
+            const idleTime = Date.now() - lastMessageTimeRef.current;
+            if (idleTime > PING_INTERVAL_MS) {
+              console.debug('[WS] No message for', Math.round(idleTime / 1000), 's');
+            }
+          }
+        }, PING_INTERVAL_MS);
+
+        // 2. Start idle timeout
+        resetIdleTimeout();
       };
 
       ws.onmessage = (event) => {
+        // Reset idle timeout on any message (including pong responses)
+        resetIdleTimeout();
+
         try {
           const msg: WsMsg = JSON.parse(event.data);
 
@@ -130,10 +198,27 @@ export const useJsonPatchWsStream = <T extends object>(
             setData(next);
           }
 
+          // Handle refresh_required messages - server missed broadcasts
+          if ('refresh_required' in msg) {
+            const reason = msg.refresh_required.reason;
+            console.warn('[WS] Server signaled refresh required:', reason);
+
+            if (onRefreshRequired) {
+              // Let caller handle refresh (e.g., refetch data)
+              onRefreshRequired(reason);
+            } else {
+              // Default behavior: reset data and reconnect to get fresh state
+              dataRef.current = undefined;
+              ws.close(4001, 'refresh required');
+            }
+            return;
+          }
+
           // Handle finished messages ({finished: true})
           // Treat finished as terminal - do NOT reconnect
           if ('finished' in msg) {
             finishedRef.current = true;
+            clearKeepAliveTimers();
             ws.close(1000, 'finished');
             wsRef.current = null;
             setIsConnected(false);
@@ -151,6 +236,7 @@ export const useJsonPatchWsStream = <T extends object>(
       ws.onclose = (evt) => {
         setIsConnected(false);
         wsRef.current = null;
+        clearKeepAliveTimers();
 
         // Do not reconnect if we received a finished message or clean close
         if (finishedRef.current || (evt?.code === 1000 && evt?.wasClean)) {
@@ -183,6 +269,7 @@ export const useJsonPatchWsStream = <T extends object>(
         window.clearTimeout(retryTimerRef.current);
         retryTimerRef.current = null;
       }
+      clearKeepAliveTimers();
       finishedRef.current = false;
       dataRef.current = undefined;
       setData(undefined);
@@ -193,6 +280,7 @@ export const useJsonPatchWsStream = <T extends object>(
     initialData,
     injectInitialEntry,
     deduplicatePatches,
+    onRefreshRequired,
     retryNonce,
   ]);
 

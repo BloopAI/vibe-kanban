@@ -13,13 +13,18 @@ use db::models::execution_process::{
     ExecutionProcess, ExecutionProcessError, ExecutionProcessStatus,
 };
 use deployment::Deployment;
-use futures_util::{SinkExt, StreamExt, TryStreamExt};
+use futures_util::TryStreamExt;
 use serde::Deserialize;
 use services::services::container::ContainerService;
 use utils::{log_msg::LogMsg, response::ApiResponse};
 use uuid::Uuid;
 
-use crate::{DeploymentImpl, error::ApiError, middleware::load_execution_process_middleware};
+use crate::{
+    DeploymentImpl,
+    error::ApiError,
+    middleware::load_execution_process_middleware,
+    ws_util::{WsKeepAlive, run_ws_stream},
+};
 
 #[derive(Debug, Deserialize)]
 pub struct ExecutionProcessQuery {
@@ -123,7 +128,7 @@ async fn handle_raw_logs_ws(
         .ok_or_else(|| anyhow::anyhow!("Execution process not found"))?;
 
     let counter = Arc::new(AtomicUsize::new(0));
-    let mut stream = raw_stream.map_ok({
+    let stream = raw_stream.map_ok({
         let counter = counter.clone();
         move |m| match m {
             LogMsg::Stdout(content) => {
@@ -141,27 +146,8 @@ async fn handle_raw_logs_ws(
         }
     });
 
-    // Split socket into sender and receiver
-    let (mut sender, mut receiver) = socket.split();
-
-    // Drain (and ignore) any client->server messages so pings/pongs work
-    tokio::spawn(async move { while let Some(Ok(_)) = receiver.next().await {} });
-
-    // Forward server messages
-    while let Some(item) = stream.next().await {
-        match item {
-            Ok(msg) => {
-                if sender.send(msg).await.is_err() {
-                    break; // client disconnected
-                }
-            }
-            Err(e) => {
-                tracing::error!("stream error: {}", e);
-                break;
-            }
-        }
-    }
-    Ok(())
+    // Use run_ws_stream for proper keep-alive handling
+    run_ws_stream(socket, stream, WsKeepAlive::for_execution_streams()).await
 }
 
 pub async fn stream_normalized_logs_ws(
@@ -191,23 +177,9 @@ async fn handle_normalized_logs_ws(
     socket: WebSocket,
     stream: impl futures_util::Stream<Item = anyhow::Result<LogMsg>> + Unpin + Send + 'static,
 ) -> anyhow::Result<()> {
-    let mut stream = stream.map_ok(|msg| msg.to_ws_message_unchecked());
-    let (mut sender, mut receiver) = socket.split();
-    tokio::spawn(async move { while let Some(Ok(_)) = receiver.next().await {} });
-    while let Some(item) = stream.next().await {
-        match item {
-            Ok(msg) => {
-                if sender.send(msg).await.is_err() {
-                    break;
-                }
-            }
-            Err(e) => {
-                tracing::error!("stream error: {}", e);
-                break;
-            }
-        }
-    }
-    Ok(())
+    let stream = stream.map_ok(|msg| msg.to_ws_message_unchecked());
+    // Use run_ws_stream for proper keep-alive handling
+    run_ws_stream(socket, stream, WsKeepAlive::for_execution_streams()).await
 }
 
 pub async fn stop_execution_process(
@@ -248,33 +220,14 @@ async fn handle_execution_processes_ws(
     show_soft_deleted: bool,
 ) -> anyhow::Result<()> {
     // Get the raw stream and convert LogMsg to WebSocket messages
-    let mut stream = deployment
+    let stream = deployment
         .events()
         .stream_execution_processes_for_attempt_raw(task_attempt_id, show_soft_deleted)
         .await?
         .map_ok(|msg| msg.to_ws_message_unchecked());
 
-    // Split socket into sender and receiver
-    let (mut sender, mut receiver) = socket.split();
-
-    // Drain (and ignore) any client->server messages so pings/pongs work
-    tokio::spawn(async move { while let Some(Ok(_)) = receiver.next().await {} });
-
-    // Forward server messages
-    while let Some(item) = stream.next().await {
-        match item {
-            Ok(msg) => {
-                if sender.send(msg).await.is_err() {
-                    break; // client disconnected
-                }
-            }
-            Err(e) => {
-                tracing::error!("stream error: {}", e);
-                break;
-            }
-        }
-    }
-    Ok(())
+    // Use run_ws_stream for proper keep-alive handling
+    run_ws_stream(socket, stream, WsKeepAlive::for_list_streams()).await
 }
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {

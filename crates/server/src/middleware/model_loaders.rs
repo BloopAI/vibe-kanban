@@ -27,10 +27,13 @@ fn extract_bearer_token(headers: &HeaderMap) -> Option<&str> {
         .to_str()
         .ok()?
         .strip_prefix("Bearer ")
-        .or_else(|| headers.get(axum::http::header::AUTHORIZATION)?
-            .to_str()
-            .ok()?
-            .strip_prefix("bearer "))
+        .or_else(|| {
+            headers
+                .get(axum::http::header::AUTHORIZATION)?
+                .to_str()
+                .ok()?
+                .strip_prefix("bearer ")
+        })
 }
 
 /// Context for remote project operations.
@@ -136,14 +139,13 @@ pub async fn load_project_by_remote_id_middleware(
     // Validate proxy token if connection token validation is enabled
     let validator = deployment.connection_token_validator();
     if validator.is_enabled() {
-        let token = extract_bearer_token(request.headers())
-            .ok_or_else(|| {
-                tracing::warn!(
-                    remote_project_id = %remote_project_id,
-                    "Missing Authorization header for by-remote-id route"
-                );
-                StatusCode::UNAUTHORIZED
-            })?;
+        let token = extract_bearer_token(request.headers()).ok_or_else(|| {
+            tracing::warn!(
+                remote_project_id = %remote_project_id,
+                "Missing Authorization header for by-remote-id route"
+            );
+            StatusCode::UNAUTHORIZED
+        })?;
 
         match validator.validate_proxy_token(token) {
             Ok(proxy_token) => {
@@ -169,26 +171,25 @@ pub async fn load_project_by_remote_id_middleware(
     }
 
     // Load the project by its remote_project_id
-    let project = match Project::find_by_remote_project_id(&deployment.db().pool, remote_project_id)
-        .await
-    {
-        Ok(Some(project)) => project,
-        Ok(None) => {
-            tracing::warn!(
-                remote_project_id = %remote_project_id,
-                "Project not found by remote_project_id"
-            );
-            return Err(StatusCode::NOT_FOUND);
-        }
-        Err(e) => {
-            tracing::error!(
-                remote_project_id = %remote_project_id,
-                error = %e,
-                "Failed to fetch project by remote_project_id"
-            );
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-    };
+    let project =
+        match Project::find_by_remote_project_id(&deployment.db().pool, remote_project_id).await {
+            Ok(Some(project)) => project,
+            Ok(None) => {
+                tracing::warn!(
+                    remote_project_id = %remote_project_id,
+                    "Project not found by remote_project_id"
+                );
+                return Err(StatusCode::NOT_FOUND);
+            }
+            Err(e) => {
+                tracing::error!(
+                    remote_project_id = %remote_project_id,
+                    error = %e,
+                    "Failed to fetch project by remote_project_id"
+                );
+                return Err(StatusCode::INTERNAL_SERVER_ERROR);
+            }
+        };
 
     tracing::debug!(
         local_project_id = %project.id,

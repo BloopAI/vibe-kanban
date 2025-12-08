@@ -8,11 +8,14 @@ use axum::{
     routing::get,
 };
 use deployment::Deployment;
-use futures_util::{SinkExt, StreamExt, TryStreamExt};
+use futures_util::TryStreamExt;
 use serde::Deserialize;
 use uuid::Uuid;
 
-use crate::DeploymentImpl;
+use crate::{
+    DeploymentImpl,
+    ws_util::{WsKeepAlive, run_ws_stream},
+};
 
 #[derive(Debug, Deserialize)]
 pub struct DraftsQuery {
@@ -36,29 +39,14 @@ async fn handle_project_drafts_ws(
     deployment: DeploymentImpl,
     project_id: Uuid,
 ) -> anyhow::Result<()> {
-    let mut stream = deployment
+    let stream = deployment
         .events()
         .stream_drafts_for_project_raw(project_id)
         .await?
         .map_ok(|msg| msg.to_ws_message_unchecked());
 
-    let (mut sender, mut receiver) = socket.split();
-    tokio::spawn(async move { while let Some(Ok(_)) = receiver.next().await {} });
-
-    while let Some(item) = stream.next().await {
-        match item {
-            Ok(msg) => {
-                if sender.send(msg).await.is_err() {
-                    break;
-                }
-            }
-            Err(e) => {
-                tracing::error!("stream error: {}", e);
-                break;
-            }
-        }
-    }
-    Ok(())
+    // Use run_ws_stream for proper keep-alive handling
+    run_ws_stream(socket, stream, WsKeepAlive::for_list_streams()).await
 }
 
 pub fn router(_deployment: &DeploymentImpl) -> Router<DeploymentImpl> {

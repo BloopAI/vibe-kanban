@@ -247,7 +247,9 @@ impl Deployment for LocalDeployment {
                 let has_hive_url = std::env::var("VK_HIVE_URL").is_ok();
                 let has_api_key = std::env::var("VK_NODE_API_KEY").is_ok();
                 if !has_hive_url && !has_api_key {
-                    tracing::debug!("VK_HIVE_URL and VK_NODE_API_KEY not set; node runner disabled");
+                    tracing::debug!(
+                        "VK_HIVE_URL and VK_NODE_API_KEY not set; node runner disabled"
+                    );
                 } else if !has_hive_url {
                     tracing::debug!(
                         "VK_HIVE_URL not set; node runner disabled (VK_NODE_API_KEY is set)"
