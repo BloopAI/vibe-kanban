@@ -28,7 +28,7 @@ pub struct ProjectRepo {
 
 #[derive(Debug, Clone, Deserialize, TS)]
 pub struct CreateProjectRepo {
-    pub name: String,
+    pub display_name: String,
     pub git_repo_path: String,
 }
 
@@ -59,12 +59,13 @@ impl ProjectRepo {
             r#"SELECT r.id as "id!: Uuid",
                       r.path,
                       r.name,
+                      r.display_name, 
                       r.created_at as "created_at!: DateTime<Utc>",
                       r.updated_at as "updated_at!: DateTime<Utc>"
                FROM repos r
                JOIN project_repos pr ON r.id = pr.repo_id
                WHERE pr.project_id = $1
-               ORDER BY r.name ASC"#,
+               ORDER BY r.display_name ASC"#,
             project_id
         )
         .fetch_all(pool)

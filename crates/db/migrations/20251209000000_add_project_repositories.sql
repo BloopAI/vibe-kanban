@@ -1,10 +1,11 @@
 -- Step 1: Create global repos registry
 CREATE TABLE repos (
-    id          BLOB PRIMARY KEY,
-    path        TEXT NOT NULL UNIQUE,
-    name        TEXT NOT NULL,
-    created_at  TEXT NOT NULL DEFAULT (datetime('now', 'subsec')),
-    updated_at  TEXT NOT NULL DEFAULT (datetime('now', 'subsec'))
+    id           BLOB PRIMARY KEY,
+    path         TEXT NOT NULL UNIQUE,
+    name         TEXT NOT NULL,
+    display_name TEXT NOT NULL,
+    created_at   TEXT NOT NULL DEFAULT (datetime('now', 'subsec')),
+    updated_at   TEXT NOT NULL DEFAULT (datetime('now', 'subsec'))
 );
 
 -- Step 2: Create project_repos junction
