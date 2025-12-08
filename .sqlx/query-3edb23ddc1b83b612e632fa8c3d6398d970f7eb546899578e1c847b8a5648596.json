@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE projects\n               SET source_node_status = $2,\n                   remote_last_synced_at = $3\n               WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "3edb23ddc1b83b612e632fa8c3d6398d970f7eb546899578e1c847b8a5648596"
+}

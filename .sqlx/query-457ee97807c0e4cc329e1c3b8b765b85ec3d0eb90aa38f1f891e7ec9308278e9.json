@@ -1,0 +1,86 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO drafts (id, task_attempt_id, draft_type, retry_process_id, prompt, queued, variant, image_ids)\n               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)\n               ON CONFLICT(task_attempt_id, draft_type) DO UPDATE SET\n                 retry_process_id = excluded.retry_process_id,\n                 prompt = excluded.prompt,\n                 queued = excluded.queued,\n                 variant = excluded.variant,\n                 image_ids = excluded.image_ids,\n                 version = drafts.version + 1\n               RETURNING\n                 id                       as \"id!: Uuid\",\n                 task_attempt_id          as \"task_attempt_id!: Uuid\",\n                 draft_type,\n                 retry_process_id         as \"retry_process_id?: Uuid\",\n                 prompt,\n                 queued                   as \"queued!: bool\",\n                 sending                  as \"sending!: bool\",\n                 variant,\n                 image_ids,\n                 created_at               as \"created_at!: DateTime<Utc>\",\n                 updated_at               as \"updated_at!: DateTime<Utc>\",\n                 version                  as \"version!: i64\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "task_attempt_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "draft_type",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "retry_process_id?: Uuid",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "prompt",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "queued!: bool",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "sending!: bool",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "variant",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "image_ids",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 9,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 10,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "version!: i64",
+        "ordinal": 11,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "457ee97807c0e4cc329e1c3b8b765b85ec3d0eb90aa38f1f891e7ec9308278e9"
+}

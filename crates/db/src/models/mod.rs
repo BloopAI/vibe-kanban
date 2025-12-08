@@ -1,3 +1,4 @@
+pub mod all_tasks;
 pub mod cached_node;
 pub mod dashboard;
 pub mod draft;

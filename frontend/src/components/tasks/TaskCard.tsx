@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { KanbanCard } from '@/components/ui/shadcn-io/kanban';
-import { CheckCircle, Link, Loader2, Server, XCircle } from 'lucide-react';
+import { CheckCircle, Link, Loader2, Server, User, XCircle } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { ActionsDropdown } from '@/components/ui/actions-dropdown';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,16 @@ import { attemptsApi } from '@/lib/api';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import { TaskCardHeader } from './TaskCardHeader';
 import { useTranslation } from 'react-i18next';
+import { useProject } from '@/contexts/ProjectContext';
+
+/**
+ * Get short node name from full hostname (e.g., "justX" from "justX.raverx.net")
+ */
+function getShortNodeName(nodeName: string | null | undefined): string | null {
+  if (!nodeName) return null;
+  const dotIndex = nodeName.indexOf('.');
+  return dotIndex > 0 ? nodeName.substring(0, dotIndex) : nodeName;
+}
 
 type Task = TaskWithAttemptStatus;
 
@@ -36,6 +46,18 @@ export function TaskCard({
   const navigate = useNavigateWithSearch();
   const isOrgAdmin = useIsOrgAdmin();
   const [isNavigatingToParent, setIsNavigatingToParent] = useState(false);
+  const { project } = useProject();
+
+  // Get owner name from shared task or remote task
+  const ownerName =
+    sharedTask?.assignee_first_name || sharedTask?.assignee_last_name
+      ? [sharedTask.assignee_first_name, sharedTask.assignee_last_name]
+          .filter(Boolean)
+          .join(' ')
+      : task.remote_assignee_name ?? task.remote_assignee_username ?? null;
+
+  // Get short node name from project
+  const shortNodeName = getShortNodeName(project?.source_node_name);
 
   const handleClick = useCallback(() => {
     onViewDetails(task);
@@ -149,13 +171,20 @@ export function TaskCard({
               : task.description}
           </p>
         )}
-        {task.is_remote && (
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Server className="h-3 w-3" />
-            {task.remote_assignee_name ? (
-              <span>{task.remote_assignee_name}</span>
-            ) : (
-              <span>{t('remoteTask')}</span>
+        {/* Owner and node info */}
+        {(ownerName || shortNodeName) && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            {ownerName && (
+              <div className="flex items-center gap-1">
+                <User className="h-3 w-3" />
+                <span className="truncate max-w-[100px]">{ownerName}</span>
+              </div>
+            )}
+            {shortNodeName && (
+              <div className="flex items-center gap-1">
+                <Server className="h-3 w-3" />
+                <span>{shortNodeName}</span>
+              </div>
             )}
           </div>
         )}

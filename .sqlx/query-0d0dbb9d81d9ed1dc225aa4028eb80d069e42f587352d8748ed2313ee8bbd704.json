@@ -1,0 +1,116 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id as \"id!: Uuid\", project_id as \"project_id!: Uuid\", title, description, status as \"status!: TaskStatus\", parent_task_attempt as \"parent_task_attempt: Uuid\", shared_task_id as \"shared_task_id: Uuid\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\",\n                      is_remote as \"is_remote!: bool\",\n                      remote_assignee_user_id as \"remote_assignee_user_id: Uuid\",\n                      remote_assignee_name,\n                      remote_assignee_username,\n                      remote_version as \"remote_version!: i64\",\n                      remote_last_synced_at as \"remote_last_synced_at: DateTime<Utc>\",\n                      remote_stream_node_id as \"remote_stream_node_id: Uuid\",\n                      remote_stream_url\n               FROM tasks\n               WHERE parent_task_attempt = $1\n               ORDER BY created_at DESC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "project_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "title",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "description",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "status!: TaskStatus",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "parent_task_attempt: Uuid",
+        "ordinal": 5,
+        "type_info": "Blob"
+      },
+      {
+        "name": "shared_task_id: Uuid",
+        "ordinal": 6,
+        "type_info": "Blob"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "is_remote!: bool",
+        "ordinal": 9,
+        "type_info": "Bool"
+      },
+      {
+        "name": "remote_assignee_user_id: Uuid",
+        "ordinal": 10,
+        "type_info": "Blob"
+      },
+      {
+        "name": "remote_assignee_name",
+        "ordinal": 11,
+        "type_info": "Text"
+      },
+      {
+        "name": "remote_assignee_username",
+        "ordinal": 12,
+        "type_info": "Text"
+      },
+      {
+        "name": "remote_version!: i64",
+        "ordinal": 13,
+        "type_info": "Integer"
+      },
+      {
+        "name": "remote_last_synced_at: DateTime<Utc>",
+        "ordinal": 14,
+        "type_info": "Text"
+      },
+      {
+        "name": "remote_stream_node_id: Uuid",
+        "ordinal": 15,
+        "type_info": "Blob"
+      },
+      {
+        "name": "remote_stream_url",
+        "ordinal": 16,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "0d0dbb9d81d9ed1dc225aa4028eb80d069e42f587352d8748ed2313ee8bbd704"
+}

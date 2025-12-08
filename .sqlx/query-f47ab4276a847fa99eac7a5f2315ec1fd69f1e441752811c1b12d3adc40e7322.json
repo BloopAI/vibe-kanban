@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE tasks\n               SET remote_stream_node_id = $2,\n                   remote_stream_url = $3,\n                   updated_at = CURRENT_TIMESTAMP\n               WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "f47ab4276a847fa99eac7a5f2315ec1fd69f1e441752811c1b12d3adc40e7322"
+}

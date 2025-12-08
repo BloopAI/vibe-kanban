@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT remote_project_id as \"remote_project_id: Uuid\"\n               FROM projects\n               WHERE is_remote = 0 AND remote_project_id IS NOT NULL",
+  "describe": {
+    "columns": [
+      {
+        "name": "remote_project_id: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "b1ceef8bd22208491de1efe43f24beb409864d04a295cea6f9e487f02e531d77"
+}

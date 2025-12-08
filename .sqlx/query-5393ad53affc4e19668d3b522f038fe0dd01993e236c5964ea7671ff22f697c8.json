@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO tasks (\n                id,\n                project_id,\n                title,\n                description,\n                status,\n                shared_task_id\n            )\n            SELECT\n                $1,\n                $2,\n                $3,\n                $4,\n                $5,\n                $6\n            WHERE $7\n               OR EXISTS (\n                    SELECT 1 FROM tasks WHERE shared_task_id = $6\n               )\n            ON CONFLICT(shared_task_id) WHERE shared_task_id IS NOT NULL DO UPDATE SET\n                project_id = excluded.project_id,\n                title = excluded.title,\n                description = excluded.description,\n                status = excluded.status,\n                updated_at = datetime('now', 'subsec')\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": []
+  },
+  "hash": "5393ad53affc4e19668d3b522f038fe0dd01993e236c5964ea7671ff22f697c8"
+}
