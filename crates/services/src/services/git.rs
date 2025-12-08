@@ -152,6 +152,10 @@ impl GitService {
         Self {}
     }
 
+    pub fn is_branch_name_valid(&self, name: &str) -> bool {
+        git2::Branch::name_is_valid(name).unwrap_or(false)
+    }
+
     /// Open the repository
     fn open_repo(&self, repo_path: &Path) -> Result<Repository, GitServiceError> {
         Repository::open(repo_path).map_err(GitServiceError::from)
