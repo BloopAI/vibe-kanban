@@ -13,6 +13,8 @@ function getStatusIcon(status?: string) {
     return <Check aria-hidden className="h-4 w-4 text-success" />;
   if (s === 'in_progress' || s === 'in-progress')
     return <CircleDot aria-hidden className="h-4 w-4 text-blue-500" />;
+  if (s === 'cancelled')
+    return <Circle aria-hidden className="h-4 w-4 text-gray-400" />;
   return <Circle aria-hidden className="h-4 w-4 text-muted-foreground" />;
 }
 
@@ -57,7 +59,11 @@ function TodoPanel() {
                 {getStatusIcon(todo.status)}
               </span>
               <span className="text-sm leading-5 break-words">
-                {todo.content}
+                {todo.status?.toLowerCase() === 'cancelled' ? (
+                  <s className="text-gray-400">{todo.content}</s>
+                ) : (
+                  todo.content
+                )}
               </span>
             </li>
           ))}

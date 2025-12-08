@@ -872,7 +872,7 @@ impl CursorToolCall {
                             .iter()
                             .map(|t| TodoItem {
                                 content: t.content.clone(),
-                                status: t.status.clone(),
+                                status: normalize_todo_status(&t.status),
                                 priority: None, // CursorTodoItem doesn't have priority field
                             })
                             .collect()
@@ -918,6 +918,16 @@ impl CursorToolCall {
                 self.get_name().to_string(),
             ),
         }
+    }
+}
+
+fn normalize_todo_status(status: &str) -> String {
+    match status.to_lowercase().as_str() {
+        "todo_status_pending" => "pending".to_string(),
+        "todo_status_in_progress" => "in_progress".to_string(),
+        "todo_status_completed" => "completed".to_string(),
+        "todo_status_cancelled" => "cancelled".to_string(),
+        other => other.to_string(),
     }
 }
 
