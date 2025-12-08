@@ -852,13 +852,13 @@ pub async fn create_github_pr(
                     &pr_info.url,
                 )
                 .await
-                {
-                    tracing::warn!(
-                        "Failed to trigger PR description follow-up for attempt {}: {}",
-                        task_attempt.id,
-                        e
-                    );
-                }
+            {
+                tracing::warn!(
+                    "Failed to trigger PR description follow-up for attempt {}: {}",
+                    task_attempt.id,
+                    e
+                );
+            }
 
             Ok(ResponseJson(ApiResponse::success(pr_info.url)))
         }
