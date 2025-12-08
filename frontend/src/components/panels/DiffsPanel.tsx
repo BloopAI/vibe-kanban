@@ -141,6 +141,9 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
   useEffect(() => {
     if (!scrollTarget) return;
 
+    // Don't process if diffs haven't loaded yet - wait for them
+    if (loading || diffs.length === 0) return;
+
     const { filePath, lineNumber, side } = scrollTarget;
 
     // Find the diff by file path
@@ -171,7 +174,7 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
     // Diff is already expanded, scroll to line
     scrollToLine(filePath, lineNumber, side, diffViewMode);
     clearScrollTarget();
-  }, [scrollTarget, diffs, collapsedIds, clearScrollTarget, diffViewMode]);
+  }, [scrollTarget, diffs, collapsedIds, clearScrollTarget, diffViewMode, loading]);
 
   // Handle scrolling after a diff is expanded
   useEffect(() => {
