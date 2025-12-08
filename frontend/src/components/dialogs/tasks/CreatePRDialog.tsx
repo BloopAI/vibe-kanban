@@ -297,8 +297,9 @@ const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
                     id="pr-draft"
                     checked={isDraft}
                     onCheckedChange={setIsDraft}
+                    className="h-5 w-5"
                   />
-                  <Label htmlFor="pr-draft" className="cursor-pointer">
+                  <Label htmlFor="pr-draft" className="cursor-pointer text-sm">
                     {t('createPrDialog.draftLabel')}
                   </Label>
                 </div>
