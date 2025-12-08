@@ -40,8 +40,8 @@
         }
       },
       "taskExecution": {
-        "title": "任务执行",
-        "description": "配置任务的执行和处理方式。",
+        "title": "默认编码代理",
+        "description": "选择任务的默认编码代理。",
         "executor": {
           "label": "默认代理配置",
           "placeholder": "选择配置文件",

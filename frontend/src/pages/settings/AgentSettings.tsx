@@ -35,7 +35,11 @@ import { CreateConfigurationDialog } from '@/components/dialogs/settings/CreateC
 import { DeleteConfigurationDialog } from '@/components/dialogs/settings/DeleteConfigurationDialog';
 import { useAgentAvailability } from '@/hooks/useAgentAvailability';
 import { AgentAvailabilityIndicator } from '@/components/AgentAvailabilityIndicator';
-import type { BaseCodingAgent, ExecutorConfigs, ExecutorProfileId } from 'shared/types';
+import type {
+  BaseCodingAgent,
+  ExecutorConfigs,
+  ExecutorProfileId,
+} from 'shared/types';
 
 type ExecutorsMap = Record<string, Record<string, Record<string, unknown>>>;
 
@@ -588,7 +592,7 @@ export function AgentSettings() {
               {executorSaving && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              {t('common:save')}
+              {t('common:buttons.save')}
             </Button>
           </div>
         </CardContent>

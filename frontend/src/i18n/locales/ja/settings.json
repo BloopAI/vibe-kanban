@@ -40,8 +40,8 @@
         }
       },
       "taskExecution": {
-        "title": "タスク実行",
-        "description": "タスクの実行と処理方法を設定します。",
+        "title": "デフォルトコーディングエージェント",
+        "description": "タスクのデフォルトコーディングエージェントを選択します。",
         "executor": {
           "label": "デフォルトエージェント設定",
           "placeholder": "プロファイルを選択",

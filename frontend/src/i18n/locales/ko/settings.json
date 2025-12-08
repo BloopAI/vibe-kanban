@@ -40,8 +40,8 @@
         }
       },
       "taskExecution": {
-        "title": "작업 실행",
-        "description": "작업이 실행되고 처리되는 방식을 구성하세요.",
+        "title": "기본 코딩 에이전트",
+        "description": "작업의 기본 코딩 에이전트를 선택하세요.",
         "executor": {
           "label": "기본 에이전트 구성",
           "placeholder": "프로필 선택",

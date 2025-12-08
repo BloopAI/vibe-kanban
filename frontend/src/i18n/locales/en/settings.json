@@ -40,8 +40,8 @@
         }
       },
       "taskExecution": {
-        "title": "Task Execution",
-        "description": "Configure how tasks are executed and processed.",
+        "title": "Default Coding Agent",
+        "description": "Choose the default coding agent for tasks.",
         "executor": {
           "label": "Default Agent Configuration",
           "placeholder": "Select profile",

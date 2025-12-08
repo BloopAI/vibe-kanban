@@ -40,8 +40,8 @@
         }
       },
       "taskExecution": {
-        "title": "Ejecución de Tareas",
-        "description": "Configura cómo se ejecutan y procesan las tareas.",
+        "title": "Agente de Código Predeterminado",
+        "description": "Elige el agente de código predeterminado para las tareas.",
         "executor": {
           "label": "Configuración predeterminada del Agente",
           "placeholder": "Seleccionar perfil",

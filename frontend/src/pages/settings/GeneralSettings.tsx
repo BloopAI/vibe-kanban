@@ -21,12 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Volume2 } from 'lucide-react';
-import {
-  EditorType,
-  SoundFile,
-  ThemeMode,
-  UiLanguage,
-} from 'shared/types';
+import { EditorType, SoundFile, ThemeMode, UiLanguage } from 'shared/types';
 import { getLanguageOptions } from '@/i18n/languages';
 
 import { toPrettyCase } from '@/utils/string';
