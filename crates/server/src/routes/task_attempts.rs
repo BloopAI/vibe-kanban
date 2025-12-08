@@ -1316,12 +1316,12 @@ pub async fn rebase_task_attempt(
         .await?
         .ok_or(RepoError::NotFound)?;
 
-    let current_target_branch = attempt_repo.target_branch.clone();
-
     let old_base_branch = payload
         .old_base_branch
-        .unwrap_or(current_target_branch.clone());
-    let new_base_branch = payload.new_base_branch.unwrap_or(current_target_branch);
+        .unwrap_or_else(|| attempt_repo.target_branch.clone());
+    let new_base_branch = payload
+        .new_base_branch
+        .unwrap_or_else(|| attempt_repo.target_branch.clone());
 
     match deployment
         .git()
