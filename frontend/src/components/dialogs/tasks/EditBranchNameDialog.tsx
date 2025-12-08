@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -30,6 +30,11 @@ const EditBranchNameDialogImpl = NiceModal.create<EditBranchNameDialogProps>(
     const { t } = useTranslation(['tasks', 'common']);
     const [branchName, setBranchName] = useState<string>(currentBranchName);
     const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+      setBranchName(currentBranchName);
+      setError(null);
+    }, [currentBranchName]);
 
     const renameMutation = useRenameBranch(
       attemptId,

@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use axum::{Extension, Json, extract::State, response::Json as ResponseJson};
 use db::models::{
     attempt_repo::AttemptRepo,
@@ -182,7 +184,7 @@ pub async fn create_github_pr(
         .container()
         .ensure_container_exists(&task_attempt)
         .await?;
-    let workspace_path = std::path::PathBuf::from(&container_ref);
+    let workspace_path = PathBuf::from(&container_ref);
     let worktree_path = workspace_path.join(repo.name);
 
     match deployment
