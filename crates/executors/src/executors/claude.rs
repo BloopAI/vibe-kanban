@@ -241,8 +241,9 @@ impl ClaudeCode {
 
         // Remove pnpm-specific env vars that cause npm warnings when using npx
         // See: https://github.com/pnpm/pnpm/issues/10000
-        command.env_remove("npm_config__jsr-registry");
-        command.env_remove("npm_config_verify-deps-before-run");
+        // Note: pnpm converts config hyphens to underscores in env var names
+        command.env_remove("npm_config__jsr_registry");
+        command.env_remove("npm_config_verify_deps_before_run");
 
         let mut child = command.group_spawn()?;
         let child_stdout = child.inner().stdout.take().ok_or_else(|| {
