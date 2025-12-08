@@ -976,6 +976,7 @@ impl ContainerService for LocalContainerService {
                     ExecutorApprovalBridge::new(
                         self.approvals.clone(),
                         self.db.clone(),
+                        self.config.clone(),
                         execution_process.id,
                     )
                 }
