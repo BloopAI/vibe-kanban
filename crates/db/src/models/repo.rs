@@ -20,6 +20,7 @@ pub struct Repo {
     pub id: Uuid,
     pub path: PathBuf,
     pub name: String,
+    pub display_name: String,
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
     #[ts(type = "Date")]
@@ -33,6 +34,7 @@ impl Repo {
             r#"SELECT id as "id!: Uuid",
                       path,
                       name,
+                      display_name,
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM repos
@@ -46,28 +48,34 @@ impl Repo {
     pub async fn find_or_create<'e, E>(
         executor: E,
         path: &Path,
-        name: &str,
+        display_name: &str,
     ) -> Result<Self, sqlx::Error>
     where
         E: Executor<'e, Database = Sqlite>,
     {
         let path_str = path.to_string_lossy().to_string();
         let id = Uuid::new_v4();
+        let repo_name = path
+            .file_name()
+            .map(|name| name.to_string_lossy().to_string())
+            .unwrap_or_else(|| id.to_string());
 
         // Use INSERT OR IGNORE + SELECT to handle race conditions atomically
         sqlx::query_as!(
             Repo,
-            r#"INSERT INTO repos (id, path, name)
-               VALUES ($1, $2, $3)
+            r#"INSERT INTO repos (id, path, name, display_name)
+               VALUES ($1, $2, $3, $4)
                ON CONFLICT(path) DO UPDATE SET updated_at = updated_at
                RETURNING id as "id!: Uuid",
                          path,
                          name,
+                         display_name,
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             path_str,
-            name
+            repo_name,
+            display_name,
         )
         .fetch_one(executor)
         .await
