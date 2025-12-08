@@ -130,7 +130,6 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
   // Scroll-to-line handling for code references
   const scrollTarget = useScrollToLineStore((s) => s.scrollTarget);
   const clearScrollTarget = useScrollToLineStore((s) => s.clearScrollTarget);
-  const needsLongDelay = useScrollToLineStore((s) => s.needsLongDelay);
   const diffViewMode = useDiffViewMode();
   const pendingScrollRef = useRef<{
     filePath: string;
@@ -138,21 +137,19 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
     side: 'old' | 'new';
   } | null>(null);
 
-  // Handle scroll target changes
+  // Handle scroll target changes - waits for target file's diff to stream in
   useEffect(() => {
     if (!scrollTarget) return;
 
-    // Don't process if diffs haven't loaded yet - wait for them
-    if (loading || diffs.length === 0) return;
-
     const { filePath, lineNumber, side } = scrollTarget;
 
-    // Find the diff by file path
+    // Find the diff by file path - if not found yet, wait for it to stream in
+    // (don't clear scrollTarget, effect will re-run when diffs updates)
     const diffIndex = diffs.findIndex(
       (d) => d.newPath === filePath || d.oldPath === filePath
     );
     if (diffIndex === -1) {
-      clearScrollTarget();
+      // Target file hasn't streamed yet - wait for it
       return;
     }
 
@@ -172,24 +169,14 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
       return;
     }
 
-    // Diff is already expanded - add delay for DOM to render
-    // Use longer delay (1s) if panel was just opened, shorter (100ms) if already open
-    const delay = needsLongDelay ? 1000 : 100;
+    // Diff is loaded and expanded - small delay for DOM to render
     const timer = setTimeout(() => {
       scrollToLine(filePath, lineNumber, side, diffViewMode);
       clearScrollTarget();
-    }, delay);
+    }, 100);
 
     return () => clearTimeout(timer);
-  }, [
-    scrollTarget,
-    diffs,
-    collapsedIds,
-    clearScrollTarget,
-    diffViewMode,
-    loading,
-    needsLongDelay,
-  ]);
+  }, [scrollTarget, diffs, collapsedIds, clearScrollTarget, diffViewMode]);
 
   // Handle scrolling after a diff is expanded
   useEffect(() => {
