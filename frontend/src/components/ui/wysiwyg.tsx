@@ -267,7 +267,10 @@ function WYSIWYGEditor({
               {!disabled && (
                 <>
                   {autoFocus && <AutoFocusPlugin />}
-                  <FocusPlugin shouldFocus={shouldFocus} onFocused={onFocused} />
+                  <FocusPlugin
+                    shouldFocus={shouldFocus}
+                    onFocused={onFocused}
+                  />
                   <HistoryPlugin />
                   <MarkdownShortcutPlugin transformers={extendedTransformers} />
                   <FileTagTypeaheadPlugin projectId={projectId} />

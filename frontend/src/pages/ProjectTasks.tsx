@@ -331,8 +331,12 @@ export function ProjectTasks() {
   );
 
   // Listen for scroll-to-line requests that need the diffs panel to be open
-  const shouldOpenDiffsPanel = useScrollToLineStore((s) => s.shouldOpenDiffsPanel);
-  const clearShouldOpenDiffsPanel = useScrollToLineStore((s) => s.clearShouldOpenDiffsPanel);
+  const shouldOpenDiffsPanel = useScrollToLineStore(
+    (s) => s.shouldOpenDiffsPanel
+  );
+  const clearShouldOpenDiffsPanel = useScrollToLineStore(
+    (s) => s.clearShouldOpenDiffsPanel
+  );
 
   useEffect(() => {
     if (shouldOpenDiffsPanel && mode !== 'diffs') {

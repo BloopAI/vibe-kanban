@@ -19,7 +19,8 @@ type State = {
 export const useScrollToLineStore = create<State>((set) => ({
   scrollTarget: null,
   shouldOpenDiffsPanel: false,
-  setScrollTarget: (target) => set({ scrollTarget: target, shouldOpenDiffsPanel: true }),
+  setScrollTarget: (target) =>
+    set({ scrollTarget: target, shouldOpenDiffsPanel: true }),
   clearScrollTarget: () => set({ scrollTarget: null }),
   clearShouldOpenDiffsPanel: () => set({ shouldOpenDiffsPanel: false }),
 }));
