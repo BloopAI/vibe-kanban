@@ -71,6 +71,7 @@ import {
 } from '@/components/ui/breadcrumb';
 import { AttemptHeaderActions } from '@/components/panels/AttemptHeaderActions';
 import { TaskPanelHeaderActions } from '@/components/panels/TaskPanelHeaderActions';
+import { useScrollToLineStore } from '@/stores/useScrollToLineStore';
 
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
 
@@ -328,6 +329,20 @@ export function ProjectTasks() {
     },
     [searchParams, setSearchParams]
   );
+
+  // Listen for scroll-to-line requests that need the diffs panel to be open
+  const shouldOpenDiffsPanel = useScrollToLineStore((s) => s.shouldOpenDiffsPanel);
+  const clearShouldOpenDiffsPanel = useScrollToLineStore((s) => s.clearShouldOpenDiffsPanel);
+
+  useEffect(() => {
+    if (shouldOpenDiffsPanel && mode !== 'diffs') {
+      setMode('diffs');
+    }
+    // Always clear the flag after handling, whether we opened or it was already open
+    if (shouldOpenDiffsPanel) {
+      clearShouldOpenDiffsPanel();
+    }
+  }, [shouldOpenDiffsPanel, mode, setMode, clearShouldOpenDiffsPanel]);
 
   const handleCreateNewTask = useCallback(() => {
     handleCreateTask();

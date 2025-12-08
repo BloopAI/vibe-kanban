@@ -637,13 +637,10 @@ export function TaskFollowUpSection({
   ]);
 
   // Handle focus after code reference insertion
-  useEffect(() => {
-    if (pendingFocus) {
-      const editorElement = document.querySelector('[data-lexical-editor]');
-      (editorElement as HTMLElement)?.focus();
-      clearPendingFocus();
-    }
-  }, [pendingFocus, clearPendingFocus]);
+  // Use the WYSIWYG editor's shouldFocus prop instead of DOM manipulation
+  const handleEditorFocused = useCallback(() => {
+    clearPendingFocus();
+  }, [clearPendingFocus]);
 
   // Register keyboard shortcuts
   useKeySubmitFollowUp(handleSubmitShortcut, {
@@ -772,6 +769,8 @@ export function TaskFollowUpSection({
                 taskAttemptId={selectedAttemptId}
                 onCmdEnter={handleSubmitShortcut}
                 className="min-h-[40px]"
+                shouldFocus={pendingFocus}
+                onFocused={handleEditorFocused}
               />
             </div>
           </div>

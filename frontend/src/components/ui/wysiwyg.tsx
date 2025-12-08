@@ -1,5 +1,6 @@
-import { useMemo, useState, useCallback, memo } from 'react';
+import { useMemo, useState, useCallback, memo, useEffect } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
@@ -45,6 +46,26 @@ import { Button } from '@/components/ui/button';
 import { Check, Clipboard, Pencil, Trash2 } from 'lucide-react';
 import { writeClipboardViaBridge } from '@/vscode/bridge';
 
+/** Plugin to programmatically focus the editor via props */
+function FocusPlugin({
+  shouldFocus,
+  onFocused,
+}: {
+  shouldFocus: boolean;
+  onFocused?: () => void;
+}) {
+  const [editor] = useLexicalComposerContext();
+
+  useEffect(() => {
+    if (shouldFocus) {
+      editor.focus();
+      onFocused?.();
+    }
+  }, [editor, shouldFocus, onFocused]);
+
+  return null;
+}
+
 /** Markdown string representing the editor content */
 export type SerializedEditorState = string;
 
@@ -72,6 +93,10 @@ type WysiwygProps = {
   onDelete?: () => void;
   /** Auto-focus the editor on mount */
   autoFocus?: boolean;
+  /** Programmatic focus trigger - set to true to focus the editor */
+  shouldFocus?: boolean;
+  /** Callback when editor has been focused via shouldFocus */
+  onFocused?: () => void;
 };
 
 function WYSIWYGEditor({
@@ -91,6 +116,8 @@ function WYSIWYGEditor({
   onEdit,
   onDelete,
   autoFocus = false,
+  shouldFocus = false,
+  onFocused,
 }: WysiwygProps) {
   // Copy button state
   const [copied, setCopied] = useState(false);
@@ -240,6 +267,7 @@ function WYSIWYGEditor({
               {!disabled && (
                 <>
                   {autoFocus && <AutoFocusPlugin />}
+                  <FocusPlugin shouldFocus={shouldFocus} onFocused={onFocused} />
                   <HistoryPlugin />
                   <MarkdownShortcutPlugin transformers={extendedTransformers} />
                   <FileTagTypeaheadPlugin projectId={projectId} />
