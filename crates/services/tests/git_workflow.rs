@@ -6,7 +6,7 @@ use std::{
 
 use git2::{Repository, build::CheckoutBuilder};
 use services::services::{
-    git::{DiffTarget, GitCli, GitService},
+    git::{DiffTarget, GitBranchId, GitCli, GitService},
     github::{GitHubRepoInfo, GitHubServiceError},
 };
 use tempfile::TempDir;
@@ -198,14 +198,14 @@ fn diff_added_binary_file_has_no_content() {
     let mut f = fs::File::create(repo_path.join("bin.dat")).unwrap();
     f.write_all(&[0u8, 1, 2, 3]).unwrap();
     let _ = s.commit(&repo_path, "add binary").unwrap();
+    let latest_commit = s.get_head_info(&repo_path).unwrap().oid;
 
     let s = GitService::new();
     let diffs = s
         .get_diffs(
-            DiffTarget::Branch {
+            DiffTarget::Commit {
                 repo_path: Path::new(&repo_path),
-                branch_name: "feature",
-                base_branch: "main",
+                commit_sha: &latest_commit,
             },
             None,
         )
@@ -300,14 +300,26 @@ fn branch_status_ahead_and_behind() {
     let _ = s.commit(&repo_path, "m1").unwrap();
 
     let s = GitService::new();
-    let (ahead, behind) = s.get_branch_status(&repo_path, "feature", "main").unwrap();
+    let (ahead, behind) = s
+        .get_branch_status(
+            &repo_path,
+            &GitBranchId::from_local_name("feature".to_string()),
+            &GitBranchId::from_local_name("main".to_string()),
+        )
+        .unwrap();
     assert_eq!((ahead, behind), (1, 1));
 
     // advance feature by one more (ahead 2, behind 1)
     checkout_branch(&repo_path, "feature");
     write_file(&repo_path, "feature2.txt", "f2\n");
     let _ = s.commit(&repo_path, "f2").unwrap();
-    let (ahead2, behind2) = s.get_branch_status(&repo_path, "feature", "main").unwrap();
+    let (ahead2, behind2) = s
+        .get_branch_status(
+            &repo_path,
+            &GitBranchId::from_local_name("feature".to_string()),
+            &GitBranchId::from_local_name("main".to_string()),
+        )
+        .unwrap();
     assert_eq!((ahead2, behind2), (2, 1));
 }
 
@@ -347,7 +359,13 @@ fn worktree_diff_respects_path_filter() {
     write_file(&repo_path, "other/skip2.txt", "skip\n");
 
     let s = GitService::new();
-    let base_commit = s.get_base_commit(&repo_path, "feature", "main").unwrap();
+    let base_commit = s
+        .get_base_commit(
+            &repo_path,
+            &GitBranchId::from_local_name("feature".to_string()),
+            &GitBranchId::from_local_name("main".to_string()),
+        )
+        .unwrap();
     let diffs = s
         .get_diffs(
             DiffTarget::Worktree {
@@ -374,7 +392,10 @@ fn get_branch_oid_nonexistent_errors() {
     let td = TempDir::new().unwrap();
     let repo_path = init_repo_main(&td);
     let s = GitService::new();
-    let res = s.get_branch_oid(&repo_path, "no-such-branch");
+    let res = s.get_branch_oid(
+        &repo_path,
+        &GitBranchId::from_local_name("no-such-branch".to_string()),
+    );
     assert!(res.is_err());
 }
 
@@ -418,7 +439,13 @@ fn worktree_diff_permission_only_change() {
     perms.set_mode(perms.mode() | 0o111);
     std::fs::set_permissions(repo_path.join("p.sh"), perms).unwrap();
 
-    let base_commit = s.get_base_commit(&repo_path, "feature", "main").unwrap();
+    let base_commit = s
+        .get_base_commit(
+            &repo_path,
+            &GitBranchId::from_local_name("feature".to_string()),
+            &GitBranchId::from_local_name("main".to_string()),
+        )
+        .unwrap();
     // Compute worktree diff vs main on feature
     let diffs = s
         .get_diffs(
@@ -473,8 +500,13 @@ fn squash_merge_libgit2_sets_author_without_user() {
 
     // Create feature branch and worktree
     create_branch(&repo_path, "feature");
-    s.add_worktree(&repo_path, &worktree_path, "feature", false)
-        .unwrap();
+    s.add_worktree(
+        &repo_path,
+        &worktree_path,
+        &GitBranchId::from_local_name("feature".to_string()),
+        false,
+    )
+    .unwrap();
 
     // Make a feature commit in the worktree via libgit2 using an explicit signature
     write_file(&worktree_path, "f.txt", "feat\n");
@@ -501,7 +533,13 @@ fn squash_merge_libgit2_sets_author_without_user() {
 
     // Merge feature -> main (libgit2 squash)
     let merge_sha = s
-        .merge_changes(&repo_path, &worktree_path, "feature", "main", "squash")
+        .merge_changes(
+            &repo_path,
+            &worktree_path,
+            &GitBranchId::from_local_name("feature".to_string()),
+            &GitBranchId::from_local_name("main".to_string()),
+            "squash",
+        )
         .unwrap();
 
     // The squash commit author should not be the feature commit's author, and must be present.

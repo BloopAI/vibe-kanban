@@ -5,7 +5,7 @@ use std::{
 };
 
 use git2::{PushOptions, Repository, build::CheckoutBuilder};
-use services::services::git::{GitCli, GitCliError, GitService};
+use services::services::git::{GitBranchId, GitCli, GitCliError, GitService};
 use tempfile::TempDir;
 // Avoid direct git CLI usage in tests; exercise GitService instead.
 
@@ -108,8 +108,13 @@ fn setup_repo_with_worktree(root: &TempDir) -> (PathBuf, PathBuf) {
     create_branch_from_head(&repo, "feature");
 
     let svc = GitService::new();
-    svc.add_worktree(&repo_path, &worktree_path, "feature", false)
-        .expect("create worktree");
+    svc.add_worktree(
+        &repo_path,
+        &worktree_path,
+        &GitBranchId::from_local_name("feature".to_string()),
+        false,
+    )
+    .expect("create worktree");
 
     write_file(&worktree_path, "feat.txt", "feat change\n");
     let wt_repo = Repository::open(&worktree_path).unwrap();
@@ -153,8 +158,13 @@ fn setup_conflict_repo_with_worktree(root: &TempDir) -> (PathBuf, PathBuf) {
 
     // add a worktree for feature and create the conflicting commit
     let svc = GitService::new();
-    svc.add_worktree(&repo_path, &worktree_path, "feature", false)
-        .expect("create worktree");
+    svc.add_worktree(
+        &repo_path,
+        &worktree_path,
+        &GitBranchId::from_local_name("feature".to_string()),
+        false,
+    )
+    .expect("create worktree");
     let wt_repo = Repository::open(&worktree_path).unwrap();
     write_file(&worktree_path, "conflict.txt", "feature version\n");
     commit_all(&wt_repo, "feature conflicting change");
@@ -192,8 +202,13 @@ fn setup_no_unique_feature_repo(root: &TempDir) -> (PathBuf, PathBuf) {
     checkout_branch(&repo, "old-base");
     create_branch_from_head(&repo, "feature");
     let svc = GitService::new();
-    svc.add_worktree(&repo_path, &worktree_path, "feature", false)
-        .expect("create worktree");
+    svc.add_worktree(
+        &repo_path,
+        &worktree_path,
+        &GitBranchId::from_local_name("feature".to_string()),
+        false,
+    )
+    .expect("create worktree");
 
     (repo_path, worktree_path)
 }
@@ -218,8 +233,13 @@ fn setup_direct_conflict_repo(root: &TempDir) -> (PathBuf, PathBuf) {
     // Create feature and commit conflicting change
     create_branch_from_head(&repo, "feature");
     let svc = GitService::new();
-    svc.add_worktree(&repo_path, &worktree_path, "feature", false)
-        .expect("create worktree");
+    svc.add_worktree(
+        &repo_path,
+        &worktree_path,
+        &GitBranchId::from_local_name("feature".to_string()),
+        false,
+    )
+    .expect("create worktree");
     let wt_repo = Repository::open(&worktree_path).unwrap();
     write_file(&worktree_path, "conflict.txt", "feature change\n");
     commit_all(&wt_repo, "feature change");
@@ -279,7 +299,12 @@ fn push_reports_non_fast_forward() {
     let remote_url_string = remote.url().expect("origin url").to_string();
 
     let git_cli = GitCli::new();
-    let result = git_cli.push(&local_path, &remote_url_string, "main", false);
+    let result = git_cli.push(
+        &local_path,
+        &remote_url_string,
+        &GitBranchId::from_local_name("main".to_string()),
+        false,
+    );
     match result {
         Err(GitCliError::PushRejected(msg)) => {
             let lower = msg.to_ascii_lowercase();
@@ -377,7 +402,12 @@ fn push_and_fetch_roundtrip_updates_tracking_branch() {
 
     let git_cli = GitCli::new();
     git_cli
-        .push(&producer_path, &remote_url_string, "main", false)
+        .push(
+            &producer_path,
+            &remote_url_string,
+            &GitBranchId::from_local_name("main".to_string()),
+            false,
+        )
         .expect("push succeeded");
 
     let new_oid = producer_repo
@@ -417,9 +447,9 @@ fn rebase_preserves_untracked_files() {
     let res = service.rebase_branch(
         &repo_path,
         &worktree_path,
-        "new-base",
-        "old-base",
-        "feature",
+        &GitBranchId::from_local_name("new-base".to_string()),
+        &GitBranchId::from_local_name("old-base".to_string()),
+        &GitBranchId::from_local_name("feature".to_string()),
     );
     assert!(res.is_ok(), "rebase should succeed: {res:?}");
 
@@ -439,9 +469,9 @@ fn rebase_aborts_on_uncommitted_tracked_changes() {
     let res = service.rebase_branch(
         &repo_path,
         &worktree_path,
-        "new-base",
-        "old-base",
-        "feature",
+        &GitBranchId::from_local_name("new-base".to_string()),
+        &GitBranchId::from_local_name("old-base".to_string()),
+        &GitBranchId::from_local_name("feature".to_string()),
     );
     assert!(res.is_err(), "rebase should fail on dirty worktree");
 
@@ -460,9 +490,9 @@ fn rebase_aborts_if_untracked_would_be_overwritten_by_base() {
     let res = service.rebase_branch(
         &repo_path,
         &worktree_path,
-        "new-base",
-        "old-base",
-        "feature",
+        &GitBranchId::from_local_name("new-base".to_string()),
+        &GitBranchId::from_local_name("old-base".to_string()),
+        &GitBranchId::from_local_name("feature".to_string()),
     );
     assert!(
         res.is_err(),
@@ -490,8 +520,8 @@ fn merge_does_not_overwrite_main_repo_untracked_files() {
     let res = service.merge_changes(
         &repo_path,
         &worktree_path,
-        "feature",
-        "main",
+        &GitBranchId::from_local_name("feature".to_string()),
+        &GitBranchId::from_local_name("main".to_string()),
         "squash merge",
     );
     assert!(
@@ -513,7 +543,12 @@ fn merge_does_not_touch_tracked_uncommitted_changes_in_base_worktree() {
     let _main_repo = Repository::open(&repo_path).unwrap();
     // Base branch commits will be advanced by the merge operation; record before via service
     let g = GitService::new();
-    let before_oid = g.get_branch_oid(&repo_path, "main").unwrap();
+    let before_oid = g
+        .get_branch_oid(
+            &repo_path,
+            &GitBranchId::from_local_name("main".to_string()),
+        )
+        .unwrap();
 
     // Create a tracked file that will also be added by feature branch to simulate overlap
     write_file(&repo_path, "danger2.txt", "my staged change\n");
@@ -533,8 +568,8 @@ fn merge_does_not_touch_tracked_uncommitted_changes_in_base_worktree() {
     let res = service.merge_changes(
         &repo_path,
         &worktree_path,
-        "feature",
-        "main",
+        &GitBranchId::from_local_name("feature".to_string()),
+        &GitBranchId::from_local_name("main".to_string()),
         "squash merge",
     );
     assert!(
@@ -547,7 +582,12 @@ fn merge_does_not_touch_tracked_uncommitted_changes_in_base_worktree() {
     assert_eq!(content, "edited locally\n");
 
     // Confirm the main branch ref advanced
-    let after_oid = g.get_branch_oid(&repo_path, "main").unwrap();
+    let after_oid = g
+        .get_branch_oid(
+            &repo_path,
+            &GitBranchId::from_local_name("main".to_string()),
+        )
+        .unwrap();
     assert_ne!(before_oid, after_oid, "main ref should be updated by merge");
 }
 
@@ -566,7 +606,13 @@ fn merge_refuses_with_staged_changes_on_base() {
     // main has staged change
     write_file(&repo_path, "staged.txt", "staged\n");
     add_path(&repo_path, "staged.txt");
-    let res = s.merge_changes(&repo_path, &worktree_path, "feature", "main", "squash");
+    let res = s.merge_changes(
+        &repo_path,
+        &worktree_path,
+        &GitBranchId::from_local_name("feature".to_string()),
+        &GitBranchId::from_local_name("main".to_string()),
+        "squash",
+    );
     assert!(res.is_err(), "should refuse merge due to staged changes");
     // staged file remains
     let content = std::fs::read_to_string(repo_path.join("staged.txt")).unwrap();
@@ -588,7 +634,13 @@ fn merge_preserves_unstaged_changes_on_base() {
     commit_all(&wt_repo, "feature merged");
 
     let _sha = s
-        .merge_changes(&repo_path, &worktree_path, "feature", "main", "squash")
+        .merge_changes(
+            &repo_path,
+            &worktree_path,
+            &GitBranchId::from_local_name("feature".to_string()),
+            &GitBranchId::from_local_name("main".to_string()),
+            "squash",
+        )
         .unwrap();
     // local edit preserved
     let loc = std::fs::read_to_string(repo_path.join("common.txt")).unwrap();
@@ -614,13 +666,24 @@ fn update_ref_does_not_destroy_feature_worktree_dirty_state() {
     write_file(&worktree_path, "dirty.txt", "unstaged\n");
     // merge from feature into main (CLI path updates task ref via update-ref)
     let sha = s
-        .merge_changes(&repo_path, &worktree_path, "feature", "main", "squash")
+        .merge_changes(
+            &repo_path,
+            &worktree_path,
+            &GitBranchId::from_local_name("feature".to_string()),
+            &GitBranchId::from_local_name("main".to_string()),
+            "squash",
+        )
         .unwrap();
     // uncommitted change in feature worktree preserved
     let dirty = std::fs::read_to_string(worktree_path.join("dirty.txt")).unwrap();
     assert_eq!(dirty, "unstaged\n");
     // feature branch ref updated to the squash commit in main repo
-    let feature_oid = s.get_branch_oid(&repo_path, "feature").unwrap();
+    let feature_oid = s
+        .get_branch_oid(
+            &repo_path,
+            &GitBranchId::from_local_name("feature".to_string()),
+        )
+        .unwrap();
     assert_eq!(feature_oid, sha);
     // and the feature worktree HEAD now points to that commit
     let head = s.get_head_info(&worktree_path).unwrap();
@@ -636,18 +699,44 @@ fn libgit2_merge_updates_base_ref_in_both_repos() {
     let s = GitService::new();
 
     // Record current main OID from both main repo and worktree repo; they should match pre-merge
-    let before_main_repo = s.get_branch_oid(&repo_path, "main").unwrap();
-    let before_main_wt = s.get_branch_oid(&worktree_path, "main").unwrap();
+    let before_main_repo = s
+        .get_branch_oid(
+            &repo_path,
+            &GitBranchId::from_local_name("main".to_string()),
+        )
+        .unwrap();
+    let before_main_wt = s
+        .get_branch_oid(
+            &worktree_path,
+            &GitBranchId::from_local_name("main".to_string()),
+        )
+        .unwrap();
     assert_eq!(before_main_repo, before_main_wt);
 
     // Perform merge (squash) while main repo is NOT on base branch (libgit2 path)
     let sha = s
-        .merge_changes(&repo_path, &worktree_path, "feature", "main", "squash")
+        .merge_changes(
+            &repo_path,
+            &worktree_path,
+            &GitBranchId::from_local_name("feature".to_string()),
+            &GitBranchId::from_local_name("main".to_string()),
+            "squash",
+        )
         .expect("merge should succeed via libgit2 path");
 
     // Base branch ref advanced in both main and worktree repositories
-    let after_main_repo = s.get_branch_oid(&repo_path, "main").unwrap();
-    let after_main_wt = s.get_branch_oid(&worktree_path, "main").unwrap();
+    let after_main_repo = s
+        .get_branch_oid(
+            &repo_path,
+            &GitBranchId::from_local_name("main".to_string()),
+        )
+        .unwrap();
+    let after_main_wt = s
+        .get_branch_oid(
+            &worktree_path,
+            &GitBranchId::from_local_name("main".to_string()),
+        )
+        .unwrap();
     assert_eq!(after_main_repo, sha);
     assert_eq!(after_main_wt, sha);
 }
@@ -664,7 +753,13 @@ fn libgit2_merge_updates_task_ref_and_feature_head_preserves_dirty() {
 
     // Perform merge (squash) from feature into main; this path uses libgit2
     let sha = s
-        .merge_changes(&repo_path, &worktree_path, "feature", "main", "squash")
+        .merge_changes(
+            &repo_path,
+            &worktree_path,
+            &GitBranchId::from_local_name("feature".to_string()),
+            &GitBranchId::from_local_name("main".to_string()),
+            "squash",
+        )
         .expect("merge should succeed via libgit2 path");
 
     // Dirty file preserved in worktree
@@ -672,8 +767,18 @@ fn libgit2_merge_updates_task_ref_and_feature_head_preserves_dirty() {
     assert_eq!(dirty, "keep me\n");
 
     // Task branch (feature) updated to squash commit in both repos
-    let feat_main_repo = s.get_branch_oid(&repo_path, "feature").unwrap();
-    let feat_worktree = s.get_branch_oid(&worktree_path, "feature").unwrap();
+    let feat_main_repo = s
+        .get_branch_oid(
+            &repo_path,
+            &GitBranchId::from_local_name("feature".to_string()),
+        )
+        .unwrap();
+    let feat_worktree = s
+        .get_branch_oid(
+            &worktree_path,
+            &GitBranchId::from_local_name("feature".to_string()),
+        )
+        .unwrap();
     assert_eq!(feat_main_repo, sha);
     assert_eq!(feat_worktree, sha);
 
@@ -694,9 +799,9 @@ fn rebase_refuses_to_abort_existing_rebase() {
         .rebase_branch(
             &repo_path,
             &worktree_path,
-            "new-base",
-            "old-base",
-            "feature",
+            &GitBranchId::from_local_name("new-base".to_string()),
+            &GitBranchId::from_local_name("old-base".to_string()),
+            &GitBranchId::from_local_name("feature".to_string()),
         )
         .expect_err("first rebase should error and leave in-progress state");
 
@@ -705,9 +810,9 @@ fn rebase_refuses_to_abort_existing_rebase() {
     let res = service.rebase_branch(
         &repo_path,
         &worktree_path,
-        "new-base",
-        "old-base",
-        "feature",
+        &GitBranchId::from_local_name("new-base".to_string()),
+        &GitBranchId::from_local_name("old-base".to_string()),
+        &GitBranchId::from_local_name("feature".to_string()),
     );
     assert!(res.is_err(), "should error because rebase is in progress");
     // Note: We do not auto-abort; user should resolve or abort explicitly
@@ -719,15 +824,20 @@ fn rebase_fast_forwards_when_no_unique_commits() {
     let (repo_path, worktree_path) = setup_no_unique_feature_repo(&td);
     let g = GitService::new();
     let before = g.get_head_info(&worktree_path).unwrap().oid;
-    let new_base_oid = g.get_branch_oid(&repo_path, "new-base").unwrap();
+    let new_base_oid = g
+        .get_branch_oid(
+            &repo_path,
+            &GitBranchId::from_local_name("new-base".to_string()),
+        )
+        .unwrap();
 
     let _res = g
         .rebase_branch(
             &repo_path,
             &worktree_path,
-            "new-base",
-            "old-base",
-            "feature",
+            &GitBranchId::from_local_name("new-base".to_string()),
+            &GitBranchId::from_local_name("old-base".to_string()),
+            &GitBranchId::from_local_name("feature".to_string()),
         )
         .expect("rebase should succeed");
     let after_oid = g.get_head_info(&worktree_path).unwrap().oid;
@@ -756,9 +866,9 @@ fn rebase_applies_multiple_commits_onto_ahead_base() {
         .rebase_branch(
             &repo_path,
             &worktree_path,
-            "new-base",
-            "old-base",
-            "feature",
+            &GitBranchId::from_local_name("new-base".to_string()),
+            &GitBranchId::from_local_name("old-base".to_string()),
+            &GitBranchId::from_local_name("feature".to_string()),
         )
         .expect("rebase should succeed");
 
@@ -785,15 +895,20 @@ fn merge_when_base_ahead_and_feature_ahead_fails() {
     commit_all(&wt_repo, "feature ahead extra");
 
     let g = GitService::new();
-    let before_main = g.get_branch_oid(&repo_path, "main").unwrap();
+    let before_main = g
+        .get_branch_oid(
+            &repo_path,
+            &GitBranchId::from_local_name("main".to_string()),
+        )
+        .unwrap();
 
     // Attempt to merge (squash) into main - should fail because base is ahead
     let service = GitService::new();
     let res = service.merge_changes(
         &repo_path,
         &worktree_path,
-        "feature",
-        "main",
+        &GitBranchId::from_local_name("feature".to_string()),
+        &GitBranchId::from_local_name("main".to_string()),
         "squash merge",
     );
 
@@ -803,7 +918,12 @@ fn merge_when_base_ahead_and_feature_ahead_fails() {
     );
 
     // Verify main branch was not modified
-    let after_main = g.get_branch_oid(&repo_path, "main").unwrap();
+    let after_main = g
+        .get_branch_oid(
+            &repo_path,
+            &GitBranchId::from_local_name("main".to_string()),
+        )
+        .unwrap();
     assert_eq!(
         before_main, after_main,
         "main ref should remain unchanged when merge fails"
@@ -818,20 +938,30 @@ fn merge_conflict_does_not_move_base_ref() {
     // Record main ref before
     let _repo = Repository::open(&repo_path).unwrap();
     let g = GitService::new();
-    let before = g.get_branch_oid(&repo_path, "main").unwrap();
+    let before = g
+        .get_branch_oid(
+            &repo_path,
+            &GitBranchId::from_local_name("main".to_string()),
+        )
+        .unwrap();
 
     let service = GitService::new();
     let res = service.merge_changes(
         &repo_path,
         &worktree_path,
-        "feature",
-        "main",
+        &GitBranchId::from_local_name("feature".to_string()),
+        &GitBranchId::from_local_name("main".to_string()),
         "squash merge",
     );
 
     assert!(res.is_err(), "conflicting merge should fail");
 
-    let after = g.get_branch_oid(&repo_path, "main").unwrap();
+    let after = g
+        .get_branch_oid(
+            &repo_path,
+            &GitBranchId::from_local_name("main".to_string()),
+        )
+        .unwrap();
     assert_eq!(before, after, "main ref must remain unchanged on conflict");
 }
 
@@ -861,14 +991,19 @@ fn merge_delete_vs_modify_conflict_behaves_safely() {
 
     // Capture main state AFTER all setup commits
     let g = GitService::new();
-    let before = g.get_branch_oid(&repo_path, "main").unwrap();
+    let before = g
+        .get_branch_oid(
+            &repo_path,
+            &GitBranchId::from_local_name("main".to_string()),
+        )
+        .unwrap();
 
     let service = GitService::new();
     let res = service.merge_changes(
         &repo_path,
         &worktree_path,
-        "feature",
-        "main",
+        &GitBranchId::from_local_name("feature".to_string()),
+        &GitBranchId::from_local_name("main".to_string()),
         "squash merge",
     );
 
@@ -876,7 +1011,12 @@ fn merge_delete_vs_modify_conflict_behaves_safely() {
     assert!(res.is_err(), "merge should fail when base branch is ahead");
 
     // Ensure base ref unchanged on failure
-    let after = g.get_branch_oid(&repo_path, "main").unwrap();
+    let after = g
+        .get_branch_oid(
+            &repo_path,
+            &GitBranchId::from_local_name("main".to_string()),
+        )
+        .unwrap();
     assert_eq!(before, after, "main ref must remain unchanged on failure");
 }
 
@@ -901,9 +1041,9 @@ fn rebase_preserves_rename_changes() {
         .rebase_branch(
             &repo_path,
             &worktree_path,
-            "new-base",
-            "old-base",
-            "feature",
+            &GitBranchId::from_local_name("new-base".to_string()),
+            &GitBranchId::from_local_name("old-base".to_string()),
+            &GitBranchId::from_local_name("feature".to_string()),
         )
         .expect("rebase should succeed");
     // after rebase, renamed file present; original absent
@@ -928,20 +1068,37 @@ fn merge_refreshes_main_worktree_when_on_base() {
     // Create feature branch and worktree
     create_branch_from_head(&repo, "feature");
     let wt = td.path().join("wt_refresh");
-    s.add_worktree(&repo_path, &wt, "feature", false).unwrap();
+    s.add_worktree(
+        &repo_path,
+        &wt,
+        &GitBranchId::from_local_name("feature".to_string()),
+        false,
+    )
+    .unwrap();
     // Modify file in worktree and commit
     write_file(&wt, "file.txt", "feature change\n");
     let _ = s.commit(&wt, "feature change").unwrap();
 
     // Merge into main (squash) and ensure main worktree is updated since it is on base
     let merge_sha = s
-        .merge_changes(&repo_path, &wt, "feature", "main", "squash")
+        .merge_changes(
+            &repo_path,
+            &wt,
+            &GitBranchId::from_local_name("feature".to_string()),
+            &GitBranchId::from_local_name("main".to_string()),
+            "squash",
+        )
         .unwrap();
     // Since main is on base branch and we use safe CLI merge, both working tree
     // and ref should reflect the merged content.
     let content = std::fs::read_to_string(repo_path.join("file.txt")).unwrap();
     assert_eq!(content, "feature change\n");
-    let oid = s.get_branch_oid(&repo_path, "main").unwrap();
+    let oid = s
+        .get_branch_oid(
+            &repo_path,
+            &GitBranchId::from_local_name("main".to_string()),
+        )
+        .unwrap();
     assert_eq!(oid, merge_sha);
 }
 
@@ -969,7 +1126,13 @@ fn sparse_checkout_respected_in_worktree_diffs_and_commit() {
     // create feature branch and worktree
     create_branch_from_head(&repo, "feature");
     let wt = td.path().join("wt_sparse");
-    s.add_worktree(&repo_path, &wt, "feature", false).unwrap();
+    s.add_worktree(
+        &repo_path,
+        &wt,
+        &GitBranchId::from_local_name("feature".to_string()),
+        false,
+    )
+    .unwrap();
 
     // materialization check: included exists, excluded does not
     assert!(wt.join("included/a.txt").exists());
@@ -977,7 +1140,13 @@ fn sparse_checkout_respected_in_worktree_diffs_and_commit() {
 
     // modify included file
     write_file(&wt, "included/a.txt", "A-mod\n");
-    let base_commit = s.get_base_commit(&repo_path, "feature", "main").unwrap();
+    let base_commit = s
+        .get_base_commit(
+            &repo_path,
+            &GitBranchId::from_local_name("feature".to_string()),
+            &GitBranchId::from_local_name("main".to_string()),
+        )
+        .unwrap();
     // get worktree diffs vs main, ensure excluded/b.txt is NOT reported deleted
     let diffs = s
         .get_diffs(
@@ -1040,13 +1209,25 @@ fn worktree_diff_ignores_commits_where_base_branch_is_ahead() {
 
     create_branch_from_head(&repo, "feature");
     let wt = td.path().join("wt_base_ahead");
-    s.add_worktree(&repo_path, &wt, "feature", false).unwrap();
+    s.add_worktree(
+        &repo_path,
+        &wt,
+        &GitBranchId::from_local_name("feature".to_string()),
+        false,
+    )
+    .unwrap();
 
     write_file(&repo_path, "base_only.txt", "main ahead\n");
     let _ = s.commit(&repo_path, "main ahead").unwrap();
 
     write_file(&wt, "feature.txt", "feature change\n");
-    let base_commit = s.get_base_commit(&repo_path, "feature", "main").unwrap();
+    let base_commit = s
+        .get_base_commit(
+            &repo_path,
+            &GitBranchId::from_local_name("feature".to_string()),
+            &GitBranchId::from_local_name("main".to_string()),
+        )
+        .unwrap();
 
     let diffs = s
         .get_diffs(
@@ -1091,8 +1272,13 @@ fn merge_binary_conflict_does_not_move_ref() {
     // create feature branch and worktree
     create_branch_from_head(&repo, "feature");
     let worktree_path = td.path().join("wt_bin");
-    s.add_worktree(&repo_path, &worktree_path, "feature", false)
-        .unwrap();
+    s.add_worktree(
+        &repo_path,
+        &worktree_path,
+        &GitBranchId::from_local_name("feature".to_string()),
+        false,
+    )
+    .unwrap();
 
     // feature adds/commits binary file
     let mut f = fs::File::create(worktree_path.join("bin.dat")).unwrap();
@@ -1104,10 +1290,26 @@ fn merge_binary_conflict_does_not_move_ref() {
     f2.write_all(&[9, 8, 7, 6]).unwrap();
     let _ = s.commit(&repo_path, "main bin").unwrap();
 
-    let before = s.get_branch_oid(&repo_path, "main").unwrap();
-    let res = s.merge_changes(&repo_path, &worktree_path, "feature", "main", "merge bin");
+    let before = s
+        .get_branch_oid(
+            &repo_path,
+            &GitBranchId::from_local_name("main".to_string()),
+        )
+        .unwrap();
+    let res = s.merge_changes(
+        &repo_path,
+        &worktree_path,
+        &GitBranchId::from_local_name("feature".to_string()),
+        &GitBranchId::from_local_name("main".to_string()),
+        "merge bin",
+    );
     assert!(res.is_err(), "binary conflict should fail");
-    let after = s.get_branch_oid(&repo_path, "main").unwrap();
+    let after = s
+        .get_branch_oid(
+            &repo_path,
+            &GitBranchId::from_local_name("main".to_string()),
+        )
+        .unwrap();
     assert_eq!(before, after, "main ref unchanged on conflict");
 }
 
@@ -1122,8 +1324,13 @@ fn merge_rename_vs_modify_conflict_does_not_move_ref() {
     let _ = s.commit(&repo_path, "base").unwrap();
     create_branch_from_head(&repo, "feature");
     let worktree_path = td.path().join("wt_ren");
-    s.add_worktree(&repo_path, &worktree_path, "feature", false)
-        .unwrap();
+    s.add_worktree(
+        &repo_path,
+        &worktree_path,
+        &GitBranchId::from_local_name("feature".to_string()),
+        false,
+    )
+    .unwrap();
 
     // feature renames file
     std::fs::rename(
@@ -1137,22 +1344,37 @@ fn merge_rename_vs_modify_conflict_does_not_move_ref() {
     fs::write(repo_path.join("conflict.txt"), b"main change\n").unwrap();
     let _ = s.commit(&repo_path, "modify main").unwrap();
 
-    let before = s.get_branch_oid(&repo_path, "main").unwrap();
+    let before = s
+        .get_branch_oid(
+            &repo_path,
+            &GitBranchId::from_local_name("main".to_string()),
+        )
+        .unwrap();
     let res = s.merge_changes(
         &repo_path,
         &worktree_path,
-        "feature",
-        "main",
+        &GitBranchId::from_local_name("feature".to_string()),
+        &GitBranchId::from_local_name("main".to_string()),
         "merge rename",
     );
     match res {
         Err(_) => {
-            let after = s.get_branch_oid(&repo_path, "main").unwrap();
+            let after = s
+                .get_branch_oid(
+                    &repo_path,
+                    &GitBranchId::from_local_name("main".to_string()),
+                )
+                .unwrap();
             assert_eq!(before, after, "main unchanged on conflict");
         }
         Ok(sha) => {
             // ensure main advanced and result contains either renamed or modified content
-            let after = s.get_branch_oid(&repo_path, "main").unwrap();
+            let after = s
+                .get_branch_oid(
+                    &repo_path,
+                    &GitBranchId::from_local_name("main".to_string()),
+                )
+                .unwrap();
             assert_eq!(after, sha);
             let diffs = s
                 .get_diffs(
@@ -1196,8 +1418,8 @@ fn merge_leaves_no_staged_changes_on_target_branch() {
         .merge_changes(
             &repo_path,
             &worktree_path,
-            "feature",
-            "main",
+            &GitBranchId::from_local_name("feature".to_string()),
+            &GitBranchId::from_local_name("main".to_string()),
             "merge feature",
         )
         .expect("merge should succeed");
@@ -1244,10 +1466,20 @@ fn worktree_to_worktree_merge_leaves_no_staged_changes() {
 
     // Create worktrees for both feature branches
     service
-        .add_worktree(&repo_path, &worktree_a_path, "feature-a", false)
+        .add_worktree(
+            &repo_path,
+            &worktree_a_path,
+            &GitBranchId::from_local_name("feature-a".to_string()),
+            false,
+        )
         .expect("create worktree A");
     service
-        .add_worktree(&repo_path, &worktree_b_path, "feature-b", false)
+        .add_worktree(
+            &repo_path,
+            &worktree_b_path,
+            &GitBranchId::from_local_name("feature-b".to_string()),
+            false,
+        )
         .expect("create worktree B");
 
     // Make changes in worktree A
@@ -1266,8 +1498,8 @@ fn worktree_to_worktree_merge_leaves_no_staged_changes() {
     let _sha = service.merge_changes(
         &repo_path,
         &worktree_a_path,
-        "feature-a",
-        "feature-b",
+        &GitBranchId::from_local_name("feature-a".to_string()),
+        &GitBranchId::from_local_name("feature-b".to_string()),
         "merge feature-a into feature-b",
     );
 
@@ -1323,15 +1555,18 @@ fn merge_into_orphaned_branch_uses_libgit2_fallback() {
         .merge_changes(
             &repo_path,
             &worktree_path,
-            "feature",
-            "orphaned-feature",
+            &GitBranchId::from_local_name("feature".to_string()),
+            &GitBranchId::from_local_name("orphaned-feature".to_string()),
             "merge into orphaned branch",
         )
         .expect("libgit2 merge into orphaned branch should succeed");
 
     // Verify merge worked - orphaned-feature branch should now point to merge commit
     let orphaned_branch_oid = service
-        .get_branch_oid(&repo_path, "orphaned-feature")
+        .get_branch_oid(
+            &repo_path,
+            &GitBranchId::from_local_name("orphaned-feature".to_string()),
+        )
         .unwrap();
     assert_eq!(
         orphaned_branch_oid, merge_sha,
@@ -1374,7 +1609,12 @@ fn merge_base_ahead_of_task_should_error() {
     // Create feature branch from this point
     create_branch_from_head(&repo, "feature");
     service
-        .add_worktree(&repo_path, &worktree_path, "feature", false)
+        .add_worktree(
+            &repo_path,
+            &worktree_path,
+            &GitBranchId::from_local_name("feature".to_string()),
+            false,
+        )
         .expect("create worktree");
 
     // Feature makes a change and commits
@@ -1394,8 +1634,8 @@ fn merge_base_ahead_of_task_should_error() {
     let res = service.merge_changes(
         &repo_path,
         &worktree_path,
-        "feature",
-        "main",
+        &GitBranchId::from_local_name("feature".to_string()),
+        &GitBranchId::from_local_name("main".to_string()),
         "attempt merge when base ahead",
     );
 
