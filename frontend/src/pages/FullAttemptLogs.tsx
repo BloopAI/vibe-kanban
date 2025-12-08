@@ -8,7 +8,7 @@ import TaskAttemptPanel from '@/components/panels/TaskAttemptPanel';
 import { useTaskAttempt } from '@/hooks/useTaskAttempt';
 import { useProjectTasks } from '@/hooks/useProjectTasks';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
-import { ReviewProvider } from '@/contexts/ReviewProvider';
+import { CodeReferenceInsertionProvider } from '@/contexts/CodeReferenceInsertionContext';
 import { ClickedElementsProvider } from '@/contexts/ClickedElementsProvider';
 
 export function FullAttemptLogsPage() {
@@ -34,7 +34,7 @@ export function FullAttemptLogsPage() {
         <main className="flex-1 min-h-0">
           {attempt ? (
             <ClickedElementsProvider attempt={attempt}>
-              <ReviewProvider key={attempt.id}>
+              <CodeReferenceInsertionProvider>
                 <ExecutionProcessesProvider
                   key={attempt.id}
                   attemptId={attempt.id}
@@ -54,7 +54,7 @@ export function FullAttemptLogsPage() {
                     )}
                   </TaskAttemptPanel>
                 </ExecutionProcessesProvider>
-              </ReviewProvider>
+              </CodeReferenceInsertionProvider>
             </ClickedElementsProvider>
           ) : (
             <TaskAttemptPanel attempt={attempt} task={task}>

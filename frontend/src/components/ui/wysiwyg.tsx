@@ -12,6 +12,11 @@ import {
   GITHUB_COMMENT_TRANSFORMER,
   GITHUB_COMMENT_EXPORT_TRANSFORMER,
 } from './wysiwyg/nodes/github-comment-node';
+import {
+  CodeReferenceNode,
+  CODE_REFERENCE_TRANSFORMER,
+  CODE_REFERENCE_EXPORT_TRANSFORMER,
+} from './wysiwyg/nodes/code-reference-node';
 import { CODE_BLOCK_TRANSFORMER } from './wysiwyg/transformers/code-block-transformer';
 import {
   TaskAttemptContext,
@@ -145,17 +150,20 @@ function WYSIWYGEditor({
         LinkNode,
         ImageNode,
         GitHubCommentNode,
+        CodeReferenceNode,
       ],
     }),
     []
   );
 
-  // Extended transformers with image, GitHub comment, and code block support (memoized to prevent unnecessary re-renders)
+  // Extended transformers with image, GitHub comment, code reference, and code block support (memoized to prevent unnecessary re-renders)
   const extendedTransformers: Transformer[] = useMemo(
     () => [
       IMAGE_TRANSFORMER,
       GITHUB_COMMENT_EXPORT_TRANSFORMER, // Export transformer for DecoratorNode (must be before import transformer)
       GITHUB_COMMENT_TRANSFORMER, // Import transformer for fenced code block
+      CODE_REFERENCE_EXPORT_TRANSFORMER, // Export transformer for code reference
+      CODE_REFERENCE_TRANSFORMER, // Import transformer for code reference fenced block
       CODE_BLOCK_TRANSFORMER,
       ...TRANSFORMERS,
     ],

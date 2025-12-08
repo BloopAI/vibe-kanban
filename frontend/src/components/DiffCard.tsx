@@ -17,24 +17,16 @@ import {
   Copy,
   Key,
   ExternalLink,
-  MessageSquare,
 } from 'lucide-react';
 import '@/styles/diff-style-overrides.css';
 import { attemptsApi } from '@/lib/api';
 import type { TaskAttempt } from 'shared/types';
-import {
-  useReview,
-  type ReviewDraft,
-  type ReviewComment,
-} from '@/contexts/ReviewProvider';
-import { CommentWidgetLine } from '@/components/diff/CommentWidgetLine';
-import { ReviewCommentRenderer } from '@/components/diff/ReviewCommentRenderer';
+import { useCodeReferenceInsertion } from '@/contexts/CodeReferenceInsertionContext';
 import {
   useDiffViewMode,
   useIgnoreWhitespaceDiff,
   useWrapTextDiff,
 } from '@/stores/useDiffViewStore';
-import { useProject } from '@/contexts/ProjectContext';
 
 type Props = {
   diff: Diff;
@@ -82,11 +74,10 @@ export default function DiffCard({
 }: Props) {
   const { config } = useUserSystem();
   const theme = getActualTheme(config?.theme);
-  const { comments, drafts, setDraft } = useReview();
+  const { insertCodeReference } = useCodeReferenceInsertion();
   const globalMode = useDiffViewMode();
   const ignoreWhitespace = useIgnoreWhitespaceDiff();
   const wrapText = useWrapTextDiff();
-  const { projectId } = useProject();
 
   const oldName = diff.oldPath || undefined;
   const newName = diff.newPath || oldName || 'unknown';
@@ -146,70 +137,17 @@ export default function DiffCard({
     ? (diff.deletions ?? 0)
     : (diffFile?.deletionLength ?? 0);
 
-  // Review functionality
+  // Code reference insertion for review feedback
   const filePath = newName || oldName || 'unknown';
-  const commentsForFile = useMemo(
-    () => comments.filter((c) => c.filePath === filePath),
-    [comments, filePath]
-  );
-
-  // Transform comments to git-diff-view extendData format
-  const extendData = useMemo(() => {
-    const oldFileData: Record<string, { data: ReviewComment }> = {};
-    const newFileData: Record<string, { data: ReviewComment }> = {};
-
-    commentsForFile.forEach((comment) => {
-      const lineKey = String(comment.lineNumber);
-      if (comment.side === SplitSide.old) {
-        oldFileData[lineKey] = { data: comment };
-      } else {
-        newFileData[lineKey] = { data: comment };
-      }
-    });
-
-    return {
-      oldFile: oldFileData,
-      newFile: newFileData,
-    };
-  }, [commentsForFile]);
 
   const handleAddWidgetClick = (lineNumber: number, side: SplitSide) => {
-    const widgetKey = `${filePath}-${side}-${lineNumber}`;
     const codeLine = readPlainLine(diffFile, lineNumber, side);
-    const draft: ReviewDraft = {
+    insertCodeReference({
       filePath,
-      side,
       lineNumber,
-      text: '',
-      ...(codeLine !== undefined ? { codeLine } : {}),
-    };
-    setDraft(widgetKey, draft);
-  };
-
-  const renderWidgetLine = (props: {
-    side: SplitSide;
-    lineNumber: number;
-    onClose: () => void;
-  }) => {
-    const widgetKey = `${filePath}-${props.side}-${props.lineNumber}`;
-    const draft = drafts[widgetKey];
-    if (!draft) return null;
-
-    return (
-      <CommentWidgetLine
-        draft={draft}
-        widgetKey={widgetKey}
-        onSave={props.onClose}
-        onCancel={props.onClose}
-        projectId={projectId}
-      />
-    );
-  };
-
-  const renderExtendLine = (lineData: { data: ReviewComment }) => {
-    return (
-      <ReviewCommentRenderer comment={lineData.data} projectId={projectId} />
-    );
+      side: side === SplitSide.old ? 'old' : 'new',
+      codeLine: codeLine ?? '',
+    });
   };
 
   // Title row
@@ -235,12 +173,6 @@ export default function DiffCard({
       <span className="ml-2" style={{ color: 'hsl(var(--console-error))' }}>
         -{del}
       </span>
-      {commentsForFile.length > 0 && (
-        <span className="ml-3 inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-primary/10 text-primary rounded">
-          <MessageSquare className="h-3 w-3" />
-          {commentsForFile.length}
-        </span>
-      )}
     </p>
   );
 
@@ -312,9 +244,6 @@ export default function DiffCard({
             diffViewFontSize={12}
             diffViewAddWidget
             onAddWidgetClick={handleAddWidgetClick}
-            renderWidgetLine={renderWidgetLine}
-            extendData={extendData}
-            renderExtendLine={renderExtendLine}
           />
         </div>
       )}

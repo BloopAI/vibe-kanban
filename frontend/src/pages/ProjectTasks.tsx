@@ -23,7 +23,7 @@ import { projectsApi } from '@/lib/api';
 import { paths } from '@/lib/paths';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { ClickedElementsProvider } from '@/contexts/ClickedElementsProvider';
-import { ReviewProvider } from '@/contexts/ReviewProvider';
+import { CodeReferenceInsertionProvider } from '@/contexts/CodeReferenceInsertionContext';
 import {
   GitOperationsProvider,
   useGitOperationsError,
@@ -1029,7 +1029,7 @@ export function ProjectTasks() {
   const attemptArea = (
     <GitOperationsProvider attemptId={attempt?.id}>
       <ClickedElementsProvider attempt={attempt}>
-        <ReviewProvider attemptId={attempt?.id}>
+        <CodeReferenceInsertionProvider>
           <ExecutionProcessesProvider attemptId={attempt?.id}>
             <TasksLayout
               kanban={kanbanContent}
@@ -1041,7 +1041,7 @@ export function ProjectTasks() {
               rightHeader={rightHeader}
             />
           </ExecutionProcessesProvider>
-        </ReviewProvider>
+        </CodeReferenceInsertionProvider>
       </ClickedElementsProvider>
     </GitOperationsProvider>
   );

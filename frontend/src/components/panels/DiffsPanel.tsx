@@ -1,5 +1,5 @@
 import { useDiffStream } from '@/hooks/useDiffStream';
-import { useMemo, useCallback, useState, useEffect } from 'react';
+import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Loader } from '@/components/ui/loader';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,41 @@ import type { TaskAttempt, Diff } from 'shared/types';
 import GitOperations, {
   type GitOperationsInputs,
 } from '@/components/tasks/Toolbar/GitOperations.tsx';
+import { useScrollToLineStore } from '@/stores/useScrollToLineStore';
+import { useDiffViewMode, type DiffViewMode } from '@/stores/useDiffViewStore';
+
+/**
+ * Scroll to a specific line in the diff view
+ */
+function scrollToLine(
+  _filePath: string,
+  lineNumber: number,
+  side: 'old' | 'new',
+  diffViewMode: DiffViewMode
+) {
+  // Build the query selector based on view mode
+  // In unified view, lines use data-line-old-num or data-line-new-num
+  // In split view, lines use data-line and data-side
+  let selector: string;
+  if (diffViewMode === 'split') {
+    const dataSide = side === 'old' ? 'old' : 'new';
+    selector = `tr[data-line="${lineNumber}"][data-side="${dataSide}"]`;
+  } else {
+    // Unified view
+    const attr = side === 'old' ? 'data-line-old-num' : 'data-line-new-num';
+    selector = `tr:has([${attr}="${lineNumber}"])`;
+  }
+
+  const element = document.querySelector(selector);
+  if (element) {
+    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Add a brief highlight effect
+    element.classList.add('bg-primary/20');
+    setTimeout(() => {
+      element.classList.remove('bg-primary/20');
+    }, 2000);
+  }
+}
 
 interface DiffsPanelProps {
   selectedAttempt: TaskAttempt | null;
@@ -91,6 +126,77 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
   const handleCollapseAll = useCallback(() => {
     setCollapsedIds(allCollapsed ? new Set() : new Set(ids));
   }, [allCollapsed, ids]);
+
+  // Scroll-to-line handling for code references
+  const scrollTarget = useScrollToLineStore((s) => s.scrollTarget);
+  const clearScrollTarget = useScrollToLineStore((s) => s.clearScrollTarget);
+  const diffViewMode = useDiffViewMode();
+  const pendingScrollRef = useRef<{
+    filePath: string;
+    lineNumber: number;
+    side: 'old' | 'new';
+  } | null>(null);
+
+  // Handle scroll target changes
+  useEffect(() => {
+    if (!scrollTarget) return;
+
+    const { filePath, lineNumber, side } = scrollTarget;
+
+    // Find the diff by file path
+    const diffIndex = diffs.findIndex(
+      (d) => d.newPath === filePath || d.oldPath === filePath
+    );
+    if (diffIndex === -1) {
+      clearScrollTarget();
+      return;
+    }
+
+    const diffId = diffs[diffIndex].newPath || diffs[diffIndex].oldPath || String(diffIndex);
+
+    // Check if diff is collapsed
+    if (collapsedIds.has(diffId)) {
+      // Store the scroll target and expand the diff
+      pendingScrollRef.current = { filePath, lineNumber, side };
+      setCollapsedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(diffId);
+        return next;
+      });
+      clearScrollTarget();
+      return;
+    }
+
+    // Diff is already expanded, scroll to line
+    scrollToLine(filePath, lineNumber, side, diffViewMode);
+    clearScrollTarget();
+  }, [scrollTarget, diffs, collapsedIds, clearScrollTarget, diffViewMode]);
+
+  // Handle scrolling after a diff is expanded
+  useEffect(() => {
+    if (!pendingScrollRef.current) return;
+
+    const { filePath, lineNumber, side } = pendingScrollRef.current;
+
+    // Find the diff and check if it's now expanded
+    const diffIndex = diffs.findIndex(
+      (d) => d.newPath === filePath || d.oldPath === filePath
+    );
+    if (diffIndex === -1) {
+      pendingScrollRef.current = null;
+      return;
+    }
+
+    const diffId = diffs[diffIndex].newPath || diffs[diffIndex].oldPath || String(diffIndex);
+    if (!collapsedIds.has(diffId)) {
+      // Diff is now expanded, scroll after a small delay for DOM to update
+      const timer = setTimeout(() => {
+        scrollToLine(filePath, lineNumber, side, diffViewMode);
+        pendingScrollRef.current = null;
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [collapsedIds, diffs, diffViewMode]);
 
   if (error) {
     return (
