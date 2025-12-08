@@ -147,7 +147,10 @@ const GitHubCommentsDialogImpl = NiceModal.create<GitHubCommentsDialogProps>(
                     {comments.map((comment) => {
                       const id = getCommentId(comment);
                       return (
-                        <div key={id} className="flex items-start gap-3 min-w-0">
+                        <div
+                          key={id}
+                          className="flex items-start gap-3 min-w-0"
+                        >
                           <Checkbox
                             checked={selectedIds.has(id)}
                             onCheckedChange={() => toggleSelection(id)}
