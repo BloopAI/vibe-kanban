@@ -109,7 +109,7 @@ const GitHubCommentsDialogImpl = NiceModal.create<GitHubCommentsDialogProps>(
             </DialogTitle>
           </DialogHeader>
 
-          <div className="p-4 overflow-auto flex-1 min-w-0">
+          <div className="p-4 overflow-auto flex-1 min-w-0 min-h-0">
             {errorMessage ? (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
