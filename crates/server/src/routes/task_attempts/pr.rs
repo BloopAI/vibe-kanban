@@ -21,8 +21,8 @@ use services::services::{
 use ts_rs::TS;
 use utils::response::ApiResponse;
 
-use crate::{DeploymentImpl, error::ApiError};
 use super::util::ensure_worktree_path;
+use crate::{DeploymentImpl, error::ApiError};
 
 #[derive(Debug, Deserialize, Serialize, TS)]
 pub struct CreateGitHubPrRequest {
