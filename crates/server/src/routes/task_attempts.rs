@@ -881,11 +881,13 @@ pub async fn get_task_attempt_branch_status(
 
 #[derive(serde::Deserialize, Debug, TS)]
 pub struct ChangeTargetBranchRequest {
+    pub repo_id: Uuid,
     pub new_target_branch: String,
 }
 
 #[derive(serde::Serialize, Debug, TS)]
 pub struct ChangeTargetBranchResponse {
+    pub repo_id: Uuid,
     pub new_target_branch: String,
     pub status: (usize, usize),
 }
@@ -906,44 +908,39 @@ pub async fn change_target_branch(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<ChangeTargetBranchRequest>,
 ) -> Result<ResponseJson<ApiResponse<ChangeTargetBranchResponse>>, ApiError> {
-    // Extract new base branch from request body if provided
+    let repo_id = payload.repo_id;
     let new_target_branch = payload.new_target_branch;
-    let task = task_attempt
-        .parent_task(&deployment.db().pool)
-        .await?
-        .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
     let pool = &deployment.db().pool;
-    let project = Project::find_by_id(pool, task.project_id)
+
+    let repo = Repo::find_by_id(pool, repo_id)
         .await?
-        .ok_or(ApiError::Project(ProjectError::ProjectNotFound))?;
-    let repo_path = get_first_repo_path(pool, project.id).await?;
-    match deployment
+        .ok_or(RepoError::NotFound)?;
+
+    if !deployment
         .git()
-        .check_branch_exists(&repo_path, &new_target_branch)?
+        .check_branch_exists(&repo.path, &new_target_branch)?
     {
-        true => {
-            AttemptRepo::update_all_target_branches(pool, task_attempt.id, &new_target_branch)
-                .await?;
-        }
-        false => {
-            return Ok(ResponseJson(ApiResponse::error(
-                format!(
-                    "Branch '{}' does not exist in the repository",
-                    new_target_branch
-                )
-                .as_str(),
-            )));
-        }
-    }
+        return Ok(ResponseJson(ApiResponse::error(
+            format!(
+                "Branch '{}' does not exist in repository '{}'",
+                new_target_branch, repo.name
+            )
+            .as_str(),
+        )));
+    };
+
+    AttemptRepo::update_target_branch(pool, task_attempt.id, repo_id, &new_target_branch).await?;
+
     let status =
         deployment
             .git()
-            .get_branch_status(&repo_path, &task_attempt.branch, &new_target_branch)?;
+            .get_branch_status(&repo.path, &task_attempt.branch, &new_target_branch)?;
 
     deployment
         .track_if_analytics_allowed(
             "task_attempt_target_branch_changed",
             serde_json::json!({
+                "repo_id": repo_id.to_string(),
                 "attempt_id": task_attempt.id.to_string(),
             }),
         )
@@ -951,6 +948,7 @@ pub async fn change_target_branch(
 
     Ok(ResponseJson(ApiResponse::success(
         ChangeTargetBranchResponse {
+            repo_id,
             new_target_branch,
             status,
         },
