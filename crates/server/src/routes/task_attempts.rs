@@ -6,7 +6,10 @@ pub mod pr;
 pub mod queue;
 pub mod util;
 
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
 use axum::{
     Extension, Json, Router,
@@ -23,9 +26,8 @@ use db::models::{
     attempt_repo::{AttemptRepo, CreateAttemptRepo},
     execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
     merge::{Merge, MergeStatus, PrMerge, PullRequestInfo},
-    project::{Project, ProjectError},
     project_repo::ProjectRepo,
-    repo::Repo,
+    repo::{Repo, RepoError},
     scratch::{Scratch, ScratchType},
     task::{Task, TaskRelationships, TaskStatus},
     task_attempt::{CreateTaskAttempt, TaskAttempt, TaskAttemptError},
@@ -64,7 +66,7 @@ use crate::{
 async fn get_first_repo_path(
     pool: &sqlx::SqlitePool,
     project_id: Uuid,
-) -> Result<std::path::PathBuf, ApiError> {
+) -> Result<PathBuf, ApiError> {
     let repos = ProjectRepo::find_repos_for_project(pool, project_id).await?;
     repos
         .first()
@@ -466,7 +468,7 @@ pub struct CommitCompareResult {
 pub async fn compare_commit_to_head(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
-    Query(params): Query<std::collections::HashMap<String, String>>,
+    Query(params): Query<HashMap<String, String>>,
 ) -> Result<ResponseJson<ApiResponse<CommitCompareResult>>, ApiError> {
     let Some(target_oid) = params.get("sha").cloned() else {
         return Err(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
@@ -477,7 +479,7 @@ pub async fn compare_commit_to_head(
         .container()
         .ensure_container_exists(&task_attempt)
         .await?;
-    let wt = std::path::Path::new(&container_ref);
+    let wt = Path::new(&container_ref);
     // TODO: this needs a worktree path, not a workspace path
     let subject = deployment.git().get_commit_subject(wt, &target_oid)?;
     let head_info = deployment.git().get_head_info(wt)?;
@@ -513,7 +515,7 @@ pub async fn merge_task_attempt(
         .container()
         .ensure_container_exists(&task_attempt)
         .await?;
-    let workspace_path = std::path::Path::new(&container_ref);
+    let workspace_path = Path::new(&container_ref);
 
     let task_uuid_str = task.id.to_string();
     let first_uuid_section = task_uuid_str.split('-').next().unwrap_or(&task_uuid_str);
@@ -609,7 +611,7 @@ pub async fn push_task_attempt_branch(
         .container()
         .ensure_container_exists(&task_attempt)
         .await?;
-    let workspace_path = std::path::PathBuf::from(&container_ref);
+    let workspace_path = PathBuf::from(&container_ref);
 
     // TODO: this needs a worktree path, not a workspace path
     match deployment
@@ -635,7 +637,7 @@ pub async fn force_push_task_attempt_branch(
         .container()
         .ensure_container_exists(&task_attempt)
         .await?;
-    let workspace_path = std::path::PathBuf::from(&container_ref);
+    let workspace_path = PathBuf::from(&container_ref);
 
     // TODO: this needs a worktree path, not a workspace path
     deployment
@@ -671,7 +673,7 @@ pub async fn open_task_attempt_in_editor(
         .container()
         .ensure_container_exists(&task_attempt)
         .await?;
-    let workspace_path = std::path::Path::new(&container_ref);
+    let workspace_path = Path::new(&container_ref);
 
     // If a specific file path is provided, use it; otherwise use the base path
     let path = if let Some(file_path) = payload.file_path.as_ref() {
@@ -766,7 +768,7 @@ pub async fn get_task_attempt_branch_status(
         .container()
         .ensure_container_exists(&task_attempt)
         .await?;
-    let workspace_dir = std::path::PathBuf::from(&container_ref);
+    let workspace_dir = PathBuf::from(&container_ref);
     let merges = Merge::find_by_task_attempt_id(pool, task_attempt.id).await?;
 
     let mut results = Vec::with_capacity(repositories.len());
@@ -902,6 +904,18 @@ pub struct RenameBranchResponse {
     pub branch: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[serde(tag = "type", rename_all = "snake_case")]
+#[ts(tag = "type", rename_all = "snake_case")]
+pub enum RenameBranchError {
+    EmptyBranchName,
+    InvalidBranchNameFormat,
+    OpenPullRequest,
+    BranchAlreadyExists { repo_name: String },
+    RebaseInProgress { repo_name: String },
+    RenameFailed { repo_name: String, message: String },
+}
+
 #[axum::debug_handler]
 pub async fn change_target_branch(
     Extension(task_attempt): Extension<TaskAttempt>,
@@ -960,78 +974,110 @@ pub async fn rename_branch(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<RenameBranchRequest>,
-) -> Result<ResponseJson<ApiResponse<RenameBranchResponse>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<RenameBranchResponse, RenameBranchError>>, ApiError> {
     let new_branch_name = payload.new_branch_name.trim();
 
     if new_branch_name.is_empty() {
-        return Ok(ResponseJson(ApiResponse::error(
-            "Branch name cannot be empty",
+        return Ok(ResponseJson(ApiResponse::error_with_data(
+            RenameBranchError::EmptyBranchName,
         )));
     }
-
+    if !deployment.git().is_branch_name_valid(new_branch_name) {
+        return Ok(ResponseJson(ApiResponse::error_with_data(
+            RenameBranchError::InvalidBranchNameFormat,
+        )));
+    }
     if new_branch_name == task_attempt.branch {
         return Ok(ResponseJson(ApiResponse::success(RenameBranchResponse {
             branch: task_attempt.branch.clone(),
         })));
     }
 
-    if !git2::Branch::name_is_valid(new_branch_name)? {
-        return Ok(ResponseJson(ApiResponse::error(
-            "Invalid branch name format",
-        )));
-    }
-
     let pool = &deployment.db().pool;
-    let task = task_attempt
-        .parent_task(pool)
-        .await?
-        .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
 
-    let project = Project::find_by_id(pool, task.project_id)
-        .await?
-        .ok_or(ApiError::Project(ProjectError::ProjectNotFound))?;
-    let repo_path = get_first_repo_path(pool, project.id).await?;
-
-    if deployment
-        .git()
-        .check_branch_exists(&repo_path, new_branch_name)?
-    {
-        return Ok(ResponseJson(ApiResponse::error(
-            "A branch with this name already exists",
-        )));
-    }
-
-    let container_ref = deployment
-        .container()
-        .ensure_container_exists(&task_attempt)
-        .await?;
-    let workspace_path = std::path::Path::new(&container_ref);
-
-    // TODO: this needs a worktree path, not a workspace path
-
-    if deployment.git().is_rebase_in_progress(workspace_path)? {
-        return Ok(ResponseJson(ApiResponse::error(
-            "Cannot rename branch while rebase is in progress. Please complete or abort the rebase first.",
-        )));
-    }
-
+    // Fail if TaskAttempt has an open PR
     if let Some(merge) = Merge::find_latest_by_task_attempt_id(pool, task_attempt.id).await?
         && let Merge::Pr(pr_merge) = merge
         && matches!(pr_merge.pr_info.status, MergeStatus::Open)
     {
-        return Ok(ResponseJson(ApiResponse::error(
-            "Cannot rename branch with an open pull request. Please close the PR first or create a new attempt.",
+        return Ok(ResponseJson(ApiResponse::error_with_data(
+            RenameBranchError::OpenPullRequest,
         )));
     }
 
-    deployment
-        .git()
-        .rename_local_branch(workspace_path, &task_attempt.branch, new_branch_name)?;
+    let repos = AttemptRepo::find_repos_for_attempt(pool, task_attempt.id).await?;
+    let container_ref = deployment
+        .container()
+        .ensure_container_exists(&task_attempt)
+        .await?;
+    let workspace_dir = PathBuf::from(&container_ref);
 
+    for repo in &repos {
+        let worktree_path = workspace_dir.join(&repo.name);
+
+        if deployment
+            .git()
+            .check_branch_exists(&repo.path, new_branch_name)?
+        {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                RenameBranchError::BranchAlreadyExists {
+                    repo_name: repo.name.clone(),
+                },
+            )));
+        }
+
+        if deployment.git().is_rebase_in_progress(&worktree_path)? {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                RenameBranchError::RebaseInProgress {
+                    repo_name: repo.name.clone(),
+                },
+            )));
+        }
+    }
+
+    // Rename all repos with rollback
     let old_branch = task_attempt.branch.clone();
+    let mut renamed_repos: Vec<&Repo> = Vec::new();
+
+    for repo in &repos {
+        let worktree_path = workspace_dir.join(&repo.name);
+
+        match deployment.git().rename_local_branch(
+            &worktree_path,
+            &task_attempt.branch,
+            new_branch_name,
+        ) {
+            Ok(()) => {
+                renamed_repos.push(repo);
+            }
+            Err(e) => {
+                // Rollback already renamed repos
+                for renamed_repo in &renamed_repos {
+                    let rollback_path = workspace_dir.join(&renamed_repo.name);
+                    if let Err(rollback_err) = deployment.git().rename_local_branch(
+                        &rollback_path,
+                        new_branch_name,
+                        &old_branch,
+                    ) {
+                        tracing::error!(
+                            "Failed to rollback branch rename in '{}': {}",
+                            renamed_repo.name,
+                            rollback_err
+                        );
+                    }
+                }
+                return Ok(ResponseJson(ApiResponse::error_with_data(
+                    RenameBranchError::RenameFailed {
+                        repo_name: repo.name.clone(),
+                        message: e.to_string(),
+                    },
+                )));
+            }
+        }
+    }
 
     TaskAttempt::update_branch_name(pool, task_attempt.id, new_branch_name).await?;
-
+    // What will become of me?
     let updated_children_count = AttemptRepo::update_target_branch_for_children_of_attempt(
         pool,
         task_attempt.id,
@@ -1111,7 +1157,7 @@ pub async fn rebase_task_attempt(
         .container()
         .ensure_container_exists(&task_attempt)
         .await?;
-    let workspace_path = std::path::Path::new(&container_ref);
+    let workspace_path = Path::new(&container_ref);
 
     // TODO: this needs a worktree path, not a workspace path
 
@@ -1168,7 +1214,7 @@ pub async fn abort_conflicts_task_attempt(
         .container()
         .ensure_container_exists(&task_attempt)
         .await?;
-    let workspace_path = std::path::Path::new(&container_ref);
+    let workspace_path = Path::new(&container_ref);
 
     // TODO: this needs a worktree path, not a workspace path
 
