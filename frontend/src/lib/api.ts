@@ -83,6 +83,7 @@ import {
   SharedTaskDetails,
   QueueStatus,
   PrCommentsResponse,
+  MergeTaskAttemptRequest,
 } from 'shared/types';
 
 export class ApiError<E = unknown> extends Error {
@@ -538,11 +539,15 @@ export const attemptsApi = {
     return handleApiResponse<Repo[]>(response);
   },
 
-  merge: async (attemptId: string): Promise<void> => {
+  merge: async (
+    attemptId: string,
+    data: MergeTaskAttemptRequest
+  ): Promise<void> => {
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/merge`,
       {
         method: 'POST',
+        body: JSON.stringify(data),
       }
     );
     return handleApiResponse<void>(response);
