@@ -14,6 +14,8 @@ export interface GitHubCommentCardProps {
   diffHunk?: string;
   // Display variants
   variant?: 'compact' | 'full';
+  /** Layout mode: 'inline' for WYSIWYG editor, 'block' for dialog/flex containers */
+  layout?: 'inline' | 'block';
   onClick?: (e: React.MouseEvent) => void;
   onDoubleClick?: (e: React.MouseEvent) => void;
   className?: string;
@@ -111,24 +113,18 @@ function FullCard({
   line,
   diffHunk,
   onClick,
+  layout = 'inline',
   className,
 }: GitHubCommentCardProps) {
   const { t } = useTranslation('tasks');
   const isReview = commentType === 'review';
   const Icon = isReview ? Code : MessageSquare;
 
-  // Default to inline-block with max-w-md for standalone use (e.g., WYSIWYG)
-  // Can be overridden via className for flex container use (e.g., dialog)
-  const hasCustomLayout =
-    className?.includes('flex-') ||
-    className?.includes('block') ||
-    className?.includes('w-');
-
   return (
     <div
       className={cn(
         'p-3 bg-muted/50 rounded-md border border-border cursor-pointer hover:border-muted-foreground transition-colors overflow-hidden',
-        !hasCustomLayout && 'inline-block align-bottom max-w-md',
+        layout === 'inline' && 'inline-block align-bottom max-w-md',
         className
       )}
       onClick={onClick}
