@@ -229,6 +229,7 @@ const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
       modal,
       isMacEnvironment,
       t,
+      repoId,
     ]);
 
     const handleCancelCreatePR = useCallback(() => {
