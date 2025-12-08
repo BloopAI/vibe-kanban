@@ -1,7 +1,11 @@
-use std::{collections::HashMap, fs, str::FromStr, sync::RwLock};
+use std::{
+    collections::HashMap,
+    fs,
+    str::FromStr,
+    sync::{LazyLock, RwLock},
+};
 
 use convert_case::{Case, Casing};
-use lazy_static::lazy_static;
 use serde::{Deserialize, Deserializer, Serialize, de::Error as DeError};
 use thiserror::Error;
 use ts_rs::TS;
@@ -47,10 +51,8 @@ pub enum ProfileError {
     NoAvailableExecutorProfile,
 }
 
-lazy_static! {
-    static ref EXECUTOR_PROFILES_CACHE: RwLock<ExecutorConfigs> =
-        RwLock::new(ExecutorConfigs::load());
-}
+static EXECUTOR_PROFILES_CACHE: LazyLock<RwLock<ExecutorConfigs>> =
+    LazyLock::new(|| RwLock::new(ExecutorConfigs::load()));
 
 // New format default profiles (v3 - flattened)
 const DEFAULT_PROFILES_JSON: &str = include_str!("../default_profiles.json");

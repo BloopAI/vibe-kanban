@@ -1,12 +1,11 @@
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, LazyLock},
 };
 
 use agent_client_protocol::{self as acp, SessionNotification};
 use futures::StreamExt;
-use lazy_static::lazy_static;
 use regex::Regex;
 use serde::Deserialize;
 use tracing::debug;
@@ -487,10 +486,8 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
 
         fn extract_url_from_text(text: &str) -> Option<String> {
             // Simple URL extractor
-            lazy_static! {
-                static ref URL_RE: Regex =
-                    Regex::new(r#"https?://[^\s"')]+"#).expect("valid regex");
-            }
+            static URL_RE: LazyLock<Regex> =
+                LazyLock::new(|| Regex::new(r#"https?://[^\s"')]+"#).expect("valid regex"));
             URL_RE.find(text).map(|m| m.as_str().to_string())
         }
 

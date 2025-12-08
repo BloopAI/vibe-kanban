@@ -22,7 +22,6 @@ async-trait = { workspace = true }
 directories = "6.0.0"
 command-group = { version = "5.0", features = ["with-tokio"] }
 regex = "1.11.1"
-lazy_static = "1.4"
 json-patch = "2.0"
 thiserror = { workspace = true }
 enum_dispatch = "0.3.13"
@@ -45,7 +44,6 @@ codex-app-server-protocol = { git = "https://github.com/openai/codex.git", packa
 codex-mcp-types = { git = "https://github.com/openai/codex.git", package = "mcp-types", rev = "80d6a3868ef1414e0fb1c2e28a369f2ef4fa4dcc" }
 sha2 = "0.10"
 derivative = "2.2.0"
-icu_provider = { version = "2.1.1", default-features = false, features = ["sync"] }
 
 [target.'cfg(windows)'.dependencies]
 winsplit = "0.1.0"
