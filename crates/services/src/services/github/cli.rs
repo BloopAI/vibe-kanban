@@ -155,6 +155,10 @@ impl GhCli {
         args.push(OsString::from("--body"));
         args.push(OsString::from(body));
 
+        if request.draft.unwrap_or(false) {
+            args.push(OsString::from("--draft"));
+        }
+
         let raw = self.run(args)?;
         Self::parse_pr_create_text(&raw)
     }

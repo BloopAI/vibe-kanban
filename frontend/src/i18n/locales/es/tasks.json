@@ -112,6 +112,7 @@
     "baseBranchLabel": "Rama Base",
     "loadingBranches": "Cargando ramas...",
     "selectBaseBranch": "Seleccionar rama base",
+    "draftLabel": "Crear como borrador",
     "creating": "Creando...",
     "createButton": "Crear PR",
     "errors": {

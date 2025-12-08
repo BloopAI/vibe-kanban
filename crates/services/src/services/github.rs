@@ -149,6 +149,7 @@ pub struct CreatePrRequest {
     pub body: Option<String>,
     pub head_branch: String,
     pub base_branch: String,
+    pub draft: Option<bool>,
 }
 
 #[derive(Debug, Clone)]

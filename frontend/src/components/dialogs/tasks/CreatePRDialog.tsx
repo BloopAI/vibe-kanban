@@ -10,6 +10,7 @@ import { Label } from '@radix-ui/react-label';
 import { Textarea } from '@/components/ui/textarea.tsx';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import BranchSelector from '@/components/tasks/BranchSelector';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -56,6 +57,7 @@ const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
     );
     const [branches, setBranches] = useState<GitBranch[]>([]);
     const [branchesLoading, setBranchesLoading] = useState(false);
+    const [isDraft, setIsDraft] = useState(false);
 
     const getGhCliHelpTitle = (variant: GhCliSupportVariant) =>
       variant === 'homebrew'
@@ -136,12 +138,14 @@ const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
         title: prTitle,
         body: prBody || null,
         target_branch: prBaseBranch || null,
+        draft: isDraft,
       });
 
       if (result.success) {
         setPrTitle('');
         setPrBody('');
         setPrBaseBranch('');
+        setIsDraft(false);
         setCreatingPR(false);
         modal.hide();
         return;
@@ -213,6 +217,7 @@ const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
       prBaseBranch,
       prBody,
       prTitle,
+      isDraft,
       modal,
       isMacEnvironment,
       t,
@@ -224,6 +229,7 @@ const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
       setPrTitle('');
       setPrBody('');
       setPrBaseBranch('');
+      setIsDraft(false);
     }, [modal]);
 
     return (
@@ -285,6 +291,16 @@ const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
                       branchesLoading ? 'opacity-50 cursor-not-allowed' : ''
                     }
                   />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="pr-draft"
+                    checked={isDraft}
+                    onCheckedChange={setIsDraft}
+                  />
+                  <Label htmlFor="pr-draft" className="cursor-pointer">
+                    {t('createPrDialog.draftLabel')}
+                  </Label>
                 </div>
                 {ghCliHelp?.variant && (
                   <Alert variant="default">

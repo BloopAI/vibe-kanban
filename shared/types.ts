@@ -216,7 +216,7 @@ export type ShareTaskResponse = { shared_task_id: string, };
 
 export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id: ExecutorProfileId, base_branch: string, };
 
-export type CreateGitHubPrRequest = { title: string, body: string | null, target_branch: string | null, };
+export type CreateGitHubPrRequest = { title: string, body: string | null, target_branch: string | null, draft: boolean | null, };
 
 export type ImageResponse = { id: string, file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, created_at: string, updated_at: string, };
 

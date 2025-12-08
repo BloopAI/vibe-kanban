@@ -112,6 +112,7 @@
     "baseBranchLabel": "기본 브랜치",
     "loadingBranches": "브랜치 로딩 중...",
     "selectBaseBranch": "기본 브랜치 선택",
+    "draftLabel": "초안으로 만들기",
     "creating": "생성 중...",
     "createButton": "PR 생성",
     "errors": {

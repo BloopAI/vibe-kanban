@@ -355,6 +355,7 @@
     "baseBranchLabel": "Base Branch",
     "loadingBranches": "Loading branches...",
     "selectBaseBranch": "Select base branch",
+    "draftLabel": "Create as draft",
     "creating": "Creating...",
     "createButton": "Create PR",
     "errors": {

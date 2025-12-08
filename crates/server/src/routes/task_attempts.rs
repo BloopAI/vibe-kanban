@@ -72,6 +72,7 @@ pub struct CreateGitHubPrRequest {
     pub title: String,
     pub body: Option<String>,
     pub target_branch: Option<String>,
+    pub draft: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -726,6 +727,7 @@ pub async fn create_github_pr(
         body: request.body.clone(),
         head_branch: task_attempt.branch.clone(),
         base_branch: norm_target_branch_name.clone(),
+        draft: request.draft,
     };
     // Use GitService to get the remote URL, then create GitHubRepoInfo
     let repo_info = deployment

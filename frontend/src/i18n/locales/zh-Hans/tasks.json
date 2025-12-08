@@ -355,6 +355,7 @@
     "baseBranchLabel": "基础分支",
     "loadingBranches": "加载分支中...",
     "selectBaseBranch": "选择基础分支",
+    "draftLabel": "创建为草稿",
     "creating": "创建中...",
     "createButton": "创建 PR",
     "errors": {

@@ -112,6 +112,7 @@
     "baseBranchLabel": "ベースブランチ",
     "loadingBranches": "ブランチを読み込み中...",
     "selectBaseBranch": "ベースブランチを選択",
+    "draftLabel": "下書きとして作成",
     "creating": "作成中...",
     "createButton": "PRを作成",
     "errors": {
