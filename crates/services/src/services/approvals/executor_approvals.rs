@@ -59,7 +59,10 @@ impl ExecutorApprovalService for ExecutorApprovalBridge {
 
         // Play notification sound when approval is needed
         self.notification_service
-            .notify("Approval Needed", &format!("Tool '{}' requires approval", tool_name))
+            .notify(
+                "Approval Needed",
+                &format!("Tool '{}' requires approval", tool_name),
+            )
             .await;
 
         let status = waiter.clone().await;
