@@ -356,7 +356,7 @@
     "loadingBranches": "Loading branches...",
     "selectBaseBranch": "Select base branch",
     "draftLabel": "Create as draft",
-    "autoGenerateLabel": "Auto-generate PR description with AI",
+    "autoGenerateLabel": "Ask AI agent to generate a better PR description",
     "creating": "Creating...",
     "createButton": "Create PR",
     "errors": {
