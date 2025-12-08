@@ -661,9 +661,11 @@ async fn trigger_pr_description_follow_up(
     drop(config); // Release the lock before async operations
 
     // Get executor profile from the latest coding agent process
-    let executor_profile_id =
-        ExecutionProcess::latest_executor_profile_for_attempt(&deployment.db().pool, task_attempt.id)
-            .await?;
+    let executor_profile_id = ExecutionProcess::latest_executor_profile_for_attempt(
+        &deployment.db().pool,
+        task_attempt.id,
+    )
+    .await?;
 
     // Get latest session ID if one exists
     let latest_session_id = ExecutionProcess::find_latest_session_id_by_task_attempt(
@@ -842,8 +844,8 @@ pub async fn create_github_pr(
                 .await;
 
             // Trigger auto-description follow-up if enabled
-            if request.auto_generate_description {
-                if let Err(e) = trigger_pr_description_follow_up(
+            if request.auto_generate_description
+                && let Err(e) = trigger_pr_description_follow_up(
                     &deployment,
                     &task_attempt,
                     pr_info.number,
@@ -857,7 +859,6 @@ pub async fn create_github_pr(
                         e
                     );
                 }
-            }
 
             Ok(ResponseJson(ApiResponse::success(pr_info.url)))
         }
