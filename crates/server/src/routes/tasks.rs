@@ -147,11 +147,20 @@ pub async fn create_task_and_start(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateAndStartTaskRequest>,
 ) -> Result<ResponseJson<ApiResponse<TaskWithAttemptStatus>>, ApiError> {
-    let task_id = Uuid::new_v4();
-    let task = Task::create(&deployment.db().pool, &payload.task, task_id).await?;
+    let pool = &deployment.db().pool;
 
-    if let Some(image_ids) = &payload.task.image_ids {
-        TaskImage::associate_many_dedup(&deployment.db().pool, task.id, image_ids).await?;
+    // Resolve parent from branch if applicable
+    let task_payload = payload
+        .task
+        .clone()
+        .with_parent_from_branch(pool, &payload.base_branch)
+        .await?;
+
+    let task_id = Uuid::new_v4();
+    let task = Task::create(pool, &task_payload, task_id).await?;
+
+    if let Some(image_ids) = &task_payload.image_ids {
+        TaskImage::associate_many_dedup(pool, task.id, image_ids).await?;
     }
 
     deployment
@@ -161,7 +170,7 @@ pub async fn create_task_and_start(
                 "task_id": task.id.to_string(),
                 "project_id": task.project_id,
                 "has_description": task.description.is_some(),
-                "has_images": payload.task.image_ids.is_some(),
+                "has_images": task_payload.image_ids.is_some(),
             }),
         )
         .await;
@@ -172,7 +181,7 @@ pub async fn create_task_and_start(
         .await;
 
     let task_attempt = TaskAttempt::create(
-        &deployment.db().pool,
+        pool,
         &CreateTaskAttempt {
             executor: payload.executor_profile_id.executor,
             base_branch: payload.base_branch,
@@ -200,7 +209,7 @@ pub async fn create_task_and_start(
         )
         .await;
 
-    let task = Task::find_by_id(&deployment.db().pool, task.id)
+    let task = Task::find_by_id(pool, task.id)
         .await?
         .ok_or(ApiError::Database(SqlxError::RowNotFound))?;
 

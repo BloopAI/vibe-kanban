@@ -130,10 +130,20 @@ pub async fn create_task_attempt(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateTaskAttemptBody>,
 ) -> Result<ResponseJson<ApiResponse<TaskAttempt>>, ApiError> {
+    let pool = &deployment.db().pool;
     let executor_profile_id = payload.get_executor_profile_id();
-    let task = Task::find_by_id(&deployment.db().pool, payload.task_id)
+    let task = Task::find_by_id(pool, payload.task_id)
         .await?
         .ok_or(SqlxError::RowNotFound)?;
+
+    // Link task to parent attempt if base_branch matches an existing attempt's branch
+    if task.parent_task_attempt.is_none() {
+        if let Some(parent) =
+            TaskAttempt::find_by_branch(pool, task.project_id, &payload.base_branch).await?
+        {
+            Task::update_parent_task_attempt(pool, task.id, Some(parent.id)).await?;
+        }
+    }
 
     let attempt_id = Uuid::new_v4();
     let git_branch_name = deployment
@@ -142,7 +152,7 @@ pub async fn create_task_attempt(
         .await;
 
     let task_attempt = TaskAttempt::create(
-        &deployment.db().pool,
+        pool,
         &CreateTaskAttempt {
             executor: executor_profile_id.executor,
             base_branch: payload.base_branch.clone(),

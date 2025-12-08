@@ -66,7 +66,7 @@ pub struct TaskRelationships {
     pub children: Vec<Task>,          // Tasks created by this attempt
 }
 
-#[derive(Debug, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct CreateTask {
     pub project_id: Uuid,
     pub title: String,
@@ -110,6 +110,24 @@ impl CreateTask {
             image_ids: None,
             shared_task_id: Some(shared_task_id),
         }
+    }
+
+    /// Resolves parent_task_attempt from base_branch if not already set.
+    /// If base_branch matches an existing task attempt's branch, sets that as parent.
+    pub async fn with_parent_from_branch(
+        mut self,
+        pool: &SqlitePool,
+        base_branch: &str,
+    ) -> Result<Self, sqlx::Error> {
+        // Only resolve if parent not already set (explicit parent takes precedence)
+        if self.parent_task_attempt.is_none() {
+            if let Some(parent) =
+                TaskAttempt::find_by_branch(pool, self.project_id, base_branch).await?
+            {
+                self.parent_task_attempt = Some(parent.id);
+            }
+        }
+        Ok(self)
     }
 }
 
@@ -342,6 +360,22 @@ ORDER BY t.created_at DESC"#,
             "UPDATE tasks SET status = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
             id,
             status
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Update the parent_task_attempt field for a task
+    pub async fn update_parent_task_attempt(
+        pool: &SqlitePool,
+        task_id: Uuid,
+        parent_task_attempt: Option<Uuid>,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE tasks SET parent_task_attempt = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+            task_id,
+            parent_task_attempt
         )
         .execute(pool)
         .await?;

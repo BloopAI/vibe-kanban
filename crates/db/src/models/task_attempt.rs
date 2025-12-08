@@ -444,6 +444,33 @@ impl TaskAttempt {
         Ok(result.rows_affected())
     }
 
+    /// Find a task attempt by its branch name within a project.
+    /// Returns the most recently created attempt if multiple exist with the same branch.
+    pub async fn find_by_branch(
+        pool: &SqlitePool,
+        project_id: Uuid,
+        branch: &str,
+    ) -> Result<Option<TaskAttempt>, sqlx::Error> {
+        sqlx::query_as!(
+            TaskAttempt,
+            r#"SELECT ta.id as "id!: Uuid", ta.task_id as "task_id!: Uuid",
+                      ta.container_ref, ta.branch, ta.target_branch,
+                      ta.executor as "executor!", ta.worktree_deleted as "worktree_deleted!: bool",
+                      ta.setup_completed_at as "setup_completed_at: DateTime<Utc>",
+                      ta.created_at as "created_at!: DateTime<Utc>",
+                      ta.updated_at as "updated_at!: DateTime<Utc>"
+               FROM task_attempts ta
+               JOIN tasks t ON ta.task_id = t.id
+               WHERE t.project_id = ? AND ta.branch = ?
+               ORDER BY ta.created_at DESC
+               LIMIT 1"#,
+            project_id,
+            branch
+        )
+        .fetch_optional(pool)
+        .await
+    }
+
     pub async fn resolve_container_ref(
         pool: &SqlitePool,
         container_ref: &str,

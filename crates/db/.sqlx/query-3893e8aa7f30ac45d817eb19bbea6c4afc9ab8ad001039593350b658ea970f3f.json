@@ -1,0 +1,74 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT ta.id as \"id!: Uuid\", ta.task_id as \"task_id!: Uuid\",\n                      ta.container_ref, ta.branch, ta.target_branch,\n                      ta.executor as \"executor!\", ta.worktree_deleted as \"worktree_deleted!: bool\",\n                      ta.setup_completed_at as \"setup_completed_at: DateTime<Utc>\",\n                      ta.created_at as \"created_at!: DateTime<Utc>\",\n                      ta.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM task_attempts ta\n               JOIN tasks t ON ta.task_id = t.id\n               WHERE t.project_id = ? AND ta.branch = ?\n               ORDER BY ta.created_at DESC\n               LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "task_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "container_ref",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "branch",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "target_branch",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "executor!",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "worktree_deleted!: bool",
+        "ordinal": 6,
+        "type_info": "Bool"
+      },
+      {
+        "name": "setup_completed_at: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 9,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "3893e8aa7f30ac45d817eb19bbea6c4afc9ab8ad001039593350b658ea970f3f"
+}

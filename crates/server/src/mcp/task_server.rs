@@ -470,16 +470,16 @@ impl TaskServer {
         };
 
         let url = self.url("/api/tasks");
+
+        // Get parent_task_attempt from context if available (auto-link subtasks)
+        let parent_task_attempt = self.context.as_ref().map(|ctx| ctx.attempt_id);
+
+        let mut create_payload =
+            CreateTask::from_title_description(project_id, title, expanded_description);
+        create_payload.parent_task_attempt = parent_task_attempt;
+
         let task: Task = match self
-            .send_json(
-                self.client
-                    .post(&url)
-                    .json(&CreateTask::from_title_description(
-                        project_id,
-                        title,
-                        expanded_description,
-                    )),
-            )
+            .send_json(self.client.post(&url).json(&create_payload))
             .await
         {
             Ok(t) => t,
