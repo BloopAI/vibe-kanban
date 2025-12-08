@@ -135,6 +135,19 @@
           }
         }
       },
+      "pullRequests": {
+        "title": "Pull Requests",
+        "description": "Configura el comportamiento de creación de PR",
+        "autoDescription": {
+          "label": "Auto-generar descripción de PR por defecto",
+          "helper": "Cuando está habilitado, el agente de IA actualizará automáticamente el título y la descripción del PR después de la creación."
+        },
+        "customPrompt": {
+          "label": "Prompt Personalizado para Descripción de PR",
+          "placeholder": "Update the GitHub PR that was just created with a better title and description.\nThe PR number is #{pr_number} and the URL is {pr_url}.\n\nAnalyze the changes in this branch and write:\n1. A concise, descriptive title that summarizes the changes, postfixed with \"(Vibe Kanban)\"\n2. A detailed description that explains:\n   - What changes were made\n   - Why they were made (based on the task context)\n   - Any important implementation details\n   - At the end, include a note: \"This PR was written using [Vibe Kanban](https://vibekanban.com)\"\n\nUse `gh pr edit` to update the PR.",
+          "helper": "Prompt personalizado para el agente de IA al generar descripciones de PR. Deja vacío para usar el predeterminado. Usa {pr_number} y {pr_url} como marcadores de posición."
+        }
+      },
       "notifications": {
         "title": "Notificaciones",
         "description": "Controla cuándo y cómo recibes notificaciones.",

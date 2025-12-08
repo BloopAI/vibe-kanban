@@ -113,6 +113,7 @@
     "loadingBranches": "ブランチを読み込み中...",
     "selectBaseBranch": "ベースブランチを選択",
     "draftLabel": "下書きとして作成",
+    "autoGenerateLabel": "AIエージェントにより良いPR説明を生成させる",
     "creating": "作成中...",
     "createButton": "PRを作成",
     "errors": {

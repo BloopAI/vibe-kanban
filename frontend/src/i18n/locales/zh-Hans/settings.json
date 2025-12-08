@@ -135,6 +135,19 @@
           }
         }
       },
+      "pullRequests": {
+        "title": "拉取请求",
+        "description": "配置PR创建行为",
+        "autoDescription": {
+          "label": "默认自动生成PR描述",
+          "helper": "启用后，AI代理将在创建PR后自动更新标题和描述。"
+        },
+        "customPrompt": {
+          "label": "自定义PR描述提示",
+          "placeholder": "Update the GitHub PR that was just created with a better title and description.\nThe PR number is #{pr_number} and the URL is {pr_url}.\n\nAnalyze the changes in this branch and write:\n1. A concise, descriptive title that summarizes the changes, postfixed with \"(Vibe Kanban)\"\n2. A detailed description that explains:\n   - What changes were made\n   - Why they were made (based on the task context)\n   - Any important implementation details\n   - At the end, include a note: \"This PR was written using [Vibe Kanban](https://vibekanban.com)\"\n\nUse `gh pr edit` to update the PR.",
+          "helper": "生成PR描述时AI代理使用的自定义提示。留空则使用默认值。使用{pr_number}和{pr_url}作为占位符。"
+        }
+      },
       "notifications": {
         "title": "通知",
         "description": "控制何时以及如何接收通知。",
