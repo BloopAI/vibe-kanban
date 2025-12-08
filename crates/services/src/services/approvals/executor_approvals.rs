@@ -8,9 +8,7 @@ use tokio::sync::RwLock;
 use utils::approvals::{ApprovalRequest, ApprovalStatus, CreateApprovalRequest};
 use uuid::Uuid;
 
-use crate::services::approvals::Approvals;
-use crate::services::config::Config;
-use crate::services::notification::NotificationService;
+use crate::services::{approvals::Approvals, config::Config, notification::NotificationService};
 
 pub struct ExecutorApprovalBridge {
     approvals: Approvals,
