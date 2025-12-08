@@ -123,9 +123,9 @@ impl CreateTask {
         if self.parent_task_attempt.is_none()
             && let Some(parent) =
                 TaskAttempt::find_by_branch(pool, self.project_id, base_branch).await?
-            {
-                self.parent_task_attempt = Some(parent.id);
-            }
+        {
+            self.parent_task_attempt = Some(parent.id);
+        }
         Ok(self)
     }
 }

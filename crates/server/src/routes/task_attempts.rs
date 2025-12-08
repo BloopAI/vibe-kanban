@@ -140,9 +140,9 @@ pub async fn create_task_attempt(
     if task.parent_task_attempt.is_none()
         && let Some(parent) =
             TaskAttempt::find_by_branch(pool, task.project_id, &payload.base_branch).await?
-        {
-            Task::update_parent_task_attempt(pool, task.id, Some(parent.id)).await?;
-        }
+    {
+        Task::update_parent_task_attempt(pool, task.id, Some(parent.id)).await?;
+    }
 
     let attempt_id = Uuid::new_v4();
     let git_branch_name = deployment
