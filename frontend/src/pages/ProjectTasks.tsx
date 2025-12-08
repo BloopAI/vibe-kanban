@@ -339,12 +339,13 @@ export function ProjectTasks() {
   );
 
   useEffect(() => {
-    if (shouldOpenDiffsPanel && mode !== 'diffs') {
-      setMode('diffs');
-    }
-    // Always clear the flag after handling, whether we opened or it was already open
     if (shouldOpenDiffsPanel) {
-      clearShouldOpenDiffsPanel();
+      const panelWasAlreadyOpen = mode === 'diffs';
+      if (!panelWasAlreadyOpen) {
+        setMode('diffs');
+      }
+      // Pass whether the panel was already open so the store knows if a long delay is needed
+      clearShouldOpenDiffsPanel(panelWasAlreadyOpen);
     }
   }, [shouldOpenDiffsPanel, mode, setMode, clearShouldOpenDiffsPanel]);
 

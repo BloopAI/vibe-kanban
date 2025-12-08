@@ -130,6 +130,7 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
   // Scroll-to-line handling for code references
   const scrollTarget = useScrollToLineStore((s) => s.scrollTarget);
   const clearScrollTarget = useScrollToLineStore((s) => s.clearScrollTarget);
+  const needsLongDelay = useScrollToLineStore((s) => s.needsLongDelay);
   const diffViewMode = useDiffViewMode();
   const pendingScrollRef = useRef<{
     filePath: string;
@@ -171,11 +172,13 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
       return;
     }
 
-    // Diff is already expanded - add small delay for DOM to render
+    // Diff is already expanded - add delay for DOM to render
+    // Use longer delay (1s) if panel was just opened, shorter (100ms) if already open
+    const delay = needsLongDelay ? 1000 : 100;
     const timer = setTimeout(() => {
       scrollToLine(filePath, lineNumber, side, diffViewMode);
       clearScrollTarget();
-    }, 100);
+    }, delay);
 
     return () => clearTimeout(timer);
   }, [
@@ -185,6 +188,7 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
     clearScrollTarget,
     diffViewMode,
     loading,
+    needsLongDelay,
   ]);
 
   // Handle scrolling after a diff is expanded
