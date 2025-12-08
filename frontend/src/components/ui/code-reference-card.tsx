@@ -45,7 +45,7 @@ export function CodeReferenceCard({
     >
       <div className="flex items-center gap-1.5 text-xs">
         <FileCode className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-        <span className="font-mono text-primary/80 truncate">
+        <span className="font-mono text-foreground truncate">
           {filePath}
           <span className="text-muted-foreground">:{lineNumber}</span>
         </span>
