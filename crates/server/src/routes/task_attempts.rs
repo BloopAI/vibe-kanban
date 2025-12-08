@@ -29,6 +29,7 @@ use executors::{
     actions::{
         ExecutorAction, ExecutorActionType,
         coding_agent_follow_up::CodingAgentFollowUpRequest,
+        coding_agent_initial::CodingAgentInitialRequest,
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     },
     executors::{CodingAgent, ExecutorError},
@@ -73,6 +74,8 @@ pub struct CreateGitHubPrRequest {
     pub body: Option<String>,
     pub target_branch: Option<String>,
     pub draft: Option<bool>,
+    #[serde(default)]
+    pub auto_generate_description: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -625,6 +628,78 @@ pub enum CreatePrError {
     TargetBranchNotFound { branch: String },
 }
 
+const DEFAULT_PR_DESCRIPTION_PROMPT: &str = r#"Update the GitHub PR that was just created with a better title and description.
+The PR number is #{pr_number} and the URL is {pr_url}.
+
+Analyze the changes in this branch and write:
+1. A concise, descriptive title that summarizes the changes
+2. A detailed description that explains:
+   - What changes were made
+   - Why they were made (based on the task context)
+   - Any important implementation details
+
+Use `gh pr edit` to update the PR."#;
+
+async fn trigger_pr_description_follow_up(
+    deployment: &DeploymentImpl,
+    task_attempt: &TaskAttempt,
+    pr_number: i64,
+    pr_url: &str,
+) -> Result<(), ApiError> {
+    // Get the custom prompt from config, or use default
+    let config = deployment.config().read().await;
+    let prompt_template = config
+        .pr_auto_description_prompt
+        .as_deref()
+        .unwrap_or(DEFAULT_PR_DESCRIPTION_PROMPT);
+
+    // Replace placeholders in prompt
+    let prompt = prompt_template
+        .replace("{pr_number}", &pr_number.to_string())
+        .replace("{pr_url}", pr_url);
+
+    drop(config); // Release the lock before async operations
+
+    // Get executor profile from the latest coding agent process
+    let executor_profile_id =
+        ExecutionProcess::latest_executor_profile_for_attempt(&deployment.db().pool, task_attempt.id)
+            .await?;
+
+    // Get latest session ID if one exists
+    let latest_session_id = ExecutionProcess::find_latest_session_id_by_task_attempt(
+        &deployment.db().pool,
+        task_attempt.id,
+    )
+    .await?;
+
+    // Build the action type (follow-up if session exists, otherwise initial)
+    let action_type = if let Some(session_id) = latest_session_id {
+        ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
+            prompt,
+            session_id,
+            executor_profile_id,
+        })
+    } else {
+        ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
+            prompt,
+            executor_profile_id,
+        })
+    };
+
+    let action = ExecutorAction::new(action_type, None);
+
+    deployment
+        .container()
+        .start_execution(
+            task_attempt,
+            &action,
+            &ExecutionProcessRunReason::CodingAgent,
+        )
+        .await?;
+
+    Ok(())
+}
+
 pub async fn create_github_pr(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
@@ -765,6 +840,24 @@ pub async fn create_github_pr(
                     }),
                 )
                 .await;
+
+            // Trigger auto-description follow-up if enabled
+            if request.auto_generate_description {
+                if let Err(e) = trigger_pr_description_follow_up(
+                    &deployment,
+                    &task_attempt,
+                    pr_info.number,
+                    &pr_info.url,
+                )
+                .await
+                {
+                    tracing::warn!(
+                        "Failed to trigger PR description follow-up for attempt {}: {}",
+                        task_attempt.id,
+                        e
+                    );
+                }
+            }
 
             Ok(ResponseJson(ApiResponse::success(pr_info.url)))
         }

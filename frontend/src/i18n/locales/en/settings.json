@@ -135,6 +135,19 @@
           }
         }
       },
+      "pullRequests": {
+        "title": "Pull Requests",
+        "description": "Configure PR creation behavior",
+        "autoDescription": {
+          "label": "Auto-generate PR description by default",
+          "helper": "When enabled, the AI agent will automatically update the PR title and description after creation."
+        },
+        "customPrompt": {
+          "label": "Custom PR Description Prompt",
+          "placeholder": "Leave empty to use the default prompt. Use {pr_number} and {pr_url} as placeholders.",
+          "helper": "Custom prompt for the AI agent when generating PR descriptions. Leave empty to use the default."
+        }
+      },
       "notifications": {
         "title": "Notifications",
         "description": "Control when and how you receive notifications.",

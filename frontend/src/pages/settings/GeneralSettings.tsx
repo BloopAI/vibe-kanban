@@ -460,6 +460,55 @@ export function GeneralSettings() {
 
       <Card>
         <CardHeader>
+          <CardTitle>{t('settings.general.pullRequests.title')}</CardTitle>
+          <CardDescription>
+            {t('settings.general.pullRequests.description')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="pr-auto-description"
+              checked={draft?.pr_auto_description_enabled ?? false}
+              onCheckedChange={(checked: boolean) =>
+                updateDraft({ pr_auto_description_enabled: checked })
+              }
+            />
+            <div className="space-y-0.5">
+              <Label htmlFor="pr-auto-description" className="cursor-pointer">
+                {t('settings.general.pullRequests.autoDescription.label')}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t('settings.general.pullRequests.autoDescription.helper')}
+              </p>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="pr-custom-prompt">
+              {t('settings.general.pullRequests.customPrompt.label')}
+            </Label>
+            <textarea
+              id="pr-custom-prompt"
+              className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              placeholder={t(
+                'settings.general.pullRequests.customPrompt.placeholder'
+              )}
+              value={draft?.pr_auto_description_prompt ?? ''}
+              onChange={(e) =>
+                updateDraft({
+                  pr_auto_description_prompt: e.target.value || null,
+                })
+              }
+            />
+            <p className="text-sm text-muted-foreground">
+              {t('settings.general.pullRequests.customPrompt.helper')}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>{t('settings.general.notifications.title')}</CardTitle>
           <CardDescription>
             {t('settings.general.notifications.description')}
