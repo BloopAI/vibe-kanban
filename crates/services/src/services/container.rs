@@ -160,7 +160,11 @@ pub trait ContainerService {
     }
 
     /// Finalize task execution by updating status to InReview and sending notifications
-    async fn finalize_task(&self, share_publisher: Option<&SharePublisher>, ctx: &ExecutionContext) {
+    async fn finalize_task(
+        &self,
+        share_publisher: Option<&SharePublisher>,
+        ctx: &ExecutionContext,
+    ) {
         match Task::update_status(&self.db().pool, ctx.task.id, TaskStatus::InReview).await {
             Ok(_) => {
                 if let Some(publisher) = share_publisher
@@ -177,7 +181,9 @@ pub trait ContainerService {
                 tracing::error!("Failed to update task status to InReview: {e}");
             }
         }
-        self.notification_service().notify_execution_halted(ctx).await;
+        self.notification_service()
+            .notify_execution_halted(ctx)
+            .await;
     }
 
     /// Cleanup executions marked as running in the db, call at startup

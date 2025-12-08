@@ -428,9 +428,7 @@ impl LocalContainerService {
                         );
 
                         // Manually finalize task since we're bypassing normal execution flow
-                        container
-                            .finalize_task(publisher.as_ref().ok(), &ctx)
-                            .await;
+                        container.finalize_task(publisher.as_ref().ok(), &ctx).await;
                     }
                 }
 
@@ -473,9 +471,7 @@ impl LocalContainerService {
                             {
                                 tracing::error!("Failed to start queued follow-up: {}", e);
                                 // Fall back to finalization if follow-up fails
-                                container
-                                    .finalize_task(publisher.as_ref().ok(), &ctx)
-                                    .await;
+                                container.finalize_task(publisher.as_ref().ok(), &ctx).await;
                             }
                         } else {
                             // Execution failed or was killed - discard the queued message and finalize
@@ -484,14 +480,10 @@ impl LocalContainerService {
                                 ctx.task_attempt.id,
                                 ctx.execution_process.status
                             );
-                            container
-                                .finalize_task(publisher.as_ref().ok(), &ctx)
-                                .await;
+                            container.finalize_task(publisher.as_ref().ok(), &ctx).await;
                         }
                     } else {
-                        container
-                            .finalize_task(publisher.as_ref().ok(), &ctx)
-                            .await;
+                        container.finalize_task(publisher.as_ref().ok(), &ctx).await;
                     }
                 }
 
