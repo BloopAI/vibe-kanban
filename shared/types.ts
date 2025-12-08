@@ -240,7 +240,7 @@ export type RunAgentSetupResponse = Record<string, never>;
 
 export type GhCliSetupError = "BREW_MISSING" | "SETUP_HELPER_NOT_SUPPORTED" | { "OTHER": { message: string, } };
 
-export type RebaseTaskAttemptRequest = { old_base_branch: string | null, new_base_branch: string | null, };
+export type RebaseTaskAttemptRequest = { repo_id: string, old_base_branch: string | null, new_base_branch: string | null, };
 
 export type GitOperationError = { "type": "merge_conflicts", message: string, op: ConflictOp, } | { "type": "rebase_in_progress" };
 

@@ -12,6 +12,7 @@ export function useRebase(
   const queryClient = useQueryClient();
 
   type RebaseMutationArgs = {
+    repoId: string;
     newBaseBranch?: string;
     oldBaseBranch?: string;
   };
@@ -20,9 +21,10 @@ export function useRebase(
     {
       mutationFn: (args) => {
         if (!attemptId) return Promise.resolve();
-        const { newBaseBranch, oldBaseBranch } = args ?? {};
+        const { repoId, newBaseBranch, oldBaseBranch } = args ?? {};
 
         const data: RebaseTaskAttemptRequest = {
+          repo_id: repoId,
           old_base_branch: oldBaseBranch ?? null,
           new_base_branch: newBaseBranch ?? null,
         };
