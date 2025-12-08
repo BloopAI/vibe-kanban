@@ -152,7 +152,6 @@ impl GitService {
         Self {}
     }
 
-    /// Check if a branch name is valid according to git rules
     pub fn is_branch_name_valid(&self, name: &str) -> bool {
         git2::Branch::name_is_valid(name).unwrap_or(false)
     }
