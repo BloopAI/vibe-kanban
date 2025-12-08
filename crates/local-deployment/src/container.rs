@@ -429,11 +429,7 @@ impl LocalContainerService {
 
                         // Manually finalize task since we're bypassing normal execution flow
                         container
-                            .finalize_task(
-                                &container.notification_service,
-                                publisher.as_ref().ok(),
-                                &ctx,
-                            )
+                            .finalize_task(publisher.as_ref().ok(), &ctx)
                             .await;
                     }
                 }
@@ -478,11 +474,7 @@ impl LocalContainerService {
                                 tracing::error!("Failed to start queued follow-up: {}", e);
                                 // Fall back to finalization if follow-up fails
                                 container
-                                    .finalize_task(
-                                        &container.notification_service,
-                                        publisher.as_ref().ok(),
-                                        &ctx,
-                                    )
+                                    .finalize_task(publisher.as_ref().ok(), &ctx)
                                     .await;
                             }
                         } else {
@@ -493,20 +485,12 @@ impl LocalContainerService {
                                 ctx.execution_process.status
                             );
                             container
-                                .finalize_task(
-                                    &container.notification_service,
-                                    publisher.as_ref().ok(),
-                                    &ctx,
-                                )
+                                .finalize_task(publisher.as_ref().ok(), &ctx)
                                 .await;
                         }
                     } else {
                         container
-                            .finalize_task(
-                                &container.notification_service,
-                                publisher.as_ref().ok(),
-                                &ctx,
-                            )
+                            .finalize_task(publisher.as_ref().ok(), &ctx)
                             .await;
                     }
                 }
@@ -837,6 +821,10 @@ impl ContainerService for LocalContainerService {
 
     fn share_publisher(&self) -> Option<&SharePublisher> {
         self.publisher.as_ref().ok()
+    }
+
+    fn notification_service(&self) -> &NotificationService {
+        &self.notification_service
     }
 
     async fn git_branch_prefix(&self) -> String {

@@ -78,6 +78,8 @@ pub trait ContainerService {
 
     fn share_publisher(&self) -> Option<&SharePublisher>;
 
+    fn notification_service(&self) -> &NotificationService;
+
     fn task_attempt_to_current_dir(&self, task_attempt: &TaskAttempt) -> PathBuf;
 
     async fn create(&self, task_attempt: &TaskAttempt) -> Result<ContainerRef, ContainerError>;
@@ -158,12 +160,7 @@ pub trait ContainerService {
     }
 
     /// Finalize task execution by updating status to InReview and sending notifications
-    async fn finalize_task(
-        &self,
-        notification_service: &NotificationService,
-        share_publisher: Option<&SharePublisher>,
-        ctx: &ExecutionContext,
-    ) {
+    async fn finalize_task(&self, share_publisher: Option<&SharePublisher>, ctx: &ExecutionContext) {
         match Task::update_status(&self.db().pool, ctx.task.id, TaskStatus::InReview).await {
             Ok(_) => {
                 if let Some(publisher) = share_publisher
@@ -180,7 +177,7 @@ pub trait ContainerService {
                 tracing::error!("Failed to update task status to InReview: {e}");
             }
         }
-        notification_service.notify_execution_halted(ctx).await;
+        self.notification_service().notify_execution_halted(ctx).await;
     }
 
     /// Cleanup executions marked as running in the db, call at startup
