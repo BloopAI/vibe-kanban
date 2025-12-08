@@ -1248,6 +1248,16 @@ pub async fn rebase_task_attempt(
         };
     }
 
+    // Link task to parent attempt if new_base_branch matches an existing attempt's branch
+    if let Some(parent_attempt) =
+        TaskAttempt::find_by_branch(pool, ctx.project.id, &new_base_branch).await?
+    {
+        // Only update if different from current parent
+        if task.parent_task_attempt != Some(parent_attempt.id) {
+            Task::update_parent_task_attempt(pool, task.id, Some(parent_attempt.id)).await?;
+        }
+    }
+
     deployment
         .track_if_analytics_allowed(
             "task_attempt_rebased",
