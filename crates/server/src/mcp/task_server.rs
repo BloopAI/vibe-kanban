@@ -20,7 +20,10 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json;
 use uuid::Uuid;
 
-use crate::routes::{containers::ContainerQuery, task_attempts::CreateTaskAttemptBody};
+use crate::routes::{
+    containers::ContainerQuery,
+    task_attempts::{AttemptRepoInput, CreateTaskAttemptBody},
+};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct CreateTaskRequest {
@@ -199,6 +202,16 @@ pub struct DeleteTaskRequest {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct McpAttemptRepo {
+    #[schemars(description = "Path to the git repository on the filesystem")]
+    pub git_repo_path: String,
+    #[schemars(description = "Display name for the repository")]
+    pub display_name: String,
+    #[schemars(description = "Target branch for this repository")]
+    pub target_branch: String,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct StartTaskAttemptRequest {
     #[schemars(description = "The ID of the task to start")]
     pub task_id: Uuid,
@@ -210,6 +223,10 @@ pub struct StartTaskAttemptRequest {
     pub variant: Option<String>,
     #[schemars(description = "The base branch to use for the attempt")]
     pub base_branch: String,
+    #[schemars(
+        description = "Repositories for the attempt. If not provided, uses project defaults with base_branch."
+    )]
+    pub repos: Option<Vec<McpAttemptRepo>>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -584,6 +601,7 @@ impl TaskServer {
             executor,
             variant,
             base_branch,
+            repos,
         }): Parameters<StartTaskAttemptRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         let base_branch = base_branch.trim().to_string();
@@ -621,10 +639,59 @@ impl TaskServer {
             variant,
         };
 
+        // If repos provided, use them; otherwise fetch from project and use base_branch
+        let attempt_repos = if let Some(repos) = repos {
+            if repos.is_empty() {
+                return Self::err(
+                    "At least one repository is required.".to_string(),
+                    None::<String>,
+                );
+            }
+            repos
+                .into_iter()
+                .map(|r| AttemptRepoInput {
+                    git_repo_path: r.git_repo_path,
+                    display_name: r.display_name,
+                    target_branch: r.target_branch,
+                })
+                .collect()
+        } else {
+            // Fetch task to get project_id
+            let task_url = self.url(&format!("/api/tasks/{}", task_id));
+            let task: Task = match self.send_json(self.client.get(&task_url)).await {
+                Ok(task) => task,
+                Err(e) => return Ok(e),
+            };
+
+            // Fetch project repos
+            let repos_url = self.url(&format!("/api/projects/{}/repositories", task.project_id));
+            let project_repos: Vec<db::models::repo::Repo> =
+                match self.send_json(self.client.get(&repos_url)).await {
+                    Ok(repos) => repos,
+                    Err(e) => return Ok(e),
+                };
+
+            if project_repos.is_empty() {
+                return Self::err(
+                    "Project has no repositories and none were specified.".to_string(),
+                    None::<String>,
+                );
+            }
+
+            project_repos
+                .into_iter()
+                .map(|r| AttemptRepoInput {
+                    git_repo_path: r.path.to_string_lossy().to_string(),
+                    display_name: r.display_name,
+                    target_branch: base_branch.clone(),
+                })
+                .collect()
+        };
+
         let payload = CreateTaskAttemptBody {
             task_id,
             executor_profile_id,
-            base_branch,
+            repos: attempt_repos,
         };
 
         let url = self.url("/api/task-attempts");

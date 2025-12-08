@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use chrono::{DateTime, Utc};
 use executors::executors::BaseCodingAgent;
 use serde::{Deserialize, Serialize};
@@ -257,31 +259,6 @@ impl TaskAttempt {
         .await
     }
 
-    pub async fn find_by_task_id_with_project(
-        pool: &SqlitePool,
-        task_id: Uuid,
-    ) -> Result<Vec<(Uuid, Option<String>, String)>, sqlx::Error> {
-        let records = sqlx::query!(
-            r#"
-            SELECT ta.id as "attempt_id!: Uuid", ta.container_ref, r.path as "path!"
-            FROM task_attempts ta
-            JOIN tasks t ON ta.task_id = t.id
-            JOIN project_repos pr ON pr.project_id = t.project_id
-            JOIN repos r ON r.id = pr.repo_id
-            WHERE ta.task_id = $1
-            GROUP BY ta.id
-            "#,
-            task_id
-        )
-        .fetch_all(pool)
-        .await?;
-
-        Ok(records
-            .into_iter()
-            .map(|r| (r.attempt_id, r.container_ref, r.path))
-            .collect())
-    }
-
     pub async fn find_by_worktree_deleted(
         pool: &SqlitePool,
     ) -> Result<Vec<(Uuid, String)>, sqlx::Error> {
@@ -317,19 +294,22 @@ impl TaskAttempt {
     ) -> Result<Vec<(Uuid, String, String)>, sqlx::Error> {
         let records = sqlx::query!(
             r#"
-            SELECT ta.id as "attempt_id!: Uuid", ta.container_ref, r.path as "path!"
+            SELECT 
+                ta.id as "attempt_id!: Uuid", 
+                ta.container_ref, 
+                r.path as "path!",
+                r.name as "repo_name!"
             FROM task_attempts ta
+            JOIN attempt_repos ar ON ar.attempt_id = ta.id
+            JOIN repos r ON r.id = ar.repo_id
             LEFT JOIN execution_processes ep ON ta.id = ep.task_attempt_id AND ep.completed_at IS NOT NULL
-            JOIN tasks t ON ta.task_id = t.id
-            JOIN project_repos pr ON pr.project_id = t.project_id
-            JOIN repos r ON r.id = pr.repo_id
             WHERE ta.worktree_deleted = FALSE
                 AND ta.id NOT IN (
                     SELECT DISTINCT ep2.task_attempt_id
                     FROM execution_processes ep2
                     WHERE ep2.completed_at IS NULL
                 )
-            GROUP BY ta.id, ta.container_ref, ta.updated_at
+            GROUP BY ta.id, ta.container_ref, r.path, r.name, ta.updated_at
             HAVING datetime('now', '-72 hours') > datetime(
                 MAX(
                     CASE
@@ -351,7 +331,16 @@ impl TaskAttempt {
 
         Ok(records
             .into_iter()
-            .filter_map(|r| r.container_ref.map(|path| (r.attempt_id, path, r.path)))
+            .filter_map(|r| {
+                r.container_ref.map(|container_ref| {
+                    let worktree_path = Path::new(&container_ref).join(&r.repo_name);
+                    (
+                        r.attempt_id,
+                        worktree_path.to_string_lossy().to_string(),
+                        r.path,
+                    )
+                })
+            })
             .collect())
     }
 

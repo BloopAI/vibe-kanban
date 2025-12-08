@@ -279,7 +279,11 @@ pub async fn delete_project(
     Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
-    match Project::delete(&deployment.db().pool, project.id).await {
+    match deployment
+        .project()
+        .delete_project(&deployment.db().pool, project.id)
+        .await
+    {
         Ok(rows_affected) => {
             if rows_affected == 0 {
                 Err(StatusCode::NOT_FOUND)

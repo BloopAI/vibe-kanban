@@ -47,7 +47,10 @@ import type {
   TaskStatus,
   ExecutorProfileId,
   ImageResponse,
+  AttemptRepoInput,
 } from 'shared/types';
+import { projectsApi } from '@/lib/api';
+import { useQuery } from '@tanstack/react-query';
 
 interface Task {
   id: string;
@@ -103,6 +106,11 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const { data: taskImages } = useTaskImages(
     editMode ? props.task.id : undefined
   );
+  const { data: projectRepos = [] } = useQuery({
+    queryKey: ['projectRepositories', projectId],
+    queryFn: () => projectsApi.getRepositories(projectId),
+    enabled: modal.visible,
+  });
 
   // Get default form values based on mode
   const defaultValues = useMemo((): TaskFormValues => {
@@ -187,11 +195,17 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
       };
       const shouldAutoStart = value.autoStart && !forceCreateOnlyRef.current;
       if (shouldAutoStart) {
+        // Build repos array from project repos with the selected branch
+        const repos: AttemptRepoInput[] = projectRepos.map((repo) => ({
+          git_repo_path: repo.path.toString(),
+          display_name: repo.display_name,
+          target_branch: value.branch,
+        }));
         await createAndStart.mutateAsync(
           {
             task,
             executor_profile_id: value.executorProfileId!,
-            base_branch: value.branch,
+            repos,
           },
           { onSuccess: () => modal.remove() }
         );

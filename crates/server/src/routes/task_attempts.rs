@@ -137,16 +137,15 @@ pub async fn get_task_attempt(
 #[derive(Debug, Serialize, Deserialize, ts_rs::TS)]
 pub struct CreateTaskAttemptBody {
     pub task_id: Uuid,
-    /// Executor profile specification
     pub executor_profile_id: ExecutorProfileId,
-    pub base_branch: String,
+    pub repos: Vec<AttemptRepoInput>,
 }
 
-impl CreateTaskAttemptBody {
-    /// Get the executor profile ID
-    pub fn get_executor_profile_id(&self) -> ExecutorProfileId {
-        self.executor_profile_id.clone()
-    }
+#[derive(Debug, Serialize, Deserialize, ts_rs::TS)]
+pub struct AttemptRepoInput {
+    pub git_repo_path: String,
+    pub display_name: String,
+    pub target_branch: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, TS)]
@@ -162,18 +161,18 @@ pub async fn create_task_attempt(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateTaskAttemptBody>,
 ) -> Result<ResponseJson<ApiResponse<TaskAttempt>>, ApiError> {
+    let executor_profile_id = payload.executor_profile_id.clone();
+
+    if payload.repos.is_empty() {
+        return Err(ApiError::BadRequest(
+            "At least one repository is required".to_string(),
+        ));
+    }
+
     let pool = &deployment.db().pool;
-    let executor_profile_id = payload.get_executor_profile_id();
-    let task = Task::find_by_id(pool, payload.task_id)
+    let task = Task::find_by_id(&deployment.db().pool, payload.task_id)
         .await?
         .ok_or(SqlxError::RowNotFound)?;
-
-    let project = task
-        .parent_project(pool)
-        .await?
-        .ok_or(SqlxError::RowNotFound)?;
-
-    let repositories = ProjectRepo::find_repos_for_project(pool, project.id).await?;
 
     let attempt_id = Uuid::new_v4();
     let git_branch_name = deployment
@@ -192,15 +191,19 @@ pub async fn create_task_attempt(
     )
     .await?;
 
-    let attempt_repos: Vec<_> = repositories
-        .iter()
-        .map(|repo| CreateAttemptRepo {
+    // Resolve repo paths to repo IDs via find_or_create
+    let mut attempt_repos = Vec::with_capacity(payload.repos.len());
+    for repo_input in &payload.repos {
+        let path = PathBuf::from(&repo_input.git_repo_path);
+        let repo =
+            Repo::find_or_create(&deployment.db().pool, &path, &repo_input.display_name).await?;
+        attempt_repos.push(CreateAttemptRepo {
             repo_id: repo.id,
-            target_branch: payload.base_branch.clone(),
-        })
-        .collect();
-    AttemptRepo::create_many(pool, task_attempt.id, &attempt_repos).await?;
+            target_branch: repo_input.target_branch.clone(),
+        });
+    }
 
+    AttemptRepo::create_many(pool, task_attempt.id, &attempt_repos).await?;
     if let Err(err) = deployment
         .container()
         .start_attempt(&task_attempt, executor_profile_id.clone())
@@ -274,17 +277,16 @@ pub async fn follow_up(
 ) -> Result<ResponseJson<ApiResponse<ExecutionProcess>>, ApiError> {
     tracing::info!("{:?}", task_attempt);
 
+    let pool = &deployment.db().pool;
+
     deployment
         .container()
         .ensure_container_exists(&task_attempt)
         .await?;
 
     // Get executor profile data from the latest CodingAgent process
-    let initial_executor_profile_id = ExecutionProcess::latest_executor_profile_for_attempt(
-        &deployment.db().pool,
-        task_attempt.id,
-    )
-    .await?;
+    let initial_executor_profile_id =
+        ExecutionProcess::latest_executor_profile_for_attempt(pool, task_attempt.id).await?;
 
     let executor_profile_id = ExecutorProfileId {
         executor: initial_executor_profile_id.executor,
@@ -293,19 +295,18 @@ pub async fn follow_up(
 
     // Get parent task
     let task = task_attempt
-        .parent_task(&deployment.db().pool)
+        .parent_task(pool)
         .await?
         .ok_or(SqlxError::RowNotFound)?;
 
     // Get parent project
     let project = task
-        .parent_project(&deployment.db().pool)
+        .parent_project(pool)
         .await?
         .ok_or(SqlxError::RowNotFound)?;
 
     // If retry settings provided, perform replace-logic before proceeding
     if let Some(proc_id) = payload.retry_process_id {
-        let pool = &deployment.db().pool;
         // Validate process belongs to attempt
         let process =
             ExecutionProcess::find_by_id(pool, proc_id)
@@ -326,7 +327,6 @@ pub async fn follow_up(
             &deployment,
             pool,
             &task_attempt,
-            project.id,
             proc_id,
             perform_git_reset,
             force_when_dirty,
@@ -340,11 +340,8 @@ pub async fn follow_up(
         let _ = ExecutionProcess::drop_at_and_after(pool, task_attempt.id, proc_id).await?;
     }
 
-    let latest_session_id = ExecutionProcess::find_latest_session_id_by_task_attempt(
-        &deployment.db().pool,
-        task_attempt.id,
-    )
-    .await?;
+    let latest_session_id =
+        ExecutionProcess::find_latest_session_id_by_task_attempt(pool, task_attempt.id).await?;
 
     let prompt = payload.prompt;
 
@@ -380,13 +377,7 @@ pub async fn follow_up(
 
     // Clear the draft follow-up scratch on successful spawn
     // This ensures the scratch is wiped even if the user navigates away quickly
-    if let Err(e) = Scratch::delete(
-        &deployment.db().pool,
-        task_attempt.id,
-        &ScratchType::DraftFollowUp,
-    )
-    .await
-    {
+    if let Err(e) = Scratch::delete(pool, task_attempt.id, &ScratchType::DraftFollowUp).await {
         // Log but don't fail the request - scratch deletion is best-effort
         tracing::debug!(
             "Failed to delete draft follow-up scratch for attempt {}: {}",

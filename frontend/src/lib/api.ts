@@ -768,6 +768,16 @@ export const fileSystemApi = {
   },
 };
 
+// Repo APIs
+export const repoApi = {
+  getBranches: async (path: string): Promise<GitBranch[]> => {
+    const response = await makeRequest(
+      `/api/repo/branches?path=${encodeURIComponent(path)}`
+    );
+    return handleApiResponse<GitBranch[]>(response);
+  },
+};
+
 // Config APIs (backwards compatible)
 export const configApi = {
   getConfig: async (): Promise<UserSystemInfo> => {

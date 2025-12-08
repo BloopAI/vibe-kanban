@@ -161,4 +161,27 @@ impl AttemptRepo {
         .await?;
         Ok(result.rows_affected())
     }
+
+    pub async fn find_unique_repos_for_task(
+        pool: &SqlitePool,
+        task_id: Uuid,
+    ) -> Result<Vec<Repo>, sqlx::Error> {
+        sqlx::query_as!(
+            Repo,
+            r#"SELECT DISTINCT r.id as "id!: Uuid",
+                      r.path,
+                      r.name,
+                      r.display_name,
+                      r.created_at as "created_at!: DateTime<Utc>",
+                      r.updated_at as "updated_at!: DateTime<Utc>"
+               FROM repos r
+               JOIN attempt_repos ar ON r.id = ar.repo_id
+               JOIN task_attempts ta ON ar.attempt_id = ta.id
+               WHERE ta.task_id = $1
+               ORDER BY r.display_name ASC"#,
+            task_id
+        )
+        .fetch_all(pool)
+        .await
+    }
 }

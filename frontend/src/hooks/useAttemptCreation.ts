@@ -1,10 +1,14 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { attemptsApi } from '@/lib/api';
-import type { TaskAttempt, ExecutorProfileId } from 'shared/types';
+import type {
+  TaskAttempt,
+  ExecutorProfileId,
+  AttemptRepoInput,
+} from 'shared/types';
 
 type CreateAttemptArgs = {
   profile: ExecutorProfileId;
-  baseBranch: string;
+  repos: AttemptRepoInput[];
 };
 
 type UseAttemptCreationArgs = {
@@ -19,11 +23,11 @@ export function useAttemptCreation({
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: ({ profile, baseBranch }: CreateAttemptArgs) =>
+    mutationFn: ({ profile, repos }: CreateAttemptArgs) =>
       attemptsApi.create({
         task_id: taskId,
         executor_profile_id: profile,
-        base_branch: baseBranch,
+        repos,
       }),
     onSuccess: (newAttempt: TaskAttempt) => {
       queryClient.setQueryData(

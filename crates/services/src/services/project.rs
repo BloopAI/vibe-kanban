@@ -238,7 +238,22 @@ impl ProjectService {
                 }
                 _ => ProjectServiceError::RepositoryNotFound,
             })?;
+
+        if let Err(e) = Repo::delete_orphaned(pool).await {
+            tracing::error!("Failed to delete orphaned repos: {}", e);
+        }
+
         Ok(())
+    }
+
+    pub async fn delete_project(&self, pool: &SqlitePool, project_id: Uuid) -> Result<u64> {
+        let rows_affected = Project::delete(pool, project_id).await?;
+
+        if let Err(e) = Repo::delete_orphaned(pool).await {
+            tracing::error!("Failed to delete orphaned repos: {}", e);
+        }
+
+        Ok(rows_affected)
     }
 
     pub async fn get_repositories(&self, pool: &SqlitePool, project_id: Uuid) -> Result<Vec<Repo>> {
