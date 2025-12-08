@@ -506,52 +506,68 @@ pub async fn compare_commit_to_head(
     })))
 }
 
+#[derive(Debug, Deserialize, Serialize, TS)]
+pub struct MergeTaskAttemptRequest {
+    pub repo_id: Uuid,
+}
+
 #[axum::debug_handler]
 pub async fn merge_task_attempt(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
+    Json(request): Json<MergeTaskAttemptRequest>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     let pool = &deployment.db().pool;
 
-    let task = task_attempt
-        .parent_task(pool)
+    let attempt_repo =
+        AttemptRepo::find_by_attempt_and_repo_id(pool, task_attempt.id, request.repo_id)
+            .await?
+            .ok_or(RepoError::NotFound)?;
+
+    let repo = Repo::find_by_id(pool, attempt_repo.repo_id)
         .await?
-        .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
-    let ctx = TaskAttempt::load_context(pool, task_attempt.id, task.id, task.project_id).await?;
+        .ok_or(RepoError::NotFound)?;
 
     let container_ref = deployment
         .container()
         .ensure_container_exists(&task_attempt)
         .await?;
     let workspace_path = Path::new(&container_ref);
+    let worktree_path = workspace_path.join(repo.name);
 
+    let task = task_attempt
+        .parent_task(pool)
+        .await?
+        .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
     let task_uuid_str = task.id.to_string();
     let first_uuid_section = task_uuid_str.split('-').next().unwrap_or(&task_uuid_str);
 
-    // Create commit message with task title and description
-    let mut commit_message = format!("{} (vibe-kanban {})", ctx.task.title, first_uuid_section);
+    let mut commit_message = format!("{} (vibe-kanban {})", task.title, first_uuid_section);
 
     // Add description on next line if it exists
-    if let Some(description) = &ctx.task.description
+    if let Some(description) = &task.description
         && !description.trim().is_empty()
     {
         commit_message.push_str("\n\n");
         commit_message.push_str(description);
     }
 
-    let repo_path = get_first_repo_path(pool, ctx.project.id).await?;
-    let target_branch = get_first_target_branch(pool, task_attempt.id).await?;
-    // TODO: this needs a worktree path, not a workspace path
     let merge_commit_id = deployment.git().merge_changes(
-        &repo_path,
-        workspace_path,
-        &ctx.task_attempt.branch,
-        &target_branch,
+        &repo.path,
+        &worktree_path,
+        &task_attempt.branch,
+        &attempt_repo.target_branch,
         &commit_message,
     )?;
 
-    Merge::create_direct(pool, task_attempt.id, &target_branch, &merge_commit_id).await?;
-    Task::update_status(pool, ctx.task.id, TaskStatus::Done).await?;
+    Merge::create_direct(
+        pool,
+        task_attempt.id,
+        &attempt_repo.target_branch,
+        &merge_commit_id,
+    )
+    .await?;
+    Task::update_status(pool, task.id, TaskStatus::Done).await?;
 
     // Stop any running dev servers for this task attempt
     let dev_servers =
@@ -580,17 +596,17 @@ pub async fn merge_task_attempt(
 
     // Try broadcast update to other users in organization
     if let Ok(publisher) = deployment.share_publisher() {
-        if let Err(err) = publisher.update_shared_task_by_id(ctx.task.id).await {
+        if let Err(err) = publisher.update_shared_task_by_id(task.id).await {
             tracing::warn!(
                 ?err,
                 "Failed to propagate shared task update for {}",
-                ctx.task.id
+                task.id
             );
         }
     } else {
         tracing::debug!(
             "Share publisher unavailable; skipping remote update for {}",
-            ctx.task.id
+            task.id
         );
     }
 
@@ -598,8 +614,7 @@ pub async fn merge_task_attempt(
         .track_if_analytics_allowed(
             "task_attempt_merged",
             serde_json::json!({
-                "task_id": ctx.task.id.to_string(),
-                "project_id": ctx.project.id.to_string(),
+                "task_id": task.id.to_string(),
                 "attempt_id": task_attempt.id.to_string(),
             }),
         )
