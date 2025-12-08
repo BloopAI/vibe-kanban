@@ -152,7 +152,8 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
       return;
     }
 
-    const diffId = diffs[diffIndex].newPath || diffs[diffIndex].oldPath || String(diffIndex);
+    const diffId =
+      diffs[diffIndex].newPath || diffs[diffIndex].oldPath || String(diffIndex);
 
     // Check if diff is collapsed
     if (collapsedIds.has(diffId)) {
@@ -187,7 +188,8 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
       return;
     }
 
-    const diffId = diffs[diffIndex].newPath || diffs[diffIndex].oldPath || String(diffIndex);
+    const diffId =
+      diffs[diffIndex].newPath || diffs[diffIndex].oldPath || String(diffIndex);
     if (!collapsedIds.has(diffId)) {
       // Diff is now expanded, scroll after a small delay for DOM to update
       const timer = setTimeout(() => {

@@ -359,7 +359,12 @@ export function TaskFollowUpSection({
     return Boolean(
       conflictResolutionInstructions || clickedMarkdown || localMessage.trim()
     );
-  }, [canTypeFollowUp, conflictResolutionInstructions, clickedMarkdown, localMessage]);
+  }, [
+    canTypeFollowUp,
+    conflictResolutionInstructions,
+    clickedMarkdown,
+    localMessage,
+  ]);
   const isEditable = !isRetryActive && !hasPendingApproval;
 
   // Script availability
@@ -595,9 +600,12 @@ export function TaskFollowUpSection({
   );
 
   // Helper function to generate code reference markdown
-  const generateCodeReferenceMarkdown = useCallback((data: CodeReferenceData) => {
-    return '```code-ref\n' + JSON.stringify(data, null, 2) + '\n```';
-  }, []);
+  const generateCodeReferenceMarkdown = useCallback(
+    (data: CodeReferenceData) => {
+      return '```code-ref\n' + JSON.stringify(data, null, 2) + '\n```';
+    },
+    []
+  );
 
   // Register code reference insertion callback
   useEffect(() => {
@@ -622,7 +630,11 @@ export function TaskFollowUpSection({
 
     registerInsertionCallback(handleCodeReferenceInsertion);
     return () => unregisterInsertionCallback();
-  }, [registerInsertionCallback, unregisterInsertionCallback, generateCodeReferenceMarkdown]);
+  }, [
+    registerInsertionCallback,
+    unregisterInsertionCallback,
+    generateCodeReferenceMarkdown,
+  ]);
 
   // Handle focus after code reference insertion
   useEffect(() => {
