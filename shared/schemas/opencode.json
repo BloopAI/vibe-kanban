@@ -17,7 +17,7 @@
         "null"
       ]
     },
-    "agent": {
+    "mode": {
       "type": [
         "string",
         "null"

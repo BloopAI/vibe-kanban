@@ -159,13 +159,14 @@ impl CodingAgent {
             | Self::Amp(_)
             | Self::Gemini(_)
             | Self::QwenCode(_)
-            | Self::Droid(_) => vec![BaseAgentCapability::SessionFork],
+            | Self::Droid(_)
+            | Self::Opencode(_) => vec![BaseAgentCapability::SessionFork],
             Self::Codex(_) => vec![
                 BaseAgentCapability::SessionFork,
                 BaseAgentCapability::SetupHelper,
             ],
             Self::CursorAgent(_) => vec![BaseAgentCapability::SetupHelper],
-            Self::Opencode(_) | Self::Copilot(_) => vec![],
+            Self::Copilot(_) => vec![],
         }
     }
 }

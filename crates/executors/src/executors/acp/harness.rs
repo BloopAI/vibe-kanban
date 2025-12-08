@@ -26,6 +26,8 @@ use crate::{
 /// Reusable harness for ACP-based conns (Gemini, Qwen, etc.)
 pub struct AcpAgentHarness {
     session_namespace: String,
+    model: Option<String>,
+    mode: Option<String>,
 }
 
 impl Default for AcpAgentHarness {
@@ -40,6 +42,8 @@ impl AcpAgentHarness {
     pub fn new() -> Self {
         Self {
             session_namespace: "gemini_sessions".to_string(),
+            model: None,
+            mode: None,
         }
     }
 
@@ -47,7 +51,19 @@ impl AcpAgentHarness {
     pub fn with_session_namespace(namespace: impl Into<String>) -> Self {
         Self {
             session_namespace: namespace.into(),
+            model: None,
+            mode: None,
         }
+    }
+
+    pub fn with_model(mut self, model: impl Into<String>) -> Self {
+        self.model = Some(model.into());
+        self
+    }
+
+    pub fn with_mode(mut self, mode: impl Into<String>) -> Self {
+        self.mode = Some(mode.into());
+        self
     }
 
     pub async fn spawn_with_command(
@@ -83,6 +99,8 @@ impl AcpAgentHarness {
             prompt,
             Some(exit_tx),
             self.session_namespace.clone(),
+            self.model.clone(),
+            self.mode.clone(),
         )
         .await?;
 
@@ -127,6 +145,8 @@ impl AcpAgentHarness {
             prompt,
             Some(exit_tx),
             self.session_namespace.clone(),
+            self.model.clone(),
+            self.mode.clone(),
         )
         .await?;
 
@@ -137,6 +157,7 @@ impl AcpAgentHarness {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn bootstrap_acp_connection(
         child: &mut AsyncGroupChild,
         cwd: PathBuf,
@@ -144,6 +165,8 @@ impl AcpAgentHarness {
         prompt: String,
         exit_signal: Option<tokio::sync::oneshot::Sender<ExecutorExitResult>>,
         session_namespace: String,
+        model: Option<String>,
+        mode: Option<String>,
     ) -> Result<(), ExecutorError> {
         // Take child's stdio for ACP wiring
         let orig_stdout = child.inner().stdout.take().ok_or_else(|| {
@@ -328,6 +351,32 @@ impl AcpAgentHarness {
                         // Emit session ID
                         let _ = log_tx
                             .send(AcpEvent::SessionStart(display_session_id.clone()).to_string());
+
+                        if let Some(model) = model.clone() {
+                            match conn
+                                .set_session_model(proto::SetSessionModelRequest::new(
+                                    proto::SessionId::new(acp_session_id.clone()),
+                                    model,
+                                ))
+                                .await
+                            {
+                                Ok(_) => {}
+                                Err(e) => error!("Failed to set session mode: {}", e),
+                            }
+                        }
+
+                        if let Some(mode) = mode.clone() {
+                            match conn
+                                .set_session_mode(proto::SetSessionModeRequest::new(
+                                    proto::SessionId::new(acp_session_id.clone()),
+                                    mode,
+                                ))
+                                .await
+                            {
+                                Ok(_) => {}
+                                Err(e) => error!("Failed to set session mode: {}", e),
+                            }
+                        }
 
                         // Start raw event forwarder and persistence
                         let app_tx_clone = log_tx.clone();

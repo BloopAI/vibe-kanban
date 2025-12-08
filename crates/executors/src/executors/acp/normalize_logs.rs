@@ -8,14 +8,14 @@ use agent_client_protocol::{self as acp, SessionNotification};
 use futures::StreamExt;
 use regex::Regex;
 use serde::Deserialize;
-use tracing::debug;
+use tracing::{debug, trace};
 use workspace_utils::msg_store::MsgStore;
 
 pub use super::AcpAgentHarness;
 use super::AcpEvent;
 use crate::logs::{
-    ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType, ToolResult,
-    ToolResultValueType, ToolStatus as LogToolStatus,
+    ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType, TodoItem,
+    ToolResult, ToolResultValueType, ToolStatus as LogToolStatus,
     stderr_processor::normalize_stderr_logs,
     utils::{ConversationPatch, EntryIndexProvider},
 };
@@ -38,7 +38,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
         let mut stdout_lines = msg_store.stdout_lines_stream();
         while let Some(Ok(line)) = stdout_lines.next().await {
             if let Some(parsed) = AcpEventParser::parse_line(&line) {
-                debug!("Parsed ACP line: {:?}", parsed);
+                trace!("Parsed ACP line: {:?}", parsed);
                 match parsed {
                     AcpEvent::SessionStart(id) => {
                         if !stored_session_id {
@@ -121,15 +121,33 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                     AcpEvent::Plan(plan) => {
                         streaming.assistant_text = None;
                         streaming.thinking_text = None;
-                        let mut body = String::from("Plan:\n");
-                        for (i, e) in plan.entries.iter().enumerate() {
-                            body.push_str(&format!("{}. {}\n", i + 1, e.content));
-                        }
+                        let todos: Vec<TodoItem> = plan
+                            .entries
+                            .iter()
+                            .map(|e| TodoItem {
+                                content: e.content.clone(),
+                                status: serde_json::to_value(&e.status)
+                                    .ok()
+                                    .and_then(|v| v.as_str().map(|s| s.to_string()))
+                                    .unwrap_or_else(|| "unknown".to_string()),
+                                priority: serde_json::to_value(&e.priority)
+                                    .ok()
+                                    .and_then(|v| v.as_str().map(|s| s.to_string())),
+                            })
+                            .collect();
+
                         let idx = entry_index.next();
                         let entry = NormalizedEntry {
                             timestamp: None,
-                            entry_type: NormalizedEntryType::SystemMessage,
-                            content: body,
+                            entry_type: NormalizedEntryType::ToolUse {
+                                tool_name: "plan".to_string(),
+                                action_type: ActionType::TodoManagement {
+                                    todos,
+                                    operation: "update".to_string(),
+                                },
+                                status: LogToolStatus::Success,
+                            },
+                            content: "Plan updated".to_string(),
                             metadata: None,
                         };
                         msg_store.push_patch(ConversationPatch::add_normalized_entry(idx, entry));
@@ -186,7 +204,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                                 .map(|s| s.title.clone())
                                 .or_else(|| Some("".to_string()));
                         }
-                        debug!("Got tool call update: {:?}", update);
+                        trace!("Got tool call update: {:?}", update);
                         if let Ok(tc) = agent_client_protocol::ToolCall::try_from(update.clone()) {
                             handle_tool_call(
                                 &tc,
@@ -282,10 +300,9 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                     // Prefer structured raw_output, else fallback to aggregated text content
                     let completed =
                         matches!(tc.status, agent_client_protocol::ToolCallStatus::Completed);
-                    tracing::debug!(
+                    trace!(
                         "Mapping execute tool call, completed: {}, command: {}",
-                        completed,
-                        command
+                        completed, command
                     );
                     let tc_exit_status = match tc.status {
                         agent_client_protocol::ToolCallStatus::Completed => {

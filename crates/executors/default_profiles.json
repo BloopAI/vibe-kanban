@@ -79,6 +79,11 @@
     "OPENCODE": {
       "DEFAULT": {
         "OPENCODE": {}
+      },
+      "PLAN": {
+        "OPENCODE": {
+          "mode": "plan"
+        }
       }
     },
     "QWEN_CODE": {
