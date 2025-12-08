@@ -120,13 +120,12 @@ impl CreateTask {
         base_branch: &str,
     ) -> Result<Self, sqlx::Error> {
         // Only resolve if parent not already set (explicit parent takes precedence)
-        if self.parent_task_attempt.is_none() {
-            if let Some(parent) =
+        if self.parent_task_attempt.is_none()
+            && let Some(parent) =
                 TaskAttempt::find_by_branch(pool, self.project_id, base_branch).await?
             {
                 self.parent_task_attempt = Some(parent.id);
             }
-        }
         Ok(self)
     }
 }
