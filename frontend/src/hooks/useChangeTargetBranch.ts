@@ -5,6 +5,11 @@ import type {
   ChangeTargetBranchResponse,
 } from 'shared/types';
 
+type ChangeTargetBranchParams = {
+  newTargetBranch: string;
+  repoId: string;
+};
+
 export function useChangeTargetBranch(
   attemptId: string | undefined,
   projectId: string | undefined,
@@ -13,14 +18,19 @@ export function useChangeTargetBranch(
 ) {
   const queryClient = useQueryClient();
 
-  return useMutation<ChangeTargetBranchResponse, unknown, string>({
-    mutationFn: async (newTargetBranch) => {
+  return useMutation<
+    ChangeTargetBranchResponse,
+    unknown,
+    ChangeTargetBranchParams
+  >({
+    mutationFn: async ({ newTargetBranch, repoId }) => {
       if (!attemptId) {
         throw new Error('Attempt id is not set');
       }
 
       const payload: ChangeTargetBranchRequest = {
         new_target_branch: newTargetBranch,
+        repo_id: repoId,
       };
       return attemptsApi.change_target_branch(attemptId, payload);
     },

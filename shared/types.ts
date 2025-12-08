@@ -200,9 +200,9 @@ export type ProjectBranchesResponse = { repositories: Array<RepositoryBranches>,
 
 export type CreateFollowUpAttempt = { prompt: string, variant: string | null, retry_process_id: string | null, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };
 
-export type ChangeTargetBranchRequest = { new_target_branch: string, };
+export type ChangeTargetBranchRequest = { repo_id: string, new_target_branch: string, };
 
-export type ChangeTargetBranchResponse = { new_target_branch: string, status: [number, number], };
+export type ChangeTargetBranchResponse = { repo_id: string, new_target_branch: string, status: [number, number], };
 
 export type RenameBranchRequest = { new_branch_name: string, };
 

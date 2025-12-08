@@ -107,7 +107,12 @@ function GitOperations({
 
   // Target branch change handlers
   const handleChangeTargetBranchClick = async (newBranch: string) => {
-    await git.actions.changeTargetBranch(newBranch);
+    const repoId = getSelectedRepoId();
+    if (!repoId) return;
+    await git.actions.changeTargetBranch({
+      newTargetBranch: newBranch,
+      repoId,
+    });
   };
 
   const handleChangeTargetBranchDialogOpen = async () => {
