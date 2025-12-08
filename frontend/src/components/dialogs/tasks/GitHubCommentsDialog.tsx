@@ -90,10 +90,10 @@ const GitHubCommentsDialogImpl = NiceModal.create<GitHubCommentsDialogProps>(
       <Dialog
         open={modal.visible}
         onOpenChange={handleOpenChange}
-        className="max-w-2xl p-0 max-h-[80vh] overflow-hidden"
+        className="max-w-2xl p-0 overflow-hidden"
       >
         <DialogContent
-          className="flex flex-col h-full"
+          className="p-0"
           onKeyDownCapture={(e) => {
             if (e.key === 'Escape') {
               e.stopPropagation();
@@ -102,92 +102,94 @@ const GitHubCommentsDialogImpl = NiceModal.create<GitHubCommentsDialogProps>(
             }
           }}
         >
-          <DialogHeader className="px-4 py-3 border-b flex-shrink-0">
+          <DialogHeader className="px-4 py-3 border-b">
             <DialogTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
               {t('tasks:githubComments.dialog.title')}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="p-4 overflow-auto flex-1 min-w-0 min-h-0">
-            {errorMessage ? (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{errorMessage}</AlertDescription>
-              </Alert>
-            ) : isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : comments.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                {t('tasks:githubComments.dialog.noComments')}
-              </p>
-            ) : (
-              <>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm text-muted-foreground">
-                    {t('tasks:githubComments.dialog.selectedCount', {
-                      selected: selectedIds.size,
-                      total: comments.length,
+          <div className="max-h-[70vh] flex flex-col min-h-0">
+            <div className="p-4 overflow-auto flex-1 min-h-0">
+              {errorMessage ? (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{errorMessage}</AlertDescription>
+                </Alert>
+              ) : isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : comments.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">
+                  {t('tasks:githubComments.dialog.noComments')}
+                </p>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm text-muted-foreground">
+                      {t('tasks:githubComments.dialog.selectedCount', {
+                        selected: selectedIds.size,
+                        total: comments.length,
+                      })}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={isAllSelected ? deselectAll : selectAll}
+                    >
+                      {isAllSelected
+                        ? t('tasks:githubComments.dialog.deselectAll')
+                        : t('tasks:githubComments.dialog.selectAll')}
+                    </Button>
+                  </div>
+                  <div className="space-y-3">
+                    {comments.map((comment) => {
+                      const id = getCommentId(comment);
+                      return (
+                        <div key={id} className="flex items-start gap-3 min-w-0">
+                          <Checkbox
+                            checked={selectedIds.has(id)}
+                            onCheckedChange={() => toggleSelection(id)}
+                            className="mt-3"
+                          />
+                          <GitHubCommentCard
+                            author={comment.author}
+                            body={comment.body}
+                            createdAt={comment.created_at}
+                            url={comment.url}
+                            commentType={comment.comment_type}
+                            path={
+                              comment.comment_type === 'review'
+                                ? comment.path
+                                : undefined
+                            }
+                            line={
+                              comment.comment_type === 'review' &&
+                              comment.line != null
+                                ? Number(comment.line)
+                                : undefined
+                            }
+                            diffHunk={
+                              comment.comment_type === 'review'
+                                ? comment.diff_hunk
+                                : undefined
+                            }
+                            variant="full"
+                            onClick={() => toggleSelection(id)}
+                            className="flex-1 min-w-0"
+                          />
+                        </div>
+                      );
                     })}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={isAllSelected ? deselectAll : selectAll}
-                  >
-                    {isAllSelected
-                      ? t('tasks:githubComments.dialog.deselectAll')
-                      : t('tasks:githubComments.dialog.selectAll')}
-                  </Button>
-                </div>
-                <div className="space-y-3">
-                  {comments.map((comment) => {
-                    const id = getCommentId(comment);
-                    return (
-                      <div key={id} className="flex items-start gap-3 min-w-0">
-                        <Checkbox
-                          checked={selectedIds.has(id)}
-                          onCheckedChange={() => toggleSelection(id)}
-                          className="mt-3"
-                        />
-                        <GitHubCommentCard
-                          author={comment.author}
-                          body={comment.body}
-                          createdAt={comment.created_at}
-                          url={comment.url}
-                          commentType={comment.comment_type}
-                          path={
-                            comment.comment_type === 'review'
-                              ? comment.path
-                              : undefined
-                          }
-                          line={
-                            comment.comment_type === 'review' &&
-                            comment.line != null
-                              ? Number(comment.line)
-                              : undefined
-                          }
-                          diffHunk={
-                            comment.comment_type === 'review'
-                              ? comment.diff_hunk
-                              : undefined
-                          }
-                          variant="full"
-                          onClick={() => toggleSelection(id)}
-                          className="flex-1 min-w-0"
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            )}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           {!errorMessage && !isLoading && comments.length > 0 && (
-            <DialogFooter className="px-4 py-3 border-t flex-shrink-0">
+            <DialogFooter className="px-4 py-3 border-t">
               <Button variant="outline" onClick={() => handleOpenChange(false)}>
                 {t('common:buttons.cancel')}
               </Button>
