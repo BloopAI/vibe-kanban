@@ -480,7 +480,10 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                     if tc.id.0.starts_with("read_many_files") {
                         "Read files".to_string()
                     } else {
-                        tc.title.clone()
+                        tc.path
+                            .as_ref()
+                            .map(|p| p.display().to_string())
+                            .unwrap_or_else(|| tc.title.clone())
                     }
                 }
                 _ => tc.title.clone(),
