@@ -20,7 +20,6 @@ import {
   LogOut,
   LogIn,
 } from 'lucide-react';
-import { Logo } from '@/components/Logo';
 import { SearchBar } from '@/components/SearchBar';
 import { useSearch } from '@/contexts/SearchContext';
 import { openTaskForm } from '@/lib/openTaskForm';
@@ -138,15 +137,12 @@ export function Navbar() {
       <div className="w-full px-3">
         <div className="flex items-center h-12 py-2">
           <div className="flex-1 flex items-center">
-            <Link to="/projects">
-              <Logo />
-            </Link>
             <a
               href="https://discord.gg/AC4nwVtJM3"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Join our Discord"
-              className="hidden sm:inline-flex items-center ml-3 text-xs font-medium overflow-hidden border h-6"
+              className="hidden sm:inline-flex items-center text-xs font-medium overflow-hidden border h-6"
             >
               <span className="bg-muted text-foreground flex items-center p-2 border-r">
                 <svg
