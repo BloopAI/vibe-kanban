@@ -1,6 +1,5 @@
 use std::sync::{Arc, OnceLock};
 
-use db::models::execution_process::{ExecutionContext, ExecutionProcessStatus};
 use tokio::sync::RwLock;
 use utils;
 
@@ -18,38 +17,6 @@ static WSL_ROOT_PATH_CACHE: OnceLock<Option<String>> = OnceLock::new();
 impl NotificationService {
     pub fn new(config: Arc<RwLock<Config>>) -> Self {
         Self { config }
-    }
-
-    pub async fn notify_execution_halted(&self, ctx: &ExecutionContext) {
-        let mut config = self.config.read().await.notifications.clone();
-        // If the process was intentionally killed by user, suppress sound
-        if matches!(ctx.execution_process.status, ExecutionProcessStatus::Killed) {
-            config.sound_enabled = false;
-        }
-
-        let title = format!("Task Complete: {}", ctx.task.title);
-        let message = match ctx.execution_process.status {
-            ExecutionProcessStatus::Completed => format!(
-                "✅ '{}' completed successfully\nBranch: {:?}\nExecutor: {}",
-                ctx.task.title, ctx.task_attempt.branch, ctx.task_attempt.executor
-            ),
-            ExecutionProcessStatus::Failed => format!(
-                "❌ '{}' execution failed\nBranch: {:?}\nExecutor: {}",
-                ctx.task.title, ctx.task_attempt.branch, ctx.task_attempt.executor
-            ),
-            ExecutionProcessStatus::Killed => format!(
-                "🛑 '{}' execution cancelled by user\nBranch: {:?}\nExecutor: {}",
-                ctx.task.title, ctx.task_attempt.branch, ctx.task_attempt.executor
-            ),
-            _ => {
-                tracing::warn!(
-                    "Tried to notify attempt completion for {} but process is still running!",
-                    ctx.task_attempt.id
-                );
-                return;
-            }
-        };
-        Self::send_notification(&config, &title, &message).await;
     }
 
     /// Send both sound and push notifications if enabled

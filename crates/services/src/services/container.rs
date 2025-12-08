@@ -160,11 +160,7 @@ pub trait ContainerService {
     }
 
     /// Finalize task execution by updating status to InReview and sending notifications
-    async fn finalize_task(
-        &self,
-        share_publisher: Option<&SharePublisher>,
-        ctx: &ExecutionContext,
-    ) {
+    async fn finalize_task(&self, share_publisher: Option<&SharePublisher>, ctx: &ExecutionContext) {
         match Task::update_status(&self.db().pool, ctx.task.id, TaskStatus::InReview).await {
             Ok(_) => {
                 if let Some(publisher) = share_publisher
@@ -181,9 +177,34 @@ pub trait ContainerService {
                 tracing::error!("Failed to update task status to InReview: {e}");
             }
         }
-        self.notification_service()
-            .notify_execution_halted(ctx)
-            .await;
+
+        // Skip notification if process was intentionally killed by user
+        if matches!(
+            ctx.execution_process.status,
+            ExecutionProcessStatus::Killed
+        ) {
+            return;
+        }
+
+        let title = format!("Task Complete: {}", ctx.task.title);
+        let message = match ctx.execution_process.status {
+            ExecutionProcessStatus::Completed => format!(
+                "✅ '{}' completed successfully\nBranch: {:?}\nExecutor: {}",
+                ctx.task.title, ctx.task_attempt.branch, ctx.task_attempt.executor
+            ),
+            ExecutionProcessStatus::Failed => format!(
+                "❌ '{}' execution failed\nBranch: {:?}\nExecutor: {}",
+                ctx.task.title, ctx.task_attempt.branch, ctx.task_attempt.executor
+            ),
+            _ => {
+                tracing::warn!(
+                    "Tried to notify attempt completion for {} but process is still running!",
+                    ctx.task_attempt.id
+                );
+                return;
+            }
+        };
+        self.notification_service().notify(&title, &message).await;
     }
 
     /// Cleanup executions marked as running in the db, call at startup
