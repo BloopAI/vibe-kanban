@@ -144,7 +144,7 @@
         },
         "customPrompt": {
           "label": "Custom PR Description Prompt",
-          "placeholder": "Update the GitHub PR that was just created with a better title and description.\nThe PR number is #{pr_number} and the URL is {pr_url}.\n\nAnalyze the changes in this branch and write:\n1. A concise, descriptive title that summarizes the changes\n2. A detailed description that explains:\n   - What changes were made\n   - Why they were made (based on the task context)\n   - Any important implementation details\n\nUse `gh pr edit` to update the PR.",
+          "placeholder": "Update the GitHub PR that was just created with a better title and description.\nThe PR number is #{pr_number} and the URL is {pr_url}.\n\nAnalyze the changes in this branch and write:\n1. A concise, descriptive title that summarizes the changes, postfixed with \"(Vibe Kanban)\"\n2. A detailed description that explains:\n   - What changes were made\n   - Why they were made (based on the task context)\n   - Any important implementation details\n   - At the end, include a note: \"This PR was written using [Vibe Kanban](https://vibekanban.com)\"\n\nUse `gh pr edit` to update the PR.",
           "helper": "Custom prompt for the AI agent when generating PR descriptions. Leave empty to use the default. Use {pr_number} and {pr_url} as placeholders."
         }
       },
