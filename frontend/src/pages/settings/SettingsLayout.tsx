@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Settings, Cpu, Server, X, FolderOpen, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -44,14 +44,9 @@ export function SettingsLayout() {
   }, [enableScope, disableScope]);
 
   const navigate = useNavigate();
-  const location = useLocation();
 
   const handleBack = () => {
-    if (location.state?.from) {
-      navigate(-1);
-    } else {
-      navigate('/projects');
-    }
+    navigate(-1);
   };
   // Register ESC keyboard shortcut
   useKeyExit(handleBack, { scope: Scope.SETTINGS });
