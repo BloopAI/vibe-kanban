@@ -24,7 +24,7 @@ use std::{
 use thiserror::Error;
 use utils::shell::resolve_executable_path_blocking; // TODO: make GitCli async
 
-use crate::services::git::Commit;
+use crate::services::git::{Commit, GitBranchId};
 
 #[derive(Debug, Error)]
 pub enum GitCliError {
@@ -85,7 +85,7 @@ impl GitCli {
         &self,
         repo_path: &Path,
         worktree_path: &Path,
-        branch: &str,
+        branch_id: &GitBranchId,
         create_branch: bool,
     ) -> Result<(), GitCliError> {
         self.ensure_available()?;
@@ -93,10 +93,10 @@ impl GitCli {
         let mut args: Vec<OsString> = vec!["worktree".into(), "add".into()];
         if create_branch {
             args.push("-b".into());
-            args.push(OsString::from(branch));
+            args.push(OsString::from(branch_id.ref_shorthand()));
         }
         args.push(worktree_path.as_os_str().into());
-        args.push(OsString::from(branch));
+        args.push(OsString::from(branch_id.ref_shorthand()));
         self.git(repo_path, args)?;
 
         // Good practice: reapply sparse-checkout in the new worktree to ensure materialization matches
@@ -341,13 +341,13 @@ impl GitCli {
         &self,
         repo_path: &Path,
         remote_url: &str,
-        branch: &str,
+        branch: &GitBranchId,
         force: bool,
     ) -> Result<(), GitCliError> {
         let refspec = if force {
-            format!("+refs/heads/{branch}:refs/heads/{branch}")
+            format!("+{}:{}", branch.ref_name(), branch.ref_name())
         } else {
-            format!("refs/heads/{branch}:refs/heads/{branch}")
+            format!("{}:{}", branch.ref_name(), branch.ref_name())
         };
         let envs = vec![(OsString::from("GIT_TERMINAL_PROMPT"), OsString::from("0"))];
 
@@ -369,7 +369,7 @@ impl GitCli {
         &self,
         repo_path: &Path,
         remote_url: &str,
-        branch_name: &str,
+        branch_id: &GitBranchId,
     ) -> Result<bool, GitCliError> {
         let envs = vec![(OsString::from("GIT_TERMINAL_PROMPT"), OsString::from("0"))];
 
@@ -377,7 +377,7 @@ impl GitCli {
             OsString::from("ls-remote"),
             OsString::from("--heads"),
             OsString::from(remote_url),
-            OsString::from(format!("refs/heads/{branch_name}")),
+            OsString::from(format!("refs/heads/{}", branch_id.branch_name())),
         ];
 
         match self.git_with_env(repo_path, args, &envs) {
@@ -551,13 +551,22 @@ impl GitCli {
     pub fn merge_squash_commit(
         &self,
         repo_path: &Path,
-        base_branch: &str,
-        from_branch: &str,
+        base_branch: &GitBranchId,
+        from_branch: &GitBranchId,
         message: &str,
     ) -> Result<String, GitCliError> {
-        self.git(repo_path, ["checkout", base_branch]).map(|_| ())?;
-        self.git(repo_path, ["merge", "--squash", "--no-commit", from_branch])
+        self.git(repo_path, ["checkout", &base_branch.ref_shorthand()])
             .map(|_| ())?;
+        self.git(
+            repo_path,
+            [
+                "merge",
+                "--squash",
+                "--no-commit",
+                &from_branch.ref_shorthand(),
+            ],
+        )
+        .map(|_| ())?;
         self.git(repo_path, ["commit", "-m", message]).map(|_| ())?;
         let sha = self
             .git(repo_path, ["rev-parse", "HEAD"])?

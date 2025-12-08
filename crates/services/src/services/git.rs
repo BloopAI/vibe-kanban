@@ -183,6 +183,15 @@ impl GitBranchId {
         }
     }
 
+    pub fn ref_shorthand(&self) -> String {
+        match &self.branch_type {
+            GitBranchType::Remote { remote_name } => {
+                format!("{}/{}", remote_name, self.name)
+            }
+            GitBranchType::Local => self.name.clone(),
+        }
+    }
+
     pub fn from_local_name(name: String) -> Self {
         let ref_name = format!("refs/heads/{}", name);
         Self {
@@ -804,7 +813,7 @@ impl GitService {
 
         for worktree in worktrees {
             if let Some(ref branch) = worktree.branch_ref
-                && branch == branch_id.branch_name()
+                && branch == branch_id.ref_name()
             {
                 return Ok(Some(std::path::PathBuf::from(worktree.path)));
             }
@@ -832,8 +841,8 @@ impl GitService {
         if task_behind > 0 {
             return Err(GitServiceError::BranchesDiverged(format!(
                 "Cannot merge: base branch '{}' is {task_behind} commits ahead of task branch '{}'. The base branch has moved forward since the task was created.",
-                base_branch_id.branch_name(),
-                task_branch_id.branch_name()
+                base_branch_id.ref_shorthand(),
+                task_branch_id.ref_shorthand()
             )));
         }
 
@@ -851,7 +860,7 @@ impl GitService {
                     })?
                 {
                     return Err(GitServiceError::WorktreeDirty(
-                        base_branch_id.branch_name().to_string(),
+                        base_branch_id.ref_shorthand().to_string(),
                         "staged changes present".to_string(),
                     ));
                 }
@@ -861,8 +870,8 @@ impl GitService {
                 let sha = git_cli
                     .merge_squash_commit(
                         &base_checkout_path,
-                        base_branch_id.branch_name(),
-                        task_branch_id.branch_name(),
+                        base_branch_id,
+                        task_branch_id,
                         commit_message,
                     )
                     .map_err(|e| {
@@ -976,7 +985,7 @@ impl GitService {
         let base_branch_ref = if let Some(bn) = base_branch_id {
             Self::find_branch(&repo, bn)?
         } else {
-            repo.find_branch(branch_id.branch_name(), BranchType::Local)?
+            repo.find_branch(&branch_id.ref_shorthand(), BranchType::Local)?
                 .upstream()?
         }
         .into_reference();
@@ -1199,13 +1208,8 @@ impl GitService {
         create_branch: bool,
     ) -> Result<(), GitServiceError> {
         let git = GitCli::new();
-        git.worktree_add(
-            repo_path,
-            worktree_path,
-            &branch_id.ref_name(),
-            create_branch,
-        )
-        .map_err(|e| GitServiceError::InvalidRepository(e.to_string()))?;
+        git.worktree_add(repo_path, worktree_path, &branch_id, create_branch)
+            .map_err(|e| GitServiceError::InvalidRepository(e.to_string()))?;
         Ok(())
     }
 
@@ -1391,9 +1395,9 @@ impl GitService {
         // Use git CLI rebase to carry out the operation safely
         match git.rebase_onto(
             worktree_path,
-            new_base_branch_id.branch_name(),
-            old_base_branch_id.branch_name(),
-            task_branch_id.branch_name(),
+            &new_base_branch_id.ref_shorthand(),
+            &old_base_branch_id.ref_shorthand(),
+            &task_branch_id.ref_shorthand(),
         ) {
             Ok(()) => {}
             Err(GitCliError::RebaseInProgress) => {
@@ -1433,7 +1437,7 @@ impl GitService {
                     };
                     let msg = format!(
                         "Rebase encountered merge conflicts while rebasing '{attempt_branch}' onto '{}'.{files_part} Resolve conflicts and then continue or abort.",
-                        new_base_branch_id.branch_name()
+                        new_base_branch_id.ref_shorthand()
                     );
                     return Err(GitServiceError::MergeConflicts(msg));
                 }
@@ -1460,9 +1464,9 @@ impl GitService {
         branch_id: &GitBranchId,
     ) -> Result<bool, GitServiceError> {
         let repo = self.open_repo(repo_path)?;
-        match repo.find_branch(branch_id.branch_name(), BranchType::Local) {
+        match repo.find_branch(&branch_id.ref_shorthand(), BranchType::Local) {
             Ok(_) => Ok(true),
-            Err(_) => match repo.find_branch(branch_id.branch_name(), BranchType::Remote) {
+            Err(_) => match repo.find_branch(&branch_id.ref_shorthand(), BranchType::Remote) {
                 Ok(_) => Ok(true),
                 Err(_) => Ok(false),
             },
@@ -1475,16 +1479,24 @@ impl GitService {
         branch_id: &GitBranchId,
     ) -> Result<bool, GitServiceError> {
         let repo = self.open_repo(repo_path)?;
-        let default_remote_name = self.default_remote_name(&repo);
-        let stripped_branch_name = &branch_id.branch_name();
-        let remote = repo.find_remote(&default_remote_name)?;
+        let remote_name = match &branch_id.branch_type {
+            GitBranchType::Local => {
+                return Err(GitServiceError::InvalidRepository(format!(
+                    "Branch '{}' is not a remote branch",
+                    branch_id.ref_shorthand()
+                )));
+            }
+            GitBranchType::Remote { remote_name } => remote_name,
+        };
+        let remote = repo.find_remote(&remote_name)?;
+
         let remote_url = remote
             .url()
             .ok_or_else(|| GitServiceError::InvalidRepository("Remote has no URL".to_string()))?;
 
         let git_cli = GitCli::new();
         git_cli
-            .check_remote_branch_exists(repo_path, remote_url, stripped_branch_name)
+            .check_remote_branch_exists(repo_path, remote_url, branch_id)
             .map_err(|e| e.into())
     }
 
@@ -1497,12 +1509,10 @@ impl GitService {
         let repo = self.open_repo(worktree_path)?;
 
         let mut branch = repo
-            .find_branch(old_branch_id.branch_name(), BranchType::Local)
-            .map_err(|_| {
-                GitServiceError::BranchNotFound(old_branch_id.branch_name().to_string())
-            })?;
+            .find_branch(&old_branch_id.ref_shorthand(), BranchType::Local)
+            .map_err(|_| GitServiceError::BranchNotFound(old_branch_id.ref_shorthand()))?;
 
-        branch.rename(new_branch_id.branch_name(), false)?;
+        branch.rename(&new_branch_id.ref_shorthand(), false)?;
         repo.set_head(new_branch_id.ref_name())?;
 
         Ok(())
@@ -1600,15 +1610,13 @@ impl GitService {
         branch_id: &GitBranchId,
     ) -> Result<git2::Branch<'a>, GitServiceError> {
         // Try to find the branch as a local branch first
-        match repo.find_branch(branch_id.branch_name(), BranchType::Local) {
+        match repo.find_branch(&branch_id.ref_shorthand(), BranchType::Local) {
             Ok(branch) => Ok(branch),
             Err(_) => {
                 // If not found, try to find it as a remote branch
-                match repo.find_branch(branch_id.branch_name(), BranchType::Remote) {
+                match repo.find_branch(&branch_id.ref_shorthand(), BranchType::Remote) {
                     Ok(branch) => Ok(branch),
-                    Err(_) => Err(GitServiceError::BranchNotFound(
-                        branch_id.branch_name().to_string(),
-                    )),
+                    Err(_) => Err(GitServiceError::BranchNotFound(branch_id.ref_shorthand())),
                 }
             }
         }
@@ -1675,7 +1683,7 @@ impl GitService {
             .url()
             .ok_or_else(|| GitServiceError::InvalidRepository("Remote has no URL".to_string()))?;
         let git_cli = GitCli::new();
-        if let Err(e) = git_cli.push(worktree_path, remote_url, branch_id.branch_name(), force) {
+        if let Err(e) = git_cli.push(worktree_path, remote_url, branch_id, force) {
             tracing::error!("Push to GitHub failed: {}", e);
             return Err(e.into());
         }

@@ -555,7 +555,7 @@ pub async fn merge_task_attempt(
     Merge::create_direct(
         pool,
         task_attempt.id,
-        &target_branch.branch_name(),
+        &target_branch.ref_shorthand(),
         &merge_commit_id,
     )
     .await?;
@@ -732,7 +732,7 @@ pub async fn create_github_pr(
             Ok(false) => {
                 return Ok(ResponseJson(ApiResponse::error_with_data(
                     CreatePrError::TargetBranchNotFound {
-                        branch: target_branch.branch_name().to_string(),
+                        branch: target_branch.ref_shorthand(),
                     },
                 )));
             }
@@ -790,7 +790,7 @@ pub async fn create_github_pr(
             if let Err(e) = Merge::create_pr(
                 pool,
                 task_attempt.id,
-                &target_branch.branch_name(),
+                &target_branch.ref_shorthand(),
                 pr_info.number,
                 &pr_info.url,
             )
@@ -1053,7 +1053,7 @@ pub async fn get_task_attempt_branch_status(
                 remote_commits_ahead: remote_ahead,
                 remote_commits_behind: remote_behind,
                 merges: merges.clone(),
-                target_branch_name: target_branch.branch_name().to_string(),
+                target_branch_name: target_branch.ref_shorthand(),
                 is_rebase_in_progress,
                 conflict_op,
                 conflicted_files,
@@ -1092,7 +1092,6 @@ pub async fn change_target_branch_ref(
     Json(payload): Json<ChangeTargetBranchRefRequest>,
 ) -> Result<ResponseJson<ApiResponse<ChangeTargetBranchRefResponse>>, ApiError> {
     let new_target_branch_ref = payload.new_target_branch_ref;
-    // let new_target_branch_name = GitService::ref_to_branch_name(&new_target_branch_ref);
     let new_target_branch_id = GitBranchId::from_ref(new_target_branch_ref.clone())?;
     let task = task_attempt
         .parent_task(&deployment.db().pool)
@@ -1122,7 +1121,7 @@ pub async fn change_target_branch_ref(
         return Ok(ResponseJson(ApiResponse::error(
             format!(
                 "Branch '{}' does not exist in the repository",
-                new_target_branch_id.branch_name()
+                new_target_branch_id.ref_shorthand()
             )
             .as_str(),
         )));
@@ -1565,7 +1564,7 @@ pub async fn attach_existing_pr(
         let merge = Merge::create_pr(
             pool,
             task_attempt.id,
-            &target_branch.branch_name(),
+            &target_branch.ref_shorthand(),
             pr_info.number,
             &pr_info.url,
         )

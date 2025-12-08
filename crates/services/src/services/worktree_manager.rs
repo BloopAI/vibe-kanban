@@ -142,7 +142,7 @@ impl WorktreeManager {
 
         info!(
             "Creating worktree {} at path {}",
-            branch_id_owned.branch_name(),
+            branch_id_owned.ref_shorthand(),
             path_str
         );
 
@@ -319,7 +319,7 @@ impl WorktreeManager {
                     }
                     info!(
                         "Successfully created worktree {} at {} (git CLI)",
-                        branch_id.branch_name(),
+                        branch_id.ref_shorthand(),
                         path_str
                     );
                     Ok(())
@@ -349,7 +349,7 @@ impl WorktreeManager {
                     }
                     info!(
                         "Successfully created worktree {} at {} after metadata cleanup (git CLI)",
-                        branch_id.branch_name(),
+                        branch_id.ref_shorthand(),
                         path_str
                     );
                     Ok(())
