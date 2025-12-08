@@ -212,7 +212,11 @@ function GitOperations({
   const performMerge = async () => {
     try {
       setMerging(true);
-      await git.actions.merge();
+      const repoId = getSelectedRepoId();
+      if (!repoId) return;
+      await git.actions.merge({
+        repoId,
+      });
       setMergeSuccess(true);
       setTimeout(() => setMergeSuccess(false), 2000);
     } finally {
