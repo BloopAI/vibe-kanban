@@ -193,7 +193,9 @@ impl IntoResponse for ApiError {
                 NodeProxyError::NodeOffline => (StatusCode::BAD_GATEWAY, "NodeProxyError"),
                 NodeProxyError::NoNodeUrl => (StatusCode::BAD_REQUEST, "NodeProxyError"),
                 NodeProxyError::NoRemoteProjectId => (StatusCode::BAD_REQUEST, "NodeProxyError"),
-                NodeProxyError::NoTokenSecret => (StatusCode::INTERNAL_SERVER_ERROR, "NodeProxyError"),
+                NodeProxyError::NoTokenSecret => {
+                    (StatusCode::INTERNAL_SERVER_ERROR, "NodeProxyError")
+                }
                 NodeProxyError::Timeout => (StatusCode::GATEWAY_TIMEOUT, "NodeProxyError"),
                 NodeProxyError::Transport(_) => (StatusCode::BAD_GATEWAY, "NodeProxyError"),
                 NodeProxyError::RemoteError { status, .. } => (
@@ -201,7 +203,9 @@ impl IntoResponse for ApiError {
                     "NodeProxyError",
                 ),
                 NodeProxyError::ParseError(_) => (StatusCode::BAD_GATEWAY, "NodeProxyError"),
-                NodeProxyError::JwtError(_) => (StatusCode::INTERNAL_SERVER_ERROR, "NodeProxyError"),
+                NodeProxyError::JwtError(_) => {
+                    (StatusCode::INTERNAL_SERVER_ERROR, "NodeProxyError")
+                }
             },
         };
 

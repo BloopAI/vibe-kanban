@@ -40,10 +40,7 @@ pub enum NodeProxyError {
 impl NodeProxyError {
     /// Returns true if the error is transient and could be retried.
     pub fn is_transient(&self) -> bool {
-        matches!(
-            self,
-            Self::Timeout | Self::Transport(_) | Self::NodeOffline
-        )
+        matches!(self, Self::Timeout | Self::Transport(_) | Self::NodeOffline)
     }
 }
 
@@ -100,7 +97,10 @@ impl NodeProxyClient {
     pub fn new(secret: Option<SecretString>, local_node_id: Option<Uuid>) -> Self {
         let http = Client::builder()
             .timeout(Self::REQUEST_TIMEOUT)
-            .user_agent(concat!("vibe-kanban-node-proxy/", env!("CARGO_PKG_VERSION")))
+            .user_agent(concat!(
+                "vibe-kanban-node-proxy/",
+                env!("CARGO_PKG_VERSION")
+            ))
             .build()
             .expect("failed to build HTTP client");
 

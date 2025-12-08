@@ -20,7 +20,7 @@ use super::{
     connection::ConnectionManager,
     message::{
         AuthResultMessage, DeregisterMessage, HeartbeatMessage, HiveMessage, LinkProjectMessage,
-        LinkedProjectInfo, NodeMessage, NodeRemovedMessage, ProjectSyncMessage, PROTOCOL_VERSION,
+        LinkedProjectInfo, NodeMessage, NodeRemovedMessage, PROTOCOL_VERSION, ProjectSyncMessage,
         TaskExecutionStatus, TaskOutputMessage, TaskProgressMessage, TaskStatusMessage,
         UnlinkProjectMessage,
     },
@@ -783,7 +783,9 @@ async fn handle_deregister(
             .unwrap_or_else(|| "Node deregistered".to_string()),
     });
 
-    let failed = connections.broadcast_to_org(organization_id, removal_msg).await;
+    let failed = connections
+        .broadcast_to_org(organization_id, removal_msg)
+        .await;
     if !failed.is_empty() {
         tracing::warn!(
             node_id = %node_id,

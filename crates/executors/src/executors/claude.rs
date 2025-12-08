@@ -348,7 +348,10 @@ impl ClaudeLogProcessor {
             while let Some(Ok(msg)) = stream.next().await {
                 let chunk = match msg {
                     LogMsg::Stdout(x) => x,
-                    LogMsg::JsonPatch(_) | LogMsg::SessionId(_) | LogMsg::Stderr(_) => continue,
+                    LogMsg::JsonPatch(_)
+                    | LogMsg::SessionId(_)
+                    | LogMsg::Stderr(_)
+                    | LogMsg::RefreshRequired { .. } => continue,
                     LogMsg::Finished => break,
                 };
 

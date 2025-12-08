@@ -392,7 +392,8 @@ async fn handle_task_attempt_diff_ws(
     task_attempt: TaskAttempt,
     stats_only: bool,
 ) -> anyhow::Result<()> {
-    use futures_util::{SinkExt, StreamExt, TryStreamExt};
+    use crate::ws_util::{WsKeepAlive, run_ws_stream};
+    use futures_util::TryStreamExt;
     use utils::log_msg::LogMsg;
 
     let stream = deployment
@@ -400,36 +401,10 @@ async fn handle_task_attempt_diff_ws(
         .stream_diff(&task_attempt, stats_only)
         .await?;
 
-    let mut stream = stream.map_ok(|msg: LogMsg| msg.to_ws_message_unchecked());
+    let stream = stream.map_ok(|msg: LogMsg| msg.to_ws_message_unchecked());
 
-    let (mut sender, mut receiver) = socket.split();
-
-    loop {
-        tokio::select! {
-            // Wait for next stream item
-            item = stream.next() => {
-                match item {
-                    Some(Ok(msg)) => {
-                        if sender.send(msg).await.is_err() {
-                            break;
-                        }
-                    }
-                    Some(Err(e)) => {
-                        tracing::error!("stream error: {}", e);
-                        break;
-                    }
-                    None => break,
-                }
-            }
-            // Detect client disconnection
-            msg = receiver.next() => {
-                if msg.is_none() {
-                    break;
-                }
-            }
-        }
-    }
-    Ok(())
+    // Use run_ws_stream for proper keep-alive handling
+    run_ws_stream(socket, stream, WsKeepAlive::for_execution_streams()).await
 }
 
 #[derive(Debug, Serialize, TS)]

@@ -7,6 +7,7 @@ pub const EV_STDERR: &str = "stderr";
 pub const EV_JSON_PATCH: &str = "json_patch";
 pub const EV_SESSION_ID: &str = "session_id";
 pub const EV_FINISHED: &str = "finished";
+pub const EV_REFRESH_REQUIRED: &str = "refresh_required";
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum LogMsg {
@@ -15,6 +16,7 @@ pub enum LogMsg {
     JsonPatch(Patch),
     SessionId(String),
     Finished,
+    RefreshRequired { reason: String },
 }
 
 impl LogMsg {
@@ -25,6 +27,7 @@ impl LogMsg {
             LogMsg::JsonPatch(_) => EV_JSON_PATCH,
             LogMsg::SessionId(_) => EV_SESSION_ID,
             LogMsg::Finished => EV_FINISHED,
+            LogMsg::RefreshRequired { .. } => EV_REFRESH_REQUIRED,
         }
     }
 
@@ -38,6 +41,9 @@ impl LogMsg {
             }
             LogMsg::SessionId(s) => Event::default().event(EV_SESSION_ID).data(s.clone()),
             LogMsg::Finished => Event::default().event(EV_FINISHED).data(""),
+            LogMsg::RefreshRequired { reason } => Event::default()
+                .event(EV_REFRESH_REQUIRED)
+                .data(reason.clone()),
         }
     }
 
@@ -52,9 +58,16 @@ impl LogMsg {
     /// This method mirrors the behavior of the original logmsg_to_ws function
     /// but with better error handling than unwrap().
     pub fn to_ws_message_unchecked(&self) -> Message {
-        // Finished becomes JSON {finished: true}
         let json = match self {
+            // Finished becomes JSON {finished: true}
             LogMsg::Finished => r#"{"finished":true}"#.to_string(),
+            // RefreshRequired becomes JSON {refresh_required: true, reason: "..."}
+            LogMsg::RefreshRequired { reason } => {
+                format!(
+                    r#"{{"refresh_required":true,"reason":"{}"}}"#,
+                    reason.replace('"', "\\\"")
+                )
+            }
             _ => serde_json::to_string(self)
                 .unwrap_or_else(|_| r#"{"error":"serialization_failed"}"#.to_string()),
         };
@@ -74,6 +87,9 @@ impl LogMsg {
             }
             LogMsg::SessionId(s) => EV_SESSION_ID.len() + s.len() + OVERHEAD,
             LogMsg::Finished => EV_FINISHED.len() + OVERHEAD,
+            LogMsg::RefreshRequired { reason } => {
+                EV_REFRESH_REQUIRED.len() + reason.len() + OVERHEAD
+            }
         }
     }
 }

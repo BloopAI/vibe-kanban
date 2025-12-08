@@ -158,10 +158,7 @@ impl ConnectionTokenValidator {
     /// Node proxy tokens are used for node-to-node communication when proxying
     /// requests to remote nodes. They use `aud: "node_proxy"` and contain
     /// the source node ID as `sub`.
-    pub fn validate_proxy_token(
-        &self,
-        token: &str,
-    ) -> Result<ProxyToken, ConnectionTokenError> {
+    pub fn validate_proxy_token(&self, token: &str) -> Result<ProxyToken, ConnectionTokenError> {
         let secret = self
             .secret
             .as_ref()

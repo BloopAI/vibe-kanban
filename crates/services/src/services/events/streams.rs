@@ -7,7 +7,7 @@ use db::models::{
 };
 use futures::StreamExt;
 use serde_json::json;
-use tokio_stream::wrappers::BroadcastStream;
+use tokio_stream::wrappers::{BroadcastStream, errors::BroadcastStreamRecvError};
 use utils::log_msg::LogMsg;
 use uuid::Uuid;
 
@@ -71,150 +71,154 @@ impl EventService {
         let remote_project_id_filter = remote_project_id;
 
         // Get filtered event stream using pre-subscribed receiver
-        let filtered_stream =
-            BroadcastStream::new(receiver).filter_map(move |msg_result| {
-                let db_pool = db_pool.clone();
-                async move {
-                    match msg_result {
-                        Ok(LogMsg::JsonPatch(patch)) => {
-                            // Filter events based on project_id
-                            if let Some(patch_op) = patch.0.first() {
-                                if patch_op.path().starts_with("/shared_tasks/") {
-                                    match patch_op {
-                                        json_patch::PatchOperation::Add(op) => {
-                                            if let Ok(shared_task) =
-                                                serde_json::from_value::<SharedTask>(
-                                                    op.value.clone(),
-                                                )
-                                                && remote_project_id_filter
-                                                    .map(|expected| {
-                                                        shared_task.remote_project_id == expected
-                                                    })
-                                                    .unwrap_or(false)
-                                            {
-                                                return Some(Ok(LogMsg::JsonPatch(patch)));
-                                            }
-                                        }
-                                        json_patch::PatchOperation::Replace(op) => {
-                                            if let Ok(shared_task) =
-                                                serde_json::from_value::<SharedTask>(
-                                                    op.value.clone(),
-                                                )
-                                                && remote_project_id_filter
-                                                    .map(|expected| {
-                                                        shared_task.remote_project_id == expected
-                                                    })
-                                                    .unwrap_or(false)
-                                            {
-                                                return Some(Ok(LogMsg::JsonPatch(patch)));
-                                            }
-                                        }
-                                        json_patch::PatchOperation::Remove(_) => {
-                                            // Forward removals; clients will ignore missing tasks
-                                            return Some(Ok(LogMsg::JsonPatch(patch)));
-                                        }
-                                        _ => {}
-                                    }
-                                    return None;
-                                }
-                                // Check if this is a direct task patch (new format)
-                                if patch_op.path().starts_with("/tasks/") {
-                                    match patch_op {
-                                        json_patch::PatchOperation::Add(op) => {
-                                            // Parse task data directly from value
-                                            if let Ok(task) =
-                                                serde_json::from_value::<TaskWithAttemptStatus>(
-                                                    op.value.clone(),
-                                                )
-                                                && task.project_id == project_id
-                                            {
-                                                return Some(Ok(LogMsg::JsonPatch(patch)));
-                                            }
-                                        }
-                                        json_patch::PatchOperation::Replace(op) => {
-                                            // Parse task data directly from value
-                                            if let Ok(task) =
-                                                serde_json::from_value::<TaskWithAttemptStatus>(
-                                                    op.value.clone(),
-                                                )
-                                                && task.project_id == project_id
-                                            {
-                                                return Some(Ok(LogMsg::JsonPatch(patch)));
-                                            }
-                                        }
-                                        json_patch::PatchOperation::Remove(_) => {
-                                            // For remove operations, we need to check project membership differently
-                                            // We could cache this information or let it pass through for now
-                                            // Since we don't have the task data, we'll allow all removals
-                                            // and let the client handle filtering
-                                            return Some(Ok(LogMsg::JsonPatch(patch)));
-                                        }
-                                        _ => {}
-                                    }
-                                } else if let Ok(event_patch_value) = serde_json::to_value(patch_op)
-                                    && let Ok(event_patch) =
-                                        serde_json::from_value::<EventPatch>(event_patch_value)
-                                {
-                                    // Handle old EventPatch format for non-task records
-                                    match &event_patch.value.record {
-                                        RecordTypes::Task(task) => {
-                                            if task.project_id == project_id {
-                                                return Some(Ok(LogMsg::JsonPatch(patch)));
-                                            }
-                                        }
-                                        RecordTypes::DeletedTask {
-                                            project_id: Some(deleted_project_id),
-                                            ..
-                                        } => {
-                                            if *deleted_project_id == project_id {
-                                                return Some(Ok(LogMsg::JsonPatch(patch)));
-                                            }
-                                        }
-                                        RecordTypes::SharedTask(shared_task) => {
-                                            if remote_project_id_filter
+        let filtered_stream = BroadcastStream::new(receiver).filter_map(move |msg_result| {
+            let db_pool = db_pool.clone();
+            async move {
+                match msg_result {
+                    Ok(LogMsg::JsonPatch(patch)) => {
+                        // Filter events based on project_id
+                        if let Some(patch_op) = patch.0.first() {
+                            if patch_op.path().starts_with("/shared_tasks/") {
+                                match patch_op {
+                                    json_patch::PatchOperation::Add(op) => {
+                                        if let Ok(shared_task) =
+                                            serde_json::from_value::<SharedTask>(op.value.clone())
+                                            && remote_project_id_filter
                                                 .map(|expected| {
                                                     shared_task.remote_project_id == expected
                                                 })
                                                 .unwrap_or(false)
-                                            {
-                                                return Some(Ok(LogMsg::JsonPatch(patch)));
-                                            }
-                                        }
-                                        RecordTypes::DeletedSharedTask { .. } => {
+                                        {
                                             return Some(Ok(LogMsg::JsonPatch(patch)));
                                         }
-                                        RecordTypes::TaskAttempt(attempt) => {
-                                            // Check if this task_attempt belongs to a task in our project
-                                            if let Ok(Some(task)) =
-                                                Task::find_by_id(&db_pool, attempt.task_id).await
-                                                && task.project_id == project_id
-                                            {
-                                                return Some(Ok(LogMsg::JsonPatch(patch)));
-                                            }
-                                        }
-                                        RecordTypes::DeletedTaskAttempt {
-                                            task_id: Some(deleted_task_id),
-                                            ..
-                                        } => {
-                                            // Check if deleted attempt belonged to a task in our project
-                                            if let Ok(Some(task)) =
-                                                Task::find_by_id(&db_pool, *deleted_task_id).await
-                                                && task.project_id == project_id
-                                            {
-                                                return Some(Ok(LogMsg::JsonPatch(patch)));
-                                            }
-                                        }
-                                        _ => {}
                                     }
+                                    json_patch::PatchOperation::Replace(op) => {
+                                        if let Ok(shared_task) =
+                                            serde_json::from_value::<SharedTask>(op.value.clone())
+                                            && remote_project_id_filter
+                                                .map(|expected| {
+                                                    shared_task.remote_project_id == expected
+                                                })
+                                                .unwrap_or(false)
+                                        {
+                                            return Some(Ok(LogMsg::JsonPatch(patch)));
+                                        }
+                                    }
+                                    json_patch::PatchOperation::Remove(_) => {
+                                        // Forward removals; clients will ignore missing tasks
+                                        return Some(Ok(LogMsg::JsonPatch(patch)));
+                                    }
+                                    _ => {}
+                                }
+                                return None;
+                            }
+                            // Check if this is a direct task patch (new format)
+                            if patch_op.path().starts_with("/tasks/") {
+                                match patch_op {
+                                    json_patch::PatchOperation::Add(op) => {
+                                        // Parse task data directly from value
+                                        if let Ok(task) =
+                                            serde_json::from_value::<TaskWithAttemptStatus>(
+                                                op.value.clone(),
+                                            )
+                                            && task.project_id == project_id
+                                        {
+                                            return Some(Ok(LogMsg::JsonPatch(patch)));
+                                        }
+                                    }
+                                    json_patch::PatchOperation::Replace(op) => {
+                                        // Parse task data directly from value
+                                        if let Ok(task) =
+                                            serde_json::from_value::<TaskWithAttemptStatus>(
+                                                op.value.clone(),
+                                            )
+                                            && task.project_id == project_id
+                                        {
+                                            return Some(Ok(LogMsg::JsonPatch(patch)));
+                                        }
+                                    }
+                                    json_patch::PatchOperation::Remove(_) => {
+                                        // For remove operations, we need to check project membership differently
+                                        // We could cache this information or let it pass through for now
+                                        // Since we don't have the task data, we'll allow all removals
+                                        // and let the client handle filtering
+                                        return Some(Ok(LogMsg::JsonPatch(patch)));
+                                    }
+                                    _ => {}
+                                }
+                            } else if let Ok(event_patch_value) = serde_json::to_value(patch_op)
+                                && let Ok(event_patch) =
+                                    serde_json::from_value::<EventPatch>(event_patch_value)
+                            {
+                                // Handle old EventPatch format for non-task records
+                                match &event_patch.value.record {
+                                    RecordTypes::Task(task) => {
+                                        if task.project_id == project_id {
+                                            return Some(Ok(LogMsg::JsonPatch(patch)));
+                                        }
+                                    }
+                                    RecordTypes::DeletedTask {
+                                        project_id: Some(deleted_project_id),
+                                        ..
+                                    } => {
+                                        if *deleted_project_id == project_id {
+                                            return Some(Ok(LogMsg::JsonPatch(patch)));
+                                        }
+                                    }
+                                    RecordTypes::SharedTask(shared_task) => {
+                                        if remote_project_id_filter
+                                            .map(|expected| {
+                                                shared_task.remote_project_id == expected
+                                            })
+                                            .unwrap_or(false)
+                                        {
+                                            return Some(Ok(LogMsg::JsonPatch(patch)));
+                                        }
+                                    }
+                                    RecordTypes::DeletedSharedTask { .. } => {
+                                        return Some(Ok(LogMsg::JsonPatch(patch)));
+                                    }
+                                    RecordTypes::TaskAttempt(attempt) => {
+                                        // Check if this task_attempt belongs to a task in our project
+                                        if let Ok(Some(task)) =
+                                            Task::find_by_id(&db_pool, attempt.task_id).await
+                                            && task.project_id == project_id
+                                        {
+                                            return Some(Ok(LogMsg::JsonPatch(patch)));
+                                        }
+                                    }
+                                    RecordTypes::DeletedTaskAttempt {
+                                        task_id: Some(deleted_task_id),
+                                        ..
+                                    } => {
+                                        // Check if deleted attempt belonged to a task in our project
+                                        if let Ok(Some(task)) =
+                                            Task::find_by_id(&db_pool, *deleted_task_id).await
+                                            && task.project_id == project_id
+                                        {
+                                            return Some(Ok(LogMsg::JsonPatch(patch)));
+                                        }
+                                    }
+                                    _ => {}
                                 }
                             }
-                            None
                         }
-                        Ok(other) => Some(Ok(other)), // Pass through non-patch messages
-                        Err(_) => None,               // Filter out broadcast errors
+                        None
+                    }
+                    Ok(other) => Some(Ok(other)), // Pass through non-patch messages
+                    Err(BroadcastStreamRecvError::Lagged(count)) => {
+                        tracing::warn!(
+                            count,
+                            project_id = %project_id,
+                            "task stream lagged, signaling refresh"
+                        );
+                        Some(Ok(LogMsg::RefreshRequired {
+                            reason: format!("missed {} task updates", count),
+                        }))
                     }
                 }
-            });
+            }
+        });
 
         // Start with initial snapshot, then live updates
         let initial_stream = futures::stream::once(async move { Ok(initial_msg) });
@@ -261,8 +265,8 @@ impl EventService {
         let initial_msg = LogMsg::JsonPatch(serde_json::from_value(initial_patch).unwrap());
 
         // Get filtered event stream using pre-subscribed receiver
-        let filtered_stream = BroadcastStream::new(receiver).filter_map(
-            move |msg_result| async move {
+        let filtered_stream =
+            BroadcastStream::new(receiver).filter_map(move |msg_result| async move {
                 match msg_result {
                     Ok(LogMsg::JsonPatch(patch)) => {
                         // Filter events based on task_attempt_id
@@ -341,10 +345,18 @@ impl EventService {
                         None
                     }
                     Ok(other) => Some(Ok(other)), // Pass through non-patch messages
-                    Err(_) => None,               // Filter out broadcast errors
+                    Err(BroadcastStreamRecvError::Lagged(count)) => {
+                        tracing::warn!(
+                            count,
+                            task_attempt_id = %task_attempt_id,
+                            "execution process stream lagged, signaling refresh"
+                        );
+                        Some(Ok(LogMsg::RefreshRequired {
+                            reason: format!("missed {} execution process updates", count),
+                        }))
+                    }
                 }
-            },
-        );
+            });
 
         // Start with initial snapshot, then live updates
         let initial_stream = futures::stream::once(async move { Ok(initial_msg) });
@@ -418,42 +430,50 @@ impl EventService {
 
         let db_pool = self.db.pool.clone();
         // Live updates: accept direct draft patches and filter by project membership
-        let filtered_stream =
-            BroadcastStream::new(receiver).filter_map(move |msg_result| {
-                let db_pool = db_pool.clone();
-                async move {
-                    match msg_result {
-                        Ok(LogMsg::JsonPatch(patch)) => {
-                            if let Some(op) = patch.0.first() {
-                                let path = op.path();
-                                if let Some(rest) = path.strip_prefix("/drafts/")
-                                    && let Some((attempt_str, _)) = rest.split_once('/')
-                                    && let Ok(attempt_id) = Uuid::parse_str(attempt_str)
+        let filtered_stream = BroadcastStream::new(receiver).filter_map(move |msg_result| {
+            let db_pool = db_pool.clone();
+            async move {
+                match msg_result {
+                    Ok(LogMsg::JsonPatch(patch)) => {
+                        if let Some(op) = patch.0.first() {
+                            let path = op.path();
+                            if let Some(rest) = path.strip_prefix("/drafts/")
+                                && let Some((attempt_str, _)) = rest.split_once('/')
+                                && let Ok(attempt_id) = Uuid::parse_str(attempt_str)
+                            {
+                                // Check project membership
+                                if let Ok(Some(task_attempt)) =
+                                    db::models::task_attempt::TaskAttempt::find_by_id(
+                                        &db_pool, attempt_id,
+                                    )
+                                    .await
+                                    && let Ok(Some(task)) = db::models::task::Task::find_by_id(
+                                        &db_pool,
+                                        task_attempt.task_id,
+                                    )
+                                    .await
+                                    && task.project_id == project_id
                                 {
-                                    // Check project membership
-                                    if let Ok(Some(task_attempt)) =
-                                        db::models::task_attempt::TaskAttempt::find_by_id(
-                                            &db_pool, attempt_id,
-                                        )
-                                        .await
-                                        && let Ok(Some(task)) = db::models::task::Task::find_by_id(
-                                            &db_pool,
-                                            task_attempt.task_id,
-                                        )
-                                        .await
-                                        && task.project_id == project_id
-                                    {
-                                        return Some(Ok(LogMsg::JsonPatch(patch)));
-                                    }
+                                    return Some(Ok(LogMsg::JsonPatch(patch)));
                                 }
                             }
-                            None
                         }
-                        Ok(other) => Some(Ok(other)),
-                        Err(_) => None,
+                        None
+                    }
+                    Ok(other) => Some(Ok(other)),
+                    Err(BroadcastStreamRecvError::Lagged(count)) => {
+                        tracing::warn!(
+                            count,
+                            project_id = %project_id,
+                            "draft stream lagged, signaling refresh"
+                        );
+                        Some(Ok(LogMsg::RefreshRequired {
+                            reason: format!("missed {} draft updates", count),
+                        }))
                     }
                 }
-            });
+            }
+        });
 
         let initial_stream = futures::stream::once(async move { Ok(initial_msg) });
         let combined_stream = initial_stream.chain(filtered_stream).boxed();
