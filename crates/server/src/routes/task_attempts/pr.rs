@@ -155,14 +155,6 @@ pub async fn create_github_pr(
 ) -> Result<ResponseJson<ApiResponse<String, CreatePrError>>, ApiError> {
     let pool = &deployment.db().pool;
 
-    let task = task_attempt
-        .parent_task(pool)
-        .await?
-        .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
-    let project = Project::find_by_id(pool, task.project_id)
-        .await?
-        .ok_or(ApiError::Project(ProjectError::ProjectNotFound))?;
-
     let attempt_repo =
         AttemptRepo::find_by_attempt_and_repo_id(pool, task_attempt.id, request.repo_id)
             .await?
@@ -173,7 +165,6 @@ pub async fn create_github_pr(
         .ok_or(RepoError::NotFound)?;
 
     let repo_path = repo.path;
-    // Get the target branch: from request, or from attempt repo
     let target_branch = if let Some(branch) = request.target_branch {
         branch
     } else {
@@ -288,8 +279,6 @@ pub async fn create_github_pr(
                 .track_if_analytics_allowed(
                     "github_pr_created",
                     serde_json::json!({
-                        "task_id": task.id.to_string(),
-                        "project_id": project.id.to_string(),
                         "attempt_id": task_attempt.id.to_string(),
                     }),
                 )
