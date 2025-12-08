@@ -178,8 +178,7 @@ const GitHubCommentsDialogImpl = NiceModal.create<GitHubCommentsDialogProps>(
                                 ? comment.diff_hunk
                                 : undefined
                             }
-                            variant="full"
-                            layout="block"
+                            variant="list"
                             onClick={() => toggleSelection(id)}
                             className="flex-1 min-w-0"
                           />

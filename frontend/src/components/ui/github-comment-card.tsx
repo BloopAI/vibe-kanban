@@ -12,10 +12,8 @@ export interface GitHubCommentCardProps {
   path?: string;
   line?: number | null;
   diffHunk?: string;
-  // Display variants
-  variant?: 'compact' | 'full';
-  /** Layout mode: 'inline' for WYSIWYG editor, 'block' for dialog/flex containers */
-  layout?: 'inline' | 'block';
+  /** Display variant: 'compact' for inline chip, 'full' for inline card, 'list' for block card */
+  variant: 'compact' | 'full' | 'list';
   onClick?: (e: React.MouseEvent) => void;
   onDoubleClick?: (e: React.MouseEvent) => void;
   className?: string;
@@ -113,7 +111,7 @@ function FullCard({
   line,
   diffHunk,
   onClick,
-  layout = 'inline',
+  variant,
   className,
 }: GitHubCommentCardProps) {
   const { t } = useTranslation('tasks');
@@ -124,7 +122,7 @@ function FullCard({
     <div
       className={cn(
         'p-3 bg-muted/50 rounded-md border border-border cursor-pointer hover:border-muted-foreground transition-colors overflow-hidden',
-        layout === 'inline' && 'inline-block align-bottom max-w-md',
+        variant === 'full' && 'inline-block align-bottom max-w-md',
         className
       )}
       onClick={onClick}
@@ -182,14 +180,12 @@ function FullCard({
 /**
  * GitHubCommentCard - Shared presentational component for GitHub PR comments
  *
- * @param variant - 'compact' for inline WYSIWYG chip, 'full' for dialog card
+ * @param variant - 'compact' for inline chip, 'full' for inline card, 'list' for block card
  */
 export function GitHubCommentCard(props: GitHubCommentCardProps) {
-  const { variant = 'full' } = props;
-
-  if (variant === 'compact') {
+  if (props.variant === 'compact') {
     return <CompactCard {...props} />;
   }
-
+  // Both 'full' and 'list' use FullCard, just with different styling
   return <FullCard {...props} />;
 }
