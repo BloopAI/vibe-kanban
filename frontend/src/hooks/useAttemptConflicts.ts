@@ -7,7 +7,7 @@ export function useAttemptConflicts(attemptId?: string, repoId?: string) {
 
   const abortConflicts = useCallback(async () => {
     if (!attemptId || !repoId) return;
-    await attemptsApi.abortConflicts(attemptId, repoId);
+    await attemptsApi.abortConflicts(attemptId, { repo_id: repoId });
     await queryClient.invalidateQueries({
       queryKey: ['branchStatus', attemptId],
     });

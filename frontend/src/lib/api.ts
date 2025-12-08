@@ -84,6 +84,7 @@ import {
   PrCommentsResponse,
   MergeTaskAttemptRequest,
   RepoBranchStatus,
+  AbortConflictsRequest,
 } from 'shared/types';
 
 export class ApiError<E = unknown> extends Error {
@@ -615,12 +616,15 @@ export const attemptsApi = {
     return handleApiResponse<RenameBranchResponse>(response);
   },
 
-  abortConflicts: async (attemptId: string, repoId: string): Promise<void> => {
+  abortConflicts: async (
+    attemptId: string,
+    data: AbortConflictsRequest
+  ): Promise<void> => {
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/conflicts/abort`,
       {
         method: 'POST',
-        body: JSON.stringify({ repo_id: repoId }),
+        body: JSON.stringify(data),
       }
     );
     return handleApiResponse<void>(response);
