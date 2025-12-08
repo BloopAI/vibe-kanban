@@ -160,7 +160,11 @@ pub trait ContainerService {
     }
 
     /// Finalize task execution by updating status to InReview and sending notifications
-    async fn finalize_task(&self, share_publisher: Option<&SharePublisher>, ctx: &ExecutionContext) {
+    async fn finalize_task(
+        &self,
+        share_publisher: Option<&SharePublisher>,
+        ctx: &ExecutionContext,
+    ) {
         match Task::update_status(&self.db().pool, ctx.task.id, TaskStatus::InReview).await {
             Ok(_) => {
                 if let Some(publisher) = share_publisher
@@ -179,10 +183,7 @@ pub trait ContainerService {
         }
 
         // Skip notification if process was intentionally killed by user
-        if matches!(
-            ctx.execution_process.status,
-            ExecutionProcessStatus::Killed
-        ) {
+        if matches!(ctx.execution_process.status, ExecutionProcessStatus::Killed) {
             return;
         }
 
