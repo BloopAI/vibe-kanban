@@ -33,6 +33,9 @@ services:
         # SQLx needs DATABASE_URL at compile time for query validation
         # Use offline mode with sqlx-data.json, or provide a dummy URL
         SQLX_OFFLINE: "true"
+        # Git info for build identification (passed from host)
+        VK_GIT_COMMIT: ${VK_GIT_COMMIT:-unknown}
+        VK_GIT_BRANCH: ${VK_GIT_BRANCH:-unknown}
     depends_on:
       remote-db:
         condition: service_healthy

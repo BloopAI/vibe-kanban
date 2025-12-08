@@ -1,9 +1,10 @@
 use axum::{
-    Router,
+    Json, Router,
     http::{Request, header::HeaderName},
     middleware,
     routing::get,
 };
+use serde::Serialize;
 use tower_http::{
     cors::CorsLayer,
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, RequestId, SetRequestIdLayer},
@@ -91,6 +92,21 @@ pub fn router(state: AppState) -> Router {
         .with_state(state)
 }
 
-async fn health() -> &'static str {
-    "ok"
+#[derive(Serialize)]
+pub struct HealthResponse {
+    pub status: &'static str,
+    pub version: &'static str,
+    pub git_commit: &'static str,
+    pub git_branch: &'static str,
+    pub build_timestamp: &'static str,
+}
+
+async fn health() -> Json<HealthResponse> {
+    Json(HealthResponse {
+        status: "ok",
+        version: env!("CARGO_PKG_VERSION"),
+        git_commit: option_env!("VK_GIT_COMMIT").unwrap_or("unknown"),
+        git_branch: option_env!("VK_GIT_BRANCH").unwrap_or("unknown"),
+        build_timestamp: option_env!("VK_BUILD_TIMESTAMP").unwrap_or("unknown"),
+    })
 }

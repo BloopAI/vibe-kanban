@@ -653,26 +653,32 @@ async fn delete_remote_task(
     deployment: &DeploymentImpl,
     task: &Task,
 ) -> Result<(StatusCode, ResponseJson<ApiResponse<()>>), ApiError> {
-    let remote_client = deployment.remote_client()?;
-    let shared_task_id = task
-        .shared_task_id
-        .ok_or_else(|| ApiError::BadRequest("Remote task missing shared_task_id".to_string()))?;
+    let pool = &deployment.db().pool;
 
-    // Delete from Hive first
-    let request = DeleteSharedTaskRequest { version: None };
-    remote_client
-        .delete_shared_task(shared_task_id, &request)
-        .await?;
+    // If task has shared_task_id, delete from Hive first
+    if let Some(shared_task_id) = task.shared_task_id {
+        let remote_client = deployment.remote_client()?;
+        let request = DeleteSharedTaskRequest { version: None };
+        remote_client
+            .delete_shared_task(shared_task_id, &request)
+            .await?;
+
+        tracing::info!(
+            task_id = %task.id,
+            shared_task_id = %shared_task_id,
+            "Deleted remote task via Hive"
+        );
+    } else {
+        // Task is marked remote but has no shared_task_id (sync never completed)
+        // Just delete locally
+        tracing::warn!(
+            task_id = %task.id,
+            "Deleting remote task that was never synced to Hive (no shared_task_id)"
+        );
+    }
 
     // Delete local cache entry
-    let pool = &deployment.db().pool;
     Task::delete(pool, task.id).await?;
-
-    tracing::info!(
-        task_id = %task.id,
-        shared_task_id = %shared_task_id,
-        "Deleted remote task via Hive"
-    );
 
     // Return 202 Accepted to match local delete behavior
     Ok((StatusCode::ACCEPTED, ResponseJson(ApiResponse::success(()))))

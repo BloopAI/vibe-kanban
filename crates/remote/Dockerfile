@@ -22,10 +22,15 @@ RUN pnpm -C remote-frontend build
 FROM rust:1.89-slim-bookworm AS builder
 ARG APP_NAME
 ARG SQLX_OFFLINE=true
+ARG VK_GIT_COMMIT=unknown
+ARG VK_GIT_BRANCH=unknown
 
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 # Enable SQLx offline mode to use cached query metadata instead of live database
 ENV SQLX_OFFLINE=${SQLX_OFFLINE}
+# Pass git info to build.rs via environment variables
+ENV VK_GIT_COMMIT=${VK_GIT_COMMIT}
+ENV VK_GIT_BRANCH=${VK_GIT_BRANCH}
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends pkg-config libssl-dev ca-certificates \
