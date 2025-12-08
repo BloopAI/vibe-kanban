@@ -234,7 +234,9 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                           </ul>
                         </>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {t('restoreLogsDialog.historyChange.permanentWarning')}
+                          {t(
+                            'restoreLogsDialog.historyChange.permanentWarning'
+                          )}
                         </p>
                       </div>
                     </div>
@@ -248,13 +250,19 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                           {t('restoreLogsDialog.uncommittedChanges.title')}
                         </p>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {t('restoreLogsDialog.uncommittedChanges.description', {
-                            count: uncommittedCount,
-                          })}
+                          {t(
+                            'restoreLogsDialog.uncommittedChanges.description',
+                            {
+                              count: uncommittedCount,
+                            }
+                          )}
                           {untrackedCount > 0 &&
-                            t('restoreLogsDialog.uncommittedChanges.andUntracked', {
-                              count: untrackedCount,
-                            })}
+                            t(
+                              'restoreLogsDialog.uncommittedChanges.andUntracked',
+                              {
+                                count: untrackedCount,
+                              }
+                            )}
                           .
                         </p>
                         <div
