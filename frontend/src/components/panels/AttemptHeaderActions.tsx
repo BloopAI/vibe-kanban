@@ -13,6 +13,7 @@ import type { TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
 import { ActionsDropdown } from '../ui/actions-dropdown';
 import { usePostHog } from 'posthog-js/react';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { useIsOrgAdmin } from '@/hooks';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 
 interface AttemptHeaderActionsProps {
@@ -35,6 +36,7 @@ export const AttemptHeaderActions = ({
   const { t } = useTranslation('tasks');
   const posthog = usePostHog();
   const isXL = useMediaQuery('(min-width: 1280px)');
+  const isOrgAdmin = useIsOrgAdmin();
 
   return (
     <>
@@ -130,7 +132,7 @@ export const AttemptHeaderActions = ({
       {typeof mode !== 'undefined' && onModeChange && isXL && (
         <div className="h-4 w-px bg-border" />
       )}
-      <ActionsDropdown task={task} attempt={attempt} sharedTask={sharedTask} />
+      <ActionsDropdown task={task} attempt={attempt} sharedTask={sharedTask} isOrgAdmin={isOrgAdmin} />
       <Button variant="icon" aria-label="Close" onClick={onClose}>
         <X size={16} />
       </Button>

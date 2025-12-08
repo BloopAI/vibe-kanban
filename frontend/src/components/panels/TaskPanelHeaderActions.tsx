@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { ActionsDropdown } from '../ui/actions-dropdown';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
+import { useIsOrgAdmin } from '@/hooks';
 
 type Task = TaskWithAttemptStatus;
 
@@ -17,9 +18,11 @@ export const TaskPanelHeaderActions = ({
   sharedTask,
   onClose,
 }: TaskPanelHeaderActionsProps) => {
+  const isOrgAdmin = useIsOrgAdmin();
+
   return (
     <>
-      <ActionsDropdown task={task} sharedTask={sharedTask} />
+      <ActionsDropdown task={task} sharedTask={sharedTask} isOrgAdmin={isOrgAdmin} />
       <Button variant="icon" aria-label="Close" onClick={onClose}>
         <X size={16} />
       </Button>

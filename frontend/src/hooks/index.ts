@@ -30,3 +30,4 @@ export { useOrganizationMutations } from './useOrganizationMutations';
 export { useDashboardSummary } from './useDashboardSummary';
 export { useNodeLogStream } from './useNodeLogStream';
 export type { NodeLogEntry, ConnectionType } from './useNodeLogStream';
+export { useIsOrgAdmin } from './useIsOrgAdmin';

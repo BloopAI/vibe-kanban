@@ -31,12 +31,14 @@ interface ActionsDropdownProps {
   task?: TaskWithAttemptStatus | null;
   attempt?: TaskAttempt | null;
   sharedTask?: SharedTaskRecord;
+  isOrgAdmin?: boolean;
 }
 
 export function ActionsDropdown({
   task,
   attempt,
   sharedTask,
+  isOrgAdmin = false,
 }: ActionsDropdownProps) {
   const { t } = useTranslation('tasks');
   const { projectId } = useProject();
@@ -149,7 +151,7 @@ export function ActionsDropdown({
   const handleReassign = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!sharedTask) return;
-    ReassignDialog.show({ sharedTask });
+    ReassignDialog.show({ sharedTask, isOrgAdmin });
   };
 
   const handleStopShare = (e: React.MouseEvent) => {
@@ -158,12 +160,13 @@ export function ActionsDropdown({
     StopShareTaskDialog.show({ sharedTask });
   };
 
+  const isAssignee = sharedTask?.assignee_user_id === userId;
+  // For reassign: need both task and sharedTask, unless admin (admins can reassign shared-only tasks)
   const canReassign =
-    Boolean(task) &&
-    Boolean(sharedTask) &&
-    sharedTask?.assignee_user_id === userId;
-  const canStopShare =
-    Boolean(sharedTask) && sharedTask?.assignee_user_id === userId;
+    Boolean(sharedTask) && (Boolean(task) || isOrgAdmin) && (isAssignee || isOrgAdmin);
+  const canStopShare = Boolean(sharedTask) && (isAssignee || isOrgAdmin);
+  // Show shared task actions section when we only have a sharedTask (no local task)
+  const hasSharedOnlyActions = !hasTaskActions && Boolean(sharedTask) && isOrgAdmin;
 
   return (
     <>
@@ -284,6 +287,25 @@ export function ActionsDropdown({
                 className="text-destructive"
               >
                 {t('common:buttons.delete')}
+              </DropdownMenuItem>
+            </>
+          )}
+
+          {hasSharedOnlyActions && (
+            <>
+              <DropdownMenuLabel>{t('actionsMenu.sharedTask')}</DropdownMenuLabel>
+              <DropdownMenuItem
+                disabled={!canReassign}
+                onClick={handleReassign}
+              >
+                {t('actionsMenu.reassign')}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!canStopShare}
+                onClick={handleStopShare}
+                className="text-destructive"
+              >
+                {t('actionsMenu.stopShare')}
               </DropdownMenuItem>
             </>
           )}

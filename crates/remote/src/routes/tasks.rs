@@ -20,6 +20,7 @@ use crate::{
     db::{
         node_projects::NodeProjectRepository,
         organization_members,
+        organizations::{MemberRole, OrganizationRepository},
         tasks::{
             AssignTaskData, CreateSharedTaskData, DeleteTaskData, SharedTask, SharedTaskError,
             SharedTaskRepository, SharedTaskWithUser, TaskStatus, UpdateSharedTaskData,
@@ -201,7 +202,7 @@ pub async fn update_shared_task(
     Json(payload): Json<UpdateSharedTaskRequest>,
 ) -> Response {
     let pool = state.pool();
-    let _organization_id = match ensure_task_access(pool, ctx.user.id, task_id).await {
+    let organization_id = match ensure_task_access(pool, ctx.user.id, task_id).await {
         Ok(org_id) => {
             Span::current().record("org_id", format_args!("{org_id}"));
             org_id
@@ -220,11 +221,22 @@ pub async fn update_shared_task(
         }
     };
 
-    if existing.assignee_user_id.as_ref() != Some(&ctx.user.id) {
-        return task_error_response(
-            SharedTaskError::Forbidden,
-            "acting user is not the task assignee",
-        );
+    // Check if user is assignee OR org admin
+    let is_assignee = existing.assignee_user_id.as_ref() == Some(&ctx.user.id);
+    if !is_assignee {
+        let org_repo = OrganizationRepository::new(pool);
+        let is_admin = org_repo
+            .check_user_role(organization_id, ctx.user.id)
+            .await
+            .map(|role| role == Some(MemberRole::Admin))
+            .unwrap_or(false);
+
+        if !is_admin {
+            return task_error_response(
+                SharedTaskError::Forbidden,
+                "acting user is not the task assignee or org admin",
+            );
+        }
     }
 
     let UpdateSharedTaskRequest {
@@ -288,11 +300,22 @@ pub async fn assign_task(
         }
     };
 
-    if existing.assignee_user_id.as_ref() != Some(&ctx.user.id) {
-        return task_error_response(
-            SharedTaskError::Forbidden,
-            "acting user is not the task assignee",
-        );
+    // Check if user is assignee OR org admin
+    let is_assignee = existing.assignee_user_id.as_ref() == Some(&ctx.user.id);
+    if !is_assignee {
+        let org_repo = OrganizationRepository::new(pool);
+        let is_admin = org_repo
+            .check_user_role(organization_id, ctx.user.id)
+            .await
+            .map(|role| role == Some(MemberRole::Admin))
+            .unwrap_or(false);
+
+        if !is_admin {
+            return task_error_response(
+                SharedTaskError::Forbidden,
+                "acting user is not the task assignee or org admin",
+            );
+        }
     }
 
     if let Some(assignee) = payload.new_assignee_user_id.as_ref() {
@@ -330,7 +353,7 @@ pub async fn delete_shared_task(
     payload: Option<Json<DeleteSharedTaskRequest>>,
 ) -> Response {
     let pool = state.pool();
-    let _organization_id = match ensure_task_access(pool, ctx.user.id, task_id).await {
+    let organization_id = match ensure_task_access(pool, ctx.user.id, task_id).await {
         Ok(org_id) => {
             Span::current().record("org_id", format_args!("{org_id}"));
             org_id
@@ -350,11 +373,22 @@ pub async fn delete_shared_task(
         }
     };
 
-    if existing.assignee_user_id.as_ref() != Some(&ctx.user.id) {
-        return task_error_response(
-            SharedTaskError::Forbidden,
-            "acting user is not the task assignee",
-        );
+    // Check if user is assignee OR org admin
+    let is_assignee = existing.assignee_user_id.as_ref() == Some(&ctx.user.id);
+    if !is_assignee {
+        let org_repo = OrganizationRepository::new(pool);
+        let is_admin = org_repo
+            .check_user_role(organization_id, ctx.user.id)
+            .await
+            .map(|role| role == Some(MemberRole::Admin))
+            .unwrap_or(false);
+
+        if !is_admin {
+            return task_error_response(
+                SharedTaskError::Forbidden,
+                "acting user is not the task assignee or org admin",
+            );
+        }
     }
 
     let version = payload.as_ref().and_then(|body| body.0.version);

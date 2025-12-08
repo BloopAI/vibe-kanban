@@ -4,7 +4,7 @@ import { CheckCircle, Link, Loader2, Server, XCircle } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { ActionsDropdown } from '@/components/ui/actions-dropdown';
 import { Button } from '@/components/ui/button';
-import { useNavigateWithSearch } from '@/hooks';
+import { useNavigateWithSearch, useIsOrgAdmin } from '@/hooks';
 import { paths } from '@/lib/paths';
 import { attemptsApi } from '@/lib/api';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
@@ -34,6 +34,7 @@ export function TaskCard({
 }: TaskCardProps) {
   const { t } = useTranslation('tasks');
   const navigate = useNavigateWithSearch();
+  const isOrgAdmin = useIsOrgAdmin();
   const [isNavigatingToParent, setIsNavigatingToParent] = useState(false);
 
   const handleClick = useCallback(() => {
@@ -137,7 +138,7 @@ export function TaskCard({
                   <Link className="h-4 w-4" />
                 </Button>
               )}
-              <ActionsDropdown task={task} sharedTask={sharedTask} />
+              <ActionsDropdown task={task} sharedTask={sharedTask} isOrgAdmin={isOrgAdmin} />
             </>
           }
         />

@@ -29,6 +29,7 @@ import type { OrganizationMemberWithProfile } from 'shared/types';
 
 export interface ReassignDialogProps {
   sharedTask: SharedTaskRecord;
+  isOrgAdmin?: boolean;
 }
 
 const buildMemberLabel = (member: OrganizationMemberWithProfile): string => {
@@ -45,7 +46,7 @@ const buildMemberLabel = (member: OrganizationMemberWithProfile): string => {
 };
 
 const ReassignDialogImpl = NiceModal.create<ReassignDialogProps>(
-  ({ sharedTask }) => {
+  ({ sharedTask, isOrgAdmin = false }) => {
     const modal = useModal();
     const { userId } = useAuth();
 
@@ -55,6 +56,7 @@ const ReassignDialogImpl = NiceModal.create<ReassignDialogProps>(
     const [submitError, setSubmitError] = useState<string | null>(null);
 
     const isCurrentAssignee = sharedTask.assignee_user_id === userId;
+    const canReassign = isCurrentAssignee || isOrgAdmin;
 
     const { projectId } = useProject();
     const membersQuery = useProjectRemoteMembers(projectId);
@@ -137,7 +139,7 @@ const ReassignDialogImpl = NiceModal.create<ReassignDialogProps>(
     const memberOptions = membersQuery.data?.members ?? [];
 
     const canSubmit =
-      isCurrentAssignee &&
+      canReassign &&
       !reassignMutation.isPending &&
       !membersQuery.isPending &&
       !membersQuery.isError &&
@@ -166,7 +168,7 @@ const ReassignDialogImpl = NiceModal.create<ReassignDialogProps>(
             </DialogDescription>
           </DialogHeader>
 
-          {!isCurrentAssignee && (
+          {!canReassign && (
             <Alert variant="destructive">
               You must be the current assignee to reassign this task.
             </Alert>
@@ -177,7 +179,7 @@ const ReassignDialogImpl = NiceModal.create<ReassignDialogProps>(
           <div className="space-y-3">
             <Select
               disabled={
-                !isCurrentAssignee ||
+                !canReassign ||
                 membersQuery.isPending ||
                 Boolean(membersError)
               }

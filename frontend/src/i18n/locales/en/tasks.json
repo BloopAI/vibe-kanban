@@ -293,6 +293,7 @@
     "gitActions": "Git actions",
     "editBranchName": "Edit branch name",
     "task": "Task",
+    "sharedTask": "Shared Task",
     "share": "Share",
     "reassign": "Reassign",
     "stopShare": "Stop share",

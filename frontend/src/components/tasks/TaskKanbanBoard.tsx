@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { useAuth } from '@/hooks';
+import { useAuth, useIsOrgAdmin } from '@/hooks';
 import {
   type DragEndEvent,
   KanbanBoard,
@@ -48,6 +48,7 @@ function TaskKanbanBoard({
   projectId,
 }: TaskKanbanBoardProps) {
   const { userId } = useAuth();
+  const isOrgAdmin = useIsOrgAdmin();
 
   return (
     <KanbanProvider onDragEnd={onDragEnd}>
@@ -62,11 +63,13 @@ function TaskKanbanBoard({
             />
             <KanbanCards>
               {items.map((item, index) => {
+                // Admins can manage all tasks, so they see TaskCard for everything
                 const isOwnTask =
                   item.type === 'task' &&
                   (!item.sharedTask?.assignee_user_id ||
                     !userId ||
-                    item.sharedTask?.assignee_user_id === userId);
+                    item.sharedTask?.assignee_user_id === userId ||
+                    isOrgAdmin);
 
                 if (isOwnTask) {
                   return (
@@ -94,6 +97,7 @@ function TaskKanbanBoard({
                     status={statusKey}
                     isSelected={selectedSharedTaskId === item.task.id}
                     onViewDetails={onViewSharedTask}
+                    isOrgAdmin={isOrgAdmin}
                   />
                 );
               })}
