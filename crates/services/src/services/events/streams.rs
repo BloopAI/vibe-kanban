@@ -24,6 +24,11 @@ impl EventService {
         project_id: Uuid,
     ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, EventError>
     {
+        // Subscribe to broadcast channel FIRST, before any database queries.
+        // This ensures messages broadcast during the snapshot query are buffered
+        // and not lost due to the race condition.
+        let receiver = self.msg_store.get_receiver();
+
         // Get initial snapshot of tasks
         let tasks = Task::find_by_project_id_with_attempt_status(&self.db.pool, project_id).await?;
 
@@ -65,9 +70,9 @@ impl EventService {
         let db_pool = self.db.pool.clone();
         let remote_project_id_filter = remote_project_id;
 
-        // Get filtered event stream
+        // Get filtered event stream using pre-subscribed receiver
         let filtered_stream =
-            BroadcastStream::new(self.msg_store.get_receiver()).filter_map(move |msg_result| {
+            BroadcastStream::new(receiver).filter_map(move |msg_result| {
                 let db_pool = db_pool.clone();
                 async move {
                     match msg_result {
@@ -225,6 +230,10 @@ impl EventService {
         show_soft_deleted: bool,
     ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, EventError>
     {
+        // Subscribe to broadcast channel FIRST, before any database queries.
+        // This ensures messages broadcast during the snapshot query are buffered.
+        let receiver = self.msg_store.get_receiver();
+
         // Get initial snapshot of execution processes (filtering at SQL level)
         let processes = ExecutionProcess::find_by_task_attempt_id(
             &self.db.pool,
@@ -251,8 +260,8 @@ impl EventService {
         }]);
         let initial_msg = LogMsg::JsonPatch(serde_json::from_value(initial_patch).unwrap());
 
-        // Get filtered event stream
-        let filtered_stream = BroadcastStream::new(self.msg_store.get_receiver()).filter_map(
+        // Get filtered event stream using pre-subscribed receiver
+        let filtered_stream = BroadcastStream::new(receiver).filter_map(
             move |msg_result| async move {
                 match msg_result {
                     Ok(LogMsg::JsonPatch(patch)) => {
@@ -350,6 +359,10 @@ impl EventService {
         project_id: Uuid,
     ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, EventError>
     {
+        // Subscribe to broadcast channel FIRST, before any database queries.
+        // This ensures messages broadcast during the snapshot query are buffered.
+        let receiver = self.msg_store.get_receiver();
+
         // Load all attempt ids for tasks in this project
         let attempt_ids: Vec<Uuid> = sqlx::query_scalar(
             r#"SELECT ta.id
@@ -406,7 +419,7 @@ impl EventService {
         let db_pool = self.db.pool.clone();
         // Live updates: accept direct draft patches and filter by project membership
         let filtered_stream =
-            BroadcastStream::new(self.msg_store.get_receiver()).filter_map(move |msg_result| {
+            BroadcastStream::new(receiver).filter_map(move |msg_result| {
                 let db_pool = db_pool.clone();
                 async move {
                     match msg_result {

@@ -1,6 +1,5 @@
 import { useCallback, useMemo } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
-import { useProject } from '@/contexts/ProjectContext';
 import type {
   SharedTask,
   TaskStatus,
@@ -40,12 +39,15 @@ export interface UseProjectTasksResult {
  * Stream tasks for a project via WebSocket (JSON Patch) and expose as array + map.
  * Server sends initial snapshot: replace /tasks with an object keyed by id.
  * Live updates arrive at /tasks/<id> via add/replace/remove operations.
+ *
+ * Note: remote_project_id is NOT passed to the backend - the backend fetches it
+ * from the database using project_id. This avoids a race condition where
+ * ProjectContext loads late, causing endpoint changes and WebSocket reconnection.
  */
 export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
-  const { project } = useProject();
-  const remoteProjectId = project?.remote_project_id;
-
-  const endpoint = `/api/tasks/stream/ws?project_id=${encodeURIComponent(projectId)}&remote_project_id=${encodeURIComponent(remoteProjectId ?? 'null')}`;
+  const endpoint = projectId
+    ? `/api/tasks/stream/ws?project_id=${encodeURIComponent(projectId)}`
+    : undefined;
 
   const initialData = useCallback(
     (): TasksState => ({ tasks: {}, shared_tasks: {} }),
@@ -54,7 +56,7 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
 
   const { data, isConnected, error } = useJsonPatchWsStream(
     endpoint,
-    !!projectId,
+    !!endpoint,
     initialData
   );
 
