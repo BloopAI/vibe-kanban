@@ -1027,17 +1027,13 @@ pub async fn change_target_branch(
     let project = Project::find_by_id(&deployment.db().pool, task.project_id)
         .await?
         .ok_or(ApiError::Project(ProjectError::ProjectNotFound))?;
+    let pool = &deployment.db().pool;
     match deployment
         .git()
         .check_branch_exists(&project.git_repo_path, &new_target_branch)?
     {
         true => {
-            TaskAttempt::update_target_branch(
-                &deployment.db().pool,
-                task_attempt.id,
-                &new_target_branch,
-            )
-            .await?;
+            TaskAttempt::update_target_branch(pool, task_attempt.id, &new_target_branch).await?;
         }
         false => {
             return Ok(ResponseJson(ApiResponse::error(
@@ -1049,6 +1045,17 @@ pub async fn change_target_branch(
             )));
         }
     }
+
+    // Link task to parent attempt if new_target_branch matches an existing attempt's branch
+    if let Some(parent_attempt) =
+        TaskAttempt::find_by_branch(pool, project.id, &new_target_branch).await?
+    {
+        // Only update if different from current parent
+        if task.parent_task_attempt != Some(parent_attempt.id) {
+            Task::update_parent_task_attempt(pool, task.id, Some(parent_attempt.id)).await?;
+        }
+    }
+
     let status = deployment.git().get_branch_status(
         &project.git_repo_path,
         &task_attempt.branch,
