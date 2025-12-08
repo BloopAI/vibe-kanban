@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { ConflictBanner } from '@/components/tasks/ConflictBanner';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import { useAttemptConflicts } from '@/hooks/useAttemptConflicts';
-import type { BranchStatus } from 'shared/types';
+import type { RepoBranchStatus } from 'shared/types';
 
 type Props = {
   selectedAttemptId?: string;
   attemptBranch: string | null;
-  branchStatus: BranchStatus[] | undefined;
+  branchStatus: RepoBranchStatus[] | undefined;
   isEditable: boolean;
   onResolve?: () => void;
   enableResolve: boolean;
@@ -27,7 +27,11 @@ export function FollowUpConflictSection({
   const firstRepoStatus = branchStatus?.[0];
   const op = firstRepoStatus?.conflict_op ?? null;
   const openInEditor = useOpenInEditor(selectedAttemptId);
-  const { abortConflicts } = useAttemptConflicts(selectedAttemptId);
+  const firstRepoId = firstRepoStatus?.repo_id;
+  const { abortConflicts } = useAttemptConflicts(
+    selectedAttemptId,
+    firstRepoId
+  );
 
   // write using setAborting and read through abortingRef in async handlers
   const [aborting, setAborting] = useState(false);

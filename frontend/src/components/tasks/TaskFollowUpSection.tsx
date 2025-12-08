@@ -106,13 +106,15 @@ export function TaskFollowUpSection({
       attemptBranch,
       firstRepoStatus?.target_branch_name,
       firstRepoStatus?.conflicted_files || [],
-      firstRepoStatus?.conflict_op ?? null
+      firstRepoStatus?.conflict_op ?? null,
+      firstRepoStatus?.repo_name
     );
   }, [
     attemptBranch,
     firstRepoStatus?.target_branch_name,
     firstRepoStatus?.conflicted_files,
     firstRepoStatus?.conflict_op,
+    firstRepoStatus?.repo_name,
   ]);
 
   // Editor state (persisted via scratch)
