@@ -16,32 +16,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ChevronDown, Loader2, Volume2 } from 'lucide-react';
-import {
-  BaseCodingAgent,
-  EditorType,
-  ExecutorProfileId,
-  SoundFile,
-  ThemeMode,
-  UiLanguage,
-} from 'shared/types';
+import { Loader2, Volume2 } from 'lucide-react';
+import { EditorType, SoundFile, ThemeMode, UiLanguage } from 'shared/types';
 import { getLanguageOptions } from '@/i18n/languages';
 
 import { toPrettyCase } from '@/utils/string';
 import { useEditorAvailability } from '@/hooks/useEditorAvailability';
 import { EditorAvailabilityIndicator } from '@/components/EditorAvailabilityIndicator';
-import { useAgentAvailability } from '@/hooks/useAgentAvailability';
-import { AgentAvailabilityIndicator } from '@/components/AgentAvailabilityIndicator';
 import { useTheme } from '@/components/ThemeProvider';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { TagManager } from '@/components/TagManager';
@@ -60,7 +45,6 @@ export function GeneralSettings() {
     config,
     loading,
     updateAndSaveConfig, // Use this on Save
-    profiles,
   } = useUserSystem();
 
   // Draft state management
@@ -76,11 +60,6 @@ export function GeneralSettings() {
 
   // Check editor availability when draft editor changes
   const editorAvailability = useEditorAvailability(draft?.editor.editor_type);
-
-  // Check agent availability when draft executor changes
-  const agentAvailability = useAgentAvailability(
-    draft?.executor_profile?.executor
-  );
 
   const validateBranchPrefix = useCallback(
     (prefix: string): string | null => {
@@ -294,134 +273,6 @@ export function GeneralSettings() {
             </Select>
             <p className="text-sm text-muted-foreground">
               {t('settings.general.appearance.language.helper')}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('settings.general.taskExecution.title')}</CardTitle>
-          <CardDescription>
-            {t('settings.general.taskExecution.description')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="executor">
-              {t('settings.general.taskExecution.executor.label')}
-            </Label>
-            <div className="grid grid-cols-2 gap-2">
-              <Select
-                value={draft?.executor_profile?.executor ?? ''}
-                onValueChange={(value: string) => {
-                  const variants = profiles?.[value];
-                  const keepCurrentVariant =
-                    variants &&
-                    draft?.executor_profile?.variant &&
-                    variants[draft.executor_profile.variant];
-
-                  const newProfile: ExecutorProfileId = {
-                    executor: value as BaseCodingAgent,
-                    variant: keepCurrentVariant
-                      ? draft!.executor_profile!.variant
-                      : null,
-                  };
-                  updateDraft({
-                    executor_profile: newProfile,
-                  });
-                }}
-                disabled={!profiles}
-              >
-                <SelectTrigger id="executor">
-                  <SelectValue
-                    placeholder={t(
-                      'settings.general.taskExecution.executor.placeholder'
-                    )}
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {profiles &&
-                    Object.entries(profiles)
-                      .sort((a, b) => a[0].localeCompare(b[0]))
-                      .map(([profileKey]) => (
-                        <SelectItem key={profileKey} value={profileKey}>
-                          {profileKey}
-                        </SelectItem>
-                      ))}
-                </SelectContent>
-              </Select>
-
-              {/* Show variant selector if selected profile has variants */}
-              {(() => {
-                const currentProfileVariant = draft?.executor_profile;
-                const selectedProfile =
-                  profiles?.[currentProfileVariant?.executor || ''];
-                const hasVariants =
-                  selectedProfile && Object.keys(selectedProfile).length > 0;
-
-                if (hasVariants) {
-                  return (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full h-10 px-2 flex items-center justify-between"
-                        >
-                          <span className="text-sm truncate flex-1 text-left">
-                            {currentProfileVariant?.variant ||
-                              t('settings.general.taskExecution.defaultLabel')}
-                          </span>
-                          <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        {Object.entries(selectedProfile).map(
-                          ([variantLabel]) => (
-                            <DropdownMenuItem
-                              key={variantLabel}
-                              onClick={() => {
-                                const newProfile: ExecutorProfileId = {
-                                  executor: currentProfileVariant!.executor,
-                                  variant: variantLabel,
-                                };
-                                updateDraft({
-                                  executor_profile: newProfile,
-                                });
-                              }}
-                              className={
-                                currentProfileVariant?.variant === variantLabel
-                                  ? 'bg-accent'
-                                  : ''
-                              }
-                            >
-                              {variantLabel}
-                            </DropdownMenuItem>
-                          )
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  );
-                } else if (selectedProfile) {
-                  // Show disabled button when profile exists but has no variants
-                  return (
-                    <Button
-                      variant="outline"
-                      className="w-full h-10 px-2 flex items-center justify-between"
-                      disabled
-                    >
-                      <span className="text-sm truncate flex-1 text-left">
-                        {t('settings.general.taskExecution.defaultLabel')}
-                      </span>
-                    </Button>
-                  );
-                }
-                return null;
-              })()}
-            </div>
-            <AgentAvailabilityIndicator availability={agentAvailability} />
-            <p className="text-sm text-muted-foreground">
-              {t('settings.general.taskExecution.executor.helper')}
             </p>
           </div>
         </CardContent>

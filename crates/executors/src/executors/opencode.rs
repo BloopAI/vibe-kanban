@@ -3,14 +3,13 @@ mod share_bridge;
 use std::{
     path::{Path, PathBuf},
     process::Stdio,
-    sync::Arc,
+    sync::{Arc, LazyLock},
 };
 
 use async_trait::async_trait;
 use command_group::AsyncCommandGroup;
 use fork_stream::StreamExt as _;
 use futures::{StreamExt, future::ready, stream::BoxStream};
-use lazy_static::lazy_static;
 use regex::Regex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -20,6 +19,7 @@ use workspace_utils::{msg_store::MsgStore, path::make_path_relative};
 
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
+    env::ExecutionEnv,
     executors::{
         AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
         opencode::share_bridge::Bridge as ShareBridge,
@@ -128,7 +128,12 @@ impl Opencode {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Opencode {
-    async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
+    async fn spawn(
+        &self,
+        current_dir: &Path,
+        prompt: &str,
+        env: &ExecutionEnv,
+    ) -> Result<SpawnedChild, ExecutorError> {
         // Start a dedicated local share bridge bound to this opencode process
         let bridge = ShareBridge::start().await.map_err(ExecutorError::Io)?;
         let command_parts = self.build_command_builder().build_initial()?;
@@ -147,6 +152,10 @@ impl StandardCodingAgentExecutor for Opencode {
             .env("NODE_NO_WARNINGS", "1")
             .env("OPENCODE_AUTO_SHARE", "1")
             .env("OPENCODE_API", bridge.base_url.clone());
+
+        env.clone()
+            .with_profile(&self.cmd)
+            .apply_to_command(&mut command);
 
         let mut child = match command.group_spawn() {
             Ok(c) => c,
@@ -192,6 +201,7 @@ impl StandardCodingAgentExecutor for Opencode {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         // Start a dedicated local share bridge bound to this opencode process
         let bridge = ShareBridge::start().await.map_err(ExecutorError::Io)?;
@@ -213,6 +223,10 @@ impl StandardCodingAgentExecutor for Opencode {
             .env("NODE_NO_WARNINGS", "1")
             .env("OPENCODE_AUTO_SHARE", "1")
             .env("OPENCODE_API", bridge.base_url.clone());
+
+        env.clone()
+            .with_profile(&self.cmd)
+            .apply_to_command(&mut command);
 
         let mut child = match command.group_spawn() {
             Ok(c) => c,
@@ -967,10 +981,11 @@ pub struct TodoInfo {
 // Log interpretation UTILITIES
 // =============================================================================
 
-lazy_static! {
-    // Accurate regex for OpenCode log lines: LEVEL timestamp +ms ...
-    static ref OPENCODE_LOG_REGEX: Regex = Regex::new(r"^(INFO|DEBUG|WARN|ERROR)\s+\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\s+\+\d+\s*ms.*").unwrap();
-}
+// Accurate regex for OpenCode log lines: LEVEL timestamp +ms ...
+static OPENCODE_LOG_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^(INFO|DEBUG|WARN|ERROR)\s+\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\s+\+\d+\s*ms.*")
+        .unwrap()
+});
 
 /// Log utilities for OpenCode processing
 pub struct LogUtils;

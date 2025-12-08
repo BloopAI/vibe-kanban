@@ -25,7 +25,6 @@ export enum Action {
   DELETE_TASK = 'delete_task',
   APPROVE_REQUEST = 'approve_request',
   DENY_APPROVAL = 'deny_approval',
-  CYCLE_VARIANT = 'cycle_variant',
   SUBMIT_FOLLOW_UP = 'submit_follow_up',
   SUBMIT_TASK = 'submit_task',
   SUBMIT_TASK_ALT = 'submit_task_alt',
@@ -191,13 +190,6 @@ export const keyBindings: KeyBinding[] = [
   },
 
   // Follow-up actions
-  {
-    action: Action.CYCLE_VARIANT,
-    keys: 'shift+tab',
-    scopes: [Scope.FOLLOW_UP],
-    description: 'Cycle between agent configurations',
-    group: 'Follow-up',
-  },
   {
     action: Action.SUBMIT_FOLLOW_UP,
     keys: 'meta+enter',

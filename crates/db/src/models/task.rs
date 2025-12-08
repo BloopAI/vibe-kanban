@@ -12,7 +12,7 @@ use super::{project::Project, task_attempt::TaskAttempt};
 )]
 #[sqlx(type_name = "task_status", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
-#[strum(serialize_all = "kebab_case")]
+#[strum(serialize_all = "lowercase")]
 pub enum TaskStatus {
     #[default]
     Todo,
@@ -111,15 +111,6 @@ impl CreateTask {
             shared_task_id: Some(shared_task_id),
         }
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct SyncTask {
-    pub shared_task_id: Uuid,
-    pub project_id: Uuid,
-    pub title: String,
-    pub description: Option<String>,
-    pub status: TaskStatus,
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -273,12 +264,23 @@ ORDER BY t.created_at DESC"#,
         sqlx::query_as!(
             Task,
             r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
-               FROM tasks 
+               FROM tasks
                WHERE shared_task_id = $1
                LIMIT 1"#,
             shared_task_id
         )
         .fetch_optional(executor)
+        .await
+    }
+
+    pub async fn find_all_shared(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Task,
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+               FROM tasks
+               WHERE shared_task_id IS NOT NULL"#
+        )
+        .fetch_all(pool)
         .await
     }
 
@@ -331,58 +333,6 @@ ORDER BY t.created_at DESC"#,
         .await
     }
 
-    pub async fn sync_from_shared_task<'e, E>(
-        executor: E,
-        data: SyncTask,
-        create_if_not_exists: bool,
-    ) -> Result<bool, sqlx::Error>
-    where
-        E: Executor<'e, Database = Sqlite>,
-    {
-        let new_task_id = Uuid::new_v4();
-
-        let result = sqlx::query!(
-            r#"
-            INSERT INTO tasks (
-                id,
-                project_id,
-                title,
-                description,
-                status,
-                shared_task_id
-            )
-            SELECT
-                $1,
-                $2,
-                $3,
-                $4,
-                $5,
-                $6
-            WHERE $7
-               OR EXISTS (
-                    SELECT 1 FROM tasks WHERE shared_task_id = $6
-               )
-            ON CONFLICT(shared_task_id) WHERE shared_task_id IS NOT NULL DO UPDATE SET
-                project_id = excluded.project_id,
-                title = excluded.title,
-                description = excluded.description,
-                status = excluded.status,
-                updated_at = datetime('now', 'subsec')
-            "#,
-            new_task_id,
-            data.project_id,
-            data.title,
-            data.description,
-            data.status,
-            data.shared_task_id,
-            create_if_not_exists
-        )
-        .execute(executor)
-        .await?;
-
-        Ok(result.rows_affected() > 0)
-    }
-
     pub async fn update_status(
         pool: &SqlitePool,
         id: Uuid,
@@ -428,8 +378,8 @@ ORDER BY t.created_at DESC"#,
         let result = sqlx::query!(
             r#"UPDATE tasks
                SET shared_task_id = NULL
-               WHERE shared_task_id IN (
-                   SELECT id FROM shared_tasks WHERE remote_project_id = $1
+               WHERE project_id IN (
+                   SELECT id FROM projects WHERE remote_project_id = $1
                )"#,
             remote_project_id
         )
@@ -464,6 +414,31 @@ ORDER BY t.created_at DESC"#,
         .execute(executor)
         .await?;
         Ok(())
+    }
+
+    pub async fn batch_unlink_shared_tasks<'e, E>(
+        executor: E,
+        shared_task_ids: &[Uuid],
+    ) -> Result<u64, sqlx::Error>
+    where
+        E: Executor<'e, Database = Sqlite>,
+    {
+        if shared_task_ids.is_empty() {
+            return Ok(0);
+        }
+
+        let mut query_builder = sqlx::QueryBuilder::new(
+            "UPDATE tasks SET shared_task_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE shared_task_id IN (",
+        );
+
+        let mut separated = query_builder.separated(", ");
+        for id in shared_task_ids {
+            separated.push_bind(id);
+        }
+        separated.push_unseparated(")");
+
+        let result = query_builder.build().execute(executor).await?;
+        Ok(result.rows_affected())
     }
 
     pub async fn exists(

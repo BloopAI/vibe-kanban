@@ -1,13 +1,25 @@
 use std::{collections::HashSet, sync::Arc};
 
+use aes_gcm::{
+    Aes256Gcm, Key, Nonce,
+    aead::{Aead, AeadCore, KeyInit, OsRng},
+};
+use base64::{
+    Engine as _,
+    engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD},
+};
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use thiserror::Error;
 use uuid::Uuid;
 
-use crate::db::{auth::AuthSession, users::User};
+use crate::{
+    auth::provider::ProviderTokenDetails,
+    db::{auth::AuthSession, users::User},
+};
 
 pub const ACCESS_TOKEN_TTL_SECONDS: i64 = 120;
 pub const REFRESH_TOKEN_TTL_DAYS: i64 = 365;
@@ -27,6 +39,10 @@ pub enum JwtError {
     SessionRevoked,
     #[error("token type mismatch")]
     InvalidTokenType,
+    #[error("encryption error")]
+    EncryptionError,
+    #[error("serialization error")]
+    SerializationError,
     #[error(transparent)]
     Jwt(#[from] jsonwebtoken::errors::Error),
 }
@@ -48,6 +64,7 @@ pub struct RefreshTokenClaims {
     pub iat: i64,
     pub exp: i64,
     pub aud: String,
+    pub provider_tokens_blob: String, // Encrypted JSON blob containing provider tokens
 }
 
 #[derive(Debug, Clone)]
@@ -62,18 +79,20 @@ pub struct RefreshTokenDetails {
     pub user_id: Uuid,
     pub session_id: Uuid,
     pub refresh_token_id: Uuid,
+    pub provider_token_details: ProviderTokenDetails,
 }
 
 #[derive(Clone)]
 pub struct JwtService {
-    secret: Arc<SecretString>,
+    pub secret: Arc<SecretString>,
 }
 
 #[derive(Debug, Clone)]
-pub struct TokenPair {
+pub struct Tokens {
     pub access_token: String,
     pub refresh_token: String,
     pub refresh_token_id: Uuid,
+    pub encrypted_provider_tokens: String,
 }
 
 impl JwtService {
@@ -87,7 +106,8 @@ impl JwtService {
         &self,
         session: &AuthSession,
         user: &User,
-    ) -> Result<TokenPair, JwtError> {
+        provider_token: ProviderTokenDetails,
+    ) -> Result<Tokens, JwtError> {
         let now = Utc::now();
         let refresh_token_id = Uuid::new_v4();
 
@@ -101,6 +121,8 @@ impl JwtService {
             aud: "access".to_string(),
         };
 
+        let encrypted_provider_tokens = self.encrypt_provider_tokens(&provider_token)?;
+
         // Refresh token, long-lived (~1 year)
         let refresh_exp = now + ChronoDuration::days(REFRESH_TOKEN_TTL_DAYS);
         let refresh_claims = RefreshTokenClaims {
@@ -110,6 +132,7 @@ impl JwtService {
             iat: now.timestamp(),
             exp: refresh_exp.timestamp(),
             aud: "refresh".to_string(),
+            provider_tokens_blob: encrypted_provider_tokens.clone(),
         };
 
         let encoding_key = EncodingKey::from_base64_secret(self.secret.expose_secret())?;
@@ -126,10 +149,11 @@ impl JwtService {
             &encoding_key,
         )?;
 
-        Ok(TokenPair {
+        Ok(Tokens {
             access_token,
             refresh_token,
             refresh_token_id,
+            encrypted_provider_tokens,
         })
     }
 
@@ -186,11 +210,80 @@ impl JwtService {
         let decoding_key = DecodingKey::from_base64_secret(self.secret.expose_secret())?;
         let data = decode::<RefreshTokenClaims>(token, &decoding_key, &validation)?;
         let claims = data.claims;
+        let provider_token_details = self.decrypt_provider_tokens(&claims.provider_tokens_blob)?;
 
         Ok(RefreshTokenDetails {
             user_id: claims.sub,
             session_id: claims.session_id,
             refresh_token_id: claims.jti,
+            provider_token_details,
         })
+    }
+
+    pub fn decrypt_provider_tokens(
+        &self,
+        provider_tokens_blob: &str,
+    ) -> Result<ProviderTokenDetails, JwtError> {
+        let decrypted = self.decrypt_data(provider_tokens_blob)?;
+        let decrypted_str = String::from_utf8_lossy(&decrypted);
+        serde_json::from_str(&decrypted_str).map_err(|_| JwtError::InvalidToken)
+    }
+
+    pub fn encrypt_provider_tokens(
+        &self,
+        provider_tokens: &ProviderTokenDetails,
+    ) -> Result<String, JwtError> {
+        let json =
+            serde_json::to_string(provider_tokens).map_err(|_| JwtError::SerializationError)?;
+        self.encrypt_data(json.as_bytes())
+    }
+
+    fn encrypt_data(&self, data: &[u8]) -> Result<String, JwtError> {
+        let key_bytes = self.derive_key()?;
+        let key = Key::<Aes256Gcm>::from(key_bytes);
+        let cipher = Aes256Gcm::new(&key);
+        let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
+        let ciphertext = cipher
+            .encrypt(&nonce, data)
+            .map_err(|_| JwtError::EncryptionError)?;
+
+        let mut combined = nonce.to_vec();
+        combined.extend_from_slice(&ciphertext);
+
+        Ok(URL_SAFE_NO_PAD.encode(combined))
+    }
+
+    fn decrypt_data(&self, encrypted: &str) -> Result<Vec<u8>, JwtError> {
+        let decoded = URL_SAFE_NO_PAD
+            .decode(encrypted)
+            .map_err(|_| JwtError::InvalidToken)?;
+
+        const NONCE_SIZE: usize = 12; // 96 bits for AES-256-GCM
+        if decoded.len() < NONCE_SIZE {
+            return Err(JwtError::InvalidToken);
+        }
+
+        let key_bytes = self.derive_key()?;
+        let key = Key::<Aes256Gcm>::from(key_bytes);
+        let cipher = Aes256Gcm::new(&key);
+        let nonce_bytes: [u8; NONCE_SIZE] = decoded[..NONCE_SIZE]
+            .try_into()
+            .map_err(|_| JwtError::InvalidToken)?;
+        let nonce = Nonce::from(nonce_bytes);
+        let ciphertext = &decoded[NONCE_SIZE..];
+
+        cipher
+            .decrypt(&nonce, ciphertext)
+            .map_err(|_| JwtError::EncryptionError)
+    }
+
+    fn derive_key(&self) -> Result<[u8; 32], JwtError> {
+        let secret_bytes = STANDARD
+            .decode(self.secret.expose_secret())
+            .map_err(|_| JwtError::InvalidSecret)?;
+
+        let mut hasher = Sha256::new();
+        hasher.update(&secret_bytes);
+        Ok(hasher.finalize().into())
     }
 }

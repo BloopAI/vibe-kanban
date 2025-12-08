@@ -1,15 +1,56 @@
 use std::time::Duration;
 
 use backon::{ExponentialBuilder, Retryable};
+use chrono::{DateTime, Utc};
 use db::models::merge::PullRequestInfo;
 use regex::Regex;
+use serde::Serialize;
 use thiserror::Error;
 use tokio::task;
 use tracing::info;
+use ts_rs::TS;
 
 mod cli;
 
-use cli::{GhCli, GhCliError};
+use cli::{GhCli, GhCliError, PrComment, PrReviewComment};
+pub use cli::{PrCommentAuthor, ReviewCommentUser};
+
+/// Unified PR comment that can be either a general comment or review comment
+#[derive(Debug, Clone, Serialize, TS)]
+#[serde(tag = "comment_type", rename_all = "snake_case")]
+#[ts(tag = "comment_type", rename_all = "snake_case")]
+pub enum UnifiedPrComment {
+    /// General PR comment (conversation)
+    General {
+        id: String,
+        author: String,
+        author_association: String,
+        body: String,
+        created_at: DateTime<Utc>,
+        url: String,
+    },
+    /// Inline review comment (on code)
+    Review {
+        id: i64,
+        author: String,
+        author_association: String,
+        body: String,
+        created_at: DateTime<Utc>,
+        url: String,
+        path: String,
+        line: Option<i64>,
+        diff_hunk: String,
+    },
+}
+
+impl UnifiedPrComment {
+    fn created_at(&self) -> DateTime<Utc> {
+        match self {
+            UnifiedPrComment::General { created_at, .. } => *created_at,
+            UnifiedPrComment::Review { created_at, .. } => *created_at,
+        }
+    }
+}
 
 #[derive(Debug, Error)]
 pub enum GitHubServiceError {
@@ -261,6 +302,135 @@ impl GitHubService {
             })?;
             let prs = prs.map_err(GitHubServiceError::from)?;
             Ok(prs)
+        })
+        .retry(
+            &ExponentialBuilder::default()
+                .with_min_delay(Duration::from_secs(1))
+                .with_max_delay(Duration::from_secs(30))
+                .with_max_times(3)
+                .with_jitter(),
+        )
+        .when(|e: &GitHubServiceError| e.should_retry())
+        .notify(|err: &GitHubServiceError, dur: Duration| {
+            tracing::warn!(
+                "GitHub API call failed, retrying after {:.2}s: {}",
+                dur.as_secs_f64(),
+                err
+            );
+        })
+        .await
+    }
+
+    /// Fetch all comments (both general and review) for a pull request
+    pub async fn get_pr_comments(
+        &self,
+        repo_info: &GitHubRepoInfo,
+        pr_number: i64,
+    ) -> Result<Vec<UnifiedPrComment>, GitHubServiceError> {
+        // Fetch both types of comments in parallel
+        let (general_result, review_result) = tokio::join!(
+            self.fetch_general_comments(repo_info, pr_number),
+            self.fetch_review_comments(repo_info, pr_number)
+        );
+
+        let general_comments = general_result?;
+        let review_comments = review_result?;
+
+        // Convert and merge into unified timeline
+        let mut unified: Vec<UnifiedPrComment> = Vec::new();
+
+        for c in general_comments {
+            unified.push(UnifiedPrComment::General {
+                id: c.id,
+                author: c.author.login,
+                author_association: c.author_association,
+                body: c.body,
+                created_at: c.created_at,
+                url: c.url,
+            });
+        }
+
+        for c in review_comments {
+            unified.push(UnifiedPrComment::Review {
+                id: c.id,
+                author: c.user.login,
+                author_association: c.author_association,
+                body: c.body,
+                created_at: c.created_at,
+                url: c.html_url,
+                path: c.path,
+                line: c.line,
+                diff_hunk: c.diff_hunk,
+            });
+        }
+
+        // Sort by creation time
+        unified.sort_by_key(|c| c.created_at());
+
+        Ok(unified)
+    }
+
+    async fn fetch_general_comments(
+        &self,
+        repo_info: &GitHubRepoInfo,
+        pr_number: i64,
+    ) -> Result<Vec<PrComment>, GitHubServiceError> {
+        (|| async {
+            let owner = repo_info.owner.clone();
+            let repo = repo_info.repo_name.clone();
+            let cli = self.gh_cli.clone();
+            let comments = task::spawn_blocking({
+                let owner = owner.clone();
+                let repo = repo.clone();
+                move || cli.get_pr_comments(&owner, &repo, pr_number)
+            })
+            .await
+            .map_err(|err| {
+                GitHubServiceError::PullRequest(format!(
+                    "Failed to execute GitHub CLI for fetching PR #{pr_number} comments: {err}"
+                ))
+            })?;
+            comments.map_err(GitHubServiceError::from)
+        })
+        .retry(
+            &ExponentialBuilder::default()
+                .with_min_delay(Duration::from_secs(1))
+                .with_max_delay(Duration::from_secs(30))
+                .with_max_times(3)
+                .with_jitter(),
+        )
+        .when(|e: &GitHubServiceError| e.should_retry())
+        .notify(|err: &GitHubServiceError, dur: Duration| {
+            tracing::warn!(
+                "GitHub API call failed, retrying after {:.2}s: {}",
+                dur.as_secs_f64(),
+                err
+            );
+        })
+        .await
+    }
+
+    async fn fetch_review_comments(
+        &self,
+        repo_info: &GitHubRepoInfo,
+        pr_number: i64,
+    ) -> Result<Vec<PrReviewComment>, GitHubServiceError> {
+        (|| async {
+            let owner = repo_info.owner.clone();
+            let repo = repo_info.repo_name.clone();
+            let cli = self.gh_cli.clone();
+            let comments = task::spawn_blocking({
+                let owner = owner.clone();
+                let repo = repo.clone();
+                move || cli.get_pr_review_comments(&owner, &repo, pr_number)
+            })
+            .await
+            .map_err(|err| {
+                GitHubServiceError::PullRequest(format!(
+                    "Failed to execute GitHub CLI for fetching PR #{pr_number} review comments: {err}"
+                ))
+            })?;
+            comments.map_err(GitHubServiceError::from)
         })
         .retry(
             &ExponentialBuilder::default()

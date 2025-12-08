@@ -9,6 +9,7 @@ use workspace_utils::msg_store::MsgStore;
 pub use super::acp::AcpAgentHarness;
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
+    env::ExecutionEnv,
     executors::{
         AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
     },
@@ -28,7 +29,8 @@ pub struct Gemini {
 
 impl Gemini {
     fn build_command_builder(&self) -> CommandBuilder {
-        let mut builder = CommandBuilder::new("npx -y @google/gemini-cli@0.16.0");
+        let mut builder =
+            CommandBuilder::new("npx -y @google/gemini-cli@0.21.0-nightly.20251204.3da4fd5f7");
 
         if let Some(model) = &self.model {
             builder = builder.extend_params(["--model", model.as_str()]);
@@ -47,12 +49,17 @@ impl Gemini {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Gemini {
-    async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
+    async fn spawn(
+        &self,
+        current_dir: &Path,
+        prompt: &str,
+        env: &ExecutionEnv,
+    ) -> Result<SpawnedChild, ExecutorError> {
         let harness = AcpAgentHarness::new();
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let gemini_command = self.build_command_builder().build_initial()?;
         harness
-            .spawn_with_command(current_dir, combined_prompt, gemini_command)
+            .spawn_with_command(current_dir, combined_prompt, gemini_command, env, &self.cmd)
             .await
     }
 
@@ -61,12 +68,20 @@ impl StandardCodingAgentExecutor for Gemini {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let harness = AcpAgentHarness::new();
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let gemini_command = self.build_command_builder().build_follow_up(&[])?;
         harness
-            .spawn_follow_up_with_command(current_dir, combined_prompt, session_id, gemini_command)
+            .spawn_follow_up_with_command(
+                current_dir,
+                combined_prompt,
+                session_id,
+                gemini_command,
+                env,
+                &self.cmd,
+            )
             .await
     }
 

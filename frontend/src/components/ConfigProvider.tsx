@@ -5,8 +5,8 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useState,
 } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   type Config,
   type Environment,
@@ -63,47 +63,26 @@ interface UserSystemProviderProps {
 }
 
 export function UserSystemProvider({ children }: UserSystemProviderProps) {
-  // Split state for performance - independent re-renders
-  const [config, setConfig] = useState<Config | null>(null);
-  const [environment, setEnvironment] = useState<Environment | null>(null);
-  const [profiles, setProfiles] = useState<Record<
-    string,
-    ExecutorConfig
-  > | null>(null);
-  const [capabilities, setCapabilities] = useState<Record<
-    string,
-    BaseAgentCapability[]
-  > | null>(null);
-  const [analyticsUserId, setAnalyticsUserId] = useState<string | null>(null);
-  const [loginStatus, setLoginStatus] = useState<LoginStatus | null>(null);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const loadUserSystem = async () => {
-      try {
-        const userSystemInfo: UserSystemInfo = await configApi.getConfig();
-        setConfig(userSystemInfo.config);
-        setEnvironment(userSystemInfo.environment);
-        setAnalyticsUserId(userSystemInfo.analytics_user_id);
-        setLoginStatus(userSystemInfo.login_status);
-        setProfiles(
-          userSystemInfo.executors as Record<string, ExecutorConfig> | null
-        );
-        setCapabilities(
-          (userSystemInfo.capabilities || null) as Record<
-            string,
-            BaseAgentCapability[]
-          > | null
-        );
-      } catch (err) {
-        console.error('Error loading user system:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const { data: userSystemInfo, isLoading } = useQuery({
+    queryKey: ['user-system'],
+    queryFn: configApi.getConfig,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
-    loadUserSystem();
-  }, []);
+  const config = userSystemInfo?.config || null;
+  const environment = userSystemInfo?.environment || null;
+  const analyticsUserId = userSystemInfo?.analytics_user_id || null;
+  const loginStatus = userSystemInfo?.login_status || null;
+  const profiles =
+    (userSystemInfo?.executors as Record<string, ExecutorConfig> | null) ||
+    null;
+  const capabilities =
+    (userSystemInfo?.capabilities as Record<
+      string,
+      BaseAgentCapability[]
+    > | null) || null;
 
   // Sync language with i18n when config changes
   useEffect(() => {
@@ -112,9 +91,18 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
     }
   }, [config?.language]);
 
-  const updateConfig = useCallback((updates: Partial<Config>) => {
-    setConfig((prev) => (prev ? { ...prev, ...updates } : null));
-  }, []);
+  const updateConfig = useCallback(
+    (updates: Partial<Config>) => {
+      queryClient.setQueryData<UserSystemInfo>(['user-system'], (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          config: { ...old.config, ...updates },
+        };
+      });
+    },
+    [queryClient]
+  );
 
   const saveConfig = useCallback(async (): Promise<boolean> => {
     if (!config) return false;
@@ -129,48 +117,66 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
 
   const updateAndSaveConfig = useCallback(
     async (updates: Partial<Config>): Promise<boolean> => {
-      setLoading(true);
-      const newConfig: Config | null = config
-        ? { ...config, ...updates }
-        : null;
+      if (!config) return false;
+
+      const newConfig = { ...config, ...updates };
+      updateConfig(updates);
+
       try {
-        if (!newConfig) return false;
         const saved = await configApi.saveConfig(newConfig);
-        setConfig(saved);
+        queryClient.setQueryData<UserSystemInfo>(['user-system'], (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            config: saved,
+          };
+        });
         return true;
       } catch (err) {
         console.error('Error saving config:', err);
+        queryClient.invalidateQueries({ queryKey: ['user-system'] });
         return false;
-      } finally {
-        setLoading(false);
       }
     },
-    [config]
+    [config, queryClient, updateConfig]
   );
 
   const reloadSystem = useCallback(async () => {
-    setLoading(true);
-    try {
-      const userSystemInfo: UserSystemInfo = await configApi.getConfig();
-      setConfig(userSystemInfo.config);
-      setEnvironment(userSystemInfo.environment);
-      setAnalyticsUserId(userSystemInfo.analytics_user_id);
-      setLoginStatus(userSystemInfo.login_status);
-      setProfiles(
-        userSystemInfo.executors as Record<string, ExecutorConfig> | null
-      );
-      setCapabilities(
-        (userSystemInfo.capabilities || null) as Record<
-          string,
-          BaseAgentCapability[]
-        > | null
-      );
-    } catch (err) {
-      console.error('Error reloading user system:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    await queryClient.invalidateQueries({ queryKey: ['user-system'] });
+  }, [queryClient]);
+
+  const setEnvironment = useCallback(
+    (env: Environment | null) => {
+      queryClient.setQueryData<UserSystemInfo>(['user-system'], (old) => {
+        if (!old || !env) return old;
+        return { ...old, environment: env };
+      });
+    },
+    [queryClient]
+  );
+
+  const setProfiles = useCallback(
+    (newProfiles: Record<string, ExecutorConfig> | null) => {
+      queryClient.setQueryData<UserSystemInfo>(['user-system'], (old) => {
+        if (!old || !newProfiles) return old;
+        return {
+          ...old,
+          executors: newProfiles as unknown as UserSystemInfo['executors'],
+        };
+      });
+    },
+    [queryClient]
+  );
+
+  const setCapabilities = useCallback(
+    (newCapabilities: Record<string, BaseAgentCapability[]> | null) => {
+      queryClient.setQueryData<UserSystemInfo>(['user-system'], (old) => {
+        if (!old || !newCapabilities) return old;
+        return { ...old, capabilities: newCapabilities };
+      });
+    },
+    [queryClient]
+  );
 
   // Memoize context value to prevent unnecessary re-renders
   const value = useMemo<UserSystemContextType>(
@@ -196,7 +202,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       setProfiles,
       setCapabilities,
       reloadSystem,
-      loading,
+      loading: isLoading,
     }),
     [
       config,
@@ -209,7 +215,10 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       saveConfig,
       updateAndSaveConfig,
       reloadSystem,
-      loading,
+      isLoading,
+      setEnvironment,
+      setProfiles,
+      setCapabilities,
     ]
   );
 

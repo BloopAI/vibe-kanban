@@ -1,6 +1,6 @@
 [package]
 name = "remote"
-version = "0.0.123"
+version = "0.0.131"
 edition = "2024"
 publish = false
 
@@ -8,10 +8,11 @@ publish = false
 anyhow = { workspace = true }
 axum = { workspace = true }
 axum-extra = { version = "0.10.3", features = ["typed-header"] }
+aes-gcm = "0.10"
 chrono = { version = "0.4", features = ["serde"] }
 futures = "0.3"
 async-trait = "0.1"
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
 secrecy = "0.10.3"
 sentry = { version = "0.41.0", features = ["anyhow", "backtrace", "panic", "debug-images"] }
 sentry-tracing = { version = "0.41.0", features = ["backtrace"] }
@@ -25,6 +26,7 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 tracing-error = "0.2"
 thiserror = { workspace = true }
+ts-rs = { workspace = true }
 utils = { path = "../utils" }
 uuid = { version = "1", features = ["serde", "v4"] }
 jsonwebtoken = "9"
@@ -32,5 +34,3 @@ rand = "0.9"
 sha2 = "0.10"
 url = "2.5"
 base64 = "0.22"
-hmac = "0.12"
-subtle = "2.6"

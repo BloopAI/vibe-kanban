@@ -4,12 +4,9 @@ use std::time::Duration;
 
 use backon::{ExponentialBuilder, Retryable};
 use chrono::Duration as ChronoDuration;
-use remote::{
-    activity::ActivityResponse,
-    routes::tasks::{
-        AssignSharedTaskRequest, BulkSharedTasksResponse, CreateSharedTaskRequest,
-        DeleteSharedTaskRequest, SharedTaskResponse, UpdateSharedTaskRequest,
-    },
+use remote::routes::tasks::{
+    AssignSharedTaskRequest, CheckTasksRequest, CreateSharedTaskRequest, SharedTaskResponse,
+    UpdateSharedTaskRequest,
 };
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -580,14 +577,13 @@ impl RemoteClient {
     pub async fn delete_shared_task(
         &self,
         task_id: Uuid,
-        request: &DeleteSharedTaskRequest,
     ) -> Result<SharedTaskResponse, RemoteClientError> {
         let res = self
             .send(
                 reqwest::Method::DELETE,
                 &format!("/v1/tasks/{task_id}"),
                 true,
-                Some(request),
+                None::<&()>,
             )
             .await?;
         res.json::<SharedTaskResponse>()
@@ -595,27 +591,10 @@ impl RemoteClient {
             .map_err(|e| RemoteClientError::Serde(e.to_string()))
     }
 
-    /// Fetches activity events for a project.
-    pub async fn fetch_activity(
-        &self,
-        project_id: Uuid,
-        after: Option<i64>,
-        limit: u32,
-    ) -> Result<ActivityResponse, RemoteClientError> {
-        let mut path = format!("/v1/activity?project_id={project_id}&limit={limit}");
-        if let Some(seq) = after {
-            path.push_str(&format!("&after={seq}"));
-        }
-        self.get_authed(&path).await
-    }
-
-    /// Fetches bulk snapshot of shared tasks for a project.
-    pub async fn fetch_bulk_snapshot(
-        &self,
-        project_id: Uuid,
-    ) -> Result<BulkSharedTasksResponse, RemoteClientError> {
-        self.get_authed(&format!("/v1/tasks/bulk?project_id={project_id}"))
-            .await
+    /// Checks if shared tasks exist.
+    pub async fn check_tasks(&self, task_ids: Vec<Uuid>) -> Result<Vec<Uuid>, RemoteClientError> {
+        let request = CheckTasksRequest { task_ids };
+        self.post_authed("/v1/tasks/check", Some(&request)).await
     }
 }
 

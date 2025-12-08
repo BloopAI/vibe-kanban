@@ -180,7 +180,15 @@
     "resolveConflicts": "Resolve conflicts",
     "send": "Send",
     "stop": "Stop",
-    "unqueuing": "Unqueuing…"
+    "unqueuing": "Unqueuing…",
+    "queue": "대기열에 추가",
+    "cancelQueue": "대기열 취소",
+    "queuedMessage": "메시지가 대기열에 추가됨 - 현재 실행이 완료되면 실행됩니다",
+    "runSetupScript": "설정 스크립트 실행",
+    "runCleanupScript": "정리 스크립트 실행",
+    "noSetupScript": "이 프로젝트에 설정 스크립트가 구성되어 있지 않습니다",
+    "noCleanupScript": "이 프로젝트에 정리 스크립트가 구성되어 있지 않습니다",
+    "scriptsDisabledWhileRunning": "프로세스가 실행 중일 때는 스크립트를 실행할 수 없습니다"
   },
   "git": {
     "branch": {
@@ -301,7 +309,9 @@
     "processId": "Process ID: {{id}}",
     "reconnecting": "Reconnecting...",
     "selectAttempt": "Select an attempt to view execution processes.",
-    "started": "Started: {{date}}"
+    "started": "Started: {{date}}",
+    "copyLogs": "로그 복사",
+    "logsCopied": "복사됨!"
   },
   "rebase": {
     "common": {
@@ -388,6 +398,20 @@
       "previous": "이전",
       "next": "다음",
       "finish": "완료"
+    }
+  },
+  "githubComments": {
+    "dialog": {
+      "title": "GitHub 댓글 선택",
+      "noComments": "이 PR에 댓글이 없습니다",
+      "selectAll": "모두 선택",
+      "deselectAll": "모두 선택 해제",
+      "add": "추가",
+      "selectedCount": "{{total}}개 중 {{selected}}개 선택됨"
+    },
+    "card": {
+      "review": "리뷰",
+      "tooltip": "클릭하여 GitHub에서 보기, 더블 클릭하여 편집"
     }
   },
   "taskFormDialog": {

@@ -12,7 +12,8 @@ import {
 import { executionProcessesApi } from '@/lib/api.ts';
 import { ProfileVariantBadge } from '@/components/common/ProfileVariantBadge.tsx';
 import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
-import ProcessLogsViewer from './ProcessLogsViewer';
+import { useLogStream } from '@/hooks/useLogStream';
+import { ProcessLogsViewerContent } from './ProcessLogsViewer';
 import type { ExecutionProcessStatus, ExecutionProcess } from 'shared/types';
 
 import { useProcessSelection } from '@/contexts/ProcessSelectionContext';
@@ -36,11 +37,32 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
   const [localProcessDetails, setLocalProcessDetails] = useState<
     Record<string, ExecutionProcess>
   >({});
+  const [copied, setCopied] = useState(false);
+
+  const selectedProcess = selectedProcessId
+    ? localProcessDetails[selectedProcessId] ||
+      executionProcessesById[selectedProcessId]
+    : null;
+
+  const { logs, error: logsError } = useLogStream(selectedProcess?.id ?? '');
 
   useEffect(() => {
     setLocalProcessDetails({});
     setLoadingProcessId(null);
   }, [attemptId]);
+
+  const handleCopyLogs = useCallback(async () => {
+    if (logs.length === 0) return;
+
+    const text = logs.map((entry) => entry.content).join('\n');
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.warn('Copy to clipboard failed:', err);
+    }
+  }, [logs]);
 
   const getStatusIcon = (status: ExecutionProcessStatus) => {
     switch (status) {
@@ -126,10 +148,6 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
     }
   };
 
-  const selectedProcess = selectedProcessId
-    ? localProcessDetails[selectedProcessId] ||
-      executionProcessesById[selectedProcessId]
-    : null;
   const { isProcessGreyed } = useRetryUi();
 
   if (!attemptId) {
@@ -261,17 +279,32 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
             <h2 className="text-lg font-semibold">
               {t('processes.detailsTitle')}
             </h2>
-            <button
-              onClick={() => setSelectedProcessId(null)}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md border border-border transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              {t('processes.backToList')}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleCopyLogs}
+                disabled={logs.length === 0}
+                className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md border border-border transition-colors ${
+                  copied
+                    ? 'text-success'
+                    : logs.length === 0
+                      ? 'text-muted-foreground opacity-50 cursor-not-allowed'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                }`}
+              >
+                {copied ? t('processes.logsCopied') : t('processes.copyLogs')}
+              </button>
+              <button
+                onClick={() => setSelectedProcessId(null)}
+                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md border border-border transition-colors"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                {t('processes.backToList')}
+              </button>
+            </div>
           </div>
           <div className="flex-1">
             {selectedProcess ? (
-              <ProcessLogsViewer processId={selectedProcess.id} />
+              <ProcessLogsViewerContent logs={logs} error={logsError} />
             ) : loadingProcessId === selectedProcessId ? (
               <div className="text-center text-muted-foreground">
                 <p>{t('processes.loadingDetails')}</p>

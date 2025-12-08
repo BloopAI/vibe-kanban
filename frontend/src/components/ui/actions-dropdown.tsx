@@ -42,11 +42,12 @@ export function ActionsDropdown({
   const { projectId } = useProject();
   const openInEditor = useOpenInEditor(attempt?.id);
   const navigate = useNavigate();
-  const { userId } = useAuth();
+  const { userId, isSignedIn } = useAuth();
 
   const hasAttemptActions = Boolean(attempt);
   const hasTaskActions = Boolean(task);
   const isShared = Boolean(sharedTask);
+  const canEditShared = (!isShared && !task?.shared_task_id) || isSignedIn;
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -248,14 +249,17 @@ export function ActionsDropdown({
                 {t('actionsMenu.stopShare')}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem disabled={!projectId} onClick={handleEdit}>
+              <DropdownMenuItem
+                disabled={!projectId || !canEditShared}
+                onClick={handleEdit}
+              >
                 {t('common:buttons.edit')}
               </DropdownMenuItem>
               <DropdownMenuItem disabled={!projectId} onClick={handleDuplicate}>
                 {t('actionsMenu.duplicate')}
               </DropdownMenuItem>
               <DropdownMenuItem
-                disabled={!projectId}
+                disabled={!projectId || !canEditShared}
                 onClick={handleDelete}
                 className="text-destructive"
               >

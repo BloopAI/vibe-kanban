@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { cloneDeep, isEqual } from 'lodash';
 import {
   Card,
   CardContent,
@@ -15,23 +16,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { JSONEditor } from '@/components/ui/json-editor';
-import { Loader2 } from 'lucide-react';
+import { ChevronDown, Loader2 } from 'lucide-react';
 
 import { ExecutorConfigForm } from '@/components/ExecutorConfigForm';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { CreateConfigurationDialog } from '@/components/dialogs/settings/CreateConfigurationDialog';
 import { DeleteConfigurationDialog } from '@/components/dialogs/settings/DeleteConfigurationDialog';
-import type { BaseCodingAgent, ExecutorConfigs } from 'shared/types';
+import { useAgentAvailability } from '@/hooks/useAgentAvailability';
+import { AgentAvailabilityIndicator } from '@/components/AgentAvailabilityIndicator';
+import type {
+  BaseCodingAgent,
+  ExecutorConfigs,
+  ExecutorProfileId,
+} from 'shared/types';
 
 type ExecutorsMap = Record<string, Record<string, Record<string, unknown>>>;
 
 export function AgentSettings() {
-  const { t } = useTranslation('settings');
+  const { t } = useTranslation(['settings', 'common']);
   // Use profiles hook for server state
   const {
     profilesContent: serverProfilesContent,
@@ -42,7 +55,8 @@ export function AgentSettings() {
     save: saveProfiles,
   } = useProfiles();
 
-  const { reloadSystem } = useUserSystem();
+  const { config, updateAndSaveConfig, profiles, reloadSystem } =
+    useUserSystem();
 
   // Local editor state (draft that may differ from server)
   const [localProfilesContent, setLocalProfilesContent] = useState('');
@@ -59,6 +73,17 @@ export function AgentSettings() {
     useState<ExecutorConfigs | null>(null);
   const [isDirty, setIsDirty] = useState(false);
 
+  // Default executor profile state
+  const [executorDraft, setExecutorDraft] = useState<ExecutorProfileId | null>(
+    () => (config?.executor_profile ? cloneDeep(config.executor_profile) : null)
+  );
+  const [executorSaving, setExecutorSaving] = useState(false);
+  const [executorSuccess, setExecutorSuccess] = useState(false);
+  const [executorError, setExecutorError] = useState<string | null>(null);
+
+  // Check agent availability when draft executor changes
+  const agentAvailability = useAgentAvailability(executorDraft?.executor);
+
   // Sync server state to local state when not dirty
   useEffect(() => {
     if (!isDirty && serverProfilesContent) {
@@ -73,6 +98,50 @@ export function AgentSettings() {
       }
     }
   }, [serverProfilesContent, isDirty]);
+
+  // Check if executor draft differs from saved config
+  const executorDirty =
+    executorDraft && config?.executor_profile
+      ? !isEqual(executorDraft, config.executor_profile)
+      : false;
+
+  // Sync executor draft when config changes (only if not dirty)
+  useEffect(() => {
+    if (config?.executor_profile) {
+      setExecutorDraft((currentDraft) => {
+        // Only update if draft matches the old config (not dirty)
+        if (!currentDraft || isEqual(currentDraft, config.executor_profile)) {
+          return cloneDeep(config.executor_profile);
+        }
+        return currentDraft;
+      });
+    }
+  }, [config?.executor_profile]);
+
+  // Update executor draft
+  const updateExecutorDraft = (newProfile: ExecutorProfileId) => {
+    setExecutorDraft(newProfile);
+  };
+
+  // Save executor profile
+  const handleSaveExecutorProfile = async () => {
+    if (!executorDraft || !config) return;
+
+    setExecutorSaving(true);
+    setExecutorError(null);
+
+    try {
+      await updateAndSaveConfig({ executor_profile: executorDraft });
+      setExecutorSuccess(true);
+      setTimeout(() => setExecutorSuccess(false), 3000);
+      reloadSystem();
+    } catch (err) {
+      setExecutorError(t('settings.general.save.error'));
+      console.error('Error saving executor profile:', err);
+    } finally {
+      setExecutorSaving(false);
+    }
+  };
 
   // Sync raw profiles with parsed profiles
   const syncRawProfiles = (profiles: unknown) => {
@@ -382,6 +451,153 @@ export function AgentSettings() {
         </Alert>
       )}
 
+      {executorError && (
+        <Alert variant="destructive">
+          <AlertDescription>{executorError}</AlertDescription>
+        </Alert>
+      )}
+
+      {executorSuccess && (
+        <Alert variant="success">
+          <AlertDescription className="font-medium">
+            {t('settings.general.save.success')}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('settings.general.taskExecution.title')}</CardTitle>
+          <CardDescription>
+            {t('settings.general.taskExecution.description')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="executor">
+              {t('settings.general.taskExecution.executor.label')}
+            </Label>
+            <div className="grid grid-cols-2 gap-2">
+              <Select
+                value={executorDraft?.executor ?? ''}
+                onValueChange={(value: string) => {
+                  const variants = profiles?.[value];
+                  const keepCurrentVariant =
+                    variants &&
+                    executorDraft?.variant &&
+                    variants[executorDraft.variant];
+
+                  const newProfile: ExecutorProfileId = {
+                    executor: value as BaseCodingAgent,
+                    variant: keepCurrentVariant ? executorDraft!.variant : null,
+                  };
+                  updateExecutorDraft(newProfile);
+                }}
+                disabled={!profiles}
+              >
+                <SelectTrigger id="executor">
+                  <SelectValue
+                    placeholder={t(
+                      'settings.general.taskExecution.executor.placeholder'
+                    )}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {profiles &&
+                    Object.entries(profiles)
+                      .sort((a, b) => a[0].localeCompare(b[0]))
+                      .map(([profileKey]) => (
+                        <SelectItem key={profileKey} value={profileKey}>
+                          {profileKey}
+                        </SelectItem>
+                      ))}
+                </SelectContent>
+              </Select>
+
+              {/* Show variant selector if selected profile has variants */}
+              {(() => {
+                const currentProfileVariant = executorDraft;
+                const selectedProfile =
+                  profiles?.[currentProfileVariant?.executor || ''];
+                const hasVariants =
+                  selectedProfile && Object.keys(selectedProfile).length > 0;
+
+                if (hasVariants) {
+                  return (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full h-10 px-2 flex items-center justify-between"
+                        >
+                          <span className="text-sm truncate flex-1 text-left">
+                            {currentProfileVariant?.variant ||
+                              t('settings.general.taskExecution.defaultLabel')}
+                          </span>
+                          <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        {Object.entries(selectedProfile).map(
+                          ([variantLabel]) => (
+                            <DropdownMenuItem
+                              key={variantLabel}
+                              onClick={() => {
+                                const newProfile: ExecutorProfileId = {
+                                  executor: currentProfileVariant!.executor,
+                                  variant: variantLabel,
+                                };
+                                updateExecutorDraft(newProfile);
+                              }}
+                              className={
+                                currentProfileVariant?.variant === variantLabel
+                                  ? 'bg-accent'
+                                  : ''
+                              }
+                            >
+                              {variantLabel}
+                            </DropdownMenuItem>
+                          )
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  );
+                } else if (selectedProfile) {
+                  // Show disabled button when profile exists but has no variants
+                  return (
+                    <Button
+                      variant="outline"
+                      className="w-full h-10 px-2 flex items-center justify-between"
+                      disabled
+                    >
+                      <span className="text-sm truncate flex-1 text-left">
+                        {t('settings.general.taskExecution.defaultLabel')}
+                      </span>
+                    </Button>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+            <AgentAvailabilityIndicator availability={agentAvailability} />
+            <p className="text-sm text-muted-foreground">
+              {t('settings.general.taskExecution.executor.helper')}
+            </p>
+          </div>
+          <div className="flex justify-end">
+            <Button
+              onClick={handleSaveExecutorProfile}
+              disabled={!executorDirty || executorSaving}
+            >
+              {executorSaving && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              {t('common:buttons.save')}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>{t('settings.agents.title')}</CardTitle>
@@ -515,6 +731,7 @@ export function AgentSettings() {
                     selectedConfiguration
                   ]?.[selectedExecutorType] && (
                     <ExecutorConfigForm
+                      key={`${selectedExecutorType}-${selectedConfiguration}`}
                       executor={selectedExecutorType}
                       value={
                         (executorsMap[selectedExecutorType][

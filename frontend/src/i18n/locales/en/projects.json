@@ -46,5 +46,6 @@
   "unlinkFromOrganization": "Unlink from Remote Project",
   "viewProject": "View Project",
   "openInIDE": "Open in IDE",
-  "createdDate": "Created {{date}}"
+  "createdDate": "Created {{date}}",
+  "copyFilesPlaceholderWithSearch": "File paths or glob patterns (e.g., .env, config/*.json)"
 }

@@ -17,6 +17,7 @@ use workspace_utils::{
 
 use crate::{
     command::{CmdOverrides, CommandBuilder, apply_overrides},
+    env::ExecutionEnv,
     executors::{
         AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
     },
@@ -68,7 +69,12 @@ impl CursorAgent {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for CursorAgent {
-    async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
+    async fn spawn(
+        &self,
+        current_dir: &Path,
+        prompt: &str,
+        env: &ExecutionEnv,
+    ) -> Result<SpawnedChild, ExecutorError> {
         mcp::ensure_mcp_server_trust(self, current_dir).await;
 
         let command_parts = self.build_command_builder().build_initial()?;
@@ -86,6 +92,10 @@ impl StandardCodingAgentExecutor for CursorAgent {
             .current_dir(current_dir)
             .args(&args);
 
+        env.clone()
+            .with_profile(&self.cmd)
+            .apply_to_command(&mut command);
+
         let mut child = command.group_spawn()?;
 
         if let Some(mut stdin) = child.inner().stdin.take() {
@@ -101,6 +111,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         mcp::ensure_mcp_server_trust(self, current_dir).await;
 
@@ -119,6 +130,10 @@ impl StandardCodingAgentExecutor for CursorAgent {
             .stderr(Stdio::piped())
             .current_dir(current_dir)
             .args(&args);
+
+        env.clone()
+            .with_profile(&self.cmd)
+            .apply_to_command(&mut command);
 
         let mut child = command.group_spawn()?;
 
@@ -554,6 +569,8 @@ pub enum CursorJson {
         duration_ms: Option<u64>,
         #[serde(default)]
         result: Option<serde_json::Value>,
+        #[serde(default)]
+        session_id: Option<String>,
     },
     #[serde(other)]
     Unknown,
@@ -562,12 +579,12 @@ pub enum CursorJson {
 impl CursorJson {
     pub fn extract_session_id(&self) -> Option<String> {
         match self {
-            CursorJson::System { session_id, .. } => session_id.clone(),
+            CursorJson::System { .. } => None, // session might not have been initialized yet
             CursorJson::User { session_id, .. } => session_id.clone(),
             CursorJson::Assistant { session_id, .. } => session_id.clone(),
             CursorJson::Thinking { session_id, .. } => session_id.clone(),
             CursorJson::ToolCall { session_id, .. } => session_id.clone(),
-            CursorJson::Result { .. } => None,
+            CursorJson::Result { session_id, .. } => session_id.clone(),
             CursorJson::Unknown => None,
         }
     }
@@ -1240,10 +1257,10 @@ mod tests {
 
     #[test]
     fn test_session_id_extraction_from_system_line() {
-        // Ensure we can parse and find session_id from a system JSON line
+        // System messages no longer extract session_id
         let system_line = r#"{"type":"system","subtype":"init","session_id":"abc-xyz","model":"Claude 4 Sonnet"}"#;
         let parsed: CursorJson = serde_json::from_str(system_line).unwrap();
-        assert_eq!(parsed.extract_session_id().as_deref(), Some("abc-xyz"));
+        assert_eq!(parsed.extract_session_id().as_deref(), None);
     }
 
     #[test]

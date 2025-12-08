@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect, useState, useCallback } from 'react';
 import Form from '@rjsf/core';
 import type { IChangeEvent } from '@rjsf/core';
 import { RJSFValidationError } from '@rjsf/utils';
@@ -44,6 +44,38 @@ export function ExecutorConfigForm({
     return schemas[executor];
   }, [executor]);
 
+  // Custom handler for env field updates
+  const handleEnvChange = useCallback(
+    (envData: Record<string, string> | undefined) => {
+      const newFormData = {
+        ...(formData as Record<string, unknown>),
+        env: envData,
+      };
+      setFormData(newFormData);
+      if (onChange) {
+        onChange(newFormData);
+      }
+    },
+    [formData, onChange]
+  );
+
+  const uiSchema = useMemo(
+    () => ({
+      env: {
+        'ui:field': 'KeyValueField',
+      },
+    }),
+    []
+  );
+
+  // Pass the env update handler via formContext
+  const formContext = useMemo(
+    () => ({
+      onEnvChange: handleEnvChange,
+    }),
+    [handleEnvChange]
+  );
+
   useEffect(() => {
     setFormData(value || {});
     setValidationErrors([]);
@@ -87,7 +119,9 @@ export function ExecutorConfigForm({
         <CardContent className="p-0">
           <Form
             schema={schema}
+            uiSchema={uiSchema}
             formData={formData}
+            formContext={formContext}
             onChange={handleChange}
             onSubmit={handleSubmit}
             onError={handleError}
@@ -97,6 +131,7 @@ export function ExecutorConfigForm({
             showErrorList={false}
             widgets={shadcnTheme.widgets}
             templates={shadcnTheme.templates}
+            fields={shadcnTheme.fields}
           >
             {onSave && (
               <div className="flex justify-end pt-4">

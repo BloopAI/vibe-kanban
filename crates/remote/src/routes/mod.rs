@@ -5,7 +5,7 @@ use axum::{
     routing::get,
 };
 use tower_http::{
-    cors::CorsLayer,
+    cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer},
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, RequestId, SetRequestIdLayer},
     services::{ServeDir, ServeFile},
     trace::{DefaultOnFailure, DefaultOnResponse, TraceLayer},
@@ -14,7 +14,7 @@ use tracing::{Level, field};
 
 use crate::{AppState, auth::require_session};
 
-pub mod activity;
+mod electric_proxy;
 mod error;
 mod identity;
 mod oauth;
@@ -53,13 +53,12 @@ pub fn router(state: AppState) -> Router {
 
     let v1_protected = Router::<AppState>::new()
         .merge(identity::router())
-        .merge(activity::router())
         .merge(projects::router())
         .merge(tasks::router())
         .merge(organizations::router())
         .merge(organization_members::protected_router())
         .merge(oauth::protected_router())
-        .merge(crate::ws::router())
+        .merge(electric_proxy::router())
         .layer(middleware::from_fn_with_state(
             state.clone(),
             require_session,
@@ -73,7 +72,13 @@ pub fn router(state: AppState) -> Router {
         .nest("/v1", v1_public)
         .nest("/v1", v1_protected)
         .fallback_service(spa)
-        .layer(CorsLayer::permissive())
+        .layer(
+            CorsLayer::new()
+                .allow_origin(AllowOrigin::mirror_request())
+                .allow_methods(AllowMethods::mirror_request())
+                .allow_headers(AllowHeaders::mirror_request())
+                .allow_credentials(true),
+        )
         .layer(trace_layer)
         .layer(PropagateRequestIdLayer::new(HeaderName::from_static(
             "x-request-id",

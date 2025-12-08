@@ -93,10 +93,9 @@ const ReassignDialogImpl = NiceModal.create<ReassignDialogProps>(
       mutationFn: async (newAssignee: string) =>
         tasksApi.reassign(sharedTask.id, {
           new_assignee_user_id: newAssignee,
-          version: sharedTask.version,
         }),
-      onSuccess: (result) => {
-        modal.resolve(result.shared_task);
+      onSuccess: (shared_task) => {
+        modal.resolve(shared_task);
         modal.hide();
       },
       onError: (error) => {

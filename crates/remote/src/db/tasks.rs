@@ -2,27 +2,21 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use thiserror::Error;
+use ts_rs::TS;
 use uuid::Uuid;
 
 use super::{
-    Tx,
     identity_errors::IdentityError,
     projects::{ProjectError, ProjectRepository},
     users::{UserData, fetch_user},
 };
-use crate::db::maintenance;
-
-pub struct BulkFetchResult {
-    pub tasks: Vec<SharedTaskActivityPayload>,
-    pub deleted_task_ids: Vec<Uuid>,
-    pub latest_seq: Option<i64>,
-}
 
 pub const MAX_SHARED_TASK_TEXT_BYTES: usize = 50 * 1024;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
-#[serde(rename_all = "kebab-case")]
-#[sqlx(type_name = "task_status", rename_all = "kebab-case")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, TS)]
+#[serde(rename_all = "lowercase")]
+#[sqlx(type_name = "task_status", rename_all = "lowercase")]
+#[ts(export)]
 pub enum TaskStatus {
     Todo,
     InProgress,
@@ -43,7 +37,8 @@ impl SharedTaskWithUser {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, TS)]
+#[ts(export)]
 pub struct SharedTask {
     pub id: Uuid,
     pub organization_id: Uuid,
@@ -54,17 +49,10 @@ pub struct SharedTask {
     pub title: String,
     pub description: Option<String>,
     pub status: TaskStatus,
-    pub version: i64,
     pub deleted_at: Option<DateTime<Utc>>,
     pub shared_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SharedTaskActivityPayload {
-    pub task: SharedTask,
-    pub user: Option<UserData>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -81,7 +69,6 @@ pub struct UpdateSharedTaskData {
     pub title: Option<String>,
     pub description: Option<String>,
     pub status: Option<TaskStatus>,
-    pub version: Option<i64>,
     pub acting_user_id: Uuid,
 }
 
@@ -89,13 +76,11 @@ pub struct UpdateSharedTaskData {
 pub struct AssignTaskData {
     pub new_assignee_user_id: Option<Uuid>,
     pub previous_assignee_user_id: Option<Uuid>,
-    pub version: Option<i64>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct DeleteTaskData {
     pub acting_user_id: Uuid,
-    pub version: Option<i64>,
 }
 
 #[derive(Debug, Error)]
@@ -141,7 +126,6 @@ impl<'a> SharedTaskRepository<'a> {
                 title               AS "title!",
                 description         AS "description?",
                 status              AS "status!: TaskStatus",
-                version             AS "version!",
                 deleted_at          AS "deleted_at?",
                 shared_at           AS "shared_at?",
                 created_at          AS "created_at!",
@@ -205,7 +189,6 @@ impl<'a> SharedTaskRepository<'a> {
                       title              AS "title!",
                       description        AS "description?",
                       status             AS "status!: TaskStatus",
-                      version            AS "version!",
                       deleted_at         AS "deleted_at?",
                       shared_at          AS "shared_at?",
                       created_at         AS "created_at!",
@@ -226,112 +209,8 @@ impl<'a> SharedTaskRepository<'a> {
             None => None,
         };
 
-        insert_activity(&mut tx, &task, user.as_ref(), "task.created").await?;
         tx.commit().await.map_err(SharedTaskError::from)?;
         Ok(SharedTaskWithUser::new(task, user))
-    }
-
-    pub async fn bulk_fetch(&self, project_id: Uuid) -> Result<BulkFetchResult, SharedTaskError> {
-        let mut tx = self.pool.begin().await?;
-        sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
-            .execute(&mut *tx)
-            .await?;
-
-        let rows = sqlx::query!(
-            r#"
-            SELECT
-                st.id                     AS "id!: Uuid",
-                st.organization_id        AS "organization_id!: Uuid",
-                st.project_id             AS "project_id!: Uuid",
-                st.creator_user_id        AS "creator_user_id?: Uuid",
-                st.assignee_user_id       AS "assignee_user_id?: Uuid",
-                st.deleted_by_user_id     AS "deleted_by_user_id?: Uuid",
-                st.title                  AS "title!",
-                st.description            AS "description?",
-                st.status                 AS "status!: TaskStatus",
-                st.version                AS "version!",
-                st.deleted_at             AS "deleted_at?",
-                st.shared_at              AS "shared_at?",
-                st.created_at             AS "created_at!",
-                st.updated_at             AS "updated_at!",
-                u.id                      AS "user_id?: Uuid",
-                u.first_name              AS "user_first_name?",
-                u.last_name               AS "user_last_name?",
-                u.username                AS "user_username?"
-            FROM shared_tasks st
-            LEFT JOIN users u ON st.assignee_user_id = u.id
-            WHERE st.project_id = $1
-              AND st.deleted_at IS NULL
-            ORDER BY st.updated_at DESC
-            "#,
-            project_id
-        )
-        .fetch_all(&mut *tx)
-        .await?;
-
-        let tasks = rows
-            .into_iter()
-            .map(|row| {
-                let task = SharedTask {
-                    id: row.id,
-                    organization_id: row.organization_id,
-                    project_id: row.project_id,
-                    creator_user_id: row.creator_user_id,
-                    assignee_user_id: row.assignee_user_id,
-                    deleted_by_user_id: row.deleted_by_user_id,
-                    title: row.title,
-                    description: row.description,
-                    status: row.status,
-                    version: row.version,
-                    deleted_at: row.deleted_at,
-                    shared_at: row.shared_at,
-                    created_at: row.created_at,
-                    updated_at: row.updated_at,
-                };
-
-                let user = row.user_id.map(|id| UserData {
-                    id,
-                    first_name: row.user_first_name,
-                    last_name: row.user_last_name,
-                    username: row.user_username,
-                });
-
-                SharedTaskActivityPayload { task, user }
-            })
-            .collect();
-
-        let deleted_rows = sqlx::query!(
-            r#"
-            SELECT st.id AS "id!: Uuid"
-            FROM shared_tasks st
-            WHERE st.project_id = $1
-              AND st.deleted_at IS NOT NULL
-            "#,
-            project_id
-        )
-        .fetch_all(&mut *tx)
-        .await?;
-
-        let deleted_task_ids = deleted_rows.into_iter().map(|row| row.id).collect();
-
-        let latest_seq = sqlx::query_scalar!(
-            r#"
-            SELECT MAX(seq)
-            FROM activity
-            WHERE project_id = $1
-            "#,
-            project_id
-        )
-        .fetch_one(&mut *tx)
-        .await?;
-
-        tx.commit().await?;
-
-        Ok(BulkFetchResult {
-            tasks,
-            deleted_task_ids,
-            latest_seq,
-        })
     }
 
     pub async fn update(
@@ -348,11 +227,9 @@ impl<'a> SharedTaskRepository<'a> {
         SET title       = COALESCE($2, t.title),
             description = COALESCE($3, t.description),
             status      = COALESCE($4, t.status),
-            version     = t.version + 1,
             updated_at  = NOW()
         WHERE t.id = $1
-          AND t.version = COALESCE($5, t.version)
-          AND t.assignee_user_id = $6
+          AND t.assignee_user_id = $5
           AND t.deleted_at IS NULL
         RETURNING
             t.id                AS "id!",
@@ -364,7 +241,6 @@ impl<'a> SharedTaskRepository<'a> {
             t.title             AS "title!",
             t.description       AS "description?",
             t.status            AS "status!: TaskStatus",
-            t.version           AS "version!",
             t.deleted_at        AS "deleted_at?",
             t.shared_at         AS "shared_at?",
             t.created_at        AS "created_at!",
@@ -374,12 +250,11 @@ impl<'a> SharedTaskRepository<'a> {
             data.title,
             data.description,
             data.status as Option<TaskStatus>,
-            data.version,
             data.acting_user_id
         )
         .fetch_optional(&mut *tx)
         .await?
-        .ok_or_else(|| SharedTaskError::Conflict("task version mismatch".to_string()))?;
+        .ok_or_else(|| SharedTaskError::NotFound)?;
 
         ensure_text_size(&task.title, task.description.as_deref())?;
 
@@ -388,7 +263,6 @@ impl<'a> SharedTaskRepository<'a> {
             None => None,
         };
 
-        insert_activity(&mut tx, &task, user.as_ref(), "task.updated").await?;
         tx.commit().await.map_err(SharedTaskError::from)?;
         Ok(SharedTaskWithUser::new(task, user))
     }
@@ -404,10 +278,8 @@ impl<'a> SharedTaskRepository<'a> {
             SharedTask,
             r#"
         UPDATE shared_tasks AS t
-        SET assignee_user_id = $2,
-            version = t.version + 1
+        SET assignee_user_id = $2
         WHERE t.id = $1
-          AND t.version = COALESCE($4, t.version)
           AND ($3::uuid IS NULL OR t.assignee_user_id = $3::uuid)
           AND t.deleted_at IS NULL
         RETURNING
@@ -420,7 +292,6 @@ impl<'a> SharedTaskRepository<'a> {
             t.title             AS "title!",
             t.description       AS "description?",
             t.status            AS "status!: TaskStatus",
-            t.version           AS "version!",
             t.deleted_at        AS "deleted_at?",
             t.shared_at         AS "shared_at?",
             t.created_at        AS "created_at!",
@@ -428,21 +299,17 @@ impl<'a> SharedTaskRepository<'a> {
         "#,
             task_id,
             data.new_assignee_user_id,
-            data.previous_assignee_user_id,
-            data.version
+            data.previous_assignee_user_id
         )
         .fetch_optional(&mut *tx)
         .await?
-        .ok_or_else(|| {
-            SharedTaskError::Conflict("task version or previous assignee mismatch".to_string())
-        })?;
+        .ok_or_else(|| SharedTaskError::Conflict("previous assignee mismatch".to_string()))?;
 
         let user = match data.new_assignee_user_id {
             Some(user_id) => fetch_user(&mut tx, user_id).await?,
             None => None,
         };
 
-        insert_activity(&mut tx, &task, user.as_ref(), "task.reassigned").await?;
         tx.commit().await.map_err(SharedTaskError::from)?;
         Ok(SharedTaskWithUser::new(task, user))
     }
@@ -459,11 +326,9 @@ impl<'a> SharedTaskRepository<'a> {
             r#"
         UPDATE shared_tasks AS t
         SET deleted_at = NOW(),
-            deleted_by_user_id = $3,
-            version = t.version + 1
+            deleted_by_user_id = $2
         WHERE t.id = $1
-          AND t.version = COALESCE($2, t.version)
-          AND t.assignee_user_id = $3
+          AND t.assignee_user_id = $2
           AND t.deleted_at IS NULL
         RETURNING
             t.id                AS "id!",
@@ -475,25 +340,43 @@ impl<'a> SharedTaskRepository<'a> {
             t.title             AS "title!",
             t.description       AS "description?",
             t.status            AS "status!: TaskStatus",
-            t.version           AS "version!",
             t.deleted_at        AS "deleted_at?",
             t.shared_at         AS "shared_at?",
             t.created_at        AS "created_at!",
             t.updated_at        AS "updated_at!"
         "#,
             task_id,
-            data.version,
             data.acting_user_id
         )
         .fetch_optional(&mut *tx)
         .await?
-        .ok_or_else(|| {
-            SharedTaskError::Conflict("task version mismatch or user not authorized".to_string())
-        })?;
+        .ok_or_else(|| SharedTaskError::Conflict("user not authorized".to_string()))?;
 
-        insert_activity(&mut tx, &task, None, "task.deleted").await?;
         tx.commit().await.map_err(SharedTaskError::from)?;
         Ok(SharedTaskWithUser::new(task, None))
+    }
+
+    pub async fn check_existence(
+        &self,
+        task_ids: &[Uuid],
+        user_id: Uuid,
+    ) -> Result<Vec<Uuid>, SharedTaskError> {
+        let tasks = sqlx::query!(
+            r#"
+            SELECT t.id
+            FROM shared_tasks t
+            INNER JOIN organization_member_metadata om ON t.organization_id = om.organization_id
+            WHERE t.id = ANY($1)
+              AND t.deleted_at IS NULL
+              AND om.user_id = $2
+            "#,
+            task_ids,
+            user_id
+        )
+        .fetch_all(self.pool)
+        .await?;
+
+        Ok(tasks.into_iter().map(|r| r.id).collect())
     }
 }
 
@@ -508,81 +391,6 @@ pub(crate) fn ensure_text_size(
     }
 
     Ok(())
-}
-
-async fn insert_activity(
-    tx: &mut Tx<'_>,
-    task: &SharedTask,
-    user: Option<&UserData>,
-    event_type: &str,
-) -> Result<(), SharedTaskError> {
-    let payload = SharedTaskActivityPayload {
-        task: task.clone(),
-        user: user.cloned(),
-    };
-    let payload = serde_json::to_value(payload).map_err(SharedTaskError::Serialization)?;
-
-    // First attempt at inserting - if partitions are missing we retry after provisioning.
-    match do_insert_activity(tx, task, event_type, payload.clone()).await {
-        Ok(_) => Ok(()),
-        Err(err) => {
-            if let sqlx::Error::Database(db_err) = &err
-                && maintenance::is_partition_missing_error(db_err.as_ref())
-            {
-                let code_owned = db_err.code().map(|c| c.to_string());
-                let code = code_owned.as_deref().unwrap_or_default();
-                tracing::warn!(
-                    "Activity partition missing ({}), creating current and next partitions",
-                    code
-                );
-
-                maintenance::ensure_future_partitions(tx.as_mut())
-                    .await
-                    .map_err(SharedTaskError::from)?;
-
-                return do_insert_activity(tx, task, event_type, payload)
-                    .await
-                    .map_err(SharedTaskError::from);
-            }
-
-            Err(SharedTaskError::from(err))
-        }
-    }
-}
-
-async fn do_insert_activity(
-    tx: &mut Tx<'_>,
-    task: &SharedTask,
-    event_type: &str,
-    payload: serde_json::Value,
-) -> Result<(), sqlx::Error> {
-    sqlx::query!(
-        r#"
-        WITH next AS (
-            INSERT INTO project_activity_counters AS counters (project_id, last_seq)
-            VALUES ($1, 1)
-            ON CONFLICT (project_id)
-            DO UPDATE SET last_seq = counters.last_seq + 1
-            RETURNING last_seq
-        )
-        INSERT INTO activity (
-            project_id,
-            seq,
-            assignee_user_id,
-            event_type,
-            payload
-        )
-        SELECT $1, next.last_seq, $2, $3, $4
-        FROM next
-        "#,
-        task.project_id,
-        task.assignee_user_id,
-        event_type,
-        payload
-    )
-    .execute(&mut **tx)
-    .await
-    .map(|_| ())
 }
 
 impl SharedTaskRepository<'_> {

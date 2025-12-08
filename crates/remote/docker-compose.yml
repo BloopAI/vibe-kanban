@@ -1,6 +1,7 @@
 services:
   remote-db:
     image: postgres:16-alpine
+    command: ["postgres", "-c", "wal_level=logical"]
     environment:
       POSTGRES_DB: remote
       POSTGRES_USER: remote
@@ -16,6 +17,23 @@ services:
     ports:
       - "5432:5432"
 
+  electric:
+    image: electricsql/electric:latest
+    working_dir: /app
+    environment:
+      DATABASE_URL: postgresql://electric_sync:${ELECTRIC_ROLE_PASSWORD:?set in .env.remote}@remote-db:5432/remote?sslmode=disable
+      PG_PROXY_PORT: 65432
+      LOGICAL_PUBLISHER_HOST: electric
+      AUTH_MODE: insecure
+      ELECTRIC_INSECURE: true
+      ELECTRIC_MANUAL_TABLE_PUBLISHING: true
+      ELECTRIC_USAGE_REPORTING: false
+    volumes:
+      - electric-data:/app/persistent
+    depends_on:
+      remote-db:
+        condition: service_healthy
+
   remote-server:
     build:
       context: ../..
@@ -23,10 +41,12 @@ services:
     depends_on:
       remote-db:
         condition: service_healthy
+      electric:
+        condition: service_started
     environment:
       SERVER_DATABASE_URL: postgres://remote:remote@remote-db:5432/remote
       SERVER_LISTEN_ADDR: 0.0.0.0:8081
-      SERVER_ACTIVITY_CHANNEL: activity
+      ELECTRIC_URL: http://electric:3000
       GITHUB_OAUTH_CLIENT_ID: ${GITHUB_OAUTH_CLIENT_ID:?set in .env.remote}
       GITHUB_OAUTH_CLIENT_SECRET: ${GITHUB_OAUTH_CLIENT_SECRET:?set in .env.remote}
       GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:?set in .env.remote}
@@ -36,9 +56,11 @@ services:
       SERVER_PUBLIC_BASE_URL: http://localhost:3000
       VITE_APP_BASE_URL: http://localhost:3000
       VITE_API_BASE_URL: http://localhost:3000
+      ELECTRIC_ROLE_PASSWORD: ${ELECTRIC_ROLE_PASSWORD:?set in .env.remote}
     ports:
       - "127.0.0.1:3000:8081"
     restart: unless-stopped
 
 volumes:
   remote-db-data:
+  electric-data:

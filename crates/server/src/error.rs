@@ -5,7 +5,8 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use db::models::{
-    execution_process::ExecutionProcessError, project::ProjectError, task_attempt::TaskAttemptError,
+    execution_process::ExecutionProcessError, project::ProjectError, scratch::ScratchError,
+    task_attempt::TaskAttemptError,
 };
 use deployment::{DeploymentError, RemoteClientNotConfigured};
 use executors::executors::ExecutorError;
@@ -13,7 +14,6 @@ use git2::Error as Git2Error;
 use services::services::{
     config::{ConfigError, EditorOpenError},
     container::ContainerError,
-    drafts::DraftsServiceError,
     git::GitServiceError,
     github::GitHubServiceError,
     image::ImageError,
@@ -31,6 +31,8 @@ pub enum ApiError {
     Project(#[from] ProjectError),
     #[error(transparent)]
     TaskAttempt(#[from] TaskAttemptError),
+    #[error(transparent)]
+    ScratchError(#[from] ScratchError),
     #[error(transparent)]
     ExecutionProcess(#[from] ExecutionProcessError),
     #[error(transparent)]
@@ -51,8 +53,6 @@ pub enum ApiError {
     Config(#[from] ConfigError),
     #[error(transparent)]
     Image(#[from] ImageError),
-    #[error(transparent)]
-    Drafts(#[from] DraftsServiceError),
     #[error("Multipart error: {0}")]
     Multipart(#[from] MultipartError),
     #[error("IO error: {0}")]
@@ -94,6 +94,7 @@ impl IntoResponse for ApiError {
         let (status_code, error_type) = match &self {
             ApiError::Project(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ProjectError"),
             ApiError::TaskAttempt(_) => (StatusCode::INTERNAL_SERVER_ERROR, "TaskAttemptError"),
+            ApiError::ScratchError(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ScratchError"),
             ApiError::ExecutionProcess(err) => match err {
                 ExecutionProcessError::ExecutionProcessNotFound => {
                     (StatusCode::NOT_FOUND, "ExecutionProcessError")
@@ -122,19 +123,6 @@ impl IntoResponse for ApiError {
                 ImageError::TooLarge(_, _) => (StatusCode::PAYLOAD_TOO_LARGE, "ImageTooLarge"),
                 ImageError::NotFound => (StatusCode::NOT_FOUND, "ImageNotFound"),
                 _ => (StatusCode::INTERNAL_SERVER_ERROR, "ImageError"),
-            },
-            ApiError::Drafts(drafts_err) => match drafts_err {
-                DraftsServiceError::Conflict(_) => (StatusCode::CONFLICT, "ConflictError"),
-                DraftsServiceError::Database(_) => {
-                    (StatusCode::INTERNAL_SERVER_ERROR, "DatabaseError")
-                }
-                DraftsServiceError::Container(_) => {
-                    (StatusCode::INTERNAL_SERVER_ERROR, "ContainerError")
-                }
-                DraftsServiceError::Image(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ImageError"),
-                DraftsServiceError::ExecutionProcess(_) => {
-                    (StatusCode::INTERNAL_SERVER_ERROR, "ExecutionProcessError")
-                }
             },
             ApiError::Io(_) => (StatusCode::INTERNAL_SERVER_ERROR, "IoError"),
             ApiError::EditorOpen(err) => match err {
@@ -256,15 +244,6 @@ impl IntoResponse for ApiError {
             ApiError::BadRequest(msg) => msg.clone(),
             ApiError::Conflict(msg) => msg.clone(),
             ApiError::Forbidden(msg) => msg.clone(),
-            ApiError::Drafts(drafts_err) => match drafts_err {
-                DraftsServiceError::Conflict(msg) => msg.clone(),
-                DraftsServiceError::Database(_) => format!("{}: {}", error_type, drafts_err),
-                DraftsServiceError::Container(_) => format!("{}: {}", error_type, drafts_err),
-                DraftsServiceError::Image(_) => format!("{}: {}", error_type, drafts_err),
-                DraftsServiceError::ExecutionProcess(_) => {
-                    format!("{}: {}", error_type, drafts_err)
-                }
-            },
             _ => format!("{}: {}", error_type, self),
         };
         let response = ApiResponse::<()>::error(&error_message);
@@ -306,10 +285,6 @@ impl From<ShareError> for ApiError {
             ShareError::Url(err) => {
                 tracing::error!(?err, "share task URL error");
                 ApiError::Conflict("Share service URL is invalid".to_string())
-            }
-            ShareError::WebSocket(err) => {
-                tracing::error!(?err, "share task websocket error");
-                ApiError::Conflict("Unexpected websocket error during sharing".to_string())
             }
             ShareError::InvalidResponse => ApiError::Conflict(
                 "Remote share service returned an unexpected response".to_string(),

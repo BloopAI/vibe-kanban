@@ -33,13 +33,14 @@ const ShareDialogImpl = NiceModal.create<ShareDialogProps>(({ task }) => {
   const { isSignedIn } = useAuth();
   const { project } = useProject();
   const { shareTask } = useTaskMutations(task.project_id);
+  const { reset: resetShareTask } = shareTask;
 
   const [shareError, setShareError] = useState<string | null>(null);
 
   useEffect(() => {
-    shareTask.reset();
+    resetShareTask();
     setShareError(null);
-  }, [task.id, shareTask]);
+  }, [task.id, resetShareTask]);
 
   const handleClose = () => {
     modal.resolve(shareTask.isSuccess);
@@ -68,7 +69,13 @@ const ShareDialogImpl = NiceModal.create<ShareDialogProps>(({ task }) => {
       modal.hide();
     } catch (err) {
       if (getStatus(err) === 401) {
-        void OAuthDialog.show();
+        // Hide this dialog first so OAuthDialog appears on top
+        modal.hide();
+        const result = await OAuthDialog.show();
+        // If user successfully authenticated, re-show this dialog
+        if (result) {
+          void ShareDialog.show({ task });
+        }
         return;
       }
       setShareError(getReadableError(err));

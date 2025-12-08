@@ -24,6 +24,11 @@ import koSettings from './locales/ko/settings.json';
 import koProjects from './locales/ko/projects.json';
 import koTasks from './locales/ko/tasks.json';
 import koOrganization from './locales/ko/organization.json';
+import zhHansCommon from './locales/zh-Hans/common.json';
+import zhHansSettings from './locales/zh-Hans/settings.json';
+import zhHansProjects from './locales/zh-Hans/projects.json';
+import zhHansTasks from './locales/zh-Hans/tasks.json';
+import zhHansOrganization from './locales/zh-Hans/organization.json';
 
 const resources = {
   en: {
@@ -54,6 +59,13 @@ const resources = {
     tasks: koTasks,
     organization: koOrganization,
   },
+  'zh-Hans': {
+    common: zhHansCommon,
+    settings: zhHansSettings,
+    projects: zhHansProjects,
+    tasks: zhHansTasks,
+    organization: zhHansOrganization,
+  },
 };
 
 i18n
@@ -61,11 +73,15 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    fallbackLng: 'en',
+    fallbackLng: {
+      zh: ['zh-Hans'], // Map generic Chinese to Simplified Chinese
+      default: ['en'],
+    },
     defaultNS: 'common',
     debug: import.meta.env.DEV,
-    supportedLngs: SUPPORTED_I18N_CODES,
-    load: 'languageOnly', // Load 'en' instead of 'en-US' etc.
+    supportedLngs: [...SUPPORTED_I18N_CODES, 'zh'], // Include 'zh' for browser detection
+    nonExplicitSupportedLngs: true, // Accept zh -> zh-Hans mapping
+    load: 'currentOnly', // Load exact language code
 
     interpolation: {
       escapeValue: false, // React already escapes

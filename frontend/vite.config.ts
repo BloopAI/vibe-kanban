@@ -68,12 +68,15 @@ export default defineConfig({
         target: `http://localhost:${process.env.BACKEND_PORT || "3001"}`,
         changeOrigin: true,
         ws: true,
-      },
+      }
     },
     fs: {
       allow: [path.resolve(__dirname, "."), path.resolve(__dirname, "..")],
     },
     open: process.env.VITE_OPEN === "true",
+  },
+  optimizeDeps: {
+    exclude: ["wa-sqlite"],
   },
   build: { sourcemap: true },
 });

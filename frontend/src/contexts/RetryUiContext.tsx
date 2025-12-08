@@ -1,9 +1,15 @@
-import React, { createContext, useContext, useMemo } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from 'react';
 import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
-import { useDraftStream } from '@/hooks/follow-up/useDraftStream';
 
 type RetryUiContextType = {
   activeRetryProcessId: string | null;
+  setActiveRetryProcessId: (processId: string | null) => void;
   processOrder: Record<string, number>;
   isProcessGreyed: (processId?: string) => boolean;
 };
@@ -11,7 +17,6 @@ type RetryUiContextType = {
 const RetryUiContext = createContext<RetryUiContextType | null>(null);
 
 export function RetryUiProvider({
-  attemptId,
   children,
 }: {
   attemptId?: string;
@@ -19,7 +24,10 @@ export function RetryUiProvider({
 }) {
   const { executionProcessesAll: executionProcesses } =
     useExecutionProcessesContext();
-  const { retryDraft } = useDraftStream(attemptId);
+
+  const [activeRetryProcessId, setActiveRetryProcessId] = useState<
+    string | null
+  >(null);
 
   const processOrder = useMemo(() => {
     const order: Record<string, number> = {};
@@ -29,20 +37,20 @@ export function RetryUiProvider({
     return order;
   }, [executionProcesses]);
 
-  const activeRetryProcessId = retryDraft?.retry_process_id ?? null;
-  const targetOrder = activeRetryProcessId
-    ? (processOrder[activeRetryProcessId] ?? -1)
-    : -1;
-
-  const isProcessGreyed = (processId?: string) => {
-    if (!activeRetryProcessId || !processId) return false;
-    const idx = processOrder[processId];
-    if (idx === undefined) return false;
-    return idx >= targetOrder; // grey target and later
-  };
+  const isProcessGreyed = useCallback(
+    (processId?: string) => {
+      if (!activeRetryProcessId || !processId) return false;
+      const activeOrder = processOrder[activeRetryProcessId];
+      const thisOrder = processOrder[processId];
+      // Grey out processes that come AFTER the retry target
+      return thisOrder > activeOrder;
+    },
+    [activeRetryProcessId, processOrder]
+  );
 
   const value: RetryUiContextType = {
     activeRetryProcessId,
+    setActiveRetryProcessId,
     processOrder,
     isProcessGreyed,
   };
@@ -57,6 +65,7 @@ export function useRetryUi() {
   if (!ctx)
     return {
       activeRetryProcessId: null,
+      setActiveRetryProcessId: () => {},
       processOrder: {},
       isProcessGreyed: () => false,
     } as RetryUiContextType;

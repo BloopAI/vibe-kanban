@@ -1,21 +1,19 @@
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
-    sync::{Arc, Mutex},
+    sync::{Arc, LazyLock, Mutex},
 };
 
 use git2::{Error as GitError, Repository};
 use thiserror::Error;
-use tracing::{debug, info};
+use tracing::{debug, info, trace};
 use utils::shell::resolve_executable_path;
 
 use super::git::{GitService, GitServiceError};
 
 // Global synchronization for worktree creation to prevent race conditions
-lazy_static::lazy_static! {
-    static ref WORKTREE_CREATION_LOCKS: Arc<Mutex<HashMap<String, Arc<tokio::sync::Mutex<()>>>>> =
-        Arc::new(Mutex::new(HashMap::new()));
-}
+static WORKTREE_CREATION_LOCKS: LazyLock<Mutex<HashMap<String, Arc<tokio::sync::Mutex<()>>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 #[derive(Debug, Clone)]
 pub struct WorktreeCleanup {
@@ -109,7 +107,7 @@ impl WorktreeManager {
 
         // Check if worktree already exists and is properly set up
         if Self::is_worktree_properly_set_up(repo_path, worktree_path).await? {
-            debug!("Worktree already properly set up at path: {}", path_str);
+            trace!("Worktree already properly set up at path: {}", path_str);
             return Ok(());
         }
 

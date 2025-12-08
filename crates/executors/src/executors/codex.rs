@@ -32,6 +32,7 @@ use self::{
 use crate::{
     approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuilder, CommandParts, apply_overrides},
+    env::ExecutionEnv,
     executors::{
         AppendPrompt, AvailabilityInfo, ExecutorError, ExecutorExitResult, SpawnedChild,
         StandardCodingAgentExecutor,
@@ -78,6 +79,7 @@ pub enum ReasoningEffort {
     Low,
     Medium,
     High,
+    Xhigh,
 }
 
 /// Model reasoning summary style
@@ -124,9 +126,13 @@ pub struct Codex {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub base_instructions: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub include_plan_tool: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub include_apply_patch_tool: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_provider: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub compact_prompt: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub developer_instructions: Option<String>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
 
@@ -142,9 +148,15 @@ impl StandardCodingAgentExecutor for Codex {
         self.approvals = Some(approvals);
     }
 
-    async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
+    async fn spawn(
+        &self,
+        current_dir: &Path,
+        prompt: &str,
+        env: &ExecutionEnv,
+    ) -> Result<SpawnedChild, ExecutorError> {
         let command_parts = self.build_command_builder().build_initial()?;
-        self.spawn(current_dir, prompt, command_parts, None).await
+        self.spawn_inner(current_dir, prompt, command_parts, None, env)
+            .await
     }
 
     async fn spawn_follow_up(
@@ -152,9 +164,10 @@ impl StandardCodingAgentExecutor for Codex {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let command_parts = self.build_command_builder().build_follow_up(&[])?;
-        self.spawn(current_dir, prompt, command_parts, Some(session_id))
+        self.spawn_inner(current_dir, prompt, command_parts, Some(session_id), env)
             .await
     }
 
@@ -197,7 +210,7 @@ impl StandardCodingAgentExecutor for Codex {
 
 impl Codex {
     pub fn base_command() -> &'static str {
-        "npx -y @openai/codex@0.60.1"
+        "npx -y @openai/codex@0.63.0"
     }
 
     fn build_command_builder(&self) -> CommandBuilder {
@@ -238,8 +251,10 @@ impl Codex {
             sandbox,
             config: self.build_config_overrides(),
             base_instructions: self.base_instructions.clone(),
-            include_plan_tool: self.include_plan_tool,
             include_apply_patch_tool: self.include_apply_patch_tool,
+            model_provider: self.model_provider.clone(),
+            compact_prompt: self.compact_prompt.clone(),
+            developer_instructions: self.developer_instructions.clone(),
         }
     }
 
@@ -276,12 +291,13 @@ impl Codex {
         }
     }
 
-    async fn spawn(
+    async fn spawn_inner(
         &self,
         current_dir: &Path,
         prompt: &str,
         command_parts: CommandParts,
         resume_session: Option<&str>,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let (program_path, args) = command_parts.into_resolved().await?;
@@ -297,6 +313,10 @@ impl Codex {
             .env("NODE_NO_WARNINGS", "1")
             .env("NO_COLOR", "1")
             .env("RUST_LOG", "error");
+
+        env.clone()
+            .with_profile(&self.cmd)
+            .apply_to_command(&mut process);
 
         let mut child = process.group_spawn()?;
 
@@ -369,6 +389,7 @@ impl Codex {
         Ok(SpawnedChild {
             child,
             exit_signal: Some(exit_signal_rx),
+            interrupt_sender: None,
         })
     }
 
@@ -390,7 +411,7 @@ impl Codex {
         client.connect(rpc_peer);
         client.initialize().await?;
         let auth_status = client.get_auth_status().await?;
-        if auth_status.auth_method.is_none() {
+        if auth_status.requires_openai_auth.unwrap_or(true) && auth_status.auth_method.is_none() {
             return Err(ExecutorError::AuthRequired(
                 "Codex authentication required".to_string(),
             ));

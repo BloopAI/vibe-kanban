@@ -447,9 +447,6 @@ export function ProjectTasks() {
     const getTimestamp = (item: KanbanColumnItem) => {
       const createdAt =
         item.type === 'task' ? item.task.created_at : item.task.created_at;
-      if (createdAt instanceof Date) {
-        return createdAt.getTime();
-      }
       return new Date(createdAt).getTime();
     };
 
@@ -992,7 +989,7 @@ export function ProjectTasks() {
                   </div>
                 </div>
 
-                <div className="min-h-0 max-h-[50%] border-t overflow-hidden">
+                <div className="min-h-0 max-h-[50%] border-t overflow-hidden bg-background">
                   <div className="mx-auto w-full max-w-[50rem] h-full min-h-0">
                     {followUp}
                   </div>
@@ -1029,36 +1026,25 @@ export function ProjectTasks() {
 
   const effectiveMode: LayoutMode = selectedSharedTask ? null : mode;
 
-  const attemptArea =
-    attempt && selectedTask ? (
-      <GitOperationsProvider attemptId={attempt.id}>
-        <ClickedElementsProvider attempt={attempt}>
-          <ReviewProvider key={attempt.id}>
-            <ExecutionProcessesProvider key={attempt.id} attemptId={attempt.id}>
-              <TasksLayout
-                kanban={kanbanContent}
-                attempt={attemptContent}
-                aux={auxContent}
-                isPanelOpen={isPanelOpen}
-                mode={effectiveMode}
-                isMobile={isMobile}
-                rightHeader={rightHeader}
-              />
-            </ExecutionProcessesProvider>
-          </ReviewProvider>
-        </ClickedElementsProvider>
-      </GitOperationsProvider>
-    ) : (
-      <TasksLayout
-        kanban={kanbanContent}
-        attempt={attemptContent}
-        aux={auxContent}
-        isPanelOpen={isPanelOpen}
-        mode={effectiveMode}
-        isMobile={isMobile}
-        rightHeader={rightHeader}
-      />
-    );
+  const attemptArea = (
+    <GitOperationsProvider attemptId={attempt?.id}>
+      <ClickedElementsProvider attempt={attempt}>
+        <ReviewProvider attemptId={attempt?.id}>
+          <ExecutionProcessesProvider attemptId={attempt?.id}>
+            <TasksLayout
+              kanban={kanbanContent}
+              attempt={attemptContent}
+              aux={auxContent}
+              isPanelOpen={isPanelOpen}
+              mode={effectiveMode}
+              isMobile={isMobile}
+              rightHeader={rightHeader}
+            />
+          </ExecutionProcessesProvider>
+        </ReviewProvider>
+      </ClickedElementsProvider>
+    </GitOperationsProvider>
+  );
 
   return (
     <div className="min-h-full h-full flex flex-col">

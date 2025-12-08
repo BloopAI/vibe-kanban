@@ -12,23 +12,27 @@ use command_group::AsyncGroupChild;
 use db::{
     DBService,
     models::{
-        draft::{Draft, DraftType},
         execution_process::{
             ExecutionContext, ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus,
         },
         executor_session::ExecutorSession,
-        image::TaskImage,
         merge::Merge,
         project::Project,
+        scratch::{DraftFollowUpData, Scratch, ScratchType},
         task::{Task, TaskStatus},
         task_attempt::TaskAttempt,
     },
 };
 use deployment::{DeploymentError, RemoteClientNotConfigured};
 use executors::{
-    actions::{Executable, ExecutorAction},
+    actions::{
+        Executable, ExecutorAction, ExecutorActionType,
+        coding_agent_follow_up::CodingAgentFollowUpRequest,
+        coding_agent_initial::CodingAgentInitialRequest,
+    },
     approvals::{ExecutorApprovalService, NoopExecutorApprovalService},
-    executors::{BaseCodingAgent, ExecutorExitResult, ExecutorExitSignal},
+    env::ExecutionEnv,
+    executors::{BaseCodingAgent, ExecutorExitResult, ExecutorExitSignal, InterruptSender},
     logs::{
         NormalizedEntryType,
         utils::{
@@ -36,6 +40,7 @@ use executors::{
             patch::{escape_json_pointer_segment, extract_normalized_entry_from_patch},
         },
     },
+    profile::ExecutorProfileId,
 };
 use futures::{FutureExt, StreamExt, TryStreamExt, stream::select};
 use serde_json::json;
@@ -47,6 +52,7 @@ use services::services::{
     diff_stream::{self, DiffStreamHandle},
     git::{Commit, DiffTarget, GitService},
     image::ImageService,
+    queued_message::QueuedMessageService,
     share::SharePublisher,
     worktree_manager::{WorktreeCleanup, WorktreeManager},
 };
@@ -59,18 +65,20 @@ use utils::{
 };
 use uuid::Uuid;
 
-use crate::command;
+use crate::{command, copy};
 
 #[derive(Clone)]
 pub struct LocalContainerService {
     db: DBService,
     child_store: Arc<RwLock<HashMap<Uuid, Arc<RwLock<AsyncGroupChild>>>>>,
+    interrupt_senders: Arc<RwLock<HashMap<Uuid, InterruptSender>>>,
     msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
     config: Arc<RwLock<Config>>,
     git: GitService,
     image_service: ImageService,
     analytics: Option<AnalyticsContext>,
     approvals: Approvals,
+    queued_message_service: QueuedMessageService,
     publisher: Result<SharePublisher, RemoteClientNotConfigured>,
 }
 
@@ -84,19 +92,23 @@ impl LocalContainerService {
         image_service: ImageService,
         analytics: Option<AnalyticsContext>,
         approvals: Approvals,
+        queued_message_service: QueuedMessageService,
         publisher: Result<SharePublisher, RemoteClientNotConfigured>,
     ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
+        let interrupt_senders = Arc::new(RwLock::new(HashMap::new()));
 
         let container = LocalContainerService {
             db,
             child_store,
+            interrupt_senders,
             msg_stores,
             config,
             git,
             image_service,
             analytics,
             approvals,
+            queued_message_service,
             publisher,
         };
 
@@ -118,6 +130,16 @@ impl LocalContainerService {
     pub async fn remove_child_from_store(&self, id: &Uuid) {
         let mut map = self.child_store.write().await;
         map.remove(id);
+    }
+
+    async fn add_interrupt_sender(&self, id: Uuid, sender: InterruptSender) {
+        let mut map = self.interrupt_senders.write().await;
+        map.insert(id, sender);
+    }
+
+    async fn take_interrupt_sender(&self, id: &Uuid) -> Option<InterruptSender> {
+        let mut map = self.interrupt_senders.write().await;
+        map.remove(id)
     }
 
     /// Defensively check for externally deleted worktrees and mark them as deleted in the database
@@ -409,16 +431,63 @@ impl LocalContainerService {
                 }
 
                 if container.should_finalize(&ctx) {
-                    container
-                        .finalize_task(&config, publisher.as_ref().ok(), &ctx)
-                        .await;
-                    // After finalization, check if a queued follow-up exists and start it
-                    if let Err(e) = container.try_consume_queued_followup(&ctx).await {
-                        tracing::error!(
-                            "Failed to start queued follow-up for attempt {}: {}",
-                            ctx.task_attempt.id,
-                            e
-                        );
+                    // Only execute queued messages if the execution succeeded
+                    // If it failed or was killed, just clear the queue and finalize
+                    let should_execute_queued = !matches!(
+                        ctx.execution_process.status,
+                        ExecutionProcessStatus::Failed | ExecutionProcessStatus::Killed
+                    );
+
+                    if let Some(queued_msg) = container
+                        .queued_message_service
+                        .take_queued(ctx.task_attempt.id)
+                    {
+                        if should_execute_queued {
+                            tracing::info!(
+                                "Found queued message for attempt {}, starting follow-up execution",
+                                ctx.task_attempt.id
+                            );
+
+                            // Delete the scratch since we're consuming the queued message
+                            if let Err(e) = Scratch::delete(
+                                &db.pool,
+                                ctx.task_attempt.id,
+                                &ScratchType::DraftFollowUp,
+                            )
+                            .await
+                            {
+                                tracing::warn!(
+                                    "Failed to delete scratch after consuming queued message: {}",
+                                    e
+                                );
+                            }
+
+                            // Execute the queued follow-up
+                            if let Err(e) = container
+                                .start_queued_follow_up(&ctx, &queued_msg.data)
+                                .await
+                            {
+                                tracing::error!("Failed to start queued follow-up: {}", e);
+                                // Fall back to finalization if follow-up fails
+                                container
+                                    .finalize_task(&config, publisher.as_ref().ok(), &ctx)
+                                    .await;
+                            }
+                        } else {
+                            // Execution failed or was killed - discard the queued message and finalize
+                            tracing::info!(
+                                "Discarding queued message for attempt {} due to execution status {:?}",
+                                ctx.task_attempt.id,
+                                ctx.execution_process.status
+                            );
+                            container
+                                .finalize_task(&config, publisher.as_ref().ok(), &ctx)
+                                .await;
+                        }
+                    } else {
+                        container
+                            .finalize_task(&config, publisher.as_ref().ok(), &ctx)
+                            .await;
                     }
                 }
 
@@ -662,156 +731,60 @@ impl LocalContainerService {
         Ok(())
     }
 
-    /// If a queued follow-up draft exists for this attempt and nothing is running,
-    /// start it immediately and clear the draft.
-    async fn try_consume_queued_followup(
+    /// Start a follow-up execution from a queued message
+    async fn start_queued_follow_up(
         &self,
         ctx: &ExecutionContext,
-    ) -> Result<(), ContainerError> {
-        // Only consider CodingAgent/cleanup chains; skip DevServer completions
-        if matches!(
-            ctx.execution_process.run_reason,
-            ExecutionProcessRunReason::DevServer
-        ) {
-            return Ok(());
-        }
-
-        // If anything is running for this attempt, bail
-        let procs =
-            ExecutionProcess::find_by_task_attempt_id(&self.db.pool, ctx.task_attempt.id, false)
-                .await?;
-        if procs
-            .iter()
-            .any(|p| matches!(p.status, ExecutionProcessStatus::Running))
-        {
-            return Ok(());
-        }
-
-        // Load draft and ensure it's eligible
-        let Some(draft) = Draft::find_by_task_attempt_and_type(
-            &self.db.pool,
-            ctx.task_attempt.id,
-            DraftType::FollowUp,
-        )
-        .await?
-        else {
-            return Ok(());
-        };
-
-        if !draft.queued || draft.prompt.trim().is_empty() {
-            return Ok(());
-        }
-
-        // Atomically acquire sending lock; if not acquired, someone else is sending.
-        if !Draft::try_mark_sending(&self.db.pool, ctx.task_attempt.id, DraftType::FollowUp)
-            .await
-            .unwrap_or(false)
-        {
-            return Ok(());
-        }
-
-        // Ensure worktree exists
-        let container_ref = self.ensure_container_exists(&ctx.task_attempt).await?;
-
-        // Get session id
-        let Some(session_id) = ExecutionProcess::find_latest_session_id_by_task_attempt(
+        queued_data: &DraftFollowUpData,
+    ) -> Result<ExecutionProcess, ContainerError> {
+        // Get executor profile from the latest CodingAgent process
+        let initial_executor_profile_id = ExecutionProcess::latest_executor_profile_for_attempt(
             &self.db.pool,
             ctx.task_attempt.id,
         )
-        .await?
-        else {
-            tracing::warn!(
-                "No session id found for attempt {}. Cannot start queued follow-up.",
-                ctx.task_attempt.id
-            );
-            return Ok(());
+        .await
+        .map_err(|e| ContainerError::Other(anyhow!("Failed to get executor profile: {e}")))?;
+
+        let executor_profile_id = ExecutorProfileId {
+            executor: initial_executor_profile_id.executor,
+            variant: queued_data.variant.clone(),
         };
 
-        // Get last coding agent process to inherit executor profile
-        let Some(latest) = ExecutionProcess::find_latest_by_task_attempt_and_run_reason(
+        // Get latest session ID for session continuity
+        let latest_session_id = ExecutionProcess::find_latest_session_id_by_task_attempt(
             &self.db.pool,
             ctx.task_attempt.id,
+        )
+        .await?;
+
+        // Get project for cleanup script
+        let project = Project::find_by_id(&self.db.pool, ctx.task.project_id)
+            .await?
+            .ok_or_else(|| ContainerError::Other(anyhow!("Project not found")))?;
+
+        let cleanup_action = self.cleanup_action(project.cleanup_script);
+
+        let action_type = if let Some(session_id) = latest_session_id {
+            ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
+                prompt: queued_data.message.clone(),
+                session_id,
+                executor_profile_id: executor_profile_id.clone(),
+            })
+        } else {
+            ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
+                prompt: queued_data.message.clone(),
+                executor_profile_id: executor_profile_id.clone(),
+            })
+        };
+
+        let action = ExecutorAction::new(action_type, cleanup_action);
+
+        self.start_execution(
+            &ctx.task_attempt,
+            &action,
             &ExecutionProcessRunReason::CodingAgent,
         )
-        .await?
-        else {
-            tracing::warn!(
-                "No prior CodingAgent process for attempt {}. Cannot start queued follow-up.",
-                ctx.task_attempt.id
-            );
-            return Ok(());
-        };
-
-        use executors::actions::ExecutorActionType;
-        let initial_executor_profile_id = match &latest.executor_action()?.typ {
-            ExecutorActionType::CodingAgentInitialRequest(req) => req.executor_profile_id.clone(),
-            ExecutorActionType::CodingAgentFollowUpRequest(req) => req.executor_profile_id.clone(),
-            _ => {
-                tracing::warn!(
-                    "Latest process for attempt {} is not a coding agent; skipping queued follow-up",
-                    ctx.task_attempt.id
-                );
-                return Ok(());
-            }
-        };
-
-        let executor_profile_id = executors::profile::ExecutorProfileId {
-            executor: initial_executor_profile_id.executor,
-            variant: draft.variant.clone(),
-        };
-
-        // Prepare cleanup action
-        let cleanup_action = ctx
-            .task
-            .parent_project(&self.db.pool)
-            .await?
-            .and_then(|project| self.cleanup_action(project.cleanup_script));
-
-        // Handle images: associate, copy to worktree, canonicalize prompt
-        let mut prompt = draft.prompt.clone();
-        if let Some(image_ids) = &draft.image_ids {
-            // Associate to task
-            let _ = TaskImage::associate_many_dedup(&self.db.pool, ctx.task.id, image_ids).await;
-
-            // Copy to worktree and canonicalize
-            let worktree_path = std::path::PathBuf::from(&container_ref);
-            if let Err(e) = self
-                .image_service
-                .copy_images_by_ids_to_worktree(&worktree_path, image_ids)
-                .await
-            {
-                tracing::warn!("Failed to copy images to worktree: {}", e);
-            } else {
-                prompt = ImageService::canonicalise_image_paths(&prompt, &worktree_path);
-            }
-        }
-
-        let follow_up_request =
-            executors::actions::coding_agent_follow_up::CodingAgentFollowUpRequest {
-                prompt,
-                session_id,
-                executor_profile_id,
-            };
-
-        let follow_up_action = executors::actions::ExecutorAction::new(
-            executors::actions::ExecutorActionType::CodingAgentFollowUpRequest(follow_up_request),
-            cleanup_action,
-        );
-
-        // Start the execution
-        let _ = self
-            .start_execution(
-                &ctx.task_attempt,
-                &follow_up_action,
-                &ExecutionProcessRunReason::CodingAgent,
-            )
-            .await?;
-
-        // Clear the draft to reflect that it has been consumed
-        let _ =
-            Draft::clear_after_send(&self.db.pool, ctx.task_attempt.id, DraftType::FollowUp).await;
-
-        Ok(())
+        .await
     }
 }
 
@@ -1009,10 +982,31 @@ impl ContainerService for LocalContainerService {
                 _ => Arc::new(NoopExecutorApprovalService {}),
             };
 
+        // Build ExecutionEnv with VK_* variables
+        let mut env = ExecutionEnv::new();
+
+        // Load task and project context for environment variables
+        let task = task_attempt
+            .parent_task(&self.db.pool)
+            .await?
+            .ok_or(ContainerError::Other(anyhow!(
+                "Task not found for task attempt"
+            )))?;
+        let project = task
+            .parent_project(&self.db.pool)
+            .await?
+            .ok_or(ContainerError::Other(anyhow!("Project not found for task")))?;
+
+        env.insert("VK_PROJECT_NAME", &project.name);
+        env.insert("VK_PROJECT_ID", project.id.to_string());
+        env.insert("VK_TASK_ID", task.id.to_string());
+        env.insert("VK_ATTEMPT_ID", task_attempt.id.to_string());
+        env.insert("VK_ATTEMPT_BRANCH", &task_attempt.branch);
+
         // Create the child and stream, add to execution tracker with timeout
         let mut spawned = tokio::time::timeout(
             Duration::from_secs(30),
-            executor_action.spawn(&current_dir, approvals_service),
+            executor_action.spawn(&current_dir, approvals_service, &env),
         )
         .await
         .map_err(|_| {
@@ -1026,6 +1020,12 @@ impl ContainerService for LocalContainerService {
 
         self.add_child_to_store(execution_process.id, spawned.child)
             .await;
+
+        // Store interrupt sender for graceful shutdown
+        if let Some(interrupt_sender) = spawned.interrupt_sender {
+            self.add_interrupt_sender(execution_process.id, interrupt_sender)
+                .await;
+        }
 
         // Spawn unified exit monitor: watches OS exit and optional executor signal
         let _hn = self.spawn_exit_monitor(&execution_process.id, spawned.exit_signal);
@@ -1052,6 +1052,36 @@ impl ContainerService for LocalContainerService {
 
         ExecutionProcess::update_completion(&self.db.pool, execution_process.id, status, exit_code)
             .await?;
+
+        // Try graceful interrupt first, then force kill
+        if let Some(interrupt_sender) = self.take_interrupt_sender(&execution_process.id).await {
+            // Send interrupt signal (ignore error if receiver dropped)
+            let _ = interrupt_sender.send(());
+
+            // Wait for graceful exit with timeout
+            let graceful_exit = {
+                let mut child_guard = child.write().await;
+                tokio::time::timeout(Duration::from_secs(5), child_guard.wait()).await
+            };
+
+            match graceful_exit {
+                Ok(Ok(_)) => {
+                    tracing::debug!(
+                        "Process {} exited gracefully after interrupt",
+                        execution_process.id
+                    );
+                }
+                Ok(Err(e)) => {
+                    tracing::info!("Error waiting for process {}: {}", execution_process.id, e);
+                }
+                Err(_) => {
+                    tracing::debug!(
+                        "Graceful shutdown timed out for process {}, force killing",
+                        execution_process.id
+                    );
+                }
+            }
+        }
 
         // Kill the child process and remove from the store
         {
@@ -1237,40 +1267,19 @@ impl ContainerService for LocalContainerService {
         target_dir: &Path,
         copy_files: &str,
     ) -> Result<(), ContainerError> {
-        let files: Vec<&str> = copy_files
-            .split(',')
-            .map(|s| s.trim())
-            .filter(|s| !s.is_empty())
-            .collect();
+        let source_dir = source_dir.to_path_buf();
+        let target_dir = target_dir.to_path_buf();
+        let copy_files = copy_files.to_string();
 
-        for file_path in files {
-            let source_file = source_dir.join(file_path);
-            let target_file = target_dir.join(file_path);
-
-            // Create parent directories if needed
-            if let Some(parent) = target_file.parent()
-                && !parent.exists()
-            {
-                std::fs::create_dir_all(parent).map_err(|e| {
-                    ContainerError::Other(anyhow!("Failed to create directory {parent:?}: {e}"))
-                })?;
-            }
-
-            // Copy the file
-            if source_file.exists() {
-                std::fs::copy(&source_file, &target_file).map_err(|e| {
-                    ContainerError::Other(anyhow!(
-                        "Failed to copy file {source_file:?} to {target_file:?}: {e}"
-                    ))
-                })?;
-                tracing::info!("Copied file {:?} to worktree", file_path);
-            } else {
-                return Err(ContainerError::Other(anyhow!(
-                    "File {source_file:?} does not exist in the project directory"
-                )));
-            }
-        }
-        Ok(())
+        tokio::time::timeout(
+            std::time::Duration::from_secs(30),
+            tokio::task::spawn_blocking(move || {
+                copy::copy_project_files_impl(&source_dir, &target_dir, &copy_files)
+            }),
+        )
+        .await
+        .map_err(|_| ContainerError::Other(anyhow!("Copy project files timed out after 30s")))?
+        .map_err(|e| ContainerError::Other(anyhow!("Copy files task failed: {e}")))?
     }
 
     async fn kill_all_running_processes(&self) -> Result<(), ContainerError> {
@@ -1293,7 +1302,6 @@ impl ContainerService for LocalContainerService {
         Ok(())
     }
 }
-
 fn success_exit_status() -> std::process::ExitStatus {
     #[cfg(unix)]
     {

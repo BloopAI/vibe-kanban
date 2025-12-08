@@ -1,20 +1,19 @@
 import { useCallback, useMemo } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
+import { useAuth } from '@/hooks';
 import { useProject } from '@/contexts/ProjectContext';
+import { useLiveQuery, eq, isNull } from '@tanstack/react-db';
+import { sharedTasksCollection } from '@/lib/electric/sharedTasksCollection';
+import { useAssigneeUserNames } from './useAssigneeUserName';
+import { useAutoLinkSharedTasks } from './useAutoLinkSharedTasks';
 import type {
   SharedTask,
   TaskStatus,
   TaskWithAttemptStatus,
 } from 'shared/types';
 
-export type SharedTaskRecord = Omit<
-  SharedTask,
-  'version' | 'last_event_seq'
-> & {
-  version: number;
-  last_event_seq: number | null;
-  created_at: string | Date;
-  updated_at: string | Date;
+export type SharedTaskRecord = SharedTask & {
+  remote_project_id: string;
   assignee_first_name?: string | null;
   assignee_last_name?: string | null;
   assignee_username?: string | null;
@@ -22,7 +21,6 @@ export type SharedTaskRecord = Omit<
 
 type TasksState = {
   tasks: Record<string, TaskWithAttemptStatus>;
-  shared_tasks: Record<string, SharedTaskRecord>;
 };
 
 export interface UseProjectTasksResult {
@@ -43,14 +41,12 @@ export interface UseProjectTasksResult {
  */
 export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
   const { project } = useProject();
+  const { isSignedIn } = useAuth();
   const remoteProjectId = project?.remote_project_id;
 
-  const endpoint = `/api/tasks/stream/ws?project_id=${encodeURIComponent(projectId)}&remote_project_id=${encodeURIComponent(remoteProjectId ?? 'null')}`;
+  const endpoint = `/api/tasks/stream/ws?project_id=${encodeURIComponent(projectId)}`;
 
-  const initialData = useCallback(
-    (): TasksState => ({ tasks: {}, shared_tasks: {} }),
-    []
-  );
+  const initialData = useCallback((): TasksState => ({ tasks: {} }), []);
 
   const { data, isConnected, error } = useJsonPatchWsStream(
     endpoint,
@@ -58,11 +54,66 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
     initialData
   );
 
-  const localTasksById = useMemo(() => data?.tasks ?? {}, [data?.tasks]);
-  const sharedTasksById = useMemo(
-    () => data?.shared_tasks ?? {},
-    [data?.shared_tasks]
+  const sharedTasksQuery = useLiveQuery(
+    useCallback(
+      (q) => {
+        if (!remoteProjectId || !isSignedIn) {
+          return undefined;
+        }
+        return q
+          .from({ sharedTasks: sharedTasksCollection })
+          .where(({ sharedTasks }) =>
+            eq(sharedTasks.project_id, remoteProjectId)
+          )
+          .where(({ sharedTasks }) => isNull(sharedTasks.deleted_at));
+      },
+      [remoteProjectId, isSignedIn]
+    ),
+    [remoteProjectId, isSignedIn]
   );
+
+  const sharedTasksList = useMemo(
+    () => sharedTasksQuery.data ?? [],
+    [sharedTasksQuery.data]
+  );
+
+  const localTasksById = useMemo(() => data?.tasks ?? {}, [data?.tasks]);
+
+  const referencedSharedIds = useMemo(
+    () =>
+      new Set(
+        Object.values(localTasksById)
+          .map((task) => task.shared_task_id)
+          .filter((id): id is string => Boolean(id))
+      ),
+    [localTasksById]
+  );
+
+  const { assignees } = useAssigneeUserNames({
+    projectId: remoteProjectId || undefined,
+    sharedTasks: sharedTasksList,
+  });
+
+  const sharedTasksById = useMemo(() => {
+    if (!sharedTasksList) return {};
+    const map: Record<string, SharedTaskRecord> = {};
+    const list = Array.isArray(sharedTasksList) ? sharedTasksList : [];
+    for (const task of list) {
+      const assignee =
+        task.assignee_user_id && assignees
+          ? assignees.find((a) => a.user_id === task.assignee_user_id)
+          : null;
+      map[task.id] = {
+        ...task,
+        status: task.status,
+        remote_project_id: task.project_id,
+        assignee_first_name: assignee?.first_name ?? null,
+        assignee_last_name: assignee?.last_name ?? null,
+        assignee_username: assignee?.username ?? null,
+      };
+    }
+    return map;
+  }, [sharedTasksList, assignees]);
 
   const { tasks, tasksById, tasksByStatus } = useMemo(() => {
     const merged: Record<string, TaskWithAttemptStatus> = { ...localTasksById };
@@ -104,12 +155,6 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
       cancelled: [],
     };
 
-    const referencedSharedIds = new Set(
-      Object.values(localTasksById)
-        .map((task) => task.shared_task_id)
-        .filter((id): id is string => Boolean(id))
-    );
-
     Object.values(sharedTasksById).forEach((sharedTask) => {
       const hasLocal =
         Boolean(localTasksById[sharedTask.id]) ||
@@ -130,9 +175,19 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
     });
 
     return grouped;
-  }, [localTasksById, sharedTasksById]);
+  }, [localTasksById, sharedTasksById, referencedSharedIds]);
 
   const isLoading = !data && !error; // until first snapshot
+
+  // Auto-link shared tasks assigned to current user
+  useAutoLinkSharedTasks({
+    sharedTasksById,
+    localTasksById,
+    referencedSharedIds,
+    isLoading,
+    remoteProjectId: project?.remote_project_id || undefined,
+    projectId,
+  });
 
   return {
     tasks,

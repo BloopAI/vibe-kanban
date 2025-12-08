@@ -17,10 +17,15 @@ use workspace_utils::{
     path::make_path_relative,
 };
 
-use self::{client::ClaudeAgentClient, protocol::ProtocolPeer, types::PermissionMode};
+use self::{
+    client::{AUTO_APPROVE_CALLBACK_ID, ClaudeAgentClient},
+    protocol::ProtocolPeer,
+    types::PermissionMode,
+};
 use crate::{
     approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuilder, CommandParts, apply_overrides},
+    env::ExecutionEnv,
     executors::{
         AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
         codex::client::LogWriter,
@@ -38,7 +43,7 @@ fn base_command(claude_code_router: bool) -> &'static str {
     if claude_code_router {
         "npx -y @musistudio/claude-code-router@1.0.66 code"
     } else {
-        "npx -y @anthropic-ai/claude-code@2.0.53"
+        "npx -y @anthropic-ai/claude-code@2.0.54"
     }
 }
 
@@ -59,6 +64,8 @@ pub struct ClaudeCode {
     pub model: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dangerously_skip_permissions: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub disable_api_key: Option<bool>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
 
@@ -127,6 +134,10 @@ impl ClaudeCode {
                     {
                         "matcher": "^ExitPlanMode$",
                         "hookCallbackIds": ["tool_approval"],
+                    },
+                    {
+                        "matcher": "^(?!ExitPlanMode$).*",
+                        "hookCallbackIds": [AUTO_APPROVE_CALLBACK_ID],
                     }
                 ]
             }))
@@ -151,10 +162,15 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         self.approvals_service = Some(approvals);
     }
 
-    async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError> {
+    async fn spawn(
+        &self,
+        current_dir: &Path,
+        prompt: &str,
+        env: &ExecutionEnv,
+    ) -> Result<SpawnedChild, ExecutorError> {
         let command_builder = self.build_command_builder().await;
         let command_parts = command_builder.build_initial()?;
-        self.spawn_internal(current_dir, prompt, command_parts)
+        self.spawn_internal(current_dir, prompt, command_parts, env)
             .await
     }
 
@@ -163,6 +179,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let command_builder = self.build_command_builder().await;
         let command_parts = command_builder.build_follow_up(&[
@@ -170,7 +187,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
             "--resume".to_string(),
             session_id.to_string(),
         ])?;
-        self.spawn_internal(current_dir, prompt, command_parts)
+        self.spawn_internal(current_dir, prompt, command_parts, env)
             .await
     }
 
@@ -218,6 +235,7 @@ impl ClaudeCode {
         current_dir: &Path,
         prompt: &str,
         command_parts: CommandParts,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let (program_path, args) = command_parts.into_resolved().await?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
@@ -230,6 +248,16 @@ impl ClaudeCode {
             .stderr(Stdio::piped())
             .current_dir(current_dir)
             .args(&args);
+
+        env.clone()
+            .with_profile(&self.cmd)
+            .apply_to_command(&mut command);
+
+        // Remove ANTHROPIC_API_KEY if disable_api_key is enabled
+        if self.disable_api_key.unwrap_or(false) {
+            command.env_remove("ANTHROPIC_API_KEY");
+            tracing::info!("ANTHROPIC_API_KEY removed from environment");
+        }
 
         let mut child = command.group_spawn()?;
         let child_stdout = child.inner().stdout.take().ok_or_else(|| {
@@ -244,13 +272,17 @@ impl ClaudeCode {
         let permission_mode = self.permission_mode();
         let hooks = self.get_hooks();
 
+        // Create interrupt channel for graceful shutdown
+        let (interrupt_tx, interrupt_rx) = tokio::sync::oneshot::channel::<()>();
+
         // Spawn task to handle the SDK client with control protocol
         let prompt_clone = combined_prompt.clone();
         let approvals_clone = self.approvals_service.clone();
         tokio::spawn(async move {
             let log_writer = LogWriter::new(new_stdout);
             let client = ClaudeAgentClient::new(log_writer.clone(), approvals_clone);
-            let protocol_peer = ProtocolPeer::spawn(child_stdin, child_stdout, client.clone());
+            let protocol_peer =
+                ProtocolPeer::spawn(child_stdin, child_stdout, client.clone(), interrupt_rx);
 
             // Initialize control protocol
             if let Err(e) = protocol_peer.initialize(hooks).await {
@@ -277,6 +309,7 @@ impl ClaudeCode {
         Ok(SpawnedChild {
             child,
             exit_signal: None,
+            interrupt_sender: Some(interrupt_tx),
         })
     }
 }
@@ -421,13 +454,13 @@ impl ClaudeLogProcessor {
     /// Extract session ID from Claude JSON
     fn extract_session_id(claude_json: &ClaudeJson) -> Option<String> {
         match claude_json {
-            ClaudeJson::System { session_id, .. } => session_id.clone(),
+            ClaudeJson::System { .. } => None, // session might not have been initialized yet
             ClaudeJson::Assistant { session_id, .. } => session_id.clone(),
             ClaudeJson::User { session_id, .. } => session_id.clone(),
             ClaudeJson::ToolUse { session_id, .. } => session_id.clone(),
             ClaudeJson::ToolResult { session_id, .. } => session_id.clone(),
-            ClaudeJson::StreamEvent { session_id, .. } => session_id.clone(),
             ClaudeJson::Result { session_id, .. } => session_id.clone(),
+            ClaudeJson::StreamEvent { .. } => None, // session might not have been initialized yet
             ClaudeJson::ApprovalResponse { .. } => None,
             ClaudeJson::Unknown { .. } => None,
         }
@@ -444,7 +477,7 @@ impl ClaudeLogProcessor {
                     timestamp: None,
                     entry_type: NormalizedEntryType::ErrorMessage { error_type: NormalizedEntryError::Other,
                     },
-                    content: "Claude Code + ANTHROPIC_API_KEY detected. Usage will be billed via Anthropic pay-as-you-go instead of your Claude subscription.".to_string(),
+                    content: "Claude Code + ANTHROPIC_API_KEY detected. Usage will be billed via Anthropic pay-as-you-go instead of your Claude subscription. If this is unintended, please select the `disable_api_key` checkbox in the conding-agent-configurations settings page.".to_string(),
                     metadata: None,
                 })
             }
@@ -1824,10 +1857,8 @@ mod tests {
             r#"{"type":"system","subtype":"init","session_id":"abc123","model":"claude-sonnet-4"}"#;
         let parsed: ClaudeJson = serde_json::from_str(system_json).unwrap();
 
-        assert_eq!(
-            ClaudeLogProcessor::extract_session_id(&parsed),
-            Some("abc123".to_string())
-        );
+        // System messages no longer extract session_id
+        assert_eq!(ClaudeLogProcessor::extract_session_id(&parsed), None);
 
         let entries = normalize(&parsed, "");
         assert_eq!(entries.len(), 0);
@@ -1985,8 +2016,10 @@ mod tests {
             cmd: crate::command::CmdOverrides {
                 base_command_override: None,
                 additional_params: None,
+                env: None,
             },
             approvals_service: None,
+            disable_api_key: None,
         };
         let msg_store = Arc::new(MsgStore::new());
         let current_dir = std::path::PathBuf::from("/tmp/test-worktree");
@@ -2021,10 +2054,8 @@ mod tests {
         let system_json = r#"{"type":"system","session_id":"test-session-123"}"#;
         let parsed: ClaudeJson = serde_json::from_str(system_json).unwrap();
 
-        assert_eq!(
-            ClaudeLogProcessor::extract_session_id(&parsed),
-            Some("test-session-123".to_string())
-        );
+        // System messages no longer extract session_id
+        assert_eq!(ClaudeLogProcessor::extract_session_id(&parsed), None);
 
         let tool_use_json =
             r#"{"type":"tool_use","tool_name":"read","input":{},"session_id":"another-session"}"#;
@@ -2260,7 +2291,7 @@ mod tests {
         ));
         assert_eq!(
             entries[0].content,
-            "Claude Code + ANTHROPIC_API_KEY detected. Usage will be billed via Anthropic pay-as-you-go instead of your Claude subscription."
+            "Claude Code + ANTHROPIC_API_KEY detected. Usage will be billed via Anthropic pay-as-you-go instead of your Claude subscription. If this is unintended, please select the `disable_api_key` checkbox in the conding-agent-configurations settings page."
         );
 
         // Test with managed API key source - should not generate warning

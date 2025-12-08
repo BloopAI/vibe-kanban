@@ -20,7 +20,6 @@ use services::services::{
     auth::AuthContext,
     config::{Config, ConfigError},
     container::{ContainerError, ContainerService},
-    drafts::DraftsService,
     events::{EventError, EventService},
     file_search_cache::FileSearchCache,
     filesystem::{FilesystemError, FilesystemService},
@@ -28,12 +27,13 @@ use services::services::{
     git::{GitService, GitServiceError},
     image::{ImageError, ImageService},
     pr_monitor::PrMonitorService,
-    share::{RemoteSync, RemoteSyncHandle, ShareConfig, SharePublisher},
+    queued_message::QueuedMessageService,
+    share::SharePublisher,
     worktree_manager::WorktreeError,
 };
 use sqlx::{Error as SqlxError, types::Uuid};
 use thiserror::Error;
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::RwLock;
 use utils::sentry as sentry_utils;
 
 #[derive(Debug, Clone, Copy, Error)]
@@ -100,31 +100,11 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     fn approvals(&self) -> &Approvals;
 
-    fn drafts(&self) -> &DraftsService;
+    fn queued_message_service(&self) -> &QueuedMessageService;
 
     fn auth_context(&self) -> &AuthContext;
 
     fn share_publisher(&self) -> Result<SharePublisher, RemoteClientNotConfigured>;
-
-    fn share_sync_handle(&self) -> &Arc<Mutex<Option<RemoteSyncHandle>>>;
-
-    fn spawn_remote_sync(&self, config: ShareConfig) {
-        let deployment = self.clone();
-        let handle_slot = self.share_sync_handle().clone();
-        tokio::spawn(async move {
-            tracing::info!("Starting shared task sync");
-
-            let remote_sync_handle = RemoteSync::spawn(
-                deployment.db().clone(),
-                config,
-                deployment.auth_context().clone(),
-            );
-            {
-                let mut guard = handle_slot.lock().await;
-                *guard = Some(remote_sync_handle);
-            }
-        });
-    }
 
     async fn update_sentry_scope(&self) -> Result<(), DeploymentError> {
         let user_id = self.user_id();
@@ -186,6 +166,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                         dev_script: None,
                         cleanup_script: None,
                         copy_files: None,
+                        parallel_setup_script: None,
                     };
                     // Ensure existing repo has a main branch if it's empty
                     if let Err(e) = self.git().ensure_main_branch_exists(&repo.path) {

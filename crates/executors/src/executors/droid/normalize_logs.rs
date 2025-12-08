@@ -891,7 +891,7 @@ struct DroidErrorDetail {
 impl DroidJson {
     pub fn session_id(&self) -> Option<&str> {
         match self {
-            DroidJson::System { session_id, .. } => Some(session_id),
+            DroidJson::System { .. } => None, // session might not have been initialized yet
             DroidJson::Message { session_id, .. } => Some(session_id),
             DroidJson::ToolCall { session_id, .. } => Some(session_id),
             DroidJson::ToolResult { session_id, .. } => Some(session_id),

@@ -10,17 +10,17 @@ use services::services::{
     auth::AuthContext,
     config::{Config, load_config_from_file, save_config_to_file},
     container::ContainerService,
-    drafts::DraftsService,
     events::EventService,
     file_search_cache::FileSearchCache,
     filesystem::FilesystemService,
     git::GitService,
     image::ImageService,
     oauth_credentials::OAuthCredentials,
+    queued_message::QueuedMessageService,
     remote_client::{RemoteClient, RemoteClientError},
-    share::{RemoteSyncHandle, ShareConfig, SharePublisher},
+    share::{ShareConfig, SharePublisher},
 };
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::RwLock;
 use utils::{
     api::oauth::LoginStatus,
     assets::{config_path, credentials_path},
@@ -31,6 +31,7 @@ use uuid::Uuid;
 use crate::container::LocalContainerService;
 mod command;
 pub mod container;
+mod copy;
 
 #[derive(Clone)]
 pub struct LocalDeployment {
@@ -45,9 +46,8 @@ pub struct LocalDeployment {
     events: EventService,
     file_search_cache: Arc<FileSearchCache>,
     approvals: Approvals,
-    drafts: DraftsService,
+    queued_message_service: QueuedMessageService,
     share_publisher: Result<SharePublisher, RemoteClientNotConfigured>,
-    share_sync_handle: Arc<Mutex<Option<RemoteSyncHandle>>>,
     share_config: Option<ShareConfig>,
     remote_client: Result<RemoteClient, RemoteClientNotConfigured>,
     auth_context: AuthContext,
@@ -120,6 +120,7 @@ impl Deployment for LocalDeployment {
         }
 
         let approvals = Approvals::new(msg_stores.clone());
+        let queued_message_service = QueuedMessageService::new();
 
         let share_config = ShareConfig::from_env();
 
@@ -158,14 +159,6 @@ impl Deployment for LocalDeployment {
             .map_err(|e| *e);
 
         let oauth_handoffs = Arc::new(RwLock::new(HashMap::new()));
-        let share_sync_handle = Arc::new(Mutex::new(None));
-
-        let mut share_sync_config: Option<ShareConfig> = None;
-        if let (Some(sc_ref), Ok(_)) = (share_config.as_ref(), &share_publisher)
-            && oauth_credentials.get().await.is_some()
-        {
-            share_sync_config = Some(sc_ref.clone());
-        }
 
         // We need to make analytics accessible to the ContainerService
         // TODO: Handle this more gracefully
@@ -181,13 +174,13 @@ impl Deployment for LocalDeployment {
             image.clone(),
             analytics_ctx,
             approvals.clone(),
+            queued_message_service.clone(),
             share_publisher.clone(),
         )
         .await;
 
         let events = EventService::new(db.clone(), events_msg_store, events_entry_count);
 
-        let drafts = DraftsService::new(db.clone(), image.clone());
         let file_search_cache = Arc::new(FileSearchCache::new());
 
         let deployment = Self {
@@ -202,18 +195,13 @@ impl Deployment for LocalDeployment {
             events,
             file_search_cache,
             approvals,
-            drafts,
+            queued_message_service,
             share_publisher,
-            share_sync_handle: share_sync_handle.clone(),
             share_config: share_config.clone(),
             remote_client,
             auth_context,
             oauth_handoffs,
         };
-
-        if let Some(sc) = share_sync_config {
-            deployment.spawn_remote_sync(sc);
-        }
 
         Ok(deployment)
     }
@@ -262,16 +250,12 @@ impl Deployment for LocalDeployment {
         &self.approvals
     }
 
-    fn drafts(&self) -> &DraftsService {
-        &self.drafts
+    fn queued_message_service(&self) -> &QueuedMessageService {
+        &self.queued_message_service
     }
 
     fn share_publisher(&self) -> Result<SharePublisher, RemoteClientNotConfigured> {
         self.share_publisher.clone()
-    }
-
-    fn share_sync_handle(&self) -> &Arc<Mutex<Option<RemoteSyncHandle>>> {
-        &self.share_sync_handle
     }
 
     fn auth_context(&self) -> &AuthContext {

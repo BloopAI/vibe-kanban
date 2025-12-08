@@ -1,10 +1,6 @@
 use anyhow::Error as AnyhowError;
 use db::models::{
-    draft::{Draft, DraftType},
-    execution_process::ExecutionProcess,
-    shared_task::SharedTask,
-    task::Task,
-    task_attempt::TaskAttempt,
+    execution_process::ExecutionProcess, scratch::Scratch, task::Task, task_attempt::TaskAttempt,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::Error as SqlxError;
@@ -31,10 +27,8 @@ pub enum HookTables {
     TaskAttempts,
     #[strum(to_string = "execution_processes")]
     ExecutionProcesses,
-    #[strum(to_string = "drafts")]
-    Drafts,
-    #[strum(to_string = "shared_tasks")]
-    SharedTasks,
+    #[strum(to_string = "scratch")]
+    Scratch,
 }
 
 #[derive(Serialize, Deserialize, TS)]
@@ -43,9 +37,7 @@ pub enum RecordTypes {
     Task(Task),
     TaskAttempt(TaskAttempt),
     ExecutionProcess(ExecutionProcess),
-    Draft(Draft),
-    RetryDraft(Draft),
-    SharedTask(SharedTask),
+    Scratch(Scratch),
     DeletedTask {
         rowid: i64,
         project_id: Option<Uuid>,
@@ -60,14 +52,10 @@ pub enum RecordTypes {
         task_attempt_id: Option<Uuid>,
         process_id: Option<Uuid>,
     },
-    DeletedDraft {
+    DeletedScratch {
         rowid: i64,
-        draft_type: DraftType,
-        task_attempt_id: Option<Uuid>,
-    },
-    DeletedSharedTask {
-        rowid: i64,
-        task_id: Option<Uuid>,
+        scratch_id: Option<Uuid>,
+        scratch_type: Option<String>,
     },
 }
 

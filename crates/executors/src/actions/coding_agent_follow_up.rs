@@ -7,6 +7,7 @@ use ts_rs::TS;
 use crate::{
     actions::Executable,
     approvals::ExecutorApprovalService,
+    env::ExecutionEnv,
     executors::{BaseCodingAgent, ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
     profile::{ExecutorConfigs, ExecutorProfileId},
 };
@@ -38,6 +39,7 @@ impl Executable for CodingAgentFollowUpRequest {
         &self,
         current_dir: &Path,
         approvals: Arc<dyn ExecutorApprovalService>,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let executor_profile_id = self.get_executor_profile_id();
         let mut agent = ExecutorConfigs::get_cached()
@@ -49,7 +51,7 @@ impl Executable for CodingAgentFollowUpRequest {
         agent.use_approvals(approvals.clone());
 
         agent
-            .spawn_follow_up(current_dir, &self.prompt, &self.session_id)
+            .spawn_follow_up(current_dir, &self.prompt, &self.session_id, env)
             .await
     }
 }

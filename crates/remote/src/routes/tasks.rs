@@ -8,6 +8,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{Span, instrument};
+use ts_rs::TS;
 use uuid::Uuid;
 
 use super::{
@@ -30,60 +31,54 @@ use crate::{
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/tasks/bulk", get(bulk_shared_tasks))
         .route("/tasks", post(create_shared_task))
+        .route("/tasks/check", post(check_tasks_existence))
         .route("/tasks/{task_id}", patch(update_shared_task))
         .route("/tasks/{task_id}", delete(delete_shared_task))
         .route("/tasks/{task_id}/assign", post(assign_task))
+        .route("/tasks/assignees", get(get_task_assignees_by_project))
 }
 
-#[derive(Debug, Deserialize)]
-pub struct BulkTasksQuery {
+#[derive(Debug, Deserialize, TS)]
+#[ts(export)]
+pub struct AssigneesQuery {
     pub project_id: Uuid,
 }
 
 #[instrument(
-    name = "tasks.bulk_shared_tasks",
+    name = "tasks.get_task_assignees_by_project",
     skip(state, ctx, query),
     fields(user_id = %ctx.user.id, project_id = %query.project_id, org_id = tracing::field::Empty)
 )]
-pub async fn bulk_shared_tasks(
+pub async fn get_task_assignees_by_project(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
-    Query(query): Query<BulkTasksQuery>,
+    Query(query): Query<AssigneesQuery>,
 ) -> Response {
     let pool = state.pool();
-    let _organization_id = match ensure_project_access(pool, ctx.user.id, query.project_id).await {
-        Ok(org_id) => {
-            Span::current().record("org_id", format_args!("{org_id}"));
-            org_id
+
+    let _org_id = match ensure_project_access(pool, ctx.user.id, query.project_id).await {
+        Ok(org) => {
+            Span::current().record("org_id", format_args!("{org}"));
+            org
         }
         Err(error) => return error.into_response(),
     };
 
-    let repo = SharedTaskRepository::new(pool);
-    match repo.bulk_fetch(query.project_id).await {
-        Ok(snapshot) => (
-            StatusCode::OK,
-            Json(BulkSharedTasksResponse {
-                tasks: snapshot.tasks,
-                deleted_task_ids: snapshot.deleted_task_ids,
-                latest_seq: snapshot.latest_seq,
-            }),
-        )
-            .into_response(),
-        Err(error) => match error {
-            SharedTaskError::Database(err) => {
-                tracing::error!(?err, "failed to load shared task snapshot");
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(json!({ "error": "failed to load shared tasks" })),
-                )
-                    .into_response()
-            }
-            other => task_error_response(other, "failed to load shared tasks"),
-        },
-    }
+    let user_repo = UserRepository::new(pool);
+    let assignees = match user_repo.fetch_assignees_by_project(query.project_id).await {
+        Ok(names) => names,
+        Err(e) => {
+            tracing::error!(?e, "failed to load assignees");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "failed to load assignees"})),
+            )
+                .into_response();
+        }
+    };
+
+    (StatusCode::OK, Json(assignees)).into_response()
 }
 
 #[instrument(
@@ -185,7 +180,6 @@ pub async fn update_shared_task(
         title,
         description,
         status,
-        version,
     } = payload;
 
     let next_title = title.as_deref().unwrap_or(existing.title.as_str());
@@ -199,7 +193,6 @@ pub async fn update_shared_task(
         title,
         description,
         status,
-        version,
         acting_user_id: ctx.user.id,
     };
 
@@ -263,7 +256,6 @@ pub async fn assign_task(
     let data = AssignTaskData {
         new_assignee_user_id: payload.new_assignee_user_id,
         previous_assignee_user_id: Some(ctx.user.id),
-        version: payload.version,
     };
 
     match repo.assign_task(task_id, data).await {
@@ -274,14 +266,13 @@ pub async fn assign_task(
 
 #[instrument(
     name = "tasks.delete_shared_task",
-    skip(state, ctx, payload),
+    skip(state, ctx),
     fields(user_id = %ctx.user.id, task_id = %task_id, org_id = tracing::field::Empty)
 )]
 pub async fn delete_shared_task(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(task_id): Path<Uuid>,
-    payload: Option<Json<DeleteSharedTaskRequest>>,
 ) -> Response {
     let pool = state.pool();
     let _organization_id = match ensure_task_access(pool, ctx.user.id, task_id).await {
@@ -311,11 +302,8 @@ pub async fn delete_shared_task(
         );
     }
 
-    let version = payload.as_ref().and_then(|body| body.0.version);
-
     let data = DeleteTaskData {
         acting_user_id: ctx.user.id,
-        version,
     };
 
     match repo.delete_task(task_id, data).await {
@@ -324,11 +312,28 @@ pub async fn delete_shared_task(
     }
 }
 
+#[instrument(
+    name = "tasks.check_existence",
+    skip(state, ctx, payload),
+    fields(user_id = %ctx.user.id)
+)]
+pub async fn check_tasks_existence(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Json(payload): Json<CheckTasksRequest>,
+) -> Response {
+    let pool = state.pool();
+    let repo = SharedTaskRepository::new(pool);
+
+    match repo.check_existence(&payload.task_ids, ctx.user.id).await {
+        Ok(existing_ids) => (StatusCode::OK, Json(existing_ids)).into_response(),
+        Err(error) => task_error_response(error, "failed to check tasks existence"),
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BulkSharedTasksResponse {
-    pub tasks: Vec<crate::db::tasks::SharedTaskActivityPayload>,
-    pub deleted_task_ids: Vec<Uuid>,
-    pub latest_seq: Option<i64>,
+pub struct CheckTasksRequest {
+    pub task_ids: Vec<Uuid>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -344,21 +349,15 @@ pub struct UpdateSharedTaskRequest {
     pub title: Option<String>,
     pub description: Option<String>,
     pub status: Option<TaskStatus>,
-    pub version: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AssignSharedTaskRequest {
     pub new_assignee_user_id: Option<Uuid>,
-    pub version: Option<i64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DeleteSharedTaskRequest {
-    pub version: Option<i64>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct SharedTaskResponse {
     pub task: SharedTask,
     pub user: Option<UserData>,

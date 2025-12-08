@@ -1,5 +1,5 @@
 import { memo, forwardRef, useEffect, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -59,12 +59,13 @@ const VariantSelectorInner = forwardRef<HTMLButtonElement, Props>(
             variant="secondary"
             size="sm"
             className={cn(
-              'w-18 md:w-24 px-2 flex items-center justify-between transition-all',
+              'px-2 flex items-center justify-between transition-all',
               isAnimating && 'scale-105 bg-accent',
               className
             )}
             disabled={disabled}
           >
+            <Settings2 className="h-3 w-3 mr-1 flex-shrink-0" />
             <span className="text-xs truncate flex-1 text-left">
               {selectedVariant || 'DEFAULT'}
             </span>

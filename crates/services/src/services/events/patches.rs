@@ -1,8 +1,5 @@
 use db::models::{
-    draft::{Draft, DraftType},
-    execution_process::ExecutionProcess,
-    shared_task::SharedTask as DbSharedTask,
-    task::TaskWithAttemptStatus,
+    execution_process::ExecutionProcess, scratch::Scratch, task::TaskWithAttemptStatus,
     task_attempt::TaskAttempt,
 };
 use json_patch::{AddOperation, Patch, PatchOperation, RemoveOperation, ReplaceOperation};
@@ -51,44 +48,6 @@ pub mod task_patch {
     }
 }
 
-/// Helper functions for creating shared task-specific patches
-pub mod shared_task_patch {
-    use super::*;
-
-    fn shared_task_path(task_id: Uuid) -> String {
-        format!(
-            "/shared_tasks/{}",
-            escape_pointer_segment(&task_id.to_string())
-        )
-    }
-
-    pub fn add(task: &DbSharedTask) -> Patch {
-        Patch(vec![PatchOperation::Add(AddOperation {
-            path: shared_task_path(task.id)
-                .try_into()
-                .expect("Shared task path should be valid"),
-            value: serde_json::to_value(task).expect("Shared task serialization should not fail"),
-        })])
-    }
-
-    pub fn replace(task: &DbSharedTask) -> Patch {
-        Patch(vec![PatchOperation::Replace(ReplaceOperation {
-            path: shared_task_path(task.id)
-                .try_into()
-                .expect("Shared task path should be valid"),
-            value: serde_json::to_value(task).expect("Shared task serialization should not fail"),
-        })])
-    }
-
-    pub fn remove(task_id: Uuid) -> Patch {
-        Patch(vec![PatchOperation::Remove(RemoveOperation {
-            path: shared_task_path(task_id)
-                .try_into()
-                .expect("Shared task path should be valid"),
-        })])
-    }
-}
-
 /// Helper functions for creating execution process-specific patches
 pub mod execution_process_patch {
     use super::*;
@@ -132,73 +91,6 @@ pub mod execution_process_patch {
     }
 }
 
-/// Helper functions for creating draft-specific patches
-pub mod draft_patch {
-    use super::*;
-
-    fn follow_up_path(attempt_id: Uuid) -> String {
-        format!("/drafts/{attempt_id}/follow_up")
-    }
-
-    fn retry_path(attempt_id: Uuid) -> String {
-        format!("/drafts/{attempt_id}/retry")
-    }
-
-    /// Replace the follow-up draft for a specific attempt
-    pub fn follow_up_replace(draft: &Draft) -> Patch {
-        Patch(vec![PatchOperation::Replace(ReplaceOperation {
-            path: follow_up_path(draft.task_attempt_id)
-                .try_into()
-                .expect("Path should be valid"),
-            value: serde_json::to_value(draft).expect("Draft serialization should not fail"),
-        })])
-    }
-
-    /// Replace the retry draft for a specific attempt
-    pub fn retry_replace(draft: &Draft) -> Patch {
-        Patch(vec![PatchOperation::Replace(ReplaceOperation {
-            path: retry_path(draft.task_attempt_id)
-                .try_into()
-                .expect("Path should be valid"),
-            value: serde_json::to_value(draft).expect("Draft serialization should not fail"),
-        })])
-    }
-
-    /// Clear the follow-up draft for an attempt (replace with an empty draft)
-    pub fn follow_up_clear(attempt_id: Uuid) -> Patch {
-        let empty = Draft {
-            id: uuid::Uuid::new_v4(),
-            task_attempt_id: attempt_id,
-            draft_type: DraftType::FollowUp,
-            retry_process_id: None,
-            prompt: String::new(),
-            queued: false,
-            sending: false,
-            variant: None,
-            image_ids: None,
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
-            version: 0,
-        };
-        Patch(vec![PatchOperation::Replace(ReplaceOperation {
-            path: follow_up_path(attempt_id)
-                .try_into()
-                .expect("Path should be valid"),
-            value: serde_json::to_value(empty).expect("Draft serialization should not fail"),
-        })])
-    }
-
-    /// Clear the retry draft for an attempt (set to null)
-    pub fn retry_clear(attempt_id: Uuid) -> Patch {
-        Patch(vec![PatchOperation::Replace(ReplaceOperation {
-            path: retry_path(attempt_id)
-                .try_into()
-                .expect("Path should be valid"),
-            value: serde_json::Value::Null,
-        })])
-    }
-}
-
 /// Helper functions for creating task attempt-specific patches
 pub mod task_attempt_patch {
     use super::*;
@@ -238,6 +130,49 @@ pub mod task_attempt_patch {
             path: attempt_path(attempt_id)
                 .try_into()
                 .expect("Task attempt path should be valid"),
+        })])
+    }
+}
+
+/// Helper functions for creating scratch-specific patches.
+/// All patches use path "/scratch" - filtering is done by matching id and payload type in the value.
+pub mod scratch_patch {
+    use super::*;
+
+    const SCRATCH_PATH: &str = "/scratch";
+
+    /// Create patch for adding a new scratch
+    pub fn add(scratch: &Scratch) -> Patch {
+        Patch(vec![PatchOperation::Add(AddOperation {
+            path: SCRATCH_PATH
+                .try_into()
+                .expect("Scratch path should be valid"),
+            value: serde_json::to_value(scratch).expect("Scratch serialization should not fail"),
+        })])
+    }
+
+    /// Create patch for updating an existing scratch
+    pub fn replace(scratch: &Scratch) -> Patch {
+        Patch(vec![PatchOperation::Replace(ReplaceOperation {
+            path: SCRATCH_PATH
+                .try_into()
+                .expect("Scratch path should be valid"),
+            value: serde_json::to_value(scratch).expect("Scratch serialization should not fail"),
+        })])
+    }
+
+    /// Create patch for removing a scratch.
+    /// Uses Replace with deleted marker so clients can filter by id and payload type.
+    pub fn remove(scratch_id: Uuid, scratch_type_str: &str) -> Patch {
+        Patch(vec![PatchOperation::Replace(ReplaceOperation {
+            path: SCRATCH_PATH
+                .try_into()
+                .expect("Scratch path should be valid"),
+            value: serde_json::json!({
+                "id": scratch_id,
+                "payload": { "type": scratch_type_str },
+                "deleted": true
+            }),
         })])
     }
 }

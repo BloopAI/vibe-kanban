@@ -1,8 +1,6 @@
 use db::models::{
-    draft::{Draft, DraftType},
     execution_process::ExecutionProcess,
-    project::Project,
-    shared_task::SharedTask,
+    scratch::Scratch,
     task::{Task, TaskWithAttemptStatus},
 };
 use futures::StreamExt;
@@ -33,37 +31,17 @@ impl EventService {
             .map(|task| (task.id.to_string(), serde_json::to_value(task).unwrap()))
             .collect();
 
-        let remote_project_id = Project::find_by_id(&self.db.pool, project_id)
-            .await?
-            .and_then(|project| project.remote_project_id);
-
-        let shared_tasks = if let Some(remote_project_id) = remote_project_id {
-            SharedTask::list_by_remote_project_id(&self.db.pool, remote_project_id).await?
-        } else {
-            Vec::new()
-        };
-        let shared_tasks_map: serde_json::Map<String, serde_json::Value> = shared_tasks
-            .into_iter()
-            .map(|task| (task.id.to_string(), serde_json::to_value(task).unwrap()))
-            .collect();
-
         let initial_patch = json!([
             {
                 "op": "replace",
                 "path": "/tasks",
                 "value": tasks_map
-            },
-            {
-                "op": "replace",
-                "path": "/shared_tasks",
-                "value": shared_tasks_map
             }
         ]);
         let initial_msg = LogMsg::JsonPatch(serde_json::from_value(initial_patch).unwrap());
 
         // Clone necessary data for the async filter
         let db_pool = self.db.pool.clone();
-        let remote_project_id_filter = remote_project_id;
 
         // Get filtered event stream
         let filtered_stream =
@@ -74,44 +52,6 @@ impl EventService {
                         Ok(LogMsg::JsonPatch(patch)) => {
                             // Filter events based on project_id
                             if let Some(patch_op) = patch.0.first() {
-                                if patch_op.path().starts_with("/shared_tasks/") {
-                                    match patch_op {
-                                        json_patch::PatchOperation::Add(op) => {
-                                            if let Ok(shared_task) =
-                                                serde_json::from_value::<SharedTask>(
-                                                    op.value.clone(),
-                                                )
-                                                && remote_project_id_filter
-                                                    .map(|expected| {
-                                                        shared_task.remote_project_id == expected
-                                                    })
-                                                    .unwrap_or(false)
-                                            {
-                                                return Some(Ok(LogMsg::JsonPatch(patch)));
-                                            }
-                                        }
-                                        json_patch::PatchOperation::Replace(op) => {
-                                            if let Ok(shared_task) =
-                                                serde_json::from_value::<SharedTask>(
-                                                    op.value.clone(),
-                                                )
-                                                && remote_project_id_filter
-                                                    .map(|expected| {
-                                                        shared_task.remote_project_id == expected
-                                                    })
-                                                    .unwrap_or(false)
-                                            {
-                                                return Some(Ok(LogMsg::JsonPatch(patch)));
-                                            }
-                                        }
-                                        json_patch::PatchOperation::Remove(_) => {
-                                            // Forward removals; clients will ignore missing tasks
-                                            return Some(Ok(LogMsg::JsonPatch(patch)));
-                                        }
-                                        _ => {}
-                                    }
-                                    return None;
-                                }
                                 // Check if this is a direct task patch (new format)
                                 if patch_op.path().starts_with("/tasks/") {
                                     match patch_op {
@@ -164,19 +104,6 @@ impl EventService {
                                             if *deleted_project_id == project_id {
                                                 return Some(Ok(LogMsg::JsonPatch(patch)));
                                             }
-                                        }
-                                        RecordTypes::SharedTask(shared_task) => {
-                                            if remote_project_id_filter
-                                                .map(|expected| {
-                                                    shared_task.remote_project_id == expected
-                                                })
-                                                .unwrap_or(false)
-                                            {
-                                                return Some(Ok(LogMsg::JsonPatch(patch)));
-                                            }
-                                        }
-                                        RecordTypes::DeletedSharedTask { .. } => {
-                                            return Some(Ok(LogMsg::JsonPatch(patch)));
                                         }
                                         RecordTypes::TaskAttempt(attempt) => {
                                             // Check if this task_attempt belongs to a task in our project
@@ -344,94 +271,69 @@ impl EventService {
         Ok(combined_stream)
     }
 
-    /// Stream drafts for all task attempts in a project with initial snapshot (raw LogMsg)
-    pub async fn stream_drafts_for_project_raw(
+    /// Stream a single scratch item with initial snapshot (raw LogMsg format for WebSocket)
+    pub async fn stream_scratch_raw(
         &self,
-        project_id: Uuid,
+        scratch_id: Uuid,
+        scratch_type: &db::models::scratch::ScratchType,
     ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, EventError>
     {
-        // Load all attempt ids for tasks in this project
-        let attempt_ids: Vec<Uuid> = sqlx::query_scalar(
-            r#"SELECT ta.id
-               FROM task_attempts ta
-               JOIN tasks t ON t.id = ta.task_id
-              WHERE t.project_id = ?"#,
-        )
-        .bind(project_id)
-        .fetch_all(&self.db.pool)
-        .await?;
-
-        // Build initial drafts map keyed by attempt_id
-        let mut drafts_map: serde_json::Map<String, serde_json::Value> = serde_json::Map::new();
-        for attempt_id in attempt_ids {
-            let fu = Draft::find_by_task_attempt_and_type(
-                &self.db.pool,
-                attempt_id,
-                DraftType::FollowUp,
-            )
-            .await?
-            .unwrap_or(Draft {
-                id: uuid::Uuid::new_v4(),
-                task_attempt_id: attempt_id,
-                draft_type: DraftType::FollowUp,
-                retry_process_id: None,
-                prompt: String::new(),
-                queued: false,
-                sending: false,
-                variant: None,
-                image_ids: None,
-                created_at: chrono::Utc::now(),
-                updated_at: chrono::Utc::now(),
-                version: 0,
-            });
-            let re =
-                Draft::find_by_task_attempt_and_type(&self.db.pool, attempt_id, DraftType::Retry)
-                    .await?;
-            let entry = json!({
-                "follow_up": fu,
-                "retry": serde_json::to_value(re).unwrap_or(serde_json::Value::Null),
-            });
-            drafts_map.insert(attempt_id.to_string(), entry);
-        }
-
-        let initial_patch = json!([
-            {
-                "op": "replace",
-                "path": "/drafts",
-                "value": drafts_map
+        // Treat errors (e.g., corrupted/malformed data) the same as "scratch not found"
+        // This prevents the websocket from closing and retrying indefinitely
+        let scratch = match Scratch::find_by_id(&self.db.pool, scratch_id, scratch_type).await {
+            Ok(scratch) => scratch,
+            Err(e) => {
+                tracing::warn!(
+                    scratch_id = %scratch_id,
+                    scratch_type = %scratch_type,
+                    error = %e,
+                    "Failed to load scratch, treating as empty"
+                );
+                None
             }
-        ]);
+        };
+
+        let initial_patch = json!([{
+            "op": "replace",
+            "path": "/scratch",
+            "value": scratch
+        }]);
         let initial_msg = LogMsg::JsonPatch(serde_json::from_value(initial_patch).unwrap());
 
-        let db_pool = self.db.pool.clone();
-        // Live updates: accept direct draft patches and filter by project membership
+        let type_str = scratch_type.to_string();
+
+        // Filter to only this scratch's events by matching id and payload.type in the patch value
         let filtered_stream =
             BroadcastStream::new(self.msg_store.get_receiver()).filter_map(move |msg_result| {
-                let db_pool = db_pool.clone();
+                let id_str = scratch_id.to_string();
+                let type_str = type_str.clone();
                 async move {
                     match msg_result {
                         Ok(LogMsg::JsonPatch(patch)) => {
-                            if let Some(op) = patch.0.first() {
-                                let path = op.path();
-                                if let Some(rest) = path.strip_prefix("/drafts/")
-                                    && let Some((attempt_str, _)) = rest.split_once('/')
-                                    && let Ok(attempt_id) = Uuid::parse_str(attempt_str)
-                                {
-                                    // Check project membership
-                                    if let Ok(Some(task_attempt)) =
-                                        db::models::task_attempt::TaskAttempt::find_by_id(
-                                            &db_pool, attempt_id,
-                                        )
-                                        .await
-                                        && let Ok(Some(task)) = db::models::task::Task::find_by_id(
-                                            &db_pool,
-                                            task_attempt.task_id,
-                                        )
-                                        .await
-                                        && task.project_id == project_id
-                                    {
-                                        return Some(Ok(LogMsg::JsonPatch(patch)));
-                                    }
+                            if let Some(op) = patch.0.first()
+                                && op.path() == "/scratch"
+                            {
+                                // Extract id and payload.type from the patch value
+                                let value = match op {
+                                    json_patch::PatchOperation::Add(a) => Some(&a.value),
+                                    json_patch::PatchOperation::Replace(r) => Some(&r.value),
+                                    json_patch::PatchOperation::Remove(_) => None,
+                                    _ => None,
+                                };
+
+                                let matches = value.is_some_and(|v| {
+                                    let id_matches =
+                                        v.get("id").and_then(|v| v.as_str()) == Some(&id_str);
+                                    let type_matches = v
+                                        .get("payload")
+                                        .and_then(|p| p.get("type"))
+                                        .and_then(|t| t.as_str())
+                                        == Some(&type_str);
+                                    id_matches && type_matches
+                                });
+
+                                if matches {
+                                    return Some(Ok(LogMsg::JsonPatch(patch)));
                                 }
                             }
                             None

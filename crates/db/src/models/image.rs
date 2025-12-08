@@ -103,6 +103,28 @@ impl Image {
         .await
     }
 
+    pub async fn find_by_file_path(
+        pool: &SqlitePool,
+        file_path: &str,
+    ) -> Result<Option<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Image,
+            r#"SELECT id as "id!: Uuid",
+                      file_path as "file_path!",
+                      original_name as "original_name!",
+                      mime_type,
+                      size_bytes as "size_bytes!",
+                      hash as "hash!",
+                      created_at as "created_at!: DateTime<Utc>",
+                      updated_at as "updated_at!: DateTime<Utc>"
+               FROM images
+               WHERE file_path = $1"#,
+            file_path
+        )
+        .fetch_optional(pool)
+        .await
+    }
+
     pub async fn find_by_task_id(
         pool: &SqlitePool,
         task_id: Uuid,
@@ -155,36 +177,6 @@ impl Image {
 }
 
 impl TaskImage {
-    pub async fn create(pool: &SqlitePool, data: &CreateTaskImage) -> Result<Self, sqlx::Error> {
-        let id = Uuid::new_v4();
-        sqlx::query_as!(
-            TaskImage,
-            r#"INSERT INTO task_images (id, task_id, image_id)
-               VALUES ($1, $2, $3)
-               RETURNING id as "id!: Uuid",
-                         task_id as "task_id!: Uuid",
-                         image_id as "image_id!: Uuid", 
-                         created_at as "created_at!: DateTime<Utc>""#,
-            id,
-            data.task_id,
-            data.image_id,
-        )
-        .fetch_one(pool)
-        .await
-    }
-
-    pub async fn associate_many(
-        pool: &SqlitePool,
-        task_id: Uuid,
-        image_ids: &[Uuid],
-    ) -> Result<(), sqlx::Error> {
-        for &image_id in image_ids {
-            let task_image = CreateTaskImage { task_id, image_id };
-            TaskImage::create(pool, &task_image).await?;
-        }
-        Ok(())
-    }
-
     /// Associate multiple images with a task, skipping duplicates.
     pub async fn associate_many_dedup(
         pool: &SqlitePool,
@@ -214,5 +206,26 @@ impl TaskImage {
             .execute(pool)
             .await?;
         Ok(())
+    }
+
+    /// Check if an image is associated with a specific task.
+    pub async fn is_associated(
+        pool: &SqlitePool,
+        task_id: Uuid,
+        image_id: Uuid,
+    ) -> Result<bool, sqlx::Error> {
+        let result = sqlx::query_scalar!(
+            r#"SELECT EXISTS(
+                SELECT 1
+                FROM task_images
+                WHERE task_id = $1 AND image_id = $2
+               ) AS "exists!: bool"
+            "#,
+            task_id,
+            image_id
+        )
+        .fetch_one(pool)
+        .await?;
+        Ok(result)
     }
 }

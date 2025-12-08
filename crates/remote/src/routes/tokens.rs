@@ -10,10 +10,11 @@ use utils::api::oauth::{TokenRefreshRequest, TokenRefreshResponse};
 
 use crate::{
     AppState,
-    auth::JwtError,
+    auth::{JwtError, OAuthTokenValidationError},
     db::{
         auth::{AuthSessionError, AuthSessionRepository},
         identity_errors::IdentityError,
+        oauth_accounts::OAuthAccountError,
         users::UserRepository,
     },
 };
@@ -32,6 +33,10 @@ pub enum TokenRefreshError {
     TokenExpired,
     #[error("refresh token reused - possible token theft")]
     TokenReuseDetected,
+    #[error("provider token has been revoked")]
+    ProviderTokenRevoked,
+    #[error("temporary failure validating provider token")]
+    ProviderValidationUnavailable(String),
     #[error(transparent)]
     Jwt(#[from] JwtError),
     #[error(transparent)]
@@ -40,6 +45,23 @@ pub enum TokenRefreshError {
     SessionError(#[from] AuthSessionError),
     #[error(transparent)]
     Identity(#[from] IdentityError),
+}
+
+impl From<OAuthTokenValidationError> for TokenRefreshError {
+    fn from(err: OAuthTokenValidationError) -> Self {
+        match err {
+            OAuthTokenValidationError::ProviderAccountNotLinked
+            | OAuthTokenValidationError::ProviderTokenValidationFailed => {
+                TokenRefreshError::ProviderTokenRevoked
+            }
+            OAuthTokenValidationError::FetchAccountsFailed(inner) => match inner {
+                OAuthAccountError::Database(db_err) => TokenRefreshError::Database(db_err),
+            },
+            OAuthTokenValidationError::ValidationUnavailable(reason) => {
+                TokenRefreshError::ProviderValidationUnavailable(reason)
+            }
+        }
+    }
 }
 
 pub async fn refresh_token(
@@ -79,10 +101,20 @@ pub async fn refresh_token(
         return Err(TokenRefreshError::TokenReuseDetected);
     }
 
+    // Check if provider has revoked the OAuth token
+    let provider_token_details = state
+        .oauth_token_validator()
+        .validate(
+            token_details.provider_token_details.clone(),
+            token_details.user_id,
+            token_details.session_id,
+        )
+        .await?;
+
     let user_repo = UserRepository::new(state.pool());
     let user = user_repo.fetch_user(token_details.user_id).await?;
 
-    let tokens = jwt_service.generate_tokens(&session, &user)?;
+    let tokens = jwt_service.generate_tokens(&session, &user, provider_token_details)?;
 
     let old_token_id = token_details.refresh_token_id;
     let new_token_id = tokens.refresh_token_id;
@@ -123,9 +155,27 @@ impl IntoResponse for TokenRefreshError {
             TokenRefreshError::TokenReuseDetected => {
                 (StatusCode::UNAUTHORIZED, "token_reuse_detected")
             }
+            TokenRefreshError::ProviderTokenRevoked => {
+                (StatusCode::UNAUTHORIZED, "provider_token_revoked")
+            }
+            TokenRefreshError::ProviderValidationUnavailable(ref reason) => {
+                warn!(
+                    reason = reason.as_str(),
+                    "Provider validation temporarily unavailable during refresh"
+                );
+                (
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "provider_validation_unavailable",
+                )
+            }
             TokenRefreshError::Jwt(_) => (StatusCode::UNAUTHORIZED, "invalid_token"),
             TokenRefreshError::Identity(_) => (StatusCode::UNAUTHORIZED, "identity_error"),
-            TokenRefreshError::Database(_) | TokenRefreshError::SessionError(_) => {
+            TokenRefreshError::Database(ref err) => {
+                tracing::error!(error = %err, "Database error during token refresh");
+                (StatusCode::INTERNAL_SERVER_ERROR, "internal_error")
+            }
+            TokenRefreshError::SessionError(ref err) => {
+                tracing::error!(error = %err, "Session error during token refresh");
                 (StatusCode::INTERNAL_SERVER_ERROR, "internal_error")
             }
         };

@@ -1,6 +1,6 @@
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import { NewCardContent } from '@/components/ui/new-card';
-import MarkdownRenderer from '@/components/ui/markdown-renderer';
+import WYSIWYGEditor from '@/components/ui/wysiwyg';
 
 interface SharedTaskPanelProps {
   task: SharedTaskRecord;
@@ -18,7 +18,7 @@ const SharedTaskPanel = ({ task }: SharedTaskPanelProps) => {
           </div>
         </div>
         {task.description ? (
-          <MarkdownRenderer content={task.description} />
+          <WYSIWYGEditor value={task.description} disabled />
         ) : null}
       </div>
     </NewCardContent>

@@ -6,6 +6,7 @@ type Props = {
   description: string | null | undefined;
   onTitleChange: (v: string) => void;
   onDescriptionChange: (v: string) => void;
+  projectId?: string;
 };
 
 const TitleDescriptionEditor = ({
@@ -13,6 +14,7 @@ const TitleDescriptionEditor = ({
   description,
   onTitleChange,
   onDescriptionChange,
+  projectId,
 }: Props) => {
   return (
     <div className="space-y-3 flex-1">
@@ -26,6 +28,7 @@ const TitleDescriptionEditor = ({
         placeholder="Description"
         value={description ?? ''}
         onChange={onDescriptionChange}
+        projectId={projectId}
       />
     </div>
   );

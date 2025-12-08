@@ -61,6 +61,7 @@
         "low",
         "medium",
         "high",
+        "xhigh",
         null
       ]
     },
@@ -102,15 +103,27 @@
         "null"
       ]
     },
-    "include_plan_tool": {
+    "include_apply_patch_tool": {
       "type": [
         "boolean",
         "null"
       ]
     },
-    "include_apply_patch_tool": {
+    "model_provider": {
       "type": [
-        "boolean",
+        "string",
+        "null"
+      ]
+    },
+    "compact_prompt": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "developer_instructions": {
+      "type": [
+        "string",
         "null"
       ]
     },
@@ -130,6 +143,17 @@
         "null"
       ],
       "items": {
+        "type": "string"
+      }
+    },
+    "env": {
+      "title": "Environment Variables",
+      "description": "Environment variables to set when running the executor",
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": {
         "type": "string"
       }
     }

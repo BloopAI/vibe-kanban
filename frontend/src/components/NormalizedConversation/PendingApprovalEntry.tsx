@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/tooltip';
 import { approvalsApi } from '@/lib/api';
 import { Check, X } from 'lucide-react';
-import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
+import WYSIWYGEditor from '@/components/ui/wysiwyg';
 
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { TabNavContext } from '@/contexts/TabNavigationContext';
@@ -130,7 +130,6 @@ function DenyReasonForm({
   onChange,
   onCancel,
   onSubmit,
-  inputRef,
   projectId,
 }: {
   isResponding: boolean;
@@ -138,21 +137,20 @@ function DenyReasonForm({
   onChange: (v: string) => void;
   onCancel: () => void;
   onSubmit: () => void;
-  inputRef: React.RefObject<HTMLTextAreaElement>;
   projectId?: string;
 }) {
   return (
-    <div className="mt-3 bg-background px-3 py-3 text-sm">
-      <FileSearchTextarea
-        ref={inputRef}
+    <div className="flex flex-col gap-2 p-4">
+      <WYSIWYGEditor
         value={value}
         onChange={onChange}
         placeholder="Let the agent know why this request was denied... Type @ to insert tags or search files."
         disabled={isResponding}
-        className="w-full bg-transparent border px-3 py-2 text-sm resize-none min-h-[80px] focus-visible:outline-none"
+        className="min-h-[80px]"
         projectId={projectId}
+        onCmdEnter={onSubmit}
       />
-      <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
         <Button
           variant="ghost"
           size="sm"
@@ -187,7 +185,6 @@ const PendingApprovalEntry = ({
     clear,
   } = useApprovalForm(pendingStatus.approval_id);
 
-  const denyReasonRef = useRef<HTMLTextAreaElement | null>(null);
   const { projectId } = useProject();
 
   const { enableScope, disableScope, activeScopes } = useHotkeysContext();
@@ -316,18 +313,12 @@ const PendingApprovalEntry = ({
     preventDefault: true,
   });
 
-  useEffect(() => {
-    if (!isEnteringReason) return;
-    const id = window.setTimeout(() => denyReasonRef.current?.focus(), 0);
-    return () => window.clearTimeout(id);
-  }, [isEnteringReason]);
-
   return (
     <div className="relative mt-3">
-      <div className="overflow-hidden border">
+      <div className="overflow-hidden">
         {children}
 
-        <div className="border-t bg-background px-2 py-1.5 text-xs sm:text-sm">
+        <div className="bg-background px-2 py-1.5 text-xs sm:text-sm">
           <TooltipProvider>
             <div className="flex items-center justify-between gap-1.5 pl-4">
               <div className="flex items-center gap-1.5">
@@ -364,7 +355,6 @@ const PendingApprovalEntry = ({
                 onChange={setDenyReason}
                 onCancel={handleCancelDeny}
                 onSubmit={handleSubmitDeny}
-                inputRef={denyReasonRef}
                 projectId={projectId}
               />
             )}

@@ -73,6 +73,16 @@ async fn main() -> Result<(), VibeKanbanError> {
         }
     });
 
+    // Verify shared tasks in background
+    let deployment_for_verification = deployment.clone();
+    tokio::spawn(async move {
+        if let Some(publisher) = deployment_for_verification.container().share_publisher()
+            && let Err(e) = publisher.cleanup_shared_tasks().await
+        {
+            tracing::warn!("Failed to verify shared tasks: {}", e);
+        }
+    });
+
     let app_router = routes::router(deployment.clone());
 
     let port = std::env::var("BACKEND_PORT")

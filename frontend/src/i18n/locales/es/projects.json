@@ -46,5 +46,6 @@
   "unlinkFromOrganization": "Desvincular de Proyecto Remoto",
   "viewProject": "Ver Proyecto",
   "openInIDE": "Abrir en IDE",
-  "createdDate": "Creado {{date}}"
+  "createdDate": "Creado {{date}}",
+  "copyFilesPlaceholderWithSearch": "Escribe una ruta o patrón glob (.env, config/*.json)"
 }

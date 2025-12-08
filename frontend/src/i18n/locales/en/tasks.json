@@ -126,7 +126,9 @@
     "detailsTitle": "Process Details",
     "backToList": "Back to list",
     "loadingDetails": "Loading process details...",
-    "errorLoadingDetails": "Failed to load process details. Please try again."
+    "errorLoadingDetails": "Failed to load process details. Please try again.",
+    "copyLogs": "Copy logs",
+    "logsCopied": "Copied!"
   },
   "taskHeader": {
     "editTask": "Edit task",
@@ -148,7 +150,15 @@
     "unqueuing": "Unqueuing…",
     "edit": "Edit",
     "queuing": "Queuing…",
-    "queueForNextTurn": "Queue for next turn"
+    "queueForNextTurn": "Queue for next turn",
+    "queue": "Queue",
+    "cancelQueue": "Cancel Queue",
+    "queuedMessage": "Message queued - will execute when current run finishes",
+    "runSetupScript": "Run setup script",
+    "runCleanupScript": "Run cleanup script",
+    "noSetupScript": "No setup script configured for this project",
+    "noCleanupScript": "No cleanup script configured for this project",
+    "scriptsDisabledWhileRunning": "Cannot run scripts while a process is running"
   },
   "todos": {
     "title_one": "Todos ({{count}})",
@@ -388,6 +398,20 @@
       "previous": "Previous",
       "next": "Next",
       "finish": "Finish"
+    }
+  },
+  "githubComments": {
+    "dialog": {
+      "title": "Select GitHub Comments",
+      "noComments": "No comments found on this PR",
+      "selectAll": "Select All",
+      "deselectAll": "Deselect All",
+      "add": "Add",
+      "selectedCount": "{{selected}} of {{total}} selected"
+    },
+    "card": {
+      "review": "Review",
+      "tooltip": "Click to view on GitHub, double-click to edit"
     }
   },
   "taskFormDialog": {

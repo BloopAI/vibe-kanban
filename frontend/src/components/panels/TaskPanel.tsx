@@ -9,7 +9,7 @@ import { NewCardContent } from '../ui/new-card';
 import { Button } from '../ui/button';
 import { PlusIcon } from 'lucide-react';
 import { CreateAttemptDialog } from '@/components/dialogs/tasks/CreateAttemptDialog';
-import MarkdownRenderer from '@/components/ui/markdown-renderer';
+import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { DataTable, type ColumnDef } from '@/components/ui/table';
 
 interface TaskPanelProps {
@@ -102,9 +102,9 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
       <NewCardContent>
         <div className="p-6 flex flex-col h-full max-h-[calc(100vh-8rem)]">
           <div className="space-y-3 overflow-y-auto flex-shrink min-h-0">
-            <MarkdownRenderer content={titleContent} />
+            <WYSIWYGEditor value={titleContent} disabled />
             {descriptionContent && (
-              <MarkdownRenderer content={descriptionContent} />
+              <WYSIWYGEditor value={descriptionContent} disabled />
             )}
           </div>
 

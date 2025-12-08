@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{collections::HashMap, path::PathBuf};
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -52,6 +52,12 @@ pub struct CmdOverrides {
     )]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub additional_params: Option<Vec<String>>,
+    #[schemars(
+        title = "Environment Variables",
+        description = "Environment variables to set when running the executor"
+    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub env: Option<HashMap<String, String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]

@@ -1,7 +1,7 @@
 {
   "name": "vibe-kanban",
   "private": true,
-  "version": "0.0.123",
+  "version": "0.0.131",
   "type": "module",
   "scripts": {
     "dev": "VITE_OPEN=${VITE_OPEN:-false} vite",
@@ -44,6 +44,8 @@
     "@sentry/react": "^9.34.0",
     "@sentry/vite-plugin": "^3.5.0",
     "@tailwindcss/typography": "^0.5.16",
+    "@tanstack/electric-db-collection": "^0.2.6",
+    "@tanstack/react-db": "^0.1.50",
     "@tanstack/react-devtools": "^0.8.0",
     "@tanstack/react-form": "^1.23.8",
     "@tanstack/react-form-devtools": "^0.1.8",
@@ -62,7 +64,6 @@
     "lexical": "^0.36.2",
     "lodash": "^4.17.21",
     "lucide-react": "^0.539.0",
-    "markdown-to-jsx": "^7.7.13",
     "posthog-js": "^1.276.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -79,6 +80,7 @@
     "tailwind-merge": "^2.2.0",
     "tailwindcss-animate": "^1.0.7",
     "vibe-kanban-web-companion": "^0.0.4",
+    "wa-sqlite": "^1.0.0",
     "zod": "^4.1.12",
     "zustand": "^4.5.4"
   },

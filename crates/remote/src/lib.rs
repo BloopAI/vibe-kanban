@@ -1,4 +1,3 @@
-pub mod activity;
 mod app;
 mod auth;
 pub mod config;
@@ -6,7 +5,7 @@ pub mod db;
 pub mod mail;
 pub mod routes;
 mod state;
-pub mod ws;
+pub mod validated_where;
 
 use std::{env, sync::OnceLock};
 
@@ -20,7 +19,6 @@ use tracing_subscriber::{
     layer::{Layer as _, SubscriberExt},
     util::SubscriberInitExt,
 };
-pub use ws::message::{ClientMessage, ServerMessage};
 
 static INIT_GUARD: OnceLock<sentry::ClientInitGuard> = OnceLock::new();
 

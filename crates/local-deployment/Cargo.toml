@@ -1,6 +1,6 @@
 [package]
 name = "local-deployment"
-version = "0.0.123"
+version = "0.0.131"
 edition = "2024"
 
 [dependencies]
@@ -21,11 +21,12 @@ thiserror = { workspace = true }
 command-group = { version = "5.0", features = ["with-tokio"] }
 nix = { version = "0.29", features = ["signal", "process"] }
 openssl-sys = { workspace = true }
-notify = "8.2.0"
-notify-debouncer-full = "0.5.0"
 reqwest = { version = "0.12", features = ["json"] }
 sentry = { version = "0.41.0", features = ["anyhow", "backtrace", "panic", "debug-images"] }
 futures = "0.3"
-async-stream = "0.3"
 json-patch = "2.0"
 tokio = { workspace = true }
+globwalk = "0.9"
+
+[dev-dependencies]
+tempfile = "3.8"

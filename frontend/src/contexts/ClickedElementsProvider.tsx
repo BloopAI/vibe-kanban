@@ -4,6 +4,7 @@ import {
   useState,
   ReactNode,
   useEffect,
+  useCallback,
 } from 'react';
 import type {
   OpenInEditorPayload,
@@ -373,14 +374,14 @@ export function ClickedElementsProvider({
     );
   };
 
-  const generateMarkdown = () => {
+  const generateMarkdown = useCallback(() => {
     if (elements.length === 0) return '';
     const header = `## Clicked Elements (${elements.length})\n\n`;
     const body = elements
       .map((e) => formatClickedMarkdown(e, workspaceRoot || undefined))
       .join('\n\n');
     return header + body;
-  };
+  }, [elements, workspaceRoot]);
 
   return (
     <ClickedElementsContext.Provider

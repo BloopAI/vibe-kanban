@@ -16,6 +16,7 @@ use crate::{
     actions::ExecutorAction,
     approvals::ExecutorApprovalService,
     command::CommandBuildError,
+    env::ExecutionEnv,
     executors::{
         amp::Amp, claude::ClaudeCode, codex::Codex, copilot::Copilot, cursor::CursorAgent,
         droid::Droid, gemini::Gemini, opencode::Opencode, qwen::QwenCode,
@@ -192,12 +193,18 @@ impl AvailabilityInfo {
 pub trait StandardCodingAgentExecutor {
     fn use_approvals(&mut self, _approvals: Arc<dyn ExecutorApprovalService>) {}
 
-    async fn spawn(&self, current_dir: &Path, prompt: &str) -> Result<SpawnedChild, ExecutorError>;
+    async fn spawn(
+        &self,
+        current_dir: &Path,
+        prompt: &str,
+        env: &ExecutionEnv,
+    ) -> Result<SpawnedChild, ExecutorError>;
     async fn spawn_follow_up(
         &self,
         current_dir: &Path,
         prompt: &str,
         session_id: &str,
+        env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError>;
     fn normalize_logs(&self, _raw_logs_event_store: Arc<MsgStore>, _worktree_path: &Path);
 
@@ -236,10 +243,17 @@ pub enum ExecutorExitResult {
 /// and mark it according to the result.
 pub type ExecutorExitSignal = tokio::sync::oneshot::Receiver<ExecutorExitResult>;
 
+/// Sender for requesting graceful interrupt of an executor.
+/// When sent, the executor should attempt to interrupt gracefully before being killed.
+pub type InterruptSender = tokio::sync::oneshot::Sender<()>;
+
 #[derive(Debug)]
 pub struct SpawnedChild {
     pub child: AsyncGroupChild,
+    /// Executor → Container: signals when executor wants to exit
     pub exit_signal: Option<ExecutorExitSignal>,
+    /// Container → Executor: signals when container wants to interrupt
+    pub interrupt_sender: Option<InterruptSender>,
 }
 
 impl From<AsyncGroupChild> for SpawnedChild {
@@ -247,6 +261,7 @@ impl From<AsyncGroupChild> for SpawnedChild {
         Self {
             child,
             exit_signal: None,
+            interrupt_sender: None,
         }
     }
 }

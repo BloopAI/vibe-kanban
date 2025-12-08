@@ -236,7 +236,6 @@ impl<'a> OrganizationRepository<'a> {
             r#"
             WITH s AS (
                 SELECT
-                    COUNT(*) FILTER (WHERE role = 'admin') AS admin_count,
                     BOOL_OR(user_id = $2 AND role = 'admin') AS is_admin
                 FROM organization_member_metadata
                 WHERE organization_id = $1
@@ -245,7 +244,6 @@ impl<'a> OrganizationRepository<'a> {
             USING s
             WHERE o.id = $1
               AND s.is_admin = true
-              AND s.admin_count > 1
             RETURNING o.id
             "#,
             org_id,
@@ -255,17 +253,7 @@ impl<'a> OrganizationRepository<'a> {
         .await?;
 
         if result.is_none() {
-            let role = self.check_user_role(org_id, user_id).await?;
-            match role {
-                None | Some(MemberRole::Member) => {
-                    return Err(IdentityError::PermissionDenied);
-                }
-                Some(MemberRole::Admin) => {
-                    return Err(IdentityError::CannotDeleteOrganization(
-                        "Cannot delete organization: you are the only admin".to_string(),
-                    ));
-                }
-            }
+            return Err(IdentityError::PermissionDenied);
         }
 
         Ok(())

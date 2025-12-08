@@ -1,13 +1,14 @@
 use std::{net::SocketAddr, sync::Arc};
 
 use anyhow::{Context, bail};
+use secrecy::ExposeSecret;
 use tracing::instrument;
 
 use crate::{
     AppState,
-    activity::ActivityBroker,
     auth::{
-        GitHubOAuthProvider, GoogleOAuthProvider, JwtService, OAuthHandoffService, ProviderRegistry,
+        GitHubOAuthProvider, GoogleOAuthProvider, JwtService, OAuthHandoffService,
+        OAuthTokenValidator, ProviderRegistry,
     },
     config::RemoteServerConfig,
     db,
@@ -21,7 +22,7 @@ impl Server {
     #[instrument(
         name = "remote_server",
         skip(config),
-        fields(listen_addr = %config.listen_addr, activity_channel = %config.activity_channel)
+        fields(listen_addr = %config.listen_addr)
     )]
     pub async fn run(config: RemoteServerConfig) -> anyhow::Result<()> {
         let pool = db::create_pool(&config.database_url)
@@ -32,12 +33,12 @@ impl Server {
             .await
             .context("failed to run database migrations")?;
 
-        db::maintenance::spawn_activity_partition_maintenance(pool.clone());
+        if let Some(password) = config.electric_role_password.as_ref() {
+            db::ensure_electric_role_password(&pool, password.expose_secret())
+                .await
+                .context("failed to set electric role password")?;
+        }
 
-        let broker = ActivityBroker::new(
-            config.activity_broadcast_shards,
-            config.activity_broadcast_capacity,
-        );
         let auth_config = config.auth.clone();
         let jwt = Arc::new(JwtService::new(auth_config.jwt_secret().clone()));
 
@@ -70,6 +71,9 @@ impl Server {
             auth_config.public_base_url().to_string(),
         ));
 
+        let oauth_token_validator =
+            Arc::new(OAuthTokenValidator::new(pool.clone(), registry.clone()));
+
         let api_key = std::env::var("LOOPS_EMAIL_API_KEY")
             .context("LOOPS_EMAIL_API_KEY environment variable is required")?;
         let mailer = Arc::new(LoopsMailer::new(api_key));
@@ -80,19 +84,17 @@ impl Server {
             )
         })?;
 
+        let http_client = reqwest::Client::new();
         let state = AppState::new(
             pool.clone(),
-            broker.clone(),
             config.clone(),
             jwt,
             handoff_service,
+            oauth_token_validator,
             mailer,
             server_public_base_url,
+            http_client,
         );
-
-        let listener =
-            db::ActivityListener::new(pool.clone(), broker, config.activity_channel.clone());
-        tokio::spawn(listener.run());
 
         let router = routes::router(state);
         let addr: SocketAddr = config

@@ -46,7 +46,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: nightly-2025-05-18
+          toolchain: nightly-2025-12-04
           components: rustfmt, clippy
 
       - name: Cache Rust dependencies
@@ -60,12 +60,19 @@ jobs:
           shared-key: "shared"
           cache-all-crates: true
 
+      - name: Install sqlx-cli
+        run: cargo install sqlx-cli --no-default-features --features sqlite,postgres
+
       - name: Build frontend
         run: cd frontend && npm run build
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
 
       - name: Checks
         run: |
           cargo fmt --all -- --check
           npm run generate-types:check
+          npm run prepare-db:check
+          npm run remote:prepare-db:check
           cargo test --workspace
           cargo clippy --all --all-targets -- -D warnings  

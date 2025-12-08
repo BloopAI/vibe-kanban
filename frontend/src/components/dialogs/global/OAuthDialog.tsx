@@ -107,7 +107,7 @@ const OAuthDialogImpl = NiceModal.create<NoProps>(() => {
       setState({ type: 'success', profile: statusData.profile });
       setTimeout(() => {
         modal.resolve(statusData.profile);
-        modal.hide();
+        modal.remove();
       }, 1500);
     }
   }, [statusData, isPolling, modal, reloadSystem]);
@@ -129,7 +129,7 @@ const OAuthDialogImpl = NiceModal.create<NoProps>(() => {
     }
     setState({ type: 'select' });
     modal.resolve(null);
-    modal.hide();
+    modal.remove();
   };
 
   const handleBack = () => {

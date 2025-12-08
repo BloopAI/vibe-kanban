@@ -24,11 +24,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { FileSearchTextarea } from '@/components/ui/file-search-textarea';
-import {
-  ImageUploadSection,
-  type ImageUploadSectionHandle,
-} from '@/components/ui/image-upload-section';
+import WYSIWYGEditor from '@/components/ui/wysiwyg';
+import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
 import BranchSelector from '@/components/tasks/BranchSelector';
 import { ExecutorProfileSelector } from '@/components/settings';
 import { useUserSystem } from '@/components/ConfigProvider';
@@ -90,7 +87,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const { createTask, createAndStart, updateTask } =
     useTaskMutations(projectId);
   const { system, profiles, loading: userSystemLoading } = useUserSystem();
-  const { upload, deleteImage } = useImageUpload();
+  const { upload, uploadForTask } = useImageUpload();
   const { enableScope, disableScope } = useHotkeysContext();
 
   // Local UI state
@@ -99,8 +96,6 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
     []
   );
   const [showDiscardWarning, setShowDiscardWarning] = useState(false);
-  const imageUploadRef = useRef<ImageUploadSectionHandle>(null);
-  const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
   const forceCreateOnlyRef = useRef(false);
 
   const { data: branches, isLoading: branchesLoading } =
@@ -239,13 +234,30 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
     setImages(taskImages);
   }, [taskImages]);
 
-  const onDrop = useCallback((files: File[]) => {
-    if (imageUploadRef.current) {
-      imageUploadRef.current.addFiles(files);
-    } else {
-      setPendingFiles(files);
-    }
-  }, []);
+  const onDrop = useCallback(
+    async (files: File[]) => {
+      for (const file of files) {
+        try {
+          // In edit mode, use uploadForTask to associate immediately
+          // In create mode, use plain upload (will associate on task creation)
+          const img = editMode
+            ? await uploadForTask(props.task.id, file)
+            : await upload(file);
+
+          // Add markdown image reference to description
+          const markdownText = `![${img.original_name}](${img.file_path})`;
+          form.setFieldValue('description', (prev) =>
+            prev.trim() === '' ? markdownText : `${prev} ${markdownText}`
+          );
+          setImages((prev) => [...prev, img]);
+          setNewlyUploadedImageIds((prev) => [...prev, img.id]);
+        } catch {
+          // Silently ignore upload errors for now
+        }
+      }
+    },
+    [editMode, props, upload, uploadForTask, form]
+  );
 
   const {
     getRootProps,
@@ -260,25 +272,17 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
     noKeyboard: true,
   });
 
-  // Apply pending files when ImageUploadSection becomes available
-  useEffect(() => {
-    if (pendingFiles && imageUploadRef.current) {
-      imageUploadRef.current.addFiles(pendingFiles);
-      setPendingFiles(null);
-    }
-  }, [pendingFiles]);
-
-  // Image upload callback
-  const handleImageUploaded = useCallback(
-    (img: ImageResponse) => {
-      const markdownText = `![${img.original_name}](${img.file_path})`;
-      form.setFieldValue('description', (prev) =>
-        prev.trim() === '' ? markdownText : `${prev} ${markdownText}`
-      );
-      setImages((prev) => [...prev, img]);
-      setNewlyUploadedImageIds((prev) => [...prev, img.id]);
-    },
-    [form]
+  // Compute localImages for WYSIWYG rendering of uploaded images
+  const localImages: LocalImageMetadata[] = useMemo(
+    () =>
+      images.map((img) => ({
+        path: img.file_path,
+        proxy_url: `/api/images/${img.id}/file`,
+        file_name: img.original_name,
+        size_bytes: Number(img.size_bytes),
+        format: img.mime_type?.split('/')[1] ?? 'png',
+      })),
+    [images]
   );
 
   // Unsaved changes detection
@@ -415,7 +419,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
                   placeholder={t('taskFormDialog.titlePlaceholder')}
-                  className="text-lg font-medium border-none shadow-none px-0 placeholder:text-muted-foreground/60 focus-visible:ring-0"
+                  className="text-lg font-semibold border-none shadow-none px-0 placeholder:text-muted-foreground/60 focus-visible:ring-0"
                   disabled={isSubmitting}
                   autoFocus
                 />
@@ -428,35 +432,22 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
             <div>
               <form.Field name="description">
                 {(field) => (
-                  <FileSearchTextarea
+                  <WYSIWYGEditor
+                    placeholder={t('taskFormDialog.descriptionPlaceholder')}
                     value={field.state.value}
                     onChange={(desc) => field.handleChange(desc)}
-                    rows={20}
-                    maxRows={35}
-                    placeholder={t('taskFormDialog.descriptionPlaceholder')}
-                    className="border-none shadow-none px-0 resize-none placeholder:text-muted-foreground/60 focus-visible:ring-0 text-md font-normal"
                     disabled={isSubmitting}
                     projectId={projectId}
                     onPasteFiles={onDrop}
-                    disableScroll={true}
+                    className="border-none shadow-none px-0 text-md font-normal"
+                    onCmdEnter={primaryAction}
+                    onShiftCmdEnter={handleSubmitCreateOnly}
+                    taskId={editMode ? props.task.id : undefined}
+                    localImages={localImages}
                   />
                 )}
               </form.Field>
             </div>
-
-            {/* Images */}
-            <ImageUploadSection
-              ref={imageUploadRef}
-              images={images}
-              onImagesChange={setImages}
-              onUpload={upload}
-              onDelete={deleteImage}
-              onImageUploaded={handleImageUploaded}
-              disabled={isSubmitting}
-              collapsible={false}
-              defaultExpanded={true}
-              hideDropZone={true}
-            />
 
             {/* Edit mode status */}
             {editMode && (

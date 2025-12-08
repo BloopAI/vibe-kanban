@@ -1,20 +1,18 @@
 use std::sync::Arc;
 
+use futures::FutureExt;
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     process::{ChildStdin, ChildStdout},
-    sync::Mutex,
+    sync::{Mutex, oneshot},
 };
 
-use super::types::{
-    CLIMessage, ControlRequestType, ControlResponseMessage, ControlResponseType,
-    SDKControlRequestMessage,
-};
+use super::types::{CLIMessage, ControlRequestType, ControlResponseMessage, ControlResponseType};
 use crate::executors::{
     ExecutorError,
     claude::{
         client::ClaudeAgentClient,
-        types::{PermissionMode, SDKControlRequestType},
+        types::{Message, PermissionMode, SDKControlRequest, SDKControlRequestType},
     },
 };
 
@@ -25,14 +23,19 @@ pub struct ProtocolPeer {
 }
 
 impl ProtocolPeer {
-    pub fn spawn(stdin: ChildStdin, stdout: ChildStdout, client: Arc<ClaudeAgentClient>) -> Self {
+    pub fn spawn(
+        stdin: ChildStdin,
+        stdout: ChildStdout,
+        client: Arc<ClaudeAgentClient>,
+        interrupt_rx: oneshot::Receiver<()>,
+    ) -> Self {
         let peer = Self {
             stdin: Arc::new(Mutex::new(stdin)),
         };
 
         let reader_peer = peer.clone();
         tokio::spawn(async move {
-            if let Err(e) = reader_peer.read_loop(stdout, client).await {
+            if let Err(e) = reader_peer.read_loop(stdout, client, interrupt_rx).await {
                 tracing::error!("Protocol reader loop error: {}", e);
             }
         });
@@ -44,41 +47,53 @@ impl ProtocolPeer {
         &self,
         stdout: ChildStdout,
         client: Arc<ClaudeAgentClient>,
+        interrupt_rx: oneshot::Receiver<()>,
     ) -> Result<(), ExecutorError> {
         let mut reader = BufReader::new(stdout);
         let mut buffer = String::new();
+        // Fuse the receiver so it returns Pending forever after completing
+        let mut interrupt_rx = interrupt_rx.fuse();
 
         loop {
             buffer.clear();
-            match reader.read_line(&mut buffer).await {
-                Ok(0) => break, // EOF
-                Ok(_) => {
-                    let line = buffer.trim();
-                    if line.is_empty() {
-                        continue;
-                    }
-                    // Parse message using typed enum
-                    match serde_json::from_str::<CLIMessage>(line) {
-                        Ok(CLIMessage::ControlRequest {
-                            request_id,
-                            request,
-                        }) => {
-                            self.handle_control_request(&client, request_id, request)
-                                .await;
+            tokio::select! {
+                line_result = reader.read_line(&mut buffer) => {
+                    match line_result {
+                        Ok(0) => break, // EOF
+                        Ok(_) => {
+                            let line = buffer.trim();
+                            if line.is_empty() {
+                                continue;
+                            }
+                            // Parse message using typed enum
+                            match serde_json::from_str::<CLIMessage>(line) {
+                                Ok(CLIMessage::ControlRequest {
+                                    request_id,
+                                    request,
+                                }) => {
+                                    self.handle_control_request(&client, request_id, request)
+                                        .await;
+                                }
+                                Ok(CLIMessage::ControlResponse { .. }) => {}
+                                Ok(CLIMessage::Result(_)) => {
+                                    client.on_non_control(line).await?;
+                                    break;
+                                }
+                                _ => {
+                                    client.on_non_control(line).await?;
+                                }
+                            }
                         }
-                        Ok(CLIMessage::ControlResponse { .. }) => {}
-                        Ok(CLIMessage::Result(_)) => {
-                            client.on_non_control(line).await?;
+                        Err(e) => {
+                            tracing::error!("Error reading stdout: {}", e);
                             break;
-                        }
-                        _ => {
-                            client.on_non_control(line).await?;
                         }
                     }
                 }
-                Err(e) => {
-                    tracing::error!("Error reading stdout: {}", e);
-                    break;
+                _ = &mut interrupt_rx => {
+                    if let Err(e) = self.interrupt().await {
+                        tracing::debug!("Failed to send interrupt to Claude: {e}");
+                    }
                 }
             }
         }
@@ -96,9 +111,10 @@ impl ProtocolPeer {
                 tool_name,
                 input,
                 permission_suggestions,
+                tool_use_id,
             } => {
                 match client
-                    .on_can_use_tool(tool_name, input, permission_suggestions)
+                    .on_can_use_tool(tool_name, input, permission_suggestions, tool_use_id)
                     .await
                 {
                     Ok(result) => {
@@ -163,7 +179,6 @@ impl ProtocolPeer {
         .await
     }
 
-    /// Send JSON message to stdin
     async fn send_json<T: serde::Serialize>(&self, message: &T) -> Result<(), ExecutorError> {
         let json = serde_json::to_string(message)?;
         let mut stdin = self.stdin.lock().await;
@@ -174,25 +189,23 @@ impl ProtocolPeer {
     }
 
     pub async fn send_user_message(&self, content: String) -> Result<(), ExecutorError> {
-        let message = serde_json::json!({
-            "type": "user",
-            "message": {
-                "role": "user",
-                "content": content
-            }
-        });
+        let message = Message::new_user(content);
         self.send_json(&message).await
     }
 
     pub async fn initialize(&self, hooks: Option<serde_json::Value>) -> Result<(), ExecutorError> {
-        self.send_json(&SDKControlRequestMessage::new(
-            SDKControlRequestType::Initialize { hooks },
-        ))
+        self.send_json(&SDKControlRequest::new(SDKControlRequestType::Initialize {
+            hooks,
+        }))
         .await
+    }
+    pub async fn interrupt(&self) -> Result<(), ExecutorError> {
+        self.send_json(&SDKControlRequest::new(SDKControlRequestType::Interrupt {}))
+            .await
     }
 
     pub async fn set_permission_mode(&self, mode: PermissionMode) -> Result<(), ExecutorError> {
-        self.send_json(&SDKControlRequestMessage::new(
+        self.send_json(&SDKControlRequest::new(
             SDKControlRequestType::SetPermissionMode { mode },
         ))
         .await

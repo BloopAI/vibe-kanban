@@ -5,7 +5,6 @@ import {
   ApiResponse,
   BranchStatus,
   Config,
-  CommitInfo,
   CreateFollowUpAttempt,
   EditorType,
   CreateGitHubPrRequest,
@@ -27,18 +26,14 @@ import {
   Tag,
   TagSearchParams,
   TaskWithAttemptStatus,
-  AssignSharedTaskResponse,
   UpdateProject,
   UpdateTask,
   UpdateTag,
   UserSystemInfo,
-  UpdateRetryFollowUpDraftRequest,
   McpServerQuery,
   UpdateMcpServersBody,
   GetMcpServerResponse,
   ImageResponse,
-  DraftResponse,
-  UpdateFollowUpDraftRequest,
   GitOperationError,
   ApprovalResponse,
   RebaseTaskAttemptRequest,
@@ -52,6 +47,7 @@ import {
   RunAgentSetupRequest,
   RunAgentSetupResponse,
   GhCliSetupError,
+  RunScriptError,
   StatusResponse,
   ListOrganizationsResponse,
   OrganizationMemberWithProfile,
@@ -73,16 +69,20 @@ import {
   OpenEditorResponse,
   OpenEditorRequest,
   CreatePrError,
+  Scratch,
+  ScratchType,
+  CreateScratch,
+  UpdateScratch,
   PushError,
+  TokenResponse,
+  CurrentUserResponse,
+  SharedTaskResponse,
+  SharedTaskDetails,
+  QueueStatus,
+  PrCommentsResponse,
 } from 'shared/types';
 
-// Re-export types for convenience
-export type {
-  UpdateFollowUpDraftRequest,
-  UpdateRetryFollowUpDraftRequest,
-} from 'shared/types';
-
-class ApiError<E = unknown> extends Error {
+export class ApiError<E = unknown> extends Error {
   public status?: number;
   public error_data?: E;
 
@@ -154,7 +154,9 @@ const handleApiResponseAsResult = async <T, E>(
   return { success: true, data: result.data as T };
 };
 
-const handleApiResponse = async <T, E = T>(response: Response): Promise<T> => {
+export const handleApiResponse = async <T, E = T>(
+  response: Response
+): Promise<T> => {
   if (!response.ok) {
     let errorMessage = `Request failed with status ${response.status}`;
 
@@ -377,11 +379,10 @@ export const tasksApi = {
 
   reassign: async (
     sharedTaskId: string,
-    data: { new_assignee_user_id: string | null; version?: number | null }
-  ): Promise<AssignSharedTaskResponse> => {
+    data: { new_assignee_user_id: string | null }
+  ): Promise<SharedTaskResponse> => {
     const payload = {
       new_assignee_user_id: data.new_assignee_user_id,
-      version: data.version ?? null,
     };
 
     const response = await makeRequest(
@@ -392,7 +393,7 @@ export const tasksApi = {
       }
     );
 
-    return handleApiResponse<AssignSharedTaskResponse>(response);
+    return handleApiResponse<SharedTaskResponse>(response);
   },
 
   unshare: async (sharedTaskId: string): Promise<void> => {
@@ -400,6 +401,14 @@ export const tasksApi = {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
+  },
+
+  linkToLocal: async (data: SharedTaskDetails): Promise<Task | null> => {
+    const response = await makeRequest(`/api/shared-tasks/link-to-local`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<Task | null>(response);
   },
 };
 
@@ -463,63 +472,6 @@ export const attemptsApi = {
       }
     );
     return handleApiResponse<RunAgentSetupResponse>(response);
-  },
-
-  getDraft: async (
-    attemptId: string,
-    type: 'follow_up' | 'retry'
-  ): Promise<DraftResponse> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/draft?type=${encodeURIComponent(type)}`
-    );
-    return handleApiResponse<DraftResponse>(response);
-  },
-
-  saveDraft: async (
-    attemptId: string,
-    type: 'follow_up' | 'retry',
-    data: UpdateFollowUpDraftRequest | UpdateRetryFollowUpDraftRequest
-  ): Promise<DraftResponse> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/draft?type=${encodeURIComponent(type)}`,
-      {
-        method: 'PUT',
-        body: JSON.stringify(data),
-      }
-    );
-    return handleApiResponse<DraftResponse>(response);
-  },
-
-  deleteDraft: async (
-    attemptId: string,
-    type: 'follow_up' | 'retry'
-  ): Promise<void> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/draft?type=${encodeURIComponent(type)}`,
-      { method: 'DELETE' }
-    );
-    return handleApiResponse<void>(response);
-  },
-
-  setDraftQueue: async (
-    attemptId: string,
-    queued: boolean,
-    expectedQueued?: boolean,
-    expectedVersion?: number,
-    type: 'follow_up' | 'retry' = 'follow_up'
-  ): Promise<DraftResponse> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/draft/queue?type=${encodeURIComponent(type)}`,
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          queued,
-          expected_queued: expectedQueued,
-          expected_version: expectedVersion,
-        }),
-      }
-    );
-    return handleApiResponse<DraftResponse>(response);
   },
 
   openEditor: async (
@@ -655,18 +607,45 @@ export const attemptsApi = {
     );
     return handleApiResponse<ExecutionProcess, GhCliSetupError>(response);
   },
+
+  runSetupScript: async (
+    attemptId: string
+  ): Promise<Result<ExecutionProcess, RunScriptError>> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/run-setup-script`,
+      {
+        method: 'POST',
+      }
+    );
+    return handleApiResponseAsResult<ExecutionProcess, RunScriptError>(
+      response
+    );
+  },
+
+  runCleanupScript: async (
+    attemptId: string
+  ): Promise<Result<ExecutionProcess, RunScriptError>> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/run-cleanup-script`,
+      {
+        method: 'POST',
+      }
+    );
+    return handleApiResponseAsResult<ExecutionProcess, RunScriptError>(
+      response
+    );
+  },
+
+  getPrComments: async (attemptId: string): Promise<PrCommentsResponse> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/pr/comments`
+    );
+    return handleApiResponse<PrCommentsResponse>(response);
+  },
 };
 
 // Extra helpers
 export const commitsApi = {
-  getInfo: async (attemptId: string, sha: string): Promise<CommitInfo> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/commit-info?sha=${encodeURIComponent(
-        sha
-      )}`
-    );
-    return handleApiResponse<CommitInfo>(response);
-  },
   compareToHead: async (
     attemptId: string,
     sha: string
@@ -720,7 +699,7 @@ export const fileSystemApi = {
 // Config APIs (backwards compatible)
 export const configApi = {
   getConfig: async (): Promise<UserSystemInfo> => {
-    const response = await makeRequest('/api/info');
+    const response = await makeRequest('/api/info', { cache: 'no-store' });
     return handleApiResponse<UserSystemInfo>(response);
   },
   saveConfig: async (config: Config): Promise<Config> => {
@@ -880,6 +859,38 @@ export const imagesApi = {
     return handleApiResponse<ImageResponse>(response);
   },
 
+  /**
+   * Upload an image for a task attempt and immediately copy it to the container.
+   * Returns the image with a file_path that can be used in markdown.
+   */
+  uploadForAttempt: async (
+    attemptId: string,
+    file: File
+  ): Promise<ImageResponse> => {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const response = await fetch(
+      `/api/task-attempts/${attemptId}/images/upload`,
+      {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new ApiError(
+        `Failed to upload image: ${errorText}`,
+        response.status,
+        response
+      );
+    }
+
+    return handleApiResponse<ImageResponse>(response);
+  },
+
   delete: async (imageId: string): Promise<void> => {
     const response = await makeRequest(`/api/images/${imageId}`, {
       method: 'DELETE',
@@ -931,7 +942,9 @@ export const oauthApi = {
   },
 
   status: async (): Promise<StatusResponse> => {
-    const response = await makeRequest('/api/auth/status');
+    const response = await makeRequest('/api/auth/status', {
+      cache: 'no-store',
+    });
     return handleApiResponse<StatusResponse>(response);
   },
 
@@ -946,6 +959,19 @@ export const oauthApi = {
         response
       );
     }
+  },
+
+  /** Returns the current access token for the remote server (auto-refreshes if needed) */
+  getToken: async (): Promise<TokenResponse | null> => {
+    const response = await makeRequest('/api/auth/token');
+    if (!response.ok) return null;
+    return handleApiResponse<TokenResponse>(response);
+  },
+
+  /** Returns the user ID of the currently authenticated user */
+  getCurrentUser: async (): Promise<CurrentUserResponse> => {
+    const response = await makeRequest('/api/auth/user');
+    return handleApiResponse<CurrentUserResponse>(response);
   },
 };
 
@@ -1050,5 +1076,88 @@ export const organizationsApi = {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
+  },
+};
+
+// Scratch API
+export const scratchApi = {
+  create: async (
+    scratchType: ScratchType,
+    id: string,
+    data: CreateScratch
+  ): Promise<Scratch> => {
+    const response = await makeRequest(`/api/scratch/${scratchType}/${id}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<Scratch>(response);
+  },
+
+  get: async (scratchType: ScratchType, id: string): Promise<Scratch> => {
+    const response = await makeRequest(`/api/scratch/${scratchType}/${id}`);
+    return handleApiResponse<Scratch>(response);
+  },
+
+  update: async (
+    scratchType: ScratchType,
+    id: string,
+    data: UpdateScratch
+  ): Promise<void> => {
+    const response = await makeRequest(`/api/scratch/${scratchType}/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  delete: async (scratchType: ScratchType, id: string): Promise<void> => {
+    const response = await makeRequest(`/api/scratch/${scratchType}/${id}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  getStreamUrl: (scratchType: ScratchType, id: string): string =>
+    `/api/scratch/${scratchType}/${id}/stream/ws`,
+};
+
+// Queue API for task attempt follow-up messages
+export const queueApi = {
+  /**
+   * Queue a follow-up message to be executed when current execution finishes
+   */
+  queue: async (
+    attemptId: string,
+    data: { message: string; variant: string | null }
+  ): Promise<QueueStatus> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/queue`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse<QueueStatus>(response);
+  },
+
+  /**
+   * Cancel a queued follow-up message
+   */
+  cancel: async (attemptId: string): Promise<QueueStatus> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/queue`,
+      {
+        method: 'DELETE',
+      }
+    );
+    return handleApiResponse<QueueStatus>(response);
+  },
+
+  /**
+   * Get the current queue status for a task attempt
+   */
+  getStatus: async (attemptId: string): Promise<QueueStatus> => {
+    const response = await makeRequest(`/api/task-attempts/${attemptId}/queue`);
+    return handleApiResponse<QueueStatus>(response);
   },
 };
