@@ -9,8 +9,9 @@ use axum::{
     response::{IntoResponse, Json as ResponseJson},
     routing::{get, post},
 };
-use db::models::execution_process::{
-    ExecutionProcess, ExecutionProcessError, ExecutionProcessStatus,
+use db::models::{
+    execution_process::{ExecutionProcess, ExecutionProcessError, ExecutionProcessStatus},
+    execution_process_repo_state::ExecutionProcessRepoState,
 };
 use deployment::Deployment;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
@@ -232,10 +233,21 @@ async fn handle_execution_processes_ws(
     Ok(())
 }
 
+pub async fn get_execution_process_repo_states(
+    Extension(execution_process): Extension<ExecutionProcess>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<ExecutionProcessRepoState>>>, ApiError> {
+    let pool = &deployment.db().pool;
+    let repo_states =
+        ExecutionProcessRepoState::find_by_execution_process_id(pool, execution_process.id).await?;
+    Ok(ResponseJson(ApiResponse::success(repo_states)))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_attempt_id_router = Router::new()
         .route("/", get(get_execution_process_by_id))
         .route("/stop", post(stop_execution_process))
+        .route("/repo-states", get(get_execution_process_repo_states))
         .route("/raw-logs/ws", get(stream_raw_logs_ws))
         .route("/normalized-logs/ws", get(stream_normalized_logs_ws))
         .layer(from_fn_with_state(

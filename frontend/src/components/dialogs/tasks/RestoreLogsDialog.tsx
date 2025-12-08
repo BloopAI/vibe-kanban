@@ -60,20 +60,18 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
     const [commitsToReset, setCommitsToReset] = useState<number | null>(null);
     const [isLinear, setIsLinear] = useState<boolean | null>(null);
 
-    // Fetch execution process and commit info
+    // Fetch execution process repo states and commit info
     useEffect(() => {
       let cancelled = false;
       setIsLoading(true);
 
       (async () => {
         try {
-          const proc =
-            await executionProcessesApi.getDetails(executionProcessId);
-          // TODO: before_head_commit is now stored in execution_process_repo_states table
-          // Need to update API to return this field or fetch it separately
-          const sha =
-            (proc as { before_head_commit?: string }).before_head_commit ||
-            null;
+          // Fetch repo states for the execution process (supports multi-repo)
+          const repoStates =
+            await executionProcessesApi.getRepoStates(executionProcessId);
+          // Use first repo's before_head_commit for display (like merge does)
+          const sha = repoStates[0]?.before_head_commit || null;
           if (cancelled) return;
           setTargetSha(sha);
 

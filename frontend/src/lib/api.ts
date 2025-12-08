@@ -3,6 +3,7 @@
 import {
   ApprovalStatus,
   ApiResponse,
+  BranchStatus,
   Config,
   CreateFollowUpAttempt,
   EditorType,
@@ -14,6 +15,7 @@ import {
   DirectoryListResponse,
   DirectoryEntry,
   ExecutionProcess,
+  ExecutionProcessRepoState,
   GitBranch,
   Project,
   Repo,
@@ -528,11 +530,11 @@ export const attemptsApi = {
     return handleApiResponse<OpenEditorResponse>(response);
   },
 
-  getBranchStatus: async (attemptId: string): Promise<RepoBranchStatus[]> => {
+  getBranchStatus: async (attemptId: string): Promise<BranchStatus[]> => {
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/branch-status`
     );
-    return handleApiResponse<RepoBranchStatus[]>(response);
+    return handleApiResponse<BranchStatus[]>(response);
   },
 
   getRepos: async (attemptId: string): Promise<Repo[]> => {
@@ -717,6 +719,15 @@ export const executionProcessesApi = {
   getDetails: async (processId: string): Promise<ExecutionProcess> => {
     const response = await makeRequest(`/api/execution-processes/${processId}`);
     return handleApiResponse<ExecutionProcess>(response);
+  },
+
+  getRepoStates: async (
+    processId: string
+  ): Promise<ExecutionProcessRepoState[]> => {
+    const response = await makeRequest(
+      `/api/execution-processes/${processId}/repo-states`
+    );
+    return handleApiResponse<ExecutionProcessRepoState[]>(response);
   },
 
   stopExecutionProcess: async (processId: string): Promise<void> => {
