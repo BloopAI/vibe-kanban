@@ -105,7 +105,7 @@ const GitHubCommentsDialogImpl = NiceModal.create<GitHubCommentsDialogProps>(
             </DialogTitle>
           </DialogHeader>
 
-          <div className="p-4 overflow-auto flex-1">
+          <div className="p-4 overflow-auto flex-1 min-w-0">
             {errorMessage ? (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
@@ -142,7 +142,7 @@ const GitHubCommentsDialogImpl = NiceModal.create<GitHubCommentsDialogProps>(
                   {comments.map((comment) => {
                     const id = getCommentId(comment);
                     return (
-                      <div key={id} className="flex items-start gap-3">
+                      <div key={id} className="flex items-start gap-3 min-w-0">
                         <Checkbox
                           checked={selectedIds.has(id)}
                           onCheckedChange={() => toggleSelection(id)}
@@ -172,7 +172,7 @@ const GitHubCommentsDialogImpl = NiceModal.create<GitHubCommentsDialogProps>(
                           }
                           variant="full"
                           onClick={() => toggleSelection(id)}
-                          className="block w-full max-w-none flex-1"
+                          className="flex-1 min-w-0"
                         />
                       </div>
                     );

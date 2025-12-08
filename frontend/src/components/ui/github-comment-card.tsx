@@ -117,10 +117,18 @@ function FullCard({
   const isReview = commentType === 'review';
   const Icon = isReview ? Code : MessageSquare;
 
+  // Default to inline-block with max-w-md for standalone use (e.g., WYSIWYG)
+  // Can be overridden via className for flex container use (e.g., dialog)
+  const hasCustomLayout =
+    className?.includes('flex-') ||
+    className?.includes('block') ||
+    className?.includes('w-');
+
   return (
     <div
       className={cn(
-        'inline-block align-bottom p-3 bg-muted/50 rounded-md border border-border cursor-pointer hover:border-muted-foreground transition-colors max-w-md',
+        'p-3 bg-muted/50 rounded-md border border-border cursor-pointer hover:border-muted-foreground transition-colors',
+        !hasCustomLayout && 'inline-block align-bottom max-w-md',
         className
       )}
       onClick={onClick}
