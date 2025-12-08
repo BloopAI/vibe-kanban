@@ -46,9 +46,8 @@ function RemoteProjectCard({ project, isFocused }: Props) {
 
   const handleClick = () => {
     // Navigate to unified project tasks page
-    // Uses project_id (Hive project ID) as the route parameter
-    // The unified ProjectTasks page handles both local and remote projects
-    navigate(`/projects/${project.project_id}/tasks`);
+    // Uses local id (not remote project_id) for API compatibility
+    navigate(`/projects/${project.id}/tasks`);
   };
 
   return (

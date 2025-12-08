@@ -52,10 +52,11 @@ export function ProjectSwitcher({ className }: ProjectSwitcherProps) {
     });
 
     // Add remote projects (grouped by node in the response)
+    // Use local id (not remote project_id) for API compatibility
     unifiedData.remote_by_node.forEach((nodeGroup) => {
       nodeGroup.projects.forEach((p) => {
         items.push({
-          id: p.project_id,
+          id: p.id,
           name: p.project_name,
           type: 'remote',
           nodeName: nodeGroup.node_name,
