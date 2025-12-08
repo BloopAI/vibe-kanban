@@ -87,9 +87,13 @@ const GitHubCommentsDialogImpl = NiceModal.create<GitHubCommentsDialogProps>(
     const errorMessage = isError ? getErrorMessage(error) : null;
 
     return (
-      <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
+      <Dialog
+        open={modal.visible}
+        onOpenChange={handleOpenChange}
+        className="max-w-2xl p-0 max-h-[80vh] overflow-hidden"
+      >
         <DialogContent
-          className="max-w-2xl p-0 flex flex-col max-h-[80vh]"
+          className="flex flex-col h-full"
           onKeyDownCapture={(e) => {
             if (e.key === 'Escape') {
               e.stopPropagation();

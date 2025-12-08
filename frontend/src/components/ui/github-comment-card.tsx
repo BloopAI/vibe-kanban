@@ -127,7 +127,7 @@ function FullCard({
   return (
     <div
       className={cn(
-        'p-3 bg-muted/50 rounded-md border border-border cursor-pointer hover:border-muted-foreground transition-colors',
+        'p-3 bg-muted/50 rounded-md border border-border cursor-pointer hover:border-muted-foreground transition-colors overflow-hidden',
         !hasCustomLayout && 'inline-block align-bottom max-w-md',
         className
       )}
