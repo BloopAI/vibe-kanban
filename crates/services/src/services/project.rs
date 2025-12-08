@@ -97,7 +97,7 @@ impl ProjectService {
 
             let normalized_path = path.to_string_lossy().to_string();
 
-            if !seen_names.insert(repo.name.clone()) {
+            if !seen_names.insert(repo.display_name.clone()) {
                 return Err(ProjectServiceError::DuplicateRepositoryName);
             }
 
@@ -106,7 +106,7 @@ impl ProjectService {
             }
 
             normalized_repos.push(CreateProjectRepo {
-                name: repo.name.clone(),
+                display_name: repo.display_name.clone(),
                 git_repo_path: normalized_path,
             });
         }
@@ -122,7 +122,8 @@ impl ProjectService {
 
         for repo in normalized_repos {
             let repo_entity =
-                Repo::find_or_create(&mut *tx, Path::new(&repo.git_repo_path), &repo.name).await?;
+                Repo::find_or_create(&mut *tx, Path::new(&repo.git_repo_path), &repo.display_name)
+                    .await?;
             ProjectRepo::create(&mut *tx, project.id, repo_entity.id).await?;
         }
 
@@ -204,7 +205,7 @@ impl ProjectService {
             pool,
             project_id,
             &path.to_string_lossy(),
-            &payload.name,
+            &payload.display_name,
         )
         .await
         .map_err(|e| match e {

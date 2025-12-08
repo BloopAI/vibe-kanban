@@ -22,9 +22,9 @@ export type SearchResult = { path: string, is_file: boolean, match_type: SearchM
 
 export type SearchMatchType = "FileName" | "DirectoryName" | "FullPath";
 
-export type Repo = { id: string, path: string, name: string, created_at: Date, updated_at: Date, };
+export type Repo = { id: string, path: string, name: string, display_name: string, created_at: Date, updated_at: Date, };
 
-export type CreateProjectRepo = { name: string, git_repo_path: string, };
+export type CreateProjectRepo = { display_name: string, git_repo_path: string, };
 
 export type AttemptRepo = { id: string, attempt_id: string, repo_id: string, target_branch: string, created_at: Date, updated_at: Date, };
 

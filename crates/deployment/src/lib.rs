@@ -166,7 +166,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                     let create_data = CreateProject {
                         name: project_name,
                         repositories: vec![CreateProjectRepo {
-                            name: repo.name,
+                            display_name: repo.name,
                             git_repo_path: repo_path.clone(),
                         }],
                         setup_script: None,
