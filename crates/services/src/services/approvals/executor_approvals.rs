@@ -4,16 +4,15 @@ use async_trait::async_trait;
 use db::{self, DBService};
 use executors::approvals::{ExecutorApprovalError, ExecutorApprovalService};
 use serde_json::Value;
-use tokio::sync::RwLock;
 use utils::approvals::{ApprovalRequest, ApprovalStatus, CreateApprovalRequest};
 use uuid::Uuid;
 
-use crate::services::{approvals::Approvals, config::Config, notification::NotificationService};
+use crate::services::{approvals::Approvals, notification::NotificationService};
 
 pub struct ExecutorApprovalBridge {
     approvals: Approvals,
     db: DBService,
-    config: Arc<RwLock<Config>>,
+    notification_service: NotificationService,
     execution_process_id: Uuid,
 }
 
@@ -21,13 +20,13 @@ impl ExecutorApprovalBridge {
     pub fn new(
         approvals: Approvals,
         db: DBService,
-        config: Arc<RwLock<Config>>,
+        notification_service: NotificationService,
         execution_process_id: Uuid,
     ) -> Arc<Self> {
         Arc::new(Self {
             approvals,
             db,
-            config,
+            notification_service,
             execution_process_id,
         })
     }
@@ -59,13 +58,9 @@ impl ExecutorApprovalService for ExecutorApprovalBridge {
             .map_err(ExecutorApprovalError::request_failed)?;
 
         // Play notification sound when approval is needed
-        let notify_cfg = self.config.read().await.notifications.clone();
-        NotificationService::notify(
-            notify_cfg,
-            "Approval Needed",
-            &format!("Tool '{}' requires approval", tool_name),
-        )
-        .await;
+        self.notification_service
+            .notify("Approval Needed", &format!("Tool '{}' requires approval", tool_name))
+            .await;
 
         let status = waiter.clone().await;
 

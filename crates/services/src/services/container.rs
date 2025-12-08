@@ -41,7 +41,6 @@ use utils::{
 use uuid::Uuid;
 
 use crate::services::{
-    config::Config,
     git::{GitService, GitServiceError},
     notification::NotificationService,
     share::SharePublisher,
@@ -161,7 +160,7 @@ pub trait ContainerService {
     /// Finalize task execution by updating status to InReview and sending notifications
     async fn finalize_task(
         &self,
-        config: &Arc<RwLock<Config>>,
+        notification_service: &NotificationService,
         share_publisher: Option<&SharePublisher>,
         ctx: &ExecutionContext,
     ) {
@@ -181,8 +180,7 @@ pub trait ContainerService {
                 tracing::error!("Failed to update task status to InReview: {e}");
             }
         }
-        let notify_cfg = config.read().await.notifications.clone();
-        NotificationService::notify_execution_halted(notify_cfg, ctx).await;
+        notification_service.notify_execution_halted(ctx).await;
     }
 
     /// Cleanup executions marked as running in the db, call at startup

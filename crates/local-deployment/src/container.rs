@@ -52,6 +52,7 @@ use services::services::{
     diff_stream::{self, DiffStreamHandle},
     git::{Commit, DiffTarget, GitService},
     image::ImageService,
+    notification::NotificationService,
     queued_message::QueuedMessageService,
     share::SharePublisher,
     worktree_manager::{WorktreeCleanup, WorktreeManager},
@@ -80,6 +81,7 @@ pub struct LocalContainerService {
     approvals: Approvals,
     queued_message_service: QueuedMessageService,
     publisher: Result<SharePublisher, RemoteClientNotConfigured>,
+    notification_service: NotificationService,
 }
 
 impl LocalContainerService {
@@ -97,6 +99,7 @@ impl LocalContainerService {
     ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
         let interrupt_senders = Arc::new(RwLock::new(HashMap::new()));
+        let notification_service = NotificationService::new(config.clone());
 
         let container = LocalContainerService {
             db,
@@ -110,6 +113,7 @@ impl LocalContainerService {
             approvals,
             queued_message_service,
             publisher,
+            notification_service,
         };
 
         container.spawn_worktree_cleanup().await;
@@ -425,7 +429,7 @@ impl LocalContainerService {
 
                         // Manually finalize task since we're bypassing normal execution flow
                         container
-                            .finalize_task(&config, publisher.as_ref().ok(), &ctx)
+                            .finalize_task(&container.notification_service, publisher.as_ref().ok(), &ctx)
                             .await;
                     }
                 }
@@ -470,7 +474,7 @@ impl LocalContainerService {
                                 tracing::error!("Failed to start queued follow-up: {}", e);
                                 // Fall back to finalization if follow-up fails
                                 container
-                                    .finalize_task(&config, publisher.as_ref().ok(), &ctx)
+                                    .finalize_task(&container.notification_service, publisher.as_ref().ok(), &ctx)
                                     .await;
                             }
                         } else {
@@ -481,12 +485,12 @@ impl LocalContainerService {
                                 ctx.execution_process.status
                             );
                             container
-                                .finalize_task(&config, publisher.as_ref().ok(), &ctx)
+                                .finalize_task(&container.notification_service, publisher.as_ref().ok(), &ctx)
                                 .await;
                         }
                     } else {
                         container
-                            .finalize_task(&config, publisher.as_ref().ok(), &ctx)
+                            .finalize_task(&container.notification_service, publisher.as_ref().ok(), &ctx)
                             .await;
                     }
                 }
@@ -976,7 +980,7 @@ impl ContainerService for LocalContainerService {
                     ExecutorApprovalBridge::new(
                         self.approvals.clone(),
                         self.db.clone(),
-                        self.config.clone(),
+                        self.notification_service.clone(),
                         execution_process.id,
                     )
                 }
