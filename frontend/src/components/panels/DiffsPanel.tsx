@@ -171,9 +171,13 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
       return;
     }
 
-    // Diff is already expanded, scroll to line
-    scrollToLine(filePath, lineNumber, side, diffViewMode);
-    clearScrollTarget();
+    // Diff is already expanded - add small delay for DOM to render
+    const timer = setTimeout(() => {
+      scrollToLine(filePath, lineNumber, side, diffViewMode);
+      clearScrollTarget();
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, [
     scrollTarget,
     diffs,
