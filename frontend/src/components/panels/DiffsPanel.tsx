@@ -174,7 +174,14 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
     // Diff is already expanded, scroll to line
     scrollToLine(filePath, lineNumber, side, diffViewMode);
     clearScrollTarget();
-  }, [scrollTarget, diffs, collapsedIds, clearScrollTarget, diffViewMode, loading]);
+  }, [
+    scrollTarget,
+    diffs,
+    collapsedIds,
+    clearScrollTarget,
+    diffViewMode,
+    loading,
+  ]);
 
   // Handle scrolling after a diff is expanded
   useEffect(() => {
