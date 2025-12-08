@@ -11,6 +11,11 @@
           "plan": true
         }
       },
+      "OPUS": {
+        "CLAUDE_CODE": {
+          "model": "opus"
+        }
+      },
       "APPROVALS": {
         "CLAUDE_CODE": {
           "approvals": true
