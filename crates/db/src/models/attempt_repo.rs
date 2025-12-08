@@ -86,12 +86,13 @@ impl AttemptRepo {
             r#"SELECT r.id as "id!: Uuid",
                       r.path,
                       r.name,
+                      r.display_name,
                       r.created_at as "created_at!: DateTime<Utc>",
                       r.updated_at as "updated_at!: DateTime<Utc>"
                FROM repos r
                JOIN attempt_repos ar ON r.id = ar.repo_id
                WHERE ar.attempt_id = $1
-               ORDER BY r.name ASC"#,
+               ORDER BY r.display_name ASC"#,
             attempt_id
         )
         .fetch_all(pool)

@@ -221,13 +221,13 @@ export function ProjectSettings() {
     if (!selectedPath) return;
 
     // Extract directory name from path
-    const name = selectedPath.split('/').pop() || selectedPath;
+    const display_name = selectedPath.split('/').pop() || selectedPath;
 
     setAddingRepo(true);
     setRepoError(null);
     try {
       const newRepo = await projectsApi.addRepository(selectedProjectId, {
-        name,
+        display_name,
         git_repo_path: selectedPath,
       });
       setRepositories((prev) => [...prev, newRepo]);
@@ -453,7 +453,7 @@ export function ProjectSettings() {
                       className="flex items-center justify-between p-3 border rounded-md"
                     >
                       <div className="min-w-0 flex-1">
-                        <div className="font-medium">{repo.name}</div>
+                        <div className="font-medium">{repo.display_name}</div>
                         <div className="text-sm text-muted-foreground truncate">
                           {repo.path}
                         </div>
