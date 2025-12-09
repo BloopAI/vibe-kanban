@@ -24,7 +24,7 @@ use std::{
 use thiserror::Error;
 use utils::shell::resolve_executable_path_blocking; // TODO: make GitCli async
 
-use crate::services::git::Commit;
+use crate::services::{filesystem_watcher::ALWAYS_SKIP_DIRS, git::Commit};
 
 #[derive(Debug, Error)]
 pub enum GitCliError {
@@ -156,7 +156,11 @@ impl GitCli {
         let _ = self.git_with_env(worktree_path, ["read-tree", "HEAD"], &envs)?;
 
         // Stage all in temp index
-        let _ = self.git_with_env(worktree_path, ["add", "-A"], &envs)?;
+        let _ = self.git_with_env(
+            worktree_path,
+            Self::apply_default_excludes(["add", "-A"]),
+            &envs,
+        )?;
 
         // git diff --cached
         let mut args: Vec<OsString> = vec![
@@ -168,19 +172,7 @@ impl GitCli {
             "--name-status".into(),
             OsString::from(base_commit.to_string()),
         ];
-        if let Some(paths) = &opts.path_filter {
-            let non_empty_paths: Vec<&str> = paths
-                .iter()
-                .map(|s| s.as_str())
-                .filter(|p| !p.trim().is_empty())
-                .collect();
-            if !non_empty_paths.is_empty() {
-                args.push("--".into());
-                for p in non_empty_paths {
-                    args.push(OsString::from(p));
-                }
-            }
-        }
+        args = Self::apply_pathspec_filter(args, opts.path_filter.as_ref());
         let out = self.git_with_env(worktree_path, args, &envs)?;
         Ok(Self::parse_name_status(&out))
     }
@@ -243,9 +235,13 @@ impl GitCli {
 
     /// Stage all changes in the working tree (respects sparse-checkout semantics).
     pub fn add_all(&self, worktree_path: &Path) -> Result<(), GitCliError> {
-        self.git(worktree_path, ["add", "-A"])?;
+        self.git(
+            worktree_path,
+            Self::apply_default_excludes(vec!["add", "-A"]),
+        )?;
         Ok(())
     }
+
     pub fn list_worktrees(&self, repo_path: &Path) -> Result<Vec<WorktreeEntry>, GitCliError> {
         let out = self.git(repo_path, ["worktree", "list", "--porcelain"])?;
         let mut entries = Vec::new();
@@ -689,6 +685,7 @@ impl GitCli {
         for a in args {
             cmd.arg(a);
         }
+        tracing::debug!("Running git command: {:?}", cmd);
         let out = cmd
             .output()
             .map_err(|e| GitCliError::CommandFailed(e.to_string()))?;
@@ -704,6 +701,49 @@ impl GitCli {
             return Err(GitCliError::CommandFailed(combined));
         }
         Ok(String::from_utf8_lossy(&out.stdout).to_string())
+    }
+
+    fn apply_default_excludes<I, S>(args: I) -> Vec<OsString>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<OsStr>,
+    {
+        Self::apply_pathspec_filter(args, None)
+    }
+
+    fn apply_pathspec_filter<I, S>(args: I, pathspecs: Option<&Vec<String>>) -> Vec<OsString>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<OsStr>,
+    {
+        let filters = Self::build_pathspec_filter(pathspecs);
+        let mut args = args
+            .into_iter()
+            .map(|s| s.as_ref().to_os_string())
+            .collect::<Vec<_>>();
+        if !filters.is_empty() {
+            args.push("--".into());
+            args.extend(filters);
+        }
+        args
+    }
+
+    fn build_pathspec_filter(pathspecs: Option<&Vec<String>>) -> Vec<OsString> {
+        let mut filters = Vec::new();
+        filters.extend(
+            ALWAYS_SKIP_DIRS
+                .iter()
+                .map(|d| OsString::from(format!(":(glob,exclude)**/{d}/"))),
+        );
+        if let Some(pathspecs) = pathspecs {
+            for p in pathspecs {
+                if p.trim().is_empty() {
+                    continue;
+                }
+                filters.push(OsString::from(p));
+            }
+        }
+        filters
     }
 }
 /// Parsed entry from `git status --porcelain`

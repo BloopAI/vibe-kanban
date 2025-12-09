@@ -48,7 +48,7 @@ fn canonicalize_lossy(path: &Path) -> PathBuf {
 
 /// Directories that should always be skipped regardless of gitignore.
 /// .git is not in .gitignore but should never be watched.
-const ALWAYS_SKIP_DIRS: &[&str] = &[".git", "node_modules"];
+pub const ALWAYS_SKIP_DIRS: &[&str] = &[".git", "node_modules"];
 
 fn should_skip_dir(name: &str) -> bool {
     ALWAYS_SKIP_DIRS.contains(&name)
