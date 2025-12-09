@@ -200,7 +200,9 @@ fn generate_types_content() -> String {
         .join("\n\n");
 
     // Append exported constants
-    let prompt_escaped = DEFAULT_PR_DESCRIPTION_PROMPT.replace('\\', "\\\\").replace('`', "\\`");
+    let prompt_escaped = DEFAULT_PR_DESCRIPTION_PROMPT
+        .replace('\\', "\\\\")
+        .replace('`', "\\`");
     let constants = format!(
         "export const DEFAULT_PR_DESCRIPTION_PROMPT = `{}`;",
         prompt_escaped
