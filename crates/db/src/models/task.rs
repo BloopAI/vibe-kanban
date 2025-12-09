@@ -78,22 +78,6 @@ pub struct CreateTask {
 }
 
 impl CreateTask {
-    pub fn from_title_description(
-        project_id: Uuid,
-        title: String,
-        description: Option<String>,
-    ) -> Self {
-        Self {
-            project_id,
-            title,
-            description,
-            status: Some(TaskStatus::Todo),
-            parent_task_attempt: None,
-            image_ids: None,
-            shared_task_id: None,
-        }
-    }
-
     pub fn from_shared_task(
         project_id: Uuid,
         title: String,
