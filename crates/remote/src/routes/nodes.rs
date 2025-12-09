@@ -380,7 +380,7 @@ pub async fn delete_node(
                 StatusCode::NOT_FOUND,
                 Json(json!({ "error": "Node not found" })),
             )
-                .into_response()
+                .into_response();
         }
         Err(error) => return node_error_response(error, "failed to get node"),
     };
@@ -397,14 +397,14 @@ pub async fn delete_node(
                 StatusCode::FORBIDDEN,
                 Json(json!({ "error": "Admin access required to delete nodes" })),
             )
-                .into_response()
+                .into_response();
         }
         Err(_) => {
             return (
                 StatusCode::FORBIDDEN,
                 Json(json!({ "error": "Admin access required to delete nodes" })),
             )
-                .into_response()
+                .into_response();
         }
     }
 

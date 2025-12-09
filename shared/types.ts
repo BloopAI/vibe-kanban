@@ -138,6 +138,10 @@ export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, has_merg
 
 export type TaskRelationships = { parent_task: Task | null, current_attempt: TaskAttempt, children: Array<Task>, };
 
+export type TaskWithProjectInfo = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_task_attempt: string | null, shared_task_id: string | null, created_at: string, updated_at: string, is_remote: boolean, remote_assignee_user_id: string | null, remote_assignee_name: string | null, remote_assignee_username: string | null, remote_version: bigint, remote_last_synced_at: string | null, remote_stream_node_id: string | null, remote_stream_url: string | null, assignee_first_name: string | null, assignee_last_name: string | null, assignee_username: string | null, has_in_progress_attempt: boolean, has_merged_attempt: boolean, last_attempt_failed: boolean, executor: string, project_name: string, source_node_name: string | null, };
+
+export type AllTasksResponse = { tasks: Array<TaskWithProjectInfo>, };
+
 export type DashboardTask = { task_id: string, task_title: string, project_id: string, project_name: string, status: TaskStatus, executor: string, updated_at: string, };
 
 export type DashboardSummary = { running_tasks: Array<DashboardTask>, in_review_tasks: Array<DashboardTask>, };

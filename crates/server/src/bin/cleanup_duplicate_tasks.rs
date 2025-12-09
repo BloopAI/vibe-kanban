@@ -96,11 +96,15 @@ async fn main() -> anyhow::Result<()> {
     if args.iter().any(|a| a == "--help" || a == "-h") {
         println!("Cleanup Duplicate Tasks");
         println!();
-        println!("This tool identifies and removes duplicate tasks created by the swarm sync issue.");
+        println!(
+            "This tool identifies and removes duplicate tasks created by the swarm sync issue."
+        );
         println!();
         println!("Usage:");
         println!("  cargo run --bin cleanup_duplicate_tasks              Dry-run mode (default)");
-        println!("  cargo run --bin cleanup_duplicate_tasks -- --execute Actually delete duplicates");
+        println!(
+            "  cargo run --bin cleanup_duplicate_tasks -- --execute Actually delete duplicates"
+        );
         println!("  cargo run --bin cleanup_duplicate_tasks -- --verbose Show detailed task info");
         println!("  cargo run --bin cleanup_duplicate_tasks -- --help    Show this help");
         println!();
@@ -151,7 +155,10 @@ async fn main() -> anyhow::Result<()> {
     }
 
     // Confirmation prompt
-    print!("Are you sure you want to delete {} task(s)? [y/N] ", total_to_delete);
+    print!(
+        "Are you sure you want to delete {} task(s)? [y/N] ",
+        total_to_delete
+    );
     io::stdout().flush()?;
 
     let mut input = String::new();

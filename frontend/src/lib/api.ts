@@ -1,6 +1,7 @@
 // Import all necessary types from shared types
 
 import {
+  AllTasksResponse,
   ApprovalStatus,
   ApiResponse,
   BranchStatus,
@@ -376,6 +377,11 @@ export const projectsApi = {
 
 // Task Management APIs
 export const tasksApi = {
+  getAll: async (): Promise<AllTasksResponse> => {
+    const response = await makeRequest('/api/tasks/all');
+    return handleApiResponse<AllTasksResponse>(response);
+  },
+
   getById: async (taskId: string): Promise<Task> => {
     const response = await makeRequest(`/api/tasks/${taskId}`);
     return handleApiResponse<Task>(response);

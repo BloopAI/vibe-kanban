@@ -1,0 +1,152 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n  t.id                            AS \"id!: Uuid\",\n  t.project_id                    AS \"project_id!: Uuid\",\n  t.title                         AS \"title!\",\n  t.description                   AS \"description\",\n  t.status                        AS \"status!: TaskStatus\",\n  t.parent_task_attempt           AS \"parent_task_attempt: Uuid\",\n  t.shared_task_id                AS \"shared_task_id: Uuid\",\n  t.created_at                    AS \"created_at!: DateTime<Utc>\",\n  t.updated_at                    AS \"updated_at!: DateTime<Utc>\",\n  t.is_remote                     AS \"is_remote!: bool\",\n  t.remote_assignee_user_id       AS \"remote_assignee_user_id: Uuid\",\n  t.remote_assignee_name          AS \"remote_assignee_name\",\n  t.remote_assignee_username      AS \"remote_assignee_username\",\n  t.remote_version                AS \"remote_version!: i64\",\n  t.remote_last_synced_at         AS \"remote_last_synced_at: DateTime<Utc>\",\n  t.remote_stream_node_id         AS \"remote_stream_node_id: Uuid\",\n  t.remote_stream_url             AS \"remote_stream_url\",\n\n  -- Project context\n  p.name                          AS \"project_name!\",\n  p.source_node_name              AS \"source_node_name\",\n\n  -- Attempt status: has_in_progress_attempt\n  CASE WHEN EXISTS (\n    SELECT 1\n      FROM task_attempts ta\n      JOIN execution_processes ep\n        ON ep.task_attempt_id = ta.id\n     WHERE ta.task_id = t.id\n       AND ep.status = 'running'\n       AND ep.run_reason IN ('setupscript','cleanupscript','codingagent')\n     LIMIT 1\n  ) THEN 1 ELSE 0 END             AS \"has_in_progress_attempt!: i64\",\n\n  -- Attempt status: has_merged_attempt\n  CASE WHEN EXISTS (\n    SELECT 1\n      FROM task_attempts ta\n      JOIN merges m ON m.task_attempt_id = ta.id\n     WHERE ta.task_id = t.id\n     LIMIT 1\n  ) THEN 1 ELSE 0 END             AS \"has_merged_attempt!: i64\",\n\n  -- Attempt status: last_attempt_failed\n  CASE WHEN EXISTS (\n    SELECT 1\n      FROM task_attempts ta\n      JOIN execution_processes ep\n        ON ep.task_attempt_id = ta.id\n     WHERE ta.task_id = t.id\n       AND ep.status = 'failed'\n       AND NOT EXISTS (\n         SELECT 1 FROM execution_processes ep2\n          WHERE ep2.task_attempt_id = ta.id\n            AND ep2.status = 'running'\n       )\n     ORDER BY ta.created_at DESC\n     LIMIT 1\n  ) THEN 1 ELSE 0 END             AS \"last_attempt_failed!: i64\",\n\n  -- Latest executor\n  COALESCE((\n    SELECT ta.executor\n      FROM task_attempts ta\n     WHERE ta.task_id = t.id\n     ORDER BY ta.created_at DESC\n     LIMIT 1\n  ), '')                          AS \"executor!\"\n\nFROM tasks t\nJOIN projects p ON t.project_id = p.id\nORDER BY t.updated_at DESC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "project_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "title!",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "description",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "status!: TaskStatus",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "parent_task_attempt: Uuid",
+        "ordinal": 5,
+        "type_info": "Blob"
+      },
+      {
+        "name": "shared_task_id: Uuid",
+        "ordinal": 6,
+        "type_info": "Blob"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "is_remote!: bool",
+        "ordinal": 9,
+        "type_info": "Bool"
+      },
+      {
+        "name": "remote_assignee_user_id: Uuid",
+        "ordinal": 10,
+        "type_info": "Blob"
+      },
+      {
+        "name": "remote_assignee_name",
+        "ordinal": 11,
+        "type_info": "Text"
+      },
+      {
+        "name": "remote_assignee_username",
+        "ordinal": 12,
+        "type_info": "Text"
+      },
+      {
+        "name": "remote_version!: i64",
+        "ordinal": 13,
+        "type_info": "Integer"
+      },
+      {
+        "name": "remote_last_synced_at: DateTime<Utc>",
+        "ordinal": 14,
+        "type_info": "Text"
+      },
+      {
+        "name": "remote_stream_node_id: Uuid",
+        "ordinal": 15,
+        "type_info": "Blob"
+      },
+      {
+        "name": "remote_stream_url",
+        "ordinal": 16,
+        "type_info": "Text"
+      },
+      {
+        "name": "project_name!",
+        "ordinal": 17,
+        "type_info": "Text"
+      },
+      {
+        "name": "source_node_name",
+        "ordinal": 18,
+        "type_info": "Text"
+      },
+      {
+        "name": "has_in_progress_attempt!: i64",
+        "ordinal": 19,
+        "type_info": "Integer"
+      },
+      {
+        "name": "has_merged_attempt!: i64",
+        "ordinal": 20,
+        "type_info": "Integer"
+      },
+      {
+        "name": "last_attempt_failed!: i64",
+        "ordinal": 21,
+        "type_info": "Integer"
+      },
+      {
+        "name": "executor!",
+        "ordinal": 22,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "55b0222ca399cb68f411e5e65d2f2ba2baee3331d9e453cff4cdb5c91c653be9"
+}

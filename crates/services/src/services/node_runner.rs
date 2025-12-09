@@ -319,7 +319,9 @@ impl NodeRunnerHandle {
             HiveEvent::NodeRemoved(removed) => {
                 let mut state = self.state.write().await;
                 // Remove all projects from the removed node
-                state.project_mapping.remove_projects_from_node(removed.node_id);
+                state
+                    .project_mapping
+                    .remove_projects_from_node(removed.node_id);
                 tracing::info!(
                     node_id = %removed.node_id,
                     reason = %removed.reason,

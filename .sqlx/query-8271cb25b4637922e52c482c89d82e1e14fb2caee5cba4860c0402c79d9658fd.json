@@ -1,0 +1,110 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO projects (\n                    id,\n                    name,\n                    git_repo_path,\n                    remote_project_id,\n                    is_remote,\n                    source_node_id,\n                    source_node_name,\n                    source_node_public_url,\n                    source_node_status,\n                    remote_last_synced_at\n                ) VALUES (\n                    $1, $2, $3, $4, 1, $5, $6, $7, $8, $9\n                )\n                ON CONFLICT(remote_project_id) WHERE remote_project_id IS NOT NULL DO UPDATE SET\n                    name = excluded.name,\n                    git_repo_path = excluded.git_repo_path,\n                    source_node_name = excluded.source_node_name,\n                    source_node_public_url = excluded.source_node_public_url,\n                    source_node_status = excluded.source_node_status,\n                    remote_last_synced_at = excluded.remote_last_synced_at,\n                    updated_at = datetime('now', 'subsec')\n                RETURNING id as \"id!: Uuid\",\n                          name,\n                          git_repo_path,\n                          setup_script,\n                          dev_script,\n                          cleanup_script,\n                          copy_files,\n                          remote_project_id as \"remote_project_id: Uuid\",\n                          created_at as \"created_at!: DateTime<Utc>\",\n                          updated_at as \"updated_at!: DateTime<Utc>\",\n                          is_remote as \"is_remote!: bool\",\n                          source_node_id as \"source_node_id: Uuid\",\n                          source_node_name,\n                          source_node_public_url,\n                          source_node_status,\n                          remote_last_synced_at as \"remote_last_synced_at: DateTime<Utc>\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "git_repo_path",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "setup_script",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "dev_script",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "cleanup_script",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "copy_files",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "remote_project_id: Uuid",
+        "ordinal": 7,
+        "type_info": "Blob"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "is_remote!: bool",
+        "ordinal": 10,
+        "type_info": "Bool"
+      },
+      {
+        "name": "source_node_id: Uuid",
+        "ordinal": 11,
+        "type_info": "Blob"
+      },
+      {
+        "name": "source_node_name",
+        "ordinal": 12,
+        "type_info": "Text"
+      },
+      {
+        "name": "source_node_public_url",
+        "ordinal": 13,
+        "type_info": "Text"
+      },
+      {
+        "name": "source_node_status",
+        "ordinal": 14,
+        "type_info": "Text"
+      },
+      {
+        "name": "remote_last_synced_at: DateTime<Utc>",
+        "ordinal": 15,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 9
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "8271cb25b4637922e52c482c89d82e1e14fb2caee5cba4860c0402c79d9658fd"
+}

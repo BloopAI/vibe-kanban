@@ -4,9 +4,9 @@ use directories::ProjectDirs;
 
 pub mod api;
 pub mod approvals;
-pub mod build_info;
 pub mod assets;
 pub mod browser;
+pub mod build_info;
 pub mod diff;
 pub mod git;
 pub mod jwt;
