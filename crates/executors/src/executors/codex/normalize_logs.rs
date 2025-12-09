@@ -82,7 +82,7 @@ struct CommandState {
 
 impl ToNormalizedEntry for CommandState {
     fn to_normalized_entry(&self) -> NormalizedEntry {
-        let content = format!("`{}`", self.command);
+        let content = self.command.to_string();
 
         NormalizedEntry {
             timestamp: None,
@@ -894,7 +894,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                                 },
                                 status: ToolStatus::Success,
                             },
-                            content: format!("`{relative_path}`"),
+                            content: relative_path.to_string(),
                             metadata: None,
                         },
                     );

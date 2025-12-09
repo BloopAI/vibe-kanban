@@ -69,6 +69,7 @@ crates/executors/bindings
 crates/utils/bindings
 crates/services/bindings
 crates/server/bindings
+crates/remote/bindings
 
 build-npm-package-codesign.sh
 

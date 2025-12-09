@@ -1196,11 +1196,11 @@ impl ClaudeLogProcessor {
         worktree_path: &str,
     ) -> String {
         match action_type {
-            ActionType::FileRead { path } => format!("`{path}`"),
-            ActionType::FileEdit { path, .. } => format!("`{path}`"),
-            ActionType::CommandRun { command, .. } => format!("`{command}`"),
-            ActionType::Search { query } => format!("`{query}`"),
-            ActionType::WebFetch { url } => format!("`{url}`"),
+            ActionType::FileRead { path } => path.to_string(),
+            ActionType::FileEdit { path, .. } => path.to_string(),
+            ActionType::CommandRun { command, .. } => command.to_string(),
+            ActionType::Search { query } => query.to_string(),
+            ActionType::WebFetch { url } => url.to_string(),
             ActionType::TaskCreate { description } => {
                 if description.is_empty() {
                     "Task".to_string()
@@ -1232,13 +1232,13 @@ impl ClaudeLogProcessor {
                     if relative_path.is_empty() {
                         "List directory".to_string()
                     } else {
-                        format!("List directory: `{relative_path}`")
+                        format!("List directory: {relative_path}")
                     }
                 }
                 ClaudeToolData::Glob { pattern, path, .. } => {
                     if let Some(search_path) = path {
                         format!(
-                            "Find files: `{}` in `{}`",
+                            "Find files: `{}` in {}",
                             pattern,
                             make_path_relative(search_path, worktree_path)
                         )
@@ -1257,7 +1257,7 @@ impl ClaudeLogProcessor {
                 ClaudeToolData::CodebaseSearchAgent { query, path, .. } => {
                     match (query.as_ref(), path.as_ref()) {
                         (Some(q), Some(p)) if !q.is_empty() && !p.is_empty() => format!(
-                            "Codebase search: `{}` in `{}`",
+                            "Codebase search: `{}` in {}",
                             q,
                             make_path_relative(p, worktree_path)
                         ),
@@ -1948,7 +1948,7 @@ mod tests {
             "/tmp/test-worktree",
         );
 
-        assert_eq!(result, "`**/*.ts`");
+        assert_eq!(result, "**/*.ts");
     }
 
     #[test]
@@ -1967,7 +1967,7 @@ mod tests {
             "/tmp/test-worktree",
         );
 
-        assert_eq!(result, "`*.js`");
+        assert_eq!(result, "*.js");
     }
 
     #[test]
@@ -1984,7 +1984,7 @@ mod tests {
             "/tmp/test-worktree",
         );
 
-        assert_eq!(result, "List directory: `components`");
+        assert_eq!(result, "List directory: components");
     }
 
     #[test]
@@ -2190,8 +2190,8 @@ mod tests {
         let parsed: ClaudeJson = serde_json::from_str(bash_json).unwrap();
         let entries = normalize(&parsed, "/tmp/work");
         assert_eq!(entries.len(), 1);
-        // Content should display the command in backticks
-        assert_eq!(entries[0].content, "`echo hello`");
+        // Content should display the command
+        assert_eq!(entries[0].content, "echo hello");
 
         // Task content should include description/prompt wrapped in backticks
         let task_json = r#"{

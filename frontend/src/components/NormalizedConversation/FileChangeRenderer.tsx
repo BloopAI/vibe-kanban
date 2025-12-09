@@ -136,7 +136,7 @@ const FileChangeRenderer = ({
         {icon}
         <p
           onClick={() => expandable && setExpanded()}
-          className="text-sm font-light overflow-x-auto flex-1 cursor-pointer"
+          className="text-sm font-mono overflow-x-auto flex-1 cursor-pointer"
         >
           {titleNode}
         </p>

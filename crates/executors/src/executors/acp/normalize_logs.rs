@@ -8,7 +8,6 @@ use agent_client_protocol::{self as acp, SessionNotification};
 use futures::StreamExt;
 use regex::Regex;
 use serde::Deserialize;
-use tracing::{debug, trace};
 use workspace_utils::msg_store::MsgStore;
 
 pub use super::AcpAgentHarness;
@@ -38,7 +37,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
         let mut stdout_lines = msg_store.stdout_lines_stream();
         while let Some(Ok(line)) = stdout_lines.next().await {
             if let Some(parsed) = AcpEventParser::parse_line(&line) {
-                trace!("Parsed ACP line: {:?}", parsed);
+                tracing::trace!("Parsed ACP line: {:?}", parsed);
                 match parsed {
                     AcpEvent::SessionStart(id) => {
                         if !stored_session_id {
@@ -207,7 +206,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                                 .map(|s| s.title.clone())
                                 .or_else(|| Some("".to_string()));
                         }
-                        trace!("Got tool call update: {:?}", update);
+                        tracing::trace!("Got tool call update: {:?}", update);
                         if let Ok(tc) = agent_client_protocol::ToolCall::try_from(update.clone()) {
                             handle_tool_call(
                                 &tc,
@@ -218,7 +217,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                                 &msg_store,
                             );
                         } else {
-                            debug!("Failed to convert tool call update to ToolCall");
+                            tracing::debug!("Failed to convert tool call update to ToolCall");
                         }
                     }
                     AcpEvent::User(_) | AcpEvent::Other(_) => (),
@@ -303,9 +302,10 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                     // Prefer structured raw_output, else fallback to aggregated text content
                     let completed =
                         matches!(tc.status, agent_client_protocol::ToolCallStatus::Completed);
-                    trace!(
+                    tracing::trace!(
                         "Mapping execute tool call, completed: {}, command: {}",
-                        completed, command
+                        completed,
+                        command
                     );
                     let tc_exit_status = match tc.status {
                         agent_client_protocol::ToolCallStatus::Completed => {
@@ -617,7 +617,7 @@ impl AcpEventParser {
             return Some(acp_event);
         }
 
-        debug!("Failed to parse ACP raw log {trimmed}");
+        tracing::debug!("Failed to parse ACP raw log {trimmed}");
 
         None
     }

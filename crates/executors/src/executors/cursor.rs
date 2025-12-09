@@ -717,10 +717,7 @@ impl CursorToolCall {
         match self {
             CursorToolCall::Read { args, .. } => {
                 let path = make_path_relative(&args.path, worktree_path);
-                (
-                    ActionType::FileRead { path: path.clone() },
-                    format!("`{path}`"),
-                )
+                (ActionType::FileRead { path: path.clone() }, path)
             }
             CursorToolCall::Write { args, .. } => {
                 let path = make_path_relative(&args.path, worktree_path);
@@ -729,7 +726,7 @@ impl CursorToolCall {
                         path: path.clone(),
                         changes: vec![],
                     },
-                    format!("`{path}`"),
+                    path,
                 )
             }
             CursorToolCall::Edit { args, result, .. } => {
@@ -789,7 +786,7 @@ impl CursorToolCall {
                         path: path.clone(),
                         changes,
                     },
-                    format!("`{path}`"),
+                    path,
                 )
             }
             CursorToolCall::Delete { args, .. } => {
@@ -799,7 +796,7 @@ impl CursorToolCall {
                         path: path.clone(),
                         changes: vec![FileChange::Delete],
                     },
-                    format!("`{path}`"),
+                    path.to_string(),
                 )
             }
             CursorToolCall::Shell { args, .. } => {
@@ -809,7 +806,7 @@ impl CursorToolCall {
                         command: cmd.clone(),
                         result: None,
                     },
-                    format!("`{cmd}`"),
+                    cmd.to_string(),
                 )
             }
             CursorToolCall::Grep { args, .. } => {
@@ -818,7 +815,7 @@ impl CursorToolCall {
                     ActionType::Search {
                         query: pattern.clone(),
                     },
-                    format!("`{pattern}`"),
+                    pattern.to_string(),
                 )
             }
             CursorToolCall::SemSearch { args, .. } => {
@@ -827,7 +824,7 @@ impl CursorToolCall {
                     ActionType::Search {
                         query: query.clone(),
                     },
-                    format!("`{query}`"),
+                    query.to_string(),
                 )
             }
             CursorToolCall::Glob { args, .. } => {
@@ -838,7 +835,7 @@ impl CursorToolCall {
                         ActionType::Search {
                             query: pattern.clone(),
                         },
-                        format!("Find files: `{pattern}` in `{path}`"),
+                        format!("Find files: `{pattern}` in {path}"),
                     )
                 } else {
                     (
@@ -854,7 +851,7 @@ impl CursorToolCall {
                 let content = if path.is_empty() {
                     "List directory".to_string()
                 } else {
-                    format!("List directory: `{path}`")
+                    format!("List directory: {path}")
                 };
                 (
                     ActionType::Other {

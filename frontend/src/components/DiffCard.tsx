@@ -215,7 +215,7 @@ export default function DiffCard({
   // Title row
   const title = (
     <p
-      className="text-xs font-mono overflow-x-auto flex-1"
+      className="text-sm font-mono overflow-x-auto flex-1"
       style={{ color: 'hsl(var(--muted-foreground) / 0.7)' }}
     >
       <Icon className="h-3 w-3 inline mr-2" aria-hidden />

@@ -1026,7 +1026,7 @@ impl ToNormalizedEntry for FileReadState {
                 },
                 status: self.status.clone(),
             },
-            content: format!("`{}`", self.path),
+            content: self.path.clone(),
             metadata: None,
         }
     }
@@ -1052,7 +1052,7 @@ impl ToNormalizedEntry for FileEditState {
                 },
                 status: self.status.clone(),
             },
-            content: format!("`{}`", self.path),
+            content: self.path.clone(),
             metadata: None,
         }
     }
@@ -1094,7 +1094,7 @@ impl ToNormalizedEntry for CommandRunState {
                 },
                 status: self.status.clone(),
             },
-            content: format!("`{}`", self.command),
+            content: self.command.clone(),
             metadata: None,
         }
     }
@@ -1149,7 +1149,7 @@ impl ToNormalizedEntry for SearchState {
                 },
                 status: self.status.clone(),
             },
-            content: format!("`{}`", self.query),
+            content: self.query.clone(),
             metadata: None,
         }
     }
@@ -1173,7 +1173,7 @@ impl ToNormalizedEntry for WebFetchState {
                 },
                 status: self.status.clone(),
             },
-            content: format!("`{}`", self.url),
+            content: self.url.clone(),
             metadata: None,
         }
     }
