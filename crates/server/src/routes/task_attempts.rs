@@ -89,6 +89,7 @@ async fn get_first_target_branch(
 
 #[derive(Debug, Deserialize, Serialize, TS)]
 pub struct RebaseTaskAttemptRequest {
+    pub repo_id: Uuid,
     pub old_base_branch: Option<String>,
     pub new_base_branch: Option<String>,
 }
@@ -1131,31 +1132,34 @@ pub async fn rebase_task_attempt(
 ) -> Result<ResponseJson<ApiResponse<(), GitOperationError>>, ApiError> {
     let pool = &deployment.db().pool;
 
-    let task = task_attempt
-        .parent_task(pool)
-        .await?
-        .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
-    let ctx = TaskAttempt::load_context(pool, task_attempt.id, task.id, task.project_id).await?;
+    let attempt_repo =
+        AttemptRepo::find_by_attempt_and_repo_id(pool, task_attempt.id, payload.repo_id)
+            .await?
+            .ok_or(RepoError::NotFound)?;
 
-    let current_target_branch = ctx
-        .attempt_repos
-        .first()
-        .map(|r| r.target_branch.clone())
-        .unwrap_or_default();
+    let repo = Repo::find_by_id(pool, attempt_repo.repo_id)
+        .await?
+        .ok_or(RepoError::NotFound)?;
 
     let old_base_branch = payload
         .old_base_branch
-        .unwrap_or(current_target_branch.clone());
-    let new_base_branch = payload.new_base_branch.unwrap_or(current_target_branch);
+        .unwrap_or_else(|| attempt_repo.target_branch.clone());
+    let new_base_branch = payload
+        .new_base_branch
+        .unwrap_or_else(|| attempt_repo.target_branch.clone());
 
-    let repo_path = get_first_repo_path(pool, ctx.project.id).await?;
     match deployment
         .git()
-        .check_branch_exists(&repo_path, &new_base_branch)?
+        .check_branch_exists(&repo.path, &new_base_branch)?
     {
         true => {
-            AttemptRepo::update_all_target_branches(pool, task_attempt.id, &new_base_branch)
-                .await?;
+            AttemptRepo::update_target_branch(
+                pool,
+                task_attempt.id,
+                payload.repo_id,
+                &new_base_branch,
+            )
+            .await?;
         }
         false => {
             return Ok(ResponseJson(ApiResponse::error(
@@ -1173,12 +1177,11 @@ pub async fn rebase_task_attempt(
         .ensure_container_exists(&task_attempt)
         .await?;
     let workspace_path = Path::new(&container_ref);
-
-    // TODO: this needs a worktree path, not a workspace path
+    let worktree_path = workspace_path.join(&repo.name);
 
     let result = deployment.git().rebase_branch(
-        &repo_path,
-        workspace_path,
+        &repo.path,
+        &worktree_path,
         &new_base_branch,
         &old_base_branch,
         &task_attempt.branch.clone(),
@@ -1209,9 +1212,8 @@ pub async fn rebase_task_attempt(
         .track_if_analytics_allowed(
             "task_attempt_rebased",
             serde_json::json!({
-                "task_id": task.id.to_string(),
-                "project_id": ctx.project.id.to_string(),
                 "attempt_id": task_attempt.id.to_string(),
+                "repo_id": payload.repo_id.to_string(),
             }),
         )
         .await;

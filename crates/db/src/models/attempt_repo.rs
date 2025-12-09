@@ -138,21 +138,6 @@ impl AttemptRepo {
         Ok(())
     }
 
-    pub async fn update_all_target_branches(
-        pool: &SqlitePool,
-        attempt_id: Uuid,
-        new_target_branch: &str,
-    ) -> Result<u64, sqlx::Error> {
-        let result = sqlx::query!(
-            "UPDATE attempt_repos SET target_branch = $1, updated_at = datetime('now') WHERE attempt_id = $2",
-            new_target_branch,
-            attempt_id
-        )
-        .execute(pool)
-        .await?;
-        Ok(result.rows_affected())
-    }
-
     pub async fn update_target_branch_for_children_of_attempt(
         pool: &SqlitePool,
         parent_attempt_id: Uuid,
