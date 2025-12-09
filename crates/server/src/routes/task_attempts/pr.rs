@@ -67,7 +67,7 @@ pub enum GetPrCommentsError {
     GithubCliNotLoggedIn,
 }
 
-const DEFAULT_PR_DESCRIPTION_PROMPT: &str = r#"Update the GitHub PR that was just created with a better title and description.
+pub const DEFAULT_PR_DESCRIPTION_PROMPT: &str = r#"Update the GitHub PR that was just created with a better title and description.
 The PR number is #{pr_number} and the URL is {pr_url}.
 
 Analyze the changes in this branch and write:

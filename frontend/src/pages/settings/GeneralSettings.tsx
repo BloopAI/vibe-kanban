@@ -21,7 +21,13 @@ import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Volume2 } from 'lucide-react';
-import { EditorType, SoundFile, ThemeMode, UiLanguage } from 'shared/types';
+import {
+  DEFAULT_PR_DESCRIPTION_PROMPT,
+  EditorType,
+  SoundFile,
+  ThemeMode,
+  UiLanguage,
+} from 'shared/types';
 import { getLanguageOptions } from '@/i18n/languages';
 
 import { toPrettyCase } from '@/utils/string';
@@ -490,9 +496,7 @@ export function GeneralSettings() {
             <textarea
               id="pr-custom-prompt"
               className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              placeholder={t(
-                'settings.general.pullRequests.customPrompt.placeholder'
-              )}
+              placeholder={DEFAULT_PR_DESCRIPTION_PROMPT}
               value={draft?.pr_auto_description_prompt ?? ''}
               onChange={(e) =>
                 updateDraft({

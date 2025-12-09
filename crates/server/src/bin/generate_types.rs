@@ -1,6 +1,7 @@
 use std::{collections::HashMap, env, fs, path::Path};
 
 use schemars::{JsonSchema, Schema, SchemaGenerator, generate::SchemaSettings};
+use server::routes::task_attempts::pr::DEFAULT_PR_DESCRIPTION_PROMPT;
 use ts_rs::TS;
 
 fn generate_types_content() -> String {
@@ -198,7 +199,14 @@ fn generate_types_content() -> String {
         .collect::<Vec<_>>()
         .join("\n\n");
 
-    format!("{HEADER}\n\n{body}")
+    // Append exported constants
+    let prompt_escaped = DEFAULT_PR_DESCRIPTION_PROMPT.replace('\\', "\\\\").replace('`', "\\`");
+    let constants = format!(
+        "export const DEFAULT_PR_DESCRIPTION_PROMPT = `{}`;",
+        prompt_escaped
+    );
+
+    format!("{HEADER}\n\n{body}\n\n{constants}")
 }
 
 fn generate_json_schema<T: JsonSchema>() -> Result<String, serde_json::Error> {
