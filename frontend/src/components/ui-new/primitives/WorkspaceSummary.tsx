@@ -1,4 +1,4 @@
-import { Pin } from 'lucide-react';
+import { PushPin } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 
 function RunningDots() {
@@ -56,7 +56,7 @@ export function WorkspaceSummary({
       {hasStats && (
         <div className="flex w-full items-center gap-half text-sm">
           {isRunning && <RunningDots />}
-          {isPinned && <Pin className="size-3 text-brand shrink-0" />}
+          {isPinned && <PushPin className="size-3 text-brand shrink-0" weight="fill" />}
           <span className="min-w-0 flex-1 truncate text-low">
             {filesChanged} {filesChanged === 1 ? 'File' : 'Files'} changed
           </span>
