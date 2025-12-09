@@ -143,8 +143,8 @@
           "helper": "Cuando está habilitado, el agente de IA actualizará automáticamente el título y la descripción del PR después de la creación."
         },
         "customPrompt": {
-          "label": "Prompt Personalizado para Descripción de PR",
-          "helper": "Prompt personalizado para el agente de IA al generar descripciones de PR. Deja vacío para usar el predeterminado. Usa {pr_number} y {pr_url} como marcadores de posición."
+          "useCustom": "Usar prompt personalizado",
+          "helper": "Prompt personalizado para el agente de IA al generar descripciones de PR. Usa {pr_number} y {pr_url} como marcadores de posición."
         }
       },
       "notifications": {

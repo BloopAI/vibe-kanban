@@ -143,8 +143,8 @@
           "helper": "When enabled, the AI agent will automatically update the PR title and description after creation."
         },
         "customPrompt": {
-          "label": "Custom PR Description Prompt",
-          "helper": "Custom prompt for the AI agent when generating PR descriptions. Leave empty to use the default. Use {pr_number} and {pr_url} as placeholders."
+          "useCustom": "Use custom prompt",
+          "helper": "Custom prompt for the AI agent when generating PR descriptions. Use {pr_number} and {pr_url} as placeholders."
         }
       },
       "notifications": {

@@ -143,8 +143,8 @@
           "helper": "활성화하면 AI 에이전트가 PR 생성 후 자동으로 제목과 설명을 업데이트합니다."
         },
         "customPrompt": {
-          "label": "사용자 정의 PR 설명 프롬프트",
-          "helper": "PR 설명 생성 시 AI 에이전트용 사용자 정의 프롬프트. 기본값을 사용하려면 비워두세요. {pr_number}와 {pr_url}을 플레이스홀더로 사용하세요."
+          "useCustom": "사용자 정의 프롬프트 사용",
+          "helper": "PR 설명 생성 시 AI 에이전트용 사용자 정의 프롬프트. {pr_number}와 {pr_url}을 플레이스홀더로 사용하세요."
         }
       },
       "notifications": {

@@ -143,8 +143,8 @@
           "helper": "启用后，AI代理将在创建PR后自动更新标题和描述。"
         },
         "customPrompt": {
-          "label": "自定义PR描述提示",
-          "helper": "生成PR描述时AI代理使用的自定义提示。留空则使用默认值。使用{pr_number}和{pr_url}作为占位符。"
+          "useCustom": "使用自定义提示",
+          "helper": "生成PR描述时AI代理使用的自定义提示。使用{pr_number}和{pr_url}作为占位符。"
         }
       },
       "notifications": {
