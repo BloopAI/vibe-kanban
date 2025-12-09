@@ -230,7 +230,10 @@ function GitOperations({
   ) => {
     setRebasing(true);
     try {
+      const repoId = getSelectedRepoId();
+      if (!repoId) return;
       await git.actions.rebase({
+        repoId,
         newBaseBranch: newBaseBranch,
         oldBaseBranch: selectedUpstream,
       });
