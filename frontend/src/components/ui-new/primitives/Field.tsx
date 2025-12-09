@@ -3,8 +3,8 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { Plus, ChevronDown } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
-import { Label } from '@/components/ui-new/Label';
-import { Separator } from '@/components/ui-new/Separator';
+import { Label } from './Label';
+import { Separator } from './Separator';
 
 function FieldSet({ className, ...props }: React.ComponentProps<'fieldset'>) {
   return (
