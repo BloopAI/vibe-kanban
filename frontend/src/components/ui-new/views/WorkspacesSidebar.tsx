@@ -1,6 +1,6 @@
-import type { Workspace } from '../hooks/useWorkspaces';
-import { WorkspaceSearch } from '@/components/ui-new/Field';
-import { WorkspaceSummary } from '@/components/ui-new/WorkspaceSummary';
+import type { Workspace } from '@/components/ui-new/hooks/useWorkspaces';
+import { WorkspaceSearch } from '@/components/ui-new/primitives/Field';
+import { WorkspaceSummary } from '@/components/ui-new/primitives/WorkspaceSummary';
 
 interface WorkspacesSidebarProps {
   workspaces: Workspace[];
