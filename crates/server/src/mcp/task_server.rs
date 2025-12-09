@@ -453,7 +453,7 @@ impl TaskServer {
         TaskServer::success(context)
     }
     #[tool(
-        description = "Create a new task/ticket in a project. Always pass the `project_id` of the project you want to create the task in - it is required! You can use @tagname in the description to include tag content."
+        description = "Create a new task/ticket in a project. Always pass the `project_id` of the project you want to create the task in - it is required!"
     )]
     async fn create_task(
         &self,
