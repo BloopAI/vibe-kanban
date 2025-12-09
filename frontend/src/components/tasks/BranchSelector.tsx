@@ -26,6 +26,8 @@ type Props = {
   placeholder?: string;
   className?: string;
   excludeCurrentBranch?: boolean;
+  showUnspecified?: boolean;
+  unspecifiedLabel?: string;
   disabledTooltip?: string;
 };
 
@@ -102,6 +104,8 @@ const BranchRow = memo(function BranchRow({
 
 function BranchSelector({
   branches,
+  showUnspecified = false,
+  unspecifiedLabel,
   selectedBranch,
   onBranchSelect,
   placeholder,
@@ -264,6 +268,19 @@ function BranchSelector({
             </div>
           </div>
           <DropdownMenuSeparator />
+          {showUnspecified && !branchSearchTerm && (
+            <>
+              <DropdownMenuItem
+                onSelect={() => handleBranchSelect('')}
+                className={
+                  !selectedBranch ? 'bg-accent text-accent-foreground' : ''
+                }
+              >
+                {unspecifiedLabel || 'Unspecified'}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
           {filteredBranches.length === 0 ? (
             <div className="p-2 text-sm text-muted-foreground text-center">
               {t('branchSelector.empty')}

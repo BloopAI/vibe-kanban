@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "INSERT INTO projects (\n                    id,\n                    name,\n                    git_repo_path,\n                    setup_script,\n                    dev_script,\n                    cleanup_script,\n                    copy_files,\n                    parallel_setup_script\n                ) VALUES (\n                    $1, $2, $3, $4, $5, $6, $7, $8\n                )\n                RETURNING id as \"id!: Uuid\",\n                          name,\n                          git_repo_path,\n                          setup_script,\n                          dev_script,\n                          cleanup_script,\n                          copy_files,\n                          parallel_setup_script as \"parallel_setup_script!: bool\",\n                          remote_project_id as \"remote_project_id: Uuid\",\n                          created_at as \"created_at!: DateTime<Utc>\",\n                          updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      git_repo_path,\n                      setup_script,\n                      dev_script,\n                      cleanup_script,\n                      copy_files,\n                      base_branch,\n                      parallel_setup_script as \"parallel_setup_script!: bool\",\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               WHERE git_repo_path = $1",
   "describe": {
     "columns": [
       {
@@ -39,33 +39,39 @@
         "type_info": "Text"
       },
       {
-        "name": "parallel_setup_script!: bool",
+        "name": "base_branch",
         "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "parallel_setup_script!: bool",
+        "ordinal": 8,
         "type_info": "Integer"
       },
       {
         "name": "remote_project_id: Uuid",
-        "ordinal": 8,
+        "ordinal": 9,
         "type_info": "Blob"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 9,
+        "ordinal": 10,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 10,
+        "ordinal": 11,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 8
+      "Right": 1
     },
     "nullable": [
       true,
       false,
       false,
+      true,
       true,
       true,
       true,
@@ -76,5 +82,5 @@
       false
     ]
   },
-  "hash": "921d5710f2e19167d69b60da029246dfce714f1fc57d6625dd752b7aa644b497"
+  "hash": "c87a9cc24468b4c78e21fc85ccca4534a9da2e03781fbbe99955efbd3893ffd2"
 }

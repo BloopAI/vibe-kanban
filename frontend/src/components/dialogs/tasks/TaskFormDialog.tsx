@@ -29,6 +29,7 @@ import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-at
 import BranchSelector from '@/components/tasks/BranchSelector';
 import { ExecutorProfileSelector } from '@/components/settings';
 import { useUserSystem } from '@/components/ConfigProvider';
+import { useProjects } from '@/hooks/useProjects';
 import {
   useProjectBranches,
   useTaskImages,
@@ -88,6 +89,8 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
     useTaskMutations(projectId);
   const { system, profiles, loading: userSystemLoading } = useUserSystem();
   const { upload, uploadForTask } = useImageUpload();
+  const { data: projects } = useProjects();
+  const project = projects?.find((p) => p.id === projectId);
   const { enableScope, disableScope } = useHotkeysContext();
 
   // Local UI state
@@ -110,6 +113,12 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
 
     const defaultBranch = (() => {
       if (!branches?.length) return '';
+      if (mode === 'create' && project?.base_branch) {
+        if (branches.some((b) => b.name === project.base_branch)) {
+          return project.base_branch;
+        }
+      }
+
       if (
         mode === 'subtask' &&
         branches.some((b) => b.name === props.initialBaseBranch)
@@ -154,7 +163,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           autoStart: true,
         };
     }
-  }, [mode, props, system.config?.executor_profile, branches]);
+  }, [mode, props, system.config?.executor_profile, branches, project]);
 
   // Form submission handler
   const handleSubmit = async ({ value }: { value: TaskFormValues }) => {

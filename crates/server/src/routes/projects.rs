@@ -207,6 +207,7 @@ pub async fn create_project(
         copy_files,
         parallel_setup_script,
         use_existing_repo,
+        base_branch,
     } = payload;
     tracing::debug!("Creating project '{}'", name);
 
@@ -289,6 +290,7 @@ pub async fn create_project(
             name,
             git_repo_path: path.to_string_lossy().to_string(),
             use_existing_repo,
+            base_branch,
             setup_script,
             dev_script,
             cleanup_script,
@@ -336,6 +338,7 @@ pub async fn update_project(
         cleanup_script,
         copy_files,
         parallel_setup_script,
+        base_branch,
     } = payload;
     // If git_repo_path is being changed, check if the new path is already used by another project
     let git_repo_path = if let Some(new_git_repo_path) = git_repo_path.map(|s| expand_tilde(&s))
@@ -372,6 +375,7 @@ pub async fn update_project(
         dev_script,
         cleanup_script,
         copy_files,
+        base_branch,
         parallel_setup_script.unwrap_or(existing_project.parallel_setup_script),
     )
     .await

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            SELECT p.id as \"id!: Uuid\", p.name, p.git_repo_path, p.setup_script, p.dev_script, p.cleanup_script, p.copy_files,\n                   p.parallel_setup_script as \"parallel_setup_script!: bool\",\n                   p.remote_project_id as \"remote_project_id: Uuid\",\n                   p.created_at as \"created_at!: DateTime<Utc>\", p.updated_at as \"updated_at!: DateTime<Utc>\"\n            FROM projects p\n            WHERE p.id IN (\n                SELECT DISTINCT t.project_id\n                FROM tasks t\n                INNER JOIN task_attempts ta ON ta.task_id = t.id\n                ORDER BY ta.updated_at DESC\n            )\n            LIMIT $1\n            ",
+  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      git_repo_path,\n                      setup_script,\n                      dev_script,\n                      cleanup_script,\n                      copy_files,\n                      base_branch,\n                      parallel_setup_script as \"parallel_setup_script!: bool\",\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               WHERE git_repo_path = $1 AND id != $2",
   "describe": {
     "columns": [
       {
@@ -39,33 +39,39 @@
         "type_info": "Text"
       },
       {
-        "name": "parallel_setup_script!: bool",
+        "name": "base_branch",
         "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "parallel_setup_script!: bool",
+        "ordinal": 8,
         "type_info": "Integer"
       },
       {
         "name": "remote_project_id: Uuid",
-        "ordinal": 8,
+        "ordinal": 9,
         "type_info": "Blob"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 9,
+        "ordinal": 10,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 10,
+        "ordinal": 11,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 2
     },
     "nullable": [
       true,
       false,
       false,
+      true,
       true,
       true,
       true,
@@ -76,5 +82,5 @@
       false
     ]
   },
-  "hash": "e82f7fc1672ff56df544cc59fec2dba6d739d11567965be2cf3a1ca99beccae2"
+  "hash": "4d1a2dc15ecce6831cceea8f6e20600c8b0468e119f02c5085e4e94ddd2f5a38"
 }

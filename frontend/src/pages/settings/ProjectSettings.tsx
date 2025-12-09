@@ -25,6 +25,8 @@ import { Loader2, Folder } from 'lucide-react';
 import { useProjects } from '@/hooks/useProjects';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { useScriptPlaceholders } from '@/hooks/useScriptPlaceholders';
+import { useProjectBranches } from '@/hooks/useProjectBranches';
+import BranchSelector from '@/components/tasks/BranchSelector';
 import { CopyFilesField } from '@/components/projects/CopyFilesField';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
@@ -38,6 +40,7 @@ interface ProjectFormState {
   dev_script: string;
   cleanup_script: string;
   copy_files: string;
+  base_branch: string | null;
 }
 
 function projectToFormState(project: Project): ProjectFormState {
@@ -49,6 +52,7 @@ function projectToFormState(project: Project): ProjectFormState {
     dev_script: project.dev_script ?? '',
     cleanup_script: project.cleanup_script ?? '',
     copy_files: project.copy_files ?? '',
+    base_branch: project.base_branch ?? null,
   };
 }
 
@@ -63,12 +67,15 @@ export function ProjectSettings() {
     isLoading: projectsLoading,
     error: projectsError,
   } = useProjects();
+  // Fetch branches for selected project
 
   // Selected project state
   const [selectedProjectId, setSelectedProjectId] = useState<string>(
     searchParams.get('projectId') || ''
   );
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  // Fetch branches for selected project
+  const { data: branches } = useProjectBranches(selectedProjectId);
 
   // Form state
   const [draft, setDraft] = useState<ProjectFormState | null>(null);
@@ -218,6 +225,7 @@ export function ProjectSettings() {
         dev_script: draft.dev_script.trim() || null,
         cleanup_script: draft.cleanup_script.trim() || null,
         copy_files: draft.copy_files.trim() || null,
+        base_branch: draft.base_branch || null,
       };
 
       updateProject.mutate({
@@ -388,6 +396,24 @@ export function ProjectSettings() {
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {t('settings.projects.general.repoPath.helper')}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="base-branch">Default Base Branch</Label>
+                <BranchSelector
+                  branches={branches || []}
+                  selectedBranch={draft.base_branch}
+                  onBranchSelect={(branch) =>
+                    updateDraft({ base_branch: branch || null })
+                  }
+                  showUnspecified
+                  unspecifiedLabel="Use checked-out branch (default)"
+                  className="w-full"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Default branch for new tasks. If unspecified, uses current
+                  checkout.
                 </p>
               </div>
             </CardContent>
