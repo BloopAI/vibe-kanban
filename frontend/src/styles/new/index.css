@@ -239,6 +239,7 @@
   body,
   #root {
     @apply min-h-screen;
+    @apply font-normal;
   }
 
   .new-design {

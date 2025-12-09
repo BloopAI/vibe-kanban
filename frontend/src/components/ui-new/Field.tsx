@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
+import { Plus, ChevronDown } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui-new/Label';
@@ -186,44 +187,37 @@ function WorkspaceSearch({
   value,
   onValueChange,
   onAdd,
+  type = 'Add',
   ...props
 }: Omit<React.ComponentProps<'div'>, 'onChange'> & {
   value?: string;
   onValueChange?: (value: string) => void;
   onAdd?: () => void;
+  type?: 'Add' | 'Filter';
 }) {
   return (
     <div
       data-slot="workspace-search"
-      className={cn('flex gap-2', className)}
+      className={cn('grid grid-cols-[1fr_auto] gap-base', className)}
       {...props}
     >
       <input
         type="text"
-        placeholder="Search workspaces..."
+        placeholder="Search..."
         value={value}
         onChange={(e) => onValueChange?.(e.target.value)}
-        className="flex-1 h-10 px-4 bg-secondary rounded border text-base text-normal placeholder:text-low focus:outline-none focus:ring-1 focus:ring-brand"
+        className="flex-1 min-h-0 bg-primary rounded-md p-base text-low placeholder:text-low placeholder:opacity-80 focus:outline-none focus:ring-1 focus:ring-brand"
       />
       <button
         type="button"
         onClick={onAdd}
-        className="h-10 w-10 flex items-center justify-center bg-secondary rounded border text-low hover:text-normal"
+        className="flex aspect-square items-center justify-center bg-primary rounded-md text-low hover:text-normal"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M5 12h14" />
-          <path d="M12 5v14" />
-        </svg>
+        {type === 'Add' ? (
+          <Plus className="size-icon-lg" />
+        ) : (
+          <ChevronDown className="size-icon-base" />
+        )}
       </button>
     </div>
   );

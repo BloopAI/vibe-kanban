@@ -23,7 +23,7 @@ export function WorkspacesSidebar({
   );
 
   return (
-    <aside className="w-64 bg-secondary shrink-0 p-base">
+    <aside className="w-80 bg-secondary shrink-0 p-double">
       <WorkspaceSearch
         value={searchQuery}
         onValueChange={onSearchChange}
