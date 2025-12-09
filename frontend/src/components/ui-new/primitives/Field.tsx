@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { Plus, ChevronDown } from 'lucide-react';
+import { Plus, CaretDown } from '@phosphor-icons/react';
 
 import { cn } from '@/lib/utils';
 import { Label } from './Label';
@@ -206,7 +206,7 @@ function WorkspaceSearch({
         placeholder="Search..."
         value={value}
         onChange={(e) => onValueChange?.(e.target.value)}
-        className="flex-1 min-h-0 bg-primary rounded-md p-base text-low placeholder:text-low placeholder:opacity-80 focus:outline-none focus:ring-1 focus:ring-brand"
+        className="flex-1 min-h-0 bg-primary rounded-md p-base text-high placeholder:text-low placeholder:opacity-80 focus:outline-none focus:ring-1 focus:ring-brand"
       />
       <button
         type="button"
@@ -214,9 +214,9 @@ function WorkspaceSearch({
         className="flex aspect-square items-center justify-center bg-primary rounded-md text-low hover:text-normal"
       >
         {type === 'Add' ? (
-          <Plus className="size-icon-lg" />
+          <Plus className="size-icon-xl" weight="bold" />
         ) : (
-          <ChevronDown className="size-icon-base" />
+          <CaretDown className="size-icon-base" />
         )}
       </button>
     </div>

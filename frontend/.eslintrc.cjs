@@ -262,5 +262,22 @@ module.exports = {
         ],
       },
     },
+    {
+      // ui-new components must use Phosphor icons, not Lucide
+      files: ['src/components/ui-new/**/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            paths: [
+              {
+                name: 'lucide-react',
+                message: 'Use @phosphor-icons/react instead of lucide-react in ui-new components.',
+              },
+            ],
+          },
+        ],
+      },
+    },
   ],
 };
