@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useWorkspaces } from '../hooks/useWorkspaces';
-import { WorkspacesSidebar } from '../views/WorkspacesSidebar';
-import { WorkspacesMain } from '../views/WorkspacesMain';
+import { useWorkspaces } from '@/components/ui-new/hooks/useWorkspaces';
+import { WorkspacesSidebar } from '@/components/ui-new/views/WorkspacesSidebar';
+import { WorkspacesMain } from '@/components/ui-new/views/WorkspacesMain';
 
 export function WorkspacesLayout() {
   const { workspaces, selectedWorkspaceId, selectWorkspace, isLoading } =

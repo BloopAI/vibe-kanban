@@ -1,4 +1,4 @@
-import type { Workspace } from '../hooks/useWorkspaces';
+import type { Workspace } from '@/components/ui-new/hooks/useWorkspaces';
 
 interface WorkspacesMainProps {
   selectedWorkspace: Workspace | null;
