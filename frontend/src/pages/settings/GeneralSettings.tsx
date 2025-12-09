@@ -516,7 +516,8 @@ export function GeneralSettings() {
                   : ''
               }`}
               value={
-                draft?.pr_auto_description_prompt ?? DEFAULT_PR_DESCRIPTION_PROMPT
+                draft?.pr_auto_description_prompt ??
+                DEFAULT_PR_DESCRIPTION_PROMPT
               }
               disabled={draft?.pr_auto_description_prompt == null}
               onChange={(e) =>
