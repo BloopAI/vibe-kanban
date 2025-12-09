@@ -2,6 +2,11 @@ export interface Workspace {
   id: string;
   name: string;
   description: string;
+  filesChanged?: number;
+  linesAdded?: number;
+  linesRemoved?: number;
+  isRunning?: boolean;
+  isPinned?: boolean;
 }
 
 export interface UseWorkspacesResult {
@@ -16,11 +21,38 @@ export function useWorkspaces(): UseWorkspacesResult {
   const workspaces: Workspace[] = [
     {
       id: '1',
-      name: 'Project Alpha',
+      name: 'add icon to variant selection',
       description: 'Main development workspace',
+      filesChanged: 3,
+      linesAdded: 13,
     },
-    { id: '2', name: 'Project Beta', description: 'Experimental features' },
-    { id: '3', name: 'Documentation', description: 'Docs and guides' },
+    {
+      id: '2',
+      name: 'Inject ENV vars into shell',
+      description: 'Experimental features',
+      filesChanged: 3,
+      linesAdded: 300,
+      linesRemoved: 136,
+      isRunning: true,
+    },
+    {
+      id: '3',
+      name: 'Documentation updates',
+      description: 'Docs and guides',
+      filesChanged: 1,
+      linesAdded: 45,
+      isPinned: true,
+    },
+    {
+      id: '4',
+      name: 'Feature branch work',
+      description: 'New feature',
+      filesChanged: 5,
+      linesAdded: 200,
+      linesRemoved: 50,
+      isRunning: false,
+      isPinned: false,
+    },
   ];
 
   // In a real implementation, this would use useState/useQuery
