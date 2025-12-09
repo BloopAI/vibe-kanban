@@ -507,24 +507,29 @@ export function GeneralSettings() {
               {t('settings.general.pullRequests.customPrompt.useCustom')}
             </Label>
           </div>
-          {draft?.pr_auto_description_prompt != null && (
-            <div className="space-y-2">
-              <textarea
-                id="pr-custom-prompt"
-                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                value={draft.pr_auto_description_prompt}
-                onChange={(e) =>
-                  updateDraft({
-                    pr_auto_description_prompt:
-                      e.target.value || DEFAULT_PR_DESCRIPTION_PROMPT,
-                  })
-                }
-              />
-              <p className="text-sm text-muted-foreground">
-                {t('settings.general.pullRequests.customPrompt.helper')}
-              </p>
-            </div>
-          )}
+          <div className="space-y-2">
+            <textarea
+              id="pr-custom-prompt"
+              className={`flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                draft?.pr_auto_description_prompt == null
+                  ? 'opacity-50 cursor-not-allowed'
+                  : ''
+              }`}
+              value={
+                draft?.pr_auto_description_prompt ?? DEFAULT_PR_DESCRIPTION_PROMPT
+              }
+              disabled={draft?.pr_auto_description_prompt == null}
+              onChange={(e) =>
+                updateDraft({
+                  pr_auto_description_prompt:
+                    e.target.value || DEFAULT_PR_DESCRIPTION_PROMPT,
+                })
+              }
+            />
+            <p className="text-sm text-muted-foreground">
+              {t('settings.general.pullRequests.customPrompt.helper')}
+            </p>
+          </div>
         </CardContent>
       </Card>
 
