@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT ta.id as \"attempt_id!: Uuid\", ta.container_ref, p.git_repo_path as \"git_repo_path!\"\n            FROM task_attempts ta\n            JOIN tasks t ON ta.task_id = t.id\n            JOIN projects p ON t.project_id = p.id\n            WHERE ta.task_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "attempt_id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "container_ref",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "git_repo_path!",
+        "ordinal": 2,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "216193a63f7b0fb788566b63f56d83ee3d344a5c85e1a5999247b6a44f3ae390"
+}

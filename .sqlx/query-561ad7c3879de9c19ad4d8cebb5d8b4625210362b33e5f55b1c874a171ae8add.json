@@ -1,0 +1,92 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO cached_nodes (\n                id, organization_id, name, machine_id, status, capabilities,\n                public_url, last_heartbeat_at, connected_at, disconnected_at,\n                created_at, updated_at, last_synced_at\n            )\n            VALUES (\n                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, datetime('now', 'subsec')\n            )\n            ON CONFLICT(id) DO UPDATE SET\n                organization_id   = excluded.organization_id,\n                name              = excluded.name,\n                machine_id        = excluded.machine_id,\n                status            = excluded.status,\n                capabilities      = excluded.capabilities,\n                public_url        = excluded.public_url,\n                last_heartbeat_at = excluded.last_heartbeat_at,\n                connected_at      = excluded.connected_at,\n                disconnected_at   = excluded.disconnected_at,\n                created_at        = excluded.created_at,\n                updated_at        = excluded.updated_at,\n                last_synced_at    = datetime('now', 'subsec')\n            RETURNING\n                id                  AS \"id!: Uuid\",\n                organization_id     AS \"organization_id!: Uuid\",\n                name                AS \"name!\",\n                machine_id          AS \"machine_id!\",\n                status              AS \"status!: String\",\n                capabilities        AS \"capabilities_json!\",\n                public_url          AS \"public_url?\",\n                last_heartbeat_at   AS \"last_heartbeat_at?: DateTime<Utc>\",\n                connected_at        AS \"connected_at?: DateTime<Utc>\",\n                disconnected_at     AS \"disconnected_at?: DateTime<Utc>\",\n                created_at          AS \"created_at!: DateTime<Utc>\",\n                updated_at          AS \"updated_at!: DateTime<Utc>\",\n                last_synced_at      AS \"last_synced_at!: DateTime<Utc>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "organization_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "name!",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "machine_id!",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "status!: String",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "capabilities_json!",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "public_url?",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_heartbeat_at?: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "connected_at?: DateTime<Utc>",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "disconnected_at?: DateTime<Utc>",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 11,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_synced_at!: DateTime<Utc>",
+        "ordinal": 12,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 12
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "561ad7c3879de9c19ad4d8cebb5d8b4625210362b33e5f55b1c874a171ae8add"
+}

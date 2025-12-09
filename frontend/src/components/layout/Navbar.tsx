@@ -1,4 +1,4 @@
-import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useCallback } from 'react';
 import { siDiscord } from 'simple-icons';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,6 @@ import {
   Plus,
   LogOut,
   LogIn,
-  Circle,
 } from 'lucide-react';
 import { Logo } from '@/components/Logo';
 import { SearchBar } from '@/components/SearchBar';
@@ -28,20 +27,13 @@ import { useSearch } from '@/contexts/SearchContext';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { useProject } from '@/contexts/ProjectContext';
 import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
-import { Badge } from '@/components/ui/badge';
 import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
 import { useDiscordOnlineCount } from '@/hooks/useDiscordOnlineCount';
 import { useTranslation } from 'react-i18next';
-import { Switch } from '@/components/ui/switch';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { oauthApi } from '@/lib/api';
+import { ProjectSwitcher } from './ProjectSwitcher';
 
 const INTERNAL_NAV = [
   { label: 'Projects', icon: FolderOpen, to: '/projects' },
@@ -78,7 +70,6 @@ function NavDivider() {
 
 export function Navbar() {
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
   const { projectId, project } = useProject();
   const { query, setQuery, active, clear, registerInputRef } = useSearch();
   const handleOpenInEditor = useOpenProjectInEditor(project || null);
@@ -94,24 +85,6 @@ export function Navbar() {
     [registerInputRef]
   );
   const { t } = useTranslation(['tasks', 'common']);
-  // Navbar is global, but the share tasks toggle only makes sense on the tasks route
-  const isTasksRoute = /^\/projects\/[^/]+\/tasks/.test(location.pathname);
-  const showSharedTasks = searchParams.get('shared') !== 'off';
-  const shouldShowSharedToggle =
-    isTasksRoute && active && project?.remote_project_id != null;
-
-  const handleSharedToggle = useCallback(
-    (checked: boolean) => {
-      const params = new URLSearchParams(searchParams);
-      if (checked) {
-        params.delete('shared');
-      } else {
-        params.set('shared', 'off');
-      }
-      setSearchParams(params, { replace: true });
-    },
-    [searchParams, setSearchParams]
-  );
 
   const handleCreateTask = () => {
     if (projectId) {
@@ -146,9 +119,10 @@ export function Navbar() {
       <div className="w-full px-3">
         <div className="flex items-center h-12 py-2">
           <div className="flex-1 flex items-center">
-            <Link to="/projects">
+            <Link to="/projects" className="hidden sm:block">
               <Logo />
             </Link>
+            <ProjectSwitcher className="sm:ml-2" />
             {!hideDiscord && (
               <a
                 href="https://discord.gg/AC4nwVtJM3"
@@ -189,53 +163,9 @@ export function Navbar() {
               onClear={clear}
               project={project || null}
             />
-            {project?.is_remote && (
-              <Badge
-                variant="secondary"
-                className="flex items-center gap-1 text-xs shrink-0"
-              >
-                <Server className="h-3 w-3" />
-                {project.source_node_name || 'Remote'}
-                <Circle
-                  className={`h-2 w-2 fill-current ${
-                    project.source_node_status === 'online'
-                      ? 'text-green-500'
-                      : project.source_node_status === 'busy'
-                        ? 'text-yellow-500'
-                        : project.source_node_status === 'draining'
-                          ? 'text-orange-500'
-                          : 'text-gray-400'
-                  }`}
-                />
-              </Badge>
-            )}
           </div>
 
           <div className="flex flex-1 items-center justify-end gap-1">
-            {isOAuthLoggedIn && shouldShowSharedToggle ? (
-              <>
-                <div className="flex items-center gap-4">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div>
-                          <Switch
-                            checked={showSharedTasks}
-                            onCheckedChange={handleSharedToggle}
-                            aria-label={t('tasks:filters.sharedToggleAria')}
-                          />
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom">
-                        {t('tasks:filters.sharedToggleTooltip')}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-                <NavDivider />
-              </>
-            ) : null}
-
             {projectId ? (
               <>
                 <div className="flex items-center gap-1">

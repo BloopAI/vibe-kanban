@@ -161,6 +161,16 @@ export function ActionsDropdown({
   };
 
   const isAssignee = sharedTask?.assignee_user_id === userId;
+  const isRemoteAssignee = task?.remote_assignee_user_id === userId;
+
+  // Permission to modify (edit/delete) a task:
+  // - Assignee of the shared task
+  // - Assignee of the remote task
+  // - Org admin
+  // - For local tasks without shared/remote info, anyone can edit (preserve current behavior)
+  const isLocalOnlyTask = !isShared && !isRemote;
+  const canModifyTask = isLocalOnlyTask || isAssignee || isRemoteAssignee || isOrgAdmin;
+
   // For reassign: need both task and sharedTask, unless admin (admins can reassign shared-only tasks)
   const canReassign =
     Boolean(sharedTask) && (Boolean(task) || isOrgAdmin) && (isAssignee || isOrgAdmin);
@@ -275,14 +285,17 @@ export function ActionsDropdown({
                 {t('actionsMenu.stopShare')}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem disabled={!projectId} onClick={handleEdit}>
+              <DropdownMenuItem
+                disabled={!projectId || !canModifyTask}
+                onClick={handleEdit}
+              >
                 {t('common:buttons.edit')}
               </DropdownMenuItem>
               <DropdownMenuItem disabled={!projectId} onClick={handleDuplicate}>
                 {t('actionsMenu.duplicate')}
               </DropdownMenuItem>
               <DropdownMenuItem
-                disabled={!projectId}
+                disabled={!projectId || !canModifyTask}
                 onClick={handleDelete}
                 className="text-destructive"
               >

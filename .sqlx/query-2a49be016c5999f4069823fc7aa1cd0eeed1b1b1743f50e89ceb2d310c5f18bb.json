@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT\n                remote_project_id AS \"remote_project_id!: Uuid\",\n                last_seq          AS \"last_seq!: i64\",\n                updated_at        AS \"updated_at!: DateTime<Utc>\"\n            FROM shared_activity_cursors\n            WHERE remote_project_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "remote_project_id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "last_seq!: i64",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 2,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "2a49be016c5999f4069823fc7aa1cd0eeed1b1b1743f50e89ceb2d310c5f18bb"
+}
