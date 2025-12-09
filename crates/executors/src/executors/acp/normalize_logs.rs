@@ -67,6 +67,9 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                         if let agent_client_protocol::ContentBlock::Text(text) = content {
                             let is_new = streaming.assistant_text.is_none();
                             if is_new {
+                                if text.text == "\n" {
+                                    continue;
+                                }
                                 let idx = entry_index.next();
                                 streaming.assistant_text = Some(StreamingText {
                                     index: idx,
