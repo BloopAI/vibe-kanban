@@ -40,8 +40,14 @@ export function AllProjectsTaskCard({
   }, [task, onViewDetails]);
 
   const shortNodeName = getShortNodeName(task.source_node_name);
+
+  // Prefer granular assignee fields from shared_tasks, fall back to remote_assignee_name
   const ownerName =
-    task.remote_assignee_name ?? task.remote_assignee_username ?? null;
+    task.assignee_first_name || task.assignee_last_name
+      ? [task.assignee_first_name, task.assignee_last_name]
+          .filter(Boolean)
+          .join(' ')
+      : (task.remote_assignee_name ?? task.remote_assignee_username ?? null);
 
   return (
     <KanbanCard
@@ -62,16 +68,26 @@ export function AllProjectsTaskCard({
         <TaskCardHeader
           title={task.title}
           avatar={
-            task.remote_assignee_name
+            // Prefer granular assignee fields from shared_tasks
+            task.assignee_first_name ||
+            task.assignee_last_name ||
+            task.assignee_username
               ? {
-                  firstName:
-                    task.remote_assignee_name.split(' ')[0] ?? undefined,
-                  lastName:
-                    task.remote_assignee_name.split(' ').slice(1).join(' ') ||
-                    undefined,
-                  username: task.remote_assignee_username ?? undefined,
+                  firstName: task.assignee_first_name ?? undefined,
+                  lastName: task.assignee_last_name ?? undefined,
+                  username: task.assignee_username ?? undefined,
                 }
-              : undefined
+              : // Fallback: parse combined name for legacy data
+                task.remote_assignee_name
+                ? {
+                    firstName:
+                      task.remote_assignee_name.split(' ')[0] ?? undefined,
+                    lastName:
+                      task.remote_assignee_name.split(' ').slice(1).join(' ') ||
+                      undefined,
+                    username: task.remote_assignee_username ?? undefined,
+                  }
+                : undefined
           }
           right={
             <>
