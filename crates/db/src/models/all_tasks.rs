@@ -28,6 +28,10 @@ pub struct TaskWithProjectInfo {
     pub remote_last_synced_at: Option<DateTime<Utc>>,
     pub remote_stream_node_id: Option<Uuid>,
     pub remote_stream_url: Option<String>,
+    // Assignee fields from shared_tasks (for consistent avatar/owner display)
+    pub assignee_first_name: Option<String>,
+    pub assignee_last_name: Option<String>,
+    pub assignee_username: Option<String>,
     // Attempt status fields
     pub has_in_progress_attempt: bool,
     pub has_merged_attempt: bool,
@@ -71,6 +75,11 @@ impl AllTasksResponse {
   -- Project context
   p.name                          AS "project_name!",
   p.source_node_name              AS "source_node_name",
+
+  -- Assignee info from shared_tasks (for consistent avatar/owner display)
+  st.assignee_first_name          AS "assignee_first_name",
+  st.assignee_last_name           AS "assignee_last_name",
+  COALESCE(st.assignee_username, t.remote_assignee_username) AS "assignee_username",
 
   -- Attempt status: has_in_progress_attempt
   CASE WHEN EXISTS (
@@ -121,6 +130,7 @@ impl AllTasksResponse {
 
 FROM tasks t
 JOIN projects p ON t.project_id = p.id
+LEFT JOIN shared_tasks st ON t.shared_task_id = st.id
 ORDER BY t.updated_at DESC"#
         )
         .fetch_all(pool)
@@ -146,6 +156,9 @@ ORDER BY t.updated_at DESC"#
                 remote_last_synced_at: rec.remote_last_synced_at,
                 remote_stream_node_id: rec.remote_stream_node_id,
                 remote_stream_url: rec.remote_stream_url,
+                assignee_first_name: rec.assignee_first_name,
+                assignee_last_name: rec.assignee_last_name,
+                assignee_username: rec.assignee_username,
                 has_in_progress_attempt: rec.has_in_progress_attempt != 0,
                 has_merged_attempt: rec.has_merged_attempt != 0,
                 last_attempt_failed: rec.last_attempt_failed != 0,
