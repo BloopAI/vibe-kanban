@@ -253,6 +253,13 @@
   .new-design .logo {
     @apply fill-foreground;
   }
+
+  .new-design a,
+  .new-design button,
+  .new-design button * {
+    @apply transition-colors duration-200;
+    cursor: pointer;
+  }
 }
 
 /* ANSI color classes for fancy-ansi */

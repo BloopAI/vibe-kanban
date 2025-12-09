@@ -1,5 +1,6 @@
 import type { Workspace } from '../hooks/useWorkspaces';
 import { WorkspaceSearch } from '@/components/ui-new/Field';
+import { WorkspaceSummary } from '@/components/ui-new/WorkspaceSummary';
 
 interface WorkspacesSidebarProps {
   workspaces: Workspace[];
@@ -23,27 +24,27 @@ export function WorkspacesSidebar({
   );
 
   return (
-    <aside className="w-80 bg-secondary shrink-0 p-double">
+    <aside className="w-80 bg-secondary shrink-0 px-double">
       <WorkspaceSearch
         value={searchQuery}
         onValueChange={onSearchChange}
         onAdd={onAddWorkspace}
-        className="mb-base"
+        className="my-double"
       />
-      <nav className="space-y-1">
+      <nav>
         {filteredWorkspaces.map((workspace) => (
-          <button
+          <WorkspaceSummary
             key={workspace.id}
+            name={workspace.name}
+            filesChanged={workspace.filesChanged}
+            linesAdded={workspace.linesAdded}
+            linesRemoved={workspace.linesRemoved}
+            isActive={selectedWorkspaceId === workspace.id}
+            isRunning={workspace.isRunning}
+            isPinned={workspace.isPinned}
             onClick={() => onSelectWorkspace(workspace.id)}
-            className={`w-full rounded-md px-3 py-2 text-left transition-colors ${
-              selectedWorkspaceId === workspace.id
-                ? 'bg-accent text-high'
-                : 'text-normal hover:bg-tertiary'
-            }`}
-          >
-            <div className="font-medium">{workspace.name}</div>
-            <div className="text-xs text-low">{workspace.description}</div>
-          </button>
+            className="my-double"
+          />
         ))}
       </nav>
     </aside>
