@@ -36,10 +36,10 @@ import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
 
 // Design scope components
 import { LegacyDesignScope } from '@/components/legacy-design/LegacyDesignScope';
-import { NewDesignScope } from '@/components/new-design/NewDesignScope';
+import { NewDesignScope } from '@/components/ui-new/scope/NewDesignScope';
 
 // New design pages
-import { Workspaces } from '@/pages/new-design/Workspaces';
+import { Workspaces } from '@/pages/ui-new/Workspaces';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
