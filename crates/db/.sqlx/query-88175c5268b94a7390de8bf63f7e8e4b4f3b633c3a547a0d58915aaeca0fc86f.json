@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      git_repo_path,\n                      setup_script,\n                      dev_script,\n                      cleanup_script,\n                      copy_files,\n                      parallel_setup_script as \"parallel_setup_script!: bool\",\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               ORDER BY created_at DESC",
+  "query": "SELECT p.id as \"id!: Uuid\",\n                      p.name,\n                      p.git_repo_path,\n                      p.setup_script,\n                      p.dev_script,\n                      p.cleanup_script,\n                      p.copy_files,\n                      p.parallel_setup_script as \"parallel_setup_script!: bool\",\n                      p.remote_project_id as \"remote_project_id: Uuid\",\n                      p.created_at as \"created_at!: DateTime<Utc>\",\n                      p.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects p\n               LEFT JOIN (\n                   SELECT t.project_id, MAX(ta.updated_at) as last_activity\n                   FROM tasks t\n                   INNER JOIN task_attempts ta ON ta.task_id = t.id\n                   GROUP BY t.project_id\n               ) activity ON activity.project_id = p.id\n               ORDER BY activity.last_activity DESC NULLS LAST, p.created_at DESC",
   "describe": {
     "columns": [
       {
@@ -76,5 +76,5 @@
       false
     ]
   },
-  "hash": "5ae74dcee62a835018743862b2beceb7231696a0775ba2f144a0b1ecc8bfd56d"
+  "hash": "88175c5268b94a7390de8bf63f7e8e4b4f3b633c3a547a0d58915aaeca0fc86f"
 }
