@@ -1,4 +1,21 @@
 /** @type {import('tailwindcss').Config} */
+
+const sizes = {
+  xs: 0.75,
+  sm: 0.875,
+  base: 1,
+  lg: 1.125,
+  xl: 1.25,
+}
+
+const lineHeightMultiplier = 1.5;
+const radiusMultiplier = 0.25;
+
+function getSize(sizeLabel, multiplier = 1) {
+
+  return sizes[sizeLabel] * multiplier + "rem";
+}
+
 module.exports = {
   darkMode: ["class"],
   important: '.new-design',
@@ -32,7 +49,19 @@ module.exports = {
         "2xl": "1400px",
       },
     },
+    fontWeight: {
+      thin: "100",
+      normal: "500",
+      semibold: "600",
+    },
     extend: {
+      size: {
+        'icon-xs': getSize('xs'),
+        'icon-sm': getSize('sm'),
+        'icon-base': getSize('base'),
+        'icon-lg': getSize('lg'),
+        'icon-xl': getSize('xl'),
+      },
       backgroundImage: {
         'diagonal-lines': `
           repeating-linear-gradient(-45deg, hsl(var(--text-low) / 0.4) 0 2px, transparent 1px 12px),
@@ -43,16 +72,16 @@ module.exports = {
         DEFAULT: 'hsl(var(--brand))',
       },
       fontSize: {
-        xs: ['0.5rem', { lineHeight: '0.75rem' }],      // 8px
-        sm: ['0.625rem', { lineHeight: '0.875rem' }],   // 10px
-        base: ['0.75rem', { lineHeight: '1.125rem' }],  // 12px (base)
-        lg: ['0.875rem', { lineHeight: '1.25rem' }],    // 14px
-        xl: ['1rem', { lineHeight: '1.5rem' }],         // 16px
+        xs: [getSize('xs'), { lineHeight: getSize('xs', lineHeightMultiplier) }],      // 8px
+        sm: [getSize('sm'), { lineHeight: getSize('sm', lineHeightMultiplier) }],   // 10px
+        base: [getSize('base'), { lineHeight: getSize('base', lineHeightMultiplier) }],  // 12px (base)
+        lg: [getSize('lg'), { lineHeight: getSize('lg', lineHeightMultiplier) }],    // 14px
+        xl: [getSize('xl'), { lineHeight: getSize('xl', lineHeightMultiplier) }],         // 16px
       },
       spacing: {
-        'half': '0.375rem',   // 6px
-        'base': '0.75rem',    // 12px
-        'double': '1.5rem',   // 24px
+        'half': getSize('base', 0.25),
+        'base': getSize('base', 0.5),
+        'double': getSize('base', 1),
       },
       colors: {
         // Text colors: text-high, text-normal, text-low
@@ -77,9 +106,9 @@ module.exports = {
         border: "hsl(var(--border))",
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        lg: getSize('lg', radiusMultiplier),
+        md: getSize('sm', radiusMultiplier),
+        sm: getSize('xs', radiusMultiplier),
       },
       fontFamily: {
         'ibm-plex-sans': ['IBM Plex Sans', 'Noto Emoji', 'sans-serif'],
