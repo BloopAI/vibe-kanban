@@ -90,7 +90,7 @@ export function RetryEditorInline({
       message,
       variant: selectedVariant,
       executionProcessId,
-      branchStatus: branchStatus?.[0],
+      branchStatus,
       processes: attemptData.processes,
     });
   }, [

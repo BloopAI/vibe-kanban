@@ -530,11 +530,11 @@ export const attemptsApi = {
     return handleApiResponse<OpenEditorResponse>(response);
   },
 
-  getBranchStatus: async (attemptId: string): Promise<BranchStatus[]> => {
+  getBranchStatus: async (attemptId: string): Promise<RepoBranchStatus[]> => {
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/branch-status`
     );
-    return handleApiResponse<BranchStatus[]>(response);
+    return handleApiResponse<RepoBranchStatus[]>(response);
   },
 
   getRepos: async (attemptId: string): Promise<Repo[]> => {

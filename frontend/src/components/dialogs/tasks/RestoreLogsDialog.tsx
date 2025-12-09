@@ -13,18 +13,21 @@ import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { useKeySubmitTask } from '@/keyboard/hooks';
 import { Scope } from '@/keyboard/registry';
-import { executionProcessesApi, commitsApi } from '@/lib/api';
+import { executionProcessesApi } from '@/lib/api';
 import {
   shouldShowInLogs,
   isCodingAgent,
   PROCESS_RUN_REASONS,
 } from '@/constants/processes';
-import type { BranchStatus, ExecutionProcess } from 'shared/types';
+import type {
+  RepoBranchStatus,
+  ExecutionProcess,
+  ExecutionProcessRepoState,
+} from 'shared/types';
 
 export interface RestoreLogsDialogProps {
-  attemptId: string;
   executionProcessId: string;
-  branchStatus: BranchStatus | undefined;
+  branchStatus: RepoBranchStatus[] | undefined;
   processes: ExecutionProcess[] | undefined;
   initialWorktreeResetOn?: boolean;
   initialForceReset?: boolean;
@@ -38,7 +41,6 @@ export type RestoreLogsDialogResult = {
 
 const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
   ({
-    attemptId,
     executionProcessId,
     branchStatus,
     processes,
@@ -54,13 +56,12 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
     const [forceReset, setForceReset] = useState(initialForceReset);
     const [acknowledgeUncommitted, setAcknowledgeUncommitted] = useState(false);
 
-    // Fetched data
-    const [targetSha, setTargetSha] = useState<string | null>(null);
-    const [targetSubject, setTargetSubject] = useState<string | null>(null);
-    const [commitsToReset, setCommitsToReset] = useState<number | null>(null);
-    const [isLinear, setIsLinear] = useState<boolean | null>(null);
+    // Fetched data - stores all repo states for multi-repo support
+    const [repoStates, setRepoStates] = useState<ExecutionProcessRepoState[]>(
+      []
+    );
 
-    // Fetch execution process repo states and commit info
+    // Fetch execution process repo states
     useEffect(() => {
       let cancelled = false;
       setIsLoading(true);
@@ -68,25 +69,10 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
       (async () => {
         try {
           // Fetch repo states for the execution process (supports multi-repo)
-          const repoStates =
+          const states =
             await executionProcessesApi.getRepoStates(executionProcessId);
-          // Use first repo's before_head_commit for display (like merge does)
-          const sha = repoStates[0]?.before_head_commit || null;
           if (cancelled) return;
-          setTargetSha(sha);
-
-          if (sha) {
-            try {
-              const cmp = await commitsApi.compareToHead(attemptId, sha);
-              if (!cancelled) {
-                setTargetSubject(cmp.subject);
-                setCommitsToReset(cmp.is_linear ? cmp.ahead_from_head : null);
-                setIsLinear(cmp.is_linear);
-              }
-            } catch {
-              /* ignore commit info errors */
-            }
-          }
+          setRepoStates(states);
         } finally {
           if (!cancelled) setIsLoading(false);
         }
@@ -95,7 +81,7 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
       return () => {
         cancelled = true;
       };
-    }, [attemptId, executionProcessId]);
+    }, [executionProcessId]);
 
     // Compute later processes from props
     const { laterCount, laterCoding, laterSetup, laterCleanup } =
@@ -117,21 +103,45 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
         };
       }, [processes, executionProcessId]);
 
-    // Compute git reset state from branchStatus
-    const head = branchStatus?.head_oid || null;
-    const dirty = !!branchStatus?.has_uncommitted_changes;
-    const needGitReset = !!(targetSha && (targetSha !== head || dirty));
-    const canGitReset = needGitReset && !dirty;
-    const hasRisk = dirty;
-    const uncommittedCount = branchStatus?.uncommitted_count ?? 0;
-    const untrackedCount = branchStatus?.untracked_count ?? 0;
+    // Join repo states with branch status to get repo names and compute aggregated values
+    const repoInfo = useMemo(() => {
+      return repoStates.map((state) => {
+        const bs = branchStatus?.find((b) => b.repo_id === state.repo_id);
+        return {
+          repoId: state.repo_id,
+          repoName: bs?.repo_name ?? state.repo_id,
+          targetSha: state.before_head_commit,
+          headOid: bs?.head_oid ?? null,
+          hasUncommitted: bs?.has_uncommitted_changes ?? false,
+          uncommittedCount: bs?.uncommitted_count ?? 0,
+          untrackedCount: bs?.untracked_count ?? 0,
+        };
+      });
+    }, [repoStates, branchStatus]);
+
+    // Aggregate values across all repos
+    const anyDirty = repoInfo.some((r) => r.hasUncommitted);
+    const totalUncommitted = repoInfo.reduce(
+      (sum, r) => sum + r.uncommittedCount,
+      0
+    );
+    const totalUntracked = repoInfo.reduce(
+      (sum, r) => sum + r.untrackedCount,
+      0
+    );
+    const anyNeedsReset = repoInfo.some(
+      (r) => r.targetSha && (r.targetSha !== r.headOid || r.hasUncommitted)
+    );
+    const needGitReset = anyNeedsReset;
+    const canGitReset = needGitReset && !anyDirty;
+    const hasRisk = anyDirty;
 
     const hasLater = laterCount > 0;
-    const short = targetSha?.slice(0, 7);
+    const repoCount = repoInfo.length;
 
     const isConfirmDisabled =
       isLoading ||
-      (dirty && !acknowledgeUncommitted) ||
+      (anyDirty && !acknowledgeUncommitted) ||
       (hasRisk && worktreeResetOn && needGitReset && !forceReset);
 
     const handleConfirm = () => {
@@ -244,7 +254,7 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                     </div>
                   )}
 
-                  {dirty && (
+                  {anyDirty && (
                     <div className="flex items-start gap-3 rounded-md border border-amber-300/60 bg-amber-50/70 dark:border-amber-400/30 dark:bg-amber-900/20 p-3">
                       <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5" />
                       <div className="text-sm min-w-0 w-full break-words">
@@ -255,14 +265,14 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                           {t(
                             'restoreLogsDialog.uncommittedChanges.description',
                             {
-                              count: uncommittedCount,
+                              count: totalUncommitted,
                             }
                           )}
-                          {untrackedCount > 0 &&
+                          {totalUntracked > 0 &&
                             t(
                               'restoreLogsDialog.uncommittedChanges.andUntracked',
                               {
-                                count: untrackedCount,
+                                count: totalUntracked,
                               }
                             )}
                           .
@@ -323,6 +333,7 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                       <div className="text-sm min-w-0 w-full break-words">
                         <p className="font-medium mb-2">
                           {t('restoreLogsDialog.resetWorktree.title')}
+                          {repoCount > 1 && ` (${repoCount} repos)`}
                         </p>
                         <div
                           className="mt-2 w-full flex items-center cursor-pointer select-none"
@@ -361,48 +372,41 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                                 'restoreLogsDialog.resetWorktree.restoreDescription'
                               )}
                             </p>
-                            <div className="mt-1 flex flex-wrap items-center gap-2 min-w-0">
-                              <GitCommit className="h-3.5 w-3.5 text-muted-foreground" />
-                              {short && (
-                                <span className="font-mono text-xs px-2 py-0.5 rounded bg-muted">
-                                  {short}
-                                </span>
-                              )}
-                              {targetSubject && (
-                                <span className="text-muted-foreground break-words flex-1 min-w-0 max-w-full">
-                                  {targetSubject}
-                                </span>
-                              )}
-                            </div>
-                            {((isLinear &&
-                              commitsToReset !== null &&
-                              commitsToReset > 0) ||
-                              uncommittedCount > 0 ||
-                              untrackedCount > 0) && (
-                              <ul className="mt-2 space-y-1 text-xs text-muted-foreground list-disc pl-5">
-                                {isLinear &&
-                                  commitsToReset !== null &&
-                                  commitsToReset > 0 && (
-                                    <li>
-                                      {t(
-                                        'restoreLogsDialog.resetWorktree.rollbackCommits',
-                                        { count: commitsToReset }
-                                      )}
-                                    </li>
+                            <div className="mt-1 space-y-1">
+                              {repoInfo.map((repo) => (
+                                <div
+                                  key={repo.repoId}
+                                  className="flex flex-wrap items-center gap-2 min-w-0"
+                                >
+                                  <GitCommit className="h-3.5 w-3.5 text-muted-foreground" />
+                                  {repoCount > 1 && (
+                                    <span className="text-xs text-muted-foreground">
+                                      {repo.repoName}:
+                                    </span>
                                   )}
-                                {uncommittedCount > 0 && (
+                                  {repo.targetSha && (
+                                    <span className="font-mono text-xs px-2 py-0.5 rounded bg-muted">
+                                      {repo.targetSha.slice(0, 7)}
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                            {(totalUncommitted > 0 || totalUntracked > 0) && (
+                              <ul className="mt-2 space-y-1 text-xs text-muted-foreground list-disc pl-5">
+                                {totalUncommitted > 0 && (
                                   <li>
                                     {t(
                                       'restoreLogsDialog.resetWorktree.discardChanges',
-                                      { count: uncommittedCount }
+                                      { count: totalUncommitted }
                                     )}
                                   </li>
                                 )}
-                                {untrackedCount > 0 && (
+                                {totalUntracked > 0 && (
                                   <li>
                                     {t(
                                       'restoreLogsDialog.resetWorktree.untrackedPresent',
-                                      { count: untrackedCount }
+                                      { count: totalUntracked }
                                     )}
                                   </li>
                                 )}
@@ -426,6 +430,7 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                       <div className="text-sm min-w-0 w-full break-words">
                         <p className="font-medium text-destructive">
                           {t('restoreLogsDialog.resetWorktree.title')}
+                          {repoCount > 1 && ` (${repoCount} repos)`}
                         </p>
                         <div
                           className={`mt-2 w-full flex items-center select-none cursor-pointer`}
@@ -508,23 +513,32 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                                 'restoreLogsDialog.resetWorktree.uncommittedPresentHint'
                               )}
                         </p>
-                        {short && (
+                        {repoInfo.length > 0 && (
                           <>
                             <p className="mt-2 text-xs text-muted-foreground">
                               {t(
                                 'restoreLogsDialog.resetWorktree.restoreDescription'
                               )}
                             </p>
-                            <div className="mt-1 flex flex-wrap items-center gap-2 min-w-0">
-                              <GitCommit className="h-3.5 w-3.5 text-muted-foreground" />
-                              <span className="font-mono text-xs px-2 py-0.5 rounded bg-muted">
-                                {short}
-                              </span>
-                              {targetSubject && (
-                                <span className="text-muted-foreground break-words flex-1 min-w-0 max-w-full">
-                                  {targetSubject}
-                                </span>
-                              )}
+                            <div className="mt-1 space-y-1">
+                              {repoInfo.map((repo) => (
+                                <div
+                                  key={repo.repoId}
+                                  className="flex flex-wrap items-center gap-2 min-w-0"
+                                >
+                                  <GitCommit className="h-3.5 w-3.5 text-muted-foreground" />
+                                  {repoCount > 1 && (
+                                    <span className="text-xs text-muted-foreground">
+                                      {repo.repoName}:
+                                    </span>
+                                  )}
+                                  {repo.targetSha && (
+                                    <span className="font-mono text-xs px-2 py-0.5 rounded bg-muted">
+                                      {repo.targetSha.slice(0, 7)}
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
                             </div>
                           </>
                         )}
