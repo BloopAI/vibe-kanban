@@ -522,8 +522,7 @@ export function GeneralSettings() {
               disabled={draft?.pr_auto_description_prompt == null}
               onChange={(e) =>
                 updateDraft({
-                  pr_auto_description_prompt:
-                    e.target.value || DEFAULT_PR_DESCRIPTION_PROMPT,
+                  pr_auto_description_prompt: e.target.value,
                 })
               }
             />
