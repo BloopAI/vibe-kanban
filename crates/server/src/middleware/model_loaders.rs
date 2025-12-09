@@ -72,7 +72,7 @@ pub async fn load_project_middleware(
     next: Next,
 ) -> Result<Response, StatusCode> {
     // Load the project from the database
-    let project = match Project::find_by_id(&deployment.db().pool, project_id).await {
+    let mut project = match Project::find_by_id(&deployment.db().pool, project_id).await {
         Ok(Some(project)) => project,
         Ok(None) => {
             tracing::warn!("Project {} not found", project_id);
@@ -83,6 +83,16 @@ pub async fn load_project_middleware(
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };
+
+    // For local projects linked to Hive, populate source_node_name for symmetric display.
+    // This ensures task cards show the node indicator on all nodes, not just remote ones.
+    if !project.is_remote
+        && project.remote_project_id.is_some()
+        && project.source_node_name.is_none()
+    {
+        project.source_node_name =
+            Some(gethostname::gethostname().to_string_lossy().to_string());
+    }
 
     let mut request = request;
 
