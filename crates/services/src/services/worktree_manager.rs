@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    fs,
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
@@ -7,7 +8,7 @@ use std::{
 use git2::{Error as GitError, Repository};
 use thiserror::Error;
 use tracing::{debug, info, trace};
-use utils::shell::resolve_executable_path;
+use utils::{path::normalize_macos_private_alias, shell::resolve_executable_path};
 
 use super::git::{GitService, GitServiceError};
 
@@ -128,28 +129,13 @@ impl WorktreeManager {
         let branch_name_owned = branch_name.to_string();
         let worktree_path_owned = worktree_path.to_path_buf();
 
-        // Use the provided repo path
-        let git_repo_path = repo_path;
-
-        // Get the worktree name for metadata operations
-        let worktree_name = worktree_path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .ok_or_else(|| WorktreeError::InvalidPath("Invalid worktree path".to_string()))?
-            .to_string();
-
         info!(
             "Creating worktree {} at path {}",
             branch_name_owned, path_str
         );
 
         // Step 1: Comprehensive cleanup of existing worktree and metadata (non-blocking)
-        Self::comprehensive_worktree_cleanup_async(
-            git_repo_path,
-            &worktree_path_owned,
-            &worktree_name,
-        )
-        .await?;
+        Self::comprehensive_worktree_cleanup_async(repo_path, &worktree_path_owned).await?;
 
         // Step 2: Ensure parent directory exists (non-blocking)
         if let Some(parent) = worktree_path_owned.parent() {
@@ -162,10 +148,9 @@ impl WorktreeManager {
 
         // Step 3: Create the worktree with retry logic for metadata conflicts (non-blocking)
         Self::create_worktree_with_retry(
-            git_repo_path,
+            repo_path,
             &branch_name_owned,
             &worktree_path_owned,
-            &worktree_name,
             &path_str,
         )
         .await
@@ -187,13 +172,11 @@ impl WorktreeManager {
 
             // Check 2: Worktree must be registered in git metadata using find_worktree
             let repo = Repository::open(&repo_path).map_err(WorktreeError::Git)?;
-            let worktree_name = worktree_path
-                .file_name()
-                .and_then(|n| n.to_str())
+            let worktree_name = Self::find_worktree_git_internal_name(&repo_path, &worktree_path)?
                 .ok_or_else(|| WorktreeError::InvalidPath("Invalid worktree path".to_string()))?;
 
             // Try to find the worktree - if it exists and is valid, we're good
-            match repo.find_worktree(worktree_name) {
+            match repo.find_worktree(&worktree_name) {
                 Ok(_) => Ok(true),
                 Err(_) => Ok(false),
             }
@@ -202,13 +185,44 @@ impl WorktreeManager {
         .map_err(|e| WorktreeError::TaskJoin(format!("{e}")))?
     }
 
+    fn find_worktree_git_internal_name(
+        git_repo_path: &Path,
+        worktree_path: &Path,
+    ) -> Result<Option<String>, WorktreeError> {
+        let worktree_metadata_path = git_repo_path.join(".git").join("worktrees");
+        let worktree_metadata_folders = fs::read_dir(&worktree_metadata_path)
+            .map_err(|e| {
+                WorktreeError::Repository(format!(
+                    "Failed to read worktree metadata directory at {}: {}",
+                    worktree_metadata_path.display(),
+                    e
+                ))
+            })?
+            .filter_map(|entry| entry.ok())
+            .collect::<Vec<fs::DirEntry>>();
+        // read the worktrees/*/gitdir and see which one matches the worktree_path
+        for entry in worktree_metadata_folders {
+            let gitdir_path = entry.path().join("gitdir");
+            if gitdir_path.exists()
+                && let Ok(gitdir_content) = fs::read_to_string(&gitdir_path)
+                && normalize_macos_private_alias(Path::new(gitdir_content.trim()))
+                    .parent()
+                    .map(|p| p == worktree_path)
+                    .unwrap_or(false)
+            {
+                return Ok(Some(entry.file_name().to_string_lossy().to_string()));
+            }
+        }
+        Ok(None)
+    }
+
     /// Comprehensive cleanup of worktree path and metadata to prevent "path exists" errors (blocking)
     fn comprehensive_worktree_cleanup(
         repo: &Repository,
         worktree_path: &Path,
-        worktree_name: &str,
     ) -> Result<(), WorktreeError> {
-        debug!("Performing cleanup for worktree: {}", worktree_name);
+        let worktree_display_name = worktree_path.to_string_lossy().to_string();
+        debug!("Performing cleanup for worktree: {worktree_display_name}");
 
         let git_repo_path = Self::get_git_repo_path(repo)?;
 
@@ -220,7 +234,7 @@ impl WorktreeManager {
         }
 
         // Step 2: Always force cleanup metadata directory (proactive cleanup)
-        if let Err(e) = Self::force_cleanup_worktree_metadata(&git_repo_path, worktree_name) {
+        if let Err(e) = Self::force_cleanup_worktree_metadata(&git_repo_path, worktree_path) {
             debug!("Metadata cleanup failed (non-fatal): {}", e);
         }
 
@@ -238,10 +252,7 @@ impl WorktreeManager {
             debug!("git worktree prune non-fatal error: {}", e);
         }
 
-        debug!(
-            "Comprehensive cleanup completed for worktree: {}",
-            worktree_name
-        );
+        debug!("Comprehensive cleanup completed for worktree: {worktree_display_name}",);
         Ok(())
     }
 
@@ -249,11 +260,9 @@ impl WorktreeManager {
     async fn comprehensive_worktree_cleanup_async(
         git_repo_path: &Path,
         worktree_path: &Path,
-        worktree_name: &str,
     ) -> Result<(), WorktreeError> {
         let git_repo_path_owned = git_repo_path.to_path_buf();
         let worktree_path_owned = worktree_path.to_path_buf();
-        let worktree_name_owned = worktree_name.to_string();
 
         // First, try to open the repository to see if it exists
         let repo_result = tokio::task::spawn_blocking({
@@ -266,11 +275,7 @@ impl WorktreeManager {
             Ok(Ok(repo)) => {
                 // Repository exists, perform comprehensive cleanup
                 tokio::task::spawn_blocking(move || {
-                    Self::comprehensive_worktree_cleanup(
-                        &repo,
-                        &worktree_path_owned,
-                        &worktree_name_owned,
-                    )
+                    Self::comprehensive_worktree_cleanup(&repo, &worktree_path_owned)
                 })
                 .await
                 .map_err(|e| WorktreeError::TaskJoin(format!("Task join error: {e}")))?
@@ -295,13 +300,11 @@ impl WorktreeManager {
         git_repo_path: &Path,
         branch_name: &str,
         worktree_path: &Path,
-        worktree_name: &str,
         path_str: &str,
     ) -> Result<(), WorktreeError> {
         let git_repo_path = git_repo_path.to_path_buf();
         let branch_name = branch_name.to_string();
         let worktree_path = worktree_path.to_path_buf();
-        let worktree_name = worktree_name.to_string();
         let path_str = path_str.to_string();
 
         tokio::task::spawn_blocking(move || -> Result<(), WorktreeError> {
@@ -326,8 +329,7 @@ impl WorktreeManager {
                         e
                     );
                     // Force cleanup metadata and try one more time
-                    Self::force_cleanup_worktree_metadata(&git_repo_path, &worktree_name)
-                        .map_err(WorktreeError::Io)?;
+                    Self::force_cleanup_worktree_metadata(&git_repo_path, &worktree_path)?;
                     // Clean up physical directory if it exists
                     // Needed if previous attempt failed after directory creation
                     if worktree_path.exists() {
@@ -374,19 +376,23 @@ impl WorktreeManager {
     /// Force cleanup worktree metadata directory
     fn force_cleanup_worktree_metadata(
         git_repo_path: &Path,
-        worktree_name: &str,
-    ) -> Result<(), std::io::Error> {
-        let git_worktree_metadata_path = git_repo_path
-            .join(".git")
-            .join("worktrees")
-            .join(worktree_name);
+        worktree_path: &Path,
+    ) -> Result<(), WorktreeError> {
+        if let Some(worktree_name) =
+            Self::find_worktree_git_internal_name(git_repo_path, worktree_path)?
+        {
+            let git_worktree_metadata_path = git_repo_path
+                .join(".git")
+                .join("worktrees")
+                .join(worktree_name);
 
-        if git_worktree_metadata_path.exists() {
-            debug!(
-                "Force removing git worktree metadata: {}",
-                git_worktree_metadata_path.display()
-            );
-            std::fs::remove_dir_all(&git_worktree_metadata_path)?;
+            if git_worktree_metadata_path.exists() {
+                debug!(
+                    "Force removing git worktree metadata: {}",
+                    git_worktree_metadata_path.display()
+                );
+                std::fs::remove_dir_all(&git_worktree_metadata_path)?;
+            }
         }
 
         Ok(())
@@ -420,33 +426,22 @@ impl WorktreeManager {
 
         let _guard = lock.lock().await;
 
-        if let Some(worktree_name) = worktree.worktree_path.file_name().and_then(|n| n.to_str()) {
-            // Try to determine the git repo path if not provided
-            let resolved_repo_path = if let Some(repo_path) = &worktree.git_repo_path {
-                Some(repo_path.to_path_buf())
-            } else {
-                Self::infer_git_repo_path(&worktree.worktree_path).await
-            };
-
-            if let Some(repo_path) = resolved_repo_path {
-                Self::comprehensive_worktree_cleanup_async(
-                    &repo_path,
-                    &worktree.worktree_path,
-                    worktree_name,
-                )
-                .await?;
-            } else {
-                // Can't determine repo path, just clean up the worktree directory
-                debug!(
-                    "Cannot determine git repo path for worktree {}, performing simple cleanup",
-                    path_str
-                );
-                Self::simple_worktree_cleanup(&worktree.worktree_path).await?;
-            }
+        // Try to determine the git repo path if not provided
+        let resolved_repo_path = if let Some(repo_path) = &worktree.git_repo_path {
+            Some(repo_path.to_path_buf())
         } else {
-            return Err(WorktreeError::InvalidPath(
-                "Invalid worktree path, cannot determine name".to_string(),
-            ));
+            Self::infer_git_repo_path(&worktree.worktree_path).await
+        };
+
+        if let Some(repo_path) = resolved_repo_path {
+            Self::comprehensive_worktree_cleanup_async(&repo_path, &worktree.worktree_path).await?;
+        } else {
+            // Can't determine repo path, just clean up the worktree directory
+            debug!(
+                "Cannot determine git repo path for worktree {}, performing simple cleanup",
+                path_str
+            );
+            Self::simple_worktree_cleanup(&worktree.worktree_path).await?;
         }
 
         Ok(())
