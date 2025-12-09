@@ -6,7 +6,7 @@
 - `frontend/src/components/dialogs`: Dialog components for the frontend.
 - `remote-frontend/`: Remote deployment frontend.
 - `shared/`: Generated TypeScript types (`shared/types.ts`). Do not edit directly.
-- `assets/`, `dev_assets_seed/`: Packaged and local dev assets.
+- `assets/`, `dev_assets_seed/`, `dev_assets/`: Packaged and local dev assets.
 - `npx-cli/`: Files published to the npm CLI package.
 - `scripts/`: Dev helpers (ports, DB preparation).
 - `docs/`: Documentation files.
