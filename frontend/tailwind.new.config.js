@@ -129,11 +129,18 @@ module.exports = {
           '80%': { opacity: '1' },
           '100%': { opacity: '0' },
         },
+        'running-dot': {
+          '0%, 100%': { opacity: '0.3' },
+          '50%': { opacity: '1' },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         pill: 'pill 2s ease-in-out forwards',
+        'running-dot-1': 'running-dot 1.4s ease-in-out infinite',
+        'running-dot-2': 'running-dot 1.4s ease-in-out 0.2s infinite',
+        'running-dot-3': 'running-dot 1.4s ease-in-out 0.4s infinite',
       },
     },
   },
