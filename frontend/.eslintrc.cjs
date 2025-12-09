@@ -172,7 +172,7 @@ module.exports = {
       files: [
         'src/lib/modals.ts',
         'src/components/legacy-design/LegacyDesignScope.tsx',
-        'src/components/new-design/NewDesignScope.tsx',
+        'src/components/ui-new/scope/NewDesignScope.tsx',
         'src/components/dialogs/**/*.{ts,tsx}',
       ],
       rules: {
@@ -181,8 +181,8 @@ module.exports = {
       },
     },
     {
-      // View components in new-design/views/ - strict presentation rules (no logic)
-      files: ['src/components/new-design/views/**/*.tsx'],
+      // View components in ui-new/views/ - strict presentation rules (no logic)
+      files: ['src/components/ui-new/views/**/*.tsx'],
       rules: {
         'no-restricted-imports': [
           'error',
@@ -246,8 +246,8 @@ module.exports = {
       },
     },
     {
-      // Logic hooks in new-design/hooks/ - no JSX allowed
-      files: ['src/components/new-design/hooks/**/*.{ts,tsx}'],
+      // Logic hooks in ui-new/hooks/ - no JSX allowed
+      files: ['src/components/ui-new/hooks/**/*.{ts,tsx}'],
       rules: {
         'no-restricted-syntax': [
           'error',
