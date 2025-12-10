@@ -54,7 +54,7 @@ export function WorkspaceSummary({
         {name}
       </div>
       {hasStats && (
-        <div className="flex w-full items-center gap-half text-sm">
+        <div className="flex w-full items-center gap-base text-sm">
           {isRunning && <RunningDots />}
           {isPinned && <PushPin className="size-3 text-brand shrink-0" weight="fill" />}
           <span className="min-w-0 flex-1 truncate text-low">
