@@ -10,6 +10,9 @@ type Args = {
   taskId: string;
 };
 
+// Don't overwrite user's text if they edited within this window
+const EDIT_PROTECTION_MS = 5000;
+
 export function useDraftEditor({ draft, taskId }: Args) {
   const [message, setMessageInner] = useState('');
   const [localImages, setLocalImages] = useState<ImageResponse[]>([]);
@@ -19,13 +22,22 @@ export function useDraftEditor({ draft, taskId }: Args) {
 
   const localDirtyRef = useRef<boolean>(false);
   const imagesDirtyRef = useRef<boolean>(false);
+  const lastEditTimeRef = useRef<number>(0);
 
   const isMessageLocallyDirty = useCallback(() => localDirtyRef.current, []);
 
   // Sync message with server when not locally dirty
+  // Protected against overwriting recent user edits during WebSocket reconnection
   useEffect(() => {
     if (!draft) return;
     const serverPrompt = draft.prompt || '';
+
+    // Don't overwrite if user recently edited (protects during WS reconnection)
+    const timeSinceEdit = Date.now() - lastEditTimeRef.current;
+    if (timeSinceEdit < EDIT_PROTECTION_MS && localDirtyRef.current) {
+      return;
+    }
+
     if (!localDirtyRef.current) {
       setMessageInner(serverPrompt);
     } else if (serverPrompt === message) {
@@ -53,6 +65,8 @@ export function useDraftEditor({ draft, taskId }: Args) {
     : (imagesQuery.data ?? []);
 
   const setMessage = (v: React.SetStateAction<string>) => {
+    // Track edit time to protect against overwrites during WS reconnection
+    lastEditTimeRef.current = Date.now();
     localDirtyRef.current = true;
     if (typeof v === 'function') {
       setMessageInner((prev) => v(prev));

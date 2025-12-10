@@ -8,8 +8,10 @@ type WsRefreshRequiredMsg = { refresh_required: { reason: string } };
 type WsMsg = WsJsonPatchMsg | WsFinishedMsg | WsRefreshRequiredMsg;
 
 // Keep-alive constants
-const PING_INTERVAL_MS = 25000; // Send ping every 25 seconds
-const IDLE_TIMEOUT_MS = 60000; // Consider connection stale after 60s of no messages
+// Note: Server handles dead connection detection via ping/pong with 90s timeout.
+// Client-side idle timeout was removed because browser WebSocket API doesn't expose
+// ping frames to JavaScript, causing false positives (connections killed while healthy).
+const PING_INTERVAL_MS = 25000; // Log keep-alive status every 25 seconds
 
 interface UseJsonPatchStreamOptions<T> {
   /**
@@ -53,30 +55,16 @@ export const useJsonPatchWsStream = <T extends object>(
   const [retryNonce, setRetryNonce] = useState(0);
   const finishedRef = useRef<boolean>(false);
   const pingIntervalRef = useRef<number | null>(null);
-  const idleTimeoutRef = useRef<number | null>(null);
   const lastMessageTimeRef = useRef<number>(Date.now());
+  const connectingRef = useRef<boolean>(false); // Guard against race conditions
 
   const injectInitialEntry = options?.injectInitialEntry;
   const deduplicatePatches = options?.deduplicatePatches;
   const onRefreshRequired = options?.onRefreshRequired;
 
-  // Reset the idle timeout - called on every message received
-  function resetIdleTimeout() {
+  // Record message time - used for debugging keep-alive status
+  function recordMessageTime() {
     lastMessageTimeRef.current = Date.now();
-    if (idleTimeoutRef.current) {
-      window.clearTimeout(idleTimeoutRef.current);
-    }
-    idleTimeoutRef.current = window.setTimeout(() => {
-      console.warn(
-        '[WS] Connection appears stale - no messages for',
-        IDLE_TIMEOUT_MS / 1000,
-        's'
-      );
-      // Force reconnect by closing the socket
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.close(4000, 'idle timeout');
-      }
-    }, IDLE_TIMEOUT_MS);
   }
 
   // Clear all keep-alive timers
@@ -84,10 +72,6 @@ export const useJsonPatchWsStream = <T extends object>(
     if (pingIntervalRef.current) {
       window.clearInterval(pingIntervalRef.current);
       pingIntervalRef.current = null;
-    }
-    if (idleTimeoutRef.current) {
-      window.clearTimeout(idleTimeoutRef.current);
-      idleTimeoutRef.current = null;
     }
   }
 
@@ -133,8 +117,13 @@ export const useJsonPatchWsStream = <T extends object>(
       }
     }
 
-    // Create WebSocket if it doesn't exist
-    if (!wsRef.current) {
+    // Create WebSocket if it doesn't exist and we're not already connecting
+    // The connectingRef guard prevents race conditions where useEffect fires
+    // multiple times before wsRef.current is set
+    if (!wsRef.current && !connectingRef.current) {
+      // Set guard immediately to prevent concurrent connection attempts
+      connectingRef.current = true;
+
       // Reset finished flag for new connection
       finishedRef.current = false;
 
@@ -142,7 +131,13 @@ export const useJsonPatchWsStream = <T extends object>(
       const wsEndpoint = endpoint.replace(/^http/, 'ws');
       const ws = new WebSocket(wsEndpoint);
 
+      // Set wsRef immediately after creation to prevent duplicates
+      wsRef.current = ws;
+
       ws.onopen = () => {
+        // Clear connecting guard - connection established
+        connectingRef.current = false;
+
         setError(null);
         setIsConnected(true);
         // Reset backoff on successful connection
@@ -152,28 +147,26 @@ export const useJsonPatchWsStream = <T extends object>(
           retryTimerRef.current = null;
         }
 
-        // Start keep-alive mechanisms
-        // 1. Client-side ping interval - WebSocket ping frames
+        // Record initial connection time
+        recordMessageTime();
+
+        // Start keep-alive status logging
+        // Note: Server sends pings every 30s and handles dead connection detection.
+        // This interval is for debugging/logging only.
         pingIntervalRef.current = window.setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) {
-            // Send a ping frame (empty binary message acts as heartbeat)
-            // Note: Browser WebSocket API doesn't expose ping frames directly,
-            // but the server is sending pings and we respond with pongs automatically.
-            // This interval is mainly to log keep-alive status.
             const idleTime = Date.now() - lastMessageTimeRef.current;
-            if (idleTime > PING_INTERVAL_MS) {
+            if (idleTime > PING_INTERVAL_MS * 2) {
+              // Only log if no messages for 2x the interval (50s+)
               console.debug('[WS] No message for', Math.round(idleTime / 1000), 's');
             }
           }
         }, PING_INTERVAL_MS);
-
-        // 2. Start idle timeout
-        resetIdleTimeout();
       };
 
       ws.onmessage = (event) => {
-        // Reset idle timeout on any message (including pong responses)
-        resetIdleTimeout();
+        // Record message time for debugging keep-alive status
+        recordMessageTime();
 
         try {
           const msg: WsMsg = JSON.parse(event.data);
@@ -230,12 +223,18 @@ export const useJsonPatchWsStream = <T extends object>(
       };
 
       ws.onerror = () => {
+        // Clear connecting guard on error
+        connectingRef.current = false;
         setError('Connection failed');
       };
 
       ws.onclose = (evt) => {
-        setIsConnected(false);
+        // Clear connecting guard and reference BEFORE scheduling reconnect
+        // This ensures the next connection attempt isn't blocked
+        connectingRef.current = false;
         wsRef.current = null;
+
+        setIsConnected(false);
         clearKeepAliveTimers();
 
         // Do not reconnect if we received a finished message or clean close
@@ -247,11 +246,12 @@ export const useJsonPatchWsStream = <T extends object>(
         retryAttemptsRef.current += 1;
         scheduleReconnect();
       };
-
-      wsRef.current = ws;
     }
 
     return () => {
+      // Clear connecting guard on cleanup
+      connectingRef.current = false;
+
       if (wsRef.current) {
         const ws = wsRef.current;
 
