@@ -28,7 +28,8 @@ window.__SENTRY_ENABLED__ = false;
 Sentry.init({
   dsn: 'https://1065a1d276a581316999a07d5dffee26@o4509603705192449.ingest.de.sentry.io/4509605576441937',
   tracesSampleRate: 1.0,
-  autoSessionTracking: false, // Disable automatic session tracking - controlled via beforeSend
+  autoSessionTracking: false, // Disable automatic session tracking
+  sendClientReports: false, // Disable SDK telemetry reports
   environment: import.meta.env.MODE === 'development' ? 'dev' : 'production',
   beforeSend(event) {
     // Drop error events if user has disabled Sentry
@@ -43,6 +44,13 @@ Sentry.init({
       return null;
     }
     return event;
+  },
+  beforeSendSpan(span) {
+    // Drop individual span data if user has disabled Sentry
+    if (!window.__SENTRY_ENABLED__) {
+      return undefined;
+    }
+    return span;
   },
   integrations: [
     Sentry.reactRouterV6BrowserTracingIntegration({
