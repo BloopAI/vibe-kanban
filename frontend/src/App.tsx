@@ -58,6 +58,20 @@ function AppContent() {
     }
   }, [config?.analytics_enabled, analyticsUserId, posthog]);
 
+  // Handle Sentry opt-in/opt-out when config loads
+  useEffect(() => {
+    const sentryEnabled = config?.sentry_enabled ?? false;
+
+    // Update Sentry enabled state based on config
+    window.__SENTRY_ENABLED__ = sentryEnabled;
+
+    if (sentryEnabled) {
+      console.log('[Sentry] Error reporting enabled');
+    } else {
+      console.log('[Sentry] Error reporting disabled by user preference');
+    }
+  }, [config?.sentry_enabled]);
+
   useEffect(() => {
     if (!config) return;
     let cancelled = false;

@@ -182,6 +182,10 @@
         "telemetry": {
           "label": "Enable Telemetry",
           "helper": "Enables anonymous usage events tracking to help improve the application. No prompts or project information are collected."
+        },
+        "errorReporting": {
+          "label": "Enable Error Reporting",
+          "helper": "Automatically report application errors to help identify and fix bugs. Error reports include technical details but not your code or prompts."
         }
       },
       "taskTemplates": {

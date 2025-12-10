@@ -1,4 +1,7 @@
-use std::sync::OnceLock;
+use std::sync::{
+    OnceLock,
+    atomic::{AtomicBool, Ordering},
+};
 
 use sentry_tracing::{EventFilter, SentryLayer};
 use tracing::Level;
@@ -6,6 +9,9 @@ use tracing::Level;
 const SENTRY_DSN: &str = "https://1065a1d276a581316999a07d5dffee26@o4509603705192449.ingest.de.sentry.io/4509605576441937";
 
 static INIT_GUARD: OnceLock<sentry::ClientInitGuard> = OnceLock::new();
+
+/// Controls whether Sentry events are sent. Default is disabled (user opt-in).
+static SENTRY_DISABLED: AtomicBool = AtomicBool::new(true);
 
 #[derive(Clone, Copy, Debug)]
 pub enum SentrySource {
@@ -30,6 +36,32 @@ fn environment() -> &'static str {
     }
 }
 
+/// Enable Sentry event sending (called when user opts in)
+pub fn enable_sentry() {
+    SENTRY_DISABLED.store(false, Ordering::SeqCst);
+    tracing::info!("Sentry error reporting enabled");
+}
+
+/// Disable Sentry event sending (called when user opts out)
+pub fn disable_sentry() {
+    SENTRY_DISABLED.store(true, Ordering::SeqCst);
+    tracing::info!("Sentry error reporting disabled by user preference");
+}
+
+/// Check if Sentry is currently disabled by user preference
+pub fn is_sentry_disabled() -> bool {
+    SENTRY_DISABLED.load(Ordering::SeqCst)
+}
+
+/// Apply Sentry enabled state from config
+pub fn set_sentry_enabled(enabled: bool) {
+    if enabled {
+        enable_sentry();
+    } else {
+        disable_sentry();
+    }
+}
+
 pub fn init_once(source: SentrySource) {
     INIT_GUARD.get_or_init(|| {
         sentry::init((
@@ -37,6 +69,13 @@ pub fn init_once(source: SentrySource) {
             sentry::ClientOptions {
                 release: sentry::release_name!(),
                 environment: Some(environment().into()),
+                before_send: Some(std::sync::Arc::new(|event| {
+                    if SENTRY_DISABLED.load(Ordering::SeqCst) {
+                        None // Drop the event when disabled
+                    } else {
+                        Some(event)
+                    }
+                })),
                 ..Default::default()
             },
         ))
