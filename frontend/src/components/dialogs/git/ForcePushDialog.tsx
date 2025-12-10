@@ -17,12 +17,13 @@ import { useTranslation } from 'react-i18next';
 
 export interface ForcePushDialogProps {
   attemptId: string;
+  repoId: string;
   branchName?: string;
 }
 
 const ForcePushDialogImpl = NiceModal.create<ForcePushDialogProps>((props) => {
   const modal = useModal();
-  const { attemptId, branchName } = props;
+  const { attemptId, repoId, branchName } = props;
   const [error, setError] = useState<string | null>(null);
   const { t } = useTranslation(['tasks', 'common']);
   const branchLabel = branchName ? ` "${branchName}"` : '';
@@ -47,7 +48,7 @@ const ForcePushDialogImpl = NiceModal.create<ForcePushDialogProps>((props) => {
   const handleConfirm = async () => {
     setError(null);
     try {
-      await forcePush.mutateAsync();
+      await forcePush.mutateAsync({ repo_id: repoId });
     } catch {
       // Error already handled by onError callback
     }

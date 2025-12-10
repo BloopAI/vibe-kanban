@@ -104,6 +104,7 @@ fn generate_types_content() -> String {
         server::routes::task_attempts::ChangeTargetBranchRequest::decl(),
         server::routes::task_attempts::ChangeTargetBranchResponse::decl(),
         server::routes::task_attempts::MergeTaskAttemptRequest::decl(),
+        server::routes::task_attempts::PushTaskAttemptRequest::decl(),
         server::routes::task_attempts::RenameBranchRequest::decl(),
         server::routes::task_attempts::RenameBranchResponse::decl(),
         server::routes::task_attempts::CommitCompareResult::decl(),
