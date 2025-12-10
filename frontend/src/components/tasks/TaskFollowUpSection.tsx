@@ -78,7 +78,6 @@ export function TaskFollowUpSection({
   const { data: branchStatus, refetch: refetchBranchStatus } =
     useBranchStatus(selectedAttemptId);
   const firstRepoStatus = branchStatus?.[0];
-  // Find first repo with conflicts (not just first repo)
   const repoWithConflicts = useMemo(
     () =>
       branchStatus?.find(

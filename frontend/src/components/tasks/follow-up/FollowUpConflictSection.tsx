@@ -24,7 +24,6 @@ export function FollowUpConflictSection({
   enableAbort,
   conflictResolutionInstructions,
 }: Props) {
-  // Find first repo with conflicts (not just first repo)
   const repoWithConflicts = branchStatus?.find(
     (r) => r.is_rebase_in_progress || (r.conflicted_files?.length ?? 0) > 0
   );
