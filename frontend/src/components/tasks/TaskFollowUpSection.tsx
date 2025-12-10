@@ -537,9 +537,12 @@ export function TaskFollowUpSection({
   // Handler for GitHub comments insertion
   const handleGitHubCommentClick = useCallback(async () => {
     if (!selectedAttemptId) return;
+    const repoId = branchStatus?.[0]?.repo_id;
+    if (!repoId) return;
 
     const result = await GitHubCommentsDialog.show({
       attemptId: selectedAttemptId,
+      repoId,
     });
     if (result.comments.length > 0) {
       // Build markdown for all selected comments
@@ -581,7 +584,7 @@ export function TaskFollowUpSection({
         });
       }
     }
-  }, [selectedAttemptId]);
+  }, [selectedAttemptId, branchStatus]);
 
   // Stable onChange handler for WYSIWYGEditor
   const handleEditorChange = useCallback(

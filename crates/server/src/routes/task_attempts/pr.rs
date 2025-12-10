@@ -1,6 +1,10 @@
 use std::path::PathBuf;
 
-use axum::{Extension, Json, extract::State, response::Json as ResponseJson};
+use axum::{
+    Extension, Json,
+    extract::{Query, State},
+    response::Json as ResponseJson,
+};
 use db::models::{
     attempt_repo::AttemptRepo,
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
@@ -71,6 +75,11 @@ pub enum GetPrCommentsError {
     NoPrAttached,
     GithubCliNotInstalled,
     GithubCliNotLoggedIn,
+}
+
+#[derive(Debug, Deserialize, TS)]
+pub struct GetPrCommentsQuery {
+    pub repo_id: Uuid,
 }
 
 pub const DEFAULT_PR_DESCRIPTION_PROMPT: &str = r#"Update the GitHub PR that was just created with a better title and description.
@@ -422,18 +431,19 @@ pub async fn attach_existing_pr(
 pub async fn get_pr_comments(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
+    Query(query): Query<GetPrCommentsQuery>,
 ) -> Result<ResponseJson<ApiResponse<PrCommentsResponse, GetPrCommentsError>>, ApiError> {
     let pool = &deployment.db().pool;
 
-    let task = task_attempt
-        .parent_task(pool)
-        .await?
-        .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
-    let project = Project::find_by_id(pool, task.project_id)
-        .await?
-        .ok_or(ApiError::Project(ProjectError::ProjectNotFound))?;
+    // Look up the specific repo using the multi-repo pattern
+    let attempt_repo =
+        AttemptRepo::find_by_attempt_and_repo_id(pool, task_attempt.id, query.repo_id)
+            .await?
+            .ok_or(RepoError::NotFound)?;
 
-    let git_repo_path = get_first_repo_path(pool, project.id).await?;
+    let repo = Repo::find_by_id(pool, attempt_repo.repo_id)
+        .await?
+        .ok_or(RepoError::NotFound)?;
 
     // Find the latest merge for this task attempt
     let merge = Merge::find_latest_by_task_attempt_id(pool, task_attempt.id).await?;
@@ -449,7 +459,7 @@ pub async fn get_pr_comments(
     };
 
     let github_service = GitHubService::new()?;
-    let repo_info = deployment.git().get_github_repo_info(&git_repo_path)?;
+    let repo_info = deployment.git().get_github_repo_info(&repo.path)?;
 
     // Fetch comments from GitHub
     match github_service
