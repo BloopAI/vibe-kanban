@@ -3,7 +3,6 @@
 import {
   ApprovalStatus,
   ApiResponse,
-  BranchStatus,
   Config,
   CreateFollowUpAttempt,
   EditorType,
