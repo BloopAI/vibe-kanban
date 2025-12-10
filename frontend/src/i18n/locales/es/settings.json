@@ -156,6 +156,10 @@
         "telemetry": {
           "label": "Habilitar Telemetría",
           "helper": "Habilita el seguimiento anónimo para ayudar a mejorar la aplicación. No se recopilan prompts ni información del proyecto."
+        },
+        "errorReporting": {
+          "label": "Habilitar Reporte de Errores",
+          "helper": "Reporta automáticamente errores de la aplicación para ayudar a identificar y corregir bugs. Los reportes incluyen detalles técnicos pero no tu código ni prompts."
         }
       },
       "taskTemplates": {

@@ -866,6 +866,23 @@ export function GeneralSettings() {
               </p>
             </div>
           </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="sentry-enabled"
+              checked={draft?.sentry_enabled ?? false}
+              onCheckedChange={(checked: boolean) =>
+                updateDraft({ sentry_enabled: checked })
+              }
+            />
+            <div className="space-y-0.5">
+              <Label htmlFor="sentry-enabled" className="cursor-pointer">
+                {t('settings.general.privacy.errorReporting.label')}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t('settings.general.privacy.errorReporting.helper')}
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

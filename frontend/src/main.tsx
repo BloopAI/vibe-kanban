@@ -17,10 +17,25 @@ import {
   matchRoutes,
 } from 'react-router-dom';
 
+// Global flag to control Sentry event sending (disabled by default, user opt-in)
+declare global {
+  interface Window {
+    __SENTRY_ENABLED__: boolean;
+  }
+}
+window.__SENTRY_ENABLED__ = false;
+
 Sentry.init({
   dsn: 'https://1065a1d276a581316999a07d5dffee26@o4509603705192449.ingest.de.sentry.io/4509605576441937',
   tracesSampleRate: 1.0,
   environment: import.meta.env.MODE === 'development' ? 'dev' : 'production',
+  beforeSend(event) {
+    // Drop events if user has disabled Sentry
+    if (!window.__SENTRY_ENABLED__) {
+      return null;
+    }
+    return event;
+  },
   integrations: [
     Sentry.reactRouterV6BrowserTracingIntegration({
       useEffect: React.useEffect,
