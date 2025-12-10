@@ -28,9 +28,17 @@ window.__SENTRY_ENABLED__ = false;
 Sentry.init({
   dsn: 'https://1065a1d276a581316999a07d5dffee26@o4509603705192449.ingest.de.sentry.io/4509605576441937',
   tracesSampleRate: 1.0,
+  autoSessionTracking: false, // Disable automatic session tracking - controlled via beforeSend
   environment: import.meta.env.MODE === 'development' ? 'dev' : 'production',
   beforeSend(event) {
-    // Drop events if user has disabled Sentry
+    // Drop error events if user has disabled Sentry
+    if (!window.__SENTRY_ENABLED__) {
+      return null;
+    }
+    return event;
+  },
+  beforeSendTransaction(event) {
+    // Drop transaction/performance events if user has disabled Sentry
     if (!window.__SENTRY_ENABLED__) {
       return null;
     }
