@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { KanbanCard } from '@/components/ui/shadcn-io/kanban';
-import { CheckCircle, Link, Loader2, XCircle } from 'lucide-react';
+import { Link, Loader2, XCircle } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { ActionsDropdown } from '@/components/ui/actions-dropdown';
 import { Button } from '@/components/ui/button';
@@ -113,10 +113,7 @@ export function TaskCard({
               {task.has_in_progress_attempt && (
                 <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
               )}
-              {task.has_merged_attempt && (
-                <CheckCircle className="h-4 w-4 text-green-500" />
-              )}
-              {task.last_attempt_failed && !task.has_merged_attempt && (
+              {task.last_attempt_failed && (
                 <XCircle className="h-4 w-4 text-destructive" />
               )}
               {task.parent_task_attempt && (

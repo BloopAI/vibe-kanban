@@ -27,6 +27,7 @@ import {
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { ScratchType, type TaskWithAttemptStatus } from 'shared/types';
 import { useBranchStatus } from '@/hooks';
+import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { cn } from '@/lib/utils';
@@ -77,7 +78,13 @@ export function TaskFollowUpSection({
     useAttemptExecution(selectedAttemptId, task.id);
   const { data: branchStatus, refetch: refetchBranchStatus } =
     useBranchStatus(selectedAttemptId);
-  const firstRepoStatus = branchStatus?.[0];
+  const { repos } = useAttemptRepo(selectedAttemptId);
+
+  // Select the first repo for operations that need a single repo
+  const getSelectedRepoId = useCallback(() => {
+    return repos[0]?.id;
+  }, [repos]);
+
   const repoWithConflicts = useMemo(
     () =>
       branchStatus?.find(
@@ -328,14 +335,14 @@ export function TaskFollowUpSection({
       return false;
     }
 
-    // Check if PR is merged - if so, block follow-ups
-    if (firstRepoStatus?.merges) {
-      const mergedPR = firstRepoStatus.merges.find(
+    // Check if any repo has a merged PR - if so, block follow-ups
+    const hasMergedPR = branchStatus?.some((repoStatus) =>
+      repoStatus.merges?.some(
         (m: Merge) => m.type === 'pr' && m.pr_info.status === 'merged'
-      );
-      if (mergedPR) {
-        return false;
-      }
+      )
+    );
+    if (hasMergedPR) {
+      return false;
     }
 
     if (isRetryActive) return false; // disable typing while retry editor is active
@@ -346,7 +353,7 @@ export function TaskFollowUpSection({
     selectedAttemptId,
     processes.length,
     isSendingFollowUp,
-    firstRepoStatus?.merges,
+    branchStatus,
     isRetryActive,
     hasPendingApproval,
   ]);
@@ -537,9 +544,12 @@ export function TaskFollowUpSection({
   // Handler for GitHub comments insertion
   const handleGitHubCommentClick = useCallback(async () => {
     if (!selectedAttemptId) return;
+    const repoId = getSelectedRepoId();
+    if (!repoId) return;
 
     const result = await GitHubCommentsDialog.show({
       attemptId: selectedAttemptId,
+      repoId,
     });
     if (result.comments.length > 0) {
       // Build markdown for all selected comments
@@ -581,7 +591,7 @@ export function TaskFollowUpSection({
         });
       }
     }
-  }, [selectedAttemptId]);
+  }, [selectedAttemptId, getSelectedRepoId]);
 
   // Stable onChange handler for WYSIWYGEditor
   const handleEditorChange = useCallback(

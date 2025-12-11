@@ -102,8 +102,6 @@ pub struct TaskSummary {
     pub updated_at: String,
     #[schemars(description = "Whether the task has an in-progress execution attempt")]
     pub has_in_progress_attempt: Option<bool>,
-    #[schemars(description = "Whether the task has a merged execution attempt")]
-    pub has_merged_attempt: Option<bool>,
     #[schemars(description = "Whether the last execution attempt failed")]
     pub last_attempt_failed: Option<bool>,
 }
@@ -117,7 +115,6 @@ impl TaskSummary {
             created_at: task.created_at.to_rfc3339(),
             updated_at: task.updated_at.to_rfc3339(),
             has_in_progress_attempt: Some(task.has_in_progress_attempt),
-            has_merged_attempt: Some(task.has_merged_attempt),
             last_attempt_failed: Some(task.last_attempt_failed),
         }
     }
@@ -139,8 +136,6 @@ pub struct TaskDetails {
     pub updated_at: String,
     #[schemars(description = "Whether the task has an in-progress execution attempt")]
     pub has_in_progress_attempt: Option<bool>,
-    #[schemars(description = "Whether the task has a merged execution attempt")]
-    pub has_merged_attempt: Option<bool>,
     #[schemars(description = "Whether the last execution attempt failed")]
     pub last_attempt_failed: Option<bool>,
 }
@@ -155,7 +150,6 @@ impl TaskDetails {
             created_at: task.created_at.to_rfc3339(),
             updated_at: task.updated_at.to_rfc3339(),
             has_in_progress_attempt: None,
-            has_merged_attempt: None,
             last_attempt_failed: None,
         }
     }
