@@ -40,7 +40,7 @@ export type TaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelle
 
 export type Task = { id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_task_attempt: string | null, shared_task_id: string | null, created_at: string, updated_at: string, };
 
-export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, has_merged_attempt: boolean, last_attempt_failed: boolean, executor: string, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_task_attempt: string | null, shared_task_id: string | null, created_at: string, updated_at: string, };
+export type TaskWithAttemptStatus = { has_in_progress_attempt: boolean, last_attempt_failed: boolean, executor: string, id: string, project_id: string, title: string, description: string | null, status: TaskStatus, parent_task_attempt: string | null, shared_task_id: string | null, created_at: string, updated_at: string, };
 
 export type TaskRelationships = { parent_task: Task | null, current_attempt: TaskAttempt, children: Array<Task>, };
 
@@ -82,9 +82,9 @@ export type ExecutionProcessRepoState = { id: string, execution_process_id: stri
 
 export type Merge = { "type": "direct" } & DirectMerge | { "type": "pr" } & PrMerge;
 
-export type DirectMerge = { id: string, task_attempt_id: string, merge_commit: string, target_branch_name: string, created_at: string, };
+export type DirectMerge = { id: string, task_attempt_id: string, repo_id: string, merge_commit: string, target_branch_name: string, created_at: string, };
 
-export type PrMerge = { id: string, task_attempt_id: string, created_at: string, target_branch_name: string, pr_info: PullRequestInfo, };
+export type PrMerge = { id: string, task_attempt_id: string, repo_id: string, created_at: string, target_branch_name: string, pr_info: PullRequestInfo, };
 
 export type MergeStatus = "open" | "merged" | "closed" | "unknown";
 
@@ -272,9 +272,13 @@ export type RunScriptError = { "type": "no_script_configured" } | { "type": "pro
 
 export type AttachPrResponse = { pr_attached: boolean, pr_url: string | null, pr_number: bigint | null, pr_status: MergeStatus | null, };
 
+export type AttachExistingPrRequest = { repo_id: string, };
+
 export type PrCommentsResponse = { comments: Array<UnifiedPrComment>, };
 
 export type GetPrCommentsError = { "type": "no_pr_attached" } | { "type": "github_cli_not_installed" } | { "type": "github_cli_not_logged_in" };
+
+export type GetPrCommentsQuery = { repo_id: string, };
 
 export type UnifiedPrComment = { "comment_type": "general", id: string, author: string, author_association: string, body: string, created_at: string, url: string, } | { "comment_type": "review", id: bigint, author: string, author_association: string, body: string, created_at: string, url: string, path: string, line: bigint | null, diff_hunk: string, };
 

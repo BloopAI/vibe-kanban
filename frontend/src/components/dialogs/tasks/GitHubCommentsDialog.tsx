@@ -19,6 +19,7 @@ import type { UnifiedPrComment } from 'shared/types';
 
 export interface GitHubCommentsDialogProps {
   attemptId: string;
+  repoId: string;
 }
 
 export interface GitHubCommentsDialogResult {
@@ -32,10 +33,13 @@ function getCommentId(comment: UnifiedPrComment): string {
 }
 
 const GitHubCommentsDialogImpl = NiceModal.create<GitHubCommentsDialogProps>(
-  ({ attemptId }) => {
+  ({ attemptId, repoId }) => {
     const { t } = useTranslation(['tasks', 'common']);
     const modal = useModal();
-    const { data, isLoading, isError, error } = usePrComments(attemptId);
+    const { data, isLoading, isError, error } = usePrComments(
+      attemptId,
+      repoId
+    );
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
     const comments = data?.comments ?? [];

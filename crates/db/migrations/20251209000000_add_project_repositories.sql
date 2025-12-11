@@ -52,12 +52,17 @@ CREATE TABLE execution_process_repo_states (
 CREATE INDEX idx_eprs_process_id ON execution_process_repo_states(execution_process_id);
 CREATE INDEX idx_eprs_repo_id ON execution_process_repo_states(repo_id);
 
--- Step 5: Migrate existing projects to repos
-INSERT INTO repos (id, path, name)
+-- Step 5: Add repo_id to merges table for multi-repo support
+ALTER TABLE merges ADD COLUMN repo_id BLOB REFERENCES repos(id);
+CREATE INDEX idx_merges_repo_id ON merges(repo_id);
+
+-- Step 6: Migrate existing projects to repos
+INSERT INTO repos (id, path, name, display_name)
 SELECT
     randomblob(16),
     git_repo_path,
     -- Simulates `basename`: converts "a/b/c" -> ["a","b","c"] -> gets "c"
+    json_extract('["' || replace(RTRIM(git_repo_path, '/'), '/', '","') || '"]', '$[#-1]'),
     json_extract('["' || replace(RTRIM(git_repo_path, '/'), '/', '","') || '"]', '$[#-1]')
 FROM projects
 WHERE git_repo_path IS NOT NULL AND git_repo_path != '';
@@ -71,7 +76,7 @@ FROM projects p
 JOIN repos r ON r.path = p.git_repo_path
 WHERE p.git_repo_path IS NOT NULL AND p.git_repo_path != '';
 
--- Step 6: Migrate task_attempt.target_branch
+-- Step 7: Migrate task_attempt.target_branch
 INSERT INTO attempt_repos (id, attempt_id, repo_id, target_branch, created_at, updated_at)
 SELECT
     randomblob(16),
@@ -85,7 +90,24 @@ JOIN tasks t ON t.id = ta.task_id
 JOIN project_repos pr ON pr.project_id = t.project_id
 JOIN repos r ON r.id = pr.repo_id;
 
--- Step 7: Backfill per-repo state
+-- Step 8: Backfill merges.repo_id from attempt_repos
+UPDATE merges
+SET repo_id = (
+    SELECT ar.repo_id
+    FROM attempt_repos ar
+    WHERE ar.attempt_id = merges.task_attempt_id
+    LIMIT 1
+);
+
+-- Step 9: Make merges.repo_id NOT NULL
+DROP INDEX idx_merges_repo_id;
+ALTER TABLE merges ADD COLUMN repo_id_new BLOB NOT NULL DEFAULT X'00';
+UPDATE merges SET repo_id_new = repo_id;
+ALTER TABLE merges DROP COLUMN repo_id;
+ALTER TABLE merges RENAME COLUMN repo_id_new TO repo_id;
+CREATE INDEX idx_merges_repo_id ON merges(repo_id);
+
+-- Step 10: Backfill per-repo state
 INSERT INTO execution_process_repo_states (
     id, execution_process_id, repo_id, before_head_commit, after_head_commit
 )
@@ -101,7 +123,7 @@ JOIN tasks t ON t.id = ta.task_id
 JOIN project_repos pr ON pr.project_id = t.project_id
 JOIN repos r ON r.id = pr.repo_id;
 
--- Step 8: Cleanup old columns (Modern SQLite Syntax)
+-- Step 11: Cleanup old columns (Modern SQLite Syntax)
 -- Note: Old worktrees are migrated on-demand via WorkspaceManager::migrate_legacy_worktree
 -- using `git worktree move` to preserve existing work
 ALTER TABLE execution_processes DROP COLUMN before_head_commit;
@@ -109,7 +131,7 @@ ALTER TABLE execution_processes DROP COLUMN after_head_commit;
 
 ALTER TABLE task_attempts DROP COLUMN target_branch;
 
--- Step 9: Recreate projects table to remove `git_repo_path` (which has a UNIQUE constraint)
+-- Step 12: Recreate projects table to remove `git_repo_path` (which has a UNIQUE constraint)
 
 COMMIT;
 

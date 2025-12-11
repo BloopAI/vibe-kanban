@@ -699,9 +699,12 @@ export const attemptsApi = {
     );
   },
 
-  getPrComments: async (attemptId: string): Promise<PrCommentsResponse> => {
+  getPrComments: async (
+    attemptId: string,
+    repoId: string
+  ): Promise<PrCommentsResponse> => {
     const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/pr/comments`
+      `/api/task-attempts/${attemptId}/pr/comments?repo_id=${encodeURIComponent(repoId)}`
     );
     return handleApiResponse<PrCommentsResponse>(response);
   },
