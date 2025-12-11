@@ -105,8 +105,9 @@ The following environment variables can be configured at build time or runtime:
 |----------|------|---------|-------------|
 | `POSTHOG_API_KEY` | Build-time | Empty | PostHog analytics API key (disables analytics if empty) |
 | `POSTHOG_API_ENDPOINT` | Build-time | Empty | PostHog analytics endpoint (disables analytics if empty) |
-| `BACKEND_PORT` | Runtime | `0` (auto-assign) | Backend server port |
-| `FRONTEND_PORT` | Runtime | `3000` | Frontend development server port |
+| `PORT` | Runtime | Auto-assign | **Production**: Server port. **Dev**: Frontend port (backend uses PORT+1) |
+| `BACKEND_PORT` | Runtime | `0` (auto-assign) | Backend server port (dev mode only, overrides PORT+1) |
+| `FRONTEND_PORT` | Runtime | `3000` | Frontend dev server port (dev mode only, overrides PORT) |
 | `HOST` | Runtime | `127.0.0.1` | Backend server host |
 | `DISABLE_WORKTREE_ORPHAN_CLEANUP` | Runtime | Not set | Disable git worktree cleanup (for debugging) |
 
