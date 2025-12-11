@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { attemptsApi } from '@/lib/api';
-import type { PushError } from 'shared/types';
+import type { PushError, PushTaskAttemptRequest } from 'shared/types';
 
 class ForcePushErrorWithData extends Error {
   constructor(
@@ -19,10 +19,10 @@ export function useForcePush(
 ) {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async () => {
+  return useMutation<void, unknown, PushTaskAttemptRequest>({
+    mutationFn: async (params: PushTaskAttemptRequest) => {
       if (!attemptId) return;
-      const result = await attemptsApi.forcePush(attemptId);
+      const result = await attemptsApi.forcePush(attemptId, params);
       if (!result.success) {
         throw new ForcePushErrorWithData(
           result.message || 'Force push failed',

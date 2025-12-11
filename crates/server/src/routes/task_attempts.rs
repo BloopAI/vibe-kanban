@@ -509,6 +509,11 @@ pub struct MergeTaskAttemptRequest {
     pub repo_id: Uuid,
 }
 
+#[derive(Debug, Deserialize, Serialize, TS)]
+pub struct PushTaskAttemptRequest {
+    pub repo_id: Uuid,
+}
+
 #[axum::debug_handler]
 pub async fn merge_task_attempt(
     Extension(task_attempt): Extension<TaskAttempt>,
@@ -624,20 +629,32 @@ pub async fn merge_task_attempt(
 pub async fn push_task_attempt_branch(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
+    Json(request): Json<PushTaskAttemptRequest>,
 ) -> Result<ResponseJson<ApiResponse<(), PushError>>, ApiError> {
+    let pool = &deployment.db().pool;
+
     let github_service = GitHubService::new()?;
     github_service.check_token().await?;
+
+    let attempt_repo =
+        AttemptRepo::find_by_attempt_and_repo_id(pool, task_attempt.id, request.repo_id)
+            .await?
+            .ok_or(RepoError::NotFound)?;
+
+    let repo = Repo::find_by_id(pool, attempt_repo.repo_id)
+        .await?
+        .ok_or(RepoError::NotFound)?;
 
     let container_ref = deployment
         .container()
         .ensure_container_exists(&task_attempt)
         .await?;
-    let workspace_path = PathBuf::from(&container_ref);
+    let workspace_path = Path::new(&container_ref);
+    let worktree_path = workspace_path.join(&repo.name);
 
-    // TODO: this needs a worktree path, not a workspace path
     match deployment
         .git()
-        .push_to_github(&workspace_path, &task_attempt.branch, false)
+        .push_to_github(&worktree_path, &task_attempt.branch, false)
     {
         Ok(_) => Ok(ResponseJson(ApiResponse::success(()))),
         Err(GitServiceError::GitCLI(GitCliError::PushRejected(_))) => Ok(ResponseJson(
@@ -650,20 +667,32 @@ pub async fn push_task_attempt_branch(
 pub async fn force_push_task_attempt_branch(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
+    Json(request): Json<PushTaskAttemptRequest>,
 ) -> Result<ResponseJson<ApiResponse<(), PushError>>, ApiError> {
+    let pool = &deployment.db().pool;
+
     let github_service = GitHubService::new()?;
     github_service.check_token().await?;
+
+    let attempt_repo =
+        AttemptRepo::find_by_attempt_and_repo_id(pool, task_attempt.id, request.repo_id)
+            .await?
+            .ok_or(RepoError::NotFound)?;
+
+    let repo = Repo::find_by_id(pool, attempt_repo.repo_id)
+        .await?
+        .ok_or(RepoError::NotFound)?;
 
     let container_ref = deployment
         .container()
         .ensure_container_exists(&task_attempt)
         .await?;
-    let workspace_path = PathBuf::from(&container_ref);
+    let workspace_path = Path::new(&container_ref);
+    let worktree_path = workspace_path.join(&repo.name);
 
-    // TODO: this needs a worktree path, not a workspace path
     deployment
         .git()
-        .push_to_github(&workspace_path, &task_attempt.branch, true)?;
+        .push_to_github(&worktree_path, &task_attempt.branch, true)?;
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
