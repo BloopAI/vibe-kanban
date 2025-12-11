@@ -17,6 +17,7 @@
 //! network operations when useful.
 use std::{
     ffi::{OsStr, OsString},
+    io::Write as _,
     path::Path,
     process::{Command, Stdio},
 };
@@ -704,14 +705,13 @@ impl GitCli {
             .spawn()
             .map_err(|e| GitCliError::CommandFailed(e.to_string()))?;
 
-        if let Some(input) = stdin
+        let stdin_write_result = if let Some(input) = stdin
             && let Some(mut child_stdin) = child.stdin.take()
         {
-            use std::io::Write;
-            child_stdin
-                .write_all(input)
-                .map_err(|e| GitCliError::CommandFailed(e.to_string()))?;
-        }
+            Some(child_stdin.write_all(input))
+        } else {
+            None
+        };
 
         let out = child
             .wait_with_output()
@@ -727,6 +727,11 @@ impl GitCli {
                 (true, false) => format!("--- stdout\n{stderr}"),
             };
             return Err(GitCliError::CommandFailed(combined));
+        }
+        if let Some(Err(e)) = stdin_write_result {
+            return Err(GitCliError::CommandFailed(format!(
+                "failed to write to git stdin: {e}"
+            )));
         }
         Ok(out.stdout)
     }
