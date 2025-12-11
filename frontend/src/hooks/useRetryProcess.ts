@@ -4,13 +4,13 @@ import {
   RestoreLogsDialog,
   type RestoreLogsDialogResult,
 } from '@/components/dialogs';
-import type { BranchStatus, ExecutionProcess } from 'shared/types';
+import type { RepoBranchStatus, ExecutionProcess } from 'shared/types';
 
 export interface RetryProcessParams {
   message: string;
   variant: string | null;
   executionProcessId: string;
-  branchStatus: BranchStatus | undefined;
+  branchStatus: RepoBranchStatus[] | undefined;
   processes: ExecutionProcess[] | undefined;
 }
 
@@ -38,7 +38,6 @@ export function useRetryProcess(
       let modalResult: RestoreLogsDialogResult | undefined;
       try {
         modalResult = await RestoreLogsDialog.show({
-          attemptId,
           executionProcessId,
           branchStatus,
           processes,

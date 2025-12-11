@@ -14,6 +14,7 @@ import {
   DirectoryListResponse,
   DirectoryEntry,
   ExecutionProcess,
+  ExecutionProcessRepoState,
   GitBranch,
   Project,
   Repo,
@@ -717,6 +718,15 @@ export const executionProcessesApi = {
   getDetails: async (processId: string): Promise<ExecutionProcess> => {
     const response = await makeRequest(`/api/execution-processes/${processId}`);
     return handleApiResponse<ExecutionProcess>(response);
+  },
+
+  getRepoStates: async (
+    processId: string
+  ): Promise<ExecutionProcessRepoState[]> => {
+    const response = await makeRequest(
+      `/api/execution-processes/${processId}/repo-states`
+    );
+    return handleApiResponse<ExecutionProcessRepoState[]>(response);
   },
 
   stopExecutionProcess: async (processId: string): Promise<void> => {
