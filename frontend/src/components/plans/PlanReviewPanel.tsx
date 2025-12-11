@@ -16,6 +16,7 @@ import {
   Play,
   ChevronUp,
   ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import type { PlanStep } from 'shared/types';
 
@@ -39,6 +40,7 @@ export function PlanReviewPanel({
       },
     });
 
+  const [isExpanded, setIsExpanded] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<{
     title: string;
@@ -135,21 +137,36 @@ export function PlanReviewPanel({
   return (
     <Card className="w-full">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>{t('planSteps.reviewTitle', 'Review Plan Steps')}</CardTitle>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Switch
-              id="auto-start"
-              checked={autoStart}
-              onCheckedChange={setAutoStart}
-            />
-            <Label htmlFor="auto-start">
-              {t('planSteps.autoStartNext', 'Auto-start next step')}
-            </Label>
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center gap-2 hover:text-foreground transition-colors"
+        >
+          {isExpanded ? (
+            <ChevronDown className="h-5 w-5" />
+          ) : (
+            <ChevronRight className="h-5 w-5" />
+          )}
+          <CardTitle className="text-left">
+            {t('planSteps.reviewTitle', 'Review Plan Steps')}
+            {!isExpanded && ` (${steps.length})`}
+          </CardTitle>
+        </button>
+        {isExpanded && (
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="auto-start"
+                checked={autoStart}
+                onCheckedChange={setAutoStart}
+              />
+              <Label htmlFor="auto-start">
+                {t('planSteps.autoStartNext', 'Auto-start next step')}
+              </Label>
+            </div>
           </div>
-        </div>
+        )}
       </CardHeader>
-      <CardContent className="space-y-3">
+      {isExpanded && <CardContent className="space-y-3">
         {steps.map((step, index) => (
           <div
             key={step.id}
@@ -267,7 +284,7 @@ export function PlanReviewPanel({
               : t('planSteps.createAndStart', 'Create Subtasks & Start')}
           </Button>
         </div>
-      </CardContent>
+      </CardContent>}
     </Card>
   );
 }
