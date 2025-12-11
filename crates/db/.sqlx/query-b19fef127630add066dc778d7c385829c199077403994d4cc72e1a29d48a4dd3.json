@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      git_repo_path,\n                      setup_script,\n                      dev_script,\n                      cleanup_script,\n                      copy_files,\n                      parallel_setup_script as \"parallel_setup_script!: bool\",\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               WHERE git_repo_path = $1 AND id != $2",
+  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      git_repo_path,\n                      setup_script,\n                      dev_script,\n                      cleanup_script,\n                      copy_files,\n                      parallel_setup_script as \"parallel_setup_script!: bool\",\n                      release_ports_on_completion,\n                      port_range_start,\n                      port_range_end,\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               WHERE git_repo_path = $1 AND id != $2",
   "describe": {
     "columns": [
       {
@@ -44,18 +44,33 @@
         "type_info": "Integer"
       },
       {
-        "name": "remote_project_id: Uuid",
+        "name": "release_ports_on_completion",
         "ordinal": 8,
+        "type_info": "Bool"
+      },
+      {
+        "name": "port_range_start",
+        "ordinal": 9,
+        "type_info": "Integer"
+      },
+      {
+        "name": "port_range_end",
+        "ordinal": 10,
+        "type_info": "Integer"
+      },
+      {
+        "name": "remote_project_id: Uuid",
+        "ordinal": 11,
         "type_info": "Blob"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 9,
+        "ordinal": 12,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 10,
+        "ordinal": 13,
         "type_info": "Text"
       }
     ],
@@ -72,9 +87,12 @@
       true,
       false,
       true,
+      true,
+      true,
+      true,
       false,
       false
     ]
   },
-  "hash": "1394d6317296aa95af82b78e038e40a929ad163d4986208bfebb243ed7372199"
+  "hash": "b19fef127630add066dc778d7c385829c199077403994d4cc72e1a29d48a4dd3"
 }

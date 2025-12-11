@@ -86,3 +86,6 @@ dev_assets
 
 vibe-kanban-cloud/
 remote-frontend/dist
+
+# env.vibe template files (processed to .env in worktrees)
+.env.vibe

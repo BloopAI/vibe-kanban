@@ -17,6 +17,7 @@ import { ViewRelatedTasksDialog } from '@/components/dialogs/tasks/ViewRelatedTa
 import { CreateAttemptDialog } from '@/components/dialogs/tasks/CreateAttemptDialog';
 import { GitActionsDialog } from '@/components/dialogs/tasks/GitActionsDialog';
 import { EditBranchNameDialog } from '@/components/dialogs/tasks/EditBranchNameDialog';
+import { AssignedPortsDialog } from '@/components/dialogs/tasks/AssignedPortsDialog';
 import { ShareDialog } from '@/components/dialogs/tasks/ShareDialog';
 import { ReassignDialog } from '@/components/dialogs/tasks/ReassignDialog';
 import { StopShareTaskDialog } from '@/components/dialogs/tasks/StopShareTaskDialog';
@@ -26,6 +27,7 @@ import { openTaskForm } from '@/lib/openTaskForm';
 import { useNavigate } from 'react-router-dom';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 import { useAuth } from '@/hooks';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface ActionsDropdownProps {
   task?: TaskWithAttemptStatus | null;
@@ -43,6 +45,7 @@ export function ActionsDropdown({
   const openInEditor = useOpenInEditor(attempt?.id);
   const navigate = useNavigate();
   const { userId, isSignedIn } = useAuth();
+  const queryClient = useQueryClient();
 
   const hasAttemptActions = Boolean(attempt);
   const hasTaskActions = Boolean(task);
@@ -140,6 +143,20 @@ export function ActionsDropdown({
       currentBranchName: attempt.branch,
     });
   };
+
+  const handleViewAssignedPorts = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!attempt?.id) return;
+    AssignedPortsDialog.show({
+      attemptId: attempt.id,
+      assignedPorts: attempt.assigned_ports,
+      onPortsReleased: () => {
+        queryClient.invalidateQueries({ queryKey: ['taskAttempt', attempt.id] });
+        queryClient.invalidateQueries({ queryKey: ['taskAttempts'] });
+      },
+    });
+  };
+
   const handleShare = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!task || isShared) return;
@@ -221,6 +238,12 @@ export function ActionsDropdown({
                 onClick={handleEditBranchName}
               >
                 {t('actionsMenu.editBranchName')}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!attempt?.id || !attempt?.assigned_ports}
+                onClick={handleViewAssignedPorts}
+              >
+                {t('actionsMenu.viewAssignedPorts')}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
             </>

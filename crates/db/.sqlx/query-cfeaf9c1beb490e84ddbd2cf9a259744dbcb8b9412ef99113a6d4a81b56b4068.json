@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE task_attempts SET assigned_ports = $1, updated_at = datetime('now') WHERE id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "cfeaf9c1beb490e84ddbd2cf9a259744dbcb8b9412ef99113a6d4a81b56b4068"
+}

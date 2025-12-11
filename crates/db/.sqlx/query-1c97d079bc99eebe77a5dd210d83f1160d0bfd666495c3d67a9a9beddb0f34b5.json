@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT  ta.id                AS \"id!: Uuid\",\n                       ta.task_id           AS \"task_id!: Uuid\",\n                       ta.container_ref,\n                       ta.branch,\n                       ta.target_branch,\n                       ta.executor AS \"executor!\",\n                       ta.worktree_deleted  AS \"worktree_deleted!: bool\",\n                       ta.setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                       ta.created_at        AS \"created_at!: DateTime<Utc>\",\n                       ta.updated_at        AS \"updated_at!: DateTime<Utc>\"\n               FROM    task_attempts ta\n               JOIN    tasks t ON ta.task_id = t.id\n               JOIN    projects p ON t.project_id = p.id\n               WHERE   ta.id = $1 AND t.id = $2 AND p.id = $3",
+  "query": "SELECT  ta.id                AS \"id!: Uuid\",\n                       ta.task_id           AS \"task_id!: Uuid\",\n                       ta.container_ref,\n                       ta.branch,\n                       ta.target_branch,\n                       ta.executor AS \"executor!\",\n                       ta.worktree_deleted  AS \"worktree_deleted!: bool\",\n                       ta.setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                       ta.assigned_ports,\n                       ta.created_at        AS \"created_at!: DateTime<Utc>\",\n                       ta.updated_at        AS \"updated_at!: DateTime<Utc>\"\n               FROM    task_attempts ta\n               JOIN    tasks t ON ta.task_id = t.id\n               JOIN    projects p ON t.project_id = p.id\n               WHERE   ta.id = $1 AND t.id = $2 AND p.id = $3",
   "describe": {
     "columns": [
       {
@@ -44,13 +44,18 @@
         "type_info": "Datetime"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "assigned_ports",
         "ordinal": 8,
         "type_info": "Text"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
+        "name": "created_at!: DateTime<Utc>",
         "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 10,
         "type_info": "Text"
       }
     ],
@@ -66,9 +71,10 @@
       true,
       false,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "6957d71eeee1487e46c2941cd4a5ca4944fed47c1bee6d8723f5bc283a3c0f28"
+  "hash": "1c97d079bc99eebe77a5dd210d83f1160d0bfd666495c3d67a9a9beddb0f34b5"
 }

@@ -294,6 +294,7 @@
     "createSubtask": "Create subtask",
     "gitActions": "Git actions",
     "editBranchName": "Edit branch name",
+    "viewAssignedPorts": "View assigned ports",
     "task": "Task",
     "share": "Share",
     "reassign": "Reassign",
@@ -309,6 +310,18 @@
       "renaming": "Renaming...",
       "action": "Rename Branch"
     }
+  },
+  "assignedPorts": {
+    "title": "Assigned Ports",
+    "description": "Ports assigned from .env.vibe template processing.",
+    "noPortsDescription": "No ports have been assigned for this attempt.",
+    "releasePorts": "Release Ports",
+    "releasing": "Releasing...",
+    "released": "Ports released successfully",
+    "releaseFailed": "Failed to release ports",
+    "cardTitle": "Assigned Ports",
+    "cardSubtitle": "{{count}} port(s) from .env.vibe",
+    "cardHint": "These ports were auto-assigned from your .env.vibe template"
   },
   "stopShareDialog": {
     "title": "Stop Sharing Task",

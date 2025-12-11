@@ -4,6 +4,7 @@ use db::{
     DBService,
     models::{
         merge::{Merge, MergeStatus, PrMerge},
+        project::Project,
         task::{Task, TaskStatus},
         task_attempt::{TaskAttempt, TaskAttemptError},
     },
@@ -129,6 +130,21 @@ impl PrMonitorService {
                     pr_merge.pr_info.number, task_attempt.task_id
                 );
                 Task::update_status(&self.db.pool, task_attempt.task_id, TaskStatus::Done).await?;
+
+                // Release assigned ports if project setting is enabled
+                if let Ok(Some(task)) = Task::find_by_id(&self.db.pool, task_attempt.task_id).await
+                    && let Ok(Some(project)) =
+                        Project::find_by_id(&self.db.pool, task.project_id).await
+                    && project.should_release_ports_on_completion()
+                    && let Ok(released) =
+                        TaskAttempt::release_assigned_ports_for_task(&self.db.pool, task.id).await
+                    && released > 0
+                {
+                    info!(
+                        "Released assigned ports for {} task attempt(s) on PR merge (monitored)",
+                        released
+                    );
+                }
 
                 // Track analytics event
                 if let Some(analytics) = &self.analytics
