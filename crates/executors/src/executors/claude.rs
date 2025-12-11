@@ -61,6 +61,12 @@ pub struct ClaudeCode {
     pub dangerously_skip_permissions: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub disable_api_key: Option<bool>,
+    /// Enable interactive question UI for AskUserQuestion control requests.
+    /// When enabled, questions are displayed as clickable options in the UI.
+    /// When disabled, questions fall back to text-based prompts.
+    /// Defaults to true.
+    #[serde(default = "default_interactive_questions", skip_serializing_if = "is_default_interactive_questions")]
+    pub interactive_questions: bool,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
 
@@ -68,6 +74,14 @@ pub struct ClaudeCode {
     #[ts(skip)]
     #[derivative(Debug = "ignore", PartialEq = "ignore")]
     approvals_service: Option<Arc<dyn ExecutorApprovalService>>,
+}
+
+fn default_interactive_questions() -> bool {
+    true
+}
+
+fn is_default_interactive_questions(value: &bool) -> bool {
+    *value
 }
 
 impl ClaudeCode {
@@ -262,9 +276,10 @@ impl ClaudeCode {
         // Spawn task to handle the SDK client with control protocol
         let prompt_clone = combined_prompt.clone();
         let approvals_clone = self.approvals_service.clone();
+        let interactive_questions = self.interactive_questions;
         tokio::spawn(async move {
             let log_writer = LogWriter::new(new_stdout);
-            let client = ClaudeAgentClient::new(log_writer.clone(), approvals_clone);
+            let client = ClaudeAgentClient::new(log_writer.clone(), approvals_clone, interactive_questions);
             let protocol_peer = ProtocolPeer::spawn(child_stdin, child_stdout, client.clone());
 
             // Initialize control protocol
@@ -447,6 +462,7 @@ impl ClaudeLogProcessor {
             ClaudeJson::StreamEvent { session_id, .. } => session_id.clone(),
             ClaudeJson::Result { session_id, .. } => session_id.clone(),
             ClaudeJson::ApprovalResponse { .. } => None,
+            ClaudeJson::AskUserQuestion { session_id, .. } => session_id.clone(),
             ClaudeJson::Unknown { .. } => None,
         }
     }
@@ -1158,6 +1174,40 @@ impl ClaudeLogProcessor {
                     patches.push(ConversationPatch::add_normalized_entry(idx, entry));
                 }
             }
+            ClaudeJson::AskUserQuestion {
+                questions,
+                tool_use_id,
+                ..
+            } => {
+                // Create metadata with tool_call_id for approval matching
+                let metadata = tool_use_id.as_ref().map(|id| {
+                    serde_json::json!({ "tool_call_id": id })
+                });
+
+                let content = if questions.len() == 1 {
+                    questions[0].question.clone()
+                } else {
+                    format!("{} questions", questions.len())
+                };
+
+                let entry = NormalizedEntry {
+                    timestamp: None,
+                    entry_type: NormalizedEntryType::ToolUse {
+                        tool_name: "AskUserQuestion".to_string(),
+                        action_type: ActionType::Tool {
+                            tool_name: "AskUserQuestion".to_string(),
+                            arguments: Some(serde_json::json!({ "questions": questions })),
+                            result: None,
+                        },
+                        status: ToolStatus::Created,
+                    },
+                    content,
+                    metadata,
+                };
+
+                let idx = entry_index_provider.next();
+                patches.push(ConversationPatch::add_normalized_entry(idx, entry));
+            }
             ClaudeJson::Unknown { data } => {
                 let entry = NormalizedEntry {
                     timestamp: None,
@@ -1494,6 +1544,15 @@ pub enum ClaudeJson {
         call_id: String,
         tool_name: String,
         approval_status: ApprovalStatus,
+    },
+    /// AskUserQuestion event emitted before approval request
+    #[serde(rename = "ask_user_question")]
+    AskUserQuestion {
+        questions: Vec<workspace_utils::approvals::Question>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        tool_use_id: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        session_id: Option<String>,
     },
     // Catch-all for unknown message types
     #[serde(untagged)]
@@ -2000,6 +2059,7 @@ mod tests {
             model: None,
             append_prompt: AppendPrompt::default(),
             dangerously_skip_permissions: None,
+            interactive_questions: true,
             cmd: crate::command::CmdOverrides {
                 base_command_override: None,
                 additional_params: None,

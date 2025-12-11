@@ -47,6 +47,10 @@
         "null"
       ]
     },
+    "interactive_questions": {
+      "description": "Enable interactive question UI for AskUserQuestion control requests.\nWhen enabled, questions are displayed as clickable options in the UI.\nWhen disabled, questions fall back to text-based prompts.\nDefaults to true.",
+      "type": "boolean"
+    },
     "base_command_override": {
       "title": "Base Command Override",
       "description": "Override the base command with a custom command",
