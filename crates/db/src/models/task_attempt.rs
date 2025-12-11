@@ -262,30 +262,6 @@ impl TaskAttempt {
         .await
     }
 
-    /// Find task attempts by task_id with project git repo path for cleanup operations
-    pub async fn find_by_task_id_with_project(
-        pool: &SqlitePool,
-        task_id: Uuid,
-    ) -> Result<Vec<(Uuid, Option<String>, String)>, sqlx::Error> {
-        let records = sqlx::query!(
-            r#"
-            SELECT ta.id as "attempt_id!: Uuid", ta.container_ref, p.git_repo_path as "git_repo_path!"
-            FROM task_attempts ta
-            JOIN tasks t ON ta.task_id = t.id
-            JOIN projects p ON t.project_id = p.id
-            WHERE ta.task_id = $1
-            "#,
-            task_id
-        )
-        .fetch_all(pool)
-        .await?;
-
-        Ok(records
-            .into_iter()
-            .map(|r| (r.attempt_id, r.container_ref, r.git_repo_path))
-            .collect())
-    }
-
     pub async fn find_by_worktree_deleted(
         pool: &SqlitePool,
     ) -> Result<Vec<(Uuid, String)>, sqlx::Error> {

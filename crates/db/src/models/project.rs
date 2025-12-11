@@ -149,32 +149,6 @@ impl Project {
         .await
     }
 
-    pub async fn find_by_remote_project_id(
-        pool: &SqlitePool,
-        remote_project_id: Uuid,
-    ) -> Result<Option<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            Project,
-            r#"SELECT id as "id!: Uuid",
-                      name,
-                      git_repo_path,
-                      setup_script,
-                      dev_script,
-                      cleanup_script,
-                      copy_files,
-                      parallel_setup_script as "parallel_setup_script!: bool",
-                      remote_project_id as "remote_project_id: Uuid",
-                      created_at as "created_at!: DateTime<Utc>",
-                      updated_at as "updated_at!: DateTime<Utc>"
-               FROM projects
-               WHERE remote_project_id = $1
-               LIMIT 1"#,
-            remote_project_id
-        )
-        .fetch_optional(pool)
-        .await
-    }
-
     pub async fn find_by_git_repo_path(
         pool: &SqlitePool,
         git_repo_path: &str,
@@ -363,20 +337,5 @@ impl Project {
             .execute(pool)
             .await?;
         Ok(result.rows_affected())
-    }
-
-    pub async fn exists(pool: &SqlitePool, id: Uuid) -> Result<bool, sqlx::Error> {
-        let result = sqlx::query!(
-            r#"
-                SELECT COUNT(*) as "count!: i64"
-                FROM projects
-                WHERE id = $1
-            "#,
-            id
-        )
-        .fetch_one(pool)
-        .await?;
-
-        Ok(result.count > 0)
     }
 }

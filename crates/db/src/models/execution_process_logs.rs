@@ -47,17 +47,6 @@ impl ExecutionProcessLogs {
         Ok(messages)
     }
 
-    /// Convert Vec<LogMsg> to JSONL format
-    pub fn serialize_logs(messages: &[LogMsg]) -> Result<String, serde_json::Error> {
-        let mut jsonl = String::new();
-        for msg in messages {
-            let line = serde_json::to_string(msg)?;
-            jsonl.push_str(&line);
-            jsonl.push('\n');
-        }
-        Ok(jsonl)
-    }
-
     /// Append a JSONL line to the logs for an execution process
     pub async fn append_log_line(
         pool: &SqlitePool,
