@@ -18,7 +18,7 @@
 use std::{
     ffi::{OsStr, OsString},
     path::Path,
-    process::Command,
+    process::{Command, Stdio},
 };
 
 use thiserror::Error;
@@ -155,13 +155,35 @@ impl GitCli {
         // Use a temp index from HEAD to accurately track renames in untracked files
         let _ = self.git_with_env(worktree_path, ["read-tree", "HEAD"], &envs)?;
 
-        // Stage all in temp index
-        let _ = self.git_with_env(
-            worktree_path,
-            Self::apply_default_excludes(["add", "-A"]),
-            &envs,
-        )?;
-
+        // Stage changed and untracked files explicitly, which is faster than `git add -A` for large repos.
+        // Use raw paths from `get_worktree_status` to avoid lossy UTF-8 conversions for odd filenames.
+        let status = self.get_worktree_status(worktree_path)?;
+        let mut paths_to_add: Vec<Vec<u8>> = Vec::new();
+        for entry in status.entries {
+            paths_to_add.push(entry.path);
+            if let Some(orig) = entry.orig_path {
+                paths_to_add.push(orig);
+            }
+        }
+        if !paths_to_add.is_empty() {
+            paths_to_add.extend(
+                Self::get_default_pathspec_excludes()
+                    .iter()
+                    .map(|s| s.as_encoded_bytes().to_vec()),
+            );
+            let mut input = Vec::new();
+            for p in paths_to_add {
+                input.extend_from_slice(&p);
+                input.push(0);
+            }
+            let args = vec![
+                OsString::from("add"),
+                OsString::from("-A"),
+                OsString::from("--pathspec-from-file=-"),
+                OsString::from("--pathspec-file-nul"),
+            ];
+            self.git_with_stdin(worktree_path, args, Some(&envs), &input)?;
+        }
         // git diff --cached
         let mut args: Vec<OsString> = vec![
             "-c".into(),
@@ -179,52 +201,55 @@ impl GitCli {
 
     /// Return `git status --porcelain` parsed into a structured summary
     pub fn get_worktree_status(&self, worktree_path: &Path) -> Result<WorktreeStatus, GitCliError> {
-        let out = self.git(worktree_path, ["status", "--porcelain"])?;
-        let mut entries: Vec<StatusEntry> = Vec::new();
+        // Using -z for NUL-separated output which correctly handles paths with special chars.
+        // Format: XY<space>PATH<NUL>[ORIGPATH<NUL>] where ORIGPATH only present for R/C.
+        let args = Self::apply_default_excludes(vec![
+            "status",
+            "--porcelain",
+            "-z",
+            "--untracked-files=normal",
+        ]);
+        let out = self.git_impl(worktree_path, args, None, None)?;
+        let mut entries = Vec::new();
         let mut uncommitted_tracked = 0usize;
         let mut untracked = 0usize;
-        for line in out.lines() {
-            let l = line.trim_end();
-            if l.is_empty() {
+        let mut parts = out.split(|b| *b == 0);
+        while let Some(part) = parts.next() {
+            if part.is_empty() || part.len() < 4 {
                 continue;
             }
-            // Two columns (XY) + space + path(s), or '?? path' for untracked
-            if let Some(rest) = l.strip_prefix("?? ") {
+            let staged = part[0] as char;
+            let unstaged = part[1] as char;
+            let path = part[3..].to_vec();
+
+            let mut orig_path = None;
+            if (staged == 'R' || unstaged == 'R' || staged == 'C' || unstaged == 'C')
+                && let Some(old_path) = parts.next()
+                && !old_path.is_empty()
+            {
+                orig_path = Some(old_path.to_vec());
+            }
+            if staged == '?' && unstaged == '?' {
                 untracked += 1;
                 entries.push(StatusEntry {
-                    staged: '?',
-                    unstaged: '?',
-                    path: rest.to_string(),
-                    orig_path: None,
+                    staged,
+                    unstaged,
+                    path,
+                    orig_path,
                     is_untracked: true,
                 });
-                continue;
-            }
-            // At least 3 chars (X, Y, space)
-            let (xy, tail) = l.split_at(2);
-            let (_, pathspec) = tail.split_at(1); // skip the space
-            let staged = xy.chars().nth(0).unwrap_or(' ');
-            let unstaged = xy.chars().nth(1).unwrap_or(' ');
-            // Rename shows as 'R ' with `old -> new`
-            let (path, orig_path) = if pathspec.contains(" -> ") {
-                let mut parts = pathspec.splitn(2, " -> ");
-                let oldp = parts.next().unwrap_or("").to_string();
-                let newp = parts.next().unwrap_or("").to_string();
-                (newp, Some(oldp))
             } else {
-                (pathspec.to_string(), None)
-            };
-            // Count as tracked change if either column indicates a change
-            if staged != ' ' || unstaged != ' ' {
-                uncommitted_tracked += 1;
+                if staged != ' ' || unstaged != ' ' {
+                    uncommitted_tracked += 1;
+                }
+                entries.push(StatusEntry {
+                    staged,
+                    unstaged,
+                    path,
+                    orig_path,
+                    is_untracked: false,
+                });
             }
-            entries.push(StatusEntry {
-                staged,
-                unstaged,
-                path,
-                orig_path,
-                is_untracked: false,
-            });
         }
         Ok(WorktreeStatus {
             uncommitted_tracked,
@@ -622,7 +647,7 @@ impl GitCli {
         }
     }
 
-    /// Run `git -C <repo_path> <args...>` and return stdout on success.
+    /// Run `git -C <repo_path> <args...>` and return stdout bytes on success.
     /// Prefer adding specific helpers (e.g. `get_worktree_status`, `diff_status`)
     /// instead of calling this directly, so all parsing and command choices are
     /// centralized here. This makes it easier to change the underlying commands
@@ -635,7 +660,13 @@ impl GitCli {
     ///   or partial failures. This API accepts anything that implements
     ///   `AsRef<OsStr>` so typical call sites can still pass `&str` literals or
     ///   owned `String`s without friction.
-    pub fn git<I, S>(&self, repo_path: &Path, args: I) -> Result<String, GitCliError>
+    fn git_impl<I, S>(
+        &self,
+        repo_path: &Path,
+        args: I,
+        envs: Option<&[(OsString, OsString)]>,
+        stdin: Option<&[u8]>,
+    ) -> Result<Vec<u8>, GitCliError>
     where
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,
@@ -644,12 +675,48 @@ impl GitCli {
         let git = resolve_executable_path_blocking("git").ok_or(GitCliError::NotAvailable)?;
         let mut cmd = Command::new(&git);
         cmd.arg("-C").arg(repo_path);
+
+        if let Some(envs) = envs {
+            for (k, v) in envs {
+                cmd.env(k, v);
+            }
+        }
+
         for a in args {
             cmd.arg(a);
         }
-        let out = cmd
-            .output()
+
+        if stdin.is_some() {
+            cmd.stdin(Stdio::piped());
+        }
+
+        cmd.stdout(Stdio::piped());
+        cmd.stderr(Stdio::piped());
+
+        tracing::trace!(
+            stdin = ?stdin.as_ref().map(|s| String::from_utf8_lossy(s)),
+            repo = ?repo_path,
+            "Running git command: {:?}",
+            cmd
+        );
+
+        let mut child = cmd
+            .spawn()
             .map_err(|e| GitCliError::CommandFailed(e.to_string()))?;
+
+        if let Some(input) = stdin
+            && let Some(mut child_stdin) = child.stdin.take()
+        {
+            use std::io::Write;
+            child_stdin
+                .write_all(input)
+                .map_err(|e| GitCliError::CommandFailed(e.to_string()))?;
+        }
+
+        let out = child
+            .wait_with_output()
+            .map_err(|e| GitCliError::CommandFailed(e.to_string()))?;
+
         if !out.status.success() {
             let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
             let stdout = String::from_utf8_lossy(&out.stdout).trim().to_string();
@@ -661,10 +728,18 @@ impl GitCli {
             };
             return Err(GitCliError::CommandFailed(combined));
         }
-        Ok(String::from_utf8_lossy(&out.stdout).to_string())
+        Ok(out.stdout)
     }
 
-    /// Like `git`, but allows passing additional environment variables.
+    pub fn git<I, S>(&self, repo_path: &Path, args: I) -> Result<String, GitCliError>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<OsStr>,
+    {
+        let out = self.git_impl(repo_path, args, None, None)?;
+        Ok(String::from_utf8_lossy(&out).to_string())
+    }
+
     fn git_with_env<I, S>(
         &self,
         repo_path: &Path,
@@ -675,32 +750,23 @@ impl GitCli {
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,
     {
-        self.ensure_available()?;
-        let git = resolve_executable_path_blocking("git").ok_or(GitCliError::NotAvailable)?;
-        let mut cmd = Command::new(&git);
-        cmd.arg("-C").arg(repo_path);
-        for (k, v) in envs {
-            cmd.env(k, v);
-        }
-        for a in args {
-            cmd.arg(a);
-        }
-        tracing::debug!("Running git command: {:?}", cmd);
-        let out = cmd
-            .output()
-            .map_err(|e| GitCliError::CommandFailed(e.to_string()))?;
-        if !out.status.success() {
-            let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
-            let stdout = String::from_utf8_lossy(&out.stdout).trim().to_string();
-            let combined = match (stdout.is_empty(), stderr.is_empty()) {
-                (true, true) => "Command failed with no output".to_string(),
-                (false, false) => format!("--- stderr\n{stderr}\n--- stdout\n{stdout}"),
-                (false, true) => format!("--- stderr\n{stdout}"),
-                (true, false) => format!("--- stdout\n{stderr}"),
-            };
-            return Err(GitCliError::CommandFailed(combined));
-        }
-        Ok(String::from_utf8_lossy(&out.stdout).to_string())
+        let out = self.git_impl(repo_path, args, Some(envs), None)?;
+        Ok(String::from_utf8_lossy(&out).to_string())
+    }
+
+    fn git_with_stdin<I, S>(
+        &self,
+        repo_path: &Path,
+        args: I,
+        envs: Option<&[(OsString, OsString)]>,
+        stdin: &[u8],
+    ) -> Result<String, GitCliError>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<OsStr>,
+    {
+        let out = self.git_impl(repo_path, args, envs, Some(stdin))?;
+        Ok(String::from_utf8_lossy(&out).to_string())
     }
 
     fn apply_default_excludes<I, S>(args: I) -> Vec<OsString>
@@ -730,11 +796,7 @@ impl GitCli {
 
     fn build_pathspec_filter(pathspecs: Option<&Vec<String>>) -> Vec<OsString> {
         let mut filters = Vec::new();
-        filters.extend(
-            ALWAYS_SKIP_DIRS
-                .iter()
-                .map(|d| OsString::from(format!(":(glob,exclude)**/{d}/"))),
-        );
+        filters.extend(Self::get_default_pathspec_excludes());
         if let Some(pathspecs) = pathspecs {
             for p in pathspecs {
                 if p.trim().is_empty() {
@@ -745,6 +807,13 @@ impl GitCli {
         }
         filters
     }
+
+    fn get_default_pathspec_excludes() -> Vec<OsString> {
+        ALWAYS_SKIP_DIRS
+            .iter()
+            .map(|d| OsString::from(format!(":(glob,exclude)**/{d}/")))
+            .collect()
+    }
 }
 /// Parsed entry from `git status --porcelain`
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -753,10 +822,10 @@ pub struct StatusEntry {
     pub staged: char,
     /// Single-letter unstaged status (column Y) or '?' for untracked
     pub unstaged: char,
-    /// Current path
-    pub path: String,
-    /// Original path (for renames)
-    pub orig_path: Option<String>,
+    /// Current path (raw bytes to avoid lossy UTF-8 conversion)
+    pub path: Vec<u8>,
+    /// Original path (for renames), raw bytes
+    pub orig_path: Option<Vec<u8>>,
     /// True if this entry is untracked ("??")
     pub is_untracked: bool,
 }
