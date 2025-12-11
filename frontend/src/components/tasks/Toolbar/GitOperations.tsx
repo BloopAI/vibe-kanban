@@ -322,7 +322,7 @@ function GitOperations({
 
   const containerClasses = isVertical
     ? 'grid grid-cols-1 items-start gap-3 overflow-hidden'
-    : 'grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 overflow-hidden';
+    : 'grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 overflow-hidden';
 
   const settingsBtnClasses = isVertical
     ? 'inline-flex h-5 w-5 p-0 hover:bg-muted'
