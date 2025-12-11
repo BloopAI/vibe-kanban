@@ -387,7 +387,9 @@ function GitOperations({
             className={
               isVertical
                 ? 'flex items-center gap-2 min-w-0'
-                : 'ml-auto flex items-center gap-2 min-w-0'
+                : repos.length > 1
+                  ? 'ml-auto flex items-center gap-2 min-w-0'
+                  : 'ml-3 flex items-center gap-2 min-w-0'
             }
           >
             {/* Task branch chip */}
