@@ -305,6 +305,11 @@ impl Codex {
             .env("NO_COLOR", "1")
             .env("RUST_LOG", "error");
 
+        // Remove pnpm-specific env vars that cause npm warnings when using npx
+        process.env_remove("npm_config__jsr_registry");
+        process.env_remove("npm_config_verify_deps_before_run");
+        process.env_remove("npm_config_globalconfig");
+
         let mut child = process.group_spawn()?;
 
         let child_stdout = child.inner().stdout.take().ok_or_else(|| {
