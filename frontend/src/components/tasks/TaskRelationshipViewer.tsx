@@ -31,6 +31,7 @@ export function TaskRelationshipViewer({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [childrenExpanded, setChildrenExpanded] = useState(true);
+  const [parentExpanded, setParentExpanded] = useState(true);
 
   // Effect for attempt-based relationships (existing behavior)
   useEffect(() => {
@@ -110,21 +111,32 @@ export function TaskRelationshipViewer({
             {hasParent && displayParentTask && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  <button
+                    onClick={() => setParentExpanded(!parentExpanded)}
+                    className="flex items-center gap-1 text-xs font-medium text-muted-foreground uppercase tracking-wide hover:text-foreground transition-colors"
+                  >
+                    {parentExpanded ? (
+                      <ChevronDown className="w-3 h-3" />
+                    ) : (
+                      <ChevronRight className="w-3 h-3" />
+                    )}
                     Parent Task
-                  </h4>
+                  </button>
                   <div className="flex-1 h-px bg-border"></div>
                 </div>
-                <div className="flex justify-center">
-                  <div className="w-full max-w-md">
-                    <TaskRelationshipCard
-                      task={displayParentTask}
-                      isCurrentTask={false}
-                      onClick={() => onNavigateToTask?.(displayParentTask.id)}
-                      className="shadow-sm"
-                    />
+
+                {parentExpanded && (
+                  <div className="flex justify-center">
+                    <div className="w-full max-w-md">
+                      <TaskRelationshipCard
+                        task={displayParentTask}
+                        isCurrentTask={false}
+                        onClick={() => onNavigateToTask?.(displayParentTask.id)}
+                        className="shadow-sm"
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
 
