@@ -15,6 +15,7 @@ import {
   DirectoryEntry,
   ExecutionProcess,
   ExecutionProcessRepoState,
+  GitBranch,
   Project,
   Repo,
   RepoWithTargetBranch,
