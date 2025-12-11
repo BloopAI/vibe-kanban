@@ -454,11 +454,12 @@ pub async fn get_pr_comments(
         .await?
         .ok_or(RepoError::NotFound)?;
 
-    // Find the latest merge for this task attempt
-    let merge = Merge::find_latest_by_task_attempt_id(pool, task_attempt.id).await?;
+    // Find the merge/PR for this specific repo
+    let merges =
+        Merge::find_by_task_attempt_and_repo_id(pool, task_attempt.id, query.repo_id).await?;
 
-    // Ensure there's an attached PR
-    let pr_info = match merge {
+    // Ensure there's an attached PR for this repo
+    let pr_info = match merges.into_iter().next() {
         Some(Merge::Pr(pr_merge)) => pr_merge.pr_info,
         _ => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
