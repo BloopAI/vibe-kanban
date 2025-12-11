@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -29,6 +29,8 @@ const ProjectFormDialogImpl = NiceModal.create<ProjectFormDialogProps>(() => {
     onCreateError: () => {},
   });
 
+  const hasStartedCreateRef = useRef(false);
+
   const handlePickRepo = useCallback(async () => {
     const repo = await RepoPickerDialog.show({
       title: 'Create Project',
@@ -53,12 +55,17 @@ const ProjectFormDialogImpl = NiceModal.create<ProjectFormDialogProps>(() => {
       modal.resolve('canceled' as ProjectFormDialogResult);
       modal.hide();
     }
-  }, [createProject, modal]);
+  }, [createProject.mutate, modal]);
 
   useEffect(() => {
-    if (modal.visible) {
-      handlePickRepo();
+    if (!modal.visible) {
+      hasStartedCreateRef.current = false;
+      return;
     }
+
+    if (hasStartedCreateRef.current) return;
+    hasStartedCreateRef.current = true;
+    handlePickRepo();
   }, [modal.visible, handlePickRepo]);
 
   const handleOpenChange = (open: boolean) => {
