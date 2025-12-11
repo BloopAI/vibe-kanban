@@ -479,6 +479,22 @@ export type Draft = { id: string, task_attempt_id: string, draft_type: DraftType
 
 export type DraftType = "follow_up" | "retry";
 
+export type PlanStep = { id: string, parent_attempt_id: string, sequence_order: number, title: string, description: string | null, status: PlanStepStatus, child_task_id: string | null, auto_start: boolean, created_at: string, updated_at: string, };
+
+export type PlanStepStatus = "pending" | "ready" | "in_progress" | "completed" | "failed" | "skipped";
+
+export type CreatePlanStep = { parent_attempt_id: string, sequence_order: number, title: string, description: string | null, status: PlanStepStatus | null, child_task_id: string | null, auto_start: boolean | null, };
+
+export type UpdatePlanStep = { sequence_order: number | null, title: string | null, description: string | null, status: PlanStepStatus | null, child_task_id: string | null, auto_start: boolean | null, };
+
+export type CreatePlanStepRequest = { title: string, description: string | null, sequence_order: number, auto_start: boolean | null, };
+
+export type UpdatePlanStepRequest = { title: string | null, description: string | null, status: PlanStepStatus | null, sequence_order: number | null, auto_start: boolean | null, };
+
+export type ReorderPlanStepRequest = { id: string, sequence_order: number, };
+
+export type CreateSubtasksResponse = { tasks: Array<Task>, updated_steps: Array<PlanStep>, };
+
 export type CommandExitStatus = { "type": "exit_code", code: number, } | { "type": "success", success: boolean, };
 
 export type CommandRunResult = { exit_status: CommandExitStatus | null, output: string | null, };

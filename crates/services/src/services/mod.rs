@@ -21,6 +21,7 @@ pub mod node_proxy_client;
 pub mod node_runner;
 pub mod notification;
 pub mod oauth_credentials;
+pub mod plan_parser;
 pub mod pr_monitor;
 pub mod project_detector;
 pub mod remote_client;

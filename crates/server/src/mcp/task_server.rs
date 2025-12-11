@@ -1,6 +1,7 @@
 use std::{future::Future, path::PathBuf, str::FromStr};
 
 use db::models::{
+    plan_step::PlanStep,
     project::Project,
     task::{CreateTask, Task, TaskStatus, TaskWithAttemptStatus, UpdateTask},
     task_attempt::{TaskAttempt, TaskAttemptContext},
@@ -27,7 +28,16 @@ pub struct CreateTaskRequest {
     #[schemars(description = "The title of the task")]
     pub title: String,
     #[schemars(description = "Optional description of the task")]
+    #[serde(default)]
     pub description: Option<String>,
+    #[schemars(
+        description = "Link as subtask of a parent task attempt. If true and in context of an attempt, auto-links to current attempt."
+    )]
+    #[serde(default)]
+    pub link_to_parent: Option<bool>,
+    #[schemars(description = "Explicit parent task attempt ID. Overrides link_to_parent.")]
+    #[serde(default)]
+    pub parent_task_attempt: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -234,6 +244,45 @@ pub struct GetTaskResponse {
     pub task: TaskDetails,
 }
 
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct PlanStepSummary {
+    #[schemars(description = "The unique identifier of the plan step")]
+    pub id: String,
+    #[schemars(description = "The order of the step in the plan")]
+    pub sequence_order: i32,
+    #[schemars(description = "The title of the plan step")]
+    pub title: String,
+    #[schemars(description = "Optional description of the plan step")]
+    pub description: Option<String>,
+    #[schemars(description = "Current status of the plan step (pending, ready, in_progress, completed, failed, skipped)")]
+    pub status: String,
+    #[schemars(description = "Optional child task ID linked to this step")]
+    pub child_task_id: Option<String>,
+    #[schemars(description = "Whether the step should auto-start when ready")]
+    pub auto_start: bool,
+}
+
+impl PlanStepSummary {
+    fn from_plan_step(step: PlanStep) -> Self {
+        Self {
+            id: step.id.to_string(),
+            sequence_order: step.sequence_order,
+            title: step.title,
+            description: step.description,
+            status: step.status.to_string(),
+            child_task_id: step.child_task_id.map(|id| id.to_string()),
+            auto_start: step.auto_start,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct GetPlanStepsResponse {
+    pub steps: Vec<PlanStepSummary>,
+    pub count: usize,
+    pub attempt_id: String,
+}
+
 #[derive(Debug, Clone)]
 pub struct TaskServer {
     client: reqwest::Client,
@@ -407,21 +456,33 @@ impl TaskServer {
             project_id,
             title,
             description,
+            link_to_parent,
+            parent_task_attempt,
         }): Parameters<CreateTaskRequest>,
     ) -> Result<CallToolResult, ErrorData> {
+        // Determine parent_task_attempt: explicit value takes precedence,
+        // otherwise use context if link_to_parent is true
+        let resolved_parent_attempt = if let Some(explicit) = parent_task_attempt {
+            Some(explicit)
+        } else if link_to_parent.unwrap_or(false) {
+            // Get from cached context
+            self.context.as_ref().map(|ctx| ctx.attempt_id)
+        } else {
+            None
+        };
+
         let url = self.url("/api/tasks");
-        let task: Task = match self
-            .send_json(
-                self.client
-                    .post(&url)
-                    .json(&CreateTask::from_title_description(
-                        project_id,
-                        title,
-                        description,
-                    )),
-            )
-            .await
-        {
+        let create_payload = CreateTask {
+            project_id,
+            title,
+            description,
+            status: Some(TaskStatus::Todo),
+            parent_task_attempt: resolved_parent_attempt,
+            image_ids: None,
+            shared_task_id: None,
+        };
+
+        let task: Task = match self.send_json(self.client.post(&url).json(&create_payload)).await {
             Ok(t) => t,
             Err(e) => return Ok(e),
         };
@@ -659,6 +720,40 @@ impl TaskServer {
 
         let details = TaskDetails::from_task(task);
         let response = GetTaskResponse { task: details };
+
+        TaskServer::success(&response)
+    }
+
+    #[tool(
+        description = "Get plan steps for the current task attempt. Only available when running in context of a task attempt."
+    )]
+    async fn get_plan_steps(&self) -> Result<CallToolResult, ErrorData> {
+        let attempt_id = match self.context.as_ref() {
+            Some(ctx) => ctx.attempt_id,
+            None => {
+                return Self::err(
+                    "No attempt context available. This tool requires running within a task attempt.",
+                    None::<&str>,
+                );
+            }
+        };
+
+        let url = self.url(&format!("/api/task-attempts/{}/plan-steps", attempt_id));
+        let steps: Vec<PlanStep> = match self.send_json(self.client.get(&url)).await {
+            Ok(s) => s,
+            Err(e) => return Ok(e),
+        };
+
+        let step_summaries: Vec<PlanStepSummary> = steps
+            .into_iter()
+            .map(PlanStepSummary::from_plan_step)
+            .collect();
+
+        let response = GetPlanStepsResponse {
+            count: step_summaries.len(),
+            steps: step_summaries,
+            attempt_id: attempt_id.to_string(),
+        };
 
         TaskServer::success(&response)
     }

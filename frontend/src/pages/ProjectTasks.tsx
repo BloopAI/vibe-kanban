@@ -304,7 +304,9 @@ export function ProjectTasks() {
 
   const rawMode = searchParams.get('view') as LayoutMode;
   const mode: LayoutMode =
-    rawMode === 'preview' || rawMode === 'diffs' || rawMode === 'files' ? rawMode : null;
+    rawMode === 'preview' || rawMode === 'diffs' || rawMode === 'files'
+      ? rawMode
+      : null;
 
   // TODO: Remove this redirect after v0.1.0 (legacy URL support for bookmarked links)
   // Migrates old `view=logs` to `view=diffs`
@@ -994,11 +996,40 @@ export function ProjectTasks() {
       {isTaskView ? (
         <TaskPanel task={selectedTask} />
       ) : (
-        <TaskAttemptPanel attempt={attempt} task={selectedTask}>
-          {({ logs, followUp }) => (
+        <TaskAttemptPanel
+          attempt={attempt}
+          task={selectedTask}
+          onNavigateToTask={(taskId) => {
+            if (projectId) {
+              navigateWithSearch(
+                `${paths.task(projectId, taskId)}/attempts/latest`
+              );
+            }
+          }}
+          tasksById={tasksById}
+        >
+          {({ logs, followUp, planSteps, relationships }) => (
             <>
               <GitErrorBanner />
               <div className="flex-1 min-h-0 flex flex-col">
+                {/* Plan Steps Panel - shown when plan steps exist */}
+                {planSteps && (
+                  <div className="shrink-0 border-b">
+                    <div className="mx-auto w-full max-w-[50rem]">
+                      {planSteps}
+                    </div>
+                  </div>
+                )}
+
+                {/* Task Relationships - shown when parent/child tasks exist */}
+                {relationships && (
+                  <div className="shrink-0 border-b">
+                    <div className="mx-auto w-full max-w-[50rem]">
+                      {relationships}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex-1 min-h-0 flex flex-col">{logs}</div>
 
                 <div className="shrink-0 border-t">

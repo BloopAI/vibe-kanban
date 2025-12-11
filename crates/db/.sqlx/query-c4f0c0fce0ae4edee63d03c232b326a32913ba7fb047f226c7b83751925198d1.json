@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE plan_steps\n                   SET sequence_order = $1, updated_at = datetime('now', 'subsec')\n                   WHERE id = $2 AND parent_attempt_id = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "c4f0c0fce0ae4edee63d03c232b326a32913ba7fb047f226c7b83751925198d1"
+}

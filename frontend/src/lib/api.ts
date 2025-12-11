@@ -8,6 +8,8 @@ import {
   Config,
   CommitInfo,
   CreateFollowUpAttempt,
+  CreatePlanStepRequest,
+  CreateSubtasksResponse,
   DashboardSummary,
   EditorType,
   CreateGitHubPrRequest,
@@ -20,8 +22,10 @@ import {
   FileContentResponse,
   ExecutionProcess,
   GitBranch,
+  PlanStep,
   Project,
   CreateProject,
+  ReorderPlanStepRequest,
   SearchResult,
   ShareTaskResponse,
   Task,
@@ -31,6 +35,7 @@ import {
   TagSearchParams,
   TaskWithAttemptStatus,
   AssignSharedTaskResponse,
+  UpdatePlanStepRequest,
   UpdateProject,
   UpdateTask,
   UpdateTag,
@@ -1218,5 +1223,79 @@ export const nodesApi = {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
+  },
+};
+
+// Plan Steps APIs
+export const planStepsApi = {
+  // List all plan steps for an attempt
+  list: async (attemptId: string): Promise<PlanStep[]> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/plan-steps`
+    );
+    return handleApiResponse<PlanStep[]>(response);
+  },
+
+  // Bulk create plan steps
+  createBulk: async (
+    attemptId: string,
+    steps: CreatePlanStepRequest[]
+  ): Promise<PlanStep[]> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/plan-steps`,
+      {
+        method: 'POST',
+        body: JSON.stringify(steps),
+      }
+    );
+    return handleApiResponse<PlanStep[]>(response);
+  },
+
+  // Update a single step
+  update: async (
+    stepId: string,
+    data: UpdatePlanStepRequest
+  ): Promise<PlanStep> => {
+    const response = await makeRequest(`/api/plan-steps/${stepId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<PlanStep>(response);
+  },
+
+  // Delete a step
+  delete: async (stepId: string): Promise<void> => {
+    const response = await makeRequest(`/api/plan-steps/${stepId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
+  // Reorder steps
+  reorder: async (
+    attemptId: string,
+    order: ReorderPlanStepRequest[]
+  ): Promise<PlanStep[]> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/plan-steps/reorder`,
+      {
+        method: 'POST',
+        body: JSON.stringify(order),
+      }
+    );
+    return handleApiResponse<PlanStep[]>(response);
+  },
+
+  // Create subtasks from steps
+  createSubtasks: async (
+    attemptId: string
+  ): Promise<CreateSubtasksResponse> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/plan-steps/create-subtasks`,
+      {
+        method: 'POST',
+      }
+    );
+    return handleApiResponse<CreateSubtasksResponse>(response);
   },
 };

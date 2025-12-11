@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM plan_steps WHERE parent_attempt_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "04352c681b28052ec7ea3afdae87415c8d0aa1314260d12914b3935ac477ea2a"
+}

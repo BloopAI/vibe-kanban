@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE plan_steps SET child_task_id = $2, updated_at = datetime('now', 'subsec') WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "be9c7c7aa095bf06a4df34fa7387f7e83bf9b907dc9830f29a59491538d7c4d7"
+}
