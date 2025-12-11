@@ -30,6 +30,7 @@ use services::services::{
     pr_monitor::PrMonitorService,
     project::ProjectService,
     queued_message::QueuedMessageService,
+    repo::RepoService,
     share::SharePublisher,
     worktree_manager::WorktreeError,
 };
@@ -93,6 +94,8 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     fn git(&self) -> &GitService;
 
     fn project(&self) -> &ProjectService;
+
+    fn repo(&self) -> &RepoService;
 
     fn image(&self) -> &ImageService;
 
@@ -178,7 +181,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
                     match self
                         .project()
-                        .create_project(&self.db().pool, create_data.clone())
+                        .create_project(&self.db().pool, self.repo(), create_data.clone())
                         .await
                     {
                         Ok(project) => {

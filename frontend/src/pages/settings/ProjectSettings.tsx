@@ -27,7 +27,7 @@ import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { useScriptPlaceholders } from '@/hooks/useScriptPlaceholders';
 import { CopyFilesField } from '@/components/projects/CopyFilesField';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
-import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
+import { RepoPickerDialog } from '@/components/dialogs/shared/RepoPickerDialog';
 import { projectsApi } from '@/lib/api';
 import type { Project, Repo, UpdateProject } from 'shared/types';
 
@@ -215,23 +215,23 @@ export function ProjectSettings() {
   const handleAddRepository = async () => {
     if (!selectedProjectId) return;
 
-    const selectedPath = await FolderPickerDialog.show({
+    const repo = await RepoPickerDialog.show({
       title: 'Select Git Repository',
       description: 'Choose a git repository to add to this project',
-      value: '',
     });
 
-    if (!selectedPath) return;
+    if (!repo) return;
 
-    // Extract directory name from path
-    const display_name = selectedPath.split('/').pop() || selectedPath;
+    if (repositories.some((r) => r.id === repo.id)) {
+      return;
+    }
 
     setAddingRepo(true);
     setRepoError(null);
     try {
       const newRepo = await projectsApi.addRepository(selectedProjectId, {
-        display_name,
-        git_repo_path: selectedPath,
+        display_name: repo.display_name,
+        git_repo_path: repo.path,
       });
       setRepositories((prev) => [...prev, newRepo]);
     } catch (err) {

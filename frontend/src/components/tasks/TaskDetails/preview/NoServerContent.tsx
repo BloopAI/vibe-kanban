@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ExecutionProcess, Project, AttemptRepoInput } from 'shared/types';
+import { ExecutionProcess, Project } from 'shared/types';
 import {
   createScriptPlaceholderStrategy,
   ScriptPlaceholderContext,
@@ -134,9 +134,8 @@ export function NoServerContent({
   const handleInstallCompanion = () => {
     if (!project || !config || projectRepos.length === 0) return;
 
-    const repos: AttemptRepoInput[] = projectRepos.map((repo) => ({
-      git_repo_path: repo.path.toString(),
-      display_name: repo.display_name,
+    const repos = projectRepos.map((repo) => ({
+      repo_id: repo.id,
       target_branch: 'main',
     }));
 

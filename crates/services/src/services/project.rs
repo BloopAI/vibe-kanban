@@ -12,12 +12,13 @@ use db::models::{
 use ignore::WalkBuilder;
 use sqlx::SqlitePool;
 use thiserror::Error;
-use utils::{api::projects::RemoteProject, path::expand_tilde};
+use utils::api::projects::RemoteProject;
 use uuid::Uuid;
 
 use super::{
     file_ranker::FileRanker,
     file_search_cache::{CacheError, FileSearchCache, SearchMode, SearchQuery},
+    repo::{RepoError, RepoService},
     share::ShareError,
 };
 
@@ -51,6 +52,19 @@ pub enum ProjectServiceError {
 
 pub type Result<T> = std::result::Result<T, ProjectServiceError>;
 
+impl From<RepoError> for ProjectServiceError {
+    fn from(e: RepoError) -> Self {
+        match e {
+            RepoError::PathNotFound(p) => Self::PathNotFound(p),
+            RepoError::PathNotDirectory(p) => Self::PathNotDirectory(p),
+            RepoError::NotGitRepository(p) => Self::NotGitRepository(p),
+            RepoError::Io(e) => Self::Io(e),
+            RepoError::Database(e) => Self::Database(e),
+            _ => Self::RepositoryNotFound,
+        }
+    }
+}
+
 #[derive(Clone, Default)]
 pub struct ProjectService;
 
@@ -59,31 +73,10 @@ impl ProjectService {
         Self
     }
 
-    /// Validate that a path exists and is a git repository
-    fn validate_git_repo_path(&self, path: &Path) -> Result<()> {
-        if !path.exists() {
-            return Err(ProjectServiceError::PathNotFound(path.to_path_buf()));
-        }
-
-        if !path.is_dir() {
-            return Err(ProjectServiceError::PathNotDirectory(path.to_path_buf()));
-        }
-
-        if !path.join(".git").exists() {
-            return Err(ProjectServiceError::NotGitRepository(path.to_path_buf()));
-        }
-
-        Ok(())
-    }
-
-    /// Expand tilde and convert to absolute path
-    fn normalize_path(&self, path: &str) -> std::io::Result<PathBuf> {
-        std::path::absolute(expand_tilde(path))
-    }
-
     pub async fn create_project(
         &self,
         pool: &SqlitePool,
+        repo_service: &RepoService,
         payload: CreateProject,
     ) -> Result<Project> {
         // Validate all repository paths and check for duplicates within the payload
@@ -92,8 +85,8 @@ impl ProjectService {
         let mut normalized_repos = Vec::new();
 
         for repo in &payload.repositories {
-            let path = self.normalize_path(&repo.git_repo_path)?;
-            self.validate_git_repo_path(&path)?;
+            let path = repo_service.normalize_path(&repo.git_repo_path)?;
+            repo_service.validate_git_repo_path(&path)?;
 
             let normalized_path = path.to_string_lossy().to_string();
 
@@ -195,11 +188,12 @@ impl ProjectService {
     pub async fn add_repository(
         &self,
         pool: &SqlitePool,
+        repo_service: &RepoService,
         project_id: Uuid,
         payload: &CreateProjectRepo,
     ) -> Result<Repo> {
-        let path = self.normalize_path(&payload.git_repo_path)?;
-        self.validate_git_repo_path(&path)?;
+        let path = repo_service.normalize_path(&payload.git_repo_path)?;
+        repo_service.validate_git_repo_path(&path)?;
 
         let repository = ProjectRepo::add_repo_to_project(
             pool,

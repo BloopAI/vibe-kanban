@@ -194,17 +194,14 @@ pub async fn create_task_and_start(
     )
     .await?;
 
-    // Resolve repo paths to repo IDs via find_or_create
-    let mut attempt_repos = Vec::with_capacity(payload.repos.len());
-    for repo_input in &payload.repos {
-        let path = PathBuf::from(&repo_input.git_repo_path);
-        let repo =
-            Repo::find_or_create(&deployment.db().pool, &path, &repo_input.display_name).await?;
-        attempt_repos.push(CreateAttemptRepo {
-            repo_id: repo.id,
-            target_branch: repo_input.target_branch.clone(),
-        });
-    }
+    let attempt_repos: Vec<CreateAttemptRepo> = payload
+        .repos
+        .iter()
+        .map(|r| CreateAttemptRepo {
+            repo_id: r.repo_id,
+            target_branch: r.target_branch.clone(),
+        })
+        .collect();
     AttemptRepo::create_many(&deployment.db().pool, task_attempt.id, &attempt_repos).await?;
 
     let is_attempt_running = deployment

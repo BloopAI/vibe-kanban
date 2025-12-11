@@ -218,7 +218,7 @@ pub async fn create_project(
 
     match deployment
         .project()
-        .create_project(&deployment.db().pool, payload)
+        .create_project(&deployment.db().pool, deployment.repo(), payload)
         .await
     {
         Ok(project) => {
@@ -434,7 +434,12 @@ pub async fn add_project_repository(
 ) -> Result<ResponseJson<ApiResponse<Repo>>, ApiError> {
     match deployment
         .project()
-        .add_repository(&deployment.db().pool, project.id, &payload)
+        .add_repository(
+            &deployment.db().pool,
+            deployment.repo(),
+            project.id,
+            &payload,
+        )
         .await
     {
         Ok(repository) => Ok(ResponseJson(ApiResponse::success(repository))),

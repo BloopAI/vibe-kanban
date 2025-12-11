@@ -650,8 +650,7 @@ impl TaskServer {
         let attempt_repos: Vec<AttemptRepoInput> = project_repos
             .into_iter()
             .map(|r| AttemptRepoInput {
-                git_repo_path: r.path.to_string_lossy().to_string(),
-                display_name: r.display_name,
+                repo_id: r.id,
                 target_branch: base_branch.clone(),
             })
             .collect();

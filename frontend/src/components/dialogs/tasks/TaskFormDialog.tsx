@@ -47,7 +47,6 @@ import type {
   TaskStatus,
   ExecutorProfileId,
   ImageResponse,
-  AttemptRepoInput,
 } from 'shared/types';
 import { projectsApi } from '@/lib/api';
 import { useQuery } from '@tanstack/react-query';
@@ -195,10 +194,8 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
       };
       const shouldAutoStart = value.autoStart && !forceCreateOnlyRef.current;
       if (shouldAutoStart) {
-        // Build repos array from project repos with the selected branch
-        const repos: AttemptRepoInput[] = projectRepos.map((repo) => ({
-          git_repo_path: repo.path.toString(),
-          display_name: repo.display_name,
+        const repos = projectRepos.map((repo) => ({
+          repo_id: repo.id,
           target_branch: value.branch,
         }));
         await createAndStart.mutateAsync(

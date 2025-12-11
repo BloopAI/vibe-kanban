@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery, useQueries } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
@@ -10,30 +10,24 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import BranchSelector from '@/components/tasks/BranchSelector';
 import { ExecutorProfileSelector } from '@/components/settings';
-import {
-  AttemptRepoSelector,
-  BranchesByRepoPath,
-} from '@/components/tasks/AttemptRepoSelector';
 import { useAttemptCreation } from '@/hooks/useAttemptCreation';
 import {
   useNavigateWithSearch,
   useTask,
   useAttempt,
+  useBranches,
   useTaskAttempts,
 } from '@/hooks';
-import { repoBranchKeys } from '@/hooks/useRepoBranches';
 import { useProject } from '@/contexts/ProjectContext';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { paths } from '@/lib/paths';
-import { projectsApi, repoApi } from '@/lib/api';
+import { projectsApi } from '@/lib/api';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
-import type {
-  ExecutorProfileId,
-  BaseCodingAgent,
-  AttemptRepoInput,
-} from 'shared/types';
+import type { ExecutorProfileId, BaseCodingAgent } from 'shared/types';
 import { useKeySubmitTask, Scope } from '@/keyboard';
 
 export interface CreateAttemptDialogProps {
@@ -58,39 +52,23 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
 
     const [userSelectedProfile, setUserSelectedProfile] =
       useState<ExecutorProfileId | null>(null);
-    const [repos, setRepos] = useState<AttemptRepoInput[]>([]);
-    const [hasInitializedRepos, setHasInitializedRepos] = useState(false);
+    const [userSelectedBranch, setUserSelectedBranch] = useState<string | null>(
+      null
+    );
 
-    const { data: projectRepos = [], isLoading: isLoadingProjectRepos } =
-      useQuery({
-        queryKey: ['projectRepositories', projectId],
-        queryFn: () =>
-          projectId
-            ? projectsApi.getRepositories(projectId)
-            : Promise.resolve([]),
-        enabled: modal.visible && !!projectId,
-      });
+    const { data: branches = [], isLoading: isLoadingBranches } = useBranches(
+      projectId,
+      { enabled: modal.visible && !!projectId }
+    );
 
-    const repoPaths = useMemo(() => repos.map((r) => r.git_repo_path), [repos]);
-
-    const branchQueries = useQueries({
-      queries: repoPaths.map((path) => ({
-        queryKey: repoBranchKeys.byPath(path),
-        queryFn: () => repoApi.getBranches(path),
-        enabled: modal.visible && !!path,
-        staleTime: 60_000,
-      })),
+    const { data: projectRepos = [], isLoading: isLoadingRepos } = useQuery({
+      queryKey: ['projectRepositories', projectId],
+      queryFn: () =>
+        projectId
+          ? projectsApi.getRepositories(projectId)
+          : Promise.resolve([]),
+      enabled: modal.visible && !!projectId,
     });
-
-    const branchesByRepo = useMemo(() => {
-      const result: BranchesByRepoPath = {};
-      repoPaths.forEach((path, index) => {
-        result[path] = branchQueries[index]?.data ?? [];
-      });
-      return result;
-    }, [repoPaths, branchQueries]);
-
-    const isLoadingBranches = branchQueries.some((q) => q.isLoading);
 
     const { data: attempts = [], isLoading: isLoadingAttempts } =
       useTaskAttempts(taskId, {
@@ -117,42 +95,20 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
       );
     }, [attempts]);
 
-    // Initialize repos from project defaults when data loads
-    useEffect(() => {
-      if (
-        modal.visible &&
-        !hasInitializedRepos &&
-        !isLoadingProjectRepos &&
-        projectRepos.length > 0
-      ) {
-        const defaultBranch = parentAttempt?.branch ?? 'main';
-        const initialRepos: AttemptRepoInput[] = projectRepos.map((repo) => ({
-          git_repo_path: repo.path.toString(),
-          display_name: repo.display_name,
-          target_branch: defaultBranch,
-        }));
-        setRepos(initialRepos);
-        setHasInitializedRepos(true);
-      }
-    }, [
-      modal.visible,
-      hasInitializedRepos,
-      isLoadingProjectRepos,
-      projectRepos,
-      parentAttempt?.branch,
-    ]);
-
     useEffect(() => {
       if (!modal.visible) {
         setUserSelectedProfile(null);
-        setRepos([]);
-        setHasInitializedRepos(false);
+        setUserSelectedBranch(null);
       }
     }, [modal.visible]);
 
     const defaultProfile: ExecutorProfileId | null = useMemo(() => {
       if (latestAttempt?.executor) {
         const lastExec = latestAttempt.executor as BaseCodingAgent;
+        // If the last attempt used the same executor as the user's current preference,
+        // we assume they want to use their preferred variant as well.
+        // Otherwise, we default to the "default" variant (null) since we don't know
+        // what variant they used last time (TaskAttempt doesn't store it).
         const variant =
           config?.executor_profile?.executor === lastExec
             ? config.executor_profile.variant
@@ -166,21 +122,41 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
       return config?.executor_profile ?? null;
     }, [latestAttempt?.executor, config?.executor_profile]);
 
+    const currentBranchName: string | null = useMemo(() => {
+      return branches.find((b) => b.is_current)?.name ?? null;
+    }, [branches]);
+
+    const defaultBranch: string | null = useMemo(() => {
+      return parentAttempt?.branch ?? currentBranchName ?? null;
+    }, [parentAttempt?.branch, currentBranchName]);
+
     const effectiveProfile = userSelectedProfile ?? defaultProfile;
+    const effectiveBranch = userSelectedBranch ?? defaultBranch;
 
     const isLoadingInitial =
       isLoadingBranches ||
       isLoadingAttempts ||
       isLoadingTask ||
       isLoadingParent ||
-      isLoadingProjectRepos;
+      isLoadingRepos;
     const canCreate = Boolean(
-      effectiveProfile && repos.length > 0 && !isCreating && !isLoadingInitial
+      effectiveProfile &&
+        effectiveBranch &&
+        projectRepos.length > 0 &&
+        !isCreating &&
+        !isLoadingInitial
     );
 
     const handleCreate = async () => {
-      if (!effectiveProfile || repos.length === 0) return;
+      if (!effectiveProfile || !effectiveBranch || projectRepos.length === 0)
+        return;
       try {
+        // Build repos array from project repos, all using the selected branch
+        const repos = projectRepos.map((repo) => ({
+          repo_id: repo.id,
+          target_branch: effectiveBranch,
+        }));
+
         await createAttempt({
           profile: effectiveProfile,
           repos,
@@ -204,7 +180,7 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
 
     return (
       <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>{t('createAttemptDialog.title')}</DialogTitle>
             <DialogDescription>
@@ -224,12 +200,22 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
               </div>
             )}
 
-            <AttemptRepoSelector
-              repos={repos}
-              branchesByRepo={branchesByRepo}
-              onUpdate={setRepos}
-              isLoading={isLoadingProjectRepos || isLoadingBranches}
-            />
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">
+                {t('createAttemptDialog.baseBranch')}{' '}
+                <span className="text-destructive">*</span>
+              </Label>
+              <BranchSelector
+                branches={branches}
+                selectedBranch={effectiveBranch}
+                onBranchSelect={setUserSelectedBranch}
+                placeholder={
+                  isLoadingBranches
+                    ? t('createAttemptDialog.loadingBranches')
+                    : t('createAttemptDialog.selectBranch')
+                }
+              />
+            </div>
 
             {error && (
               <div className="text-sm text-destructive">

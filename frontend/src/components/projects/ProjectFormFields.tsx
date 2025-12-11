@@ -14,6 +14,7 @@ import {
 // Removed collapsible sections for simplicity; show fields always in edit mode
 import { fileSystemApi } from '@/lib/api';
 import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
+import { RepoPickerDialog } from '@/components/dialogs/shared/RepoPickerDialog';
 import { DirectoryEntry } from 'shared/types';
 import { generateProjectNameFromPath } from '@/utils/string';
 
@@ -216,16 +217,15 @@ export function ProjectFormFields({
                   className="p-4 border border-dashed cursor-pointer hover:shadow-md transition-shadow rounded-lg bg-card"
                   onClick={async () => {
                     setError('');
-                    const selectedPath = await FolderPickerDialog.show({
+                    const repo = await RepoPickerDialog.show({
                       title: 'Select Git Repository',
                       description: 'Choose an existing git repository',
                     });
-                    if (selectedPath) {
-                      const projectName =
-                        generateProjectNameFromPath(selectedPath);
-                      if (onCreateProject) {
-                        onCreateProject(selectedPath, projectName);
-                      }
+                    if (repo) {
+                      const projectName = generateProjectNameFromPath(
+                        repo.path
+                      );
+                      onCreateProject?.(repo.path, projectName);
                     }
                   }}
                 >

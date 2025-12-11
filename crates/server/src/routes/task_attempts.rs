@@ -23,7 +23,7 @@ use axum::{
     routing::{get, post},
 };
 use db::models::{
-    attempt_repo::{AttemptRepo, CreateAttemptRepo},
+    attempt_repo::{AttemptRepo, CreateAttemptRepo, RepoWithTargetBranch},
     execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
     merge::{Merge, MergeStatus, PrMerge, PullRequestInfo},
     project_repo::ProjectRepo,
@@ -143,8 +143,7 @@ pub struct CreateTaskAttemptBody {
 
 #[derive(Debug, Serialize, Deserialize, ts_rs::TS)]
 pub struct AttemptRepoInput {
-    pub git_repo_path: String,
-    pub display_name: String,
+    pub repo_id: Uuid,
     pub target_branch: String,
 }
 
@@ -191,17 +190,14 @@ pub async fn create_task_attempt(
     )
     .await?;
 
-    // Resolve repo paths to repo IDs via find_or_create
-    let mut attempt_repos = Vec::with_capacity(payload.repos.len());
-    for repo_input in &payload.repos {
-        let path = PathBuf::from(&repo_input.git_repo_path);
-        let repo =
-            Repo::find_or_create(&deployment.db().pool, &path, &repo_input.display_name).await?;
-        attempt_repos.push(CreateAttemptRepo {
-            repo_id: repo.id,
-            target_branch: repo_input.target_branch.clone(),
-        });
-    }
+    let attempt_repos: Vec<CreateAttemptRepo> = payload
+        .repos
+        .iter()
+        .map(|r| CreateAttemptRepo {
+            repo_id: r.repo_id,
+            target_branch: r.target_branch.clone(),
+        })
+        .collect();
 
     AttemptRepo::create_many(pool, task_attempt.id, &attempt_repos).await?;
     if let Err(err) = deployment
@@ -1602,10 +1598,11 @@ pub async fn gh_cli_setup_handler(
 pub async fn get_task_attempt_repos(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<Vec<Repo>>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<Vec<RepoWithTargetBranch>>>, ApiError> {
     let pool = &deployment.db().pool;
 
-    let repos = AttemptRepo::find_repos_for_attempt(pool, task_attempt.id).await?;
+    let repos =
+        AttemptRepo::find_repos_with_target_branch_for_attempt(pool, task_attempt.id).await?;
 
     Ok(ResponseJson(ApiResponse::success(repos)))
 }
