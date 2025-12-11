@@ -27,6 +27,7 @@ import {
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { ScratchType, type TaskWithAttemptStatus } from 'shared/types';
 import { useBranchStatus } from '@/hooks';
+import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { cn } from '@/lib/utils';
@@ -77,6 +78,7 @@ export function TaskFollowUpSection({
     useAttemptExecution(selectedAttemptId, task.id);
   const { data: branchStatus, refetch: refetchBranchStatus } =
     useBranchStatus(selectedAttemptId);
+  const { repos } = useAttemptRepo(selectedAttemptId);
   const firstRepoStatus = branchStatus?.[0];
   const repoWithConflicts = useMemo(
     () =>
@@ -537,7 +539,7 @@ export function TaskFollowUpSection({
   // Handler for GitHub comments insertion
   const handleGitHubCommentClick = useCallback(async () => {
     if (!selectedAttemptId) return;
-    const repoId = branchStatus?.[0]?.repo_id;
+    const repoId = repos[0]?.id;
     if (!repoId) return;
 
     const result = await GitHubCommentsDialog.show({
@@ -584,7 +586,7 @@ export function TaskFollowUpSection({
         });
       }
     }
-  }, [selectedAttemptId, branchStatus]);
+  }, [selectedAttemptId, repos]);
 
   // Stable onChange handler for WYSIWYGEditor
   const handleEditorChange = useCallback(
