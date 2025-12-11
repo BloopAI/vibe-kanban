@@ -429,9 +429,9 @@ function GitOperations({
                     size="xs"
                     onClick={handleChangeTargetBranchDialogOpen}
                     disabled={isAttemptRunning || hasConflictsCalculated}
-                  className={settingsBtnClasses}
-                  aria-label={t('branches.changeTarget.dialog.title')}
-                >
+                    className={settingsBtnClasses}
+                    aria-label={t('branches.changeTarget.dialog.title')}
+                  >
                     <Settings className="h-3.5 w-3.5" />
                   </Button>
                 </TooltipTrigger>
