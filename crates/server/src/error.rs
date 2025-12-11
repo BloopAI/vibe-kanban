@@ -11,6 +11,7 @@ use deployment::{DeploymentError, RemoteClientNotConfigured};
 use executors::executors::ExecutorError;
 use git2::Error as Git2Error;
 use services::services::{
+    approvals::ApprovalError,
     config::{ConfigError, EditorOpenError},
     container::ContainerError,
     drafts::DraftsServiceError,
@@ -371,6 +372,25 @@ impl From<ShareError> for ApiError {
                 ApiError::Conflict("Invalid organization ID format".to_string())
             }
             ShareError::RemoteClientError(err) => ApiError::Conflict(err.to_string()),
+        }
+    }
+}
+
+impl From<ApprovalError> for ApiError {
+    fn from(err: ApprovalError) -> Self {
+        match err {
+            ApprovalError::NotFound => ApiError::BadRequest("Approval request not found".to_string()),
+            ApprovalError::AlreadyCompleted => {
+                ApiError::Conflict("Approval request already completed".to_string())
+            }
+            ApprovalError::NoExecutorSession(id) => {
+                ApiError::BadRequest(format!("No executor session found: {}", id))
+            }
+            ApprovalError::NoToolUseEntry => {
+                ApiError::BadRequest("Tool use entry not found for approval".to_string())
+            }
+            ApprovalError::Custom(err) => ApiError::BadRequest(err.to_string()),
+            ApprovalError::Sqlx(err) => ApiError::Database(err),
         }
     }
 }
