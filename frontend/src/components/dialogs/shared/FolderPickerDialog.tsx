@@ -139,153 +139,160 @@ const FolderPickerDialogImpl = NiceModal.create<FolderPickerDialogProps>(
     };
 
     return (
-      <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
-        <DialogContent className="max-w-[600px] w-full h-[700px] flex flex-col overflow-hidden">
-          <DialogHeader>
-            <DialogTitle>{title}</DialogTitle>
-            <DialogDescription>{description}</DialogDescription>
-          </DialogHeader>
+      <div className="fixed inset-0 z-[10000] pointer-events-none [&>*]:pointer-events-auto">
+        <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
+          <DialogContent className="max-w-[600px] w-full h-[700px] flex flex-col overflow-hidden">
+            <DialogHeader>
+              <DialogTitle>{title}</DialogTitle>
+              <DialogDescription>{description}</DialogDescription>
+            </DialogHeader>
 
-          <div className="flex-1 flex flex-col space-y-4 overflow-hidden">
-            {/* Legend */}
-            <div className="text-xs text-muted-foreground border-b pb-2">
-              Click folder names to navigate • Use action buttons to select
-            </div>
+            <div className="flex-1 flex flex-col space-y-4 overflow-hidden">
+              {/* Legend */}
+              <div className="text-xs text-muted-foreground border-b pb-2">
+                Click folder names to navigate • Use action buttons to select
+              </div>
 
-            {/* Manual path input */}
-            <div className="space-y-2">
-              <div className="text-sm font-medium">Enter path manually:</div>
-              <div className="flex space-x-2 min-w-0">
-                <Input
-                  value={manualPath}
-                  onChange={handleManualPathChange}
-                  placeholder="/path/to/your/project"
-                  className="flex-1 min-w-0"
-                />
+              {/* Manual path input */}
+              <div className="space-y-2">
+                <div className="text-sm font-medium">Enter path manually:</div>
+                <div className="flex space-x-2 min-w-0">
+                  <Input
+                    value={manualPath}
+                    onChange={handleManualPathChange}
+                    placeholder="/path/to/your/project"
+                    className="flex-1 min-w-0"
+                  />
+                  <Button
+                    onClick={handleManualPathSubmit}
+                    variant="outline"
+                    size="sm"
+                    className="flex-shrink-0"
+                  >
+                    Go
+                  </Button>
+                </div>
+              </div>
+
+              {/* Search input */}
+              <div className="space-y-2">
+                <div className="text-sm font-medium">
+                  Search current directory:
+                </div>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Filter folders and files..."
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              {/* Navigation */}
+              <div className="flex items-center space-x-2 min-w-0">
                 <Button
-                  onClick={handleManualPathSubmit}
+                  onClick={handleHomeDirectory}
                   variant="outline"
                   size="sm"
                   className="flex-shrink-0"
                 >
-                  Go
+                  <Home className="h-4 w-4" />
+                </Button>
+                <Button
+                  onClick={handleParentDirectory}
+                  variant="outline"
+                  size="sm"
+                  disabled={!currentPath || currentPath === '/'}
+                  className="flex-shrink-0"
+                >
+                  <ChevronUp className="h-4 w-4" />
+                </Button>
+                <div className="text-sm text-muted-foreground flex-1 truncate min-w-0">
+                  {currentPath || 'Home'}
+                </div>
+                <Button
+                  onClick={handleSelectCurrent}
+                  variant="outline"
+                  size="sm"
+                  disabled={!currentPath}
+                  className="flex-shrink-0"
+                >
+                  Select Current
                 </Button>
               </div>
-            </div>
 
-            {/* Search input */}
-            <div className="space-y-2">
-              <div className="text-sm font-medium">
-                Search current directory:
-              </div>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Filter folders and files..."
-                  className="pl-10"
-                />
-              </div>
-            </div>
-
-            {/* Navigation */}
-            <div className="flex items-center space-x-2 min-w-0">
-              <Button
-                onClick={handleHomeDirectory}
-                variant="outline"
-                size="sm"
-                className="flex-shrink-0"
-              >
-                <Home className="h-4 w-4" />
-              </Button>
-              <Button
-                onClick={handleParentDirectory}
-                variant="outline"
-                size="sm"
-                disabled={!currentPath || currentPath === '/'}
-                className="flex-shrink-0"
-              >
-                <ChevronUp className="h-4 w-4" />
-              </Button>
-              <div className="text-sm text-muted-foreground flex-1 truncate min-w-0">
-                {currentPath || 'Home'}
-              </div>
-              <Button
-                onClick={handleSelectCurrent}
-                variant="outline"
-                size="sm"
-                disabled={!currentPath}
-                className="flex-shrink-0"
-              >
-                Select Current
-              </Button>
-            </div>
-
-            {/* Directory listing */}
-            <div className="flex-1 border rounded-md overflow-auto">
-              {loading ? (
-                <div className="p-4 text-center text-muted-foreground">
-                  Loading...
-                </div>
-              ) : error ? (
-                <Alert variant="destructive" className="m-4">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              ) : filteredEntries.length === 0 ? (
-                <div className="p-4 text-center text-muted-foreground">
-                  {searchTerm.trim() ? 'No matches found' : 'No folders found'}
-                </div>
-              ) : (
-                <div className="p-2">
-                  {filteredEntries.map((entry, index) => (
-                    <div
-                      key={index}
-                      className={`flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-accent ${
-                        !entry.is_directory
-                          ? 'opacity-50 cursor-not-allowed'
-                          : ''
-                      }`}
-                      onClick={() =>
-                        entry.is_directory && handleFolderClick(entry)
-                      }
-                      title={entry.name} // Show full name on hover
-                    >
-                      {entry.is_directory ? (
-                        entry.is_git_repo ? (
-                          <FolderOpen className="h-4 w-4 text-success flex-shrink-0" />
+              {/* Directory listing */}
+              <div className="flex-1 border rounded-md overflow-auto">
+                {loading ? (
+                  <div className="p-4 text-center text-muted-foreground">
+                    Loading...
+                  </div>
+                ) : error ? (
+                  <Alert variant="destructive" className="m-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                ) : filteredEntries.length === 0 ? (
+                  <div className="p-4 text-center text-muted-foreground">
+                    {searchTerm.trim()
+                      ? 'No matches found'
+                      : 'No folders found'}
+                  </div>
+                ) : (
+                  <div className="p-2">
+                    {filteredEntries.map((entry, index) => (
+                      <div
+                        key={index}
+                        className={`flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-accent ${
+                          !entry.is_directory
+                            ? 'opacity-50 cursor-not-allowed'
+                            : ''
+                        }`}
+                        onClick={() =>
+                          entry.is_directory && handleFolderClick(entry)
+                        }
+                        title={entry.name} // Show full name on hover
+                      >
+                        {entry.is_directory ? (
+                          entry.is_git_repo ? (
+                            <FolderOpen className="h-4 w-4 text-success flex-shrink-0" />
+                          ) : (
+                            <Folder className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                          )
                         ) : (
-                          <Folder className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                        )
-                      ) : (
-                        <File className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                      )}
-                      <span className="text-sm flex-1 truncate min-w-0">
-                        {entry.name}
-                      </span>
-                      {entry.is_git_repo && (
-                        <span className="text-xs text-success bg-green-100 px-2 py-1 rounded flex-shrink-0">
-                          git repo
+                          <File className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                        )}
+                        <span className="text-sm flex-1 truncate min-w-0">
+                          {entry.name}
                         </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+                        {entry.is_git_repo && (
+                          <span className="text-xs text-success bg-green-100 px-2 py-1 rounded flex-shrink-0">
+                            git repo
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={handleCancel}>
-              Cancel
-            </Button>
-            <Button onClick={handleSelectManual} disabled={!manualPath.trim()}>
-              Select Path
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={handleCancel}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSelectManual}
+                disabled={!manualPath.trim()}
+              >
+                Select Path
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     );
   }
 );

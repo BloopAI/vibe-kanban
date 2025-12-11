@@ -19,6 +19,7 @@ use services::services::{
     image::ImageError,
     project::ProjectServiceError,
     remote_client::RemoteClientError,
+    repo::RepoError as RepoServiceError,
     share::ShareError,
     worktree_manager::WorktreeError,
 };
@@ -338,6 +339,34 @@ impl From<ProjectServiceError> for ApiError {
             }
             ProjectServiceError::RemoteClient(msg) => {
                 ApiError::BadRequest(format!("Remote client error: {}", msg))
+            }
+        }
+    }
+}
+
+impl From<RepoServiceError> for ApiError {
+    fn from(err: RepoServiceError) -> Self {
+        match err {
+            RepoServiceError::Database(db_err) => ApiError::Database(db_err),
+            RepoServiceError::Io(io_err) => ApiError::Io(io_err),
+            RepoServiceError::PathNotFound(path) => {
+                ApiError::BadRequest(format!("Path does not exist: {}", path.display()))
+            }
+            RepoServiceError::PathNotDirectory(path) => {
+                ApiError::BadRequest(format!("Path is not a directory: {}", path.display()))
+            }
+            RepoServiceError::NotGitRepository(path) => {
+                ApiError::BadRequest(format!("Path is not a git repository: {}", path.display()))
+            }
+            RepoServiceError::NotFound => ApiError::BadRequest("Repository not found".to_string()),
+            RepoServiceError::DirectoryAlreadyExists(path) => {
+                ApiError::BadRequest(format!("Directory already exists: {}", path.display()))
+            }
+            RepoServiceError::Git(git_err) => {
+                ApiError::BadRequest(format!("Git error: {}", git_err))
+            }
+            RepoServiceError::InvalidFolderName(name) => {
+                ApiError::BadRequest(format!("Invalid folder name: {}", name))
             }
         }
     }

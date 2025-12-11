@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
@@ -23,6 +24,7 @@ import {
 import { useProject } from '@/contexts/ProjectContext';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { paths } from '@/lib/paths';
+import { projectsApi } from '@/lib/api';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import type { ExecutorProfileId, BaseCodingAgent } from 'shared/types';
@@ -58,6 +60,15 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
       projectId,
       { enabled: modal.visible && !!projectId }
     );
+
+    const { data: projectRepos = [], isLoading: isLoadingRepos } = useQuery({
+      queryKey: ['projectRepositories', projectId],
+      queryFn: () =>
+        projectId
+          ? projectsApi.getRepositories(projectId)
+          : Promise.resolve([]),
+      enabled: modal.visible && !!projectId,
+    });
 
     const { data: attempts = [], isLoading: isLoadingAttempts } =
       useTaskAttempts(taskId, {
@@ -126,17 +137,29 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
       isLoadingBranches ||
       isLoadingAttempts ||
       isLoadingTask ||
-      isLoadingParent;
+      isLoadingParent ||
+      isLoadingRepos;
     const canCreate = Boolean(
-      effectiveProfile && effectiveBranch && !isCreating && !isLoadingInitial
+      effectiveProfile &&
+        effectiveBranch &&
+        projectRepos.length > 0 &&
+        !isCreating &&
+        !isLoadingInitial
     );
 
     const handleCreate = async () => {
-      if (!effectiveProfile || !effectiveBranch) return;
+      if (!effectiveProfile || !effectiveBranch || projectRepos.length === 0)
+        return;
       try {
+        // Build repos array from project repos, all using the selected branch
+        const repos = projectRepos.map((repo) => ({
+          repo_id: repo.id,
+          target_branch: effectiveBranch,
+        }));
+
         await createAttempt({
           profile: effectiveProfile,
-          baseBranch: effectiveBranch,
+          repos,
         });
 
         modal.hide();

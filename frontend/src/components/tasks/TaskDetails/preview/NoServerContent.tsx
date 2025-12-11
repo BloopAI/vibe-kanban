@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
 import {
   Play,
   Edit3,
@@ -20,6 +21,7 @@ import {
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { useTaskMutations } from '@/hooks/useTaskMutations';
+import { projectsApi } from '@/lib/api';
 import {
   COMPANION_INSTALL_TASK_TITLE,
   COMPANION_INSTALL_TASK_DESCRIPTION,
@@ -58,6 +60,15 @@ export function NoServerContent({
   });
 
   const { createAndStart } = useTaskMutations(project?.id);
+
+  const { data: projectRepos = [] } = useQuery({
+    queryKey: ['projectRepositories', project?.id],
+    queryFn: () =>
+      project?.id
+        ? projectsApi.getRepositories(project.id)
+        : Promise.resolve([]),
+    enabled: !!project?.id,
+  });
 
   // Create strategy-based placeholders
   const placeholders = system.environment
@@ -121,7 +132,12 @@ export function NoServerContent({
   };
 
   const handleInstallCompanion = () => {
-    if (!project || !config) return;
+    if (!project || !config || projectRepos.length === 0) return;
+
+    const repos = projectRepos.map((repo) => ({
+      repo_id: repo.id,
+      target_branch: 'main',
+    }));
 
     createAndStart.mutate({
       task: {
@@ -134,7 +150,7 @@ export function NoServerContent({
         shared_task_id: null,
       },
       executor_profile_id: config.executor_profile,
-      base_branch: 'main',
+      repos,
     });
   };
 

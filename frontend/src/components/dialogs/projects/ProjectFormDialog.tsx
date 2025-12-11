@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -7,138 +6,93 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { ProjectFormFields } from '@/components/projects/ProjectFormFields';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 import { CreateProject } from 'shared/types';
-import { generateProjectNameFromPath } from '@/utils/string';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { defineModal } from '@/lib/modals';
+import { RepoPickerDialog } from '@/components/dialogs/shared/RepoPickerDialog';
 
-export interface ProjectFormDialogProps {
-  // No props needed - this is only for creating projects now
-}
+export interface ProjectFormDialogProps {}
 
 export type ProjectFormDialogResult = 'saved' | 'canceled';
 
 const ProjectFormDialogImpl = NiceModal.create<ProjectFormDialogProps>(() => {
   const modal = useModal();
-  const [name, setName] = useState('');
-  const [gitRepoPath, setGitRepoPath] = useState('');
-  const [error, setError] = useState('');
-  const [repoMode, setRepoMode] = useState<'existing' | 'new'>('existing');
-  const [parentPath, setParentPath] = useState('');
-  const [folderName, setFolderName] = useState('');
 
   const { createProject } = useProjectMutations({
     onCreateSuccess: () => {
       modal.resolve('saved' as ProjectFormDialogResult);
       modal.hide();
     },
-    onCreateError: (err) => {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    },
+    onCreateError: () => {},
   });
 
-  // Handle direct project creation from repo selection
-  const handleDirectCreate = async (path: string, suggestedName: string) => {
-    setError('');
+  const handlePickRepo = useCallback(async () => {
+    const repo = await RepoPickerDialog.show({
+      title: 'Create Project',
+      description: 'Select or create a repository for your project',
+    });
 
-    const createData: CreateProject = {
-      name: suggestedName,
-      repositories: [{ display_name: suggestedName, git_repo_path: path }],
-      setup_script: null,
-      dev_script: null,
-      cleanup_script: null,
-      copy_files: null,
-      parallel_setup_script: null,
-    };
+    if (repo) {
+      const projectName = repo.display_name || repo.name;
 
-    createProject.mutate(createData);
-  };
+      const createData: CreateProject = {
+        name: projectName,
+        repositories: [{ display_name: projectName, git_repo_path: repo.path }],
+        setup_script: null,
+        dev_script: null,
+        cleanup_script: null,
+        copy_files: null,
+        parallel_setup_script: null,
+      };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-
-    let finalGitRepoPath = gitRepoPath;
-    if (repoMode === 'new') {
-      const effectiveParentPath = parentPath.trim();
-      const cleanFolderName = folderName.trim();
-      finalGitRepoPath = effectiveParentPath
-        ? `${effectiveParentPath}/${cleanFolderName}`.replace(/\/+/g, '/')
-        : cleanFolderName;
+      createProject.mutate(createData);
+    } else {
+      modal.resolve('canceled' as ProjectFormDialogResult);
+      modal.hide();
     }
-    // Auto-populate name from git repo path if not provided
-    const finalName =
-      name.trim() || generateProjectNameFromPath(finalGitRepoPath);
+  }, [createProject, modal]);
 
-    // Creating new project
-    const createData: CreateProject = {
-      name: finalName,
-      repositories: [
-        { display_name: finalName, git_repo_path: finalGitRepoPath },
-      ],
-      setup_script: null,
-      dev_script: null,
-      cleanup_script: null,
-      copy_files: null,
-      parallel_setup_script: null,
-    };
-
-    createProject.mutate(createData);
-  };
-
-  const handleCancel = () => {
-    // Reset form
-    setName('');
-    setGitRepoPath('');
-    setParentPath('');
-    setFolderName('');
-    setError('');
-
-    modal.resolve('canceled' as ProjectFormDialogResult);
-    modal.hide();
-  };
+  useEffect(() => {
+    if (modal.visible) {
+      handlePickRepo();
+    }
+  }, [modal.visible, handlePickRepo]);
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      handleCancel();
+      modal.resolve('canceled' as ProjectFormDialogResult);
+      modal.hide();
     }
   };
 
   return (
-    <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
-      <DialogContent className="overflow-x-hidden">
+    <Dialog
+      open={modal.visible && createProject.isPending}
+      onOpenChange={handleOpenChange}
+    >
+      <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
-          <DialogTitle>Create Project</DialogTitle>
-          <DialogDescription>Choose your repository source</DialogDescription>
+          <DialogTitle>Creating Project</DialogTitle>
+          <DialogDescription>Setting up your project...</DialogDescription>
         </DialogHeader>
 
-        <div className="mx-auto w-full max-w-2xl overflow-x-hidden px-1">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <ProjectFormFields
-              repoMode={repoMode}
-              setRepoMode={setRepoMode}
-              parentPath={parentPath}
-              setParentPath={setParentPath}
-              setFolderName={setFolderName}
-              setName={setName}
-              name={name}
-              error={error}
-              setError={setError}
-              onCreateProject={handleDirectCreate}
-            />
-            {repoMode === 'new' && (
-              <Button
-                type="submit"
-                disabled={createProject.isPending || !folderName.trim()}
-                className="w-full"
-              >
-                {createProject.isPending ? 'Creating...' : 'Create Project'}
-              </Button>
-            )}
-          </form>
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
         </div>
+
+        {createProject.isError && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {createProject.error instanceof Error
+                ? createProject.error.message
+                : 'Failed to create project'}
+            </AlertDescription>
+          </Alert>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -266,6 +266,16 @@
     "creating": "Creating...",
     "start": "Start"
   },
+  "attemptRepoSelector": {
+    "label": "Repositories",
+    "addButton": "Add",
+    "empty": "No repositories selected. Add at least one repository.",
+    "selectBranch": "Select branch",
+    "addRepo": {
+      "title": "Select Git Repository",
+      "description": "Choose a git repository to add to this attempt"
+    }
+  },
   "viewProcessesDialog": {
     "title": "Execution processes"
   },

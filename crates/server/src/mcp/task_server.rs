@@ -20,7 +20,10 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json;
 use uuid::Uuid;
 
-use crate::routes::{containers::ContainerQuery, task_attempts::CreateTaskAttemptBody};
+use crate::routes::{
+    containers::ContainerQuery,
+    task_attempts::{AttemptRepoInput, CreateTaskAttemptBody},
+};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct CreateTaskRequest {
@@ -449,6 +452,7 @@ impl TaskServer {
         let context = self.context.as_ref().expect("VK context should exist");
         TaskServer::success(context)
     }
+
     #[tool(
         description = "Create a new task/ticket in a project. Always pass the `project_id` of the project you want to create the task in - it is required!"
     )]
@@ -615,10 +619,40 @@ impl TaskServer {
             variant,
         };
 
+        // Fetch task to get project_id
+        let task_url = self.url(&format!("/api/tasks/{}", task_id));
+        let task: Task = match self.send_json(self.client.get(&task_url)).await {
+            Ok(task) => task,
+            Err(e) => return Ok(e),
+        };
+
+        // Fetch project repos
+        let repos_url = self.url(&format!("/api/projects/{}/repositories", task.project_id));
+        let project_repos: Vec<db::models::repo::Repo> =
+            match self.send_json(self.client.get(&repos_url)).await {
+                Ok(repos) => repos,
+                Err(e) => return Ok(e),
+            };
+
+        if project_repos.is_empty() {
+            return Self::err(
+                "Project has no repositories configured.".to_string(),
+                None::<String>,
+            );
+        }
+
+        let attempt_repos: Vec<AttemptRepoInput> = project_repos
+            .into_iter()
+            .map(|r| AttemptRepoInput {
+                repo_id: r.id,
+                target_branch: base_branch.clone(),
+            })
+            .collect();
+
         let payload = CreateTaskAttemptBody {
             task_id,
             executor_profile_id,
-            base_branch,
+            repos: attempt_repos,
         };
 
         let url = self.url("/api/task-attempts");
