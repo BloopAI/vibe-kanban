@@ -49,7 +49,7 @@ use uuid::Uuid;
 use crate::{
     DeploymentImpl,
     error::ApiError,
-    middleware::load_task_attempt_middleware,
+    middleware::{load_task_attempt_middleware, load_task_attempt_middleware_with_wildcard},
     routes::task_attempts::{
         gh_cli_setup::GhCliSetupError,
         util::{ensure_worktree_path, handle_images_for_prompt},
@@ -1595,7 +1595,7 @@ pub async fn list_worktree_files(
 pub async fn read_worktree_file(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
-    Path(file_path): Path<String>,
+    Path((_, file_path)): Path<(String, String)>,
 ) -> Result<ResponseJson<ApiResponse<FileContentResponse>>, ApiError> {
     let worktree_path = ensure_worktree_path(&deployment, &task_attempt).await?;
 
@@ -1668,17 +1668,27 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/stop", post(stop_task_attempt_execution))
         .route("/change-target-branch", post(change_target_branch))
         .route("/rename-branch", post(rename_branch))
-        // File browser endpoints
+        // File browser endpoints (directory listing only - wildcard route is separate)
         .route("/files", get(list_worktree_files))
-        .route("/files/{*file_path}", get(read_worktree_file))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_task_attempt_middleware,
         ));
 
+    // Wildcard file path route needs to be separate (not nested) to avoid
+    // path parameter count mismatch in the middleware. Uses the wildcard variant
+    // that extracts both path params but only uses the id.
+    let task_attempt_files_router = Router::new()
+        .route("/{id}/files/{*file_path}", get(read_worktree_file))
+        .layer(from_fn_with_state(
+            deployment.clone(),
+            load_task_attempt_middleware_with_wildcard,
+        ));
+
     let task_attempts_router = Router::new()
         .route("/", get(get_task_attempts).post(create_task_attempt))
-        .nest("/{id}", task_attempt_id_router);
+        .nest("/{id}", task_attempt_id_router)
+        .merge(task_attempt_files_router);
 
     Router::new().nest("/task-attempts", task_attempts_router)
 }
