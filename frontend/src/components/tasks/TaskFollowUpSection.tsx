@@ -79,6 +79,12 @@ export function TaskFollowUpSection({
   const { data: branchStatus, refetch: refetchBranchStatus } =
     useBranchStatus(selectedAttemptId);
   const { repos } = useAttemptRepo(selectedAttemptId);
+
+  // Select the first repo for operations that need a single repo
+  const getSelectedRepoId = () => {
+    return repos[0]?.id;
+  };
+
   const repoWithConflicts = useMemo(
     () =>
       branchStatus?.find(
@@ -538,7 +544,7 @@ export function TaskFollowUpSection({
   // Handler for GitHub comments insertion
   const handleGitHubCommentClick = useCallback(async () => {
     if (!selectedAttemptId) return;
-    const repoId = repos[0]?.id;
+    const repoId = getSelectedRepoId();
     if (!repoId) return;
 
     const result = await GitHubCommentsDialog.show({
