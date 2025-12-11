@@ -4,9 +4,6 @@ import {
   GitPullRequest,
   RefreshCw,
   Settings,
-  AlertTriangle,
-  CheckCircle,
-  ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button.tsx';
 import {
@@ -15,7 +12,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip.tsx';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type {
   BranchStatus,
   Merge,
@@ -28,6 +25,8 @@ import { RebaseDialog } from '@/components/dialogs/tasks/RebaseDialog';
 import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
 import { useTranslation } from 'react-i18next';
 import { useGitOperations } from '@/hooks/useGitOperations';
+import { useGitOperationStatus } from '@/hooks/git/useGitOperationStatus';
+import { GitStatusChip } from '@/components/tasks/Toolbar/GitStatusChip';
 
 interface GitOperationsProps {
   selectedAttempt: TaskAttempt;
@@ -69,6 +68,7 @@ function GitOperations({
   const [rebasing, setRebasing] = useState(false);
   const [mergeSuccess, setMergeSuccess] = useState(false);
   const [pushSuccess, setPushSuccess] = useState(false);
+  const operationStatus = useGitOperationStatus({ successTimeoutMs: 4000 });
 
   // Target branch change handlers
   const handleChangeTargetBranchClick = async (newBranch: string) => {
@@ -118,13 +118,19 @@ function GitOperations({
 
     return {
       hasOpenPR: !!openPR,
-      openPR,
+      openPR: openPR ?? null,
       hasMergedPR: !!mergedPR,
-      mergedPR,
+      mergedPR: mergedPR ?? null,
       hasMerged: merges.length > 0,
       latestMerge: branchStatus.merges[0] || null, // Most recent merge
     };
   }, [branchStatus?.merges]);
+
+  // Sync background branch status transitions into operation status (e.g., rebase completes while conflicts were shown)
+  useEffect(() => {
+    const syncBranchStatus = operationStatus.branchStatusUpdated;
+    syncBranchStatus(branchStatus);
+  }, [branchStatus, operationStatus.branchStatusUpdated]);
 
   const mergeButtonLabel = useMemo(() => {
     if (mergeSuccess) return t('git.states.merged');
@@ -167,9 +173,18 @@ function GitOperations({
   const performMerge = async () => {
     try {
       setMerging(true);
+      operationStatus.start('merge', t('git.states.merging'));
       await git.actions.merge();
       setMergeSuccess(true);
       setTimeout(() => setMergeSuccess(false), 2000);
+      operationStatus.success('merge', t('git.states.merged'));
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : t('git.errors.mergeChanges');
+      operationStatus.error('merge', message);
+      throw error;
     } finally {
       setMerging(false);
     }
@@ -181,10 +196,31 @@ function GitOperations({
   ) => {
     setRebasing(true);
     try {
+      operationStatus.start('rebase', t('rebase.common.inProgress'));
       await git.actions.rebase({
         newBaseBranch: newBaseBranch,
         oldBaseBranch: selectedUpstream,
       });
+      operationStatus.success('rebase', t('rebase.common.completed'));
+    } catch (error) {
+      const errorData = (
+        error as { error?: { type?: string; message?: string } }
+      )?.error;
+      const isConflict =
+        errorData?.type === 'merge_conflicts' ||
+        errorData?.type === 'rebase_in_progress';
+
+      if (!isConflict) {
+        const message =
+          error instanceof Error && error.message
+            ? error.message
+            : t('git.errors.rebaseBranch');
+        operationStatus.error('rebase', message);
+      } else {
+        // Let the conflict banner/status surface the in-progress conflicts state
+        operationStatus.clear();
+      }
+      throw error;
     } finally {
       setRebasing(false);
     }
@@ -309,90 +345,13 @@ function GitOperations({
 
         {/* Center: Status chips */}
         <div className="flex items-center gap-2 text-xs min-w-0 overflow-hidden whitespace-nowrap">
-          {(() => {
-            const commitsAhead = branchStatus?.commits_ahead ?? 0;
-            const commitsBehind = branchStatus?.commits_behind ?? 0;
-
-            if (hasConflictsCalculated) {
-              return (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100/60 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
-                  <AlertTriangle className="h-3.5 w-3.5" />
-                  {t('git.status.conflicts')}
-                </span>
-              );
-            }
-
-            if (branchStatus?.is_rebase_in_progress) {
-              return (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100/60 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
-                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                  {t('git.states.rebasing')}
-                </span>
-              );
-            }
-
-            if (mergeInfo.hasMergedPR) {
-              return (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100/70 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
-                  <CheckCircle className="h-3.5 w-3.5" />
-                  {t('git.states.merged')}
-                </span>
-              );
-            }
-
-            if (mergeInfo.hasOpenPR && mergeInfo.openPR?.type === 'pr') {
-              const prMerge = mergeInfo.openPR;
-              return (
-                <button
-                  onClick={() => window.open(prMerge.pr_info.url, '_blank')}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100/60 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 hover:underline truncate max-w-[180px] sm:max-w-none"
-                  aria-label={t('git.pr.open', {
-                    number: Number(prMerge.pr_info.number),
-                  })}
-                >
-                  <GitPullRequest className="h-3.5 w-3.5" />
-                  {t('git.pr.number', {
-                    number: Number(prMerge.pr_info.number),
-                  })}
-                  <ExternalLink className="h-3.5 w-3.5" />
-                </button>
-              );
-            }
-
-            const chips: React.ReactNode[] = [];
-            if (commitsAhead > 0) {
-              chips.push(
-                <span
-                  key="ahead"
-                  className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100/70 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
-                >
-                  +{commitsAhead}{' '}
-                  {t('git.status.commits', { count: commitsAhead })}{' '}
-                  {t('git.status.ahead')}
-                </span>
-              );
-            }
-            if (commitsBehind > 0) {
-              chips.push(
-                <span
-                  key="behind"
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100/60 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
-                >
-                  {commitsBehind}{' '}
-                  {t('git.status.commits', { count: commitsBehind })}{' '}
-                  {t('git.status.behind')}
-                </span>
-              );
-            }
-            if (chips.length > 0)
-              return <div className="flex items-center gap-2">{chips}</div>;
-
-            return (
-              <span className="text-muted-foreground hidden sm:inline">
-                {t('git.status.upToDate')}
-              </span>
-            );
-          })()}
+          <GitStatusChip
+            operationStatus={operationStatus.state}
+            branchStatus={branchStatus}
+            mergeInfo={mergeInfo}
+            hasConflictsCalculated={hasConflictsCalculated}
+            t={t}
+          />
         </div>
 
         {/* Right: Actions */}

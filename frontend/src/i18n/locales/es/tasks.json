@@ -319,6 +319,7 @@
     "common": {
       "action": "Rebase",
       "inProgress": "Rebaseando...",
+      "completed": "Rebase completado",
       "withTarget": "Rebase sobre {{branch}}"
     },
     "dialog": {

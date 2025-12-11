@@ -16,6 +16,7 @@
     "common": {
       "action": "Rebase",
       "inProgress": "Rebasing...",
+      "completed": "Rebase completed",
       "withTarget": "Rebase onto {{branch}}"
     },
     "dialog": {

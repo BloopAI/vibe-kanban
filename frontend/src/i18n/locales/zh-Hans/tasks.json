@@ -16,6 +16,7 @@
     "common": {
       "action": "变基",
       "inProgress": "变基中...",
+      "completed": "变基完成",
       "withTarget": "变基到 {{branch}}"
     },
     "dialog": {
