@@ -71,6 +71,27 @@ pub async fn load_project_middleware(
     request: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
+    load_project_impl(deployment, project_id, request, next).await
+}
+
+/// Variant of load_project_middleware for routes with wildcard path params.
+/// Use this for routes like `/{id}/files/{*file_path}` where there are 2 path params.
+pub async fn load_project_middleware_with_wildcard(
+    State(deployment): State<DeploymentImpl>,
+    Path((project_id, _file_path)): Path<(Uuid, String)>,
+    request: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    load_project_impl(deployment, project_id, request, next).await
+}
+
+/// Internal implementation shared by load_project_middleware variants.
+async fn load_project_impl(
+    deployment: DeploymentImpl,
+    project_id: Uuid,
+    request: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
     // Load the project from the database
     let mut project = match Project::find_by_id(&deployment.db().pool, project_id).await {
         Ok(Some(project)) => project,
@@ -244,6 +265,27 @@ pub async fn load_task_middleware(
 pub async fn load_task_attempt_middleware(
     State(deployment): State<DeploymentImpl>,
     Path(task_attempt_id): Path<Uuid>,
+    request: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    load_task_attempt_impl(deployment, task_attempt_id, request, next).await
+}
+
+/// Variant of load_task_attempt_middleware for routes with wildcard path params.
+/// Use this for routes like `/{id}/files/{*file_path}` where there are 2 path params.
+pub async fn load_task_attempt_middleware_with_wildcard(
+    State(deployment): State<DeploymentImpl>,
+    Path((task_attempt_id, _file_path)): Path<(Uuid, String)>,
+    request: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    load_task_attempt_impl(deployment, task_attempt_id, request, next).await
+}
+
+/// Internal implementation shared by load_task_attempt_middleware variants.
+async fn load_task_attempt_impl(
+    deployment: DeploymentImpl,
+    task_attempt_id: Uuid,
     mut request: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
