@@ -244,6 +244,7 @@ impl ClaudeCode {
         // Note: pnpm converts config hyphens to underscores in env var names
         command.env_remove("npm_config__jsr_registry");
         command.env_remove("npm_config_verify_deps_before_run");
+        command.env_remove("npm_config_globalconfig");
 
         let mut child = command.group_spawn()?;
         let child_stdout = child.inner().stdout.take().ok_or_else(|| {
