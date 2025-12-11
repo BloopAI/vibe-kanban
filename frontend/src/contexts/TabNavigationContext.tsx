@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react';
+import { createContext } from 'react';
 import type { TabType } from '@/types/tabs';
 
 interface TabNavContextType {
@@ -7,11 +7,3 @@ interface TabNavContextType {
 }
 
 export const TabNavContext = createContext<TabNavContextType | null>(null);
-
-export const useTabNavigation = () => {
-  const context = useContext(TabNavContext);
-  if (!context) {
-    throw new Error('useTabNavigation must be used within TabNavContext');
-  }
-  return context;
-};

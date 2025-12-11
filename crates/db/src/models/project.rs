@@ -419,19 +419,4 @@ impl Project {
             .await?;
         Ok(result.rows_affected())
     }
-
-    pub async fn exists(pool: &SqlitePool, id: Uuid) -> Result<bool, sqlx::Error> {
-        let result = sqlx::query!(
-            r#"
-                SELECT COUNT(*) as "count!: i64"
-                FROM projects
-                WHERE id = $1
-            "#,
-            id
-        )
-        .fetch_one(pool)
-        .await?;
-
-        Ok(result.count > 0)
-    }
 }

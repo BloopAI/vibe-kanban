@@ -238,23 +238,6 @@ ORDER BY t.created_at DESC"#,
         .await
     }
 
-    pub async fn find_by_id_and_project_id(
-        pool: &SqlitePool,
-        id: Uuid,
-        project_id: Uuid,
-    ) -> Result<Option<Self>, sqlx::Error> {
-        sqlx::query_as!(
-            Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_task_attempt as "parent_task_attempt: Uuid", shared_task_id as "shared_task_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
-               FROM tasks 
-               WHERE id = $1 AND project_id = $2"#,
-            id,
-            project_id
-        )
-        .fetch_optional(pool)
-        .await
-    }
-
     pub async fn find_by_shared_task_id<'e, E>(
         executor: E,
         shared_task_id: Uuid,
@@ -456,21 +439,6 @@ ORDER BY t.created_at DESC"#,
 
         let result = query_builder.build().execute(executor).await?;
         Ok(result.rows_affected())
-    }
-
-    pub async fn exists(
-        pool: &SqlitePool,
-        id: Uuid,
-        project_id: Uuid,
-    ) -> Result<bool, sqlx::Error> {
-        let result = sqlx::query!(
-            "SELECT id as \"id!: Uuid\" FROM tasks WHERE id = $1 AND project_id = $2",
-            id,
-            project_id
-        )
-        .fetch_optional(pool)
-        .await?;
-        Ok(result.is_some())
     }
 
     pub async fn find_children_by_attempt_id(

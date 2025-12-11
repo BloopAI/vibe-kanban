@@ -100,7 +100,7 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
         return {
           leadOffset: offset,
           matchingString: match[1],
-          replaceableString: match[0],
+          replaceableString: match[0].slice(match[0].indexOf('@')),
         };
       }}
       options={options}
