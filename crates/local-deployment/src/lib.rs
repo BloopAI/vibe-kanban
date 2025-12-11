@@ -19,6 +19,7 @@ use services::services::{
     project::ProjectService,
     queued_message::QueuedMessageService,
     remote_client::{RemoteClient, RemoteClientError},
+    repo::RepoService,
     share::{ShareConfig, SharePublisher},
 };
 use tokio::sync::RwLock;
@@ -43,6 +44,7 @@ pub struct LocalDeployment {
     container: LocalContainerService,
     git: GitService,
     project: ProjectService,
+    repo: RepoService,
     image: ImageService,
     filesystem: FilesystemService,
     events: EventService,
@@ -94,6 +96,7 @@ impl Deployment for LocalDeployment {
         let analytics = AnalyticsConfig::new().map(AnalyticsService::new);
         let git = GitService::new();
         let project = ProjectService::new();
+        let repo = RepoService::new();
         let msg_stores = Arc::new(RwLock::new(HashMap::new()));
         let filesystem = FilesystemService::new();
 
@@ -194,6 +197,7 @@ impl Deployment for LocalDeployment {
             container,
             git,
             project,
+            repo,
             image,
             filesystem,
             events,
@@ -236,6 +240,10 @@ impl Deployment for LocalDeployment {
 
     fn project(&self) -> &ProjectService {
         &self.project
+    }
+
+    fn repo(&self) -> &RepoService {
+        &self.repo
     }
 
     fn image(&self) -> &ImageService {

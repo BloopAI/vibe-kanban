@@ -218,7 +218,7 @@ pub async fn create_project(
 
     match deployment
         .project()
-        .create_project(&deployment.db().pool, payload)
+        .create_project(&deployment.db().pool, deployment.repo(), payload)
         .await
     {
         Ok(project) => {
@@ -279,7 +279,11 @@ pub async fn delete_project(
     Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
-    match Project::delete(&deployment.db().pool, project.id).await {
+    match deployment
+        .project()
+        .delete_project(&deployment.db().pool, project.id)
+        .await
+    {
         Ok(rows_affected) => {
             if rows_affected == 0 {
                 Err(StatusCode::NOT_FOUND)
@@ -430,7 +434,12 @@ pub async fn add_project_repository(
 ) -> Result<ResponseJson<ApiResponse<Repo>>, ApiError> {
     match deployment
         .project()
-        .add_repository(&deployment.db().pool, project.id, &payload)
+        .add_repository(
+            &deployment.db().pool,
+            deployment.repo(),
+            project.id,
+            &payload,
+        )
         .await
     {
         Ok(repository) => Ok(ResponseJson(ApiResponse::success(repository))),

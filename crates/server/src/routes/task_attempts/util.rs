@@ -1,28 +1,28 @@
+use std::path::PathBuf;
+
 use db::models::{
-    execution_process::ExecutionProcess, execution_process_repo_state::ExecutionProcessRepoState,
-    project_repo::ProjectRepo, task_attempt::TaskAttempt,
+    attempt_repo::AttemptRepo, execution_process::ExecutionProcess,
+    execution_process_repo_state::ExecutionProcessRepoState, task_attempt::TaskAttempt,
 };
 use deployment::Deployment;
 use services::services::{container::ContainerService, git::WorktreeResetOptions};
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
-use crate::error::ApiError;
+use crate::{DeploymentImpl, error::ApiError};
 
 /// Reset all repository worktrees to the state before the given process.
 /// For each repo, finds the before_head_commit from the target process,
 /// or falls back to the previous process's after_head_commit.
 pub async fn restore_worktrees_to_process(
-    deployment: &crate::DeploymentImpl,
+    deployment: &DeploymentImpl,
     pool: &SqlitePool,
     task_attempt: &TaskAttempt,
-    project_id: Uuid,
     target_process_id: Uuid,
     perform_git_reset: bool,
     force_when_dirty: bool,
 ) -> Result<(), ApiError> {
-    // Get all repositories for this project
-    let repos = ProjectRepo::find_repos_for_project(pool, project_id).await?;
+    let repos = AttemptRepo::find_repos_for_attempt(pool, task_attempt.id).await?;
 
     // Get all repo states for the target process
     let repo_states =
@@ -32,7 +32,7 @@ pub async fn restore_worktrees_to_process(
         .container()
         .ensure_container_exists(task_attempt)
         .await?;
-    let workspace_dir = std::path::PathBuf::from(container_ref);
+    let workspace_dir = PathBuf::from(container_ref);
 
     // Check if workspace is dirty (any repo has uncommitted changes)
     let is_dirty = deployment

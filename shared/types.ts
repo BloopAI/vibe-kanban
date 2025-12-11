@@ -30,6 +30,8 @@ export type AttemptRepo = { id: string, attempt_id: string, repo_id: string, tar
 
 export type CreateAttemptRepo = { repo_id: string, target_branch: string, };
 
+export type RepoWithTargetBranch = { target_branch: string, id: string, path: string, name: string, display_name: string, created_at: Date, updated_at: Date, };
+
 export type Tag = { id: string, tag_name: string, content: string, created_at: string, updated_at: string, };
 
 export type CreateTag = { tag_name: string, content: string, };
@@ -170,6 +172,10 @@ export type CreateRemoteProjectRequest = { organization_id: string, name: string
 
 export type LinkToExistingRequest = { remote_project_id: string, };
 
+export type RegisterRepoRequest = { path: string, display_name: string | null, };
+
+export type InitRepoRequest = { parent_path: string, folder_name: string, };
+
 export type TagSearchParams = { search: string | null, };
 
 export type TokenResponse = { access_token: string, expires_at: string | null, };
@@ -224,7 +230,7 @@ export type AssignSharedTaskRequest = { new_assignee_user_id: string | null, };
 
 export type ShareTaskResponse = { shared_task_id: string, };
 
-export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id: ExecutorProfileId, base_branch: string, };
+export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id: ExecutorProfileId, repos: Array<AttemptRepoInput>, };
 
 export type CreateGitHubPrRequest = { title: string, body: string | null, target_branch: string | null, draft: boolean | null, repo_id: string, auto_generate_description: boolean, };
 
@@ -232,11 +238,9 @@ export type ImageResponse = { id: string, file_path: string, original_name: stri
 
 export type ImageMetadata = { exists: boolean, file_name: string | null, path: string | null, size_bytes: bigint | null, format: string | null, proxy_url: string | null, };
 
-export type CreateTaskAttemptBody = { task_id: string, 
-/**
- * Executor profile specification
- */
-executor_profile_id: ExecutorProfileId, base_branch: string, };
+export type CreateTaskAttemptBody = { task_id: string, executor_profile_id: ExecutorProfileId, repos: Array<AttemptRepoInput>, };
+
+export type AttemptRepoInput = { repo_id: string, target_branch: string, };
 
 export type RunAgentSetupRequest = { executor_profile_id: ExecutorProfileId, };
 

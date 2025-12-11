@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT r.id as \"id!: Uuid\",\n                      r.path,\n                      r.name,\n                      r.display_name,\n                      r.created_at as \"created_at!: DateTime<Utc>\",\n                      r.updated_at as \"updated_at!: DateTime<Utc>\",\n                      ar.target_branch\n               FROM repos r\n               JOIN attempt_repos ar ON r.id = ar.repo_id\n               WHERE ar.attempt_id = $1\n               ORDER BY r.display_name ASC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "path",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "name",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "display_name",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "target_branch",
+        "ordinal": 6,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "4c94c98354b370bf16a74ef172bfb6bdfae114ecb8ad06ec8f02a0c84a42518a"
+}

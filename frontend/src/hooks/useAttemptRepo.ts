@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { attemptsApi } from '@/lib/api';
+import type { RepoWithTargetBranch } from 'shared/types';
 
 export function useAttemptRepo(attemptId?: string) {
   const query = useQuery({
@@ -12,7 +13,7 @@ export function useAttemptRepo(attemptId?: string) {
   });
 
   return {
-    repos: query.data ?? [],
+    repos: query.data ?? ([] as RepoWithTargetBranch[]),
     isLoading: query.isLoading,
     refetch: query.refetch,
   } as const;

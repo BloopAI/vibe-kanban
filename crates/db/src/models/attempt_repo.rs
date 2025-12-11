@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
@@ -21,6 +23,14 @@ pub struct AttemptRepo {
 #[derive(Debug, Clone, Deserialize, TS)]
 pub struct CreateAttemptRepo {
     pub repo_id: Uuid,
+    pub target_branch: String,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export)]
+pub struct RepoWithTargetBranch {
+    #[serde(flatten)]
+    pub repo: Repo,
     pub target_branch: String,
 }
 
@@ -99,6 +109,43 @@ impl AttemptRepo {
         .await
     }
 
+    pub async fn find_repos_with_target_branch_for_attempt(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+    ) -> Result<Vec<RepoWithTargetBranch>, sqlx::Error> {
+        let rows = sqlx::query!(
+            r#"SELECT r.id as "id!: Uuid",
+                      r.path,
+                      r.name,
+                      r.display_name,
+                      r.created_at as "created_at!: DateTime<Utc>",
+                      r.updated_at as "updated_at!: DateTime<Utc>",
+                      ar.target_branch
+               FROM repos r
+               JOIN attempt_repos ar ON r.id = ar.repo_id
+               WHERE ar.attempt_id = $1
+               ORDER BY r.display_name ASC"#,
+            attempt_id
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|row| RepoWithTargetBranch {
+                repo: Repo {
+                    id: row.id,
+                    path: PathBuf::from(row.path),
+                    name: row.name,
+                    display_name: row.display_name,
+                    created_at: row.created_at,
+                    updated_at: row.updated_at,
+                },
+                target_branch: row.target_branch,
+            })
+            .collect())
+    }
+
     pub async fn find_by_attempt_and_repo_id(
         pool: &SqlitePool,
         attempt_id: Uuid,
@@ -160,5 +207,28 @@ impl AttemptRepo {
         .execute(pool)
         .await?;
         Ok(result.rows_affected())
+    }
+
+    pub async fn find_unique_repos_for_task(
+        pool: &SqlitePool,
+        task_id: Uuid,
+    ) -> Result<Vec<Repo>, sqlx::Error> {
+        sqlx::query_as!(
+            Repo,
+            r#"SELECT DISTINCT r.id as "id!: Uuid",
+                      r.path,
+                      r.name,
+                      r.display_name,
+                      r.created_at as "created_at!: DateTime<Utc>",
+                      r.updated_at as "updated_at!: DateTime<Utc>"
+               FROM repos r
+               JOIN attempt_repos ar ON r.id = ar.repo_id
+               JOIN task_attempts ta ON ar.attempt_id = ta.id
+               WHERE ta.task_id = $1
+               ORDER BY r.display_name ASC"#,
+            task_id
+        )
+        .fetch_all(pool)
+        .await
     }
 }

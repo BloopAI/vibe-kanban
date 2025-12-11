@@ -18,6 +18,7 @@ import {
   GitBranch,
   Project,
   Repo,
+  RepoWithTargetBranch,
   ProjectBranchesResponse,
   CreateProject,
   CreateProjectRepo,
@@ -537,9 +538,9 @@ export const attemptsApi = {
     return handleApiResponse<RepoBranchStatus[]>(response);
   },
 
-  getRepos: async (attemptId: string): Promise<Repo[]> => {
+  getRepos: async (attemptId: string): Promise<RepoWithTargetBranch[]> => {
     const response = await makeRequest(`/api/task-attempts/${attemptId}/repos`);
-    return handleApiResponse<Repo[]>(response);
+    return handleApiResponse<RepoWithTargetBranch[]>(response);
   },
 
   merge: async (
@@ -768,6 +769,36 @@ export const fileSystemApi = {
       `/api/filesystem/git-repos${queryParam}`
     );
     return handleApiResponse<DirectoryEntry[]>(response);
+  },
+};
+
+// Repo APIs
+export const repoApi = {
+  register: async (data: {
+    path: string;
+    display_name?: string;
+  }): Promise<Repo> => {
+    const response = await makeRequest('/api/repos', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<Repo>(response);
+  },
+
+  getBranches: async (repoId: string): Promise<GitBranch[]> => {
+    const response = await makeRequest(`/api/repos/${repoId}/branches`);
+    return handleApiResponse<GitBranch[]>(response);
+  },
+
+  init: async (data: {
+    parent_path: string;
+    folder_name: string;
+  }): Promise<Repo> => {
+    const response = await makeRequest('/api/repos/init', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<Repo>(response);
   },
 };
 

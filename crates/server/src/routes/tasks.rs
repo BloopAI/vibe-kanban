@@ -15,7 +15,7 @@ use axum::{
 use db::models::{
     attempt_repo::{AttemptRepo, CreateAttemptRepo},
     image::TaskImage,
-    project_repo::ProjectRepo,
+    repo::Repo,
     task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
     task_attempt::{CreateTaskAttempt, TaskAttempt},
 };
@@ -31,7 +31,10 @@ use ts_rs::TS;
 use utils::{api::oauth::LoginStatus, response::ApiResponse};
 use uuid::Uuid;
 
-use crate::{DeploymentImpl, error::ApiError, middleware::load_task_middleware};
+use crate::{
+    DeploymentImpl, error::ApiError, middleware::load_task_middleware,
+    routes::task_attempts::AttemptRepoInput,
+};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TaskQuery {
@@ -140,13 +143,19 @@ pub async fn create_task(
 pub struct CreateAndStartTaskRequest {
     pub task: CreateTask,
     pub executor_profile_id: ExecutorProfileId,
-    pub base_branch: String,
+    pub repos: Vec<AttemptRepoInput>,
 }
 
 pub async fn create_task_and_start(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateAndStartTaskRequest>,
 ) -> Result<ResponseJson<ApiResponse<TaskWithAttemptStatus>>, ApiError> {
+    if payload.repos.is_empty() {
+        return Err(ApiError::BadRequest(
+            "At least one repository is required".to_string(),
+        ));
+    }
+
     let pool = &deployment.db().pool;
 
     let task_id = Uuid::new_v4();
@@ -167,13 +176,6 @@ pub async fn create_task_and_start(
             }),
         )
         .await;
-    let project = task
-        .parent_project(&deployment.db().pool)
-        .await?
-        .ok_or(SqlxError::RowNotFound)?;
-
-    let repositories =
-        ProjectRepo::find_repos_for_project(&deployment.db().pool, project.id).await?;
 
     let attempt_id = Uuid::new_v4();
     let git_branch_name = deployment
@@ -192,11 +194,12 @@ pub async fn create_task_and_start(
     )
     .await?;
 
-    let attempt_repos: Vec<_> = repositories
+    let attempt_repos: Vec<CreateAttemptRepo> = payload
+        .repos
         .iter()
-        .map(|repo| CreateAttemptRepo {
-            repo_id: repo.id,
-            target_branch: payload.base_branch.clone(),
+        .map(|r| CreateAttemptRepo {
+            repo_id: r.repo_id,
+            target_branch: r.target_branch.clone(),
         })
         .collect();
     AttemptRepo::create_many(&deployment.db().pool, task_attempt.id, &attempt_repos).await?;
@@ -309,22 +312,17 @@ pub async fn delete_task(
         return Err(ApiError::Conflict("Task has running execution processes. Please wait for them to complete or stop them first.".to_string()));
     }
 
+    let pool = &deployment.db().pool;
+
     // Gather task attempts data needed for background cleanup
-    let attempts = TaskAttempt::fetch_all(&deployment.db().pool, Some(task.id))
+    let attempts = TaskAttempt::fetch_all(pool, Some(task.id))
         .await
         .map_err(|e| {
             tracing::error!("Failed to fetch task attempts for task {}: {}", task.id, e);
             ApiError::TaskAttempt(e)
         })?;
 
-    // Gather cleanup data before deletion
-    let pool = &deployment.db().pool;
-    let project = task
-        .parent_project(pool)
-        .await?
-        .ok_or_else(|| ApiError::Database(SqlxError::RowNotFound))?;
-
-    let repositories = ProjectRepo::find_repos_for_project(pool, project.id).await?;
+    let repositories = AttemptRepo::find_unique_repos_for_task(pool, task.id).await?;
 
     // Collect workspace directories that need cleanup
     let workspace_dirs: Vec<PathBuf> = attempts
@@ -340,7 +338,7 @@ pub async fn delete_task(
     }
 
     // Use a transaction to ensure atomicity: either all operations succeed or all are rolled back
-    let mut tx = deployment.db().pool.begin().await?;
+    let mut tx = pool.begin().await?;
 
     // Nullify parent_task_attempt for all child tasks before deletion
     // This breaks parent-child relationships to avoid foreign key constraint violations
@@ -379,8 +377,8 @@ pub async fn delete_task(
         )
         .await;
 
-    // Spawn background worktree cleanup task
     let task_id = task.id;
+    let pool = pool.clone();
     tokio::spawn(async move {
         tracing::info!(
             "Starting background cleanup for task {} ({} workspaces, {} repos)",
@@ -399,6 +397,16 @@ pub async fn delete_task(
                     e
                 );
             }
+        }
+
+        match Repo::delete_orphaned(&pool).await {
+            Ok(count) if count > 0 => {
+                tracing::info!("Deleted {} orphaned repo records", count);
+            }
+            Err(e) => {
+                tracing::error!("Failed to delete orphaned repos: {}", e);
+            }
+            _ => {}
         }
 
         tracing::info!("Background cleanup completed for task {}", task_id);
