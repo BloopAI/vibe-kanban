@@ -1,9 +1,9 @@
 import {
+  ArrowLeftRight,
   ArrowRight,
   GitBranch as GitBranchIcon,
   GitPullRequest,
   RefreshCw,
-  Settings,
   AlertTriangle,
   CheckCircle,
   ExternalLink,
@@ -371,7 +371,7 @@ function GitOperations({
                           'Change Repository'
                         )}
                       >
-                        <Settings className="h-3.5 w-3.5" />
+                        <ArrowLeftRight className="h-3.5 w-3.5" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="bottom">
@@ -380,8 +380,6 @@ function GitOperations({
                   </Tooltip>
                 </TooltipProvider>
               </div>
-
-              <ArrowRight className="hidden sm:inline h-4 w-4 text-muted-foreground" />
             </>
           )}
 
@@ -389,7 +387,7 @@ function GitOperations({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="hidden sm:inline-flex items-center gap-1.5 max-w-[280px] px-2 py-0.5 rounded-full bg-muted text-xs font-medium min-w-0">
+                <span className="hidden sm:inline-flex ml-2 items-center gap-1.5 max-w-[280px] px-2 py-0.5 rounded-full bg-muted text-xs font-medium min-w-0">
                   <GitBranchIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                   <span className="truncate">{selectedAttempt.branch}</span>
                 </span>
@@ -430,10 +428,10 @@ function GitOperations({
                     size="xs"
                     onClick={handleChangeTargetBranchDialogOpen}
                     disabled={isAttemptRunning || hasConflictsCalculated}
-                    className={settingsBtnClasses}
-                    aria-label={t('branches.changeTarget.dialog.title')}
-                  >
-                    <Settings className="h-3.5 w-3.5" />
+                  className={settingsBtnClasses}
+                  aria-label={t('branches.changeTarget.dialog.title')}
+                >
+                    <ArrowLeftRight className="h-3.5 w-3.5" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">

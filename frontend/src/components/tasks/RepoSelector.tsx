@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button.tsx';
-import { ArrowDown, FolderGit } from 'lucide-react';
+import { FolderGit } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,7 +55,6 @@ function RepoSelector({
               {selectedRepo?.display_name || effectivePlaceholder}
             </span>
           </div>
-          <ArrowDown className="h-3 w-3 flex-shrink-0" />
         </Button>
       </DropdownMenuTrigger>
 
