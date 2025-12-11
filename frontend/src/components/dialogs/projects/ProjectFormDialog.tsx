@@ -28,6 +28,7 @@ const ProjectFormDialogImpl = NiceModal.create<ProjectFormDialogProps>(() => {
     },
     onCreateError: () => {},
   });
+  const createProjectMutate = createProject.mutate;
 
   const hasStartedCreateRef = useRef(false);
 
@@ -50,12 +51,12 @@ const ProjectFormDialogImpl = NiceModal.create<ProjectFormDialogProps>(() => {
         parallel_setup_script: null,
       };
 
-      createProject.mutate(createData);
+      createProjectMutate(createData);
     } else {
       modal.resolve('canceled' as ProjectFormDialogResult);
       modal.hide();
     }
-  }, [createProject.mutate, modal]);
+  }, [createProjectMutate, modal]);
 
   useEffect(() => {
     if (!modal.visible) {
