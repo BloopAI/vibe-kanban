@@ -63,22 +63,6 @@ Sentry.init({
   tracesSampleRate: 1.0,
   sendClientReports: false, // Disable SDK telemetry reports
   environment: import.meta.env.MODE === 'development' ? 'dev' : 'production',
-  beforeSend(event) {
-    // Drop error events if user has disabled Sentry
-    if (!window.__SENTRY_ENABLED__) {
-      return null;
-    }
-    return event;
-  },
-  beforeSendTransaction(event) {
-    // Drop transaction/performance events if user has disabled Sentry
-    if (!window.__SENTRY_ENABLED__) {
-      return null;
-    }
-    return event;
-  },
-  // Note: beforeSendSpan doesn't support returning undefined to drop spans.
-  // The custom transport handles blocking all network requests when disabled.
   integrations: [
     Sentry.reactRouterV6BrowserTracingIntegration({
       useEffect: React.useEffect,

@@ -62,13 +62,12 @@ function AppContent() {
   useEffect(() => {
     const sentryEnabled = config?.sentry_enabled ?? false;
 
-    // Update Sentry enabled state based on config
-    window.__SENTRY_ENABLED__ = sentryEnabled;
-
-    if (sentryEnabled) {
-      console.log('[Sentry] Error reporting enabled');
-    } else {
-      console.log('[Sentry] Error reporting disabled by user preference');
+    // Only update and log if the value actually changed
+    if (window.__SENTRY_ENABLED__ !== sentryEnabled) {
+      window.__SENTRY_ENABLED__ = sentryEnabled;
+      console.log(
+        `[Sentry] Error reporting ${sentryEnabled ? 'enabled' : 'disabled by user preference'}`
+      );
     }
   }, [config?.sentry_enabled]);
 
