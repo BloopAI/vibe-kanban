@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { ConflictBanner } from '@/components/tasks/ConflictBanner';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import { useAttemptConflicts } from '@/hooks/useAttemptConflicts';
-import type { BranchStatus } from 'shared/types';
+import type { RepoBranchStatus } from 'shared/types';
 
 type Props = {
   selectedAttemptId?: string;
   attemptBranch: string | null;
-  branchStatus: BranchStatus[] | undefined;
+  branchStatus: RepoBranchStatus[] | undefined;
   isEditable: boolean;
   onResolve?: () => void;
   enableResolve: boolean;
@@ -24,10 +24,13 @@ export function FollowUpConflictSection({
   enableAbort,
   conflictResolutionInstructions,
 }: Props) {
-  const firstRepoStatus = branchStatus?.[0];
-  const op = firstRepoStatus?.conflict_op ?? null;
+  const repoWithConflicts = branchStatus?.find(
+    (r) => r.is_rebase_in_progress || (r.conflicted_files?.length ?? 0) > 0
+  );
+  const op = repoWithConflicts?.conflict_op ?? null;
   const openInEditor = useOpenInEditor(selectedAttemptId);
-  const { abortConflicts } = useAttemptConflicts(selectedAttemptId);
+  const repoId = repoWithConflicts?.repo_id;
+  const { abortConflicts } = useAttemptConflicts(selectedAttemptId, repoId);
 
   // write using setAborting and read through abortingRef in async handlers
   const [aborting, setAborting] = useState(false);
@@ -36,24 +39,20 @@ export function FollowUpConflictSection({
     abortingRef.current = aborting;
   }, [aborting]);
 
-  if (
-    !firstRepoStatus?.is_rebase_in_progress &&
-    !firstRepoStatus?.conflicted_files?.length
-  )
-    return null;
+  if (!repoWithConflicts) return null;
 
   return (
     <>
       <ConflictBanner
         attemptBranch={attemptBranch}
-        baseBranch={firstRepoStatus?.target_branch_name ?? ''}
-        conflictedFiles={firstRepoStatus?.conflicted_files || []}
+        baseBranch={repoWithConflicts.target_branch_name ?? ''}
+        conflictedFiles={repoWithConflicts.conflicted_files || []}
         op={op}
         onResolve={onResolve}
         enableResolve={enableResolve && !aborting}
         onOpenEditor={() => {
           if (!selectedAttemptId) return;
-          const first = firstRepoStatus?.conflicted_files?.[0];
+          const first = repoWithConflicts.conflicted_files?.[0];
           openInEditor(first ? { filePath: first } : undefined);
         }}
         onAbort={async () => {

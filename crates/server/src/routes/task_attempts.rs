@@ -94,6 +94,11 @@ pub struct RebaseTaskAttemptRequest {
     pub new_base_branch: Option<String>,
 }
 
+#[derive(Debug, Deserialize, Serialize, TS)]
+pub struct AbortConflictsRequest {
+    pub repo_id: Uuid,
+}
+
 #[derive(Debug, Serialize, Deserialize, TS)]
 #[serde(tag = "type", rename_all = "snake_case")]
 #[ts(tag = "type", rename_all = "snake_case")]
@@ -1225,17 +1230,22 @@ pub async fn rebase_task_attempt(
 pub async fn abort_conflicts_task_attempt(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<AbortConflictsRequest>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
-    // Resolve worktree path for this attempt
+    let pool = &deployment.db().pool;
+
+    let repo = Repo::find_by_id(pool, payload.repo_id)
+        .await?
+        .ok_or(RepoError::NotFound)?;
+
     let container_ref = deployment
         .container()
         .ensure_container_exists(&task_attempt)
         .await?;
     let workspace_path = Path::new(&container_ref);
+    let worktree_path = workspace_path.join(&repo.name);
 
-    // TODO: this needs a worktree path, not a workspace path
-
-    deployment.git().abort_conflicts(workspace_path)?;
+    deployment.git().abort_conflicts(&worktree_path)?;
 
     Ok(ResponseJson(ApiResponse::success(())))
 }

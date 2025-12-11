@@ -3,7 +3,6 @@
 import {
   ApprovalStatus,
   ApiResponse,
-  BranchStatus,
   Config,
   CreateFollowUpAttempt,
   EditorType,
@@ -84,6 +83,8 @@ import {
   QueueStatus,
   PrCommentsResponse,
   MergeTaskAttemptRequest,
+  RepoBranchStatus,
+  AbortConflictsRequest,
 } from 'shared/types';
 
 export class ApiError<E = unknown> extends Error {
@@ -527,11 +528,11 @@ export const attemptsApi = {
     return handleApiResponse<OpenEditorResponse>(response);
   },
 
-  getBranchStatus: async (attemptId: string): Promise<BranchStatus[]> => {
+  getBranchStatus: async (attemptId: string): Promise<RepoBranchStatus[]> => {
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/branch-status`
     );
-    return handleApiResponse<BranchStatus[]>(response);
+    return handleApiResponse<RepoBranchStatus[]>(response);
   },
 
   getRepos: async (attemptId: string): Promise<Repo[]> => {
@@ -615,11 +616,15 @@ export const attemptsApi = {
     return handleApiResponse<RenameBranchResponse>(response);
   },
 
-  abortConflicts: async (attemptId: string): Promise<void> => {
+  abortConflicts: async (
+    attemptId: string,
+    data: AbortConflictsRequest
+  ): Promise<void> => {
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/conflicts/abort`,
       {
         method: 'POST',
+        body: JSON.stringify(data),
       }
     );
     return handleApiResponse<void>(response);
