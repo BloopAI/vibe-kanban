@@ -8,11 +8,11 @@ type WsRefreshRequiredMsg = { refresh_required: { reason: string } };
 type WsMsg = WsJsonPatchMsg | WsFinishedMsg | WsRefreshRequiredMsg;
 
 // Keep-alive constants
-// Server sends pings every 15s for execution streams, 30s for list streams.
-// If we receive no messages (including pong responses to server pings) for 30s,
-// the connection is likely dead and should be reconnected.
-const PING_INTERVAL_MS = 25000; // Check connection status every 25 seconds
-const STALE_THRESHOLD_MS = 30000; // Force reconnect if no messages for 30 seconds
+// Note: We only log idle connections, we don't force reconnection because:
+// 1. Browser WebSocket API doesn't expose ping frames (can't see server keepalives)
+// 2. Connections may be legitimately idle (e.g., waiting for Claude agent response)
+// 3. Backend has proper ping/pong keepalive (90s timeout) to detect dead connections
+const PING_INTERVAL_MS = 25000; // Log connection status every 25 seconds
 const MAX_RECONNECT_ATTEMPTS = 10; // Give up after 10 failed reconnection attempts
 
 interface UseJsonPatchStreamOptions<T> {
@@ -166,24 +166,17 @@ export const useJsonPatchWsStream = <T extends object>(
         // Record initial connection time
         recordMessageTime();
 
-        // Start stale connection detection interval
-        // Server sends pings every 15-30s depending on stream type.
-        // If we receive no messages for STALE_THRESHOLD_MS, force reconnection.
+        // Start connection monitoring interval (logging only)
+        // Note: We don't force reconnection on idle connections because:
+        // 1. Browser WebSocket API doesn't expose ping frames, so we can't see server keepalives
+        // 2. Connections may be legitimately idle (e.g., waiting for Claude agent response)
+        // 3. The backend has proper ping/pong keepalive (90s timeout) to detect dead connections
+        // 4. Race conditions in useConversationHistory (the real cause of zombie connections) are now fixed
         pingIntervalRef.current = window.setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) {
             const idleTime = Date.now() - lastMessageTimeRef.current;
-            if (idleTime > STALE_THRESHOLD_MS) {
-              // Connection is stale - force reconnection
-              console.warn(
-                '[WS] Connection stale after',
-                Math.round(idleTime / 1000),
-                's, reconnecting...'
-              );
-              // Close with custom code to indicate stale connection
-              // onclose handler will trigger scheduleReconnect()
-              ws.close(4000, 'stale connection');
-            } else if (idleTime > PING_INTERVAL_MS * 2) {
-              // Warning: approaching stale threshold
+            if (idleTime > PING_INTERVAL_MS * 2) {
+              // Log for debugging, but don't force reconnect - connection may be legitimately idle
               console.debug('[WS] No message for', Math.round(idleTime / 1000), 's');
             }
           }
@@ -268,14 +261,7 @@ export const useJsonPatchWsStream = <T extends object>(
           return;
         }
 
-        // For stale connection recovery (code 4000), reconnect immediately without incrementing retry
-        // This is proactive recovery, not a failure
-        if (evt?.code === 4000) {
-          scheduleReconnect();
-          return;
-        }
-
-        // For actual failures, increment retry count
+        // For actual failures/unexpected closes, increment retry count and reconnect
         retryAttemptsRef.current += 1;
         scheduleReconnect();
       };
