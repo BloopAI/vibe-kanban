@@ -8,10 +8,12 @@ type WsRefreshRequiredMsg = { refresh_required: { reason: string } };
 type WsMsg = WsJsonPatchMsg | WsFinishedMsg | WsRefreshRequiredMsg;
 
 // Keep-alive constants
-// Note: Server handles dead connection detection via ping/pong with 90s timeout.
-// Client-side idle timeout was removed because browser WebSocket API doesn't expose
-// ping frames to JavaScript, causing false positives (connections killed while healthy).
-const PING_INTERVAL_MS = 25000; // Log keep-alive status every 25 seconds
+// Server sends pings every 15s for execution streams, 30s for list streams.
+// If we receive no messages (including pong responses to server pings) for 30s,
+// the connection is likely dead and should be reconnected.
+const PING_INTERVAL_MS = 25000; // Check connection status every 25 seconds
+const STALE_THRESHOLD_MS = 30000; // Force reconnect if no messages for 30 seconds
+const MAX_RECONNECT_ATTEMPTS = 10; // Give up after 10 failed reconnection attempts
 
 interface UseJsonPatchStreamOptions<T> {
   /**
@@ -77,9 +79,23 @@ export const useJsonPatchWsStream = <T extends object>(
 
   function scheduleReconnect() {
     if (retryTimerRef.current) return; // already scheduled
+
+    // Check if we've exceeded max reconnection attempts
+    if (retryAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
+      console.error(
+        '[WS] Max reconnection attempts exceeded, giving up. Refresh the page to retry.'
+      );
+      setError('Connection failed after multiple retries. Please refresh the page.');
+      return;
+    }
+
     // Exponential backoff with cap: 1s, 2s, 4s, 8s (max), then stay at 8s
+    // Add jitter (0-25%) to prevent thundering herd when multiple connections reconnect
     const attempt = retryAttemptsRef.current;
-    const delay = Math.min(8000, 1000 * Math.pow(2, attempt));
+    const baseDelay = Math.min(8000, 1000 * Math.pow(2, attempt));
+    const jitter = baseDelay * 0.25 * Math.random();
+    const delay = baseDelay + jitter;
+
     retryTimerRef.current = window.setTimeout(() => {
       retryTimerRef.current = null;
       setRetryNonce((n) => n + 1);
@@ -150,14 +166,24 @@ export const useJsonPatchWsStream = <T extends object>(
         // Record initial connection time
         recordMessageTime();
 
-        // Start keep-alive status logging
-        // Note: Server sends pings every 30s and handles dead connection detection.
-        // This interval is for debugging/logging only.
+        // Start stale connection detection interval
+        // Server sends pings every 15-30s depending on stream type.
+        // If we receive no messages for STALE_THRESHOLD_MS, force reconnection.
         pingIntervalRef.current = window.setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) {
             const idleTime = Date.now() - lastMessageTimeRef.current;
-            if (idleTime > PING_INTERVAL_MS * 2) {
-              // Only log if no messages for 2x the interval (50s+)
+            if (idleTime > STALE_THRESHOLD_MS) {
+              // Connection is stale - force reconnection
+              console.warn(
+                '[WS] Connection stale after',
+                Math.round(idleTime / 1000),
+                's, reconnecting...'
+              );
+              // Close with custom code to indicate stale connection
+              // onclose handler will trigger scheduleReconnect()
+              ws.close(4000, 'stale connection');
+            } else if (idleTime > PING_INTERVAL_MS * 2) {
+              // Warning: approaching stale threshold
               console.debug('[WS] No message for', Math.round(idleTime / 1000), 's');
             }
           }
@@ -242,7 +268,14 @@ export const useJsonPatchWsStream = <T extends object>(
           return;
         }
 
-        // Otherwise, reconnect on unexpected/error closures
+        // For stale connection recovery (code 4000), reconnect immediately without incrementing retry
+        // This is proactive recovery, not a failure
+        if (evt?.code === 4000) {
+          scheduleReconnect();
+          return;
+        }
+
+        // For actual failures, increment retry count
         retryAttemptsRef.current += 1;
         scheduleReconnect();
       };
