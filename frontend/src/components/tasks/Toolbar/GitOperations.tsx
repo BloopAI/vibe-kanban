@@ -338,7 +338,7 @@ function GitOperations({
         {/* Left: Branch flow */}
         <div className="flex items-center min-w-0 shrink-0 overflow-hidden">
           {/* Repo chip + change button (only when multiple repos) */}
-          {repos.length > 0 && (
+          {repos.length > 1 && (
             <div className="flex items-center gap-1 min-w-0">
               <TooltipProvider>
                 <Tooltip>
