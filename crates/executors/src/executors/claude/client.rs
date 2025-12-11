@@ -25,6 +25,9 @@ pub struct ClaudeAgentClient {
     log_writer: LogWriter,
     approvals: Option<Arc<dyn ExecutorApprovalService>>,
     auto_approve: bool, // true when approvals is None
+    /// When true, AskUserQuestion shows clickable options in UI.
+    /// When false, returns error to let Claude handle as text.
+    interactive_questions: bool,
 }
 
 impl ClaudeAgentClient {
@@ -32,12 +35,14 @@ impl ClaudeAgentClient {
     pub fn new(
         log_writer: LogWriter,
         approvals: Option<Arc<dyn ExecutorApprovalService>>,
+        interactive_questions: bool,
     ) -> Arc<Self> {
         let auto_approve = approvals.is_none();
         Arc::new(Self {
             log_writer,
             approvals,
             auto_approve,
+            interactive_questions,
         })
     }
 
@@ -178,6 +183,14 @@ impl ClaudeAgentClient {
         questions: Vec<Question>,
         tool_use_id: Option<String>,
     ) -> Result<serde_json::Value, ExecutorError> {
+        // If interactive questions are disabled, return error to let Claude handle as text
+        if !self.interactive_questions {
+            tracing::debug!("Interactive questions disabled, returning error for text fallback");
+            return Ok(serde_json::json!({
+                "error": "Interactive questions disabled - please ask via text"
+            }));
+        }
+
         // AskUserQuestion should always prompt the user, even in auto_approve mode
         // This is because it's gathering information, not requesting permissions
         let approval_service = match self.approvals.as_ref() {
@@ -191,8 +204,8 @@ impl ClaudeAgentClient {
             }
         };
 
-        let call_id = match tool_use_id {
-            Some(id) => id,
+        let call_id = match &tool_use_id {
+            Some(id) => id.clone(),
             None => {
                 tracing::warn!("AskUserQuestion called without tool_use_id");
                 return Ok(serde_json::json!({
@@ -201,7 +214,20 @@ impl ClaudeAgentClient {
             }
         };
 
-        // Use the approval service to request user questions
+        // CRITICAL: Emit entry via log_writer BEFORE calling approval service
+        // This creates the NormalizedEntry that the approval service will find
+        self.log_writer
+            .log_raw(&serde_json::to_string(&ClaudeJson::AskUserQuestion {
+                questions: questions.clone(),
+                tool_use_id: tool_use_id.clone(),
+                session_id: None,
+            })?)
+            .await?;
+
+        // Brief delay to allow async log processor to create the entry
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+        // Now call approval service - it will find the entry we just created
         match approval_service
             .request_question_approval(&questions, &call_id)
             .await
