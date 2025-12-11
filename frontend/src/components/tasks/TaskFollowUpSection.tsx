@@ -78,6 +78,13 @@ export function TaskFollowUpSection({
   const { data: branchStatus, refetch: refetchBranchStatus } =
     useBranchStatus(selectedAttemptId);
   const firstRepoStatus = branchStatus?.[0];
+  const repoWithConflicts = useMemo(
+    () =>
+      branchStatus?.find(
+        (r) => r.is_rebase_in_progress || (r.conflicted_files?.length ?? 0) > 0
+      ),
+    [branchStatus]
+  );
   const { branch: attemptBranch, refetch: refetchAttemptBranch } =
     useAttemptBranch(selectedAttemptId);
   const { profiles } = useUserSystem();
@@ -100,20 +107,15 @@ export function TaskFollowUpSection({
 
   // Non-editable conflict resolution instructions (derived, like review comments)
   const conflictResolutionInstructions = useMemo(() => {
-    const hasConflicts = (firstRepoStatus?.conflicted_files?.length ?? 0) > 0;
-    if (!hasConflicts) return null;
+    if (!repoWithConflicts?.conflicted_files?.length) return null;
     return buildResolveConflictsInstructions(
       attemptBranch,
-      firstRepoStatus?.target_branch_name,
-      firstRepoStatus?.conflicted_files || [],
-      firstRepoStatus?.conflict_op ?? null
+      repoWithConflicts.target_branch_name,
+      repoWithConflicts.conflicted_files,
+      repoWithConflicts.conflict_op ?? null,
+      repoWithConflicts.repo_name
     );
-  }, [
-    attemptBranch,
-    firstRepoStatus?.target_branch_name,
-    firstRepoStatus?.conflicted_files,
-    firstRepoStatus?.conflict_op,
-  ]);
+  }, [attemptBranch, repoWithConflicts]);
 
   // Editor state (persisted via scratch)
   const {

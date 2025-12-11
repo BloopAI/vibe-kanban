@@ -17,18 +17,20 @@ export function displayConflictOpLabel(op?: ConflictOp | null): string {
 function formatConflictHeader(
   op: ConflictOp | null | undefined,
   sourceBranch: string,
-  baseBranch?: string
+  baseBranch?: string,
+  repoName?: string
 ): string {
+  const repoContext = repoName ? ` in repository '${repoName}'` : '';
   switch (op) {
     case 'merge':
-      return `Merge conflicts while merging into '${sourceBranch}'.`;
+      return `Merge conflicts while merging into '${sourceBranch}'${repoContext}.`;
     case 'cherry_pick':
-      return `Cherry-pick conflicts on '${sourceBranch}'.`;
+      return `Cherry-pick conflicts on '${sourceBranch}'${repoContext}.`;
     case 'revert':
-      return `Revert conflicts on '${sourceBranch}'.`;
+      return `Revert conflicts on '${sourceBranch}'${repoContext}.`;
     case 'rebase':
     default:
-      return `Rebase conflicts while rebasing '${sourceBranch}' onto '${baseBranch ?? 'base branch'}'.`;
+      return `Rebase conflicts while rebasing '${sourceBranch}' onto '${baseBranch ?? 'base branch'}'${repoContext}.`;
   }
 }
 
@@ -36,7 +38,8 @@ export function buildResolveConflictsInstructions(
   sourceBranch: string | null,
   baseBranch: string | undefined,
   conflictedFiles: string[],
-  op?: ConflictOp | null
+  op?: ConflictOp | null,
+  repoName?: string
 ): string {
   const source = sourceBranch || 'current attempt branch';
   const base = baseBranch ?? 'base branch';
@@ -46,7 +49,7 @@ export function buildResolveConflictsInstructions(
     : '';
 
   const opTitle = displayConflictOpLabel(op);
-  const header = formatConflictHeader(op, source, base);
+  const header = formatConflictHeader(op, source, base, repoName);
 
   return (
     `${header}` +

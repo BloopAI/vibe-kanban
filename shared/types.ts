@@ -222,11 +222,7 @@ export type ShareTaskResponse = { shared_task_id: string, };
 
 export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id: ExecutorProfileId, base_branch: string, };
 
-<<<<<<< HEAD
-export type CreateGitHubPrRequest = { title: string, body: string | null, target_branch: string | null, draft: boolean | null, auto_generate_description: boolean, };
-=======
-export type CreateGitHubPrRequest = { title: string, body: string | null, repo_id: string, target_branch: string | null, draft: boolean | null, };
->>>>>>> f2dc2b36 (Move repo selection to frontend for create PR (#1436))
+export type CreateGitHubPrRequest = { title: string, body: string | null, target_branch: string | null, draft: boolean | null, repo_id: string, auto_generate_description: boolean, };
 
 export type ImageResponse = { id: string, file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, created_at: string, updated_at: string, };
 
@@ -245,6 +241,8 @@ export type RunAgentSetupResponse = Record<string, never>;
 export type GhCliSetupError = "BREW_MISSING" | "SETUP_HELPER_NOT_SUPPORTED" | { "OTHER": { message: string, } };
 
 export type RebaseTaskAttemptRequest = { repo_id: string, old_base_branch: string | null, new_base_branch: string | null, };
+
+export type AbortConflictsRequest = { repo_id: string, };
 
 export type GitOperationError = { "type": "merge_conflicts", message: string, op: ConflictOp, } | { "type": "rebase_in_progress" };
 
