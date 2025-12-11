@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   CheckCircle,
   ExternalLink,
+  FolderGit,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button.tsx';
 import {
@@ -15,15 +16,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip.tsx';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type {
-  BranchStatus,
+  RepoBranchStatus,
   Merge,
   GitBranch,
   TaskAttempt,
   TaskWithAttemptStatus,
 } from 'shared/types';
 import { ChangeTargetBranchDialog } from '@/components/dialogs/tasks/ChangeTargetBranchDialog';
+import { ChangeRepoDialog } from '@/components/dialogs/tasks/ChangeRepoDialog';
 import { RebaseDialog } from '@/components/dialogs/tasks/RebaseDialog';
 import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
 import { useTranslation } from 'react-i18next';
@@ -34,7 +36,7 @@ interface GitOperationsProps {
   selectedAttempt: TaskAttempt;
   task: TaskWithAttemptStatus;
   projectId: string;
-  branchStatus: BranchStatus[] | null;
+  branchStatus: RepoBranchStatus[] | null;
   branches: GitBranch[];
   isAttemptRunning: boolean;
   selectedBranch: string | null;
@@ -56,7 +58,9 @@ function GitOperations({
   const { t } = useTranslation('tasks');
 
   const git = useGitOperations(selectedAttempt.id, projectId);
-  const { repos } = useAttemptRepo(selectedAttempt.id);
+  const { repos, selectedRepoId, setSelectedRepoId } = useAttemptRepo(
+    selectedAttempt.id
+  );
   const isChangingTargetBranch = git.states.changeTargetBranchPending;
 
   // Compute aggregated status across all repos
@@ -95,7 +99,6 @@ function GitOperations({
     };
   }, [branchStatus]);
 
-  const firstRepoStatus = branchStatus?.[0];
   const hasConflictsCalculated = aggregatedStatus?.hasAnyConflicts ?? false;
 
   // Local state for git operations
@@ -130,14 +133,45 @@ function GitOperations({
     }
   };
 
-  // Select the first repo for operations that need a single repo
-  const getSelectedRepoId = () => {
-    return repos[0]?.id;
+  const getSelectedRepoId = useCallback(() => {
+    return selectedRepoId ?? repos[0]?.id;
+  }, [selectedRepoId, repos]);
+
+  const getSelectedRepo = useCallback(() => {
+    const repoId = getSelectedRepoId();
+    return repos.find((r) => r.id === repoId);
+  }, [repos, getSelectedRepoId]);
+
+  const handleChangeRepoDialogOpen = async () => {
+    try {
+      const result = await ChangeRepoDialog.show({
+        repos,
+        currentRepoId: getSelectedRepoId(),
+      });
+
+      if (result.action === 'confirmed' && result.repoId) {
+        setSelectedRepoId(result.repoId);
+      }
+    } catch (error) {
+      // User cancelled - do nothing
+    }
   };
+
+  const getSelectedRepoStatus = useCallback(() => {
+    const repoId = getSelectedRepoId();
+    return branchStatus?.find((r) => r.repo_id === repoId);
+  }, [branchStatus, getSelectedRepoId]);
+
+  // Memoize the selected repo status for use in button disabled states
+  const selectedRepoStatus = useMemo(
+    () => getSelectedRepoStatus(),
+    [getSelectedRepoStatus]
+  );
 
   // Memoize merge status information to avoid repeated calculations
   const mergeInfo = useMemo(() => {
-    if (!firstRepoStatus?.merges)
+    const selectedRepoStatus = getSelectedRepoStatus();
+    if (!selectedRepoStatus?.merges)
       return {
         hasOpenPR: false,
         openPR: null,
@@ -147,15 +181,15 @@ function GitOperations({
         latestMerge: null,
       };
 
-    const openPR = firstRepoStatus.merges.find(
+    const openPR = selectedRepoStatus.merges.find(
       (m: Merge) => m.type === 'pr' && m.pr_info.status === 'open'
     );
 
-    const mergedPR = firstRepoStatus.merges.find(
+    const mergedPR = selectedRepoStatus.merges.find(
       (m: Merge) => m.type === 'pr' && m.pr_info.status === 'merged'
     );
 
-    const merges = firstRepoStatus.merges.filter(
+    const merges = selectedRepoStatus.merges.filter(
       (m: Merge) =>
         m.type === 'direct' ||
         (m.type === 'pr' && m.pr_info.status === 'merged')
@@ -167,9 +201,9 @@ function GitOperations({
       hasMergedPR: !!mergedPR,
       mergedPR,
       hasMerged: merges.length > 0,
-      latestMerge: firstRepoStatus.merges[0] || null, // Most recent merge
+      latestMerge: selectedRepoStatus.merges[0] || null, // Most recent merge
     };
-  }, [firstRepoStatus?.merges]);
+  }, [getSelectedRepoStatus]);
 
   const mergeButtonLabel = useMemo(() => {
     if (mergeSuccess) return t('git.states.merged');
@@ -246,7 +280,7 @@ function GitOperations({
 
   const handleRebaseDialogOpen = async () => {
     try {
-      const defaultTargetBranch = firstRepoStatus?.target_branch_name;
+      const defaultTargetBranch = getSelectedRepoStatus()?.target_branch_name;
       const result = await RebaseDialog.show({
         branches,
         isRebasing: rebasing,
@@ -302,6 +336,55 @@ function GitOperations({
       <div className={containerClasses}>
         {/* Left: Branch flow */}
         <div className="flex items-center gap-2 min-w-0 shrink-0 overflow-hidden">
+          {/* Repo chip + change button (only when multiple repos) */}
+          {repos.length > 0 && (
+            <>
+              <div className="flex items-center gap-1 min-w-0">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex items-center gap-1.5 max-w-[200px] px-2 py-0.5 rounded-full bg-muted text-xs font-medium min-w-0">
+                        <FolderGit className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span className="truncate">
+                          {getSelectedRepo()?.display_name ||
+                            t('repos.selector.placeholder', 'Select repo')}
+                        </span>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      {t('repos.changeRepo.dialog.title', 'Change Repository')}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        onClick={handleChangeRepoDialogOpen}
+                        disabled={isAttemptRunning}
+                        className={settingsBtnClasses}
+                        aria-label={t(
+                          'repos.changeRepo.dialog.title',
+                          'Change Repository'
+                        )}
+                      >
+                        <Settings className="h-3.5 w-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      {t('repos.changeRepo.dialog.title', 'Change Repository')}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+
+              <ArrowRight className="hidden sm:inline h-4 w-4 text-muted-foreground" />
+            </>
+          )}
+
           {/* Task branch chip */}
           <TooltipProvider>
             <Tooltip>
@@ -327,7 +410,7 @@ function GitOperations({
                   <span className="inline-flex items-center gap-1.5 max-w-[280px] px-2 py-0.5 rounded-full bg-muted text-xs font-medium min-w-0">
                     <GitBranchIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     <span className="truncate">
-                      {firstRepoStatus?.target_branch_name ||
+                      {getSelectedRepoStatus()?.target_branch_name ||
                         selectedBranch ||
                         t('git.branch.current')}
                     </span>
@@ -469,7 +552,7 @@ function GitOperations({
                 merging ||
                 hasConflictsCalculated ||
                 isAttemptRunning ||
-                (aggregatedStatus.totalCommitsAhead === 0 &&
+                ((selectedRepoStatus?.commits_ahead ?? 0) === 0 &&
                   !pushSuccess &&
                   !mergeSuccess)
               }
@@ -490,9 +573,9 @@ function GitOperations({
                 isAttemptRunning ||
                 hasConflictsCalculated ||
                 (mergeInfo.hasOpenPR &&
-                  (firstRepoStatus?.remote_commits_ahead ?? 0) === 0) ||
-                (aggregatedStatus.totalCommitsAhead === 0 &&
-                  (firstRepoStatus?.remote_commits_ahead ?? 0) === 0 &&
+                  (selectedRepoStatus?.remote_commits_ahead ?? 0) === 0) ||
+                ((selectedRepoStatus?.commits_ahead ?? 0) === 0 &&
+                  (selectedRepoStatus?.remote_commits_ahead ?? 0) === 0 &&
                   !pushSuccess &&
                   !mergeSuccess)
               }

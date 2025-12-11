@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ExternalLink, GitPullRequest } from 'lucide-react';
 import {
@@ -11,6 +11,7 @@ import { Loader } from '@/components/ui/loader';
 import GitOperations from '@/components/tasks/Toolbar/GitOperations';
 import { useTaskAttempt } from '@/hooks/useTaskAttempt';
 import { useBranchStatus, useAttemptExecution } from '@/hooks';
+import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useProject } from '@/contexts/ProjectContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import {
@@ -21,6 +22,7 @@ import { projectsApi } from '@/lib/api';
 import type {
   GitBranch,
   Merge,
+  RepositoryBranches,
   TaskAttempt,
   TaskWithAttemptStatus,
 } from 'shared/types';
@@ -50,9 +52,14 @@ function GitActionsDialogContent({
   const { data: branchStatus } = useBranchStatus(attempt.id);
   const { isAttemptRunning } = useAttemptExecution(attempt.id);
   const { error: gitError } = useGitOperationsError();
+  const { repos, selectedRepoId } = useAttemptRepo(attempt.id);
 
-  const firstRepoStatus = branchStatus?.[0];
-  const mergedPR = firstRepoStatus?.merges?.find(
+  const getSelectedRepoStatus = () => {
+    const repoId = selectedRepoId ?? repos[0]?.id;
+    return branchStatus?.find((r) => r.repo_id === repoId);
+  };
+
+  const mergedPR = getSelectedRepoStatus()?.merges?.find(
     (m: Merge) => m.type === 'pr' && m.pr_info?.status === 'merged'
   );
 
@@ -93,7 +100,7 @@ function GitActionsDialogContent({
         branchStatus={branchStatus ?? null}
         branches={branches}
         isAttemptRunning={isAttemptRunning}
-        selectedBranch={firstRepoStatus?.target_branch_name ?? null}
+        selectedBranch={getSelectedRepoStatus()?.target_branch_name ?? null}
         layout="vertical"
       />
     </div>
@@ -108,8 +115,9 @@ const GitActionsDialogImpl = NiceModal.create<GitActionsDialogProps>(
 
     const effectiveProjectId = providedProjectId ?? project?.id;
     const { data: attempt } = useTaskAttempt(attemptId);
+    const { selectedRepoId } = useAttemptRepo(attemptId);
 
-    const [branches, setBranches] = useState<GitBranch[]>([]);
+    const [repoBranches, setRepoBranches] = useState<RepositoryBranches[]>([]);
     const [loadingBranches, setLoadingBranches] = useState(true);
 
     useEffect(() => {
@@ -117,10 +125,17 @@ const GitActionsDialogImpl = NiceModal.create<GitActionsDialogProps>(
       setLoadingBranches(true);
       projectsApi
         .getBranches(effectiveProjectId)
-        .then(setBranches)
-        .catch(() => setBranches([]))
+        .then(setRepoBranches)
+        .catch(() => setRepoBranches([]))
         .finally(() => setLoadingBranches(false));
     }, [effectiveProjectId]);
+
+    const branches = useMemo(
+      () =>
+        repoBranches.find((r) => r.repository_id === selectedRepoId)
+          ?.branches ?? [],
+      [repoBranches, selectedRepoId]
+    );
 
     const handleOpenChange = (open: boolean) => {
       if (!open) {

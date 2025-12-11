@@ -100,8 +100,12 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const [showDiscardWarning, setShowDiscardWarning] = useState(false);
   const forceCreateOnlyRef = useRef(false);
 
-  const { data: branches, isLoading: branchesLoading } =
+  const { data: repoBranches, isLoading: branchesLoading } =
     useProjectBranches(projectId);
+  const branches = useMemo(
+    () => repoBranches?.flatMap((r) => r.branches) ?? [],
+    [repoBranches]
+  );
   const { data: taskImages } = useTaskImages(
     editMode ? props.task.id : undefined
   );
