@@ -79,7 +79,6 @@ export function TaskFollowUpSection({
   const { data: branchStatus, refetch: refetchBranchStatus } =
     useBranchStatus(selectedAttemptId);
   const { repos } = useAttemptRepo(selectedAttemptId);
-  const firstRepoStatus = branchStatus?.[0];
   const repoWithConflicts = useMemo(
     () =>
       branchStatus?.find(
@@ -330,14 +329,14 @@ export function TaskFollowUpSection({
       return false;
     }
 
-    // Check if PR is merged - if so, block follow-ups
-    if (firstRepoStatus?.merges) {
-      const mergedPR = firstRepoStatus.merges.find(
+    // Check if any repo has a merged PR - if so, block follow-ups
+    const hasMergedPR = branchStatus?.some((repoStatus) =>
+      repoStatus.merges?.some(
         (m: Merge) => m.type === 'pr' && m.pr_info.status === 'merged'
-      );
-      if (mergedPR) {
-        return false;
-      }
+      )
+    );
+    if (hasMergedPR) {
+      return false;
     }
 
     if (isRetryActive) return false; // disable typing while retry editor is active
@@ -348,7 +347,7 @@ export function TaskFollowUpSection({
     selectedAttemptId,
     processes.length,
     isSendingFollowUp,
-    firstRepoStatus?.merges,
+    branchStatus,
     isRetryActive,
     hasPendingApproval,
   ]);
