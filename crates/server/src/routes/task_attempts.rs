@@ -1020,11 +1020,12 @@ pub async fn rename_branch(
 
     let pool = &deployment.db().pool;
 
-    // Fail if TaskAttempt has an open PR
-    if let Some(merge) = Merge::find_latest_by_task_attempt_id(pool, task_attempt.id).await?
-        && let Merge::Pr(pr_merge) = merge
-        && matches!(pr_merge.pr_info.status, MergeStatus::Open)
-    {
+    // Fail if TaskAttempt has an open PR in any repo
+    let merges = Merge::find_by_task_attempt_id(pool, task_attempt.id).await?;
+    let has_open_pr = merges.into_iter().any(|merge| {
+        matches!(merge, Merge::Pr(pr_merge) if matches!(pr_merge.pr_info.status, MergeStatus::Open))
+    });
+    if has_open_pr {
         return Ok(ResponseJson(ApiResponse::error_with_data(
             RenameBranchError::OpenPullRequest,
         )));

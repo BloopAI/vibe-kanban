@@ -288,16 +288,6 @@ impl Merge {
 
         Ok(rows.into_iter().map(Into::into).collect())
     }
-
-    /// Find the most recent merge for a task attempt
-    pub async fn find_latest_by_task_attempt_id(
-        pool: &SqlitePool,
-        task_attempt_id: Uuid,
-    ) -> Result<Option<Self>, sqlx::Error> {
-        Self::find_by_task_attempt_id(pool, task_attempt_id)
-            .await
-            .map(|mut merges| merges.pop())
-    }
 }
 
 // Conversion implementations
