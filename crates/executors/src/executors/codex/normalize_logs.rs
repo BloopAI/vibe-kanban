@@ -9,7 +9,7 @@ use codex_app_server_protocol::{
 };
 use codex_mcp_types::ContentBlock;
 use codex_protocol::{
-    config_types::ReasoningEffort,
+    openai_models::ReasoningEffort,
     plan_tool::{StepStatus, UpdatePlanArgs},
     protocol::{
         AgentMessageDeltaEvent, AgentMessageEvent, AgentReasoningDeltaEvent, AgentReasoningEvent,
@@ -472,8 +472,8 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                     command,
                     cwd: _,
                     reason,
-                    risk: _,
                     parsed_cmd: _,
+                    proposed_execpolicy_amendment: _,
                 }) => {
                     state.assistant = None;
                     state.thinking = None;
@@ -552,6 +552,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                     parsed_cmd: _,
                     source: _,
                     interaction_input: _,
+                    process_id: _,
                 }) => {
                     state.assistant = None;
                     state.thinking = None;
@@ -620,6 +621,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                     exit_code,
                     duration: _,
                     formatted_output,
+                    process_id: _,
                 }) => {
                     if let Some(mut command_state) = state.commands.remove(&call_id) {
                         command_state.formatted_output = Some(formatted_output);
@@ -998,6 +1000,9 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                 | EventMsg::ShutdownComplete
                 | EventMsg::EnteredReviewMode(..)
                 | EventMsg::ExitedReviewMode(..)
+                | EventMsg::ContextCompacted(..)
+                | EventMsg::TerminalInteraction(..)
+                | EventMsg::ElicitationRequest(..)
                 | EventMsg::TaskComplete(..) => {}
             }
         }
