@@ -59,6 +59,11 @@ impl StandardCodingAgentExecutor for Amp {
             .current_dir(current_dir)
             .args(&args);
 
+        // Remove pnpm-specific env vars that cause npm warnings when using npx
+        command.env_remove("npm_config__jsr_registry");
+        command.env_remove("npm_config_verify_deps_before_run");
+        command.env_remove("npm_config_globalconfig");
+
         let mut child = command.group_spawn()?;
 
         // Feed the prompt in, then close the pipe so amp sees EOF
@@ -84,14 +89,20 @@ impl StandardCodingAgentExecutor for Amp {
             session_id.to_string(),
         ])?;
         let (fork_program, fork_args) = fork_line.into_resolved().await?;
-        let fork_output = Command::new(fork_program)
+        let mut fork_command = Command::new(fork_program);
+        fork_command
             .kill_on_drop(true)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .current_dir(current_dir)
-            .args(&fork_args)
-            .output()
-            .await?;
+            .args(&fork_args);
+
+        // Remove pnpm-specific env vars that cause npm warnings when using npx
+        fork_command.env_remove("npm_config__jsr_registry");
+        fork_command.env_remove("npm_config_verify_deps_before_run");
+        fork_command.env_remove("npm_config_globalconfig");
+
+        let fork_output = fork_command.output().await?;
         let stdout_str = String::from_utf8_lossy(&fork_output.stdout);
         let new_thread_id = stdout_str
             .lines()
@@ -126,6 +137,11 @@ impl StandardCodingAgentExecutor for Amp {
             .stderr(Stdio::piped())
             .current_dir(current_dir)
             .args(&continue_args);
+
+        // Remove pnpm-specific env vars that cause npm warnings when using npx
+        command.env_remove("npm_config__jsr_registry");
+        command.env_remove("npm_config_verify_deps_before_run");
+        command.env_remove("npm_config_globalconfig");
 
         let mut child = command.group_spawn()?;
 

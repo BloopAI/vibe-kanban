@@ -66,6 +66,11 @@ impl AcpAgentHarness {
             .args(&args)
             .env("NODE_NO_WARNINGS", "1");
 
+        // Remove pnpm-specific env vars that cause npm warnings when using npx
+        command.env_remove("npm_config__jsr_registry");
+        command.env_remove("npm_config_verify_deps_before_run");
+        command.env_remove("npm_config_globalconfig");
+
         let mut child = command.group_spawn()?;
 
         let (exit_tx, exit_rx) = tokio::sync::oneshot::channel::<ExecutorExitResult>();
@@ -102,6 +107,11 @@ impl AcpAgentHarness {
             .current_dir(current_dir)
             .args(&args)
             .env("NODE_NO_WARNINGS", "1");
+
+        // Remove pnpm-specific env vars that cause npm warnings when using npx
+        command.env_remove("npm_config__jsr_registry");
+        command.env_remove("npm_config_verify_deps_before_run");
+        command.env_remove("npm_config_globalconfig");
 
         let mut child = command.group_spawn()?;
 
