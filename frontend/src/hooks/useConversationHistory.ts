@@ -101,6 +101,10 @@ export const useConversationHistory = ({
   const loadedInitialEntries = useRef(false);
   const lastActiveProcessId = useRef<string | null>(null);
   const onEntriesUpdatedRef = useRef<OnEntriesUpdated | null>(null);
+  // Track active stream controllers to prevent duplicate connections and enable cleanup
+  const activeStreamControllers = useRef<Map<string, { close: () => void }>>(
+    new Map()
+  );
 
   const mergeIntoDisplayed = (
     mutator: (state: ExecutionProcessStateStore) => void
@@ -433,6 +437,14 @@ export const useConversationHistory = ({
   const loadRunningAndEmit = useCallback(
     (executionProcess: ExecutionProcess): Promise<void> => {
       return new Promise((resolve, reject) => {
+        const processId = executionProcess.id;
+
+        // Guard: If already streaming this process, don't create another connection
+        if (activeStreamControllers.current.has(processId)) {
+          resolve(); // Already streaming, no-op
+          return;
+        }
+
         let url = '';
         if (executionProcess.executor_action.typ.type === 'ScriptRequest') {
           url = `/api/execution-processes/${executionProcess.id}/raw-logs/ws`;
@@ -453,28 +465,39 @@ export const useConversationHistory = ({
             emitEntries(displayedExecutionProcesses.current, 'running', false);
           },
           onFinished: () => {
+            activeStreamControllers.current.delete(processId); // Clean up tracking
             emitEntries(displayedExecutionProcesses.current, 'running', false);
             controller.close();
             resolve();
           },
           onError: () => {
+            activeStreamControllers.current.delete(processId); // Clean up tracking
             controller.close();
             reject();
           },
         });
+
+        // Track this controller
+        activeStreamControllers.current.set(processId, controller);
       });
     },
     [emitEntries]
   );
 
   // Sometimes it can take a few seconds for the stream to start, wrap the loadRunningAndEmit method
+  // The abortSignal allows cleanup to stop the retry loop
   const loadRunningAndEmitWithBackoff = useCallback(
-    async (executionProcess: ExecutionProcess) => {
+    async (
+      executionProcess: ExecutionProcess,
+      abortSignal?: { aborted: boolean }
+    ) => {
       for (let i = 0; i < 20; i++) {
+        if (abortSignal?.aborted) return;
         try {
           await loadRunningAndEmit(executionProcess);
           break;
         } catch (_) {
+          if (abortSignal?.aborted) return;
           await new Promise((resolve) => setTimeout(resolve, 500));
         }
       }
@@ -625,6 +648,9 @@ export const useConversationHistory = ({
   ]); // include idListKey so new processes trigger reload
 
   useEffect(() => {
+    // Create abort signal for cleanup
+    const abortSignal = { aborted: false };
+
     const activeProcess = getActiveAgentProcess();
     if (!activeProcess) return;
 
@@ -642,8 +668,20 @@ export const useConversationHistory = ({
       lastActiveProcessId.current !== activeProcess.id
     ) {
       lastActiveProcessId.current = activeProcess.id;
-      loadRunningAndEmitWithBackoff(activeProcess);
+      loadRunningAndEmitWithBackoff(activeProcess, abortSignal);
     }
+
+    // Capture ref value for cleanup (React lint rule)
+    const controllersMap = activeStreamControllers.current;
+
+    // Cleanup: Close active streams and abort retry loops when effect re-runs or unmounts
+    return () => {
+      abortSignal.aborted = true;
+      for (const controller of controllersMap.values()) {
+        controller.close();
+      }
+      controllersMap.clear();
+    };
   }, [
     attempt.id,
     idStatusKey,
