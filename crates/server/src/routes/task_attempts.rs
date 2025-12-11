@@ -61,32 +61,6 @@ use crate::{
     routes::task_attempts::{gh_cli_setup::GhCliSetupError, util::restore_worktrees_to_process},
 };
 
-// TODO: refactor for proper multi-repo support
-/// Get the first repository path for a project
-async fn get_first_repo_path(
-    pool: &sqlx::SqlitePool,
-    project_id: Uuid,
-) -> Result<PathBuf, ApiError> {
-    let repos = ProjectRepo::find_repos_for_project(pool, project_id).await?;
-    repos
-        .first()
-        .map(|r| r.path.clone())
-        .ok_or_else(|| ApiError::BadRequest("Project has no repositories configured".to_string()))
-}
-
-// TODO: refactor for proper multi-repo support
-/// Get the first target branch for an attempt
-async fn get_first_target_branch(
-    pool: &sqlx::SqlitePool,
-    attempt_id: Uuid,
-) -> Result<String, ApiError> {
-    let attempt_repos = AttemptRepo::find_by_attempt_id(pool, attempt_id).await?;
-    attempt_repos
-        .first()
-        .map(|r| r.target_branch.clone())
-        .ok_or_else(|| ApiError::BadRequest("Attempt has no repositories configured".to_string()))
-}
-
 #[derive(Debug, Deserialize, Serialize, TS)]
 pub struct RebaseTaskAttemptRequest {
     pub repo_id: Uuid,
@@ -566,6 +540,7 @@ pub async fn merge_task_attempt(
     Merge::create_direct(
         pool,
         task_attempt.id,
+        attempt_repo.repo_id,
         &attempt_repo.target_branch,
         &merge_commit_id,
     )

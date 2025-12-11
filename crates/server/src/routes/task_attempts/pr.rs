@@ -9,7 +9,6 @@ use db::models::{
     attempt_repo::AttemptRepo,
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
     merge::{Merge, MergeStatus},
-    project::{Project, ProjectError},
     repo::{Repo, RepoError},
     task::{Task, TaskStatus},
     task_attempt::{TaskAttempt, TaskAttemptError},
@@ -30,7 +29,6 @@ use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use super::{get_first_repo_path, get_first_target_branch};
 use crate::{DeploymentImpl, error::ApiError};
 
 #[derive(Debug, Deserialize, Serialize, TS)]
@@ -61,6 +59,11 @@ pub struct AttachPrResponse {
     pub pr_url: Option<String>,
     pub pr_number: Option<i64>,
     pub pr_status: Option<MergeStatus>,
+}
+
+#[derive(Debug, Deserialize, Serialize, TS)]
+pub struct AttachExistingPrRequest {
+    pub repo_id: Uuid,
 }
 
 #[derive(Debug, Serialize, TS)]
@@ -271,6 +274,7 @@ pub async fn create_github_pr(
             if let Err(e) = Merge::create_pr(
                 pool,
                 task_attempt.id,
+                attempt_repo.repo_id,
                 &norm_target_branch_name,
                 pr_info.number,
                 &pr_info.url,
@@ -334,6 +338,7 @@ pub async fn create_github_pr(
 pub async fn attach_existing_pr(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
+    Json(request): Json<AttachExistingPrRequest>,
 ) -> Result<ResponseJson<ApiResponse<AttachPrResponse>>, ApiError> {
     let pool = &deployment.db().pool;
 
@@ -341,17 +346,20 @@ pub async fn attach_existing_pr(
         .parent_task(pool)
         .await?
         .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
-    let project = Project::find_by_id(pool, task.project_id)
+
+    let attempt_repo =
+        AttemptRepo::find_by_attempt_and_repo_id(pool, task_attempt.id, request.repo_id)
+            .await?
+            .ok_or(RepoError::NotFound)?;
+
+    let repo = Repo::find_by_id(pool, attempt_repo.repo_id)
         .await?
-        .ok_or(ApiError::Project(ProjectError::ProjectNotFound))?;
+        .ok_or(RepoError::NotFound)?;
 
-    let git_repo_path = get_first_repo_path(pool, project.id).await?;
-    let target_branch = get_first_target_branch(pool, task_attempt.id).await?;
-
-    // Check if PR already attached
-    if let Some(Merge::Pr(pr_merge)) =
-        Merge::find_latest_by_task_attempt_id(pool, task_attempt.id).await?
-    {
+    // Check if PR already attached for this repo
+    let merges =
+        Merge::find_by_task_attempt_and_repo_id(pool, task_attempt.id, request.repo_id).await?;
+    if let Some(Merge::Pr(pr_merge)) = merges.into_iter().next() {
         return Ok(ResponseJson(ApiResponse::success(AttachPrResponse {
             pr_attached: true,
             pr_url: Some(pr_merge.pr_info.url.clone()),
@@ -361,7 +369,7 @@ pub async fn attach_existing_pr(
     }
 
     let github_service = GitHubService::new()?;
-    let repo_info = deployment.git().get_github_repo_info(&git_repo_path)?;
+    let repo_info = deployment.git().get_github_repo_info(&repo.path)?;
 
     // List all PRs for branch (open, closed, and merged)
     let prs = github_service
@@ -374,7 +382,8 @@ pub async fn attach_existing_pr(
         let merge = Merge::create_pr(
             pool,
             task_attempt.id,
-            &target_branch,
+            attempt_repo.repo_id,
+            &attempt_repo.target_branch,
             pr_info.number,
             &pr_info.url,
         )

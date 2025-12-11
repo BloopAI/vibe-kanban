@@ -41,7 +41,6 @@ pub struct TaskWithAttemptStatus {
     #[ts(flatten)]
     pub task: Task,
     pub has_in_progress_attempt: bool,
-    pub has_merged_attempt: bool,
     pub last_attempt_failed: bool,
     pub executor: String,
 }
@@ -204,7 +203,6 @@ ORDER BY t.created_at DESC"#,
                     updated_at: rec.updated_at,
                 },
                 has_in_progress_attempt: rec.has_in_progress_attempt != 0,
-                has_merged_attempt: false, // TODO use merges table
                 last_attempt_failed: rec.last_attempt_failed != 0,
                 executor: rec.executor,
             })
