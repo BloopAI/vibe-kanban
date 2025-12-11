@@ -336,73 +336,79 @@ function GitOperations({
     <div className="w-full border-b py-2">
       <div className={containerClasses}>
         {/* Left: Branch flow */}
-        <div className="flex items-center gap-2 min-w-0 shrink-0 overflow-hidden">
+        <div className="flex items-center min-w-0 shrink-0 overflow-hidden">
           {/* Repo chip + change button (only when multiple repos) */}
           {repos.length > 0 && (
-            <>
-              <div className="flex items-center gap-1 min-w-0">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="inline-flex items-center gap-1.5 max-w-[200px] px-2 py-0.5 rounded-full bg-muted text-xs font-medium min-w-0">
-                        <FolderGit className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="truncate">
-                          {getSelectedRepo()?.display_name ||
-                            t('repos.selector.placeholder', 'Select repo')}
-                        </span>
+            <div className="flex items-center gap-1 min-w-0">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex items-center gap-1.5 max-w-[200px] px-2 py-0.5 rounded-full bg-muted text-xs font-medium min-w-0">
+                      <FolderGit className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <span className="truncate">
+                        {getSelectedRepo()?.display_name ||
+                          t('repos.selector.placeholder', 'Select repo')}
                       </span>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">
-                      {t('repos.changeRepo.dialog.title', 'Change Repository')}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    {t('repos.changeRepo.dialog.title', 'Change Repository')}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
 
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        onClick={handleChangeRepoDialogOpen}
-                        disabled={isAttemptRunning}
-                        className={settingsBtnClasses}
-                        aria-label={t(
-                          'repos.changeRepo.dialog.title',
-                          'Change Repository'
-                        )}
-                      >
-                        <ChevronsUpDown className="h-3.5 w-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">
-                      {t('repos.changeRepo.dialog.title', 'Change Repository')}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-            </>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      onClick={handleChangeRepoDialogOpen}
+                      disabled={isAttemptRunning}
+                      className={settingsBtnClasses}
+                      aria-label={t(
+                        'repos.changeRepo.dialog.title',
+                        'Change Repository'
+                      )}
+                    >
+                      <ChevronsUpDown className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    {t('repos.changeRepo.dialog.title', 'Change Repository')}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           )}
 
-          {/* Task branch chip */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="hidden sm:inline-flex ml-3 items-center gap-1.5 max-w-[280px] px-2 py-0.5 rounded-full bg-muted text-xs font-medium min-w-0">
-                  <GitBranchIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <span className="truncate">{selectedAttempt.branch}</span>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                {t('git.labels.taskBranch')}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          {/* Task + target branches right-aligned in horizontal layout */}
+          <div
+            className={
+              isVertical
+                ? 'flex items-center gap-2 min-w-0'
+                : 'ml-auto flex items-center gap-2 min-w-0'
+            }
+          >
+            {/* Task branch chip */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="hidden sm:inline-flex items-center gap-1.5 max-w-[280px] px-2 py-0.5 rounded-full bg-muted text-xs font-medium min-w-0">
+                    <GitBranchIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="truncate">{selectedAttempt.branch}</span>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {t('git.labels.taskBranch')}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
 
-          <ArrowRight className="hidden sm:inline h-4 w-4 text-muted-foreground" />
+            <ArrowRight className="hidden sm:inline h-4 w-4 text-muted-foreground" />
 
-          {/* Target branch chip + change button */}
-          <div className="flex items-center gap-1 min-w-0">
+            {/* Target branch chip + change button */}
+            <div className="flex items-center gap-1 min-w-0">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -440,6 +446,7 @@ function GitOperations({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+          </div>
           </div>
         </div>
 
