@@ -81,9 +81,9 @@ export function TaskFollowUpSection({
   const { repos } = useAttemptRepo(selectedAttemptId);
 
   // Select the first repo for operations that need a single repo
-  const getSelectedRepoId = () => {
+  const getSelectedRepoId = useCallback(() => {
     return repos[0]?.id;
-  };
+  }, [repos]);
 
   const repoWithConflicts = useMemo(
     () =>
@@ -591,7 +591,7 @@ export function TaskFollowUpSection({
         });
       }
     }
-  }, [selectedAttemptId, repos]);
+  }, [selectedAttemptId, getSelectedRepoId]);
 
   // Stable onChange handler for WYSIWYGEditor
   const handleEditorChange = useCallback(
