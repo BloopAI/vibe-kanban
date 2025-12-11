@@ -5,7 +5,7 @@ import { useForcePush } from './useForcePush';
 import { useChangeTargetBranch } from './useChangeTargetBranch';
 import { useGitOperationsError } from '@/contexts/GitOperationsContext';
 import { Result } from '@/lib/api';
-import type { GitOperationError } from 'shared/types';
+import type { GitOperationError, PushTaskAttemptRequest } from 'shared/types';
 import { ForcePushDialog } from '@/components/dialogs/git/ForcePushDialog';
 
 export function useGitOperations(
@@ -58,12 +58,12 @@ export function useGitOperations(
   const push = usePush(
     attemptId,
     () => setError(null),
-    async (err: unknown, errorData) => {
+    async (err: unknown, errorData, params?: PushTaskAttemptRequest) => {
       // Handle typed push errors
       if (errorData?.type === 'force_push_required') {
         // Show confirmation dialog - dialog handles the force push internally
-        if (attemptId) {
-          await ForcePushDialog.show({ attemptId });
+        if (attemptId && params?.repo_id) {
+          await ForcePushDialog.show({ attemptId, repoId: params.repo_id });
         }
         return;
       }

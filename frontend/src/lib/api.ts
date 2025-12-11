@@ -84,6 +84,7 @@ import {
   QueueStatus,
   PrCommentsResponse,
   MergeTaskAttemptRequest,
+  PushTaskAttemptRequest,
   RepoBranchStatus,
   AbortConflictsRequest,
 } from 'shared/types';
@@ -555,18 +556,26 @@ export const attemptsApi = {
     return handleApiResponse<void>(response);
   },
 
-  push: async (attemptId: string): Promise<Result<void, PushError>> => {
+  push: async (
+    attemptId: string,
+    data: PushTaskAttemptRequest
+  ): Promise<Result<void, PushError>> => {
     const response = await makeRequest(`/api/task-attempts/${attemptId}/push`, {
       method: 'POST',
+      body: JSON.stringify(data),
     });
     return handleApiResponseAsResult<void, PushError>(response);
   },
 
-  forcePush: async (attemptId: string): Promise<Result<void, PushError>> => {
+  forcePush: async (
+    attemptId: string,
+    data: PushTaskAttemptRequest
+  ): Promise<Result<void, PushError>> => {
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/push/force`,
       {
         method: 'POST',
+        body: JSON.stringify(data),
       }
     );
     return handleApiResponseAsResult<void, PushError>(response);

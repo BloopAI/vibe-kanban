@@ -201,7 +201,9 @@ function GitOperations({
   const handlePushClick = async () => {
     try {
       setPushing(true);
-      await git.actions.push();
+      const repoId = getSelectedRepoId();
+      if (!repoId) return;
+      await git.actions.push({ repo_id: repoId });
       setPushSuccess(true);
       setTimeout(() => setPushSuccess(false), 2000);
     } finally {
