@@ -107,12 +107,19 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
       onQueryChange={onQueryChange}
       onSelectOption={(option, nodeToReplace, closeMenu) => {
         editor.update(() => {
-          const textToInsert =
+          let textToInsert =
             option.item.type === 'tag'
               ? (option.item.tag?.content ?? '')
               : (option.item.file?.path ?? '');
 
           if (!nodeToReplace) return;
+
+          // Check if the text being replaced started with whitespace
+          // (the trigger regex captures preceding space as part of the match)
+          const replacedText = nodeToReplace.getTextContent();
+          if (replacedText.length > 0 && /^\s/.test(replacedText)) {
+            textToInsert = ' ' + textToInsert;
+          }
 
           // Create the node we want to insert
           const textNode = $createTextNode(textToInsert);
