@@ -131,19 +131,7 @@ impl ProjectService {
         existing: &Project,
         payload: UpdateProject,
     ) -> Result<Project> {
-        let project = Project::update(
-            pool,
-            existing.id,
-            payload.name.unwrap_or_else(|| existing.name.clone()),
-            payload.setup_script,
-            payload.dev_script,
-            payload.cleanup_script,
-            payload.copy_files,
-            payload
-                .parallel_setup_script
-                .unwrap_or(existing.parallel_setup_script),
-        )
-        .await?;
+        let project = Project::update(pool, existing.id, &payload).await?;
 
         Ok(project)
     }

@@ -70,6 +70,7 @@ async fn get_setup_helper_action(codex: &Codex) -> Result<ExecutorAction, ApiErr
         script: login_script,
         language: ScriptRequestLanguage::Bash,
         context: ScriptContext::ToolInstallScript,
+        working_dir: None,
     };
 
     Ok(ExecutorAction::new(

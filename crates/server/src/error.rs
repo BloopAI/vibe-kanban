@@ -5,8 +5,9 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use db::models::{
-    execution_process::ExecutionProcessError, project::ProjectError, repo::RepoError,
-    scratch::ScratchError, task_attempt::TaskAttemptError,
+    execution_process::ExecutionProcessError, project::ProjectError,
+    project_repo::ProjectRepoError, repo::RepoError, scratch::ScratchError,
+    task_attempt::TaskAttemptError,
 };
 use deployment::{DeploymentError, RemoteClientNotConfigured};
 use executors::executors::ExecutorError;
@@ -367,6 +368,20 @@ impl From<RepoServiceError> for ApiError {
             }
             RepoServiceError::InvalidFolderName(name) => {
                 ApiError::BadRequest(format!("Invalid folder name: {}", name))
+            }
+        }
+    }
+}
+
+impl From<ProjectRepoError> for ApiError {
+    fn from(err: ProjectRepoError) -> Self {
+        match err {
+            ProjectRepoError::Database(db_err) => ApiError::Database(db_err),
+            ProjectRepoError::NotFound => {
+                ApiError::BadRequest("Repository not found in project".to_string())
+            }
+            ProjectRepoError::AlreadyExists => {
+                ApiError::Conflict("Repository already exists in project".to_string())
             }
         }
     }

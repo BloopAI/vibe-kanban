@@ -72,7 +72,7 @@ export function TaskFollowUpSection({
   selectedAttemptId,
 }: TaskFollowUpSectionProps) {
   const { t } = useTranslation('tasks');
-  const { projectId, project } = useProject();
+  const { projectId } = useProject();
 
   const { isAttemptRunning, stopExecution, isStopping, processes } =
     useAttemptExecution(selectedAttemptId, task.id);
@@ -379,28 +379,25 @@ export function TaskFollowUpSection({
   ]);
   const isEditable = !isRetryActive && !hasPendingApproval;
 
-  // Script availability
-  const hasSetupScript = Boolean(project?.setup_script);
-  const hasCleanupScript = Boolean(project?.cleanup_script);
-  const hasAnyScript = hasSetupScript || hasCleanupScript;
+  const hasAnyScript = true;
 
   const handleRunSetupScript = useCallback(async () => {
-    if (!selectedAttemptId || isAttemptRunning || !hasSetupScript) return;
+    if (!selectedAttemptId || isAttemptRunning) return;
     try {
       await attemptsApi.runSetupScript(selectedAttemptId);
     } catch (error) {
       console.error('Failed to run setup script:', error);
     }
-  }, [selectedAttemptId, isAttemptRunning, hasSetupScript]);
+  }, [selectedAttemptId, isAttemptRunning]);
 
   const handleRunCleanupScript = useCallback(async () => {
-    if (!selectedAttemptId || isAttemptRunning || !hasCleanupScript) return;
+    if (!selectedAttemptId || isAttemptRunning) return;
     try {
       await attemptsApi.runCleanupScript(selectedAttemptId);
     } catch (error) {
       console.error('Failed to run cleanup script:', error);
     }
-  }, [selectedAttemptId, isAttemptRunning, hasCleanupScript]);
+  }, [selectedAttemptId, isAttemptRunning]);
 
   // Handler to queue the current message for execution after agent finishes
   const handleQueueMessage = useCallback(async () => {
@@ -830,44 +827,12 @@ export function TaskFollowUpSection({
                 </Tooltip>
               </TooltipProvider>
               <DropdownMenuContent align="end">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span>
-                        <DropdownMenuItem
-                          disabled={!hasSetupScript}
-                          onClick={handleRunSetupScript}
-                        >
-                          {t('followUp.runSetupScript')}
-                        </DropdownMenuItem>
-                      </span>
-                    </TooltipTrigger>
-                    {!hasSetupScript && (
-                      <TooltipContent side="left">
-                        {t('followUp.noSetupScript')}
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
-                </TooltipProvider>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span>
-                        <DropdownMenuItem
-                          disabled={!hasCleanupScript}
-                          onClick={handleRunCleanupScript}
-                        >
-                          {t('followUp.runCleanupScript')}
-                        </DropdownMenuItem>
-                      </span>
-                    </TooltipTrigger>
-                    {!hasCleanupScript && (
-                      <TooltipContent side="left">
-                        {t('followUp.noCleanupScript')}
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
-                </TooltipProvider>
+                <DropdownMenuItem onClick={handleRunSetupScript}>
+                  {t('followUp.runSetupScript')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleRunCleanupScript}>
+                  {t('followUp.runCleanupScript')}
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           )}

@@ -19,6 +19,8 @@ use db::{
             CreateExecutionProcessRepoState, ExecutionProcessRepoState,
         },
         executor_session::{CreateExecutorSession, ExecutorSession},
+        project::{Project, UpdateProject},
+        project_repo::{ProjectRepo, ProjectRepoWithName},
         repo::Repo,
         task::{Task, TaskStatus},
         task_attempt::{TaskAttempt, TaskAttemptError},
@@ -344,6 +346,7 @@ pub trait ContainerService {
     }
 
     /// Backfill repo names that were migrated with a sentinel placeholder.
+    /// Also backfills dev_script for single-repo projects to prepend cd prefix.
     async fn backfill_repo_names(&self) -> Result<(), ContainerError> {
         let pool = &self.db().pool;
         let repos = Repo::list_needing_name_fix(pool).await?;
@@ -363,22 +366,137 @@ pub trait ContainerService {
                 .to_string();
 
             Repo::update_name(pool, repo.id, &name, &name).await?;
+
+            // Also update dev_script for single-repo projects
+            let project_repos = ProjectRepo::find_by_repo_id(pool, repo.id).await?;
+            for pr in project_repos {
+                let all_repos = ProjectRepo::find_by_project_id(pool, pr.project_id).await?;
+                if all_repos.len() == 1
+                    && let Some(project) = Project::find_by_id(pool, pr.project_id).await?
+                    && let Some(old_script) = &project.dev_script
+                    && !old_script.is_empty()
+                {
+                    let new_script = format!("cd ./{} && {}", name, old_script);
+                    Project::update(
+                        pool,
+                        pr.project_id,
+                        &UpdateProject {
+                            name: None,
+                            dev_script: Some(new_script),
+                        },
+                    )
+                    .await?;
+                }
+            }
         }
 
         Ok(())
     }
 
-    fn cleanup_action(&self, cleanup_script: Option<String>) -> Option<Box<ExecutorAction>> {
-        cleanup_script.map(|script| {
-            Box::new(ExecutorAction::new(
+    fn cleanup_actions_for_repos(&self, repos: &[ProjectRepoWithName]) -> Option<ExecutorAction> {
+        let repos_with_cleanup: Vec<_> = repos
+            .iter()
+            .filter(|r| r.cleanup_script.is_some())
+            .collect();
+
+        if repos_with_cleanup.is_empty() {
+            return None;
+        }
+
+        let mut iter = repos_with_cleanup.iter();
+        let first = iter.next()?;
+        let mut root_action = ExecutorAction::new(
+            ExecutorActionType::ScriptRequest(ScriptRequest {
+                script: first.cleanup_script.clone().unwrap(),
+                language: ScriptRequestLanguage::Bash,
+                context: ScriptContext::CleanupScript,
+                working_dir: Some(first.repo_name.clone()),
+            }),
+            None,
+        );
+
+        for repo in iter {
+            root_action = root_action.append_action(ExecutorAction::new(
                 ExecutorActionType::ScriptRequest(ScriptRequest {
-                    script,
+                    script: repo.cleanup_script.clone().unwrap(),
                     language: ScriptRequestLanguage::Bash,
                     context: ScriptContext::CleanupScript,
+                    working_dir: Some(repo.repo_name.clone()),
                 }),
                 None,
-            ))
+            ));
+        }
+
+        Some(root_action)
+    }
+
+    fn setup_actions_for_repos(&self, repos: &[ProjectRepoWithName]) -> Option<ExecutorAction> {
+        let repos_with_setup: Vec<_> = repos.iter().filter(|r| r.setup_script.is_some()).collect();
+
+        if repos_with_setup.is_empty() {
+            return None;
+        }
+
+        let mut iter = repos_with_setup.iter();
+        let first = iter.next()?;
+        let mut root_action = ExecutorAction::new(
+            ExecutorActionType::ScriptRequest(ScriptRequest {
+                script: first.setup_script.clone().unwrap(),
+                language: ScriptRequestLanguage::Bash,
+                context: ScriptContext::SetupScript,
+                working_dir: Some(first.repo_name.clone()),
+            }),
+            None,
+        );
+
+        for repo in iter {
+            root_action = root_action.append_action(ExecutorAction::new(
+                ExecutorActionType::ScriptRequest(ScriptRequest {
+                    script: repo.setup_script.clone().unwrap(),
+                    language: ScriptRequestLanguage::Bash,
+                    context: ScriptContext::SetupScript,
+                    working_dir: Some(repo.repo_name.clone()),
+                }),
+                None,
+            ));
+        }
+
+        Some(root_action)
+    }
+
+    fn setup_action_for_repo(repo: &ProjectRepoWithName) -> Option<ExecutorAction> {
+        repo.setup_script.as_ref().map(|script| {
+            ExecutorAction::new(
+                ExecutorActionType::ScriptRequest(ScriptRequest {
+                    script: script.clone(),
+                    language: ScriptRequestLanguage::Bash,
+                    context: ScriptContext::SetupScript,
+                    working_dir: Some(repo.repo_name.clone()),
+                }),
+                None,
+            )
         })
+    }
+
+    fn build_sequential_setup_chain(
+        repos: &[&ProjectRepoWithName],
+        next_action: ExecutorAction,
+    ) -> ExecutorAction {
+        let mut chained = next_action;
+        for repo in repos.iter().rev() {
+            if let Some(script) = &repo.setup_script {
+                chained = ExecutorAction::new(
+                    ExecutorActionType::ScriptRequest(ScriptRequest {
+                        script: script.clone(),
+                        language: ScriptRequestLanguage::Bash,
+                        context: ScriptContext::SetupScript,
+                        working_dir: Some(repo.repo_name.clone()),
+                    }),
+                    Some(Box::new(chained)),
+                );
+            }
+        }
+        chained
     }
 
     async fn try_stop(&self, task_attempt: &TaskAttempt, include_dev_server: bool) {
@@ -739,97 +857,65 @@ pub trait ContainerService {
             .await?
             .ok_or(SqlxError::RowNotFound)?;
 
-        // // Get latest version of task attempt
+        let project_repos =
+            ProjectRepo::find_by_project_id_with_names(&self.db().pool, project.id).await?;
+
         let task_attempt = TaskAttempt::find_by_id(&self.db().pool, task_attempt.id)
             .await?
             .ok_or(SqlxError::RowNotFound)?;
 
         let prompt = task.to_prompt();
 
-        let cleanup_action = self.cleanup_action(project.cleanup_script.clone());
+        let repos_with_setup: Vec<_> = project_repos
+            .iter()
+            .filter(|pr| pr.setup_script.is_some())
+            .collect();
 
-        // Choose whether to execute the setup_script or coding agent first
-        let execution_process = if let Some(setup_script) = project.setup_script {
-            if project.parallel_setup_script {
-                // PARALLEL EXECUTION: Start setup script and coding agent independently
-                // Setup script runs without next_action (it completes on its own)
-                let setup_action = ExecutorAction::new(
-                    ExecutorActionType::ScriptRequest(ScriptRequest {
-                        script: setup_script,
-                        language: ScriptRequestLanguage::Bash,
-                        context: ScriptContext::SetupScript,
-                    }),
-                    None, // No chaining - runs independently
-                );
+        let all_parallel = repos_with_setup.iter().all(|pr| pr.parallel_setup_script);
 
-                // Start setup script (ignore errors - coding agent will start regardless)
-                if let Err(e) = self
-                    .start_execution(
-                        &task_attempt,
-                        &setup_action,
-                        &ExecutionProcessRunReason::SetupScript,
-                    )
-                    .await
-                {
-                    tracing::warn!(?e, "Failed to start setup script in parallel mode");
+        let cleanup_action = self.cleanup_actions_for_repos(&project_repos);
+
+        let coding_action = ExecutorAction::new(
+            ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
+                prompt,
+                executor_profile_id: executor_profile_id.clone(),
+            }),
+            cleanup_action.map(Box::new),
+        );
+
+        let execution_process = if all_parallel {
+            // All parallel: start each setup independently, then start coding agent
+            for repo in &repos_with_setup {
+                if let Some(action) = Self::setup_action_for_repo(repo) {
+                    if let Err(e) = self
+                        .start_execution(
+                            &task_attempt,
+                            &action,
+                            &ExecutionProcessRunReason::SetupScript,
+                        )
+                        .await
+                    {
+                        tracing::warn!(?e, "Failed to start setup script in parallel mode");
+                    }
                 }
-
-                // Start coding agent independently with cleanup as next_action
-                let coding_action = ExecutorAction::new(
-                    ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
-                        prompt,
-                        executor_profile_id: executor_profile_id.clone(),
-                    }),
-                    cleanup_action,
-                );
-
-                self.start_execution(
-                    &task_attempt,
-                    &coding_action,
-                    &ExecutionProcessRunReason::CodingAgent,
-                )
-                .await?
-            } else {
-                // SEQUENTIAL EXECUTION: Setup script runs first, then coding agent
-                let executor_action = ExecutorAction::new(
-                    ExecutorActionType::ScriptRequest(ScriptRequest {
-                        script: setup_script,
-                        language: ScriptRequestLanguage::Bash,
-                        context: ScriptContext::SetupScript,
-                    }),
-                    // once the setup script is done, run the initial coding agent request
-                    Some(Box::new(ExecutorAction::new(
-                        ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
-                            prompt,
-                            executor_profile_id: executor_profile_id.clone(),
-                        }),
-                        cleanup_action,
-                    ))),
-                );
-
-                self.start_execution(
-                    &task_attempt,
-                    &executor_action,
-                    &ExecutionProcessRunReason::SetupScript,
-                )
-                .await?
             }
-        } else {
-            let executor_action = ExecutorAction::new(
-                ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
-                    prompt,
-                    executor_profile_id: executor_profile_id.clone(),
-                }),
-                cleanup_action,
-            );
-
             self.start_execution(
                 &task_attempt,
-                &executor_action,
+                &coding_action,
                 &ExecutionProcessRunReason::CodingAgent,
             )
             .await?
+        } else {
+            // Any sequential: chain ALL setups → coding agent via next_action
+            let main_action = Self::build_sequential_setup_chain(&repos_with_setup, coding_action);
+            self.start_execution(
+                &task_attempt,
+                &main_action,
+                &ExecutionProcessRunReason::SetupScript,
+            )
+            .await?
         };
+
         Ok(execution_process)
     }
 

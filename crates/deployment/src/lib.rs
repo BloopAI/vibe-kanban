@@ -172,11 +172,6 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                             display_name: repo.name,
                             git_repo_path: repo_path.clone(),
                         }],
-                        setup_script: None,
-                        dev_script: None,
-                        cleanup_script: None,
-                        copy_files: None,
-                        parallel_setup_script: None,
                     };
 
                     match self
@@ -197,8 +192,6 @@ pub trait Deployment: Clone + Send + Sync + 'static {
                                 serde_json::json!({
                                     "project_id": project.id.to_string(),
                                     "repository_count": 1,
-                                    "has_setup_script": create_data.setup_script.is_some(),
-                                    "has_dev_script": create_data.dev_script.is_some(),
                                     "trigger": "auto_setup",
                                 }),
                             )

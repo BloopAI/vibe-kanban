@@ -47,12 +47,6 @@ pub struct ProjectSummary {
     pub id: String,
     #[schemars(description = "The name of the project")]
     pub name: String,
-    #[schemars(description = "Optional setup script for the project")]
-    pub setup_script: Option<String>,
-    #[schemars(description = "Optional cleanup script for the project")]
-    pub cleanup_script: Option<String>,
-    #[schemars(description = "Optional development script for the project")]
-    pub dev_script: Option<String>,
     #[schemars(description = "When the project was created")]
     pub created_at: String,
     #[schemars(description = "When the project was last updated")]
@@ -64,9 +58,6 @@ impl ProjectSummary {
         Self {
             id: project.id.to_string(),
             name: project.name,
-            setup_script: project.setup_script,
-            cleanup_script: project.cleanup_script,
-            dev_script: project.dev_script,
             created_at: project.created_at.to_rfc3339(),
             updated_at: project.updated_at.to_rfc3339(),
         }
