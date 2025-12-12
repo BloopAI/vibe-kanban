@@ -72,7 +72,6 @@ import {
   Invitation,
   RemoteProject,
   ListInvitationsResponse,
-  CommitCompareResult,
   OpenEditorResponse,
   OpenEditorRequest,
   CreatePrError,
@@ -736,21 +735,6 @@ export const attemptsApi = {
       `/api/task-attempts/${attemptId}/pr/comments?repo_id=${encodeURIComponent(repoId)}`
     );
     return handleApiResponse<PrCommentsResponse>(response);
-  },
-};
-
-// Extra helpers
-export const commitsApi = {
-  compareToHead: async (
-    attemptId: string,
-    sha: string
-  ): Promise<CommitCompareResult> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/commit-compare?sha=${encodeURIComponent(
-        sha
-      )}`
-    );
-    return handleApiResponse(response);
   },
 };
 
