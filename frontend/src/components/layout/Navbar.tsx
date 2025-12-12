@@ -1,7 +1,6 @@
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useCallback } from 'react';
 import { siDiscord } from 'simple-icons';
-import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -28,7 +27,7 @@ import { openTaskForm } from '@/lib/openTaskForm';
 import { useProject } from '@/contexts/ProjectContext';
 import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
 import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
-import { projectsApi } from '@/lib/api';
+import { useBranches } from '@/hooks/useBranches';
 import { useDiscordOnlineCount } from '@/hooks/useDiscordOnlineCount';
 import { useTranslation } from 'react-i18next';
 import { Switch } from '@/components/ui/switch';
@@ -81,12 +80,7 @@ export function Navbar() {
   const { data: onlineCount } = useDiscordOnlineCount();
   const { loginStatus, reloadSystem } = useUserSystem();
 
-  const { data: repos } = useQuery({
-    queryKey: ['project-repositories', projectId],
-    queryFn: () => projectsApi.getRepositories(projectId!),
-    enabled: !!projectId,
-  });
-
+  const { data: repos } = useBranches(projectId);
   const isSingleRepoProject = repos?.length === 1;
 
   const setSearchBarRef = useCallback(
