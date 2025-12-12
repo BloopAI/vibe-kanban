@@ -319,6 +319,7 @@
     "common": {
       "action": "리베이스",
       "inProgress": "리베이스 중...",
+      "completed": "리베이스 완료",
       "withTarget": "{{branch}}로 리베이스"
     },
     "dialog": {
