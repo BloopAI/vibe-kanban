@@ -65,8 +65,13 @@
 
     /* Accent (light) */
     --brand: 25 82% 54%;
+    --brand-hover: 25 75% 62%;
+    --brand-secondary: 25 82% 37%;
     --error: 0 84.2% 60.2%;
     --success: 142.1 76.2% 36.3%;
+
+    /* Text on accent */
+    --text-on-brand: 0 0% 5%;
   }
 
   /* Dark mode - handles both .new-design.dark and .dark .new-design */
@@ -113,8 +118,13 @@
 
     /* Accent (dark) */
     --brand: 25 82% 54%;
+    --brand-hover: 25 75% 62%;
+    --brand-secondary: 25 82% 37%;
     --error: 0 59% 57%;
     --success: 117 38% 50%;
+
+    /* Text on accent */
+    --text-on-brand: 0 0% 5%;
 
     /* Console (dark) */
     --_console-background: 0 0% 0%;

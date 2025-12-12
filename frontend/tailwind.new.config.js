@@ -81,6 +81,7 @@ module.exports = {
       spacing: {
         'half': getSize('base', 0.25),
         'base': getSize('base', 0.5),
+        'plusfifty': getSize('base', 0.75),
         'double': getSize('base', 1),
       },
       colors: {
@@ -94,8 +95,12 @@ module.exports = {
         panel: "hsl(var(--bg-panel))",
         // Accent colors
         brand: "hsl(var(--brand))",
+        'brand-hover': "hsl(var(--brand-hover))",
+        'brand-secondary': "hsl(var(--brand-secondary))",
         error: "hsl(var(--error))",
         success: "hsl(var(--success))",
+        // Text on accent
+        'on-brand': "hsl(var(--text-on-brand))",
         // shadcn-style colors (used by @apply in CSS base layer)
         background: "hsl(var(--bg-primary))",
         foreground: "hsl(var(--text-high))",
