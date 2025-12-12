@@ -385,8 +385,9 @@ pub trait ContainerService {
                 let all_repos = ProjectRepo::find_by_project_id(pool, pr.project_id).await?;
                 if all_repos.len() == 1 {
                     if let Some(project) = Project::find_by_id(pool, pr.project_id).await? {
-                        let new_dev_script =
-                            project.dev_script.map(|s| format!("cd ./{} && {}", name, s));
+                        let new_dev_script = project
+                            .dev_script
+                            .map(|s| format!("cd ./{} && {}", name, s));
                         Project::update(
                             pool,
                             pr.project_id,
