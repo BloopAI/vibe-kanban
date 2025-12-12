@@ -30,7 +30,7 @@ import BranchSelector from '@/components/tasks/BranchSelector';
 import { ExecutorProfileSelector } from '@/components/settings';
 import { useUserSystem } from '@/components/ConfigProvider';
 import {
-  useProjectBranches,
+  useBranches,
   useTaskImages,
   useImageUpload,
   useTaskMutations,
@@ -101,7 +101,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const forceCreateOnlyRef = useRef(false);
 
   const { data: repoBranches, isLoading: branchesLoading } =
-    useProjectBranches(projectId);
+    useBranches(projectId);
   const branches = useMemo(
     () => repoBranches?.flatMap((r) => r.branches) ?? [],
     [repoBranches]
