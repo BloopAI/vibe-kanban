@@ -346,11 +346,15 @@ pub trait ContainerService {
     }
 
     async fn try_stop(&self, task_attempt: &TaskAttempt) {
-        // stop all execution processes for this attempt
+        // stop all execution processes for this attempt (except dev server)
         if let Ok(processes) =
             ExecutionProcess::find_by_task_attempt_id(&self.db().pool, task_attempt.id, false).await
         {
             for process in processes {
+                // Skip dev server processes - they should keep running
+                if process.run_reason == ExecutionProcessRunReason::DevServer {
+                    continue;
+                }
                 if process.status == ExecutionProcessStatus::Running {
                     self.stop_execution(&process, ExecutionProcessStatus::Killed)
                         .await
