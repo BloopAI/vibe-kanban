@@ -382,10 +382,7 @@ pub trait ContainerService {
 
     /// Build cleanup actions from project repos with cleanup scripts.
     /// Chains each cleanup script as a separate ExecutorAction, each running in its repo's worktree.
-    fn cleanup_actions_for_repos(
-        &self,
-        repos: &[ProjectRepoWithName],
-    ) -> Option<ExecutorAction> {
+    fn cleanup_actions_for_repos(&self, repos: &[ProjectRepoWithName]) -> Option<ExecutorAction> {
         let repos_with_cleanup: Vec<_> = repos
             .iter()
             .filter(|r| r.cleanup_script.is_some())
@@ -427,14 +424,8 @@ pub trait ContainerService {
 
     /// Build setup actions from project repos with setup scripts.
     /// Chains each setup script as a separate ExecutorAction, each running in its repo's worktree.
-    fn setup_actions_for_repos(
-        &self,
-        repos: &[ProjectRepoWithName],
-    ) -> Option<ExecutorAction> {
-        let repos_with_setup: Vec<_> = repos
-            .iter()
-            .filter(|r| r.setup_script.is_some())
-            .collect();
+    fn setup_actions_for_repos(&self, repos: &[ProjectRepoWithName]) -> Option<ExecutorAction> {
+        let repos_with_setup: Vec<_> = repos.iter().filter(|r| r.setup_script.is_some()).collect();
 
         if repos_with_setup.is_empty() {
             return None;

@@ -1431,7 +1431,10 @@ pub async fn run_setup_script(
     // Get project repos and build setup actions
     let project_repos =
         ProjectRepo::find_by_project_id_with_names(&deployment.db().pool, project.id).await?;
-    let executor_action = match deployment.container().setup_actions_for_repos(&project_repos) {
+    let executor_action = match deployment
+        .container()
+        .setup_actions_for_repos(&project_repos)
+    {
         Some(action) => action,
         None => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
@@ -1499,7 +1502,10 @@ pub async fn run_cleanup_script(
     // Get project repos and build cleanup actions
     let project_repos =
         ProjectRepo::find_by_project_id_with_names(&deployment.db().pool, project.id).await?;
-    let executor_action = match deployment.container().cleanup_actions_for_repos(&project_repos) {
+    let executor_action = match deployment
+        .container()
+        .cleanup_actions_for_repos(&project_repos)
+    {
         Some(action) => action,
         None => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
