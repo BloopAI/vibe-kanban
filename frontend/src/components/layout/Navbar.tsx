@@ -27,6 +27,7 @@ import { openTaskForm } from '@/lib/openTaskForm';
 import { useProject } from '@/contexts/ProjectContext';
 import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
 import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
+import { useBranches } from '@/hooks/useBranches';
 import { useDiscordOnlineCount } from '@/hooks/useDiscordOnlineCount';
 import { useTranslation } from 'react-i18next';
 import { Switch } from '@/components/ui/switch';
@@ -78,6 +79,9 @@ export function Navbar() {
   const handleOpenInEditor = useOpenProjectInEditor(project || null);
   const { data: onlineCount } = useDiscordOnlineCount();
   const { loginStatus, reloadSystem } = useUserSystem();
+
+  const { data: repos } = useBranches(projectId);
+  const isSingleRepoProject = repos?.length === 1;
 
   const setSearchBarRef = useCallback(
     (node: HTMLInputElement | null) => {
@@ -209,10 +213,12 @@ export function Navbar() {
             {projectId ? (
               <>
                 <div className="flex items-center gap-1">
-                  <OpenInIdeButton
-                    onClick={handleOpenInIDE}
-                    className="h-9 w-9"
-                  />
+                  {isSingleRepoProject && (
+                    <OpenInIdeButton
+                      onClick={handleOpenInIDE}
+                      className="h-9 w-9"
+                    />
+                  )}
                   <Button
                     variant="ghost"
                     size="icon"
