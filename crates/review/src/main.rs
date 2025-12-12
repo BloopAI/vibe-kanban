@@ -21,9 +21,19 @@ const DEFAULT_API_URL: &str = "https://api.dev.vibekanban.com";
 const POLL_INTERVAL: Duration = Duration::from_secs(10);
 const TIMEOUT: Duration = Duration::from_secs(600); // 10 minutes
 
+const BANNER: &str = r#"
+__     _____ ____  _____      _  __    _    _   _ ____    _    _   _
+\ \   / /_ _| __ )| ____|    | |/ /   / \  | \ | | __ )  / \  | \ | |
+ \ \ / / | ||  _ \|  _| _____| ' /   / _ \ |  \| |  _ \ / _ \ |  \| |
+  \ V /  | || |_) | |__|_____| . \  / ___ \| |\  | |_) / ___ \| |\  |
+   \_/  |___|____/|_____|    |_|\_\/_/   \_\_| \_|____/_/   \_\_| \_|
+"#;
+
 #[derive(Parser, Debug)]
 #[command(name = "review")]
-#[command(about = "Review GitHub PRs using Vibe Kanban")]
+#[command(
+    about = "Vibe-Kanban Review helps you review GitHub pull requests by turning them into a clear, story-driven summary instead of a wall of diffs. You provide a pull request URL, optionally link a Claude Code project for additional context, and it builds a narrative that highlights key events and important decisions, helping you prioritise what actually needs attention. It's particularly useful when reviewing large amounts of AI-generated code. Note that code is uploaded to and processed on Vibe-Kanban servers using AI."
+)]
 #[command(version)]
 struct Args {
     /// GitHub PR URL (e.g., https://github.com/owner/repo/pull/123)
@@ -61,6 +71,8 @@ async fn main() -> Result<()> {
         EnvFilter::new("warn")
     };
     tracing_subscriber::fmt().with_env_filter(filter).init();
+
+    println!("{}", BANNER);
 
     debug!("Args: {:?}", args);
 
