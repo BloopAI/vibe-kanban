@@ -407,7 +407,7 @@ pub trait ContainerService {
     fn cleanup_actions_for_repos(&self, repos: &[ProjectRepoWithName]) -> Option<ExecutorAction> {
         let repos_with_cleanup: Vec<_> = repos
             .iter()
-            .filter(|r| r.project_repo.cleanup_script.is_some())
+            .filter(|r| r.cleanup_script.is_some())
             .collect();
 
         if repos_with_cleanup.is_empty() {
@@ -418,7 +418,7 @@ pub trait ContainerService {
         let first = iter.next()?;
         let mut root_action = ExecutorAction::new(
             ExecutorActionType::ScriptRequest(ScriptRequest {
-                script: first.project_repo.cleanup_script.clone().unwrap(),
+                script: first.cleanup_script.clone().unwrap(),
                 language: ScriptRequestLanguage::Bash,
                 context: ScriptContext::CleanupScript,
                 working_dir: Some(first.repo_name.clone()),
@@ -429,7 +429,7 @@ pub trait ContainerService {
         for repo in iter {
             root_action = root_action.append_action(ExecutorAction::new(
                 ExecutorActionType::ScriptRequest(ScriptRequest {
-                    script: repo.project_repo.cleanup_script.clone().unwrap(),
+                    script: repo.cleanup_script.clone().unwrap(),
                     language: ScriptRequestLanguage::Bash,
                     context: ScriptContext::CleanupScript,
                     working_dir: Some(repo.repo_name.clone()),
@@ -444,7 +444,7 @@ pub trait ContainerService {
     fn setup_actions_for_repos(&self, repos: &[ProjectRepoWithName]) -> Option<ExecutorAction> {
         let repos_with_setup: Vec<_> = repos
             .iter()
-            .filter(|r| r.project_repo.setup_script.is_some())
+            .filter(|r| r.setup_script.is_some())
             .collect();
 
         if repos_with_setup.is_empty() {
@@ -455,7 +455,7 @@ pub trait ContainerService {
         let first = iter.next()?;
         let mut root_action = ExecutorAction::new(
             ExecutorActionType::ScriptRequest(ScriptRequest {
-                script: first.project_repo.setup_script.clone().unwrap(),
+                script: first.setup_script.clone().unwrap(),
                 language: ScriptRequestLanguage::Bash,
                 context: ScriptContext::SetupScript,
                 working_dir: Some(first.repo_name.clone()),
@@ -466,7 +466,7 @@ pub trait ContainerService {
         for repo in iter {
             root_action = root_action.append_action(ExecutorAction::new(
                 ExecutorActionType::ScriptRequest(ScriptRequest {
-                    script: repo.project_repo.setup_script.clone().unwrap(),
+                    script: repo.setup_script.clone().unwrap(),
                     language: ScriptRequestLanguage::Bash,
                     context: ScriptContext::SetupScript,
                     working_dir: Some(repo.repo_name.clone()),
@@ -479,7 +479,7 @@ pub trait ContainerService {
     }
 
     fn setup_action_for_repo(repo: &ProjectRepoWithName) -> Option<ExecutorAction> {
-        repo.project_repo.setup_script.as_ref().map(|script| {
+        repo.setup_script.as_ref().map(|script| {
             ExecutorAction::new(
                 ExecutorActionType::ScriptRequest(ScriptRequest {
                     script: script.clone(),
@@ -498,7 +498,7 @@ pub trait ContainerService {
     ) -> ExecutorAction {
         let mut chained = next_action;
         for repo in repos.iter().rev() {
-            if let Some(script) = &repo.project_repo.setup_script {
+            if let Some(script) = &repo.setup_script {
                 chained = ExecutorAction::new(
                     ExecutorActionType::ScriptRequest(ScriptRequest {
                         script: script.clone(),
@@ -877,12 +877,12 @@ pub trait ContainerService {
 
         let repos_with_setup: Vec<_> = project_repos
             .iter()
-            .filter(|pr| pr.project_repo.setup_script.is_some())
+            .filter(|pr| pr.setup_script.is_some())
             .collect();
 
         let all_parallel = repos_with_setup
             .iter()
-            .all(|pr| pr.project_repo.parallel_setup_script);
+            .all(|pr| pr.parallel_setup_script);
 
         let cleanup_action = self.cleanup_actions_for_repos(&project_repos);
 

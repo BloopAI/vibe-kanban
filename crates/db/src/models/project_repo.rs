@@ -33,9 +33,14 @@ pub struct ProjectRepo {
 /// ProjectRepo with the associated repo name (for script execution in worktrees)
 #[derive(Debug, Clone, FromRow)]
 pub struct ProjectRepoWithName {
-    #[sqlx(flatten)]
-    pub project_repo: ProjectRepo,
+    pub id: Uuid,
+    pub project_id: Uuid,
+    pub repo_id: Uuid,
     pub repo_name: String,
+    pub setup_script: Option<String>,
+    pub cleanup_script: Option<String>,
+    pub copy_files: Option<String>,
+    pub parallel_setup_script: bool,
 }
 
 #[derive(Debug, Clone, Deserialize, TS)]
@@ -100,21 +105,22 @@ impl ProjectRepo {
         pool: &SqlitePool,
         project_id: Uuid,
     ) -> Result<Vec<ProjectRepoWithName>, sqlx::Error> {
-        sqlx::query_as::<_, ProjectRepoWithName>(
-            r#"SELECT pr.id,
-                      pr.project_id,
-                      pr.repo_id,
+        sqlx::query_as!(
+            ProjectRepoWithName,
+            r#"SELECT pr.id as "id!: Uuid",
+                      pr.project_id as "project_id!: Uuid",
+                      pr.repo_id as "repo_id!: Uuid",
+                      r.name as "repo_name!",
                       pr.setup_script,
                       pr.cleanup_script,
                       pr.copy_files,
-                      pr.parallel_setup_script,
-                      r.name as repo_name
+                      pr.parallel_setup_script as "parallel_setup_script!: bool"
                FROM project_repos pr
                JOIN repos r ON r.id = pr.repo_id
                WHERE pr.project_id = $1
                ORDER BY r.display_name ASC"#,
+            project_id
         )
-        .bind(project_id)
         .fetch_all(pool)
         .await
     }
