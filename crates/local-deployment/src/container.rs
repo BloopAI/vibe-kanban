@@ -972,14 +972,18 @@ impl ContainerService for LocalContainerService {
 
         let approvals_service: Arc<dyn ExecutorApprovalService> =
             match executor_action.base_executor() {
-                Some(BaseCodingAgent::Codex) | Some(BaseCodingAgent::ClaudeCode) => {
-                    ExecutorApprovalBridge::new(
-                        self.approvals.clone(),
-                        self.db.clone(),
-                        self.notification_service.clone(),
-                        execution_process.id,
-                    )
-                }
+                Some(
+                    BaseCodingAgent::Codex
+                    | BaseCodingAgent::ClaudeCode
+                    | BaseCodingAgent::Gemini
+                    | BaseCodingAgent::QwenCode
+                    | BaseCodingAgent::Opencode,
+                ) => ExecutorApprovalBridge::new(
+                    self.approvals.clone(),
+                    self.db.clone(),
+                    self.notification_service.clone(),
+                    execution_process.id,
+                ),
                 _ => Arc::new(NoopExecutorApprovalService {}),
             };
 

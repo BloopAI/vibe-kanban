@@ -1,12 +1,14 @@
 use std::{path::Path, sync::Arc};
 
 use async_trait::async_trait;
+use derivative::Derivative;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use workspace_utils::msg_store::MsgStore;
 
 use crate::{
+    approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuilder, apply_overrides},
     env::ExecutionEnv,
     executors::{
@@ -15,7 +17,8 @@ use crate::{
     },
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
+#[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
+#[derivative(Debug, PartialEq)]
 pub struct QwenCode {
     #[serde(default)]
     pub append_prompt: AppendPrompt,
@@ -23,6 +26,10 @@ pub struct QwenCode {
     pub yolo: Option<bool>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
+    #[serde(skip)]
+    #[ts(skip)]
+    #[derivative(Debug = "ignore", PartialEq = "ignore")]
+    pub approvals: Option<Arc<dyn ExecutorApprovalService>>,
 }
 
 impl QwenCode {
@@ -39,6 +46,10 @@ impl QwenCode {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for QwenCode {
+    fn use_approvals(&mut self, approvals: Arc<dyn ExecutorApprovalService>) {
+        self.approvals = Some(approvals);
+    }
+
     async fn spawn(
         &self,
         current_dir: &Path,
@@ -48,8 +59,20 @@ impl StandardCodingAgentExecutor for QwenCode {
         let qwen_command = self.build_command_builder().build_initial()?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let harness = AcpAgentHarness::with_session_namespace("qwen_sessions");
+        let approvals = if self.yolo.unwrap_or(false) {
+            None
+        } else {
+            self.approvals.clone()
+        };
         harness
-            .spawn_with_command(current_dir, combined_prompt, qwen_command, env, &self.cmd)
+            .spawn_with_command(
+                current_dir,
+                combined_prompt,
+                qwen_command,
+                env,
+                &self.cmd,
+                approvals,
+            )
             .await
     }
 
@@ -63,6 +86,11 @@ impl StandardCodingAgentExecutor for QwenCode {
         let qwen_command = self.build_command_builder().build_follow_up(&[])?;
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
         let harness = AcpAgentHarness::with_session_namespace("qwen_sessions");
+        let approvals = if self.yolo.unwrap_or(false) {
+            None
+        } else {
+            self.approvals.clone()
+        };
         harness
             .spawn_follow_up_with_command(
                 current_dir,
@@ -71,6 +99,7 @@ impl StandardCodingAgentExecutor for QwenCode {
                 qwen_command,
                 env,
                 &self.cmd,
+                approvals,
             )
             .await
     }
