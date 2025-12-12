@@ -442,10 +442,7 @@ pub trait ContainerService {
     }
 
     fn setup_actions_for_repos(&self, repos: &[ProjectRepoWithName]) -> Option<ExecutorAction> {
-        let repos_with_setup: Vec<_> = repos
-            .iter()
-            .filter(|r| r.setup_script.is_some())
-            .collect();
+        let repos_with_setup: Vec<_> = repos.iter().filter(|r| r.setup_script.is_some()).collect();
 
         if repos_with_setup.is_empty() {
             return None;
@@ -880,9 +877,7 @@ pub trait ContainerService {
             .filter(|pr| pr.setup_script.is_some())
             .collect();
 
-        let all_parallel = repos_with_setup
-            .iter()
-            .all(|pr| pr.parallel_setup_script);
+        let all_parallel = repos_with_setup.iter().all(|pr| pr.parallel_setup_script);
 
         let cleanup_action = self.cleanup_actions_for_repos(&project_repos);
 
