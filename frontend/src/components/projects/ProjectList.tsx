@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
@@ -7,40 +7,22 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Project } from 'shared/types';
 import { ProjectFormDialog } from '@/components/dialogs/projects/ProjectFormDialog';
-import { projectsApi } from '@/lib/api';
 import { AlertCircle, Loader2, Plus } from 'lucide-react';
 import ProjectCard from '@/components/projects/ProjectCard.tsx';
 import { useKeyCreate, Scope } from '@/keyboard';
+import { useProjects } from '@/hooks/useProjects';
 
 export function ProjectList() {
   const navigate = useNavigate();
   const { t } = useTranslation('projects');
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { projects, isLoading, error: projectsError } = useProjects();
   const [error, setError] = useState('');
   const [focusedProjectId, setFocusedProjectId] = useState<string | null>(null);
-
-  const fetchProjects = useCallback(async () => {
-    setLoading(true);
-    setError('');
-
-    try {
-      const result = await projectsApi.getAll();
-      setProjects(result);
-    } catch (error) {
-      console.error('Failed to fetch projects:', error);
-      setError(t('errors.fetchFailed'));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
 
   const handleCreateProject = async () => {
     try {
       const result = await ProjectFormDialog.show({});
-      if (result === 'saved') {
-        fetchProjects();
-      }
+      if (result === 'saved') return;
     } catch (error) {
       // User cancelled - do nothing
     }
@@ -55,14 +37,15 @@ export function ProjectList() {
 
   // Set initial focus when projects are loaded
   useEffect(() => {
-    if (projects.length > 0 && !focusedProjectId) {
+    if (projects.length === 0) {
+      setFocusedProjectId(null);
+      return;
+    }
+
+    if (!focusedProjectId || !projects.some((p) => p.id === focusedProjectId)) {
       setFocusedProjectId(projects[0].id);
     }
   }, [projects, focusedProjectId]);
-
-  useEffect(() => {
-    fetchProjects();
-  }, [fetchProjects]);
 
   return (
     <div className="space-y-6 p-8 pb-16 md:pb-8 h-full overflow-auto">
@@ -77,14 +60,16 @@ export function ProjectList() {
         </Button>
       </div>
 
-      {error && (
+      {(error || projectsError) && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>
+            {error || projectsError?.message || t('errors.fetchFailed')}
+          </AlertDescription>
         </Alert>
       )}
 
-      {loading ? (
+      {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           {t('loading')}
@@ -114,7 +99,6 @@ export function ProjectList() {
               isFocused={focusedProjectId === project.id}
               setError={setError}
               onEdit={handleEditProject}
-              fetchProjects={fetchProjects}
             />
           ))}
         </div>

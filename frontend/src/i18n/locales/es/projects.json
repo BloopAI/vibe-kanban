@@ -5,7 +5,8 @@
   "linkToOrganization": "Vincular a Proyecto Remoto",
   "loading": "Cargando proyectos...",
   "errors": {
-    "fetchFailed": "Error al cargar proyectos"
+    "fetchFailed": "Error al cargar proyectos",
+    "deleteFailed": "Error al eliminar el proyecto"
   },
   "empty": {
     "title": "Aún no hay proyectos",
@@ -44,6 +45,7 @@
     }
   },
   "unlinkFromOrganization": "Desvincular de Proyecto Remoto",
+  "projectNotFound": "El proyecto que buscas no existe o ha sido eliminado.",
   "viewProject": "Ver Proyecto",
   "openInIDE": "Abrir en IDE",
   "createdDate": "Creado {{date}}",

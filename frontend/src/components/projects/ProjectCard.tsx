@@ -33,18 +33,11 @@ import { useProjectMutations } from '@/hooks/useProjectMutations';
 type Props = {
   project: Project;
   isFocused: boolean;
-  fetchProjects: () => void;
   setError: (error: string) => void;
   onEdit: (project: Project) => void;
 };
 
-function ProjectCard({
-  project,
-  isFocused,
-  fetchProjects,
-  setError,
-  onEdit,
-}: Props) {
+function ProjectCard({ project, isFocused, setError, onEdit }: Props) {
   const navigate = useNavigateWithSearch();
   const ref = useRef<HTMLDivElement>(null);
   const handleOpenInEditor = useOpenProjectInEditor(project);
@@ -54,9 +47,6 @@ function ProjectCard({
   const isSingleRepoProject = repos?.length === 1;
 
   const { unlinkProject } = useProjectMutations({
-    onUnlinkSuccess: () => {
-      fetchProjects();
-    },
     onUnlinkError: (error) => {
       console.error('Failed to unlink project:', error);
       setError('Failed to unlink project');
@@ -80,7 +70,6 @@ function ProjectCard({
 
     try {
       await projectsApi.delete(id);
-      fetchProjects();
     } catch (error) {
       console.error('Failed to delete project:', error);
       setError('Failed to delete project');

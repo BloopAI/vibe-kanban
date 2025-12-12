@@ -6,9 +6,8 @@ import {
   useEffect,
 } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { projectsApi } from '@/lib/api';
 import type { Project } from 'shared/types';
+import { useProjects } from '@/hooks/useProjects';
 
 interface ProjectContextValue {
   projectId: string | undefined;
@@ -33,32 +32,28 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
     return match ? match[1] : undefined;
   }, [location.pathname]);
 
-  const query = useQuery({
-    queryKey: ['project', projectId],
-    queryFn: () => projectsApi.getById(projectId!),
-    enabled: !!projectId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
+  const { projectsById, isLoading, error } = useProjects();
+  const project = projectId ? projectsById[projectId] : undefined;
 
   const value = useMemo(
     () => ({
       projectId,
-      project: query.data,
-      isLoading: query.isLoading,
-      error: query.error,
-      isError: query.isError,
+      project,
+      isLoading,
+      error,
+      isError: !!error,
     }),
-    [projectId, query.data, query.isLoading, query.error, query.isError]
+    [projectId, project, isLoading, error]
   );
 
   // Centralized page title management
   useEffect(() => {
-    if (query.data) {
-      document.title = `${query.data.name} | vibe-kanban`;
+    if (project) {
+      document.title = `${project.name} | vibe-kanban`;
     } else {
       document.title = 'vibe-kanban';
     }
-  }, [query.data]);
+  }, [project]);
 
   return (
     <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>

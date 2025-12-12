@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { useNavigateWithSearch } from '@/hooks';
 import {
@@ -10,8 +11,8 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Project } from 'shared/types';
 import { projectsApi } from '@/lib/api';
+import { useProjects } from '@/hooks/useProjects';
 import {
   AlertCircle,
   ArrowLeft,
@@ -29,26 +30,12 @@ interface ProjectDetailProps {
 }
 
 export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
+  const { t } = useTranslation('projects');
   const navigate = useNavigateWithSearch();
-  const [project, setProject] = useState<Project | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const { projectsById, isLoading, error: projectsError } = useProjects();
+  const [deleteError, setDeleteError] = useState('');
 
-  const fetchProject = useCallback(async () => {
-    setLoading(true);
-    setError('');
-
-    try {
-      const result = await projectsApi.getById(projectId);
-      setProject(result);
-    } catch (error) {
-      console.error('Failed to fetch project:', error);
-      // @ts-expect-error it is type ApiError
-      setError(error.message || 'Failed to load project');
-    }
-
-    setLoading(false);
-  }, [projectId]);
+  const project = projectsById[projectId] || null;
 
   const handleDelete = async () => {
     if (!project) return;
@@ -65,7 +52,8 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
     } catch (error) {
       console.error('Failed to delete project:', error);
       // @ts-expect-error it is type ApiError
-      setError(error.message || 'Failed to delete project');
+      setDeleteError(error.message || t('errors.deleteFailed'));
+      setTimeout(() => setDeleteError(''), 5000);
     }
   };
 
@@ -73,11 +61,7 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
     navigate(`/settings/projects?projectId=${projectId}`);
   };
 
-  useEffect(() => {
-    fetchProject();
-  }, [fetchProject]);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -86,7 +70,10 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
     );
   }
 
-  if (error || !project) {
+  if ((!project && !isLoading) || projectsError) {
+    const errorMsg = projectsError
+      ? projectsError.message
+      : t('projectNotFound');
     return (
       <div className="space-y-4 py-12 px-4">
         <Button variant="outline" onClick={onBack}>
@@ -99,10 +86,7 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
               <AlertCircle className="h-6 w-6 text-muted-foreground" />
             </div>
             <h3 className="mt-4 text-lg font-semibold">Project not found</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {error ||
-                "The project you're looking for doesn't exist or has been deleted."}
-            </p>
+            <p className="mt-2 text-sm text-muted-foreground">{errorMsg}</p>
             <Button className="mt-4" onClick={onBack}>
               Back to Projects
             </Button>
@@ -149,10 +133,10 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
         </div>
       </div>
 
-      {error && (
+      {deleteError && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>{deleteError}</AlertDescription>
         </Alert>
       )}
 

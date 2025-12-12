@@ -137,7 +137,8 @@ export function OrganizationSettings() {
   });
 
   // Fetch all local projects
-  const { data: allProjects = [], isLoading: loadingProjects } = useProjects();
+  const { projects: allProjects = [], isLoading: loadingProjects } =
+    useProjects();
 
   // Fetch remote projects for the selected organization
   const { data: remoteProjects = [], isLoading: loadingRemoteProjects } =

@@ -233,16 +233,6 @@ export const handleApiResponse = async <T, E = T>(
 
 // Project Management APIs
 export const projectsApi = {
-  getAll: async (): Promise<Project[]> => {
-    const response = await makeRequest('/api/projects');
-    return handleApiResponse<Project[]>(response);
-  },
-
-  getById: async (id: string): Promise<Project> => {
-    const response = await makeRequest(`/api/projects/${id}`);
-    return handleApiResponse<Project>(response);
-  },
-
   create: async (data: CreateProject): Promise<Project> => {
     const response = await makeRequest('/api/projects', {
       method: 'POST',
