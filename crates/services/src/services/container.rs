@@ -19,7 +19,7 @@ use db::{
             CreateExecutionProcessRepoState, ExecutionProcessRepoState,
         },
         executor_session::{CreateExecutorSession, ExecutorSession},
-        project_repo::ProjectRepo,
+        project_repo::{ProjectRepo, ProjectRepoWithName},
         repo::Repo,
         task::{Task, TaskStatus},
         task_attempt::{TaskAttempt, TaskAttemptError},
@@ -380,45 +380,87 @@ pub trait ContainerService {
         Ok(())
     }
 
-    /// Build cleanup actions from multiple repo cleanup scripts.
-    /// Chains each script as a separate ExecutorAction, each running in its repo's worktree.
-    /// Takes (repo_name, script) pairs where repo_name is used as the working_dir.
+    /// Build cleanup actions from project repos with cleanup scripts.
+    /// Chains each cleanup script as a separate ExecutorAction, each running in its repo's worktree.
     fn cleanup_actions_for_repos(
         &self,
-        repo_scripts: &[(String, String)],
+        repos: &[ProjectRepoWithName],
     ) -> Option<Box<ExecutorAction>> {
-        if repo_scripts.is_empty() {
+        let repos_with_cleanup: Vec<_> = repos
+            .iter()
+            .filter(|r| r.cleanup_script.is_some())
+            .collect();
+
+        if repos_with_cleanup.is_empty() {
             return None;
         }
 
-        let mut iter = repo_scripts.iter();
+        let mut iter = repos_with_cleanup.iter();
 
         // Create first action
-        let (first_repo, first_script) = iter.next()?;
+        let first = iter.next()?;
         let mut root_action = ExecutorAction::new(
             ExecutorActionType::ScriptRequest(ScriptRequest {
-                script: first_script.clone(),
+                script: first.cleanup_script.clone().unwrap(),
                 language: ScriptRequestLanguage::Bash,
                 context: ScriptContext::CleanupScript,
-                working_dir: Some(first_repo.clone()),
+                working_dir: Some(first.repo_name.clone()),
             }),
             None,
         );
 
         // Chain remaining scripts as next_action
-        for (repo_name, script) in iter {
+        for repo in iter {
             root_action = root_action.append_action(ExecutorAction::new(
                 ExecutorActionType::ScriptRequest(ScriptRequest {
-                    script: script.clone(),
+                    script: repo.cleanup_script.clone().unwrap(),
                     language: ScriptRequestLanguage::Bash,
                     context: ScriptContext::CleanupScript,
-                    working_dir: Some(repo_name.clone()),
+                    working_dir: Some(repo.repo_name.clone()),
                 }),
                 None,
             ));
         }
 
         Some(Box::new(root_action))
+    }
+
+    /// Build a setup script action for a single repo (for parallel execution)
+    fn setup_action_for_repo(repo: &ProjectRepoWithName) -> Option<ExecutorAction> {
+        repo.setup_script.as_ref().map(|script: &String| {
+            ExecutorAction::new(
+                ExecutorActionType::ScriptRequest(ScriptRequest {
+                    script: script.clone(),
+                    language: ScriptRequestLanguage::Bash,
+                    context: ScriptContext::SetupScript,
+                    working_dir: Some(repo.repo_name.clone()),
+                }),
+                None,
+            )
+        })
+    }
+
+    /// Build chained action: setup scripts → next_action (coding agent)
+    /// Used when any repo requires sequential setup
+    fn build_sequential_setup_chain(
+        repos: &[&ProjectRepoWithName],
+        next_action: ExecutorAction,
+    ) -> ExecutorAction {
+        let mut chained = next_action;
+        for repo in repos.iter().rev() {
+            if let Some(script) = &repo.setup_script {
+                chained = ExecutorAction::new(
+                    ExecutorActionType::ScriptRequest(ScriptRequest {
+                        script: script.clone(),
+                        language: ScriptRequestLanguage::Bash,
+                        context: ScriptContext::SetupScript,
+                        working_dir: Some(repo.repo_name.clone()),
+                    }),
+                    Some(Box::new(chained)),
+                );
+            }
+        }
+        chained
     }
 
     async fn try_stop(&self, task_attempt: &TaskAttempt) {
@@ -785,53 +827,19 @@ pub trait ContainerService {
 
         let prompt = task.to_prompt();
 
-        // Collect all cleanup scripts from project repos with their repo names
-        let cleanup_scripts: Vec<(String, String)> = project_repos
+        // Get repos with setup scripts
+        let repos_with_setup: Vec<_> = project_repos
             .iter()
-            .filter_map(|pr| {
-                pr.cleanup_script
-                    .clone()
-                    .map(|script| (pr.repo_name.clone(), script))
-            })
+            .filter(|pr| pr.setup_script.is_some())
             .collect();
-        let cleanup_action = self.cleanup_actions_for_repos(&cleanup_scripts);
 
-        // Collect sequential setup scripts for chaining
-        let mut sequential_setups: Vec<(String, String)> = vec![];
+        // If ANY repo requires sequential, run ALL setups sequentially
+        let all_parallel = repos_with_setup.iter().all(|pr| pr.parallel_setup_script);
 
-        // Start parallel setup scripts immediately (they run independently)
-        for project_repo in &project_repos {
-            if let Some(setup_script) = &project_repo.setup_script {
-                if project_repo.parallel_setup_script {
-                    // Parallel: runs independently alongside coding agent
-                    let setup_action = ExecutorAction::new(
-                        ExecutorActionType::ScriptRequest(ScriptRequest {
-                            script: setup_script.clone(),
-                            language: ScriptRequestLanguage::Bash,
-                            context: ScriptContext::SetupScript,
-                            working_dir: Some(project_repo.repo_name.clone()),
-                        }),
-                        None,
-                    );
+        // Build cleanup action from all repos
+        let cleanup_action = self.cleanup_actions_for_repos(&project_repos);
 
-                    if let Err(e) = self
-                        .start_execution(
-                            &task_attempt,
-                            &setup_action,
-                            &ExecutionProcessRunReason::SetupScript,
-                        )
-                        .await
-                    {
-                        tracing::warn!(?e, "Failed to start setup script in parallel mode");
-                    }
-                } else {
-                    // Sequential: collect for chaining via next_action
-                    sequential_setups.push((project_repo.repo_name.clone(), setup_script.clone()));
-                }
-            }
-        }
-
-        // Build the coding agent action (with cleanup as next_action)
+        // Build coding agent action (with cleanup as next_action)
         let coding_action = ExecutorAction::new(
             ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
                 prompt,
@@ -840,8 +848,22 @@ pub trait ContainerService {
             cleanup_action,
         );
 
-        let execution_process = if sequential_setups.is_empty() {
-            // No sequential scripts - start coding agent directly
+        let execution_process = if all_parallel {
+            // All parallel: start each setup independently, then start coding agent
+            for repo in &repos_with_setup {
+                if let Some(action) = Self::setup_action_for_repo(repo) {
+                    if let Err(e) = self
+                        .start_execution(
+                            &task_attempt,
+                            &action,
+                            &ExecutionProcessRunReason::SetupScript,
+                        )
+                        .await
+                    {
+                        tracing::warn!(?e, "Failed to start setup script in parallel mode");
+                    }
+                }
+            }
             self.start_execution(
                 &task_attempt,
                 &coding_action,
@@ -849,23 +871,11 @@ pub trait ContainerService {
             )
             .await?
         } else {
-            // Chain: setup1 → setup2 → ... → coding_agent → cleanup
-            // Build chain in reverse so first setup is the root action
-            let mut chained_action = coding_action;
-            for (repo_name, script) in sequential_setups.into_iter().rev() {
-                chained_action = ExecutorAction::new(
-                    ExecutorActionType::ScriptRequest(ScriptRequest {
-                        script,
-                        language: ScriptRequestLanguage::Bash,
-                        context: ScriptContext::SetupScript,
-                        working_dir: Some(repo_name),
-                    }),
-                    Some(Box::new(chained_action)),
-                );
-            }
+            // Any sequential: chain ALL setups → coding agent via next_action
+            let main_action = Self::build_sequential_setup_chain(&repos_with_setup, coding_action);
             self.start_execution(
                 &task_attempt,
-                &chained_action,
+                &main_action,
                 &ExecutionProcessRunReason::SetupScript,
             )
             .await?
