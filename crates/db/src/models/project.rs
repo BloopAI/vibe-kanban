@@ -36,11 +36,8 @@ pub struct CreateProject {
 }
 
 #[derive(Debug, Deserialize, TS)]
-#[ts(export)]
 pub struct UpdateProject {
-    #[ts(optional)]
     pub name: Option<String>,
-    #[ts(optional)]
     pub dev_script: Option<String>,
 }
 
@@ -173,7 +170,6 @@ impl Project {
         id: Uuid,
         payload: &UpdateProject,
     ) -> Result<Self, sqlx::Error> {
-        // First get the existing project to use as defaults
         let existing = Self::find_by_id(pool, id)
             .await?
             .ok_or(sqlx::Error::RowNotFound)?;

@@ -16,7 +16,7 @@ export type Project = { id: string, name: string, dev_script: string | null, rem
 
 export type CreateProject = { name: string, repositories: Array<CreateProjectRepo>, };
 
-export type UpdateProject = { name?: string, dev_script?: string, };
+export type UpdateProject = { name: string | null, dev_script: string | null, };
 
 export type SearchResult = { path: string, is_file: boolean, match_type: SearchMatchType, };
 

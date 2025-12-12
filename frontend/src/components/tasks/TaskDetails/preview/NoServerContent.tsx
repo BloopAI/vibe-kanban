@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import {
   Play,
   Edit3,
@@ -20,6 +20,7 @@ import {
 } from '@/utils/scriptPlaceholders';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useTaskMutations } from '@/hooks/useTaskMutations';
+import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { projectsApi } from '@/lib/api';
 import {
   COMPANION_INSTALL_TASK_TITLE,
@@ -44,14 +45,13 @@ export function NoServerContent({
   project,
 }: NoServerContentProps) {
   const { t } = useTranslation('tasks');
-  const queryClient = useQueryClient();
   const [devScriptInput, setDevScriptInput] = useState('');
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
   const [isEditingExistingScript, setIsEditingExistingScript] = useState(false);
   const { system, config } = useUserSystem();
 
   const { createAndStart } = useTaskMutations(project?.id);
+  const { updateProject } = useProjectMutations();
 
   const { data: projectRepos = [] } = useQuery({
     queryKey: ['projectRepositories', project?.id],
@@ -87,29 +87,20 @@ export function NoServerContent({
       return;
     }
 
-    setIsSaving(true);
-    try {
-      await projectsApi.update(project.id, {
-        dev_script: script,
-      });
-
-      // Invalidate queries to refresh the data
-      await queryClient.invalidateQueries({
-        queryKey: ['project', project.id],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ['projects'],
-      });
-
-      setIsEditingExistingScript(false);
-      if (startAfterSave) {
-        startDevServer();
+    updateProject.mutate(
+      { projectId: project.id, data: { name: null, dev_script: script } },
+      {
+        onSuccess: () => {
+          setIsEditingExistingScript(false);
+          if (startAfterSave) {
+            startDevServer();
+          }
+        },
+        onError: (err) => {
+          setSaveError((err as Error)?.message || 'Failed to save dev script');
+        },
       }
-    } catch (err) {
-      setSaveError((err as Error)?.message || 'Failed to save dev script');
-    } finally {
-      setIsSaving(false);
-    }
+    );
   };
 
   const handleEditExistingScript = () => {
@@ -217,7 +208,7 @@ export function NoServerContent({
                   value={devScriptInput}
                   onChange={(e) => setDevScriptInput(e.target.value)}
                   className="min-h-[120px] font-mono text-sm"
-                  disabled={isSaving}
+                  disabled={updateProject.isPending}
                 />
 
                 {saveError && (
@@ -232,7 +223,7 @@ export function NoServerContent({
                       <Button
                         size="sm"
                         onClick={() => handleSaveDevScript(false)}
-                        disabled={isSaving}
+                        disabled={updateProject.isPending}
                         className="gap-1"
                       >
                         <Save className="h-3 w-3" />
@@ -242,7 +233,7 @@ export function NoServerContent({
                         size="sm"
                         variant="outline"
                         onClick={handleCancelEdit}
-                        disabled={isSaving}
+                        disabled={updateProject.isPending}
                         className="gap-1"
                       >
                         <X className="h-3 w-3" />
@@ -254,7 +245,7 @@ export function NoServerContent({
                       <Button
                         size="sm"
                         onClick={() => handleSaveDevScript(true)}
-                        disabled={isSaving}
+                        disabled={updateProject.isPending}
                         className="gap-1"
                       >
                         <Play className="h-4 w-4" />
@@ -264,7 +255,7 @@ export function NoServerContent({
                         size="sm"
                         variant="outline"
                         onClick={() => handleSaveDevScript(false)}
-                        disabled={isSaving}
+                        disabled={updateProject.isPending}
                         className="gap-1"
                       >
                         <Save className="h-3 w-3" />

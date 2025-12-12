@@ -380,8 +380,6 @@ pub trait ContainerService {
         Ok(())
     }
 
-    /// Build cleanup actions from project repos with cleanup scripts.
-    /// Chains each cleanup script as a separate ExecutorAction, each running in its repo's worktree.
     fn cleanup_actions_for_repos(&self, repos: &[ProjectRepoWithName]) -> Option<ExecutorAction> {
         let repos_with_cleanup: Vec<_> = repos
             .iter()
@@ -393,8 +391,6 @@ pub trait ContainerService {
         }
 
         let mut iter = repos_with_cleanup.iter();
-
-        // Create first action
         let first = iter.next()?;
         let mut root_action = ExecutorAction::new(
             ExecutorActionType::ScriptRequest(ScriptRequest {
@@ -406,7 +402,6 @@ pub trait ContainerService {
             None,
         );
 
-        // Chain remaining scripts as next_action
         for repo in iter {
             root_action = root_action.append_action(ExecutorAction::new(
                 ExecutorActionType::ScriptRequest(ScriptRequest {
@@ -422,8 +417,6 @@ pub trait ContainerService {
         Some(root_action)
     }
 
-    /// Build setup actions from project repos with setup scripts.
-    /// Chains each setup script as a separate ExecutorAction, each running in its repo's worktree.
     fn setup_actions_for_repos(&self, repos: &[ProjectRepoWithName]) -> Option<ExecutorAction> {
         let repos_with_setup: Vec<_> = repos.iter().filter(|r| r.setup_script.is_some()).collect();
 
@@ -432,8 +425,6 @@ pub trait ContainerService {
         }
 
         let mut iter = repos_with_setup.iter();
-
-        // Create first action
         let first = iter.next()?;
         let mut root_action = ExecutorAction::new(
             ExecutorActionType::ScriptRequest(ScriptRequest {
@@ -445,7 +436,6 @@ pub trait ContainerService {
             None,
         );
 
-        // Chain remaining scripts as next_action
         for repo in iter {
             root_action = root_action.append_action(ExecutorAction::new(
                 ExecutorActionType::ScriptRequest(ScriptRequest {
@@ -461,7 +451,6 @@ pub trait ContainerService {
         Some(root_action)
     }
 
-    /// Build a setup script action for a single repo (for parallel execution)
     fn setup_action_for_repo(repo: &ProjectRepoWithName) -> Option<ExecutorAction> {
         repo.setup_script.as_ref().map(|script: &String| {
             ExecutorAction::new(
@@ -476,8 +465,6 @@ pub trait ContainerService {
         })
     }
 
-    /// Build chained action: setup scripts → next_action (coding agent)
-    /// Used when any repo requires sequential setup
     fn build_sequential_setup_chain(
         repos: &[&ProjectRepoWithName],
         next_action: ExecutorAction,
@@ -852,30 +839,24 @@ pub trait ContainerService {
             .await?
             .ok_or(SqlxError::RowNotFound)?;
 
-        // Get project repos with their scripts and repo names
         let project_repos =
             ProjectRepo::find_by_project_id_with_names(&self.db().pool, project.id).await?;
 
-        // // Get latest version of task attempt
         let task_attempt = TaskAttempt::find_by_id(&self.db().pool, task_attempt.id)
             .await?
             .ok_or(SqlxError::RowNotFound)?;
 
         let prompt = task.to_prompt();
 
-        // Get repos with setup scripts
         let repos_with_setup: Vec<_> = project_repos
             .iter()
             .filter(|pr| pr.setup_script.is_some())
             .collect();
 
-        // If ANY repo requires sequential, run ALL setups sequentially
         let all_parallel = repos_with_setup.iter().all(|pr| pr.parallel_setup_script);
 
-        // Build cleanup action from all repos
         let cleanup_action = self.cleanup_actions_for_repos(&project_repos);
 
-        // Build coding agent action (with cleanup as next_action)
         let coding_action = ExecutorAction::new(
             ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
                 prompt,

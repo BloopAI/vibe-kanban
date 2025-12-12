@@ -374,7 +374,7 @@ export function ProjectSettings() {
     try {
       const updateData: UpdateProject = {
         name: draft.name.trim(),
-        dev_script: draft.dev_script.trim() || undefined,
+        dev_script: draft.dev_script.trim() || null,
       };
 
       updateProject.mutate({

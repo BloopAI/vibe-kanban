@@ -20,7 +20,6 @@ pub enum ProjectRepoError {
 }
 
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct ProjectRepo {
     pub id: Uuid,
     pub project_id: Uuid,
@@ -80,8 +79,6 @@ impl ProjectRepo {
         .fetch_all(pool)
         .await
     }
-
-    /// Find project repos with their associated repo names (for script execution in worktrees)
     pub async fn find_by_project_id_with_names(
         pool: &SqlitePool,
         project_id: Uuid,
@@ -231,11 +228,9 @@ impl ProjectRepo {
         repo_id: Uuid,
         payload: &UpdateProjectRepo,
     ) -> Result<Self, ProjectRepoError> {
-        // First check if the project_repo exists
         let existing = Self::find_by_project_and_repo(pool, project_id, repo_id).await?;
         let existing = existing.ok_or(ProjectRepoError::NotFound)?;
 
-        // Use existing values as defaults for any None fields in payload
         let setup_script = payload.setup_script.clone().or(existing.setup_script);
         let cleanup_script = payload.cleanup_script.clone().or(existing.cleanup_script);
         let copy_files = payload.copy_files.clone().or(existing.copy_files);

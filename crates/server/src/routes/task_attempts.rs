@@ -315,7 +315,6 @@ pub async fn follow_up(
 
     let prompt = payload.prompt;
 
-    // Get project repos for cleanup scripts
     let project_repos = ProjectRepo::find_by_project_id_with_names(pool, project.id).await?;
     let cleanup_action = deployment
         .container()
@@ -1304,8 +1303,6 @@ pub async fn start_dev_server(
             )));
         }
     };
-
-    // Dev server runs at workspace level (no working_dir)
     let executor_action = ExecutorAction::new(
         ExecutorActionType::ScriptRequest(ScriptRequest {
             script: dev_script,
@@ -1427,8 +1424,6 @@ pub async fn run_setup_script(
         .parent_project(&deployment.db().pool)
         .await?
         .ok_or(SqlxError::RowNotFound)?;
-
-    // Get project repos and build setup actions
     let project_repos =
         ProjectRepo::find_by_project_id_with_names(&deployment.db().pool, project.id).await?;
     let executor_action = match deployment
@@ -1498,8 +1493,6 @@ pub async fn run_cleanup_script(
         .parent_project(&deployment.db().pool)
         .await?
         .ok_or(SqlxError::RowNotFound)?;
-
-    // Get project repos and build cleanup actions
     let project_repos =
         ProjectRepo::find_by_project_id_with_names(&deployment.db().pool, project.id).await?;
     let executor_action = match deployment

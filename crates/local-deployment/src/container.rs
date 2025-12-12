@@ -818,7 +818,6 @@ impl LocalContainerService {
         )
         .await?;
 
-        // Get project repos for cleanup scripts
         let project_repos =
             ProjectRepo::find_by_project_id_with_names(&self.db.pool, ctx.project.id).await?;
         let cleanup_action = self.cleanup_actions_for_repos(&project_repos);
@@ -935,12 +934,9 @@ impl ContainerService for LocalContainerService {
         )
         .await?;
 
-        // Get project repos with their copy_files configuration
         let project_repos = ProjectRepo::find_by_project_id(&self.db.pool, project.id).await?;
 
-        // Copy files per-repo based on their individual copy_files settings
         for worktree in &workspace.worktrees {
-            // Find the matching project_repo for this worktree
             if let Some(project_repo) = project_repos
                 .iter()
                 .find(|pr| pr.repo_id == worktree.repo_id)
