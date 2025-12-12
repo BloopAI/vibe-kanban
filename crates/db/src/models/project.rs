@@ -159,11 +159,7 @@ impl Project {
         .await
     }
 
-    pub async fn update(
-        pool: &SqlitePool,
-        id: Uuid,
-        name: String,
-    ) -> Result<Self, sqlx::Error> {
+    pub async fn update(pool: &SqlitePool, id: Uuid, name: String) -> Result<Self, sqlx::Error> {
         sqlx::query_as!(
             Project,
             r#"UPDATE projects

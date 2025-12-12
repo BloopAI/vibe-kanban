@@ -118,11 +118,15 @@ export function ProjectSettings() {
   // Check for unsaved script changes
   const hasUnsavedScriptsChanges = useMemo(() => {
     if (!scriptsDraft || !selectedProjectRepo) return false;
-    return !isEqual(scriptsDraft, projectRepoToScriptsFormState(selectedProjectRepo));
+    return !isEqual(
+      scriptsDraft,
+      projectRepoToScriptsFormState(selectedProjectRepo)
+    );
   }, [scriptsDraft, selectedProjectRepo]);
 
   // Combined check for any unsaved changes
-  const hasUnsavedChanges = hasUnsavedProjectChanges || hasUnsavedScriptsChanges;
+  const hasUnsavedChanges =
+    hasUnsavedProjectChanges || hasUnsavedScriptsChanges;
 
   // Handle project selection from dropdown
   const handleProjectSelect = useCallback(
@@ -285,7 +289,9 @@ export function ProjectSettings() {
       })
       .catch((err) => {
         setScriptsError(
-          err instanceof Error ? err.message : 'Failed to load repository scripts'
+          err instanceof Error
+            ? err.message
+            : 'Failed to load repository scripts'
         );
         setSelectedProjectRepo(null);
         setScriptsDraft(null);
@@ -793,13 +799,17 @@ export function ProjectSettings() {
                           <Button
                             variant="outline"
                             onClick={handleDiscardScripts}
-                            disabled={!hasUnsavedScriptsChanges || savingScripts}
+                            disabled={
+                              !hasUnsavedScriptsChanges || savingScripts
+                            }
                           >
                             {t('settings.projects.save.discard')}
                           </Button>
                           <Button
                             onClick={handleSaveScripts}
-                            disabled={!hasUnsavedScriptsChanges || savingScripts}
+                            disabled={
+                              !hasUnsavedScriptsChanges || savingScripts
+                            }
                           >
                             {savingScripts && (
                               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

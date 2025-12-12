@@ -1437,8 +1437,7 @@ pub async fn run_setup_script(
         .ok_or(SqlxError::RowNotFound)?;
 
     // Get setup scripts from project repos
-    let project_repos =
-        ProjectRepo::find_by_project_id(&deployment.db().pool, project.id).await?;
+    let project_repos = ProjectRepo::find_by_project_id(&deployment.db().pool, project.id).await?;
     let setup_scripts: Vec<String> = project_repos
         .iter()
         .filter_map(|pr| pr.setup_script.clone())
@@ -1520,8 +1519,7 @@ pub async fn run_cleanup_script(
         .ok_or(SqlxError::RowNotFound)?;
 
     // Get cleanup scripts from project repos
-    let project_repos =
-        ProjectRepo::find_by_project_id(&deployment.db().pool, project.id).await?;
+    let project_repos = ProjectRepo::find_by_project_id(&deployment.db().pool, project.id).await?;
     let cleanup_scripts: Vec<String> = project_repos
         .iter()
         .filter_map(|pr| pr.cleanup_script.clone())

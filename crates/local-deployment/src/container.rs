@@ -819,8 +819,7 @@ impl LocalContainerService {
         .await?;
 
         // Get cleanup scripts from project repos
-        let project_repos =
-            ProjectRepo::find_by_project_id(&self.db.pool, ctx.project.id).await?;
+        let project_repos = ProjectRepo::find_by_project_id(&self.db.pool, ctx.project.id).await?;
         let cleanup_scripts: Vec<String> = project_repos
             .iter()
             .filter_map(|pr| pr.cleanup_script.clone())
