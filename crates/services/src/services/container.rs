@@ -796,11 +796,14 @@ pub trait ContainerService {
             .collect();
         let cleanup_action = self.cleanup_actions_for_repos(&cleanup_scripts);
 
-        // Start setup scripts for all repos that have them (in parallel)
+        // Collect sequential setup scripts for chaining
+        let mut sequential_setups: Vec<(String, String)> = vec![];
+
+        // Start parallel setup scripts immediately (they run independently)
         for project_repo in &project_repos {
             if let Some(setup_script) = &project_repo.setup_script {
                 if project_repo.parallel_setup_script {
-                    // Setup script runs in parallel with coding agent (no next_action)
+                    // Parallel: runs independently alongside coding agent
                     let setup_action = ExecutorAction::new(
                         ExecutorActionType::ScriptRequest(ScriptRequest {
                             script: setup_script.clone(),
@@ -822,32 +825,13 @@ pub trait ContainerService {
                         tracing::warn!(?e, "Failed to start setup script in parallel mode");
                     }
                 } else {
-                    // Sequential setup script - starts before coding agent
-                    let setup_action = ExecutorAction::new(
-                        ExecutorActionType::ScriptRequest(ScriptRequest {
-                            script: setup_script.clone(),
-                            language: ScriptRequestLanguage::Bash,
-                            context: ScriptContext::SetupScript,
-                            working_dir: Some(project_repo.repo_name.clone()),
-                        }),
-                        None,
-                    );
-
-                    if let Err(e) = self
-                        .start_execution(
-                            &task_attempt,
-                            &setup_action,
-                            &ExecutionProcessRunReason::SetupScript,
-                        )
-                        .await
-                    {
-                        tracing::warn!(?e, "Failed to start setup script");
-                    }
+                    // Sequential: collect for chaining via next_action
+                    sequential_setups.push((project_repo.repo_name.clone(), setup_script.clone()));
                 }
             }
         }
 
-        // Start coding agent with cleanup as next_action
+        // Build the coding agent action (with cleanup as next_action)
         let coding_action = ExecutorAction::new(
             ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
                 prompt,
@@ -856,13 +840,36 @@ pub trait ContainerService {
             cleanup_action,
         );
 
-        let execution_process = self
-            .start_execution(
+        let execution_process = if sequential_setups.is_empty() {
+            // No sequential scripts - start coding agent directly
+            self.start_execution(
                 &task_attempt,
                 &coding_action,
                 &ExecutionProcessRunReason::CodingAgent,
             )
-            .await?;
+            .await?
+        } else {
+            // Chain: setup1 → setup2 → ... → coding_agent → cleanup
+            // Build chain in reverse so first setup is the root action
+            let mut chained_action = coding_action;
+            for (repo_name, script) in sequential_setups.into_iter().rev() {
+                chained_action = ExecutorAction::new(
+                    ExecutorActionType::ScriptRequest(ScriptRequest {
+                        script,
+                        language: ScriptRequestLanguage::Bash,
+                        context: ScriptContext::SetupScript,
+                        working_dir: Some(repo_name),
+                    }),
+                    Some(Box::new(chained_action)),
+                );
+            }
+            self.start_execution(
+                &task_attempt,
+                &chained_action,
+                &ExecutionProcessRunReason::SetupScript,
+            )
+            .await?
+        };
 
         Ok(execution_process)
     }
