@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -42,16 +43,21 @@ export function ProjectFormFields({
   setError,
   onCreateProject,
 }: ProjectFormFieldsProps) {
+  const { t } = useTranslation('projects');
+
   // Repository loading state
   const [allRepos, setAllRepos] = useState<DirectoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [reposError, setReposError] = useState('');
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [showRecentRepos, setShowRecentRepos] = useState(false);
+  const [loadingDuration, setLoadingDuration] = useState(0);
+  const [hasSearched, setHasSearched] = useState(false);
 
   const loadRecentRepos = useCallback(async () => {
     setLoading(true);
     setReposError('');
+    setLoadingDuration(0);
 
     try {
       const discoveredRepos = await fileSystemApi.listGitRepos();
@@ -61,15 +67,29 @@ export function ProjectFormFields({
       console.error('Failed to load repos:', err);
     } finally {
       setLoading(false);
+      setHasSearched(true);
     }
   }, []);
 
   // Lazy-load repositories when the user navigates to the repo list
   useEffect(() => {
-    if (showRecentRepos && !loading && allRepos.length === 0) {
+    if (showRecentRepos && !loading && allRepos.length === 0 && !hasSearched) {
       loadRecentRepos();
     }
-  }, [showRecentRepos, loading, allRepos.length, loadRecentRepos]);
+  }, [showRecentRepos, loading, allRepos.length, hasSearched, loadRecentRepos]);
+
+  // Track loading duration to show timeout message
+  useEffect(() => {
+    if (!loading) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setLoadingDuration((prev) => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [loading]);
 
   return (
     <>
@@ -193,9 +213,18 @@ export function ProjectFormFields({
                     <div className="flex items-center gap-3">
                       <div className="animate-spin h-5 w-5 border-2 border-muted-foreground border-t-transparent rounded-full"></div>
                       <div className="text-sm text-muted-foreground">
-                        Loading repositories...
+                        {loadingDuration < 2
+                          ? t('repoSearch.searching')
+                          : t('repoSearch.stillSearching', {
+                              seconds: loadingDuration,
+                            })}
                       </div>
                     </div>
+                    {loadingDuration >= 3 && (
+                      <div className="text-xs text-muted-foreground mt-2 ml-8">
+                        {t('repoSearch.takingLonger')}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -210,6 +239,26 @@ export function ProjectFormFields({
                     </div>
                   </div>
                 )}
+
+                {/* No repos found state */}
+                {!loading &&
+                  hasSearched &&
+                  allRepos.length === 0 &&
+                  !reposError && (
+                    <div className="p-4 border rounded-lg bg-card">
+                      <div className="flex items-start gap-3">
+                        <Folder className="h-5 w-5 mt-0.5 flex-shrink-0 text-muted-foreground" />
+                        <div>
+                          <div className="text-sm text-muted-foreground">
+                            {t('repoSearch.noReposFound')}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {t('repoSearch.browseHint')}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                 {/* Browse for repository card */}
                 <div
