@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useBranches } from './useBranches';
+import { projectKeys } from './useProjects';
 import { projectsApi } from '@/lib/api';
 import type { GitBranch, Repo, RepositoryBranches } from 'shared/types';
 
@@ -40,7 +41,7 @@ export function useRepoBranchSelection({
     useBranches(projectId, { enabled: enabled && !!projectId });
 
   const { data: projectRepos = [], isLoading: isLoadingRepos } = useQuery({
-    queryKey: ['projectRepositories', projectId],
+    queryKey: projectKeys.repositories(projectId),
     queryFn: () =>
       projectId ? projectsApi.getRepositories(projectId) : Promise.resolve([]),
     enabled: enabled && !!projectId,
