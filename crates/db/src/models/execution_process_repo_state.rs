@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, Sqlite, SqlitePool, Transaction};
+use sqlx::{FromRow, SqlitePool};
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -28,7 +28,7 @@ pub struct CreateExecutionProcessRepoState {
 
 impl ExecutionProcessRepoState {
     pub async fn create_many(
-        tx: &mut Transaction<'_, Sqlite>,
+        pool: &SqlitePool,
         execution_process_id: Uuid,
         entries: &[CreateExecutionProcessRepoState],
     ) -> Result<(), sqlx::Error> {
@@ -60,7 +60,7 @@ impl ExecutionProcessRepoState {
                 now,
                 now
             )
-            .execute(&mut **tx)
+            .execute(pool)
             .await?;
         }
 
