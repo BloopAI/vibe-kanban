@@ -304,8 +304,8 @@ pub async fn follow_up(
             );
         }
 
-        // Stop any running processes for this attempt
-        deployment.container().try_stop(&task_attempt).await;
+        // Stop any running processes for this attempt (except dev server)
+        deployment.container().try_stop(&task_attempt, false).await;
 
         // Soft-drop the target process and all later processes
         let _ = ExecutionProcess::drop_at_and_after(pool, task_attempt.id, proc_id).await?;
@@ -1237,7 +1237,7 @@ pub async fn stop_task_attempt_execution(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
-    deployment.container().try_stop(&task_attempt).await;
+    deployment.container().try_stop(&task_attempt, false).await;
 
     deployment
         .track_if_analytics_allowed(
