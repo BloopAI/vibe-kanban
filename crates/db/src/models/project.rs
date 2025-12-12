@@ -85,19 +85,25 @@ impl Project {
     pub async fn find_all(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             Project,
-            r#"SELECT id as "id!: Uuid",
-                      name,
-                      git_repo_path,
-                      setup_script,
-                      dev_script,
-                      cleanup_script,
-                      copy_files,
-                      parallel_setup_script as "parallel_setup_script!: bool",
-                      remote_project_id as "remote_project_id: Uuid",
-                      created_at as "created_at!: DateTime<Utc>",
-                      updated_at as "updated_at!: DateTime<Utc>"
-               FROM projects
-               ORDER BY created_at DESC"#
+            r#"SELECT p.id as "id!: Uuid",
+                      p.name,
+                      p.git_repo_path,
+                      p.setup_script,
+                      p.dev_script,
+                      p.cleanup_script,
+                      p.copy_files,
+                      p.parallel_setup_script as "parallel_setup_script!: bool",
+                      p.remote_project_id as "remote_project_id: Uuid",
+                      p.created_at as "created_at!: DateTime<Utc>",
+                      p.updated_at as "updated_at!: DateTime<Utc>"
+               FROM projects p
+               LEFT JOIN (
+                   SELECT t.project_id, MAX(ta.updated_at) as last_activity
+                   FROM tasks t
+                   INNER JOIN task_attempts ta ON ta.task_id = t.id
+                   GROUP BY t.project_id
+               ) activity ON activity.project_id = p.id
+               ORDER BY activity.last_activity DESC NULLS LAST, p.created_at DESC"#
         )
         .fetch_all(pool)
         .await
