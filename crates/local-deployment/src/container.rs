@@ -34,7 +34,7 @@ use executors::{
     env::ExecutionEnv,
     executors::{BaseCodingAgent, ExecutorExitResult, ExecutorExitSignal, InterruptSender},
     logs::{
-        NormalizedEntryType,
+        NormalizedEntry, NormalizedEntryType,
         utils::{
             ConversationPatch,
             patch::{escape_json_pointer_segment, extract_normalized_entry_from_patch},
@@ -782,6 +782,51 @@ impl LocalContainerService {
         )
         .await
     }
+
+    async fn process_env_vibe(
+        &self,
+        env_vibe_path: &Path,
+        worktree_path: &Path,
+        branch_name: &str,
+        attempt_id: Uuid,
+        port_range: (u16, u16),
+    ) -> Result<usize, ContainerError> {
+        let template_content = tokio::fs::read_to_string(env_vibe_path)
+            .await
+            .map_err(|e| ContainerError::Other(anyhow!("Failed to read .env.vibe: {e}")))?;
+
+        let used_ports = TaskAttempt::get_all_active_ports(&self.db.pool)
+            .await
+            .map_err(|e| ContainerError::Other(anyhow!("Failed to get active ports: {e}")))?;
+
+        let result = crate::env_vibe::process_env_vibe_template(
+            &template_content,
+            branch_name,
+            &used_ports,
+            port_range,
+        )
+        .map_err(|e| ContainerError::Other(anyhow!("Failed to process .env.vibe: {e}")))?;
+
+        // Write .env to worktree
+        let env_path = worktree_path.join(".env");
+        tokio::fs::write(&env_path, &result.processed_content)
+            .await
+            .map_err(|e| ContainerError::Other(anyhow!("Failed to write .env: {e}")))?;
+
+        // Store assigned ports in database if any were assigned
+        let port_count = result.assigned_ports.len();
+        if !result.assigned_ports.is_empty() {
+            let ports_json = serde_json::to_string(&result.assigned_ports)
+                .map_err(|e| ContainerError::Other(anyhow!("Failed to serialize ports: {e}")))?;
+            TaskAttempt::update_assigned_ports(&self.db.pool, attempt_id, &ports_json)
+                .await
+                .map_err(|e| {
+                    ContainerError::Other(anyhow!("Failed to update assigned_ports: {e}"))
+                })?;
+        }
+
+        Ok(port_count)
+    }
 }
 
 fn failure_exit_status() -> std::process::ExitStatus {
@@ -869,6 +914,31 @@ impl ContainerService for LocalContainerService {
             .await
         {
             tracing::warn!("Failed to copy task images to worktree: {}", e);
+        }
+
+        let env_vibe_path = project.git_repo_path.join(".env.vibe");
+        if env_vibe_path.exists() {
+            match self
+                .process_env_vibe(
+                    &env_vibe_path,
+                    &worktree_path,
+                    &task_attempt.branch,
+                    task_attempt.id,
+                    project.get_port_range(),
+                )
+                .await
+            {
+                Ok(port_count) => {
+                    tracing::info!(
+                        "Processed .env.vibe for task attempt {} ({} ports assigned)",
+                        task_attempt.id,
+                        port_count
+                    );
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to process .env.vibe: {}", e);
+                }
+            }
         }
 
         // Update both container_ref and branch in the database
@@ -1018,6 +1088,32 @@ impl ContainerService for LocalContainerService {
 
         self.track_child_msgs_in_store(execution_process.id, &mut spawned.child)
             .await;
+
+        // Inject system message for assigned ports from .env.vibe processing
+        if let Some(assigned_ports) = &task_attempt.assigned_ports {
+            if let Ok(ports) = serde_json::from_str::<std::collections::HashMap<String, u16>>(assigned_ports) {
+                if !ports.is_empty() {
+                    let port_list: Vec<String> = ports
+                        .iter()
+                        .map(|(name, port)| format!("  {name}={port}"))
+                        .collect();
+                    let message = format!(
+                        "Processed .env.vibe - assigned ports:\n{}",
+                        port_list.join("\n")
+                    );
+                    let entry = NormalizedEntry {
+                        timestamp: None,
+                        entry_type: NormalizedEntryType::SystemMessage,
+                        content: message,
+                        metadata: Some(json!({ "assigned_ports": ports })),
+                    };
+                    let patch = ConversationPatch::add_normalized_entry(0, entry);
+                    if let Some(store) = self.msg_stores.read().await.get(&execution_process.id) {
+                        store.push_patch(patch);
+                    }
+                }
+            }
+        }
 
         self.add_child_to_store(execution_process.id, spawned.child)
             .await;

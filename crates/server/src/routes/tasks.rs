@@ -14,7 +14,8 @@ use axum::{
 };
 use db::models::{
     image::TaskImage,
-    task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
+    project::Project,
+    task::{CreateTask, Task, TaskStatus, TaskWithAttemptStatus, UpdateTask},
     task_attempt::{CreateTaskAttempt, TaskAttempt},
 };
 use deployment::Deployment;
@@ -238,6 +239,7 @@ pub async fn update_task(
         Some(s) => Some(s),                     // Non-empty string = update description
         None => existing_task.description,      // Field omitted = keep existing
     };
+    let old_status = existing_task.status.clone();
     let status = payload.status.unwrap_or(existing_task.status);
     let parent_task_attempt = payload
         .parent_task_attempt
@@ -249,7 +251,7 @@ pub async fn update_task(
         existing_task.project_id,
         title,
         description,
-        status,
+        status.clone(),
         parent_task_attempt,
     )
     .await?;
@@ -257,6 +259,21 @@ pub async fn update_task(
     if let Some(image_ids) = &payload.image_ids {
         TaskImage::delete_by_task_id(&deployment.db().pool, task.id).await?;
         TaskImage::associate_many_dedup(&deployment.db().pool, task.id, image_ids).await?;
+    }
+
+    // Release assigned ports if task is moved to Done and project setting is enabled
+    if matches!(status, TaskStatus::Done)
+        && old_status != TaskStatus::Done
+        && let Ok(Some(project)) = Project::find_by_id(&deployment.db().pool, task.project_id).await
+        && project.should_release_ports_on_completion()
+        && let Ok(released) =
+            TaskAttempt::release_assigned_ports_for_task(&deployment.db().pool, task.id).await
+        && released > 0
+    {
+        tracing::info!(
+            "Released assigned ports for {} task attempt(s) on manual task completion",
+            released
+        );
     }
 
     // If task has been shared, broadcast update

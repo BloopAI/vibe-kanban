@@ -207,6 +207,9 @@ pub async fn create_project(
         copy_files,
         parallel_setup_script,
         use_existing_repo,
+        release_ports_on_completion,
+        port_range_start,
+        port_range_end,
     } = payload;
     tracing::debug!("Creating project '{}'", name);
 
@@ -294,6 +297,9 @@ pub async fn create_project(
             cleanup_script,
             copy_files,
             parallel_setup_script,
+            release_ports_on_completion,
+            port_range_start,
+            port_range_end,
         },
         id,
     )
@@ -336,6 +342,9 @@ pub async fn update_project(
         cleanup_script,
         copy_files,
         parallel_setup_script,
+        release_ports_on_completion,
+        port_range_start,
+        port_range_end,
     } = payload;
     // If git_repo_path is being changed, check if the new path is already used by another project
     let git_repo_path = if let Some(new_git_repo_path) = git_repo_path.map(|s| expand_tilde(&s))
@@ -373,6 +382,9 @@ pub async fn update_project(
         cleanup_script,
         copy_files,
         parallel_setup_script.unwrap_or(existing_project.parallel_setup_script),
+        release_ports_on_completion.or(existing_project.release_ports_on_completion),
+        port_range_start.or(existing_project.port_range_start),
+        port_range_end.or(existing_project.port_range_end),
     )
     .await
     {

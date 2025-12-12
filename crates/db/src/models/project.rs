@@ -31,6 +31,9 @@ pub struct Project {
     pub cleanup_script: Option<String>,
     pub copy_files: Option<String>,
     pub parallel_setup_script: bool,
+    pub release_ports_on_completion: Option<bool>,
+    pub port_range_start: Option<i64>,
+    pub port_range_end: Option<i64>,
     pub remote_project_id: Option<Uuid>,
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
@@ -48,6 +51,9 @@ pub struct CreateProject {
     pub cleanup_script: Option<String>,
     pub copy_files: Option<String>,
     pub parallel_setup_script: Option<bool>,
+    pub release_ports_on_completion: Option<bool>,
+    pub port_range_start: Option<i64>,
+    pub port_range_end: Option<i64>,
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -59,6 +65,9 @@ pub struct UpdateProject {
     pub cleanup_script: Option<String>,
     pub copy_files: Option<String>,
     pub parallel_setup_script: Option<bool>,
+    pub release_ports_on_completion: Option<bool>,
+    pub port_range_start: Option<i64>,
+    pub port_range_end: Option<i64>,
 }
 
 #[derive(Debug, Serialize, TS)]
@@ -76,6 +85,16 @@ pub enum SearchMatchType {
 }
 
 impl Project {
+    pub fn should_release_ports_on_completion(&self) -> bool {
+        self.release_ports_on_completion.unwrap_or(true)
+    }
+
+    pub fn get_port_range(&self) -> (u16, u16) {
+        let start = self.port_range_start.unwrap_or(1024) as u16;
+        let end = self.port_range_end.unwrap_or(65535) as u16;
+        (start, end)
+    }
+
     pub async fn count(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
         sqlx::query_scalar!(r#"SELECT COUNT(*) as "count!: i64" FROM projects"#)
             .fetch_one(pool)
@@ -93,6 +112,9 @@ impl Project {
                       cleanup_script,
                       copy_files,
                       parallel_setup_script as "parallel_setup_script!: bool",
+                      release_ports_on_completion,
+                      port_range_start,
+                      port_range_end,
                       remote_project_id as "remote_project_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
@@ -103,13 +125,13 @@ impl Project {
         .await
     }
 
-    /// Find the most actively used projects based on recent task activity
     pub async fn find_most_active(pool: &SqlitePool, limit: i32) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             Project,
             r#"
             SELECT p.id as "id!: Uuid", p.name, p.git_repo_path, p.setup_script, p.dev_script, p.cleanup_script, p.copy_files,
                    p.parallel_setup_script as "parallel_setup_script!: bool",
+                   p.release_ports_on_completion, p.port_range_start, p.port_range_end,
                    p.remote_project_id as "remote_project_id: Uuid",
                    p.created_at as "created_at!: DateTime<Utc>", p.updated_at as "updated_at!: DateTime<Utc>"
             FROM projects p
@@ -138,12 +160,44 @@ impl Project {
                       cleanup_script,
                       copy_files,
                       parallel_setup_script as "parallel_setup_script!: bool",
+                      release_ports_on_completion,
+                      port_range_start,
+                      port_range_end,
                       remote_project_id as "remote_project_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
                FROM projects
                WHERE id = $1"#,
             id
+        )
+        .fetch_optional(pool)
+        .await
+    }
+
+    pub async fn find_by_remote_project_id(
+        pool: &SqlitePool,
+        remote_project_id: Uuid,
+    ) -> Result<Option<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Project,
+            r#"SELECT id as "id!: Uuid",
+                      name,
+                      git_repo_path,
+                      setup_script,
+                      dev_script,
+                      cleanup_script,
+                      copy_files,
+                      parallel_setup_script as "parallel_setup_script!: bool",
+                      release_ports_on_completion,
+                      port_range_start,
+                      port_range_end,
+                      remote_project_id as "remote_project_id: Uuid",
+                      created_at as "created_at!: DateTime<Utc>",
+                      updated_at as "updated_at!: DateTime<Utc>"
+               FROM projects
+               WHERE remote_project_id = $1
+               LIMIT 1"#,
+            remote_project_id
         )
         .fetch_optional(pool)
         .await
@@ -163,6 +217,9 @@ impl Project {
                       cleanup_script,
                       copy_files,
                       parallel_setup_script as "parallel_setup_script!: bool",
+                      release_ports_on_completion,
+                      port_range_start,
+                      port_range_end,
                       remote_project_id as "remote_project_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
@@ -189,6 +246,9 @@ impl Project {
                       cleanup_script,
                       copy_files,
                       parallel_setup_script as "parallel_setup_script!: bool",
+                      release_ports_on_completion,
+                      port_range_start,
+                      port_range_end,
                       remote_project_id as "remote_project_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
@@ -217,9 +277,12 @@ impl Project {
                     dev_script,
                     cleanup_script,
                     copy_files,
-                    parallel_setup_script
+                    parallel_setup_script,
+                    release_ports_on_completion,
+                    port_range_start,
+                    port_range_end
                 ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
                 )
                 RETURNING id as "id!: Uuid",
                           name,
@@ -229,6 +292,9 @@ impl Project {
                           cleanup_script,
                           copy_files,
                           parallel_setup_script as "parallel_setup_script!: bool",
+                          release_ports_on_completion,
+                          port_range_start,
+                          port_range_end,
                           remote_project_id as "remote_project_id: Uuid",
                           created_at as "created_at!: DateTime<Utc>",
                           updated_at as "updated_at!: DateTime<Utc>""#,
@@ -240,6 +306,9 @@ impl Project {
             data.cleanup_script,
             data.copy_files,
             parallel_setup_script,
+            data.release_ports_on_completion,
+            data.port_range_start,
+            data.port_range_end,
         )
         .fetch_one(pool)
         .await
@@ -256,6 +325,9 @@ impl Project {
         cleanup_script: Option<String>,
         copy_files: Option<String>,
         parallel_setup_script: bool,
+        release_ports_on_completion: Option<bool>,
+        port_range_start: Option<i64>,
+        port_range_end: Option<i64>,
     ) -> Result<Self, sqlx::Error> {
         sqlx::query_as!(
             Project,
@@ -266,7 +338,10 @@ impl Project {
                    dev_script = $5,
                    cleanup_script = $6,
                    copy_files = $7,
-                   parallel_setup_script = $8
+                   parallel_setup_script = $8,
+                   release_ports_on_completion = $9,
+                   port_range_start = $10,
+                   port_range_end = $11
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          name,
@@ -276,6 +351,9 @@ impl Project {
                          cleanup_script,
                          copy_files,
                          parallel_setup_script as "parallel_setup_script!: bool",
+                         release_ports_on_completion,
+                         port_range_start,
+                         port_range_end,
                          remote_project_id as "remote_project_id: Uuid",
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
@@ -287,6 +365,9 @@ impl Project {
             cleanup_script,
             copy_files,
             parallel_setup_script,
+            release_ports_on_completion,
+            port_range_start,
+            port_range_end,
         )
         .fetch_one(pool)
         .await

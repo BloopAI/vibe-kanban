@@ -518,6 +518,17 @@ pub async fn merge_task_attempt(
     .await?;
     Task::update_status(pool, ctx.task.id, TaskStatus::Done).await?;
 
+    // Release assigned ports if project setting is enabled
+    if ctx.project.should_release_ports_on_completion() {
+        let released = TaskAttempt::release_assigned_ports_for_task(pool, ctx.task.id).await?;
+        if released > 0 {
+            tracing::info!(
+                "Released assigned ports for {} task attempt(s) on task completion",
+                released
+            );
+        }
+    }
+
     // Stop any running dev servers for this task attempt
     let dev_servers =
         ExecutionProcess::find_running_dev_servers_by_task_attempt(pool, task_attempt.id).await?;
@@ -1000,6 +1011,24 @@ pub async fn rename_branch(
     })))
 }
 
+/// Release assigned ports for a task attempt, freeing them for reuse by other worktrees
+#[axum::debug_handler]
+pub async fn release_assigned_ports(
+    Extension(task_attempt): Extension<TaskAttempt>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    let pool = &deployment.db().pool;
+
+    TaskAttempt::release_assigned_ports(pool, task_attempt.id).await?;
+
+    tracing::info!(
+        "Released assigned ports for task attempt {}",
+        task_attempt.id
+    );
+
+    Ok(ResponseJson(ApiResponse::success(())))
+}
+
 #[axum::debug_handler]
 pub async fn rebase_task_attempt(
     Extension(task_attempt): Extension<TaskAttempt>,
@@ -1463,6 +1492,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/stop", post(stop_task_attempt_execution))
         .route("/change-target-branch", post(change_target_branch))
         .route("/rename-branch", post(rename_branch))
+        .route("/release-ports", post(release_assigned_ports))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_task_attempt_middleware,

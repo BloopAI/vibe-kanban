@@ -353,6 +353,23 @@
           "helper": "Comma-separated list of files to copy from the original project directory to the worktree. These files will be copied after the worktree is created but before the setup script runs. Useful for environment-specific files like .env, configuration files, and local settings. Make sure these are gitignored or they could get committed!"
         }
       },
+      "ports": {
+        "title": "Port Management",
+        "description": "Configure automatic port assignment for .env.vibe templates.",
+        "releasePorts": {
+          "label": "Release assigned ports on task completion",
+          "helper": "When enabled, ports assigned from .env.vibe templates are automatically released when a task is completed or merged."
+        },
+        "rangeStart": {
+          "label": "Port Range Start"
+        },
+        "rangeEnd": {
+          "label": "Port Range End"
+        },
+        "range": {
+          "helper": "The range of ports to use for automatic port assignment. Default is 1024-65535."
+        }
+      },
       "save": {
         "button": "Save Project Settings",
         "success": "✓ Project settings saved successfully!",

@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT assigned_ports FROM task_attempts WHERE worktree_deleted = FALSE AND assigned_ports IS NOT NULL",
+  "describe": {
+    "columns": [
+      {
+        "name": "assigned_ports",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "269ab7dcbfa4f020e67efac1fa6899ba9f35b6d699bd9137f0968e54320c0faa"
+}

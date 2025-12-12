@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            SELECT p.id as \"id!: Uuid\", p.name, p.git_repo_path, p.setup_script, p.dev_script, p.cleanup_script, p.copy_files,\n                   p.parallel_setup_script as \"parallel_setup_script!: bool\",\n                   p.remote_project_id as \"remote_project_id: Uuid\",\n                   p.created_at as \"created_at!: DateTime<Utc>\", p.updated_at as \"updated_at!: DateTime<Utc>\"\n            FROM projects p\n            WHERE p.id IN (\n                SELECT DISTINCT t.project_id\n                FROM tasks t\n                INNER JOIN task_attempts ta ON ta.task_id = t.id\n                ORDER BY ta.updated_at DESC\n            )\n            LIMIT $1\n            ",
+  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      git_repo_path,\n                      setup_script,\n                      dev_script,\n                      cleanup_script,\n                      copy_files,\n                      parallel_setup_script as \"parallel_setup_script!: bool\",\n                      release_ports_on_completion,\n                      port_range_start,\n                      port_range_end,\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               WHERE remote_project_id = $1\n               LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -44,18 +44,33 @@
         "type_info": "Integer"
       },
       {
-        "name": "remote_project_id: Uuid",
+        "name": "release_ports_on_completion",
         "ordinal": 8,
+        "type_info": "Bool"
+      },
+      {
+        "name": "port_range_start",
+        "ordinal": 9,
+        "type_info": "Integer"
+      },
+      {
+        "name": "port_range_end",
+        "ordinal": 10,
+        "type_info": "Integer"
+      },
+      {
+        "name": "remote_project_id: Uuid",
+        "ordinal": 11,
         "type_info": "Blob"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 9,
+        "ordinal": 12,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 10,
+        "ordinal": 13,
         "type_info": "Text"
       }
     ],
@@ -72,9 +87,12 @@
       true,
       false,
       true,
+      true,
+      true,
+      true,
       false,
       false
     ]
   },
-  "hash": "e82f7fc1672ff56df544cc59fec2dba6d739d11567965be2cf3a1ca99beccae2"
+  "hash": "44c733624772abe2c6229377b4892be2c7996a69d85b1c0fb378ea56cd51bbc5"
 }

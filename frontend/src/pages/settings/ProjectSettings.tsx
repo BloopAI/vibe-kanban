@@ -38,6 +38,9 @@ interface ProjectFormState {
   dev_script: string;
   cleanup_script: string;
   copy_files: string;
+  release_ports_on_completion: boolean;
+  port_range_start: string;
+  port_range_end: string;
 }
 
 function projectToFormState(project: Project): ProjectFormState {
@@ -49,6 +52,9 @@ function projectToFormState(project: Project): ProjectFormState {
     dev_script: project.dev_script ?? '',
     cleanup_script: project.cleanup_script ?? '',
     copy_files: project.copy_files ?? '',
+    release_ports_on_completion: project.release_ports_on_completion ?? true,
+    port_range_start: project.port_range_start?.toString() ?? '1024',
+    port_range_end: project.port_range_end?.toString() ?? '65535',
   };
 }
 
@@ -210,6 +216,9 @@ export function ProjectSettings() {
     setSuccess(false);
 
     try {
+      const portStart = parseInt(draft.port_range_start, 10);
+      const portEnd = parseInt(draft.port_range_end, 10);
+
       const updateData: UpdateProject = {
         name: draft.name.trim(),
         git_repo_path: draft.git_repo_path.trim(),
@@ -218,6 +227,9 @@ export function ProjectSettings() {
         dev_script: draft.dev_script.trim() || null,
         cleanup_script: draft.cleanup_script.trim() || null,
         copy_files: draft.copy_files.trim() || null,
+        release_ports_on_completion: draft.release_ports_on_completion,
+        port_range_start: isNaN(portStart) ? null : BigInt(portStart),
+        port_range_end: isNaN(portEnd) ? null : BigInt(portEnd),
       };
 
       updateProject.mutate({
@@ -487,6 +499,72 @@ export function ProjectSettings() {
                   {t('settings.projects.scripts.copyFiles.helper')}
                 </p>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('settings.projects.ports.title')}</CardTitle>
+              <CardDescription>
+                {t('settings.projects.ports.description')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="release-ports"
+                  checked={draft.release_ports_on_completion}
+                  onChange={(e) =>
+                    updateDraft({ release_ports_on_completion: e.target.checked })
+                  }
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <Label htmlFor="release-ports" className="cursor-pointer">
+                  {t('settings.projects.ports.releasePorts.label')}
+                </Label>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {t('settings.projects.ports.releasePorts.helper')}
+              </p>
+
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                <div className="space-y-2">
+                  <Label htmlFor="port-range-start">
+                    {t('settings.projects.ports.rangeStart.label')}
+                  </Label>
+                  <Input
+                    id="port-range-start"
+                    type="number"
+                    min="1024"
+                    max="65535"
+                    value={draft.port_range_start}
+                    onChange={(e) =>
+                      updateDraft({ port_range_start: e.target.value })
+                    }
+                    placeholder="1024"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="port-range-end">
+                    {t('settings.projects.ports.rangeEnd.label')}
+                  </Label>
+                  <Input
+                    id="port-range-end"
+                    type="number"
+                    min="1024"
+                    max="65535"
+                    value={draft.port_range_end}
+                    onChange={(e) =>
+                      updateDraft({ port_range_end: e.target.value })
+                    }
+                    placeholder="65535"
+                  />
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {t('settings.projects.ports.range.helper')}
+              </p>
             </CardContent>
           </Card>
 

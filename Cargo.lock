@@ -2849,6 +2849,8 @@ dependencies = [
  "json-patch",
  "nix 0.29.0",
  "openssl-sys",
+ "rand 0.9.2",
+ "regex",
  "reqwest",
  "sentry",
  "serde_json",

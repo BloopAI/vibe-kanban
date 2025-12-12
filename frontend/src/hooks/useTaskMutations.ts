@@ -21,6 +21,7 @@ export function useTaskMutations(projectId?: string) {
     queryClient.invalidateQueries({ queryKey: taskKeys.all });
     if (taskId) {
       queryClient.invalidateQueries({ queryKey: taskKeys.byId(taskId) });
+      queryClient.invalidateQueries({ queryKey: ['taskAttempts'] });
     }
   };
 
