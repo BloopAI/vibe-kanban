@@ -1,28 +1,38 @@
-import { createBrowserRouter, RouterProvider } from 'react-router-dom'
-import HomePage from './pages/HomePage'
-import InvitationPage from './pages/InvitationPage'
-import InvitationCompletePage from './pages/InvitationCompletePage'
-import NotFoundPage from './pages/NotFoundPage'
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import HomePage from "./pages/HomePage";
+import InvitationPage from "./pages/InvitationPage";
+import InvitationCompletePage from "./pages/InvitationCompletePage";
+import ReviewPage from "./pages/ReviewPage";
+import DiffReviewPage from "./pages/DiffReviewPage";
+import NotFoundPage from "./pages/NotFoundPage";
 
 const router = createBrowserRouter([
   {
-    path: '/',
+    path: "/",
     element: <HomePage />,
   },
   {
-    path: '/invitations/:token/accept',
+    path: "/review/:id",
+    element: <ReviewPage />,
+  },
+  {
+    path: "/review/:id/diff",
+    element: <DiffReviewPage />,
+  },
+  {
+    path: "/invitations/:token/accept",
     element: <InvitationPage />,
   },
   {
-    path: '/invitations/:token/complete',
+    path: "/invitations/:token/complete",
     element: <InvitationCompletePage />,
   },
   {
-    path: '*',
+    path: "*",
     element: <NotFoundPage />,
   },
-])
+]);
 
 export default function AppRouter() {
-  return <RouterProvider router={router} />
+  return <RouterProvider router={router} />;
 }
