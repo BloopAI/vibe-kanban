@@ -18,6 +18,7 @@ use db::{
         },
         execution_process_repo_state::ExecutionProcessRepoState,
         executor_session::ExecutorSession,
+        project_repo::ProjectRepo,
         repo::Repo,
         scratch::{DraftFollowUpData, Scratch, ScratchType},
         task::{Task, TaskStatus},
@@ -817,7 +818,9 @@ impl LocalContainerService {
         )
         .await?;
 
-        let cleanup_action = self.cleanup_action(ctx.project.cleanup_script.clone());
+        let project_repos =
+            ProjectRepo::find_by_project_id_with_names(&self.db.pool, ctx.project.id).await?;
+        let cleanup_action = self.cleanup_actions_for_repos(&project_repos);
 
         let action_type = if let Some(session_id) = latest_session_id {
             ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
@@ -832,7 +835,7 @@ impl LocalContainerService {
             })
         };
 
-        let action = ExecutorAction::new(action_type, cleanup_action);
+        let action = ExecutorAction::new(action_type, cleanup_action.map(Box::new));
 
         self.start_execution(
             &ctx.task_attempt,
@@ -931,24 +934,30 @@ impl ContainerService for LocalContainerService {
         )
         .await?;
 
-        if let Some(copy_files) = &project.copy_files
-            && !copy_files.trim().is_empty()
-        {
-            for worktree in &workspace.worktrees {
-                // TODO: Change into per-repo copy files
-                self.copy_project_files(
-                    &worktree.source_repo_path,
-                    &worktree.worktree_path,
-                    copy_files,
-                )
-                .await
-                .unwrap_or_else(|e| {
-                    tracing::warn!(
-                        "Failed to copy project files to repo '{}': {}",
-                        worktree.repo_name,
-                        e
-                    );
-                });
+        let project_repos = ProjectRepo::find_by_project_id(&self.db.pool, project.id).await?;
+
+        for worktree in &workspace.worktrees {
+            if let Some(project_repo) = project_repos
+                .iter()
+                .find(|pr| pr.repo_id == worktree.repo_id)
+            {
+                if let Some(copy_files) = &project_repo.copy_files {
+                    if !copy_files.trim().is_empty() {
+                        self.copy_project_files(
+                            &worktree.source_repo_path,
+                            &worktree.worktree_path,
+                            copy_files,
+                        )
+                        .await
+                        .unwrap_or_else(|e| {
+                            tracing::warn!(
+                                "Failed to copy project files to repo '{}': {}",
+                                worktree.repo_name,
+                                e
+                            );
+                        });
+                    }
+                }
             }
         }
 

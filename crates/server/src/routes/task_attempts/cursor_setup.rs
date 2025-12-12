@@ -88,6 +88,7 @@ fi"#
             script: install_script,
             language: ScriptRequestLanguage::Bash,
             context: ScriptContext::ToolInstallScript,
+            working_dir: None,
         };
         // Second action (chained): Login
         let login_script = format!(
@@ -101,6 +102,7 @@ export PATH="$HOME/.local/bin:$PATH"
             script: login_script,
             language: ScriptRequestLanguage::Bash,
             context: ScriptContext::ToolInstallScript,
+            working_dir: None,
         };
 
         // Chain them: install → login

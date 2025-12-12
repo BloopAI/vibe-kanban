@@ -19,8 +19,8 @@ import {
   ScriptPlaceholderContext,
 } from '@/utils/scriptPlaceholders';
 import { useUserSystem } from '@/components/ConfigProvider';
-import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { useTaskMutations } from '@/hooks/useTaskMutations';
+import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { projectsApi } from '@/lib/api';
 import {
   COMPANION_INSTALL_TASK_TITLE,
@@ -50,16 +50,8 @@ export function NoServerContent({
   const [isEditingExistingScript, setIsEditingExistingScript] = useState(false);
   const { system, config } = useUserSystem();
 
-  const { updateProject } = useProjectMutations({
-    onUpdateSuccess: () => {
-      setIsEditingExistingScript(false);
-    },
-    onUpdateError: (err) => {
-      setSaveError((err as Error)?.message || 'Failed to save dev script');
-    },
-  });
-
   const { createAndStart } = useTaskMutations(project?.id);
+  const { updateProject } = useProjectMutations();
 
   const { data: projectRepos = [] } = useQuery({
     queryKey: ['projectRepositories', project?.id],
@@ -96,22 +88,16 @@ export function NoServerContent({
     }
 
     updateProject.mutate(
-      {
-        projectId: project.id,
-        data: {
-          name: project.name,
-          setup_script: project.setup_script ?? null,
-          dev_script: script,
-          cleanup_script: project.cleanup_script ?? null,
-          copy_files: project.copy_files ?? null,
-          parallel_setup_script: project.parallel_setup_script ?? null,
-        },
-      },
+      { projectId: project.id, data: { name: null, dev_script: script } },
       {
         onSuccess: () => {
+          setIsEditingExistingScript(false);
           if (startAfterSave) {
             startDevServer();
           }
+        },
+        onError: (err) => {
+          setSaveError((err as Error)?.message || 'Failed to save dev script');
         },
       }
     );

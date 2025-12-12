@@ -26,6 +26,7 @@ use db::models::{
     attempt_repo::{AttemptRepo, CreateAttemptRepo, RepoWithTargetBranch},
     execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
     merge::{Merge, MergeStatus, PrMerge, PullRequestInfo},
+    project_repo::ProjectRepo,
     repo::{Repo, RepoError},
     scratch::{Scratch, ScratchType},
     task::{Task, TaskRelationships, TaskStatus},
@@ -314,9 +315,10 @@ pub async fn follow_up(
 
     let prompt = payload.prompt;
 
+    let project_repos = ProjectRepo::find_by_project_id_with_names(pool, project.id).await?;
     let cleanup_action = deployment
         .container()
-        .cleanup_action(project.cleanup_script);
+        .cleanup_actions_for_repos(&project_repos);
 
     let action_type = if let Some(session_id) = latest_session_id {
         ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
@@ -333,7 +335,7 @@ pub async fn follow_up(
         )
     };
 
-    let action = ExecutorAction::new(action_type, cleanup_action);
+    let action = ExecutorAction::new(action_type, cleanup_action.map(Box::new));
 
     let execution_process = deployment
         .container()
@@ -1294,30 +1296,33 @@ pub async fn start_dev_server(
         }
     }
 
-    if let Some(dev_server) = project.dev_script {
-        // TODO: Derive script language from system config
-        let executor_action = ExecutorAction::new(
-            ExecutorActionType::ScriptRequest(ScriptRequest {
-                script: dev_server,
-                language: ScriptRequestLanguage::Bash,
-                context: ScriptContext::DevServer,
-            }),
-            None,
-        );
-
-        deployment
-            .container()
-            .start_execution(
-                &task_attempt,
-                &executor_action,
-                &ExecutionProcessRunReason::DevServer,
-            )
-            .await?
-    } else {
-        return Ok(ResponseJson(ApiResponse::error(
-            "No dev server script configured for this project",
-        )));
+    // Get dev script from project (dev_script is project-level, not per-repo)
+    let dev_script = match &project.dev_script {
+        Some(script) if !script.is_empty() => script.clone(),
+        _ => {
+            return Ok(ResponseJson(ApiResponse::error(
+                "No dev server script configured for this project",
+            )));
+        }
     };
+    let executor_action = ExecutorAction::new(
+        ExecutorActionType::ScriptRequest(ScriptRequest {
+            script: dev_script,
+            language: ScriptRequestLanguage::Bash,
+            context: ScriptContext::DevServer,
+            working_dir: None,
+        }),
+        None,
+    );
+
+    deployment
+        .container()
+        .start_execution(
+            &task_attempt,
+            &executor_action,
+            &ExecutionProcessRunReason::DevServer,
+        )
+        .await?;
 
     deployment
         .track_if_analytics_allowed(
@@ -1421,23 +1426,19 @@ pub async fn run_setup_script(
         .parent_project(&deployment.db().pool)
         .await?
         .ok_or(SqlxError::RowNotFound)?;
-
-    // Check if setup script is configured
-    let Some(setup_script) = project.setup_script else {
-        return Ok(ResponseJson(ApiResponse::error_with_data(
-            RunScriptError::NoScriptConfigured,
-        )));
+    let project_repos =
+        ProjectRepo::find_by_project_id_with_names(&deployment.db().pool, project.id).await?;
+    let executor_action = match deployment
+        .container()
+        .setup_actions_for_repos(&project_repos)
+    {
+        Some(action) => action,
+        None => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                RunScriptError::NoScriptConfigured,
+            )));
+        }
     };
-
-    // Create and execute the setup script action
-    let executor_action = ExecutorAction::new(
-        ExecutorActionType::ScriptRequest(ScriptRequest {
-            script: setup_script,
-            language: ScriptRequestLanguage::Bash,
-            context: ScriptContext::SetupScript,
-        }),
-        None,
-    );
 
     let execution_process = deployment
         .container()
@@ -1494,23 +1495,19 @@ pub async fn run_cleanup_script(
         .parent_project(&deployment.db().pool)
         .await?
         .ok_or(SqlxError::RowNotFound)?;
-
-    // Check if cleanup script is configured
-    let Some(cleanup_script) = project.cleanup_script else {
-        return Ok(ResponseJson(ApiResponse::error_with_data(
-            RunScriptError::NoScriptConfigured,
-        )));
+    let project_repos =
+        ProjectRepo::find_by_project_id_with_names(&deployment.db().pool, project.id).await?;
+    let executor_action = match deployment
+        .container()
+        .cleanup_actions_for_repos(&project_repos)
+    {
+        Some(action) => action,
+        None => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                RunScriptError::NoScriptConfigured,
+            )));
+        }
     };
-
-    // Create and execute the cleanup script action
-    let executor_action = ExecutorAction::new(
-        ExecutorActionType::ScriptRequest(ScriptRequest {
-            script: cleanup_script,
-            language: ScriptRequestLanguage::Bash,
-            context: ScriptContext::CleanupScript,
-        }),
-        None,
-    );
 
     let execution_process = deployment
         .container()

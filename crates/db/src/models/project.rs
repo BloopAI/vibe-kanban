@@ -21,11 +21,7 @@ pub enum ProjectError {
 pub struct Project {
     pub id: Uuid,
     pub name: String,
-    pub setup_script: Option<String>,
     pub dev_script: Option<String>,
-    pub cleanup_script: Option<String>,
-    pub copy_files: Option<String>,
-    pub parallel_setup_script: bool,
     pub remote_project_id: Option<Uuid>,
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
@@ -37,21 +33,12 @@ pub struct Project {
 pub struct CreateProject {
     pub name: String,
     pub repositories: Vec<CreateProjectRepo>,
-    pub setup_script: Option<String>,
-    pub dev_script: Option<String>,
-    pub cleanup_script: Option<String>,
-    pub copy_files: Option<String>,
-    pub parallel_setup_script: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, TS)]
 pub struct UpdateProject {
     pub name: Option<String>,
-    pub setup_script: Option<String>,
     pub dev_script: Option<String>,
-    pub cleanup_script: Option<String>,
-    pub copy_files: Option<String>,
-    pub parallel_setup_script: Option<bool>,
 }
 
 #[derive(Debug, Serialize, TS)]
@@ -80,11 +67,7 @@ impl Project {
             Project,
             r#"SELECT id as "id!: Uuid",
                       name,
-                      setup_script,
                       dev_script,
-                      cleanup_script,
-                      copy_files,
-                      parallel_setup_script as "parallel_setup_script!: bool",
                       remote_project_id as "remote_project_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
@@ -100,7 +83,7 @@ impl Project {
         sqlx::query_as!(
             Project,
             r#"
-            SELECT p.id as "id!: Uuid", p.name, p.setup_script, p.dev_script, p.cleanup_script, p.copy_files, p.parallel_setup_script as "parallel_setup_script!: bool",
+            SELECT p.id as "id!: Uuid", p.name, p.dev_script,
                    p.remote_project_id as "remote_project_id: Uuid",
                    p.created_at as "created_at!: DateTime<Utc>", p.updated_at as "updated_at!: DateTime<Utc>"
             FROM projects p
@@ -123,11 +106,7 @@ impl Project {
             Project,
             r#"SELECT id as "id!: Uuid",
                       name,
-                      setup_script,
                       dev_script,
-                      cleanup_script,
-                      copy_files,
-                      parallel_setup_script as "parallel_setup_script!: bool",
                       remote_project_id as "remote_project_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
@@ -147,11 +126,7 @@ impl Project {
             Project,
             r#"SELECT id as "id!: Uuid",
                       name,
-                      setup_script,
                       dev_script,
-                      cleanup_script,
-                      copy_files,
-                      parallel_setup_script as "parallel_setup_script!: bool",
                       remote_project_id as "remote_project_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
@@ -169,80 +144,53 @@ impl Project {
         data: &CreateProject,
         project_id: Uuid,
     ) -> Result<Self, sqlx::Error> {
-        let parallel_setup_script = data.parallel_setup_script.unwrap_or(false);
         sqlx::query_as!(
             Project,
             r#"INSERT INTO projects (
                     id,
-                    name,
-                    setup_script,
-                    dev_script,
-                    cleanup_script,
-                    copy_files,
-                    parallel_setup_script
+                    name
                 ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7
+                    $1, $2
                 )
                 RETURNING id as "id!: Uuid",
                           name,
-                          setup_script,
                           dev_script,
-                          cleanup_script,
-                          copy_files,
-                          parallel_setup_script as "parallel_setup_script!: bool",
                           remote_project_id as "remote_project_id: Uuid",
                           created_at as "created_at!: DateTime<Utc>",
                           updated_at as "updated_at!: DateTime<Utc>""#,
             project_id,
             data.name,
-            data.setup_script,
-            data.dev_script,
-            data.cleanup_script,
-            data.copy_files,
-            parallel_setup_script,
         )
         .fetch_one(executor)
         .await
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub async fn update(
         pool: &SqlitePool,
         id: Uuid,
-        name: String,
-        setup_script: Option<String>,
-        dev_script: Option<String>,
-        cleanup_script: Option<String>,
-        copy_files: Option<String>,
-        parallel_setup_script: bool,
+        payload: &UpdateProject,
     ) -> Result<Self, sqlx::Error> {
+        let existing = Self::find_by_id(pool, id)
+            .await?
+            .ok_or(sqlx::Error::RowNotFound)?;
+
+        let name = payload.name.clone().unwrap_or(existing.name);
+        let dev_script = payload.dev_script.clone().or(existing.dev_script);
+
         sqlx::query_as!(
             Project,
             r#"UPDATE projects
-               SET name = $2,
-                   setup_script = $3,
-                   dev_script = $4,
-                   cleanup_script = $5,
-                   copy_files = $6,
-                   parallel_setup_script = $7
+               SET name = $2, dev_script = $3
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          name,
-                         setup_script,
                          dev_script,
-                         cleanup_script,
-                         copy_files,
-                         parallel_setup_script as "parallel_setup_script!: bool",
                          remote_project_id as "remote_project_id: Uuid",
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             name,
-            setup_script,
             dev_script,
-            cleanup_script,
-            copy_files,
-            parallel_setup_script,
         )
         .fetch_one(pool)
         .await

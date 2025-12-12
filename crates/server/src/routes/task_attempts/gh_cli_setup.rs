@@ -75,6 +75,7 @@ fi"#
             script: install_script,
             language: ScriptRequestLanguage::Bash,
             context: ScriptContext::ToolInstallScript,
+            working_dir: None,
         };
 
         // Auth script
@@ -89,6 +90,7 @@ gh auth login --web --git-protocol https --skip-ssh-key
             script: auth_script,
             language: ScriptRequestLanguage::Bash,
             context: ScriptContext::ToolInstallScript,
+            working_dir: None,
         };
 
         // Chain them: install → auth

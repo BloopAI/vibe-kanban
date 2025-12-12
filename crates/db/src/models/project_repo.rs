@@ -19,17 +19,43 @@ pub enum ProjectRepoError {
     AlreadyExists,
 }
 
-#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
 pub struct ProjectRepo {
     pub id: Uuid,
     pub project_id: Uuid,
     pub repo_id: Uuid,
+    pub setup_script: Option<String>,
+    pub cleanup_script: Option<String>,
+    pub copy_files: Option<String>,
+    pub parallel_setup_script: bool,
+}
+
+/// ProjectRepo with the associated repo name (for script execution in worktrees)
+#[derive(Debug, Clone, FromRow)]
+pub struct ProjectRepoWithName {
+    pub id: Uuid,
+    pub project_id: Uuid,
+    pub repo_id: Uuid,
+    pub repo_name: String,
+    pub setup_script: Option<String>,
+    pub cleanup_script: Option<String>,
+    pub copy_files: Option<String>,
+    pub parallel_setup_script: bool,
 }
 
 #[derive(Debug, Clone, Deserialize, TS)]
 pub struct CreateProjectRepo {
     pub display_name: String,
     pub git_repo_path: String,
+}
+
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export)]
+pub struct UpdateProjectRepo {
+    pub setup_script: Option<String>,
+    pub cleanup_script: Option<String>,
+    pub copy_files: Option<String>,
+    pub parallel_setup_script: Option<bool>,
 }
 
 impl ProjectRepo {
@@ -41,9 +67,58 @@ impl ProjectRepo {
             ProjectRepo,
             r#"SELECT id as "id!: Uuid",
                       project_id as "project_id!: Uuid",
-                      repo_id as "repo_id!: Uuid"
+                      repo_id as "repo_id!: Uuid",
+                      setup_script,
+                      cleanup_script,
+                      copy_files,
+                      parallel_setup_script as "parallel_setup_script!: bool"
                FROM project_repos
                WHERE project_id = $1"#,
+            project_id
+        )
+        .fetch_all(pool)
+        .await
+    }
+
+    pub async fn find_by_repo_id(
+        pool: &SqlitePool,
+        repo_id: Uuid,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            ProjectRepo,
+            r#"SELECT id as "id!: Uuid",
+                      project_id as "project_id!: Uuid",
+                      repo_id as "repo_id!: Uuid",
+                      setup_script,
+                      cleanup_script,
+                      copy_files,
+                      parallel_setup_script as "parallel_setup_script!: bool"
+               FROM project_repos
+               WHERE repo_id = $1"#,
+            repo_id
+        )
+        .fetch_all(pool)
+        .await
+    }
+
+    pub async fn find_by_project_id_with_names(
+        pool: &SqlitePool,
+        project_id: Uuid,
+    ) -> Result<Vec<ProjectRepoWithName>, sqlx::Error> {
+        sqlx::query_as!(
+            ProjectRepoWithName,
+            r#"SELECT pr.id as "id!: Uuid",
+                      pr.project_id as "project_id!: Uuid",
+                      pr.repo_id as "repo_id!: Uuid",
+                      r.name as "repo_name!",
+                      pr.setup_script,
+                      pr.cleanup_script,
+                      pr.copy_files,
+                      pr.parallel_setup_script as "parallel_setup_script!: bool"
+               FROM project_repos pr
+               JOIN repos r ON r.id = pr.repo_id
+               WHERE pr.project_id = $1
+               ORDER BY r.display_name ASC"#,
             project_id
         )
         .fetch_all(pool)
@@ -72,7 +147,7 @@ impl ProjectRepo {
         .await
     }
 
-    async fn find_by_project_and_repo(
+    pub async fn find_by_project_and_repo(
         pool: &SqlitePool,
         project_id: Uuid,
         repo_id: Uuid,
@@ -81,7 +156,11 @@ impl ProjectRepo {
             ProjectRepo,
             r#"SELECT id as "id!: Uuid",
                       project_id as "project_id!: Uuid",
-                      repo_id as "repo_id!: Uuid"
+                      repo_id as "repo_id!: Uuid",
+                      setup_script,
+                      cleanup_script,
+                      copy_files,
+                      parallel_setup_script as "parallel_setup_script!: bool"
                FROM project_repos
                WHERE project_id = $1 AND repo_id = $2"#,
             project_id,
@@ -152,12 +231,59 @@ impl ProjectRepo {
                VALUES ($1, $2, $3)
                RETURNING id as "id!: Uuid",
                          project_id as "project_id!: Uuid",
-                         repo_id as "repo_id!: Uuid""#,
+                         repo_id as "repo_id!: Uuid",
+                         setup_script,
+                         cleanup_script,
+                         copy_files,
+                         parallel_setup_script as "parallel_setup_script!: bool""#,
             id,
             project_id,
             repo_id
         )
         .fetch_one(executor)
         .await
+    }
+
+    pub async fn update(
+        pool: &SqlitePool,
+        project_id: Uuid,
+        repo_id: Uuid,
+        payload: &UpdateProjectRepo,
+    ) -> Result<Self, ProjectRepoError> {
+        let existing = Self::find_by_project_and_repo(pool, project_id, repo_id).await?;
+        let existing = existing.ok_or(ProjectRepoError::NotFound)?;
+
+        let setup_script = payload.setup_script.clone();
+        let cleanup_script = payload.cleanup_script.clone();
+        let copy_files = payload.copy_files.clone();
+        let parallel_setup_script = payload
+            .parallel_setup_script
+            .unwrap_or(existing.parallel_setup_script);
+
+        sqlx::query_as!(
+            ProjectRepo,
+            r#"UPDATE project_repos
+               SET setup_script = $1,
+                   cleanup_script = $2,
+                   copy_files = $3,
+                   parallel_setup_script = $4
+               WHERE project_id = $5 AND repo_id = $6
+               RETURNING id as "id!: Uuid",
+                         project_id as "project_id!: Uuid",
+                         repo_id as "repo_id!: Uuid",
+                         setup_script,
+                         cleanup_script,
+                         copy_files,
+                         parallel_setup_script as "parallel_setup_script!: bool""#,
+            setup_script,
+            cleanup_script,
+            copy_files,
+            parallel_setup_script,
+            project_id,
+            repo_id
+        )
+        .fetch_one(pool)
+        .await
+        .map_err(ProjectRepoError::from)
     }
 }
