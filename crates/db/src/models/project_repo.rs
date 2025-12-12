@@ -32,6 +32,20 @@ pub struct ProjectRepo {
     pub parallel_setup_script: bool,
 }
 
+/// ProjectRepo with the associated repo name (for script execution in worktrees)
+#[derive(Debug, Clone, FromRow)]
+pub struct ProjectRepoWithName {
+    pub id: Uuid,
+    pub project_id: Uuid,
+    pub repo_id: Uuid,
+    pub repo_name: String,
+    pub setup_script: Option<String>,
+    pub dev_script: Option<String>,
+    pub cleanup_script: Option<String>,
+    pub copy_files: Option<String>,
+    pub parallel_setup_script: bool,
+}
+
 #[derive(Debug, Clone, Deserialize, TS)]
 pub struct CreateProjectRepo {
     pub display_name: String,
@@ -65,6 +79,32 @@ impl ProjectRepo {
                       parallel_setup_script as "parallel_setup_script!: bool"
                FROM project_repos
                WHERE project_id = $1"#,
+            project_id
+        )
+        .fetch_all(pool)
+        .await
+    }
+
+    /// Find project repos with their associated repo names (for script execution in worktrees)
+    pub async fn find_by_project_id_with_names(
+        pool: &SqlitePool,
+        project_id: Uuid,
+    ) -> Result<Vec<ProjectRepoWithName>, sqlx::Error> {
+        sqlx::query_as!(
+            ProjectRepoWithName,
+            r#"SELECT pr.id as "id!: Uuid",
+                      pr.project_id as "project_id!: Uuid",
+                      pr.repo_id as "repo_id!: Uuid",
+                      r.name as "repo_name!",
+                      pr.setup_script,
+                      pr.dev_script,
+                      pr.cleanup_script,
+                      pr.copy_files,
+                      pr.parallel_setup_script as "parallel_setup_script!: bool"
+               FROM project_repos pr
+               JOIN repos r ON r.id = pr.repo_id
+               WHERE pr.project_id = $1
+               ORDER BY r.display_name ASC"#,
             project_id
         )
         .fetch_all(pool)

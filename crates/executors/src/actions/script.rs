@@ -32,6 +32,10 @@ pub struct ScriptRequest {
     pub script: String,
     pub language: ScriptRequestLanguage,
     pub context: ScriptContext,
+    /// Optional relative path to execute the script in (relative to container_ref).
+    /// If None, uses the container_ref directory directly.
+    #[serde(default)]
+    pub working_dir: Option<String>,
 }
 
 #[async_trait]
@@ -42,6 +46,12 @@ impl Executable for ScriptRequest {
         _approvals: Arc<dyn ExecutorApprovalService>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
+        // Use working_dir if specified, otherwise use current_dir
+        let effective_dir = match &self.working_dir {
+            Some(rel_path) => current_dir.join(rel_path),
+            None => current_dir.to_path_buf(),
+        };
+
         let (shell_cmd, shell_arg) = get_shell_command();
         let mut command = Command::new(shell_cmd);
         command
@@ -51,7 +61,7 @@ impl Executable for ScriptRequest {
             .stderr(std::process::Stdio::piped())
             .arg(shell_arg)
             .arg(&self.script)
-            .current_dir(current_dir);
+            .current_dir(&effective_dir);
 
         // Apply environment variables
         env.apply_to_command(&mut command);

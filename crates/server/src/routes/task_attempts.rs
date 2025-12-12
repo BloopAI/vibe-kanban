@@ -315,11 +315,15 @@ pub async fn follow_up(
 
     let prompt = payload.prompt;
 
-    // Get cleanup scripts from project repos
-    let project_repos = ProjectRepo::find_by_project_id(pool, project.id).await?;
-    let cleanup_scripts: Vec<String> = project_repos
+    // Get cleanup scripts from project repos with repo names
+    let project_repos = ProjectRepo::find_by_project_id_with_names(pool, project.id).await?;
+    let cleanup_scripts: Vec<(String, String)> = project_repos
         .iter()
-        .filter_map(|pr| pr.cleanup_script.clone())
+        .filter_map(|pr| {
+            pr.cleanup_script
+                .clone()
+                .map(|script| (pr.repo_name.clone(), script))
+        })
         .collect();
     let cleanup_action = deployment
         .container()
@@ -1299,11 +1303,15 @@ pub async fn start_dev_server(
         }
     }
 
-    // Get dev scripts from project repos and combine them
-    let project_repos = ProjectRepo::find_by_project_id(pool, project.id).await?;
-    let dev_scripts: Vec<String> = project_repos
+    // Get dev scripts from project repos with repo names
+    let project_repos = ProjectRepo::find_by_project_id_with_names(pool, project.id).await?;
+    let dev_scripts: Vec<(String, String)> = project_repos
         .iter()
-        .filter_map(|pr| pr.dev_script.clone())
+        .filter_map(|pr| {
+            pr.dev_script
+                .clone()
+                .map(|script| (pr.repo_name.clone(), script))
+        })
         .collect();
 
     if dev_scripts.is_empty() {
@@ -1312,14 +1320,16 @@ pub async fn start_dev_server(
         )));
     }
 
-    // Combine all dev scripts into one
-    let combined_dev_script = dev_scripts.join("\n\n");
+    // For dev server, run the first repo's dev script in its worktree
+    // TODO: Consider running multiple dev scripts in parallel for multi-repo projects
+    let (repo_name, dev_script) = &dev_scripts[0];
 
     let executor_action = ExecutorAction::new(
         ExecutorActionType::ScriptRequest(ScriptRequest {
-            script: combined_dev_script,
+            script: dev_script.clone(),
             language: ScriptRequestLanguage::Bash,
             context: ScriptContext::DevServer,
+            working_dir: Some(repo_name.clone()),
         }),
         None,
     );
@@ -1436,11 +1446,16 @@ pub async fn run_setup_script(
         .await?
         .ok_or(SqlxError::RowNotFound)?;
 
-    // Get setup scripts from project repos
-    let project_repos = ProjectRepo::find_by_project_id(&deployment.db().pool, project.id).await?;
-    let setup_scripts: Vec<String> = project_repos
+    // Get setup scripts from project repos with repo names
+    let project_repos =
+        ProjectRepo::find_by_project_id_with_names(&deployment.db().pool, project.id).await?;
+    let setup_scripts: Vec<(String, String)> = project_repos
         .iter()
-        .filter_map(|pr| pr.setup_script.clone())
+        .filter_map(|pr| {
+            pr.setup_script
+                .clone()
+                .map(|script| (pr.repo_name.clone(), script))
+        })
         .collect();
 
     if setup_scripts.is_empty() {
@@ -1449,18 +1464,30 @@ pub async fn run_setup_script(
         )));
     }
 
-    // Combine all setup scripts into one
-    let combined_setup_script = setup_scripts.join("\n\n");
-
-    // Create and execute the setup script action
-    let executor_action = ExecutorAction::new(
+    // Create chained setup script actions, each running in its repo's worktree
+    let mut iter = setup_scripts.iter();
+    let (first_repo, first_script) = iter.next().unwrap();
+    let mut executor_action = ExecutorAction::new(
         ExecutorActionType::ScriptRequest(ScriptRequest {
-            script: combined_setup_script,
+            script: first_script.clone(),
             language: ScriptRequestLanguage::Bash,
             context: ScriptContext::SetupScript,
+            working_dir: Some(first_repo.clone()),
         }),
         None,
     );
+
+    for (repo_name, script) in iter {
+        executor_action = executor_action.append_action(ExecutorAction::new(
+            ExecutorActionType::ScriptRequest(ScriptRequest {
+                script: script.clone(),
+                language: ScriptRequestLanguage::Bash,
+                context: ScriptContext::SetupScript,
+                working_dir: Some(repo_name.clone()),
+            }),
+            None,
+        ));
+    }
 
     let execution_process = deployment
         .container()
@@ -1518,11 +1545,16 @@ pub async fn run_cleanup_script(
         .await?
         .ok_or(SqlxError::RowNotFound)?;
 
-    // Get cleanup scripts from project repos
-    let project_repos = ProjectRepo::find_by_project_id(&deployment.db().pool, project.id).await?;
-    let cleanup_scripts: Vec<String> = project_repos
+    // Get cleanup scripts from project repos with repo names
+    let project_repos =
+        ProjectRepo::find_by_project_id_with_names(&deployment.db().pool, project.id).await?;
+    let cleanup_scripts: Vec<(String, String)> = project_repos
         .iter()
-        .filter_map(|pr| pr.cleanup_script.clone())
+        .filter_map(|pr| {
+            pr.cleanup_script
+                .clone()
+                .map(|script| (pr.repo_name.clone(), script))
+        })
         .collect();
 
     if cleanup_scripts.is_empty() {
@@ -1531,18 +1563,30 @@ pub async fn run_cleanup_script(
         )));
     }
 
-    // Combine all cleanup scripts into one
-    let combined_cleanup_script = cleanup_scripts.join("\n\n");
-
-    // Create and execute the cleanup script action
-    let executor_action = ExecutorAction::new(
+    // Create chained cleanup script actions, each running in its repo's worktree
+    let mut iter = cleanup_scripts.iter();
+    let (first_repo, first_script) = iter.next().unwrap();
+    let mut executor_action = ExecutorAction::new(
         ExecutorActionType::ScriptRequest(ScriptRequest {
-            script: combined_cleanup_script,
+            script: first_script.clone(),
             language: ScriptRequestLanguage::Bash,
             context: ScriptContext::CleanupScript,
+            working_dir: Some(first_repo.clone()),
         }),
         None,
     );
+
+    for (repo_name, script) in iter {
+        executor_action = executor_action.append_action(ExecutorAction::new(
+            ExecutorActionType::ScriptRequest(ScriptRequest {
+                script: script.clone(),
+                language: ScriptRequestLanguage::Bash,
+                context: ScriptContext::CleanupScript,
+                working_dir: Some(repo_name.clone()),
+            }),
+            None,
+        ));
+    }
 
     let execution_process = deployment
         .container()

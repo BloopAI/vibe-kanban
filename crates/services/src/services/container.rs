@@ -380,46 +380,39 @@ pub trait ContainerService {
         Ok(())
     }
 
-    fn cleanup_action(&self, cleanup_script: Option<String>) -> Option<Box<ExecutorAction>> {
-        cleanup_script.map(|script| {
-            Box::new(ExecutorAction::new(
-                ExecutorActionType::ScriptRequest(ScriptRequest {
-                    script,
-                    language: ScriptRequestLanguage::Bash,
-                    context: ScriptContext::CleanupScript,
-                }),
-                None,
-            ))
-        })
-    }
-
     /// Build cleanup actions from multiple repo cleanup scripts.
-    /// Chains each script as a separate ExecutorAction.
-    fn cleanup_actions_for_repos(&self, cleanup_scripts: &[String]) -> Option<Box<ExecutorAction>> {
-        if cleanup_scripts.is_empty() {
+    /// Chains each script as a separate ExecutorAction, each running in its repo's worktree.
+    /// Takes (repo_name, script) pairs where repo_name is used as the working_dir.
+    fn cleanup_actions_for_repos(
+        &self,
+        repo_scripts: &[(String, String)],
+    ) -> Option<Box<ExecutorAction>> {
+        if repo_scripts.is_empty() {
             return None;
         }
 
-        let mut iter = cleanup_scripts.iter();
+        let mut iter = repo_scripts.iter();
 
         // Create first action
-        let first_script = iter.next()?;
+        let (first_repo, first_script) = iter.next()?;
         let mut root_action = ExecutorAction::new(
             ExecutorActionType::ScriptRequest(ScriptRequest {
                 script: first_script.clone(),
                 language: ScriptRequestLanguage::Bash,
                 context: ScriptContext::CleanupScript,
+                working_dir: Some(first_repo.clone()),
             }),
             None,
         );
 
         // Chain remaining scripts as next_action
-        for script in iter {
+        for (repo_name, script) in iter {
             root_action = root_action.append_action(ExecutorAction::new(
                 ExecutorActionType::ScriptRequest(ScriptRequest {
                     script: script.clone(),
                     language: ScriptRequestLanguage::Bash,
                     context: ScriptContext::CleanupScript,
+                    working_dir: Some(repo_name.clone()),
                 }),
                 None,
             ));
@@ -781,8 +774,9 @@ pub trait ContainerService {
             .await?
             .ok_or(SqlxError::RowNotFound)?;
 
-        // Get project repos with their scripts
-        let project_repos = ProjectRepo::find_by_project_id(&self.db().pool, project.id).await?;
+        // Get project repos with their scripts and repo names
+        let project_repos =
+            ProjectRepo::find_by_project_id_with_names(&self.db().pool, project.id).await?;
 
         // // Get latest version of task attempt
         let task_attempt = TaskAttempt::find_by_id(&self.db().pool, task_attempt.id)
@@ -791,10 +785,14 @@ pub trait ContainerService {
 
         let prompt = task.to_prompt();
 
-        // Collect all cleanup scripts from project repos
-        let cleanup_scripts: Vec<String> = project_repos
+        // Collect all cleanup scripts from project repos with their repo names
+        let cleanup_scripts: Vec<(String, String)> = project_repos
             .iter()
-            .filter_map(|pr| pr.cleanup_script.clone())
+            .filter_map(|pr| {
+                pr.cleanup_script
+                    .clone()
+                    .map(|script| (pr.repo_name.clone(), script))
+            })
             .collect();
         let cleanup_action = self.cleanup_actions_for_repos(&cleanup_scripts);
 
@@ -808,6 +806,7 @@ pub trait ContainerService {
                             script: setup_script.clone(),
                             language: ScriptRequestLanguage::Bash,
                             context: ScriptContext::SetupScript,
+                            working_dir: Some(project_repo.repo_name.clone()),
                         }),
                         None,
                     );
@@ -830,6 +829,7 @@ pub trait ContainerService {
                             script: setup_script.clone(),
                             language: ScriptRequestLanguage::Bash,
                             context: ScriptContext::SetupScript,
+                            working_dir: Some(project_repo.repo_name.clone()),
                         }),
                         None, // Will start coding agent separately after all sequential scripts
                     );
