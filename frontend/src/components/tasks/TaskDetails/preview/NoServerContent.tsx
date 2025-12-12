@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Play,
   Edit3,
@@ -13,13 +13,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ExecutionProcess, Project } from 'shared/types';
+import { ExecutionProcess, Project, ProjectRepo } from 'shared/types';
 import {
   createScriptPlaceholderStrategy,
   ScriptPlaceholderContext,
 } from '@/utils/scriptPlaceholders';
 import { useUserSystem } from '@/components/ConfigProvider';
-import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { useTaskMutations } from '@/hooks/useTaskMutations';
 import { projectsApi } from '@/lib/api';
 import {
@@ -45,19 +44,12 @@ export function NoServerContent({
   project,
 }: NoServerContentProps) {
   const { t } = useTranslation('tasks');
+  const queryClient = useQueryClient();
   const [devScriptInput, setDevScriptInput] = useState('');
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [isEditingExistingScript, setIsEditingExistingScript] = useState(false);
   const { system, config } = useUserSystem();
-
-  const { updateProject } = useProjectMutations({
-    onUpdateSuccess: () => {
-      setIsEditingExistingScript(false);
-    },
-    onUpdateError: (err) => {
-      setSaveError((err as Error)?.message || 'Failed to save dev script');
-    },
-  });
 
   const { createAndStart } = useTaskMutations(project?.id);
 
@@ -68,6 +60,17 @@ export function NoServerContent({
         ? projectsApi.getRepositories(project.id)
         : Promise.resolve([]),
     enabled: !!project?.id,
+  });
+
+  // Get first project repo's scripts (if available)
+  const firstRepoId = projectRepos[0]?.id;
+  const { data: firstProjectRepo } = useQuery({
+    queryKey: ['projectRepo', project?.id, firstRepoId],
+    queryFn: () =>
+      project?.id && firstRepoId
+        ? projectsApi.getRepository(project.id, firstRepoId)
+        : Promise.resolve(null as ProjectRepo | null),
+    enabled: !!project?.id && !!firstRepoId,
   });
 
   // Create strategy-based placeholders
@@ -89,37 +92,46 @@ export function NoServerContent({
       return;
     }
 
+    if (!firstRepoId) {
+      setSaveError('No repository configured for this project');
+      return;
+    }
+
     const script = devScriptInput.trim();
     if (!script) {
       setSaveError(t('preview.devScript.errors.empty'));
       return;
     }
 
-    updateProject.mutate(
-      {
-        projectId: project.id,
-        data: {
-          name: project.name,
-          setup_script: project.setup_script ?? null,
-          dev_script: script,
-          cleanup_script: project.cleanup_script ?? null,
-          copy_files: project.copy_files ?? null,
-          parallel_setup_script: project.parallel_setup_script ?? null,
-        },
-      },
-      {
-        onSuccess: () => {
-          if (startAfterSave) {
-            startDevServer();
-          }
-        },
+    setIsSaving(true);
+    try {
+      await projectsApi.updateRepository(project.id, firstRepoId, {
+        setup_script: firstProjectRepo?.setup_script ?? null,
+        dev_script: script,
+        cleanup_script: firstProjectRepo?.cleanup_script ?? null,
+        copy_files: firstProjectRepo?.copy_files ?? null,
+        parallel_setup_script: firstProjectRepo?.parallel_setup_script ?? null,
+      });
+
+      // Invalidate queries to refresh the data
+      await queryClient.invalidateQueries({
+        queryKey: ['projectRepo', project.id, firstRepoId],
+      });
+
+      setIsEditingExistingScript(false);
+      if (startAfterSave) {
+        startDevServer();
       }
-    );
+    } catch (err) {
+      setSaveError((err as Error)?.message || 'Failed to save dev script');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleEditExistingScript = () => {
-    if (project?.dev_script) {
-      setDevScriptInput(project.dev_script);
+    if (firstProjectRepo?.dev_script) {
+      setDevScriptInput(firstProjectRepo.dev_script);
     }
     setIsEditingExistingScript(true);
     setSaveError(null);
@@ -222,7 +234,7 @@ export function NoServerContent({
                   value={devScriptInput}
                   onChange={(e) => setDevScriptInput(e.target.value)}
                   className="min-h-[120px] font-mono text-sm"
-                  disabled={updateProject.isPending}
+                  disabled={isSaving}
                 />
 
                 {saveError && (
@@ -237,7 +249,7 @@ export function NoServerContent({
                       <Button
                         size="sm"
                         onClick={() => handleSaveDevScript(false)}
-                        disabled={updateProject.isPending}
+                        disabled={isSaving}
                         className="gap-1"
                       >
                         <Save className="h-3 w-3" />
@@ -247,7 +259,7 @@ export function NoServerContent({
                         size="sm"
                         variant="outline"
                         onClick={handleCancelEdit}
-                        disabled={updateProject.isPending}
+                        disabled={isSaving}
                         className="gap-1"
                       >
                         <X className="h-3 w-3" />
@@ -259,7 +271,7 @@ export function NoServerContent({
                       <Button
                         size="sm"
                         onClick={() => handleSaveDevScript(true)}
-                        disabled={updateProject.isPending}
+                        disabled={isSaving}
                         className="gap-1"
                       >
                         <Play className="h-4 w-4" />
@@ -269,7 +281,7 @@ export function NoServerContent({
                         size="sm"
                         variant="outline"
                         onClick={() => handleSaveDevScript(false)}
-                        disabled={updateProject.isPending}
+                        disabled={isSaving}
                         className="gap-1"
                       >
                         <Save className="h-3 w-3" />

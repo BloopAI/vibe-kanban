@@ -72,7 +72,7 @@ export function TaskFollowUpSection({
   selectedAttemptId,
 }: TaskFollowUpSectionProps) {
   const { t } = useTranslation('tasks');
-  const { projectId, project } = useProject();
+  const { projectId } = useProject();
 
   const { isAttemptRunning, stopExecution, isStopping, processes } =
     useAttemptExecution(selectedAttemptId, task.id);
@@ -378,9 +378,10 @@ export function TaskFollowUpSection({
   ]);
   const isEditable = !isRetryActive && !hasPendingApproval;
 
-  // Script availability
-  const hasSetupScript = Boolean(project?.setup_script);
-  const hasCleanupScript = Boolean(project?.cleanup_script);
+  // Script availability - scripts are now per-repo, so we always allow running
+  // The backend will return an error if no script is configured for any repo
+  const hasSetupScript = true;
+  const hasCleanupScript = true;
   const hasAnyScript = hasSetupScript || hasCleanupScript;
 
   const handleRunSetupScript = useCallback(async () => {

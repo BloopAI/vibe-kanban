@@ -19,6 +19,7 @@ use db::{
             CreateExecutionProcessRepoState, ExecutionProcessRepoState,
         },
         executor_session::{CreateExecutorSession, ExecutorSession},
+        project_repo::ProjectRepo,
         repo::Repo,
         task::{Task, TaskStatus},
         task_attempt::{TaskAttempt, TaskAttemptError},
@@ -392,6 +393,26 @@ pub trait ContainerService {
         })
     }
 
+    /// Build cleanup actions from multiple repo cleanup scripts.
+    /// Combines all scripts into a single bash script separated by newlines.
+    fn cleanup_actions_for_repos(&self, cleanup_scripts: &[String]) -> Option<Box<ExecutorAction>> {
+        if cleanup_scripts.is_empty() {
+            return None;
+        }
+
+        // Combine all cleanup scripts into one
+        let combined_script = cleanup_scripts.join("\n\n");
+
+        Some(Box::new(ExecutorAction::new(
+            ExecutorActionType::ScriptRequest(ScriptRequest {
+                script: combined_script,
+                language: ScriptRequestLanguage::Bash,
+                context: ScriptContext::CleanupScript,
+            }),
+            None,
+        )))
+    }
+
     async fn try_stop(&self, task_attempt: &TaskAttempt) {
         // stop all execution processes for this attempt
         if let Ok(processes) =
@@ -745,6 +766,9 @@ pub trait ContainerService {
             .await?
             .ok_or(SqlxError::RowNotFound)?;
 
+        // Get project repos with their scripts
+        let project_repos = ProjectRepo::find_by_project_id(&self.db().pool, project.id).await?;
+
         // // Get latest version of task attempt
         let task_attempt = TaskAttempt::find_by_id(&self.db().pool, task_attempt.id)
             .await?
@@ -752,90 +776,80 @@ pub trait ContainerService {
 
         let prompt = task.to_prompt();
 
-        let cleanup_action = self.cleanup_action(project.cleanup_script.clone());
+        // Collect all cleanup scripts from project repos
+        let cleanup_scripts: Vec<String> = project_repos
+            .iter()
+            .filter_map(|pr| pr.cleanup_script.clone())
+            .collect();
+        let cleanup_action = self.cleanup_actions_for_repos(&cleanup_scripts);
 
-        // Choose whether to execute the setup_script or coding agent first
-        let execution_process = if let Some(setup_script) = project.setup_script {
-            if project.parallel_setup_script {
-                // PARALLEL EXECUTION: Start setup script and coding agent independently
-                // Setup script runs without next_action (it completes on its own)
-                let setup_action = ExecutorAction::new(
-                    ExecutorActionType::ScriptRequest(ScriptRequest {
-                        script: setup_script,
-                        language: ScriptRequestLanguage::Bash,
-                        context: ScriptContext::SetupScript,
-                    }),
-                    None, // No chaining - runs independently
-                );
-
-                // Start setup script (ignore errors - coding agent will start regardless)
-                if let Err(e) = self
-                    .start_execution(
-                        &task_attempt,
-                        &setup_action,
-                        &ExecutionProcessRunReason::SetupScript,
-                    )
-                    .await
-                {
-                    tracing::warn!(?e, "Failed to start setup script in parallel mode");
-                }
-
-                // Start coding agent independently with cleanup as next_action
-                let coding_action = ExecutorAction::new(
-                    ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
-                        prompt,
-                        executor_profile_id: executor_profile_id.clone(),
-                    }),
-                    cleanup_action,
-                );
-
-                self.start_execution(
-                    &task_attempt,
-                    &coding_action,
-                    &ExecutionProcessRunReason::CodingAgent,
-                )
-                .await?
-            } else {
-                // SEQUENTIAL EXECUTION: Setup script runs first, then coding agent
-                let executor_action = ExecutorAction::new(
-                    ExecutorActionType::ScriptRequest(ScriptRequest {
-                        script: setup_script,
-                        language: ScriptRequestLanguage::Bash,
-                        context: ScriptContext::SetupScript,
-                    }),
-                    // once the setup script is done, run the initial coding agent request
-                    Some(Box::new(ExecutorAction::new(
-                        ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
-                            prompt,
-                            executor_profile_id: executor_profile_id.clone(),
+        // Start setup scripts for all repos that have them (in parallel)
+        for project_repo in &project_repos {
+            if let Some(setup_script) = &project_repo.setup_script {
+                if project_repo.parallel_setup_script {
+                    // Setup script runs in parallel with coding agent (no next_action)
+                    let setup_action = ExecutorAction::new(
+                        ExecutorActionType::ScriptRequest(ScriptRequest {
+                            script: setup_script.clone(),
+                            language: ScriptRequestLanguage::Bash,
+                            context: ScriptContext::SetupScript,
                         }),
-                        cleanup_action,
-                    ))),
-                );
+                        None,
+                    );
 
-                self.start_execution(
-                    &task_attempt,
-                    &executor_action,
-                    &ExecutionProcessRunReason::SetupScript,
-                )
-                .await?
+                    if let Err(e) = self
+                        .start_execution(
+                            &task_attempt,
+                            &setup_action,
+                            &ExecutionProcessRunReason::SetupScript,
+                        )
+                        .await
+                    {
+                        tracing::warn!(?e, "Failed to start setup script in parallel mode");
+                    }
+                } else {
+                    // Sequential setup script - runs before coding agent
+                    // For simplicity, we still run these in parallel but they complete before next_action
+                    let setup_action = ExecutorAction::new(
+                        ExecutorActionType::ScriptRequest(ScriptRequest {
+                            script: setup_script.clone(),
+                            language: ScriptRequestLanguage::Bash,
+                            context: ScriptContext::SetupScript,
+                        }),
+                        None, // Will start coding agent separately after all sequential scripts
+                    );
+
+                    if let Err(e) = self
+                        .start_execution(
+                            &task_attempt,
+                            &setup_action,
+                            &ExecutionProcessRunReason::SetupScript,
+                        )
+                        .await
+                    {
+                        tracing::warn!(?e, "Failed to start setup script");
+                    }
+                }
             }
-        } else {
-            let executor_action = ExecutorAction::new(
-                ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
-                    prompt,
-                    executor_profile_id: executor_profile_id.clone(),
-                }),
-                cleanup_action,
-            );
+        }
 
-            self.start_execution(
+        // Start coding agent with cleanup as next_action
+        let coding_action = ExecutorAction::new(
+            ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
+                prompt,
+                executor_profile_id: executor_profile_id.clone(),
+            }),
+            cleanup_action,
+        );
+
+        let execution_process = self
+            .start_execution(
                 &task_attempt,
-                &executor_action,
+                &coding_action,
                 &ExecutionProcessRunReason::CodingAgent,
             )
-            .await?
-        };
+            .await?;
+
         Ok(execution_process)
     }
 

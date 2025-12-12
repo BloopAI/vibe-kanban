@@ -12,11 +12,11 @@ export type SharedTask = { id: string, organization_id: string, project_id: stri
 
 export type UserData = { user_id: string, first_name: string | null, last_name: string | null, username: string | null, };
 
-export type Project = { id: string, name: string, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script: boolean, remote_project_id: string | null, created_at: Date, updated_at: Date, };
+export type Project = { id: string, name: string, remote_project_id: string | null, created_at: Date, updated_at: Date, };
 
-export type CreateProject = { name: string, repositories: Array<CreateProjectRepo>, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script: boolean | null, };
+export type CreateProject = { name: string, repositories: Array<CreateProjectRepo>, };
 
-export type UpdateProject = { name: string | null, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script: boolean | null, };
+export type UpdateProject = { name: string | null, };
 
 export type SearchResult = { path: string, is_file: boolean, match_type: SearchMatchType, };
 
@@ -24,7 +24,11 @@ export type SearchMatchType = "FileName" | "DirectoryName" | "FullPath";
 
 export type Repo = { id: string, path: string, name: string, display_name: string, created_at: Date, updated_at: Date, };
 
+export type ProjectRepo = { id: string, project_id: string, repo_id: string, setup_script: string | null, dev_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script: boolean, };
+
 export type CreateProjectRepo = { display_name: string, git_repo_path: string, };
+
+export type UpdateProjectRepo = { setup_script: string | null, dev_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script: boolean | null, };
 
 export type AttemptRepo = { id: string, attempt_id: string, repo_id: string, target_branch: string, created_at: Date, updated_at: Date, };
 

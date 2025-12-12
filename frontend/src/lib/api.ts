@@ -17,12 +17,14 @@ import {
   ExecutionProcessRepoState,
   GitBranch,
   Project,
+  ProjectRepo,
   Repo,
   RepoWithTargetBranch,
   RepositoryBranches,
   ProjectBranchesResponse,
   CreateProject,
   CreateProjectRepo,
+  UpdateProjectRepo,
   SearchResult,
   ShareTaskResponse,
   Task,
@@ -371,6 +373,31 @@ export const projectsApi = {
       }
     );
     return handleApiResponse<void>(response);
+  },
+
+  getRepository: async (
+    projectId: string,
+    repoId: string
+  ): Promise<ProjectRepo> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/repositories/${repoId}`
+    );
+    return handleApiResponse<ProjectRepo>(response);
+  },
+
+  updateRepository: async (
+    projectId: string,
+    repoId: string,
+    data: UpdateProjectRepo
+  ): Promise<ProjectRepo> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/repositories/${repoId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse<ProjectRepo>(response);
   },
 };
 

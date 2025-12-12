@@ -371,3 +371,19 @@ impl From<RepoServiceError> for ApiError {
         }
     }
 }
+
+impl From<db::models::project_repo::ProjectRepoError> for ApiError {
+    fn from(err: db::models::project_repo::ProjectRepoError) -> Self {
+        match err {
+            db::models::project_repo::ProjectRepoError::Database(db_err) => {
+                ApiError::Database(db_err)
+            }
+            db::models::project_repo::ProjectRepoError::NotFound => {
+                ApiError::BadRequest("Repository not found in project".to_string())
+            }
+            db::models::project_repo::ProjectRepoError::AlreadyExists => {
+                ApiError::Conflict("Repository already exists in project".to_string())
+            }
+        }
+    }
+}
