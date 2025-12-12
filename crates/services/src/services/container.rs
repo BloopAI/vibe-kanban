@@ -385,7 +385,7 @@ pub trait ContainerService {
     fn cleanup_actions_for_repos(
         &self,
         repos: &[ProjectRepoWithName],
-    ) -> Option<Box<ExecutorAction>> {
+    ) -> Option<ExecutorAction> {
         let repos_with_cleanup: Vec<_> = repos
             .iter()
             .filter(|r| r.cleanup_script.is_some())
@@ -422,7 +422,52 @@ pub trait ContainerService {
             ));
         }
 
-        Some(Box::new(root_action))
+        Some(root_action)
+    }
+
+    /// Build setup actions from project repos with setup scripts.
+    /// Chains each setup script as a separate ExecutorAction, each running in its repo's worktree.
+    fn setup_actions_for_repos(
+        &self,
+        repos: &[ProjectRepoWithName],
+    ) -> Option<ExecutorAction> {
+        let repos_with_setup: Vec<_> = repos
+            .iter()
+            .filter(|r| r.setup_script.is_some())
+            .collect();
+
+        if repos_with_setup.is_empty() {
+            return None;
+        }
+
+        let mut iter = repos_with_setup.iter();
+
+        // Create first action
+        let first = iter.next()?;
+        let mut root_action = ExecutorAction::new(
+            ExecutorActionType::ScriptRequest(ScriptRequest {
+                script: first.setup_script.clone().unwrap(),
+                language: ScriptRequestLanguage::Bash,
+                context: ScriptContext::SetupScript,
+                working_dir: Some(first.repo_name.clone()),
+            }),
+            None,
+        );
+
+        // Chain remaining scripts as next_action
+        for repo in iter {
+            root_action = root_action.append_action(ExecutorAction::new(
+                ExecutorActionType::ScriptRequest(ScriptRequest {
+                    script: repo.setup_script.clone().unwrap(),
+                    language: ScriptRequestLanguage::Bash,
+                    context: ScriptContext::SetupScript,
+                    working_dir: Some(repo.repo_name.clone()),
+                }),
+                None,
+            ));
+        }
+
+        Some(root_action)
     }
 
     /// Build a setup script action for a single repo (for parallel execution)
@@ -845,7 +890,7 @@ pub trait ContainerService {
                 prompt,
                 executor_profile_id: executor_profile_id.clone(),
             }),
-            cleanup_action,
+            cleanup_action.map(Box::new),
         );
 
         let execution_process = if all_parallel {

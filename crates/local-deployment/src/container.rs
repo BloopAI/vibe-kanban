@@ -836,7 +836,7 @@ impl LocalContainerService {
             })
         };
 
-        let action = ExecutorAction::new(action_type, cleanup_action);
+        let action = ExecutorAction::new(action_type, cleanup_action.map(Box::new));
 
         self.start_execution(
             &ctx.task_attempt,
