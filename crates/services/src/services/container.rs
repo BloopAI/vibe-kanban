@@ -394,23 +394,38 @@ pub trait ContainerService {
     }
 
     /// Build cleanup actions from multiple repo cleanup scripts.
-    /// Combines all scripts into a single bash script separated by newlines.
+    /// Chains each script as a separate ExecutorAction.
     fn cleanup_actions_for_repos(&self, cleanup_scripts: &[String]) -> Option<Box<ExecutorAction>> {
         if cleanup_scripts.is_empty() {
             return None;
         }
 
-        // Combine all cleanup scripts into one
-        let combined_script = cleanup_scripts.join("\n\n");
+        let mut iter = cleanup_scripts.iter();
 
-        Some(Box::new(ExecutorAction::new(
+        // Create first action
+        let first_script = iter.next()?;
+        let mut root_action = ExecutorAction::new(
             ExecutorActionType::ScriptRequest(ScriptRequest {
-                script: combined_script,
+                script: first_script.clone(),
                 language: ScriptRequestLanguage::Bash,
                 context: ScriptContext::CleanupScript,
             }),
             None,
-        )))
+        );
+
+        // Chain remaining scripts as next_action
+        for script in iter {
+            root_action = root_action.append_action(ExecutorAction::new(
+                ExecutorActionType::ScriptRequest(ScriptRequest {
+                    script: script.clone(),
+                    language: ScriptRequestLanguage::Bash,
+                    context: ScriptContext::CleanupScript,
+                }),
+                None,
+            ));
+        }
+
+        Some(Box::new(root_action))
     }
 
     async fn try_stop(&self, task_attempt: &TaskAttempt) {
