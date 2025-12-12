@@ -41,6 +41,16 @@ pub trait ExecutorApprovalService: Send + Sync {
         questions: &[Question],
         tool_call_id: &str,
     ) -> Result<(ApprovalStatus, Option<HashMap<String, String>>), ExecutorApprovalError>;
+
+    /// Called when ExitPlanMode is approved, to create plan steps from the plan text.
+    /// Default implementation does nothing.
+    async fn on_exit_plan_mode(
+        &self,
+        _plan_text: &str,
+        _tool_call_id: &str,
+    ) -> Result<(), ExecutorApprovalError> {
+        Ok(())
+    }
 }
 
 #[derive(Debug, Default)]
