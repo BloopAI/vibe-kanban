@@ -780,7 +780,6 @@ pub async fn get_task_attempt_branch_status(
         .ensure_container_exists(&task_attempt)
         .await?;
     let workspace_dir = PathBuf::from(&container_ref);
-    let merges = Merge::find_by_task_attempt_id(pool, task_attempt.id).await?;
 
     let mut results = Vec::with_capacity(repositories.len());
 
@@ -788,6 +787,9 @@ pub async fn get_task_attempt_branch_status(
         let Some(target_branch) = target_branches.get(&repo.id).cloned() else {
             continue;
         };
+
+        let repo_merges =
+            Merge::find_by_task_attempt_and_repo_id(pool, task_attempt.id, repo.id).await?;
 
         let worktree_path = workspace_dir.join(&repo.name);
 
@@ -855,7 +857,7 @@ pub async fn get_task_attempt_branch_status(
                     ..
                 },
             ..
-        })) = merges.first()
+        })) = repo_merges.first()
         {
             match deployment
                 .git()
@@ -880,7 +882,7 @@ pub async fn get_task_attempt_branch_status(
                 untracked_count,
                 remote_commits_ahead: remote_ahead,
                 remote_commits_behind: remote_behind,
-                merges: merges.clone(),
+                merges: repo_merges,
                 target_branch_name: target_branch,
                 is_rebase_in_progress,
                 conflict_op,
