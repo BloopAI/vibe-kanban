@@ -17,7 +17,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { attemptsApi } from '@/lib/api.ts';
 import { useTranslation } from 'react-i18next';
 
-import { GitBranch, TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
+import {
+  GitBranch,
+  RepositoryBranches,
+  TaskAttempt,
+  TaskWithAttemptStatus,
+} from 'shared/types';
 import { projectsApi } from '@/lib/api.ts';
 import { Loader2 } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
@@ -81,11 +86,15 @@ const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
         setBranchesLoading(true);
         projectsApi
           .getBranches(projectId)
-          .then((projectBranches) => {
-            setBranches(projectBranches);
+          .then((repoBranches: RepositoryBranches[]) => {
+            const repoData = repoBranches.find(
+              (r) => r.repository_id === repoId
+            );
+            const branchesForRepo = repoData?.branches ?? [];
+            setBranches(branchesForRepo);
 
             // Set smart default: current branch (target_branch is now per-repo in AttemptRepo)
-            const currentBranch = projectBranches.find((b) => b.is_current);
+            const currentBranch = branchesForRepo.find((b) => b.is_current);
             if (currentBranch) {
               setPrBaseBranch(currentBranch.name);
             }
@@ -96,7 +105,7 @@ const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
 
       setError(null); // Reset error when opening
       setGhCliHelp(null);
-    }, [modal.visible, isLoaded, task, attempt, projectId]);
+    }, [modal.visible, isLoaded, task, attempt, projectId, repoId]);
 
     const isMacEnvironment = useMemo(
       () => environment?.os_type?.toLowerCase().includes('mac'),

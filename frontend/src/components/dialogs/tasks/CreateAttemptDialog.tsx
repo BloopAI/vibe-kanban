@@ -56,9 +56,11 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
       null
     );
 
-    const { data: branches = [], isLoading: isLoadingBranches } = useBranches(
-      projectId,
-      { enabled: modal.visible && !!projectId }
+    const { data: repoBranches = [], isLoading: isLoadingBranches } =
+      useBranches(projectId, { enabled: modal.visible && !!projectId });
+    const branches = useMemo(
+      () => repoBranches.flatMap((r) => r.branches),
+      [repoBranches]
     );
 
     const { data: projectRepos = [], isLoading: isLoadingRepos } = useQuery({

@@ -15,15 +15,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip.tsx';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type {
-  BranchStatus,
+  RepoBranchStatus,
   Merge,
   GitBranch,
   TaskAttempt,
   TaskWithAttemptStatus,
 } from 'shared/types';
 import { ChangeTargetBranchDialog } from '@/components/dialogs/tasks/ChangeTargetBranchDialog';
+import RepoSelector from '@/components/tasks/RepoSelector';
 import { RebaseDialog } from '@/components/dialogs/tasks/RebaseDialog';
 import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
 import { useTranslation } from 'react-i18next';
@@ -34,7 +35,7 @@ interface GitOperationsProps {
   selectedAttempt: TaskAttempt;
   task: TaskWithAttemptStatus;
   projectId: string;
-  branchStatus: BranchStatus[] | null;
+  branchStatus: RepoBranchStatus[] | null;
   branches: GitBranch[];
   isAttemptRunning: boolean;
   selectedBranch: string | null;
@@ -56,7 +57,9 @@ function GitOperations({
   const { t } = useTranslation('tasks');
 
   const git = useGitOperations(selectedAttempt.id, projectId);
-  const { repos } = useAttemptRepo(selectedAttempt.id);
+  const { repos, selectedRepoId, setSelectedRepoId } = useAttemptRepo(
+    selectedAttempt.id
+  );
   const isChangingTargetBranch = git.states.changeTargetBranchPending;
 
   // Compute aggregated status across all repos
@@ -95,7 +98,6 @@ function GitOperations({
     };
   }, [branchStatus]);
 
-  const firstRepoStatus = branchStatus?.[0];
   const hasConflictsCalculated = aggregatedStatus?.hasAnyConflicts ?? false;
 
   // Local state for git operations
@@ -130,14 +132,25 @@ function GitOperations({
     }
   };
 
-  // Select the first repo for operations that need a single repo
-  const getSelectedRepoId = () => {
-    return repos[0]?.id;
-  };
+  const getSelectedRepoId = useCallback(() => {
+    return selectedRepoId ?? repos[0]?.id;
+  }, [selectedRepoId, repos]);
+
+  const getSelectedRepoStatus = useCallback(() => {
+    const repoId = getSelectedRepoId();
+    return branchStatus?.find((r) => r.repo_id === repoId);
+  }, [branchStatus, getSelectedRepoId]);
+
+  // Memoize the selected repo status for use in button disabled states
+  const selectedRepoStatus = useMemo(
+    () => getSelectedRepoStatus(),
+    [getSelectedRepoStatus]
+  );
 
   // Memoize merge status information to avoid repeated calculations
   const mergeInfo = useMemo(() => {
-    if (!firstRepoStatus?.merges)
+    const selectedRepoStatus = getSelectedRepoStatus();
+    if (!selectedRepoStatus?.merges)
       return {
         hasOpenPR: false,
         openPR: null,
@@ -147,15 +160,15 @@ function GitOperations({
         latestMerge: null,
       };
 
-    const openPR = firstRepoStatus.merges.find(
+    const openPR = selectedRepoStatus.merges.find(
       (m: Merge) => m.type === 'pr' && m.pr_info.status === 'open'
     );
 
-    const mergedPR = firstRepoStatus.merges.find(
+    const mergedPR = selectedRepoStatus.merges.find(
       (m: Merge) => m.type === 'pr' && m.pr_info.status === 'merged'
     );
 
-    const merges = firstRepoStatus.merges.filter(
+    const merges = selectedRepoStatus.merges.filter(
       (m: Merge) =>
         m.type === 'direct' ||
         (m.type === 'pr' && m.pr_info.status === 'merged')
@@ -167,9 +180,9 @@ function GitOperations({
       hasMergedPR: !!mergedPR,
       mergedPR,
       hasMerged: merges.length > 0,
-      latestMerge: firstRepoStatus.merges[0] || null, // Most recent merge
+      latestMerge: selectedRepoStatus.merges[0] || null, // Most recent merge
     };
-  }, [firstRepoStatus?.merges]);
+  }, [getSelectedRepoStatus]);
 
   const mergeButtonLabel = useMemo(() => {
     if (mergeSuccess) return t('git.states.merged');
@@ -246,7 +259,7 @@ function GitOperations({
 
   const handleRebaseDialogOpen = async () => {
     try {
-      const defaultTargetBranch = firstRepoStatus?.target_branch_name;
+      const defaultTargetBranch = getSelectedRepoStatus()?.target_branch_name;
       const result = await RebaseDialog.show({
         branches,
         isRebasing: rebasing,
@@ -287,7 +300,7 @@ function GitOperations({
 
   const containerClasses = isVertical
     ? 'grid grid-cols-1 items-start gap-3 overflow-hidden'
-    : 'grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 overflow-hidden';
+    : 'flex items-center gap-2 overflow-hidden';
 
   const settingsBtnClasses = isVertical
     ? 'inline-flex h-5 w-5 p-0 hover:bg-muted'
@@ -297,166 +310,206 @@ function GitOperations({
     ? 'flex flex-wrap items-center gap-2'
     : 'shrink-0 flex flex-wrap items-center gap-2 overflow-y-hidden overflow-x-visible max-h-8';
 
+  const statusChips = (
+    <div className="flex items-center gap-2 text-xs min-w-0 overflow-hidden whitespace-nowrap">
+      {(() => {
+        const commitsAhead = aggregatedStatus?.totalCommitsAhead ?? 0;
+        const commitsBehind = aggregatedStatus?.totalCommitsBehind ?? 0;
+        const reposWithChanges = aggregatedStatus?.reposWithChanges ?? 0;
+        const repoCount = aggregatedStatus?.repoCount ?? 1;
+        const showRepoCount = repoCount > 1;
+
+        if (hasConflictsCalculated) {
+          return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100/60 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              {t('git.status.conflicts')}
+              {showRepoCount &&
+                aggregatedStatus?.reposWithConflicts &&
+                ` (${aggregatedStatus.reposWithConflicts} repo${aggregatedStatus.reposWithConflicts > 1 ? 's' : ''})`}
+            </span>
+          );
+        }
+
+        if (aggregatedStatus?.hasAnyRebaseInProgress) {
+          return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100/60 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              {t('git.states.rebasing')}
+            </span>
+          );
+        }
+
+        if (mergeInfo.hasMergedPR) {
+          return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100/70 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
+              <CheckCircle className="h-3.5 w-3.5" />
+              {t('git.states.merged')}
+            </span>
+          );
+        }
+
+        if (mergeInfo.hasOpenPR && mergeInfo.openPR?.type === 'pr') {
+          const prMerge = mergeInfo.openPR;
+          return (
+            <button
+              onClick={() => window.open(prMerge.pr_info.url, '_blank')}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100/60 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 hover:underline truncate max-w-[180px] sm:max-w-none"
+              aria-label={t('git.pr.open', {
+                number: Number(prMerge.pr_info.number),
+              })}
+            >
+              <GitPullRequest className="h-3.5 w-3.5" />
+              {t('git.pr.number', {
+                number: Number(prMerge.pr_info.number),
+              })}
+              <ExternalLink className="h-3.5 w-3.5" />
+            </button>
+          );
+        }
+
+        const chips: React.ReactNode[] = [];
+        if (commitsAhead > 0) {
+          chips.push(
+            <span
+              key="ahead"
+              className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100/70 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
+            >
+              +{commitsAhead} {t('git.status.commits', { count: commitsAhead })}{' '}
+              {t('git.status.ahead')}
+              {showRepoCount &&
+                reposWithChanges > 0 &&
+                ` (${reposWithChanges} repo${reposWithChanges > 1 ? 's' : ''})`}
+            </span>
+          );
+        }
+        if (commitsBehind > 0) {
+          chips.push(
+            <span
+              key="behind"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100/60 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+            >
+              {commitsBehind}{' '}
+              {t('git.status.commits', { count: commitsBehind })}{' '}
+              {t('git.status.behind')}
+            </span>
+          );
+        }
+        if (chips.length > 0)
+          return <div className="flex items-center gap-2">{chips}</div>;
+
+        return (
+          <span className="text-muted-foreground hidden sm:inline">
+            {t('git.status.upToDate')}
+          </span>
+        );
+      })()}
+    </div>
+  );
+
+  const branchChips = (
+    <>
+      {/* Task branch chip */}
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="hidden sm:inline-flex items-center gap-1.5 max-w-[280px] px-2 py-0.5 rounded-full bg-muted text-xs font-medium min-w-0">
+              <GitBranchIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <span className="truncate">{selectedAttempt.branch}</span>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            {t('git.labels.taskBranch')}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+
+      <ArrowRight className="hidden sm:inline h-4 w-4 text-muted-foreground" />
+
+      {/* Target branch chip + change button */}
+      <div className="flex items-center gap-1 min-w-0">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex items-center gap-1.5 max-w-[280px] px-2 py-0.5 rounded-full bg-muted text-xs font-medium min-w-0">
+                <GitBranchIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <span className="truncate">
+                  {getSelectedRepoStatus()?.target_branch_name ||
+                    selectedBranch ||
+                    t('git.branch.current')}
+                </span>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              {t('rebase.dialog.targetLabel')}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="xs"
+                onClick={handleChangeTargetBranchDialogOpen}
+                disabled={isAttemptRunning || hasConflictsCalculated}
+                className={settingsBtnClasses}
+                aria-label={t('branches.changeTarget.dialog.title')}
+              >
+                <Settings className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              {t('branches.changeTarget.dialog.title')}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+    </>
+  );
+
   return (
     <div className="w-full border-b py-2">
       <div className={containerClasses}>
-        {/* Left: Branch flow */}
-        <div className="flex items-center gap-2 min-w-0 shrink-0 overflow-hidden">
-          {/* Task branch chip */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="hidden sm:inline-flex items-center gap-1.5 max-w-[280px] px-2 py-0.5 rounded-full bg-muted text-xs font-medium min-w-0">
-                  <GitBranchIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <span className="truncate">{selectedAttempt.branch}</span>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                {t('git.labels.taskBranch')}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
-          <ArrowRight className="hidden sm:inline h-4 w-4 text-muted-foreground" />
-
-          {/* Target branch chip + change button */}
-          <div className="flex items-center gap-1 min-w-0">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="inline-flex items-center gap-1.5 max-w-[280px] px-2 py-0.5 rounded-full bg-muted text-xs font-medium min-w-0">
-                    <GitBranchIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <span className="truncate">
-                      {firstRepoStatus?.target_branch_name ||
-                        selectedBranch ||
-                        t('git.branch.current')}
-                    </span>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  {t('rebase.dialog.targetLabel')}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    onClick={handleChangeTargetBranchDialogOpen}
-                    disabled={hasConflictsCalculated}
-                    className={settingsBtnClasses}
-                    aria-label={t('branches.changeTarget.dialog.title')}
-                  >
-                    <Settings className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  {t('branches.changeTarget.dialog.title')}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-        </div>
-
-        {/* Center: Status chips */}
-        <div className="flex items-center gap-2 text-xs min-w-0 overflow-hidden whitespace-nowrap">
-          {(() => {
-            const commitsAhead = aggregatedStatus?.totalCommitsAhead ?? 0;
-            const commitsBehind = aggregatedStatus?.totalCommitsBehind ?? 0;
-            const reposWithChanges = aggregatedStatus?.reposWithChanges ?? 0;
-            const repoCount = aggregatedStatus?.repoCount ?? 1;
-            const showRepoCount = repoCount > 1;
-
-            if (hasConflictsCalculated) {
-              return (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100/60 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
-                  <AlertTriangle className="h-3.5 w-3.5" />
-                  {t('git.status.conflicts')}
-                  {showRepoCount &&
-                    aggregatedStatus?.reposWithConflicts &&
-                    ` (${aggregatedStatus.reposWithConflicts} repo${aggregatedStatus.reposWithConflicts > 1 ? 's' : ''})`}
-                </span>
-              );
-            }
-
-            if (aggregatedStatus?.hasAnyRebaseInProgress) {
-              return (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100/60 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
-                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                  {t('git.states.rebasing')}
-                </span>
-              );
-            }
-
-            if (mergeInfo.hasMergedPR) {
-              return (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100/70 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
-                  <CheckCircle className="h-3.5 w-3.5" />
-                  {t('git.states.merged')}
-                </span>
-              );
-            }
-
-            if (mergeInfo.hasOpenPR && mergeInfo.openPR?.type === 'pr') {
-              const prMerge = mergeInfo.openPR;
-              return (
-                <button
-                  onClick={() => window.open(prMerge.pr_info.url, '_blank')}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100/60 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 hover:underline truncate max-w-[180px] sm:max-w-none"
-                  aria-label={t('git.pr.open', {
-                    number: Number(prMerge.pr_info.number),
-                  })}
-                >
-                  <GitPullRequest className="h-3.5 w-3.5" />
-                  {t('git.pr.number', {
-                    number: Number(prMerge.pr_info.number),
-                  })}
-                  <ExternalLink className="h-3.5 w-3.5" />
-                </button>
-              );
-            }
-
-            const chips: React.ReactNode[] = [];
-            if (commitsAhead > 0) {
-              chips.push(
-                <span
-                  key="ahead"
-                  className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100/70 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
-                >
-                  +{commitsAhead}{' '}
-                  {t('git.status.commits', { count: commitsAhead })}{' '}
-                  {t('git.status.ahead')}
-                  {showRepoCount &&
-                    reposWithChanges > 0 &&
-                    ` (${reposWithChanges} repo${reposWithChanges > 1 ? 's' : ''})`}
-                </span>
-              );
-            }
-            if (commitsBehind > 0) {
-              chips.push(
-                <span
-                  key="behind"
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100/60 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
-                >
-                  {commitsBehind}{' '}
-                  {t('git.status.commits', { count: commitsBehind })}{' '}
-                  {t('git.status.behind')}
-                </span>
-              );
-            }
-            if (chips.length > 0)
-              return <div className="flex items-center gap-2">{chips}</div>;
-
-            return (
-              <span className="text-muted-foreground hidden sm:inline">
-                {t('git.status.upToDate')}
-              </span>
-            );
-          })()}
-        </div>
+        {isVertical ? (
+          <>
+            <div className="flex items-center gap-2 min-w-0 overflow-hidden">
+              {repos.length > 0 && (
+                <RepoSelector
+                  repos={repos}
+                  selectedRepoId={getSelectedRepoId() ?? null}
+                  onRepoSelect={setSelectedRepoId}
+                  disabled={isAttemptRunning}
+                  placeholder={t('repos.selector.placeholder', 'Select repo')}
+                />
+              )}
+              <div className="flex items-center gap-2 min-w-0">
+                {branchChips}
+              </div>
+            </div>
+            {statusChips}
+          </>
+        ) : (
+          <>
+            {repos.length > 0 && (
+              <RepoSelector
+                repos={repos}
+                selectedRepoId={getSelectedRepoId() ?? null}
+                onRepoSelect={setSelectedRepoId}
+                disabled={isAttemptRunning}
+                placeholder={t('repos.selector.placeholder', 'Select repo')}
+                className="w-auto max-w-[200px] rounded-full bg-muted border-0 h-6 px-2 py-0.5 text-xs font-medium"
+              />
+            )}
+            <div className="flex flex-1 items-center justify-center gap-2 min-w-0 overflow-hidden">
+              <div className="flex items-center gap-2 min-w-0 overflow-hidden">
+                {branchChips}
+              </div>
+              {statusChips}
+            </div>
+          </>
+        )}
 
         {/* Right: Actions */}
         {aggregatedStatus && (
@@ -469,7 +522,7 @@ function GitOperations({
                 merging ||
                 hasConflictsCalculated ||
                 isAttemptRunning ||
-                (aggregatedStatus.totalCommitsAhead === 0 &&
+                ((selectedRepoStatus?.commits_ahead ?? 0) === 0 &&
                   !pushSuccess &&
                   !mergeSuccess)
               }
@@ -490,9 +543,9 @@ function GitOperations({
                 isAttemptRunning ||
                 hasConflictsCalculated ||
                 (mergeInfo.hasOpenPR &&
-                  (firstRepoStatus?.remote_commits_ahead ?? 0) === 0) ||
-                (aggregatedStatus.totalCommitsAhead === 0 &&
-                  (firstRepoStatus?.remote_commits_ahead ?? 0) === 0 &&
+                  (selectedRepoStatus?.remote_commits_ahead ?? 0) === 0) ||
+                ((selectedRepoStatus?.commits_ahead ?? 0) === 0 &&
+                  (selectedRepoStatus?.remote_commits_ahead ?? 0) === 0 &&
                   !pushSuccess &&
                   !mergeSuccess)
               }

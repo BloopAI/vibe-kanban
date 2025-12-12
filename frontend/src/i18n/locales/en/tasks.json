@@ -44,6 +44,21 @@
       }
     }
   },
+  "repos": {
+    "changeRepo": {
+      "dialog": {
+        "title": "Change Repository",
+        "description": "Choose a repository for git operations.",
+        "label": "Repository",
+        "placeholder": "Select a repository",
+        "action": "Change Repository"
+      }
+    },
+    "selector": {
+      "placeholder": "Select repository",
+      "empty": "No repositories available"
+    }
+  },
   "preview": {
     "title": "Preview",
     "selectAttempt": "Select an attempt to see preview",
