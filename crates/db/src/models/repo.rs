@@ -28,6 +28,41 @@ pub struct Repo {
 }
 
 impl Repo {
+    /// Get repos that still have the migration sentinel as their name.
+    /// Used by the startup backfill to fix repo names.
+    pub async fn list_needing_name_fix(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Repo,
+            r#"SELECT id as "id!: Uuid",
+                      path,
+                      name,
+                      display_name,
+                      created_at as "created_at!: DateTime<Utc>",
+                      updated_at as "updated_at!: DateTime<Utc>"
+               FROM repos
+               WHERE name = '__NEEDS_BACKFILL__'"#
+        )
+        .fetch_all(pool)
+        .await
+    }
+
+    pub async fn update_name(
+        pool: &SqlitePool,
+        id: Uuid,
+        name: &str,
+        display_name: &str,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE repos SET name = $1, display_name = $2, updated_at = datetime('now', 'subsec') WHERE id = $3",
+            name,
+            display_name,
+            id
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Repo,
