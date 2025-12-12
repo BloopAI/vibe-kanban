@@ -49,6 +49,10 @@ impl ExecutionEnv {
             command.env(key, value);
         }
     }
+
+    pub fn contains_key(&self, key: &str) -> bool {
+        self.vars.contains_key(key)
+    }
 }
 
 #[cfg(test)]

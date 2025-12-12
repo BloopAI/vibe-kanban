@@ -23,6 +23,11 @@
         "null"
       ]
     },
+    "auto_approve": {
+      "description": "Auto-approve agent actions",
+      "type": "boolean",
+      "default": true
+    },
     "base_command_override": {
       "title": "Base Command Override",
       "description": "Override the base command with a custom command",

@@ -238,3 +238,9 @@ pub fn concatenate_diff_hunks(file_path: &str, hunks: &[String]) -> String {
 
     unified_diff
 }
+
+/// Normalizes a unified diff the format supported by the diff viewer,
+pub fn normalize_unified_diff(file_path: &str, unified_diff: &str) -> String {
+    let hunks = extract_unified_diff_hunks(unified_diff);
+    concatenate_diff_hunks(file_path, &hunks)
+}

@@ -1,12 +1,14 @@
 use std::{path::Path, sync::Arc};
 
 use async_trait::async_trait;
+use derivative::Derivative;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use workspace_utils::msg_store::MsgStore;
 
 use crate::{
+    approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuilder, apply_overrides},
     env::ExecutionEnv,
     executors::{
@@ -15,7 +17,8 @@ use crate::{
     },
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema)]
+#[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
+#[derivative(Debug, PartialEq)]
 pub struct Opencode {
     #[serde(default)]
     pub append_prompt: AppendPrompt,
@@ -23,13 +26,20 @@ pub struct Opencode {
     pub model: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none", alias = "agent")]
     pub mode: Option<String>,
+    /// Auto-approve agent actions
+    #[serde(default = "default_to_true")]
+    pub auto_approve: bool,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
+    #[serde(skip)]
+    #[ts(skip)]
+    #[derivative(Debug = "ignore", PartialEq = "ignore")]
+    pub approvals: Option<Arc<dyn ExecutorApprovalService>>,
 }
 
 impl Opencode {
     fn build_command_builder(&self) -> CommandBuilder {
-        let builder = CommandBuilder::new("npx -y opencode-ai@1.0.134 acp");
+        let builder = CommandBuilder::new("npx -y opencode-ai@1.0.134").extend_params(["acp"]);
         apply_overrides(builder, &self.cmd)
     }
 
@@ -40,6 +50,10 @@ impl Opencode {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Opencode {
+    fn use_approvals(&mut self, approvals: Arc<dyn ExecutorApprovalService>) {
+        self.approvals = Some(approvals);
+    }
+
     async fn spawn(
         &self,
         current_dir: &Path,
@@ -56,13 +70,20 @@ impl StandardCodingAgentExecutor for Opencode {
             harness = harness.with_mode(agent);
         }
         let opencode_command = self.build_command_builder().build_initial()?;
+        let approvals = if self.auto_approve {
+            None
+        } else {
+            self.approvals.clone()
+        };
+        let env = setup_approvals_env(self.auto_approve, env);
         harness
             .spawn_with_command(
                 current_dir,
                 combined_prompt,
                 opencode_command,
-                env,
+                &env,
                 &self.cmd,
+                approvals,
             )
             .await
     }
@@ -83,14 +104,21 @@ impl StandardCodingAgentExecutor for Opencode {
             harness = harness.with_mode(agent);
         }
         let opencode_command = self.build_command_builder().build_follow_up(&[])?;
+        let approvals = if self.auto_approve {
+            None
+        } else {
+            self.approvals.clone()
+        };
+        let env = setup_approvals_env(self.auto_approve, env);
         harness
             .spawn_follow_up_with_command(
                 current_dir,
                 combined_prompt,
                 session_id,
                 opencode_command,
-                env,
+                &env,
                 &self.cmd,
+                approvals,
             )
             .await
     }
@@ -126,4 +154,16 @@ impl StandardCodingAgentExecutor for Opencode {
             AvailabilityInfo::NotFound
         }
     }
+}
+
+fn default_to_true() -> bool {
+    true
+}
+
+fn setup_approvals_env(auto_approve: bool, env: &ExecutionEnv) -> ExecutionEnv {
+    let mut env = env.clone();
+    if !auto_approve && !env.contains_key("OPENCODE_PERMISSION") {
+        env.insert("OPENCODE_PERMISSION", r#"{"edit": "ask", "bash": "ask"}"#);
+    }
+    env
 }

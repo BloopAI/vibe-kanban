@@ -83,6 +83,7 @@ impl SessionManager {
             | AcpEvent::ToolUpdate(..)
             | AcpEvent::Plan(..)
             | AcpEvent::AvailableCommands(..)
+            | AcpEvent::ApprovalResponse(..)
             | AcpEvent::CurrentMode(..) => {}
 
             AcpEvent::RequestPermission(req) => event = AcpEvent::ToolUpdate(req.tool_call),

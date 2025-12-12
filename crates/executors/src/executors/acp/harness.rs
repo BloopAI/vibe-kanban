@@ -1,6 +1,7 @@
 use std::{
     path::{Path, PathBuf},
     process::Stdio,
+    rc::Rc,
     sync::Arc,
 };
 
@@ -14,10 +15,11 @@ use tokio_util::{
     io::ReaderStream,
 };
 use tracing::error;
-use workspace_utils::stream_lines::LinesStreamExt;
+use workspace_utils::{approvals::ApprovalStatus, stream_lines::LinesStreamExt};
 
 use super::{AcpClient, SessionManager};
 use crate::{
+    approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandParts},
     env::ExecutionEnv,
     executors::{ExecutorError, ExecutorExitResult, SpawnedChild, acp::AcpEvent},
@@ -73,6 +75,7 @@ impl AcpAgentHarness {
         command_parts: CommandParts,
         env: &ExecutionEnv,
         cmd_overrides: &CmdOverrides,
+        approvals: Option<std::sync::Arc<dyn ExecutorApprovalService>>,
     ) -> Result<SpawnedChild, ExecutorError> {
         let (program_path, args) = command_parts.into_resolved().await?;
         let mut command = Command::new(program_path);
@@ -101,6 +104,7 @@ impl AcpAgentHarness {
             self.session_namespace.clone(),
             self.model.clone(),
             self.mode.clone(),
+            approvals,
         )
         .await?;
 
@@ -111,6 +115,7 @@ impl AcpAgentHarness {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn spawn_follow_up_with_command(
         &self,
         current_dir: &Path,
@@ -119,6 +124,7 @@ impl AcpAgentHarness {
         command_parts: CommandParts,
         env: &ExecutionEnv,
         cmd_overrides: &CmdOverrides,
+        approvals: Option<std::sync::Arc<dyn ExecutorApprovalService>>,
     ) -> Result<SpawnedChild, ExecutorError> {
         let (program_path, args) = command_parts.into_resolved().await?;
         let mut command = Command::new(program_path);
@@ -147,6 +153,7 @@ impl AcpAgentHarness {
             self.session_namespace.clone(),
             self.model.clone(),
             self.mode.clone(),
+            approvals,
         )
         .await?;
 
@@ -167,6 +174,7 @@ impl AcpAgentHarness {
         session_namespace: String,
         model: Option<String>,
         mode: Option<String>,
+        approvals: Option<std::sync::Arc<dyn ExecutorApprovalService>>,
     ) -> Result<(), ExecutorError> {
         // Take child's stdio for ACP wiring
         let orig_stdout = child.inner().stdout.take().ok_or_else(|| {
@@ -281,8 +289,9 @@ impl AcpAgentHarness {
                         };
                         let session_manager = std::sync::Arc::new(session_manager);
 
-                        // Create ACP client
-                        let client = AcpClient::new(event_tx.clone());
+                        // Create ACP client with approvals support
+                        let client = AcpClient::new(event_tx.clone(), approvals.clone());
+                        let client_feedback_handle = client.clone();
 
                         client.record_user_prompt_event(&prompt);
 
@@ -291,6 +300,7 @@ impl AcpAgentHarness {
                             proto::ClientSideConnection::new(client, outgoing, incoming, |fut| {
                                 tokio::task::spawn_local(fut);
                             });
+                        let conn = Rc::new(conn);
 
                         // Drive I/O
                         let io_handle = tokio::task::spawn_local(async move {
@@ -382,13 +392,30 @@ impl AcpAgentHarness {
                         let app_tx_clone = log_tx.clone();
                         let sess_id_for_writer = display_session_id.clone();
                         let sm_for_writer = session_manager.clone();
-                        tokio::spawn(async move {
+                        let conn_for_cancel = conn.clone();
+                        let acp_session_id_for_cancel = acp_session_id.clone();
+                        tokio::task::spawn_local(async move {
                             while let Some(event) = event_rx.recv().await {
+                                if let AcpEvent::ApprovalResponse(resp) = &event
+                                    && let ApprovalStatus::Denied {
+                                        reason: Some(reason),
+                                    } = &resp.status
+                                    && !reason.trim().is_empty()
+                                {
+                                    let _ = conn_for_cancel
+                                        .cancel(proto::CancelNotification::new(
+                                            proto::SessionId::new(
+                                                acp_session_id_for_cancel.clone(),
+                                            ),
+                                        ))
+                                        .await;
+                                }
+
+                                let line = event.to_string();
                                 // Forward to stdout
-                                let _ = app_tx_clone.send(event.to_string());
+                                let _ = app_tx_clone.send(line.clone());
                                 // Persist to session file
-                                let _ = sm_for_writer
-                                    .append_raw_line(&sess_id_for_writer, &event.to_string());
+                                let _ = sm_for_writer.append_raw_line(&sess_id_for_writer, &line);
                             }
                         });
 
@@ -400,35 +427,61 @@ impl AcpAgentHarness {
                         );
 
                         // Build prompt request
-                        let req = proto::PromptRequest::new(
+                        let initial_req = proto::PromptRequest::new(
                             proto::SessionId::new(acp_session_id.clone()),
                             vec![proto::ContentBlock::Text(proto::TextContent::new(
                                 prompt_to_send,
                             ))],
                         );
 
-                        // Send the prompt and await completion to obtain stop_reason
-                        match conn.prompt(req).await {
-                            Ok(resp) => {
-                                // Emit done with stop_reason
-                                let stop_reason =
-                                    serde_json::to_string(&resp.stop_reason).unwrap_or_default();
-                                let _ = log_tx.send(AcpEvent::Done(stop_reason).to_string());
-                            }
-                            Err(e) => {
-                                tracing::debug!("error {} {e} {:?}", e.code, e.data);
-                                if e.code == agent_client_protocol::ErrorCode::INTERNAL_ERROR.code
-                                    && e.data
-                                        .as_ref()
-                                        .is_some_and(|d| d == "server shut down unexpectedly")
-                                {
-                                    tracing::debug!("ACP server killed");
-                                } else {
-                                    let _ =
-                                        log_tx.send(AcpEvent::Error(format!("{e}")).to_string());
+                        let mut current_req = Some(initial_req);
+
+                        while let Some(req) = current_req.take() {
+                            tracing::trace!(?req, "sending ACP prompt request");
+                            // Send the prompt and await completion to obtain stop_reason
+                            match conn.prompt(req).await {
+                                Ok(resp) => {
+                                    // Emit done with stop_reason
+                                    let stop_reason = serde_json::to_string(&resp.stop_reason)
+                                        .unwrap_or_default();
+                                    let _ = log_tx.send(AcpEvent::Done(stop_reason).to_string());
+                                }
+                                Err(e) => {
+                                    tracing::debug!("error {} {e} {:?}", e.code, e.data);
+                                    if e.code
+                                        == agent_client_protocol::ErrorCode::INTERNAL_ERROR.code
+                                        && e.data
+                                            .as_ref()
+                                            .is_some_and(|d| d == "server shut down unexpectedly")
+                                    {
+                                        tracing::debug!("ACP server killed");
+                                    } else {
+                                        let _ = log_tx
+                                            .send(AcpEvent::Error(format!("{e}")).to_string());
+                                    }
                                 }
                             }
+
+                            // Flush any pending user feedback after finish
+                            let feedback = client_feedback_handle
+                                .drain_feedback()
+                                .await
+                                .join("\n")
+                                .trim()
+                                .to_string();
+                            if !feedback.is_empty() {
+                                tracing::trace!(?feedback, "sending ACP follow-up feedback");
+                                let session_id = proto::SessionId::new(acp_session_id.clone());
+                                let feedback_req = proto::PromptRequest::new(
+                                    session_id.clone(),
+                                    vec![proto::ContentBlock::Text(proto::TextContent::new(
+                                        feedback,
+                                    ))],
+                                );
+                                current_req = Some(feedback_req);
+                            }
                         }
+
                         // Notify container of completion
                         if let Some(tx) = exit_signal_tx.take() {
                             let _ = tx.send(ExecutorExitResult::Success);

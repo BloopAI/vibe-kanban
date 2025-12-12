@@ -8,15 +8,18 @@ use agent_client_protocol::{self as acp, SessionNotification};
 use futures::StreamExt;
 use regex::Regex;
 use serde::Deserialize;
-use workspace_utils::msg_store::MsgStore;
+use workspace_utils::{approvals::ApprovalStatus, msg_store::MsgStore};
 
 pub use super::AcpAgentHarness;
 use super::AcpEvent;
-use crate::logs::{
-    ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType, TodoItem,
-    ToolResult, ToolResultValueType, ToolStatus as LogToolStatus,
-    stderr_processor::normalize_stderr_logs,
-    utils::{ConversationPatch, EntryIndexProvider},
+use crate::{
+    approvals::ToolCallMetadata,
+    logs::{
+        ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
+        TodoItem, ToolResult, ToolResultValueType, ToolStatus as LogToolStatus,
+        stderr_processor::normalize_stderr_logs,
+        utils::{ConversationPatch, EntryIndexProvider},
+    },
 };
 
 pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
@@ -220,6 +223,35 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                             tracing::debug!("Failed to convert tool call update to ToolCall");
                         }
                     }
+                    AcpEvent::ApprovalResponse(resp) => {
+                        tracing::trace!("Received approval response: {:?}", resp);
+                        if let ApprovalStatus::Denied { reason } = resp.status {
+                            let tool_name = tool_states
+                                .get(&resp.tool_call_id)
+                                .map(|t| {
+                                    extract_tool_name_from_id(t.id.0.as_ref())
+                                        .unwrap_or_else(|| t.title.clone())
+                                })
+                                .unwrap_or_default();
+                            let idx = entry_index.next();
+                            let entry = NormalizedEntry {
+                                timestamp: None,
+                                entry_type: NormalizedEntryType::UserFeedback {
+                                    denied_tool: tool_name,
+                                },
+                                content: reason
+                                    .clone()
+                                    .unwrap_or_else(|| {
+                                        "User denied this tool use request".to_string()
+                                    })
+                                    .trim()
+                                    .to_string(),
+                                metadata: None,
+                            };
+                            msg_store
+                                .push_patch(ConversationPatch::add_normalized_entry(idx, entry));
+                        }
+                    }
                     AcpEvent::User(_) | AcpEvent::Other(_) => (),
                 }
             }
@@ -251,7 +283,10 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                     status: convert_tool_status(&tool_data.status),
                 },
                 content: get_tool_content(tool_data),
-                metadata: None,
+                metadata: serde_json::to_value(ToolCallMetadata {
+                    tool_call_id: tool_data.id.0.to_string(),
+                })
+                .ok(),
             };
             let patch = if is_new {
                 ConversationPatch::add_normalized_entry(tool_data.index, entry)
@@ -459,6 +494,31 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                             has_line_numbers: false,
                         });
                     }
+                }
+            }
+            if changes.is_empty()
+                && let Some(raw) = &tc.raw_input
+                && let Ok(edit_input) = serde_json::from_value::<EditInput>(raw.clone())
+            {
+                if let Some(diff) = edit_input.diff {
+                    changes.push(FileChange::Edit {
+                        unified_diff: workspace_utils::diff::normalize_unified_diff(
+                            &edit_input.file_path,
+                            &diff,
+                        ),
+                        has_line_numbers: true,
+                    });
+                } else if let Some(old) = edit_input.old_string
+                    && let Some(new) = edit_input.new_string
+                {
+                    changes.push(FileChange::Edit {
+                        unified_diff: workspace_utils::diff::create_unified_diff(
+                            &edit_input.file_path,
+                            &old,
+                            &new,
+                        ),
+                        has_line_numbers: false,
+                    });
                 }
             }
             changes
@@ -686,4 +746,16 @@ struct StreamingState {
 struct StreamingText {
     index: usize,
     content: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct EditInput {
+    file_path: String,
+    #[serde(default)]
+    diff: Option<String>,
+    #[serde(default)]
+    old_string: Option<String>,
+    #[serde(default)]
+    new_string: Option<String>,
 }

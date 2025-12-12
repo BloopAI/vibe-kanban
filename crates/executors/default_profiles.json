@@ -46,6 +46,11 @@
           "model": "gemini-3-pro-preview",
           "yolo": true
         }
+      },
+      "APPROVALS": {
+        "GEMINI": {
+          "yolo": false
+        }
       }
     },
     "CODEX": {
@@ -78,11 +83,19 @@
     },
     "OPENCODE": {
       "DEFAULT": {
-        "OPENCODE": {}
+        "OPENCODE": {
+          "auto_approve": true
+        }
       },
       "PLAN": {
         "OPENCODE": {
-          "mode": "plan"
+          "mode": "plan",
+          "auto_approve": true
+        }
+      },
+      "APPROVALS": {
+        "OPENCODE": {
+          "auto_approve": false
         }
       }
     },
@@ -90,6 +103,11 @@
       "DEFAULT": {
         "QWEN_CODE": {
           "yolo": true
+        }
+      },
+      "APPROVALS": {
+        "QWEN_CODE": {
+          "yolo": false
         }
       }
     },

@@ -10,6 +10,7 @@ pub use harness::AcpAgentHarness;
 pub use normalize_logs::*;
 use serde::{Deserialize, Serialize};
 pub use session::SessionManager;
+use workspace_utils::approvals::ApprovalStatus;
 
 /// Parsed event types for internal processing
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -24,6 +25,7 @@ pub enum AcpEvent {
     AvailableCommands(Vec<agent_client_protocol::AvailableCommand>),
     CurrentMode(agent_client_protocol::SessionModeId),
     RequestPermission(agent_client_protocol::RequestPermissionRequest),
+    ApprovalResponse(ApprovalResponse),
     Error(String),
     Done(String),
     Other(agent_client_protocol::SessionNotification),
@@ -41,4 +43,10 @@ impl FromStr for AcpEvent {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         serde_json::from_str(s)
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ApprovalResponse {
+    pub tool_call_id: String,
+    pub status: ApprovalStatus,
 }
