@@ -23,7 +23,9 @@ export function useRenameBranch(
         queryClient.invalidateQueries({
           queryKey: taskAttemptKeys.byId(attemptId),
         });
-        queryClient.invalidateQueries({ queryKey: attemptKeys.byId(attemptId) });
+        queryClient.invalidateQueries({
+          queryKey: attemptKeys.byId(attemptId),
+        });
         queryClient.invalidateQueries({
           queryKey: attemptBranchKeys.byAttempt(attemptId),
         });
