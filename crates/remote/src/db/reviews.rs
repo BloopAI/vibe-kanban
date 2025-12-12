@@ -39,6 +39,7 @@ impl<'a> ReviewRepository<'a> {
 
     pub async fn create(
         &self,
+        id: Uuid,
         gh_pr_url: &str,
         claude_code_session_id: Option<&str>,
         ip_address: IpAddr,
@@ -49,8 +50,8 @@ impl<'a> ReviewRepository<'a> {
         query_as!(
             Review,
             r#"
-            INSERT INTO reviews (gh_pr_url, claude_code_session_id, ip_address, r2_path)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO reviews (id, gh_pr_url, claude_code_session_id, ip_address, r2_path)
+            VALUES ($1, $2, $3, $4, $5)
             RETURNING
                 id,
                 gh_pr_url,
@@ -62,6 +63,7 @@ impl<'a> ReviewRepository<'a> {
                 deleted_at,
                 created_at
             "#,
+            id,
             gh_pr_url,
             claude_code_session_id,
             ip_network,

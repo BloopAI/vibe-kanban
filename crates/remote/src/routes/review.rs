@@ -118,31 +118,35 @@ pub async fn init_review_upload(
     headers: HeaderMap,
     Json(payload): Json<InitReviewRequest>,
 ) -> Result<Json<InitReviewResponse>, ReviewError> {
-    // 1. Extract IP (required for rate limiting)
+    // 1. Generate the review ID upfront (used in both R2 path and DB record)
+    let review_id = Uuid::new_v4();
+
+    // 2. Extract IP (required for rate limiting)
     let ip = extract_client_ip(&headers).ok_or(ReviewError::MissingClientIp)?;
 
-    // 2. Check rate limits
+    // 3. Check rate limits
     let repo = ReviewRepository::new(state.pool());
     check_rate_limit(&repo, ip).await?;
 
-    // 3. Get R2 service
+    // 4. Get R2 service
     let r2 = state.r2().ok_or(ReviewError::NotConfigured)?;
 
-    // 4. Generate presigned URL
+    // 5. Generate presigned URL with review ID in path
     let content_type = payload.content_type.as_deref();
-    let upload = r2.create_presigned_upload(content_type).await?;
+    let upload = r2.create_presigned_upload(review_id, content_type).await?;
 
-    // 5. Insert DB record
+    // 6. Insert DB record with the same review ID, storing folder path
     let review = repo
         .create(
+            review_id,
             &payload.gh_pr_url,
             payload.claude_code_session_id.as_deref(),
             ip,
-            &upload.object_key,
+            &upload.folder_path,
         )
         .await?;
 
-    // 6. Return response with review_id
+    // 7. Return response with review_id
     Ok(Json(InitReviewResponse {
         review_id: review.id,
         upload_url: upload.upload_url,

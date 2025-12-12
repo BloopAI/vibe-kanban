@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            INSERT INTO reviews (gh_pr_url, claude_code_session_id, ip_address, r2_path)\n            VALUES ($1, $2, $3, $4)\n            RETURNING\n                id,\n                gh_pr_url,\n                claude_code_session_id,\n                ip_address AS \"ip_address: IpNetwork\",\n                review_cache,\n                last_viewed_at,\n                r2_path,\n                deleted_at,\n                created_at\n            ",
+  "query": "\n            INSERT INTO reviews (id, gh_pr_url, claude_code_session_id, ip_address, r2_path)\n            VALUES ($1, $2, $3, $4, $5)\n            RETURNING\n                id,\n                gh_pr_url,\n                claude_code_session_id,\n                ip_address AS \"ip_address: IpNetwork\",\n                review_cache,\n                last_viewed_at,\n                r2_path,\n                deleted_at,\n                created_at\n            ",
   "describe": {
     "columns": [
       {
@@ -51,6 +51,7 @@
     ],
     "parameters": {
       "Left": [
+        "Uuid",
         "Text",
         "Text",
         "Inet",
@@ -69,5 +70,5 @@
       false
     ]
   },
-  "hash": "25a0327568c5725e8244185fd9f38212a6ce05ae55f54cbe84d95a102d438f76"
+  "hash": "2bd51bc52157834ea9fac7b55535632ab81cc1afeb2a8b5fc929c0eb1a41ff44"
 }

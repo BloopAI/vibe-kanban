@@ -12,6 +12,9 @@ use uuid::Uuid;
 
 use crate::config::R2Config;
 
+/// Well-known filename for the payload tarball stored in each review folder.
+pub const PAYLOAD_FILENAME: &str = "payload.tar.gz";
+
 #[derive(Clone)]
 pub struct R2Service {
     client: Client,
@@ -23,6 +26,8 @@ pub struct R2Service {
 pub struct PresignedUpload {
     pub upload_url: String,
     pub object_key: String,
+    /// Folder path in R2 (e.g., "reviews/{review_id}") - this is stored in the database.
+    pub folder_path: String,
     pub expires_at: DateTime<Utc>,
 }
 
@@ -67,11 +72,11 @@ impl R2Service {
 
     pub async fn create_presigned_upload(
         &self,
+        review_id: Uuid,
         content_type: Option<&str>,
     ) -> Result<PresignedUpload, R2Error> {
-        let date = Utc::now().format("%Y-%m-%d");
-        let uuid = Uuid::new_v4();
-        let object_key = format!("reviews/{date}/{uuid}.tar.gz");
+        let folder_path = format!("reviews/{review_id}");
+        let object_key = format!("{folder_path}/{PAYLOAD_FILENAME}");
 
         let presigning_config = PresigningConfig::builder()
             .expires_in(self.presign_expiry)
@@ -99,6 +104,7 @@ impl R2Service {
         Ok(PresignedUpload {
             upload_url: presigned.uri().to_string(),
             object_key,
+            folder_path,
             expires_at,
         })
     }
