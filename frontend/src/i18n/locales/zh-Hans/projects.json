@@ -5,7 +5,8 @@
   "linkToOrganization": "链接到远程项目",
   "loading": "加载项目中...",
   "errors": {
-    "fetchFailed": "获取项目失败"
+    "fetchFailed": "获取项目失败",
+    "deleteFailed": "删除项目失败"
   },
   "empty": {
     "title": "还没有项目",
@@ -44,6 +45,7 @@
     }
   },
   "unlinkFromOrganization": "取消链接远程项目",
+  "projectNotFound": "您查找的项目不存在或已被删除。",
   "viewProject": "查看项目",
   "openInIDE": "在 IDE 中打开",
   "createdDate": "创建于 {{date}}",

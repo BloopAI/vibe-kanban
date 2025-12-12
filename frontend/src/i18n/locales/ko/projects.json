@@ -5,7 +5,8 @@
   "linkToOrganization": "원격 프로젝트에 연결",
   "loading": "프로젝트 로딩 중...",
   "errors": {
-    "fetchFailed": "프로젝트를 불러오지 못했습니다"
+    "fetchFailed": "프로젝트를 불러오지 못했습니다",
+    "deleteFailed": "프로젝트 삭제에 실패했습니다"
   },
   "empty": {
     "title": "아직 프로젝트가 없습니다",
@@ -44,6 +45,7 @@
     }
   },
   "unlinkFromOrganization": "원격 프로젝트에서 연결 해제",
+  "projectNotFound": "찾으시는 프로젝트가 존재하지 않거나 삭제되었습니다.",
   "viewProject": "프로젝트 보기",
   "openInIDE": "IDE에서 열기",
   "createdDate": "생성일 {{date}}",

@@ -1,11 +1,12 @@
 use db::models::{
     execution_process::ExecutionProcess,
+    project::Project,
     scratch::Scratch,
     task::{Task, TaskWithAttemptStatus},
 };
 use futures::StreamExt;
 use serde_json::json;
-use tokio_stream::wrappers::BroadcastStream;
+use tokio_stream::wrappers::{BroadcastStream, errors::BroadcastStreamRecvError};
 use utils::log_msg::LogMsg;
 use uuid::Uuid;
 
@@ -134,6 +135,85 @@ impl EventService {
                         }
                         Ok(other) => Some(Ok(other)), // Pass through non-patch messages
                         Err(_) => None,               // Filter out broadcast errors
+                    }
+                }
+            });
+
+        // Start with initial snapshot, then live updates
+        let initial_stream = futures::stream::once(async move { Ok(initial_msg) });
+        let combined_stream = initial_stream.chain(filtered_stream).boxed();
+
+        Ok(combined_stream)
+    }
+
+    /// Stream raw project messages with initial snapshot
+    pub async fn stream_projects_raw(
+        &self,
+    ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, EventError>
+    {
+        fn build_projects_snapshot(projects: Vec<Project>) -> LogMsg {
+            // Convert projects array to object keyed by project ID
+            let projects_map: serde_json::Map<String, serde_json::Value> = projects
+                .into_iter()
+                .map(|project| {
+                    (
+                        project.id.to_string(),
+                        serde_json::to_value(project).unwrap(),
+                    )
+                })
+                .collect();
+
+            let patch = json!([
+                {
+                    "op": "replace",
+                    "path": "/projects",
+                    "value": projects_map
+                }
+            ]);
+
+            LogMsg::JsonPatch(serde_json::from_value(patch).unwrap())
+        }
+
+        // Get initial snapshot of projects
+        let projects = Project::find_all(&self.db.pool).await?;
+        let initial_msg = build_projects_snapshot(projects);
+
+        let db_pool = self.db.pool.clone();
+
+        // Get filtered event stream (projects only)
+        let filtered_stream =
+            BroadcastStream::new(self.msg_store.get_receiver()).filter_map(move |msg_result| {
+                let db_pool = db_pool.clone();
+                async move {
+                    match msg_result {
+                        Ok(LogMsg::JsonPatch(patch)) => {
+                            if let Some(patch_op) = patch.0.first()
+                                && patch_op.path().starts_with("/projects")
+                            {
+                                return Some(Ok(LogMsg::JsonPatch(patch)));
+                            }
+                            None
+                        }
+                        Ok(other) => Some(Ok(other)), // Pass through non-patch messages
+                        Err(BroadcastStreamRecvError::Lagged(skipped)) => {
+                            tracing::warn!(
+                                skipped = skipped,
+                                "projects stream lagged; resyncing snapshot"
+                            );
+
+                            match Project::find_all(&db_pool).await {
+                                Ok(projects) => Some(Ok(build_projects_snapshot(projects))),
+                                Err(err) => {
+                                    tracing::error!(
+                                        error = %err,
+                                        "failed to resync projects after lag"
+                                    );
+                                    Some(Err(std::io::Error::other(format!(
+                                        "failed to resync projects after lag: {err}"
+                                    ))))
+                                }
+                            }
+                        }
                     }
                 }
             });

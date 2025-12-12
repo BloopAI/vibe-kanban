@@ -5,7 +5,8 @@
   "linkToOrganization": "Link to Remote Project",
   "loading": "Loading projects...",
   "errors": {
-    "fetchFailed": "Failed to fetch projects"
+    "fetchFailed": "Failed to fetch projects",
+    "deleteFailed": "Failed to delete project"
   },
   "empty": {
     "title": "No projects yet",
@@ -44,6 +45,7 @@
     }
   },
   "unlinkFromOrganization": "Unlink from Remote Project",
+  "projectNotFound": "The project you're looking for doesn't exist or has been deleted.",
   "viewProject": "View Project",
   "openInIDE": "Open in IDE",
   "createdDate": "Created {{date}}",

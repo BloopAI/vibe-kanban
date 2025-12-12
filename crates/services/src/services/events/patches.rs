@@ -1,6 +1,6 @@
 use db::models::{
-    execution_process::ExecutionProcess, scratch::Scratch, task::TaskWithAttemptStatus,
-    task_attempt::TaskAttempt,
+    execution_process::ExecutionProcess, project::Project, scratch::Scratch,
+    task::TaskWithAttemptStatus, task_attempt::TaskAttempt,
 };
 use json_patch::{AddOperation, Patch, PatchOperation, RemoveOperation, ReplaceOperation};
 use uuid::Uuid;
@@ -44,6 +44,47 @@ pub mod task_patch {
             path: task_path(task_id)
                 .try_into()
                 .expect("Task path should be valid"),
+        })])
+    }
+}
+
+/// Helper functions for creating project-specific patches
+pub mod project_patch {
+    use super::*;
+
+    fn project_path(project_id: Uuid) -> String {
+        format!(
+            "/projects/{}",
+            escape_pointer_segment(&project_id.to_string())
+        )
+    }
+
+    /// Create patch for adding a new project
+    pub fn add(project: &Project) -> Patch {
+        Patch(vec![PatchOperation::Add(AddOperation {
+            path: project_path(project.id)
+                .try_into()
+                .expect("Project path should be valid"),
+            value: serde_json::to_value(project).expect("Project serialization should not fail"),
+        })])
+    }
+
+    /// Create patch for updating an existing project
+    pub fn replace(project: &Project) -> Patch {
+        Patch(vec![PatchOperation::Replace(ReplaceOperation {
+            path: project_path(project.id)
+                .try_into()
+                .expect("Project path should be valid"),
+            value: serde_json::to_value(project).expect("Project serialization should not fail"),
+        })])
+    }
+
+    /// Create patch for removing a project
+    pub fn remove(project_id: Uuid) -> Patch {
+        Patch(vec![PatchOperation::Remove(RemoveOperation {
+            path: project_path(project_id)
+                .try_into()
+                .expect("Project path should be valid"),
         })])
     }
 }
