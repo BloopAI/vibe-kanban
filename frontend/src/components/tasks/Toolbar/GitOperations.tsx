@@ -1,6 +1,5 @@
 import {
   ArrowRight,
-  ChevronsUpDown,
   GitBranch as GitBranchIcon,
   GitPullRequest,
   RefreshCw,
@@ -8,7 +7,6 @@ import {
   AlertTriangle,
   CheckCircle,
   ExternalLink,
-  FolderGit,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button.tsx';
 import {
@@ -26,7 +24,7 @@ import type {
   TaskWithAttemptStatus,
 } from 'shared/types';
 import { ChangeTargetBranchDialog } from '@/components/dialogs/tasks/ChangeTargetBranchDialog';
-import { ChangeRepoDialog } from '@/components/dialogs/tasks/ChangeRepoDialog';
+import RepoSelector from '@/components/tasks/RepoSelector';
 import { RebaseDialog } from '@/components/dialogs/tasks/RebaseDialog';
 import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
 import { useTranslation } from 'react-i18next';
@@ -137,26 +135,6 @@ function GitOperations({
   const getSelectedRepoId = useCallback(() => {
     return selectedRepoId ?? repos[0]?.id;
   }, [selectedRepoId, repos]);
-
-  const getSelectedRepo = useCallback(() => {
-    const repoId = getSelectedRepoId();
-    return repos.find((r) => r.id === repoId);
-  }, [repos, getSelectedRepoId]);
-
-  const handleChangeRepoDialogOpen = async () => {
-    try {
-      const result = await ChangeRepoDialog.show({
-        repos,
-        currentRepoId: getSelectedRepoId(),
-      });
-
-      if (result.action === 'confirmed' && result.repoId) {
-        setSelectedRepoId(result.repoId);
-      }
-    } catch (error) {
-      // User cancelled - do nothing
-    }
-  };
 
   const getSelectedRepoStatus = useCallback(() => {
     const repoId = getSelectedRepoId();
@@ -337,49 +315,20 @@ function GitOperations({
       <div className={containerClasses}>
         {/* Left: Branch flow */}
         <div className="flex items-center min-w-0 shrink-0 overflow-hidden">
-          {/* Repo chip + change button (only when multiple repos) */}
-          {repos.length > 1 && (
-            <div className="flex items-center gap-1 min-w-0">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="inline-flex items-center gap-1.5 max-w-[200px] px-2 py-0.5 rounded-full bg-muted text-xs font-medium min-w-0">
-                      <FolderGit className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <span className="truncate">
-                        {getSelectedRepo()?.display_name ||
-                          t('repos.selector.placeholder', 'Select repo')}
-                      </span>
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    {t('repos.changeRepo.dialog.title', 'Change Repository')}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      onClick={handleChangeRepoDialogOpen}
-                      disabled={isAttemptRunning}
-                      className={settingsBtnClasses}
-                      aria-label={t(
-                        'repos.changeRepo.dialog.title',
-                        'Change Repository'
-                      )}
-                    >
-                      <ChevronsUpDown className="h-3.5 w-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    {t('repos.changeRepo.dialog.title', 'Change Repository')}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
+          {/* Repo selector (dropdown when multiple repos) */}
+          {repos.length > 0 && (
+            <RepoSelector
+              repos={repos}
+              selectedRepoId={getSelectedRepoId() ?? null}
+              onRepoSelect={setSelectedRepoId}
+              disabled={isAttemptRunning}
+              placeholder={t('repos.selector.placeholder', 'Select repo')}
+              className={
+                isVertical
+                  ? ''
+                  : 'w-auto max-w-[200px] rounded-full bg-muted border-0 h-6 px-2 py-0.5 text-xs font-medium'
+              }
+            />
           )}
 
           {/* Task + target branches right-aligned in horizontal layout */}

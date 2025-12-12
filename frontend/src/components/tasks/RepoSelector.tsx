@@ -16,6 +16,7 @@ type Props = {
   onRepoSelect: (repoId: string) => void;
   placeholder?: string;
   className?: string;
+  disabled?: boolean;
 };
 
 function RepoSelector({
@@ -24,6 +25,7 @@ function RepoSelector({
   onRepoSelect,
   placeholder,
   className = '',
+  disabled = false,
 }: Props) {
   const { t } = useTranslation(['tasks']);
   const [open, setOpen] = useState(false);
@@ -48,6 +50,7 @@ function RepoSelector({
           variant="outline"
           size="sm"
           className={`w-full justify-between text-xs ${className}`}
+          disabled={disabled}
         >
           <div className="flex items-center gap-1.5 w-full min-w-0">
             <FolderGit className="h-3 w-3 flex-shrink-0" />

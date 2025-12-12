@@ -59,11 +59,6 @@ export {
   type ChangeTargetBranchDialogResult,
 } from './tasks/ChangeTargetBranchDialog';
 export {
-  ChangeRepoDialog,
-  type ChangeRepoDialogProps,
-  type ChangeRepoDialogResult,
-} from './tasks/ChangeRepoDialog';
-export {
   RebaseDialog,
   type RebaseDialogProps,
   type RebaseDialogResult,
