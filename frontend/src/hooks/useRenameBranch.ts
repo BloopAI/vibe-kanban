@@ -1,5 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { attemptsApi } from '@/lib/api';
+import { taskAttemptKeys } from './useTaskAttempt';
+import { attemptKeys } from './useAttempt';
+import { attemptBranchKeys } from './useAttemptBranch';
+import { branchStatusKeys } from './useBranchStatus';
+import { taskAttemptKeys as taskAttemptsKeys } from './useTaskAttempts';
 
 export function useRenameBranch(
   attemptId?: string,
@@ -15,15 +20,17 @@ export function useRenameBranch(
     },
     onSuccess: (data) => {
       if (attemptId) {
-        queryClient.invalidateQueries({ queryKey: ['taskAttempt', attemptId] });
-        queryClient.invalidateQueries({ queryKey: ['attempt', attemptId] });
         queryClient.invalidateQueries({
-          queryKey: ['attemptBranch', attemptId],
+          queryKey: taskAttemptKeys.byId(attemptId),
+        });
+        queryClient.invalidateQueries({ queryKey: attemptKeys.byId(attemptId) });
+        queryClient.invalidateQueries({
+          queryKey: attemptBranchKeys.byAttempt(attemptId),
         });
         queryClient.invalidateQueries({
-          queryKey: ['branchStatus', attemptId],
+          queryKey: branchStatusKeys.byAttempt(attemptId),
         });
-        queryClient.invalidateQueries({ queryKey: ['taskAttempts'] });
+        queryClient.invalidateQueries({ queryKey: taskAttemptsKeys.all });
       }
       onSuccess?.(data.branch);
     },
@@ -31,7 +38,7 @@ export function useRenameBranch(
       console.error('Failed to rename branch:', err);
       if (attemptId) {
         queryClient.invalidateQueries({
-          queryKey: ['branchStatus', attemptId],
+          queryKey: branchStatusKeys.byAttempt(attemptId),
         });
       }
       onError?.(err);

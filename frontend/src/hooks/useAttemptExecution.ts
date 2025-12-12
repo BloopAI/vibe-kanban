@@ -6,6 +6,10 @@ import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesConte
 import type { AttemptData } from '@/lib/types';
 import type { ExecutionProcess } from 'shared/types';
 
+export const processDetailsKeys = {
+  byId: (processId: string) => ['processDetails', processId] as const,
+};
+
 export function useAttemptExecution(attemptId?: string, taskId?: string) {
   const { isStopping, setIsStopping } = useTaskStopping(taskId || '');
 
@@ -24,7 +28,7 @@ export function useAttemptExecution(attemptId?: string, taskId?: string) {
   // Fetch details for setup processes
   const processDetailQueries = useQueries({
     queries: setupProcesses.map((process) => ({
-      queryKey: ['processDetails', process.id],
+      queryKey: processDetailsKeys.byId(process.id),
       queryFn: () => executionProcessesApi.getDetails(process.id),
       enabled: !!process.id,
     })),

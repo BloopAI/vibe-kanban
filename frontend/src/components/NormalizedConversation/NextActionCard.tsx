@@ -17,6 +17,7 @@ import { GitActionsDialog } from '@/components/dialogs/tasks/GitActionsDialog';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import { useDiffSummary } from '@/hooks/useDiffSummary';
 import { useDevServer } from '@/hooks/useDevServer';
+import { attemptKeys } from '@/hooks/useAttempt';
 import { Button } from '@/components/ui/button';
 import { IdeIcon } from '@/components/ide/IdeIcon';
 import { useUserSystem } from '@/components/ConfigProvider';
@@ -60,7 +61,7 @@ export function NextActionCard({
   const [copied, setCopied] = useState(false);
 
   const { data: attempt } = useQuery({
-    queryKey: ['attempt', attemptId],
+    queryKey: attemptKeys.byId(attemptId),
     queryFn: () => attemptsApi.get(attemptId!),
     enabled: !!attemptId && failed,
   });

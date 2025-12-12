@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { attemptsApi } from '@/lib/api';
 import type { PushError, PushTaskAttemptRequest } from 'shared/types';
+import { branchStatusKeys } from './useBranchStatus';
 
 class PushErrorWithData extends Error {
   constructor(
@@ -36,7 +37,9 @@ export function usePush(
     },
     onSuccess: () => {
       // A push only affects remote status; invalidate the same branchStatus
-      queryClient.invalidateQueries({ queryKey: ['branchStatus', attemptId] });
+      queryClient.invalidateQueries({
+        queryKey: branchStatusKeys.byAttempt(attemptId),
+      });
       onSuccess?.();
     },
     onError: (err, variables) => {

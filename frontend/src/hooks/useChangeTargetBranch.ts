@@ -4,6 +4,9 @@ import type {
   ChangeTargetBranchRequest,
   ChangeTargetBranchResponse,
 } from 'shared/types';
+import { branchStatusKeys } from './useBranchStatus';
+import { taskAttemptKeys } from './useTaskAttempt';
+import { branchKeys } from './useBranches';
 
 type ChangeTargetBranchParams = {
   newTargetBranch: string;
@@ -37,17 +40,17 @@ export function useChangeTargetBranch(
     onSuccess: (data) => {
       if (attemptId) {
         queryClient.invalidateQueries({
-          queryKey: ['branchStatus', attemptId],
+          queryKey: branchStatusKeys.byAttempt(attemptId),
         });
         // Invalidate taskAttempt query to refresh attempt.target_branch
         queryClient.invalidateQueries({
-          queryKey: ['taskAttempt', attemptId],
+          queryKey: taskAttemptKeys.byId(attemptId),
         });
       }
 
       if (projectId) {
         queryClient.invalidateQueries({
-          queryKey: ['projectBranches', projectId],
+          queryKey: branchKeys.byProject(projectId),
         });
       }
 
@@ -57,7 +60,7 @@ export function useChangeTargetBranch(
       console.error('Failed to change target branch:', err);
       if (attemptId) {
         queryClient.invalidateQueries({
-          queryKey: ['branchStatus', attemptId],
+          queryKey: branchStatusKeys.byAttempt(attemptId),
         });
       }
       onError?.(err);

@@ -3,13 +3,17 @@ import { oauthApi } from '@/lib/api';
 import { useEffect } from 'react';
 import { useAuth } from '@/hooks';
 
+export const authStatusKeys = {
+  all: ['auth', 'status'] as const,
+};
+
 interface UseAuthStatusOptions {
   enabled: boolean;
 }
 
 export function useAuthStatus(options: UseAuthStatusOptions) {
   const query = useQuery({
-    queryKey: ['auth', 'status'],
+    queryKey: authStatusKeys.all,
     queryFn: () => oauthApi.status(),
     enabled: options.enabled,
     refetchInterval: options.enabled ? 1000 : false,

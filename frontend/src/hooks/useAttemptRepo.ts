@@ -3,11 +3,18 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { attemptsApi } from '@/lib/api';
 import type { RepoWithTargetBranch } from 'shared/types';
 
+export const attemptRepoKeys = {
+  byAttempt: (attemptId: string | undefined) =>
+    ['attemptRepo', attemptId] as const,
+  selection: (attemptId: string | undefined) =>
+    ['attemptRepoSelection', attemptId] as const,
+};
+
 export function useAttemptRepo(attemptId?: string) {
   const queryClient = useQueryClient();
 
   const query = useQuery<RepoWithTargetBranch[]>({
-    queryKey: ['attemptRepo', attemptId],
+    queryKey: attemptRepoKeys.byAttempt(attemptId),
     queryFn: async () => {
       const repos = await attemptsApi.getRepos(attemptId!);
       return repos;
@@ -19,7 +26,7 @@ export function useAttemptRepo(attemptId?: string) {
 
   // Use React Query cache for shared state across all hook consumers
   const { data: selectedRepoId = null } = useQuery<string | null>({
-    queryKey: ['attemptRepoSelection', attemptId],
+    queryKey: attemptRepoKeys.selection(attemptId),
     queryFn: () => null,
     enabled: false,
     staleTime: Infinity,
@@ -27,7 +34,7 @@ export function useAttemptRepo(attemptId?: string) {
 
   const setSelectedRepoId = useCallback(
     (id: string | null) => {
-      queryClient.setQueryData(['attemptRepoSelection', attemptId], id);
+      queryClient.setQueryData(attemptRepoKeys.selection(attemptId), id);
     },
     [queryClient, attemptId]
   );

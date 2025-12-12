@@ -7,6 +7,7 @@ import type {
   LinkToExistingRequest,
   CreateRemoteProjectRequest,
 } from 'shared/types';
+import { projectKeys } from './useProjects';
 
 interface UseProjectMutationsOptions {
   onCreateSuccess?: (project: Project) => void;
@@ -26,8 +27,8 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
     mutationKey: ['createProject'],
     mutationFn: (data: CreateProject) => projectsApi.create(data),
     onSuccess: (project: Project) => {
-      queryClient.setQueryData(['project', project.id], project);
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.setQueryData(projectKeys.byId(project.id), project);
+      queryClient.invalidateQueries({ queryKey: projectKeys.all });
       options?.onCreateSuccess?.(project);
     },
     onError: (err) => {
@@ -47,10 +48,10 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
     }) => projectsApi.update(projectId, data),
     onSuccess: (project: Project) => {
       // Update single project cache
-      queryClient.setQueryData(['project', project.id], project);
+      queryClient.setQueryData(projectKeys.byId(project.id), project);
 
       // Update the project in the projects list cache immediately
-      queryClient.setQueryData<Project[]>(['projects'], (old) => {
+      queryClient.setQueryData<Project[]>(projectKeys.all, (old) => {
         if (!old) return old;
         return old.map((p) => (p.id === project.id ? project : p));
       });
@@ -73,15 +74,15 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
       data: LinkToExistingRequest;
     }) => projectsApi.linkToExisting(localProjectId, data),
     onSuccess: (project: Project) => {
-      queryClient.setQueryData(['project', project.id], project);
-      queryClient.setQueryData<Project[]>(['projects'], (old) => {
+      queryClient.setQueryData(projectKeys.byId(project.id), project);
+      queryClient.setQueryData<Project[]>(projectKeys.all, (old) => {
         if (!old) return old;
         return old.map((p) => (p.id === project.id ? project : p));
       });
 
       // Invalidate to ensure fresh data from server
-      queryClient.invalidateQueries({ queryKey: ['project', project.id] });
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: projectKeys.byId(project.id) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.all });
 
       // Invalidate organization projects queries since linking affects remote projects
       queryClient.invalidateQueries({
@@ -114,15 +115,15 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
       data: CreateRemoteProjectRequest;
     }) => projectsApi.createAndLink(localProjectId, data),
     onSuccess: (project: Project) => {
-      queryClient.setQueryData(['project', project.id], project);
-      queryClient.setQueryData<Project[]>(['projects'], (old) => {
+      queryClient.setQueryData(projectKeys.byId(project.id), project);
+      queryClient.setQueryData<Project[]>(projectKeys.all, (old) => {
         if (!old) return old;
         return old.map((p) => (p.id === project.id ? project : p));
       });
 
       // Invalidate to ensure fresh data from server
-      queryClient.invalidateQueries({ queryKey: ['project', project.id] });
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: projectKeys.byId(project.id) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.all });
 
       // Invalidate organization projects queries since linking affects remote projects
       queryClient.invalidateQueries({
@@ -149,14 +150,14 @@ export function useProjectMutations(options?: UseProjectMutationsOptions) {
     mutationKey: ['unlinkProject'],
     mutationFn: (projectId: string) => projectsApi.unlink(projectId),
     onSuccess: (project: Project) => {
-      queryClient.setQueryData(['project', project.id], project);
-      queryClient.setQueryData<Project[]>(['projects'], (old) => {
+      queryClient.setQueryData(projectKeys.byId(project.id), project);
+      queryClient.setQueryData<Project[]>(projectKeys.all, (old) => {
         if (!old) return old;
         return old.map((p) => (p.id === project.id ? project : p));
       });
 
       // Invalidate to ensure fresh data from server
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: projectKeys.all });
 
       // Invalidate organization projects queries since unlinking affects remote projects
       queryClient.invalidateQueries({

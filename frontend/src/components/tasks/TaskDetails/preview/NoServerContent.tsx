@@ -21,6 +21,7 @@ import {
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useTaskMutations } from '@/hooks/useTaskMutations';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
+import { projectKeys } from '@/hooks/useProjects';
 import { projectsApi } from '@/lib/api';
 import {
   COMPANION_INSTALL_TASK_TITLE,
@@ -54,7 +55,7 @@ export function NoServerContent({
   const { updateProject } = useProjectMutations();
 
   const { data: projectRepos = [] } = useQuery({
-    queryKey: ['projectRepositories', project?.id],
+    queryKey: projectKeys.repositories(project?.id),
     queryFn: () =>
       project?.id
         ? projectsApi.getRepositories(project.id)

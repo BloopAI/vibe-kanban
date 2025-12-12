@@ -37,6 +37,7 @@ import {
   useTaskMutations,
   type RepoBranchConfig,
 } from '@/hooks';
+import { projectKeys } from '@/hooks/useProjects';
 import {
   useKeySubmitTask,
   useKeySubmitTaskAlt,
@@ -110,7 +111,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
     editMode ? props.task.id : undefined
   );
   const { data: projectRepos = [] } = useQuery({
-    queryKey: ['projectRepositories', projectId],
+    queryKey: projectKeys.repositories(projectId),
     queryFn: () => projectsApi.getRepositories(projectId),
     enabled: modal.visible,
   });

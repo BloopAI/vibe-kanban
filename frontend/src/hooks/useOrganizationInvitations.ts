@@ -2,6 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import { organizationsApi } from '@/lib/api';
 import { InvitationStatus, type Invitation } from 'shared/types';
 
+export const organizationInvitationsKeys = {
+  byOrg: (organizationId: string | null) =>
+    ['organization', 'invitations', organizationId] as const,
+};
+
 interface UseOrganizationInvitationsOptions {
   organizationId: string | null;
   isAdmin: boolean;
@@ -14,7 +19,7 @@ export function useOrganizationInvitations(
   const { organizationId, isAdmin, isPersonal } = options;
 
   return useQuery<Invitation[]>({
-    queryKey: ['organization', 'invitations', organizationId],
+    queryKey: organizationInvitationsKeys.byOrg(organizationId),
     queryFn: async () => {
       if (!organizationId) {
         throw new Error('No organization ID provided');

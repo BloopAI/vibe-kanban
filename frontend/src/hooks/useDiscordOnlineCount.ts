@@ -1,5 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 
+export const discordOnlineCountKeys = {
+  all: ['discord-online-count'] as const,
+};
+
 const DISCORD_GUILD_ID = '1423630976524877857';
 
 async function fetchDiscordOnlineCount(): Promise<number | null> {
@@ -28,7 +32,7 @@ async function fetchDiscordOnlineCount(): Promise<number | null> {
 
 export function useDiscordOnlineCount() {
   return useQuery({
-    queryKey: ['discord-online-count'],
+    queryKey: discordOnlineCountKeys.all,
     queryFn: fetchDiscordOnlineCount,
     refetchInterval: 10 * 60 * 1000,
     staleTime: 10 * 60 * 1000,

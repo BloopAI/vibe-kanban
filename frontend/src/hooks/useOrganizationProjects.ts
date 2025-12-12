@@ -2,9 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import { organizationsApi } from '../lib/api';
 import type { RemoteProject } from 'shared/types';
 
+export const organizationProjectsKeys = {
+  byOrg: (organizationId: string | null) =>
+    ['organizations', organizationId, 'projects'] as const,
+};
+
 export function useOrganizationProjects(organizationId: string | null) {
   return useQuery<RemoteProject[]>({
-    queryKey: ['organizations', organizationId, 'projects'],
+    queryKey: organizationProjectsKeys.byOrg(organizationId),
     queryFn: async () => {
       if (!organizationId) return [];
       const projects = await organizationsApi.getProjects(organizationId);

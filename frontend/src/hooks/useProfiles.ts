@@ -3,6 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { profilesApi } from '@/lib/api';
 import type { JsonValue } from 'shared/types';
 
+export const profilesKeys = {
+  all: ['profiles'] as const,
+};
+
 export type UseProfilesReturn = {
   // data
   profilesContent: string;
@@ -25,7 +29,7 @@ export function useProfiles(): UseProfilesReturn {
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['profiles'],
+    queryKey: profilesKeys.all,
     queryFn: () => profilesApi.load(),
     staleTime: 1000 * 60, // 1 minute cache
   });
@@ -35,7 +39,7 @@ export function useProfiles(): UseProfilesReturn {
     onSuccess: (_, content) => {
       // Optimistically update cache with new content
       queryClient.setQueryData<{ content: string; path: string }>(
-        ['profiles'],
+        profilesKeys.all,
         (old) => (old ? { ...old, content } : old)
       );
     },

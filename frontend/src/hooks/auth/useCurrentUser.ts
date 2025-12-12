@@ -3,10 +3,14 @@ import { oauthApi } from '@/lib/api';
 import { useEffect } from 'react';
 import { useAuth } from '@/hooks/auth/useAuth';
 
+export const authUserKeys = {
+  all: ['auth', 'user'] as const,
+};
+
 export function useCurrentUser() {
   const { isSignedIn } = useAuth();
   const query = useQuery({
-    queryKey: ['auth', 'user'],
+    queryKey: authUserKeys.all,
     queryFn: () => oauthApi.getCurrentUser(),
     retry: 2,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -16,7 +20,7 @@ export function useCurrentUser() {
 
   const queryClient = useQueryClient();
   useEffect(() => {
-    queryClient.invalidateQueries({ queryKey: ['auth', 'user'] });
+    queryClient.invalidateQueries({ queryKey: authUserKeys.all });
   }, [queryClient, isSignedIn]);
 
   return query;

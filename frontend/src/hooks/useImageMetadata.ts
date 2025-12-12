@@ -3,6 +3,14 @@ import { useQuery } from '@tanstack/react-query';
 import type { ImageMetadata } from 'shared/types';
 import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
 
+export const imageMetadataKeys = {
+  byImage: (
+    taskAttemptId: string | undefined,
+    taskId: string | undefined,
+    src: string
+  ) => ['imageMetadata', taskAttemptId, taskId, src] as const,
+};
+
 export function useImageMetadata(
   taskAttemptId: string | undefined,
   src: string,
@@ -38,7 +46,7 @@ export function useImageMetadata(
   const shouldFetch = isVibeImage && hasContext && !localImage;
 
   const query = useQuery({
-    queryKey: ['imageMetadata', taskAttemptId, taskId, src],
+    queryKey: imageMetadataKeys.byImage(taskAttemptId, taskId, src),
     queryFn: async (): Promise<ImageMetadata | null> => {
       // Pure API logic - no local image handling
       if (taskAttemptId) {

@@ -1,8 +1,16 @@
 import { useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { attemptsApi, executionProcessesApi } from '@/lib/api';
-import { useAttemptExecution } from '@/hooks/useAttemptExecution';
+import {
+  useAttemptExecution,
+  processDetailsKeys,
+} from '@/hooks/useAttemptExecution';
 import type { ExecutionProcess } from 'shared/types';
+
+export const executionProcessesKeys = {
+  byAttempt: (attemptId: string | undefined) =>
+    ['executionProcesses', attemptId] as const,
+};
 
 interface UseDevServerOptions {
   onStartSuccess?: () => void;
@@ -45,7 +53,7 @@ export function useDevServer(
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ['executionProcesses', attemptId],
+        queryKey: executionProcessesKeys.byAttempt(attemptId),
       });
       options?.onStartSuccess?.();
     },
@@ -65,11 +73,11 @@ export function useDevServer(
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: ['executionProcesses', attemptId],
+          queryKey: executionProcessesKeys.byAttempt(attemptId),
         }),
         runningDevServer
           ? queryClient.invalidateQueries({
-              queryKey: ['processDetails', runningDevServer.id],
+              queryKey: processDetailsKeys.byId(runningDevServer.id),
             })
           : Promise.resolve(),
       ]);

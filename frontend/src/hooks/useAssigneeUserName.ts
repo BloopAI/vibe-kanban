@@ -3,6 +3,11 @@ import { getSharedTaskAssignees } from '@/lib/remoteApi';
 import type { SharedTask, UserData } from 'shared/types';
 import { useEffect, useMemo } from 'react';
 
+export const projectAssigneesKeys = {
+  byProject: (projectId: string | undefined) =>
+    ['project', 'assignees', projectId] as const,
+};
+
 interface UseAssigneeUserNamesOptions {
   projectId: string | undefined;
   sharedTasks?: SharedTask[];
@@ -12,7 +17,7 @@ export function useAssigneeUserNames(options: UseAssigneeUserNamesOptions) {
   const { projectId, sharedTasks } = options;
 
   const { data: assignees, refetch } = useQuery<UserData[], Error>({
-    queryKey: ['project', 'assignees', projectId],
+    queryKey: projectAssigneesKeys.byProject(projectId),
     queryFn: () => getSharedTaskAssignees(projectId!),
     enabled: Boolean(projectId),
     staleTime: 5 * 60 * 1000, // 5 minutes

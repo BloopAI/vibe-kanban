@@ -9,6 +9,9 @@ import type {
   CreateInvitationResponse,
   ListOrganizationsResponse,
 } from 'shared/types';
+import { userOrganizationsKeys } from './useUserOrganizations';
+import { organizationMembersKeys } from './useOrganizationMembers';
+import { organizationInvitationsKeys } from './useOrganizationInvitations';
 
 interface UseOrganizationMutationsOptions {
   onCreateSuccess?: (result: CreateOrganizationResponse) => void;
@@ -37,7 +40,7 @@ export function useOrganizationMutations(
     onSuccess: (result: CreateOrganizationResponse) => {
       // Immediately add new org to cache to prevent race condition with selection
       queryClient.setQueryData<ListOrganizationsResponse>(
-        ['user', 'organizations'],
+        userOrganizationsKeys.all,
         (old) => {
           if (!old) return { organizations: [result.organization] };
           return {
@@ -47,7 +50,7 @@ export function useOrganizationMutations(
       );
 
       // Then invalidate to ensure server data stays fresh
-      queryClient.invalidateQueries({ queryKey: ['user', 'organizations'] });
+      queryClient.invalidateQueries({ queryKey: userOrganizationsKeys.all });
       options?.onCreateSuccess?.(result);
     },
     onError: (err) => {
@@ -67,10 +70,10 @@ export function useOrganizationMutations(
     }) => organizationsApi.createInvitation(orgId, data),
     onSuccess: (result: CreateInvitationResponse, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ['organization', 'members', variables.orgId],
+        queryKey: organizationMembersKeys.byOrg(variables.orgId),
       });
       queryClient.invalidateQueries({
-        queryKey: ['organization', 'invitations', variables.orgId],
+        queryKey: organizationInvitationsKeys.byOrg(variables.orgId),
       });
       options?.onInviteSuccess?.(result);
     },
@@ -90,10 +93,10 @@ export function useOrganizationMutations(
     }) => organizationsApi.revokeInvitation(orgId, invitationId),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ['organization', 'members', variables.orgId],
+        queryKey: organizationMembersKeys.byOrg(variables.orgId),
       });
       queryClient.invalidateQueries({
-        queryKey: ['organization', 'invitations', variables.orgId],
+        queryKey: organizationInvitationsKeys.byOrg(variables.orgId),
       });
       options?.onRevokeSuccess?.();
     },
@@ -108,10 +111,10 @@ export function useOrganizationMutations(
       organizationsApi.removeMember(orgId, userId),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ['organization', 'members', variables.orgId],
+        queryKey: organizationMembersKeys.byOrg(variables.orgId),
       });
       // Invalidate user's organizations in case we removed ourselves
-      queryClient.invalidateQueries({ queryKey: ['user', 'organizations'] });
+      queryClient.invalidateQueries({ queryKey: userOrganizationsKeys.all });
       options?.onRemoveSuccess?.();
     },
     onError: (err) => {
@@ -129,10 +132,10 @@ export function useOrganizationMutations(
       organizationsApi.updateMemberRole(orgId, userId, { role }),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ['organization', 'members', variables.orgId],
+        queryKey: organizationMembersKeys.byOrg(variables.orgId),
       });
       // Invalidate user's organizations in case we changed our own role
-      queryClient.invalidateQueries({ queryKey: ['user', 'organizations'] });
+      queryClient.invalidateQueries({ queryKey: userOrganizationsKeys.all });
       options?.onRoleChangeSuccess?.();
     },
     onError: (err) => {
@@ -143,20 +146,20 @@ export function useOrganizationMutations(
 
   const refetchMembers = async (orgId: string) => {
     await queryClient.invalidateQueries({
-      queryKey: ['organization', 'members', orgId],
+      queryKey: organizationMembersKeys.byOrg(orgId),
     });
   };
 
   const refetchInvitations = async (orgId: string) => {
     await queryClient.invalidateQueries({
-      queryKey: ['organization', 'invitations', orgId],
+      queryKey: organizationInvitationsKeys.byOrg(orgId),
     });
   };
 
   const deleteOrganization = useMutation({
     mutationFn: (orgId: string) => organizationsApi.deleteOrganization(orgId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user', 'organizations'] });
+      queryClient.invalidateQueries({ queryKey: userOrganizationsKeys.all });
       options?.onDeleteSuccess?.();
     },
     onError: (err) => {
