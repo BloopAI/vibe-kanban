@@ -89,7 +89,6 @@ export function NoServerContent({
 
     setIsSaving(true);
     try {
-      // dev_script is saved at project level (not per-repo)
       await projectsApi.update(project.id, {
         dev_script: script,
       });

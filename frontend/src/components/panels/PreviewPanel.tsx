@@ -31,9 +31,7 @@ export function PreviewPanel() {
 
   const attemptId =
     rawAttemptId && rawAttemptId !== 'latest' ? rawAttemptId : undefined;
-  // Dev scripts are now per-repo, so we always show the button
-  // The backend will return an error if no dev script is configured for any repo
-  const projectHasDevScript = true;
+  const projectHasDevScript = Boolean(project?.dev_script);
 
   const {
     start: startDevServer,

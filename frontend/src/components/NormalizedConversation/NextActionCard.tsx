@@ -79,9 +79,7 @@ export function NextActionCard({
     latestDevServerProcess,
   } = useDevServer(attemptId);
 
-  // Dev scripts are now per-repo, so we always show the button
-  // The backend will return an error if no dev script is configured for any repo
-  const projectHasDevScript = true;
+  const projectHasDevScript = Boolean(project?.dev_script);
 
   const handleCopy = useCallback(async () => {
     if (!containerRef) return;
