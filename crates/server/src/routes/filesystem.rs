@@ -42,6 +42,9 @@ pub async fn list_git_repos(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<ListDirectoryQuery>,
 ) -> Result<ResponseJson<ApiResponse<Vec<DirectoryEntry>>>, ApiError> {
+    // TODO: Remove this delay - added for testing timeout indicator
+    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+
     let res = if let Some(ref path) = query.path {
         deployment
             .filesystem()
