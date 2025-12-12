@@ -375,8 +375,7 @@ function GitOperations({
               key="ahead"
               className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100/70 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
             >
-              +{commitsAhead}{' '}
-              {t('git.status.commits', { count: commitsAhead })}{' '}
+              +{commitsAhead} {t('git.status.commits', { count: commitsAhead })}{' '}
               {t('git.status.ahead')}
               {showRepoCount &&
                 reposWithChanges > 0 &&
@@ -419,7 +418,9 @@ function GitOperations({
               <span className="truncate">{selectedAttempt.branch}</span>
             </span>
           </TooltipTrigger>
-          <TooltipContent side="bottom">{t('git.labels.taskBranch')}</TooltipContent>
+          <TooltipContent side="bottom">
+            {t('git.labels.taskBranch')}
+          </TooltipContent>
         </Tooltip>
       </TooltipProvider>
 
@@ -483,7 +484,9 @@ function GitOperations({
                   placeholder={t('repos.selector.placeholder', 'Select repo')}
                 />
               )}
-              <div className="flex items-center gap-2 min-w-0">{branchChips}</div>
+              <div className="flex items-center gap-2 min-w-0">
+                {branchChips}
+              </div>
             </div>
             {statusChips}
           </>
