@@ -14,6 +14,7 @@ export default function ReviewPage() {
   const [error, setError] = useState<string | null>(null);
   const [fileCache, setFileCache] = useState<FileCache>(new Map());
   const [loadingFiles, setLoadingFiles] = useState<Set<string>>(new Set());
+  const [scrollProgress, setScrollProgress] = useState(0);
 
   useEffect(() => {
     if (!id) return;
@@ -85,6 +86,19 @@ export default function ReviewPage() {
       }
     }
   }, [review, fileCache, fetchFile]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = docHeight > 0 ? Math.min(1, scrollTop / docHeight) : 0;
+      setScrollProgress(progress);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Dummy metadata - will come from API later
   const prMetadata = {
@@ -160,8 +174,16 @@ export default function ReviewPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* Scroll Progress Bar */}
+      <div className="fixed top-0 left-0 right-0 h-1 bg-muted z-50">
+        <div
+          className="h-full bg-primary transition-[width] duration-75"
+          style={{ width: `${scrollProgress * 100}%` }}
+        />
+      </div>
+
       {/* Header - Two Column Layout */}
-      <div className="border-b px-4 py-5">
+      <div className="border-b px-4 py-5 mt-1">
         <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-6">
           {/* Left Column - PR Info */}
           <div className="flex items-start gap-3">
@@ -271,46 +293,71 @@ function CommentStoryRow({
   fileCache,
   loadingFiles,
 }: CommentStoryRowProps) {
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const hasComment = comment.comment && comment.comment.trim().length > 0;
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-6 py-6">
-      {/* Left Column - Comment */}
-      <div className="sticky top-4 self-start max-h-[calc(100vh-2rem)] overflow-y-auto min-w-0">
-        <div className="flex items-start gap-3">
-          <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-medium shrink-0">
-            {index}
-          </span>
-          {hasComment ? (
-            <MarkdownRenderer
-              content={comment.comment}
-              className="text-sm min-w-0"
-            />
-          ) : (
-            <span className="text-sm text-muted-foreground italic">
-              (No comment text)
-            </span>
-          )}
-        </div>
-      </div>
+    <div className="py-6">
+      {/* Collapsible Header */}
+      <button
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className="w-full flex items-center gap-3 text-left hover:bg-muted/30 rounded-lg p-2 -ml-2 transition-colors"
+      >
+        <svg
+          className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform ${isCollapsed ? '' : 'rotate-90'}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+        <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-medium shrink-0">
+          {index}
+        </span>
+        <span className="text-sm text-foreground line-clamp-1 flex-1 min-w-0">
+          {hasComment ? comment.comment.split('\n')[0].replace(/^#+\s*/, '') : '(No comment text)'}
+        </span>
+        <span className="text-xs text-muted-foreground shrink-0">
+          {comment.fragments.length} fragment{comment.fragments.length !== 1 ? 's' : ''}
+        </span>
+      </button>
 
-      {/* Right Column - Code Fragments */}
-      <div className="space-y-3 min-w-0 overflow-x-auto">
-        {comment.fragments.length > 0 ? (
-          comment.fragments.map((fragment, fIdx) => (
-            <CodeFragmentCard
-              key={`${fragment.file}:${fragment.start_line}-${fragment.end_line}:${fIdx}`}
-              fragment={fragment}
-              fileContent={fileCache.get(fragment.file)}
-              isLoading={loadingFiles.has(fragment.file)}
-            />
-          ))
-        ) : (
-          <div className="text-sm text-muted-foreground">
-            No code fragments for this comment.
+      {/* Collapsible Content */}
+      {!isCollapsed && (
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-6 mt-4 pl-9">
+          {/* Left Column - Comment */}
+          <div className="sticky top-4 self-start max-h-[calc(100vh-2rem)] overflow-y-auto min-w-0">
+            {hasComment ? (
+              <MarkdownRenderer
+                content={comment.comment}
+                className="text-sm min-w-0"
+              />
+            ) : (
+              <span className="text-sm text-muted-foreground italic">
+                (No comment text)
+              </span>
+            )}
           </div>
-        )}
-      </div>
+
+          {/* Right Column - Code Fragments */}
+          <div className="space-y-3 min-w-0 overflow-x-auto">
+            {comment.fragments.length > 0 ? (
+              comment.fragments.map((fragment, fIdx) => (
+                <CodeFragmentCard
+                  key={`${fragment.file}:${fragment.start_line}-${fragment.end_line}:${fIdx}`}
+                  fragment={fragment}
+                  fileContent={fileCache.get(fragment.file)}
+                  isLoading={loadingFiles.has(fragment.file)}
+                />
+              ))
+            ) : (
+              <div className="text-sm text-muted-foreground">
+                No code fragments for this comment.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

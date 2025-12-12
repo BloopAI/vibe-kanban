@@ -1,0 +1,164 @@
+/* Diff view color overrides for dark theme */
+
+.diff-view-container {
+    --diff-add-content--: rgba(46, 160, 67, 0.15);
+    --diff-del-content--: rgba(248, 81, 73, 0.15);
+    --diff-add-content-highlight--: rgba(46, 160, 67, 0.4);
+    --diff-del-content-highlight--: rgba(248, 81, 73, 0.4);
+    --diff-add-lineNumber--: rgba(46, 160, 67, 0.2);
+    --diff-del-lineNumber--: rgba(248, 81, 73, 0.2);
+    --diff-plain-content--: transparent;
+    --diff-plain-lineNumber--: #212121;
+    --diff-plain-lineNumber-color--: #6e7681;
+    --diff-hunk-content--: rgba(56, 139, 253, 0.1);
+    --diff-hunk-lineNumber--: rgba(56, 139, 253, 0.1);
+    --diff-hunk-content-color--: #8b949e;
+    --diff-empty-content--: #fefefe;
+    --diff-expand-content--: #212121;
+    --diff-expand-lineNumber--: #212121;
+    --diff-expand-lineNumber-color--: #6e7681;
+    --diff-border--: #292929;
+}
+
+/* Use JetBrains Mono for code */
+.diff-view-container .diff-line-content-raw,
+.diff-view-container .diff-line-syntax-raw,
+.diff-view-container .diff-line-num,
+.diff-view-container .diff-line-old-num,
+.diff-view-container .diff-line-new-num,
+.diff-view-container td {
+    font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+/* Line number styling */
+.diff-view-container .diff-line-num,
+.diff-view-container .diff-line-old-num,
+.diff-view-container .diff-line-new-num {
+    color: #6e7681;
+    padding: 0 8px;
+    min-width: 40px;
+}
+
+/* Background colors for diff lines */
+.diff-view-container tr[data-state="add"] td,
+.diff-view-container .diff-line-add {
+    background-color: var(--diff-add-content--);
+}
+
+.diff-view-container tr[data-state="del"] td,
+.diff-view-container .diff-line-del {
+    background-color: var(--diff-del-content--);
+}
+
+/* Hunk header styling */
+.diff-view-container .diff-line-hunk td {
+    background-color: var(--diff-hunk-content--);
+    color: var(--diff-hunk-content-color--);
+    font-style: italic;
+}
+
+/* Syntax highlighting - GitHub dark theme */
+.diff-view-container .hljs {
+    color: #c9d1d9;
+    background: transparent;
+}
+
+.diff-view-container .hljs-doctag,
+.diff-view-container .hljs-keyword,
+.diff-view-container .hljs-meta .hljs-keyword,
+.diff-view-container .hljs-template-tag,
+.diff-view-container .hljs-template-variable,
+.diff-view-container .hljs-type,
+.diff-view-container .hljs-variable.language_ {
+    color: #ff7b72;
+}
+
+.diff-view-container .hljs-title,
+.diff-view-container .hljs-title.class_,
+.diff-view-container .hljs-title.class_.inherited__,
+.diff-view-container .hljs-title.function_ {
+    color: #d2a8ff;
+}
+
+.diff-view-container .hljs-attr,
+.diff-view-container .hljs-attribute,
+.diff-view-container .hljs-literal,
+.diff-view-container .hljs-meta,
+.diff-view-container .hljs-number,
+.diff-view-container .hljs-operator,
+.diff-view-container .hljs-variable,
+.diff-view-container .hljs-selector-attr,
+.diff-view-container .hljs-selector-class,
+.diff-view-container .hljs-selector-id {
+    color: #79c0ff;
+}
+
+.diff-view-container .hljs-regexp,
+.diff-view-container .hljs-string,
+.diff-view-container .hljs-meta .hljs-string {
+    color: #a5d6ff;
+}
+
+.diff-view-container .hljs-built_in,
+.diff-view-container .hljs-symbol {
+    color: #ffa657;
+}
+
+.diff-view-container .hljs-comment,
+.diff-view-container .hljs-code,
+.diff-view-container .hljs-formula {
+    color: #8b949e;
+}
+
+.diff-view-container .hljs-name,
+.diff-view-container .hljs-quote,
+.diff-view-container .hljs-selector-tag,
+.diff-view-container .hljs-selector-pseudo {
+    color: #7ee787;
+}
+
+/* Word-level diff highlights */
+.diff-view-container .diff-add-content-highlight {
+    background-color: var(--diff-add-content-highlight--);
+}
+
+.diff-view-container .diff-del-content-highlight {
+    background-color: var(--diff-del-content-highlight--);
+}
+
+/* Remove default table borders */
+.diff-view-container table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.diff-view-container td {
+    border: none;
+    padding: 0 10px;
+    vertical-align: top;
+}
+
+/* Line content should use pre-wrap for proper whitespace */
+.diff-view-container .diff-line-content-raw,
+.diff-view-container .diff-line-syntax-raw {
+    white-space: pre;
+}
+
+/* +/- indicator styling */
+.diff-view-container .diff-line-add-sign,
+.diff-view-container .diff-line-del-sign {
+    user-select: none;
+    width: 1em;
+    display: inline-block;
+}
+
+/* Ensure proper scrolling */
+.diff-view-container {
+    overflow-x: auto;
+}
+
+.diff-view-container .diff-view-wrapper {
+    min-width: max-content;
+}

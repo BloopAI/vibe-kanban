@@ -9,6 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@git-diff-view/file": "^0.0.30",
+    "@git-diff-view/react": "^0.0.30",
     "clsx": "^2.1.1",
     "highlight.js": "^11.11.1",
     "react": "^18.2.0",
