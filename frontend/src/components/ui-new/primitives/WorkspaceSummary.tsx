@@ -56,7 +56,9 @@ export function WorkspaceSummary({
       {hasStats && (
         <div className="flex w-full items-center gap-base text-sm">
           {isRunning && <RunningDots />}
-          {isPinned && <PushPin className="size-3 text-brand shrink-0" weight="fill" />}
+          {isPinned && (
+            <PushPin className="size-3 text-brand shrink-0" weight="fill" />
+          )}
           <span className="min-w-0 flex-1 truncate text-low">
             {filesChanged} {filesChanged === 1 ? 'File' : 'Files'} changed
           </span>
