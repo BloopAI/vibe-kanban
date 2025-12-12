@@ -19,6 +19,7 @@ use db::{
             CreateExecutionProcessRepoState, ExecutionProcessRepoState,
         },
         executor_session::{CreateExecutorSession, ExecutorSession},
+        repo::Repo,
         task::{Task, TaskStatus},
         task_attempt::{TaskAttempt, TaskAttemptError},
     },
@@ -348,6 +349,31 @@ pub trait ContainerService {
                     e
                 );
             }
+        }
+
+        Ok(())
+    }
+
+    /// Backfill repo names that were migrated with a sentinel placeholder.
+    async fn backfill_repo_names(&self) -> Result<(), ContainerError> {
+        let pool = &self.db().pool;
+        let repos = Repo::list_needing_name_fix(pool).await?;
+
+        if repos.is_empty() {
+            return Ok(());
+        }
+
+        tracing::info!("Backfilling {} repo names", repos.len());
+
+        for repo in repos {
+            let name = repo
+                .path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or(&repo.id.to_string())
+                .to_string();
+
+            Repo::update_name(pool, repo.id, &name, &name).await?;
         }
 
         Ok(())

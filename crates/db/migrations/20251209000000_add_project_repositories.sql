@@ -57,13 +57,14 @@ ALTER TABLE merges ADD COLUMN repo_id BLOB REFERENCES repos(id);
 CREATE INDEX idx_merges_repo_id ON merges(repo_id);
 
 -- Step 6: Migrate existing projects to repos
+-- Name/display_name use a sentinel that gets fixed by Rust backfill at startup.
+-- This avoids fragile SQL string manipulation and handles Windows paths correctly.
 INSERT INTO repos (id, path, name, display_name)
 SELECT
     randomblob(16),
     git_repo_path,
-    -- Simulates `basename`: converts "a/b/c" -> ["a","b","c"] -> gets "c"
-    json_extract('["' || replace(RTRIM(git_repo_path, '/'), '/', '","') || '"]', '$[#-1]'),
-    json_extract('["' || replace(RTRIM(git_repo_path, '/'), '/', '","') || '"]', '$[#-1]')
+    '__NEEDS_BACKFILL__',
+    '__NEEDS_BACKFILL__'
 FROM projects
 WHERE git_repo_path IS NOT NULL AND git_repo_path != '';
 

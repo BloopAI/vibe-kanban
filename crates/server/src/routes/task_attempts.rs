@@ -26,7 +26,6 @@ use db::models::{
     attempt_repo::{AttemptRepo, CreateAttemptRepo, RepoWithTargetBranch},
     execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
     merge::{Merge, MergeStatus, PrMerge, PullRequestInfo},
-    project_repo::ProjectRepo,
     repo::{Repo, RepoError},
     scratch::{Scratch, ScratchType},
     task::{Task, TaskRelationships, TaskStatus},
