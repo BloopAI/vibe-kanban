@@ -1,9 +1,11 @@
-import { useQuery } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo } from 'react';
 import { attemptsApi } from '@/lib/api';
 import type { RepoWithTargetBranch } from 'shared/types';
 
 export function useAttemptRepo(attemptId?: string) {
+  const queryClient = useQueryClient();
+
   const query = useQuery<RepoWithTargetBranch[]>({
     queryKey: ['attemptRepo', attemptId],
     queryFn: async () => {
@@ -14,13 +16,28 @@ export function useAttemptRepo(attemptId?: string) {
   });
 
   const repos = useMemo(() => query.data ?? [], [query.data]);
-  const [selectedRepoId, setSelectedRepoId] = useState<string | null>(null);
 
+  // Use React Query cache for shared state across all hook consumers
+  const { data: selectedRepoId = null } = useQuery<string | null>({
+    queryKey: ['attemptRepoSelection', attemptId],
+    queryFn: () => null,
+    enabled: false,
+    staleTime: Infinity,
+  });
+
+  const setSelectedRepoId = useCallback(
+    (id: string | null) => {
+      queryClient.setQueryData(['attemptRepoSelection', attemptId], id);
+    },
+    [queryClient, attemptId]
+  );
+
+  // Auto-select first repo when none selected
   useEffect(() => {
     if (repos.length > 0 && selectedRepoId === null) {
       setSelectedRepoId(repos[0].id);
     }
-  }, [repos, selectedRepoId]);
+  }, [repos, selectedRepoId, setSelectedRepoId]);
 
   return {
     repos,
