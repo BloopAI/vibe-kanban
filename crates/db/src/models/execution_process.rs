@@ -414,16 +414,24 @@ impl ExecutionProcess {
     }
 
     /// Create a new execution process
+    ///
+    /// Note: We insert the execution_process first and commit it immediately,
+    /// then insert repo_states separately. This ordering is important because
+    /// SQLite update hooks fire during the transaction (before commit), and
+    /// the hook spawns an async task that queries `find_by_rowid` on a different
+    /// connection. If we used a single transaction, that query would not see
+    /// the uncommitted row, causing the WebSocket event to be lost.
     pub async fn create(
         pool: &SqlitePool,
         data: &CreateExecutionProcess,
         process_id: Uuid,
         repo_states: &[CreateExecutionProcessRepoState],
     ) -> Result<Self, sqlx::Error> {
-        let mut tx = pool.begin().await?;
         let now = Utc::now();
         let executor_action_json = sqlx::types::Json(&data.executor_action);
 
+        // Insert execution_process first - this must be committed before
+        // the update hook's async task runs find_by_rowid
         sqlx::query!(
             r#"INSERT INTO execution_processes (
                     id, task_attempt_id, run_reason, executor_action,
@@ -440,12 +448,16 @@ impl ExecutionProcess {
             now,
             now
         )
-        .execute(&mut *tx)
+        .execute(pool)
         .await?;
 
-        ExecutionProcessRepoState::create_many(&mut tx, process_id, repo_states).await?;
-
-        tx.commit().await?;
+        // Insert repo states after execution_process is committed and visible
+        // Use a transaction for the repo states since they should be atomic
+        if !repo_states.is_empty() {
+            let mut tx = pool.begin().await?;
+            ExecutionProcessRepoState::create_many(&mut tx, process_id, repo_states).await?;
+            tx.commit().await?;
+        }
 
         Self::find_by_id(pool, process_id)
             .await?
