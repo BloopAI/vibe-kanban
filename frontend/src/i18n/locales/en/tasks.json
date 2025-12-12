@@ -281,6 +281,9 @@
     "creating": "Creating...",
     "start": "Start"
   },
+  "repoBranchSelector": {
+    "label": "Base branch"
+  },
   "attemptRepoSelector": {
     "label": "Repositories",
     "addButton": "Add",
