@@ -17,6 +17,7 @@ use crate::{AppState, db::reviews::ReviewRepository, r2::R2Error};
 pub fn public_router() -> Router<AppState> {
     Router::new()
         .route("/review/init", post(init_review_upload))
+        .route("/review/start", post(start_review))
         .route("/review/{id}/status", get(get_review_status))
         .route("/review/{id}", get(get_review))
         .route("/review/{id}/file/{file_hash}", get(get_review_file))
@@ -109,12 +110,38 @@ impl IntoResponse for ReviewError {
     }
 }
 
-/// Extract client IP from Cloudflare's CF-Connecting-IP header
+/// Extract client IP from headers, with fallbacks for local development
 fn extract_client_ip(headers: &HeaderMap) -> Option<IpAddr> {
-    headers
+    // Try Cloudflare header first (production)
+    if let Some(ip) = headers
         .get("CF-Connecting-IP")
         .and_then(|v| v.to_str().ok())
         .and_then(|s| s.parse().ok())
+    {
+        return Some(ip);
+    }
+
+    // Fallback to X-Forwarded-For (common proxy header)
+    if let Some(ip) = headers
+        .get("X-Forwarded-For")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.split(',').next()) // Take first IP in chain
+        .and_then(|s| s.trim().parse().ok())
+    {
+        return Some(ip);
+    }
+
+    // Fallback to X-Real-IP
+    if let Some(ip) = headers
+        .get("X-Real-IP")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.parse().ok())
+    {
+        return Some(ip);
+    }
+
+    // For local development, use localhost
+    Some(IpAddr::V4(std::net::Ipv4Addr::LOCALHOST))
 }
 
 /// Check rate limits for the given IP address.
@@ -205,6 +232,43 @@ async fn proxy_to_worker(state: &AppState, path: &str) -> Result<Response, Revie
     }
 
     Ok(builder.body(Body::from(bytes)).unwrap())
+}
+
+/// Proxy a POST request with JSON body to the review worker
+async fn proxy_post_to_worker(
+    state: &AppState,
+    path: &str,
+    body: serde_json::Value,
+) -> Result<Response, ReviewError> {
+    let base_url = state
+        .config
+        .review_worker_base_url
+        .as_ref()
+        .ok_or(ReviewError::WorkerNotConfigured)?;
+
+    let url = format!("{}{}", base_url.trim_end_matches('/'), path);
+
+    let response = state.http_client.post(&url).json(&body).send().await?;
+
+    let status = response.status();
+    let headers = response.headers().clone();
+    let bytes = response.bytes().await?;
+
+    let mut builder = Response::builder().status(status);
+
+    if let Some(content_type) = headers.get("content-type") {
+        builder = builder.header("content-type", content_type);
+    }
+
+    Ok(builder.body(Body::from(bytes)).unwrap())
+}
+
+/// POST /review/start - Start review processing on worker
+pub async fn start_review(
+    State(state): State<AppState>,
+    Json(body): Json<serde_json::Value>,
+) -> Result<Response, ReviewError> {
+    proxy_post_to_worker(&state, "/review/start", body).await
 }
 
 /// GET /review/:id/status - Get review status from worker
