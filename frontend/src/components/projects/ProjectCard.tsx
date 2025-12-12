@@ -29,6 +29,7 @@ import { projectsApi } from '@/lib/api';
 import { LinkProjectDialog } from '@/components/dialogs/projects/LinkProjectDialog';
 import { useTranslation } from 'react-i18next';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
+import { useBranches } from '@/hooks/useBranches';
 
 type Props = {
   project: Project;
@@ -49,6 +50,9 @@ function ProjectCard({
   const ref = useRef<HTMLDivElement>(null);
   const handleOpenInEditor = useOpenProjectInEditor(project);
   const { t } = useTranslation('projects');
+
+  const { data: repos } = useBranches(project.id);
+  const isSingleRepoProject = repos?.length === 1;
 
   const { unlinkProject } = useProjectMutations({
     onUnlinkSuccess: () => {
@@ -139,15 +143,17 @@ function ProjectCard({
                   <ExternalLink className="mr-2 h-4 w-4" />
                   {t('viewProject')}
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleOpenInIDE();
-                  }}
-                >
-                  <FolderOpen className="mr-2 h-4 w-4" />
-                  {t('openInIDE')}
-                </DropdownMenuItem>
+                {isSingleRepoProject && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenInIDE();
+                    }}
+                  >
+                    <FolderOpen className="mr-2 h-4 w-4" />
+                    {t('openInIDE')}
+                  </DropdownMenuItem>
+                )}
                 {project.remote_project_id ? (
                   <DropdownMenuItem
                     onClick={(e) => {
