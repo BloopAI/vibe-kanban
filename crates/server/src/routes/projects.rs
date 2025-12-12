@@ -1,11 +1,15 @@
 use std::path::Path as StdPath;
 
+use anyhow;
 use axum::{
     Extension, Json, Router,
-    extract::{Path, Query, State},
+    extract::{
+        Path, Query, State,
+        ws::{WebSocket, WebSocketUpgrade},
+    },
     http::StatusCode,
     middleware::from_fn_with_state,
-    response::Json as ResponseJson,
+    response::{IntoResponse, Json as ResponseJson},
     routing::{get, post},
 };
 use db::models::{
@@ -13,6 +17,7 @@ use db::models::{
     task::Task,
 };
 use deployment::Deployment;
+use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use ignore::WalkBuilder;
 use serde::Deserialize;
 use services::services::{
@@ -47,6 +52,48 @@ pub async fn get_projects(
 ) -> Result<ResponseJson<ApiResponse<Vec<Project>>>, ApiError> {
     let projects = Project::find_all(&deployment.db().pool).await?;
     Ok(ResponseJson(ApiResponse::success(projects)))
+}
+
+pub async fn stream_projects_ws(
+    ws: WebSocketUpgrade,
+    State(deployment): State<DeploymentImpl>,
+) -> impl IntoResponse {
+    ws.on_upgrade(move |socket| async move {
+        if let Err(e) = handle_projects_ws(socket, deployment).await {
+            tracing::warn!("projects WS closed: {}", e);
+        }
+    })
+}
+
+async fn handle_projects_ws(socket: WebSocket, deployment: DeploymentImpl) -> anyhow::Result<()> {
+    let mut stream = deployment
+        .events()
+        .stream_projects_raw()
+        .await?
+        .map_ok(|msg| msg.to_ws_message_unchecked());
+
+    // Split socket into sender and receiver
+    let (mut sender, mut receiver) = socket.split();
+
+    // Drain (and ignore) any client->server messages so pings/pongs work
+    tokio::spawn(async move { while let Some(Ok(_)) = receiver.next().await {} });
+
+    // Forward server messages
+    while let Some(item) = stream.next().await {
+        match item {
+            Ok(msg) => {
+                if sender.send(msg).await.is_err() {
+                    break; // client disconnected
+                }
+            }
+            Err(e) => {
+                tracing::error!("stream error: {}", e);
+                break;
+            }
+        }
+    }
+
+    Ok(())
 }
 
 pub async fn get_project(
@@ -679,6 +726,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
 
     let projects_router = Router::new()
         .route("/", get(get_projects).post(create_project))
+        .route("/stream/ws", get(stream_projects_ws))
         .nest("/{id}", project_id_router);
 
     Router::new().nest("/projects", projects_router).route(

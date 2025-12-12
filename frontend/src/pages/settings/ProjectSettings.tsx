@@ -59,7 +59,7 @@ export function ProjectSettings() {
 
   // Fetch all projects
   const {
-    data: projects,
+    projects,
     isLoading: projectsLoading,
     error: projectsError,
   } = useProjects();

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      git_repo_path,\n                      setup_script,\n                      dev_script,\n                      cleanup_script,\n                      copy_files,\n                      parallel_setup_script as \"parallel_setup_script!: bool\",\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               WHERE remote_project_id = $1\n               LIMIT 1",
+  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      git_repo_path,\n                      setup_script,\n                      dev_script,\n                      cleanup_script,\n                      copy_files,\n                      parallel_setup_script as \"parallel_setup_script!: bool\",\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               WHERE rowid = $1",
   "describe": {
     "columns": [
       {
@@ -76,5 +76,5 @@
       false
     ]
   },
-  "hash": "46139a0b9debe5889e7d35b3cf9b20edec27573bb555a66fbb27cd78161392af"
+  "hash": "163caffe1f017b7c9a7418063d67ee98ae42d6395990710add73eb37a94cd538"
 }

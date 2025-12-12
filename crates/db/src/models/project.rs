@@ -149,6 +149,28 @@ impl Project {
         .await
     }
 
+    pub async fn find_by_rowid(pool: &SqlitePool, rowid: i64) -> Result<Option<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            Project,
+            r#"SELECT id as "id!: Uuid",
+                      name,
+                      git_repo_path,
+                      setup_script,
+                      dev_script,
+                      cleanup_script,
+                      copy_files,
+                      parallel_setup_script as "parallel_setup_script!: bool",
+                      remote_project_id as "remote_project_id: Uuid",
+                      created_at as "created_at!: DateTime<Utc>",
+                      updated_at as "updated_at!: DateTime<Utc>"
+               FROM projects
+               WHERE rowid = $1"#,
+            rowid
+        )
+        .fetch_optional(pool)
+        .await
+    }
+
     pub async fn find_by_git_repo_path(
         pool: &SqlitePool,
         git_repo_path: &str,
