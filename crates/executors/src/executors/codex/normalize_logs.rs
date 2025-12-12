@@ -977,6 +977,18 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                         state.token_usage_info = Some(info);
                     }
                 }
+                EventMsg::ContextCompacted(..) => {
+                    add_normalized_entry(
+                        &msg_store,
+                        &entry_index,
+                        NormalizedEntry {
+                            timestamp: None,
+                            entry_type: NormalizedEntryType::SystemMessage,
+                            content: "Context compacted".to_string(),
+                            metadata: None,
+                        },
+                    );
+                }
                 EventMsg::AgentReasoningRawContent(..)
                 | EventMsg::AgentReasoningRawContentDelta(..)
                 | EventMsg::TaskStarted(..)
@@ -1000,7 +1012,6 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                 | EventMsg::ShutdownComplete
                 | EventMsg::EnteredReviewMode(..)
                 | EventMsg::ExitedReviewMode(..)
-                | EventMsg::ContextCompacted(..)
                 | EventMsg::TerminalInteraction(..)
                 | EventMsg::ElicitationRequest(..)
                 | EventMsg::TaskComplete(..) => {}
