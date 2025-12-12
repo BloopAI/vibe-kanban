@@ -73,9 +73,21 @@ impl ClaudeAgentClient {
                 match status {
                     ApprovalStatus::Approved => {
                         if tool_name == EXIT_PLAN_MODE_NAME {
+                            // Debug: log what ExitPlanMode actually sends
+                            tracing::debug!(
+                                tool_input = ?tool_input,
+                                tool_input_keys = ?tool_input.as_object().map(|o| o.keys().collect::<Vec<_>>()),
+                                "ExitPlanMode tool_input received"
+                            );
+
                             // Trigger plan step creation from the plan text
                             if let Some(plan_text) = tool_input.get("plan").and_then(|v| v.as_str())
                             {
+                                tracing::info!(
+                                    plan_length = plan_text.len(),
+                                    first_100_chars = %plan_text.chars().take(100).collect::<String>(),
+                                    "Extracted plan text from ExitPlanMode"
+                                );
                                 if let Err(e) = approval_service
                                     .on_exit_plan_mode(plan_text, &tool_use_id)
                                     .await
