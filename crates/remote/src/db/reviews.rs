@@ -74,6 +74,32 @@ impl<'a> ReviewRepository<'a> {
         .map_err(ReviewError::from)
     }
 
+    /// Get a review by its ID.
+    /// Returns NotFound if the review doesn't exist or has been deleted.
+    pub async fn get_by_id(&self, id: Uuid) -> Result<Review, ReviewError> {
+        query_as!(
+            Review,
+            r#"
+            SELECT
+                id,
+                gh_pr_url,
+                claude_code_session_id,
+                ip_address AS "ip_address: IpNetwork",
+                review_cache,
+                last_viewed_at,
+                r2_path,
+                deleted_at,
+                created_at
+            FROM reviews
+            WHERE id = $1 AND deleted_at IS NULL
+            "#,
+            id
+        )
+        .fetch_optional(self.pool)
+        .await?
+        .ok_or(ReviewError::NotFound)
+    }
+
     /// Count reviews from an IP address since a given timestamp.
     /// Used for rate limiting.
     pub async fn count_since(

@@ -2,10 +2,11 @@ use std::net::IpAddr;
 
 use axum::{
     Json, Router,
-    extract::State,
+    body::Body,
+    extract::{Path, State},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
-    routing::post,
+    routing::{get, post},
 };
 use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
@@ -14,7 +15,11 @@ use uuid::Uuid;
 use crate::{AppState, db::reviews::ReviewRepository, r2::R2Error};
 
 pub fn public_router() -> Router<AppState> {
-    Router::new().route("/review/init", post(init_review_upload))
+    Router::new()
+        .route("/review/init", post(init_review_upload))
+        .route("/review/{id}/status", get(get_review_status))
+        .route("/review/{id}", get(get_review))
+        .route("/review/{id}/file/{file_hash}", get(get_review_file))
 }
 
 #[derive(Debug, Deserialize)]
@@ -46,6 +51,12 @@ pub enum ReviewError {
     MissingClientIp,
     #[error("database error: {0}")]
     Database(#[from] crate::db::reviews::ReviewError),
+    #[error("review worker not configured")]
+    WorkerNotConfigured,
+    #[error("review worker request failed: {0}")]
+    WorkerError(#[from] reqwest::Error),
+    #[error("invalid review ID")]
+    InvalidReviewId,
 }
 
 impl IntoResponse for ReviewError {
@@ -69,10 +80,25 @@ impl IntoResponse for ReviewError {
             ReviewError::MissingClientIp => {
                 (StatusCode::BAD_REQUEST, "Unable to determine client IP")
             }
+            ReviewError::Database(crate::db::reviews::ReviewError::NotFound) => {
+                (StatusCode::NOT_FOUND, "Review not found")
+            }
             ReviewError::Database(e) => {
                 tracing::error!(error = %e, "Database error in review");
                 (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error")
             }
+            ReviewError::WorkerNotConfigured => (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "Review worker service not available",
+            ),
+            ReviewError::WorkerError(e) => {
+                tracing::error!(error = %e, "Review worker request failed");
+                (
+                    StatusCode::BAD_GATEWAY,
+                    "Failed to fetch review from worker",
+                )
+            }
+            ReviewError::InvalidReviewId => (StatusCode::BAD_REQUEST, "Invalid review ID"),
         };
 
         let body = serde_json::json!({
@@ -153,4 +179,75 @@ pub async fn init_review_upload(
         object_key: upload.object_key,
         expires_at: upload.expires_at,
     }))
+}
+
+/// Proxy a request to the review worker and return the response.
+async fn proxy_to_worker(state: &AppState, path: &str) -> Result<Response, ReviewError> {
+    let base_url = state
+        .config
+        .review_worker_base_url
+        .as_ref()
+        .ok_or(ReviewError::WorkerNotConfigured)?;
+
+    let url = format!("{}{}", base_url.trim_end_matches('/'), path);
+
+    let response = state.http_client.get(&url).send().await?;
+
+    let status = response.status();
+    let headers = response.headers().clone();
+    let bytes = response.bytes().await?;
+
+    let mut builder = Response::builder().status(status);
+
+    // Copy relevant headers from the worker response
+    if let Some(content_type) = headers.get("content-type") {
+        builder = builder.header("content-type", content_type);
+    }
+
+    Ok(builder.body(Body::from(bytes)).unwrap())
+}
+
+/// GET /review/:id/status - Get review status from worker
+pub async fn get_review_status(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Response, ReviewError> {
+    let review_id: Uuid = id.parse().map_err(|_| ReviewError::InvalidReviewId)?;
+
+    // Verify review exists in our database
+    let repo = ReviewRepository::new(state.pool());
+    let _review = repo.get_by_id(review_id).await?;
+
+    // Proxy to worker
+    proxy_to_worker(&state, &format!("/review/{}/status", review_id)).await
+}
+
+/// GET /review/:id - Get complete review result from worker
+pub async fn get_review(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Response, ReviewError> {
+    let review_id: Uuid = id.parse().map_err(|_| ReviewError::InvalidReviewId)?;
+
+    // Verify review exists in our database
+    let repo = ReviewRepository::new(state.pool());
+    let _review = repo.get_by_id(review_id).await?;
+
+    // Proxy to worker
+    proxy_to_worker(&state, &format!("/review/{}", review_id)).await
+}
+
+/// GET /review/:id/file/:file_hash - Get file content from worker
+pub async fn get_review_file(
+    State(state): State<AppState>,
+    Path((id, file_hash)): Path<(String, String)>,
+) -> Result<Response, ReviewError> {
+    let review_id: Uuid = id.parse().map_err(|_| ReviewError::InvalidReviewId)?;
+
+    // Verify review exists in our database
+    let repo = ReviewRepository::new(state.pool());
+    let _review = repo.get_by_id(review_id).await?;
+
+    // Proxy to worker
+    proxy_to_worker(&state, &format!("/review/{}/file/{}", review_id, file_hash)).await
 }

@@ -14,6 +14,7 @@ pub struct RemoteServerConfig {
     pub electric_secret: Option<SecretString>,
     pub electric_role_password: Option<SecretString>,
     pub r2: Option<R2Config>,
+    pub review_worker_base_url: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -99,6 +100,8 @@ impl RemoteServerConfig {
 
         let r2 = R2Config::from_env()?;
 
+        let review_worker_base_url = env::var("REVIEW_WORKER_BASE_URL").ok();
+
         Ok(Self {
             database_url,
             listen_addr,
@@ -108,6 +111,7 @@ impl RemoteServerConfig {
             electric_secret,
             electric_role_password,
             r2,
+            review_worker_base_url,
         })
     }
 }
