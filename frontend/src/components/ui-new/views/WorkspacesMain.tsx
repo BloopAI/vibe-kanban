@@ -1,13 +1,20 @@
 import type { Workspace } from '@/components/ui-new/hooks/useWorkspaces';
+import { SessionChatBox } from '@/components/ui-new/primitives/SessionChatBox';
 
 interface WorkspacesMainProps {
   selectedWorkspace: Workspace | null;
   isLoading: boolean;
+  chatValue: string;
+  onChatChange: (value: string) => void;
+  onSend: () => void;
 }
 
 export function WorkspacesMain({
   selectedWorkspace,
   isLoading,
+  chatValue,
+  onChatChange,
+  onSend,
 }: WorkspacesMainProps) {
   if (isLoading) {
     return (
@@ -26,19 +33,27 @@ export function WorkspacesMain({
   }
 
   return (
-    <main className="flex-1 bg-primary p-base">
-      <header className="mb-padding-double">
-        <h1 className="text-2xl font-bold text-high">
+    <main className="flex flex-1 flex-col bg-primary">
+      <header className="p-base">
+        <h1 className="text-xl font-semibold text-high">
           {selectedWorkspace.name}
         </h1>
         <p className="mt-1 text-normal">{selectedWorkspace.description}</p>
       </header>
-      <section className="rounded-lg border border-low bg-secondary p-padding">
-        <p className="text-low">
-          Workspace content will appear here. This demonstrates the
-          logic/presentation separation pattern.
-        </p>
-      </section>
+      {/* Spacer to push chat to bottom */}
+      <div className="flex-1" />
+      {/* Chat box centered at bottom */}
+      <div className="flex justify-center @container">
+        <SessionChatBox
+          filesChanged={19}
+          linesAdded={10}
+          linesRemoved={3}
+          placeholder="Type some text here..."
+          value={chatValue}
+          onChange={onChatChange}
+          onSend={onSend}
+        />
+      </div>
     </main>
   );
 }
