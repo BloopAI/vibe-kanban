@@ -9,12 +9,12 @@ CREATE TABLE repos (
 );
 
 -- Step 2: Create project_repos junction with per-repo script fields
+-- Note: dev_script stays on projects table (project-level, not per-repo)
 CREATE TABLE project_repos (
     id                      BLOB PRIMARY KEY,
     project_id              BLOB NOT NULL,
     repo_id                 BLOB NOT NULL,
     setup_script            TEXT,
-    dev_script              TEXT,
     cleanup_script          TEXT,
     copy_files              TEXT,
     parallel_setup_script   INTEGER NOT NULL DEFAULT 0,
@@ -73,13 +73,12 @@ SELECT
 FROM projects
 WHERE git_repo_path IS NOT NULL AND git_repo_path != '';
 
-INSERT INTO project_repos (id, project_id, repo_id, setup_script, dev_script, cleanup_script, copy_files, parallel_setup_script)
+INSERT INTO project_repos (id, project_id, repo_id, setup_script, cleanup_script, copy_files, parallel_setup_script)
 SELECT
     randomblob(16),
     p.id,
     r.id,
     p.setup_script,
-    p.dev_script,
     p.cleanup_script,
     p.copy_files,
     p.parallel_setup_script
@@ -153,17 +152,18 @@ PRAGMA foreign_keys = OFF;
 
 BEGIN TRANSACTION;
 
--- Create replacement table without script columns (now in project_repos)
+-- Create replacement table (keeps dev_script, moves other scripts to project_repos)
 CREATE TABLE projects_new (
     id                BLOB PRIMARY KEY,
     name              TEXT NOT NULL,
+    dev_script        TEXT,
     remote_project_id BLOB,
     created_at        TEXT NOT NULL DEFAULT (datetime('now', 'subsec')),
     updated_at        TEXT NOT NULL DEFAULT (datetime('now', 'subsec'))
 );
 
-INSERT INTO projects_new (id, name, remote_project_id, created_at, updated_at)
-SELECT id, name, remote_project_id, created_at, updated_at
+INSERT INTO projects_new (id, name, dev_script, remote_project_id, created_at, updated_at)
+SELECT id, name, dev_script, remote_project_id, created_at, updated_at
 FROM projects;
 
 -- Drop the original table

@@ -1303,33 +1303,23 @@ pub async fn start_dev_server(
         }
     }
 
-    // Get dev scripts from project repos with repo names
-    let project_repos = ProjectRepo::find_by_project_id_with_names(pool, project.id).await?;
-    let dev_scripts: Vec<(String, String)> = project_repos
-        .iter()
-        .filter_map(|pr| {
-            pr.dev_script
-                .clone()
-                .map(|script| (pr.repo_name.clone(), script))
-        })
-        .collect();
+    // Get dev script from project (dev_script is project-level, not per-repo)
+    let dev_script = match &project.dev_script {
+        Some(script) if !script.is_empty() => script.clone(),
+        _ => {
+            return Ok(ResponseJson(ApiResponse::error(
+                "No dev server script configured for this project",
+            )));
+        }
+    };
 
-    if dev_scripts.is_empty() {
-        return Ok(ResponseJson(ApiResponse::error(
-            "No dev server script configured for this project",
-        )));
-    }
-
-    // For dev server, run the first repo's dev script in its worktree
-    // TODO: Consider running multiple dev scripts in parallel for multi-repo projects
-    let (repo_name, dev_script) = &dev_scripts[0];
-
+    // Dev server runs at workspace level (no working_dir)
     let executor_action = ExecutorAction::new(
         ExecutorActionType::ScriptRequest(ScriptRequest {
-            script: dev_script.clone(),
+            script: dev_script,
             language: ScriptRequestLanguage::Bash,
             context: ScriptContext::DevServer,
-            working_dir: Some(repo_name.clone()),
+            working_dir: None,
         }),
         None,
     );

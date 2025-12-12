@@ -26,7 +26,6 @@ pub struct ProjectRepo {
     pub project_id: Uuid,
     pub repo_id: Uuid,
     pub setup_script: Option<String>,
-    pub dev_script: Option<String>,
     pub cleanup_script: Option<String>,
     pub copy_files: Option<String>,
     pub parallel_setup_script: bool,
@@ -40,7 +39,6 @@ pub struct ProjectRepoWithName {
     pub repo_id: Uuid,
     pub repo_name: String,
     pub setup_script: Option<String>,
-    pub dev_script: Option<String>,
     pub cleanup_script: Option<String>,
     pub copy_files: Option<String>,
     pub parallel_setup_script: bool,
@@ -56,7 +54,6 @@ pub struct CreateProjectRepo {
 #[ts(export)]
 pub struct UpdateProjectRepo {
     pub setup_script: Option<String>,
-    pub dev_script: Option<String>,
     pub cleanup_script: Option<String>,
     pub copy_files: Option<String>,
     pub parallel_setup_script: Option<bool>,
@@ -73,7 +70,6 @@ impl ProjectRepo {
                       project_id as "project_id!: Uuid",
                       repo_id as "repo_id!: Uuid",
                       setup_script,
-                      dev_script,
                       cleanup_script,
                       copy_files,
                       parallel_setup_script as "parallel_setup_script!: bool"
@@ -97,7 +93,6 @@ impl ProjectRepo {
                       pr.repo_id as "repo_id!: Uuid",
                       r.name as "repo_name!",
                       pr.setup_script,
-                      pr.dev_script,
                       pr.cleanup_script,
                       pr.copy_files,
                       pr.parallel_setup_script as "parallel_setup_script!: bool"
@@ -144,7 +139,6 @@ impl ProjectRepo {
                       project_id as "project_id!: Uuid",
                       repo_id as "repo_id!: Uuid",
                       setup_script,
-                      dev_script,
                       cleanup_script,
                       copy_files,
                       parallel_setup_script as "parallel_setup_script!: bool"
@@ -220,7 +214,6 @@ impl ProjectRepo {
                          project_id as "project_id!: Uuid",
                          repo_id as "repo_id!: Uuid",
                          setup_script,
-                         dev_script,
                          cleanup_script,
                          copy_files,
                          parallel_setup_script as "parallel_setup_script!: bool""#,
@@ -244,7 +237,6 @@ impl ProjectRepo {
 
         // Use existing values as defaults for any None fields in payload
         let setup_script = payload.setup_script.clone().or(existing.setup_script);
-        let dev_script = payload.dev_script.clone().or(existing.dev_script);
         let cleanup_script = payload.cleanup_script.clone().or(existing.cleanup_script);
         let copy_files = payload.copy_files.clone().or(existing.copy_files);
         let parallel_setup_script = payload
@@ -255,21 +247,18 @@ impl ProjectRepo {
             ProjectRepo,
             r#"UPDATE project_repos
                SET setup_script = $1,
-                   dev_script = $2,
-                   cleanup_script = $3,
-                   copy_files = $4,
-                   parallel_setup_script = $5
-               WHERE project_id = $6 AND repo_id = $7
+                   cleanup_script = $2,
+                   copy_files = $3,
+                   parallel_setup_script = $4
+               WHERE project_id = $5 AND repo_id = $6
                RETURNING id as "id!: Uuid",
                          project_id as "project_id!: Uuid",
                          repo_id as "repo_id!: Uuid",
                          setup_script,
-                         dev_script,
                          cleanup_script,
                          copy_files,
                          parallel_setup_script as "parallel_setup_script!: bool""#,
             setup_script,
-            dev_script,
             cleanup_script,
             copy_files,
             parallel_setup_script,

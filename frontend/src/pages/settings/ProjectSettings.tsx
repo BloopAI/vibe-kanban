@@ -33,12 +33,12 @@ import type { Project, ProjectRepo, Repo, UpdateProject } from 'shared/types';
 
 interface ProjectFormState {
   name: string;
+  dev_script: string;
 }
 
 interface RepoScriptsFormState {
   setup_script: string;
   parallel_setup_script: boolean;
-  dev_script: string;
   cleanup_script: string;
   copy_files: string;
 }
@@ -46,6 +46,7 @@ interface RepoScriptsFormState {
 function projectToFormState(project: Project): ProjectFormState {
   return {
     name: project.name,
+    dev_script: project.dev_script ?? '',
   };
 }
 
@@ -55,7 +56,6 @@ function projectRepoToScriptsFormState(
   return {
     setup_script: projectRepo?.setup_script ?? '',
     parallel_setup_script: projectRepo?.parallel_setup_script ?? false,
-    dev_script: projectRepo?.dev_script ?? '',
     cleanup_script: projectRepo?.cleanup_script ?? '',
     copy_files: projectRepo?.copy_files ?? '',
   };
@@ -374,6 +374,7 @@ export function ProjectSettings() {
     try {
       const updateData: UpdateProject = {
         name: draft.name.trim(),
+        dev_script: draft.dev_script.trim() || undefined,
       };
 
       updateProject.mutate({
@@ -400,7 +401,6 @@ export function ProjectSettings() {
         selectedScriptsRepoId,
         {
           setup_script: scriptsDraft.setup_script.trim() || null,
-          dev_script: scriptsDraft.dev_script.trim() || null,
           cleanup_script: scriptsDraft.cleanup_script.trim() || null,
           copy_files: scriptsDraft.copy_files.trim() || null,
           parallel_setup_script: scriptsDraft.parallel_setup_script,
@@ -550,6 +550,68 @@ export function ProjectSettings() {
                   {t('settings.projects.general.name.helper')}
                 </p>
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="dev-script">
+                  {t('settings.projects.scripts.dev.label')}
+                </Label>
+                <AutoExpandingTextarea
+                  id="dev-script"
+                  value={draft.dev_script}
+                  onChange={(e) => updateDraft({ dev_script: e.target.value })}
+                  placeholder={placeholders.dev}
+                  maxRows={12}
+                  className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+                />
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.projects.scripts.dev.helper')}
+                </p>
+              </div>
+
+              {/* Save Button */}
+              <div className="flex items-center justify-between pt-4 border-t">
+                {hasUnsavedProjectChanges ? (
+                  <span className="text-sm text-muted-foreground">
+                    {t('settings.projects.save.unsavedChanges')}
+                  </span>
+                ) : (
+                  <span />
+                )}
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={handleDiscard}
+                    disabled={saving || !hasUnsavedProjectChanges}
+                  >
+                    {t('settings.projects.save.discard')}
+                  </Button>
+                  <Button
+                    onClick={handleSave}
+                    disabled={saving || !hasUnsavedProjectChanges}
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        {t('settings.projects.save.saving')}
+                      </>
+                    ) : (
+                      t('settings.projects.save.button')
+                    )}
+                  </Button>
+                </div>
+              </div>
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              {success && (
+                <Alert>
+                  <AlertDescription>
+                    {t('settings.projects.save.success')}
+                  </AlertDescription>
+                </Alert>
+              )}
             </CardContent>
           </Card>
 
@@ -727,25 +789,6 @@ export function ProjectSettings() {
                         </div>
                         <p className="text-sm text-muted-foreground pl-6">
                           {t('settings.projects.scripts.setup.parallelHelper')}
-                        </p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="dev-script">
-                          {t('settings.projects.scripts.dev.label')}
-                        </Label>
-                        <AutoExpandingTextarea
-                          id="dev-script"
-                          value={scriptsDraft.dev_script}
-                          onChange={(e) =>
-                            updateScriptsDraft({ dev_script: e.target.value })
-                          }
-                          placeholder={placeholders.dev}
-                          maxRows={12}
-                          className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring font-mono"
-                        />
-                        <p className="text-sm text-muted-foreground">
-                          {t('settings.projects.scripts.dev.helper')}
                         </p>
                       </div>
 

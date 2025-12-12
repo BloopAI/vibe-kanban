@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ExecutionProcess, Project, ProjectRepo } from 'shared/types';
+import { ExecutionProcess, Project } from 'shared/types';
 import {
   createScriptPlaceholderStrategy,
   ScriptPlaceholderContext,
@@ -62,17 +62,6 @@ export function NoServerContent({
     enabled: !!project?.id,
   });
 
-  // Get first project repo's scripts (if available)
-  const firstRepoId = projectRepos[0]?.id;
-  const { data: firstProjectRepo } = useQuery({
-    queryKey: ['projectRepo', project?.id, firstRepoId],
-    queryFn: () =>
-      project?.id && firstRepoId
-        ? projectsApi.getRepository(project.id, firstRepoId)
-        : Promise.resolve(null as ProjectRepo | null),
-    enabled: !!project?.id && !!firstRepoId,
-  });
-
   // Create strategy-based placeholders
   const placeholders = system.environment
     ? new ScriptPlaceholderContext(
@@ -92,11 +81,6 @@ export function NoServerContent({
       return;
     }
 
-    if (!firstRepoId) {
-      setSaveError('No repository configured for this project');
-      return;
-    }
-
     const script = devScriptInput.trim();
     if (!script) {
       setSaveError(t('preview.devScript.errors.empty'));
@@ -105,17 +89,17 @@ export function NoServerContent({
 
     setIsSaving(true);
     try {
-      await projectsApi.updateRepository(project.id, firstRepoId, {
-        setup_script: firstProjectRepo?.setup_script ?? null,
+      // dev_script is saved at project level (not per-repo)
+      await projectsApi.update(project.id, {
         dev_script: script,
-        cleanup_script: firstProjectRepo?.cleanup_script ?? null,
-        copy_files: firstProjectRepo?.copy_files ?? null,
-        parallel_setup_script: firstProjectRepo?.parallel_setup_script ?? null,
       });
 
       // Invalidate queries to refresh the data
       await queryClient.invalidateQueries({
-        queryKey: ['projectRepo', project.id, firstRepoId],
+        queryKey: ['project', project.id],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ['projects'],
       });
 
       setIsEditingExistingScript(false);
@@ -130,8 +114,8 @@ export function NoServerContent({
   };
 
   const handleEditExistingScript = () => {
-    if (firstProjectRepo?.dev_script) {
-      setDevScriptInput(firstProjectRepo.dev_script);
+    if (project?.dev_script) {
+      setDevScriptInput(project.dev_script);
     }
     setIsEditingExistingScript(true);
     setSaveError(null);

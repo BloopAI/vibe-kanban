@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT pr.id as \"id!: Uuid\",\n                      pr.project_id as \"project_id!: Uuid\",\n                      pr.repo_id as \"repo_id!: Uuid\",\n                      r.name as \"repo_name!\",\n                      pr.setup_script,\n                      pr.dev_script,\n                      pr.cleanup_script,\n                      pr.copy_files,\n                      pr.parallel_setup_script as \"parallel_setup_script!: bool\"\n               FROM project_repos pr\n               JOIN repos r ON r.id = pr.repo_id\n               WHERE pr.project_id = $1\n               ORDER BY r.display_name ASC",
+  "query": "SELECT pr.id as \"id!: Uuid\",\n                      pr.project_id as \"project_id!: Uuid\",\n                      pr.repo_id as \"repo_id!: Uuid\",\n                      r.name as \"repo_name!\",\n                      pr.setup_script,\n                      pr.cleanup_script,\n                      pr.copy_files,\n                      pr.parallel_setup_script as \"parallel_setup_script!: bool\"\n               FROM project_repos pr\n               JOIN repos r ON r.id = pr.repo_id\n               WHERE pr.project_id = $1\n               ORDER BY r.display_name ASC",
   "describe": {
     "columns": [
       {
@@ -29,23 +29,18 @@
         "type_info": "Text"
       },
       {
-        "name": "dev_script",
+        "name": "cleanup_script",
         "ordinal": 5,
         "type_info": "Text"
       },
       {
-        "name": "cleanup_script",
+        "name": "copy_files",
         "ordinal": 6,
         "type_info": "Text"
       },
       {
-        "name": "copy_files",
-        "ordinal": 7,
-        "type_info": "Text"
-      },
-      {
         "name": "parallel_setup_script!: bool",
-        "ordinal": 8,
+        "ordinal": 7,
         "type_info": "Integer"
       }
     ],
@@ -60,9 +55,8 @@
       true,
       true,
       true,
-      true,
       false
     ]
   },
-  "hash": "235b138dc3cbaae55bbfb16042e4589d104d47c29261600e0d8d6fdb9b50215f"
+  "hash": "0c9ee0273c78ae47634deb65dba5c052d7d21810b34bcd0bd498e4fc3de0b259"
 }

@@ -21,6 +21,7 @@ pub enum ProjectError {
 pub struct Project {
     pub id: Uuid,
     pub name: String,
+    pub dev_script: Option<String>,
     pub remote_project_id: Option<Uuid>,
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
@@ -35,8 +36,12 @@ pub struct CreateProject {
 }
 
 #[derive(Debug, Deserialize, TS)]
+#[ts(export)]
 pub struct UpdateProject {
+    #[ts(optional)]
     pub name: Option<String>,
+    #[ts(optional)]
+    pub dev_script: Option<String>,
 }
 
 #[derive(Debug, Serialize, TS)]
@@ -65,6 +70,7 @@ impl Project {
             Project,
             r#"SELECT id as "id!: Uuid",
                       name,
+                      dev_script,
                       remote_project_id as "remote_project_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
@@ -80,7 +86,7 @@ impl Project {
         sqlx::query_as!(
             Project,
             r#"
-            SELECT p.id as "id!: Uuid", p.name,
+            SELECT p.id as "id!: Uuid", p.name, p.dev_script,
                    p.remote_project_id as "remote_project_id: Uuid",
                    p.created_at as "created_at!: DateTime<Utc>", p.updated_at as "updated_at!: DateTime<Utc>"
             FROM projects p
@@ -103,6 +109,7 @@ impl Project {
             Project,
             r#"SELECT id as "id!: Uuid",
                       name,
+                      dev_script,
                       remote_project_id as "remote_project_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
@@ -122,6 +129,7 @@ impl Project {
             Project,
             r#"SELECT id as "id!: Uuid",
                       name,
+                      dev_script,
                       remote_project_id as "remote_project_id: Uuid",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
@@ -149,6 +157,7 @@ impl Project {
                 )
                 RETURNING id as "id!: Uuid",
                           name,
+                          dev_script,
                           remote_project_id as "remote_project_id: Uuid",
                           created_at as "created_at!: DateTime<Utc>",
                           updated_at as "updated_at!: DateTime<Utc>""#,
@@ -159,19 +168,33 @@ impl Project {
         .await
     }
 
-    pub async fn update(pool: &SqlitePool, id: Uuid, name: String) -> Result<Self, sqlx::Error> {
+    pub async fn update(
+        pool: &SqlitePool,
+        id: Uuid,
+        payload: &UpdateProject,
+    ) -> Result<Self, sqlx::Error> {
+        // First get the existing project to use as defaults
+        let existing = Self::find_by_id(pool, id)
+            .await?
+            .ok_or(sqlx::Error::RowNotFound)?;
+
+        let name = payload.name.clone().unwrap_or(existing.name);
+        let dev_script = payload.dev_script.clone().or(existing.dev_script);
+
         sqlx::query_as!(
             Project,
             r#"UPDATE projects
-               SET name = $2
+               SET name = $2, dev_script = $3
                WHERE id = $1
                RETURNING id as "id!: Uuid",
                          name,
+                         dev_script,
                          remote_project_id as "remote_project_id: Uuid",
                          created_at as "created_at!: DateTime<Utc>",
                          updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             name,
+            dev_script,
         )
         .fetch_one(pool)
         .await
