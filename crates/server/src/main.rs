@@ -57,6 +57,11 @@ async fn main() -> Result<(), VibeKanbanError> {
         .backfill_before_head_commits()
         .await
         .map_err(DeploymentError::from)?;
+    deployment
+        .container()
+        .backfill_repo_names()
+        .await
+        .map_err(DeploymentError::from)?;
     deployment.spawn_pr_monitor_service().await;
     deployment
         .track_if_analytics_allowed("session_start", serde_json::json!({}))
