@@ -334,11 +334,11 @@ export function TaskFollowUpSection({
       return false;
     }
 
-    // Check if any repo has a merged PR - if so, block follow-ups
-    const hasMergedPR = branchStatus?.some((repoStatus) =>
-      repoStatus.merges?.some(
-        (m: Merge) => m.type === 'pr' && m.pr_info.status === 'merged'
-      )
+    const selectedRepoStatus = branchStatus?.find(
+      (r) => r.repo_id === getSelectedRepoId()
+    );
+    const hasMergedPR = selectedRepoStatus?.merges?.some(
+      (m: Merge) => m.type === 'pr' && m.pr_info.status === 'merged'
     );
     if (hasMergedPR) {
       return false;
@@ -353,6 +353,7 @@ export function TaskFollowUpSection({
     processes.length,
     isSendingFollowUp,
     branchStatus,
+    getSelectedRepoId,
     isRetryActive,
     hasPendingApproval,
   ]);

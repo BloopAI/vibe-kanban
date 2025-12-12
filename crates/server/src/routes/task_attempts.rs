@@ -789,6 +789,15 @@ pub async fn get_task_attempt_branch_status(
             continue;
         };
 
+        let repo_merges: Vec<_> = merges
+            .iter()
+            .filter(|m| match m {
+                Merge::Direct(d) => d.repo_id == repo.id,
+                Merge::Pr(p) => p.repo_id == repo.id,
+            })
+            .cloned()
+            .collect();
+
         let worktree_path = workspace_dir.join(&repo.name);
 
         let head_oid = deployment
@@ -855,7 +864,7 @@ pub async fn get_task_attempt_branch_status(
                     ..
                 },
             ..
-        })) = merges.first()
+        })) = repo_merges.first()
         {
             match deployment
                 .git()
@@ -880,7 +889,7 @@ pub async fn get_task_attempt_branch_status(
                 untracked_count,
                 remote_commits_ahead: remote_ahead,
                 remote_commits_behind: remote_behind,
-                merges: merges.clone(),
+                merges: repo_merges,
                 target_branch_name: target_branch,
                 is_rebase_in_progress,
                 conflict_op,
