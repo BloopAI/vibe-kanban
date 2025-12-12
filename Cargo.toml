@@ -20,7 +20,7 @@ serde_json = { version = "1.0", features = ["preserve_order"] }
 anyhow = "1.0"
 openssl-sys = { version = "0.9", features = ["vendored"] }
 thiserror = "2.0.12"
-tracing = "0.1"
+tracing = "0.1.43"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
 ts-rs = { git = "https://github.com/xazukx/ts-rs.git", branch = "use-ts-enum", features = ["uuid-impl", "chrono-impl", "no-serde-warnings", "serde-json-impl"] }
 schemars = { version = "1.0.4", features = ["derive", "chrono04", "uuid1", "preserve_order"] }
