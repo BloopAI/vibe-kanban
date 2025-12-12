@@ -19,6 +19,7 @@ import {
   Project,
   Repo,
   RepoWithTargetBranch,
+  RepositoryBranches,
   ProjectBranchesResponse,
   CreateProject,
   CreateProjectRepo,
@@ -286,10 +287,10 @@ export const projectsApi = {
     return handleApiResponse<OpenEditorResponse>(response);
   },
 
-  getBranches: async (id: string): Promise<GitBranch[]> => {
+  getBranches: async (id: string): Promise<RepositoryBranches[]> => {
     const response = await makeRequest(`/api/projects/${id}/branches`);
     const data = await handleApiResponse<ProjectBranchesResponse>(response);
-    return data.repositories.flatMap((r) => r.branches);
+    return data.repositories;
   },
 
   searchFiles: async (

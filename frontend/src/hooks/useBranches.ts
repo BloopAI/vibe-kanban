@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { projectsApi } from '@/lib/api';
-import type { GitBranch } from 'shared/types';
+import type { RepositoryBranches } from 'shared/types';
 
 export const branchKeys = {
   all: ['projectBranches'] as const,
@@ -15,7 +15,7 @@ type Options = {
 export function useBranches(projectId?: string, opts?: Options) {
   const enabled = (opts?.enabled ?? true) && !!projectId;
 
-  return useQuery<GitBranch[]>({
+  return useQuery<RepositoryBranches[]>({
     queryKey: branchKeys.byProject(projectId),
     queryFn: () => projectsApi.getBranches(projectId!),
     enabled,

@@ -78,12 +78,11 @@ export function TaskFollowUpSection({
     useAttemptExecution(selectedAttemptId, task.id);
   const { data: branchStatus, refetch: refetchBranchStatus } =
     useBranchStatus(selectedAttemptId);
-  const { repos } = useAttemptRepo(selectedAttemptId);
+  const { repos, selectedRepoId } = useAttemptRepo(selectedAttemptId);
 
-  // Select the first repo for operations that need a single repo
   const getSelectedRepoId = useCallback(() => {
-    return repos[0]?.id;
-  }, [repos]);
+    return selectedRepoId ?? repos[0]?.id;
+  }, [selectedRepoId, repos]);
 
   const repoWithConflicts = useMemo(
     () =>
