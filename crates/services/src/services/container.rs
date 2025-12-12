@@ -19,6 +19,7 @@ use db::{
             CreateExecutionProcessRepoState, ExecutionProcessRepoState,
         },
         executor_session::{CreateExecutorSession, ExecutorSession},
+        project::{Project, UpdateProject},
         project_repo::{ProjectRepo, ProjectRepoWithName},
         repo::Repo,
         task::{Task, TaskStatus},
@@ -356,6 +357,7 @@ pub trait ContainerService {
     }
 
     /// Backfill repo names that were migrated with a sentinel placeholder.
+    /// Also backfills dev_script for single-repo projects to prepend cd prefix.
     async fn backfill_repo_names(&self) -> Result<(), ContainerError> {
         let pool = &self.db().pool;
         let repos = Repo::list_needing_name_fix(pool).await?;
@@ -375,6 +377,28 @@ pub trait ContainerService {
                 .to_string();
 
             Repo::update_name(pool, repo.id, &name, &name).await?;
+
+            // Also update dev_script for single-repo projects
+            let project_repos = ProjectRepo::find_by_repo_id(pool, repo.id).await?;
+            for pr in project_repos {
+                // Only for single-repo projects
+                let all_repos = ProjectRepo::find_by_project_id(pool, pr.project_id).await?;
+                if all_repos.len() == 1 {
+                    if let Some(project) = Project::find_by_id(pool, pr.project_id).await? {
+                        let new_dev_script =
+                            project.dev_script.map(|s| format!("cd ./{} && {}", name, s));
+                        Project::update(
+                            pool,
+                            pr.project_id,
+                            &UpdateProject {
+                                name: None,
+                                dev_script: new_dev_script,
+                            },
+                        )
+                        .await?;
+                    }
+                }
+            }
         }
 
         Ok(())

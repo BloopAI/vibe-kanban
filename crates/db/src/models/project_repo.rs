@@ -79,6 +79,28 @@ impl ProjectRepo {
         .fetch_all(pool)
         .await
     }
+
+    pub async fn find_by_repo_id(
+        pool: &SqlitePool,
+        repo_id: Uuid,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as!(
+            ProjectRepo,
+            r#"SELECT id as "id!: Uuid",
+                      project_id as "project_id!: Uuid",
+                      repo_id as "repo_id!: Uuid",
+                      setup_script,
+                      cleanup_script,
+                      copy_files,
+                      parallel_setup_script as "parallel_setup_script!: bool"
+               FROM project_repos
+               WHERE repo_id = $1"#,
+            repo_id
+        )
+        .fetch_all(pool)
+        .await
+    }
+
     pub async fn find_by_project_id_with_names(
         pool: &SqlitePool,
         project_id: Uuid,
