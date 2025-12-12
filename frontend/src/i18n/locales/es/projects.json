@@ -4,6 +4,13 @@
   "createProject": "Crear Proyecto",
   "linkToOrganization": "Vincular a Proyecto Remoto",
   "loading": "Cargando proyectos...",
+  "repoSearch": {
+    "searching": "Buscando repositorios...",
+    "stillSearching": "Aún buscando... ({{seconds}}s)",
+    "takingLonger": "Esto está tardando más de lo habitual. Puedes buscar manualmente abajo.",
+    "noReposFound": "No se encontraron repositorios en ubicaciones comunes.",
+    "browseHint": "Usa la opción de abajo para buscar un repositorio."
+  },
   "errors": {
     "fetchFailed": "Error al cargar proyectos",
     "deleteFailed": "Error al eliminar el proyecto"

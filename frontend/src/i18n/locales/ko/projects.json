@@ -4,6 +4,13 @@
   "createProject": "프로젝트 생성",
   "linkToOrganization": "원격 프로젝트에 연결",
   "loading": "프로젝트 로딩 중...",
+  "repoSearch": {
+    "searching": "저장소 검색 중...",
+    "stillSearching": "검색 중... ({{seconds}}초)",
+    "takingLonger": "평소보다 시간이 오래 걸리고 있습니다. 아래에서 수동으로 찾아볼 수 있습니다.",
+    "noReposFound": "일반적인 위치에서 저장소를 찾을 수 없습니다.",
+    "browseHint": "아래 옵션을 사용하여 저장소를 찾아보세요."
+  },
   "errors": {
     "fetchFailed": "프로젝트를 불러오지 못했습니다",
     "deleteFailed": "프로젝트 삭제에 실패했습니다"

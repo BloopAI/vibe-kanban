@@ -4,6 +4,13 @@
   "createProject": "Create Project",
   "linkToOrganization": "Link to Remote Project",
   "loading": "Loading projects...",
+  "repoSearch": {
+    "searching": "Searching for repositories...",
+    "stillSearching": "Still searching... ({{seconds}}s)",
+    "takingLonger": "This is taking longer than usual. You can browse manually below.",
+    "noReposFound": "No repositories found in common locations.",
+    "browseHint": "Use the option below to browse for a repository."
+  },
   "errors": {
     "fetchFailed": "Failed to fetch projects",
     "deleteFailed": "Failed to delete project"
