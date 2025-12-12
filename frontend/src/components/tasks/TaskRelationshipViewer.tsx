@@ -30,8 +30,8 @@ export function TaskRelationshipViewer({
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [childrenExpanded, setChildrenExpanded] = useState(true);
-  const [parentExpanded, setParentExpanded] = useState(true);
+  const [childrenExpanded, setChildrenExpanded] = useState(false);
+  const [parentExpanded, setParentExpanded] = useState(false);
 
   // Effect for attempt-based relationships (existing behavior)
   useEffect(() => {
