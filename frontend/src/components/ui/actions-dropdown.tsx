@@ -11,6 +11,7 @@ import {
 import { MoreHorizontal } from 'lucide-react';
 import type { TaskWithAttemptStatus, TaskAttempt } from 'shared/types';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
+import { useOpenInTerminal } from '@/hooks/useOpenInTerminal';
 import { DeleteTaskConfirmationDialog } from '@/components/dialogs/tasks/DeleteTaskConfirmationDialog';
 import { ViewProcessesDialog } from '@/components/dialogs/tasks/ViewProcessesDialog';
 import { ViewRelatedTasksDialog } from '@/components/dialogs/tasks/ViewRelatedTasksDialog';
@@ -41,6 +42,7 @@ export function ActionsDropdown({
   const { t } = useTranslation('tasks');
   const { projectId } = useProject();
   const openInEditor = useOpenInEditor(attempt?.id);
+  const openInTerminal = useOpenInTerminal(attempt?.id);
   const navigate = useNavigate();
   const { userId, isSignedIn } = useAuth();
 
@@ -78,6 +80,12 @@ export function ActionsDropdown({
     e.stopPropagation();
     if (!attempt?.id) return;
     openInEditor();
+  };
+
+  const handleOpenInTerminal = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!attempt?.id) return;
+    openInTerminal();
   };
 
   const handleViewProcesses = (e: React.MouseEvent) => {
@@ -188,6 +196,12 @@ export function ActionsDropdown({
                 onClick={handleOpenInEditor}
               >
                 {t('actionsMenu.openInIde')}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!attempt?.id}
+                onClick={handleOpenInTerminal}
+              >
+                {t('actionsMenu.openInTerminal')}
               </DropdownMenuItem>
               <DropdownMenuItem
                 disabled={!attempt?.id}
