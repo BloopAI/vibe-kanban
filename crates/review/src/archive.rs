@@ -6,7 +6,7 @@ use tracing::debug;
 
 use crate::error::ReviewError;
 
-/// Create a tar.gz archive from a directory, excluding .git
+/// Create a tar.gz archive from a directory
 pub fn create_tarball(source_dir: &Path) -> Result<Vec<u8>, ReviewError> {
     debug!("Creating tarball from {}", source_dir.display());
 
@@ -16,7 +16,6 @@ pub fn create_tarball(source_dir: &Path) -> Result<Vec<u8>, ReviewError> {
         let encoder = GzEncoder::new(&mut buffer, Compression::default());
         let mut archive = Builder::new(encoder);
 
-        // Walk the directory and add files, skipping .git
         add_directory_to_archive(&mut archive, source_dir, source_dir)?;
 
         let encoder = archive
@@ -43,14 +42,6 @@ fn add_directory_to_archive<W: std::io::Write>(
     for entry in entries {
         let entry = entry.map_err(|e| ReviewError::ArchiveFailed(e.to_string()))?;
         let path = entry.path();
-        let file_name = entry.file_name();
-        let file_name_str = file_name.to_string_lossy();
-
-        // Skip .git directory
-        if file_name_str == ".git" {
-            debug!("Skipping .git directory");
-            continue;
-        }
 
         let relative_path = path
             .strip_prefix(base_dir)
@@ -94,10 +85,6 @@ mod tests {
         std::fs::create_dir(base.join("subdir")).unwrap();
         std::fs::write(base.join("subdir/file2.txt"), "content2").unwrap();
 
-        // Create .git directory (should be excluded)
-        std::fs::create_dir(base.join(".git")).unwrap();
-        std::fs::write(base.join(".git/config"), "git config").unwrap();
-
         let tarball = create_tarball(base).expect("Should create tarball");
 
         // Verify tarball is not empty
@@ -115,6 +102,5 @@ mod tests {
 
         assert!(entries.contains(&"file1.txt".to_string()));
         assert!(entries.contains(&"subdir/file2.txt".to_string()));
-        assert!(!entries.iter().any(|e| e.contains(".git")));
     }
 }

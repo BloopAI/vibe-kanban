@@ -34,4 +34,10 @@ pub enum ReviewError {
 
     #[error("Review timed out after 10 minutes")]
     Timeout,
+
+    #[error("Failed to discover Claude Code sessions: {0}")]
+    SessionDiscoveryFailed(String),
+
+    #[error("Failed to parse JSONL file: {0}")]
+    JsonlParseFailed(String),
 }

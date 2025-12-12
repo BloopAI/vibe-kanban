@@ -15,6 +15,7 @@ pub struct PrInfo {
     pub description: String,
     pub base_commit: String,
     pub head_commit: String,
+    pub head_ref_name: String,
 }
 
 /// Response from `gh pr view --json`
@@ -25,6 +26,7 @@ struct GhPrView {
     body: String,
     base_ref_oid: String,
     head_ref_oid: String,
+    head_ref_name: String,
 }
 
 /// Parse a GitHub PR URL to extract owner, repo, and PR number
@@ -112,7 +114,7 @@ pub fn get_pr_info(owner: &str, repo: &str, pr_number: i64) -> Result<PrInfo, Re
             "--repo",
             &format!("{owner}/{repo}"),
             "--json",
-            "title,body,baseRefOid,headRefOid",
+            "title,body,baseRefOid,headRefOid,headRefName",
         ])
         .output()
         .map_err(|e| ReviewError::PrInfoFailed(e.to_string()))?;
@@ -143,6 +145,7 @@ pub fn get_pr_info(owner: &str, repo: &str, pr_number: i64) -> Result<PrInfo, Re
         description: pr_view.body,
         base_commit: pr_view.base_ref_oid,
         head_commit: pr_view.head_ref_oid,
+        head_ref_name: pr_view.head_ref_name,
     })
 }
 

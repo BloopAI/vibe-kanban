@@ -1,7 +1,9 @@
 mod api;
 mod archive;
+mod claude_session;
 mod error;
 mod github;
+mod session_selector;
 
 use std::time::Duration;
 
@@ -82,6 +84,23 @@ async fn run(args: Args) -> Result<(), ReviewError> {
     let pr_info = get_pr_info(&owner, &repo, pr_number)?;
     spinner.finish_with_message(format!("PR: {}", pr_info.title));
 
+    // 2.5. Select Claude Code session (optional)
+    let session_files = match session_selector::select_session(&pr_info.head_ref_name) {
+        Ok(session_selector::SessionSelection::Selected(files)) => {
+            println!("  Selected {} session file(s)", files.len());
+            Some(files)
+        }
+        Ok(session_selector::SessionSelection::Skipped) => {
+            println!("  Skipping project attachment");
+            None
+        }
+        Err(e) => {
+            debug!("Session selection error: {}", e);
+            println!("  No sessions found");
+            None
+        }
+    };
+
     // 3. Clone repository to temp directory
     let temp_dir = TempDir::new().map_err(|e| ReviewError::CloneFailed(e.to_string()))?;
     let repo_dir = temp_dir.path().join(&repo);
@@ -95,8 +114,17 @@ async fn run(args: Args) -> Result<(), ReviewError> {
     checkout_commit(&pr_info.head_commit, &repo_dir)?;
     spinner.finish_with_message("PR checked out");
 
-    // 5. Create tarball
+    // 5. Create tarball (with optional session data)
     let spinner = create_spinner("Creating archive...");
+
+    // If sessions were selected, write .agent-messages.json to repo root
+    if let Some(ref files) = session_files {
+        let json_content = claude_session::concatenate_sessions_to_json(files)?;
+        let agent_messages_path = repo_dir.join(".agent-messages.json");
+        std::fs::write(&agent_messages_path, json_content)
+            .map_err(|e| ReviewError::ArchiveFailed(e.to_string()))?;
+    }
+
     let payload = archive::create_tarball(&repo_dir)?;
     let size_mb = payload.len() as f64 / 1_048_576.0;
     spinner.finish_with_message(format!("Archive created ({size_mb:.2} MB)"));
