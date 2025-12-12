@@ -231,9 +231,9 @@ impl ProjectRepo {
         let existing = Self::find_by_project_and_repo(pool, project_id, repo_id).await?;
         let existing = existing.ok_or(ProjectRepoError::NotFound)?;
 
-        let setup_script = payload.setup_script.clone().or(existing.setup_script);
-        let cleanup_script = payload.cleanup_script.clone().or(existing.cleanup_script);
-        let copy_files = payload.copy_files.clone().or(existing.copy_files);
+        let setup_script = payload.setup_script.clone();
+        let cleanup_script = payload.cleanup_script.clone();
+        let copy_files = payload.copy_files.clone();
         let parallel_setup_script = payload
             .parallel_setup_script
             .unwrap_or(existing.parallel_setup_script);
