@@ -822,8 +822,7 @@ pub trait ContainerService {
                         tracing::warn!(?e, "Failed to start setup script in parallel mode");
                     }
                 } else {
-                    // Sequential setup script - runs before coding agent
-                    // For simplicity, we still run these in parallel but they complete before next_action
+                    // Sequential setup script - starts before coding agent
                     let setup_action = ExecutorAction::new(
                         ExecutorActionType::ScriptRequest(ScriptRequest {
                             script: setup_script.clone(),
@@ -831,7 +830,7 @@ pub trait ContainerService {
                             context: ScriptContext::SetupScript,
                             working_dir: Some(project_repo.repo_name.clone()),
                         }),
-                        None, // Will start coding agent separately after all sequential scripts
+                        None,
                     );
 
                     if let Err(e) = self

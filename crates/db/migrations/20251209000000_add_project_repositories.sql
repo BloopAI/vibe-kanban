@@ -9,7 +9,6 @@ CREATE TABLE repos (
 );
 
 -- Step 2: Create project_repos junction with per-repo script fields
--- Note: dev_script stays on projects table (project-level, not per-repo)
 CREATE TABLE project_repos (
     id                      BLOB PRIMARY KEY,
     project_id              BLOB NOT NULL,
