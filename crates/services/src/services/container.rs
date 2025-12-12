@@ -341,8 +341,7 @@ pub trait ContainerService {
         {
             for process in processes {
                 // Skip dev server processes unless explicitly included
-                if !include_dev_server
-                    && process.run_reason == ExecutionProcessRunReason::DevServer
+                if !include_dev_server && process.run_reason == ExecutionProcessRunReason::DevServer
                 {
                     continue;
                 }
