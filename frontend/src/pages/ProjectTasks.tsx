@@ -23,7 +23,7 @@ import { projectsApi } from '@/lib/api';
 import { paths } from '@/lib/paths';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { ClickedElementsProvider } from '@/contexts/ClickedElementsProvider';
-import { ReviewProvider } from '@/contexts/ReviewProvider';
+import { CodeReferenceInsertionProvider } from '@/contexts/CodeReferenceInsertionContext';
 import {
   GitOperationsProvider,
   useGitOperationsError,
@@ -71,6 +71,7 @@ import {
 } from '@/components/ui/breadcrumb';
 import { AttemptHeaderActions } from '@/components/panels/AttemptHeaderActions';
 import { TaskPanelHeaderActions } from '@/components/panels/TaskPanelHeaderActions';
+import { useScrollToLineStore } from '@/stores/useScrollToLineStore';
 
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
 
@@ -328,6 +329,23 @@ export function ProjectTasks() {
     },
     [searchParams, setSearchParams]
   );
+
+  // Listen for scroll-to-line requests that need the diffs panel to be open
+  const shouldOpenDiffsPanel = useScrollToLineStore(
+    (s) => s.shouldOpenDiffsPanel
+  );
+  const clearShouldOpenDiffsPanel = useScrollToLineStore(
+    (s) => s.clearShouldOpenDiffsPanel
+  );
+
+  useEffect(() => {
+    if (shouldOpenDiffsPanel) {
+      if (mode !== 'diffs') {
+        setMode('diffs');
+      }
+      clearShouldOpenDiffsPanel();
+    }
+  }, [shouldOpenDiffsPanel, mode, setMode, clearShouldOpenDiffsPanel]);
 
   const handleCreateNewTask = useCallback(() => {
     handleCreateTask();
@@ -1029,7 +1047,7 @@ export function ProjectTasks() {
   const attemptArea = (
     <GitOperationsProvider attemptId={attempt?.id}>
       <ClickedElementsProvider attempt={attempt}>
-        <ReviewProvider attemptId={attempt?.id}>
+        <CodeReferenceInsertionProvider>
           <ExecutionProcessesProvider attemptId={attempt?.id}>
             <TasksLayout
               kanban={kanbanContent}
@@ -1041,7 +1059,7 @@ export function ProjectTasks() {
               rightHeader={rightHeader}
             />
           </ExecutionProcessesProvider>
-        </ReviewProvider>
+        </CodeReferenceInsertionProvider>
       </ClickedElementsProvider>
     </GitOperationsProvider>
   );
