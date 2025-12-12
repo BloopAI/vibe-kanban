@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button.tsx';
-import { FolderGit } from 'lucide-react';
+import { ChevronsUpDown, FolderGit } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,6 +58,9 @@ function RepoSelector({
               {selectedRepo?.display_name || effectivePlaceholder}
             </span>
           </div>
+          {repos.length > 1 && (
+            <ChevronsUpDown className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
+          )}
         </Button>
       </DropdownMenuTrigger>
 
