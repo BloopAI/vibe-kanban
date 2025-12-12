@@ -3,6 +3,7 @@ mod auth;
 pub mod config;
 pub mod db;
 pub mod mail;
+pub mod r2;
 pub mod routes;
 mod state;
 pub mod validated_where;

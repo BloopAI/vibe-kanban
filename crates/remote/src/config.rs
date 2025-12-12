@@ -13,6 +13,54 @@ pub struct RemoteServerConfig {
     pub electric_url: String,
     pub electric_secret: Option<SecretString>,
     pub electric_role_password: Option<SecretString>,
+    pub r2: Option<R2Config>,
+}
+
+#[derive(Debug, Clone)]
+pub struct R2Config {
+    pub access_key_id: String,
+    pub secret_access_key: SecretString,
+    pub endpoint: String,
+    pub bucket: String,
+    pub presign_expiry_secs: u64,
+}
+
+impl R2Config {
+    pub fn from_env() -> Result<Option<Self>, ConfigError> {
+        let access_key_id = match env::var("R2_ACCESS_KEY_ID") {
+            Ok(v) => v,
+            Err(_) => {
+                tracing::info!("R2_ACCESS_KEY_ID not set, R2 storage disabled");
+                return Ok(None);
+            }
+        };
+
+        tracing::info!("R2_ACCESS_KEY_ID is set, checking other R2 env vars");
+
+        let secret_access_key = env::var("R2_SECRET_ACCESS_KEY")
+            .map_err(|_| ConfigError::MissingVar("R2_SECRET_ACCESS_KEY"))?;
+
+        let endpoint = env::var("R2_REVIEW_ENDPOINT")
+            .map_err(|_| ConfigError::MissingVar("R2_REVIEW_ENDPOINT"))?;
+
+        let bucket = env::var("R2_REVIEW_BUCKET")
+            .map_err(|_| ConfigError::MissingVar("R2_REVIEW_BUCKET"))?;
+
+        let presign_expiry_secs = env::var("R2_PRESIGN_EXPIRY_SECS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(3600);
+
+        tracing::info!(endpoint = %endpoint, bucket = %bucket, "R2 config loaded successfully");
+
+        Ok(Some(Self {
+            access_key_id,
+            secret_access_key: SecretString::new(secret_access_key.into()),
+            endpoint,
+            bucket,
+            presign_expiry_secs,
+        }))
+    }
 }
 
 #[derive(Debug, Error)]
@@ -49,6 +97,8 @@ impl RemoteServerConfig {
             .ok()
             .map(|s| SecretString::new(s.into()));
 
+        let r2 = R2Config::from_env()?;
+
         Ok(Self {
             database_url,
             listen_addr,
@@ -57,6 +107,7 @@ impl RemoteServerConfig {
             electric_url,
             electric_secret,
             electric_role_password,
+            r2,
         })
     }
 }
