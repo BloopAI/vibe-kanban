@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { Project } from 'shared/types';
 import { useEffect, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
 import { useNavigateWithSearch } from '@/hooks';
 import { projectsApi } from '@/lib/api';
@@ -49,6 +50,13 @@ function ProjectCard({
   const ref = useRef<HTMLDivElement>(null);
   const handleOpenInEditor = useOpenProjectInEditor(project);
   const { t } = useTranslation('projects');
+
+  const { data: repos } = useQuery({
+    queryKey: ['project-repositories', project.id],
+    queryFn: () => projectsApi.getRepositories(project.id),
+  });
+
+  const isSingleRepoProject = repos?.length === 1;
 
   const { unlinkProject } = useProjectMutations({
     onUnlinkSuccess: () => {
@@ -139,15 +147,17 @@ function ProjectCard({
                   <ExternalLink className="mr-2 h-4 w-4" />
                   {t('viewProject')}
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleOpenInIDE();
-                  }}
-                >
-                  <FolderOpen className="mr-2 h-4 w-4" />
-                  {t('openInIDE')}
-                </DropdownMenuItem>
+                {isSingleRepoProject && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenInIDE();
+                    }}
+                  >
+                    <FolderOpen className="mr-2 h-4 w-4" />
+                    {t('openInIDE')}
+                  </DropdownMenuItem>
+                )}
                 {project.remote_project_id ? (
                   <DropdownMenuItem
                     onClick={(e) => {
