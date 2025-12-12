@@ -59,6 +59,7 @@
       "APPROVALS": {
         "CODEX": {
           "model": "gpt-5.2",
+          "model_reasoning_effort": "xhigh",
           "sandbox": "workspace-write",
           "ask_for_approval": "unless-trusted"
         }
