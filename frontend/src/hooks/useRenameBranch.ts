@@ -1,10 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { attemptsApi } from '@/lib/api';
-import { taskAttemptKeys } from './useTaskAttempt';
+import { singleAttemptKeys } from './useTaskAttempt';
 import { attemptKeys } from './useAttempt';
 import { attemptBranchKeys } from './useAttemptBranch';
 import { branchStatusKeys } from './useBranchStatus';
-import { taskAttemptKeys as taskAttemptsKeys } from './useTaskAttempts';
+import { taskAttemptKeys } from './useTaskAttempts';
 
 export function useRenameBranch(
   attemptId?: string,
@@ -21,7 +21,7 @@ export function useRenameBranch(
     onSuccess: (data) => {
       if (attemptId) {
         queryClient.invalidateQueries({
-          queryKey: taskAttemptKeys.byId(attemptId),
+          queryKey: singleAttemptKeys.byId(attemptId),
         });
         queryClient.invalidateQueries({
           queryKey: attemptKeys.byId(attemptId),
@@ -32,7 +32,7 @@ export function useRenameBranch(
         queryClient.invalidateQueries({
           queryKey: branchStatusKeys.byAttempt(attemptId),
         });
-        queryClient.invalidateQueries({ queryKey: taskAttemptsKeys.all });
+        queryClient.invalidateQueries({ queryKey: taskAttemptKeys.all });
       }
       onSuccess?.(data.branch);
     },

@@ -5,7 +5,7 @@ import type {
   ChangeTargetBranchResponse,
 } from 'shared/types';
 import { branchStatusKeys } from './useBranchStatus';
-import { taskAttemptKeys } from './useTaskAttempt';
+import { singleAttemptKeys } from './useTaskAttempt';
 import { branchKeys } from './useBranches';
 
 type ChangeTargetBranchParams = {
@@ -44,7 +44,7 @@ export function useChangeTargetBranch(
         });
         // Invalidate taskAttempt query to refresh attempt.target_branch
         queryClient.invalidateQueries({
-          queryKey: taskAttemptKeys.byId(attemptId),
+          queryKey: singleAttemptKeys.byId(attemptId),
         });
       }
 

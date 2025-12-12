@@ -3,7 +3,7 @@ import { attemptsApi, Result } from '@/lib/api';
 import type { RebaseTaskAttemptRequest } from 'shared/types';
 import type { GitOperationError } from 'shared/types';
 import { branchStatusKeys } from './useBranchStatus';
-import { taskAttemptKeys } from './useTaskAttempt';
+import { singleAttemptKeys } from './useTaskAttempt';
 import { branchKeys } from './useBranches';
 
 export function useRebase(
@@ -47,7 +47,7 @@ export function useRebase(
 
         // Invalidate taskAttempt query to refresh attempt.target_branch
         queryClient.invalidateQueries({
-          queryKey: taskAttemptKeys.byId(attemptId),
+          queryKey: singleAttemptKeys.byId(attemptId),
         });
 
         // Refresh branch list used by PR dialog
