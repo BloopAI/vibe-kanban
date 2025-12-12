@@ -52,14 +52,8 @@
       "DEFAULT": {
         "CODEX": {
           "model": "gpt-5.2",
+          "model_reasoning_effort": "xhigh",
           "sandbox": "danger-full-access"
-        }
-      },
-      "HIGH": {
-        "CODEX": {
-          "model": "gpt-5.2",
-          "sandbox": "danger-full-access",
-          "model_reasoning_effort": "high"
         }
       },
       "APPROVALS": {
@@ -72,6 +66,7 @@
       "MAX": {
         "CODEX": {
           "model": "gpt-5.1-codex-max",
+          "model_reasoning_effort": "xhigh",
           "sandbox": "danger-full-access"
         }
       }
