@@ -1,4 +1,5 @@
 use anyhow::{self, Error as AnyhowError};
+use clap::Parser;
 use deployment::{Deployment, DeploymentError};
 use server::{DeploymentImpl, routes};
 use services::services::container::ContainerService;
@@ -25,8 +26,27 @@ pub enum VibeKanbanError {
     Other(#[from] AnyhowError),
 }
 
+#[derive(Parser, Debug)]
+#[command(
+    name = "vibe-kanban",
+    about = "Run the Vibe Kanban server",
+    version,
+    author,
+    disable_help_subcommand = true
+)]
+struct Cli {
+    /// Port to bind the backend server to. Overrides BACKEND_PORT/PORT when provided.
+    #[arg(long, value_name = "PORT", value_parser = parse_port)]
+    port: Option<u16>,
+    /// Host interface to bind to. Reads from HOST env when set.
+    #[arg(long, value_name = "HOST", env = "HOST", value_parser = parse_host)]
+    host: Option<String>,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), VibeKanbanError> {
+    let cli = Cli::parse();
+
     sentry_utils::init_once(SentrySource::Backend);
 
     let log_level = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
@@ -85,21 +105,16 @@ async fn main() -> Result<(), VibeKanbanError> {
 
     let app_router = routes::router(deployment.clone());
 
-    let port = std::env::var("BACKEND_PORT")
-        .or_else(|_| std::env::var("PORT"))
-        .ok()
-        .and_then(|s| {
-            // remove any ANSI codes, then turn into String
-            let cleaned =
-                String::from_utf8(strip(s.as_bytes())).expect("UTF-8 after stripping ANSI");
-            cleaned.trim().parse::<u16>().ok()
-        })
+    let port = cli
+        .port
+        .or_else(|| read_port_from_env("BACKEND_PORT"))
+        .or_else(|| read_port_from_env("PORT"))
         .unwrap_or_else(|| {
-            tracing::info!("No PORT environment variable set, using port 0 for auto-assignment");
+            tracing::info!("No port provided via CLI or env, using 0 for auto-assignment");
             0
         }); // Use 0 to find free port if no specific port provided
 
-    let host = std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+    let host = cli.host.unwrap_or_else(|| "127.0.0.1".to_string());
     let listener = tokio::net::TcpListener::bind(format!("{host}:{port}")).await?;
     let actual_port = listener.local_addr()?.port(); // get → 53427 (example)
 
@@ -174,4 +189,36 @@ pub async fn perform_cleanup_actions(deployment: &DeploymentImpl) {
         .kill_all_running_processes()
         .await
         .expect("Failed to cleanly kill running execution processes");
+}
+
+fn parse_port(value: &str) -> Result<u16, String> {
+    let cleaned =
+        String::from_utf8(strip(value.as_bytes())).map_err(|_| "value is not valid UTF-8")?;
+    let trimmed = cleaned.trim();
+    trimmed
+        .parse::<u16>()
+        .map_err(|err| format!("invalid port '{trimmed}': {err}"))
+}
+
+fn parse_host(value: &str) -> Result<String, String> {
+    let cleaned =
+        String::from_utf8(strip(value.as_bytes())).map_err(|_| "value is not valid UTF-8")?;
+    let trimmed = cleaned.trim();
+    if trimmed.is_empty() {
+        Err("host cannot be empty".to_string())
+    } else {
+        Ok(trimmed.to_string())
+    }
+}
+
+fn read_port_from_env(name: &str) -> Option<u16> {
+    std::env::var(name)
+        .ok()
+        .and_then(|value| match parse_port(&value) {
+            Ok(port) => Some(port),
+            Err(err) => {
+                tracing::warn!("Ignoring invalid {name} value '{value}': {err}");
+                None
+            }
+        })
 }
