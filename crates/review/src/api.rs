@@ -197,6 +197,6 @@ impl ReviewApiClient {
 
     /// Get the review URL for a given review ID
     pub fn review_url(&self, review_id: &str) -> String {
-        format!("{}/v1/review/{}", self.base_url, review_id)
+        format!("{}/review/{}", self.base_url, review_id)
     }
 }
