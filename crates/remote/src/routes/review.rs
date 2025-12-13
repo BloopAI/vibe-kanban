@@ -21,6 +21,7 @@ pub fn public_router() -> Router<AppState> {
         .route("/review/{id}/status", get(get_review_status))
         .route("/review/{id}", get(get_review))
         .route("/review/{id}/file/{file_hash}", get(get_review_file))
+        .route("/review/{id}/diff", get(get_review_diff))
         .route("/review/{id}/success", post(review_success))
         .route("/review/{id}/failed", post(review_failed))
 }
@@ -320,6 +321,21 @@ pub async fn get_review_file(
 
     // Proxy to worker
     proxy_to_worker(&state, &format!("/review/{}/file/{}", review_id, file_hash)).await
+}
+
+/// GET /review/:id/diff - Get diff for review from worker
+pub async fn get_review_diff(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Response, ReviewError> {
+    let review_id: Uuid = id.parse().map_err(|_| ReviewError::InvalidReviewId)?;
+
+    // Verify review exists in our database
+    let repo = ReviewRepository::new(state.pool());
+    let _review = repo.get_by_id(review_id).await?;
+
+    // Proxy to worker
+    proxy_to_worker(&state, &format!("/review/{}/diff", review_id)).await
 }
 
 /// POST /review/:id/success - Called by worker when review completes successfully
