@@ -404,7 +404,7 @@
 .diff-tailwindcss-wrapper tr,
 .diff-tailwindcss-wrapper td {
   border-color: transparent;
-  border-width: 0px;
+  /* border-width: 0px; */
   text-align: left;
 }
 
@@ -455,7 +455,7 @@
   color: inherit;
   margin: 0;
   text-transform: none;
-  border-width: 0px;
+  /* border-width: 0px; */
   background-color: transparent;
   background-image: none;
 }

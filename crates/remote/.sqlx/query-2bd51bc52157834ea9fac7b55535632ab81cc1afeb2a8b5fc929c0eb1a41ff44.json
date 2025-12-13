@@ -1,0 +1,74 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO reviews (id, gh_pr_url, claude_code_session_id, ip_address, r2_path)\n            VALUES ($1, $2, $3, $4, $5)\n            RETURNING\n                id,\n                gh_pr_url,\n                claude_code_session_id,\n                ip_address AS \"ip_address: IpNetwork\",\n                review_cache,\n                last_viewed_at,\n                r2_path,\n                deleted_at,\n                created_at\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "gh_pr_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "claude_code_session_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "ip_address: IpNetwork",
+        "type_info": "Inet"
+      },
+      {
+        "ordinal": 4,
+        "name": "review_cache",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 5,
+        "name": "last_viewed_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "r2_path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "deleted_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Inet",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "2bd51bc52157834ea9fac7b55535632ab81cc1afeb2a8b5fc929c0eb1a41ff44"
+}

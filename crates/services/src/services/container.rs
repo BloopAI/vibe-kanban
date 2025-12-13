@@ -87,7 +87,7 @@ pub trait ContainerService {
     async fn kill_all_running_processes(&self) -> Result<(), ContainerError>;
 
     async fn delete(&self, task_attempt: &TaskAttempt) -> Result<(), ContainerError> {
-        self.try_stop(task_attempt).await;
+        self.try_stop(task_attempt, true).await;
         self.delete_inner(task_attempt).await
     }
 
@@ -108,17 +108,6 @@ pub trait ContainerService {
         }
 
         Ok(false)
-    }
-
-    /// Stop execution processes for task attempts without cleanup
-    async fn stop_task_processes(
-        &self,
-        task_attempts: &[TaskAttempt],
-    ) -> Result<(), ContainerError> {
-        for attempt in task_attempts {
-            self.try_stop(attempt).await;
-        }
-        Ok(())
     }
 
     /// A context is finalized when
@@ -345,12 +334,17 @@ pub trait ContainerService {
         })
     }
 
-    async fn try_stop(&self, task_attempt: &TaskAttempt) {
-        // stop all execution processes for this attempt
+    async fn try_stop(&self, task_attempt: &TaskAttempt, include_dev_server: bool) {
+        // stop execution processes for this attempt
         if let Ok(processes) =
             ExecutionProcess::find_by_task_attempt_id(&self.db().pool, task_attempt.id, false).await
         {
             for process in processes {
+                // Skip dev server processes unless explicitly included
+                if !include_dev_server && process.run_reason == ExecutionProcessRunReason::DevServer
+                {
+                    continue;
+                }
                 if process.status == ExecutionProcessStatus::Running {
                     self.stop_execution(&process, ExecutionProcessStatus::Killed)
                         .await

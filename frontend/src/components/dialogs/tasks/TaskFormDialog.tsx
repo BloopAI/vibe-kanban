@@ -390,12 +390,12 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
       <Dialog
         open={modal.visible}
         onOpenChange={handleDialogClose}
-        className="w-full max-w-[min(90vw,40rem)] max-h-[min(95vh,50rem)] flex flex-col overflow-hidden p-0"
+        className="w-full max-w-[min(90vw,40rem)] max-h-[min(95vh,50rem)] flex flex-col overflow-hidden"
         uncloseable={showDiscardWarning}
       >
         <div
           {...getRootProps()}
-          className="h-full flex flex-col gap-0 px-4 pb-4 relative min-h-0"
+          className="h-full flex flex-col gap-4 p-4 relative min-h-0"
         >
           <input {...getInputProps()} />
           {/* Drag overlay */}
@@ -411,7 +411,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           )}
 
           {/* Title */}
-          <div className="flex-none pr-8 pt-3">
+          <div className="flex-none px-4 py-2 border border-1 border-border">
             <form.Field name="title">
               {(field) => (
                 <Input
@@ -419,7 +419,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
                   placeholder={t('taskFormDialog.titlePlaceholder')}
-                  className="text-lg font-semibold border-none shadow-none px-0 placeholder:text-muted-foreground/60 focus-visible:ring-0"
+                  className="text-lg font-semibold placeholder:text-muted-foreground/60 border-none p-0"
                   disabled={isSubmitting}
                   autoFocus
                 />
@@ -427,28 +427,25 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
             </form.Field>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-1 pb-3">
+          <div className="flex-1 p-4 min-h-0 overflow-y-auto overscroll-contain space-y-1 border border-1 border-border">
             {/* Description */}
-            <div>
-              <form.Field name="description">
-                {(field) => (
-                  <WYSIWYGEditor
-                    placeholder={t('taskFormDialog.descriptionPlaceholder')}
-                    value={field.state.value}
-                    onChange={(desc) => field.handleChange(desc)}
-                    disabled={isSubmitting}
-                    projectId={projectId}
-                    onPasteFiles={onDrop}
-                    className="border-none shadow-none px-0 text-md font-normal"
-                    onCmdEnter={primaryAction}
-                    onShiftCmdEnter={handleSubmitCreateOnly}
-                    taskId={editMode ? props.task.id : undefined}
-                    localImages={localImages}
-                  />
-                )}
-              </form.Field>
-            </div>
-
+            <form.Field name="description">
+              {(field) => (
+                <WYSIWYGEditor
+                  placeholder={t('taskFormDialog.descriptionPlaceholder')}
+                  value={field.state.value}
+                  onChange={(desc) => field.handleChange(desc)}
+                  disabled={isSubmitting}
+                  projectId={projectId}
+                  onPasteFiles={onDrop}
+                  className="border-none shadow-none px-0 text-md font-normal"
+                  onCmdEnter={primaryAction}
+                  onShiftCmdEnter={handleSubmitCreateOnly}
+                  taskId={editMode ? props.task.id : undefined}
+                  localImages={localImages}
+                />
+              )}
+            </form.Field>
             {/* Edit mode status */}
             {editMode && (
               <form.Field name="status">
@@ -541,7 +538,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
           )}
 
           {/* Actions */}
-          <div className="border-t pt-3 flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-3">
             {/* Attach Image*/}
             <div className="flex items-center gap-2">
               <Button

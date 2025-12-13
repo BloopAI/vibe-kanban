@@ -419,7 +419,7 @@
   "taskFormDialog": {
     "createTitle": "Create New Task",
     "editTitle": "Edit Task",
-    "titlePlaceholder": "Task title",
+    "titlePlaceholder": "Task title...",
     "descriptionPlaceholder": "Add more details (optional). Type @ to search files.",
     "statusLabel": "Status",
     "statusOptions": {

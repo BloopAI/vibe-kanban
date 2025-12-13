@@ -168,25 +168,6 @@ impl ExecutionProcess {
         Ok(result)
     }
 
-    /// Count processes created after the given boundary process
-    pub async fn count_later_than(
-        pool: &SqlitePool,
-        task_attempt_id: Uuid,
-        boundary_process_id: Uuid,
-    ) -> Result<i64, sqlx::Error> {
-        let cnt = sqlx::query_scalar!(
-            r#"SELECT COUNT(1) as "count!:_" FROM execution_processes
-               WHERE task_attempt_id = $1
-                 AND created_at > (SELECT created_at FROM execution_processes WHERE id = $2)"#,
-            task_attempt_id,
-            boundary_process_id
-        )
-        .fetch_one(pool)
-        .await
-        .unwrap_or(0i64);
-        Ok(cnt)
-    }
-
     /// Find execution process by rowid
     pub async fn find_by_rowid(pool: &SqlitePool, rowid: i64) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
@@ -479,19 +460,6 @@ impl ExecutionProcess {
         Ok(())
     }
 
-    pub async fn delete_by_task_attempt_id(
-        pool: &SqlitePool,
-        task_attempt_id: Uuid,
-    ) -> Result<(), sqlx::Error> {
-        sqlx::query!(
-            "DELETE FROM execution_processes WHERE task_attempt_id = $1",
-            task_attempt_id
-        )
-        .execute(pool)
-        .await?;
-        Ok(())
-    }
-
     pub fn executor_action(&self) -> Result<&ExecutorAction, anyhow::Error> {
         match &self.executor_action.0 {
             ExecutorActionField::ExecutorAction(action) => Ok(action),
@@ -499,28 +467,6 @@ impl ExecutionProcess {
                 "Executor action is not a valid ExecutorAction JSON object"
             )),
         }
-    }
-
-    /// Set restore boundary: drop processes newer than the specified process, undrop older/equal
-    pub async fn set_restore_boundary(
-        pool: &SqlitePool,
-        task_attempt_id: Uuid,
-        boundary_process_id: Uuid,
-    ) -> Result<(), sqlx::Error> {
-        // Monotonic drop: only mark newer records as dropped; never undrop.
-        sqlx::query!(
-            r#"UPDATE execution_processes
-               SET dropped = TRUE
-             WHERE task_attempt_id = $1
-               AND created_at > (SELECT created_at FROM execution_processes WHERE id = $2)
-               AND dropped = FALSE
-            "#,
-            task_attempt_id,
-            boundary_process_id
-        )
-        .execute(pool)
-        .await?;
-        Ok(())
     }
 
     /// Soft-drop processes at and after the specified boundary (inclusive)
