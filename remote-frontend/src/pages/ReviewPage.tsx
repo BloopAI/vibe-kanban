@@ -1,9 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { DiffView, DiffModeEnum } from "@git-diff-view/react";
 import "@git-diff-view/react/styles/diff-view.css";
 import "../styles/diff-overrides.css";
-import { getReview, getFileContent, getDiff } from "../api";
+import {
+  getReview,
+  getFileContent,
+  getDiff,
+  getReviewMetadata,
+  type ReviewMetadata,
+} from "../api";
 import type { ReviewResult, ReviewComment } from "../types/review";
 import { MarkdownRenderer } from "../components/MarkdownRenderer";
 import {
@@ -19,7 +25,12 @@ import { CodeFragmentCard } from "../components/CodeFragmentCard";
 function diffHasChanges(diffString: string): boolean {
   return diffString.split("\n").some((line) => {
     if (!line) return false;
-    if (line.startsWith("--- ") || line.startsWith("+++ ") || line.startsWith("@@")) return false;
+    if (
+      line.startsWith("--- ") ||
+      line.startsWith("+++ ") ||
+      line.startsWith("@@")
+    )
+      return false;
     return line[0] === "+" || line[0] === "-";
   });
 }
@@ -29,32 +40,37 @@ type FileCache = Map<string, string>;
 export default function ReviewPage() {
   const { id } = useParams<{ id: string }>();
   const [review, setReview] = useState<ReviewResult | null>(null);
+  const [metadata, setMetadata] = useState<ReviewMetadata | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fileCache, setFileCache] = useState<FileCache>(new Map());
   const [loadingFiles, setLoadingFiles] = useState<Set<string>>(new Set());
   const [scrollProgress, setScrollProgress] = useState(0);
   const [diffText, setDiffText] = useState<string>("");
+  const fetchingFiles = useRef<Set<string>>(new Set());
 
   const parsedDiffs = useMemo(() => parseUnifiedDiff(diffText), [diffText]);
 
   useEffect(() => {
     if (!id) return;
+    // Skip refetch if we already have data for this review (e.g., during HMR)
+    if (review) return;
 
     setLoading(true);
     setError(null);
 
-    Promise.all([getReview(id), getDiff(id)])
-      .then(([reviewData, diffData]) => {
+    Promise.all([getReview(id), getDiff(id), getReviewMetadata(id)])
+      .then(([reviewData, diffData, metadataData]) => {
         setReview(reviewData);
         setDiffText(diffData);
+        setMetadata(metadataData);
         setLoading(false);
       })
       .catch((err) => {
         setError(err.message || "Failed to load review");
         setLoading(false);
       });
-  }, [id]);
+  }, [id, review]);
 
   const pathToHash = useMemo(() => {
     if (!review) return new Map<string, string>();
@@ -71,9 +87,9 @@ export default function ReviewPage() {
 
       const hash = pathToHash.get(filePath);
       if (!hash) return;
+      if (fetchingFiles.current.has(filePath)) return;
 
-      if (fileCache.has(filePath)) return;
-
+      fetchingFiles.current.add(filePath);
       setLoadingFiles((prev) => new Set(prev).add(filePath));
 
       try {
@@ -82,6 +98,7 @@ export default function ReviewPage() {
       } catch (err) {
         console.error(`Failed to fetch file ${filePath}:`, err);
       } finally {
+        fetchingFiles.current.delete(filePath);
         setLoadingFiles((prev) => {
           const next = new Set(prev);
           next.delete(filePath);
@@ -89,7 +106,7 @@ export default function ReviewPage() {
         });
       }
     },
-    [id, review, pathToHash, fileCache],
+    [id, review, pathToHash],
   );
 
   useEffect(() => {
@@ -103,47 +120,49 @@ export default function ReviewPage() {
     }
 
     for (const filePath of allFiles) {
-      if (!fileCache.has(filePath)) {
-        fetchFile(filePath);
-      }
+      fetchFile(filePath);
     }
-  }, [review, fileCache, fetchFile]);
+  }, [review, fetchFile]);
 
   useEffect(() => {
     const handleScroll = () => {
       const scrollTop = window.scrollY;
-      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const docHeight =
+        document.documentElement.scrollHeight - window.innerHeight;
       const progress = docHeight > 0 ? Math.min(1, scrollTop / docHeight) : 0;
       setScrollProgress(progress);
     };
 
-    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const prMetadata = {
-    author: {
-      name: "Full Name",
-      avatarUrl: "https://github.com/ghost.png",
-    },
-    repo: {
-      org: "example",
-      name: "repo",
-    },
-    pr: {
-      number: 0,
-      title: "Pull Request Title",
-      description:
-        "Pull request description goes here. This will be replaced with real data from the API.",
-    },
-  };
+  // Parse PR metadata from the GitHub URL
+  const prMetadata = useMemo(() => {
+    if (!metadata) {
+      return { org: "", repo: "", number: 0, title: "" };
+    }
+    // Parse gh_pr_url: https://github.com/owner/repo/pull/123
+    const match = metadata.gh_pr_url.match(
+      /github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/,
+    );
+    if (match) {
+      return {
+        org: match[1],
+        repo: match[2],
+        number: parseInt(match[3], 10),
+        title: metadata.pr_title,
+      };
+    }
+    return { org: "", repo: "", number: 0, title: metadata.pr_title };
+  }, [metadata]);
 
   useEffect(() => {
-    if (review) {
-      document.title = `Review: ${prMetadata.pr.title} · ${prMetadata.repo.org}/${prMetadata.repo.name}#${prMetadata.pr.number}`;
+    if (review && prMetadata.title) {
+      document.title = `Review: ${prMetadata.title} · ${prMetadata.org}/${prMetadata.repo}#${prMetadata.number}`;
     }
-  }, [review, prMetadata.pr.title, prMetadata.repo.org, prMetadata.repo.name, prMetadata.pr.number]);
+  }, [review, prMetadata]);
 
   if (loading) {
     return (
@@ -186,12 +205,9 @@ export default function ReviewPage() {
     );
   }
 
-  const totalFragments = review.comments.reduce(
-    (sum, comment) => sum + comment.fragments.length,
-    0,
-  );
-
-  const prUrl = `https://github.com/${prMetadata.repo.org}/${prMetadata.repo.name}/pull/${prMetadata.pr.number}`;
+  const prUrl =
+    metadata?.gh_pr_url ||
+    `https://github.com/${prMetadata.org}/${prMetadata.repo}/pull/${prMetadata.number}`;
   const hasDiff = parsedDiffs.length > 0;
 
   return (
@@ -204,90 +220,86 @@ export default function ReviewPage() {
         />
       </div>
 
-      {/* Header - Two Column Layout */}
-      <div className="border-b px-4 py-5 mt-1">
-        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-6">
-          {/* Left Column - PR Info */}
-          <div className="flex items-start gap-3">
-            <img
-              src={prMetadata.author.avatarUrl}
-              alt={prMetadata.author.name}
-              className="w-10 h-10 rounded-full shrink-0"
-            />
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                <svg
-                  className="h-4 w-4 shrink-0"
-                  fill="currentColor"
-                  viewBox="0 0 16 16"
-                >
-                  <path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z" />
-                </svg>
-                <a
-                  href={prUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-medium text-foreground hover:underline"
-                >
-                  {prMetadata.repo.org}/{prMetadata.repo.name}
-                </a>
+      {/* Header - Two Column Layout - Full Height */}
+      <div className="min-h-screen border-b px-4 py-5 mt-1 flex flex-col justify-center items-center">
+        <div className="w-full max-w-2xl p-8 space-y-40">
+          <div className="space-y-4">
+            <div className="flex gap-2 items-center text-secondary-foreground">
+              <svg
+                className="h-4 w-4 shrink-0"
+                fill="currentColor"
+                viewBox="0 0 16 16"
+              >
+                <path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z" />
+              </svg>
+              <h2>
                 <a
                   href={prUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:underline"
                 >
-                  #{prMetadata.pr.number}
+                  {prMetadata.org}/{prMetadata.repo}
                 </a>
-                <span className="px-1.5 py-0.5 bg-muted text-muted-foreground rounded text-xs">
-                  Unlisted
-                </span>
-              </div>
-              <h1 className="text-base font-semibold text-foreground leading-snug">
-                {prMetadata.pr.title}
+              </h2>
+            </div>
+            <div className="border-b pb-4">
+              <h1 className="text-2xl">
+                {prMetadata.title} (
+                <a
+                  href={prUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:underline"
+                >
+                  #{prMetadata.number}
+                </a>
+                )
               </h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                by {prMetadata.author.name}
-              </p>
-              {prMetadata.pr.description && (
-                <p className="text-sm text-muted-foreground mt-2 line-clamp-3">
-                  {prMetadata.pr.description}
-                </p>
-              )}
+            </div>
+            <div>
+              <MarkdownRenderer
+                content={review.summary}
+                className="text-base text-secondary-foreground"
+              />
             </div>
           </div>
-
-          {/* Right Column - Review Summary */}
-          <div className="border-l border-border pl-6">
-            <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
-              Review Summary
-            </h2>
-            <MarkdownRenderer content={review.summary} className="text-sm" />
-            <div className="mt-3 flex items-center gap-4 text-sm text-muted-foreground">
-              <span>{review.comments.length} comments</span>
-              <span>•</span>
-              <span>{totalFragments} code references</span>
+          <div>
+            <div className="bg-muted p-4 rounded-sm space-y-2 border">
+              <a href="https://vibekanban.com" target="_blank">
+                <img src="/logo_light.png" alt="Logo" className="w-32" />
+              </a>
+              <p className="text-base text-secondary-foreground">
+                To make this PR easier to understand and review, an AI agent has
+                written a <i>review story</i>. The changes are presented in a
+                clear, logical order, with concise, AI-generated comments that
+                explain context and highlight what matters.{" "}
+                <a
+                  href="https://vibekanban.com"
+                  className="text-primary-foreground"
+                  target="_blank"
+                >
+                  Learn more.
+                </a>
+              </p>
+              <p className="text-base">Please scroll to begin</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Comments List - Two Column Grid Layout */}
-      <div className="px-3 pb-4 flex-1">
-        <div className="divide-y font-sans">
-          {review.comments.map((comment, idx) => (
-            <CommentStoryRow
-              key={idx}
-              index={idx + 1}
-              comment={comment}
-              fileCache={fileCache}
-              loadingFiles={loadingFiles}
-              parsedDiffs={parsedDiffs}
-              hasDiff={hasDiff}
-            />
-          ))}
-        </div>
-      </div>
+      {review.comments.map((comment, idx) => (
+        <CommentStoryRow
+          key={idx}
+          index={idx + 1}
+          comment={comment}
+          fileCache={fileCache}
+          loadingFiles={loadingFiles}
+          parsedDiffs={parsedDiffs}
+          hasDiff={hasDiff}
+        />
+      ))}
 
       {/* Footer - Promotional */}
       <div className="border-t px-4 py-6 bg-muted/30">
@@ -321,44 +333,20 @@ function CommentStoryRow({
   parsedDiffs,
   hasDiff,
 }: CommentStoryRowProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const hasComment = comment.comment && comment.comment.trim().length > 0;
 
   return (
-    <div className="py-6">
-      {/* Collapsible Header */}
-      <button
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className="w-full flex items-center gap-3 text-left hover:bg-muted/30 rounded-lg p-2 -ml-2 transition-colors"
-      >
-        <svg
-          className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform ${isCollapsed ? '' : 'rotate-90'}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
-        <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs font-medium shrink-0">
-          {index}
-        </span>
-        <span className="text-sm text-foreground line-clamp-1 flex-1 min-w-0">
-          {hasComment ? comment.comment.split('\n')[0].replace(/^#+\s*/, '') : '(No comment text)'}
-        </span>
-        <span className="text-xs text-muted-foreground shrink-0">
-          {comment.fragments.length} fragment{comment.fragments.length !== 1 ? 's' : ''}
-        </span>
-      </button>
-
-      {/* Collapsible Content */}
-      {!isCollapsed && (
-        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-6 mt-4 pl-9">
-          {/* Left Column - Comment */}
-          <div className="sticky top-4 self-start max-h-[calc(100vh-2rem)] overflow-y-auto min-w-0">
+    <div className="min-h-screen flex flex-row justify-center px-8 xl:px-[10vw] space-x-8 xl:space-x-[5vw]">
+      <div className="flex-1 flex  w-1/2 xl:w-1/3">
+        <div className="h-screen sticky top-0 flex items-center">
+          <div className="flex space-x-4">
+            <span className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-muted text-primary-foreground text-lg font-medium shrink-0">
+              {index}
+            </span>
             {hasComment ? (
               <MarkdownRenderer
                 content={comment.comment}
-                className="text-sm min-w-0"
+                className="text-lg min-w-0 text-secondary-foreground"
               />
             ) : (
               <span className="text-sm text-muted-foreground italic">
@@ -366,31 +354,31 @@ function CommentStoryRow({
               </span>
             )}
           </div>
-
-          {/* Right Column - Code Fragments */}
-          <div className="space-y-3 min-w-0 overflow-x-auto">
-            {comment.fragments.length > 0 ? (
-              comment.fragments.map((fragment, fIdx) => (
-                <DiffFragmentCard
-                  key={`${fragment.file}:${fragment.start_line}-${fragment.end_line}:${fIdx}`}
-                  file={fragment.file}
-                  startLine={fragment.start_line}
-                  endLine={fragment.end_line}
-                  message={fragment.message}
-                  parsedDiffs={parsedDiffs}
-                  fileContent={fileCache.get(fragment.file)}
-                  isLoading={loadingFiles.has(fragment.file)}
-                  hasDiff={hasDiff}
-                />
-              ))
-            ) : (
-              <div className="text-sm text-muted-foreground">
-                No code fragments for this comment.
-              </div>
-            )}
-          </div>
         </div>
-      )}
+      </div>
+
+      {/* Right Column - Code Fragments */}
+      <div className="pt-[100vh] pb-[50vh] w-1/2 xl:w-2/3 space-y-[50vh]">
+        {comment.fragments.length > 0 ? (
+          comment.fragments.map((fragment, fIdx) => (
+            <DiffFragmentCard
+              key={`${fragment.file}:${fragment.start_line}-${fragment.end_line}:${fIdx}`}
+              file={fragment.file}
+              startLine={fragment.start_line}
+              endLine={fragment.end_line}
+              message={fragment.message}
+              parsedDiffs={parsedDiffs}
+              fileContent={fileCache.get(fragment.file)}
+              isLoading={loadingFiles.has(fragment.file)}
+              hasDiff={hasDiff}
+            />
+          ))
+        ) : (
+          <div className="text-sm text-muted-foreground">
+            No code fragments for this comment.
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -418,7 +406,10 @@ function DiffFragmentCard({
 }: DiffFragmentCardProps) {
   const [viewMode, setViewMode] = useState<"fragment" | "file">("fragment");
 
-  const fileDiff = useMemo(() => getFileDiff(parsedDiffs, file), [parsedDiffs, file]);
+  const fileDiff = useMemo(
+    () => getFileDiff(parsedDiffs, file),
+    [parsedDiffs, file],
+  );
   const lang = getHighlightLanguageFromPath(file);
 
   const diffData = useMemo(() => {
@@ -442,7 +433,7 @@ function DiffFragmentCard({
       fileContent,
       startLine,
       endLine,
-      3
+      3,
     );
 
     if (!diffString) return null;
@@ -467,8 +458,18 @@ function DiffFragmentCard({
         </div>
         {message && (
           <div className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400 mt-1.5 italic">
-            <svg className="h-3.5 w-3.5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+            <svg
+              className="h-3.5 w-3.5 shrink-0 mt-0.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"
+              />
             </svg>
             <span>{message}</span>
           </div>
@@ -488,79 +489,97 @@ function DiffFragmentCard({
   }
 
   return (
-    <div className="border rounded bg-muted/40 overflow-hidden">
-      <div className="px-3 py-2 border-b bg-muted/60">
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground min-w-0">
-            <span className="font-mono truncate">{file}</span>
-            <span className="shrink-0">
-              Lines {startLine}
-              {endLine !== startLine && `–${endLine}`}
-            </span>
-            {diffData && !diffData.hasChanges && (
-              <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] bg-muted text-muted-foreground">
-                Unchanged
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-1 shrink-0 ml-auto">
-            <button
-              className="h-6 px-2 rounded hover:bg-muted transition-colors flex items-center justify-center text-xs"
-              onClick={() =>
-                setViewMode((prev) => (prev === "fragment" ? "file" : "fragment"))
-              }
-              title={
-                viewMode === "fragment" ? "View full file diff" : "View fragment only"
-              }
-            >
-              {viewMode === "fragment" ? "Full Diff" : "Fragment"}
-            </button>
+    <div className="flex flex-col space-y-8">
+      <div className="space-y-2 text-lg">
+        <div className="flex">
+          <div className="font-mono bg-muted py-1 px-2 rounded-sm border text-secondary-foreground break-words max-w-full">
+            {file}
           </div>
         </div>
         {message && (
-          <div className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400 mt-1.5 italic">
-            <svg className="h-3.5 w-3.5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-            </svg>
-            <span>{message}</span>
+          <div>
+            <span>
+              <MarkdownRenderer content={message} />
+            </span>
           </div>
         )}
       </div>
-
-      {diffData ? (
-        diffData.hasChanges ? (
-          <div className="diff-view-container">
-            <DiffView
-              data={diffData}
-              diffViewMode={DiffModeEnum.Unified}
-              diffViewTheme="dark"
-              diffViewHighlight
-              diffViewFontSize={12}
-              diffViewWrap={false}
-            />
+      <div className="border rounded bg-muted/40 overflow-hidden">
+        <div className="px-3 py-2 border-b bg-muted/60">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground min-w-0">
+              <span className="shrink-0">
+                Lines {startLine}
+                {endLine !== startLine && `–${endLine}`}
+              </span>
+              {diffData && !diffData.hasChanges && (
+                <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] bg-muted text-muted-foreground">
+                  Unchanged
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1 shrink-0 ml-auto">
+              <button
+                className="h-6 px-2 rounded hover:bg-muted transition-colors flex items-center justify-center text-xs"
+                onClick={() =>
+                  setViewMode((prev) =>
+                    prev === "fragment" ? "file" : "fragment",
+                  )
+                }
+                title={
+                  viewMode === "fragment"
+                    ? "View full file diff"
+                    : "View fragment only"
+                }
+              >
+                {viewMode === "fragment" ? "Full Diff" : "Fragment"}
+              </button>
+            </div>
           </div>
-        ) : fileContent ? (
-          <CodeFragmentCard
-            fragment={{ file, start_line: startLine, end_line: endLine, message: "" }}
-            fileContent={fileContent}
-            isLoading={isLoading}
-            hideHeader
-          />
+        </div>
+
+        {diffData ? (
+          diffData.hasChanges ? (
+            <div className="diff-view-container">
+              <DiffView
+                data={diffData}
+                diffViewMode={DiffModeEnum.Unified}
+                diffViewTheme="dark"
+                diffViewHighlight
+                diffViewFontSize={12}
+                diffViewWrap={false}
+              />
+            </div>
+          ) : fileContent ? (
+            <CodeFragmentCard
+              fragment={{
+                file,
+                start_line: startLine,
+                end_line: endLine,
+                message: "",
+              }}
+              fileContent={fileContent}
+              isLoading={isLoading}
+              hideHeader
+            />
+          ) : (
+            <div className="px-3 py-4 text-xs text-muted-foreground">
+              No changes in this fragment range.
+            </div>
+          )
+        ) : isLoading ? (
+          <div className="px-3 py-4 flex items-center gap-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-muted-foreground/60"></div>
+            <span className="text-xs text-muted-foreground">
+              Loading file content...
+            </span>
+          </div>
         ) : (
           <div className="px-3 py-4 text-xs text-muted-foreground">
-            No changes in this fragment range.
+            No diff hunks match this fragment range.
           </div>
-        )
-      ) : isLoading ? (
-        <div className="px-3 py-4 flex items-center gap-2">
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-muted-foreground/60"></div>
-          <span className="text-xs text-muted-foreground">Loading file content...</span>
-        </div>
-      ) : (
-        <div className="px-3 py-4 text-xs text-muted-foreground">
-          No diff hunks match this fragment range.
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

@@ -20,6 +20,7 @@ pub fn public_router() -> Router<AppState> {
         .route("/review/start", post(start_review))
         .route("/review/{id}/status", get(get_review_status))
         .route("/review/{id}", get(get_review))
+        .route("/review/{id}/metadata", get(get_review_metadata))
         .route("/review/{id}/file/{file_hash}", get(get_review_file))
         .route("/review/{id}/diff", get(get_review_diff))
         .route("/review/{id}/success", post(review_success))
@@ -43,6 +44,12 @@ pub struct InitReviewResponse {
     pub upload_url: String,
     pub object_key: String,
     pub expires_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ReviewMetadataResponse {
+    pub gh_pr_url: String,
+    pub pr_title: String,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -291,6 +298,22 @@ pub async fn get_review_status(
 
     // Proxy to worker
     proxy_to_worker(&state, &format!("/review/{}/status", review_id)).await
+}
+
+/// GET /review/:id/metadata - Get PR metadata from database
+pub async fn get_review_metadata(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Json<ReviewMetadataResponse>, ReviewError> {
+    let review_id: Uuid = id.parse().map_err(|_| ReviewError::InvalidReviewId)?;
+
+    let repo = ReviewRepository::new(state.pool());
+    let review = repo.get_by_id(review_id).await?;
+
+    Ok(Json(ReviewMetadataResponse {
+        gh_pr_url: review.gh_pr_url,
+        pr_title: review.pr_title,
+    }))
 }
 
 /// GET /review/:id - Get complete review result from worker

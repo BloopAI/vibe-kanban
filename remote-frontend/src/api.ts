@@ -125,3 +125,18 @@ export async function getDiff(reviewId: string): Promise<string> {
   }
   return res.text();
 }
+
+export interface ReviewMetadata {
+  gh_pr_url: string;
+  pr_title: string;
+}
+
+export async function getReviewMetadata(
+  reviewId: string,
+): Promise<ReviewMetadata> {
+  const res = await fetch(`${API_BASE}/v1/review/${reviewId}/metadata`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch review metadata (${res.status})`);
+  }
+  return res.json();
+}

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Chivo+Mono:ital,wght@0,100..900;1,100..900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Emoji:wght@300..700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Chivo+Mono:ital,wght@0,100..900;1,100..900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Emoji:wght@300..700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -7,20 +7,27 @@
 @layer base {
   :root {
     color-scheme: dark;
-    --background: 0 0% 12%; /* #1E1E1E */
+    --background: 0 0% 12%;
+    /* #1E1E1E */
     --foreground: 0 0% 90%;
-    --primary: 0 0% 13%; /* #212121 */
+    --primary: 0 0% 13%;
+    /* #212121 */
     --primary-foreground: 0 0% 90%;
-    --secondary: 0 0% 13%; /* #212121 */
-    --secondary-foreground: 0 0% 60%;
-    --muted: 0 0% 13%; /* #212121 */
+    --secondary: 0 0% 13%;
+    /* #212121 */
+    --secondary-foreground: 0 0% 70%;
+    --muted: 0 0% 19%;
+    /* #212121 */
     --muted-foreground: 0 0% 65%;
-    --accent: 0 0% 16%; /* #292929 */
+    --accent: 0 0% 16%;
+    /* #292929 */
     --accent-foreground: 0 0% 90%;
     --destructive: 0 45% 55%;
     --destructive-foreground: 0 0% 90%;
-    --border: 0 0% 16%; /* #292929 */
-    --input: 0 0% 16%; /* #292929 */
+    --border: 0 0% 16%;
+    /* #292929 */
+    --input: 0 0% 16%;
+    /* #292929 */
     --ring: 0 0% 50%;
     --radius: 0.5rem;
 
