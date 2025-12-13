@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                id,\n                gh_pr_url,\n                claude_code_session_id,\n                ip_address AS \"ip_address: IpNetwork\",\n                review_cache,\n                last_viewed_at,\n                r2_path,\n                deleted_at,\n                created_at,\n                email,\n                pr_title\n            FROM reviews\n            WHERE id = $1 AND deleted_at IS NULL\n            ",
+  "query": "\n            SELECT\n                id,\n                gh_pr_url,\n                claude_code_session_id,\n                ip_address AS \"ip_address: IpNetwork\",\n                review_cache,\n                last_viewed_at,\n                r2_path,\n                deleted_at,\n                created_at,\n                email,\n                pr_title,\n                status\n            FROM reviews\n            WHERE id = $1 AND deleted_at IS NULL\n            ",
   "describe": {
     "columns": [
       {
@@ -57,6 +57,11 @@
         "ordinal": 10,
         "name": "pr_title",
         "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "status",
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -75,8 +80,9 @@
       true,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "e45256e814280fd7db9223a0ed02810435e008e2995b8e61df6632c4faa6c518"
+  "hash": "dfb52ca6c9d581ba8dbc624cab50525b77627b75a01e4ccfe983865205cbbde1"
 }

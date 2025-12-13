@@ -334,6 +334,9 @@ pub async fn review_success(
     let repo = ReviewRepository::new(state.pool());
     let review = repo.get_by_id(review_id).await?;
 
+    // Mark review as completed
+    repo.mark_completed(review_id).await?;
+
     // Build review URL
     let review_url = format!("{}/review/{}", state.server_public_base_url, review_id);
 
@@ -357,6 +360,9 @@ pub async fn review_failed(
     // Fetch review from database to get email and PR title
     let repo = ReviewRepository::new(state.pool());
     let review = repo.get_by_id(review_id).await?;
+
+    // Mark review as failed
+    repo.mark_failed(review_id).await?;
 
     // Send failure notification email
     state

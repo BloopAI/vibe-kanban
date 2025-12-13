@@ -28,6 +28,7 @@ pub struct Review {
     pub created_at: DateTime<Utc>,
     pub email: String,
     pub pr_title: String,
+    pub status: String,
 }
 
 pub struct ReviewRepository<'a> {
@@ -67,7 +68,8 @@ impl<'a> ReviewRepository<'a> {
                 deleted_at,
                 created_at,
                 email,
-                pr_title
+                pr_title,
+                status
             "#,
             id,
             gh_pr_url,
@@ -99,7 +101,8 @@ impl<'a> ReviewRepository<'a> {
                 deleted_at,
                 created_at,
                 email,
-                pr_title
+                pr_title,
+                status
             FROM reviews
             WHERE id = $1 AND deleted_at IS NULL
             "#,
@@ -135,5 +138,39 @@ impl<'a> ReviewRepository<'a> {
         .map_err(ReviewError::from)?;
 
         Ok(result.count)
+    }
+
+    /// Mark a review as completed
+    pub async fn mark_completed(&self, id: Uuid) -> Result<(), ReviewError> {
+        sqlx::query!(
+            r#"
+            UPDATE reviews
+            SET status = 'completed'
+            WHERE id = $1 AND deleted_at IS NULL
+            "#,
+            id
+        )
+        .execute(self.pool)
+        .await
+        .map_err(ReviewError::from)?;
+
+        Ok(())
+    }
+
+    /// Mark a review as failed
+    pub async fn mark_failed(&self, id: Uuid) -> Result<(), ReviewError> {
+        sqlx::query!(
+            r#"
+            UPDATE reviews
+            SET status = 'failed'
+            WHERE id = $1 AND deleted_at IS NULL
+            "#,
+            id
+        )
+        .execute(self.pool)
+        .await
+        .map_err(ReviewError::from)?;
+
+        Ok(())
     }
 }

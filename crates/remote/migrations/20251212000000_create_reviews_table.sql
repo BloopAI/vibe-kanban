@@ -7,7 +7,10 @@ CREATE TABLE IF NOT EXISTS reviews (
     last_viewed_at TIMESTAMPTZ,
     r2_path TEXT NOT NULL,
     deleted_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    email TEXT NOT NULL,
+    pr_title TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending'
 );
 
 -- Index for rate limiting queries (IP + time range)
