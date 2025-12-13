@@ -1,0 +1,29 @@
+[package]
+name = "review"
+version = "0.0.134"
+edition = "2024"
+publish = false
+
+[[bin]]
+name = "review"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive", "env"] }
+tokio = { workspace = true }
+reqwest = { version = "0.12", features = ["json", "stream"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tar = "0.4"
+flate2 = "1.0"
+indicatif = "0.17"
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+uuid = { version = "1.0", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+tempfile = "3.8"
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+dialoguer = "0.11"
+dirs = "5.0"
+toml = "0.8"

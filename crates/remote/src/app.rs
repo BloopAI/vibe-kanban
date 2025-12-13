@@ -13,6 +13,7 @@ use crate::{
     config::RemoteServerConfig,
     db,
     mail::LoopsMailer,
+    r2::R2Service,
     routes,
 };
 
@@ -84,6 +85,15 @@ impl Server {
             )
         })?;
 
+        let r2 = config.r2.as_ref().map(R2Service::new);
+        if r2.is_some() {
+            tracing::info!("R2 storage service initialized");
+        } else {
+            tracing::warn!(
+                "R2 storage service not configured. Set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_REVIEW_ENDPOINT, and R2_REVIEW_BUCKET to enable."
+            );
+        }
+
         let http_client = reqwest::Client::new();
         let state = AppState::new(
             pool.clone(),
@@ -94,6 +104,7 @@ impl Server {
             mailer,
             server_public_base_url,
             http_client,
+            r2,
         );
 
         let router = routes::router(state);

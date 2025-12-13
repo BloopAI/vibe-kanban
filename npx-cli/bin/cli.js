@@ -69,7 +69,9 @@ function getBinaryName(base) {
 
 const platformDir = getPlatformDir();
 const extractDir = path.join(__dirname, "..", "dist", platformDir);
+const args = process.argv.slice(2);
 const isMcpMode = process.argv.includes("--mcp");
+const isReviewMode = args[0] === "review";
 
 // ensure output dir
 fs.mkdirSync(extractDir, { recursive: true });
@@ -141,6 +143,17 @@ if (isMcpMode) {
       proc.kill("SIGINT");
     });
     process.on("SIGTERM", () => proc.kill("SIGTERM"));
+  });
+} else if (isReviewMode) {
+  extractAndRun("vibe-kanban-review", (bin) => {
+    // Pass all args except 'review' to the binary
+    const reviewArgs = args.slice(1);
+    const proc = spawn(bin, reviewArgs, { stdio: "inherit" });
+    proc.on("exit", (c) => process.exit(c || 0));
+    proc.on("error", (e) => {
+      console.error("❌ Review CLI error:", e.message);
+      process.exit(1);
+    });
   });
 } else {
   console.log(`📦 Extracting vibe-kanban...`);

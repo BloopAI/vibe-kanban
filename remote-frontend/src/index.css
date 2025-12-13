@@ -1,3 +1,100 @@
+@import url("https://fonts.googleapis.com/css2?family=Chivo+Mono:ital,wght@0,100..900;1,100..900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Emoji:wght@300..700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    --background: 0 0% 12%;
+    /* #1E1E1E */
+    --foreground: 0 0% 90%;
+    --primary: 0 0% 13%;
+    /* #212121 */
+    --primary-foreground: 0 0% 90%;
+    --secondary: 0 0% 13%;
+    /* #212121 */
+    --secondary-foreground: 0 0% 70%;
+    --muted: 0 0% 19%;
+    /* #212121 */
+    --muted-foreground: 0 0% 65%;
+    --accent: 0 0% 16%;
+    /* #292929 */
+    --accent-foreground: 0 0% 90%;
+    --destructive: 0 45% 55%;
+    --destructive-foreground: 0 0% 90%;
+    --border: 0 0% 16%;
+    /* #292929 */
+    --input: 0 0% 16%;
+    /* #292929 */
+    --ring: 0 0% 50%;
+    --radius: 0.5rem;
+
+    /* Syntax highlighting (dark) */
+    --syntax-keyword: #ff7b72;
+    --syntax-function: #d2a8ff;
+    --syntax-constant: #79c0ff;
+    --syntax-string: #a5d6ff;
+    --syntax-variable: #ffa657;
+    --syntax-comment: #8b949e;
+    --syntax-tag: #7ee787;
+    --syntax-punctuation: #c9d1d9;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body,
+  #root {
+    @apply min-h-screen;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+/* Syntax highlighting classes */
+.hljs-keyword,
+.hljs-type {
+  color: var(--syntax-keyword);
+}
+
+.hljs-title,
+.hljs-title.function_ {
+  color: var(--syntax-function);
+}
+
+.hljs-attr,
+.hljs-number,
+.hljs-literal {
+  color: var(--syntax-constant);
+}
+
+.hljs-string {
+  color: var(--syntax-string);
+}
+
+.hljs-built_in,
+.hljs-symbol {
+  color: var(--syntax-variable);
+}
+
+.hljs-comment {
+  color: var(--syntax-comment);
+}
+
+.hljs-name,
+.hljs-tag {
+  color: var(--syntax-tag);
+}
+
+.hljs-punctuation,
+.hljs-property {
+  color: var(--syntax-punctuation);
+}

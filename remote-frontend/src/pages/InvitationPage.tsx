@@ -1,62 +1,57 @@
-import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import {
   getInvitation,
   initOAuth,
   type Invitation,
   type OAuthProvider,
-} from '../api'
+} from "../api";
 import {
   generateVerifier,
   generateChallenge,
   storeVerifier,
   storeInvitationToken,
-} from '../pkce'
+} from "../pkce";
 
 export default function InvitationPage() {
-  const { token = '' } = useParams()
-  const [data, setData] = useState<Invitation | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  const { token = "" } = useParams();
+  const [data, setData] = useState<Invitation | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     getInvitation(token)
       .then(setData)
-      .catch((e) => setError(e.message))
-  }, [token])
+      .catch((e) => setError(e.message));
+  }, [token]);
 
   const handleOAuthLogin = async (provider: OAuthProvider) => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const verifier = generateVerifier()
-      const challenge = await generateChallenge(verifier)
+      const verifier = generateVerifier();
+      const challenge = await generateChallenge(verifier);
 
-      storeVerifier(verifier)
-      storeInvitationToken(token)
+      storeVerifier(verifier);
+      storeInvitationToken(token);
 
       const appBase =
-        import.meta.env.VITE_APP_BASE_URL || window.location.origin
-      const returnTo = `${appBase}/invitations/${token}/complete`
+        import.meta.env.VITE_APP_BASE_URL || window.location.origin;
+      const returnTo = `${appBase}/invitations/${token}/complete`;
 
-      const result = await initOAuth(provider, returnTo, challenge)
-      window.location.assign(result.authorize_url)
+      const result = await initOAuth(provider, returnTo, challenge);
+      window.location.assign(result.authorize_url);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'OAuth init failed')
-      setLoading(false)
+      setError(e instanceof Error ? e.message : "OAuth init failed");
+      setLoading(false);
     }
-  }
+  };
 
   if (error) {
-    return (
-      <ErrorCard
-        title="Invalid or expired invitation"
-        body={error}
-      />
-    )
+    return <ErrorCard title="Invalid or expired invitation" body={error} />;
   }
 
   if (!data) {
-    return <LoadingCard text="Loading invitation..." />
+    return <LoadingCard text="Loading invitation..." />;
   }
 
   return (
@@ -90,18 +85,18 @@ export default function InvitationPage() {
           </p>
           <OAuthButton
             label="Continue with GitHub"
-            onClick={() => handleOAuthLogin('github')}
+            onClick={() => handleOAuthLogin("github")}
             disabled={loading}
           />
           <OAuthButton
             label="Continue with Google"
-            onClick={() => handleOAuthLogin('google')}
+            onClick={() => handleOAuthLogin("google")}
             disabled={loading}
           />
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function OAuthButton({
@@ -109,9 +104,9 @@ function OAuthButton({
   onClick,
   disabled,
 }: {
-  label: string
-  onClick: () => void
-  disabled?: boolean
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
@@ -121,7 +116,7 @@ function OAuthButton({
     >
       {label}
     </button>
-  )
+  );
 }
 
 function LoadingCard({ text }: { text: string }) {
@@ -129,7 +124,7 @@ function LoadingCard({ text }: { text: string }) {
     <div className="min-h-screen grid place-items-center bg-gray-50">
       <div className="text-gray-600">{text}</div>
     </div>
-  )
+  );
 }
 
 function ErrorCard({ title, body }: { title: string; body?: string }) {
@@ -140,5 +135,5 @@ function ErrorCard({ title, body }: { title: string; body?: string }) {
         {body && <p className="text-gray-600 mt-2">{body}</p>}
       </div>
     </div>
-  )
+  );
 }

@@ -6,6 +6,7 @@ pub mod oauth_accounts;
 pub mod organization_members;
 pub mod organizations;
 pub mod projects;
+pub mod reviews;
 pub mod tasks;
 pub mod users;
 

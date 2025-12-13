@@ -8,7 +8,8 @@ members = [
     "crates/utils",
     "crates/local-deployment",
     "crates/deployment",
-    "crates/remote"
+    "crates/remote",
+    "crates/review"
 ]
 
 [workspace.dependencies]
