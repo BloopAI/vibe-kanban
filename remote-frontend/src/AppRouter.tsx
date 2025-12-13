@@ -3,7 +3,6 @@ import HomePage from "./pages/HomePage";
 import InvitationPage from "./pages/InvitationPage";
 import InvitationCompletePage from "./pages/InvitationCompletePage";
 import ReviewPage from "./pages/ReviewPage";
-import DiffReviewPage from "./pages/DiffReviewPage";
 import NotFoundPage from "./pages/NotFoundPage";
 
 const router = createBrowserRouter([
@@ -14,10 +13,6 @@ const router = createBrowserRouter([
   {
     path: "/review/:id",
     element: <ReviewPage />,
-  },
-  {
-    path: "/review/:id/diff",
-    element: <DiffReviewPage />,
   },
   {
     path: "/invitations/:token/accept",
