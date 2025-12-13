@@ -1,9 +1,28 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { getReview, getFileContent } from "../api";
+import { DiffView, DiffModeEnum } from "@git-diff-view/react";
+import "@git-diff-view/react/styles/diff-view.css";
+import "../styles/diff-overrides.css";
+import { getReview, getFileContent, getDiff } from "../api";
 import type { ReviewResult, ReviewComment } from "../types/review";
-import { CodeFragmentCard } from "../components/CodeFragmentCard";
 import { MarkdownRenderer } from "../components/MarkdownRenderer";
+import {
+  parseUnifiedDiff,
+  getFileDiff,
+  buildFullFileDiff,
+  synthesizeFragmentDiff,
+  type ParsedFileDiff,
+} from "../lib/diff-parser";
+import { getHighlightLanguageFromPath } from "../lib/extToLanguage";
+import { CodeFragmentCard } from "../components/CodeFragmentCard";
+
+function diffHasChanges(diffString: string): boolean {
+  return diffString.split("\n").some((line) => {
+    if (!line) return false;
+    if (line.startsWith("--- ") || line.startsWith("+++ ") || line.startsWith("@@")) return false;
+    return line[0] === "+" || line[0] === "-";
+  });
+}
 
 type FileCache = Map<string, string>;
 
@@ -15,6 +34,9 @@ export default function ReviewPage() {
   const [fileCache, setFileCache] = useState<FileCache>(new Map());
   const [loadingFiles, setLoadingFiles] = useState<Set<string>>(new Set());
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [diffText, setDiffText] = useState<string>("");
+
+  const parsedDiffs = useMemo(() => parseUnifiedDiff(diffText), [diffText]);
 
   useEffect(() => {
     if (!id) return;
@@ -22,9 +44,10 @@ export default function ReviewPage() {
     setLoading(true);
     setError(null);
 
-    getReview(id)
-      .then((data) => {
-        setReview(data);
+    Promise.all([getReview(id), getDiff(id)])
+      .then(([reviewData, diffData]) => {
+        setReview(reviewData);
+        setDiffText(diffData);
         setLoading(false);
       })
       .catch((err) => {
@@ -69,7 +92,6 @@ export default function ReviewPage() {
     [id, review, pathToHash, fileCache],
   );
 
-  // Prefetch all files on load
   useEffect(() => {
     if (!review) return;
 
@@ -100,7 +122,6 @@ export default function ReviewPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Dummy metadata - will come from API later
   const prMetadata = {
     author: {
       name: "Full Name",
@@ -171,6 +192,7 @@ export default function ReviewPage() {
   );
 
   const prUrl = `https://github.com/${prMetadata.repo.org}/${prMetadata.repo.name}/pull/${prMetadata.pr.number}`;
+  const hasDiff = parsedDiffs.length > 0;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -260,6 +282,8 @@ export default function ReviewPage() {
               comment={comment}
               fileCache={fileCache}
               loadingFiles={loadingFiles}
+              parsedDiffs={parsedDiffs}
+              hasDiff={hasDiff}
             />
           ))}
         </div>
@@ -285,6 +309,8 @@ interface CommentStoryRowProps {
   comment: ReviewComment;
   fileCache: FileCache;
   loadingFiles: Set<string>;
+  parsedDiffs: ParsedFileDiff[];
+  hasDiff: boolean;
 }
 
 function CommentStoryRow({
@@ -292,6 +318,8 @@ function CommentStoryRow({
   comment,
   fileCache,
   loadingFiles,
+  parsedDiffs,
+  hasDiff,
 }: CommentStoryRowProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const hasComment = comment.comment && comment.comment.trim().length > 0;
@@ -343,11 +371,16 @@ function CommentStoryRow({
           <div className="space-y-3 min-w-0 overflow-x-auto">
             {comment.fragments.length > 0 ? (
               comment.fragments.map((fragment, fIdx) => (
-                <CodeFragmentCard
+                <DiffFragmentCard
                   key={`${fragment.file}:${fragment.start_line}-${fragment.end_line}:${fIdx}`}
-                  fragment={fragment}
+                  file={fragment.file}
+                  startLine={fragment.start_line}
+                  endLine={fragment.end_line}
+                  message={fragment.message}
+                  parsedDiffs={parsedDiffs}
                   fileContent={fileCache.get(fragment.file)}
                   isLoading={loadingFiles.has(fragment.file)}
+                  hasDiff={hasDiff}
                 />
               ))
             ) : (
@@ -356,6 +389,176 @@ function CommentStoryRow({
               </div>
             )}
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface DiffFragmentCardProps {
+  file: string;
+  startLine: number;
+  endLine: number;
+  message: string;
+  parsedDiffs: ParsedFileDiff[];
+  fileContent?: string;
+  isLoading?: boolean;
+  hasDiff: boolean;
+}
+
+function DiffFragmentCard({
+  file,
+  startLine,
+  endLine,
+  message,
+  parsedDiffs,
+  fileContent,
+  isLoading,
+  hasDiff,
+}: DiffFragmentCardProps) {
+  const [viewMode, setViewMode] = useState<"fragment" | "file">("fragment");
+
+  const fileDiff = useMemo(() => getFileDiff(parsedDiffs, file), [parsedDiffs, file]);
+  const lang = getHighlightLanguageFromPath(file);
+
+  const diffData = useMemo(() => {
+    if (!fileDiff) return null;
+
+    if (viewMode === "file") {
+      const diffString = buildFullFileDiff(fileDiff);
+      if (!diffString) return null;
+      return {
+        hasChanges: true,
+        hunks: [diffString],
+        oldFile: { fileName: file, fileLang: lang },
+        newFile: { fileName: file, fileLang: lang },
+      };
+    }
+
+    if (!fileContent) return null;
+
+    const diffString = synthesizeFragmentDiff(
+      fileDiff,
+      fileContent,
+      startLine,
+      endLine,
+      3
+    );
+
+    if (!diffString) return null;
+
+    return {
+      hasChanges: diffHasChanges(diffString),
+      hunks: [diffString],
+      oldFile: { fileName: file, fileLang: lang },
+      newFile: { fileName: file, fileLang: lang },
+    };
+  }, [fileDiff, file, lang, startLine, endLine, viewMode, fileContent]);
+
+  if (!hasDiff || !fileDiff) {
+    return (
+      <div className="border rounded bg-muted/40 p-3">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="font-mono truncate">{file}</span>
+          <span className="shrink-0">
+            Lines {startLine}
+            {endLine !== startLine && `–${endLine}`}
+          </span>
+        </div>
+        {message && (
+          <div className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400 mt-1.5 italic">
+            <svg className="h-3.5 w-3.5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+            </svg>
+            <span>{message}</span>
+          </div>
+        )}
+        {isLoading ? (
+          <div className="mt-2 flex items-center gap-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-muted-foreground/60"></div>
+            <span className="text-xs text-muted-foreground">Loading...</span>
+          </div>
+        ) : (
+          <div className="mt-2 text-xs text-muted-foreground">
+            No diff available for this file.
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="border rounded bg-muted/40 overflow-hidden">
+      <div className="px-3 py-2 border-b bg-muted/60">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground min-w-0">
+            <span className="font-mono truncate">{file}</span>
+            <span className="shrink-0">
+              Lines {startLine}
+              {endLine !== startLine && `–${endLine}`}
+            </span>
+            {diffData && !diffData.hasChanges && (
+              <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] bg-muted text-muted-foreground">
+                Unchanged
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1 shrink-0 ml-auto">
+            <button
+              className="h-6 px-2 rounded hover:bg-muted transition-colors flex items-center justify-center text-xs"
+              onClick={() =>
+                setViewMode((prev) => (prev === "fragment" ? "file" : "fragment"))
+              }
+              title={
+                viewMode === "fragment" ? "View full file diff" : "View fragment only"
+              }
+            >
+              {viewMode === "fragment" ? "Full Diff" : "Fragment"}
+            </button>
+          </div>
+        </div>
+        {message && (
+          <div className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400 mt-1.5 italic">
+            <svg className="h-3.5 w-3.5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+            </svg>
+            <span>{message}</span>
+          </div>
+        )}
+      </div>
+
+      {diffData ? (
+        diffData.hasChanges ? (
+          <div className="diff-view-container">
+            <DiffView
+              data={diffData}
+              diffViewMode={DiffModeEnum.Unified}
+              diffViewTheme="dark"
+              diffViewHighlight
+              diffViewFontSize={12}
+              diffViewWrap={false}
+            />
+          </div>
+        ) : fileContent ? (
+          <CodeFragmentCard
+            fragment={{ file, start_line: startLine, end_line: endLine, message: "" }}
+            fileContent={fileContent}
+            isLoading={isLoading}
+            hideHeader
+          />
+        ) : (
+          <div className="px-3 py-4 text-xs text-muted-foreground">
+            No changes in this fragment range.
+          </div>
+        )
+      ) : isLoading ? (
+        <div className="px-3 py-4 flex items-center gap-2">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-muted-foreground/60"></div>
+          <span className="text-xs text-muted-foreground">Loading file content...</span>
+        </div>
+      ) : (
+        <div className="px-3 py-4 text-xs text-muted-foreground">
+          No diff hunks match this fragment range.
         </div>
       )}
     </div>

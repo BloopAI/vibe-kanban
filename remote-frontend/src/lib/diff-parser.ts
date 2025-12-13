@@ -120,6 +120,10 @@ export function filterHunksToRange(
 }
 
 export function buildFullFileDiff(fileDiff: ParsedFileDiff): string {
+  if (fileDiff.hunks.length === 0) {
+    return "";
+  }
+
   const diffLines: string[] = [];
   diffLines.push(`--- a/${fileDiff.oldPath}`);
   diffLines.push(`+++ b/${fileDiff.newPath}`);
@@ -129,7 +133,7 @@ export function buildFullFileDiff(fileDiff: ParsedFileDiff): string {
     diffLines.push(...hunk.lines);
   }
 
-  return diffLines.join("\n");
+  return diffLines.join("\n") + "\n";
 }
 
 export interface HunkLineInfo {
@@ -263,11 +267,15 @@ export function synthesizeFragmentDiff(
   const oldStart = expandedStart;
   const header = `@@ -${oldStart},${oldLineCount} +${expandedStart},${newLineCount} @@`;
 
+  if (outputLines.length === 0) {
+    return "";
+  }
+
   const diffLines: string[] = [];
   diffLines.push(`--- a/${fileDiff.oldPath}`);
   diffLines.push(`+++ b/${fileDiff.newPath}`);
   diffLines.push(header);
   diffLines.push(...outputLines);
 
-  return diffLines.join("\n");
+  return diffLines.join("\n") + "\n";
 }

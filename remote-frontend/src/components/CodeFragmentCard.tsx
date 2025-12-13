@@ -76,12 +76,16 @@ interface CodeFragmentCardProps {
   fragment: CodeFragment;
   fileContent?: string;
   isLoading?: boolean;
+  unchangedRegion?: boolean;
+  hideHeader?: boolean;
 }
 
 export function CodeFragmentCard({
   fragment,
   fileContent,
   isLoading,
+  unchangedRegion,
+  hideHeader,
 }: CodeFragmentCardProps) {
   const { file, start_line, end_line, message } = fragment;
   const [viewMode, setViewMode] = useState<ViewMode>('fragment');
@@ -103,48 +107,55 @@ export function CodeFragmentCard({
     lineNumber >= start_line && lineNumber <= end_line;
 
   return (
-    <div className="border rounded bg-muted/40 overflow-hidden">
+    <div className={hideHeader ? '' : 'border rounded bg-muted/40 overflow-hidden'}>
       {/* Header */}
-      <div className="px-3 py-2 border-b bg-muted/60">
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground min-w-0">
-            <span className="font-mono truncate">{file}</span>
-            <span className="shrink-0">
-              Lines {start_line}
-              {end_line !== start_line && `–${end_line}`}
-            </span>
+      {!hideHeader && (
+        <div className="px-3 py-2 border-b bg-muted/60">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground min-w-0">
+              <span className="font-mono truncate">{file}</span>
+              <span className="shrink-0">
+                Lines {start_line}
+                {end_line !== start_line && `–${end_line}`}
+              </span>
+              {unchangedRegion && (
+                <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] bg-muted text-muted-foreground">
+                  Unchanged
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1 shrink-0 ml-auto">
+              {fileContent && (
+                <button
+                  className="h-6 px-2 rounded hover:bg-muted transition-colors flex items-center justify-center"
+                  onClick={() =>
+                    setViewMode((prev) => (prev === 'fragment' ? 'file' : 'fragment'))
+                  }
+                  title={viewMode === 'fragment' ? 'View full file' : 'View fragment only'}
+                >
+                  {viewMode === 'fragment' ? (
+                    <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                    </svg>
+                  ) : (
+                    <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
+                    </svg>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-1 shrink-0 ml-auto">
-            {fileContent && (
-              <button
-                className="h-6 px-2 rounded hover:bg-muted transition-colors flex items-center justify-center"
-                onClick={() =>
-                  setViewMode((prev) => (prev === 'fragment' ? 'file' : 'fragment'))
-                }
-                title={viewMode === 'fragment' ? 'View full file' : 'View fragment only'}
-              >
-                {viewMode === 'fragment' ? (
-                  <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                  </svg>
-                ) : (
-                  <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
-                  </svg>
-                )}
-              </button>
-            )}
-          </div>
+          {message && (
+            <div className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400 mt-1.5 italic">
+              <svg className="h-3.5 w-3.5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+              </svg>
+              <span>{message}</span>
+            </div>
+          )}
         </div>
-        {message && (
-          <div className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400 mt-1.5 italic">
-            <svg className="h-3.5 w-3.5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-            </svg>
-            <span>{message}</span>
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Code Content */}
       {isLoading ? (

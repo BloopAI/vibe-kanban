@@ -1,23 +1,37 @@
-/* Diff view color overrides for dark theme */
+/* Diff view color overrides for dark theme - grey theme instead of GitHub blue */
 
-.diff-view-container {
-    --diff-add-content--: rgba(46, 160, 67, 0.15);
-    --diff-del-content--: rgba(248, 81, 73, 0.15);
-    --diff-add-content-highlight--: rgba(46, 160, 67, 0.4);
-    --diff-del-content-highlight--: rgba(248, 81, 73, 0.4);
-    --diff-add-lineNumber--: rgba(46, 160, 67, 0.2);
-    --diff-del-lineNumber--: rgba(248, 81, 73, 0.2);
-    --diff-plain-content--: transparent;
-    --diff-plain-lineNumber--: #212121;
-    --diff-plain-lineNumber-color--: #6e7681;
-    --diff-hunk-content--: rgba(56, 139, 253, 0.1);
-    --diff-hunk-lineNumber--: rgba(56, 139, 253, 0.1);
-    --diff-hunk-content-color--: #8b949e;
-    --diff-empty-content--: #fefefe;
-    --diff-expand-content--: #212121;
-    --diff-expand-lineNumber--: #212121;
-    --diff-expand-lineNumber-color--: #6e7681;
-    --diff-border--: #292929;
+/* Override the library's CSS variables with higher specificity */
+.diff-view-container .diff-tailwindcss-wrapper[data-theme="dark"] .diff-style-root,
+.diff-view-container .diff-style-root {
+    --diff-add-content--: rgba(46, 160, 67, 0.15) !important;
+    --diff-del-content--: rgba(248, 81, 73, 0.15) !important;
+    --diff-add-content-highlight--: rgba(46, 160, 67, 0.4) !important;
+    --diff-del-content-highlight--: rgba(248, 81, 73, 0.4) !important;
+    --diff-add-lineNumber--: rgba(46, 160, 67, 0.2) !important;
+    --diff-del-lineNumber--: rgba(248, 81, 73, 0.2) !important;
+    --diff-plain-content--: #1e1e1e !important;
+    --diff-plain-lineNumber--: #1e1e1e !important;
+    --diff-plain-lineNumber-color--: #6e7681 !important;
+    --diff-hunk-content--: #2a2a2a !important;
+    --diff-hunk-lineNumber--: #2a2a2a !important;
+    --diff-hunk-content-color--: #8b949e !important;
+    --diff-empty-content--: #1e1e1e !important;
+    --diff-expand-content--: #1e1e1e !important;
+    --diff-expand-lineNumber--: #1e1e1e !important;
+    --diff-expand-lineNumber-color--: #6e7681 !important;
+    --diff-border--: #292929 !important;
+}
+
+/* Override the library's dark theme background */
+.diff-view-container .diff-style-root,
+.diff-view-container [data-theme="dark"] .diff-style-root {
+    background: #1e1e1e !important;
+}
+
+/* Override syntax highlighting background */
+.diff-view-container .diff-line-syntax-raw .hljs,
+.diff-view-container [data-theme="dark"] .diff-line-syntax-raw .hljs {
+    background: transparent !important;
 }
 
 /* Use JetBrains Mono for code */
@@ -41,20 +55,9 @@
     min-width: 40px;
 }
 
-/* Background colors for diff lines */
-.diff-view-container tr[data-state="add"] td,
-.diff-view-container .diff-line-add {
-    background-color: var(--diff-add-content--);
-}
-
-.diff-view-container tr[data-state="del"] td,
-.diff-view-container .diff-line-del {
-    background-color: var(--diff-del-content--);
-}
-
 /* Hunk header styling */
-.diff-view-container .diff-line-hunk td {
-    background-color: var(--diff-hunk-content--);
+.diff-view-container .diff-line-hunk td,
+.diff-view-container .diff-line.diff-line-hunk td {
     color: var(--diff-hunk-content-color--);
     font-style: italic;
 }
