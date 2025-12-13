@@ -1,3 +1,5 @@
+import type { ReviewResult } from "./types/review";
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
 export type Invitation = {
@@ -89,4 +91,26 @@ export async function acceptInvitation(
     throw new Error(`Failed to accept invitation (${res.status})`);
   }
   return res.json();
+}
+
+export async function getReview(reviewId: string): Promise<ReviewResult> {
+  const res = await fetch(`${API_BASE}/v1/review/${reviewId}`);
+  if (!res.ok) {
+    if (res.status === 404) {
+      throw new Error("Review not found");
+    }
+    throw new Error(`Failed to fetch review (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function getFileContent(
+  reviewId: string,
+  fileHash: string,
+): Promise<string> {
+  const res = await fetch(`${API_BASE}/v1/review/${reviewId}/file/${fileHash}`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch file (${res.status})`);
+  }
+  return res.text();
 }

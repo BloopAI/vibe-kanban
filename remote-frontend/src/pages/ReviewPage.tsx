@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { getReview, getFileContent } from "../lib/review-api";
+import { getReview, getFileContent } from "../api";
 import type { ReviewResult, ReviewComment } from "../types/review";
 import { CodeFragmentCard } from "../components/CodeFragmentCard";
 import { MarkdownRenderer } from "../components/MarkdownRenderer";
