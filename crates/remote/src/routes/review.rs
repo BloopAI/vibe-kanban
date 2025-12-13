@@ -21,7 +21,8 @@ pub fn public_router() -> Router<AppState> {
         .route("/review/{id}/status", get(get_review_status))
         .route("/review/{id}", get(get_review))
         .route("/review/{id}/file/{file_hash}", get(get_review_file))
-        .route("/review/{id}/complete", post(complete_review))
+        .route("/review/{id}/success", post(review_success))
+        .route("/review/{id}/failed", post(review_failed))
 }
 
 #[derive(Debug, Deserialize)]
@@ -321,9 +322,9 @@ pub async fn get_review_file(
     proxy_to_worker(&state, &format!("/review/{}/file/{}", review_id, file_hash)).await
 }
 
-/// POST /review/:id/complete - Called by worker when review is complete
-/// Sends notification email to the user
-pub async fn complete_review(
+/// POST /review/:id/success - Called by worker when review completes successfully
+/// Sends success notification email to the user
+pub async fn review_success(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<StatusCode, ReviewError> {
@@ -336,10 +337,31 @@ pub async fn complete_review(
     // Build review URL
     let review_url = format!("{}/review/{}", state.server_public_base_url, review_id);
 
-    // Send notification email
+    // Send success notification email
     state
         .mailer
         .send_review_ready(&review.email, &review_url, &review.pr_title)
+        .await;
+
+    Ok(StatusCode::OK)
+}
+
+/// POST /review/:id/failed - Called by worker when review fails
+/// Sends failure notification email to the user
+pub async fn review_failed(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<StatusCode, ReviewError> {
+    let review_id: Uuid = id.parse().map_err(|_| ReviewError::InvalidReviewId)?;
+
+    // Fetch review from database to get email and PR title
+    let repo = ReviewRepository::new(state.pool());
+    let review = repo.get_by_id(review_id).await?;
+
+    // Send failure notification email
+    state
+        .mailer
+        .send_review_failed(&review.email, &review.pr_title, &review_id.to_string())
         .await;
 
     Ok(StatusCode::OK)
