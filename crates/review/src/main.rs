@@ -48,6 +48,20 @@ struct Args {
     api_url: String,
 }
 
+fn show_disclaimer() {
+    println!();
+    println!(
+        "DISCLAIMER: Your code will be processed on remote servers and deleted after 14 days."
+    );
+    println!();
+    println!("Full terms and conditions and privacy policy: https://www.vibekanban.com/terms");
+    println!();
+    println!("Press Enter to accept and continue...");
+
+    let mut input = String::new();
+    std::io::stdin().read_line(&mut input).ok();
+}
+
 fn create_spinner(message: &str) -> ProgressBar {
     let spinner = ProgressBar::new_spinner();
     spinner.set_style(
@@ -73,6 +87,8 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt().with_env_filter(filter).init();
 
     println!("{}", BANNER);
+
+    show_disclaimer();
 
     debug!("Args: {:?}", args);
 
