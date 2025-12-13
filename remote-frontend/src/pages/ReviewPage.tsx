@@ -14,6 +14,15 @@ import {
   type ParsedFileDiff,
 } from "../lib/diff-parser";
 import { getHighlightLanguageFromPath } from "../lib/extToLanguage";
+import { CodeFragmentCard } from "../components/CodeFragmentCard";
+
+function diffHasChanges(diffString: string): boolean {
+  return diffString.split("\n").some((line) => {
+    if (!line) return false;
+    if (line.startsWith("--- ") || line.startsWith("+++ ") || line.startsWith("@@")) return false;
+    return line[0] === "+" || line[0] === "-";
+  });
+}
 
 type FileCache = Map<string, string>;
 
@@ -419,6 +428,7 @@ function DiffFragmentCard({
       const diffString = buildFullFileDiff(fileDiff);
       if (!diffString) return null;
       return {
+        hasChanges: true,
         hunks: [diffString],
         oldFile: { fileName: file, fileLang: lang },
         newFile: { fileName: file, fileLang: lang },
@@ -438,6 +448,7 @@ function DiffFragmentCard({
     if (!diffString) return null;
 
     return {
+      hasChanges: diffHasChanges(diffString),
       hunks: [diffString],
       oldFile: { fileName: file, fileLang: lang },
       newFile: { fileName: file, fileLang: lang },
@@ -478,45 +489,68 @@ function DiffFragmentCard({
 
   return (
     <div className="border rounded bg-muted/40 overflow-hidden">
-      <div className="flex items-center gap-2 px-3 py-2 border-b bg-muted/60">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground min-w-0">
-          <span className="font-mono truncate">{file}</span>
-          <span className="shrink-0">
-            Lines {startLine}
-            {endLine !== startLine && `–${endLine}`}
-          </span>
+      <div className="px-3 py-2 border-b bg-muted/60">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground min-w-0">
+            <span className="font-mono truncate">{file}</span>
+            <span className="shrink-0">
+              Lines {startLine}
+              {endLine !== startLine && `–${endLine}`}
+            </span>
+            {diffData && !diffData.hasChanges && (
+              <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] bg-muted text-muted-foreground">
+                Unchanged
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1 shrink-0 ml-auto">
+            <button
+              className="h-6 px-2 rounded hover:bg-muted transition-colors flex items-center justify-center text-xs"
+              onClick={() =>
+                setViewMode((prev) => (prev === "fragment" ? "file" : "fragment"))
+              }
+              title={
+                viewMode === "fragment" ? "View full file diff" : "View fragment only"
+              }
+            >
+              {viewMode === "fragment" ? "Full Diff" : "Fragment"}
+            </button>
+          </div>
         </div>
         {message && (
-          <div className="flex-1 text-xs text-muted-foreground truncate text-right">
-            {message}
+          <div className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400 mt-1.5 italic">
+            <svg className="h-3.5 w-3.5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+            </svg>
+            <span>{message}</span>
           </div>
         )}
-        <div className="flex items-center gap-1 shrink-0 ml-auto">
-          <button
-            className="h-6 px-2 rounded hover:bg-muted transition-colors flex items-center justify-center text-xs"
-            onClick={() =>
-              setViewMode((prev) => (prev === "fragment" ? "file" : "fragment"))
-            }
-            title={
-              viewMode === "fragment" ? "View full file diff" : "View fragment only"
-            }
-          >
-            {viewMode === "fragment" ? "Full Diff" : "Fragment"}
-          </button>
-        </div>
       </div>
 
       {diffData ? (
-        <div className="diff-view-container">
-          <DiffView
-            data={diffData}
-            diffViewMode={DiffModeEnum.Unified}
-            diffViewTheme="dark"
-            diffViewHighlight
-            diffViewFontSize={12}
-            diffViewWrap={false}
+        diffData.hasChanges ? (
+          <div className="diff-view-container">
+            <DiffView
+              data={diffData}
+              diffViewMode={DiffModeEnum.Unified}
+              diffViewTheme="dark"
+              diffViewHighlight
+              diffViewFontSize={12}
+              diffViewWrap={false}
+            />
+          </div>
+        ) : fileContent ? (
+          <CodeFragmentCard
+            fragment={{ file, start_line: startLine, end_line: endLine, message: "" }}
+            fileContent={fileContent}
+            isLoading={isLoading}
+            hideHeader
           />
-        </div>
+        ) : (
+          <div className="px-3 py-4 text-xs text-muted-foreground">
+            No changes in this fragment range.
+          </div>
+        )
       ) : isLoading ? (
         <div className="px-3 py-4 flex items-center gap-2">
           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-muted-foreground/60"></div>
