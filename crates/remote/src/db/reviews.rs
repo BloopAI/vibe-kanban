@@ -26,6 +26,8 @@ pub struct Review {
     pub r2_path: String,
     pub deleted_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
+    pub email: String,
+    pub pr_title: String,
 }
 
 pub struct ReviewRepository<'a> {
@@ -44,14 +46,16 @@ impl<'a> ReviewRepository<'a> {
         claude_code_session_id: Option<&str>,
         ip_address: IpAddr,
         r2_path: &str,
+        email: &str,
+        pr_title: &str,
     ) -> Result<Review, ReviewError> {
         let ip_network = IpNetwork::from(ip_address);
 
         query_as!(
             Review,
             r#"
-            INSERT INTO reviews (id, gh_pr_url, claude_code_session_id, ip_address, r2_path)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO reviews (id, gh_pr_url, claude_code_session_id, ip_address, r2_path, email, pr_title)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING
                 id,
                 gh_pr_url,
@@ -61,13 +65,17 @@ impl<'a> ReviewRepository<'a> {
                 last_viewed_at,
                 r2_path,
                 deleted_at,
-                created_at
+                created_at,
+                email,
+                pr_title
             "#,
             id,
             gh_pr_url,
             claude_code_session_id,
             ip_network,
-            r2_path
+            r2_path,
+            email,
+            pr_title
         )
         .fetch_one(self.pool)
         .await
@@ -89,7 +97,9 @@ impl<'a> ReviewRepository<'a> {
                 last_viewed_at,
                 r2_path,
                 deleted_at,
-                created_at
+                created_at,
+                email,
+                pr_title
             FROM reviews
             WHERE id = $1 AND deleted_at IS NULL
             "#,
