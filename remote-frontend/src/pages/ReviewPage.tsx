@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { DiffView, DiffModeEnum } from "@git-diff-view/react";
 import "@git-diff-view/react/styles/diff-view.css";
 import "../styles/diff-overrides.css";
-import { getReview, getFileContent, getDiff } from "../lib/review-api";
+import { getReview, getFileContent, getDiff } from "../api";
 import type { ReviewResult, ReviewComment } from "../types/review";
 import { MarkdownRenderer } from "../components/MarkdownRenderer";
 import {

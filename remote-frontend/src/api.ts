@@ -114,3 +114,14 @@ export async function getFileContent(
   }
   return res.text();
 }
+
+export async function getDiff(reviewId: string): Promise<string> {
+  const res = await fetch(`${API_BASE}/v1/review/${reviewId}/diff`);
+  if (!res.ok) {
+    if (res.status === 404) {
+      return "";
+    }
+    throw new Error(`Failed to fetch diff (${res.status})`);
+  }
+  return res.text();
+}
