@@ -13,20 +13,7 @@ import {
   synthesizeFragmentDiff,
   type ParsedFileDiff,
 } from "../lib/diff-parser";
-
-const EXT_TO_LANG: Record<string, string> = {
-  rs: "rust",
-  ts: "typescript",
-  tsx: "typescript",
-  js: "javascript",
-  py: "python",
-  go: "go",
-};
-
-function getLanguageFromPath(path: string): string {
-  const ext = path.split(".").pop()?.toLowerCase() || "";
-  return EXT_TO_LANG[ext] || "plaintext";
-}
+import { getHighlightLanguageFromPath } from "../lib/extToLanguage";
 
 type FileCache = Map<string, string>;
 
@@ -423,7 +410,7 @@ function DiffFragmentCard({
   const [viewMode, setViewMode] = useState<"fragment" | "file">("fragment");
 
   const fileDiff = useMemo(() => getFileDiff(parsedDiffs, file), [parsedDiffs, file]);
-  const lang = getLanguageFromPath(file);
+  const lang = getHighlightLanguageFromPath(file);
 
   const diffData = useMemo(() => {
     if (!fileDiff) return null;
