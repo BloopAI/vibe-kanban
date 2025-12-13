@@ -25,6 +25,8 @@ pub struct InitResponse {
 #[derive(Debug, Serialize)]
 struct InitRequest {
     gh_pr_url: String,
+    email: String,
+    pr_title: String,
 }
 
 /// Request body for POST /review/start
@@ -83,7 +85,12 @@ impl ReviewApiClient {
     }
 
     /// Initialize a review upload and get a presigned URL
-    pub async fn init(&self, pr_url: &str) -> Result<InitResponse, ReviewError> {
+    pub async fn init(
+        &self,
+        pr_url: &str,
+        email: &str,
+        pr_title: &str,
+    ) -> Result<InitResponse, ReviewError> {
         let url = format!("{}/v1/review/init", self.base_url);
         debug!("POST {url}");
 
@@ -92,6 +99,8 @@ impl ReviewApiClient {
             .post(&url)
             .json(&InitRequest {
                 gh_pr_url: pr_url.to_string(),
+                email: email.to_string(),
+                pr_title: pr_title.to_string(),
             })
             .send()
             .await

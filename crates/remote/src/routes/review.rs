@@ -21,11 +21,14 @@ pub fn public_router() -> Router<AppState> {
         .route("/review/{id}/status", get(get_review_status))
         .route("/review/{id}", get(get_review))
         .route("/review/{id}/file/{file_hash}", get(get_review_file))
+        .route("/review/{id}/complete", post(complete_review))
 }
 
 #[derive(Debug, Deserialize)]
 pub struct InitReviewRequest {
     pub gh_pr_url: String,
+    pub email: String,
+    pub pr_title: String,
     #[serde(default)]
     pub claude_code_session_id: Option<String>,
     #[serde(default)]
@@ -196,6 +199,8 @@ pub async fn init_review_upload(
             payload.claude_code_session_id.as_deref(),
             ip,
             &upload.folder_path,
+            &payload.email,
+            &payload.pr_title,
         )
         .await?;
 
@@ -314,4 +319,28 @@ pub async fn get_review_file(
 
     // Proxy to worker
     proxy_to_worker(&state, &format!("/review/{}/file/{}", review_id, file_hash)).await
+}
+
+/// POST /review/:id/complete - Called by worker when review is complete
+/// Sends notification email to the user
+pub async fn complete_review(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<StatusCode, ReviewError> {
+    let review_id: Uuid = id.parse().map_err(|_| ReviewError::InvalidReviewId)?;
+
+    // Fetch review from database to get email and PR title
+    let repo = ReviewRepository::new(state.pool());
+    let review = repo.get_by_id(review_id).await?;
+
+    // Build review URL
+    let review_url = format!("{}/review/{}", state.server_public_base_url, review_id);
+
+    // Send notification email
+    state
+        .mailer
+        .send_review_ready(&review.email, &review_url, &review.pr_title)
+        .await;
+
+    Ok(StatusCode::OK)
 }

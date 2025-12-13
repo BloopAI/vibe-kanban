@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            INSERT INTO reviews (id, gh_pr_url, claude_code_session_id, ip_address, r2_path)\n            VALUES ($1, $2, $3, $4, $5)\n            RETURNING\n                id,\n                gh_pr_url,\n                claude_code_session_id,\n                ip_address AS \"ip_address: IpNetwork\",\n                review_cache,\n                last_viewed_at,\n                r2_path,\n                deleted_at,\n                created_at\n            ",
+  "query": "\n            INSERT INTO reviews (id, gh_pr_url, claude_code_session_id, ip_address, r2_path, email, pr_title)\n            VALUES ($1, $2, $3, $4, $5, $6, $7)\n            RETURNING\n                id,\n                gh_pr_url,\n                claude_code_session_id,\n                ip_address AS \"ip_address: IpNetwork\",\n                review_cache,\n                last_viewed_at,\n                r2_path,\n                deleted_at,\n                created_at,\n                email,\n                pr_title\n            ",
   "describe": {
     "columns": [
       {
@@ -47,6 +47,16 @@
         "ordinal": 8,
         "name": "created_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "pr_title",
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -55,6 +65,8 @@
         "Text",
         "Text",
         "Inet",
+        "Text",
+        "Text",
         "Text"
       ]
     },
@@ -67,8 +79,10 @@
       true,
       false,
       true,
+      false,
+      false,
       false
     ]
   },
-  "hash": "2bd51bc52157834ea9fac7b55535632ab81cc1afeb2a8b5fc929c0eb1a41ff44"
+  "hash": "be4a6a31ae38dd8cb3c28a1869aa8ea5f535e9cf6012d1fda4608c6c95856667"
 }

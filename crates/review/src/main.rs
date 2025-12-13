@@ -1,6 +1,7 @@
 mod api;
 mod archive;
 mod claude_session;
+mod config;
 mod error;
 mod github;
 mod session_selector;
@@ -62,6 +63,27 @@ fn show_disclaimer() {
     std::io::stdin().read_line(&mut input).ok();
 }
 
+fn prompt_email(config: &mut config::Config) -> String {
+    use dialoguer::Input;
+
+    let mut input: Input<String> =
+        Input::new().with_prompt("Email address (we'll send a link to the review here, no spam)");
+
+    if let Some(ref saved_email) = config.email {
+        input = input.default(saved_email.clone());
+    }
+
+    let email: String = input.interact_text().expect("Failed to read email");
+
+    // Save email for next time
+    config.email = Some(email.clone());
+    if let Err(e) = config.save() {
+        debug!("Failed to save config: {}", e);
+    }
+
+    email
+}
+
 fn create_spinner(message: &str) -> ProgressBar {
     let spinner = ProgressBar::new_spinner();
     spinner.set_style(
@@ -102,17 +124,21 @@ async fn main() -> Result<()> {
 }
 
 async fn run(args: Args) -> Result<(), ReviewError> {
-    // 1. Parse PR URL
+    // 1. Load config and prompt for email
+    let mut config = config::Config::load();
+    let email = prompt_email(&mut config);
+
+    // 2. Parse PR URL
     let spinner = create_spinner("Parsing PR URL...");
     let (owner, repo, pr_number) = parse_pr_url(&args.pr_url)?;
     spinner.finish_with_message(format!("PR: {owner}/{repo}#{pr_number}"));
 
-    // 2. Get PR info
+    // 3. Get PR info
     let spinner = create_spinner("Fetching PR information...");
     let pr_info = get_pr_info(&owner, &repo, pr_number)?;
     spinner.finish_with_message(format!("PR: {}", pr_info.title));
 
-    // 2.5. Select Claude Code session (optional)
+    // 4. Select Claude Code session (optional)
     let session_files = match session_selector::select_session(&pr_info.head_ref_name) {
         Ok(session_selector::SessionSelection::Selected(files)) => {
             println!("  Selected {} session file(s)", files.len());
@@ -129,7 +155,7 @@ async fn run(args: Args) -> Result<(), ReviewError> {
         }
     };
 
-    // 3. Clone repository to temp directory
+    // 5. Clone repository to temp directory
     let temp_dir = TempDir::new().map_err(|e| ReviewError::CloneFailed(e.to_string()))?;
     let repo_dir = temp_dir.path().join(&repo);
 
@@ -137,12 +163,12 @@ async fn run(args: Args) -> Result<(), ReviewError> {
     clone_repo(&owner, &repo, &repo_dir)?;
     spinner.finish_with_message("Repository cloned");
 
-    // 4. Checkout PR head commit
+    // 6. Checkout PR head commit
     let spinner = create_spinner("Checking out PR...");
     checkout_commit(&pr_info.head_commit, &repo_dir)?;
     spinner.finish_with_message("PR checked out");
 
-    // 5. Create tarball (with optional session data)
+    // 7. Create tarball (with optional session data)
     let spinner = create_spinner("Creating archive...");
 
     // If sessions were selected, write .agent-messages.json to repo root
@@ -157,18 +183,18 @@ async fn run(args: Args) -> Result<(), ReviewError> {
     let size_mb = payload.len() as f64 / 1_048_576.0;
     spinner.finish_with_message(format!("Archive created ({size_mb:.2} MB)"));
 
-    // 6. Initialize review
+    // 8. Initialize review
     let client = ReviewApiClient::new(args.api_url.clone());
     let spinner = create_spinner("Initializing review...");
-    let init_response = client.init(&args.pr_url).await?;
+    let init_response = client.init(&args.pr_url, &email, &pr_info.title).await?;
     spinner.finish_with_message(format!("Review ID: {}", init_response.review_id));
 
-    // 7. Upload archive
+    // 9. Upload archive
     let spinner = create_spinner("Uploading archive...");
     client.upload(&init_response.upload_url, payload).await?;
     spinner.finish_with_message("Upload complete");
 
-    // 8. Start review
+    // 10. Start review
     let spinner = create_spinner("Starting review...");
     let codebase_url = format!("r2://{}", init_response.object_key);
     client
@@ -182,9 +208,9 @@ async fn run(args: Args) -> Result<(), ReviewError> {
             base_commit: pr_info.base_commit,
         })
         .await?;
-    spinner.finish_with_message("Review started");
+    spinner.finish_with_message(format!("Review started, we'll send you an email at {} when the review is ready. This can take a few minutes, you may now close the terminal", email));
 
-    // 9. Poll for completion
+    // 11. Poll for completion
     let spinner = create_spinner("Review in progress...");
     let start_time = std::time::Instant::now();
 
@@ -218,7 +244,7 @@ async fn run(args: Args) -> Result<(), ReviewError> {
         }
     }
 
-    // 10. Print result URL
+    // 12. Print result URL
     let review_url = client.review_url(&init_response.review_id.to_string());
     println!("\nReview available at:");
     println!("  {review_url}");
