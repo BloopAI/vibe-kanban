@@ -31,6 +31,17 @@ pub struct Review {
     pub status: String,
 }
 
+/// Parameters for creating a new review
+pub struct CreateReviewParams<'a> {
+    pub id: Uuid,
+    pub gh_pr_url: &'a str,
+    pub claude_code_session_id: Option<&'a str>,
+    pub ip_address: IpAddr,
+    pub r2_path: &'a str,
+    pub email: &'a str,
+    pub pr_title: &'a str,
+}
+
 pub struct ReviewRepository<'a> {
     pool: &'a PgPool,
 }
@@ -40,17 +51,8 @@ impl<'a> ReviewRepository<'a> {
         Self { pool }
     }
 
-    pub async fn create(
-        &self,
-        id: Uuid,
-        gh_pr_url: &str,
-        claude_code_session_id: Option<&str>,
-        ip_address: IpAddr,
-        r2_path: &str,
-        email: &str,
-        pr_title: &str,
-    ) -> Result<Review, ReviewError> {
-        let ip_network = IpNetwork::from(ip_address);
+    pub async fn create(&self, params: CreateReviewParams<'_>) -> Result<Review, ReviewError> {
+        let ip_network = IpNetwork::from(params.ip_address);
 
         query_as!(
             Review,
@@ -71,13 +73,13 @@ impl<'a> ReviewRepository<'a> {
                 pr_title,
                 status
             "#,
-            id,
-            gh_pr_url,
-            claude_code_session_id,
+            params.id,
+            params.gh_pr_url,
+            params.claude_code_session_id,
             ip_network,
-            r2_path,
-            email,
-            pr_title
+            params.r2_path,
+            params.email,
+            params.pr_title
         )
         .fetch_one(self.pool)
         .await

@@ -10,7 +10,6 @@ use crate::error::ReviewError;
 pub struct PrInfo {
     pub owner: String,
     pub repo: String,
-    pub pr_number: i64,
     pub title: String,
     pub description: String,
     pub base_commit: String,
@@ -84,22 +83,6 @@ fn ensure_gh_available() -> Result<(), ReviewError> {
     Ok(())
 }
 
-/// Check if the GitHub CLI is authenticated
-pub fn check_gh_auth() -> Result<(), ReviewError> {
-    ensure_gh_available()?;
-
-    let output = Command::new("gh")
-        .args(["auth", "status"])
-        .output()
-        .map_err(|_| ReviewError::GhNotAuthenticated)?;
-
-    if !output.status.success() {
-        return Err(ReviewError::GhNotAuthenticated);
-    }
-
-    Ok(())
-}
-
 /// Get PR information using `gh pr view`
 pub fn get_pr_info(owner: &str, repo: &str, pr_number: i64) -> Result<PrInfo, ReviewError> {
     ensure_gh_available()?;
@@ -140,7 +123,6 @@ pub fn get_pr_info(owner: &str, repo: &str, pr_number: i64) -> Result<PrInfo, Re
     Ok(PrInfo {
         owner: owner.to_string(),
         repo: repo.to_string(),
-        pr_number,
         title: pr_view.title,
         description: pr_view.body,
         base_commit: pr_view.base_ref_oid,

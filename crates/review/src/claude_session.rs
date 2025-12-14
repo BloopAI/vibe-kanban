@@ -25,7 +25,6 @@ pub struct ClaudeProject {
 #[derive(Debug, Clone)]
 pub struct ClaudeSession {
     pub path: PathBuf,
-    pub session_id: String,
     pub git_branch: Option<String>,
     pub first_prompt: Option<String>,
     pub modified_at: SystemTime,
@@ -176,18 +175,11 @@ fn discover_sessions_in_dir(dir_path: &Path) -> Result<Vec<ClaudeSession>, Revie
 
         let modified_at = metadata.modified().unwrap_or(SystemTime::UNIX_EPOCH);
 
-        // Extract session ID from filename (UUID without .jsonl extension)
-        let session_id = file_name
-            .strip_suffix(".jsonl")
-            .unwrap_or(file_name)
-            .to_string();
-
         // Extract metadata from the JSONL file
         let (git_branch, first_prompt) = extract_session_metadata(&path);
 
         sessions.push(ClaudeSession {
             path,
-            session_id,
             git_branch,
             first_prompt,
             modified_at,

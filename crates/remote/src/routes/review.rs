@@ -12,7 +12,11 @@ use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{AppState, db::reviews::ReviewRepository, r2::R2Error};
+use crate::{
+    AppState,
+    db::reviews::{CreateReviewParams, ReviewRepository},
+    r2::R2Error,
+};
 
 pub fn public_router() -> Router<AppState> {
     Router::new()
@@ -202,15 +206,15 @@ pub async fn init_review_upload(
 
     // 6. Insert DB record with the same review ID, storing folder path
     let review = repo
-        .create(
-            review_id,
-            &payload.gh_pr_url,
-            payload.claude_code_session_id.as_deref(),
-            ip,
-            &upload.folder_path,
-            &payload.email,
-            &payload.pr_title,
-        )
+        .create(CreateReviewParams {
+            id: review_id,
+            gh_pr_url: &payload.gh_pr_url,
+            claude_code_session_id: payload.claude_code_session_id.as_deref(),
+            ip_address: ip,
+            r2_path: &upload.folder_path,
+            email: &payload.email,
+            pr_title: &payload.pr_title,
+        })
         .await?;
 
     // 7. Return response with review_id

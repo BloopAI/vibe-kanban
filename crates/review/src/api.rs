@@ -1,4 +1,3 @@
-use chrono::{DateTime, Utc};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use tracing::debug;
@@ -18,7 +17,6 @@ pub struct InitResponse {
     pub review_id: Uuid,
     pub upload_url: String,
     pub object_key: String,
-    pub expires_at: DateTime<Utc>,
 }
 
 /// Request body for POST /review/init
@@ -49,7 +47,6 @@ pub struct StatusResponse {
     pub status: ReviewStatus,
     pub progress: Option<String>,
     pub error: Option<String>,
-    pub updated_at: Option<DateTime<Utc>>,
 }
 
 /// Possible review statuses
