@@ -339,8 +339,8 @@ function CommentStoryRow({
   const hasComment = comment.comment && comment.comment.trim().length > 0;
 
   return (
-    <div className="min-h-screen flex flex-row justify-center px-8 xl:px-[10vw] space-x-8 xl:space-x-[5vw]">
-      <div className="flex-1 flex  w-1/2 xl:w-1/3">
+    <div className="min-h-screen flex flex-row justify-center px-8 2xl:px-[10vw] space-x-8 2xl:space-x-[5vw]">
+      <div className="flex-1 flex  w-1/2 2xl:w-1/3">
         <div className="h-screen sticky top-0 flex items-center">
           <div className="flex space-x-4">
             <span className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-muted shrink-0">
@@ -366,7 +366,7 @@ function CommentStoryRow({
       </div>
 
       {/* Right Column - Code Fragments */}
-      <div className="pt-[100vh] pb-[50vh] w-1/2 xl:w-2/3 space-y-[50vh]">
+      <div className="pt-[100vh] pb-[50vh] w-1/2 2xl:w-2/3 space-y-[50vh]">
         {comment.fragments.length > 0 ? (
           comment.fragments.map((fragment, fIdx) => (
             <DiffFragmentCard
@@ -497,55 +497,20 @@ function DiffFragmentCard({
   }
 
   return (
-    <div className="flex flex-col space-y-8">
-      <div className="space-y-2 text-lg">
-        <div className="flex">
-          <div className="font-mono bg-muted py-1 px-2 rounded-sm border text-secondary-foreground break-words max-w-full">
-            {file}
-          </div>
+    <div className="flex flex-col space-y-4">
+      <div className="flex">
+        <div className="font-mono bg-muted py-1 px-2 rounded-sm border text-secondary-foreground break-words max-w-full">
+          {file}
         </div>
-        {message && (
-          <div>
-            <span>
-              <MarkdownRenderer content={message} />
-            </span>
-          </div>
-        )}
       </div>
-      <div className="border rounded bg-muted/40 overflow-hidden">
-        <div className="px-3 py-2 border-b bg-muted/60">
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground min-w-0">
-              <span className="shrink-0">
-                Lines {startLine}
-                {endLine !== startLine && `–${endLine}`}
-              </span>
-              {diffData && !diffData.hasChanges && (
-                <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] bg-muted text-muted-foreground">
-                  Unchanged
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-1 shrink-0 ml-auto">
-              <button
-                className="h-6 px-2 rounded hover:bg-muted transition-colors flex items-center justify-center text-xs"
-                onClick={() =>
-                  setViewMode((prev) =>
-                    prev === "fragment" ? "file" : "fragment",
-                  )
-                }
-                title={
-                  viewMode === "fragment"
-                    ? "View full file diff"
-                    : "View fragment only"
-                }
-              >
-                {viewMode === "fragment" ? "Full Diff" : "Fragment"}
-              </button>
-            </div>
-          </div>
+      {message && (
+        <div>
+          <span>
+            <MarkdownRenderer content={message} />
+          </span>
         </div>
-
+      )}
+      <div className="border rounded bg-muted/40 overflow-hidden">
         {diffData ? (
           diffData.hasChanges ? (
             <div className="diff-view-container">
