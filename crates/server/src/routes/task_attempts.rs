@@ -423,49 +423,6 @@ async fn handle_task_attempt_diff_ws(
     Ok(())
 }
 
-#[derive(Debug, Serialize, TS)]
-pub struct CommitCompareResult {
-    pub subject: String,
-    pub head_oid: String,
-    pub target_oid: String,
-    pub ahead_from_head: usize,
-    pub behind_from_head: usize,
-    pub is_linear: bool,
-}
-
-pub async fn compare_commit_to_head(
-    Extension(task_attempt): Extension<TaskAttempt>,
-    State(deployment): State<DeploymentImpl>,
-    Query(params): Query<HashMap<String, String>>,
-) -> Result<ResponseJson<ApiResponse<CommitCompareResult>>, ApiError> {
-    let Some(target_oid) = params.get("sha").cloned() else {
-        return Err(ApiError::TaskAttempt(TaskAttemptError::ValidationError(
-            "Missing sha param".to_string(),
-        )));
-    };
-    let container_ref = deployment
-        .container()
-        .ensure_container_exists(&task_attempt)
-        .await?;
-    let wt = Path::new(&container_ref);
-    // TODO: this needs a worktree path, not a workspace path
-    let subject = deployment.git().get_commit_subject(wt, &target_oid)?;
-    let head_info = deployment.git().get_head_info(wt)?;
-    let (ahead_from_head, behind_from_head) =
-        deployment
-            .git()
-            .ahead_behind_commits_by_oid(wt, &head_info.oid, &target_oid)?;
-    let is_linear = behind_from_head == 0;
-    Ok(ResponseJson(ApiResponse::success(CommitCompareResult {
-        subject,
-        head_oid: head_info.oid,
-        target_oid,
-        ahead_from_head,
-        behind_from_head,
-        is_linear,
-    })))
-}
-
 #[derive(Debug, Deserialize, Serialize, TS)]
 pub struct MergeTaskAttemptRequest {
     pub repo_id: Uuid,
@@ -1587,7 +1544,6 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/follow-up", post(follow_up))
         .route("/run-agent-setup", post(run_agent_setup))
         .route("/gh-cli-setup", post(gh_cli_setup_handler))
-        .route("/commit-compare", get(compare_commit_to_head))
         .route("/start-dev-server", post(start_dev_server))
         .route("/run-setup-script", post(run_setup_script))
         .route("/run-cleanup-script", post(run_cleanup_script))
