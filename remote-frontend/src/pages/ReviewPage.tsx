@@ -15,7 +15,6 @@ import { MarkdownRenderer } from "../components/MarkdownRenderer";
 import {
   parseUnifiedDiff,
   getFileDiff,
-  buildFullFileDiff,
   synthesizeFragmentDiff,
   type ParsedFileDiff,
 } from "../lib/diff-parser";
@@ -412,8 +411,6 @@ function DiffFragmentCard({
   isLoading,
   hasDiff,
 }: DiffFragmentCardProps) {
-  const [viewMode, setViewMode] = useState<"fragment" | "file">("fragment");
-
   const fileDiff = useMemo(
     () => getFileDiff(parsedDiffs, file),
     [parsedDiffs, file],
@@ -422,17 +419,6 @@ function DiffFragmentCard({
 
   const diffData = useMemo(() => {
     if (!fileDiff) return null;
-
-    if (viewMode === "file") {
-      const diffString = buildFullFileDiff(fileDiff);
-      if (!diffString) return null;
-      return {
-        hasChanges: true,
-        hunks: [diffString],
-        oldFile: { fileName: file, fileLang: lang },
-        newFile: { fileName: file, fileLang: lang },
-      };
-    }
 
     if (!fileContent) return null;
 
@@ -452,7 +438,7 @@ function DiffFragmentCard({
       oldFile: { fileName: file, fileLang: lang },
       newFile: { fileName: file, fileLang: lang },
     };
-  }, [fileDiff, file, lang, startLine, endLine, viewMode, fileContent]);
+  }, [fileDiff, file, lang, startLine, endLine, fileContent]);
 
   if (!hasDiff || !fileDiff) {
     return (
