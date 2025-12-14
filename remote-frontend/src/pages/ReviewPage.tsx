@@ -293,6 +293,7 @@ export default function ReviewPage() {
         <CommentStoryRow
           key={idx}
           index={idx + 1}
+          totalComments={review.comments.length}
           comment={comment}
           fileCache={fileCache}
           loadingFiles={loadingFiles}
@@ -318,6 +319,7 @@ export default function ReviewPage() {
 
 interface CommentStoryRowProps {
   index: number;
+  totalComments: number;
   comment: ReviewComment;
   fileCache: FileCache;
   loadingFiles: Set<string>;
@@ -327,6 +329,7 @@ interface CommentStoryRowProps {
 
 function CommentStoryRow({
   index,
+  totalComments,
   comment,
   fileCache,
   loadingFiles,
@@ -340,8 +343,13 @@ function CommentStoryRow({
       <div className="flex-1 flex  w-1/2 xl:w-1/3">
         <div className="h-screen sticky top-0 flex items-center">
           <div className="flex space-x-4">
-            <span className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-muted text-primary-foreground text-lg font-medium shrink-0">
-              {index}
+            <span className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-muted shrink-0">
+              <div className="inline-flex items-baseline text-primary-foreground text-xl font-bold">
+                {index}
+                <span className="text-sm text-muted-foreground font-medium">
+                  /{totalComments}
+                </span>
+              </div>
             </span>
             {hasComment ? (
               <MarkdownRenderer
