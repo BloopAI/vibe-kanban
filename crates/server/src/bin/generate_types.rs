@@ -126,6 +126,7 @@ fn generate_types_content() -> String {
         services::services::config::Config::decl(),
         services::services::config::NotificationConfig::decl(),
         services::services::config::ThemeMode::decl(),
+        services::services::config::FontSize::decl(),
         services::services::config::EditorConfig::decl(),
         services::services::config::EditorType::decl(),
         services::services::config::EditorOpenError::decl(),

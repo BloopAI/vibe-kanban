@@ -24,7 +24,7 @@ import { SearchProvider } from '@/contexts/SearchContext';
 import { HotkeysProvider } from 'react-hotkeys-hook';
 
 import { ProjectProvider } from '@/contexts/ProjectContext';
-import { ThemeMode } from 'shared/types';
+import { FontSize, ThemeMode } from 'shared/types';
 import * as Sentry from '@sentry/react';
 import { Loader } from '@/components/ui/loader';
 
@@ -113,7 +113,10 @@ function AppContent() {
 
   return (
     <I18nextProvider i18n={i18n}>
-      <ThemeProvider initialTheme={config?.theme || ThemeMode.SYSTEM}>
+      <ThemeProvider
+        initialTheme={config?.theme || ThemeMode.SYSTEM}
+        initialFontSize={config?.font_size || FontSize.MEDIUM}
+      >
         <SearchProvider>
           <div className="h-screen flex flex-col bg-background">
             <SentryRoutes>

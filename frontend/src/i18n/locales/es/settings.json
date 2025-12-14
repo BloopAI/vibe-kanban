@@ -37,6 +37,11 @@
           "label": "Idioma",
           "placeholder": "Selecciona tu idioma",
           "helper": "Elige tu idioma preferido. El predeterminado del navegador sigue el idioma de tu sistema."
+        },
+        "fontSize": {
+          "label": "Tamaño de fuente",
+          "placeholder": "Seleccionar tamaño de fuente",
+          "helper": "Ajusta el tamaño del texto en toda la aplicación."
         }
       },
       "taskExecution": {
