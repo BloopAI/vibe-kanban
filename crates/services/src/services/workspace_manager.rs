@@ -1,8 +1,9 @@
 use std::path::{Path, PathBuf};
 
-use db::models::repo::Repo;
+use db::models::{repo::Repo, task_attempt::TaskAttempt};
+use sqlx::{Pool, Sqlite};
 use thiserror::Error;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 use super::worktree_manager::{WorktreeCleanup, WorktreeError, WorktreeManager};
@@ -281,5 +282,129 @@ impl WorkspaceManager {
                 );
             }
         }
+    }
+
+    /// Find and delete orphaned workspaces that don't correspond to any task attempts.
+    /// An orphaned workspace is a directory in the workspace base directory that has no
+    /// corresponding `container_ref` in any task attempt.
+    pub async fn cleanup_orphan_workspaces(db: &Pool<Sqlite>) {
+        // Check if orphan cleanup is disabled via environment variable
+        if std::env::var("DISABLE_WORKTREE_ORPHAN_CLEANUP").is_ok() {
+            debug!(
+                "Orphan workspace cleanup is disabled via DISABLE_WORKTREE_ORPHAN_CLEANUP environment variable"
+            );
+            return;
+        }
+
+        let workspace_base_dir = Self::get_workspace_base_dir();
+        if !workspace_base_dir.exists() {
+            debug!(
+                "Workspace base directory {} does not exist, skipping orphan cleanup",
+                workspace_base_dir.display()
+            );
+            return;
+        }
+
+        let entries = match std::fs::read_dir(&workspace_base_dir) {
+            Ok(entries) => entries,
+            Err(e) => {
+                error!(
+                    "Failed to read workspace base directory {}: {}",
+                    workspace_base_dir.display(),
+                    e
+                );
+                return;
+            }
+        };
+
+        for entry in entries {
+            let entry = match entry {
+                Ok(entry) => entry,
+                Err(e) => {
+                    warn!("Failed to read directory entry: {}", e);
+                    continue;
+                }
+            };
+
+            let path = entry.path();
+            // Only process directories
+            if !path.is_dir() {
+                continue;
+            }
+
+            let workspace_path_str = path.to_string_lossy().to_string();
+            if let Ok(false) = TaskAttempt::container_ref_exists(db, &workspace_path_str).await {
+                // This is an orphaned workspace - delete it
+                info!("Found orphaned workspace: {}", workspace_path_str);
+                if let Err(e) = Self::cleanup_workspace_without_repos(&path).await {
+                    error!(
+                        "Failed to remove orphaned workspace {}: {}",
+                        workspace_path_str, e
+                    );
+                } else {
+                    info!(
+                        "Successfully removed orphaned workspace: {}",
+                        workspace_path_str
+                    );
+                }
+            }
+        }
+    }
+
+    /// Clean up a workspace without knowing the repo list (for orphan cleanup).
+    /// This discovers worktrees by scanning subdirectories for .git files.
+    async fn cleanup_workspace_without_repos(workspace_dir: &Path) -> Result<(), WorkspaceError> {
+        info!(
+            "Cleaning up orphaned workspace at {}",
+            workspace_dir.display()
+        );
+
+        // Find all subdirectories that look like worktrees (have a .git file)
+        let entries = match std::fs::read_dir(workspace_dir) {
+            Ok(entries) => entries,
+            Err(e) => {
+                // If we can't read the directory, try to just remove it
+                debug!(
+                    "Cannot read workspace directory {}, attempting direct removal: {}",
+                    workspace_dir.display(),
+                    e
+                );
+                return tokio::fs::remove_dir_all(workspace_dir)
+                    .await
+                    .map_err(WorkspaceError::Io);
+            }
+        };
+
+        for entry in entries.filter_map(|e| e.ok()) {
+            let path = entry.path();
+            if !path.is_dir() {
+                continue;
+            }
+
+            // Check if this looks like a worktree (has a .git file, not directory)
+            let git_marker = path.join(".git");
+            if git_marker.exists() && git_marker.is_file() {
+                debug!("Cleaning up worktree at {}", path.display());
+                // Use WorktreeManager to properly clean up the worktree
+                // Pass None for git_repo_path - it will be inferred from the worktree
+                let cleanup = WorktreeCleanup::new(path, None);
+                if let Err(e) = WorktreeManager::cleanup_worktree(&cleanup).await {
+                    warn!("Failed to cleanup worktree: {}", e);
+                }
+            }
+        }
+
+        // Remove the workspace directory itself
+        if workspace_dir.exists() {
+            if let Err(e) = tokio::fs::remove_dir_all(workspace_dir).await {
+                debug!(
+                    "Could not remove workspace directory {}: {}",
+                    workspace_dir.display(),
+                    e
+                );
+            }
+        }
+
+        Ok(())
     }
 }

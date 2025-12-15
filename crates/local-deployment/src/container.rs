@@ -52,7 +52,6 @@ use services::services::{
     queued_message::QueuedMessageService,
     share::SharePublisher,
     workspace_manager::{RepoWorkspaceInput, WorkspaceManager},
-    worktree_manager::{WorktreeCleanup, WorktreeManager},
 };
 use tokio::{sync::RwLock, task::JoinHandle};
 use tokio_util::io::ReaderStream;
@@ -143,73 +142,7 @@ impl LocalContainerService {
         map.remove(id)
     }
 
-    /// Find and delete orphaned worktrees that don't correspond to any task attempts
-    async fn cleanup_orphaned_worktrees(&self) {
-        // Check if orphan cleanup is disabled via environment variable
-        if std::env::var("DISABLE_WORKTREE_ORPHAN_CLEANUP").is_ok() {
-            tracing::debug!(
-                "Orphan worktree cleanup is disabled via DISABLE_WORKTREE_ORPHAN_CLEANUP environment variable"
-            );
-            return;
-        }
-        let worktree_base_dir = WorktreeManager::get_worktree_base_dir();
-        if !worktree_base_dir.exists() {
-            tracing::debug!(
-                "Worktree base directory {} does not exist, skipping orphan cleanup",
-                worktree_base_dir.display()
-            );
-            return;
-        }
-        let entries = match std::fs::read_dir(&worktree_base_dir) {
-            Ok(entries) => entries,
-            Err(e) => {
-                tracing::error!(
-                    "Failed to read worktree base directory {}: {}",
-                    worktree_base_dir.display(),
-                    e
-                );
-                return;
-            }
-        };
-        for entry in entries {
-            let entry = match entry {
-                Ok(entry) => entry,
-                Err(e) => {
-                    tracing::warn!("Failed to read directory entry: {}", e);
-                    continue;
-                }
-            };
-            let path = entry.path();
-            // Only process directories
-            if !path.is_dir() {
-                continue;
-            }
-
-            let worktree_path_str = path.to_string_lossy().to_string();
-            if let Ok(false) =
-                TaskAttempt::container_ref_exists(&self.db().pool, &worktree_path_str).await
-            {
-                // This is an orphaned worktree - delete it
-                tracing::info!("Found orphaned worktree: {}", worktree_path_str);
-                if let Err(e) =
-                    WorktreeManager::cleanup_worktree(&WorktreeCleanup::new(path, None)).await
-                {
-                    tracing::error!(
-                        "Failed to remove orphaned worktree {}: {}",
-                        worktree_path_str,
-                        e
-                    );
-                } else {
-                    tracing::info!(
-                        "Successfully removed orphaned worktree: {}",
-                        worktree_path_str
-                    );
-                }
-            }
-        }
-    }
-
-    async fn cleanup_attempt_workspace(db: &DBService, attempt: &TaskAttempt) {
+    pub async fn cleanup_attempt_workspace(db: &DBService, attempt: &TaskAttempt) {
         let Some(container_ref) = &attempt.container_ref else {
             return;
         };
@@ -264,7 +197,7 @@ impl LocalContainerService {
     pub async fn spawn_workspace_cleanup(&self) {
         let db = self.db.clone();
         let mut cleanup_interval = tokio::time::interval(tokio::time::Duration::from_secs(1800)); // 30 minutes
-        self.cleanup_orphaned_worktrees().await;
+        WorkspaceManager::cleanup_orphan_workspaces(&self.db.pool).await;
         tokio::spawn(async move {
             loop {
                 cleanup_interval.tick().await;
