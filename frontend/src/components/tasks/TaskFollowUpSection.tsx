@@ -51,7 +51,6 @@ import type {
   DraftFollowUpData,
   ExecutorAction,
   ExecutorProfileId,
-  Merge,
 } from 'shared/types';
 import { buildResolveConflictsInstructions } from '@/lib/conflicts';
 import { useTranslation } from 'react-i18next';
@@ -334,16 +333,6 @@ export function TaskFollowUpSection({
       return false;
     }
 
-    const selectedRepoStatus = branchStatus?.find(
-      (r) => r.repo_id === getSelectedRepoId()
-    );
-    const hasMergedPR = selectedRepoStatus?.merges?.some(
-      (m: Merge) => m.type === 'pr' && m.pr_info.status === 'merged'
-    );
-    if (hasMergedPR) {
-      return false;
-    }
-
     if (isRetryActive) return false; // disable typing while retry editor is active
     if (hasPendingApproval) return false; // disable typing during approval
     // Note: isQueued no longer blocks typing - editing auto-cancels the queue
@@ -352,8 +341,6 @@ export function TaskFollowUpSection({
     selectedAttemptId,
     processes.length,
     isSendingFollowUp,
-    branchStatus,
-    getSelectedRepoId,
     isRetryActive,
     hasPendingApproval,
   ]);

@@ -517,7 +517,6 @@ function GitOperations({
             <Button
               onClick={handleRebaseDialogOpen}
               disabled={
-                mergeInfo.hasMergedPR ||
                 rebasing ||
                 isAttemptRunning ||
                 hasConflictsCalculated
