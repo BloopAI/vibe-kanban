@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT r.id as \"id!: Uuid\", r.path, r.name, pr.copy_files\n               FROM repos r\n               JOIN attempt_repos ar ON r.id = ar.repo_id\n               JOIN task_attempts ta ON ta.id = ar.attempt_id\n               JOIN tasks t ON t.id = ta.task_id\n               LEFT JOIN project_repos pr ON pr.project_id = t.project_id AND pr.repo_id = r.id\n               WHERE ar.attempt_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "path",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "name",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "copy_files",
+        "ordinal": 3,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "d4918832f632750c3969edb87713f6fe104d6dc04ba37b87e3107d821adc9523"
+}

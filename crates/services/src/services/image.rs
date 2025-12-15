@@ -185,12 +185,22 @@ impl ImageService {
         self.copy_images(worktree_path, images)
     }
 
+    /// Copy images to the worktree. Skips images that already exist at target.
     fn copy_images(&self, worktree_path: &Path, images: Vec<Image>) -> Result<(), ImageError> {
         if images.is_empty() {
             return Ok(());
         }
 
         let images_dir = worktree_path.join(utils::path::VIBE_IMAGES_DIR);
+
+        // Fast path: check if all images exist before doing anything
+        let all_exist = images
+            .iter()
+            .all(|image| images_dir.join(&image.file_path).exists());
+        if all_exist {
+            return Ok(());
+        }
+
         std::fs::create_dir_all(&images_dir)?;
 
         // Create .gitignore to ignore all files in this directory
@@ -202,6 +212,11 @@ impl ImageService {
         for image in images {
             let src = self.cache_dir.join(&image.file_path);
             let dst = images_dir.join(&image.file_path);
+
+            if dst.exists() {
+                continue;
+            }
+
             if src.exists() {
                 if let Err(e) = std::fs::copy(&src, &dst) {
                     tracing::error!("Failed to copy {}: {}", image.file_path, e);

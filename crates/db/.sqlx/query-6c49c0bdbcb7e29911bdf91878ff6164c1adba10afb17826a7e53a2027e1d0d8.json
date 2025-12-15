@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!: Uuid\",\n                              task_id AS \"task_id!: Uuid\",\n                              container_ref,\n                              branch,\n                              executor AS \"executor!\",\n                              worktree_deleted AS \"worktree_deleted!: bool\",\n                              setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                              created_at AS \"created_at!: DateTime<Utc>\",\n                              updated_at AS \"updated_at!: DateTime<Utc>\"\n                       FROM task_attempts\n                       WHERE task_id = $1\n                       ORDER BY created_at DESC",
+  "query": "SELECT id AS \"id!: Uuid\",\n                              task_id AS \"task_id!: Uuid\",\n                              container_ref,\n                              branch,\n                              executor AS \"executor!\",\n                              setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                              created_at AS \"created_at!: DateTime<Utc>\",\n                              updated_at AS \"updated_at!: DateTime<Utc>\"\n                       FROM task_attempts\n                       ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -29,28 +29,23 @@
         "type_info": "Text"
       },
       {
-        "name": "worktree_deleted!: bool",
-        "ordinal": 5,
-        "type_info": "Bool"
-      },
-      {
         "name": "setup_completed_at: DateTime<Utc>",
-        "ordinal": 6,
+        "ordinal": 5,
         "type_info": "Datetime"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 7,
+        "ordinal": 6,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 8,
+        "ordinal": 7,
         "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 0
     },
     "nullable": [
       true,
@@ -58,11 +53,10 @@
       true,
       false,
       true,
-      false,
       true,
       false,
       false
     ]
   },
-  "hash": "54730b84d3bc44a56e95769b083cc3081c7d8ced0b95c16c1b25cb10ec743352"
+  "hash": "6c49c0bdbcb7e29911bdf91878ff6164c1adba10afb17826a7e53a2027e1d0d8"
 }

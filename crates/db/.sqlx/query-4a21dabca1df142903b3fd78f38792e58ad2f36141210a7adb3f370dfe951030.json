@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT\n                ta.id as \"id!: Uuid\",\n                ta.task_id as \"task_id!: Uuid\",\n                ta.container_ref,\n                ta.branch as \"branch!\",\n                ta.executor as \"executor!\",\n                ta.setup_completed_at as \"setup_completed_at: DateTime<Utc>\",\n                ta.created_at as \"created_at!: DateTime<Utc>\",\n                ta.updated_at as \"updated_at!: DateTime<Utc>\"\n            FROM task_attempts ta\n            LEFT JOIN execution_processes ep ON ta.id = ep.task_attempt_id AND ep.completed_at IS NOT NULL\n            WHERE ta.container_ref IS NOT NULL\n                AND ta.id NOT IN (\n                    SELECT DISTINCT ep2.task_attempt_id\n                    FROM execution_processes ep2\n                    WHERE ep2.completed_at IS NULL\n                )\n            GROUP BY ta.id, ta.container_ref, ta.updated_at\n            HAVING datetime('now', '-72 hours') > datetime(\n                MAX(\n                    CASE\n                        WHEN ep.completed_at IS NOT NULL THEN ep.completed_at\n                        ELSE ta.updated_at\n                    END\n                )\n            )\n            ORDER BY MAX(\n                CASE\n                    WHEN ep.completed_at IS NOT NULL THEN ep.completed_at\n                    ELSE ta.updated_at\n                END\n            ) ASC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "task_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "container_ref",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "branch!",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "executor!",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "setup_completed_at: DateTime<Utc>",
+        "ordinal": 5,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "4a21dabca1df142903b3fd78f38792e58ad2f36141210a7adb3f370dfe951030"
+}

@@ -113,7 +113,7 @@ impl LocalContainerService {
             notification_service,
         };
 
-        container.spawn_worktree_cleanup().await;
+        container.spawn_workspace_cleanup().await;
 
         container
     }
@@ -141,35 +141,6 @@ impl LocalContainerService {
     async fn take_interrupt_sender(&self, id: &Uuid) -> Option<InterruptSender> {
         let mut map = self.interrupt_senders.write().await;
         map.remove(id)
-    }
-
-    /// Defensively check for externally deleted worktrees and mark them as deleted in the database
-    async fn check_externally_deleted_worktrees(db: &DBService) -> Result<(), DeploymentError> {
-        let active_attempts = TaskAttempt::find_by_worktree_deleted(&db.pool).await?;
-        tracing::debug!(
-            "Checking {} active worktrees for external deletion...",
-            active_attempts.len()
-        );
-        for (attempt_id, worktree_path) in active_attempts {
-            // Check if worktree directory exists
-            if !std::path::Path::new(&worktree_path).exists() {
-                // Worktree was deleted externally, mark as deleted in database
-                if let Err(e) = TaskAttempt::mark_worktree_deleted(&db.pool, attempt_id).await {
-                    tracing::error!(
-                        "Failed to mark externally deleted worktree as deleted for attempt {}: {}",
-                        attempt_id,
-                        e
-                    );
-                } else {
-                    tracing::info!(
-                        "Marked externally deleted worktree as deleted for attempt {} (path: {})",
-                        attempt_id,
-                        worktree_path
-                    );
-                }
-            }
-        }
-        Ok(())
     }
 
     /// Find and delete orphaned worktrees that don't correspond to any task attempts
@@ -238,65 +209,70 @@ impl LocalContainerService {
         }
     }
 
-    pub async fn cleanup_expired_attempt(
-        db: &DBService,
-        attempt_id: Uuid,
-        worktree_path: PathBuf,
-        git_repo_path: PathBuf,
-    ) -> Result<(), DeploymentError> {
-        WorktreeManager::cleanup_worktree(&WorktreeCleanup::new(
-            worktree_path,
-            Some(git_repo_path),
-        ))
-        .await?;
-        // Mark worktree as deleted in database after successful cleanup
-        TaskAttempt::mark_worktree_deleted(&db.pool, attempt_id).await?;
-        tracing::info!("Successfully marked worktree as deleted for attempt {attempt_id}",);
-        Ok(())
+    pub async fn cleanup_attempt_workspace(db: &DBService, attempt: &TaskAttempt) {
+        let Some(container_ref) = &attempt.container_ref else {
+            return;
+        };
+        let workspace_dir = PathBuf::from(container_ref);
+
+        let repositories = AttemptRepo::find_repos_for_attempt(&db.pool, attempt.id)
+            .await
+            .unwrap_or_default();
+
+        if repositories.is_empty() {
+            tracing::warn!(
+                "No repositories found for attempt {}, cleaning up workspace directory only",
+                attempt.id
+            );
+            if workspace_dir.exists() {
+                if let Err(e) = tokio::fs::remove_dir_all(&workspace_dir).await {
+                    tracing::warn!("Failed to remove workspace directory: {}", e);
+                }
+            }
+        } else {
+            WorkspaceManager::cleanup_workspace(&workspace_dir, &repositories)
+                .await
+                .unwrap_or_else(|e| {
+                    tracing::warn!(
+                        "Failed to clean up workspace for attempt {}: {}",
+                        attempt.id,
+                        e
+                    );
+                });
+        }
+
+        // Clear container_ref so this attempt won't be picked up again
+        let _ = TaskAttempt::clear_container_ref(&db.pool, attempt.id).await;
     }
 
     pub async fn cleanup_expired_attempts(db: &DBService) -> Result<(), DeploymentError> {
         let expired_attempts = TaskAttempt::find_expired_for_cleanup(&db.pool).await?;
         if expired_attempts.is_empty() {
-            tracing::debug!("No expired worktrees found");
+            tracing::debug!("No expired workspaces found");
             return Ok(());
         }
         tracing::info!(
-            "Found {} expired worktrees to clean up",
+            "Found {} expired workspaces to clean up",
             expired_attempts.len()
         );
-        for (attempt_id, worktree_path, git_repo_path) in expired_attempts {
-            Self::cleanup_expired_attempt(
-                db,
-                attempt_id,
-                PathBuf::from(worktree_path),
-                PathBuf::from(git_repo_path),
-            )
-            .await
-            .unwrap_or_else(|e| {
-                tracing::error!("Failed to clean up expired attempt {attempt_id}: {e}",);
-            });
+        for attempt in &expired_attempts {
+            Self::cleanup_attempt_workspace(db, attempt).await;
         }
         Ok(())
     }
 
-    pub async fn spawn_worktree_cleanup(&self) {
+    pub async fn spawn_workspace_cleanup(&self) {
         let db = self.db.clone();
         let mut cleanup_interval = tokio::time::interval(tokio::time::Duration::from_secs(1800)); // 30 minutes
         self.cleanup_orphaned_worktrees().await;
         tokio::spawn(async move {
             loop {
                 cleanup_interval.tick().await;
-                tracing::info!("Starting periodic worktree cleanup...");
-                Self::check_externally_deleted_worktrees(&db)
-                    .await
-                    .unwrap_or_else(|e| {
-                        tracing::error!("Failed to check externally deleted worktrees: {}", e);
-                    });
+                tracing::info!("Starting periodic workspace cleanup...");
                 Self::cleanup_expired_attempts(&db)
                     .await
                     .unwrap_or_else(|e| {
-                        tracing::error!("Failed to clean up expired worktree attempts: {}", e)
+                        tracing::error!("Failed to clean up expired workspace attempts: {}", e)
                     });
             }
         });
@@ -792,6 +768,43 @@ impl LocalContainerService {
         Ok(())
     }
 
+    /// Copy project files and images to the workspace.
+    /// Skips files/images that already exist (fast no-op if all exist).
+    async fn copy_files_and_images(
+        &self,
+        workspace_dir: &Path,
+        task_attempt: &TaskAttempt,
+    ) -> Result<(), ContainerError> {
+        let repos = AttemptRepo::find_repos_with_copy_files(&self.db.pool, task_attempt.id).await?;
+
+        for repo in &repos {
+            if let Some(copy_files) = &repo.copy_files {
+                if !copy_files.trim().is_empty() {
+                    let worktree_path = workspace_dir.join(&repo.name);
+                    self.copy_project_files(&repo.path, &worktree_path, copy_files)
+                        .await
+                        .unwrap_or_else(|e| {
+                            tracing::warn!(
+                                "Failed to copy project files for repo '{}': {}",
+                                repo.name,
+                                e
+                            );
+                        });
+                }
+            }
+        }
+
+        if let Err(e) = self
+            .image_service
+            .copy_images_by_task_to_worktree(workspace_dir, task_attempt.task_id)
+            .await
+        {
+            tracing::warn!("Failed to copy task images to workspace: {}", e);
+        }
+
+        Ok(())
+    }
+
     /// Start a follow-up execution from a queued message
     async fn start_queued_follow_up(
         &self,
@@ -899,21 +912,16 @@ impl ContainerService for LocalContainerService {
             LocalContainerService::dir_name_from_task_attempt(&task_attempt.id, &task.title);
         let workspace_dir = WorkspaceManager::get_workspace_base_dir().join(&workspace_dir_name);
 
-        let project = task
-            .parent_project(&self.db.pool)
-            .await?
-            .ok_or(sqlx::Error::RowNotFound)?;
-
-        let repositories =
-            AttemptRepo::find_repos_for_attempt(&self.db.pool, task_attempt.id).await?;
-
-        if repositories.is_empty() {
+        let attempt_repos = AttemptRepo::find_by_attempt_id(&self.db.pool, task_attempt.id).await?;
+        if attempt_repos.is_empty() {
             return Err(ContainerError::Other(anyhow!(
                 "Attempt has no repositories configured"
             )));
         }
 
-        let attempt_repos = AttemptRepo::find_by_attempt_id(&self.db.pool, task_attempt.id).await?;
+        let repositories =
+            AttemptRepo::find_repos_for_attempt(&self.db.pool, task_attempt.id).await?;
+
         let target_branches: HashMap<_, _> = attempt_repos
             .iter()
             .map(|ar| (ar.repo_id, ar.target_branch.clone()))
@@ -934,38 +942,9 @@ impl ContainerService for LocalContainerService {
         )
         .await?;
 
-        let project_repos = ProjectRepo::find_by_project_id(&self.db.pool, project.id).await?;
-
-        for worktree in &workspace.worktrees {
-            if let Some(project_repo) = project_repos
-                .iter()
-                .find(|pr| pr.repo_id == worktree.repo_id)
-                && let Some(copy_files) = &project_repo.copy_files
-                && !copy_files.trim().is_empty()
-            {
-                self.copy_project_files(
-                    &worktree.source_repo_path,
-                    &worktree.worktree_path,
-                    copy_files,
-                )
-                .await
-                .unwrap_or_else(|e| {
-                    tracing::warn!(
-                        "Failed to copy project files to repo '{}': {}",
-                        worktree.repo_name,
-                        e
-                    );
-                });
-            }
-        }
-
-        if let Err(e) = self
-            .image_service
-            .copy_images_by_task_to_worktree(&workspace.workspace_dir, task.id)
-            .await
-        {
-            tracing::warn!("Failed to copy task images to workspace: {}", e);
-        }
+        // Copy project files and images to workspace
+        self.copy_files_and_images(&workspace.workspace_dir, task_attempt)
+            .await?;
 
         TaskAttempt::update_container_ref(
             &self.db.pool,
@@ -978,36 +957,7 @@ impl ContainerService for LocalContainerService {
     }
 
     async fn delete_inner(&self, task_attempt: &TaskAttempt) -> Result<(), ContainerError> {
-        // cleanup the container, here that means deleting the workspace with all worktrees
-        let workspace_dir = PathBuf::from(task_attempt.container_ref.clone().unwrap_or_default());
-
-        // Get repositories for cleanup
-        let repositories = AttemptRepo::find_repos_for_attempt(&self.db.pool, task_attempt.id)
-            .await
-            .unwrap_or_default();
-
-        if repositories.is_empty() {
-            tracing::warn!(
-                "No repositories found for attempt {}, cleaning up workspace directory only",
-                task_attempt.id
-            );
-            if workspace_dir.exists()
-                && let Err(e) = tokio::fs::remove_dir_all(&workspace_dir).await
-            {
-                tracing::warn!("Failed to remove workspace directory: {}", e);
-            }
-        } else {
-            WorkspaceManager::cleanup_workspace(&workspace_dir, &repositories)
-                .await
-                .unwrap_or_else(|e| {
-                    tracing::warn!(
-                        "Failed to clean up workspace for task attempt {}: {}",
-                        task_attempt.id,
-                        e
-                    );
-                });
-        }
-
+        Self::cleanup_attempt_workspace(&self.db, task_attempt).await;
         Ok(())
     }
 
@@ -1015,19 +965,26 @@ impl ContainerService for LocalContainerService {
         &self,
         task_attempt: &TaskAttempt,
     ) -> Result<ContainerRef, ContainerError> {
-        let container_ref = task_attempt.container_ref.as_ref().ok_or_else(|| {
-            ContainerError::Other(anyhow!("Container ref not found for task attempt"))
-        })?;
-        let workspace_dir = PathBuf::from(container_ref);
-
         let repositories =
             AttemptRepo::find_repos_for_attempt(&self.db.pool, task_attempt.id).await?;
 
         if repositories.is_empty() {
             return Err(ContainerError::Other(anyhow!(
-                "Project has no repositories configured"
+                "Attempt has no repositories configured"
             )));
         }
+
+        let workspace_dir = if let Some(container_ref) = &task_attempt.container_ref {
+            PathBuf::from(container_ref)
+        } else {
+            let task = task_attempt
+                .parent_task(&self.db.pool)
+                .await?
+                .ok_or(sqlx::Error::RowNotFound)?;
+            let workspace_dir_name =
+                LocalContainerService::dir_name_from_task_attempt(&task_attempt.id, &task.title);
+            WorkspaceManager::get_workspace_base_dir().join(&workspace_dir_name)
+        };
 
         WorkspaceManager::ensure_workspace_exists(
             &workspace_dir,
@@ -1036,7 +993,20 @@ impl ContainerService for LocalContainerService {
         )
         .await?;
 
-        Ok(container_ref.to_string())
+        if task_attempt.container_ref.is_none() {
+            TaskAttempt::update_container_ref(
+                &self.db.pool,
+                task_attempt.id,
+                &workspace_dir.to_string_lossy(),
+            )
+            .await?;
+        }
+
+        // Copy project files and images (fast no-op if already exist)
+        self.copy_files_and_images(&workspace_dir, task_attempt)
+            .await?;
+
+        Ok(workspace_dir.to_string_lossy().to_string())
     }
 
     async fn is_container_clean(&self, task_attempt: &TaskAttempt) -> Result<bool, ContainerError> {
@@ -1339,7 +1309,8 @@ impl ContainerService for LocalContainerService {
         Ok(self.commit_repos(repos_with_changes, &message))
     }
 
-    /// Copy files from the original project directory to the worktree
+    /// Copy files from the original project directory to the worktree.
+    /// Skips files that already exist at target with same size.
     async fn copy_project_files(
         &self,
         source_dir: &Path,
