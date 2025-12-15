@@ -246,13 +246,17 @@ impl WorkspaceManager {
         );
         let temp_path = workspace_dir.with_file_name(temp_name);
 
-        tokio::fs::rename(workspace_dir, &temp_path).await?;
+        WorktreeManager::move_worktree(&repo.path, workspace_dir, &temp_path).await?;
 
         // Create new workspace directory
         tokio::fs::create_dir_all(workspace_dir).await?;
 
         // Move worktree to final location using git worktree move
         WorktreeManager::move_worktree(&repo.path, &temp_path, &expected_worktree_path).await?;
+
+        if temp_path.exists() {
+            let _ = tokio::fs::remove_dir_all(&temp_path).await;
+        }
 
         info!(
             "Successfully migrated legacy worktree to {}",
