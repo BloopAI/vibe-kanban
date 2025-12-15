@@ -96,10 +96,7 @@ pub trait ContainerService {
 
     async fn kill_all_running_processes(&self) -> Result<(), ContainerError>;
 
-    async fn delete(&self, task_attempt: &TaskAttempt) -> Result<(), ContainerError> {
-        self.try_stop(task_attempt, true).await;
-        self.delete_inner(task_attempt).await
-    }
+    async fn delete(&self, task_attempt: &TaskAttempt) -> Result<(), ContainerError>;
 
     /// Check if a task has any running execution processes
     async fn has_running_processes(&self, task_id: Uuid) -> Result<bool, ContainerError> {
@@ -525,8 +522,6 @@ pub trait ContainerService {
             }
         }
     }
-
-    async fn delete_inner(&self, task_attempt: &TaskAttempt) -> Result<(), ContainerError>;
 
     async fn ensure_container_exists(
         &self,
