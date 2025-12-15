@@ -284,11 +284,7 @@ impl WorkspaceManager {
         }
     }
 
-    /// Find and delete orphaned workspaces that don't correspond to any task attempts.
-    /// An orphaned workspace is a directory in the workspace base directory that has no
-    /// corresponding `container_ref` in any task attempt.
     pub async fn cleanup_orphan_workspaces(db: &Pool<Sqlite>) {
-        // Check if orphan cleanup is disabled via environment variable
         if std::env::var("DISABLE_WORKTREE_ORPHAN_CLEANUP").is_ok() {
             debug!(
                 "Orphan workspace cleanup is disabled via DISABLE_WORKTREE_ORPHAN_CLEANUP environment variable"
@@ -327,14 +323,12 @@ impl WorkspaceManager {
             };
 
             let path = entry.path();
-            // Only process directories
             if !path.is_dir() {
                 continue;
             }
 
             let workspace_path_str = path.to_string_lossy().to_string();
             if let Ok(false) = TaskAttempt::container_ref_exists(db, &workspace_path_str).await {
-                // This is an orphaned workspace - delete it
                 info!("Found orphaned workspace: {}", workspace_path_str);
                 if let Err(e) = Self::cleanup_workspace_without_repos(&path).await {
                     error!(
@@ -351,19 +345,15 @@ impl WorkspaceManager {
         }
     }
 
-    /// Clean up a workspace without knowing the repo list (for orphan cleanup).
-    /// This discovers worktrees by scanning subdirectories.
     async fn cleanup_workspace_without_repos(workspace_dir: &Path) -> Result<(), WorkspaceError> {
         info!(
             "Cleaning up orphaned workspace at {}",
             workspace_dir.display()
         );
 
-        // Find all subdirectories that might be worktrees
         let entries = match std::fs::read_dir(workspace_dir) {
             Ok(entries) => entries,
             Err(e) => {
-                // If we can't read the directory, try to just remove it
                 debug!(
                     "Cannot read workspace directory {}, attempting direct removal: {}",
                     workspace_dir.display(),
@@ -384,7 +374,6 @@ impl WorkspaceManager {
             }
         }
 
-        // Remove the workspace directory itself
         if workspace_dir.exists() {
             if let Err(e) = tokio::fs::remove_dir_all(workspace_dir).await {
                 debug!(

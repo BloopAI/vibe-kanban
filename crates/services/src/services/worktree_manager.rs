@@ -519,9 +519,6 @@ impl WorktreeManager {
         utils::path::get_vibe_kanban_temp_dir().join("worktrees")
     }
 
-    /// Clean up a directory that is suspected to be a worktree.
-    /// Checks if the path has a .git file (worktree marker) and cleans it up if so.
-    /// Returns Ok(true) if it was a worktree and was cleaned, Ok(false) if not a worktree.
     pub async fn cleanup_suspected_worktree(path: &Path) -> Result<bool, WorktreeError> {
         let git_marker = path.join(".git");
         if !git_marker.exists() || !git_marker.is_file() {
