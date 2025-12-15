@@ -352,14 +352,14 @@ impl WorkspaceManager {
     }
 
     /// Clean up a workspace without knowing the repo list (for orphan cleanup).
-    /// This discovers worktrees by scanning subdirectories for .git files.
+    /// This discovers worktrees by scanning subdirectories.
     async fn cleanup_workspace_without_repos(workspace_dir: &Path) -> Result<(), WorkspaceError> {
         info!(
             "Cleaning up orphaned workspace at {}",
             workspace_dir.display()
         );
 
-        // Find all subdirectories that look like worktrees (have a .git file)
+        // Find all subdirectories that might be worktrees
         let entries = match std::fs::read_dir(workspace_dir) {
             Ok(entries) => entries,
             Err(e) => {
@@ -377,19 +377,9 @@ impl WorkspaceManager {
 
         for entry in entries.filter_map(|e| e.ok()) {
             let path = entry.path();
-            if !path.is_dir() {
-                continue;
-            }
-
-            // Check if this looks like a worktree (has a .git file, not directory)
-            let git_marker = path.join(".git");
-            if git_marker.exists() && git_marker.is_file() {
-                debug!("Cleaning up worktree at {}", path.display());
-                // Use WorktreeManager to properly clean up the worktree
-                // Pass None for git_repo_path - it will be inferred from the worktree
-                let cleanup = WorktreeCleanup::new(path, None);
-                if let Err(e) = WorktreeManager::cleanup_worktree(&cleanup).await {
-                    warn!("Failed to cleanup worktree: {}", e);
+            if path.is_dir() {
+                if let Err(e) = WorktreeManager::cleanup_suspected_worktree(&path).await {
+                    warn!("Failed to cleanup suspected worktree: {}", e);
                 }
             }
         }
