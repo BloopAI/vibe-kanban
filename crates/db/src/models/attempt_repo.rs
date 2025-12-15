@@ -26,7 +26,7 @@ pub struct CreateAttemptRepo {
     pub target_branch: String,
 }
 
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct RepoWithTargetBranch {
     #[serde(flatten)]

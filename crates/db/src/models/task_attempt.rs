@@ -8,7 +8,11 @@ use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
 
-use super::{attempt_repo::AttemptRepo, project::Project, task::Task};
+use super::{
+    attempt_repo::{AttemptRepo, RepoWithTargetBranch},
+    project::Project,
+    task::Task,
+};
 
 #[derive(Debug, Error)]
 pub enum TaskAttemptError {
@@ -77,7 +81,7 @@ pub struct TaskAttemptContext {
     pub task_attempt: TaskAttempt,
     pub task: Task,
     pub project: Project,
-    pub attempt_repos: Vec<AttemptRepo>,
+    pub attempt_repos: Vec<RepoWithTargetBranch>,
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -177,7 +181,8 @@ impl TaskAttempt {
             .await?
             .ok_or(TaskAttemptError::ProjectNotFound)?;
 
-        let attempt_repos = AttemptRepo::find_by_attempt_id(pool, attempt_id).await?;
+        let attempt_repos =
+            AttemptRepo::find_repos_with_target_branch_for_attempt(pool, attempt_id).await?;
 
         Ok(TaskAttemptContext {
             task_attempt,
