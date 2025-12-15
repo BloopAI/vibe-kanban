@@ -518,4 +518,16 @@ impl WorktreeManager {
     pub fn get_worktree_base_dir() -> std::path::PathBuf {
         utils::path::get_vibe_kanban_temp_dir().join("worktrees")
     }
+
+    pub async fn cleanup_suspected_worktree(path: &Path) -> Result<bool, WorktreeError> {
+        let git_marker = path.join(".git");
+        if !git_marker.exists() || !git_marker.is_file() {
+            return Ok(false);
+        }
+
+        debug!("Cleaning up suspected worktree at {}", path.display());
+        let cleanup = WorktreeCleanup::new(path.to_path_buf(), None);
+        Self::cleanup_worktree(&cleanup).await?;
+        Ok(true)
+    }
 }

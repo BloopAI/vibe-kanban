@@ -101,12 +101,11 @@ fn copy_single_file(
     let target_file = target_root.join(relative_path);
 
     // Skip if target exists with same size
-    if let Ok(target_meta) = fs::metadata(&target_file) {
-        if let Ok(source_meta) = fs::metadata(source_file) {
-            if target_meta.len() == source_meta.len() {
-                return Ok(false);
-            }
-        }
+    if let Ok(target_meta) = fs::metadata(&target_file)
+        && let Ok(source_meta) = fs::metadata(source_file)
+        && target_meta.len() == source_meta.len()
+    {
+        return Ok(false);
     }
 
     if let Some(parent) = target_file.parent()
