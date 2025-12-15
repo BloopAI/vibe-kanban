@@ -327,14 +327,64 @@
     user-select: none;
   }
 
-  .snowflake:nth-child(1) { left: 5%; animation-duration: 15s; animation-delay: 0s; font-size: 0.8rem; }
-  .snowflake:nth-child(2) { left: 15%; animation-duration: 12s; animation-delay: 2s; font-size: 1.2rem; }
-  .snowflake:nth-child(3) { left: 25%; animation-duration: 18s; animation-delay: 4s; font-size: 0.6rem; }
-  .snowflake:nth-child(4) { left: 35%; animation-duration: 14s; animation-delay: 1s; font-size: 1rem; }
-  .snowflake:nth-child(5) { left: 45%; animation-duration: 16s; animation-delay: 3s; font-size: 0.9rem; }
-  .snowflake:nth-child(6) { left: 55%; animation-duration: 13s; animation-delay: 5s; font-size: 1.1rem; }
-  .snowflake:nth-child(7) { left: 65%; animation-duration: 17s; animation-delay: 2s; font-size: 0.7rem; }
-  .snowflake:nth-child(8) { left: 75%; animation-duration: 11s; animation-delay: 4s; font-size: 1.3rem; }
-  .snowflake:nth-child(9) { left: 85%; animation-duration: 19s; animation-delay: 1s; font-size: 0.8rem; }
-  .snowflake:nth-child(10) { left: 95%; animation-duration: 15s; animation-delay: 3s; font-size: 1rem; }
+  .snowflake:nth-child(1) {
+    left: 5%;
+    animation-duration: 15s;
+    animation-delay: 0s;
+    font-size: 0.8rem;
+  }
+  .snowflake:nth-child(2) {
+    left: 15%;
+    animation-duration: 12s;
+    animation-delay: 2s;
+    font-size: 1.2rem;
+  }
+  .snowflake:nth-child(3) {
+    left: 25%;
+    animation-duration: 18s;
+    animation-delay: 4s;
+    font-size: 0.6rem;
+  }
+  .snowflake:nth-child(4) {
+    left: 35%;
+    animation-duration: 14s;
+    animation-delay: 1s;
+    font-size: 1rem;
+  }
+  .snowflake:nth-child(5) {
+    left: 45%;
+    animation-duration: 16s;
+    animation-delay: 3s;
+    font-size: 0.9rem;
+  }
+  .snowflake:nth-child(6) {
+    left: 55%;
+    animation-duration: 13s;
+    animation-delay: 5s;
+    font-size: 1.1rem;
+  }
+  .snowflake:nth-child(7) {
+    left: 65%;
+    animation-duration: 17s;
+    animation-delay: 2s;
+    font-size: 0.7rem;
+  }
+  .snowflake:nth-child(8) {
+    left: 75%;
+    animation-duration: 11s;
+    animation-delay: 4s;
+    font-size: 1.3rem;
+  }
+  .snowflake:nth-child(9) {
+    left: 85%;
+    animation-duration: 19s;
+    animation-delay: 1s;
+    font-size: 0.8rem;
+  }
+  .snowflake:nth-child(10) {
+    left: 95%;
+    animation-duration: 15s;
+    animation-delay: 3s;
+    font-size: 1rem;
+  }
 }
