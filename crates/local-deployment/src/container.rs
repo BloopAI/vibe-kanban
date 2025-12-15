@@ -965,13 +965,6 @@ impl ContainerService for LocalContainerService {
         &self,
         task_attempt: &TaskAttempt,
     ) -> Result<ContainerRef, ContainerError> {
-        if task_attempt.container_ref.is_none() {
-            return self.create(task_attempt).await;
-        }
-
-        let container_ref = task_attempt.container_ref.as_ref().unwrap();
-        let workspace_dir = PathBuf::from(container_ref);
-
         let repositories =
             AttemptRepo::find_repos_for_attempt(&self.db.pool, task_attempt.id).await?;
 
@@ -981,6 +974,20 @@ impl ContainerService for LocalContainerService {
             )));
         }
 
+        // Regenerate workspace path deterministically if container_ref is NULL
+        let workspace_dir = if let Some(container_ref) = &task_attempt.container_ref {
+            PathBuf::from(container_ref)
+        } else {
+            let task = task_attempt
+                .parent_task(&self.db.pool)
+                .await?
+                .ok_or(sqlx::Error::RowNotFound)?;
+            let workspace_dir_name =
+                LocalContainerService::dir_name_from_task_attempt(&task_attempt.id, &task.title);
+            WorkspaceManager::get_workspace_base_dir().join(&workspace_dir_name)
+        };
+
+        // Use ensure_workspace_exists (handles existing branches properly)
         WorkspaceManager::ensure_workspace_exists(
             &workspace_dir,
             &repositories,
@@ -988,11 +995,21 @@ impl ContainerService for LocalContainerService {
         )
         .await?;
 
+        // Update container_ref if it was NULL
+        if task_attempt.container_ref.is_none() {
+            TaskAttempt::update_container_ref(
+                &self.db.pool,
+                task_attempt.id,
+                &workspace_dir.to_string_lossy(),
+            )
+            .await?;
+        }
+
         // Copy project files and images (fast no-op if already exist)
         self.copy_files_and_images(&workspace_dir, task_attempt)
             .await?;
 
-        Ok(container_ref.to_string())
+        Ok(workspace_dir.to_string_lossy().to_string())
     }
 
     async fn is_container_clean(&self, task_attempt: &TaskAttempt) -> Result<bool, ContainerError> {
