@@ -33,8 +33,15 @@ uuid = { version = "1", features = ["serde", "v4"] }
 jsonwebtoken = "9"
 rand = "0.9"
 sha2 = "0.10"
+hmac = "0.12"
+subtle = "2.5"
+hex = "0.4"
+urlencoding = "2.1"
 url = "2.5"
 base64 = "0.22"
 aws-config = { version = "1.5", default-features = false, features = ["behavior-version-latest", "rustls"] }
 aws-sdk-s3 = { version = "1.65", default-features = false, features = ["behavior-version-latest", "rustls"] }
 aws-credential-types = "1.2"
+tempfile = "3"
+tar = "0.4"
+flate2 = "1.0"

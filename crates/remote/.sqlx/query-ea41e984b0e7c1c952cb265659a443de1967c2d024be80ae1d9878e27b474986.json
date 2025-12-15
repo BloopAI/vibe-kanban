@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE github_app_installations\n            SET repository_selection = $2, updated_at = NOW()\n            WHERE github_installation_id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ea41e984b0e7c1c952cb265659a443de1967c2d024be80ae1d9878e27b474986"
+}

@@ -16,6 +16,7 @@ use crate::{AppState, auth::require_session};
 
 mod electric_proxy;
 mod error;
+mod github_app;
 mod identity;
 mod oauth;
 pub(crate) mod organization_members;
@@ -51,7 +52,8 @@ pub fn router(state: AppState) -> Router {
         .merge(oauth::public_router())
         .merge(organization_members::public_router())
         .merge(tokens::public_router())
-        .merge(review::public_router());
+        .merge(review::public_router())
+        .merge(github_app::public_router());
 
     let v1_protected = Router::<AppState>::new()
         .merge(identity::router())
@@ -61,6 +63,7 @@ pub fn router(state: AppState) -> Router {
         .merge(organization_members::protected_router())
         .merge(oauth::protected_router())
         .merge(electric_proxy::router())
+        .merge(github_app::protected_router())
         .layer(middleware::from_fn_with_state(
             state.clone(),
             require_session,

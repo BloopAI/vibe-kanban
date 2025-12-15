@@ -366,7 +366,7 @@ pub async fn get_review_diff(
 }
 
 /// POST /review/:id/success - Called by worker when review completes successfully
-/// Sends success notification email to the user
+/// Sends success notification email to the user, or posts PR comment for webhook reviews
 pub async fn review_success(
     State(state): State<AppState>,
     Path(id): Path<String>,
@@ -383,17 +383,46 @@ pub async fn review_success(
     // Build review URL
     let review_url = format!("{}/review/{}", state.server_public_base_url, review_id);
 
-    // Send success notification email
-    state
-        .mailer
-        .send_review_ready(&review.email, &review_url, &review.pr_title)
-        .await;
+    // Check if this is a webhook-triggered review
+    if review.is_webhook_review() {
+        // Post PR comment instead of sending email
+        if let Some(github_app) = state.github_app() {
+            let comment = format!(
+                "## Vibe Kanban Review Complete\n\n\
+                Your code review is ready!\n\n\
+                **[View Review]({})**",
+                review_url
+            );
+
+            let installation_id = review.github_installation_id.unwrap_or(0);
+            let pr_owner = review.pr_owner.as_deref().unwrap_or("");
+            let pr_repo = review.pr_repo.as_deref().unwrap_or("");
+            let pr_number = review.pr_number.unwrap_or(0) as u64;
+
+            if let Err(e) = github_app
+                .post_pr_comment(installation_id, pr_owner, pr_repo, pr_number, &comment)
+                .await
+            {
+                tracing::error!(
+                    ?e,
+                    review_id = %review_id,
+                    "Failed to post success comment to PR"
+                );
+            }
+        }
+    } else if let Some(email) = &review.email {
+        // CLI review - send email notification
+        state
+            .mailer
+            .send_review_ready(email, &review_url, &review.pr_title)
+            .await;
+    }
 
     Ok(StatusCode::OK)
 }
 
 /// POST /review/:id/failed - Called by worker when review fails
-/// Sends failure notification email to the user
+/// Sends failure notification email to the user, or posts PR comment for webhook reviews
 pub async fn review_failed(
     State(state): State<AppState>,
     Path(id): Path<String>,
@@ -407,11 +436,40 @@ pub async fn review_failed(
     // Mark review as failed
     repo.mark_failed(review_id).await?;
 
-    // Send failure notification email
-    state
-        .mailer
-        .send_review_failed(&review.email, &review.pr_title, &review_id.to_string())
-        .await;
+    // Check if this is a webhook-triggered review
+    if review.is_webhook_review() {
+        // Post PR comment instead of sending email
+        if let Some(github_app) = state.github_app() {
+            let comment = format!(
+                "## Vibe Kanban Review Failed\n\n\
+                Unfortunately, the code review could not be completed.\n\n\
+                Review ID: `{}`",
+                review_id
+            );
+
+            let installation_id = review.github_installation_id.unwrap_or(0);
+            let pr_owner = review.pr_owner.as_deref().unwrap_or("");
+            let pr_repo = review.pr_repo.as_deref().unwrap_or("");
+            let pr_number = review.pr_number.unwrap_or(0) as u64;
+
+            if let Err(e) = github_app
+                .post_pr_comment(installation_id, pr_owner, pr_repo, pr_number, &comment)
+                .await
+            {
+                tracing::error!(
+                    ?e,
+                    review_id = %review_id,
+                    "Failed to post failure comment to PR"
+                );
+            }
+        }
+    } else if let Some(email) = &review.email {
+        // CLI review - send email notification
+        state
+            .mailer
+            .send_review_failed(email, &review.pr_title, &review_id.to_string())
+            .await;
+    }
 
     Ok(StatusCode::OK)
 }

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM github_app_pending_installations\n            WHERE state_token = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9889a5e2b2b849138e5af7bb649c9833cfa4fbc45c3bed269d25a8ada30634e4"
+}

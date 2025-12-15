@@ -46,7 +46,7 @@ FROM debian:bookworm-slim AS runtime
 ARG APP_NAME
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates libssl3 wget \
+  && apt-get install -y --no-install-recommends ca-certificates libssl3 wget git \
   && rm -rf /var/lib/apt/lists/* \
   && useradd --system --create-home --uid 10001 appuser
 

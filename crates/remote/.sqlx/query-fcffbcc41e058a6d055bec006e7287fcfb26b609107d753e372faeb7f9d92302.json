@@ -1,0 +1,81 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO github_app_installations (\n                organization_id,\n                github_installation_id,\n                github_account_login,\n                github_account_type,\n                repository_selection,\n                installed_by_user_id\n            )\n            VALUES ($1, $2, $3, $4, $5, $6)\n            ON CONFLICT (github_installation_id) DO UPDATE SET\n                organization_id = EXCLUDED.organization_id,\n                github_account_login = EXCLUDED.github_account_login,\n                github_account_type = EXCLUDED.github_account_type,\n                repository_selection = EXCLUDED.repository_selection,\n                installed_by_user_id = EXCLUDED.installed_by_user_id,\n                suspended_at = NULL,\n                updated_at = NOW()\n            RETURNING\n                id,\n                organization_id,\n                github_installation_id,\n                github_account_login,\n                github_account_type,\n                repository_selection,\n                installed_by_user_id,\n                suspended_at,\n                created_at,\n                updated_at\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "organization_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "github_installation_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "github_account_login",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "github_account_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "repository_selection",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "installed_by_user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 7,
+        "name": "suspended_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8",
+        "Text",
+        "Text",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "fcffbcc41e058a6d055bec006e7287fcfb26b609107d753e372faeb7f9d92302"
+}

@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod github_app;
 pub mod identity_errors;
 pub mod invitations;
 pub mod oauth;

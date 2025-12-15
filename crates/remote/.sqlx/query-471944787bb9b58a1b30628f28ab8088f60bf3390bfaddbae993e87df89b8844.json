@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id,\n                organization_id,\n                github_installation_id,\n                github_account_login,\n                github_account_type,\n                repository_selection,\n                installed_by_user_id,\n                suspended_at,\n                created_at,\n                updated_at\n            FROM github_app_installations\n            WHERE github_installation_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "organization_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "github_installation_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "github_account_login",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "github_account_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "repository_selection",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "installed_by_user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 7,
+        "name": "suspended_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "471944787bb9b58a1b30628f28ab8088f60bf3390bfaddbae993e87df89b8844"
+}

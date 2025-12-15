@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                id,\n                gh_pr_url,\n                claude_code_session_id,\n                ip_address AS \"ip_address: IpNetwork\",\n                review_cache,\n                last_viewed_at,\n                r2_path,\n                deleted_at,\n                created_at,\n                email,\n                pr_title,\n                status\n            FROM reviews\n            WHERE id = $1 AND deleted_at IS NULL\n            ",
+  "query": "\n            INSERT INTO reviews (id, gh_pr_url, claude_code_session_id, ip_address, r2_path, email, pr_title)\n            VALUES ($1, $2, $3, $4, $5, $6, $7)\n            RETURNING\n                id,\n                gh_pr_url,\n                claude_code_session_id,\n                ip_address AS \"ip_address: IpNetwork\",\n                review_cache,\n                last_viewed_at,\n                r2_path,\n                deleted_at,\n                created_at,\n                email,\n                pr_title,\n                status,\n                github_installation_id,\n                pr_owner,\n                pr_repo,\n                pr_number\n            ",
   "describe": {
     "columns": [
       {
@@ -62,27 +62,57 @@
         "ordinal": 11,
         "name": "status",
         "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "github_installation_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 13,
+        "name": "pr_owner",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "pr_repo",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "pr_number",
+        "type_info": "Int4"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Uuid",
+        "Text",
+        "Text",
+        "Inet",
+        "Text",
+        "Text",
+        "Text"
       ]
     },
     "nullable": [
       false,
       false,
       true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
       false,
       true,
       true,
-      false,
       true,
-      false,
-      false,
-      false,
-      false
+      true
     ]
   },
-  "hash": "dfb52ca6c9d581ba8dbc624cab50525b77627b75a01e4ccfe983865205cbbde1"
+  "hash": "8fc5f7e1920e9d43034aeaacb0a00739e0ee3cd00d06a692beac0f0fb2324ac8"
 }

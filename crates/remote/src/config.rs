@@ -15,6 +15,7 @@ pub struct RemoteServerConfig {
     pub electric_role_password: Option<SecretString>,
     pub r2: Option<R2Config>,
     pub review_worker_base_url: Option<String>,
+    pub github_app: Option<GitHubAppConfig>,
 }
 
 #[derive(Debug, Clone)]
@@ -64,6 +65,55 @@ impl R2Config {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct GitHubAppConfig {
+    pub app_id: u64,
+    pub private_key: SecretString, // Base64-encoded PEM
+    pub webhook_secret: SecretString,
+    pub app_slug: String,
+}
+
+impl GitHubAppConfig {
+    pub fn from_env() -> Result<Option<Self>, ConfigError> {
+        let app_id = match env::var("GITHUB_APP_ID") {
+            Ok(v) => v,
+            Err(_) => {
+                tracing::info!("GITHUB_APP_ID not set, GitHub App integration disabled");
+                return Ok(None);
+            }
+        };
+
+        let app_id: u64 = app_id
+            .parse()
+            .map_err(|_| ConfigError::InvalidVar("GITHUB_APP_ID"))?;
+
+        tracing::info!("GITHUB_APP_ID is set, checking other GitHub App env vars");
+
+        let private_key = env::var("GITHUB_APP_PRIVATE_KEY")
+            .map_err(|_| ConfigError::MissingVar("GITHUB_APP_PRIVATE_KEY"))?;
+
+        // Validate that the private key is valid base64
+        BASE64_STANDARD
+            .decode(private_key.as_bytes())
+            .map_err(|_| ConfigError::InvalidVar("GITHUB_APP_PRIVATE_KEY"))?;
+
+        let webhook_secret = env::var("GITHUB_APP_WEBHOOK_SECRET")
+            .map_err(|_| ConfigError::MissingVar("GITHUB_APP_WEBHOOK_SECRET"))?;
+
+        let app_slug =
+            env::var("GITHUB_APP_SLUG").map_err(|_| ConfigError::MissingVar("GITHUB_APP_SLUG"))?;
+
+        tracing::info!(app_id = %app_id, app_slug = %app_slug, "GitHub App config loaded successfully");
+
+        Ok(Some(Self {
+            app_id,
+            private_key: SecretString::new(private_key.into()),
+            webhook_secret: SecretString::new(webhook_secret.into()),
+            app_slug,
+        }))
+    }
+}
+
 #[derive(Debug, Error)]
 pub enum ConfigError {
     #[error("environment variable `{0}` is not set")]
@@ -102,6 +152,8 @@ impl RemoteServerConfig {
 
         let review_worker_base_url = env::var("REVIEW_WORKER_BASE_URL").ok();
 
+        let github_app = GitHubAppConfig::from_env()?;
+
         Ok(Self {
             database_url,
             listen_addr,
@@ -112,6 +164,7 @@ impl RemoteServerConfig {
             electric_role_password,
             r2,
             review_worker_base_url,
+            github_app,
         })
     }
 }

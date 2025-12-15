@@ -20,18 +20,30 @@ pub struct Review {
     pub id: Uuid,
     pub gh_pr_url: String,
     pub claude_code_session_id: Option<String>,
-    pub ip_address: IpNetwork,
+    pub ip_address: Option<IpNetwork>,
     pub review_cache: Option<serde_json::Value>,
     pub last_viewed_at: Option<DateTime<Utc>>,
     pub r2_path: String,
     pub deleted_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
-    pub email: String,
+    pub email: Option<String>,
     pub pr_title: String,
     pub status: String,
+    // Webhook-specific fields
+    pub github_installation_id: Option<i64>,
+    pub pr_owner: Option<String>,
+    pub pr_repo: Option<String>,
+    pub pr_number: Option<i32>,
 }
 
-/// Parameters for creating a new review
+impl Review {
+    /// Returns true if this review was triggered by a GitHub webhook
+    pub fn is_webhook_review(&self) -> bool {
+        self.github_installation_id.is_some()
+    }
+}
+
+/// Parameters for creating a new review (CLI-triggered)
 pub struct CreateReviewParams<'a> {
     pub id: Uuid,
     pub gh_pr_url: &'a str,
@@ -40,6 +52,18 @@ pub struct CreateReviewParams<'a> {
     pub r2_path: &'a str,
     pub email: &'a str,
     pub pr_title: &'a str,
+}
+
+/// Parameters for creating a webhook-triggered review
+pub struct CreateWebhookReviewParams<'a> {
+    pub id: Uuid,
+    pub gh_pr_url: &'a str,
+    pub r2_path: &'a str,
+    pub pr_title: &'a str,
+    pub github_installation_id: i64,
+    pub pr_owner: &'a str,
+    pub pr_repo: &'a str,
+    pub pr_number: i32,
 }
 
 pub struct ReviewRepository<'a> {
@@ -71,7 +95,11 @@ impl<'a> ReviewRepository<'a> {
                 created_at,
                 email,
                 pr_title,
-                status
+                status,
+                github_installation_id,
+                pr_owner,
+                pr_repo,
+                pr_number
             "#,
             params.id,
             params.gh_pr_url,
@@ -80,6 +108,48 @@ impl<'a> ReviewRepository<'a> {
             params.r2_path,
             params.email,
             params.pr_title
+        )
+        .fetch_one(self.pool)
+        .await
+        .map_err(ReviewError::from)
+    }
+
+    /// Create a webhook-triggered review (no email/IP)
+    pub async fn create_webhook_review(
+        &self,
+        params: CreateWebhookReviewParams<'_>,
+    ) -> Result<Review, ReviewError> {
+        query_as!(
+            Review,
+            r#"
+            INSERT INTO reviews (id, gh_pr_url, r2_path, pr_title, github_installation_id, pr_owner, pr_repo, pr_number)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING
+                id,
+                gh_pr_url,
+                claude_code_session_id,
+                ip_address AS "ip_address: IpNetwork",
+                review_cache,
+                last_viewed_at,
+                r2_path,
+                deleted_at,
+                created_at,
+                email,
+                pr_title,
+                status,
+                github_installation_id,
+                pr_owner,
+                pr_repo,
+                pr_number
+            "#,
+            params.id,
+            params.gh_pr_url,
+            params.r2_path,
+            params.pr_title,
+            params.github_installation_id,
+            params.pr_owner,
+            params.pr_repo,
+            params.pr_number
         )
         .fetch_one(self.pool)
         .await
@@ -104,7 +174,11 @@ impl<'a> ReviewRepository<'a> {
                 created_at,
                 email,
                 pr_title,
-                status
+                status,
+                github_installation_id,
+                pr_owner,
+                pr_repo,
+                pr_number
             FROM reviews
             WHERE id = $1 AND deleted_at IS NULL
             "#,

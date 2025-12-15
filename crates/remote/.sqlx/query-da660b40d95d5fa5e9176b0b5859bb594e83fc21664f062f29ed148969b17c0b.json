@@ -1,0 +1,112 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id,\n                gh_pr_url,\n                claude_code_session_id,\n                ip_address AS \"ip_address: IpNetwork\",\n                review_cache,\n                last_viewed_at,\n                r2_path,\n                deleted_at,\n                created_at,\n                email,\n                pr_title,\n                status,\n                github_installation_id,\n                pr_owner,\n                pr_repo,\n                pr_number\n            FROM reviews\n            WHERE id = $1 AND deleted_at IS NULL\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "gh_pr_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "claude_code_session_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "ip_address: IpNetwork",
+        "type_info": "Inet"
+      },
+      {
+        "ordinal": 4,
+        "name": "review_cache",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 5,
+        "name": "last_viewed_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "r2_path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "deleted_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "pr_title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "github_installation_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 13,
+        "name": "pr_owner",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "pr_repo",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "pr_number",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "da660b40d95d5fa5e9176b0b5859bb594e83fc21664f062f29ed148969b17c0b"
+}

@@ -1,7 +1,7 @@
 services:
   remote-db:
     image: postgres:16-alpine
-    command: ["postgres", "-c", "wal_level=logical"]
+    command: [ "postgres", "-c", "wal_level=logical" ]
     environment:
       POSTGRES_DB: remote
       POSTGRES_USER: remote
@@ -62,6 +62,10 @@ services:
       R2_REVIEW_ENDPOINT: ${R2_REVIEW_ENDPOINT:-}
       R2_REVIEW_BUCKET: ${R2_REVIEW_BUCKET:-}
       REVIEW_WORKER_BASE_URL: ${REVIEW_WORKER_BASE_URL:-}
+      GITHUB_APP_ID: ${GITHUB_APP_ID:-}
+      GITHUB_APP_PRIVATE_KEY: ${GITHUB_APP_PRIVATE_KEY:-}
+      GITHUB_APP_WEBHOOK_SECRET: ${GITHUB_APP_WEBHOOK_SECRET:-}
+      GITHUB_APP_SLUG: ${GITHUB_APP_SLUG:-}
     ports:
       - "127.0.0.1:3000:8081"
     restart: unless-stopped

@@ -5,6 +5,7 @@ use aws_sdk_s3::{
     Client,
     config::{Builder as S3ConfigBuilder, IdentityCache},
     presigning::PresigningConfig,
+    primitives::ByteStream,
 };
 use chrono::{DateTime, Utc};
 use secrecy::ExposeSecret;
@@ -37,6 +38,8 @@ pub enum R2Error {
     PresignConfig(String),
     #[error("presign error: {0}")]
     Presign(String),
+    #[error("upload error: {0}")]
+    Upload(String),
 }
 
 impl R2Service {
@@ -107,5 +110,25 @@ impl R2Service {
             folder_path,
             expires_at,
         })
+    }
+
+    /// Upload bytes directly to R2 (for server-side uploads).
+    ///
+    /// Returns the folder path (e.g., "reviews/{review_id}") to store in the database.
+    pub async fn upload_bytes(&self, review_id: Uuid, data: Vec<u8>) -> Result<String, R2Error> {
+        let folder_path = format!("reviews/{review_id}");
+        let object_key = format!("{folder_path}/{PAYLOAD_FILENAME}");
+
+        self.client
+            .put_object()
+            .bucket(&self.bucket)
+            .key(&object_key)
+            .body(ByteStream::from(data))
+            .content_type("application/gzip")
+            .send()
+            .await
+            .map_err(|e| R2Error::Upload(e.to_string()))?;
+
+        Ok(folder_path)
     }
 }

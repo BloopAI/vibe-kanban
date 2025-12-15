@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO github_app_repositories (installation_id, github_repo_id, repo_full_name)\n                VALUES ($1, $2, $3)\n                ON CONFLICT (installation_id, github_repo_id) DO UPDATE SET\n                    repo_full_name = EXCLUDED.repo_full_name\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5ce478f8221034468e5ea9ec66051e724d7054f8c62106795bccf9fd5366696d"
+}

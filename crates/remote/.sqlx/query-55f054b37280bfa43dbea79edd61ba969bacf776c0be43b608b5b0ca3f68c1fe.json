@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM github_app_pending_installations\n            WHERE expires_at < NOW()\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "55f054b37280bfa43dbea79edd61ba969bacf776c0be43b608b5b0ca3f68c1fe"
+}
