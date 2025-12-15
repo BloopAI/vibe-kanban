@@ -70,6 +70,7 @@ function getBinaryName(base) {
 const platformDir = getPlatformDir();
 const extractDir = path.join(__dirname, "..", "dist", platformDir);
 const isMcpMode = process.argv.includes("--mcp");
+const userArgs = process.argv.slice(2).filter((arg) => arg !== "--mcp");
 
 // ensure output dir
 fs.mkdirSync(extractDir, { recursive: true });
@@ -130,8 +131,8 @@ function extractAndRun(baseName, launch) {
 
 if (isMcpMode) {
   extractAndRun("vibe-kanban-mcp", (bin) => {
-    const proc = spawn(bin, [], { stdio: "inherit" });
-    proc.on("exit", (c) => process.exit(c || 0));
+    const proc = spawn(bin, userArgs, { stdio: "inherit" });
+    proc.on("exit", (c) => process.exit(c ?? 0));
     proc.on("error", (e) => {
       console.error("❌ MCP server error:", e.message);
       process.exit(1);
@@ -146,10 +147,13 @@ if (isMcpMode) {
   console.log(`📦 Extracting vibe-kanban...`);
   extractAndRun("vibe-kanban", (bin) => {
     console.log(`🚀 Launching vibe-kanban...`);
-    if (platform === "win32") {
-      execSync(`"${bin}"`, { stdio: "inherit" });
-    } else {
-      execSync(`"${bin}"`, { stdio: "inherit" });
-    }
+    const proc = spawn(bin, userArgs, { stdio: "inherit" });
+    proc.on("exit", (c) => process.exit(c ?? 0));
+    proc.on("error", (e) => {
+      console.error("❌ vibe-kanban error:", e.message);
+      process.exit(1);
+    });
+    process.on("SIGINT", () => proc.kill("SIGINT"));
+    process.on("SIGTERM", () => proc.kill("SIGTERM"));
   });
 }
