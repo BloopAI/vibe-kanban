@@ -426,7 +426,7 @@ function GitOperations({
       <div className={containerClasses}>
         {isVertical ? (
           <>
-            <div className="flex items-center gap-2 min-w-0 overflow-hidden">
+            <div className="flex flex-wrap items-center gap-2 min-w-0">
               {repos.length > 0 && (
                 <RepoSelector
                   repos={repos}
