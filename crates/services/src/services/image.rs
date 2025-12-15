@@ -162,8 +162,6 @@ impl ImageService {
         Ok(())
     }
 
-    /// Copy images for a task to the worktree.
-    /// Skips images that already exist at target (fast no-op if all exist).
     pub async fn copy_images_by_task_to_worktree(
         &self,
         worktree_path: &Path,
