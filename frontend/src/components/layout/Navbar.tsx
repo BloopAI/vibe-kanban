@@ -20,7 +20,6 @@ import {
   LogOut,
   LogIn,
 } from 'lucide-react';
-import { Logo } from '@/components/Logo';
 import { SearchBar } from '@/components/SearchBar';
 import { useSearch } from '@/contexts/SearchContext';
 import { openTaskForm } from '@/lib/openTaskForm';
