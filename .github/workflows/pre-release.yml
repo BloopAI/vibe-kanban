@@ -477,8 +477,101 @@ jobs:
           path: npx-cli/dist/
           retention-days: 1
 
+  upload-to-r2:
+    needs: [bump-version, package-npx-cli]
+    runs-on: ubuntu-latest-m
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.bump-version.outputs.new_tag }}
+
+      - name: Download all platform packages
+        uses: actions/download-artifact@v4
+        with:
+          pattern: npx-platform-*
+          path: binaries/
+          merge-multiple: true
+
+      - name: List downloaded binaries
+        run: |
+          echo "Downloaded binaries:"
+          find binaries/
+
+      - name: Configure AWS CLI for R2
+        run: |
+          aws configure set aws_access_key_id ${{ secrets.R2_BINARIES_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.R2_BINARIES_SECRET_ACCESS_KEY }}
+          aws configure set default.region auto
+
+      - name: Generate manifest and upload to R2
+        run: |
+          VERSION="${{ needs.bump-version.outputs.new_version }}"
+          ENDPOINT="${{ secrets.R2_BINARIES_ENDPOINT }}"
+          BUCKET="${{ secrets.R2_BINARIES_BUCKET }}"
+
+          # Generate version manifest with checksums
+          node -e "
+            const fs = require('fs');
+            const crypto = require('crypto');
+            const manifest = { version: '$VERSION', platforms: {} };
+            const platforms = ['linux-x64', 'linux-arm64', 'windows-x64', 'windows-arm64', 'macos-x64', 'macos-arm64'];
+            const binaries = ['vibe-kanban', 'vibe-kanban-mcp', 'vibe-kanban-review'];
+
+            for (const platform of platforms) {
+              manifest.platforms[platform] = {};
+              for (const binary of binaries) {
+                const zipPath = \`binaries/\${platform}/\${binary}.zip\`;
+                if (fs.existsSync(zipPath)) {
+                  const data = fs.readFileSync(zipPath);
+                  manifest.platforms[platform][binary] = {
+                    sha256: crypto.createHash('sha256').update(data).digest('hex'),
+                    size: data.length
+                  };
+                }
+              }
+            }
+            fs.writeFileSync('version-manifest.json', JSON.stringify(manifest, null, 2));
+            console.log('Generated manifest:');
+            console.log(JSON.stringify(manifest, null, 2));
+          "
+
+          # Upload binaries
+          for platform in linux-x64 linux-arm64 windows-x64 windows-arm64 macos-x64 macos-arm64; do
+            for binary in vibe-kanban vibe-kanban-mcp vibe-kanban-review; do
+              if [ -f "binaries/$platform/$binary.zip" ]; then
+                echo "Uploading binaries/$platform/$binary.zip..."
+                aws s3 cp "binaries/$platform/$binary.zip" \
+                  "s3://$BUCKET/binaries/v$VERSION/$platform/$binary.zip" \
+                  --endpoint-url "$ENDPOINT"
+              fi
+            done
+          done
+
+          # Upload version manifest
+          echo "Uploading version manifest..."
+          aws s3 cp version-manifest.json \
+            "s3://$BUCKET/binaries/v$VERSION/manifest.json" \
+            --endpoint-url "$ENDPOINT" --content-type "application/json"
+
+          # Update global manifest
+          echo "Updating global manifest..."
+          echo "{\"latest\": \"$VERSION\"}" | aws s3 cp - \
+            "s3://$BUCKET/binaries/manifest.json" \
+            --endpoint-url "$ENDPOINT" --content-type "application/json"
+
+      - name: Verify upload
+        run: |
+          VERSION="${{ needs.bump-version.outputs.new_version }}"
+          ENDPOINT="${{ secrets.R2_BINARIES_ENDPOINT }}"
+          BUCKET="${{ secrets.R2_BINARIES_BUCKET }}"
+
+          echo "Listing uploaded files..."
+          aws s3 ls "s3://$BUCKET/binaries/v$VERSION/" \
+            --endpoint-url "$ENDPOINT" \
+            --recursive
+
   create-prerelease:
-    needs: [bump-version, build-frontend, build-backend, package-npx-cli]
+    needs: [bump-version, build-frontend, upload-to-r2]
     runs-on: ubuntu-latest-m
     steps:
       - uses: actions/checkout@v4
@@ -491,17 +584,8 @@ jobs:
           name: frontend-dist
           path: frontend/dist/
 
-      - name: Download backend npx-cli zips
-        uses: actions/download-artifact@v4
-        with:
-          pattern: npx-platform-*
-          path: npx-cli/dist/
-          merge-multiple: true
-
       - name: List downloaded artifacts
         run: |
-          echo "Backend dist:"
-          find npx-cli/dist
           echo "Frontend dist:"
           find frontend/dist
 
@@ -514,9 +598,11 @@ jobs:
       - name: Setup Node for npm pack
         uses: ./.github/actions/setup-node
 
-      - name: Pack
+      - name: Inject R2 URL and Pack
         run: |
           cd npx-cli
+          # Replace placeholder with actual R2 public URL
+          sed -i "s|__R2_PUBLIC_URL__|${{ secrets.R2_BINARIES_PUBLIC_URL }}|g" bin/download.js
           npm pack
 
       - name: Create GitHub Pre-Release

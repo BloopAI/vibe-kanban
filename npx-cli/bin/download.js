@@ -1,0 +1,114 @@
+const https = require("https");
+const fs = require("fs");
+const path = require("path");
+const crypto = require("crypto");
+
+// Replaced during npm pack by workflow
+const R2_BASE_URL = "__R2_PUBLIC_URL__";
+const CACHE_DIR = path.join(require("os").homedir(), ".vibe-kanban", "bin");
+
+async function fetchJson(url) {
+  return new Promise((resolve, reject) => {
+    https.get(url, (res) => {
+      if (res.statusCode === 301 || res.statusCode === 302) {
+        return fetchJson(res.headers.location).then(resolve).catch(reject);
+      }
+      if (res.statusCode !== 200) {
+        return reject(new Error(`HTTP ${res.statusCode} fetching ${url}`));
+      }
+      let data = "";
+      res.on("data", (chunk) => (data += chunk));
+      res.on("end", () => {
+        try {
+          resolve(JSON.parse(data));
+        } catch (e) {
+          reject(new Error(`Failed to parse JSON from ${url}`));
+        }
+      });
+    }).on("error", reject);
+  });
+}
+
+async function downloadFile(url, destPath, expectedSha256, onProgress) {
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(destPath);
+    const hash = crypto.createHash("sha256");
+
+    https.get(url, (res) => {
+      if (res.statusCode === 301 || res.statusCode === 302) {
+        file.close();
+        try {
+          fs.unlinkSync(destPath);
+        } catch {}
+        return downloadFile(res.headers.location, destPath, expectedSha256, onProgress)
+          .then(resolve)
+          .catch(reject);
+      }
+
+      if (res.statusCode !== 200) {
+        file.close();
+        try {
+          fs.unlinkSync(destPath);
+        } catch {}
+        return reject(new Error(`HTTP ${res.statusCode} downloading ${url}`));
+      }
+
+      const totalSize = parseInt(res.headers["content-length"], 10);
+      let downloadedSize = 0;
+
+      res.on("data", (chunk) => {
+        downloadedSize += chunk.length;
+        hash.update(chunk);
+        if (onProgress) onProgress(downloadedSize, totalSize);
+      });
+      res.pipe(file);
+
+      file.on("finish", () => {
+        file.close();
+        const actualSha256 = hash.digest("hex");
+        if (expectedSha256 && actualSha256 !== expectedSha256) {
+          try {
+            fs.unlinkSync(destPath);
+          } catch {}
+          reject(new Error(`Checksum mismatch: expected ${expectedSha256}, got ${actualSha256}`));
+        } else {
+          resolve(destPath);
+        }
+      });
+    }).on("error", (err) => {
+      file.close();
+      try {
+        fs.unlinkSync(destPath);
+      } catch {}
+      reject(err);
+    });
+  });
+}
+
+async function ensureBinary(version, platform, binaryName, onProgress) {
+  const cacheDir = path.join(CACHE_DIR, version, platform);
+  const zipPath = path.join(cacheDir, `${binaryName}.zip`);
+
+  if (fs.existsSync(zipPath)) return zipPath;
+
+  fs.mkdirSync(cacheDir, { recursive: true });
+
+  const manifest = await fetchJson(`${R2_BASE_URL}/binaries/v${version}/manifest.json`);
+  const binaryInfo = manifest.platforms?.[platform]?.[binaryName];
+
+  if (!binaryInfo) {
+    throw new Error(`Binary ${binaryName} not available for ${platform}`);
+  }
+
+  const url = `${R2_BASE_URL}/binaries/v${version}/${platform}/${binaryName}.zip`;
+  await downloadFile(url, zipPath, binaryInfo.sha256, onProgress);
+
+  return zipPath;
+}
+
+async function getLatestVersion() {
+  const manifest = await fetchJson(`${R2_BASE_URL}/binaries/manifest.json`);
+  return manifest.latest;
+}
+
+module.exports = { R2_BASE_URL, CACHE_DIR, ensureBinary, getLatestVersion };

@@ -4,6 +4,9 @@ const { execSync, spawn } = require("child_process");
 const AdmZip = require("adm-zip");
 const path = require("path");
 const fs = require("fs");
+const { ensureBinary, CACHE_DIR, getLatestVersion } = require("./download");
+
+const CLI_VERSION = require("../package.json").version;
 
 // Resolve effective arch for our published 64-bit binaries only.
 // Any ARM → arm64; anything else → x64. On macOS, handle Rosetta.
@@ -12,7 +15,7 @@ function getEffectiveArch() {
   const nodeArch = process.arch;
 
   if (platform === "darwin") {
-    // If Node itself is arm64, we’re natively on Apple silicon
+    // If Node itself is arm64, we're natively on Apple silicon
     if (nodeArch === "arm64") return "arm64";
 
     // Otherwise check for Rosetta translation
@@ -52,7 +55,7 @@ function getPlatformDir() {
   if (platform === "darwin" && arch === "x64") return "macos-x64";
   if (platform === "darwin" && arch === "arm64") return "macos-arm64";
 
-  console.error(`❌ Unsupported platform: ${platform}-${arch}`);
+  console.error(`Unsupported platform: ${platform}-${arch}`);
   console.error("Supported platforms:");
   console.error("  - Linux x64");
   console.error("  - Linux ARM64");
@@ -68,101 +71,131 @@ function getBinaryName(base) {
 }
 
 const platformDir = getPlatformDir();
-const extractDir = path.join(__dirname, "..", "dist", platformDir);
-const args = process.argv.slice(2);
-const isMcpMode = process.argv.includes("--mcp");
-const isReviewMode = args[0] === "review";
+const versionCacheDir = path.join(CACHE_DIR, CLI_VERSION, platformDir);
 
-// ensure output dir
-fs.mkdirSync(extractDir, { recursive: true });
+function showProgress(downloaded, total) {
+  const percent = total ? Math.round((downloaded / total) * 100) : 0;
+  const mb = (downloaded / (1024 * 1024)).toFixed(1);
+  const totalMb = total ? (total / (1024 * 1024)).toFixed(1) : "?";
+  process.stdout.write(`\r   Downloading: ${mb}MB / ${totalMb}MB (${percent}%)`);
+}
 
-function extractAndRun(baseName, launch) {
+async function extractAndRun(baseName, launch) {
   const binName = getBinaryName(baseName);
-  const binPath = path.join(extractDir, binName);
-  const zipName = `${baseName}.zip`;
-  const zipPath = path.join(extractDir, zipName);
+  const binPath = path.join(versionCacheDir, binName);
+  const zipPath = path.join(versionCacheDir, `${baseName}.zip`);
 
-  // clean old binary
+  // Clean old binary if exists
   try {
     if (fs.existsSync(binPath)) {
       fs.unlinkSync(binPath);
     }
   } catch (err) {
-    // If the binary is in use, we can't delete it.
-    // We'll skip extraction and try to use the existing one.
     if (process.env.VIBE_KANBAN_DEBUG) {
-      console.warn(`⚠️  Could not delete existing binary (likely in use): ${err.message}`);
+      console.warn(`Warning: Could not delete existing binary: ${err.message}`);
     }
-  }
-  
-  if (!fs.existsSync(zipPath)) {
-    console.error(`❌ ${zipName} not found at: ${zipPath}`);
-    console.error(`Current platform: ${platform}-${arch} (${platformDir})`);
-    process.exit(1);
   }
 
-  // extract
-  try {
-    if (!fs.existsSync(binPath)) {
-        const zip = new AdmZip(zipPath);
-        zip.extractAllTo(extractDir, true);
+  // Download if not cached
+  if (!fs.existsSync(zipPath)) {
+    console.log(`Downloading ${baseName}...`);
+    try {
+      await ensureBinary(CLI_VERSION, platformDir, baseName, showProgress);
+      console.log(""); // newline after progress
+    } catch (err) {
+      console.error(`\nDownload failed: ${err.message}`);
+      process.exit(1);
     }
-  } catch (err) {
-    console.error("❌ Failed to extract vibe-kanban archive:", err.message);
-    if (process.env.VIBE_KANBAN_DEBUG) {
-      console.error(err.stack);
+  }
+
+  // Extract
+  if (!fs.existsSync(binPath)) {
+    try {
+      const zip = new AdmZip(zipPath);
+      zip.extractAllTo(versionCacheDir, true);
+    } catch (err) {
+      console.error("Extraction failed:", err.message);
+      try {
+        fs.unlinkSync(zipPath);
+      } catch {}
+      process.exit(1);
     }
-    process.exit(1);
   }
 
   if (!fs.existsSync(binPath)) {
-    console.error(`❌ Extracted binary not found at: ${binPath}`);
-    console.error("This usually indicates a corrupt download. Please reinstall the package.");
+    console.error(`Extracted binary not found at: ${binPath}`);
+    console.error("This usually indicates a corrupt download. Please try again.");
     process.exit(1);
   }
 
-  // perms & launch
+  // Set permissions (non-Windows)
   if (platform !== "win32") {
     try {
       fs.chmodSync(binPath, 0o755);
-    } catch { }
+    } catch {}
   }
+
   return launch(binPath);
 }
 
-if (isMcpMode) {
-  extractAndRun("vibe-kanban-mcp", (bin) => {
-    const proc = spawn(bin, [], { stdio: "inherit" });
-    proc.on("exit", (c) => process.exit(c || 0));
-    proc.on("error", (e) => {
-      console.error("❌ MCP server error:", e.message);
-      process.exit(1);
+async function main() {
+  fs.mkdirSync(versionCacheDir, { recursive: true });
+
+  // Non-blocking update check
+  getLatestVersion()
+    .then((latest) => {
+      if (latest && latest !== CLI_VERSION) {
+        setTimeout(() => {
+          console.log(`\nUpdate available: ${CLI_VERSION} -> ${latest}`);
+          console.log(`Run: npx vibe-kanban@latest`);
+        }, 2000);
+      }
+    })
+    .catch(() => {});
+
+  const args = process.argv.slice(2);
+  const isMcpMode = args.includes("--mcp");
+  const isReviewMode = args[0] === "review";
+
+  if (isMcpMode) {
+    await extractAndRun("vibe-kanban-mcp", (bin) => {
+      const proc = spawn(bin, [], { stdio: "inherit" });
+      proc.on("exit", (c) => process.exit(c || 0));
+      proc.on("error", (e) => {
+        console.error("MCP server error:", e.message);
+        process.exit(1);
+      });
+      process.on("SIGINT", () => {
+        proc.kill("SIGINT");
+      });
+      process.on("SIGTERM", () => proc.kill("SIGTERM"));
     });
-    process.on("SIGINT", () => {
-      console.error("\n🛑 Shutting down MCP server...");
-      proc.kill("SIGINT");
+  } else if (isReviewMode) {
+    await extractAndRun("vibe-kanban-review", (bin) => {
+      const reviewArgs = args.slice(1);
+      const proc = spawn(bin, reviewArgs, { stdio: "inherit" });
+      proc.on("exit", (c) => process.exit(c || 0));
+      proc.on("error", (e) => {
+        console.error("Review CLI error:", e.message);
+        process.exit(1);
+      });
     });
-    process.on("SIGTERM", () => proc.kill("SIGTERM"));
-  });
-} else if (isReviewMode) {
-  extractAndRun("vibe-kanban-review", (bin) => {
-    // Pass all args except 'review' to the binary
-    const reviewArgs = args.slice(1);
-    const proc = spawn(bin, reviewArgs, { stdio: "inherit" });
-    proc.on("exit", (c) => process.exit(c || 0));
-    proc.on("error", (e) => {
-      console.error("❌ Review CLI error:", e.message);
-      process.exit(1);
+  } else {
+    console.log(`Starting vibe-kanban v${CLI_VERSION}...`);
+    await extractAndRun("vibe-kanban", (bin) => {
+      if (platform === "win32") {
+        execSync(`"${bin}"`, { stdio: "inherit" });
+      } else {
+        execSync(`"${bin}"`, { stdio: "inherit" });
+      }
     });
-  });
-} else {
-  console.log(`📦 Extracting vibe-kanban...`);
-  extractAndRun("vibe-kanban", (bin) => {
-    console.log(`🚀 Launching vibe-kanban...`);
-    if (platform === "win32") {
-      execSync(`"${bin}"`, { stdio: "inherit" });
-    } else {
-      execSync(`"${bin}"`, { stdio: "inherit" });
-    }
-  });
+  }
 }
+
+main().catch((err) => {
+  console.error("Fatal error:", err.message);
+  if (process.env.VIBE_KANBAN_DEBUG) {
+    console.error(err.stack);
+  }
+  process.exit(1);
+});
