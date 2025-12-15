@@ -1,0 +1,324 @@
+name: QA Build
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref_name }} # allow concurrent builds from different branches
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  NODE_VERSION: 22
+  PNPM_VERSION: 10.13.1
+  RUST_TOOLCHAIN: nightly-2025-12-04
+
+jobs:
+  build-frontend:
+    runs-on: ubuntu-latest
+    env:
+      VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY: ${{ secrets.PUBLIC_REACT_VIRTUOSO_LICENSE_KEY }}
+      VITE_VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Lint frontend
+        run: cd frontend && npm run lint
+
+      - name: Type check frontend
+        run: cd frontend && npx tsc --noEmit
+
+      - name: Build frontend
+        run: cd frontend && npm run build
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          VITE_POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          VITE_POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
+
+      - name: Upload frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          retention-days: 1
+
+  build-backend:
+    needs: [build-frontend]
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            container: &zigbuild_container ghcr.io/rust-cross/cargo-zigbuild@sha256:af1bc2b869c5d76c1300f7a4685c2f1793d068e6e895c9f5c399b517b31a731e
+            name: linux-x64
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+            name: linux-arm64
+            container: *zigbuild_container
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest-l
+            name: windows-x64
+          - target: x86_64-apple-darwin
+            os: macos-15-intel
+            name: macos-x64
+          - target: aarch64-apple-darwin
+            os: macos-14
+            name: macos-arm64
+          - target: aarch64-pc-windows-msvc
+            os: windows-latest-l
+            name: windows-arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          targets: ${{ matrix.target }}
+          components: rustfmt, clippy
+
+      - name: Install libclang (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y clang libclang-dev
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "."
+          prefix-key: "cache-v1.0"
+          key: ${{ matrix.target }}_${{ matrix.os }}
+          cache-on-failure: true
+          shared-key: "shared"
+          cache-all-crates: true
+
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+
+      - name: Build backend (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cargo zigbuild --release --target ${{ matrix.target }} -p server
+          cargo zigbuild --release --target ${{ matrix.target }} --bin mcp_task_server
+        env:
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
+          VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
+
+      - name: Build backend (non-Linux)
+        if: runner.os != 'Linux'
+        run: |
+          cargo build --release --target ${{ matrix.target }} -p server
+          cargo build --release --target ${{ matrix.target }} --bin mcp_task_server
+        env:
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
+          VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
+
+      - name: Prepare binaries (non-macOS)
+        if: runner.os != 'macOS'
+        shell: bash
+        run: |
+          mkdir -p dist
+          if [[ "${{ matrix.os }}" == "windows-latest-l" ]]; then
+            cp target/${{ matrix.target }}/release/server.exe dist/vibe-kanban-${{ matrix.name }}.exe
+            cp target/${{ matrix.target }}/release/mcp_task_server.exe dist/vibe-kanban-mcp-${{ matrix.name }}.exe
+          else
+            cp target/${{ matrix.target }}/release/server dist/vibe-kanban-${{ matrix.name }}
+            cp target/${{ matrix.target }}/release/mcp_task_server dist/vibe-kanban-mcp-${{ matrix.name }}
+          fi
+
+      - name: Prepare Apple certificate (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          echo "${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}" | base64 --decode > certificate.p12
+
+      - name: Write API Key to file
+        if: runner.os == 'macOS'
+        env:
+          API_KEY: ${{ secrets.APP_STORE_API_KEY }}
+        run: echo $API_KEY > app_store_key.json
+
+      - name: Sign main binary (macOS)
+        if: runner.os == 'macOS'
+        uses: indygreg/apple-code-sign-action@v1
+        with:
+          input_path: target/${{ matrix.target }}/release/server
+          output_path: vibe-kanban
+          p12_file: certificate.p12
+          p12_password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          sign: true
+          sign_args: "--code-signature-flags=runtime"
+
+      - name: Package main binary (macOS)
+        if: runner.os == 'macOS'
+        run: zip vibe-kanban.zip vibe-kanban
+
+      - name: Notarize signed binary (macOS)
+        if: runner.os == 'macOS'
+        uses: indygreg/apple-code-sign-action@v1
+        continue-on-error: true
+        with:
+          input_path: vibe-kanban.zip
+          sign: false
+          notarize: true
+          app_store_connect_api_key_json_file: app_store_key.json
+
+      - name: Sign MCP binary (macOS)
+        if: runner.os == 'macOS'
+        uses: indygreg/apple-code-sign-action@v1
+        with:
+          input_path: target/${{ matrix.target }}/release/mcp_task_server
+          output_path: vibe-kanban-mcp
+          p12_file: certificate.p12
+          p12_password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          sign: true
+          sign_args: "--code-signature-flags=runtime"
+
+      - name: Package MCP binary (macOS)
+        if: runner.os == 'macOS'
+        run: zip vibe-kanban-mcp.zip vibe-kanban-mcp
+
+      - name: Notarize signed MCP binary (macOS)
+        if: runner.os == 'macOS'
+        uses: indygreg/apple-code-sign-action@v1
+        continue-on-error: true
+        with:
+          input_path: vibe-kanban-mcp.zip
+          sign: false
+          notarize: true
+          app_store_connect_api_key_json_file: app_store_key.json
+
+      - name: Prepare signed binaries (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p dist
+          cp vibe-kanban.zip dist/vibe-kanban-${{ matrix.name }}.zip
+          cp vibe-kanban-mcp.zip dist/vibe-kanban-mcp-${{ matrix.name }}.zip
+
+      - name: Clean up certificates (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          rm -f certificate.p12
+          rm -rf private_keys/
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-binary-${{ matrix.name }}
+          path: dist/
+          retention-days: 1
+
+  package-npx-cli:
+    needs: [build-backend]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            name: linux-x64
+            binary: vibe-kanban
+            mcp_binary: vibe-kanban-mcp
+          - target: x86_64-pc-windows-msvc
+            name: windows-x64
+            binary: vibe-kanban.exe
+            mcp_binary: vibe-kanban-mcp.exe
+          - target: x86_64-apple-darwin
+            name: macos-x64
+            binary: vibe-kanban
+            mcp_binary: vibe-kanban-mcp
+          - target: aarch64-apple-darwin
+            name: macos-arm64
+            binary: vibe-kanban
+            mcp_binary: vibe-kanban-mcp
+          - target: aarch64-pc-windows-msvc
+            name: windows-arm64
+            binary: vibe-kanban.exe
+            mcp_binary: vibe-kanban-mcp.exe
+          - target: aarch64-unknown-linux-musl
+            name: linux-arm64
+            binary: vibe-kanban
+            mcp_binary: vibe-kanban-mcp
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download backend binary artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-binary-${{ matrix.name }}
+          path: dist/
+
+      - name: Create platform package
+        if: matrix.name != 'macos-arm64' && matrix.name != 'macos-x64'
+        run: |
+          mkdir -p npx-cli/dist/${{ matrix.name }}
+          mkdir vibe-kanban-${{ matrix.name }}
+          mkdir vibe-kanban-mcp-${{ matrix.name }}
+
+          cp dist/vibe-kanban-${{ matrix.name }}* vibe-kanban-${{ matrix.name }}/${{ matrix.binary }}
+          cp dist/vibe-kanban-mcp-${{ matrix.name }}* vibe-kanban-mcp-${{ matrix.name }}/${{ matrix.mcp_binary }}
+
+          zip -j npx-cli/dist/${{ matrix.name }}/vibe-kanban.zip vibe-kanban-${{ matrix.name }}/${{ matrix.binary }}
+          zip -j npx-cli/dist/${{ matrix.name }}/vibe-kanban-mcp.zip vibe-kanban-mcp-${{ matrix.name }}/${{ matrix.mcp_binary }}
+
+      - name: Create platform package (macOS)
+        if: matrix.name == 'macos-arm64' || matrix.name == 'macos-x64'
+        run: |
+          mkdir -p npx-cli/dist/${{ matrix.name }}
+          cp dist/vibe-kanban-${{ matrix.name }}* npx-cli/dist/${{ matrix.name }}/vibe-kanban.zip
+          cp dist/vibe-kanban-mcp-${{ matrix.name }}* npx-cli/dist/${{ matrix.name }}/vibe-kanban-mcp.zip
+
+      - name: Upload platform package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: npx-platform-${{ matrix.name }}
+          path: npx-cli/dist/
+          retention-days: 1
+
+  pack-npm:
+    needs: [package-npx-cli]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+
+      - name: Download backend npx-cli zips
+        uses: actions/download-artifact@v4
+        with:
+          pattern: npx-platform-*
+          path: npx-cli/dist/
+          merge-multiple: true
+
+      - name: List downloaded artifacts
+        run: |
+          echo "Backend dist:"
+          find npx-cli/dist
+
+      - name: Pack
+        run: |
+          cd npx-cli
+          npm pack
+
+      - name: Upload npm package
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-package
+          path: npx-cli/vibe-kanban-*.tgz
+          retention-days: 1
