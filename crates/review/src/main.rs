@@ -23,11 +23,13 @@ const POLL_INTERVAL: Duration = Duration::from_secs(10);
 const TIMEOUT: Duration = Duration::from_secs(600); // 10 minutes
 
 const BANNER: &str = r#"
-__     _____ ____  _____      _  __    _    _   _ ____    _    _   _
-\ \   / /_ _| __ )| ____|    | |/ /   / \  | \ | | __ )  / \  | \ | |
- \ \ / / | ||  _ \|  _| _____| ' /   / _ \ |  \| |  _ \ / _ \ |  \| |
-  \ V /  | || |_) | |__|_____| . \  / ___ \| |\  | |_) / ___ \| |\  |
-   \_/  |___|____/|_____|    |_|\_\/_/   \_\_| \_|____/_/   \_\_| \_|
+██████╗ ███████╗██╗   ██╗██╗███████╗██╗    ██╗   ███████╗ █████╗ ███████╗████████╗
+██╔══██╗██╔════╝██║   ██║██║██╔════╝██║    ██║   ██╔════╝██╔══██╗██╔════╝╚══██╔══╝
+██████╔╝█████╗  ██║   ██║██║█████╗  ██║ █╗ ██║   █████╗  ███████║███████╗   ██║   
+██╔══██╗██╔══╝  ╚██╗ ██╔╝██║██╔══╝  ██║███╗██║   ██╔══╝  ██╔══██║╚════██║   ██║   
+██║  ██║███████╗ ╚████╔╝ ██║███████╗╚███╔███╔╝██╗██║     ██║  ██║███████║   ██║   
+╚═╝  ╚═╝╚══════╝  ╚═══╝  ╚═╝╚══════╝ ╚══╝╚══╝ ╚═╝╚═╝     ╚═╝  ╚═╝╚══════╝   ╚═╝   
+
 "#;
 
 #[derive(Parser, Debug)]
@@ -52,10 +54,10 @@ struct Args {
 fn show_disclaimer() {
     println!();
     println!(
-        "DISCLAIMER: Your code will be processed on remote servers and deleted after 14 days."
+        "DISCLAIMER: Your code will be processed on our secure remote servers, all artefacts (code, AI logs, etc...) will be deleted after 14 days."
     );
     println!();
-    println!("Full terms and conditions and privacy policy: https://www.vibekanban.com/terms");
+    println!("Full terms and conditions and privacy policy: https://review.fast/terms");
     println!();
     println!("Press Enter to accept and continue...");
 
