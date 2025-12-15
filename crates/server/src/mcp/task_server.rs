@@ -2,6 +2,7 @@ use std::{future::Future, str::FromStr};
 
 use db::models::{
     project::Project,
+    repo::Repo,
     tag::Tag,
     task::{CreateTask, Task, TaskStatus, TaskWithAttemptStatus, UpdateTask},
     task_attempt::{TaskAttempt, TaskAttemptContext},
@@ -40,7 +41,6 @@ pub struct CreateTaskResponse {
     pub task_id: String,
 }
 
-// TODO: Update to expose all repositories for multi-repo support
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct ProjectSummary {
     #[schemars(description = "The unique identifier of the project")]
@@ -62,6 +62,27 @@ impl ProjectSummary {
             updated_at: project.updated_at.to_rfc3339(),
         }
     }
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct McpRepoSummary {
+    #[schemars(description = "The unique identifier of the repository")]
+    pub id: String,
+    #[schemars(description = "The name of the repository")]
+    pub name: String,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct ListReposRequest {
+    #[schemars(description = "The ID of the project to list repositories from")]
+    pub project_id: Uuid,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct ListReposResponse {
+    pub repos: Vec<McpRepoSummary>,
+    pub count: usize,
+    pub project_id: String,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -187,6 +208,14 @@ pub struct DeleteTaskRequest {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct McpAttemptRepoInput {
+    #[schemars(description = "The repository ID")]
+    pub repo_id: Uuid,
+    #[schemars(description = "The base branch for this repository")]
+    pub base_branch: String,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct StartTaskAttemptRequest {
     #[schemars(description = "The ID of the task to start")]
     pub task_id: Uuid,
@@ -196,8 +225,8 @@ pub struct StartTaskAttemptRequest {
     pub executor: String,
     #[schemars(description = "Optional executor variant, if needed")]
     pub variant: Option<String>,
-    #[schemars(description = "The base branch to use for the attempt")]
-    pub base_branch: String,
+    #[schemars(description = "Base branch for each repository in the project")]
+    pub repos: Vec<McpAttemptRepoInput>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -231,13 +260,24 @@ pub struct TaskServer {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, schemars::JsonSchema)]
+pub struct McpRepoContext {
+    #[schemars(description = "The unique identifier of the repository")]
+    pub repo_id: Uuid,
+    #[schemars(description = "The name of the repository")]
+    pub repo_name: String,
+    #[schemars(description = "The target branch for this repository in this attempt")]
+    pub target_branch: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, schemars::JsonSchema)]
 pub struct McpContext {
     pub project_id: Uuid,
     pub task_id: Uuid,
     pub task_title: String,
     pub attempt_id: Uuid,
     pub attempt_branch: String,
-    pub attempt_target_branch: String,
+    #[schemars(description = "Repository info and target branches for each repo in this attempt")]
+    pub attempt_repos: Vec<McpRepoContext>,
     pub executor: String,
 }
 
@@ -294,18 +334,25 @@ impl TaskServer {
         }
 
         let ctx = api_response.data?;
-        let attempt_target_branch = ctx
+
+        // Map RepoWithTargetBranch to McpRepoContext
+        let attempt_repos: Vec<McpRepoContext> = ctx
             .attempt_repos
-            .first()
-            .map(|r| r.target_branch.clone())
-            .unwrap_or_default();
+            .into_iter()
+            .map(|rwb| McpRepoContext {
+                repo_id: rwb.repo.id,
+                repo_name: rwb.repo.name,
+                target_branch: rwb.target_branch,
+            })
+            .collect();
+
         Some(McpContext {
             project_id: ctx.project.id,
             task_id: ctx.task.id,
             task_title: ctx.task.title,
             attempt_id: ctx.task_attempt.id,
             attempt_branch: ctx.task_attempt.branch,
-            attempt_target_branch,
+            attempt_repos,
             executor: ctx.task_attempt.executor,
         })
     }
@@ -505,6 +552,34 @@ impl TaskServer {
         TaskServer::success(&response)
     }
 
+    #[tool(description = "List all repositories for a project. `project_id` is required!")]
+    async fn list_repos(
+        &self,
+        Parameters(ListReposRequest { project_id }): Parameters<ListReposRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let url = self.url(&format!("/api/projects/{}/repositories", project_id));
+        let repos: Vec<Repo> = match self.send_json(self.client.get(&url)).await {
+            Ok(rs) => rs,
+            Err(e) => return Ok(e),
+        };
+
+        let repo_summaries: Vec<McpRepoSummary> = repos
+            .into_iter()
+            .map(|r| McpRepoSummary {
+                id: r.id.to_string(),
+                name: r.name,
+            })
+            .collect();
+
+        let response = ListReposResponse {
+            count: repo_summaries.len(),
+            repos: repo_summaries,
+            project_id: project_id.to_string(),
+        };
+
+        TaskServer::success(&response)
+    }
+
     #[tool(
         description = "List all the task/tickets in a project with optional filtering and execution status. `project_id` is required!"
     )]
@@ -572,12 +647,14 @@ impl TaskServer {
             task_id,
             executor,
             variant,
-            base_branch,
+            repos,
         }): Parameters<StartTaskAttemptRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        let base_branch = base_branch.trim().to_string();
-        if base_branch.is_empty() {
-            return Self::err("Base branch must not be empty.".to_string(), None::<String>);
+        if repos.is_empty() {
+            return Self::err(
+                "At least one repository must be specified.".to_string(),
+                None::<String>,
+            );
         }
 
         let executor_trimmed = executor.trim();
@@ -610,33 +687,11 @@ impl TaskServer {
             variant,
         };
 
-        // Fetch task to get project_id
-        let task_url = self.url(&format!("/api/tasks/{}", task_id));
-        let task: Task = match self.send_json(self.client.get(&task_url)).await {
-            Ok(task) => task,
-            Err(e) => return Ok(e),
-        };
-
-        // Fetch project repos
-        let repos_url = self.url(&format!("/api/projects/{}/repositories", task.project_id));
-        let project_repos: Vec<db::models::repo::Repo> =
-            match self.send_json(self.client.get(&repos_url)).await {
-                Ok(repos) => repos,
-                Err(e) => return Ok(e),
-            };
-
-        if project_repos.is_empty() {
-            return Self::err(
-                "Project has no repositories configured.".to_string(),
-                None::<String>,
-            );
-        }
-
-        let attempt_repos: Vec<AttemptRepoInput> = project_repos
+        let attempt_repos: Vec<AttemptRepoInput> = repos
             .into_iter()
             .map(|r| AttemptRepoInput {
-                repo_id: r.id,
-                target_branch: base_branch.clone(),
+                repo_id: r.repo_id,
+                target_branch: r.base_branch,
             })
             .collect();
 
@@ -756,7 +811,7 @@ impl TaskServer {
 #[tool_handler]
 impl ServerHandler for TaskServer {
     fn get_info(&self) -> ServerInfo {
-        let mut instruction = "A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list projects`. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project`.. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'start_task_attempt', 'get_task', 'update_task', 'delete_task'. Make sure to pass `project_id` or `task_id` where required. You can use list tools to get the available ids.".to_string();
+        let mut instruction = "A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list projects`. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project`.. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'start_task_attempt', 'get_task', 'update_task', 'delete_task', 'list_repos'. Make sure to pass `project_id` or `task_id` where required. You can use list tools to get the available ids.".to_string();
         if self.context.is_some() {
             let context_instruction = "Use 'get_context' to fetch project/task/attempt metadata for the active Vibe Kanban attempt when available.";
             instruction = format!("{} {}", context_instruction, instruction);
