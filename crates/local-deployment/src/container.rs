@@ -940,24 +940,22 @@ impl ContainerService for LocalContainerService {
             if let Some(project_repo) = project_repos
                 .iter()
                 .find(|pr| pr.repo_id == worktree.repo_id)
+                && let Some(copy_files) = &project_repo.copy_files
+                && !copy_files.trim().is_empty()
             {
-                if let Some(copy_files) = &project_repo.copy_files {
-                    if !copy_files.trim().is_empty() {
-                        self.copy_project_files(
-                            &worktree.source_repo_path,
-                            &worktree.worktree_path,
-                            copy_files,
-                        )
-                        .await
-                        .unwrap_or_else(|e| {
-                            tracing::warn!(
-                                "Failed to copy project files to repo '{}': {}",
-                                worktree.repo_name,
-                                e
-                            );
-                        });
-                    }
-                }
+                self.copy_project_files(
+                    &worktree.source_repo_path,
+                    &worktree.worktree_path,
+                    copy_files,
+                )
+                .await
+                .unwrap_or_else(|e| {
+                    tracing::warn!(
+                        "Failed to copy project files to repo '{}': {}",
+                        worktree.repo_name,
+                        e
+                    );
+                });
             }
         }
 

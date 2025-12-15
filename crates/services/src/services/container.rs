@@ -886,17 +886,16 @@ pub trait ContainerService {
         let execution_process = if all_parallel {
             // All parallel: start each setup independently, then start coding agent
             for repo in &repos_with_setup {
-                if let Some(action) = Self::setup_action_for_repo(repo) {
-                    if let Err(e) = self
+                if let Some(action) = Self::setup_action_for_repo(repo)
+                    && let Err(e) = self
                         .start_execution(
                             &task_attempt,
                             &action,
                             &ExecutionProcessRunReason::SetupScript,
                         )
                         .await
-                    {
-                        tracing::warn!(?e, "Failed to start setup script in parallel mode");
-                    }
+                {
+                    tracing::warn!(?e, "Failed to start setup script in parallel mode");
                 }
             }
             self.start_execution(
