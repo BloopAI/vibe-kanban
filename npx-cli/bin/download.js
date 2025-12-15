@@ -5,6 +5,7 @@ const crypto = require("crypto");
 
 // Replaced during npm pack by workflow
 const R2_BASE_URL = "__R2_PUBLIC_URL__";
+const BINARY_TAG = "__BINARY_TAG__"; // e.g., v0.0.135-20251215122030
 const CACHE_DIR = path.join(require("os").homedir(), ".vibe-kanban", "bin");
 
 async function fetchJson(url) {
@@ -85,22 +86,22 @@ async function downloadFile(url, destPath, expectedSha256, onProgress) {
   });
 }
 
-async function ensureBinary(version, platform, binaryName, onProgress) {
-  const cacheDir = path.join(CACHE_DIR, version, platform);
+async function ensureBinary(platform, binaryName, onProgress) {
+  const cacheDir = path.join(CACHE_DIR, BINARY_TAG, platform);
   const zipPath = path.join(cacheDir, `${binaryName}.zip`);
 
   if (fs.existsSync(zipPath)) return zipPath;
 
   fs.mkdirSync(cacheDir, { recursive: true });
 
-  const manifest = await fetchJson(`${R2_BASE_URL}/binaries/v${version}/manifest.json`);
+  const manifest = await fetchJson(`${R2_BASE_URL}/binaries/${BINARY_TAG}/manifest.json`);
   const binaryInfo = manifest.platforms?.[platform]?.[binaryName];
 
   if (!binaryInfo) {
     throw new Error(`Binary ${binaryName} not available for ${platform}`);
   }
 
-  const url = `${R2_BASE_URL}/binaries/v${version}/${platform}/${binaryName}.zip`;
+  const url = `${R2_BASE_URL}/binaries/${BINARY_TAG}/${platform}/${binaryName}.zip`;
   await downloadFile(url, zipPath, binaryInfo.sha256, onProgress);
 
   return zipPath;
@@ -111,4 +112,4 @@ async function getLatestVersion() {
   return manifest.latest;
 }
 
-module.exports = { R2_BASE_URL, CACHE_DIR, ensureBinary, getLatestVersion };
+module.exports = { R2_BASE_URL, BINARY_TAG, CACHE_DIR, ensureBinary, getLatestVersion };

@@ -4,7 +4,7 @@ const { execSync, spawn } = require("child_process");
 const AdmZip = require("adm-zip");
 const path = require("path");
 const fs = require("fs");
-const { ensureBinary, CACHE_DIR, getLatestVersion } = require("./download");
+const { ensureBinary, BINARY_TAG, CACHE_DIR, getLatestVersion } = require("./download");
 
 const CLI_VERSION = require("../package.json").version;
 
@@ -71,7 +71,7 @@ function getBinaryName(base) {
 }
 
 const platformDir = getPlatformDir();
-const versionCacheDir = path.join(CACHE_DIR, CLI_VERSION, platformDir);
+const versionCacheDir = path.join(CACHE_DIR, BINARY_TAG, platformDir);
 
 function showProgress(downloaded, total) {
   const percent = total ? Math.round((downloaded / total) * 100) : 0;
@@ -100,7 +100,7 @@ async function extractAndRun(baseName, launch) {
   if (!fs.existsSync(zipPath)) {
     console.log(`Downloading ${baseName}...`);
     try {
-      await ensureBinary(CLI_VERSION, platformDir, baseName, showProgress);
+      await ensureBinary(platformDir, baseName, showProgress);
       console.log(""); // newline after progress
     } catch (err) {
       console.error(`\nDownload failed: ${err.message}`);

@@ -505,7 +505,7 @@ jobs:
 
       - name: Generate manifest and upload to R2
         run: |
-          VERSION="${{ needs.bump-version.outputs.new_version }}"
+          TAG="${{ needs.bump-version.outputs.new_tag }}"
           ENDPOINT="${{ secrets.R2_BINARIES_ENDPOINT }}"
           BUCKET="${{ secrets.R2_BINARIES_BUCKET }}"
 
@@ -513,7 +513,7 @@ jobs:
           node -e "
             const fs = require('fs');
             const crypto = require('crypto');
-            const manifest = { version: '$VERSION', platforms: {} };
+            const manifest = { version: '$TAG', platforms: {} };
             const platforms = ['linux-x64', 'linux-arm64', 'windows-x64', 'windows-arm64', 'macos-x64', 'macos-arm64'];
             const binaries = ['vibe-kanban', 'vibe-kanban-mcp', 'vibe-kanban-review'];
 
@@ -535,13 +535,13 @@ jobs:
             console.log(JSON.stringify(manifest, null, 2));
           "
 
-          # Upload binaries
+          # Upload binaries (use full tag for path, allows multiple pre-releases to coexist)
           for platform in linux-x64 linux-arm64 windows-x64 windows-arm64 macos-x64 macos-arm64; do
             for binary in vibe-kanban vibe-kanban-mcp vibe-kanban-review; do
               if [ -f "binaries/$platform/$binary.zip" ]; then
                 echo "Uploading binaries/$platform/$binary.zip..."
                 aws s3 cp "binaries/$platform/$binary.zip" \
-                  "s3://$BUCKET/binaries/v$VERSION/$platform/$binary.zip" \
+                  "s3://$BUCKET/binaries/$TAG/$platform/$binary.zip" \
                   --endpoint-url "$ENDPOINT"
               fi
             done
@@ -550,23 +550,23 @@ jobs:
           # Upload version manifest
           echo "Uploading version manifest..."
           aws s3 cp version-manifest.json \
-            "s3://$BUCKET/binaries/v$VERSION/manifest.json" \
+            "s3://$BUCKET/binaries/$TAG/manifest.json" \
             --endpoint-url "$ENDPOINT" --content-type "application/json"
 
           # Update global manifest
           echo "Updating global manifest..."
-          echo "{\"latest\": \"$VERSION\"}" | aws s3 cp - \
+          echo "{\"latest\": \"$TAG\"}" | aws s3 cp - \
             "s3://$BUCKET/binaries/manifest.json" \
             --endpoint-url "$ENDPOINT" --content-type "application/json"
 
       - name: Verify upload
         run: |
-          VERSION="${{ needs.bump-version.outputs.new_version }}"
+          TAG="${{ needs.bump-version.outputs.new_tag }}"
           ENDPOINT="${{ secrets.R2_BINARIES_ENDPOINT }}"
           BUCKET="${{ secrets.R2_BINARIES_BUCKET }}"
 
           echo "Listing uploaded files..."
-          aws s3 ls "s3://$BUCKET/binaries/v$VERSION/" \
+          aws s3 ls "s3://$BUCKET/binaries/$TAG/" \
             --endpoint-url "$ENDPOINT" \
             --recursive
 
@@ -598,11 +598,12 @@ jobs:
       - name: Setup Node for npm pack
         uses: ./.github/actions/setup-node
 
-      - name: Inject R2 URL and Pack
+      - name: Inject R2 URL and tag, then Pack
         run: |
           cd npx-cli
-          # Replace placeholder with actual R2 public URL
+          # Replace placeholders with actual values
           sed -i "s|__R2_PUBLIC_URL__|${{ secrets.R2_BINARIES_PUBLIC_URL }}|g" bin/download.js
+          sed -i "s|__BINARY_TAG__|${{ needs.bump-version.outputs.new_tag }}|g" bin/download.js
           npm pack
 
       - name: Create GitHub Pre-Release
