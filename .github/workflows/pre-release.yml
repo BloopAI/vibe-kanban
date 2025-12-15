@@ -1,4 +1,4 @@
-name: Create GitHub Pre-Release
+name: QA Build
 
 on:
   workflow_dispatch:
@@ -18,7 +18,7 @@ env:
 
 jobs:
   build-frontend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-m
     env:
       VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY: ${{ secrets.PUBLIC_REACT_VIRTUOSO_LICENSE_KEY }}
       VITE_VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
@@ -59,12 +59,13 @@ jobs:
       matrix:
         include:
           # - target: x86_64-unknown-linux-musl
-          #   os: ubuntu-latest
+          #   os: ubuntu-latest-m
           #   container: &zigbuild_container ghcr.io/rust-cross/cargo-zigbuild@sha256:af1bc2b869c5d76c1300f7a4685c2f1793d068e6e895c9f5c399b517b31a731e
           #   name: linux-x64
-          # - target: aarch64-unknown-linux-musl
-          #   os: ubuntu-latest
-          #   name: linux-arm64
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest-m
+            name: linux-arm64
+            container: ghcr.io/rust-cross/cargo-zigbuild@sha256:3f3e1f3f4f4e2e5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8g9h
           #   container: *zigbuild_container
           # - target: x86_64-pc-windows-msvc
           #   os: windows-latest-l
@@ -91,8 +92,8 @@ jobs:
       - name: Install libclang (Linux)
         if: runner.os == 'Linux'
         run: |
-          apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y clang libclang-dev
+          sudo apt-get update
+          DEBIAN_FRONTEND=noninteractive sudo apt-get install -y clang libclang-dev
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
@@ -226,7 +227,7 @@ jobs:
 
   package-npx-cli:
     needs: [build-backend]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-m
     strategy:
       matrix:
         include:
@@ -250,10 +251,10 @@ jobs:
             name: windows-arm64
             binary: vibe-kanban.exe
             mcp_binary: vibe-kanban-mcp.exe
-          # - target: aarch64-unknown-linux-musl
-          #   name: linux-arm64
-          #   binary: vibe-kanban
-          #   mcp_binary: vibe-kanban-mcp
+          - target: aarch64-unknown-linux-musl
+            name: linux-arm64
+            binary: vibe-kanban
+            mcp_binary: vibe-kanban-mcp
     steps:
       - uses: actions/checkout@v4
 
@@ -292,7 +293,7 @@ jobs:
 
   pack-npm:
     needs: [package-npx-cli]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-m
     steps:
       - uses: actions/checkout@v4
 
