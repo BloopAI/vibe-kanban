@@ -157,7 +157,9 @@ const FolderPickerDialogImpl = NiceModal.create<FolderPickerDialogProps>(
 
               {/* Manual path input */}
               <div className="space-y-2">
-                <div className="text-sm font-medium">{t('folderPicker.manualPathLabel')}</div>
+                <div className="text-sm font-medium">
+                  {t('folderPicker.manualPathLabel')}
+                </div>
                 <div className="flex space-x-2 min-w-0">
                   <Input
                     value={manualPath}
