@@ -44,6 +44,34 @@
       }
     }
   },
+  "repos": {
+    "changeRepo": {
+      "dialog": {
+        "title": "更改仓库",
+        "description": "选择用于 Git 操作的仓库。",
+        "label": "仓库",
+        "placeholder": "选择仓库",
+        "action": "更改仓库"
+      }
+    },
+    "selector": {
+      "placeholder": "选择仓库",
+      "empty": "没有可用的仓库"
+    }
+  },
+  "repoBranchSelector": {
+    "label": "基础分支"
+  },
+  "attemptRepoSelector": {
+    "label": "仓库",
+    "addButton": "添加",
+    "empty": "未选择仓库。请至少添加一个仓库。",
+    "selectBranch": "选择分支",
+    "addRepo": {
+      "title": "选择 Git 仓库",
+      "description": "选择要添加到此尝试的 Git 仓库"
+    }
+  },
   "preview": {
     "title": "预览",
     "selectAttempt": "选择尝试以查看预览",

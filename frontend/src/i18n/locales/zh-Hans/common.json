@@ -39,6 +39,15 @@
     "result": "结果",
     "deniedByUser": "用户拒绝了 {{toolName}}"
   },
+  "folderPicker": {
+    "legend": "点击文件夹名称进行导航 • 使用操作按钮进行选择",
+    "manualPathLabel": "手动输入路径:",
+    "go": "前往",
+    "searchLabel": "搜索当前目录:",
+    "selectCurrent": "选择当前",
+    "gitRepo": "git 仓库",
+    "selectPath": "选择路径"
+  },
   "branchSelector": {
     "placeholder": "选择分支",
     "searchPlaceholder": "搜索分支...",
