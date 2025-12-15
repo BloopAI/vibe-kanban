@@ -163,7 +163,7 @@ fn default_to_true() -> bool {
 fn setup_approvals_env(auto_approve: bool, env: &ExecutionEnv) -> ExecutionEnv {
     let mut env = env.clone();
     if !auto_approve && !env.contains_key("OPENCODE_PERMISSION") {
-        env.insert("OPENCODE_PERMISSION", r#"{"edit": "ask", "bash": "ask"}"#);
+        env.insert("OPENCODE_PERMISSION", r#"{"edit": "ask", "bash": "ask", "webfetch": "ask", "doom_loop": "ask", "external_directory": "ask"}"#);
     }
     env
 }
