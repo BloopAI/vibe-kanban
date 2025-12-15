@@ -34,8 +34,7 @@ pub(crate) fn copy_project_files_impl(
         let pattern_path = source_dir.join(&pattern);
 
         if pattern_path.is_file() {
-            if let Err(e) = copy_single_file_inner(&pattern_path, source_dir, target_dir, &mut seen)
-            {
+            if let Err(e) = copy_single_file(&pattern_path, source_dir, target_dir, &mut seen) {
                 tracing::warn!(
                     "Failed to copy file {} (from {}): {}",
                     pattern,
@@ -65,8 +64,7 @@ pub(crate) fn copy_project_files_impl(
         };
 
         for entry in walker.flatten() {
-            if let Err(e) = copy_single_file_inner(entry.path(), source_dir, target_dir, &mut seen)
-            {
+            if let Err(e) = copy_single_file(entry.path(), source_dir, target_dir, &mut seen) {
                 tracing::warn!("Failed to copy file {:?}: {e}", entry.path());
             }
         }
@@ -75,7 +73,7 @@ pub(crate) fn copy_project_files_impl(
     Ok(())
 }
 
-fn copy_single_file_inner(
+fn copy_single_file(
     source_file: &Path,
     source_root: &Path,
     target_root: &Path,
