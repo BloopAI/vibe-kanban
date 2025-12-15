@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT\n                ta.id as \"attempt_id!: Uuid\",\n                ta.container_ref\n            FROM task_attempts ta\n            LEFT JOIN execution_processes ep ON ta.id = ep.task_attempt_id AND ep.completed_at IS NOT NULL\n            WHERE ta.worktree_deleted = FALSE\n                AND ta.container_ref IS NOT NULL\n                AND ta.id NOT IN (\n                    SELECT DISTINCT ep2.task_attempt_id\n                    FROM execution_processes ep2\n                    WHERE ep2.completed_at IS NULL\n                )\n            GROUP BY ta.id, ta.container_ref, ta.updated_at\n            HAVING datetime('now', '-72 hours') > datetime(\n                MAX(\n                    CASE\n                        WHEN ep.completed_at IS NOT NULL THEN ep.completed_at\n                        ELSE ta.updated_at\n                    END\n                )\n            )\n            ORDER BY MAX(\n                CASE\n                    WHEN ep.completed_at IS NOT NULL THEN ep.completed_at\n                    ELSE ta.updated_at\n                END\n            ) ASC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "attempt_id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "container_ref",
+        "ordinal": 1,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true,
+      true
+    ]
+  },
+  "hash": "bbdbfe7d7fc942c3476350216dedba4b31d23647573fb61349a56b5dc7d31e82"
+}

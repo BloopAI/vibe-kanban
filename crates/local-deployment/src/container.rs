@@ -22,7 +22,7 @@ use db::{
         repo::Repo,
         scratch::{DraftFollowUpData, Scratch, ScratchType},
         task::{Task, TaskStatus},
-        task_attempt::TaskAttempt,
+        task_attempt::{AttemptWithRef, TaskAttempt},
     },
 };
 use deployment::{DeploymentError, RemoteClientNotConfigured};
@@ -113,7 +113,7 @@ impl LocalContainerService {
             notification_service,
         };
 
-        container.spawn_worktree_cleanup().await;
+        container.spawn_workspace_cleanup().await;
 
         container
     }
@@ -143,28 +143,30 @@ impl LocalContainerService {
         map.remove(id)
     }
 
-    /// Defensively check for externally deleted worktrees and mark them as deleted in the database
-    async fn check_externally_deleted_worktrees(db: &DBService) -> Result<(), DeploymentError> {
-        let active_attempts = TaskAttempt::find_by_worktree_deleted(&db.pool).await?;
+    /// Defensively check for externally deleted workspaces and mark them as deleted in the database
+    async fn check_externally_deleted_workspaces(db: &DBService) -> Result<(), DeploymentError> {
+        let active_attempts = TaskAttempt::find_by_workspace_deleted(&db.pool).await?;
         tracing::debug!(
-            "Checking {} active worktrees for external deletion...",
+            "Checking {} active workspaces for external deletion...",
             active_attempts.len()
         );
-        for (attempt_id, worktree_path) in active_attempts {
-            // Check if worktree directory exists
-            if !std::path::Path::new(&worktree_path).exists() {
-                // Worktree was deleted externally, mark as deleted in database
-                if let Err(e) = TaskAttempt::mark_worktree_deleted(&db.pool, attempt_id).await {
+        for attempt in active_attempts {
+            // Check if workspace directory exists
+            if !std::path::Path::new(&attempt.container_ref).exists() {
+                // Workspace was deleted externally, mark as deleted in database
+                if let Err(e) =
+                    TaskAttempt::mark_worktree_deleted(&db.pool, attempt.attempt_id).await
+                {
                     tracing::error!(
-                        "Failed to mark externally deleted worktree as deleted for attempt {}: {}",
-                        attempt_id,
+                        "Failed to mark externally deleted workspace as deleted for attempt {}: {}",
+                        attempt.attempt_id,
                         e
                     );
                 } else {
                     tracing::info!(
-                        "Marked externally deleted worktree as deleted for attempt {} (path: {})",
-                        attempt_id,
-                        worktree_path
+                        "Marked externally deleted workspace as deleted for attempt {} (path: {})",
+                        attempt.attempt_id,
+                        attempt.container_ref
                     );
                 }
             }
@@ -238,65 +240,90 @@ impl LocalContainerService {
         }
     }
 
+    /// Clean up an expired workspace and all its worktrees
     pub async fn cleanup_expired_attempt(
         db: &DBService,
-        attempt_id: Uuid,
-        worktree_path: PathBuf,
-        git_repo_path: PathBuf,
+        attempt: &AttemptWithRef,
     ) -> Result<(), DeploymentError> {
-        WorktreeManager::cleanup_worktree(&WorktreeCleanup::new(
-            worktree_path,
-            Some(git_repo_path),
-        ))
-        .await?;
-        // Mark worktree as deleted in database after successful cleanup
-        TaskAttempt::mark_worktree_deleted(&db.pool, attempt_id).await?;
-        tracing::info!("Successfully marked worktree as deleted for attempt {attempt_id}",);
+        let workspace_dir = PathBuf::from(&attempt.container_ref);
+
+        // Get repositories for cleanup (same pattern as delete_inner)
+        let repositories = AttemptRepo::find_repos_for_attempt(&db.pool, attempt.attempt_id)
+            .await
+            .unwrap_or_default();
+
+        if repositories.is_empty() {
+            tracing::warn!(
+                "No repositories found for attempt {}, cleaning up workspace directory only",
+                attempt.attempt_id
+            );
+            if workspace_dir.exists() {
+                if let Err(e) = tokio::fs::remove_dir_all(&workspace_dir).await {
+                    tracing::warn!("Failed to remove workspace directory: {}", e);
+                }
+            }
+        } else {
+            WorkspaceManager::cleanup_workspace(&workspace_dir, &repositories)
+                .await
+                .unwrap_or_else(|e| {
+                    tracing::warn!(
+                        "Failed to clean up workspace for attempt {}: {}",
+                        attempt.attempt_id,
+                        e
+                    );
+                });
+        }
+
+        // Mark workspace as deleted in database after cleanup
+        TaskAttempt::mark_worktree_deleted(&db.pool, attempt.attempt_id).await?;
+        tracing::info!(
+            "Successfully marked workspace as deleted for attempt {}",
+            attempt.attempt_id
+        );
         Ok(())
     }
 
     pub async fn cleanup_expired_attempts(db: &DBService) -> Result<(), DeploymentError> {
         let expired_attempts = TaskAttempt::find_expired_for_cleanup(&db.pool).await?;
         if expired_attempts.is_empty() {
-            tracing::debug!("No expired worktrees found");
+            tracing::debug!("No expired workspaces found");
             return Ok(());
         }
         tracing::info!(
-            "Found {} expired worktrees to clean up",
+            "Found {} expired workspaces to clean up",
             expired_attempts.len()
         );
-        for (attempt_id, worktree_path, git_repo_path) in expired_attempts {
-            Self::cleanup_expired_attempt(
-                db,
-                attempt_id,
-                PathBuf::from(worktree_path),
-                PathBuf::from(git_repo_path),
-            )
-            .await
-            .unwrap_or_else(|e| {
-                tracing::error!("Failed to clean up expired attempt {attempt_id}: {e}",);
-            });
+        for attempt in &expired_attempts {
+            Self::cleanup_expired_attempt(db, attempt)
+                .await
+                .unwrap_or_else(|e| {
+                    tracing::error!(
+                        "Failed to clean up expired attempt {}: {}",
+                        attempt.attempt_id,
+                        e
+                    );
+                });
         }
         Ok(())
     }
 
-    pub async fn spawn_worktree_cleanup(&self) {
+    pub async fn spawn_workspace_cleanup(&self) {
         let db = self.db.clone();
         let mut cleanup_interval = tokio::time::interval(tokio::time::Duration::from_secs(1800)); // 30 minutes
         self.cleanup_orphaned_worktrees().await;
         tokio::spawn(async move {
             loop {
                 cleanup_interval.tick().await;
-                tracing::info!("Starting periodic worktree cleanup...");
-                Self::check_externally_deleted_worktrees(&db)
+                tracing::info!("Starting periodic workspace cleanup...");
+                Self::check_externally_deleted_workspaces(&db)
                     .await
                     .unwrap_or_else(|e| {
-                        tracing::error!("Failed to check externally deleted worktrees: {}", e);
+                        tracing::error!("Failed to check externally deleted workspaces: {}", e);
                     });
                 Self::cleanup_expired_attempts(&db)
                     .await
                     .unwrap_or_else(|e| {
-                        tracing::error!("Failed to clean up expired worktree attempts: {}", e)
+                        tracing::error!("Failed to clean up expired workspace attempts: {}", e)
                     });
             }
         });

@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use chrono::{DateTime, Utc};
 use executors::executors::BaseCodingAgent;
 use serde::{Deserialize, Serialize};
@@ -26,6 +24,23 @@ pub enum TaskAttemptError {
     ValidationError(String),
     #[error("Branch not found: {0}")]
     BranchNotFound(String),
+}
+
+/// Reference to an attempt with its container_ref (workspace path)
+/// Used by cleanup methods to identify active/expired workspaces
+#[derive(Debug, Clone)]
+pub struct AttemptWithRef {
+    pub attempt_id: Uuid,
+    pub container_ref: String,
+}
+
+/// Container info resolved from a container_ref path
+/// Contains the IDs needed to look up attempt/task/project context
+#[derive(Debug, Clone, Serialize, TS)]
+pub struct ContainerInfo {
+    pub attempt_id: Uuid,
+    pub task_id: Uuid,
+    pub project_id: Uuid,
 }
 
 #[derive(Debug, Clone, Type, Serialize, Deserialize, PartialEq, TS)]
@@ -264,16 +279,23 @@ impl TaskAttempt {
         .await
     }
 
-    pub async fn find_by_worktree_deleted(
+    /// Find all task attempts where the workspace has not been deleted
+    /// Returns attempts with their container_ref (workspace root path)
+    pub async fn find_by_workspace_deleted(
         pool: &SqlitePool,
-    ) -> Result<Vec<(Uuid, String)>, sqlx::Error> {
+    ) -> Result<Vec<AttemptWithRef>, sqlx::Error> {
         let records = sqlx::query!(
         r#"SELECT id as "id!: Uuid", container_ref FROM task_attempts WHERE worktree_deleted = FALSE"#,
         )
         .fetch_all(pool).await?;
         Ok(records
             .into_iter()
-            .filter_map(|r| r.container_ref.map(|path| (r.id, path)))
+            .filter_map(|r| {
+                r.container_ref.map(|container_ref| AttemptWithRef {
+                    attempt_id: r.id,
+                    container_ref,
+                })
+            })
             .collect())
     }
 
@@ -291,30 +313,28 @@ impl TaskAttempt {
         Ok(result.exists)
     }
 
-    /// Find task attempts that are expired (72+ hours since last activity) and eligible for worktree cleanup
-    /// Activity includes: execution completion, task attempt updates (including worktree recreation),
+    /// Find task attempts that are expired (72+ hours since last activity) and eligible for workspace cleanup
+    /// Activity includes: execution completion, task attempt updates (including workspace recreation),
     /// and any attempts that are currently in progress
+    /// Returns one entry per attempt with its container_ref (workspace root path)
     pub async fn find_expired_for_cleanup(
         pool: &SqlitePool,
-    ) -> Result<Vec<(Uuid, String, String)>, sqlx::Error> {
+    ) -> Result<Vec<AttemptWithRef>, sqlx::Error> {
         let records = sqlx::query!(
             r#"
-            SELECT 
-                ta.id as "attempt_id!: Uuid", 
-                ta.container_ref, 
-                r.path as "path!",
-                r.name as "repo_name!"
+            SELECT
+                ta.id as "attempt_id!: Uuid",
+                ta.container_ref
             FROM task_attempts ta
-            JOIN attempt_repos ar ON ar.attempt_id = ta.id
-            JOIN repos r ON r.id = ar.repo_id
             LEFT JOIN execution_processes ep ON ta.id = ep.task_attempt_id AND ep.completed_at IS NOT NULL
             WHERE ta.worktree_deleted = FALSE
+                AND ta.container_ref IS NOT NULL
                 AND ta.id NOT IN (
                     SELECT DISTINCT ep2.task_attempt_id
                     FROM execution_processes ep2
                     WHERE ep2.completed_at IS NULL
                 )
-            GROUP BY ta.id, ta.container_ref, r.path, r.name, ta.updated_at
+            GROUP BY ta.id, ta.container_ref, ta.updated_at
             HAVING datetime('now', '-72 hours') > datetime(
                 MAX(
                     CASE
@@ -337,13 +357,9 @@ impl TaskAttempt {
         Ok(records
             .into_iter()
             .filter_map(|r| {
-                r.container_ref.map(|container_ref| {
-                    let worktree_path = Path::new(&container_ref).join(&r.repo_name);
-                    (
-                        r.attempt_id,
-                        worktree_path.to_string_lossy().to_string(),
-                        r.path,
-                    )
+                r.container_ref.map(|container_ref| AttemptWithRef {
+                    attempt_id: r.attempt_id,
+                    container_ref,
                 })
             })
             .collect())
@@ -388,10 +404,11 @@ impl TaskAttempt {
         Ok(())
     }
 
+    /// Resolve a container_ref path to its associated attempt, task, and project IDs
     pub async fn resolve_container_ref(
         pool: &SqlitePool,
         container_ref: &str,
-    ) -> Result<(Uuid, Uuid, Uuid), sqlx::Error> {
+    ) -> Result<ContainerInfo, sqlx::Error> {
         let result = sqlx::query!(
             r#"SELECT ta.id as "attempt_id!: Uuid",
                       ta.task_id as "task_id!: Uuid",
@@ -405,6 +422,10 @@ impl TaskAttempt {
         .await?
         .ok_or(sqlx::Error::RowNotFound)?;
 
-        Ok((result.attempt_id, result.task_id, result.project_id))
+        Ok(ContainerInfo {
+            attempt_id: result.attempt_id,
+            task_id: result.task_id,
+            project_id: result.project_id,
+        })
     }
 }
