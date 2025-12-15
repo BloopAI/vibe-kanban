@@ -430,6 +430,13 @@ pub async fn add_project_repository(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateProjectRepo>,
 ) -> Result<ResponseJson<ApiResponse<Repo>>, ApiError> {
+    tracing::debug!(
+        "Adding repository '{}' to project {} (path: {})",
+        payload.display_name,
+        project.id,
+        payload.git_repo_path
+    );
+
     match deployment
         .project()
         .add_repository(
@@ -453,21 +460,51 @@ pub async fn add_project_repository(
 
             Ok(ResponseJson(ApiResponse::success(repository)))
         }
-        Err(ProjectServiceError::PathNotFound(_)) => Ok(ResponseJson(ApiResponse::error(
-            "The specified path does not exist",
-        ))),
-        Err(ProjectServiceError::PathNotDirectory(_)) => Ok(ResponseJson(ApiResponse::error(
-            "The specified path is not a directory",
-        ))),
-        Err(ProjectServiceError::NotGitRepository(_)) => Ok(ResponseJson(ApiResponse::error(
-            "The specified directory is not a git repository",
-        ))),
-        Err(ProjectServiceError::DuplicateRepositoryName) => Ok(ResponseJson(ApiResponse::error(
-            "A repository with this name already exists in the project",
-        ))),
-        Err(ProjectServiceError::DuplicateGitRepoPath) => Ok(ResponseJson(ApiResponse::error(
-            "A repository with this path already exists in the project",
-        ))),
+        Err(ProjectServiceError::PathNotFound(_)) => {
+            tracing::warn!(
+                "Failed to add repository to project {}: path does not exist",
+                project.id
+            );
+            Ok(ResponseJson(ApiResponse::error(
+                "The specified path does not exist",
+            )))
+        }
+        Err(ProjectServiceError::PathNotDirectory(_)) => {
+            tracing::warn!(
+                "Failed to add repository to project {}: path is not a directory",
+                project.id
+            );
+            Ok(ResponseJson(ApiResponse::error(
+                "The specified path is not a directory",
+            )))
+        }
+        Err(ProjectServiceError::NotGitRepository(_)) => {
+            tracing::warn!(
+                "Failed to add repository to project {}: not a git repository",
+                project.id
+            );
+            Ok(ResponseJson(ApiResponse::error(
+                "The specified directory is not a git repository",
+            )))
+        }
+        Err(ProjectServiceError::DuplicateRepositoryName) => {
+            tracing::warn!(
+                "Failed to add repository to project {}: duplicate repository name",
+                project.id
+            );
+            Ok(ResponseJson(ApiResponse::error(
+                "A repository with this name already exists in the project",
+            )))
+        }
+        Err(ProjectServiceError::DuplicateGitRepoPath) => {
+            tracing::warn!(
+                "Failed to add repository to project {}: duplicate repository path",
+                project.id
+            );
+            Ok(ResponseJson(ApiResponse::error(
+                "A repository with this path already exists in the project",
+            )))
+        }
         Err(e) => Err(e.into()),
     }
 }
@@ -476,6 +513,12 @@ pub async fn delete_project_repository(
     State(deployment): State<DeploymentImpl>,
     Path((project_id, repo_id)): Path<(Uuid, Uuid)>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    tracing::debug!(
+        "Removing repository {} from project {}",
+        repo_id,
+        project_id
+    );
+
     match deployment
         .project()
         .delete_repository(&deployment.db().pool, project_id, repo_id)
@@ -495,6 +538,11 @@ pub async fn delete_project_repository(
             Ok(ResponseJson(ApiResponse::success(())))
         }
         Err(ProjectServiceError::RepositoryNotFound) => {
+            tracing::warn!(
+                "Failed to remove repository {} from project {}: not found",
+                repo_id,
+                project_id
+            );
             Ok(ResponseJson(ApiResponse::error("Repository not found")))
         }
         Err(e) => Err(e.into()),

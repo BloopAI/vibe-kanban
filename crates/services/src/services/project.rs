@@ -180,6 +180,13 @@ impl ProjectService {
         project_id: Uuid,
         payload: &CreateProjectRepo,
     ) -> Result<Repo> {
+        tracing::debug!(
+            "Adding repository '{}' to project {} (path: {})",
+            payload.display_name,
+            project_id,
+            payload.git_repo_path
+        );
+
         let path = repo_service.normalize_path(&payload.git_repo_path)?;
         repo_service.validate_git_repo_path(&path)?;
 
@@ -200,6 +207,13 @@ impl ProjectService {
             _ => ProjectServiceError::RepositoryNotFound,
         })?;
 
+        tracing::info!(
+            "Added repository {} to project {} (path: {})",
+            repository.id,
+            project_id,
+            repository.path.display()
+        );
+
         Ok(repository)
     }
 
@@ -209,6 +223,12 @@ impl ProjectService {
         project_id: Uuid,
         repo_id: Uuid,
     ) -> Result<()> {
+        tracing::debug!(
+            "Removing repository {} from project {}",
+            repo_id,
+            project_id
+        );
+
         ProjectRepo::remove_repo_from_project(pool, project_id, repo_id)
             .await
             .map_err(|e| match e {
@@ -224,6 +244,8 @@ impl ProjectService {
         if let Err(e) = Repo::delete_orphaned(pool).await {
             tracing::error!("Failed to delete orphaned repos: {}", e);
         }
+
+        tracing::info!("Removed repository {} from project {}", repo_id, project_id);
 
         Ok(())
     }
