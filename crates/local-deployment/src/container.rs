@@ -956,8 +956,10 @@ impl ContainerService for LocalContainerService {
         Ok(workspace.workspace_dir.to_string_lossy().to_string())
     }
 
-    async fn cleanup_attempt_workspace(&self, task_attempt: &TaskAttempt) {
+    async fn delete(&self, task_attempt: &TaskAttempt) -> Result<(), ContainerError> {
+        self.try_stop(task_attempt, true).await;
         Self::cleanup_attempt_workspace_inner(&self.db, task_attempt).await;
+        Ok(())
     }
 
     async fn ensure_container_exists(
