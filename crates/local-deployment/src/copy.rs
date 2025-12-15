@@ -13,6 +13,8 @@ fn normalize_pattern(pattern: &str) -> String {
     pattern.replace('\\', "/")
 }
 
+/// Copy project files from source to target directory based on glob patterns.
+/// Skips files that already exist at target with same size.
 pub(crate) fn copy_project_files_impl(
     source_dir: &Path,
     target_dir: &Path,
@@ -32,7 +34,8 @@ pub(crate) fn copy_project_files_impl(
         let pattern_path = source_dir.join(&pattern);
 
         if pattern_path.is_file() {
-            if let Err(e) = copy_single_file(&pattern_path, source_dir, target_dir, &mut seen) {
+            if let Err(e) = copy_single_file_inner(&pattern_path, source_dir, target_dir, &mut seen)
+            {
                 tracing::warn!(
                     "Failed to copy file {} (from {}): {}",
                     pattern,
@@ -61,22 +64,18 @@ pub(crate) fn copy_project_files_impl(
             }
         };
 
-        let mut had_matches = false;
         for entry in walker.flatten() {
-            had_matches = true;
-            if let Err(e) = copy_single_file(entry.path(), source_dir, target_dir, &mut seen) {
+            if let Err(e) = copy_single_file_inner(entry.path(), source_dir, target_dir, &mut seen)
+            {
                 tracing::warn!("Failed to copy file {:?}: {e}", entry.path());
             }
-        }
-        if !had_matches {
-            tracing::info!("No files matched pattern: {pattern}");
         }
     }
 
     Ok(())
 }
 
-fn copy_single_file(
+fn copy_single_file_inner(
     source_file: &Path,
     source_root: &Path,
     target_root: &Path,
@@ -102,6 +101,15 @@ fn copy_single_file(
     })?;
 
     let target_file = target_root.join(relative_path);
+
+    // Skip if target exists with same size
+    if let Ok(target_meta) = fs::metadata(&target_file) {
+        if let Ok(source_meta) = fs::metadata(source_file) {
+            if target_meta.len() == source_meta.len() {
+                return Ok(false);
+            }
+        }
+    }
 
     if let Some(parent) = target_file.parent()
         && !parent.exists()

@@ -34,6 +34,15 @@ pub struct RepoWithTargetBranch {
     pub target_branch: String,
 }
 
+/// Repo info with copy_files configuration from project_repos.
+#[derive(Debug, Clone)]
+pub struct RepoWithCopyFiles {
+    pub id: Uuid,
+    pub path: PathBuf,
+    pub name: String,
+    pub copy_files: Option<String>,
+}
+
 impl AttemptRepo {
     pub async fn create_many(
         pool: &SqlitePool,
@@ -230,5 +239,35 @@ impl AttemptRepo {
         )
         .fetch_all(pool)
         .await
+    }
+
+    /// Find repos for an attempt with their copy_files configuration.
+    /// Uses LEFT JOIN so repos without project_repo entries still appear (with NULL copy_files).
+    pub async fn find_repos_with_copy_files(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+    ) -> Result<Vec<RepoWithCopyFiles>, sqlx::Error> {
+        let rows = sqlx::query!(
+            r#"SELECT r.id as "id!: Uuid", r.path, r.name, pr.copy_files
+               FROM repos r
+               JOIN attempt_repos ar ON r.id = ar.repo_id
+               JOIN task_attempts ta ON ta.id = ar.attempt_id
+               JOIN tasks t ON t.id = ta.task_id
+               LEFT JOIN project_repos pr ON pr.project_id = t.project_id AND pr.repo_id = r.id
+               WHERE ar.attempt_id = $1"#,
+            attempt_id
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|row| RepoWithCopyFiles {
+                id: row.id,
+                path: PathBuf::from(row.path),
+                name: row.name,
+                copy_files: row.copy_files,
+            })
+            .collect())
     }
 }

@@ -768,6 +768,43 @@ impl LocalContainerService {
         Ok(())
     }
 
+    /// Copy project files and images to the workspace.
+    /// Skips files/images that already exist (fast no-op if all exist).
+    async fn copy_files_and_images(
+        &self,
+        workspace_dir: &Path,
+        task_attempt: &TaskAttempt,
+    ) -> Result<(), ContainerError> {
+        let repos = AttemptRepo::find_repos_with_copy_files(&self.db.pool, task_attempt.id).await?;
+
+        for repo in &repos {
+            if let Some(copy_files) = &repo.copy_files {
+                if !copy_files.trim().is_empty() {
+                    let worktree_path = workspace_dir.join(&repo.name);
+                    self.copy_project_files(&repo.path, &worktree_path, copy_files)
+                        .await
+                        .unwrap_or_else(|e| {
+                            tracing::warn!(
+                                "Failed to copy project files for repo '{}': {}",
+                                repo.name,
+                                e
+                            );
+                        });
+                }
+            }
+        }
+
+        if let Err(e) = self
+            .image_service
+            .copy_images_by_task_to_worktree(workspace_dir, task_attempt.task_id)
+            .await
+        {
+            tracing::warn!("Failed to copy task images to workspace: {}", e);
+        }
+
+        Ok(())
+    }
+
     /// Start a follow-up execution from a queued message
     async fn start_queued_follow_up(
         &self,
@@ -875,21 +912,16 @@ impl ContainerService for LocalContainerService {
             LocalContainerService::dir_name_from_task_attempt(&task_attempt.id, &task.title);
         let workspace_dir = WorkspaceManager::get_workspace_base_dir().join(&workspace_dir_name);
 
-        let project = task
-            .parent_project(&self.db.pool)
-            .await?
-            .ok_or(sqlx::Error::RowNotFound)?;
-
-        let repositories =
-            AttemptRepo::find_repos_for_attempt(&self.db.pool, task_attempt.id).await?;
-
-        if repositories.is_empty() {
+        let attempt_repos = AttemptRepo::find_by_attempt_id(&self.db.pool, task_attempt.id).await?;
+        if attempt_repos.is_empty() {
             return Err(ContainerError::Other(anyhow!(
                 "Attempt has no repositories configured"
             )));
         }
 
-        let attempt_repos = AttemptRepo::find_by_attempt_id(&self.db.pool, task_attempt.id).await?;
+        let repositories =
+            AttemptRepo::find_repos_for_attempt(&self.db.pool, task_attempt.id).await?;
+
         let target_branches: HashMap<_, _> = attempt_repos
             .iter()
             .map(|ar| (ar.repo_id, ar.target_branch.clone()))
@@ -910,38 +942,9 @@ impl ContainerService for LocalContainerService {
         )
         .await?;
 
-        let project_repos = ProjectRepo::find_by_project_id(&self.db.pool, project.id).await?;
-
-        for worktree in &workspace.worktrees {
-            if let Some(project_repo) = project_repos
-                .iter()
-                .find(|pr| pr.repo_id == worktree.repo_id)
-                && let Some(copy_files) = &project_repo.copy_files
-                && !copy_files.trim().is_empty()
-            {
-                self.copy_project_files(
-                    &worktree.source_repo_path,
-                    &worktree.worktree_path,
-                    copy_files,
-                )
-                .await
-                .unwrap_or_else(|e| {
-                    tracing::warn!(
-                        "Failed to copy project files to repo '{}': {}",
-                        worktree.repo_name,
-                        e
-                    );
-                });
-            }
-        }
-
-        if let Err(e) = self
-            .image_service
-            .copy_images_by_task_to_worktree(&workspace.workspace_dir, task.id)
-            .await
-        {
-            tracing::warn!("Failed to copy task images to workspace: {}", e);
-        }
+        // Copy project files and images to workspace
+        self.copy_files_and_images(&workspace.workspace_dir, task_attempt)
+            .await?;
 
         TaskAttempt::update_container_ref(
             &self.db.pool,
@@ -974,7 +977,7 @@ impl ContainerService for LocalContainerService {
 
         if repositories.is_empty() {
             return Err(ContainerError::Other(anyhow!(
-                "Project has no repositories configured"
+                "Attempt has no repositories configured"
             )));
         }
 
@@ -984,6 +987,10 @@ impl ContainerService for LocalContainerService {
             &task_attempt.branch,
         )
         .await?;
+
+        // Copy project files and images (fast no-op if already exist)
+        self.copy_files_and_images(&workspace_dir, task_attempt)
+            .await?;
 
         Ok(container_ref.to_string())
     }
@@ -1288,7 +1295,8 @@ impl ContainerService for LocalContainerService {
         Ok(self.commit_repos(repos_with_changes, &message))
     }
 
-    /// Copy files from the original project directory to the worktree
+    /// Copy files from the original project directory to the worktree.
+    /// Skips files that already exist at target with same size.
     async fn copy_project_files(
         &self,
         source_dir: &Path,
