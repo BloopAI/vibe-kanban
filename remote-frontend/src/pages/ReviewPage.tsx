@@ -20,6 +20,9 @@ import {
 } from "../lib/diff-parser";
 import { getHighlightLanguageFromPath } from "../lib/extToLanguage";
 import { CodeFragmentCard } from "../components/CodeFragmentCard";
+import { cn } from "../lib/utils";
+
+const DIFF_VIEW_MODE_KEY = "diff-view-mode";
 
 function diffHasChanges(diffString: string): boolean {
   return diffString.split("\n").some((line) => {
@@ -46,9 +49,21 @@ export default function ReviewPage() {
   const [loadingFiles, setLoadingFiles] = useState<Set<string>>(new Set());
   const [scrollProgress, setScrollProgress] = useState(0);
   const [diffText, setDiffText] = useState<string>("");
+  const [diffViewMode, setDiffViewMode] = useState<DiffModeEnum>(() => {
+    const saved = localStorage.getItem(DIFF_VIEW_MODE_KEY);
+    return saved === "split" ? DiffModeEnum.Split : DiffModeEnum.Unified;
+  });
   const fetchingFiles = useRef<Set<string>>(new Set());
 
   const parsedDiffs = useMemo(() => parseUnifiedDiff(diffText), [diffText]);
+
+  const handleViewModeChange = useCallback((mode: DiffModeEnum) => {
+    setDiffViewMode(mode);
+    localStorage.setItem(
+      DIFF_VIEW_MODE_KEY,
+      mode === DiffModeEnum.Split ? "split" : "unified",
+    );
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -265,8 +280,12 @@ export default function ReviewPage() {
           </div>
           <div>
             <div className="bg-muted p-4 rounded-sm space-y-2 border">
-              <a href="https://vibekanban.com" target="_blank">
-                <img src="/logo_light.png" alt="Logo" className="w-32" />
+              <a href="https://review.fast" target="_blank">
+                <img
+                  src="/review_fast_logo_dark.svg"
+                  alt="Logo"
+                  className="w-32"
+                />
               </a>
               <p className="text-base text-secondary-foreground">
                 To make this PR easier to understand and review, an AI agent has
@@ -274,7 +293,7 @@ export default function ReviewPage() {
                 clear, logical order, with concise, AI-generated comments that
                 explain context and highlight what matters.{" "}
                 <a
-                  href="https://vibekanban.com"
+                  href="https://review.fast"
                   className="text-primary-foreground"
                   target="_blank"
                 >
@@ -298,11 +317,12 @@ export default function ReviewPage() {
           loadingFiles={loadingFiles}
           parsedDiffs={parsedDiffs}
           hasDiff={hasDiff}
+          diffViewMode={diffViewMode}
         />
       ))}
 
       {/* Footer - Promotional */}
-      <div className="border-t px-4 py-6 bg-muted/30">
+      <div className="border-t px-4 py-6 bg-muted/30 pb-16">
         <div className="text-center">
           <p className="text-sm text-muted-foreground mb-2">
             Generate AI-powered code reviews for your pull requests
@@ -310,6 +330,51 @@ export default function ReviewPage() {
           <code className="inline-block bg-secondary px-3 py-2 rounded-md text-sm font-mono text-foreground">
             npx vibe-kanban review https://github.com/owner/repo/pull/123
           </code>
+        </div>
+      </div>
+
+      {/* Fixed Footer Toolbar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t z-50 px-4 py-2 opacity-50 hover:opacity-100 transition-opacity">
+        <div className="flex justify-between items-center">
+          {/* Left: Logo */}
+          <a
+            href="https://review.fast"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <img
+              src="/review_fast_logo_dark.svg"
+              alt="review.fast"
+              className="h-3"
+            />
+          </a>
+
+          {/* Right: View Toggle */}
+          <div className="flex items-center gap-1">
+            <span className="text-sm text-muted-foreground mr-2">View:</span>
+            <button
+              onClick={() => handleViewModeChange(DiffModeEnum.Unified)}
+              className={cn(
+                "px-3 py-1 text-sm rounded-l border",
+                diffViewMode === DiffModeEnum.Unified
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80",
+              )}
+            >
+              Unified
+            </button>
+            <button
+              onClick={() => handleViewModeChange(DiffModeEnum.Split)}
+              className={cn(
+                "px-3 py-1 text-sm rounded-r border-t border-r border-b",
+                diffViewMode === DiffModeEnum.Split
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80",
+              )}
+            >
+              Split
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -324,6 +389,7 @@ interface CommentStoryRowProps {
   loadingFiles: Set<string>;
   parsedDiffs: ParsedFileDiff[];
   hasDiff: boolean;
+  diffViewMode: DiffModeEnum;
 }
 
 function CommentStoryRow({
@@ -334,6 +400,7 @@ function CommentStoryRow({
   loadingFiles,
   parsedDiffs,
   hasDiff,
+  diffViewMode,
 }: CommentStoryRowProps) {
   const hasComment = comment.comment && comment.comment.trim().length > 0;
 
@@ -378,6 +445,7 @@ function CommentStoryRow({
               fileContent={fileCache.get(fragment.file)}
               isLoading={loadingFiles.has(fragment.file)}
               hasDiff={hasDiff}
+              diffViewMode={diffViewMode}
             />
           ))
         ) : (
@@ -399,6 +467,7 @@ interface DiffFragmentCardProps {
   fileContent?: string;
   isLoading?: boolean;
   hasDiff: boolean;
+  diffViewMode: DiffModeEnum;
 }
 
 function DiffFragmentCard({
@@ -410,6 +479,7 @@ function DiffFragmentCard({
   fileContent,
   isLoading,
   hasDiff,
+  diffViewMode,
 }: DiffFragmentCardProps) {
   const fileDiff = useMemo(
     () => getFileDiff(parsedDiffs, file),
@@ -502,7 +572,7 @@ function DiffFragmentCard({
             <div className="diff-view-container">
               <DiffView
                 data={diffData}
-                diffViewMode={DiffModeEnum.Unified}
+                diffViewMode={diffViewMode}
                 diffViewTheme="dark"
                 diffViewHighlight
                 diffViewFontSize={12}

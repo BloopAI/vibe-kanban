@@ -9,8 +9,8 @@
   --diff-del-content--: rgba(248, 81, 73, 0.15) !important;
   --diff-add-content-highlight--: rgba(46, 160, 67, 0.4) !important;
   --diff-del-content-highlight--: rgba(248, 81, 73, 0.4) !important;
-  --diff-add-lineNumber--: rgba(46, 160, 67, 0.2) !important;
-  --diff-del-lineNumber--: rgba(248, 81, 73, 0.2) !important;
+  --diff-add-lineNumber--: rgb(25, 61, 33) !important;
+  --diff-del-lineNumber--: rgb(88, 42, 39) !important;
   --diff-plain-content--: #1e1e1e !important;
   --diff-plain-lineNumber--: #1e1e1e !important;
   --diff-plain-lineNumber-color--: #6e7681 !important;
@@ -164,6 +164,7 @@
   overflow-x: auto;
 }
 
+/* 
 .diff-view-container .diff-view-wrapper {
   min-width: max-content;
-}
+} */
