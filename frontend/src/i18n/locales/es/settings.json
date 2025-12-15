@@ -333,20 +333,20 @@
       },
       "scripts": {
         "title": "Scripts y Configuración",
-        "description": "Configura los scripts de instalación, desarrollo y limpieza para este proyecto.",
+        "description": "Configura los scripts de instalación, limpieza y archivos a copiar para este proyecto.",
         "setup": {
           "label": "Script de Instalación",
-          "helper": "Este script se ejecutará después de crear el worktree y antes de que comience el agente de codificación. Úsalo para tareas de configuración como instalar dependencias o preparar el entorno.",
+          "helper": "Este script se ejecuta desde dentro del worktree después de crearse y antes de que comience el agente de codificación. Úsalo para tareas de configuración como instalar dependencias o preparar el entorno.",
           "parallelLabel": "Ejecutar script de instalación en paralelo con el agente de codificación",
           "parallelHelper": "Cuando está habilitado, el script de instalación se ejecuta simultáneamente con el agente de codificación en lugar de esperar a que se complete la configuración primero."
         },
         "dev": {
           "label": "Script del Servidor de Desarrollo",
-          "helper": "Este script se puede ejecutar desde los intentos de tarea para iniciar un servidor de desarrollo. Úsalo para iniciar rápidamente el servidor de desarrollo de tu proyecto para probar cambios."
+          "helper": "Inicia un servidor de desarrollo desde los intentos de tarea. Los scripts se ejecutan desde el directorio del workspace (un nivel arriba del worktree de cada repositorio), así que primero entra al directorio del repositorio (ej., cd mi-repo && pnpm run dev)."
         },
         "cleanup": {
           "label": "Script de Limpieza",
-          "helper": "Este script se ejecuta después de la ejecución del agente de codificación solo si se realizaron cambios. Úsalo para tareas de garantía de calidad como ejecutar linters, formateadores, pruebas u otros pasos de validación. Si no se realizan cambios, se omite este script."
+          "helper": "Este script se ejecuta desde dentro del worktree después de la ejecución del agente de codificación, solo si se realizaron cambios. Úsalo para tareas de garantía de calidad como ejecutar linters, formateadores, pruebas u otros pasos de validación. Si no se realizan cambios, se omite este script."
         },
         "copyFiles": {
           "label": "Copiar Archivos",

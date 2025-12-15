@@ -333,20 +333,20 @@
       },
       "scripts": {
         "title": "Scripts & Configuration",
-        "description": "Configure setup, development, and cleanup scripts for this project.",
+        "description": "Configure setup, cleanup, and copy files for this project.",
         "setup": {
           "label": "Setup Script",
-          "helper": "This script will run after creating the worktree and before the coding agent starts. Use it for setup tasks like installing dependencies or preparing the environment.",
+          "helper": "This script runs from within the worktree after it's created and before the coding agent starts. Use it for setup tasks like installing dependencies or preparing the environment.",
           "parallelLabel": "Run setup script in parallel with coding agent",
           "parallelHelper": "When enabled, the setup script runs simultaneously with the coding agent instead of waiting for setup to complete first."
         },
         "dev": {
           "label": "Dev Server Script",
-          "helper": "This script can be run from task attempts to start a development server. Use it to quickly start your project's dev server for testing changes."
+          "helper": "Starts a development server from task attempts. Scripts execute from the workspace directory (one level above each repo's worktree), so cd into the repo first (e.g., cd my-repo && pnpm run dev)."
         },
         "cleanup": {
           "label": "Cleanup Script",
-          "helper": "This script runs after coding agent execution only if changes were made. Use it for quality assurance tasks like running linters, formatters, tests, or other validation steps. If no changes are made, this script is skipped."
+          "helper": "This script runs from within the worktree after coding agent execution, only if changes were made. Use it for quality assurance tasks like running linters, formatters, tests, or other validation steps. If no changes are made, this script is skipped."
         },
         "copyFiles": {
           "label": "Copy Files",
