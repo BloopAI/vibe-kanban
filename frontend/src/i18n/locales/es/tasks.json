@@ -146,6 +146,34 @@
       }
     }
   },
+  "repos": {
+    "changeRepo": {
+      "dialog": {
+        "title": "Cambiar Repositorio",
+        "description": "Elige un repositorio para operaciones de git.",
+        "label": "Repositorio",
+        "placeholder": "Selecciona un repositorio",
+        "action": "Cambiar Repositorio"
+      }
+    },
+    "selector": {
+      "placeholder": "Seleccionar repositorio",
+      "empty": "No hay repositorios disponibles"
+    }
+  },
+  "repoBranchSelector": {
+    "label": "Rama base"
+  },
+  "attemptRepoSelector": {
+    "label": "Repositorios",
+    "addButton": "Agregar",
+    "empty": "No hay repositorios seleccionados. Agrega al menos un repositorio.",
+    "selectBranch": "Seleccionar rama",
+    "addRepo": {
+      "title": "Seleccionar Repositorio Git",
+      "description": "Elige un repositorio git para agregar a este intento"
+    }
+  },
   "createAttemptDialog": {
     "baseBranch": "Base branch",
     "creating": "Creating...",

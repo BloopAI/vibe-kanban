@@ -1,4 +1,13 @@
 {
+  "folderPicker": {
+    "legend": "フォルダ名をクリックして移動 • アクションボタンで選択",
+    "manualPathLabel": "パスを手動入力:",
+    "go": "移動",
+    "searchLabel": "現在のディレクトリを検索:",
+    "selectCurrent": "現在を選択",
+    "gitRepo": "git リポジトリ",
+    "selectPath": "パスを選択"
+  },
   "branchSelector": {
     "badges": {
       "current": "現在",

@@ -146,6 +146,34 @@
       }
     }
   },
+  "repos": {
+    "changeRepo": {
+      "dialog": {
+        "title": "저장소 변경",
+        "description": "Git 작업을 위한 저장소를 선택하세요.",
+        "label": "저장소",
+        "placeholder": "저장소 선택",
+        "action": "저장소 변경"
+      }
+    },
+    "selector": {
+      "placeholder": "저장소 선택",
+      "empty": "사용 가능한 저장소가 없습니다"
+    }
+  },
+  "repoBranchSelector": {
+    "label": "기본 브랜치"
+  },
+  "attemptRepoSelector": {
+    "label": "저장소",
+    "addButton": "추가",
+    "empty": "선택된 저장소가 없습니다. 최소한 하나의 저장소를 추가하세요.",
+    "selectBranch": "브랜치 선택",
+    "addRepo": {
+      "title": "Git 저장소 선택",
+      "description": "이 시도에 추가할 Git 저장소를 선택하세요"
+    }
+  },
   "createAttemptDialog": {
     "baseBranch": "Base branch",
     "creating": "Creating...",

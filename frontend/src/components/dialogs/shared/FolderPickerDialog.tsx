@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -37,6 +38,7 @@ const FolderPickerDialogImpl = NiceModal.create<FolderPickerDialogProps>(
     description = 'Choose a folder for your project',
   }) => {
     const modal = useModal();
+    const { t } = useTranslation('common');
     const [currentPath, setCurrentPath] = useState<string>('');
     const [entries, setEntries] = useState<DirectoryEntry[]>([]);
     const [loading, setLoading] = useState(false);
@@ -150,12 +152,14 @@ const FolderPickerDialogImpl = NiceModal.create<FolderPickerDialogProps>(
             <div className="flex-1 flex flex-col space-y-4 overflow-hidden">
               {/* Legend */}
               <div className="text-xs text-muted-foreground border-b pb-2">
-                Click folder names to navigate • Use action buttons to select
+                {t('folderPicker.legend')}
               </div>
 
               {/* Manual path input */}
               <div className="space-y-2">
-                <div className="text-sm font-medium">Enter path manually:</div>
+                <div className="text-sm font-medium">
+                  {t('folderPicker.manualPathLabel')}
+                </div>
                 <div className="flex space-x-2 min-w-0">
                   <Input
                     value={manualPath}
@@ -169,7 +173,7 @@ const FolderPickerDialogImpl = NiceModal.create<FolderPickerDialogProps>(
                     size="sm"
                     className="flex-shrink-0"
                   >
-                    Go
+                    {t('folderPicker.go')}
                   </Button>
                 </div>
               </div>
@@ -177,7 +181,7 @@ const FolderPickerDialogImpl = NiceModal.create<FolderPickerDialogProps>(
               {/* Search input */}
               <div className="space-y-2">
                 <div className="text-sm font-medium">
-                  Search current directory:
+                  {t('folderPicker.searchLabel')}
                 </div>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -219,7 +223,7 @@ const FolderPickerDialogImpl = NiceModal.create<FolderPickerDialogProps>(
                   disabled={!currentPath}
                   className="flex-shrink-0"
                 >
-                  Select Current
+                  {t('folderPicker.selectCurrent')}
                 </Button>
               </div>
 
@@ -269,7 +273,7 @@ const FolderPickerDialogImpl = NiceModal.create<FolderPickerDialogProps>(
                         </span>
                         {entry.is_git_repo && (
                           <span className="text-xs text-success bg-green-100 px-2 py-1 rounded flex-shrink-0">
-                            git repo
+                            {t('folderPicker.gitRepo')}
                           </span>
                         )}
                       </div>
@@ -281,13 +285,13 @@ const FolderPickerDialogImpl = NiceModal.create<FolderPickerDialogProps>(
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={handleCancel}>
-                Cancel
+                {t('buttons.cancel')}
               </Button>
               <Button
                 onClick={handleSelectManual}
                 disabled={!manualPath.trim()}
               >
-                Select Path
+                {t('folderPicker.selectPath')}
               </Button>
             </DialogFooter>
           </DialogContent>

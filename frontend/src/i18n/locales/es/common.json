@@ -1,4 +1,13 @@
 {
+  "folderPicker": {
+    "legend": "Haz clic en los nombres de carpetas para navegar • Usa los botones de acción para seleccionar",
+    "manualPathLabel": "Ingresar ruta manualmente:",
+    "go": "Ir",
+    "searchLabel": "Buscar en el directorio actual:",
+    "selectCurrent": "Seleccionar actual",
+    "gitRepo": "repositorio git",
+    "selectPath": "Seleccionar ruta"
+  },
   "branchSelector": {
     "badges": {
       "current": "actual",

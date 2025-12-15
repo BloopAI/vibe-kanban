@@ -146,6 +146,34 @@
       }
     }
   },
+  "repos": {
+    "changeRepo": {
+      "dialog": {
+        "title": "リポジトリを変更",
+        "description": "Git操作用のリポジトリを選択してください。",
+        "label": "リポジトリ",
+        "placeholder": "リポジトリを選択",
+        "action": "リポジトリを変更"
+      }
+    },
+    "selector": {
+      "placeholder": "リポジトリを選択",
+      "empty": "利用可能なリポジトリがありません"
+    }
+  },
+  "repoBranchSelector": {
+    "label": "ベースブランチ"
+  },
+  "attemptRepoSelector": {
+    "label": "リポジトリ",
+    "addButton": "追加",
+    "empty": "リポジトリが選択されていません。少なくとも1つのリポジトリを追加してください。",
+    "selectBranch": "ブランチを選択",
+    "addRepo": {
+      "title": "Gitリポジトリを選択",
+      "description": "この試行に追加するGitリポジトリを選択してください"
+    }
+  },
   "createAttemptDialog": {
     "baseBranch": "Base branch",
     "creating": "Creating...",
