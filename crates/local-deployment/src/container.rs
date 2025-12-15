@@ -22,7 +22,7 @@ use db::{
         repo::Repo,
         scratch::{DraftFollowUpData, Scratch, ScratchType},
         task::{Task, TaskStatus},
-        task_attempt::{AttemptWithRef, TaskAttempt},
+        task_attempt::TaskAttempt,
     },
 };
 use deployment::{DeploymentError, RemoteClientNotConfigured};
@@ -209,22 +209,20 @@ impl LocalContainerService {
         }
     }
 
-    /// Clean up an expired workspace and all its worktrees
-    pub async fn cleanup_expired_attempt(
-        db: &DBService,
-        attempt: &AttemptWithRef,
-    ) -> Result<(), DeploymentError> {
-        let workspace_dir = PathBuf::from(&attempt.container_ref);
+    pub async fn cleanup_attempt_workspace(db: &DBService, attempt: &TaskAttempt) {
+        let Some(container_ref) = &attempt.container_ref else {
+            return;
+        };
+        let workspace_dir = PathBuf::from(container_ref);
 
-        // Get repositories for cleanup (same pattern as delete_inner)
-        let repositories = AttemptRepo::find_repos_for_attempt(&db.pool, attempt.attempt_id)
+        let repositories = AttemptRepo::find_repos_for_attempt(&db.pool, attempt.id)
             .await
             .unwrap_or_default();
 
         if repositories.is_empty() {
             tracing::warn!(
                 "No repositories found for attempt {}, cleaning up workspace directory only",
-                attempt.attempt_id
+                attempt.id
             );
             if workspace_dir.exists() {
                 if let Err(e) = tokio::fs::remove_dir_all(&workspace_dir).await {
@@ -237,14 +235,14 @@ impl LocalContainerService {
                 .unwrap_or_else(|e| {
                     tracing::warn!(
                         "Failed to clean up workspace for attempt {}: {}",
-                        attempt.attempt_id,
+                        attempt.id,
                         e
                     );
                 });
         }
 
-        tracing::info!("Cleaned up workspace for attempt {}", attempt.attempt_id);
-        Ok(())
+        // Clear container_ref so this attempt won't be picked up again
+        let _ = TaskAttempt::clear_container_ref(&db.pool, attempt.id).await;
     }
 
     pub async fn cleanup_expired_attempts(db: &DBService) -> Result<(), DeploymentError> {
@@ -258,15 +256,7 @@ impl LocalContainerService {
             expired_attempts.len()
         );
         for attempt in &expired_attempts {
-            Self::cleanup_expired_attempt(db, attempt)
-                .await
-                .unwrap_or_else(|e| {
-                    tracing::error!(
-                        "Failed to clean up expired attempt {}: {}",
-                        attempt.attempt_id,
-                        e
-                    );
-                });
+            Self::cleanup_attempt_workspace(db, attempt).await;
         }
         Ok(())
     }
@@ -964,36 +954,7 @@ impl ContainerService for LocalContainerService {
     }
 
     async fn delete_inner(&self, task_attempt: &TaskAttempt) -> Result<(), ContainerError> {
-        // cleanup the container, here that means deleting the workspace with all worktrees
-        let workspace_dir = PathBuf::from(task_attempt.container_ref.clone().unwrap_or_default());
-
-        // Get repositories for cleanup
-        let repositories = AttemptRepo::find_repos_for_attempt(&self.db.pool, task_attempt.id)
-            .await
-            .unwrap_or_default();
-
-        if repositories.is_empty() {
-            tracing::warn!(
-                "No repositories found for attempt {}, cleaning up workspace directory only",
-                task_attempt.id
-            );
-            if workspace_dir.exists()
-                && let Err(e) = tokio::fs::remove_dir_all(&workspace_dir).await
-            {
-                tracing::warn!("Failed to remove workspace directory: {}", e);
-            }
-        } else {
-            WorkspaceManager::cleanup_workspace(&workspace_dir, &repositories)
-                .await
-                .unwrap_or_else(|e| {
-                    tracing::warn!(
-                        "Failed to clean up workspace for task attempt {}: {}",
-                        task_attempt.id,
-                        e
-                    );
-                });
-        }
-
+        Self::cleanup_attempt_workspace(&self.db, task_attempt).await;
         Ok(())
     }
 
@@ -1001,9 +962,11 @@ impl ContainerService for LocalContainerService {
         &self,
         task_attempt: &TaskAttempt,
     ) -> Result<ContainerRef, ContainerError> {
-        let container_ref = task_attempt.container_ref.as_ref().ok_or_else(|| {
-            ContainerError::Other(anyhow!("Container ref not found for task attempt"))
-        })?;
+        if task_attempt.container_ref.is_none() {
+            return self.create(task_attempt).await;
+        }
+
+        let container_ref = task_attempt.container_ref.as_ref().unwrap();
         let workspace_dir = PathBuf::from(container_ref);
 
         let repositories =

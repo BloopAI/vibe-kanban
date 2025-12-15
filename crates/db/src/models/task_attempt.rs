@@ -26,14 +26,6 @@ pub enum TaskAttemptError {
     BranchNotFound(String),
 }
 
-/// Reference to an attempt with its container_ref (workspace path)
-/// Used by cleanup methods to identify active/expired workspaces
-#[derive(Debug, Clone)]
-pub struct AttemptWithRef {
-    pub attempt_id: Uuid,
-    pub container_ref: String,
-}
-
 #[derive(Debug, Clone, Serialize)]
 pub struct ContainerInfo {
     pub attempt_id: Uuid,
@@ -219,6 +211,19 @@ impl TaskAttempt {
         Ok(())
     }
 
+    pub async fn clear_container_ref(
+        pool: &SqlitePool,
+        attempt_id: Uuid,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE task_attempts SET container_ref = NULL, updated_at = datetime('now') WHERE id = ?",
+            attempt_id
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             TaskAttempt,
@@ -272,17 +277,21 @@ impl TaskAttempt {
     }
 
     /// Find task attempts that are expired (72+ hours since last activity) and eligible for workspace cleanup
-    /// Activity includes: execution completion, task attempt updates (including workspace recreation),
-    /// and any attempts that are currently in progress
-    /// Returns one entry per attempt with its container_ref (workspace root path)
     pub async fn find_expired_for_cleanup(
         pool: &SqlitePool,
-    ) -> Result<Vec<AttemptWithRef>, sqlx::Error> {
-        let records = sqlx::query!(
+    ) -> Result<Vec<TaskAttempt>, sqlx::Error> {
+        sqlx::query_as!(
+            TaskAttempt,
             r#"
             SELECT
-                ta.id as "attempt_id!: Uuid",
-                ta.container_ref
+                ta.id as "id!: Uuid",
+                ta.task_id as "task_id!: Uuid",
+                ta.container_ref,
+                ta.branch as "branch!",
+                ta.executor as "executor!",
+                ta.setup_completed_at as "setup_completed_at: DateTime<Utc>",
+                ta.created_at as "created_at!: DateTime<Utc>",
+                ta.updated_at as "updated_at!: DateTime<Utc>"
             FROM task_attempts ta
             LEFT JOIN execution_processes ep ON ta.id = ep.task_attempt_id AND ep.completed_at IS NOT NULL
             WHERE ta.container_ref IS NOT NULL
@@ -309,17 +318,7 @@ impl TaskAttempt {
             "#
         )
         .fetch_all(pool)
-        .await?;
-
-        Ok(records
-            .into_iter()
-            .filter_map(|r| {
-                r.container_ref.map(|container_ref| AttemptWithRef {
-                    attempt_id: r.attempt_id,
-                    container_ref,
-                })
-            })
-            .collect())
+        .await
     }
 
     pub async fn create(
