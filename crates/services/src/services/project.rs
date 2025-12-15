@@ -245,11 +245,7 @@ impl ProjectService {
             tracing::error!("Failed to delete orphaned repos: {}", e);
         }
 
-        tracing::info!(
-            "Removed repository {} from project {}",
-            repo_id,
-            project_id
-        );
+        tracing::info!("Removed repository {} from project {}", repo_id, project_id);
 
         Ok(())
     }
