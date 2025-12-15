@@ -26,9 +26,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use workspace_utils::{
-    approvals::ApprovalStatus,
-    diff::{concatenate_diff_hunks, extract_unified_diff_hunks},
-    msg_store::MsgStore,
+    approvals::ApprovalStatus, diff::normalize_unified_diff, msg_store::MsgStore,
     path::make_path_relative,
 };
 
@@ -337,8 +335,7 @@ fn normalize_file_changes(
                             make_path_relative(dest.to_string_lossy().as_ref(), worktree_path);
                         edits.push(FileChange::Rename { new_path: dest_rel });
                     }
-                    let hunks = extract_unified_diff_hunks(unified_diff);
-                    let diff = concatenate_diff_hunks(&relative, &hunks);
+                    let diff = normalize_unified_diff(&relative, unified_diff);
                     edits.push(FileChange::Edit {
                         unified_diff: diff,
                         has_line_numbers: true,

@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
 use workspace_utils::{
-    diff::{concatenate_diff_hunks, create_unified_diff, extract_unified_diff_hunks},
+    diff::{create_unified_diff, normalize_unified_diff},
     msg_store::MsgStore,
     path::make_path_relative,
     shell::resolve_executable_path_blocking,
@@ -734,9 +734,8 @@ impl CursorToolCall {
                 let mut changes = vec![];
 
                 if let Some(apply_patch) = &args.apply_patch {
-                    let hunks = extract_unified_diff_hunks(&apply_patch.patch_content);
                     changes.push(FileChange::Edit {
-                        unified_diff: concatenate_diff_hunks(&path, &hunks),
+                        unified_diff: normalize_unified_diff(&path, &apply_patch.patch_content),
                         has_line_numbers: false,
                     });
                 }
@@ -774,9 +773,8 @@ impl CursorToolCall {
                         ..
                     })) = &result
                 {
-                    let hunks = extract_unified_diff_hunks(diff_string);
                     changes.push(FileChange::Edit {
-                        unified_diff: concatenate_diff_hunks(&path, &hunks),
+                        unified_diff: normalize_unified_diff(&path, diff_string),
                         has_line_numbers: false,
                     });
                 }

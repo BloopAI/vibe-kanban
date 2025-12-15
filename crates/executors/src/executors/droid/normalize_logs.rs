@@ -8,9 +8,7 @@ use futures::{StreamExt, future::ready};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use workspace_utils::{
-    diff::{concatenate_diff_hunks, extract_unified_diff_hunks},
-    msg_store::MsgStore,
-    path::make_path_relative,
+    diff::normalize_unified_diff, msg_store::MsgStore, path::make_path_relative,
 };
 
 use crate::logs::{
@@ -767,9 +765,8 @@ fn parse_apply_patch_result(value: &Value, worktree_path: &str) -> Option<Action
     let relative_path = make_path_relative(&file_path, worktree_path);
 
     let changes = if let Some(diff_text) = diff {
-        let hunks = extract_unified_diff_hunks(&diff_text);
         vec![FileChange::Edit {
-            unified_diff: concatenate_diff_hunks(&relative_path, &hunks),
+            unified_diff: normalize_unified_diff(&relative_path, &diff_text),
             has_line_numbers: true,
         }]
     } else if let Some(content_text) = content {
