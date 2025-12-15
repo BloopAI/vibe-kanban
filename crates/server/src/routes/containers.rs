@@ -4,7 +4,7 @@ use axum::{
     response::Json as ResponseJson,
     routing::get,
 };
-use db::models::task_attempt::{ContainerInfo, TaskAttempt, TaskAttemptContext};
+use db::models::task_attempt::{TaskAttempt, TaskAttemptContext};
 use deployment::Deployment;
 use serde::{Deserialize, Serialize};
 use utils::response::ApiResponse;
@@ -15,22 +15,6 @@ use crate::{DeploymentImpl, error::ApiError};
 pub struct ContainerQuery {
     #[serde(rename = "ref")]
     pub container_ref: String,
-}
-
-pub async fn get_container_info(
-    Query(query): Query<ContainerQuery>,
-    State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<ContainerInfo>>, ApiError> {
-    let pool = &deployment.db().pool;
-
-    let container_info = TaskAttempt::resolve_container_ref(pool, &query.container_ref)
-        .await
-        .map_err(|e| match e {
-            sqlx::Error::RowNotFound => ApiError::Database(e),
-            _ => ApiError::Database(e),
-        })?;
-
-    Ok(ResponseJson(ApiResponse::success(container_info)))
 }
 
 pub async fn get_context(
@@ -56,7 +40,5 @@ pub async fn get_context(
 }
 
 pub fn router(_deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
-    Router::new()
-        .route("/containers/info", get(get_container_info))
-        .route("/containers/attempt-context", get(get_context))
+    Router::new().route("/containers/attempt-context", get(get_context))
 }
