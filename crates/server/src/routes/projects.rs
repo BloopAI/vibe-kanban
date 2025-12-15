@@ -441,23 +441,12 @@ pub async fn add_project_repository(
         .await
     {
         Ok(repository) => {
-            // Get total repository count after addition for analytics
-            let repo_count = deployment
-                .project()
-                .get_repositories(&deployment.db().pool, project.id)
-                .await
-                .map(|repos| repos.len())
-                .unwrap_or(1);
-
-            // Track repository addition event
             deployment
                 .track_if_analytics_allowed(
                     "project_repository_added",
                     serde_json::json!({
                         "project_id": project.id.to_string(),
                         "repository_id": repository.id.to_string(),
-                        "repository_count": repo_count,
-                        "is_multi_repo": repo_count > 1,
                     }),
                 )
                 .await;
@@ -493,7 +482,6 @@ pub async fn delete_project_repository(
         .await
     {
         Ok(()) => {
-            // Track repository removal event
             deployment
                 .track_if_analytics_allowed(
                     "project_repository_removed",
