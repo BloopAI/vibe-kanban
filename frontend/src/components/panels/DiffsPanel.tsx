@@ -35,10 +35,20 @@ const exceedsMaxLineCount = (d: Diff, maxLines: number): boolean => {
 
   const oldContent = d.oldContent || '';
   const newContent = d.newContent || '';
-  const diffFile = generateDiffFile('', oldContent, '', newContent, 'plaintext', 'plaintext');
+  const diffFile = generateDiffFile(
+    '',
+    oldContent,
+    '',
+    newContent,
+    'plaintext',
+    'plaintext'
+  );
   diffFile.initRaw();
   return diffFile.additionLength + diffFile.deletionLength > maxLines;
 };
+
+const getDiffId = ({ diff, index }: { diff: Diff; index: number }) =>
+  `${diff.newPath || diff.oldPath || index}`;
 
 export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
   const { t } = useTranslation('tasks');
@@ -67,22 +77,25 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
   if (diffs.length > 0) {
     const collapseDefaults =
       config?.diff_collapse_defaults ?? DEFAULT_DIFF_COLLAPSE_DEFAULTS;
-    const maxLines = config?.diff_collapse_max_lines ?? DEFAULT_COLLAPSE_MAX_LINES;
+    const maxLines =
+      config?.diff_collapse_max_lines ?? DEFAULT_COLLAPSE_MAX_LINES;
 
-    const newDiffs = diffs.filter((d, i) => {
-      const id = d.newPath || d.oldPath || String(i);
-      return !processedIds.has(id);
-    });
+    const newDiffs = diffs
+      .map((d, index) => ({ diff: d, index }))
+      .filter((d) => {
+        const id = getDiffId(d);
+        return !processedIds.has(id);
+      });
 
     if (newDiffs.length > 0) {
-      const newIds = newDiffs.map((d, i) => d.newPath || d.oldPath || String(i));
+      const newIds = newDiffs.map(getDiffId);
       const toCollapse = newDiffs
         .filter(
-          (d) =>
-            collapseDefaults[d.change] ||
-            (maxLines > 0 && exceedsMaxLineCount(d, maxLines))
+          ({ diff }) =>
+            collapseDefaults[diff.change] ||
+            (maxLines > 0 && exceedsMaxLineCount(diff, maxLines))
         )
-        .map((d, i) => d.newPath || d.oldPath || String(i));
+        .map(getDiffId);
 
       setProcessedIds((prev) => new Set([...prev, ...newIds]));
       if (toCollapse.length > 0) {
@@ -94,7 +107,7 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
   const loading = loadingState === 'loading';
 
   const ids = useMemo(() => {
-    return diffs.map((d, i) => d.newPath || d.oldPath || String(i));
+    return diffs.map((d, i) => getDiffId({ diff: d, index: i }));
   }, [diffs]);
 
   const toggle = useCallback((id: string) => {
