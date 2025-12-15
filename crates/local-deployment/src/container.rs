@@ -209,7 +209,7 @@ impl LocalContainerService {
         }
     }
 
-    pub async fn cleanup_attempt_workspace(db: &DBService, attempt: &TaskAttempt) {
+    async fn cleanup_attempt_workspace_inner(db: &DBService, attempt: &TaskAttempt) {
         let Some(container_ref) = &attempt.container_ref else {
             return;
         };
@@ -256,7 +256,7 @@ impl LocalContainerService {
             expired_attempts.len()
         );
         for attempt in &expired_attempts {
-            Self::cleanup_attempt_workspace(db, attempt).await;
+            Self::cleanup_attempt_workspace_inner(db, attempt).await;
         }
         Ok(())
     }
@@ -956,9 +956,8 @@ impl ContainerService for LocalContainerService {
         Ok(workspace.workspace_dir.to_string_lossy().to_string())
     }
 
-    async fn delete_inner(&self, task_attempt: &TaskAttempt) -> Result<(), ContainerError> {
-        Self::cleanup_attempt_workspace(&self.db, task_attempt).await;
-        Ok(())
+    async fn cleanup_attempt_workspace(&self, task_attempt: &TaskAttempt) {
+        Self::cleanup_attempt_workspace_inner(&self.db, task_attempt).await;
     }
 
     async fn ensure_container_exists(
