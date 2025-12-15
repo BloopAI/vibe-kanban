@@ -516,12 +516,7 @@ function GitOperations({
 
             <Button
               onClick={handleRebaseDialogOpen}
-              disabled={
-                mergeInfo.hasMergedPR ||
-                rebasing ||
-                isAttemptRunning ||
-                hasConflictsCalculated
-              }
+              disabled={rebasing || isAttemptRunning || hasConflictsCalculated}
               variant="outline"
               size="xs"
               className="border-warning text-warning hover:bg-warning gap-1 shrink-0"
