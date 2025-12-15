@@ -14,7 +14,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import type { TaskAttempt, Diff, DiffChangeKind } from 'shared/types';
+import type { TaskAttempt, Diff } from 'shared/types';
+import { DEFAULT_DIFF_COLLAPSE_DEFAULTS } from 'shared/types';
 import { useUserSystem } from '@/components/ConfigProvider';
 import GitOperations, {
   type GitOperationsInputs,
@@ -24,14 +25,6 @@ interface DiffsPanelProps {
   selectedAttempt: TaskAttempt | null;
   gitOps?: GitOperationsInputs;
 }
-
-// Default collapse kinds if config is not yet loaded
-const DEFAULT_COLLAPSE_KINDS: DiffChangeKind[] = [
-  'deleted',
-  'renamed',
-  'copied',
-  'permissionChange',
-];
 
 const DEFAULT_COLLAPSE_MAX_LINES = 500;
 
@@ -64,10 +57,9 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
   }
 
   if (diffs.length > 0) {
-    const collapseKinds =
-      config?.diff_collapse_defaults ?? DEFAULT_COLLAPSE_KINDS;
+    const collapseDefaults =
+      config?.diff_collapse_defaults ?? DEFAULT_DIFF_COLLAPSE_DEFAULTS;
     const maxLines = config?.diff_collapse_max_lines ?? DEFAULT_COLLAPSE_MAX_LINES;
-    const kindsToCollapse = new Set(collapseKinds);
 
     const newDiffs = diffs.filter((d, i) => {
       const id = d.newPath || d.oldPath || String(i);
@@ -79,7 +71,7 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
       const toCollapse = newDiffs
         .filter(
           (d) =>
-            kindsToCollapse.has(d.change) ||
+            collapseDefaults[d.change] ||
             (maxLines > 0 && getDiffLineCount(d) > maxLines)
         )
         .map((d, i) => d.newPath || d.oldPath || String(i));

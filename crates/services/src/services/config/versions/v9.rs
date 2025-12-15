@@ -2,7 +2,6 @@ use anyhow::Error;
 use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
-use utils::diff::DiffChangeKind;
 
 pub use v8::{
     EditorConfig, EditorType, GitHubConfig, NotificationConfig, ShowcaseState, SoundFile,
@@ -19,13 +18,38 @@ fn default_pr_auto_description_enabled() -> bool {
     true
 }
 
-fn default_diff_collapse_defaults() -> Vec<DiffChangeKind> {
-    vec![
-        DiffChangeKind::Deleted,
-        DiffChangeKind::Renamed,
-        DiffChangeKind::Copied,
-        DiffChangeKind::PermissionChange,
-    ]
+fn default_diff_collapse_true() -> bool {
+    true
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct DiffCollapseDefaults {
+    #[serde(default)]
+    pub added: bool,
+    #[serde(default = "default_diff_collapse_true")]
+    pub deleted: bool,
+    #[serde(default)]
+    pub modified: bool,
+    #[serde(default = "default_diff_collapse_true")]
+    pub renamed: bool,
+    #[serde(default = "default_diff_collapse_true")]
+    pub copied: bool,
+    #[serde(default = "default_diff_collapse_true")]
+    pub permission_change: bool,
+}
+
+pub const DEFAULT_DIFF_COLLAPSE_DEFAULTS: DiffCollapseDefaults = DiffCollapseDefaults {
+    added: false,
+    deleted: true,
+    modified: false,
+    renamed: true,
+    copied: true,
+    permission_change: true,
+};
+
+fn default_diff_collapse_defaults() -> DiffCollapseDefaults {
+    DEFAULT_DIFF_COLLAPSE_DEFAULTS.clone()
 }
 
 fn default_diff_collapse_max_lines() -> Option<u32> {
@@ -57,7 +81,7 @@ pub struct Config {
     #[serde(default)]
     pub pr_auto_description_prompt: Option<String>,
     #[serde(default = "default_diff_collapse_defaults")]
-    pub diff_collapse_defaults: Vec<DiffChangeKind>,
+    pub diff_collapse_defaults: DiffCollapseDefaults,
     #[serde(default = "default_diff_collapse_max_lines")]
     pub diff_collapse_max_lines: Option<u32>,
 }

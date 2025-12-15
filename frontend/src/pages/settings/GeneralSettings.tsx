@@ -22,8 +22,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Volume2 } from 'lucide-react';
 import {
+  DEFAULT_DIFF_COLLAPSE_DEFAULTS,
   DEFAULT_PR_DESCRIPTION_PROMPT,
-  DiffChangeKind,
   EditorType,
   SoundFile,
   ThemeMode,
@@ -556,20 +556,22 @@ export function GeneralSettings() {
                   'deleted',
                   'permissionChange',
                   'renamed',
-                ] as DiffChangeKind[]
+                ] as const
               ).map((kind) => (
                 <div key={kind} className="flex items-center space-x-2">
                   <Checkbox
                     id={`collapse-${kind}`}
-                    checked={
-                      draft?.diff_collapse_defaults?.includes(kind) ?? false
-                    }
+                    checked={draft?.diff_collapse_defaults?.[kind] ?? false}
                     onCheckedChange={(checked: boolean) => {
-                      const current = draft?.diff_collapse_defaults ?? [];
-                      const updated = checked
-                        ? [...current, kind]
-                        : current.filter((k) => k !== kind);
-                      updateDraft({ diff_collapse_defaults: updated });
+                      const currentDefaults =
+                        draft?.diff_collapse_defaults ??
+                        DEFAULT_DIFF_COLLAPSE_DEFAULTS;
+                      updateDraft({
+                        diff_collapse_defaults: {
+                          ...currentDefaults,
+                          [kind]: checked,
+                        },
+                      });
                     }}
                   />
                   <Label
