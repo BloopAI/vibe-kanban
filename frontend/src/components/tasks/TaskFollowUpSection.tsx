@@ -888,7 +888,6 @@ export function TaskFollowUpSection({
                       !clickedMarkdown)
                   }
                   size="sm"
-                  variant="secondary"
                 >
                   {isQueueLoading ? (
                     <Loader2 className="animate-spin h-4 w-4 mr-2" />
