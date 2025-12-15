@@ -147,6 +147,22 @@
           "helper": "PR説明生成時のAIエージェント用カスタムプロンプト。{pr_number}と{pr_url}をプレースホルダーとして使用できます。"
         }
       },
+      "review": {
+        "title": "レビュー",
+        "description": "レビューパネルでのファイル変更の表示方法を設定します。",
+        "collapseDefaults": {
+          "label": "デフォルトで折りたたむ",
+          "helper": "差分を表示する際にデフォルトで折りたたむ変更タイプを選択します。"
+        },
+        "changeTypes": {
+          "added": "追加",
+          "deleted": "削除",
+          "modified": "変更",
+          "renamed": "名前変更",
+          "copied": "コピー",
+          "permissionChange": "権限変更"
+        }
+      },
       "notifications": {
         "title": "通知",
         "description": "通知を受け取るタイミングと方法を制御します。",

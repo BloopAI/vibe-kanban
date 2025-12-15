@@ -147,6 +147,22 @@
           "helper": "生成PR描述时AI代理使用的自定义提示。使用{pr_number}和{pr_url}作为占位符。"
         }
       },
+      "review": {
+        "title": "审查",
+        "description": "配置审查面板中文件更改的显示方式。",
+        "collapseDefaults": {
+          "label": "默认折叠",
+          "helper": "选择查看差异时默认折叠的更改类型。"
+        },
+        "changeTypes": {
+          "added": "新增",
+          "deleted": "删除",
+          "modified": "修改",
+          "renamed": "重命名",
+          "copied": "复制",
+          "permissionChange": "权限更改"
+        }
+      },
       "notifications": {
         "title": "通知",
         "description": "控制何时以及如何接收通知。",

@@ -147,6 +147,22 @@
           "helper": "Custom prompt for the AI agent when generating PR descriptions. Use {pr_number} and {pr_url} as placeholders."
         }
       },
+      "review": {
+        "title": "Review",
+        "description": "Configure how file changes are displayed in the review panel.",
+        "collapseDefaults": {
+          "label": "Collapse by Default",
+          "helper": "Select which change types should be collapsed by default when viewing diffs."
+        },
+        "changeTypes": {
+          "added": "Added",
+          "deleted": "Deleted",
+          "modified": "Modified",
+          "renamed": "Renamed",
+          "copied": "Copied",
+          "permissionChange": "Permission Change"
+        }
+      },
       "notifications": {
         "title": "Notifications",
         "description": "Control when and how you receive notifications.",

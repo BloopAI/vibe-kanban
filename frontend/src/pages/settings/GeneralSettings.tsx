@@ -23,6 +23,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Volume2 } from 'lucide-react';
 import {
   DEFAULT_PR_DESCRIPTION_PROMPT,
+  DiffChangeKind,
   EditorType,
   SoundFile,
   ThemeMode,
@@ -529,6 +530,57 @@ export function GeneralSettings() {
             <p className="text-sm text-muted-foreground">
               {t('settings.general.pullRequests.customPrompt.helper')}
             </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('settings.general.review.title')}</CardTitle>
+          <CardDescription>
+            {t('settings.general.review.description')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>{t('settings.general.review.collapseDefaults.label')}</Label>
+            <p className="text-sm text-muted-foreground mb-3">
+              {t('settings.general.review.collapseDefaults.helper')}
+            </p>
+            <div className="grid gap-2">
+              {(
+                [
+                  'added',
+                  'modified',
+                  'copied',
+                  'deleted',
+                  'permissionChange',
+                  'renamed',
+                ] as DiffChangeKind[]
+              ).map((kind) => (
+                <div key={kind} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`collapse-${kind}`}
+                    checked={
+                      draft?.diff_collapse_defaults?.includes(kind) ?? false
+                    }
+                    onCheckedChange={(checked: boolean) => {
+                      const current = draft?.diff_collapse_defaults ?? [];
+                      const updated = checked
+                        ? [...current, kind]
+                        : current.filter((k) => k !== kind);
+                      updateDraft({ diff_collapse_defaults: updated });
+                    }}
+                  />
+                  <Label
+                    htmlFor={`collapse-${kind}`}
+                    className="cursor-pointer"
+                  >
+                    {t(`settings.general.review.changeTypes.${kind}`)}
+                  </Label>
+                </div>
+              ))}
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -14,7 +14,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import type { TaskAttempt, Diff } from 'shared/types';
+import type { TaskAttempt, Diff, DiffChangeKind } from 'shared/types';
+import { useUserSystem } from '@/components/ConfigProvider';
 import GitOperations, {
   type GitOperationsInputs,
 } from '@/components/tasks/Toolbar/GitOperations.tsx';
@@ -24,8 +25,17 @@ interface DiffsPanelProps {
   gitOps?: GitOperationsInputs;
 }
 
+// Default collapse kinds if config is not yet loaded
+const DEFAULT_COLLAPSE_KINDS: DiffChangeKind[] = [
+  'deleted',
+  'renamed',
+  'copied',
+  'permissionChange',
+];
+
 export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
   const { t } = useTranslation('tasks');
+  const { config } = useUserSystem();
   const [loadingState, setLoadingState] = useState<
     'loading' | 'loaded' | 'timed-out'
   >('loading');
@@ -49,12 +59,9 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
 
   if (diffs.length > 0 && !hasInitializedCollapse) {
     setHasInitializedCollapse(true);
-    const kindsToCollapse = new Set([
-      'deleted',
-      'renamed',
-      'copied',
-      'permissionChange',
-    ]);
+    const collapseKinds =
+      config?.diff_collapse_defaults ?? DEFAULT_COLLAPSE_KINDS;
+    const kindsToCollapse = new Set(collapseKinds);
     const initial = new Set(
       diffs
         .filter((d) => kindsToCollapse.has(d.change))
