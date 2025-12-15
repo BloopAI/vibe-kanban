@@ -215,7 +215,6 @@ impl ImageService {
             let src = self.cache_dir.join(&image.file_path);
             let dst = images_dir.join(&image.file_path);
 
-            // Skip if target exists
             if dst.exists() {
                 continue;
             }
