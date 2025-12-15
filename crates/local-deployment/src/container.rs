@@ -143,37 +143,6 @@ impl LocalContainerService {
         map.remove(id)
     }
 
-    /// Defensively check for externally deleted workspaces and mark them as deleted in the database
-    async fn check_externally_deleted_workspaces(db: &DBService) -> Result<(), DeploymentError> {
-        let active_attempts = TaskAttempt::find_by_workspace_deleted(&db.pool).await?;
-        tracing::debug!(
-            "Checking {} active workspaces for external deletion...",
-            active_attempts.len()
-        );
-        for attempt in active_attempts {
-            // Check if workspace directory exists
-            if !std::path::Path::new(&attempt.container_ref).exists() {
-                // Workspace was deleted externally, mark as deleted in database
-                if let Err(e) =
-                    TaskAttempt::mark_worktree_deleted(&db.pool, attempt.attempt_id).await
-                {
-                    tracing::error!(
-                        "Failed to mark externally deleted workspace as deleted for attempt {}: {}",
-                        attempt.attempt_id,
-                        e
-                    );
-                } else {
-                    tracing::info!(
-                        "Marked externally deleted workspace as deleted for attempt {} (path: {})",
-                        attempt.attempt_id,
-                        attempt.container_ref
-                    );
-                }
-            }
-        }
-        Ok(())
-    }
-
     /// Find and delete orphaned worktrees that don't correspond to any task attempts
     async fn cleanup_orphaned_worktrees(&self) {
         // Check if orphan cleanup is disabled via environment variable
@@ -274,12 +243,7 @@ impl LocalContainerService {
                 });
         }
 
-        // Mark workspace as deleted in database after cleanup
-        TaskAttempt::mark_worktree_deleted(&db.pool, attempt.attempt_id).await?;
-        tracing::info!(
-            "Successfully marked workspace as deleted for attempt {}",
-            attempt.attempt_id
-        );
+        tracing::info!("Cleaned up workspace for attempt {}", attempt.attempt_id);
         Ok(())
     }
 
@@ -315,11 +279,6 @@ impl LocalContainerService {
             loop {
                 cleanup_interval.tick().await;
                 tracing::info!("Starting periodic workspace cleanup...");
-                Self::check_externally_deleted_workspaces(&db)
-                    .await
-                    .unwrap_or_else(|e| {
-                        tracing::error!("Failed to check externally deleted workspaces: {}", e);
-                    });
                 Self::cleanup_expired_attempts(&db)
                     .await
                     .unwrap_or_else(|e| {
