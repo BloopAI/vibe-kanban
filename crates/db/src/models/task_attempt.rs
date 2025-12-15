@@ -359,7 +359,6 @@ impl TaskAttempt {
         Ok(())
     }
 
-    /// Resolve a container_ref path to its associated attempt, task, and project IDs
     pub async fn resolve_container_ref(
         pool: &SqlitePool,
         container_ref: &str,
