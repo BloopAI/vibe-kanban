@@ -16,6 +16,12 @@ ENV RUSTFLAGS="-C target-feature=-crt-static"
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 
+ARG POSTHOG_API_KEY
+ARG POSTHOG_API_ENDPOINT
+
+ENV VITE_PUBLIC_POSTHOG_KEY=$POSTHOG_API_KEY
+ENV VITE_PUBLIC_POSTHOG_HOST=$POSTHOG_API_ENDPOINT
+
 # Set working directory
 WORKDIR /app
 
