@@ -2,7 +2,6 @@ use anyhow::Error;
 use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
-
 pub use v8::{
     EditorConfig, EditorType, GitHubConfig, NotificationConfig, ShowcaseState, SoundFile,
     ThemeMode, UiLanguage,
