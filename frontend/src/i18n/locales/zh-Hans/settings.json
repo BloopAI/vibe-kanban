@@ -154,6 +154,10 @@
           "label": "默认折叠",
           "helper": "选择查看差异时默认折叠的更改类型。"
         },
+        "collapseMaxLines": {
+          "label": "折叠大型差异",
+          "helper": "自动折叠超过指定行数的差异。设置为0可禁用此功能。"
+        },
         "changeTypes": {
           "added": "新增",
           "deleted": "删除",

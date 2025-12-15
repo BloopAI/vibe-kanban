@@ -154,6 +154,10 @@
           "label": "기본적으로 접기",
           "helper": "diff를 볼 때 기본적으로 접힐 변경 유형을 선택하세요."
         },
+        "collapseMaxLines": {
+          "label": "큰 Diff 접기",
+          "helper": "지정된 줄 수를 초과하는 diff를 자동으로 접습니다. 0으로 설정하면 비활성화됩니다."
+        },
         "changeTypes": {
           "added": "추가됨",
           "deleted": "삭제됨",

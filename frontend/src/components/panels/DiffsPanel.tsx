@@ -33,6 +33,12 @@ const DEFAULT_COLLAPSE_KINDS: DiffChangeKind[] = [
   'permissionChange',
 ];
 
+const DEFAULT_COLLAPSE_MAX_LINES = 500;
+
+const getDiffLineCount = (d: Diff): number => {
+  return (d.additions ?? 0) + (d.deletions ?? 0);
+};
+
 export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
   const { t } = useTranslation('tasks');
   const { config } = useUserSystem();
@@ -40,7 +46,7 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
     'loading' | 'loaded' | 'timed-out'
   >('loading');
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
-  const [hasInitializedCollapse, setHasInitializedCollapse] = useState(false);
+  const [processedIds, setProcessedIds] = useState<Set<string>>(new Set());
   const { diffs, error } = useDiffStream(selectedAttempt?.id ?? null, true);
   const { fileCount, added, deleted } = useDiffSummary(
     selectedAttempt?.id ?? null
@@ -57,17 +63,32 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
     setLoadingState('loaded');
   }
 
-  if (diffs.length > 0 && !hasInitializedCollapse) {
-    setHasInitializedCollapse(true);
+  if (diffs.length > 0) {
     const collapseKinds =
       config?.diff_collapse_defaults ?? DEFAULT_COLLAPSE_KINDS;
+    const maxLines = config?.diff_collapse_max_lines ?? DEFAULT_COLLAPSE_MAX_LINES;
     const kindsToCollapse = new Set(collapseKinds);
-    const initial = new Set(
-      diffs
-        .filter((d) => kindsToCollapse.has(d.change))
-        .map((d, i) => d.newPath || d.oldPath || String(i))
-    );
-    if (initial.size > 0) setCollapsedIds(initial);
+
+    const newDiffs = diffs.filter((d, i) => {
+      const id = d.newPath || d.oldPath || String(i);
+      return !processedIds.has(id);
+    });
+
+    if (newDiffs.length > 0) {
+      const newIds = newDiffs.map((d, i) => d.newPath || d.oldPath || String(i));
+      const toCollapse = newDiffs
+        .filter(
+          (d) =>
+            kindsToCollapse.has(d.change) ||
+            (maxLines > 0 && getDiffLineCount(d) > maxLines)
+        )
+        .map((d, i) => d.newPath || d.oldPath || String(i));
+
+      setProcessedIds((prev) => new Set([...prev, ...newIds]));
+      if (toCollapse.length > 0) {
+        setCollapsedIds((prev) => new Set([...prev, ...toCollapse]));
+      }
+    }
   }
 
   const loading = loadingState === 'loading';

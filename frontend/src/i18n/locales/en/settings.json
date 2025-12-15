@@ -154,6 +154,10 @@
           "label": "Collapse by Default",
           "helper": "Select which change types should be collapsed by default when viewing diffs."
         },
+        "collapseMaxLines": {
+          "label": "Collapse Large Diffs",
+          "helper": "Automatically collapse diffs with more than this many lines. Set to 0 to disable."
+        },
         "changeTypes": {
           "added": "Added",
           "deleted": "Deleted",

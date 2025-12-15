@@ -28,6 +28,10 @@ fn default_diff_collapse_defaults() -> Vec<DiffChangeKind> {
     ]
 }
 
+fn default_diff_collapse_max_lines() -> Option<u32> {
+    Some(500)
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
 pub struct Config {
     pub config_version: String,
@@ -54,6 +58,8 @@ pub struct Config {
     pub pr_auto_description_prompt: Option<String>,
     #[serde(default = "default_diff_collapse_defaults")]
     pub diff_collapse_defaults: Vec<DiffChangeKind>,
+    #[serde(default = "default_diff_collapse_max_lines")]
+    pub diff_collapse_max_lines: Option<u32>,
 }
 
 impl Config {
@@ -77,6 +83,7 @@ impl Config {
             pr_auto_description_enabled: old_config.pr_auto_description_enabled,
             pr_auto_description_prompt: old_config.pr_auto_description_prompt,
             diff_collapse_defaults: default_diff_collapse_defaults(),
+            diff_collapse_max_lines: default_diff_collapse_max_lines(),
         }
     }
 
@@ -128,6 +135,7 @@ impl Default for Config {
             pr_auto_description_enabled: true,
             pr_auto_description_prompt: None,
             diff_collapse_defaults: default_diff_collapse_defaults(),
+            diff_collapse_max_lines: default_diff_collapse_max_lines(),
         }
     }
 }

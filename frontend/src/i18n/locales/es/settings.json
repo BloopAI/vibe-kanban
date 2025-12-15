@@ -154,6 +154,10 @@
           "label": "Contraer por Defecto",
           "helper": "Selecciona qué tipos de cambios deben estar contraídos por defecto al ver los diffs."
         },
+        "collapseMaxLines": {
+          "label": "Contraer Diffs Grandes",
+          "helper": "Contrae automáticamente los diffs con más de este número de líneas. Establece 0 para desactivar."
+        },
         "changeTypes": {
           "added": "Agregado",
           "deleted": "Eliminado",

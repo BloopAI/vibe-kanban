@@ -582,6 +582,28 @@ export function GeneralSettings() {
               ))}
             </div>
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="collapse-max-lines">
+              {t('settings.general.review.collapseMaxLines.label')}
+            </Label>
+            <Input
+              id="collapse-max-lines"
+              type="number"
+              min={0}
+              placeholder="500"
+              value={draft?.diff_collapse_max_lines ?? ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                updateDraft({
+                  diff_collapse_max_lines:
+                    value === '' ? null : Math.max(0, parseInt(value, 10) || 0),
+                });
+              }}
+            />
+            <p className="text-sm text-muted-foreground">
+              {t('settings.general.review.collapseMaxLines.helper')}
+            </p>
+          </div>
         </CardContent>
       </Card>
 
