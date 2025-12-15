@@ -111,6 +111,7 @@ function DiffsPanelContainer({
 
   return (
     <DiffsPanel
+      key={attempt?.id}
       selectedAttempt={attempt}
       gitOps={
         attempt && selectedTask
