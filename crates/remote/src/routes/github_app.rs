@@ -81,7 +81,6 @@ pub struct RepositoryDetails {
 pub struct CallbackQuery {
     pub installation_id: Option<i64>,
     pub state: Option<String>,
-    pub setup_action: Option<String>, // "install", "update", or "request"
 }
 
 #[derive(Debug, Deserialize)]
