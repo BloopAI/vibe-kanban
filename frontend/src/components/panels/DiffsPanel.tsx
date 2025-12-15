@@ -1,3 +1,4 @@
+import { generateDiffFile } from '@git-diff-view/file';
 import { useDiffStream } from '@/hooks/useDiffStream';
 import { useMemo, useCallback, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,8 +29,15 @@ interface DiffsPanelProps {
 
 const DEFAULT_COLLAPSE_MAX_LINES = 500;
 
-const getDiffLineCount = (d: Diff): number => {
-  return (d.additions ?? 0) + (d.deletions ?? 0);
+const exceedsMaxLineCount = (d: Diff, maxLines: number): boolean => {
+  if (d.additions != null || d.deletions != null)
+    return (d.additions ?? 0) + (d.deletions ?? 0) > maxLines;
+
+  const oldContent = d.oldContent || '';
+  const newContent = d.newContent || '';
+  const diffFile = generateDiffFile('', oldContent, '', newContent, 'plaintext', 'plaintext');
+  diffFile.initRaw();
+  return diffFile.additionLength + diffFile.deletionLength > maxLines;
 };
 
 export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
@@ -72,7 +80,7 @@ export function DiffsPanel({ selectedAttempt, gitOps }: DiffsPanelProps) {
         .filter(
           (d) =>
             collapseDefaults[d.change] ||
-            (maxLines > 0 && getDiffLineCount(d) > maxLines)
+            (maxLines > 0 && exceedsMaxLineCount(d, maxLines))
         )
         .map((d, i) => d.newPath || d.oldPath || String(i));
 
