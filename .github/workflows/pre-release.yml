@@ -2,26 +2,14 @@ name: Create GitHub Pre-Release
 
 on:
   workflow_dispatch:
-    inputs:
-      version_type:
-        description: "Version bump type"
-        required: true
-        default: "patch"
-        type: choice
-        options:
-          - patch
-          - minor
-          - major
-          - prerelease
 
 concurrency:
-  group: release-${{ github.ref_name }} # allow concurrent prerelease from different branches
+  group: release-${{ github.ref_name }} # allow concurrent builds from different branches
   cancel-in-progress: true
 
 permissions:
-  contents: write
-  packages: write
-  pull-requests: write
+  contents: read
+  packages: read
 
 env:
   NODE_VERSION: 22
@@ -29,104 +17,13 @@ env:
   RUST_TOOLCHAIN: nightly-2025-12-04
 
 jobs:
-  bump-version:
-    runs-on: ubuntu-latest
-    outputs:
-      new_tag: ${{ steps.version.outputs.new_tag }}
-      new_version: ${{ steps.version.outputs.new_version }}
-      branch_suffix: ${{ steps.branch.outputs.suffix }}
-    steps:
-      - name: Cache cargo-edit
-        uses: actions/cache@v3
-        id: cache-cargo-edit
-        with:
-          path: ~/.cargo/bin/cargo-set-version
-          key: cargo-edit-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}
-
-      - name: Install cargo-edit
-        if: steps.cache-cargo-edit.outputs.cache-hit != 'true'
-        run: cargo install cargo-edit
-
-      - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          ssh-key: ${{ secrets.DEPLOY_KEY }}
-
-      - name: setup node
-        uses: ./.github/actions/setup-node
-
-      - name: Generate branch suffix
-        id: branch
-        run: |
-          branch_name="${{ github.ref_name }}"
-          # Get last 6 characters of branch name, remove all special chars (including dashes)
-          suffix=$(echo "$branch_name" | tail -c 7 | sed 's/[^a-zA-Z0-9]//g' | tr '[:upper:]' '[:lower:]')
-          echo "Branch: $branch_name"
-          echo "Suffix: $suffix"
-          echo "suffix=$suffix" >> $GITHUB_OUTPUT
-
-      - name: Determine and update versions
-        id: version
-        run: |
-          # Get the latest version from npm registry
-          latest_npm_version=$(npm view vibe-kanban version 2>/dev/null || echo "0.0.0")
-          echo "Latest npm version: $latest_npm_version"
-
-          timestamp=$(date +%Y%m%d%H%M%S)
-
-          # Update root package.json based on npm version, not current package.json
-          if [[ "${{ github.event.inputs.version_type }}" == "prerelease" ]]; then
-            # For prerelease, use current package.json version and add branch suffix
-            npm version prerelease --preid="${{ steps.branch.outputs.suffix }}" --no-git-tag-version
-
-            new_version=$(node -p "require('./package.json').version")
-            new_tag="v${new_version}.${timestamp}"
-          else
-            # For regular releases, use npm version and bump it
-            npm version $latest_npm_version --no-git-tag-version --allow-same-version
-            npm version ${{ github.event.inputs.version_type }} --no-git-tag-version
-
-            new_version=$(node -p "require('./package.json').version")
-            new_tag="v${new_version}-${timestamp}"
-          fi
-
-          # Update npx-cli package.json to match
-          cd npx-cli
-          npm version $new_version --no-git-tag-version --allow-same-version
-          cd ..
-
-          # Update frontend package.json to match
-          cd frontend
-          npm version $new_version --no-git-tag-version --allow-same-version
-          cd ..
-
-          cargo set-version --workspace "$new_version"
-
-          echo "New version: $new_version"
-          echo "new_version=$new_version" >> $GITHUB_OUTPUT
-          echo "new_tag=$new_tag" >> $GITHUB_OUTPUT
-
-      - name: Commit changes and create tag
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add package.json pnpm-lock.yaml npx-cli/package.json frontend/package.json Cargo.lock
-          git add $(find . -name Cargo.toml)
-          git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
-          git tag -a ${{ steps.version.outputs.new_tag }} -m "Release ${{ steps.version.outputs.new_tag }}"
-          git push
-          git push --tags
-
   build-frontend:
-    needs: bump-version
     runs-on: ubuntu-latest
     env:
       VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY: ${{ secrets.PUBLIC_REACT_VIRTUOSO_LICENSE_KEY }}
       VITE_VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.bump-version.outputs.new_tag }}
 
       - name: Setup Node
         uses: ./.github/actions/setup-node
@@ -147,18 +44,6 @@ jobs:
           VITE_POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           VITE_POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
 
-      - name: Create Sentry release
-        uses: getsentry/action-release@v3
-        env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
-          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
-        with:
-          release: ${{ needs.bump-version.outputs.new_version }}
-          environment: production
-          sourcemaps: "./frontend/dist"
-          ignore_missing: true
-
       - name: Upload frontend artifact
         uses: actions/upload-artifact@v4
         with:
@@ -167,38 +52,34 @@ jobs:
           retention-days: 1
 
   build-backend:
-    needs: [bump-version, build-frontend]
+    needs: [build-frontend]
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     strategy:
-      # Platform matrix - keep target/name in sync with package-npx-cli job
       matrix:
         include:
-          - target: x86_64-unknown-linux-musl
-            os: ubuntu-latest
-            container: &zigbuild_container ghcr.io/rust-cross/cargo-zigbuild@sha256:af1bc2b869c5d76c1300f7a4685c2f1793d068e6e895c9f5c399b517b31a731e
-            name: linux-x64
-          - target: aarch64-unknown-linux-musl
-            os: ubuntu-latest
-            name: linux-arm64
-            container: *zigbuild_container
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest-l
-            name: windows-x64
-          # Intel-only runner; last supported x86_64 image (EOL Aug 2027)
-          - target: x86_64-apple-darwin
-            os: macos-15-intel
-            name: macos-x64
-          - target: aarch64-apple-darwin
-            os: macos-14
-            name: macos-arm64
+          # - target: x86_64-unknown-linux-musl
+          #   os: ubuntu-latest
+          #   container: &zigbuild_container ghcr.io/rust-cross/cargo-zigbuild@sha256:af1bc2b869c5d76c1300f7a4685c2f1793d068e6e895c9f5c399b517b31a731e
+          #   name: linux-x64
+          # - target: aarch64-unknown-linux-musl
+          #   os: ubuntu-latest
+          #   name: linux-arm64
+          #   container: *zigbuild_container
+          # - target: x86_64-pc-windows-msvc
+          #   os: windows-latest-l
+          #   name: windows-x64
+          # - target: x86_64-apple-darwin
+          #   os: macos-15-intel
+          #   name: macos-x64
+          # - target: aarch64-apple-darwin
+          #   os: macos-14
+          #   name: macos-arm64
           - target: aarch64-pc-windows-msvc
             os: windows-latest-l
             name: windows-arm64
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.bump-version.outputs.new_tag }}
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -249,17 +130,6 @@ jobs:
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
           VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
 
-      - name: Setup Sentry CLI
-        uses: matbour/setup-sentry-cli@v2
-        with:
-          token: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          organization: ${{ secrets.SENTRY_ORG }}
-          project: ${{ secrets.SENTRY_PROJECT }}
-          version: 2.21.2
-
-      - name: Upload source maps to Sentry
-        run: sentry-cli debug-files upload --include-sources target/${{ matrix.target }}/release
-
       - name: Prepare binaries (non-macOS)
         if: runner.os != 'macOS'
         shell: bash
@@ -273,7 +143,6 @@ jobs:
             cp target/${{ matrix.target }}/release/mcp_task_server dist/vibe-kanban-mcp-${{ matrix.name }}
           fi
 
-      # Code signing for macOS only
       - name: Prepare Apple certificate (macOS)
         if: runner.os == 'macOS'
         run: |
@@ -356,58 +225,43 @@ jobs:
           retention-days: 1
 
   package-npx-cli:
-    needs: [bump-version, build-frontend, build-backend]
+    needs: [build-backend]
     runs-on: ubuntu-latest
     strategy:
-      # NOTE: This matrix must be kept in sync with build-backend job above
-      # GitHub Actions doesn't support YAML anchors, so duplication is unavoidable
       matrix:
         include:
-          - target: x86_64-unknown-linux-musl
-            name: linux-x64
-            binary: vibe-kanban
-            mcp_binary: vibe-kanban-mcp
-          - target: x86_64-pc-windows-msvc
-            name: windows-x64
-            binary: vibe-kanban.exe
-            mcp_binary: vibe-kanban-mcp.exe
-          - target: x86_64-apple-darwin
-            name: macos-x64
-            binary: vibe-kanban
-            mcp_binary: vibe-kanban-mcp
-          - target: aarch64-apple-darwin
-            name: macos-arm64
-            binary: vibe-kanban
-            mcp_binary: vibe-kanban-mcp
+          # - target: x86_64-unknown-linux-musl
+          #   name: linux-x64
+          #   binary: vibe-kanban
+          #   mcp_binary: vibe-kanban-mcp
+          # - target: x86_64-pc-windows-msvc
+          #   name: windows-x64
+          #   binary: vibe-kanban.exe
+          #   mcp_binary: vibe-kanban-mcp.exe
+          # - target: x86_64-apple-darwin
+          #   name: macos-x64
+          #   binary: vibe-kanban
+          #   mcp_binary: vibe-kanban-mcp
+          # - target: aarch64-apple-darwin
+          #   name: macos-arm64
+          #   binary: vibe-kanban
+          #   mcp_binary: vibe-kanban-mcp
           - target: aarch64-pc-windows-msvc
             name: windows-arm64
             binary: vibe-kanban.exe
             mcp_binary: vibe-kanban-mcp.exe
-          - target: aarch64-unknown-linux-musl
-            name: linux-arm64
-            binary: vibe-kanban
-            mcp_binary: vibe-kanban-mcp
+          # - target: aarch64-unknown-linux-musl
+          #   name: linux-arm64
+          #   binary: vibe-kanban
+          #   mcp_binary: vibe-kanban-mcp
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.bump-version.outputs.new_tag }}
-
-      - name: Download frontend artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-dist
-          path: frontend/dist/
 
       - name: Download backend binary artifact
         uses: actions/download-artifact@v4
         with:
           name: backend-binary-${{ matrix.name }}
           path: dist/
-
-      - name: List downloaded artifacts
-        run: |
-          echo "Downloaded backend binaries:"
-          find dist/
 
       - name: Create platform package
         if: matrix.name != 'macos-arm64' && matrix.name != 'macos-x64'
@@ -426,7 +280,6 @@ jobs:
         if: matrix.name == 'macos-arm64' || matrix.name == 'macos-x64'
         run: |
           mkdir -p npx-cli/dist/${{ matrix.name }}
-          mkdir vibe-kanban-${{ matrix.name }}
           cp dist/vibe-kanban-${{ matrix.name }}* npx-cli/dist/${{ matrix.name }}/vibe-kanban.zip
           cp dist/vibe-kanban-mcp-${{ matrix.name }}* npx-cli/dist/${{ matrix.name }}/vibe-kanban-mcp.zip
 
@@ -437,19 +290,14 @@ jobs:
           path: npx-cli/dist/
           retention-days: 1
 
-  create-prerelease:
-    needs: [bump-version, build-frontend, build-backend, package-npx-cli]
+  pack-npm:
+    needs: [package-npx-cli]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.bump-version.outputs.new_tag }}
 
-      - name: Download frontend artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-dist
-          path: frontend/dist/
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
 
       - name: Download backend npx-cli zips
         uses: actions/download-artifact@v4
@@ -462,30 +310,15 @@ jobs:
         run: |
           echo "Backend dist:"
           find npx-cli/dist
-          echo "Frontend dist:"
-          find frontend/dist
-
-      - name: Zip frontend
-        run: |
-          mkdir vibe-kanban-${{ needs.bump-version.outputs.new_tag }}
-          mv frontend/dist vibe-kanban-${{ needs.bump-version.outputs.new_tag }}
-          zip -r vibe-kanban-${{ needs.bump-version.outputs.new_tag }}.zip vibe-kanban-${{ needs.bump-version.outputs.new_tag }}
-
-      - name: Setup Node for npm pack
-        uses: ./.github/actions/setup-node
 
       - name: Pack
         run: |
           cd npx-cli
           npm pack
 
-      - name: Create GitHub Pre-Release
-        uses: softprops/action-gh-release@v2
+      - name: Upload npm package
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: ${{ needs.bump-version.outputs.new_tag }}
-          name: Pre-release ${{ needs.bump-version.outputs.new_tag }}
-          prerelease: true
-          generate_release_notes: true
-          files: |
-            vibe-kanban-${{ needs.bump-version.outputs.new_tag }}.zip
-            npx-cli/vibe-kanban-*.tgz
+          name: npm-package
+          path: npx-cli/vibe-kanban-*.tgz
+          retention-days: 1
