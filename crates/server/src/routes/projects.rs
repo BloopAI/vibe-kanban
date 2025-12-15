@@ -440,7 +440,19 @@ pub async fn add_project_repository(
         )
         .await
     {
-        Ok(repository) => Ok(ResponseJson(ApiResponse::success(repository))),
+        Ok(repository) => {
+            deployment
+                .track_if_analytics_allowed(
+                    "project_repository_added",
+                    serde_json::json!({
+                        "project_id": project.id.to_string(),
+                        "repository_id": repository.id.to_string(),
+                    }),
+                )
+                .await;
+
+            Ok(ResponseJson(ApiResponse::success(repository)))
+        }
         Err(ProjectServiceError::PathNotFound(_)) => Ok(ResponseJson(ApiResponse::error(
             "The specified path does not exist",
         ))),
@@ -469,7 +481,19 @@ pub async fn delete_project_repository(
         .delete_repository(&deployment.db().pool, project_id, repo_id)
         .await
     {
-        Ok(()) => Ok(ResponseJson(ApiResponse::success(()))),
+        Ok(()) => {
+            deployment
+                .track_if_analytics_allowed(
+                    "project_repository_removed",
+                    serde_json::json!({
+                        "project_id": project_id.to_string(),
+                        "repository_id": repo_id.to_string(),
+                    }),
+                )
+                .await;
+
+            Ok(ResponseJson(ApiResponse::success(())))
+        }
         Err(ProjectServiceError::RepositoryNotFound) => {
             Ok(ResponseJson(ApiResponse::error("Repository not found")))
         }

@@ -190,6 +190,7 @@ pub async fn create_task_attempt(
                 "variant": &executor_profile_id.variant,
                 "executor": &executor_profile_id.executor,
                 "attempt_id": task_attempt.id.to_string(),
+                "repository_count": payload.repos.len(),
             }),
         )
         .await;
