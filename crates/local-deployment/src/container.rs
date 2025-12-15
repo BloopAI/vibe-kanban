@@ -157,10 +157,10 @@ impl LocalContainerService {
                 "No repositories found for attempt {}, cleaning up workspace directory only",
                 attempt.id
             );
-            if workspace_dir.exists() {
-                if let Err(e) = tokio::fs::remove_dir_all(&workspace_dir).await {
-                    tracing::warn!("Failed to remove workspace directory: {}", e);
-                }
+            if workspace_dir.exists()
+                && let Err(e) = tokio::fs::remove_dir_all(&workspace_dir).await
+            {
+                tracing::warn!("Failed to remove workspace directory: {}", e);
             }
         } else {
             WorkspaceManager::cleanup_workspace(&workspace_dir, &repositories)
@@ -711,19 +711,19 @@ impl LocalContainerService {
         let repos = AttemptRepo::find_repos_with_copy_files(&self.db.pool, task_attempt.id).await?;
 
         for repo in &repos {
-            if let Some(copy_files) = &repo.copy_files {
-                if !copy_files.trim().is_empty() {
-                    let worktree_path = workspace_dir.join(&repo.name);
-                    self.copy_project_files(&repo.path, &worktree_path, copy_files)
-                        .await
-                        .unwrap_or_else(|e| {
-                            tracing::warn!(
-                                "Failed to copy project files for repo '{}': {}",
-                                repo.name,
-                                e
-                            );
-                        });
-                }
+            if let Some(copy_files) = &repo.copy_files
+                && !copy_files.trim().is_empty()
+            {
+                let worktree_path = workspace_dir.join(&repo.name);
+                self.copy_project_files(&repo.path, &worktree_path, copy_files)
+                    .await
+                    .unwrap_or_else(|e| {
+                        tracing::warn!(
+                            "Failed to copy project files for repo '{}': {}",
+                            repo.name,
+                            e
+                        );
+                    });
             }
         }
 

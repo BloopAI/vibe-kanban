@@ -367,21 +367,21 @@ impl WorkspaceManager {
 
         for entry in entries.filter_map(|e| e.ok()) {
             let path = entry.path();
-            if path.is_dir() {
-                if let Err(e) = WorktreeManager::cleanup_suspected_worktree(&path).await {
-                    warn!("Failed to cleanup suspected worktree: {}", e);
-                }
+            if path.is_dir()
+                && let Err(e) = WorktreeManager::cleanup_suspected_worktree(&path).await
+            {
+                warn!("Failed to cleanup suspected worktree: {}", e);
             }
         }
 
-        if workspace_dir.exists() {
-            if let Err(e) = tokio::fs::remove_dir_all(workspace_dir).await {
-                debug!(
-                    "Could not remove workspace directory {}: {}",
-                    workspace_dir.display(),
-                    e
-                );
-            }
+        if workspace_dir.exists()
+            && let Err(e) = tokio::fs::remove_dir_all(workspace_dir).await
+        {
+            debug!(
+                "Could not remove workspace directory {}: {}",
+                workspace_dir.display(),
+                e
+            );
         }
 
         Ok(())
