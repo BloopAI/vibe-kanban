@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      dev_script,\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               WHERE id = $1",
+  "query": "SELECT id as \"id!: Uuid\",\n                      name,\n                      dev_script,\n                      dev_script_working_dir,\n                      remote_project_id as \"remote_project_id: Uuid\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM projects\n               WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -19,18 +19,23 @@
         "type_info": "Text"
       },
       {
-        "name": "remote_project_id: Uuid",
+        "name": "dev_script_working_dir",
         "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "remote_project_id: Uuid",
+        "ordinal": 4,
         "type_info": "Blob"
       },
       {
         "name": "created_at!: DateTime<Utc>",
-        "ordinal": 4,
+        "ordinal": 5,
         "type_info": "Text"
       },
       {
         "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 5,
+        "ordinal": 6,
         "type_info": "Text"
       }
     ],
@@ -42,9 +47,10 @@
       false,
       true,
       true,
+      true,
       false,
       false
     ]
   },
-  "hash": "1d1fccd2d177a09d3e1d091ca90349f2fc5a5a77e36bec46765f98cd4ee9c837"
+  "hash": "e3ad69990a8d5e62a61d824db16a04d8893df37bc0980441d01f6e4e416702fa"
 }

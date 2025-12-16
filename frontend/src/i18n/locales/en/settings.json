@@ -342,7 +342,12 @@
         },
         "dev": {
           "label": "Dev Server Script",
-          "helper": "Starts a development server from task attempts. Scripts execute from the workspace directory (one level above each repo's worktree), so cd into the repo first (e.g., cd my-repo && pnpm run dev)."
+          "helper": "Starts a development server from task attempts. Scripts execute from the workspace directory (one level above each repo's worktree) unless a working directory is specified below."
+        },
+        "devWorkingDir": {
+          "label": "Dev Server Working Directory",
+          "placeholder": "e.g., my-repo",
+          "helper": "The directory to run the dev server script from, relative to the workspace root. Leave empty to run from the workspace root."
         },
         "cleanup": {
           "label": "Cleanup Script",

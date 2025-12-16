@@ -1263,12 +1263,20 @@ pub async fn start_dev_server(
             )));
         }
     };
+
+    // Get working directory - use configured value if non-empty, otherwise None
+    let working_dir = project
+        .dev_script_working_dir
+        .as_ref()
+        .filter(|dir| !dir.is_empty())
+        .cloned();
+
     let executor_action = ExecutorAction::new(
         ExecutorActionType::ScriptRequest(ScriptRequest {
             script: dev_script,
             language: ScriptRequestLanguage::Bash,
             context: ScriptContext::DevServer,
-            working_dir: None,
+            working_dir,
         }),
         None,
     );

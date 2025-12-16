@@ -36,6 +36,7 @@ import type { Project, ProjectRepo, Repo, UpdateProject } from 'shared/types';
 interface ProjectFormState {
   name: string;
   dev_script: string;
+  dev_script_working_dir: string;
 }
 
 interface RepoScriptsFormState {
@@ -49,6 +50,7 @@ function projectToFormState(project: Project): ProjectFormState {
   return {
     name: project.name,
     dev_script: project.dev_script ?? '',
+    dev_script_working_dir: project.dev_script_working_dir ?? '',
   };
 }
 
@@ -390,6 +392,7 @@ export function ProjectSettings() {
       const updateData: UpdateProject = {
         name: draft.name.trim(),
         dev_script: draft.dev_script.trim() || null,
+        dev_script_working_dir: draft.dev_script_working_dir.trim() || null,
       };
 
       updateProject.mutate({
@@ -580,6 +583,26 @@ export function ProjectSettings() {
                 />
                 <p className="text-sm text-muted-foreground">
                   {t('settings.projects.scripts.dev.helper')}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="dev-script-working-dir">
+                  {t('settings.projects.scripts.devWorkingDir.label')}
+                </Label>
+                <Input
+                  id="dev-script-working-dir"
+                  value={draft.dev_script_working_dir}
+                  onChange={(e) =>
+                    updateDraft({ dev_script_working_dir: e.target.value })
+                  }
+                  placeholder={t(
+                    'settings.projects.scripts.devWorkingDir.placeholder'
+                  )}
+                  className="font-mono"
+                />
+                <p className="text-sm text-muted-foreground">
+                  {t('settings.projects.scripts.devWorkingDir.helper')}
                 </p>
               </div>
 
