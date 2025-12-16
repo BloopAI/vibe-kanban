@@ -294,6 +294,8 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
+          ls target/
+          ls target/*
           if [[ "${{ runner.os }}" == "Windows" ]]; then
             cp target/${{ matrix.target }}/release/server.exe dist/vibe-kanban-${{ matrix.name }}.exe
             cp target/${{ matrix.target }}/release/mcp_task_server.exe dist/vibe-kanban-mcp-${{ matrix.name }}.exe
