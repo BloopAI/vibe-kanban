@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,7 @@ import {
 } from '@/hooks';
 import { useProject } from '@/contexts/ProjectContext';
 import { useUserSystem } from '@/components/ConfigProvider';
+import { projectsApi } from '@/lib/api';
 import { paths } from '@/lib/paths';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
@@ -66,17 +68,25 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
       { enabled: modal.visible && !!parentAttemptId }
     );
 
+    const { data: projectRepos = [], isLoading: isLoadingRepos } = useQuery({
+      queryKey: ['projectRepositories', projectId],
+      queryFn: () =>
+        projectId
+          ? projectsApi.getRepositories(projectId)
+          : Promise.resolve([]),
+      enabled: modal.visible && !!projectId,
+    });
+
     const {
       configs: repoBranchConfigs,
-      projectRepos,
       isLoading: isLoadingBranches,
       setRepoBranch,
       getAttemptRepoInputs,
       reset: resetBranchSelection,
     } = useRepoBranchSelection({
-      projectId,
+      repos: projectRepos,
       initialBranch: parentAttempt?.branch,
-      enabled: modal.visible,
+      enabled: modal.visible && projectRepos.length > 0,
     });
 
     const latestAttempt = useMemo(() => {
@@ -118,6 +128,7 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
     const effectiveProfile = userSelectedProfile ?? defaultProfile;
 
     const isLoadingInitial =
+      isLoadingRepos ||
       isLoadingBranches ||
       isLoadingAttempts ||
       isLoadingTask ||

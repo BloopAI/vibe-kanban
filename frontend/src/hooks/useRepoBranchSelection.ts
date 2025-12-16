@@ -1,7 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { useBranches } from './useBranches';
-import { projectsApi } from '@/lib/api';
 import type { GitBranch, Repo, RepositoryBranches } from 'shared/types';
 
 export type RepoBranchConfig = {
@@ -12,7 +10,7 @@ export type RepoBranchConfig = {
 };
 
 type UseRepoBranchSelectionOptions = {
-  projectId: string | undefined;
+  repos: Repo[];
   initialBranch?: string | null;
   enabled?: boolean;
 };
@@ -20,7 +18,6 @@ type UseRepoBranchSelectionOptions = {
 type UseRepoBranchSelectionReturn = {
   configs: RepoBranchConfig[];
   repositoryBranches: RepositoryBranches[];
-  projectRepos: Repo[];
   isLoading: boolean;
   setRepoBranch: (repoId: string, branch: string) => void;
   getAttemptRepoInputs: () => Array<{ repo_id: string; target_branch: string }>;
@@ -28,7 +25,7 @@ type UseRepoBranchSelectionReturn = {
 };
 
 export function useRepoBranchSelection({
-  projectId,
+  repos,
   initialBranch,
   enabled = true,
 }: UseRepoBranchSelectionOptions): UseRepoBranchSelectionReturn {
@@ -37,17 +34,10 @@ export function useRepoBranchSelection({
   >({});
 
   const { data: repositoryBranches = [], isLoading: isLoadingBranches } =
-    useBranches(projectId, { enabled: enabled && !!projectId });
-
-  const { data: projectRepos = [], isLoading: isLoadingRepos } = useQuery({
-    queryKey: ['projectRepositories', projectId],
-    queryFn: () =>
-      projectId ? projectsApi.getRepositories(projectId) : Promise.resolve([]),
-    enabled: enabled && !!projectId,
-  });
+    useBranches(repos, { enabled });
 
   const configs = useMemo((): RepoBranchConfig[] => {
-    return projectRepos.map((repo) => {
+    return repos.map((repo) => {
       const repoBranchData = repositoryBranches.find(
         (rb) => rb.repository_id === repo.id
       );
@@ -71,7 +61,7 @@ export function useRepoBranchSelection({
         branches,
       };
     });
-  }, [projectRepos, repositoryBranches, userOverrides, initialBranch]);
+  }, [repos, repositoryBranches, userOverrides, initialBranch]);
 
   const setRepoBranch = useCallback((repoId: string, branch: string) => {
     setUserOverrides((prev) => ({
@@ -96,8 +86,7 @@ export function useRepoBranchSelection({
   return {
     configs,
     repositoryBranches,
-    projectRepos,
-    isLoading: isLoadingBranches || isLoadingRepos,
+    isLoading: isLoadingBranches,
     setRepoBranch,
     getAttemptRepoInputs,
     reset,

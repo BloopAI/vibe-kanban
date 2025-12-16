@@ -1,25 +1,34 @@
-import { useQuery } from '@tanstack/react-query';
-import { projectsApi } from '@/lib/api';
+import { useQueries } from '@tanstack/react-query';
+import { repoApi } from '@/lib/api';
 import type { RepositoryBranches } from 'shared/types';
-
-export const branchKeys = {
-  all: ['projectBranches'] as const,
-  byProject: (projectId: string | undefined) =>
-    ['projectBranches', projectId] as const,
-};
+import { repoBranchKeys } from './useRepoBranches';
 
 type Options = {
   enabled?: boolean;
 };
 
-export function useBranches(projectId?: string, opts?: Options) {
-  const enabled = (opts?.enabled ?? true) && !!projectId;
+export function useBranches(
+  repos: Array<{ id: string; name: string }>,
+  opts?: Options
+) {
+  const enabled = opts?.enabled ?? true;
 
-  return useQuery<RepositoryBranches[]>({
-    queryKey: branchKeys.byProject(projectId),
-    queryFn: () => projectsApi.getBranches(projectId!),
-    enabled,
-    staleTime: 60_000,
-    refetchOnWindowFocus: true,
+  const queries = useQueries({
+    queries: repos.map((repo) => ({
+      queryKey: repoBranchKeys.byRepo(repo.id),
+      queryFn: () => repoApi.getBranches(repo.id),
+      enabled,
+      staleTime: 60_000,
+    })),
   });
+
+  const isLoading = queries.some((q) => q.isLoading);
+
+  const data: RepositoryBranches[] = repos.map((repo, i) => ({
+    repository_id: repo.id,
+    repository_name: repo.name,
+    branches: queries[i]?.data ?? [],
+  }));
+
+  return { data, isLoading };
 }

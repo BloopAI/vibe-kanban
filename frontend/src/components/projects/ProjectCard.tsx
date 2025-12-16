@@ -23,13 +23,13 @@ import {
 } from 'lucide-react';
 import { Project } from 'shared/types';
 import { useEffect, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
 import { useNavigateWithSearch } from '@/hooks';
 import { projectsApi } from '@/lib/api';
 import { LinkProjectDialog } from '@/components/dialogs/projects/LinkProjectDialog';
 import { useTranslation } from 'react-i18next';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
-import { useBranches } from '@/hooks/useBranches';
 
 type Props = {
   project: Project;
@@ -51,7 +51,10 @@ function ProjectCard({
   const handleOpenInEditor = useOpenProjectInEditor(project);
   const { t } = useTranslation('projects');
 
-  const { data: repos } = useBranches(project.id);
+  const { data: repos } = useQuery({
+    queryKey: ['projectRepositories', project.id],
+    queryFn: () => projectsApi.getRepositories(project.id),
+  });
   const isSingleRepoProject = repos?.length === 1;
 
   const { unlinkProject } = useProjectMutations({

@@ -104,8 +104,6 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const [showDiscardWarning, setShowDiscardWarning] = useState(false);
   const forceCreateOnlyRef = useRef(false);
 
-  const { data: repoBranches, isLoading: branchesLoading } =
-    useBranches(projectId);
   const { data: taskImages } = useTaskImages(
     editMode ? props.task.id : undefined
   );
@@ -114,6 +112,10 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
     queryFn: () => projectsApi.getRepositories(projectId),
     enabled: modal.visible,
   });
+  const { data: repoBranches = [], isLoading: branchesLoading } = useBranches(
+    projectRepos,
+    { enabled: modal.visible && projectRepos.length > 0 }
+  );
 
   const repoBranchConfigs = useMemo((): RepoBranchConfig[] => {
     return projectRepos.map((repo) => {
