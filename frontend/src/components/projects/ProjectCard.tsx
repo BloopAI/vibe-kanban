@@ -18,12 +18,14 @@ import {
   FolderOpen,
   Link2,
   MoreHorizontal,
+  Terminal,
   Trash2,
   Unlink,
 } from 'lucide-react';
 import { Project } from 'shared/types';
 import { useEffect, useRef } from 'react';
 import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
+import { useOpenProjectInTerminal } from '@/hooks/useOpenProjectInTerminal';
 import { useNavigateWithSearch } from '@/hooks';
 import { projectsApi } from '@/lib/api';
 import { LinkProjectDialog } from '@/components/dialogs/projects/LinkProjectDialog';
@@ -48,6 +50,7 @@ function ProjectCard({
   const navigate = useNavigateWithSearch();
   const ref = useRef<HTMLDivElement>(null);
   const handleOpenInEditor = useOpenProjectInEditor(project);
+  const handleOpenInTerminal = useOpenProjectInTerminal(project);
   const { t } = useTranslation('projects');
 
   const { unlinkProject } = useProjectMutations({
@@ -169,6 +172,15 @@ function ProjectCard({
                     {t('linkToOrganization')}
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenInTerminal();
+                  }}
+                >
+                  <Terminal className="mr-2 h-4 w-4" />
+                  Open in Terminal
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();
