@@ -228,6 +228,21 @@ jobs:
       - name: Start sccache server
         run: sccache --start-server
 
+      - name: Configure sccache (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          # Use short paths to avoid Windows command line length limits
+          mkdir -p /c/s
+          echo '@echo off' > /c/s/cl.bat
+          echo 'sccache clang-cl.exe %*' >> /c/s/cl.bat
+          CL_HELPER_PATH=$(cygpath -w "/c/s/cl.bat")
+
+          echo '@echo off' > /c/s/rw.bat
+          echo 'sccache %*' >> /c/s/rw.bat
+          RUSTC_WRAPPER_PATH=$(cygpath -w "/c/s/rw.bat")
+          echo "RUSTC_WRAPPER=$RUSTC_WRAPPER_PATH" >> $GITHUB_ENV
+
       - name: Cache Cargo registry
         uses: actions/cache@v4
         with:
@@ -294,6 +309,9 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
+          ls target/
+          ls target/*
+          ls target/*/*
           if [[ "${{ runner.os }}" == "Windows" ]]; then
             cp target/${{ matrix.target }}/release/server.exe dist/vibe-kanban-${{ matrix.name }}.exe
             cp target/${{ matrix.target }}/release/mcp_task_server.exe dist/vibe-kanban-mcp-${{ matrix.name }}.exe
