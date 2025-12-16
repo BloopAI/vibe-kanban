@@ -47,7 +47,7 @@ pub async fn run_gh_cli_setup(
                 Session::create(
                     &deployment.db().pool,
                     &CreateSession {
-                        executor: "gh-cli".to_string(),
+                        executor: Some("gh-cli".to_string()),
                     },
                     Uuid::new_v4(),
                     workspace.id,

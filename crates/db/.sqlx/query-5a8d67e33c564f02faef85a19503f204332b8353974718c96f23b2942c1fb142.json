@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "INSERT INTO sessions (id, workspace_id, executor)\n               VALUES ($1, $2, $3)\n               RETURNING id AS \"id!: Uuid\",\n                         workspace_id AS \"workspace_id!: Uuid\",\n                         executor AS \"executor!\",\n                         created_at AS \"created_at!: DateTime<Utc>\",\n                         updated_at AS \"updated_at!: DateTime<Utc>\"",
+  "query": "SELECT id AS \"id!: Uuid\",\n                      workspace_id AS \"workspace_id!: Uuid\",\n                      executor,\n                      created_at AS \"created_at!: DateTime<Utc>\",\n                      updated_at AS \"updated_at!: DateTime<Utc>\"\n               FROM sessions\n               WHERE workspace_id = $1\n               ORDER BY created_at DESC\n               LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -14,7 +14,7 @@
         "type_info": "Blob"
       },
       {
-        "name": "executor!",
+        "name": "executor",
         "ordinal": 2,
         "type_info": "Text"
       },
@@ -30,15 +30,15 @@
       }
     ],
     "parameters": {
-      "Right": 3
+      "Right": 1
     },
     "nullable": [
       true,
       false,
-      false,
+      true,
       false,
       false
     ]
   },
-  "hash": "9845bfd3252fbfd8eb1a52fcbc50340455d487c0cc5c20e5c60ac198e3b14ddb"
+  "hash": "5a8d67e33c564f02faef85a19503f204332b8353974718c96f23b2942c1fb142"
 }

@@ -786,7 +786,7 @@ impl LocalContainerService {
         let session = Session::create(
             &self.db.pool,
             &CreateSession {
-                executor: executor_profile_id.to_string(),
+                executor: Some(executor_profile_id.to_string()),
             },
             Uuid::new_v4(),
             ctx.workspace.id,

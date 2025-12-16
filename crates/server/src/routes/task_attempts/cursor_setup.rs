@@ -52,7 +52,7 @@ pub async fn run_cursor_setup(
                 Session::create(
                     &deployment.db().pool,
                     &CreateSession {
-                        executor: "cursor".to_string(),
+                        executor: Some("cursor".to_string()),
                     },
                     Uuid::new_v4(),
                     workspace.id,

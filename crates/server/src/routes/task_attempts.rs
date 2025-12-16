@@ -323,7 +323,7 @@ pub async fn follow_up(
             Session::create(
                 pool,
                 &CreateSession {
-                    executor: executor_profile_id.executor.to_string(),
+                    executor: Some(executor_profile_id.executor.to_string()),
                 },
                 Uuid::new_v4(),
                 workspace.id,
@@ -1307,7 +1307,7 @@ pub async fn start_dev_server(
             Session::create(
                 pool,
                 &CreateSession {
-                    executor: "dev-server".to_string(),
+                    executor: Some("dev-server".to_string()),
                 },
                 Uuid::new_v4(),
                 workspace.id,
@@ -1447,7 +1447,7 @@ pub async fn run_setup_script(
             Session::create(
                 pool,
                 &CreateSession {
-                    executor: "setup-script".to_string(),
+                    executor: Some("setup-script".to_string()),
                 },
                 Uuid::new_v4(),
                 workspace.id,
@@ -1531,7 +1531,7 @@ pub async fn run_cleanup_script(
             Session::create(
                 pool,
                 &CreateSession {
-                    executor: "cleanup-script".to_string(),
+                    executor: Some("cleanup-script".to_string()),
                 },
                 Uuid::new_v4(),
                 workspace.id,

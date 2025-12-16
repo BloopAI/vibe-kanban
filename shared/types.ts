@@ -72,7 +72,7 @@ export type CreateImage = { file_path: string, original_name: string, mime_type:
 
 export type Workspace = { id: string, task_id: string, container_ref: string | null, branch: string, setup_completed_at: string | null, created_at: string, updated_at: string, };
 
-export type Session = { id: string, workspace_id: string, executor: string, created_at: string, updated_at: string, };
+export type Session = { id: string, workspace_id: string, executor: string | null, created_at: string, updated_at: string, };
 
 export type ExecutionProcess = { id: string, session_id: string, run_reason: ExecutionProcessRunReason, executor_action: ExecutorAction, status: ExecutionProcessStatus, exit_code: bigint | null, 
 /**

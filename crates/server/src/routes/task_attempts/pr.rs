@@ -158,7 +158,7 @@ async fn trigger_pr_description_follow_up(
                 Session::create(
                     &deployment.db().pool,
                     &CreateSession {
-                        executor: executor_profile_id.to_string(),
+                        executor: Some(executor_profile_id.to_string()),
                     },
                     Uuid::new_v4(),
                     workspace.id,

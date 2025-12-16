@@ -15,7 +15,7 @@ ALTER TABLE task_attempts RENAME TO workspaces;
 CREATE TABLE sessions (
     id              BLOB PRIMARY KEY,
     workspace_id    BLOB NOT NULL,
-    executor        TEXT NOT NULL,
+    executor        TEXT,
     created_at      TEXT NOT NULL DEFAULT (datetime('now', 'subsec')),
     updated_at      TEXT NOT NULL DEFAULT (datetime('now', 'subsec')),
     FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE

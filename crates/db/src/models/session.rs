@@ -5,8 +5,6 @@ use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
 
-use super::workspace::Workspace;
-
 #[derive(Debug, Error)]
 pub enum SessionError {
     #[error(transparent)]
@@ -21,14 +19,14 @@ pub enum SessionError {
 pub struct Session {
     pub id: Uuid,
     pub workspace_id: Uuid,
-    pub executor: String,
+    pub executor: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Deserialize, TS)]
 pub struct CreateSession {
-    pub executor: String,
+    pub executor: Option<String>,
 }
 
 impl Session {
@@ -37,7 +35,7 @@ impl Session {
             Session,
             r#"SELECT id AS "id!: Uuid",
                       workspace_id AS "workspace_id!: Uuid",
-                      executor AS "executor!",
+                      executor,
                       created_at AS "created_at!: DateTime<Utc>",
                       updated_at AS "updated_at!: DateTime<Utc>"
                FROM sessions
@@ -56,7 +54,7 @@ impl Session {
             Session,
             r#"SELECT id AS "id!: Uuid",
                       workspace_id AS "workspace_id!: Uuid",
-                      executor AS "executor!",
+                      executor,
                       created_at AS "created_at!: DateTime<Utc>",
                       updated_at AS "updated_at!: DateTime<Utc>"
                FROM sessions
@@ -77,7 +75,7 @@ impl Session {
             Session,
             r#"SELECT id AS "id!: Uuid",
                       workspace_id AS "workspace_id!: Uuid",
-                      executor AS "executor!",
+                      executor,
                       created_at AS "created_at!: DateTime<Utc>",
                       updated_at AS "updated_at!: DateTime<Utc>"
                FROM sessions
@@ -102,7 +100,7 @@ impl Session {
                VALUES ($1, $2, $3)
                RETURNING id AS "id!: Uuid",
                          workspace_id AS "workspace_id!: Uuid",
-                         executor AS "executor!",
+                         executor,
                          created_at AS "created_at!: DateTime<Utc>",
                          updated_at AS "updated_at!: DateTime<Utc>""#,
             id,
@@ -111,13 +109,5 @@ impl Session {
         )
         .fetch_one(pool)
         .await?)
-    }
-
-    /// Get the parent workspace for this session
-    pub async fn parent_workspace(
-        &self,
-        pool: &SqlitePool,
-    ) -> Result<Option<Workspace>, sqlx::Error> {
-        Workspace::find_by_id(pool, self.workspace_id).await
     }
 }

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!: Uuid\",\n                      workspace_id AS \"workspace_id!: Uuid\",\n                      executor AS \"executor!\",\n                      created_at AS \"created_at!: DateTime<Utc>\",\n                      updated_at AS \"updated_at!: DateTime<Utc>\"\n               FROM sessions\n               WHERE workspace_id = $1\n               ORDER BY created_at DESC",
+  "query": "SELECT id AS \"id!: Uuid\",\n                      workspace_id AS \"workspace_id!: Uuid\",\n                      executor,\n                      created_at AS \"created_at!: DateTime<Utc>\",\n                      updated_at AS \"updated_at!: DateTime<Utc>\"\n               FROM sessions\n               WHERE workspace_id = $1\n               ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -14,7 +14,7 @@
         "type_info": "Blob"
       },
       {
-        "name": "executor!",
+        "name": "executor",
         "ordinal": 2,
         "type_info": "Text"
       },
@@ -35,10 +35,10 @@
     "nullable": [
       true,
       false,
-      false,
+      true,
       false,
       false
     ]
   },
-  "hash": "ddddfeb1c2d5a80fe5277576fdc42472bb0cd1d44214a3beb3f772950184b9ae"
+  "hash": "a2d108762c773c3ee1547d3f092b3ef6fae482b028e37b8175c38b12b31115c0"
 }

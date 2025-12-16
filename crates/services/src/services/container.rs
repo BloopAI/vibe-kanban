@@ -192,11 +192,11 @@ pub trait ContainerService {
         let title = format!("Task Complete: {}", ctx.task.title);
         let message = match ctx.execution_process.status {
             ExecutionProcessStatus::Completed => format!(
-                "✅ '{}' completed successfully\nBranch: {:?}\nExecutor: {}",
+                "✅ '{}' completed successfully\nBranch: {:?}\nExecutor: {:?}",
                 ctx.task.title, ctx.workspace.branch, ctx.session.executor
             ),
             ExecutionProcessStatus::Failed => format!(
-                "❌ '{}' execution failed\nBranch: {:?}\nExecutor: {}",
+                "❌ '{}' execution failed\nBranch: {:?}\nExecutor: {:?}",
                 ctx.task.title, ctx.workspace.branch, ctx.session.executor
             ),
             _ => {
@@ -891,7 +891,7 @@ pub trait ContainerService {
         let session = Session::create(
             &self.db().pool,
             &CreateSession {
-                executor: executor_profile_id.to_string(),
+                executor: Some(executor_profile_id.to_string()),
             },
             Uuid::new_v4(),
             workspace.id,
