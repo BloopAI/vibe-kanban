@@ -57,6 +57,10 @@
   body {
     @apply bg-background text-foreground font-sans;
   }
+
+  input {
+    @apply bg-gray-50 text-primary;
+  }
 }
 
 /* Syntax highlighting classes */

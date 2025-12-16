@@ -184,34 +184,47 @@ impl GitHubAppService {
         Ok(installation)
     }
 
-    /// List repositories accessible to an installation
+    /// List repositories accessible to an installation (handles pagination for 100+ repos)
     pub async fn list_installation_repos(
         &self,
         installation_id: i64,
     ) -> Result<Vec<Repository>, GitHubAppError> {
         let token = self.get_installation_token(installation_id).await?;
-
         let url = format!("{}/installation/repositories", GITHUB_API_BASE);
 
-        let response = self
-            .client
-            .get(&url)
-            .header("Authorization", format!("Bearer {}", token))
-            .header("Accept", "application/vnd.github+json")
-            .header("User-Agent", USER_AGENT)
-            .header("X-GitHub-Api-Version", "2022-11-28")
-            .query(&[("per_page", "100")])
-            .send()
-            .await?;
+        let mut all_repos = Vec::new();
+        let mut page = 1u32;
 
-        if !response.status().is_success() {
-            let status = response.status().as_u16();
-            let message = response.text().await.unwrap_or_default();
-            return Err(GitHubAppError::Api { status, message });
+        loop {
+            let response = self
+                .client
+                .get(&url)
+                .header("Authorization", format!("Bearer {}", token))
+                .header("Accept", "application/vnd.github+json")
+                .header("User-Agent", USER_AGENT)
+                .header("X-GitHub-Api-Version", "2022-11-28")
+                .query(&[("per_page", "100"), ("page", &page.to_string())])
+                .send()
+                .await?;
+
+            if !response.status().is_success() {
+                let status = response.status().as_u16();
+                let message = response.text().await.unwrap_or_default();
+                return Err(GitHubAppError::Api { status, message });
+            }
+
+            let repos_response: RepositoriesResponse = response.json().await?;
+            let count = repos_response.repositories.len();
+            all_repos.extend(repos_response.repositories);
+
+            // If we got fewer than 100, we've reached the last page
+            if count < 100 {
+                break;
+            }
+            page += 1;
         }
 
-        let repos_response: RepositoriesResponse = response.json().await?;
-        Ok(repos_response.repositories)
+        Ok(all_repos)
     }
 
     /// Post a comment on a pull request
