@@ -894,6 +894,7 @@ async fn handle_pull_request_event(
     let pool = state.pool.clone();
     let repo_owner = repo_owner.to_string();
     let repo_name = repo_name.to_string();
+    let organization_id = installation.organization_id;
 
     tokio::spawn(async move {
         let service = PrReviewService::new(
@@ -906,6 +907,7 @@ async fn handle_pull_request_event(
 
         let params = PrReviewParams {
             installation_id,
+            organization_id,
             owner: repo_owner.clone(),
             repo: repo_name.clone(),
             pr_number,
@@ -1016,6 +1018,7 @@ pub async fn trigger_pr_review(
 
     let params = PrReviewParams {
         installation_id: installation.github_installation_id,
+        organization_id: installation.organization_id,
         owner,
         repo,
         pr_number,

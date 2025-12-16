@@ -594,3 +594,57 @@ export async function bulkUpdateRepositoryReviewEnabled(
   }
   return res.json();
 }
+
+// ========== Organization Reviews APIs ==========
+
+export type ReviewStatus = "pending" | "completed" | "failed";
+
+export type ReviewListItem = {
+  id: string;
+  gh_pr_url: string;
+  pr_title: string;
+  status: ReviewStatus;
+  created_at: string;
+};
+
+export type ListOrganizationReviewsResponse = {
+  reviews: ReviewListItem[];
+};
+
+export type TriggerReviewResponse = {
+  review_id: string;
+};
+
+export async function listOrganizationReviews(
+  orgId: string,
+  limit = 20,
+  offset = 0,
+): Promise<ListOrganizationReviewsResponse> {
+  const res = await authenticatedFetch(
+    `${API_BASE}/v1/organizations/${orgId}/reviews?limit=${limit}&offset=${offset}`,
+  );
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || `Failed to fetch reviews (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function triggerOrganizationReview(
+  orgId: string,
+  prUrl: string,
+): Promise<TriggerReviewResponse> {
+  const res = await authenticatedFetch(
+    `${API_BASE}/v1/organizations/${orgId}/reviews/trigger`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pr_url: prUrl }),
+    },
+  );
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || `Failed to trigger review (${res.status})`);
+  }
+  return res.json();
+}
