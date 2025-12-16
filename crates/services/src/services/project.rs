@@ -276,13 +276,7 @@ impl ProjectService {
             return Ok(vec![]);
         }
 
-        // Simple search in single-repo case
-        if repositories.len() == 1 {
-            let repo = &repositories[0];
-            return self.search_single_repo(cache, &repo.path, query).await;
-        }
-
-        // Multi repo: search in parallel and prefix paths
+        // Search in parallel and prefix paths with repo name
         let search_futures: Vec<_> = repositories
             .iter()
             .map(|repo| {
