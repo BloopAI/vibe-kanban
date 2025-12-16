@@ -370,8 +370,16 @@ pub trait ContainerService {
                 let all_repos = ProjectRepo::find_by_project_id(pool, pr.project_id).await?;
                 if all_repos.len() == 1
                     && let Some(project) = Project::find_by_id(pool, pr.project_id).await?
-                    && project.dev_script.as_ref().map(|s| !s.is_empty()).unwrap_or(false)
-                    && project.dev_script_working_dir.as_ref().map(|s| s.is_empty()).unwrap_or(true)
+                    && project
+                        .dev_script
+                        .as_ref()
+                        .map(|s| !s.is_empty())
+                        .unwrap_or(false)
+                    && project
+                        .dev_script_working_dir
+                        .as_ref()
+                        .map(|s| s.is_empty())
+                        .unwrap_or(true)
                 {
                     // Set working_dir instead of prepending cd command
                     Project::update(
