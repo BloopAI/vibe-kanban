@@ -108,8 +108,8 @@ impl PrReviewService {
         debug!(review_id = %review_id, "Repository cloned");
 
         // 2. Calculate merge-base for accurate diff computation
-        let base_commit = GitHubAppService::get_merge_base(temp_dir.path(), &params.base_ref)
-            .await?;
+        let base_commit =
+            GitHubAppService::get_merge_base(temp_dir.path(), &params.base_ref).await?;
         debug!(review_id = %review_id, base_commit = %base_commit, "Merge-base calculated");
 
         // 3. Create tarball
