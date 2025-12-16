@@ -342,7 +342,12 @@
         },
         "dev": {
           "label": "Script del Servidor de Desarrollo",
-          "helper": "Inicia un servidor de desarrollo desde los intentos de tarea. Los scripts se ejecutan desde el directorio del workspace (un nivel arriba del worktree de cada repositorio), así que primero entra al directorio del repositorio (ej., cd mi-repo && pnpm run dev)."
+          "helper": "Inicia un servidor de desarrollo desde los intentos de tarea. Los scripts se ejecutan desde el directorio del workspace (un nivel arriba del worktree de cada repositorio) a menos que se especifique un directorio de trabajo a continuación."
+        },
+        "devWorkingDir": {
+          "label": "Directorio de Trabajo del Servidor de Desarrollo",
+          "placeholder": "ej., mi-repo",
+          "helper": "El directorio desde el cual ejecutar el script del servidor de desarrollo, relativo a la raíz del workspace. Déjalo vacío para ejecutar desde la raíz del workspace."
         },
         "cleanup": {
           "label": "Script de Limpieza",

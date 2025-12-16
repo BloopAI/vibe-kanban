@@ -381,7 +381,6 @@ pub trait ContainerService {
                         .map(|s| s.is_empty())
                         .unwrap_or(true)
                 {
-                    // Set working_dir instead of prepending cd command
                     Project::update(
                         pool,
                         pr.project_id,
