@@ -181,11 +181,8 @@ impl Project {
             .ok_or(sqlx::Error::RowNotFound)?;
 
         let name = payload.name.clone().unwrap_or(existing.name);
-        let dev_script = payload.dev_script.clone().or(existing.dev_script);
-        let dev_script_working_dir = payload
-            .dev_script_working_dir
-            .clone()
-            .or(existing.dev_script_working_dir);
+        let dev_script = payload.dev_script.clone();
+        let dev_script_working_dir = payload.dev_script_working_dir.clone();
 
         sqlx::query_as!(
             Project,

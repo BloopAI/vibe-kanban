@@ -386,7 +386,7 @@ pub trait ContainerService {
                         pool,
                         pr.project_id,
                         &UpdateProject {
-                            name: None,
+                            name: Some(project.name.clone()),
                             dev_script: project.dev_script.clone(),
                             dev_script_working_dir: Some(name.clone()),
                         },
